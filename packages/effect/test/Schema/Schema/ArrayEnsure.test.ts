@@ -1,12 +1,13 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("ArrayEnsure", () => {
   it("annotations()", () => {
     const schema = S.ArrayEnsure(S.String).annotations({ identifier: "X" }).annotations({ title: "Y" })
-    expect(schema.ast.annotations).toStrictEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.IdentifierAnnotationId]: "X",
       [AST.TitleAnnotationId]: "Y"
     })

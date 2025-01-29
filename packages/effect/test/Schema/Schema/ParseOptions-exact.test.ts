@@ -1,6 +1,7 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("`exact` option", () => {
   describe("decoding", () => {
@@ -25,12 +26,12 @@ describe("`exact` option", () => {
   describe("is", () => {
     it("true (default)", async () => {
       const schema = S.Struct({ a: S.Unknown })
-      expect(S.is(schema)({})).toBe(false)
+      assertFalse(S.is(schema)({}))
     })
 
     it("false", async () => {
       const schema = S.Struct({ a: S.Unknown })
-      expect(S.is(schema)({}, { exact: false })).toBe(true)
+      assertTrue(S.is(schema)({}, { exact: false }))
     })
   })
 

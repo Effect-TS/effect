@@ -2,7 +2,8 @@ import * as O from "effect/Option"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("optionalWith", () => {
   it("annotations", async () => {
@@ -11,7 +12,7 @@ describe("optionalWith", () => {
         exact: true
       }).annotations({ description: "my description" })
     })
-    expect((schema.ast as any).propertySignatures[0].annotations).toStrictEqual({
+    deepStrictEqual((schema.ast as any).propertySignatures[0].annotations, {
       [AST.DescriptionAnnotationId]: "my description"
     })
   })
@@ -19,12 +20,12 @@ describe("optionalWith", () => {
   describe("{ exact: true }", () => {
     it("should expose a from property", () => {
       const schema = S.optionalWith(S.String, { exact: true })
-      expect(schema.from).toStrictEqual(S.String)
+      strictEqual(schema.from, S.String)
     })
 
     it("should expose a from property after an annotations call", () => {
       const schema = S.optionalWith(S.String, { exact: true }).annotations({})
-      expect(schema.from).toStrictEqual(S.String)
+      strictEqual(schema.from, S.String)
     })
 
     it("decoding / encoding", async () => {
@@ -48,7 +49,7 @@ describe("optionalWith", () => {
     })
 
     it("never", async () => {
-      expect(S.optionalWith(S.Never, { exact: true }).from.ast).toStrictEqual(AST.neverKeyword)
+      strictEqual(S.optionalWith(S.Never, { exact: true }).from.ast, AST.neverKeyword)
       const schema = S.Struct({ a: S.optionalWith(S.Never, { exact: true }), b: S.Number })
       await Util.assertions.decoding.succeed(schema, { b: 1 })
       await Util.assertions.decoding.fail(
@@ -409,7 +410,7 @@ describe("optionalWith", () => {
       const schema = S.Struct({
         a: S.optionalWith(S.NumberFromString, { exact: true, default: () => 0 })
       })
-      expect(schema.make({})).toStrictEqual({ a: 0 })
+      deepStrictEqual(schema.make({}), { a: 0 })
     })
   })
 
@@ -443,7 +444,7 @@ describe("optionalWith", () => {
       const schema = S.Struct({
         a: S.optionalWith(S.NumberFromString, { default: () => 0 })
       })
-      expect(schema.make({})).toStrictEqual({ a: 0 })
+      deepStrictEqual(schema.make({}), { a: 0 })
     })
   })
 
@@ -479,7 +480,7 @@ describe("optionalWith", () => {
       const schema = S.Struct({
         a: S.optionalWith(S.NumberFromString, { nullable: true, default: () => 0 })
       })
-      expect(schema.make({})).toStrictEqual({ a: 0 })
+      deepStrictEqual(schema.make({}), { a: 0 })
     })
   })
 
@@ -513,7 +514,7 @@ describe("optionalWith", () => {
       const schema = S.Struct({
         a: S.optionalWith(S.NumberFromString, { exact: true, nullable: true, default: () => 0 })
       })
-      expect(schema.make({})).toStrictEqual({ a: 0 })
+      deepStrictEqual(schema.make({}), { a: 0 })
     })
   })
 })

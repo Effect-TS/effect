@@ -1,6 +1,7 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("pick", () => {
   it("Struct", async () => {
@@ -145,12 +146,12 @@ describe("pick", () => {
   it("typeSchema(Class)", () => {
     class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
     const schema = A.pipe(S.typeSchema, S.pick("b"))
-    expect(schema.ast).toStrictEqual(S.Struct({ b: S.Number }).ast)
+    deepStrictEqual(schema.ast, S.Struct({ b: S.Number }).ast)
   })
 
   it("Class", () => {
     class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
     const schema = A.pipe(S.pick("b"))
-    expect(schema.ast).toStrictEqual(S.Struct({ b: S.NumberFromString }).ast)
+    deepStrictEqual(schema.ast, S.Struct({ b: S.NumberFromString }).ast)
   })
 })

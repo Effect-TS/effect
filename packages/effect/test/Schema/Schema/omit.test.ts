@@ -1,6 +1,7 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("omit", () => {
   it("Struct", async () => {
@@ -101,13 +102,13 @@ describe("omit", () => {
   it("typeSchema(Class)", () => {
     class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
     const schema = A.pipe(S.typeSchema, S.omit("a"))
-    expect(schema.ast).toStrictEqual(S.Struct({ b: S.Number }).ast)
+    deepStrictEqual(schema.ast, S.Struct({ b: S.Number }).ast)
   })
 
   it("Class", () => {
     class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
     const schema = A.pipe(S.omit("a"))
-    expect(schema.ast).toStrictEqual(S.Struct({ b: S.NumberFromString }).ast)
+    deepStrictEqual(schema.ast, S.Struct({ b: S.NumberFromString }).ast)
   })
 
   it("struct with key rename", async () => {

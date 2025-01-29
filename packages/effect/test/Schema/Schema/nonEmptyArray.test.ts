@@ -1,11 +1,12 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("nonEmptyArray", () => {
   it("annotations()", () => {
     const schema = S.NonEmptyArray(S.String).annotations({ identifier: "X" }).annotations({ title: "Y" })
-    expect(schema.ast.annotations).toStrictEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.IdentifierAnnotationId]: "X",
       [AST.TitleAnnotationId]: "Y"
     })
@@ -13,6 +14,6 @@ describe("nonEmptyArray", () => {
 
   it("should expose the value", () => {
     const schema = S.NonEmptyArray(S.String)
-    expect(schema.value).toStrictEqual(S.String)
+    strictEqual(schema.value, S.String)
   })
 })

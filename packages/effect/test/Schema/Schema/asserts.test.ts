@@ -1,7 +1,8 @@
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("asserts", () => {
   it("the returned error should be a ParseError", () => {
@@ -9,25 +10,26 @@ describe("asserts", () => {
     try {
       asserts(1)
     } catch (e) {
-      expect(ParseResult.isParseError(e)).toBe(true)
+      assertTrue(ParseResult.isParseError(e))
     }
   })
 
   it("should respect outer/inner options", () => {
     const schema = S.Struct({ a: Util.NumberFromChar })
     const input = { a: 1, b: "b" }
-    expect(() => S.asserts(schema)(input, { onExcessProperty: "error" })).toThrow(
-      new Error(`{ readonly a: number }
+    Util.expectParseError(
+      () => S.asserts(schema)(input, { onExcessProperty: "error" }),
+      `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected: "a"`)
+   └─ is unexpected, expected: "a"`
     )
-    expect(() => S.asserts(schema, { onExcessProperty: "error" })(input)).toThrow(
-      new Error(`{ readonly a: number }
+    Util.expectParseError(
+      () => S.asserts(schema, { onExcessProperty: "error" })(input),
+      `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected: "a"`)
+   └─ is unexpected, expected: "a"`
     )
-    expect(S.asserts(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
-      .toEqual(undefined)
+    strictEqual(S.asserts(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }), undefined)
   })
 
   describe("struct", () => {

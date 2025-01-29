@@ -3,31 +3,32 @@ import * as FastCheck from "effect/FastCheck"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("extend", () => {
   describe("String", () => {
     it("String and String", () => {
       const schema = Schema.extend(Schema.String, Schema.String)
-      expect(schema.ast).toStrictEqual(Schema.String.ast)
+      deepStrictEqual(schema.ast, Schema.String.ast)
     })
 
     it("String and Literal", () => {
       const literal = Schema.Literal("a")
       const schema = Schema.extend(Schema.String, literal)
-      expect(schema.ast).toStrictEqual(literal.ast)
+      deepStrictEqual(schema.ast, literal.ast)
     })
 
     it("Literal and String", () => {
       const literal = Schema.Literal("a")
       const schema = Schema.extend(literal, Schema.String)
-      expect(schema.ast).toStrictEqual(literal.ast)
+      deepStrictEqual(schema.ast, literal.ast)
     })
 
     it("(String and annotations) and String", () => {
       const A = Schema.String.annotations({ identifier: "A" })
       const schema = Schema.extend(A, Schema.String)
-      expect(schema.ast === A.ast).toBe(true)
+      assertTrue(schema.ast === A.ast)
     })
 
     it("String and Refinement", () => {
@@ -35,45 +36,45 @@ describe("extend", () => {
         Schema.String,
         Schema.String.pipe(Schema.startsWith("start:"))
       )
-      expect(schema.ast._tag).toBe("Refinement")
-      expect((schema.ast as AST.Refinement).from === AST.stringKeyword).toBe(true)
+      strictEqual(schema.ast._tag, "Refinement")
+      assertTrue((schema.ast as AST.Refinement).from === AST.stringKeyword)
     })
 
     it("should support two refined brands", () => {
       const startsWith = Schema.String.pipe(Schema.startsWith("start:"), Schema.brand("start:"))
       const endsWith = Schema.String.pipe(Schema.endsWith(":end"), Schema.brand(":end"))
       const schema = Schema.extend(startsWith, endsWith)
-      expect(String(schema.ast)).toBe(`startsWith("start:") & Brand<"start:"> & endsWith(":end") & Brand<":end">`)
-      expect(schema.ast.annotations[AST.BrandAnnotationId]).toStrictEqual([":end"])
+      strictEqual(String(schema.ast), `startsWith("start:") & Brand<"start:"> & endsWith(":end") & Brand<":end">`)
+      deepStrictEqual(schema.ast.annotations[AST.BrandAnnotationId], [":end"])
       const from = (schema.ast as AST.Refinement).from
-      expect(from.annotations[AST.BrandAnnotationId]).toStrictEqual(["start:"])
+      deepStrictEqual(from.annotations[AST.BrandAnnotationId], ["start:"])
       const fromfrom = (from as AST.Refinement).from
-      expect(fromfrom === AST.stringKeyword).toBe(true)
+      assertTrue(fromfrom === AST.stringKeyword)
     })
   })
 
   describe("Number", () => {
     it("Number and Number", () => {
       const schema = Schema.extend(Schema.Number, Schema.Number)
-      expect(schema.ast).toStrictEqual(Schema.Number.ast)
+      deepStrictEqual(schema.ast, Schema.Number.ast)
     })
 
     it("Number and Literal", () => {
       const literal = Schema.Literal(1)
       const schema = Schema.extend(Schema.Number, literal)
-      expect(schema.ast).toStrictEqual(literal.ast)
+      deepStrictEqual(schema.ast, literal.ast)
     })
 
     it("Literal and Number", () => {
       const literal = Schema.Literal(1)
       const schema = Schema.extend(literal, Schema.Number)
-      expect(schema.ast).toStrictEqual(literal.ast)
+      deepStrictEqual(schema.ast, literal.ast)
     })
 
     it("(Number and annotations) and Number", () => {
       const A = Schema.Number.annotations({ identifier: "A" })
       const schema = Schema.extend(A, Schema.Number)
-      expect(schema.ast === A.ast).toBe(true)
+      assertTrue(schema.ast === A.ast)
     })
 
     it("Number and Refinement", () => {
@@ -81,46 +82,46 @@ describe("extend", () => {
         Schema.Number,
         Schema.Number.pipe(Schema.greaterThan(0))
       )
-      expect(schema.ast._tag).toBe("Refinement")
-      expect((schema.ast as AST.Refinement).from === AST.numberKeyword).toBe(true)
+      strictEqual(schema.ast._tag, "Refinement")
+      assertTrue((schema.ast as AST.Refinement).from === AST.numberKeyword)
     })
 
     it("should support two refined brands", () => {
       const gt0 = Schema.Number.pipe(Schema.greaterThan(0), Schema.brand("> 0"))
       const lt2 = Schema.Number.pipe(Schema.lessThan(2), Schema.brand("< 2"))
       const schema = Schema.extend(gt0, lt2)
-      expect(String(schema.ast)).toBe(`greaterThan(0) & Brand<"> 0"> & lessThan(2) & Brand<"< 2">`)
-      expect(schema.ast.annotations[AST.BrandAnnotationId]).toStrictEqual(["< 2"])
+      strictEqual(String(schema.ast), `greaterThan(0) & Brand<"> 0"> & lessThan(2) & Brand<"< 2">`)
+      deepStrictEqual(schema.ast.annotations[AST.BrandAnnotationId], ["< 2"])
       const from = (schema.ast as AST.Refinement).from
-      expect(from.annotations[AST.BrandAnnotationId]).toStrictEqual(["> 0"])
+      deepStrictEqual(from.annotations[AST.BrandAnnotationId], ["> 0"])
       const fromfrom = (from as AST.Refinement).from
-      expect(fromfrom === AST.numberKeyword).toBe(true)
+      assertTrue(fromfrom === AST.numberKeyword)
     })
   })
 
   describe("Boolean", () => {
     it("Boolean and Boolean", () => {
       const schema = Schema.extend(Schema.Boolean, Schema.Boolean)
-      expect(schema.ast).toStrictEqual(Schema.Boolean.ast)
+      deepStrictEqual(schema.ast, Schema.Boolean.ast)
     })
 
     it("Boolean and Literal", () => {
       const literal = Schema.Literal(true)
       const schema = Schema.extend(Schema.Boolean, literal)
-      expect(schema.ast).toStrictEqual(literal.ast)
+      deepStrictEqual(schema.ast, literal.ast)
     })
 
     it("Literal and Boolean", () => {
       const literal = Schema.Literal(true)
       const schema = Schema.extend(literal, Schema.Boolean)
-      expect(schema.ast).toStrictEqual(literal.ast)
+      deepStrictEqual(schema.ast, literal.ast)
     })
   })
 
   describe("Struct", () => {
     it("extend struct", async () => {
       const schema = Schema.extend(Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.Number }))
-      expect(String(schema)).toBe("{ readonly a: string; readonly b: number }")
+      strictEqual(String(schema), "{ readonly a: string; readonly b: number }")
     })
 
     it("extend TypeLiteralTransformation", async () => {
@@ -129,7 +130,8 @@ describe("extend", () => {
           Schema.Struct({ b: Schema.String, c: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }) })
         )
       )
-      expect(String(schema)).toBe(
+      strictEqual(
+        String(schema),
         "({ readonly a: number; readonly b: string; readonly c?: string } <-> { readonly a: number; readonly b: string; readonly c: string })"
       )
     })
@@ -141,14 +143,14 @@ describe("extend", () => {
           Schema.Struct({ a: Schema.Literal("b") })
         ))
       )
-      expect(String(schema)).toBe(`{ readonly b: boolean; readonly a: "a" } | { readonly b: boolean; readonly a: "b" }`)
+      strictEqual(String(schema), `{ readonly b: boolean; readonly a: "a" } | { readonly b: boolean; readonly a: "b" }`)
     })
 
     it("extend Record(string, string)", async () => {
       const schema = Schema.Struct({ a: Schema.String }).pipe(
         Schema.extend(Schema.Record({ key: Schema.String, value: Schema.String }))
       )
-      expect(String(schema)).toBe(`{ readonly a: string; readonly [x: string]: string }`)
+      strictEqual(String(schema), `{ readonly a: string; readonly [x: string]: string }`)
     })
 
     it("extend Record(templateLiteral, string)", async () => {
@@ -169,28 +171,28 @@ describe("extend", () => {
       //   readonly a: string
       // }
       // const a: A = { a: "a" } // OK
-      expect(String(schema)).toBe("{ readonly a: string; readonly [x: `${string}-${number}`]: string }")
+      strictEqual(String(schema), "{ readonly a: string; readonly [x: `${string}-${number}`]: string }")
     })
 
     it("extend Record(string, NumberFromChar)", async () => {
       const schema = Schema.Struct({ a: Schema.Number }).pipe(
         Schema.extend(Schema.Record({ key: Schema.String, value: Util.NumberFromChar }))
       )
-      expect(String(schema)).toBe(`{ readonly a: number; readonly [x: string]: NumberFromChar }`)
+      strictEqual(String(schema), `{ readonly a: number; readonly [x: string]: NumberFromChar }`)
     })
 
     it("extend Record(symbol, NumberFromChar)", async () => {
       const schema = Schema.Struct({ a: Schema.Number }).pipe(
         Schema.extend(Schema.Record({ key: Schema.SymbolFromSelf, value: Util.NumberFromChar }))
       )
-      expect(String(schema)).toBe(`{ readonly a: number; readonly [x: symbol]: NumberFromChar }`)
+      strictEqual(String(schema), `{ readonly a: number; readonly [x: symbol]: NumberFromChar }`)
     })
 
     it("nested extend nested Struct", async () => {
       const A = Schema.Struct({ a: Schema.Struct({ b: Schema.String }) })
       const B = Schema.Struct({ a: Schema.Struct({ c: Schema.Number }) })
       const schema = Schema.extend(A, B)
-      expect(String(schema)).toBe(`{ readonly a: { readonly b: string; readonly c: number } }`)
+      strictEqual(String(schema), `{ readonly a: { readonly b: string; readonly c: number } }`)
     })
 
     it("nested with refinements extend nested struct with refinements", async () => {
@@ -207,7 +209,8 @@ describe("extend", () => {
         })
       })
       const schema = Schema.extend(A, B)
-      expect(String(schema)).toBe(
+      strictEqual(
+        String(schema),
         `{ readonly nested: { readonly same: startsWith("start:") & endsWith(":end"); readonly different1: string; readonly different2: string } }`
       )
       await Util.assertions.decoding.succeed(
@@ -265,7 +268,8 @@ describe("extend", () => {
         a: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }),
         b: Schema.String
       }).pipe(Schema.extend(Schema.Struct({ c: Schema.Number })))
-      expect(String(schema)).toBe(
+      strictEqual(
+        String(schema),
         "({ readonly a?: string; readonly b: string; readonly c: number } <-> { readonly a: string; readonly b: string; readonly c: number })"
       )
     })
@@ -280,7 +284,8 @@ describe("extend", () => {
           Schema.Struct({ c: Schema.String })
         )
       )
-      expect(String(schema)).toBe(
+      strictEqual(
+        String(schema),
         "({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | ({ readonly a?: string | undefined; readonly c: string } <-> { readonly a: string; readonly c: string })"
       )
     })
@@ -292,7 +297,8 @@ describe("extend", () => {
         }),
         Schema.Struct({ b: Schema.String }).pipe(Schema.filter(() => true))
       )
-      expect(String(schema)).toBe(
+      strictEqual(
+        String(schema),
         "{ ({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | filter }"
       )
     })
@@ -305,7 +311,8 @@ describe("extend", () => {
         }),
         suspend
       )
-      expect(String((schema.ast as AST.Suspend).f())).toBe(
+      strictEqual(
+        String((schema.ast as AST.Suspend).f()),
         "({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string })"
       )
     })
@@ -322,7 +329,8 @@ describe("extend", () => {
           })
         )
       )
-      expect(String(schema)).toBe(
+      strictEqual(
+        String(schema),
         "({ readonly a?: string; readonly b: string; readonly c?: number; readonly d: boolean } <-> { readonly a: string; readonly b: string; readonly c: number; readonly d: boolean })"
       )
     })
@@ -334,7 +342,7 @@ describe("extend", () => {
         Schema.Struct({ a: Schema.Literal("a") }),
         Schema.Struct({ b: Schema.Literal("b") })
       ).pipe(Schema.extend(Schema.Struct({ c: Schema.Boolean })))
-      expect(String(schema)).toBe(`{ readonly a: "a"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`)
+      strictEqual(String(schema), `{ readonly a: "a"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`)
     })
 
     it("with defaults extend Union with defaults", async () => {
@@ -361,7 +369,8 @@ describe("extend", () => {
           )
         )
       )
-      expect(String(schema)).toBe(
+      strictEqual(
+        String(schema),
         "({ readonly a?: string; readonly b: string; readonly e?: string; readonly f: string } <-> { readonly a: string; readonly b: string; readonly e: string; readonly f: string }) | ({ readonly a?: string; readonly b: string; readonly g?: string; readonly h: string } <-> { readonly a: string; readonly b: string; readonly g: string; readonly h: string }) | ({ readonly c?: string; readonly d: string; readonly e?: string; readonly f: string } <-> { readonly c: string; readonly d: string; readonly e: string; readonly f: string }) | ({ readonly c?: string; readonly d: string; readonly g?: string; readonly h: string } <-> { readonly c: string; readonly d: string; readonly g: string; readonly h: string })"
       )
     })
@@ -378,7 +387,8 @@ describe("extend", () => {
           )
         )
       )
-      expect(String(schema)).toBe(
+      strictEqual(
+        String(schema),
         `{ readonly a: "a"; readonly c: boolean } | { readonly a: "a"; readonly d: number } | { readonly a: "b"; readonly c: boolean } | { readonly a: "b"; readonly d: number }`
       )
     })
@@ -393,7 +403,8 @@ describe("extend", () => {
       ).pipe(
         Schema.extend(Schema.Struct({ c: Schema.Boolean }))
       )
-      expect(String(schema)).toBe(
+      strictEqual(
+        String(schema),
         `{ readonly a: "a"; readonly c: boolean } | { readonly a: "b"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`
       )
     })
@@ -406,7 +417,7 @@ describe("extend", () => {
         Schema.filter((input) => input.b > 0, { message: () => "R filter" })
       )
       const schema = Schema.extend(S, R)
-      expect(String(schema)).toBe(`{ { readonly a: string; readonly b: number } | filter }`)
+      strictEqual(String(schema), `{ { readonly a: string; readonly b: number } | filter }`)
       await Util.assertions.decoding.fail(
         schema,
         { a: "a", b: -1 },
@@ -421,7 +432,7 @@ describe("extend", () => {
         Schema.filter((input) => input.b < 10, { message: () => "filter2" })
       )
       const schema = Schema.extend(S, RR)
-      expect(String(schema)).toBe(`{ { { readonly a: string; readonly b: number } | filter } | filter }`)
+      strictEqual(String(schema), `{ { { readonly a: string; readonly b: number } | filter } | filter }`)
       await Util.assertions.decoding.fail(
         schema,
         { a: "a", b: -1 },
@@ -442,7 +453,7 @@ describe("extend", () => {
         Schema.filter((input) => input.b > 0, { message: () => "R2 filter" })
       )
       const schema = Schema.extend(R1, R2)
-      expect(String(schema)).toBe(`{ { { readonly a: string; readonly b: number } | filter } | filter }`)
+      strictEqual(String(schema), `{ { { readonly a: string; readonly b: number } | filter } | filter }`)
       await Util.assertions.decoding.fail(
         schema,
         { a: "", b: 1 },
@@ -462,7 +473,8 @@ describe("extend", () => {
         Schema.filter((input) => input.c === true, { message: () => "R filter" })
       )
       const schema = Schema.extend(Schema.Union(S1, S2), R)
-      expect(String(schema)).toBe(
+      strictEqual(
+        String(schema),
         `{ { readonly a: string; readonly c: boolean } | filter } | { { readonly b: number; readonly c: boolean } | filter }`
       )
       await Util.assertions.decoding.fail(
@@ -500,7 +512,8 @@ describe("extend", () => {
         Schema.filter((input) => input.c === true, { message: () => "R3 filter" })
       )
       const schema = Schema.extend(Schema.Union(R1, R2), R3)
-      expect(String(schema)).toBe(
+      strictEqual(
+        String(schema),
         `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }`
       )
       await Util.assertions.decoding.fail(
@@ -578,7 +591,8 @@ describe("extend", () => {
           )
         })
       )
-      expect(String(List)).toStrictEqual(
+      strictEqual(
+        String(List),
         `{ readonly type: "nil" } | { readonly type: "cons"; readonly tail: <suspended schema> }`
       )
       await Util.assertions.decoding.succeed(List, { type: "nil" })
@@ -599,46 +613,46 @@ describe("extend", () => {
   })
 
   it("errors", () => {
-    expect(() => Schema.String.pipe(Schema.extend(Schema.Number))).toThrow(
+    throws(
+      () => Schema.String.pipe(Schema.extend(Schema.Number)),
       new Error(`Unsupported schema or overlapping types
 details: cannot extend string with number`)
     )
-    expect(() =>
-      Schema.Record({ key: Schema.String, value: Schema.Number }).pipe(
-        Schema.extend(Schema.Record({ key: Schema.String, value: Schema.Boolean }))
-      )
-    ).toThrow(
+    throws(
+      () =>
+        Schema.Record({ key: Schema.String, value: Schema.Number }).pipe(
+          Schema.extend(Schema.Record({ key: Schema.String, value: Schema.Boolean }))
+        ),
       new Error(`Duplicate index signature
 details: string index signature`)
     )
-    expect(() =>
-      Schema.Record({ key: Schema.SymbolFromSelf, value: Schema.Number }).pipe(
-        Schema.extend(Schema.Record({ key: Schema.SymbolFromSelf, value: Schema.Boolean }))
-      )
-    ).toThrow(
+    throws(
+      () =>
+        Schema.Record({ key: Schema.SymbolFromSelf, value: Schema.Number }).pipe(
+          Schema.extend(Schema.Record({ key: Schema.SymbolFromSelf, value: Schema.Boolean }))
+        ),
       new Error(`Duplicate index signature
 details: symbol index signature`)
     )
-    expect(() =>
-      Schema.Record({ key: Schema.String, value: Schema.Number }).pipe(
-        Schema.extend(Schema.Record({ key: Schema.String.pipe(Schema.minLength(2)), value: Schema.Boolean }))
-      )
-    ).toThrow(
+    throws(
+      () =>
+        Schema.Record({ key: Schema.String, value: Schema.Number }).pipe(
+          Schema.extend(Schema.Record({ key: Schema.String.pipe(Schema.minLength(2)), value: Schema.Boolean }))
+        ),
       new Error(`Duplicate index signature
 details: string index signature`)
     )
-    expect(() =>
-      Schema.extend(
-        Schema.Struct({ a: Schema.Struct({ b: Schema.String }) }),
-        Schema.Struct({ a: Schema.Struct({ b: Schema.Number }) })
-      )
-    )
-      .toThrow(
-        new Error(
-          `Unsupported schema or overlapping types
+    throws(
+      () =>
+        Schema.extend(
+          Schema.Struct({ a: Schema.Struct({ b: Schema.String }) }),
+          Schema.Struct({ a: Schema.Struct({ b: Schema.Number }) })
+        ),
+      new Error(
+        `Unsupported schema or overlapping types
 at path: ["a"]["b"]
 details: cannot extend string with number`
-        )
       )
+    )
   })
 })

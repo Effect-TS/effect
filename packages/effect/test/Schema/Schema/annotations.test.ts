@@ -3,7 +3,8 @@ import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe(".annotations()", () => {
   it("should return a Schema", () => {
@@ -11,71 +12,71 @@ describe(".annotations()", () => {
       [AST.TitleAnnotationId]: "MyString",
       [AST.DescriptionAnnotationId]: "a string"
     })
-    expect(schema.ast.annotations).toEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.TitleAnnotationId]: "MyString",
       [AST.DescriptionAnnotationId]: "a string"
     })
-    expect(S.isSchema(schema)).toEqual(true)
+    assertTrue(S.isSchema(schema))
   })
 
   it("title", () => {
     const schema = S.String.annotations({ title: "MyString" })
-    expect(schema.ast.annotations).toEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.TitleAnnotationId]: "MyString",
       [AST.DescriptionAnnotationId]: "a string"
     })
-    expect(S.isSchema(schema)).toEqual(true)
+    assertTrue(S.isSchema(schema))
   })
 
   it("description", () => {
     const schema = S.String.annotations({ description: "description" })
-    expect(schema.ast.annotations).toEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.DescriptionAnnotationId]: "description",
       [AST.TitleAnnotationId]: "string"
     })
-    expect(S.isSchema(schema)).toEqual(true)
+    assertTrue(S.isSchema(schema))
   })
 
   it("examples", () => {
     const schema = S.String.annotations({ examples: ["example"] })
-    expect(schema.ast.annotations).toEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.ExamplesAnnotationId]: ["example"],
       [AST.TitleAnnotationId]: "string",
       [AST.DescriptionAnnotationId]: "a string"
     })
-    expect(S.isSchema(schema)).toEqual(true)
+    assertTrue(S.isSchema(schema))
   })
 
   it("default", () => {
     const schema = S.String.annotations({ default: "a" })
-    expect(schema.ast.annotations).toEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.DefaultAnnotationId]: "a",
       [AST.TitleAnnotationId]: "string",
       [AST.DescriptionAnnotationId]: "a string"
     })
-    expect(S.isSchema(schema)).toEqual(true)
+    assertTrue(S.isSchema(schema))
   })
 
   it("documentation", () => {
     const schema = S.String.annotations({ documentation: "documentation" })
-    expect(schema.ast.annotations).toEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.DocumentationAnnotationId]: "documentation",
       [AST.TitleAnnotationId]: "string",
       [AST.DescriptionAnnotationId]: "a string"
     })
-    expect(S.isSchema(schema)).toEqual(true)
+    assertTrue(S.isSchema(schema))
   })
 
   it("concurrency", () => {
     const schema = S.Struct({ a: S.String }).annotations({ concurrency: 1 })
-    expect(schema.ast.annotations).toEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.ConcurrencyAnnotationId]: 1
     })
   })
 
   it("batching", () => {
     const schema = S.Struct({ a: S.String }).annotations({ batching: "inherit" })
-    expect(schema.ast.annotations).toEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.BatchingAnnotationId]: "inherit"
     })
   })
@@ -124,7 +125,7 @@ describe(".annotations()", () => {
           S.maxLength(10, { message: (issue) => `${issue.actual} is too long` })
         )
 
-    expect(S.isSchema(schema)).toEqual(true)
+    assertTrue(S.isSchema(schema))
     await Util.assertions.decoding.fail(schema, null, "not a string")
     await Util.assertions.decoding.fail(schema, "", "required")
     await Util.assertions.decoding.succeed(schema, "a", "a")
@@ -139,7 +140,7 @@ describe(".annotations()", () => {
     const AFromSelf = S.instanceOf(A, {
       pretty: prettyA
     })
-    expect(Pretty.make(AFromSelf)(new A("value"))).toEqual(`new A("value")`)
+    strictEqual(Pretty.make(AFromSelf)(new A("value")), `new A("value")`)
   })
 })
 
@@ -153,5 +154,5 @@ declare module "effect/Schema" {
 
 it("should support custom annotations", () => {
   const schema = S.String.annotations({ formName: "a" })
-  expect(schema.ast.annotations["formName"]).toEqual("a")
+  strictEqual(schema.ast.annotations["formName"], "a")
 })

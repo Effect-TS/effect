@@ -3,7 +3,7 @@
  */
 
 import * as array_ from "./Array.js"
-import type * as cause_ from "./Cause.js"
+import * as cause_ from "./Cause.js"
 import { TaggedError } from "./Data.js"
 import * as Effect from "./Effect.js"
 import * as Either from "./Either.js"
@@ -14,6 +14,7 @@ import * as Inspectable from "./Inspectable.js"
 import * as util_ from "./internal/schema/util.js"
 import * as Option from "./Option.js"
 import * as Predicate from "./Predicate.js"
+import * as Runtime from "./Runtime.js"
 import type * as Schema from "./Schema.js"
 import * as AST from "./SchemaAST.js"
 import type { Concurrency } from "./Types.js"
@@ -1649,13 +1650,19 @@ const handleForbidden = <A, R>(
   try {
     return Effect.runSync(Effect.either(effect as Effect.Effect<A, ParseIssue>))
   } catch (e) {
-    return Either.left(
-      new Forbidden(
-        ast,
-        actual,
-        "cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work"
-      )
-    )
+    if (Runtime.isFiberFailure(e)) {
+      const cause = e[Runtime.FiberFailureCauseId]
+      if (cause_.isDieType(cause) && Runtime.isAsyncFiberException(cause.defect)) {
+        return Either.left(
+          new Forbidden(
+            ast,
+            actual,
+            "cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work"
+          )
+        )
+      }
+    }
+    return Either.left(new Forbidden(ast, actual, String(e)))
   }
 }
 

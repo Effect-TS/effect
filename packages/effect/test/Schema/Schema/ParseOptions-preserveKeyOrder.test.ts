@@ -2,7 +2,8 @@ import type { Duration } from "effect"
 import * as Effect from "effect/Effect"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("`preserveKeyOrder` option", () => {
   const b = Symbol.for("effect/Schema/test/b")
@@ -35,9 +36,9 @@ describe("`preserveKeyOrder` option", () => {
     it("should preserve the order of input properties (sync)", () => {
       const input = { [b]: ["b"], c: { c: 1 }, d: "1", e: true, a: "a", other: 1, f: undefined }
       const output = S.decodeUnknownSync(Sync)(input, { propertyOrder: "original", onExcessProperty: "preserve" })
-      const expectedOutput = { [b]: ["b"], c: { c: 1 }, d: 1, e: true, a: "a", other: 1, f: undefined }
-      expect(output).toStrictEqual(expectedOutput)
-      expect(Reflect.ownKeys(output)).toStrictEqual(Reflect.ownKeys(expectedOutput))
+      const expectedOutput = { [b]: ["b"], c: { c: 1 }, d: 1, e: true, a: "a", other: 1, f: undefined } as const
+      deepStrictEqual(output, expectedOutput)
+      deepStrictEqual(Reflect.ownKeys(output), Reflect.ownKeys(expectedOutput))
     })
 
     it("should preserve the order of input properties (async)", async () => {
@@ -46,8 +47,8 @@ describe("`preserveKeyOrder` option", () => {
         S.decodeUnknown(Async)(input, { propertyOrder: "original", onExcessProperty: "preserve" })
       )
       const expectedOutput = { a: 1, c: 3, [b]: 2, other: 1 }
-      expect(output).toStrictEqual(expectedOutput)
-      expect(Reflect.ownKeys(output)).toStrictEqual(Reflect.ownKeys(expectedOutput))
+      deepStrictEqual(output, expectedOutput)
+      deepStrictEqual(Reflect.ownKeys(output), Reflect.ownKeys(expectedOutput))
     })
   })
 
@@ -55,9 +56,9 @@ describe("`preserveKeyOrder` option", () => {
     it("should preserve the order of input properties (sync)", () => {
       const input = { [b]: ["b"], c: { c: 1 }, d: 1, e: true, a: "a", other: 1, f: undefined }
       const output = S.encodeUnknownSync(Sync)(input, { propertyOrder: "original", onExcessProperty: "preserve" })
-      const expectedOutput = { [b]: ["b"], c: { c: 1 }, d: "1", e: true, a: "a", other: 1, f: undefined }
-      expect(output).toStrictEqual(expectedOutput)
-      expect(Reflect.ownKeys(output)).toStrictEqual(Reflect.ownKeys(expectedOutput))
+      const expectedOutput = { [b]: ["b"], c: { c: 1 }, d: "1", e: true, a: "a", other: 1, f: undefined } as const
+      deepStrictEqual(output, expectedOutput)
+      deepStrictEqual(Reflect.ownKeys(output), Reflect.ownKeys(expectedOutput))
     })
 
     it("should preserve the order of input properties (async)", async () => {
@@ -66,8 +67,8 @@ describe("`preserveKeyOrder` option", () => {
         S.encodeUnknown(Async)(input, { propertyOrder: "original", onExcessProperty: "preserve" })
       )
       const expectedOutput = { a: "1", c: "3", [b]: "2", other: 1 }
-      expect(output).toStrictEqual(expectedOutput)
-      expect(Reflect.ownKeys(output)).toStrictEqual(Reflect.ownKeys(expectedOutput))
+      deepStrictEqual(output, expectedOutput)
+      deepStrictEqual(Reflect.ownKeys(output), Reflect.ownKeys(expectedOutput))
     })
   })
 })

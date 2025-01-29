@@ -1,7 +1,7 @@
 import * as Brand from "effect/Brand"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 type Int = number & Brand.Brand<"Int">
 const Int = Brand.refined<Int>(
@@ -49,10 +49,11 @@ describe("fromBrand", () => {
 └─ Predicate refinement failure
    └─ Expected -0.5 to be positive, Expected -0.5 to be an integer`
     )
-    expect(() => S.decodeUnknownSync(schema)(-0.5)).toThrow(
-      new Error(`{ number | filter }
+    Util.expectParseError(
+      () => S.decodeUnknownSync(schema)(-0.5),
+      `{ number | filter }
 └─ Predicate refinement failure
-   └─ Expected -0.5 to be positive, Expected -0.5 to be an integer`)
+   └─ Expected -0.5 to be positive, Expected -0.5 to be an integer`
     )
     await Util.assertions.decoding.fail(
       schema,

@@ -3,21 +3,22 @@ import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("instanceOf", () => {
   it("is", () => {
     const schema = S.instanceOf(Set)
     const is = P.is(schema)
-    expect(is(new Set())).toEqual(true)
-    expect(is(1)).toEqual(false)
-    expect(is({})).toEqual(false)
+    assertTrue(is(new Set()))
+    assertFalse(is(1))
+    assertFalse(is({}))
   })
 
   it("annotations", () => {
     const schema = S.instanceOf(Set, { description: "my description" })
-    expect(schema.ast.annotations[AST.DescriptionAnnotationId]).toEqual("my description")
-    expect(schema.ast.annotations[S.InstanceOfSchemaId]).toEqual({ constructor: Set })
+    strictEqual(schema.ast.annotations[AST.DescriptionAnnotationId], "my description")
+    deepStrictEqual(schema.ast.annotations[S.InstanceOfSchemaId], { constructor: Set })
   })
 
   it("decoding", async () => {
@@ -39,7 +40,7 @@ describe("instanceOf", () => {
     it("default", () => {
       const schema = S.instanceOf(Set)
       const pretty = Pretty.make(schema)
-      expect(pretty(new Set())).toEqual("[object Set]")
+      strictEqual(pretty(new Set()), "[object Set]")
     })
 
     it("override", () => {
@@ -47,7 +48,7 @@ describe("instanceOf", () => {
         pretty: () => (set) => `new Set(${JSON.stringify(Array.from(set.values()))})`
       })
       const pretty = Pretty.make(schema)
-      expect(pretty(new Set([1, 2, 3]))).toEqual("new Set([1,2,3])")
+      strictEqual(pretty(new Set([1, 2, 3])), "new Set([1,2,3])")
     })
   })
 })

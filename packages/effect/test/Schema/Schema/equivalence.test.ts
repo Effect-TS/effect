@@ -8,8 +8,9 @@ import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import { isUnknown } from "effect/Predicate"
 import * as S from "effect/Schema"
+import { assertFalse, assertTrue, strictEqual, throws } from "effect/test/util"
 import * as fc from "fast-check"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 /**
  * Tests that the generated Eq is a valid Eq
@@ -72,13 +73,15 @@ const MySymbol = S.SymbolFromSelf.annotations({
 
 describe("equivalence", () => {
   it("the errors should display a path", () => {
-    expect(() => S.equivalence(S.Tuple(S.Never as any))).toThrow(
+    throws(
+      () => S.equivalence(S.Tuple(S.Never as any)),
       new Error(`Unsupported schema
 at path: [0]
 details: Cannot build an Equivalence
 schema (NeverKeyword): never`)
     )
-    expect(() => S.equivalence(S.Struct({ a: S.Never as any }))).toThrow(
+    throws(
+      () => S.equivalence(S.Struct({ a: S.Never as any })),
       new Error(`Unsupported schema
 at path: ["a"]
 details: Cannot build an Equivalence
@@ -90,22 +93,23 @@ schema (NeverKeyword): never`)
     const schema = S.NumberFromString
     const equivalence = S.equivalence(schema)
 
-    expect(equivalence(1, 1)).toBe(true)
+    assertTrue(equivalence(1, 1))
 
-    expect(equivalence(1, 2)).toBe(false)
+    assertFalse(equivalence(1, 2))
   })
 
   it("S.equivalence(S.encodedSchema(schema))", () => {
     const schema = S.NumberFromString
     const equivalence = S.equivalence(S.encodedSchema(schema))
 
-    expect(equivalence("a", "a")).toBe(true)
+    assertTrue(equivalence("a", "a"))
 
-    expect(equivalence("a", "b")).toBe(false)
+    assertFalse(equivalence("a", "b"))
   })
 
   it("never", () => {
-    expect(() => S.equivalence(S.Never)).toThrow(
+    throws(
+      () => S.equivalence(S.Never),
       new Error(`Unsupported schema
 details: Cannot build an Equivalence
 schema (NeverKeyword): never`)
@@ -116,9 +120,9 @@ schema (NeverKeyword): never`)
     const schema = MyString
     const equivalence = S.equivalence(schema)
 
-    expect(equivalence("a", "a")).toBe(true)
+    assertTrue(equivalence("a", "a"))
 
-    expect(equivalence("a", "b")).toBe(false)
+    assertFalse(equivalence("a", "b"))
 
     // propertyType(schema)
   })
@@ -127,9 +131,9 @@ schema (NeverKeyword): never`)
     const schema = S.NonEmptyString
     const equivalence = S.equivalence(schema)
 
-    expect(equivalence("a", "a")).toBe(true)
+    assertTrue(equivalence("a", "a"))
 
-    expect(equivalence("a", "b")).toBe(false)
+    assertFalse(equivalence("a", "b"))
 
     // propertyType(schema)
   })
@@ -138,7 +142,7 @@ schema (NeverKeyword): never`)
     it("should return Equal.equals when an annotation doesn't exist", () => {
       const schema = S.declare(isUnknown)
       const equivalence = S.equivalence(schema)
-      expect(equivalence).toStrictEqual(Equal.equals)
+      strictEqual(equivalence, Equal.equals)
 
       const make = (id: number, s: string) => {
         return {
@@ -153,20 +157,20 @@ schema (NeverKeyword): never`)
         }
       }
 
-      expect(equivalence(make(1, "a"), make(1, "a"))).toBe(true)
-      expect(equivalence(make(1, "a"), make(1, "b"))).toBe(true)
-      expect(equivalence(make(1, "a"), make(2, "a"))).toBe(false)
+      assertTrue(equivalence(make(1, "a"), make(1, "a")))
+      assertTrue(equivalence(make(1, "a"), make(1, "b")))
+      assertFalse(equivalence(make(1, "a"), make(2, "a")))
     })
 
     it("Chunk", () => {
       const schema = S.ChunkFromSelf(MyNumber)
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence(Chunk.empty(), Chunk.empty())).toBe(true)
-      expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 3))).toBe(true)
+      assertTrue(equivalence(Chunk.empty(), Chunk.empty()))
+      assertTrue(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 3)))
 
-      expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2))).toBe(false)
-      expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 4))).toBe(false)
+      assertFalse(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2)))
+      assertFalse(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 4)))
 
       // propertyType(schema)
     })
@@ -176,10 +180,10 @@ schema (NeverKeyword): never`)
       const equivalence = S.equivalence(schema)
       const now = new Date()
 
-      expect(equivalence(now, now)).toBe(true)
-      expect(equivalence(new Date(0), new Date(0))).toBe(true)
+      assertTrue(equivalence(now, now))
+      assertTrue(equivalence(new Date(0), new Date(0)))
 
-      expect(equivalence(new Date(0), new Date(1))).toBe(false)
+      assertFalse(equivalence(new Date(0), new Date(1)))
 
       // propertyType(schema)
     })
@@ -188,7 +192,7 @@ schema (NeverKeyword): never`)
       const schema = S.DataFromSelf(S.Struct({ a: MyString, b: MyNumber }))
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence(Data.struct({ a: "ok", b: 0 }), Data.struct({ a: "ok", b: 0 }))).toBe(true)
+      assertTrue(equivalence(Data.struct({ a: "ok", b: 0 }), Data.struct({ a: "ok", b: 0 })))
 
       // propertyType(schema)
     })
@@ -197,11 +201,11 @@ schema (NeverKeyword): never`)
       const schema = S.EitherFromSelf({ left: MyString, right: MyNumber })
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence(Either.right(1), Either.right(1))).toBe(true)
-      expect(equivalence(Either.left("a"), Either.left("a"))).toBe(true)
+      assertTrue(equivalence(Either.right(1), Either.right(1)))
+      assertTrue(equivalence(Either.left("a"), Either.left("a")))
 
-      expect(equivalence(Either.right(1), Either.right(2))).toBe(false)
-      expect(equivalence(Either.left("a"), Either.left("b"))).toBe(false)
+      assertFalse(equivalence(Either.right(1), Either.right(2)))
+      assertFalse(equivalence(Either.left("a"), Either.left("b")))
 
       // propertyType(schema)
     })
@@ -210,10 +214,10 @@ schema (NeverKeyword): never`)
       const schema = S.OptionFromSelf(MyNumber)
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence(Option.none(), Option.none())).toBe(true)
-      expect(equivalence(Option.some(1), Option.some(1))).toBe(true)
+      assertTrue(equivalence(Option.none(), Option.none()))
+      assertTrue(equivalence(Option.some(1), Option.some(1)))
 
-      expect(equivalence(Option.some(1), Option.some(2))).toBe(false)
+      assertFalse(equivalence(Option.some(1), Option.some(2)))
 
       // propertyType(schema)
     })
@@ -222,10 +226,10 @@ schema (NeverKeyword): never`)
       const schema = S.ReadonlySetFromSelf(MyNumber)
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence(new Set(), new Set())).toBe(true)
-      expect(equivalence(new Set([1, 2, 3]), new Set([1, 2, 3]))).toBe(true)
+      assertTrue(equivalence(new Set(), new Set()))
+      assertTrue(equivalence(new Set([1, 2, 3]), new Set([1, 2, 3])))
 
-      expect(equivalence(new Set([1, 2, 3]), new Set([1, 2]))).toBe(false)
+      assertFalse(equivalence(new Set([1, 2, 3]), new Set([1, 2])))
 
       // propertyType(schema)
     })
@@ -234,11 +238,11 @@ schema (NeverKeyword): never`)
       const schema = S.ReadonlyMapFromSelf({ key: MyString, value: MyNumber })
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence(new Map(), new Map())).toBe(true)
-      expect(equivalence(new Map([["a", 1], ["b", 2]]), new Map([["a", 1], ["b", 2]]))).toBe(true)
+      assertTrue(equivalence(new Map(), new Map()))
+      assertTrue(equivalence(new Map([["a", 1], ["b", 2]]), new Map([["a", 1], ["b", 2]])))
 
-      expect(equivalence(new Map([["a", 1], ["b", 2]]), new Map([["a", 3], ["b", 2]]))).toBe(false)
-      expect(equivalence(new Map([["a", 1], ["b", 2]]), new Map([["a", 1], ["b", 4]]))).toBe(false)
+      assertFalse(equivalence(new Map([["a", 1], ["b", 2]]), new Map([["a", 3], ["b", 2]])))
+      assertFalse(equivalence(new Map([["a", 1], ["b", 2]]), new Map([["a", 1], ["b", 4]])))
 
       // propertyType(schema)
     })
@@ -247,14 +251,14 @@ schema (NeverKeyword): never`)
       const schema = S.Uint8ArrayFromSelf
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence(new Uint8Array(), new Uint8Array())).toBe(true)
-      expect(
+      assertTrue(equivalence(new Uint8Array(), new Uint8Array()))
+      assertTrue(
         equivalence(new Uint8Array([10, 20, 30, 40, 50]), new Uint8Array([10, 20, 30, 40, 50]))
-      ).toBe(true)
+      )
 
-      expect(
+      assertFalse(
         equivalence(new Uint8Array([10, 20, 30, 40, 50]), new Uint8Array([10, 20, 30, 30, 50]))
-      ).toBe(false)
+      )
 
       // propertyType(schema)
     })
@@ -265,11 +269,9 @@ schema (NeverKeyword): never`)
       })
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence(new URL("https://example.com/page"), new URL("https://example.com/page")))
-        .toBe(true)
+      assertTrue(equivalence(new URL("https://example.com/page"), new URL("https://example.com/page")))
 
-      expect(equivalence(new URL("https://example.com/page"), new URL("https://google.come")))
-        .toBe(false)
+      assertFalse(equivalence(new URL("https://example.com/page"), new URL("https://google.come")))
     })
   })
 
@@ -278,11 +280,11 @@ schema (NeverKeyword): never`)
       const schema = S.Union(MyString, MyNumber)
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence("a", "a")).toBe(true)
-      expect(equivalence(1, 1)).toBe(true)
+      assertTrue(equivalence("a", "a"))
+      assertTrue(equivalence(1, 1))
 
-      expect(equivalence("a", "b")).toBe(false)
-      expect(equivalence(1, 2)).toBe(false)
+      assertFalse(equivalence("a", "b"))
+      assertFalse(equivalence(1, 2))
 
       // propertyType(schema)
     })
@@ -293,10 +295,10 @@ schema (NeverKeyword): never`)
       const schema = S.Union(a, ab)
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence({ a: "a", b: 1 }, { a: "a", b: 1 })).toBe(true)
-      expect(equivalence({ a: "a", b: 1 }, { a: "a", b: 2 })).toBe(true)
+      assertTrue(equivalence({ a: "a", b: 1 }, { a: "a", b: 1 }))
+      assertTrue(equivalence({ a: "a", b: 1 }, { a: "a", b: 2 }))
 
-      expect(equivalence({ a: "a", b: 1 }, { a: "c", b: 1 })).toBe(false)
+      assertFalse(equivalence({ a: "a", b: 1 }, { a: "c", b: 1 }))
 
       // propertyType(schema)
     })
@@ -308,12 +310,12 @@ schema (NeverKeyword): never`)
       )
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence({ tag: "a", a: "a" }, { tag: "a", a: "a" })).toBe(true)
-      expect(equivalence({ tag: "b", b: 1 }, { tag: "b", b: 1 })).toBe(true)
+      assertTrue(equivalence({ tag: "a", a: "a" }, { tag: "a", a: "a" }))
+      assertTrue(equivalence({ tag: "b", b: 1 }, { tag: "b", b: 1 }))
 
-      expect(equivalence({ tag: "a", a: "a" }, { tag: "a", a: "b" })).toBe(false)
-      expect(equivalence({ tag: "b", b: 1 }, { tag: "b", b: 2 })).toBe(false)
-      expect(equivalence({ tag: "a", a: "a" }, { tag: "b", b: 1 })).toBe(false)
+      assertFalse(equivalence({ tag: "a", a: "a" }, { tag: "a", a: "b" }))
+      assertFalse(equivalence({ tag: "b", b: 1 }, { tag: "b", b: 2 }))
+      assertFalse(equivalence({ tag: "a", a: "a" }, { tag: "b", b: 1 }))
     })
 
     it("discriminated tuples", () => {
@@ -323,13 +325,13 @@ schema (NeverKeyword): never`)
       )
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence(["a", "x"], ["a", "x"])).toBe(true)
-      expect(equivalence(["a", "x"], ["a", "y"])).toBe(false)
+      assertTrue(equivalence(["a", "x"], ["a", "x"]))
+      assertFalse(equivalence(["a", "x"], ["a", "y"]))
 
-      expect(equivalence(["b", 1], ["b", 1])).toBe(true)
-      expect(equivalence(["b", 1], ["b", 2])).toBe(false)
+      assertTrue(equivalence(["b", 1], ["b", 1]))
+      assertFalse(equivalence(["b", 1], ["b", 2]))
 
-      expect(equivalence(["a", "x"], ["b", 1])).toBe(false)
+      assertFalse(equivalence(["a", "x"], ["b", 1]))
     })
   })
 
@@ -338,17 +340,17 @@ schema (NeverKeyword): never`)
       const schema = S.Tuple()
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence([], [])).toBe(true)
+      assertTrue(equivalence([], []))
     })
 
     it("e", () => {
       const schema = S.Tuple(MyString, MyNumber)
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence(["a", 1], ["a", 1])).toBe(true)
+      assertTrue(equivalence(["a", 1], ["a", 1]))
 
-      expect(equivalence(["a", 1], ["b", 1])).toBe(false)
-      expect(equivalence(["a", 1], ["a", 2])).toBe(false)
+      assertFalse(equivalence(["a", 1], ["b", 1]))
+      assertFalse(equivalence(["a", 1], ["a", 2]))
 
       // propertyType(schema)
     })
@@ -357,12 +359,12 @@ schema (NeverKeyword): never`)
       const schema = S.Tuple([S.String], S.Number)
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence(["a"], ["a"])).toBe(true)
-      expect(equivalence(["a", 1], ["a", 1])).toBe(true)
-      expect(equivalence(["a", 1, 2], ["a", 1, 2])).toBe(true)
+      assertTrue(equivalence(["a"], ["a"]))
+      assertTrue(equivalence(["a", 1], ["a", 1]))
+      assertTrue(equivalence(["a", 1, 2], ["a", 1, 2]))
 
-      expect(equivalence(["a", 1], ["a", 2])).toBe(false)
-      expect(equivalence(["a", 1, 2], ["a", 1, 3])).toBe(false)
+      assertFalse(equivalence(["a", 1], ["a", 2]))
+      assertFalse(equivalence(["a", 1, 2], ["a", 1, 3]))
 
       // propertyType(schema)
     })
@@ -371,12 +373,12 @@ schema (NeverKeyword): never`)
       const schema = S.Array(MyNumber)
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence([], [])).toBe(true)
-      expect(equivalence([1], [1])).toBe(true)
-      expect(equivalence([1, 2], [1, 2])).toBe(true)
+      assertTrue(equivalence([], []))
+      assertTrue(equivalence([1], [1]))
+      assertTrue(equivalence([1, 2], [1, 2]))
 
-      expect(equivalence([1, 2], [1, 2, 3])).toBe(false)
-      expect(equivalence([1, 2, 3], [1, 2])).toBe(false)
+      assertFalse(equivalence([1, 2], [1, 2, 3]))
+      assertFalse(equivalence([1, 2, 3], [1, 2]))
 
       // propertyType(schema)
     })
@@ -385,13 +387,13 @@ schema (NeverKeyword): never`)
       const schema = S.Tuple([], MyString, MyNumber)
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence([1], [1])).toBe(true)
-      expect(equivalence(["a", 1], ["a", 1])).toBe(true)
-      expect(equivalence(["a", "b", 1], ["a", "b", 1])).toBe(true)
+      assertTrue(equivalence([1], [1]))
+      assertTrue(equivalence(["a", 1], ["a", 1]))
+      assertTrue(equivalence(["a", "b", 1], ["a", "b", 1]))
 
-      expect(equivalence([1], [2])).toBe(false)
-      expect(equivalence([2], [1])).toBe(false)
-      expect(equivalence(["a", "b", 1], ["a", "c", 1])).toBe(false)
+      assertFalse(equivalence([1], [2]))
+      assertFalse(equivalence([2], [1]))
+      assertFalse(equivalence(["a", "b", 1], ["a", "c", 1]))
 
       // propertyType(schema)
     })
@@ -401,12 +403,12 @@ schema (NeverKeyword): never`)
         const schema = S.Tuple(S.optionalElement(MyString))
         const equivalence = S.equivalence(schema)
 
-        expect(equivalence([], [])).toBe(true)
-        expect(equivalence(["a"], ["a"])).toBe(true)
+        assertTrue(equivalence([], []))
+        assertTrue(equivalence(["a"], ["a"]))
 
-        expect(equivalence(["a"], ["b"])).toBe(false)
-        expect(equivalence([], ["a"])).toBe(false)
-        expect(equivalence(["a"], [])).toBe(false)
+        assertFalse(equivalence(["a"], ["b"]))
+        assertFalse(equivalence([], ["a"]))
+        assertFalse(equivalence(["a"], []))
 
         // propertyType(schema)
       })
@@ -415,16 +417,16 @@ schema (NeverKeyword): never`)
         const schema = S.Tuple(S.optionalElement(MyString), S.optionalElement(MyNumber))
         const equivalence = S.equivalence(schema)
 
-        expect(equivalence([], [])).toBe(true)
-        expect(equivalence(["a"], ["a"])).toBe(true)
-        expect(equivalence(["a"], ["a"])).toBe(true)
-        expect(equivalence(["a", 1], ["a", 1])).toBe(true)
+        assertTrue(equivalence([], []))
+        assertTrue(equivalence(["a"], ["a"]))
+        assertTrue(equivalence(["a"], ["a"]))
+        assertTrue(equivalence(["a", 1], ["a", 1]))
 
-        expect(equivalence(["a"], ["b"])).toBe(false)
-        expect(equivalence(["a", 1], ["a", 2])).toBe(false)
-        expect(equivalence(["a", 1], ["a"])).toBe(false)
-        expect(equivalence([], ["a"])).toBe(false)
-        expect(equivalence(["a"], [])).toBe(false)
+        assertFalse(equivalence(["a"], ["b"]))
+        assertFalse(equivalence(["a", 1], ["a", 2]))
+        assertFalse(equivalence(["a", 1], ["a"]))
+        assertFalse(equivalence([], ["a"]))
+        assertFalse(equivalence(["a"], []))
 
         // propertyType(schema)
       })
@@ -433,12 +435,12 @@ schema (NeverKeyword): never`)
         const schema = S.Tuple(MyString, S.optionalElement(MyNumber))
         const equivalence = S.equivalence(schema)
 
-        expect(equivalence(["a"], ["a"])).toBe(true)
-        expect(equivalence(["a", 1], ["a", 1])).toBe(true)
+        assertTrue(equivalence(["a"], ["a"]))
+        assertTrue(equivalence(["a", 1], ["a", 1]))
 
-        expect(equivalence(["a", 1], ["a", 2])).toBe(false)
-        expect(equivalence(["a"], ["a", 1])).toBe(false)
-        expect(equivalence(["a", 1], ["a"])).toBe(false)
+        assertFalse(equivalence(["a", 1], ["a", 2]))
+        assertFalse(equivalence(["a"], ["a", 1]))
+        assertFalse(equivalence(["a", 1], ["a"]))
 
         // propertyType(schema)
       })
@@ -447,14 +449,14 @@ schema (NeverKeyword): never`)
         const schema = S.Tuple([S.optionalElement(S.String)], S.Number)
         const equivalence = S.equivalence(schema)
 
-        expect(equivalence([], [])).toBe(true)
-        expect(equivalence(["a"], ["a"])).toBe(true)
-        expect(equivalence(["a", 1], ["a", 1])).toBe(true)
+        assertTrue(equivalence([], []))
+        assertTrue(equivalence(["a"], ["a"]))
+        assertTrue(equivalence(["a", 1], ["a", 1]))
 
-        expect(equivalence([], ["a"])).toBe(false)
-        expect(equivalence(["a"], [])).toBe(false)
-        expect(equivalence(["a"], ["b"])).toBe(false)
-        expect(equivalence(["a", 1], ["a", 2])).toBe(false)
+        assertFalse(equivalence([], ["a"]))
+        assertFalse(equivalence(["a"], []))
+        assertFalse(equivalence(["a"], ["b"]))
+        assertFalse(equivalence(["a", 1], ["a", 2]))
 
         // propertyType(schema)
       })
@@ -466,14 +468,14 @@ schema (NeverKeyword): never`)
       const schema = S.Struct({})
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence({}, {})).toBe(false)
+      assertFalse(equivalence({}, {}))
     })
 
     it("string keys", () => {
       const schema = S.Struct({ a: MyString, b: MyNumber })
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence({ a: "a", b: 1 }, { a: "a", b: 1 })).toBe(true)
+      assertTrue(equivalence({ a: "a", b: 1 }, { a: "a", b: 1 }))
       // should ignore excess properties
       const d = Symbol.for("effect/Schema/test/d")
       const excess = {
@@ -482,10 +484,10 @@ schema (NeverKeyword): never`)
         c: true,
         [d]: "d"
       }
-      expect(equivalence({ a: "a", b: 1 }, excess)).toBe(true)
+      assertTrue(equivalence({ a: "a", b: 1 }, excess))
 
-      expect(equivalence({ a: "a", b: 1 }, { a: "c", b: 1 })).toBe(false)
-      expect(equivalence({ a: "a", b: 1 }, { a: "a", b: 2 })).toBe(false)
+      assertFalse(equivalence({ a: "a", b: 1 }, { a: "c", b: 1 }))
+      assertFalse(equivalence({ a: "a", b: 1 }, { a: "a", b: 2 }))
 
       // propertyType(schema)
     })
@@ -496,7 +498,7 @@ schema (NeverKeyword): never`)
       const schema = S.Struct({ [a]: MyString, [b]: MyNumber })
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence({ [a]: "a", [b]: 1 }, { [a]: "a", [b]: 1 })).toBe(true)
+      assertTrue(equivalence({ [a]: "a", [b]: 1 }, { [a]: "a", [b]: 1 }))
       // should ignore excess properties
       const d = Symbol.for("effect/Schema/test/d")
       const excess = {
@@ -505,10 +507,10 @@ schema (NeverKeyword): never`)
         c: true,
         [d]: "d"
       }
-      expect(equivalence({ [a]: "a", [b]: 1 }, excess)).toBe(true)
+      assertTrue(equivalence({ [a]: "a", [b]: 1 }, excess))
 
-      expect(equivalence({ [a]: "a", [b]: 1 }, { [a]: "c", [b]: 1 })).toBe(false)
-      expect(equivalence({ [a]: "a", [b]: 1 }, { [a]: "a", [b]: 2 })).toBe(false)
+      assertFalse(equivalence({ [a]: "a", [b]: 1 }, { [a]: "c", [b]: 1 }))
+      assertFalse(equivalence({ [a]: "a", [b]: 1 }, { [a]: "a", [b]: 2 }))
 
       // propertyType(schema)
     })
@@ -520,18 +522,18 @@ schema (NeverKeyword): never`)
       })
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence({ a: "a", b: 1 }, { a: "a", b: 1 })).toBe(true)
-      expect(equivalence({ b: 1 }, { b: 1 })).toBe(true)
-      expect(equivalence({ a: "a" }, { a: "a" })).toBe(true)
-      expect(equivalence({ a: "a", b: undefined }, { a: "a", b: undefined })).toBe(true)
+      assertTrue(equivalence({ a: "a", b: 1 }, { a: "a", b: 1 }))
+      assertTrue(equivalence({ b: 1 }, { b: 1 }))
+      assertTrue(equivalence({ a: "a" }, { a: "a" }))
+      assertTrue(equivalence({ a: "a", b: undefined }, { a: "a", b: undefined }))
 
-      expect(equivalence({ a: "a" }, { b: 1 })).toBe(false)
-      expect(equivalence({ a: "a", b: 1 }, { a: "a" })).toBe(false)
-      expect(equivalence({ a: "a", b: undefined }, { a: "a" })).toBe(false)
-      expect(equivalence({ a: "a" }, { a: "a", b: 1 })).toBe(false)
-      expect(equivalence({ a: "a" }, { a: "a", b: undefined })).toBe(false)
-      expect(equivalence({ a: "a", b: 1 }, { a: "c", b: 1 })).toBe(false)
-      expect(equivalence({ a: "a", b: 1 }, { a: "a", b: 2 })).toBe(false)
+      assertFalse(equivalence({ a: "a" }, { b: 1 }))
+      assertFalse(equivalence({ a: "a", b: 1 }, { a: "a" }))
+      assertFalse(equivalence({ a: "a", b: undefined }, { a: "a" }))
+      assertFalse(equivalence({ a: "a" }, { a: "a", b: 1 }))
+      assertFalse(equivalence({ a: "a" }, { a: "a", b: undefined }))
+      assertFalse(equivalence({ a: "a", b: 1 }, { a: "c", b: 1 }))
+      assertFalse(equivalence({ a: "a", b: 1 }, { a: "a", b: 2 }))
 
       // propertyType(schema)
     })
@@ -543,25 +545,25 @@ schema (NeverKeyword): never`)
       const equivalence = S.equivalence(schema)
 
       const input = {}
-      expect(equivalence(input, input)).toBe(true)
-      expect(equivalence({}, {})).toBe(false)
+      assertTrue(equivalence(input, input))
+      assertFalse(equivalence({}, {}))
     })
 
     it("record(string, number)", () => {
       const schema = S.Record({ key: MyString, value: MyNumber })
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence({}, {})).toBe(true)
-      expect(equivalence({ a: 1 }, { a: 1 })).toBe(true)
-      expect(equivalence({ a: 1, b: 2 }, { a: 1, b: 2 })).toBe(true)
+      assertTrue(equivalence({}, {}))
+      assertTrue(equivalence({ a: 1 }, { a: 1 }))
+      assertTrue(equivalence({ a: 1, b: 2 }, { a: 1, b: 2 }))
       // should ignore symbol excess properties
       const d = Symbol.for("effect/Schema/test/d")
-      expect(equivalence({ a: 1, b: 2 }, { a: 1, b: 2, [d]: "d" })).toBe(true)
+      assertTrue(equivalence({ a: 1, b: 2 }, { a: 1, b: 2, [d]: "d" }))
 
-      expect(equivalence({ a: 1 }, { a: 2 })).toBe(false)
-      expect(equivalence({ a: 1, b: 2 }, { a: 1 })).toBe(false)
-      expect(equivalence({ a: 1 }, { a: 1, b: 2 })).toBe(false)
-      expect(equivalence({ a: 1 }, { b: 1 })).toBe(false)
+      assertFalse(equivalence({ a: 1 }, { a: 2 }))
+      assertFalse(equivalence({ a: 1, b: 2 }, { a: 1 }))
+      assertFalse(equivalence({ a: 1 }, { a: 1, b: 2 }))
+      assertFalse(equivalence({ a: 1 }, { b: 1 }))
 
       // propertyType(schema)
     })
@@ -572,17 +574,17 @@ schema (NeverKeyword): never`)
 
       const a = Symbol.for("effect/Schema/test/a")
       const b = Symbol.for("effect/Schema/test/b")
-      expect(equivalence({}, {})).toBe(true)
-      expect(equivalence({ [a]: 1 }, { [a]: 1 })).toBe(true)
-      expect(equivalence({ [a]: 1, [b]: 2 }, { [a]: 1, [b]: 2 })).toBe(true)
+      assertTrue(equivalence({}, {}))
+      assertTrue(equivalence({ [a]: 1 }, { [a]: 1 }))
+      assertTrue(equivalence({ [a]: 1, [b]: 2 }, { [a]: 1, [b]: 2 }))
       // should ignore string excess properties
       const excess = { [a]: 1, [b]: 2, c: "c" }
-      expect(equivalence({ [a]: 1, [b]: 2 }, excess)).toBe(true)
+      assertTrue(equivalence({ [a]: 1, [b]: 2 }, excess))
 
-      expect(equivalence({ [a]: 1 }, { [a]: 2 })).toBe(false)
-      expect(equivalence({ [a]: 1, [b]: 2 }, { [a]: 1 })).toBe(false)
-      expect(equivalence({ [a]: 1 }, { [a]: 1, [b]: 2 })).toBe(false)
-      expect(equivalence({ [a]: 1 }, { [b]: 1 })).toBe(false)
+      assertFalse(equivalence({ [a]: 1 }, { [a]: 2 }))
+      assertFalse(equivalence({ [a]: 1, [b]: 2 }, { [a]: 1 }))
+      assertFalse(equivalence({ [a]: 1 }, { [a]: 1, [b]: 2 }))
+      assertFalse(equivalence({ [a]: 1 }, { [b]: 1 }))
 
       // propertyType(schema)
     })
@@ -591,12 +593,12 @@ schema (NeverKeyword): never`)
       const schema = S.Struct({ a: MyString, b: MyString }, S.Record({ key: MyString, value: MyString }))
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence({ a: "a", b: "b" }, { a: "a", b: "b" })).toBe(true)
-      expect(equivalence({ a: "a", b: "b", c: "c" }, { a: "a", b: "b", c: "c" })).toBe(true)
+      assertTrue(equivalence({ a: "a", b: "b" }, { a: "a", b: "b" }))
+      assertTrue(equivalence({ a: "a", b: "b", c: "c" }, { a: "a", b: "b", c: "c" }))
 
-      expect(equivalence({ a: "a", b: "b" }, { a: "c", b: "b" })).toBe(false)
-      expect(equivalence({ a: "a", b: "b" }, { a: "a", b: "c" })).toBe(false)
-      expect(equivalence({ a: "a", b: "b", c: "c1" }, { a: "a", b: "b", c: "c2" })).toBe(false)
+      assertFalse(equivalence({ a: "a", b: "b" }, { a: "c", b: "b" }))
+      assertFalse(equivalence({ a: "a", b: "b" }, { a: "a", b: "c" }))
+      assertFalse(equivalence({ a: "a", b: "b", c: "c1" }, { a: "a", b: "b", c: "c2" }))
 
       // propertyType(schema)
     })
@@ -607,10 +609,10 @@ schema (NeverKeyword): never`)
       })
       const equivalence = S.equivalence(schema)
 
-      expect(equivalence({ a: "a", b: "b" }, { a: "a", b: "b" })).toBe(true)
-      expect(equivalence({ a: "a", b: "b" }, { a: "a", b: "c" })).toBe(true)
+      assertTrue(equivalence({ a: "a", b: "b" }, { a: "a", b: "b" }))
+      assertTrue(equivalence({ a: "a", b: "b" }, { a: "a", b: "c" }))
 
-      expect(equivalence({ a: "a", b: "b" }, { a: "c", b: "b" })).toBe(false)
+      assertFalse(equivalence({ a: "a", b: "b" }, { a: "c", b: "b" }))
 
       // propertyType(schema)
     })
@@ -630,15 +632,15 @@ schema (NeverKeyword): never`)
       const equivalence = S.equivalence(schema)
 
       const a1: A = { a: "a1", as: [] }
-      expect(equivalence(a1, a1)).toBe(true)
+      assertTrue(equivalence(a1, a1))
       const a2: A = { a: "a1", as: [{ a: "a2", as: [] }] }
-      expect(equivalence(a2, a2)).toBe(true)
+      assertTrue(equivalence(a2, a2))
       const a3: A = { a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [] }] }] }
-      expect(equivalence(a3, a3)).toBe(true)
+      assertTrue(equivalence(a3, a3))
 
       const a4: A = { a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [] }] }] }
       const a5: A = { a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a5", as: [] }] }] }
-      expect(equivalence(a4, a5)).toBe(false)
+      assertFalse(equivalence(a4, a5))
 
       // propertyType(schema, { numRuns: 5 })
     })
@@ -693,7 +695,7 @@ schema (NeverKeyword): never`)
           }
         }
       }
-      expect(equivalence(a1, a1)).toBe(true)
+      assertTrue(equivalence(a1, a1))
 
       const a2: Operation = {
         type: "operation",
@@ -718,7 +720,7 @@ schema (NeverKeyword): never`)
           }
         }
       }
-      expect(equivalence(a1, a2)).toBe(false)
+      assertFalse(equivalence(a1, a2))
 
       // propertyType(Operation, { numRuns: 5 })
     })
@@ -728,7 +730,7 @@ schema (NeverKeyword): never`)
     const expectHook = <A, I>(source: S.Schema<A, I>) => {
       const schema = source.annotations({ equivalence: () => () => true })
       const eq = S.equivalence(schema)
-      expect(eq("a" as any, "b" as any)).toEqual(true)
+      assertTrue(eq("a" as any, "b" as any))
     }
 
     it("void", () => {

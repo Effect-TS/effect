@@ -28,6 +28,10 @@ export const assertions = Effect.runSync(
   )
 )
 
+export const expectParseError = (f: () => void, message: string) => {
+  throws(f, (e) => e instanceof ParseResult.ParseError && e.message === message)
+}
+
 export const onExcessPropertyError: ParseOptions = {
   onExcessProperty: "error"
 }

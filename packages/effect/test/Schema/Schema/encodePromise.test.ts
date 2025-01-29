@@ -1,12 +1,13 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("encodePromise", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return None on invalid values", async () => {
-    expect(await S.encodePromise(schema)({ a: 1 })).toStrictEqual({ a: "1" })
+    deepStrictEqual(await S.encodePromise(schema)({ a: 1 }), { a: "1" })
 
     await Util.assertions.promise.fail(
       S.encodePromise(schema)({ a: 10 }),
@@ -23,8 +24,10 @@ describe("encodePromise", () => {
   it("should respect outer/inner options", async () => {
     const input = { a: 1, b: "b" }
 
-    expect(await S.encodePromise(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
-      .toStrictEqual({ a: "1" })
+    deepStrictEqual(
+      await S.encodePromise(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),
+      { a: "1" }
+    )
 
     await Util.assertions.promise.fail(
       S.encodePromise(schema)(input, { onExcessProperty: "error" }),

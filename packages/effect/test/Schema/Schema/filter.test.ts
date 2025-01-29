@@ -2,7 +2,8 @@ import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("filter", () => {
   describe("error messages", () => {
@@ -79,7 +80,7 @@ describe("filter", () => {
         title: "title"
       })
     )
-    expect(schema.ast.annotations).toEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.SchemaIdAnnotationId]: Symbol.for("Char"),
       [AST.DescriptionAnnotationId]: "description",
       [AST.DocumentationAnnotationId]: "documentation",
@@ -109,8 +110,8 @@ describe("filter", () => {
 
   it("the constructor validation can be disabled", () => {
     const schema = S.NonEmptyString
-    expect(schema.make("", true)).toStrictEqual("")
-    expect(schema.make("", { disableValidation: true })).toStrictEqual("")
+    strictEqual(schema.make("", true), "")
+    strictEqual(schema.make("", { disableValidation: true }), "")
   })
 
   describe("ParseIssue overloading", () => {
