@@ -17,13 +17,17 @@ import * as Layer from "effect/Layer"
 
 /** @internal */
 export const fromDotEnv = (
-  path: string
+  path: string,
+  config?: Partial<ConfigProvider.ConfigProvider.FromMapConfig>
 ): Effect.Effect<ConfigProvider.ConfigProvider, PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const content = yield* fs.readFileString(path)
     const obj = parseDotEnv(content)
-    return ConfigProvider.fromJson(obj)
+    return ConfigProvider.fromMap(
+      new Map(Object.entries(obj)),
+      Object.assign({}, { pathDelim: "_", seqDelim: "," }, config)
+    )
   })
 
 /** @internal */
