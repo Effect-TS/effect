@@ -1,19 +1,15 @@
-import * as Eq from "effect/Equal"
-import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as Order from "effect/Order"
-import * as SortedSet from "effect/SortedSet"
-import * as Str from "effect/String"
-import { assert, describe, expect, it } from "vitest"
+import { Equal, Hash, Order, pipe, SortedSet, String as Str } from "effect"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
-class Member implements Eq.Equal {
+class Member implements Equal.Equal {
   constructor(readonly id: string) {}
 
   [Hash.symbol](): number {
     return Hash.hash(this.id)
   }
 
-  [Eq.symbol](u: unknown): boolean {
+  [Equal.symbol](u: unknown): boolean {
     return u instanceof Member && this.id === u.id
   }
 }
@@ -28,32 +24,35 @@ function makeNumericSortedSet(
 
 describe("SortedSet", () => {
   it("fromIterable", () => {
-    expect(Array.from(SortedSet.fromIterable(["c", "a", "b"], Str.Order))).toStrictEqual(["a", "b", "c"])
-    expect(Array.from(pipe(["c", "a", "b"], SortedSet.fromIterable(Str.Order)))).toStrictEqual(["a", "b", "c"])
+    deepStrictEqual(Array.from(SortedSet.fromIterable(["c", "a", "b"], Str.Order)), ["a", "b", "c"])
+    deepStrictEqual(Array.from(pipe(["c", "a", "b"], SortedSet.fromIterable(Str.Order))), ["a", "b", "c"])
   })
 
   it("is", () => {
     const set = makeNumericSortedSet(0, 1, 2)
     const arr = Array.from(set)
-    expect(SortedSet.isSortedSet(set)).toBe(true)
-    expect(SortedSet.isSortedSet(arr)).toBe(false)
+    assertTrue(SortedSet.isSortedSet(set))
+    assertFalse(SortedSet.isSortedSet(arr))
   })
 
   it("toString", () => {
     const set = makeNumericSortedSet(0, 1, 2)
-    expect(String(set)).toEqual(`{
+    strictEqual(
+      String(set),
+      `{
   "_id": "SortedSet",
   "values": [
     0,
     1,
     2
   ]
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
     const set = makeNumericSortedSet(0, 1, 2)
-    expect(set.toJSON()).toEqual({ _id: "SortedSet", values: [0, 1, 2] })
+    deepStrictEqual(set.toJSON(), { _id: "SortedSet", values: [0, 1, 2] })
   })
 
   it("inspect", () => {
@@ -63,7 +62,7 @@ describe("SortedSet", () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { inspect } = require("node:util")
     const set = makeNumericSortedSet(0, 1, 2)
-    expect(inspect(set)).toEqual(inspect({ _id: "SortedSet", values: [0, 1, 2] }))
+    deepStrictEqual(inspect(set), inspect({ _id: "SortedSet", values: [0, 1, 2] }))
   })
 
   it("add", () => {
@@ -76,7 +75,7 @@ describe("SortedSet", () => {
       SortedSet.add(new Member("worker_000001"))
     )
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(set),
       [
         new Member("worker_000000"),
@@ -106,14 +105,14 @@ describe("SortedSet", () => {
       new Member("worker_000002")
     ]
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(pipe(
         set1,
         SortedSet.difference(set2)
       )),
       [new Member("worker_000000")]
     )
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(pipe(set1, SortedSet.difference(set3))),
       []
     )
@@ -132,8 +131,8 @@ describe("SortedSet", () => {
     const result1 = pipe(set, SortedSet.every(isWorker))
     const result2 = pipe(set, SortedSet.every(isWorker1))
 
-    assert.isTrue(result1)
-    assert.isFalse(result2)
+    assertTrue(result1)
+    assertFalse(result2)
   })
 
   it("some", () => {
@@ -149,8 +148,8 @@ describe("SortedSet", () => {
     const result1 = pipe(set, SortedSet.some(isWorker1))
     const result2 = pipe(set, SortedSet.some(isWorker4))
 
-    assert.isTrue(result1)
-    assert.isFalse(result2)
+    assertTrue(result1)
+    assertFalse(result2)
   })
 
   it("filter", () => {
@@ -164,7 +163,7 @@ describe("SortedSet", () => {
 
     const result = pipe(set, SortedSet.filter(isWorker1))
 
-    assert.deepEqual(Array.from(result), [new Member("worker_000001")])
+    deepStrictEqual(Array.from(result), [new Member("worker_000001")])
   })
 
   it("flatMap", () => {
@@ -183,7 +182,7 @@ describe("SortedSet", () => {
 
     const result = pipe(set1, SortedSet.flatMap(OrdMember, (a) => [...set2, a]))
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(result),
       [
         new Member("worker_000000"),
@@ -211,7 +210,7 @@ describe("SortedSet", () => {
       })
     )
 
-    assert.deepEqual(result, ["worker_000000", "worker_000001", "worker_000002"])
+    deepStrictEqual(result, ["worker_000000", "worker_000001", "worker_000002"])
   })
 
   it("has", () => {
@@ -222,8 +221,8 @@ describe("SortedSet", () => {
       SortedSet.add(new Member("worker_000002"))
     )
 
-    assert.isTrue(pipe(set, SortedSet.has(new Member("worker_000000"))))
-    assert.isFalse(pipe(set, SortedSet.has(new Member("worker_000004"))))
+    assertTrue(pipe(set, SortedSet.has(new Member("worker_000000"))))
+    assertFalse(pipe(set, SortedSet.has(new Member("worker_000004"))))
   })
 
   it("intersection", () => {
@@ -247,14 +246,14 @@ describe("SortedSet", () => {
     const result1 = pipe(set1, SortedSet.intersection(set2))
     const result2 = pipe(set1, SortedSet.intersection(set3))
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(result1),
       [
         new Member("worker_000001"),
         new Member("worker_000002")
       ]
     )
-    assert.deepEqual(Array.from(result2), [])
+    deepStrictEqual(Array.from(result2), [])
   })
 
   it("isSubset", () => {
@@ -276,8 +275,8 @@ describe("SortedSet", () => {
       SortedSet.add(new Member("worker_000005"))
     )
 
-    assert.isTrue(pipe(set2, SortedSet.isSubset(set1)))
-    assert.isFalse(pipe(set3, SortedSet.isSubset(set1)))
+    assertTrue(pipe(set2, SortedSet.isSubset(set1)))
+    assertFalse(pipe(set3, SortedSet.isSubset(set1)))
   })
 
   it("map", () => {
@@ -293,7 +292,7 @@ describe("SortedSet", () => {
       SortedSet.map(Str.Order, (member) => member.id.replace(/_\d+/g, ""))
     )
 
-    assert.deepEqual(Array.from(result), ["worker"])
+    deepStrictEqual(Array.from(result), ["worker"])
   })
 
   it("partition", () => {
@@ -310,14 +309,14 @@ describe("SortedSet", () => {
       SortedSet.partition((member) => member.id.endsWith("1") || member.id.endsWith("3"))
     )
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(result[0]),
       [
         new Member("worker_000000"),
         new Member("worker_000002")
       ]
     )
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(result[1]),
       [
         new Member("worker_000001"),
@@ -336,7 +335,7 @@ describe("SortedSet", () => {
 
     const result = pipe(set, SortedSet.remove(new Member("worker_000000")))
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(result),
       [
         new Member("worker_000001"),
@@ -353,7 +352,7 @@ describe("SortedSet", () => {
       SortedSet.add(new Member("worker_000002"))
     )
 
-    assert.strictEqual(SortedSet.size(set), 3)
+    strictEqual(SortedSet.size(set), 3)
   })
 
   it("toggle", () => {
@@ -365,15 +364,15 @@ describe("SortedSet", () => {
       SortedSet.add(new Member("worker_000002"))
     )
 
-    assert.isTrue(pipe(set, SortedSet.has(member)))
+    assertTrue(pipe(set, SortedSet.has(member)))
 
     set = pipe(set, SortedSet.toggle(member))
 
-    assert.isFalse(pipe(set, SortedSet.has(member)))
+    assertFalse(pipe(set, SortedSet.has(member)))
 
     set = pipe(set, SortedSet.toggle(member))
 
-    assert.isTrue(pipe(set, SortedSet.has(member)))
+    assertTrue(pipe(set, SortedSet.has(member)))
   })
 
   it("union", () => {
@@ -396,7 +395,7 @@ describe("SortedSet", () => {
     const result1 = pipe(set1, SortedSet.union(set2))
     const result2 = pipe(set1, SortedSet.union(set3))
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(result1),
       [
         new Member("worker_000000"),
@@ -405,27 +404,27 @@ describe("SortedSet", () => {
         new Member("worker_000003")
       ]
     )
-    expect(result2).toEqual(set1)
+    deepStrictEqual(result2, set1)
   })
 
   it("values", () => {
     const set = SortedSet.make(Str.Order)("c", "a", "b")
     const values = SortedSet.values(set)
-    expect(Array.from(values)).toStrictEqual(["a", "b", "c"])
+    deepStrictEqual(Array.from(values), ["a", "b", "c"])
   })
 
   it("pipe()", () => {
-    expect(SortedSet.make(Str.Order)("c", "a", "b").pipe(SortedSet.size)).toStrictEqual(3)
+    strictEqual(SortedSet.make(Str.Order)("c", "a", "b").pipe(SortedSet.size), 3)
   })
 
   it("Equal.symbol", () => {
-    expect(Eq.equals(SortedSet.empty(Str.Order), SortedSet.empty(Str.Order))).toBe(true)
+    assertTrue(Equal.equals(SortedSet.empty(Str.Order), SortedSet.empty(Str.Order)))
     const set1 = SortedSet.make(Str.Order)("c", "a", "b")
     const set2 = SortedSet.make(Str.Order)("c", "a", "b")
     const set3 = SortedSet.make(Str.Order)("d", "b", "a")
-    expect(Eq.equals(set1, set2)).toBe(true)
-    expect(Eq.equals(set2, set1)).toBe(true)
-    expect(Eq.equals(set1, set3)).toBe(false)
-    expect(Eq.equals(set3, set1)).toBe(false)
+    assertTrue(Equal.equals(set1, set2))
+    assertTrue(Equal.equals(set2, set1))
+    assertFalse(Equal.equals(set1, set3))
+    assertFalse(Equal.equals(set3, set1))
   })
 })
