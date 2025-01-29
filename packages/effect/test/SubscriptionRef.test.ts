@@ -1,16 +1,7 @@
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import { pipe } from "effect/Function"
-import * as Number from "effect/Number"
-import * as Random from "effect/Random"
-import * as Stream from "effect/Stream"
-import * as SubscriptionRef from "effect/SubscriptionRef"
+import { Chunk, Deferred, Effect, Equal, Exit, Fiber, Number, pipe, Random, Stream, SubscriptionRef } from "effect"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("SubscriptionRef", () => {
   it.effect("multiple subscribers can receive changes", () =>
@@ -38,8 +29,8 @@ describe("SubscriptionRef", () => {
       yield* $(SubscriptionRef.update(subscriptionRef, (n) => n + 1))
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
-      assert.deepStrictEqual(Array.from(result1), [0, 1, 2])
-      assert.deepStrictEqual(Array.from(result2), [1, 2])
+      deepStrictEqual(Array.from(result1), [0, 1, 2])
+      deepStrictEqual(Array.from(result2), [1, 2])
     }))
 
   it.effect("subscriptions are interruptible", () =>
@@ -67,8 +58,8 @@ describe("SubscriptionRef", () => {
       yield* $(SubscriptionRef.update(subscriptionRef, (n) => n + 1))
       const result1 = yield* $(Fiber.interrupt(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
-      assert.isTrue(Exit.isInterrupted(result1))
-      assert.deepStrictEqual(Array.from(result2), [1, 2])
+      assertTrue(Exit.isInterrupted(result1))
+      deepStrictEqual(Array.from(result2), [1, 2])
     }))
 
   it.effect("concurrent subscribes and unsubscribes are handled correctly", () =>
@@ -101,6 +92,6 @@ describe("SubscriptionRef", () => {
       )
       yield* $(Fiber.interrupt(fiber))
       const isSorted = Chunk.every(result, (chunk) => Equal.equals(chunk, Chunk.sort(chunk, Number.Order)))
-      assert.isTrue(isSorted)
+      assertTrue(isSorted)
     }))
 })
