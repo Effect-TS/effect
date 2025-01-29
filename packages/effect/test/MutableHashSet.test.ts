@@ -1,7 +1,8 @@
 import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
 import * as MutableHashSet from "effect/MutableHashSet"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 class Value implements Equal.Equal {
   constructor(readonly a: number, readonly b: number) {}
@@ -26,7 +27,9 @@ describe("MutableHashSet", () => {
       new Value(2, 3)
     )
 
-    expect(String(set)).toEqual(`{
+    strictEqual(
+      String(set),
+      `{
   "_id": "MutableHashSet",
   "values": [
     {
@@ -40,7 +43,8 @@ describe("MutableHashSet", () => {
       "b": 3
     }
   ]
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
@@ -49,9 +53,10 @@ describe("MutableHashSet", () => {
       new Value(2, 3)
     )
 
-    expect(set.toJSON()).toEqual(
-      { _id: "MutableHashSet", values: [{ _id: "Value", a: 0, b: 1 }, { _id: "Value", a: 2, b: 3 }] }
-    )
+    deepStrictEqual(set.toJSON(), {
+      _id: "MutableHashSet",
+      values: [{ _id: "Value", a: 0, b: 1 }, { _id: "Value", a: 2, b: 3 }]
+    })
   })
 
   it("inspect", () => {
@@ -66,7 +71,8 @@ describe("MutableHashSet", () => {
       new Value(2, 3)
     )
 
-    expect(inspect(set)).toEqual(
+    deepStrictEqual(
+      inspect(set),
       inspect({ _id: "MutableHashSet", values: [{ _id: "Value", a: 0, b: 1 }, { _id: "Value", a: 2, b: 3 }] })
     )
   })
