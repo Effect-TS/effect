@@ -1,6 +1,6 @@
 import { Context, Differ, Option, pipe } from "effect"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 interface A {
   a: number
@@ -91,7 +91,7 @@ describe("Context", () => {
     }
     const Service = Context.GenericTag<FooBar, Foo | Bar>("FooBar")
     const context = Context.make(Service, { _tag: "Foo" })
-    expect(Context.get(context, Service)).toStrictEqual({ _tag: "Foo" })
+    deepStrictEqual(Context.get(context, Service), { _tag: "Foo" })
   })
 
   it("adds and retrieve services", () => {

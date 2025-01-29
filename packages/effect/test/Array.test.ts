@@ -11,7 +11,7 @@ import {
   String as Str
 } from "effect"
 import { deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import { assert, describe, it } from "vitest"
+import { describe, it } from "vitest"
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")
@@ -791,13 +791,13 @@ describe("Array", () => {
   })
 
   it("compact", () => {
-    assert.deepStrictEqual(Arr.getSomes([]), [])
-    assert.deepStrictEqual(Arr.getSomes([Option.some(1), Option.some(2), Option.some(3)]), [
+    deepStrictEqual(Arr.getSomes([]), [])
+    deepStrictEqual(Arr.getSomes([Option.some(1), Option.some(2), Option.some(3)]), [
       1,
       2,
       3
     ])
-    assert.deepStrictEqual(Arr.getSomes([Option.some(1), Option.none(), Option.some(3)]), [
+    deepStrictEqual(Arr.getSomes([Option.some(1), Option.none(), Option.some(3)]), [
       1,
       3
     ])

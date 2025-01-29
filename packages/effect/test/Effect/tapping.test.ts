@@ -1,6 +1,7 @@
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 class TestError1 {
   readonly _tag = "TestError1"
@@ -24,6 +25,6 @@ describe("Effect", () => {
       Effect.runPromise
     )
 
-    expect(val).toBe(1)
+    strictEqual(val, 1)
   })
 })
