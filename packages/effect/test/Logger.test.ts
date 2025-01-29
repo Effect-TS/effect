@@ -1,15 +1,18 @@
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
-import * as FiberId from "effect/FiberId"
-import * as FiberRefs from "effect/FiberRefs"
-import { identity } from "effect/Function"
-import * as HashMap from "effect/HashMap"
+import {
+  Cause,
+  Chunk,
+  Effect,
+  FiberId,
+  FiberRefs,
+  HashMap,
+  identity,
+  List,
+  Logger,
+  LogLevel,
+  LogSpan,
+  pipe
+} from "effect"
 import { logLevelInfo } from "effect/internal/core"
-import * as List from "effect/List"
-import * as Logger from "effect/Logger"
-import * as LogLevel from "effect/LogLevel"
-import * as LogSpan from "effect/LogSpan"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "effect/test/utils/extend"
 import { afterEach, beforeEach, vi } from "vitest"
@@ -333,15 +336,15 @@ describe("logfmtLogger", () => {
   })
 
   it("batched", () =>
-    Effect.gen(function*(_) {
-      const chunks: Array<Array<string>> = []
+    Effect.gen(function*() {
+      const state: Array<Array<string>> = []
       const date = new Date()
       vi.setSystemTime(date)
-      const logger = yield* _(
+      const logger = yield* pipe(
         Logger.logfmtLogger,
-        Logger.batched("100 millis", (_) =>
+        Logger.batched("100 millis", (strings) =>
           Effect.sync(() => {
-            chunks.push(_)
+            state.push(strings)
           }))
       )
       const log = (message: string) =>
@@ -359,12 +362,12 @@ describe("logfmtLogger", () => {
       log("a")
       log("b")
       log("c")
-      yield* _(Effect.promise(() => vi.advanceTimersByTimeAsync(100)))
+      yield* Effect.promise(() => vi.advanceTimersByTimeAsync(100))
       log("d")
       log("e")
-      yield* _(Effect.promise(() => vi.advanceTimersByTimeAsync(100)))
+      yield* Effect.promise(() => vi.advanceTimersByTimeAsync(100))
 
-      deepStrictEqual(chunks, [
+      deepStrictEqual(state, [
         [
           `timestamp=${date.toISOString()} level=INFO fiber= message=a`,
           `timestamp=${date.toISOString()} level=INFO fiber= message=b`,
