@@ -1,10 +1,12 @@
-import * as Chunk from "effect/Chunk"
-import * as MutableRef from "effect/MutableRef"
-import { describe, expect, it } from "vitest"
+import { Chunk, MutableRef } from "effect"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("MutableRef", () => {
   it("toString", () => {
-    expect(String(MutableRef.make(Chunk.make(1, 2, 3)))).toEqual(`{
+    strictEqual(
+      String(MutableRef.make(Chunk.make(1, 2, 3))),
+      `{
   "_id": "MutableRef",
   "current": {
     "_id": "Chunk",
@@ -14,13 +16,15 @@ describe("MutableRef", () => {
       3
     ]
   }
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
-    expect(MutableRef.make(Chunk.make(1, 2, 3)).toJSON()).toEqual(
-      { _id: "MutableRef", current: { _id: "Chunk", values: [1, 2, 3] } }
-    )
+    deepStrictEqual(MutableRef.make(Chunk.make(1, 2, 3)).toJSON(), {
+      _id: "MutableRef",
+      current: { _id: "Chunk", values: [1, 2, 3] }
+    })
   })
 
   it("inspect", () => {
@@ -29,7 +33,8 @@ describe("MutableRef", () => {
     }
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { inspect } = require("node:util")
-    expect(inspect(MutableRef.make(Chunk.make(1, 2, 3)))).toEqual(
+    deepStrictEqual(
+      inspect(MutableRef.make(Chunk.make(1, 2, 3))),
       inspect({ _id: "MutableRef", current: { _id: "Chunk", values: [1, 2, 3] } })
     )
   })
