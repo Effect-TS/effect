@@ -4,9 +4,10 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("schedule - runs effect for each recurrence of the schedule", () =>
@@ -21,6 +22,6 @@ describe("Effect", () => {
       yield* $(TestClock.adjust(Duration.seconds(5)))
       const value = yield* $(Ref.get(ref))
       const expected = [1, 2, 3, 4, 5].map(Duration.seconds)
-      assert.deepStrictEqual(value, expected)
+      deepStrictEqual(value, expected)
     }))
 })

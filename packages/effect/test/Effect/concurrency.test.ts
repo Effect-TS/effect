@@ -6,10 +6,11 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { withLatch } from "effect/test/utils/latch"
 import { adjust } from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 export const ExampleError = new Error("Oh noes!")
 
@@ -37,12 +38,12 @@ describe("Effect", () => {
   it.effect("shallow fork/join identity", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeed(42), Effect.fork, Effect.flatMap(Fiber.join))
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
   it.effect("deep fork/join identity", () =>
     Effect.gen(function*($) {
       const result = yield* $(concurrentFib(20))
-      assert.strictEqual(result, fib(20))
+      strictEqual(result, fib(20))
     }))
   it.effect("asyncEffect creation is interruptible", () =>
     Effect.gen(function*($) {
@@ -62,7 +63,7 @@ describe("Effect", () => {
       yield* $(Deferred.await(acquire))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Deferred.await(release))
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
   it.effect("daemon fiber is unsupervised", () =>
     Effect.gen(function*($) {
@@ -80,7 +81,7 @@ describe("Effect", () => {
       const fiber2 = yield* $(Fiber.join(fiber1))
       const result = yield* $(Ref.get(ref))
       yield* $(Fiber.interrupt(fiber2))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
   it.effect("daemon fiber race interruption", () =>
     Effect.gen(function*($) {
@@ -106,7 +107,7 @@ describe("Effect", () => {
         )
       )
       const result = yield* $(Ref.get(interruptionRef))
-      assert.strictEqual(result, 2)
+      strictEqual(result, 2)
     }))
   it.effect("race in daemon is executed", () =>
     Effect.gen(function*($) {
@@ -130,8 +131,8 @@ describe("Effect", () => {
       yield* $(Fiber.interrupt(fiber))
       const res1 = yield* $(Deferred.await(deferred1))
       const res2 = yield* $(Deferred.await(deferred2))
-      assert.isUndefined(res1)
-      assert.isUndefined(res2)
+      strictEqual(res1, undefined)
+      strictEqual(res2, undefined)
     }))
   it.live("supervise fibers", () =>
     Effect.gen(function*($) {
@@ -155,27 +156,27 @@ describe("Effect", () => {
         )
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 2)
+      strictEqual(result, 2)
     }))
   it.effect("race of fail with success", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.fail(42), Effect.race(Effect.succeed(24)), Effect.either)
-      assert.deepStrictEqual(result, Either.right(24))
+      deepStrictEqual(result, Either.right(24))
     }))
   it.effect("race of terminate with success", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.dieSync(() => new Error()), Effect.race(Effect.succeed(24)))
-      assert.strictEqual(result, 24)
+      strictEqual(result, 24)
     }))
   it.effect("race of fail with fail", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.fail(42), Effect.race(Effect.fail(24)), Effect.either)
-      assert.deepStrictEqual(result, Either.left(42))
+      deepStrictEqual(result, Either.left(42))
     }))
   it.effect("race of value and never", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeed(42), Effect.race(Effect.never))
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
   it.effect("race in uninterruptible region", () =>
     Effect.gen(function*($) {
@@ -188,9 +189,9 @@ describe("Effect", () => {
       )
       yield* $(Deferred.await(latch))
       yield* $(adjust("30 seconds"))
-      assert.isTrue(fiber.unsafePoll() === null)
+      strictEqual(fiber.unsafePoll(), null)
       yield* $(adjust("60 seconds"))
-      assert.isFalse(fiber.unsafePoll() === null)
+      assertTrue(fiber.unsafePoll() !== null)
     }), 20_000)
   it.effect("race of two forks does not interrupt winner", () =>
     Effect.gen(function*($) {
@@ -225,7 +226,7 @@ describe("Effect", () => {
           Effect.zipRight(Ref.get(interrupted))
         )
       )
-      assert.equal(count, 2)
+      strictEqual(count, 2)
     }))
   it.effect("firstSuccessOf of values", () =>
     Effect.gen(function*($) {
@@ -236,7 +237,7 @@ describe("Effect", () => {
         ]),
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.right(100))
+      deepStrictEqual(result, Either.right(100))
     }))
   it.live("firstSuccessOf of failures", () =>
     Effect.gen(function*($) {
@@ -248,7 +249,7 @@ describe("Effect", () => {
         Effect.either
       )
 
-      assert.deepStrictEqual(result, Either.left(101))
+      deepStrictEqual(result, Either.left(101))
     }))
   it.live("firstSuccessOf of failures & 1 success", () =>
     Effect.gen(function*($) {
@@ -259,7 +260,7 @@ describe("Effect", () => {
         ]),
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.right(102))
+      deepStrictEqual(result, Either.right(102))
     }))
   it.effect("raceFirst interrupts loser on success", () =>
     Effect.gen(function*($) {
@@ -273,7 +274,7 @@ describe("Effect", () => {
       )
       yield* $(winner, Effect.raceFirst(loser))
       const result = yield* $(Deferred.await(effect))
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
   it.effect("raceFirst interrupts loser on failure", () =>
     Effect.gen(function*($) {
@@ -287,28 +288,28 @@ describe("Effect", () => {
       )
       yield* $(winner, Effect.raceFirst(loser), Effect.either)
       const result = yield* $(Deferred.await(effect))
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
   it.effect("mergeAll", () =>
     Effect.gen(function*($) {
       const result = yield* $(
         pipe(["a", "aa", "aaa", "aaaa"].map((a) => Effect.succeed(a)), Effect.mergeAll(0, (b, a) => b + a.length))
       )
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
   it.effect("mergeAll - empty", () =>
     Effect.gen(function*($) {
       const result = yield* $(
         pipe([] as ReadonlyArray<Effect.Effect<number>>, Effect.mergeAll(0, (b, a) => b + a))
       )
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
   it.effect("reduceEffect", () =>
     Effect.gen(function*($) {
       const result = yield* $(
         pipe([2, 3, 4].map((n) => Effect.succeed(n)), Effect.reduceEffect(Effect.succeed(1), (acc, a) => acc + a))
       )
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
   it.effect("reduceEffect - empty list", () =>
     Effect.gen(function*($) {
@@ -318,16 +319,16 @@ describe("Effect", () => {
           Effect.reduceEffect(Effect.succeed(1), (acc, a) => acc + a)
         )
       )
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
   it.effect("timeout of failure", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.fail("uh oh"), Effect.timeout(Duration.hours(1)), Effect.exit)
-      assert.deepStrictEqual(result, Exit.fail("uh oh"))
+      deepStrictEqual(result, Exit.fail("uh oh"))
     }))
   it.effect("timeout of terminate", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.die(ExampleError), Effect.timeout(Duration.hours(1)), Effect.exit)
-      assert.deepStrictEqual(result, Exit.die(ExampleError))
+      deepStrictEqual(result, Exit.die(ExampleError))
     }))
 })

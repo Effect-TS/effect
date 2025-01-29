@@ -4,7 +4,8 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import { describe, expect, it } from "effect/test/utils/extend"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "effect/test/utils/extend"
 
 class Prefix extends Effect.Service<Prefix>()("Prefix", {
   sync: () => ({
@@ -55,23 +56,23 @@ class Scoped extends Effect.Service<Scoped>()("Scoped", {
 
 describe("Effect.Service", () => {
   it("make is a function", () => {
-    expect(pipe({ prefix: "OK" }, Prefix.make)).toBeInstanceOf(Prefix)
+    assertTrue(pipe({ prefix: "OK" }, Prefix.make) instanceof Prefix)
   })
   it("tags is a tag and default is a layer", () => {
-    expect(Layer.isLayer(Logger.Default)).toBe(true)
-    expect(Layer.isLayer(Logger.DefaultWithoutDependencies)).toBe(true)
-    expect(Context.isTag(Logger)).toBe(true)
+    assertTrue(Layer.isLayer(Logger.Default))
+    assertTrue(Layer.isLayer(Logger.DefaultWithoutDependencies))
+    assertTrue(Context.isTag(Logger))
   })
 
   it.effect("correctly wires dependencies", () =>
     Effect.gen(function*() {
       yield* Logger.info("Ok")
-      expect(messages).toEqual(["[PRE][Ok][POST]"])
+      deepStrictEqual(messages, ["[PRE][Ok][POST]"])
       const { prefix } = yield* Prefix
-      expect(prefix).toEqual("PRE")
+      strictEqual(prefix, "PRE")
       const { postfix } = yield* Postfix
-      expect(postfix).toEqual("POST")
-      expect(yield* Prefix.use((_) => _._tag)).toBe("Prefix")
+      strictEqual(postfix, "POST")
+      strictEqual(yield* Prefix.use((_) => _._tag), "Prefix")
     }).pipe(
       Effect.provide([
         Logger.Default,
@@ -92,7 +93,7 @@ describe("Effect.Service", () => {
     }
     return Effect.gen(function*() {
       const time = yield* Time.use((_) => _.now)
-      expect(time).toBeInstanceOf(Date)
+      assertTrue(time instanceof Date)
     }).pipe(Effect.provide(Time.Default))
   })
 
@@ -114,7 +115,7 @@ describe("Effect.Service", () => {
     return Effect.gen(function*() {
       const time = yield* Time.use((_) => _.now)
       const time2 = yield* Time.use((_) => _.now2)
-      expect(time).toStrictEqual(time2)
+      strictEqual(time, time2)
     }).pipe(Effect.provide(Time.Default))
   })
 
@@ -137,9 +138,9 @@ describe("Effect.Service", () => {
     return Effect.gen(function*() {
       const time = yield* Time
       const date = yield* Time.use((_) => _.now)
-      expect(date).toBeInstanceOf(Date)
-      expect(time).toBeInstanceOf(Time)
-      expect(time).toBeInstanceOf(TimeLive)
+      assertTrue(date instanceof Date)
+      assertTrue(time instanceof Time)
+      assertTrue(time instanceof TimeLive)
     }).pipe(Effect.provide(Time.Default))
   })
 
@@ -154,15 +155,15 @@ describe("Effect.Service", () => {
         Effect.provide(MapThing.Default)
       )
 
-      expect(map).toBeInstanceOf(MapThing)
-      expect(map).toBeInstanceOf(Map)
+      assertTrue(map instanceof MapThing)
+      assertTrue(map instanceof Map)
 
       const map2 = yield* MapThing.set("a", 1).pipe(
         Effect.provide(MapThing.Default)
       )
 
-      expect(map2).toBeInstanceOf(MapThing)
-      expect(map2).toBeInstanceOf(Map)
+      assertTrue(map2 instanceof MapThing)
+      assertTrue(map2 instanceof Map)
     }))
 
   it.effect("scoped", () =>
@@ -181,12 +182,18 @@ describe("Effect.Service", () => {
       }) {}
 
       const withUse = yield* Service.foo().pipe(Effect.flip, Effect.provide(Service.Default))
-      expect(withUse).toEqual(new Cause.UnknownException(new Error("foo")))
+      deepStrictEqual(
+        withUse,
+        new Cause.UnknownException(new Error("foo"), "An unknown error occurred in Effect.andThen")
+      )
 
       const accessor = yield* Service.foo().pipe(Effect.flip, Effect.provide(Service.Default))
-      expect(accessor).toEqual(new Cause.UnknownException(new Error("foo")))
+      deepStrictEqual(
+        accessor,
+        new Cause.UnknownException(new Error("foo"), "An unknown error occurred in Effect.andThen")
+      )
 
       const accessorSuccess = yield* Service.bar().pipe(Effect.provide(Service.Default))
-      expect(accessorSuccess).toEqual("bar")
+      strictEqual(accessorSuccess, "bar")
     }))
 })

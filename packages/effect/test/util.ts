@@ -1,3 +1,4 @@
+import type { Cause } from "effect"
 import { Either, Equal, Exit, Option, Predicate } from "effect"
 import * as assert from "node:assert"
 
@@ -11,6 +12,10 @@ export const assertFalse = (self: boolean, ..._: Array<never>) => {
 
 export const deepStrictEqual = <A>(actual: A, expected: A, ..._: Array<never>) => {
   assert.deepStrictEqual(actual, expected)
+}
+
+export const notDeepStrictEqual = <A>(actual: A, expected: A, ..._: Array<never>) => {
+  assert.notDeepStrictEqual(actual, expected)
 }
 
 export const strictEqual = <A>(actual: A, expected: A, ..._: Array<never>) => {
@@ -71,8 +76,8 @@ export const assertRight = <R, L>(e: Either.Either<R, L>, expected: R, ..._: Arr
 // Exit
 // ----------------------------
 
-export const assertFailure = <A, E>(e: Exit.Exit<A, E>, expected: E, ..._: Array<never>) => {
-  deepStrictEqual(e, Exit.fail(expected))
+export const assertFailure = <A, E>(e: Exit.Exit<A, E>, expected: Cause.Cause<E>, ..._: Array<never>) => {
+  deepStrictEqual(e, Exit.failCause(expected))
 }
 
 export const assertSuccess = <A, E>(e: Exit.Exit<A, E>, expected: A, ..._: Array<never>) => {

@@ -1,5 +1,6 @@
 import { Effect, Exit } from "effect"
-import { assert, describe, it } from "effect/test/utils/extend"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "effect/test/utils/extend"
 
 describe("Latch", () => {
   it.effect("open works", () =>
@@ -9,15 +10,15 @@ describe("Latch", () => {
         Effect.fork
       )
       yield* Effect.yieldNow()
-      assert.isNull(fiber.unsafePoll())
+      strictEqual(fiber.unsafePoll(), null)
       yield* latch.open
-      assert.deepStrictEqual(yield* fiber.await, Exit.void)
+      deepStrictEqual(yield* fiber.await, Exit.void)
 
       fiber = yield* latch.await.pipe(
         Effect.fork
       )
       yield* Effect.yieldNow()
-      assert.deepStrictEqual(fiber.unsafePoll(), Exit.void)
+      deepStrictEqual(fiber.unsafePoll(), Exit.void)
 
       yield* latch.close
       fiber = yield* Effect.void.pipe(
@@ -25,10 +26,10 @@ describe("Latch", () => {
         Effect.fork
       )
       yield* Effect.yieldNow()
-      assert.isNull(fiber.unsafePoll())
+      strictEqual(fiber.unsafePoll(), null)
 
       yield* latch.release
-      assert.deepStrictEqual(yield* fiber.await, Exit.void)
+      deepStrictEqual(yield* fiber.await, Exit.void)
     }))
 
   it.effect("subtype of Effect", () =>
@@ -38,6 +39,6 @@ describe("Latch", () => {
 
       yield* latch.open
 
-      assert.deepStrictEqual(yield* fiber.await, Exit.void)
+      deepStrictEqual(yield* fiber.await, Exit.void)
     }))
 })

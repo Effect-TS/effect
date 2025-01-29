@@ -1,18 +1,18 @@
 import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
+import { assertNone, assertSome, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("can lift a value to an option", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeedSome(42))
-      assert.deepStrictEqual(result, Option.some(42))
+      assertSome(result, 42)
     }))
   it.effect("using the none value", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeedNone)
-      assert.deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
   it.effect("can use .pipe for composition", () =>
     Effect.gen(function*(_) {
@@ -26,7 +26,7 @@ describe("Effect", () => {
       ),
       Effect.tap((n) =>
         Effect.sync(() => {
-          assert.strictEqual(n, 3)
+          strictEqual(n, 3)
         })
       )
     ))
@@ -40,7 +40,7 @@ describe("Effect", () => {
     const instance = new MyService()
 
     return Effect.map(instance.compute, (n) => {
-      assert.strictEqual(n, 2)
+      strictEqual(n, 2)
     })
   })
 })

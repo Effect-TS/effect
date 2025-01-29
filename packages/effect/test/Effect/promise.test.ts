@@ -1,6 +1,6 @@
-import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
-import { describe, expect, it } from "vitest"
+import { Cause, Effect, Option } from "effect"
+import { assertFailure, assertSuccess, assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 const succeedPromiseLike: PromiseLike<string> = {
   // @ts-ignore
@@ -40,8 +40,8 @@ describe("Effect", () => {
       Effect.option
     )
     const exit = await Effect.runPromiseExit(program)
-    expect(exit._tag).toBe("Success")
-    expect(aborted).toBe(true)
+    assertSuccess(exit, Option.none())
+    assertTrue(aborted)
   })
 
   it("PromiseLike - succeed", async () => {
@@ -51,11 +51,7 @@ describe("Effect", () => {
       Effect.option
     )
     const exit = await Effect.runPromiseExit(program)
-    expect(exit._tag).toBe("Success")
-
-    if (exit._tag === "Success") {
-      expect(exit.value).toEqual(Option.some("succeed"))
-    }
+    assertSuccess(exit, Option.some("succeed"))
   })
 
   it("PromiseLike - fail", async () => {
@@ -65,10 +61,6 @@ describe("Effect", () => {
       Effect.option
     )
     const exit = await Effect.runPromiseExit(program)
-    expect(exit._tag).toBe("Failure")
-
-    if (exit._tag === "Failure") {
-      expect(exit.cause.toString()).toEqual("Error: fail")
-    }
+    assertFailure(exit, Cause.die("fail"))
   })
 })

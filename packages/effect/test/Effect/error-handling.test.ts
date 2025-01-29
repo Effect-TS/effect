@@ -7,11 +7,12 @@ import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { constFalse, constTrue, identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { causesArb } from "effect/test/utils/cause"
 import * as it from "effect/test/utils/extend"
 import { assertType, satisfies } from "effect/test/utils/types"
 import * as fc from "fast-check"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")
 
@@ -46,25 +47,25 @@ describe("Effect", () => {
         }),
         Effect.flip
       )
-      assert.deepStrictEqual(result.error, ExampleError)
+      deepStrictEqual(result.error, ExampleError)
     }))
   it.effect("attempt - fail", () =>
     Effect.gen(function*($) {
       const io1 = Effect.either(ExampleErrorFail)
       const io2 = Effect.suspend(() => Effect.either(Effect.suspend(() => ExampleErrorFail)))
       const [first, second] = yield* $(io1, Effect.zip(io2))
-      assert.deepStrictEqual(first, Either.left(ExampleError))
-      assert.deepStrictEqual(second, Either.left(ExampleError))
+      deepStrictEqual(first, Either.left(ExampleError))
+      deepStrictEqual(second, Either.left(ExampleError))
     }))
   it.effect("attempt - deep attempt sync effect error", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.flip(deepErrorEffect(100)))
-      assert.deepStrictEqual(result.error, ExampleError)
+      deepStrictEqual(result.error, ExampleError)
     }))
   it.effect("attempt - deep attempt fail error", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.either(deepErrorFail(100)))
-      assert.deepStrictEqual(result, Either.left(ExampleError))
+      deepStrictEqual(result, Either.left(ExampleError))
     }))
   it.effect("attempt - sandbox -> terminate", () =>
     Effect.gen(function*($) {
@@ -75,7 +76,7 @@ describe("Effect", () => {
         Effect.sandbox,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left(Cause.die(ExampleError)))
+      deepStrictEqual(result, Either.left(Cause.die(ExampleError)))
     }))
   it.effect("catch - sandbox terminate", () =>
     Effect.gen(function*($) {
@@ -86,7 +87,7 @@ describe("Effect", () => {
         Effect.sandbox,
         Effect.merge
       )
-      assert.deepStrictEqual(result, Cause.die(ExampleError))
+      deepStrictEqual(result, Cause.die(ExampleError))
     }))
   it.effect("catch failing finalizers with fail", () =>
     Effect.gen(function*($) {
@@ -110,7 +111,7 @@ describe("Effect", () => {
         ),
         Cause.die(InterruptError3)
       )
-      assert.deepStrictEqual(result, Exit.failCause(expected))
+      deepStrictEqual(result, Exit.failCause(expected))
     }))
   it.effect("catch failing finalizers with terminate", () =>
     Effect.gen(function*($) {
@@ -134,14 +135,14 @@ describe("Effect", () => {
         ),
         Cause.die(InterruptError3)
       )
-      assert.deepStrictEqual(result, Exit.failCause(expected))
+      deepStrictEqual(result, Exit.failCause(expected))
     }))
   it.effect("catchAllCause", () =>
     Effect.gen(function*($) {
       const result = yield* $(
         pipe(Effect.succeed(42), Effect.zipRight(Effect.fail("uh oh")), Effect.catchAllCause(Effect.succeed))
       )
-      assert.deepStrictEqual(result, Cause.fail("uh oh"))
+      deepStrictEqual(result, Cause.fail("uh oh"))
     }))
   it.effect("catchAllDefect - recovers from all defects", () =>
     Effect.gen(function*($) {
@@ -150,7 +151,7 @@ describe("Effect", () => {
         Effect.die(new Cause.IllegalArgumentException(message)),
         Effect.catchAllDefect((e) => Effect.succeed((e as Error).message))
       )
-      assert.strictEqual(result, message)
+      strictEqual(result, message)
     }))
   it.effect("catchAllDefect - leaves errors", () =>
     Effect.gen(function*($) {
@@ -158,7 +159,7 @@ describe("Effect", () => {
       const result = yield* $(
         pipe(Effect.fail(error), Effect.catchAllDefect((e) => Effect.succeed((e as Error).message)), Effect.exit)
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
   it.effect("catchAllDefect - leaves values", () =>
     Effect.gen(function*($) {
@@ -166,7 +167,7 @@ describe("Effect", () => {
       const result = yield* $(
         pipe(Effect.succeed(error), Effect.catchAllDefect((e) => Effect.succeed((e as Error).message)))
       )
-      assert.deepStrictEqual(result, error)
+      deepStrictEqual(result, error)
     }))
   it.effect("catchSomeDefect - recovers from some defects", () =>
     Effect.gen(function*($) {
@@ -179,7 +180,7 @@ describe("Effect", () => {
             : Option.none()
         )
       )
-      assert.strictEqual(result, message)
+      strictEqual(result, message)
     }))
   it.effect("catchSomeDefect - leaves the rest", () =>
     Effect.gen(function*($) {
@@ -193,7 +194,7 @@ describe("Effect", () => {
         ),
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
   it.effect("catchSomeDefect - leaves errors", () =>
     Effect.gen(function*($) {
@@ -207,7 +208,7 @@ describe("Effect", () => {
         ),
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
   it.effect("catchSomeDefect - leaves values", () =>
     Effect.gen(function*($) {
@@ -220,7 +221,7 @@ describe("Effect", () => {
             : Option.none()
         )
       )
-      assert.deepStrictEqual(result, error)
+      deepStrictEqual(result, error)
     }))
   it.effect("catch - recovers from one of several tagged errors", () =>
     Effect.gen(function*($) {
@@ -235,7 +236,7 @@ describe("Effect", () => {
         failure: "ErrorA",
         onFailure: Effect.succeed
       }))
-      assert.deepStrictEqual(result, { _tag: "ErrorA" })
+      deepStrictEqual(result, { _tag: "ErrorA" })
     }))
   it.effect("catch - does not recover from one of several tagged errors", () =>
     Effect.gen(function*($) {
@@ -253,7 +254,7 @@ describe("Effect", () => {
         }),
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail({ _tag: "ErrorB" as const }))
+      deepStrictEqual(result, Exit.fail({ _tag: "ErrorB" as const }))
     }))
   it.effect("catchIf - does not recover from one of several tagged errors", () =>
     Effect.gen(function*($) {
@@ -268,7 +269,7 @@ describe("Effect", () => {
         Effect.catchIf(effect, (e): e is ErrorA => e._tag === "ErrorA", Effect.succeed),
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail({ _tag: "ErrorB" as const }))
+      deepStrictEqual(result, Exit.fail({ _tag: "ErrorB" as const }))
       satisfies<true>(assertType<Exit.Exit<ErrorA, ErrorB>>()(result))
     }))
   it.effect("catchTags - recovers from one of several tagged errors", () =>
@@ -283,7 +284,7 @@ describe("Effect", () => {
       const result = yield* $(Effect.catchTags(effect, {
         ErrorA: (e) => Effect.succeed(e)
       }))
-      assert.deepStrictEqual(result, { _tag: "ErrorA" })
+      deepStrictEqual(result, { _tag: "ErrorA" })
     }))
   it.effect("catchTags - does not recover from one of several tagged errors", () =>
     Effect.gen(function*($) {
@@ -299,7 +300,7 @@ describe("Effect", () => {
           ErrorA: (e) => Effect.succeed(e)
         })
       ))
-      assert.deepStrictEqual(result, Exit.fail<ErrorB>({ _tag: "ErrorB" }))
+      deepStrictEqual(result, Exit.fail<ErrorB>({ _tag: "ErrorB" }))
     }))
   it.effect("catchTags - recovers from all tagged errors", () =>
     Effect.gen(function*($) {
@@ -314,7 +315,7 @@ describe("Effect", () => {
         ErrorA: (e) => Effect.succeed(e),
         ErrorB: (e) => Effect.succeed(e)
       }))
-      assert.deepStrictEqual(result, { _tag: "ErrorB" })
+      deepStrictEqual(result, { _tag: "ErrorB" })
     }))
   it.effect("fold - sandbox -> terminate", () =>
     Effect.gen(function*($) {
@@ -328,22 +329,22 @@ describe("Effect", () => {
           onSuccess: () => Option.none() as Option.Option<Cause.Cause<never>>
         })
       )
-      assert.deepStrictEqual(result, Option.some(Cause.die(ExampleError)))
+      deepStrictEqual(result, Option.some(Cause.die(ExampleError)))
     }))
   it.effect("ignore - return success as unit", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.ignore(Effect.succeed(11)))
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
   it.effect("ignore - return failure as unit", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.ignore(Effect.fail(123)))
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
   it.effect("ignore - not catch throwable", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.exit(Effect.ignore(Effect.die(ExampleError))))
-      assert.deepStrictEqual(result, Exit.die(ExampleError))
+      deepStrictEqual(result, Exit.die(ExampleError))
     }))
   it.effect("orElse - does not recover from defects", () =>
     Effect.gen(function*($) {
@@ -355,10 +356,10 @@ describe("Effect", () => {
       const both = yield* $(Effect.failCause(bothCause), Effect.orElse(() => Effect.void), Effect.exit)
       const then = yield* $(Effect.failCause(thenCause), Effect.orElse(() => Effect.void), Effect.exit)
       const fail = yield* $(Effect.fail(error), Effect.orElse(() => Effect.void), Effect.exit)
-      assert.deepStrictEqual(plain, Exit.die(error))
-      assert.deepStrictEqual(both, Exit.die(error))
-      assert.deepStrictEqual(then, Exit.die(error))
-      assert.deepStrictEqual(fail, Exit.succeed(void 0))
+      deepStrictEqual(plain, Exit.die(error))
+      deepStrictEqual(both, Exit.die(error))
+      deepStrictEqual(then, Exit.die(error))
+      deepStrictEqual(fail, Exit.succeed(void 0))
     }))
   it.effect("orElse - left failed and right died with kept cause", () =>
     Effect.gen(function*($) {
@@ -378,7 +379,7 @@ describe("Effect", () => {
           return Effect.succeed(false)
         })
       )
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("orElse - left failed and right failed with kept cause", () =>
     Effect.gen(function*($) {
@@ -398,7 +399,7 @@ describe("Effect", () => {
           return Effect.succeed(false)
         })
       )
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.it("orElse - is associative", async () => {
     const smallInts = fc.integer({ min: 0, max: 100 })
@@ -420,42 +421,42 @@ describe("Effect", () => {
         return { left, right }
       })
       const { left, right } = await Effect.runPromise(program)
-      assert.deepStrictEqual(left, right)
+      deepStrictEqual(left, right)
     }))
   })
   it.effect("orElseFail - executes this effect and returns its value if it succeeds", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeed(true), Effect.orElseFail(constFalse))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("orElseFail - otherwise fails with the specified error", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.fail(false), Effect.orElseFail(constTrue), Effect.flip)
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("orElseSucceed - executes this effect and returns its value if it succeeds", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeed(true), Effect.orElseSucceed(constFalse))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("orElseSucceed - otherwise succeeds with the specified value", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.fail(false), Effect.orElseSucceed(constTrue))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("parallelErrors - one failure", () =>
     Effect.gen(function*($) {
       const fiber1 = yield* $(Effect.fork(Effect.fail("error1")))
       const fiber2 = yield* $(Effect.fork(Effect.succeed("success1")))
       const result = yield* $(fiber1, Fiber.zip(fiber2), Fiber.join, Effect.parallelErrors, Effect.flip)
-      assert.deepStrictEqual(Array.from(result), ["error1"])
+      deepStrictEqual(Array.from(result), ["error1"])
     }))
   it.effect("parallelErrors - all failures", () =>
     Effect.gen(function*($) {
       const fiber1 = yield* $(Effect.fork(Effect.fail("error1")))
       const fiber2 = yield* $(Effect.fork(Effect.fail("error2")))
       const result = yield* $(fiber1, Fiber.zip(fiber2), Fiber.join, Effect.parallelErrors, Effect.flip)
-      assert.deepStrictEqual(Array.from(result), ["error1", "error2"])
+      deepStrictEqual(Array.from(result), ["error1", "error2"])
     }))
   it.effect("promise - exception does not kill fiber", () =>
     Effect.gen(function*($) {
@@ -465,7 +466,7 @@ describe("Effect", () => {
         }),
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(ExampleError))
+      deepStrictEqual(result, Exit.die(ExampleError))
     }))
   it.effect("try = handles exceptions", () =>
     Effect.gen(function*($) {
@@ -480,12 +481,12 @@ describe("Effect", () => {
         Effect.exit
       )
 
-      assert.deepStrictEqual(result, Exit.fail(message))
+      deepStrictEqual(result, Exit.fail(message))
     }))
   it.effect("uncaught - fail", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.exit(ExampleErrorFail))
-      assert.deepStrictEqual(result, Exit.fail(ExampleError))
+      deepStrictEqual(result, Exit.fail(ExampleError))
     }))
   it.effect("uncaught - sync effect error", () =>
     Effect.gen(function*($) {
@@ -496,12 +497,12 @@ describe("Effect", () => {
         Effect.exit
       )
 
-      assert.deepStrictEqual(result, Exit.die(ExampleError))
+      deepStrictEqual(result, Exit.die(ExampleError))
     }))
   it.effect("uncaught - deep sync effect error", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.flip(deepErrorEffect(100)))
-      assert.deepStrictEqual(result.error, ExampleError)
+      deepStrictEqual(result.error, ExampleError)
     }))
   it.effect("unwraps exception", () =>
     Effect.gen(function*($) {
@@ -516,8 +517,8 @@ describe("Effect", () => {
         })
       )
       const result = yield* $(Effect.unsandbox(success))
-      assert.strictEqual(message, "fail")
-      assert.strictEqual(result, 100)
+      strictEqual(message, "fail")
+      strictEqual(result, 100)
     }))
   it.effect("no information is lost during composition", () =>
     Effect.gen(function*($) {
@@ -526,6 +527,6 @@ describe("Effect", () => {
       }
       const expectedCause = Cause.fail("oh no")
       const result = yield* $(cause(pipe(Effect.failCause(expectedCause), Effect.sandbox, Effect.unsandbox)))
-      assert.deepStrictEqual(result, expectedCause)
+      deepStrictEqual(result, expectedCause)
     }))
 })

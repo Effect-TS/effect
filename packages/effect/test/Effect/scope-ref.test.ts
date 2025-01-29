@@ -4,8 +4,9 @@ import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const ref = FiberRef.unsafeMake(List.empty<string>())
 const env = GenericTag<"context", number>("context")
@@ -45,7 +46,7 @@ describe("Effect", () => {
         withValue("EXTERN")
       )
 
-      assert.deepStrictEqual(messages, [
+      deepStrictEqual(messages, [
         ["1 | acquire | A > INNER > OUTER > EXTERN"],
         ["1 | release | R > INNER > OUTER > EXTERN"]
       ])

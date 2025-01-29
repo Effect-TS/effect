@@ -1,7 +1,8 @@
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
+import { strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("liftPredicate", () => {
@@ -11,35 +12,35 @@ describe("Effect", () => {
     const onNumberRefinementError = (n: string | number) => `${n} is not a number`
 
     return Effect.gen(function*() {
-      assert.deepStrictEqual(
+      strictEqual(
         yield* pipe(1, Effect.liftPredicate(isPositivePredicate, onPositivePredicateError)),
         1
       )
-      assert.deepStrictEqual(
+      strictEqual(
         yield* pipe(-1, Effect.liftPredicate(isPositivePredicate, onPositivePredicateError), Effect.flip),
         `-1 is not positive`
       )
-      assert.deepStrictEqual(
+      strictEqual(
         yield* pipe(1, Effect.liftPredicate(isNumberRefinement, onNumberRefinementError)),
         1
       )
-      assert.deepStrictEqual(
+      strictEqual(
         yield* pipe("string", Effect.liftPredicate(isNumberRefinement, onNumberRefinementError), Effect.flip),
         `string is not a number`
       )
-      assert.deepStrictEqual(
+      strictEqual(
         yield* Effect.liftPredicate(1, isPositivePredicate, onPositivePredicateError),
         1
       )
-      assert.deepStrictEqual(
+      strictEqual(
         yield* Effect.liftPredicate(-1, isPositivePredicate, onPositivePredicateError).pipe(Effect.flip),
         `-1 is not positive`
       )
-      assert.deepStrictEqual(
+      strictEqual(
         yield* Effect.liftPredicate(1, isNumberRefinement, onNumberRefinementError),
         1
       )
-      assert.deepStrictEqual(
+      strictEqual(
         yield* Effect.liftPredicate("string", isNumberRefinement, onNumberRefinementError).pipe(Effect.flip),
         `string is not a number`
       )

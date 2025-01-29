@@ -1,22 +1,24 @@
+import { notStrictEqual } from "assert"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Random from "effect/Random"
 import * as Ref from "effect/Ref"
+import { strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("non-memoized returns new instances on repeated calls", () =>
     it.flakyTest(Effect.gen(function*($) {
       const random = Random.nextInt
       const [first, second] = yield* $(random, Effect.zip(random))
-      assert.notStrictEqual(first, second)
+      notStrictEqual(first, second)
     })))
   it.effect("memoized returns the same instance on repeated calls", () =>
     it.flakyTest(Effect.gen(function*($) {
       const memo = Effect.cached(Random.nextInt)
       const [first, second] = yield* $(memo, Effect.flatMap((effect) => pipe(effect, Effect.zip(effect))))
-      assert.strictEqual(first, second)
+      strictEqual(first, second)
     })))
   it.effect("memoized function returns the same instance on repeated calls", () =>
     it.flakyTest(Effect.gen(function*($) {
@@ -26,9 +28,9 @@ describe("Effect", () => {
       const b = yield* $(memoized(10))
       const c = yield* $(memoized(11))
       const d = yield* $(memoized(11))
-      assert.strictEqual(a, b)
-      assert.notStrictEqual(b, c)
-      assert.strictEqual(c, d)
+      strictEqual(a, b)
+      notStrictEqual(b, c)
+      strictEqual(c, d)
     })))
   it.effect("once returns an effect that will only be executed once", () =>
     Effect.gen(function*($) {
@@ -41,6 +43,6 @@ describe("Effect", () => {
         })
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 })

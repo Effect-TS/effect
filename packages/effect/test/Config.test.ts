@@ -1,4 +1,5 @@
 import {
+  Cause,
   Chunk,
   Config,
   ConfigError,
@@ -23,7 +24,7 @@ const assertConfigError = <A>(
 ) => {
   const configProvider = ConfigProvider.fromMap(new Map(map))
   const result = Effect.runSyncExit(configProvider.load(config))
-  assertFailure(result, error)
+  assertFailure(result, Cause.fail(error))
 }
 
 const assertConfig = <A>(

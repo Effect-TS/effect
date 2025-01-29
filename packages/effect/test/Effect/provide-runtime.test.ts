@@ -6,8 +6,9 @@ import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import * as RuntimeFlags from "effect/RuntimeFlags"
 import * as Scope from "effect/Scope"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 interface A {
   readonly value: number
@@ -35,7 +36,7 @@ describe("Effect", () => {
       const pre = yield* _(Effect.context<never>())
       yield* _(Effect.provide(Effect.void, rt))
       const post = yield* _(Effect.context<never>())
-      assert.isTrue(Equal.equals(pre, post))
+      assertTrue(Equal.equals(pre, post))
     }).pipe(
       Effect.scoped,
       Effect.provide(Layer.succeed(SomeService, someServiceImpl))
@@ -71,10 +72,10 @@ describe("Effect", () => {
 
     await Effect.runPromise(Scope.close(scope, Exit.void))
 
-    assert.deepStrictEqual(all[0].a, 2)
-    assert.deepStrictEqual(all[0].b, { value: 1 })
-    assert.deepStrictEqual(all[0].c, true)
-    assert.deepStrictEqual(all[1].a, 0)
-    assert.deepStrictEqual(all[1].c, false)
+    strictEqual(all[0].a, 2)
+    deepStrictEqual(all[0].b, { value: 1 })
+    assertTrue(all[0].c)
+    strictEqual(all[1].a, 0)
+    assertFalse(all[1].c)
   })
 })

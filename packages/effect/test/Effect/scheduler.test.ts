@@ -1,7 +1,8 @@
 import * as Effect from "effect/Effect"
 import * as Scheduler from "effect/Scheduler"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("matrix schedules according to priority", () =>
@@ -42,33 +43,33 @@ describe("Effect", () => {
         Effect.yieldNow(),
         Effect.withScheduler(scheduler)
       )
-      assert.deepEqual(ps000, [0])
+      deepStrictEqual(ps000, [0])
       yield* $(
         Effect.yieldNow({ priority: 50 }),
         Effect.withScheduler(scheduler)
       )
-      assert.deepEqual(ps000, [0, 0])
+      deepStrictEqual(ps000, [0, 0])
       yield* $(
         Effect.yieldNow({ priority: 100 }),
         Effect.withScheduler(scheduler)
       )
-      assert.deepEqual(ps100, [100])
+      deepStrictEqual(ps100, [100])
       yield* $(
         Effect.yieldNow({ priority: 150 }),
         Effect.withScheduler(scheduler)
       )
-      assert.deepEqual(ps100, [100, 100])
+      deepStrictEqual(ps100, [100, 100])
       yield* $(
         Effect.yieldNow({ priority: 200 }),
         Effect.withScheduler(scheduler)
       )
-      assert.deepEqual(ps100, [100, 100])
-      assert.deepEqual(ps200, [200])
+      deepStrictEqual(ps100, [100, 100])
+      deepStrictEqual(ps200, [200])
       yield* $(
         Effect.yieldNow({ priority: 300 }),
         Effect.withScheduler(scheduler)
       )
-      assert.deepEqual(ps100, [100, 100])
-      assert.deepEqual(ps200, [200])
+      deepStrictEqual(ps100, [100, 100])
+      deepStrictEqual(ps200, [200])
     }))
 })

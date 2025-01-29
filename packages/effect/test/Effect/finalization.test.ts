@@ -9,8 +9,9 @@ import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")
 
@@ -37,8 +38,8 @@ describe("Effect", () => {
         })),
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(ExampleError))
-      assert.isTrue(finalized)
+      deepStrictEqual(result, Exit.fail(ExampleError))
+      assertTrue(finalized)
     }))
   it.effect("fail on error", () =>
     Effect.gen(function*($) {
@@ -52,8 +53,8 @@ describe("Effect", () => {
         ),
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(ExampleError))
-      assert.isTrue(finalized)
+      deepStrictEqual(result, Exit.fail(ExampleError))
+      assertTrue(finalized)
     }))
   it.effect("finalizer errors not caught", () =>
     Effect.gen(function*($) {
@@ -70,7 +71,7 @@ describe("Effect", () => {
         )
       )
       const expected = Cause.sequential(Cause.sequential(Cause.fail(ExampleError), Cause.die(e2)), Cause.die(e3))
-      assert.deepStrictEqual(result, expected)
+      deepStrictEqual(result, expected)
     }))
   it.effect("finalizer errors reported", () =>
     Effect.gen(function*($) {
@@ -92,8 +93,8 @@ describe("Effect", () => {
           )
         )
       )
-      assert.isUndefined(result)
-      assert.isFalse(reported !== undefined && Exit.isSuccess(reported))
+      strictEqual(result, undefined)
+      assertFalse(reported !== undefined && Exit.isSuccess(reported))
     }))
   it.effect("acquireUseRelease exit.effect() is usage result", () =>
     Effect.gen(function*($) {
@@ -102,7 +103,7 @@ describe("Effect", () => {
         () => Effect.succeed(42),
         () => Effect.void
       ))
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
   it.effect("error in just acquisition", () =>
     Effect.gen(function*($) {
@@ -116,7 +117,7 @@ describe("Effect", () => {
           Effect.exit
         )
       )
-      assert.deepStrictEqual(result, Exit.fail(ExampleError))
+      deepStrictEqual(result, Exit.fail(ExampleError))
     }))
   it.effect("error in just release", () =>
     Effect.gen(function*($) {
@@ -130,7 +131,7 @@ describe("Effect", () => {
           Effect.exit
         )
       )
-      assert.deepStrictEqual(result, Exit.die(ExampleError))
+      deepStrictEqual(result, Exit.die(ExampleError))
     }))
   it.effect("error in just usage", () =>
     Effect.gen(function*($) {
@@ -144,7 +145,7 @@ describe("Effect", () => {
           Effect.exit
         )
       )
-      assert.deepStrictEqual(result, Exit.fail(ExampleError))
+      deepStrictEqual(result, Exit.fail(ExampleError))
     }))
   it.effect("rethrown caught error in acquisition", () =>
     Effect.gen(function*($) {
@@ -158,7 +159,7 @@ describe("Effect", () => {
         Effect.flatMap(identity),
         Effect.flip
       )
-      assert.deepEqual(result, ExampleError)
+      deepStrictEqual(result, ExampleError)
     }))
   it.effect("rethrown caught error in release", () =>
     Effect.gen(function*($) {
@@ -172,7 +173,7 @@ describe("Effect", () => {
           Effect.exit
         )
       )
-      assert.deepStrictEqual(result, Exit.die(ExampleError))
+      deepStrictEqual(result, Exit.die(ExampleError))
     }))
   it.effect("rethrown caught error in usage", () =>
     Effect.gen(function*($) {
@@ -184,7 +185,7 @@ describe("Effect", () => {
         ),
         Effect.exit
       )
-      assert.deepEqual(result, Exit.fail(ExampleError))
+      deepStrictEqual(result, Exit.fail(ExampleError))
     }))
   it.effect("test eval of async fail", () =>
     Effect.gen(function*($) {
@@ -202,10 +203,10 @@ describe("Effect", () => {
       const a2 = yield* $(Effect.exit(io2))
       const a3 = yield* $(io1, Effect.exit)
       const a4 = yield* $(io2, Effect.exit)
-      assert.deepStrictEqual(a1, Exit.fail(ExampleError))
-      assert.deepStrictEqual(a2, Exit.fail(ExampleError))
-      assert.deepStrictEqual(a3, Exit.fail(ExampleError))
-      assert.deepStrictEqual(a4, Exit.fail(ExampleError))
+      deepStrictEqual(a1, Exit.fail(ExampleError))
+      deepStrictEqual(a2, Exit.fail(ExampleError))
+      deepStrictEqual(a3, Exit.fail(ExampleError))
+      deepStrictEqual(a4, Exit.fail(ExampleError))
     }))
   it.live("acquireUseRelease regression 1", () =>
     Effect.gen(function*($) {
@@ -250,18 +251,18 @@ describe("Effect", () => {
         Effect.repeat({ until: (list) => pipe(list, Array.findFirst((s) => s === "release 2"), Option.isSome) })
       )
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(pipe(
+      assertTrue(pipe(
         result,
         Array.findFirst((s) => s === "start 1"),
         Option.isSome
       ))
-      assert.isTrue(pipe(
+      assertTrue(pipe(
         result,
         Array.findFirst((s) => s === "release 1"),
         Option.isSome
       ))
-      assert.isTrue(pipe(result, Array.findFirst((s) => s === "start 2"), Option.isSome))
-      assert.isTrue(pipe(result, Array.findFirst((s) => s === "release 2"), Option.isSome))
+      assertTrue(pipe(result, Array.findFirst((s) => s === "start 2"), Option.isSome))
+      assertTrue(pipe(result, Array.findFirst((s) => s === "release 2"), Option.isSome))
     }))
   it.live("interrupt waits for finalizer", () =>
     Effect.gen(function*($) {
@@ -279,7 +280,7 @@ describe("Effect", () => {
       yield* $(Deferred.await(deferred1))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("onExit - executes that a cleanup function runs when effect succeeds", () =>
     Effect.gen(function*($) {
@@ -292,7 +293,7 @@ describe("Effect", () => {
         }))
       )
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("onExit - ensures that a cleanup function runs when an effect fails", () =>
     Effect.gen(function*($) {
@@ -308,7 +309,7 @@ describe("Effect", () => {
         Effect.ignore
       )
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("onExit - ensures that a cleanup function runs when an effect is interrupted", () =>
     Effect.gen(function*($) {
@@ -329,6 +330,6 @@ describe("Effect", () => {
       yield* $(Deferred.await(latch1))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Deferred.await(latch2))
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
 })
