@@ -1,5 +1,6 @@
-import { Deferred, Duration, Effect, Exit, Fiber, Option, Pool, Ref, Scope, TestClock, TestServices } from "effect"
-import { assert, describe, expect, it } from "effect/test/utils/extend"
+import { Deferred, Duration, Effect, Exit, Fiber, Pool, Ref, Scope, TestClock, TestServices } from "effect"
+import { assertNone, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "effect/test/utils/extend"
 
 describe("Pool", () => {
   it.scoped("preallocates pool items", () =>
@@ -12,7 +13,7 @@ describe("Pool", () => {
       yield* Pool.make({ acquire: get, size: 10 })
       yield* Effect.repeat(Ref.get(count), { until: (n) => n === 10 })
       const result = yield* Ref.get(count)
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
 
   // it.scoped("benchmark", () =>
@@ -38,7 +39,7 @@ describe("Pool", () => {
       yield* Effect.repeat(Ref.get(count), { until: (n) => n === 10 })
       yield* Scope.close(scope, Exit.succeed(void 0))
       const result = yield* Ref.get(count)
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.scoped("defects don't prevent cleanup", () =>
@@ -53,7 +54,7 @@ describe("Pool", () => {
       yield* Effect.repeat(Ref.get(count), { until: (n) => n === 10 })
       yield* Scope.close(scope, Exit.succeed(void 0))
       const result = yield* Ref.get(count)
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.scoped("acquire one item", () =>
@@ -66,7 +67,7 @@ describe("Pool", () => {
       const pool = yield* $(Pool.make({ acquire: get, size: 10 }))
       yield* $(Effect.repeat(Ref.get(count), { until: (n) => n === 10 }))
       const item = yield* $(Pool.get(pool))
-      assert.strictEqual(item, 1)
+      strictEqual(item, 1)
     }))
 
   it.scoped("reports failures via get", () =>
@@ -81,7 +82,7 @@ describe("Pool", () => {
       )
       const pool = yield* $(Pool.make({ acquire: get, size: 10 }))
       const values = yield* $(Effect.all(Effect.replicate(9)(Effect.flip(Pool.get(pool)))))
-      expect(Array.from(values)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
+      deepStrictEqual(Array.from(values), [1, 2, 3, 4, 5, 6, 7, 8, 9])
     }))
 
   it.scoped("blocks when item not available", () =>
@@ -101,7 +102,7 @@ describe("Pool", () => {
           Effect.option
         )
       ))
-      expect(result).toEqual(Option.none())
+      assertNone(result)
     }))
 
   it.scoped("reuse released items", () =>
@@ -114,7 +115,7 @@ describe("Pool", () => {
       const pool = yield* $(Pool.make({ acquire: get, size: 10 }))
       yield* $(Effect.repeatN(99)(Effect.scoped(Pool.get(pool))))
       const result = yield* $(Ref.get(count))
-      expect(result).toBe(10)
+      strictEqual(result, 10)
     }))
 
   it.scoped("invalidate item", () =>
@@ -130,8 +131,8 @@ describe("Pool", () => {
       yield* Effect.yieldNow() // allow lazy resize to run
       const result = yield* Effect.scoped(Pool.get(pool))
       const value = yield* Ref.get(count)
-      expect(result).toBe(2)
-      expect(value).toBe(10)
+      strictEqual(result, 2)
+      strictEqual(value, 10)
     }))
 
   it.scoped("invalidate all items in pool and check that pool.get doesn't hang forever", () =>
@@ -149,9 +150,9 @@ describe("Pool", () => {
       const result = yield* $(Effect.scoped(Pool.get(pool)))
       const allocatedCount = yield* $(Ref.get(allocated))
       const finalizedCount = yield* $(Ref.get(finalized))
-      expect(result).toBe(3)
-      expect(allocatedCount).toBe(4)
-      expect(finalizedCount).toBe(2)
+      strictEqual(result, 3)
+      strictEqual(allocatedCount, 4)
+      strictEqual(finalizedCount, 2)
     }))
 
   it.scoped("retry on failed acquire should not exhaust pool", () =>
@@ -167,7 +168,7 @@ describe("Pool", () => {
         Effect.flip,
         TestServices.provideLive
       )
-      expect(result).toBe("error")
+      strictEqual(result, "error")
     }))
 
   it.scoped("compositional retry", () =>
@@ -182,7 +183,7 @@ describe("Pool", () => {
       )
       const pool = yield* $(Pool.make({ acquire: get, size: 10 }))
       const result = yield* $(Effect.eventually(Effect.scoped(Pool.get(pool))))
-      expect(result).toBe(11)
+      strictEqual(result, 11)
     }))
 
   it.scoped("max pool size", () =>
@@ -212,8 +213,8 @@ describe("Pool", () => {
       const max = yield* $(Ref.get(count))
       yield* $(TestClock.adjust(Duration.seconds(60)))
       const min = yield* $(Ref.get(count))
-      expect(min).toBe(10)
-      expect(max).toBe(15)
+      strictEqual(min, 10)
+      strictEqual(max, 15)
     }))
 
   it.scoped("max pool size with concurrency: 3", () =>
@@ -244,8 +245,8 @@ describe("Pool", () => {
       const max = yield* $(Ref.get(count))
       yield* $(TestClock.adjust(Duration.seconds(60)))
       const min = yield* $(Ref.get(count))
-      expect(min).toBe(10)
-      expect(max).toBe(15)
+      strictEqual(min, 10)
+      strictEqual(max, 15)
     }))
 
   it.scoped("concurrency reclaim", () =>
@@ -271,8 +272,8 @@ describe("Pool", () => {
       yield* Scope.close(scope1, Exit.void)
       yield* Pool.get(pool)
       yield* Pool.get(pool)
-      assert.strictEqual(yield* Pool.get(pool), 1)
-      assert.strictEqual(yield* Ref.get(count), 2)
+      strictEqual(yield* Pool.get(pool), 1)
+      strictEqual(yield* Ref.get(count), 2)
     }))
 
   it.scoped("scale to zero", () =>
@@ -303,8 +304,8 @@ describe("Pool", () => {
       const max = yield* $(Ref.get(count))
       yield* $(TestClock.adjust(Duration.seconds(60)))
       const min = yield* $(Ref.get(count))
-      expect(min).toBe(0)
-      expect(max).toBe(10)
+      strictEqual(min, 0)
+      strictEqual(max, 10)
     }))
 
   it.scoped("max pool size creation strategy", () =>
@@ -331,9 +332,9 @@ describe("Pool", () => {
       const two = yield* $(Ref.get(invalidated))
       yield* Scope.close(scope, Exit.void)
       const three = yield* $(Ref.get(invalidated))
-      assert.strictEqual(one, 0)
-      assert.strictEqual(two, 0)
-      assert.strictEqual(three, 15)
+      strictEqual(one, 0)
+      strictEqual(two, 0)
+      strictEqual(three, 15)
     }))
 
   it.scoped("shutdown robustness", () =>
@@ -352,7 +353,7 @@ describe("Pool", () => {
       )
       yield* $(Scope.close(scope, Exit.succeed(void 0)))
       const result = yield* $(Effect.repeat(Ref.get(count), { until: (n) => n === 0 }))
-      expect(result).toBe(0)
+      strictEqual(result, 0)
     }))
 
   it.scoped("shutdown with pending takers", () =>
@@ -372,7 +373,7 @@ describe("Pool", () => {
       )
       yield* $(Scope.close(scope, Exit.succeed(void 0)))
       const result = yield* $(Effect.repeat(Ref.get(count), { until: (n) => n === 0 }))
-      expect(result).toBe(0)
+      strictEqual(result, 0)
     }))
 
   it.scoped("get is interruptible", () =>
@@ -387,7 +388,7 @@ describe("Pool", () => {
       yield* $(Effect.repeatN(Pool.get(pool), 9))
       const fiber = yield* $(Effect.fork(Pool.get(pool)))
       const result = yield* $(Fiber.interrupt(fiber))
-      expect(result).toEqual(Exit.interrupt(fiberId))
+      deepStrictEqual(result, Exit.interrupt(fiberId))
     }))
 
   it.scoped("get is interruptible with dynamic size", () =>
@@ -398,7 +399,7 @@ describe("Pool", () => {
       yield* $(Effect.repeatN(Pool.get(pool), 9))
       const fiber = yield* $(Effect.fork(Pool.get(pool)))
       const result = yield* $(Fiber.interrupt(fiber))
-      expect(result).toEqual(Exit.interrupt(fiberId))
+      deepStrictEqual(result, Exit.interrupt(fiberId))
     }))
 
   it.scoped("finalizer is called for failed allocations", () =>
@@ -418,8 +419,8 @@ describe("Pool", () => {
       yield* Effect.scoped(pool.get).pipe(
         Effect.ignore
       )
-      expect(yield* Ref.get(allocations)).toBe(2)
-      expect(yield* Ref.get(released)).toBe(2)
+      strictEqual(yield* Ref.get(allocations), 2)
+      strictEqual(yield* Ref.get(released), 2)
     }))
 
   it.scoped("is subtype of Effect", () =>
@@ -429,6 +430,6 @@ describe("Pool", () => {
         size: 1
       })
       const item = yield* pool
-      assert.strictEqual(item, 1)
+      strictEqual(item, 1)
     }))
 })
