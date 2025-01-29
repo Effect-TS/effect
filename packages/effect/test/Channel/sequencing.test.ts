@@ -3,8 +3,9 @@ import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Channel", () => {
   it.effect("flatMap - simple", () =>
@@ -24,8 +25,8 @@ describe("Channel", () => {
         )
       )
       const [chunk, value] = yield* $(Channel.runCollect(channel))
-      assert.isTrue(Chunk.isEmpty(chunk))
-      assert.strictEqual(value, 6)
+      assertTrue(Chunk.isEmpty(chunk))
+      strictEqual(value, 6)
     }))
 
   it.effect("flatMap - structure confusion", () =>
@@ -36,6 +37,6 @@ describe("Channel", () => {
         Channel.zipRight(Channel.fail("hello"))
       )
       const result = yield* $(Effect.exit(Channel.runDrain(channel)))
-      assert.deepStrictEqual(result, Exit.fail("hello"))
+      deepStrictEqual(result, Exit.fail("hello"))
     }))
 })

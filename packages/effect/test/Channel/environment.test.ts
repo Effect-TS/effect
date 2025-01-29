@@ -4,8 +4,9 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const NumberServiceSymbolKey = "effect/test/NumberService"
 
@@ -49,7 +50,7 @@ describe("Channel", () => {
         Channel.provideService(NumberService, new NumberServiceImpl(100)),
         Channel.run
       )
-      assert.deepStrictEqual(result, new NumberServiceImpl(100))
+      deepStrictEqual(result, new NumberServiceImpl(100))
     }))
 
   it.effect("provide -> zip -> provide", () =>
@@ -65,7 +66,7 @@ describe("Channel", () => {
         ),
         Channel.run
       )
-      assert.deepStrictEqual(result, [new NumberServiceImpl(100), new NumberServiceImpl(200)])
+      deepStrictEqual(result, [new NumberServiceImpl(100), new NumberServiceImpl(200)])
     }))
 
   it.effect("concatMap(provide).provide", () =>
@@ -85,8 +86,8 @@ describe("Channel", () => {
         Channel.provideService(NumberService, new NumberServiceImpl(100)),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Array.from(chunk), [[new NumberServiceImpl(100), new NumberServiceImpl(200)] as const])
-      assert.isUndefined(value)
+      deepStrictEqual(Array.from(chunk), [[new NumberServiceImpl(100), new NumberServiceImpl(200)] as const])
+      strictEqual(value, undefined)
     }))
 
   it.effect("provide is modular", () =>
@@ -105,8 +106,8 @@ describe("Channel", () => {
         Channel.runDrain,
         Effect.provideService(NumberService, new NumberServiceImpl(4))
       )
-      assert.deepStrictEqual(result1, new NumberServiceImpl(4))
-      assert.deepStrictEqual(result2, new NumberServiceImpl(2))
-      assert.deepStrictEqual(result3, new NumberServiceImpl(4))
+      deepStrictEqual(result1, new NumberServiceImpl(4))
+      deepStrictEqual(result2, new NumberServiceImpl(2))
+      deepStrictEqual(result3, new NumberServiceImpl(4))
     }))
 })

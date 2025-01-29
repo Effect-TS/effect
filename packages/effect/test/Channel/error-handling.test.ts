@@ -4,8 +4,9 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Channel", () => {
   it.effect("catchAll - structure confusion", () =>
@@ -21,7 +22,7 @@ describe("Channel", () => {
         Channel.concatMap(() => Channel.fail("error2"))
       )
       const result = yield* $(Effect.exit(Channel.runCollect(channel)))
-      assert.deepStrictEqual(result, Exit.fail("error2"))
+      deepStrictEqual(result, Exit.fail("error2"))
     }))
 
   it.effect("error cause is propagated on channel interruption", () =>
@@ -43,13 +44,13 @@ describe("Channel", () => {
       )
       yield* $(Deferred.await(finished)) // Note: interruption in race is now done in the background
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(Exit.isInterrupted(result))
+      assertTrue(Exit.isInterrupted(result))
     }))
 
   it.effect("scoped failures", () =>
     Effect.gen(function*($) {
       const channel = Channel.scoped(Effect.fail("error"))
       const result = yield* $(Channel.runCollect(channel), Effect.exit)
-      assert.deepStrictEqual(result, Exit.fail("error"))
+      deepStrictEqual(result, Exit.fail("error"))
     }))
 })

@@ -10,8 +10,9 @@ import * as MergeDecision from "effect/MergeDecision"
 import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Ref from "effect/Ref"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 export const mapper = <A, B>(
   f: (a: A) => B
@@ -91,13 +92,13 @@ describe("Channel", () => {
       )
       const result = yield* $(Channel.runCollect(channel))
       const [chunk, value] = result
-      assert.deepStrictEqual(Chunk.toReadonlyArray(chunk), [
+      deepStrictEqual(Chunk.toReadonlyArray(chunk), [
         new Whatever(1),
         new Whatever(2),
         new Whatever(3),
         new Whatever(4)
       ])
-      assert.isUndefined(value)
+      strictEqual(value, undefined)
     }))
 
   it.effect("read pipelining", () =>
@@ -131,8 +132,8 @@ describe("Channel", () => {
         Channel.pipeTo(innerChannel)
       )
       const [chunk, list] = yield* $(Channel.runCollect(channel))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(chunk), [1, 1, 2, 2])
-      assert.deepStrictEqual(list, [1, 1, 2, 2])
+      deepStrictEqual(Chunk.toReadonlyArray(chunk), [1, 1, 2, 2])
+      deepStrictEqual(list, [1, 1, 2, 2])
     }))
 
   it.effect("read pipelining 2", () =>
@@ -178,7 +179,7 @@ describe("Channel", () => {
         )
       )
       const result = yield* $(Channel.run(channel), Effect.zipRight(Ref.get(ref)))
-      assert.deepStrictEqual(result, [3, 7])
+      deepStrictEqual(result, [3, 7])
     }))
 
   it.effect("reading with resources", () =>
@@ -215,7 +216,7 @@ describe("Channel", () => {
       )
       const channel = pipe(left, Channel.pipeTo(right))
       const result = yield* $(Channel.runDrain(channel), Effect.zipRight(Ref.get(ref)))
-      assert.deepStrictEqual(result, [
+      deepStrictEqual(result, [
         "Acquire outer",
         "Acquire 1",
         "Read 1",
@@ -259,8 +260,8 @@ describe("Channel", () => {
         })
       )
 
-      assert.strictEqual(HashSet.size(missing), 0)
-      assert.strictEqual(HashSet.size(surplus), 0)
+      strictEqual(HashSet.size(missing), 0)
+      strictEqual(HashSet.size(surplus), 0)
     }))
 
   it.effect("nested concurrent reads", () =>
@@ -297,7 +298,7 @@ describe("Channel", () => {
           return [missing, surplus] as const
         })
       )
-      assert.strictEqual(HashSet.size(missing), 0)
-      assert.strictEqual(HashSet.size(surplus), 0)
+      strictEqual(HashSet.size(missing), 0)
+      strictEqual(HashSet.size(surplus), 0)
     }))
 })

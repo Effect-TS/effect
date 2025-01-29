@@ -3,8 +3,9 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 interface First {
   readonly _tag: "First"
@@ -37,7 +38,7 @@ describe("Channel", () => {
         )
       )
       const result = yield* $(Channel.runDrain(channel), Effect.zipRight(Ref.get(ref)))
-      assert.deepStrictEqual(result, [
+      deepStrictEqual(result, [
         "Acquire1",
         "Release11",
         "Release12",
@@ -70,13 +71,13 @@ describe("Channel", () => {
         Effect.scoped,
         Effect.zip(Ref.get(ref))
       )
-      assert.deepStrictEqual(eventsInScope, [
+      deepStrictEqual(eventsInScope, [
         "Acquire1",
         "Release11",
         "Release12",
         "Acquire2"
       ])
-      assert.deepStrictEqual(eventsOutsideScope, [
+      deepStrictEqual(eventsOutsideScope, [
         "Acquire1",
         "Release11",
         "Release12",
@@ -112,7 +113,7 @@ describe("Channel", () => {
         Channel.runCollect(channel),
         Effect.zip(Ref.get(ref))
       )
-      assert.deepStrictEqual(events, [
+      deepStrictEqual(events, [
         "Second write",
         "First write",
         "Second write",
@@ -123,7 +124,7 @@ describe("Channel", () => {
         "First concatMap",
         "Second concatMap"
       ])
-      assert.deepStrictEqual(Array.from(elements), [
+      deepStrictEqual(Array.from(elements), [
         Second(First(1)),
         Second(First(2)),
         Second(First(3))
@@ -146,7 +147,7 @@ describe("Channel", () => {
       )
       yield* $(Channel.runDrain(channel))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         "pulled 1",
         "close 1",
         "pulled 2",
@@ -163,6 +164,6 @@ describe("Channel", () => {
         Channel.runDrain,
         Effect.exit
       )
-      assert.isTrue(Exit.isFailure(result))
+      assertTrue(Exit.isFailure(result))
     }))
 })

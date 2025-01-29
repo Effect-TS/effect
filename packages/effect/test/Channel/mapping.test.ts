@@ -7,10 +7,11 @@ import * as Exit from "effect/Exit"
 import { constVoid, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as UpstreamPullRequest from "effect/UpstreamPullRequest"
 import * as UpstreamPullStrategy from "effect/UpstreamPullStrategy"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 interface First {
   readonly _tag: "First"
@@ -34,8 +35,8 @@ describe("Channel", () => {
         Channel.map((n) => n + 1),
         Channel.runCollect
       )
-      assert.isTrue(Chunk.isEmpty(chunk))
-      assert.strictEqual(value, 2)
+      assertTrue(Chunk.isEmpty(chunk))
+      strictEqual(value, 2)
     }))
 
   it.effect("mapError - structure confusion", () =>
@@ -46,7 +47,7 @@ describe("Channel", () => {
         Channel.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(1))
+      deepStrictEqual(result, Exit.fail(1))
     }))
 
   it.effect("mapOut - simple", () =>
@@ -56,8 +57,8 @@ describe("Channel", () => {
         Channel.mapOut((n) => n + 1),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(chunk), [2, 3, 4])
-      assert.isUndefined(value)
+      deepStrictEqual(Chunk.toReadonlyArray(chunk), [2, 3, 4])
+      strictEqual(value, undefined)
     }))
 
   it.effect("mapOut - mixed with flatMap", () =>
@@ -68,8 +69,8 @@ describe("Channel", () => {
         Channel.flatMap(() => Channel.write("x")),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(chunk), ["1", "x"])
-      assert.isUndefined(value)
+      deepStrictEqual(Chunk.toReadonlyArray(chunk), ["1", "x"])
+      strictEqual(value, undefined)
     }))
 
   it.effect("concatMap - plain", () =>
@@ -79,7 +80,7 @@ describe("Channel", () => {
         Channel.concatMap((i) => Channel.writeAll(i, i)),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [1, 1, 2, 2, 3, 3])
+      deepStrictEqual(Chunk.toReadonlyArray(result), [1, 1, 2, 2, 3, 3])
     }))
 
   it.effect("concatMap - complex", () =>
@@ -92,7 +93,7 @@ describe("Channel", () => {
         Channel.mapOut(Second),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [
+      deepStrictEqual(Chunk.toReadonlyArray(result), [
         Second(First(1)),
         Second(First(1)),
         Second(First(1)),
@@ -120,7 +121,7 @@ describe("Channel", () => {
         Channel.pipeTo(readers),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [1, 2, 3, 4])
+      deepStrictEqual(Chunk.toReadonlyArray(result), [1, 2, 3, 4])
     }))
 
   it.effect("concatMap - downstream failure", () =>
@@ -131,7 +132,7 @@ describe("Channel", () => {
         Channel.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail("error"))
+      deepStrictEqual(result, Exit.fail("error"))
     }))
 
   it.effect("concatMap - upstream acquireReleaseOut + downstream failure", () =>
@@ -145,8 +146,8 @@ describe("Channel", () => {
         Effect.exit
       )
       const [exit, events] = yield* $(effect, Effect.zip(Ref.get(ref)))
-      assert.deepStrictEqual(exit, Exit.fail("error"))
-      assert.deepStrictEqual(events, ["Acquired", "Released"])
+      deepStrictEqual(exit, Exit.fail("error"))
+      deepStrictEqual(events, ["Acquired", "Released"])
     }))
 
   it.effect("concatMap - multiple concatMaps with failure in first", () =>
@@ -158,7 +159,7 @@ describe("Channel", () => {
         Channel.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail("error"))
+      deepStrictEqual(result, Exit.fail("error"))
     }))
 
   it.effect("concatMap - with failure then flatMap", () =>
@@ -170,7 +171,7 @@ describe("Channel", () => {
         Channel.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail("error"))
+      deepStrictEqual(result, Exit.fail("error"))
     }))
 
   it.effect("concatMap - multiple concatMaps with failure in first and catchAll in second", () =>
@@ -182,7 +183,7 @@ describe("Channel", () => {
         Channel.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail("error2"))
+      deepStrictEqual(result, Exit.fail("error2"))
     }))
 
   it.effect("concatMap - done value combination", () =>
@@ -197,9 +198,9 @@ describe("Channel", () => {
         ),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(chunk), [1, 2, 3])
-      assert.deepStrictEqual(array1, ["Inner-1", "Inner-2", "Inner-3"])
-      assert.deepStrictEqual(array2, ["Outer-0"])
+      deepStrictEqual(Chunk.toReadonlyArray(chunk), [1, 2, 3])
+      deepStrictEqual(array1, ["Inner-1", "Inner-2", "Inner-3"])
+      deepStrictEqual(array2, ["Outer-0"])
     }))
 
   it.effect("concatMap - custom 1", () =>
@@ -231,7 +232,7 @@ describe("Channel", () => {
         Channel.runCollect,
         Effect.map(([chunk]) => pipe(Chunk.toReadonlyArray(chunk), Array.getSomes))
       )
-      assert.deepStrictEqual(result, [
+      deepStrictEqual(result, [
         [1, 1] as const,
         [2, 1] as const,
         [3, 1] as const,
@@ -277,7 +278,7 @@ describe("Channel", () => {
         Channel.runCollect,
         Effect.map(([chunk]) => pipe(Chunk.toReadonlyArray(chunk), Array.getSomes))
       )
-      assert.deepStrictEqual(result, [
+      deepStrictEqual(result, [
         [1, 1] as const,
         [2, 1] as const,
         [1, 2] as const,

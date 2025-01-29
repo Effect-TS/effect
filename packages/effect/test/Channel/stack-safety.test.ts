@@ -2,8 +2,9 @@ import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Channel", () => {
   it.effect("mapOut is stack safe", () =>
@@ -21,8 +22,8 @@ describe("Channel", () => {
         Chunk.range(1, N),
         Chunk.reduce(1, (x, y) => x + y)
       )
-      assert.strictEqual(Chunk.unsafeHead(chunk), expected)
-      assert.isUndefined(value)
+      strictEqual(Chunk.unsafeHead(chunk), expected)
+      strictEqual(value, undefined)
     }), 20_000)
 
   it.effect("concatMap is stack safe", () =>
@@ -41,8 +42,8 @@ describe("Channel", () => {
         ),
         Channel.runCollect
       )
-      assert.strictEqual(Chunk.unsafeHead(chunk), N)
-      assert.isUndefined(value)
+      strictEqual(Chunk.unsafeHead(chunk), N)
+      strictEqual(value, undefined)
     }), 20_000)
 
   it.effect("flatMap is stack safe", () =>
@@ -56,7 +57,7 @@ describe("Channel", () => {
         ),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Array.from(chunk), Array.from(Chunk.range(0, N)))
-      assert.isUndefined(value)
+      deepStrictEqual(Array.from(chunk), Array.from(Chunk.range(0, N)))
+      strictEqual(value, undefined)
     }), 20_000)
 })

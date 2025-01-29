@@ -6,8 +6,9 @@ import * as Exit from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
 import * as MergeDecision from "effect/MergeDecision"
 import * as Ref from "effect/Ref"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Channel", () => {
   it.effect("mergeWith - simple merge", () =>
@@ -22,8 +23,8 @@ describe("Channel", () => {
         }),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Array.from(chunk), [1, 2, 3, 4, 5, 6])
-      assert.isUndefined(value)
+      deepStrictEqual(Array.from(chunk), [1, 2, 3, 4, 5, 6])
+      strictEqual(value, undefined)
     }))
 
   it.effect("mergeWith - merge with different types", () =>
@@ -68,8 +69,8 @@ describe("Channel", () => {
         }),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Array.from(chunk), [1, 2])
-      assert.deepStrictEqual(value, ["whatever", true])
+      deepStrictEqual(Array.from(chunk), [1, 2])
+      deepStrictEqual(value, ["whatever", true])
     }))
 
   it.effect("mergeWith - handles polymorphic failures", () =>
@@ -112,7 +113,7 @@ describe("Channel", () => {
         Channel.runDrain,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail<[string, boolean]>(["boom", true]))
+      deepStrictEqual(result, Exit.fail<[string, boolean]>(["boom", true]))
     }))
 
   it.effect("mergeWith - interrupts losing side", () =>
@@ -143,6 +144,6 @@ describe("Channel", () => {
           ))
       })
       const result = yield* $(Effect.exit(Channel.runDrain(merged)))
-      assert.deepStrictEqual(result, Exit.succeed(void 0))
+      deepStrictEqual(result, Exit.succeed(void 0))
     }))
 })
