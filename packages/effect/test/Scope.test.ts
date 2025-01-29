@@ -1,10 +1,7 @@
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import { identity, pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
-import * as Scope from "effect/Scope"
+import { Deferred, Effect, identity, pipe, Ref, Scope } from "effect"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe, expect } from "vitest"
+import { describe } from "vitest"
 
 type Action = Acquire | Use | Release
 
@@ -59,7 +56,7 @@ describe("Scope", () => {
         Effect.flatMap((id) => Ref.update(ref, (actions) => [...actions, use(id)]))
       )))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(result, [acquire(1), use(1), release(1)])
+      deepStrictEqual(result, [acquire(1), use(1), release(1)])
     }))
   it.effect("runs finalizers in parallel", () =>
     Effect.gen(function*($) {
@@ -73,7 +70,7 @@ describe("Scope", () => {
         Effect.scoped,
         Effect.asVoid
       )
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
   it.effect("runs finalizers in parallel when the scope is closed", () =>
     Effect.gen(function*($) {
@@ -93,12 +90,12 @@ describe("Scope", () => {
         )
       )
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result.slice(0, 2).some((action) => isAcquire(action) && action.id === 1))
-      assert.isTrue(result.slice(0, 2).some((action) => isAcquire(action) && action.id === 2))
-      assert.isTrue(result.slice(2, 4).some((action) => isUse(action) && action.id === 1))
-      assert.isTrue(result.slice(2, 4).some((action) => isUse(action) && action.id === 2))
-      assert.isTrue(result.slice(4, 6).some((action) => isRelease(action) && action.id === 1))
-      assert.isTrue(result.slice(4, 6).some((action) => isRelease(action) && action.id === 2))
+      assertTrue(result.slice(0, 2).some((action) => isAcquire(action) && action.id === 1))
+      assertTrue(result.slice(0, 2).some((action) => isAcquire(action) && action.id === 2))
+      assertTrue(result.slice(2, 4).some((action) => isUse(action) && action.id === 1))
+      assertTrue(result.slice(2, 4).some((action) => isUse(action) && action.id === 2))
+      assertTrue(result.slice(4, 6).some((action) => isRelease(action) && action.id === 1))
+      assertTrue(result.slice(4, 6).some((action) => isRelease(action) && action.id === 2))
     }))
   it.effect("preserves order of nested sequential finalizers", () =>
     Effect.gen(function*($) {
@@ -111,8 +108,8 @@ describe("Scope", () => {
       const action2Index = actions.findIndex((action) => action.op === OP_RELEASE && action.id === 2)
       const action3Index = actions.findIndex((action) => action.op === OP_RELEASE && action.id === 3)
       const action4Index = actions.findIndex((action) => action.op === OP_RELEASE && action.id === 4)
-      assert.isBelow(action2Index, action1Index)
-      assert.isBelow(action4Index, action3Index)
+      assertTrue(action2Index < action1Index)
+      assertTrue(action4Index < action3Index)
     }))
   it.scoped("withEarlyRelease", () =>
     Effect.gen(function*($) {
@@ -121,9 +118,9 @@ describe("Scope", () => {
       const right = Effect.withEarlyRelease(resource(2, ref))
       yield* $(left, Effect.zipRight(pipe(right, Effect.flatMap(([release, _]) => release))))
       const actions = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(actions[0], acquire(1))
-      assert.deepStrictEqual(actions[1], acquire(2))
-      assert.deepStrictEqual(actions[2], release(2))
+      deepStrictEqual(actions[0], acquire(1))
+      deepStrictEqual(actions[1], acquire(2))
+      deepStrictEqual(actions[2], release(2))
     }))
   it.effect("using", () =>
     Effect.gen(function*($) {
@@ -139,15 +136,15 @@ describe("Scope", () => {
       )
       const actions1 = yield* $(Ref.get(ref1))
       const actions2 = yield* $(Ref.get(ref2))
-      assert.deepStrictEqual(actions1, [acquire(1), use(1), release(1)])
-      assert.deepStrictEqual(actions2, [acquire(2), use(2), release(2)])
+      deepStrictEqual(actions1, [acquire(1), use(1), release(1)])
+      deepStrictEqual(actions2, [acquire(2), use(2), release(2)])
     }))
   it.effect(
     ".pipe",
     () =>
       Effect.gen(function*(_) {
         const scope = yield* _(Scope.make())
-        expect(scope.pipe(identity)).toBe(scope)
+        strictEqual(scope.pipe(identity), scope)
       })
   )
 })
