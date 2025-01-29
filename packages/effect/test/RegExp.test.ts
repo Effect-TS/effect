@@ -1,11 +1,12 @@
-import * as RegExp from "effect/RegExp"
-import { describe, expect, it } from "vitest"
+import { RegExp } from "effect"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("RegExp", () => {
   it("isRegExp", () => {
-    expect(RegExp.isRegExp(/a/)).toEqual(true)
-    expect(RegExp.isRegExp(null)).toEqual(false)
-    expect(RegExp.isRegExp("a")).toEqual(false)
+    assertTrue(RegExp.isRegExp(/a/))
+    assertFalse(RegExp.isRegExp(null))
+    assertFalse(RegExp.isRegExp("a"))
   })
 
   describe("escape", () => {
@@ -31,7 +32,7 @@ describe("RegExp", () => {
 
       testCases.forEach(([input, expected]) => {
         const result = RegExp.escape(input)
-        expect(result).toEqual(expected)
+        strictEqual(result, expected)
       })
     })
   })
