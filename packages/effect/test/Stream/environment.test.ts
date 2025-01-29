@@ -6,10 +6,10 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import type * as Tracer from "effect/Tracer"
-import { describe, expect } from "vitest"
+import { describe } from "vitest"
 
 interface StringService {
   readonly string: string
@@ -207,13 +207,16 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.map(Chunk.toReadonlyArray)
       )
-      expect(spans.length).toEqual(3)
-      expect(pipe(
-        Array.map(spans, (s) => s.parent),
-        Array.getSomes,
-        Array.filter((s): s is Tracer.Span => s._tag === "Span"),
-        Array.map((s) => s.name)
-      )).toEqual(["span", "span", "span"])
-      expect(Array.map(spans, (s) => s.name)).toEqual(["span.1", "span.2", "span.3"])
+      strictEqual(spans.length, 3)
+      deepStrictEqual(
+        pipe(
+          Array.map(spans, (s) => s.parent),
+          Array.getSomes,
+          Array.filter((s): s is Tracer.Span => s._tag === "Span"),
+          Array.map((s) => s.name)
+        ),
+        ["span", "span", "span"]
+      )
+      deepStrictEqual(Array.map(spans, (s) => s.name), ["span.1", "span.2", "span.3"])
     }))
 })

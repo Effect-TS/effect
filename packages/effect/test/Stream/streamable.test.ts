@@ -1,8 +1,9 @@
 import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
 import * as Streamable from "effect/Streamable"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { describe, expect } from "vitest"
+import { describe } from "vitest"
 
 describe("Streamable", () => {
   it.effect(
@@ -18,7 +19,7 @@ describe("Streamable", () => {
 
         const values = Array.from(yield* $(Stream.runCollect(stream)))
 
-        expect(values).toEqual([1, 2, 3])
+        deepStrictEqual(values, [1, 2, 3])
       })
   )
 })

@@ -210,6 +210,6 @@ describe("Stream", () => {
       const result = yield* Ref.get(ref).pipe(
         Effect.repeat({ until: (n) => n >= 10 })
       )
-      assertTrue(result)
+      strictEqual(result, 10)
     }))
 })

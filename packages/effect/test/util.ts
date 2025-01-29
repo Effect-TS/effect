@@ -19,8 +19,8 @@ export const notDeepStrictEqual = <A>(actual: A, expected: A, ..._: Array<never>
   assert.notDeepStrictEqual(actual, expected)
 }
 
-export const strictEqual = <A>(actual: A, expected: A, ..._: Array<never>) => {
-  assert.strictEqual(actual, expected)
+export const strictEqual = <A>(actual: A, expected: A, message?: string, ..._: Array<never>) => {
+  assert.strictEqual(actual, expected, message)
 }
 
 export const equals = <A>(actual: A, expected: A, ..._: Array<never>) => {

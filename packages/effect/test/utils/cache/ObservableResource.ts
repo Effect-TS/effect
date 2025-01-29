@@ -3,7 +3,7 @@ import * as ExecutionStrategy from "effect/ExecutionStrategy"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
-import { expect } from "vitest"
+import { strictEqual } from "effect/test/util"
 
 export interface ObservableResource<E, V> {
   readonly scoped: Effect.Effect<V, E, Scope.Scope>
@@ -20,22 +20,22 @@ class ObservableResourceImpl<E, V> implements ObservableResource<E, V> {
 
   assertNotAcquired(): Effect.Effect<void> {
     return Effect.map(this.getState, ([numAcquisition, numCleaned]) => {
-      expect(numAcquisition, "Resource acquired when it should not have").toBe(0)
-      expect(numCleaned, "Resource cleaned when it should not have").toBe(0)
+      strictEqual(numAcquisition, 0, "Resource acquired when it should not have")
+      strictEqual(numCleaned, 0, "Resource cleaned when it should not have")
     })
   }
 
   assertAcquiredOnceAndCleaned(): Effect.Effect<void> {
     return Effect.map(this.getState, ([numAcquisition, numCleaned]) => {
-      expect(numAcquisition, "Resource not acquired once").toBe(1)
-      expect(numCleaned, "Resource not cleaned when it should have").toBe(1)
+      strictEqual(numAcquisition, 1, "Resource not acquired once")
+      strictEqual(numCleaned, 1, "Resource not cleaned when it should have")
     })
   }
 
   assertAcquiredOnceAndNotCleaned(): Effect.Effect<void> {
     return Effect.map(this.getState, ([numAcquisition, numCleaned]) => {
-      expect(numAcquisition, "Resource not acquired once").toBe(1)
-      expect(numCleaned, "Resource cleaned when it should not have").toBe(0)
+      strictEqual(numAcquisition, 1, "Resource not acquired once")
+      strictEqual(numCleaned, 0, "Resource cleaned when it should not have")
     })
   }
 }

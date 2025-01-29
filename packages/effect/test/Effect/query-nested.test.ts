@@ -5,8 +5,9 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
+import { strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { describe, expect } from "vitest"
+import { describe } from "vitest"
 
 interface Counter {
   readonly _: unique symbol
@@ -171,8 +172,8 @@ describe("Effect", () => {
       const count = yield* $(Counter)
       const requests = yield* $(Requests)
 
-      expect(count.count).toBe(3)
-      expect(requests.count).toBe(7)
+      strictEqual(count.count, 3)
+      strictEqual(requests.count, 7)
     }).pipe(
       Effect.provide(EnvLive)
     ))

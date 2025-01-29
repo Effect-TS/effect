@@ -11,7 +11,7 @@ import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { describe, expect } from "vitest"
+import { describe } from "vitest"
 
 describe("FiberRefs", () => {
   it.scoped("propagate FiberRef values across fiber boundaries", () =>
@@ -49,7 +49,7 @@ describe("FiberRefs", () => {
   describe("currentLogAnnotations", () => {
     it.it("doesnt leak", () => {
       Effect.void.pipe(Effect.annotateLogs("test", "abc"), Effect.runSync)
-      expect(FiberRef.currentLogAnnotations.pipe(FiberRef.get, Effect.map(HashMap.size), Effect.runSync)).toBe(0)
+      strictEqual(FiberRef.currentLogAnnotations.pipe(FiberRef.get, Effect.map(HashMap.size), Effect.runSync), 0)
     })
 
     it.effect("annotateLogsScoped", () =>
