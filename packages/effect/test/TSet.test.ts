@@ -2,9 +2,10 @@ import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as STM from "effect/STM"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TSet from "effect/TSet"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("TSet", () => {
   it.effect("add - new element", () =>
@@ -15,7 +16,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.toReadonlySet)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, new Set([1]))
+      deepStrictEqual(result, new Set([1]))
     }))
 
   it.effect("add - duplicate element", () =>
@@ -26,7 +27,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.toReadonlySet)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, new Set([1]))
+      deepStrictEqual(result, new Set([1]))
     }))
 
   it.effect("difference", () =>
@@ -38,7 +39,7 @@ describe("TSet", () => {
         return yield* $(TSet.toArray(set1))
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [2, 3])
+      deepStrictEqual(result, [2, 3])
     }))
 
   it.effect("empty", () =>
@@ -48,7 +49,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.isEmpty)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("fromIterable", () =>
@@ -58,7 +59,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.toReadonlySet)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, new Set([1, 2, 3]))
+      deepStrictEqual(result, new Set([1, 2, 3]))
     }))
 
   it.effect("has - existing element", () =>
@@ -68,7 +69,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.has(1))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("has - non-existing element", () =>
@@ -78,7 +79,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.has(1))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.effect("intersection", () =>
@@ -90,7 +91,7 @@ describe("TSet", () => {
         return yield* $(TSet.toArray(set1))
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [1])
+      deepStrictEqual(result, [1])
     }))
 
   it.effect("make", () =>
@@ -100,7 +101,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.toReadonlySet)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, new Set([1, 2, 3]))
+      deepStrictEqual(result, new Set([1, 2, 3]))
     }))
 
   it.effect("reduce - non-empty set", () =>
@@ -110,7 +111,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.reduce(0, (x, y) => x + y))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 6)
+      strictEqual(result, 6)
     }))
 
   it.effect("reduce - empty set", () =>
@@ -120,7 +121,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.reduce(0, (x, y) => x + y))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.effect("reduceSTM - non-empty set", () =>
@@ -130,7 +131,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.reduceSTM(0, (x, y) => STM.succeed(x + y)))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 6)
+      strictEqual(result, 6)
     }))
 
   it.effect("reduceSTM - empty set", () =>
@@ -140,7 +141,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.reduceSTM(0, (x, y) => STM.succeed(x + y)))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.effect("remove - existing element", () =>
@@ -151,7 +152,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.toReadonlySet)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, new Set([2]))
+      deepStrictEqual(result, new Set([2]))
     }))
 
   it.effect("remove - non-existing element", () =>
@@ -162,7 +163,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.toReadonlySet)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, new Set([1, 2]))
+      deepStrictEqual(result, new Set([1, 2]))
     }))
 
   it.effect("retainIf", () =>
@@ -176,7 +177,7 @@ describe("TSet", () => {
         return [Array.from(removed), a, aa, aaa]
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [["aaa", "a"], false, true, false])
+      deepStrictEqual(result, [["aaa", "a"], false, true, false])
     }))
 
   it.effect("retainIf > { discard: true }", () =>
@@ -190,7 +191,7 @@ describe("TSet", () => {
         return [a, aa, aaa]
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [false, true, false])
+      deepStrictEqual(result, [false, true, false])
     }))
 
   it.effect("removeIf", () =>
@@ -204,7 +205,7 @@ describe("TSet", () => {
         return [Array.from(removed), a, aa, aaa]
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [["aa"], true, false, true])
+      deepStrictEqual(result, [["aa"], true, false, true])
     }))
 
   it.effect("removeIf > { discard: true }", () =>
@@ -218,7 +219,7 @@ describe("TSet", () => {
         return [a, aa, aaa]
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [true, false, true])
+      deepStrictEqual(result, [true, false, true])
     }))
 
   it.effect("transform", () =>
@@ -229,7 +230,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.toArray)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [2, 4, 6])
+      deepStrictEqual(result, [2, 4, 6])
     }))
 
   it.effect("transform - and shrink", () =>
@@ -240,7 +241,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.toArray)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [1])
+      deepStrictEqual(result, [1])
     }))
 
   it.effect("transformSTM", () =>
@@ -251,7 +252,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.toArray)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [2, 4, 6])
+      deepStrictEqual(result, [2, 4, 6])
     }))
 
   it.effect("transformSTM - and shrink", () =>
@@ -262,7 +263,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.toArray)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [1])
+      deepStrictEqual(result, [1])
     }))
 
   it.effect("size", () =>
@@ -272,7 +273,7 @@ describe("TSet", () => {
         STM.flatMap(TSet.size)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 4)
+      strictEqual(result, 4)
     }))
 
   it.effect("union", () =>
@@ -284,7 +285,7 @@ describe("TSet", () => {
         return yield* $(TSet.toArray(set1))
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [1, 2, 3, 4, 5])
+      deepStrictEqual(result, [1, 2, 3, 4, 5])
     }))
 
   it.effect("toChunk", () =>
@@ -294,6 +295,6 @@ describe("TSet", () => {
         return yield* $(TSet.toChunk(set))
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Chunk.make(1, 2, 3))
+      deepStrictEqual(result, Chunk.make(1, 2, 3))
     }))
 })
