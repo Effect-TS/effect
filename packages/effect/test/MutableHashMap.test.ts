@@ -1,9 +1,6 @@
-import * as Equal from "effect/Equal"
-import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as HM from "effect/MutableHashMap"
-import * as O from "effect/Option"
-import { assert, describe, expect, it } from "vitest"
+import { Equal, Hash, MutableHashMap as HM, Option, pipe } from "effect"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 class Key implements Equal.Equal {
   constructor(readonly a: number, readonly b: number) {}
@@ -44,7 +41,9 @@ describe("MutableHashMap", () => {
       [1, "b"]
     )
 
-    expect(String(map)).toEqual(`{
+    strictEqual(
+      String(map),
+      `{
   "_id": "MutableHashMap",
   "values": [
     [
@@ -56,7 +55,8 @@ describe("MutableHashMap", () => {
       "b"
     ]
   ]
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
@@ -65,9 +65,7 @@ describe("MutableHashMap", () => {
       [1, "b"]
     )
 
-    expect(map.toJSON()).toEqual(
-      { _id: "MutableHashMap", values: [[0, "a"], [1, "b"]] }
-    )
+    deepStrictEqual(map.toJSON(), { _id: "MutableHashMap", values: [[0, "a"], [1, "b"]] })
   })
 
   it("inspect", () => {
@@ -82,7 +80,7 @@ describe("MutableHashMap", () => {
       [1, "b"]
     )
 
-    expect(inspect(map)).toEqual(inspect({ _id: "MutableHashMap", values: [[0, "a"], [1, "b"]] }))
+    deepStrictEqual(inspect(map), inspect({ _id: "MutableHashMap", values: [[0, "a"], [1, "b"]] }))
   })
 
   it("make", () => {
@@ -91,9 +89,9 @@ describe("MutableHashMap", () => {
       [key(1, 1), value(1, 1)]
     )
 
-    assert.strictEqual(HM.size(map), 2)
-    assert.isTrue(pipe(map, HM.has(key(0, 0))))
-    assert.isTrue(pipe(map, HM.has(key(1, 1))))
+    strictEqual(HM.size(map), 2)
+    assertTrue(pipe(map, HM.has(key(0, 0))))
+    assertTrue(pipe(map, HM.has(key(1, 1))))
   })
 
   it("fromIterable", () => {
@@ -102,9 +100,9 @@ describe("MutableHashMap", () => {
       [key(1, 1), value(1, 1)]
     ])
 
-    assert.strictEqual(HM.size(map), 2)
-    assert.isTrue(pipe(map, HM.has(key(0, 0))))
-    assert.isTrue(pipe(map, HM.has(key(1, 1))))
+    strictEqual(HM.size(map), 2)
+    assertTrue(pipe(map, HM.has(key(0, 0))))
+    assertTrue(pipe(map, HM.has(key(1, 1))))
   })
 
   it("iterate", () => {
@@ -126,7 +124,7 @@ describe("MutableHashMap", () => {
       [b, 0]
     )
 
-    expect(Array.from(map).length).toEqual(2)
+    strictEqual(Array.from(map).length, 2)
   })
 
   it("get", () => {
@@ -141,9 +139,7 @@ describe("MutableHashMap", () => {
       HM.get(key(0, 0))
     )
 
-    expect(
-      result
-    ).toEqual(O.some(value(1, 1)))
+    assertSome(result, value(1, 1))
   })
 
   it("has", () => {
@@ -158,19 +154,19 @@ describe("MutableHashMap", () => {
     pipe(
       map,
       HM.has(key(0, 0)),
-      assert.isTrue
+      assertTrue
     )
 
     pipe(
       map,
       HM.has(key(1, 1)),
-      assert.isTrue
+      assertTrue
     )
 
     pipe(
       map,
       HM.has(key(4, 4)),
-      assert.isFalse
+      assertFalse
     )
   })
 
@@ -181,7 +177,7 @@ describe("MutableHashMap", () => {
       HM.set(key(1, 1), value(1, 1))
     )
 
-    expect(HM.keys(map)).toStrictEqual([
+    deepStrictEqual(HM.keys(map), [
       key(0, 0),
       key(1, 1)
     ])
@@ -198,44 +194,36 @@ describe("MutableHashMap", () => {
       map,
       HM.modifyAt(
         key(0, 0),
-        () => O.some(value(0, 1))
+        () => Option.some(value(0, 1))
       )
     )
 
-    assert.strictEqual(HM.size(map), 2)
-
-    expect(pipe(
-      map,
-      HM.get(key(0, 0))
-    )).toEqual(O.some(value(0, 1)))
+    strictEqual(HM.size(map), 2)
+    assertSome(pipe(map, HM.get(key(0, 0))), value(0, 1))
 
     pipe(
       map,
       HM.modifyAt(
         key(2, 2),
-        O.match({
-          onNone: () => O.some(value(2, 2)),
-          onSome: O.some
+        Option.match({
+          onNone: () => Option.some(value(2, 2)),
+          onSome: Option.some
         })
       )
     )
 
-    assert.strictEqual(HM.size(map), 3)
-
-    expect(pipe(
-      map,
-      HM.get(key(2, 2))
-    )).toEqual(O.some(value(2, 2)))
+    strictEqual(HM.size(map), 3)
+    assertSome(pipe(map, HM.get(key(2, 2))), value(2, 2))
 
     pipe(
       map,
       HM.modifyAt(
         key(2, 2),
-        () => O.none()
+        () => Option.none()
       )
     )
 
-    assert.strictEqual(HM.size(map), 2)
+    strictEqual(HM.size(map), 2)
   })
 
   it("remove", () => {
@@ -245,12 +233,12 @@ describe("MutableHashMap", () => {
       HM.set(key(1, 1), value(1, 1))
     )
 
-    assert.strictEqual(HM.size(map), 2)
+    strictEqual(HM.size(map), 2)
 
     pipe(
       map,
       HM.has(key(1, 1)),
-      assert.isTrue
+      assertTrue
     )
 
     pipe(
@@ -258,12 +246,12 @@ describe("MutableHashMap", () => {
       HM.remove(key(1, 1))
     )
 
-    assert.strictEqual(HM.size(map), 1)
+    strictEqual(HM.size(map), 1)
 
     pipe(
       map,
       HM.has(key(1, 1)),
-      assert.isFalse
+      assertFalse
     )
   })
 
@@ -277,7 +265,7 @@ describe("MutableHashMap", () => {
       HM.set(key(0, 0), value(4, 4))
     )
 
-    expect(Array.from(map)).toEqual([
+    deepStrictEqual(Array.from(map), [
       [key(0, 0), value(4, 4)],
       [key(1, 1), value(3, 3)]
     ])
@@ -293,7 +281,7 @@ describe("MutableHashMap", () => {
       HM.set(key(0, 0), value(4, 4))
     )
 
-    assert.strictEqual(HM.size(map), 2)
+    strictEqual(HM.size(map), 2)
   })
 
   it("modify", () => {
@@ -308,24 +296,21 @@ describe("MutableHashMap", () => {
       HM.modify(key(0, 0), (v) => value(v.c + 1, v.d + 1))
     )
 
-    expect(pipe(
-      map,
-      HM.get(key(0, 0))
-    )).toEqual(O.some(value(1, 1)))
+    assertSome(pipe(map, HM.get(key(0, 0))), value(1, 1))
 
     pipe(
       map,
       HM.modify(key(1, 1), (v) => value(v.c + 1, v.d + 1))
     )
 
-    expect(pipe(
+    assertNone(pipe(
       map,
       HM.remove(key(0, 0)),
       HM.get(key(0, 0))
-    )).toEqual(O.none())
+    ))
   })
 
   it("pipe()", () => {
-    expect(HM.empty<string, string>().pipe(HM.set("key", "value"))).toEqual(HM.make(["key", "value"]))
+    deepStrictEqual(HM.empty<string, string>().pipe(HM.set("key", "value")), HM.make(["key", "value"]))
   })
 })
