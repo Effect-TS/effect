@@ -1,26 +1,39 @@
-import * as Array from "effect/Array"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Context from "effect/Context"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import { dual, identity, pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as HashMap from "effect/HashMap"
-import * as Ref from "effect/Ref"
-import * as Schedule from "effect/Schedule"
-import * as Scope from "effect/Scope"
-import * as ScopedCache from "effect/ScopedCache"
+import {
+  Array,
+  Cause,
+  Chunk,
+  Context,
+  Duration,
+  Effect,
+  Exit,
+  FastCheck as fc,
+  Fiber,
+  Hash,
+  HashMap,
+  identity,
+  pipe,
+  Ref,
+  Schedule,
+  Scope,
+  ScopedCache,
+  TestClock,
+  TestServices
+} from "effect"
+import { dual } from "effect/Function"
+import {
+  assertFalse,
+  assertLeft,
+  assertNone,
+  assertRight,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual
+} from "effect/test/util"
 import * as ObservableResource from "effect/test/utils/cache/ObservableResource"
 import * as WatchableLookup from "effect/test/utils/cache/WatchableLookup"
 import * as it from "effect/test/utils/extend"
-import * as TestClock from "effect/TestClock"
-import * as TestServices from "effect/TestServices"
-import * as fc from "fast-check"
-import { describe, expect } from "vitest"
+import { describe } from "vitest"
 
 const hash = dual<
   (y: number) => (x: number) => number,
@@ -56,9 +69,9 @@ describe("ScopedCache", () => {
               )
             )
           )
-          expect(hits).toBe(4)
-          expect(misses).toBe(6)
-          expect(size).toBe(6)
+          strictEqual(hits, 4)
+          strictEqual(misses, 6)
+          strictEqual(size, 6)
         })
         return Effect.runPromise(Effect.scoped(program))
       })
@@ -96,10 +109,10 @@ describe("ScopedCache", () => {
           ),
           (observableResource) => observableResource.assertAcquiredOnceAndNotCleaned()
         ))
-        expect(cacheContainsKey42).toBe(false)
-        expect(hits).toBe(0)
-        expect(misses).toBe(100)
-        expect(size).toBe(99)
+        assertFalse(cacheContainsKey42)
+        strictEqual(hits, 0)
+        strictEqual(misses, 100)
+        strictEqual(size, 99)
       })))
     }))
 
@@ -121,8 +134,8 @@ describe("ScopedCache", () => {
         yield* $(invalidateEffect)
         const cacheContainsKey42AfterInvalidate = yield* $(cache.contains(void 0))
         yield* $(observablesResource.assertAcquiredOnceAndCleaned())
-        expect(cacheContainsKey42BeforeInvalidate).toBe(true)
-        expect(cacheContainsKey42AfterInvalidate).toBe(false)
+        assertTrue(cacheContainsKey42BeforeInvalidate)
+        assertFalse(cacheContainsKey42AfterInvalidate)
       })))
     }))
 
@@ -161,10 +174,10 @@ describe("ScopedCache", () => {
           observablesResources,
           (observableResource) => observableResource.assertAcquiredOnceAndCleaned()
         ))
-        expect(contains).toBe(false)
-        expect(hits).toBe(0)
-        expect(misses).toBe(100)
-        expect(size).toBe(0)
+        assertFalse(contains)
+        strictEqual(hits, 0)
+        strictEqual(misses, 100)
+        strictEqual(size, 0)
       })))
     }))
 
@@ -183,7 +196,7 @@ describe("ScopedCache", () => {
         cache.get(void 0)
         yield* $(observablesResource.assertNotAcquired())
         const contains = yield* $(cache.contains(void 0))
-        expect(contains).toBe(false)
+        assertFalse(contains)
       })))
     }))
 
@@ -204,7 +217,7 @@ describe("ScopedCache", () => {
             )
           )
           const expected = Array.map(Array.range(1, 10), hash(salt))
-          expect(actual).toEqual(expected)
+          deepStrictEqual(actual, expected)
         })))
       })
       return Effect.runPromise(program)
@@ -228,7 +241,7 @@ describe("ScopedCache", () => {
             )
           )
           const expected = Array.map(Array.range(1, 10), hash(salt))
-          expect(actual).toEqual(expected)
+          deepStrictEqual(actual, expected)
         })))
       })
       return Effect.runPromise(program)
@@ -252,8 +265,8 @@ describe("ScopedCache", () => {
           )
           const expected = Array.map(Array.range(1, 10), hash(salt))
           const cacheStats = yield* $(cache.cacheStats)
-          expect(actual).toEqual(expected)
-          expect(cacheStats.size).toBe(5)
+          deepStrictEqual(actual, expected)
+          strictEqual(cacheStats.size, 5)
         })))
       })
       return Effect.runPromise(program)
@@ -313,13 +326,13 @@ describe("ScopedCache", () => {
       })
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(scopedCache)
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(0)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 0)))
         const resourceScopedProxy = cache.get(void 0)
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(0)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 0)))
         yield* $(Effect.either(Effect.scoped(resourceScopedProxy)))
         yield* $(watchableLookup.assertAllCleanedForKey(void 0))
         yield* $(Effect.either(Effect.scoped(resourceScopedProxy)))
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(1)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 1)))
       })))
     }))
 
@@ -366,16 +379,16 @@ describe("ScopedCache", () => {
       })
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(scopedCache)
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(0)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 0)))
         const resourceScopedProxy = cache.get(void 0)
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(0)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 0)))
         yield* $(Effect.zip(
           Effect.either(Effect.scoped(resourceScopedProxy)),
           Effect.either(Effect.scoped(resourceScopedProxy)),
           { concurrent: true }
         ))
         yield* $(watchableLookup.assertAllCleanedForKey(void 0))
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(1)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 1)))
       })))
     }))
 
@@ -493,13 +506,13 @@ describe("ScopedCache", () => {
         yield* $(Effect.scoped(Effect.asVoid(scoped)))
         yield* $(TestClock.adjust(Duration.seconds(5)))
         yield* $(Effect.scoped(Effect.asVoid(scoped)))
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(1)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 1)))
         yield* $(TestClock.adjust(Duration.seconds(4)))
         yield* $(Effect.scoped(Effect.asVoid(scoped)))
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(1)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 1)))
         yield* $(TestClock.adjust(Duration.seconds(2)))
         yield* $(Effect.scoped(Effect.asVoid(scoped)))
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(2)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 2)))
         yield* $(watchableLookup.assertFirstNCreatedResourcesCleaned(void 0, 1))
       })))
     }))
@@ -517,13 +530,13 @@ describe("ScopedCache", () => {
         yield* $(scoped)
         yield* $(TestClock.adjust(Duration.seconds(5)))
         yield* $(scoped)
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(1)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 1)))
         yield* $(TestClock.adjust(Duration.seconds(4)))
         yield* $(scoped)
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(1)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 1)))
         yield* $(TestClock.adjust(Duration.seconds(2)))
         yield* $(scoped)
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(2)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 2)))
         yield* $(watchableLookup.assertFirstNCreatedResourcesCleaned(void 0, 1))
       })))
     }))
@@ -546,7 +559,7 @@ describe("ScopedCache", () => {
         yield* $(acquire)
         yield* $(TestClock.adjust(Duration.seconds(11)))
         yield* $(Effect.scoped(Effect.asVoid(cache.get(void 0))))
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(2)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 2)))
         const firstCreatedResource = yield* $(watchableLookup.firstCreatedResource(void 0))
         yield* $(firstCreatedResource.assertAcquiredOnceAndNotCleaned())
         yield* $(release(Exit.void))
@@ -562,7 +575,7 @@ describe("ScopedCache", () => {
         lookup: (i: number) => Effect.succeed(i)
       }))
       const option = yield* _(scopedCache.getOption(1))
-      expect(option._tag).toEqual("None")
+      assertNone(option)
     })))
 
   it.effect("getOption - should return Some if pending", () =>
@@ -575,7 +588,7 @@ describe("ScopedCache", () => {
       yield* _(scopedCache.get(1), Effect.scoped, Effect.fork)
       yield* _(TestServices.provideLive(Effect.sleep(Duration.millis(5))))
       const option = yield* _(scopedCache.getOption(1), Effect.scoped)
-      expect(option._tag).toEqual("Some")
+      assertSome(option, 1)
     })))
 
   it.effect("getOptionComplete - should return None if pending", () =>
@@ -588,7 +601,7 @@ describe("ScopedCache", () => {
       yield* _(scopedCache.get(1), Effect.scoped, Effect.fork)
       yield* _(TestClock.adjust(Duration.millis(9)))
       const option = yield* _(scopedCache.getOptionComplete(1), Effect.scoped)
-      expect(option._tag).toEqual("None")
+      assertNone(option)
     })))
 
   it.effect("getOptionComplete - should return Some if complete", () =>
@@ -600,7 +613,7 @@ describe("ScopedCache", () => {
       }))
       yield* _(scopedCache.get(1), Effect.scoped)
       const option = yield* _(scopedCache.getOptionComplete(1), Effect.scoped)
-      expect(option._tag).toEqual("Some")
+      assertSome(option, 1)
     })))
 
   it.effect("refresh - should update the cache with a new value", () =>
@@ -627,8 +640,8 @@ describe("ScopedCache", () => {
         const val3 = yield* $(cache.get(key))
         return [val1, val2, val3] as const
       })))
-      expect(val2).toBe(val3)
-      expect(val2).toBe(inc(val1))
+      strictEqual(val2, val3)
+      strictEqual(val2, inc(val1))
     }))
 
   it.effect("refresh - should clean old resource when making a new one", () =>
@@ -684,10 +697,10 @@ describe("ScopedCache", () => {
         const value2 = yield* $(Effect.either(cache.get(key)))
         return { failure1, value1, failure2, value2 }
       })))
-      expect(result.failure1).toEqual(Either.left(error))
-      expect(result.failure2).toEqual(Either.left(error))
-      expect(result.value1).toEqual(Either.right(4))
-      expect(result.value2).toEqual(Either.right(7))
+      assertLeft(result.failure1, error)
+      assertLeft(result.failure2, error)
+      assertRight(result.value1, 4)
+      assertRight(result.value2, 7)
     }))
 
   it.effect("refresh - should create and acquire subresource if the key doesn't exist in the cache", () =>
@@ -703,8 +716,8 @@ describe("ScopedCache", () => {
         const count0 = yield* $(cache.size)
         yield* $(Effect.forEach(Array.range(1, capacity), (key) => cache.refresh(key), { discard: true }))
         const count1 = yield* $(cache.size)
-        expect(count0).toBe(0)
-        expect(count1).toBe(capacity)
+        strictEqual(count0, 0)
+        strictEqual(count1, capacity)
       })))
     }))
 
@@ -772,7 +785,7 @@ describe("ScopedCache", () => {
           ))
         )
         yield* $(TestServices.provideLive(Effect.sleep(Duration.millis(100))))
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(2)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 2)))
         const firstCreatedResource = yield* $(watchableLookup.firstCreatedResource(void 0))
         yield* $(firstCreatedResource.assertAcquiredOnceAndNotCleaned())
         yield* $(watchableLookup.unlock())
@@ -803,7 +816,7 @@ describe("ScopedCache", () => {
           ))
         )
         yield* $(TestServices.provideLive(Effect.sleep(Duration.millis(100))))
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(2)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 2)))
         yield* $(watchableLookup.assertFirstNCreatedResourcesCleaned(void 0, 1))
         yield* $(watchableLookup.unlock())
         yield* $(Fiber.join(refreshFiber))
@@ -828,7 +841,7 @@ describe("ScopedCache", () => {
         yield* $(acquire)
         yield* $(TestClock.adjust(Duration.seconds(11)))
         yield* $(cache.refresh(void 0))
-        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(2)))
+        yield* $(watchableLookup.assertCalledTimes(void 0, (n) => strictEqual(n, 2)))
         const firstCreatedResource = yield* $(watchableLookup.firstCreatedResource(void 0))
         yield* $(firstCreatedResource.assertAcquiredOnceAndNotCleaned())
         yield* $(release(Exit.void))
@@ -845,6 +858,6 @@ describe("ScopedCache", () => {
         }),
         Effect.scoped
       )
-      expect(cache.pipe(identity)).toBe(cache)
+      strictEqual(cache.pipe(identity), cache)
     }))
 })
