@@ -7,9 +7,10 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as STM from "effect/STM"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TReentrantLock from "effect/TReentrantLock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const pollSchedule = <E, A>(): Schedule.Schedule<Option.Option<Exit.Exit<E, A>>, Option.Option<Exit.Exit<E, A>>> =>
   pipe(
@@ -31,7 +32,7 @@ describe("TReentrantLock", () => {
         Effect.flatMap(Effect.succeed),
         Effect.scoped
       ))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("two read locks from the same fiber", () =>
@@ -48,7 +49,7 @@ describe("TReentrantLock", () => {
         ),
         Effect.scoped
       ))
-      assert.strictEqual(result, 2)
+      strictEqual(result, 2)
     }))
 
   it.effect("two read locks from different fibers", () =>
@@ -85,7 +86,7 @@ describe("TReentrantLock", () => {
       ))
       yield* $(Deferred.await(wLatch))
       const result = yield* $(Fiber.join(fiber))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("one write lock, then one read lock, different fibers", () =>
@@ -126,9 +127,9 @@ describe("TReentrantLock", () => {
       ))
       yield* $(pipe(wLatch, Deferred.succeed<void>(void 0)))
       const readerCount = yield* $(Fiber.join(fiber))
-      assert.strictEqual(locks, 1)
-      assert.deepStrictEqual(option, Option.none())
-      assert.strictEqual(readerCount, 1)
+      strictEqual(locks, 1)
+      deepStrictEqual(option, Option.none())
+      strictEqual(readerCount, 1)
     }))
 
   it.effect("write lock followed by read lock from the same fiber", () =>
@@ -153,8 +154,8 @@ describe("TReentrantLock", () => {
         Effect.scoped
       ))
       const writerCount = yield* $(Ref.get(ref))
-      assert.strictEqual(readerCount, 1)
-      assert.strictEqual(writerCount, 1)
+      strictEqual(readerCount, 1)
+      strictEqual(writerCount, 1)
     }))
 
   it.effect("upgrade read lock to write lock from the same fiber", () =>
@@ -179,8 +180,8 @@ describe("TReentrantLock", () => {
         Effect.scoped
       ))
       const writerCount = yield* $(Ref.get(ref))
-      assert.strictEqual(readerCount, 1)
-      assert.strictEqual(writerCount, 1)
+      strictEqual(readerCount, 1)
+      strictEqual(writerCount, 1)
     }))
 
   it.effect("read to writer upgrade with other readers", () =>
@@ -225,7 +226,7 @@ describe("TReentrantLock", () => {
       const option = yield* $(pipe(Fiber.poll(fiber), Effect.repeat(pollSchedule())))
       yield* $(pipe(rLatch, Deferred.succeed<void>(void 0)))
       const count = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(option, Option.none())
-      assert.strictEqual(count, 1)
+      deepStrictEqual(option, Option.none())
+      strictEqual(count, 1)
     }))
 })
