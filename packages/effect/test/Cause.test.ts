@@ -1,7 +1,7 @@
 import { Array as Arr, Cause, Effect, Either, Equal, FastCheck as fc, FiberId, Hash, Option, Predicate } from "effect"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as internal from "effect/internal/cause"
-import { assertFalse, assertRefinement, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { causes, equalCauses, errorCauseFunctions, errors } from "effect/test/utils/cause"
 import { describe, it } from "vitest"
 
@@ -32,14 +32,14 @@ describe("Cause", () => {
     it("exposes its `error` property", () => {
       strictEqual(new Cause.UnknownException("my message").error, "my message")
       const { error } = new Cause.UnknownException(new Error("my error"))
-      assertRefinement(error, Predicate.isError)
+      assertTrue(Predicate.isError(error))
       strictEqual(error.message, "my error")
     })
 
     it("exposes its `cause` property", () => {
       strictEqual(new Cause.UnknownException("my message").cause, "my message")
       const err2 = new Cause.UnknownException(new Error("my error"))
-      assertRefinement(err2.cause, Predicate.isError)
+      assertTrue(Predicate.isError(err2.cause))
       strictEqual(err2.cause.message, "my error")
     })
 

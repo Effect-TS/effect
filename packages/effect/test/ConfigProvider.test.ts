@@ -14,7 +14,7 @@ import {
   Option,
   Secret
 } from "effect"
-import { assertNone, assertTrue, deepEqual, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -806,7 +806,7 @@ describe("ConfigProvider", () => {
       const value = "Hello, World!"
       const configProvider = ConfigProvider.fromMap(new Map([["greeting", value]]))
       const result = yield* configProvider.load(Config.secret("greeting"))
-      deepEqual(result, Secret.make(value.split("").map((c) => c.charCodeAt(0))))
+      deepStrictEqual(result, Secret.make(value.split("").map((c) => c.charCodeAt(0))))
     }))
 
   it.effect("snakeCase", () =>
