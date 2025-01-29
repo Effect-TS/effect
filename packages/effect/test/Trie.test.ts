@@ -3,7 +3,7 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { deepStrictEqual, strictEqual, throws } from "effect/test/util"
 import * as Trie from "effect/Trie"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("Trie", () => {
   it("toString", () => {
@@ -13,7 +13,9 @@ describe("Trie", () => {
       Trie.insert("b", 1)
     )
 
-    expect(String(trie)).toEqual(`{
+    strictEqual(
+      String(trie),
+      `{
   "_id": "Trie",
   "values": [
     [
@@ -25,7 +27,8 @@ describe("Trie", () => {
       1
     ]
   ]
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
@@ -35,9 +38,7 @@ describe("Trie", () => {
       Trie.insert("b", 1)
     )
 
-    expect(trie.toJSON()).toEqual(
-      { _id: "Trie", values: [["a", 0], ["b", 1]] }
-    )
+    deepStrictEqual(trie.toJSON(), { _id: "Trie", values: [["a", 0], ["b", 1]] })
   })
 
   it("inspect", () => {
@@ -53,7 +54,7 @@ describe("Trie", () => {
       Trie.insert("b", 1)
     )
 
-    expect(inspect(trie)).toEqual(inspect({ _id: "Trie", values: [["a", 0], ["b", 1]] }))
+    deepStrictEqual(inspect(trie), inspect({ _id: "Trie", values: [["a", 0], ["b", 1]] }))
   })
 
   it("iterable empty", () => {
