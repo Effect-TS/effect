@@ -1,10 +1,11 @@
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as STM from "effect/STM"
+import { assertTrue } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TRandom from "effect/TRandom"
 import * as fc from "fast-check"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const floatsArb: fc.Arbitrary<readonly [number, number]> = fc.tuple(
   fc.float({ noDefaultInfinity: true, noNaN: true }),
@@ -25,8 +26,8 @@ describe("TRandom", () => {
         Effect.provide(TRandom.live),
         Effect.runPromise
       )
-      assert.isAtLeast(result, min)
-      assert.isBelow(result, max)
+      assertTrue(result >= min)
+      assertTrue(result < max)
     })))
 
   it.it("nextRange - generates numbers in the specified range", () =>
@@ -36,7 +37,7 @@ describe("TRandom", () => {
         Effect.provide(TRandom.live),
         Effect.runPromise
       )
-      assert.isAtLeast(result, min)
-      assert.isBelow(result, max)
+      assertTrue(result >= min)
+      assertTrue(result < max)
     })))
 })
