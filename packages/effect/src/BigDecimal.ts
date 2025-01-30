@@ -884,6 +884,7 @@ export const unsafeFromNumber = (n: number): BigDecimal =>
  */
 export const fromNumber: (n: number) => BigDecimal = unsafeFromNumber
 
+// TODO(4.0): Rename this to `fromNumber` after removing the current, unsafe implementation of `fromNumber`.
 /**
  * Creates a `BigDecimal` from a `number` value.
  *
@@ -907,7 +908,6 @@ export const fromNumber: (n: number) => BigDecimal = unsafeFromNumber
  * @category constructors
  */
 export const safeFromNumber = (n: number): Option.Option<BigDecimal> => {
-  // TODO: Rename this to `fromNumber` after removing the current, unsafe implementation of `fromNumber`.
   if (!Number.isFinite(n)) {
     return Option.none()
   }

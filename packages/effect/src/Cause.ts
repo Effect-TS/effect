@@ -932,6 +932,7 @@ export const interruptOption: <E>(self: Cause<E>) => Option.Option<FiberId.Fiber
  */
 export const keepDefects: <E>(self: Cause<E>) => Option.Option<Cause<never>> = internal.keepDefects
 
+// TODO(4.0): remove? what's the point of this API?
 /**
  * Linearizes a `Cause` into a set of parallel causes, each containing a
  * sequential chain of failures.

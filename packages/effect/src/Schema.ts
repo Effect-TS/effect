@@ -5766,6 +5766,7 @@ const HRTime: Schema<readonly [seconds: number, nanos: number]> = Union(FiniteHR
 const isDurationValue = (u: duration_.DurationValue | typeof HRTime.Type): u is duration_.DurationValue =>
   typeof u === "object"
 
+// TODO(4.0): remove HRTime union member
 /**
  * A schema that converts a JSON-compatible tagged union into a `Duration`.
  *
@@ -5773,7 +5774,6 @@ const isDurationValue = (u: duration_.DurationValue | typeof HRTime.Type): u is 
  * @since 3.10.0
  */
 export class Duration extends transform(
-  // TODO: remove HRTime in next major version
   Union(DurationValue, HRTime),
   DurationFromSelf,
   {

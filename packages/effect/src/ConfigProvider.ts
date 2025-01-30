@@ -195,7 +195,7 @@ export const fromFlat: (flat: ConfigProvider.Flat) => ConfigProvider = internal.
  */
 export const fromJson: (json: unknown) => ConfigProvider = internal.fromJson
 
-// TODO: use `_` for nested configs instead of `.` in next major
+// TODO(4.0): use `_` for nested configs instead of `.` in next major
 /**
  * Constructs a ConfigProvider using a map and the specified delimiter string,
  * which determines how to split the keys in the map into path segments.

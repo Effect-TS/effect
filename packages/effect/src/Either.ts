@@ -35,6 +35,7 @@ export const TypeId: unique symbol = either.TypeId
  */
 export type TypeId = typeof TypeId
 
+// TODO(4.0): flip the order of the type parameters
 /**
  * @category models
  * @since 2.0.0
@@ -52,6 +53,7 @@ export interface Left<out L, out R> extends Pipeable, Inspectable {
   [Unify.ignoreSymbol]?: EitherUnifyIgnore
 }
 
+// TODO(4.0): flip the order of the type parameters
 /**
  * @category models
  * @since 2.0.0
