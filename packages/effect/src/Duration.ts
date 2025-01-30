@@ -103,7 +103,6 @@ export const decode = (input: DurationInput): Duration => {
       return nanos(BigInt(input[0]) * bigint1e9 + BigInt(input[1]))
     }
   } else if (isString(input)) {
-    DURATION_REGEX.lastIndex = 0 // Reset the lastIndex before each use
     const match = DURATION_REGEX.exec(input)
     if (match) {
       const [_, valueStr, unit] = match
