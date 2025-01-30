@@ -653,7 +653,6 @@ export const checkInterruptible = <A, E, R>(
   f: (isInterruptible: boolean) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => withFiberRuntime((_, status) => f(runtimeFlags_.interruption(status.runtimeFlags)))
 
-const spanSymbol = Symbol.for("effect/SpanAnnotation")
 const originalSymbol = Symbol.for("effect/OriginalAnnotation")
 
 /* @internal */
@@ -670,10 +669,10 @@ export const capture = <E>(obj: E & object, span: Option.Option<Tracer.Span>): E
   if (Option.isSome(span)) {
     return new Proxy(obj, {
       has(target, p) {
-        return p === spanSymbol || p === originalSymbol || p in target
+        return p === internalCause.spanSymbol || p === originalSymbol || p in target
       },
       get(target, p) {
-        if (p === spanSymbol) {
+        if (p === internalCause.spanSymbol) {
           return span.value
         }
         if (p === originalSymbol) {
@@ -689,7 +688,7 @@ export const capture = <E>(obj: E & object, span: Option.Option<Tracer.Span>): E
 
 /* @internal */
 export const die = (defect: unknown): Effect.Effect<never> =>
-  isObject(defect) && !(spanSymbol in defect) ?
+  isObject(defect) && !(internalCause.spanSymbol in defect) ?
     withFiberRuntime((fiber) => failCause(internalCause.die(capture(defect, currentSpanFromFiber(fiber)))))
     : failCause(internalCause.die(defect))
 
@@ -716,7 +715,7 @@ export const exit = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Exit.
 
 /* @internal */
 export const fail = <E>(error: E): Effect.Effect<never, E> =>
-  isObject(error) && !(spanSymbol in error) ?
+  isObject(error) && !(internalCause.spanSymbol in error) ?
     withFiberRuntime((fiber) => failCause(internalCause.fail(capture(error, currentSpanFromFiber(fiber)))))
     : failCause(internalCause.fail(error))
 

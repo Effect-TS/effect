@@ -1129,7 +1129,8 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
   return out.join("\n")
 }
 
-const spanSymbol = Symbol.for("effect/SpanAnnotation")
+/** @internal */
+export const spanSymbol = Symbol.for("effect/SpanAnnotation")
 
 /** @internal */
 export const prettyErrors = <E>(cause: Cause.Cause<E>): Array<PrettyError> =>
