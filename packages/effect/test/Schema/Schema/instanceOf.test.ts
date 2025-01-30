@@ -1,5 +1,4 @@
 import * as P from "effect/ParseResult"
-import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
@@ -39,16 +38,14 @@ describe("instanceOf", () => {
   describe("pretty", () => {
     it("default", () => {
       const schema = S.instanceOf(Set)
-      const pretty = Pretty.make(schema)
-      strictEqual(pretty(new Set()), "[object Set]")
+      Util.assertions.pretty(schema, new Set(), "[object Set]")
     })
 
     it("override", () => {
       const schema = S.instanceOf(Set, {
         pretty: () => (set) => `new Set(${JSON.stringify(Array.from(set.values()))})`
       })
-      const pretty = Pretty.make(schema)
-      strictEqual(pretty(new Set([1, 2, 3])), "new Set([1,2,3])")
+      Util.assertions.pretty(schema, new Set([1, 2, 3]), "new Set([1,2,3])")
     })
   })
 })

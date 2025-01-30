@@ -1,8 +1,7 @@
 import { BigDecimal } from "effect"
-import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("BigDecimalFromSelf", () => {
@@ -34,11 +33,10 @@ describe("BigDecimalFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.BigDecimalFromSelf
-    const pretty = Pretty.make(schema)
 
-    strictEqual(pretty(BigDecimal.fromNumber(123)), "BigDecimal(123)")
-    strictEqual(pretty(BigDecimal.unsafeFromString("123.100")), "BigDecimal(123.1)")
-    strictEqual(pretty(BigDecimal.unsafeFromString("")), "BigDecimal(0)")
+    Util.assertions.pretty(schema, BigDecimal.fromNumber(123), "BigDecimal(123)")
+    Util.assertions.pretty(schema, BigDecimal.unsafeFromString("123.100"), "BigDecimal(123.1)")
+    Util.assertions.pretty(schema, BigDecimal.unsafeFromString(""), "BigDecimal(0)")
   })
 
   it("equivalence", () => {

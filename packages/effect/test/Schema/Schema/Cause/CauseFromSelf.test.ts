@@ -1,9 +1,7 @@
 import * as Cause from "effect/Cause"
 import * as FiberId from "effect/FiberId"
-import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { strictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("CauseFromSelf", () => {
@@ -60,20 +58,22 @@ describe("CauseFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.CauseFromSelf({ error: S.String, defect: S.Unknown })
-    const pretty = Pretty.make(schema)
-    strictEqual(pretty(Cause.die("error")), `Cause.die(Error: error)`)
-    strictEqual(pretty(Cause.empty), `Cause.empty`)
-    strictEqual(pretty(Cause.fail("error")), `Cause.fail("error")`)
-    strictEqual(
-      pretty(Cause.interrupt(FiberId.composite(FiberId.none, FiberId.none))),
+    Util.assertions.pretty(schema, Cause.die("error"), `Cause.die(Error: error)`)
+    Util.assertions.pretty(schema, Cause.empty, `Cause.empty`)
+    Util.assertions.pretty(schema, Cause.fail("error"), `Cause.fail("error")`)
+    Util.assertions.pretty(
+      schema,
+      Cause.interrupt(FiberId.composite(FiberId.none, FiberId.none)),
       `Cause.interrupt(FiberId.composite(FiberId.none, FiberId.none))`
     )
-    strictEqual(
-      pretty(Cause.parallel(Cause.die("error"), Cause.fail("error"))),
+    Util.assertions.pretty(
+      schema,
+      Cause.parallel(Cause.die("error"), Cause.fail("error")),
       `Cause.parallel(Cause.die(Error: error), Cause.fail("error"))`
     )
-    strictEqual(
-      pretty(Cause.sequential(Cause.die("error"), Cause.fail("error"))),
+    Util.assertions.pretty(
+      schema,
+      Cause.sequential(Cause.die("error"), Cause.fail("error")),
       `Cause.sequential(Cause.die(Error: error), Cause.fail("error"))`
     )
   })

@@ -1,5 +1,17 @@
 import type { SchemaAST } from "effect"
-import { Arbitrary, Cause, Context, Effect, Either, FastCheck, ParseResult, Predicate, Runtime, Schema } from "effect"
+import {
+  Arbitrary,
+  Cause,
+  Context,
+  Effect,
+  Either,
+  FastCheck,
+  ParseResult,
+  Predicate,
+  Pretty,
+  Runtime,
+  Schema
+} from "effect"
 
 // Defines parameters for FastCheck that exclude typed properties
 export type UntypedParameters = Omit<FastCheck.Parameters<any>, "examples" | "reporter" | "asyncReporter">
@@ -21,13 +33,14 @@ export class AssertConfig extends Context.Tag("AssertConfig")<AssertConfig, {
 // Provides assertion utilities for testing
 export class Assert extends Context.Tag("Assert")<Assert, {
   readonly deepStrictEqual: (actual: unknown, expected: unknown) => void
+  readonly strictEqual: (actual: unknown, expected: unknown) => void
   readonly throws: (thunk: () => void, predicate?: (e: unknown) => boolean) => void
   readonly fail: (message: string) => void
 }>() {}
 
 // Provides various assertions for Schema testing
 export const assertions = Effect.gen(function*() {
-  const { deepStrictEqual, fail, throws } = yield* Assert
+  const { deepStrictEqual, fail, strictEqual, throws } = yield* Assert
   const config = yield* AssertConfig
 
   const out = {
@@ -315,6 +328,11 @@ export const assertions = Effect.gen(function*() {
 
     parseError(f: () => void, message: string) {
       throws(f, (err) => err instanceof ParseResult.ParseError && err.message === message)
+    },
+
+    pretty<A, I, R>(schema: Schema.Schema<A, I, R>, a: A, expected: string) {
+      const pretty = Pretty.make(schema)
+      strictEqual(pretty(a), expected)
     }
   }
 

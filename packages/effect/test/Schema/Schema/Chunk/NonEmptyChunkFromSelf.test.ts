@@ -1,10 +1,9 @@
 import * as Arbitrary from "effect/Arbitrary"
 import * as C from "effect/Chunk"
 import * as FastCheck from "effect/FastCheck"
-import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("NonEmptyChunkFromSelf", () => {
@@ -56,8 +55,7 @@ describe("NonEmptyChunkFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.NonEmptyChunkFromSelf(S.String)
-    const pretty = Pretty.make(schema)
-    strictEqual(pretty(C.make("a", "b")), `NonEmptyChunk("a", "b")`)
+    Util.assertions.pretty(schema, C.make("a", "b"), `NonEmptyChunk("a", "b")`)
   })
 
   it("equivalence", () => {

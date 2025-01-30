@@ -1,7 +1,5 @@
-import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { strictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("DateFromSelf", () => {
@@ -28,7 +26,7 @@ describe("DateFromSelf", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.make(S.DateFromSelf)
-    strictEqual(pretty(new Date(0)), `new Date("1970-01-01T00:00:00.000Z")`)
+    const schema = S.DateFromSelf
+    Util.assertions.pretty(schema, new Date(0), `new Date("1970-01-01T00:00:00.000Z")`)
   })
 })

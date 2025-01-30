@@ -1,9 +1,8 @@
 import * as O from "effect/Option"
 import * as P from "effect/ParseResult"
-import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("OptionFromSelf", () => {
@@ -41,8 +40,7 @@ describe("OptionFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.OptionFromSelf(S.Number)
-    const pretty = Pretty.make(schema)
-    strictEqual(pretty(O.none()), "none()")
-    strictEqual(pretty(O.some(1)), "some(1)")
+    Util.assertions.pretty(schema, O.none(), "none()")
+    Util.assertions.pretty(schema, O.some(1), "some(1)")
   })
 })

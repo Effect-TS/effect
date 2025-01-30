@@ -1,11 +1,10 @@
 import * as N from "effect/Number"
 import * as P from "effect/ParseResult"
-import * as Pretty from "effect/Pretty"
 import * as Schema from "effect/Schema"
 import * as SortedSet from "effect/SortedSet"
 import * as S from "effect/String"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("SortedSetFromSelf", () => {
@@ -70,9 +69,8 @@ describe("SortedSetFromSelf", () => {
 
   it("pretty", () => {
     const schema = Schema.SortedSetFromSelf(Schema.String, S.Order, S.Order)
-    const pretty = Pretty.make(schema)
-    strictEqual(pretty(SortedSet.fromIterable([] as Array<string>, S.Order)), "new SortedSet([])")
-    strictEqual(pretty(SortedSet.fromIterable(["a", "b"], S.Order)), `new SortedSet(["a", "b"])`)
+    Util.assertions.pretty(schema, SortedSet.fromIterable([] as Array<string>, S.Order), "new SortedSet([])")
+    Util.assertions.pretty(schema, SortedSet.fromIterable(["a", "b"], S.Order), `new SortedSet(["a", "b"])`)
   })
 
   it("equivalence", () => {
