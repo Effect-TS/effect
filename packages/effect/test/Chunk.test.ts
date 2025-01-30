@@ -637,7 +637,6 @@ describe("Chunk", () => {
         )
       })
     })
-    // TODO add tests for 100% coverage: left & right diff depths & depth > 0
   })
 
   it("zip", () => {

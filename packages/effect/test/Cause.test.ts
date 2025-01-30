@@ -629,7 +629,6 @@ describe("Cause", () => {
       }))
     })
 
-    // TODO: what's the point of this API?
     it("linearize", () => {
       const expectLinearize = <E>(cause: Cause.Cause<E>, expected: Array<Cause.Cause<E>>) => {
         deepStrictEqual([...Cause.linearize(cause)], expected)
