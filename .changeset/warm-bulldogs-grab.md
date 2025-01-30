@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Added `Duration.unsafeFormatIso` for formatting durations as ISO8601 string.
+Added `Duration.unsafeFormatIso` and `Duration.fromIso` for formatting and parsing ISO8601 durations.
