@@ -32,7 +32,7 @@ describe("Cause", () => {
       if (typeof window === "undefined") {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { inspect } = require("node:util")
-        assertTrue(inspect(ex).includes("Cause.test.ts:19")) // <= reference to the line above
+        assertTrue(inspect(ex).includes("Cause.test.ts:28")) // <= reference to the line above
       }
     })
   })
