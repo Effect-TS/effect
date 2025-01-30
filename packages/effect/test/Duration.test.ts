@@ -520,4 +520,84 @@ describe("Duration", () => {
     expect(Duration.toWeeks("2 weeks")).toBe(2)
     expect(Duration.toWeeks("14 days")).toBe(2)
   })
+
+  it("unsafeFormatIso", () => {
+    expect(Duration.unsafeFormatIso(Duration.zero)).toBe("PT0S")
+    expect(Duration.unsafeFormatIso(Duration.seconds(2))).toBe("PT2S")
+    expect(Duration.unsafeFormatIso(Duration.minutes(5))).toBe("PT5M")
+    expect(Duration.unsafeFormatIso(Duration.hours(3))).toBe("PT3H")
+    expect(Duration.unsafeFormatIso(Duration.days(1))).toBe("P1D")
+
+    expect(Duration.unsafeFormatIso(Duration.minutes(90))).toBe("PT1H30M")
+    expect(Duration.unsafeFormatIso(Duration.hours(25))).toBe("P1DT1H")
+    expect(Duration.unsafeFormatIso(Duration.days(7))).toBe("P1W")
+    expect(Duration.unsafeFormatIso(Duration.days(10))).toBe("P1W3D")
+
+    expect(Duration.unsafeFormatIso(Duration.millis(1500))).toBe("PT1.5S")
+    expect(Duration.unsafeFormatIso(Duration.micros(1500n))).toBe("PT0.0015S")
+    expect(Duration.unsafeFormatIso(Duration.nanos(1500n))).toBe("PT0.0000015S")
+
+    expect(Duration.unsafeFormatIso(
+      Duration.days(1).pipe(
+        Duration.sum(Duration.hours(2)),
+        Duration.sum(Duration.minutes(30))
+      )
+    )).toBe("P1DT2H30M")
+
+    expect(Duration.unsafeFormatIso(
+      Duration.hours(2).pipe(
+        Duration.sum(Duration.minutes(30)),
+        Duration.sum(Duration.millis(1500))
+      )
+    )).toBe("PT2H30M1.5S")
+
+    expect(Duration.unsafeFormatIso("1 day")).toBe("P1D")
+    expect(Duration.unsafeFormatIso("90 minutes")).toBe("PT1H30M")
+    expect(Duration.unsafeFormatIso("1.5 seconds")).toBe("PT1.5S")
+
+    expect(() => Duration.unsafeFormatIso(Duration.infinity))
+      .toThrow(new RangeError("Cannot format infinite duration"))
+  })
+
+  it("fromIso", () => {
+    expect(Duration.fromIso("P1D")).toEqual(Option.some(Duration.days(1)))
+    expect(Duration.fromIso("PT1H")).toEqual(Option.some(Duration.hours(1)))
+    expect(Duration.fromIso("PT1M")).toEqual(Option.some(Duration.minutes(1)))
+    expect(Duration.fromIso("PT1.5S")).toEqual(Option.some(Duration.seconds(1.5)))
+    expect(Duration.fromIso("P1Y")).toEqual(Option.some(Duration.days(365)))
+    expect(Duration.fromIso("P1M")).toEqual(Option.some(Duration.days(30)))
+    expect(Duration.fromIso("P1W")).toEqual(Option.some(Duration.days(7)))
+
+    expect(Duration.fromIso("P1Y2M3DT4H5M6.789S")).toEqual(
+      Option.some(Duration.seconds(
+        365 * 24 * 60 * 60 + // 1 year
+          60 * 24 * 60 * 60 + // 2 months
+          3 * 24 * 60 * 60 + // 3 days
+          4 * 60 * 60 + // 4 hours
+          5 * 60 + // 5 minutes
+          6.789 // 6.789 seconds
+      ))
+    )
+
+    expect(Duration.fromIso("P1DT12H")).toEqual(
+      Option.some(Duration.hours(36))
+    )
+
+    expect(Duration.fromIso("1D")).toEqual(Option.none())
+    expect(Duration.fromIso("P1H")).toEqual(Option.none())
+    expect(Duration.fromIso("PT1D")).toEqual(Option.none())
+    expect(Duration.fromIso("P1.5D")).toEqual(Option.none())
+    expect(Duration.fromIso("P1.5Y")).toEqual(Option.none())
+    expect(Duration.fromIso("P1.5M")).toEqual(Option.none())
+    expect(Duration.fromIso("PT1.5H")).toEqual(Option.none())
+    expect(Duration.fromIso("PT1.5M")).toEqual(Option.none())
+    expect(Duration.fromIso("PDT1H")).toEqual(Option.none())
+    expect(Duration.fromIso("P1D2H")).toEqual(Option.none())
+    expect(Duration.fromIso("P")).toEqual(Option.none())
+    expect(Duration.fromIso("PT")).toEqual(Option.none())
+    expect(Duration.fromIso("random string")).toEqual(Option.none())
+    expect(Duration.fromIso("P1YT")).toEqual(Option.none())
+    expect(Duration.fromIso("P1S")).toEqual(Option.none())
+    expect(Duration.fromIso("P1DT1S1H")).toEqual(Option.none())
+  })
 })
