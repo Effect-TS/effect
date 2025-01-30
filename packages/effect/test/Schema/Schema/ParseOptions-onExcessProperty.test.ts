@@ -1,8 +1,8 @@
-import * as Either from "effect/Either"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertLeft } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("`onExcessProperty` option", () => {
   describe("`ignore` option", () => {
@@ -88,28 +88,30 @@ describe("`onExcessProperty` option", () => {
         const schema = S.Struct({ a: S.String })
         const input = { a: "a", b: 1 }
         const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
-        expect(e).toEqual(Either.left(
+        assertLeft(
+          e,
           new ParseResult.Composite(
             schema.ast,
             input,
             new ParseResult.Pointer("b", input, new ParseResult.Unexpected(1, `is unexpected, expected: "a"`)),
             {}
           )
-        ))
+        )
       })
 
       it("tuple", () => {
         const schema = S.Tuple(S.String)
         const input = ["a", 1]
         const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
-        expect(e).toEqual(Either.left(
+        assertLeft(
+          e,
           new ParseResult.Composite(
             schema.ast,
             input,
             new ParseResult.Pointer(1, input, new ParseResult.Unexpected(1, `is unexpected, expected: 0`)),
             []
           )
-        ))
+        )
       })
     })
 

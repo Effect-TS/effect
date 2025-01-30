@@ -1,20 +1,34 @@
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Context from "effect/Context"
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import { constFalse, constTrue, constVoid, pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as STM from "effect/STM"
-import * as TDeferred from "effect/TDeferred"
+import {
+  Cause,
+  Chunk,
+  Context,
+  Deferred,
+  Effect,
+  Either,
+  Exit,
+  FastCheck as fc,
+  Fiber,
+  Option,
+  pipe,
+  STM,
+  TDeferred,
+  TQueue,
+  TRef
+} from "effect"
+import { constFalse, constTrue, constVoid } from "effect/Function"
+import {
+  assertFailure,
+  assertFalse,
+  assertLeft,
+  assertNone,
+  assertRight,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual
+} from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import * as TQueue from "effect/TQueue"
-import * as TRef from "effect/TRef"
-import * as fc from "fast-check"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 interface STMEnv {
   readonly ref: TRef.TRef<number>
@@ -149,7 +163,7 @@ describe("STM", () => {
         STM.catchAll((s) => STM.succeed(`${s} phew`))
       )
       const result = yield* STM.commit(transaction)
-      assert.deepStrictEqual(result, "Ouch! phew")
+      deepStrictEqual(result, "Ouch! phew")
     }))
 
   it.effect("collectAll - ordering", () =>
@@ -162,7 +176,7 @@ describe("STM", () => {
         STM.flatMap((queue) => STM.all(Array.from({ length: 3 }, () => TQueue.take(queue))))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("catchSome - catches matched errors", () =>
@@ -177,7 +191,7 @@ describe("STM", () => {
         )
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, "gotcha")
+      deepStrictEqual(result, "gotcha")
     }))
 
   it.effect("catchSome - lets the error pass", () =>
@@ -193,7 +207,7 @@ describe("STM", () => {
         )
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("collectAll - collects a list of transactional effects to a single transaction", () =>
@@ -206,21 +220,21 @@ describe("STM", () => {
           concurrency: "unbounded"
         })
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(chunk))
+      deepStrictEqual(Array.from(result), Array.from(chunk))
     }))
 
   it.effect("either - convert a successful computation into a Right", () =>
     Effect.gen(function*($) {
       const transaction = STM.either(STM.succeed(42))
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Either.right(42))
+      deepStrictEqual(result, Either.right(42))
     }))
 
   it.effect("either - convert a failed computation into a Left", () =>
     Effect.gen(function*($) {
       const transaction = STM.either(STM.fail("Ouch"))
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      deepStrictEqual(result, Either.left("Ouch"))
     }))
 
   it.effect("environment - access and provide outside transaction", () =>
@@ -236,7 +250,7 @@ describe("STM", () => {
           )
         )
       ))
-      assert.deepStrictEqual(result, 1)
+      deepStrictEqual(result, 1)
     }))
 
   it.effect("environment - access and provide inside transaction", () =>
@@ -251,7 +265,7 @@ describe("STM", () => {
           )
         )
       ))
-      assert.deepStrictEqual(result, 1)
+      deepStrictEqual(result, 1)
     }))
 
   it.effect("eventually - succeeds", () =>
@@ -268,13 +282,13 @@ describe("STM", () => {
         STM.flatMap((ref) => STM.eventually(f(ref)))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
 
   it.effect("fail", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.exit(STM.commit(STM.fail("Ouch"))))
-      assert.deepStrictEqual(result, Exit.fail("Ouch"))
+      deepStrictEqual(result, Exit.fail("Ouch"))
     }))
 
   it.effect("filter - filters a collection using an effectual predicate", () =>
@@ -290,8 +304,8 @@ describe("STM", () => {
         return { results, effects }
       })
       const { effects, results } = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(Array.from(results), [2, 4, 6, 6])
-      assert.deepStrictEqual(Array.from(effects), array)
+      deepStrictEqual(Array.from(results), [2, 4, 6, 6])
+      deepStrictEqual(Array.from(effects), array)
     }))
 
   it.effect("filterOrDie - dies when predicate fails", () =>
@@ -302,7 +316,7 @@ describe("STM", () => {
         STM.filterOrDie((n) => n !== 1, () => error)
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("filterOrDieMessage - dies with message when predicate fails", () =>
@@ -312,7 +326,7 @@ describe("STM", () => {
         STM.filterOrDieMessage((n) => n !== 1, "Ouch")
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.die(new Cause.RuntimeException("Ouch")))
+      deepStrictEqual(result, Exit.die(new Cause.RuntimeException("Ouch")))
     }))
 
   it.effect("filterOrElse - returns checked failure", () =>
@@ -322,7 +336,7 @@ describe("STM", () => {
         STM.filterOrElse((n) => n === 1, () => STM.succeed(2))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("filterOrElse - returns held value", () =>
@@ -332,7 +346,7 @@ describe("STM", () => {
         STM.filterOrElse((n) => n !== 1, () => STM.succeed(2))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 2)
+      strictEqual(result, 2)
     }))
 
   it.effect("filterOrElse - returns checked failure", () =>
@@ -342,7 +356,7 @@ describe("STM", () => {
         STM.filterOrElse((n) => n === 1, (n) => STM.succeed(n + 1))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("filterOrElse - returns held value", () =>
@@ -352,7 +366,7 @@ describe("STM", () => {
         STM.filterOrElse((n) => n !== 1, (n) => STM.succeed(n + 1))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 2)
+      strictEqual(result, 2)
     }))
 
   it.effect("filterOrElse - returns error", () =>
@@ -364,7 +378,7 @@ describe("STM", () => {
         STM.filterOrElse((n) => n === 1, (n) => STM.succeed(n + 1))
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("filterOrFail - returns failure when predicate fails", () =>
@@ -375,14 +389,14 @@ describe("STM", () => {
         STM.filterOrFail((n) => n !== 1, () => error)
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("flatten", () =>
     Effect.gen(function*($) {
       const transaction = STM.flatten(STM.succeed(STM.succeed("test")))
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, "test")
+      strictEqual(result, "test")
     }))
 
   it.effect("forEach - performs an action on each chunk element and return a single transaction", () =>
@@ -392,7 +406,7 @@ describe("STM", () => {
       yield* $(pipe(chunk, STM.forEach((n) => pipe(ref, TRef.update((i) => i + n)))))
       const expected = pipe(chunk, Chunk.reduceRight(0, (acc, curr) => acc + curr))
       const result = yield* $(TRef.get(ref))
-      assert.strictEqual(result, expected)
+      strictEqual(result, expected)
     }))
 
   it.effect("forEach - performs an action on each chunk element", () =>
@@ -402,7 +416,7 @@ describe("STM", () => {
       yield* $(STM.forEach(chunk, (n) => pipe(ref, TRef.update((i) => i + n)), { discard: true }))
       const expected = pipe(chunk, Chunk.reduceRight(0, (acc, curr) => acc + curr))
       const result = yield* $(TRef.get(ref))
-      assert.strictEqual(result, expected)
+      strictEqual(result, expected)
     }))
 
   it.effect("fold - handles both failure and success", () =>
@@ -412,8 +426,8 @@ describe("STM", () => {
         failure: pipe(STM.fail("no"), STM.match({ onFailure: () => -1, onSuccess: () => 1 }))
       })
       const { failure, success } = yield* $(STM.commit(transaction))
-      assert.strictEqual(success, 1)
-      assert.strictEqual(failure, -1)
+      strictEqual(success, 1)
+      strictEqual(failure, -1)
     }))
 
   it.effect("foldSTM - folds over the `STM` effect, and handle failure and success", () =>
@@ -423,29 +437,29 @@ describe("STM", () => {
         failure: pipe(STM.fail("no"), STM.matchSTM({ onFailure: STM.succeed, onSuccess: () => STM.succeed("yes") }))
       })
       const { failure, success } = yield* $(STM.commit(transaction))
-      assert.strictEqual(failure, "no")
-      assert.strictEqual(success, "yes")
+      strictEqual(failure, "no")
+      strictEqual(success, "yes")
     }))
 
   it.effect("head - extracts the first value from an iterable", () =>
     Effect.gen(function*($) {
       const transaction = STM.head(STM.succeed([1, 2]))
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("head - returns None if the iterable is empty", () =>
     Effect.gen(function*($) {
       const transaction = STM.head(STM.succeed([]))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail(Option.none()))
+      assertFailure(result, Cause.fail(Option.none()))
     }))
 
   it.effect("head - returns Some if there is an error", () =>
     Effect.gen(function*($) {
       const transaction = STM.head(STM.fail("Ouch"))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail(Option.some("Ouch")))
+      assertFailure(result, Cause.fail(Option.some("Ouch")))
     }))
 
   it.effect("if - runs `onTrue` if result is `true`", () =>
@@ -458,7 +472,7 @@ describe("STM", () => {
         })
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("if - runs `onFalse` if result is `false`", () =>
@@ -471,42 +485,42 @@ describe("STM", () => {
         })
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, -1)
+      strictEqual(result, -1)
     }))
 
   it.effect("mapBoth - success value", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.succeed(1), STM.mapBoth({ onFailure: () => -1, onSuccess: (n) => `${n} as string` }))
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, "1 as string")
+      strictEqual(result, "1 as string")
     }))
 
   it.effect("mapBoth - success value", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.fail(-1), STM.mapBoth({ onFailure: (n) => `${n} as string`, onSuccess: () => 0 }))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail("-1 as string"))
+      deepStrictEqual(result, Exit.fail("-1 as string"))
     }))
 
   it.effect("mapError - map from one error to another", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.fail(-1), STM.mapError(() => "Ouch"))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail("Ouch"))
+      deepStrictEqual(result, Exit.fail("Ouch"))
     }))
 
   it.effect("merge - on error", () =>
     Effect.gen(function*($) {
       const transaction = STM.merge(STM.fromEither(Either.left(1)))
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("merge - on success", () =>
     Effect.gen(function*($) {
       const transaction = STM.merge(STM.fromEither(Either.right(1)))
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("mergeAll - return zero element on empty input", () =>
@@ -516,7 +530,7 @@ describe("STM", () => {
         STM.mergeAll(42, () => 43)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
 
   it.effect("mergeAll - merge iterable using function", () =>
@@ -526,7 +540,7 @@ describe("STM", () => {
         STM.mergeAll(1, (acc, curr) => acc + curr)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1 + 3 + 5 + 7)
+      strictEqual(result, 1 + 3 + 5 + 7)
     }))
 
   it.effect("mergeAll - return error if it exists in list", () =>
@@ -536,21 +550,21 @@ describe("STM", () => {
         STM.mergeAll(void 0 as void, constVoid)
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail(1))
+      deepStrictEqual(result, Exit.fail(1))
     }))
 
   it.effect("none - on None", () =>
     Effect.gen(function*($) {
       const transaction = STM.none(STM.succeed(Option.none()))
       const result = yield* $(STM.commit(transaction))
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
 
   it.effect("none - on Some", () =>
     Effect.gen(function*($) {
       const transaction = STM.none(STM.succeed(Option.some(1)))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail(Option.none()))
+      assertFailure(result, Cause.fail(Option.none()))
     }))
 
   it.effect("none - on error", () =>
@@ -558,21 +572,21 @@ describe("STM", () => {
       const error = new Cause.RuntimeException("Ouch")
       const transaction = STM.none(STM.fail(error))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail(Option.some(error)))
+      assertFailure(result, Cause.fail(Option.some(error)))
     }))
 
   it.effect("option - success converts to Some", () =>
     Effect.gen(function*($) {
       const transaction = STM.option(STM.succeed(42))
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Option.some(42))
+      assertSome(result, 42)
     }))
 
   it.effect("option - failure converts to None", () =>
     Effect.gen(function*($) {
       const transaction = STM.option(STM.fail("Ouch"))
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("orElse - succeeds if left succeeds", () =>
@@ -580,7 +594,7 @@ describe("STM", () => {
       const left = STM.succeed("left")
       const right = STM.succeed("right")
       const result = yield* $(STM.commit(pipe(left, STM.orElse(() => right))))
-      assert.strictEqual(result, "left")
+      strictEqual(result, "left")
     }))
 
   it.effect("orElse - succeeds if right succeeds", () =>
@@ -588,7 +602,7 @@ describe("STM", () => {
       const left = STM.retry
       const right = STM.succeed("right")
       const result = yield* $(STM.commit(pipe(left, STM.orElse(() => right))))
-      assert.strictEqual(result, "right")
+      strictEqual(result, "right")
     }))
 
   it.effect("orElse - tries alternative once left retries", () =>
@@ -598,7 +612,7 @@ describe("STM", () => {
       const right = pipe(ref, TRef.update((n) => n + 200))
       yield* $(pipe(left, STM.orElse(() => right)))
       const result = yield* $(TRef.get(ref))
-      assert.strictEqual(result, 200)
+      strictEqual(result, 200)
     }))
 
   it.effect("orElse - tries alternative once left fails", () =>
@@ -608,7 +622,7 @@ describe("STM", () => {
       const right = pipe(ref, TRef.update((n) => n + 200))
       yield* $(pipe(left, STM.orElse(() => right)))
       const result = yield* $(TRef.get(ref))
-      assert.strictEqual(result, 200)
+      strictEqual(result, 200)
     }))
 
   it.effect("orElse - fail if alternative fails", () =>
@@ -616,7 +630,7 @@ describe("STM", () => {
       const left = STM.fail("left")
       const right = STM.fail("right")
       const result = yield* $(pipe(left, STM.orElse(() => right), Effect.exit))
-      assert.deepStrictEqual(result, Exit.fail("right"))
+      assertFailure(result, Cause.fail("right"))
     }))
 
   it.effect("orElseEither - orElseEither returns result of the first successful transaction", () =>
@@ -624,72 +638,72 @@ describe("STM", () => {
       const result1 = yield* $(pipe(STM.retry, STM.orElseEither(() => STM.succeed(42))))
       const result2 = yield* $(pipe(STM.succeed(1), STM.orElseEither(() => STM.succeed("no"))))
       const result3 = yield* $(pipe(STM.succeed(2), STM.orElseEither(() => STM.retry)))
-      assert.deepStrictEqual(result1, Either.right(42))
-      assert.deepStrictEqual(result2, Either.left(1))
-      assert.deepStrictEqual(result3, Either.left(2))
+      assertRight(result1, 42)
+      assertLeft(result2, 1)
+      assertLeft(result3, 2)
     }))
 
   it.effect("orElseFail - tries left first", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.succeed(true), STM.orElseFail(() => false))
       const result = yield* $(STM.commit(transaction))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("orElseFail - fails with the specified error once left retries", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.retry, STM.orElseFail(() => false), STM.either)
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Either.left(false))
+      assertLeft(result, false)
     }))
 
   it.effect("orElseFail - fails with the specified error once left fails", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.fail(true), STM.orElseFail(() => false), STM.either)
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Either.left(false))
+      assertLeft(result, false)
     }))
 
   it.effect("orElseSucceed - tries left first", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.succeed(true), STM.orElseSucceed(() => false))
       const result = yield* $(STM.commit(transaction))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("orElseSucceed - succeeds with the specified error once left retries", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.retry, STM.orElseSucceed(() => false))
       const result = yield* $(STM.commit(transaction))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.effect("orElseSucceed - succeeds with the specified error once left fails", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.fail(true), STM.orElseSucceed(() => false))
       const result = yield* $(STM.commit(transaction))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.effect("unsome - converts Some in E to error in E", () =>
     Effect.gen(function*($) {
       const transaction = STM.unsome(STM.fromEither(Either.left(Option.some("Ouch"))))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail("Ouch"))
+      deepStrictEqual(result, Exit.fail("Ouch"))
     }))
 
   it.effect("unsome - converts None in E to None in A", () =>
     Effect.gen(function*($) {
       const transaction = STM.unsome(STM.fromEither(Either.left(Option.none())))
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("unsome - no error", () =>
     Effect.gen(function*($) {
       const transaction = STM.unsome(STM.fromEither(Either.right(42)))
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Option.some(42))
+      assertSome(result, 42)
     }))
 
   it.effect("orDie - when failure should die", () =>
@@ -697,14 +711,14 @@ describe("STM", () => {
       const error = new Cause.RuntimeException("Ouch")
       const transaction = STM.orDie(STM.fail(error))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("orDie - when succeed should keep going", () =>
     Effect.gen(function*($) {
       const transaction = STM.orDie(STM.succeed(1))
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("orDieWith - when failure should die", () =>
@@ -712,7 +726,7 @@ describe("STM", () => {
       const error = new Cause.RuntimeException("Ouch")
       const transaction = pipe(STM.fail("-1"), STM.orDieWith(() => error))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("orDieWith - when succeed should keep going", () =>
@@ -720,7 +734,7 @@ describe("STM", () => {
       const error = new Cause.RuntimeException("Ouch")
       const transaction = pipe(STM.succeed(1), STM.orDieWith(() => error))
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("partition - collects only successes", () =>
@@ -728,8 +742,8 @@ describe("STM", () => {
       const input = Chunk.range(0, 9)
       const transaction = pipe(input, STM.partition(STM.succeed))
       const [left, right] = yield* $(STM.commit(transaction))
-      assert.isTrue(left.length === 0)
-      assert.deepStrictEqual(Array.from(right), Array.from(input))
+      assertTrue(left.length === 0)
+      deepStrictEqual(Array.from(right), Array.from(input))
     }))
 
   it.effect("partition - collects only failures", () =>
@@ -737,8 +751,8 @@ describe("STM", () => {
       const input = Chunk.range(0, 9)
       const transaction = pipe(input, STM.partition(STM.fail))
       const [left, right] = yield* $(STM.commit(transaction))
-      assert.isTrue(right.length === 0)
-      assert.deepStrictEqual(Array.from(left), Array.from(input))
+      assertTrue(right.length === 0)
+      deepStrictEqual(Array.from(left), Array.from(input))
     }))
 
   it.effect("partition - collects successes and failures", () =>
@@ -746,8 +760,8 @@ describe("STM", () => {
       const input = Chunk.range(0, 9)
       const transaction = pipe(input, STM.partition((n) => n % 2 === 0 ? STM.fail(n) : STM.succeed(n)))
       const [left, right] = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(Array.from(left), [0, 2, 4, 6, 8])
-      assert.deepStrictEqual(Array.from(right), [1, 3, 5, 7, 9])
+      deepStrictEqual(Array.from(left), [0, 2, 4, 6, 8])
+      deepStrictEqual(Array.from(right), [1, 3, 5, 7, 9])
     }))
 
   it.effect("partition - evaluates effects in the correct order", () =>
@@ -759,21 +773,21 @@ describe("STM", () => {
         return yield* $(TRef.get(ref))
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(Array.from(result), input)
+      deepStrictEqual(Array.from(result), input)
     }))
 
   it.it("reduce - with a successful step function sums the list properly", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer()), async (array) => {
       const transaction = pipe(array, STM.reduce(0, (acc, curr) => STM.succeed(acc + curr)))
       const result = await Effect.runPromise(STM.commit(transaction))
-      assert.strictEqual(result, array.reduce((acc, curr) => acc + curr, 0))
+      strictEqual(result, array.reduce((acc, curr) => acc + curr, 0))
     })))
 
   it.it("reduce - with a failing step function returns a failed transaction", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer(), { minLength: 1 }), async (array) => {
       const transaction = pipe(array, STM.reduce(0, () => STM.fail("Ouch")))
       const result = await Effect.runPromise(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail("Ouch"))
+      deepStrictEqual(result, Exit.fail("Ouch"))
     })))
 
   it.it("reduce - run sequentially from left to right", () =>
@@ -786,7 +800,7 @@ describe("STM", () => {
         )
       )
       const result = await Effect.runPromise(STM.commit(transaction))
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     })))
 
   it.effect("reduceAll", () =>
@@ -796,7 +810,7 @@ describe("STM", () => {
         STM.reduceAll(STM.succeed(1), (a, b) => a + b)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
 
   it.effect("reduceAll - empty iterable", () =>
@@ -806,21 +820,21 @@ describe("STM", () => {
         STM.reduceAll(STM.succeed(1), (a, b) => a + b)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.it("reduceRight - with a successful step function sums the list properly", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer()), async (array) => {
       const transaction = pipe(array, STM.reduceRight(0, (acc, curr) => STM.succeed(acc + curr)))
       const result = await Effect.runPromise(STM.commit(transaction))
-      assert.strictEqual(result, array.reduce((acc, curr) => acc + curr, 0))
+      strictEqual(result, array.reduce((acc, curr) => acc + curr, 0))
     })))
 
   it.it("reduceRight - with a failing step function returns a failed transaction", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer(), { minLength: 1 }), async (array) => {
       const transaction = pipe(array, STM.reduceRight(0, () => STM.fail("Ouch")))
       const result = await Effect.runPromise(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail("Ouch"))
+      deepStrictEqual(result, Exit.fail("Ouch"))
     })))
 
   it.it("reduceRight - run sequentially from right to left", () =>
@@ -833,7 +847,7 @@ describe("STM", () => {
         )
       )
       const result = await Effect.runPromise(STM.commit(transaction))
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     })))
 
   it.effect("reject - doesnt collect value", () =>
@@ -843,7 +857,7 @@ describe("STM", () => {
         STM.reject((n) => n !== 0 ? Option.some("Ouch") : Option.none())
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.effect("reject - returns failure ignoring value", () =>
@@ -853,7 +867,7 @@ describe("STM", () => {
         STM.reject((n) => n !== 0 ? Option.some("Ouch") : Option.none())
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail("Ouch"))
+      deepStrictEqual(result, Exit.fail("Ouch"))
     }))
 
   it.effect("rejectSTM - doesnt collect value", () =>
@@ -863,7 +877,7 @@ describe("STM", () => {
         STM.rejectSTM((n) => n !== 0 ? Option.some(STM.succeed("Ouch")) : Option.none())
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.effect("rejectSTM - returns failure ignoring value", () =>
@@ -873,7 +887,7 @@ describe("STM", () => {
         STM.rejectSTM((n) => n !== 0 ? Option.some(STM.succeed("Ouch")) : Option.none())
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail("Ouch"))
+      deepStrictEqual(result, Exit.fail("Ouch"))
     }))
 
   it.effect("repeatWhile - runs effect while it satisfies predicate", () =>
@@ -889,7 +903,7 @@ describe("STM", () => {
         )
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("repeatUntil - runs effect until it satisfies predicate", () =>
@@ -905,42 +919,42 @@ describe("STM", () => {
         )
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("replicate - zero", () =>
     Effect.gen(function*($) {
       const transaction = STM.all(STM.replicate(STM.succeed(12), 0))
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("replicate - negative", () =>
     Effect.gen(function*($) {
       const transaction = STM.all(STM.replicate(STM.succeed(12), -1))
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("replicate - positive", () =>
     Effect.gen(function*($) {
       const transaction = STM.all(STM.replicate(STM.succeed(12), 2))
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(Array.from(result), [12, 12])
+      deepStrictEqual(Array.from(result), [12, 12])
     }))
 
   it.effect("some - extracts the value from Some", () =>
     Effect.gen(function*($) {
       const transaction = STM.some(STM.succeed(Option.some(1)))
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("some - fails on None", () =>
     Effect.gen(function*($) {
       const transaction = STM.some(STM.succeed(Option.none()))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail(Option.none()))
+      assertFailure(result, Cause.fail(Option.none()))
     }))
 
   it.effect("some - fails on error", () =>
@@ -948,19 +962,19 @@ describe("STM", () => {
       const error = new Cause.RuntimeException("Ouch")
       const transaction = STM.some(STM.fail(error))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.fail(Option.some(error)))
+      assertFailure(result, Cause.fail(Option.some(error)))
     }))
 
   it.effect("succeed", () =>
     Effect.gen(function*($) {
       const result = yield* $(STM.commit(STM.succeed("test")))
-      assert.strictEqual(result, "test")
+      strictEqual(result, "test")
     }))
 
   it.effect("gen with context", () =>
     STM.gen({ context: "Context" as const }, function*() {
       const result = yield* STM.succeed(this.context)
-      assert.strictEqual(result, "Context")
+      strictEqual(result, "Context")
     }))
 
   it.effect("summarized - returns summary and value", () =>
@@ -975,7 +989,7 @@ describe("STM", () => {
         return [result[0][0], result[1], result[0][1]] as const
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [1, 2, 3])
+      deepStrictEqual(result, [1, 2, 3])
     }))
 
   it.effect("tap - applies the function to the result preserving the original result", () =>
@@ -990,8 +1004,8 @@ describe("STM", () => {
         )
       )
       const { result1, result2 } = yield* $(STM.commit(transaction))
-      assert.strictEqual(result1, 10)
-      assert.strictEqual(result2, 11)
+      strictEqual(result1, 10)
+      strictEqual(result2, 11)
     }))
 
   it.effect("tapBoth - applies the function to success values preserving the original result", () =>
@@ -1010,7 +1024,7 @@ describe("STM", () => {
         return [result, success] as const
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [42, 42])
+      deepStrictEqual(result, [42, 42])
     }))
 
   it.effect("tapBoth - applies the function to error values preserving the original error", () =>
@@ -1030,7 +1044,7 @@ describe("STM", () => {
         return [result, error] as const
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [Either.left("error"), "error"])
+      deepStrictEqual(result, [Either.left("error"), "error"])
     }))
 
   it.effect("tapError - should apply the function to the error result preserving the original error", () =>
@@ -1047,7 +1061,7 @@ describe("STM", () => {
         return [result, error]
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [Either.left("error"), "error"])
+      deepStrictEqual(result, [Either.left("error"), "error"])
     }))
 
   it.effect("validateAll - returns all errors if never valid", () =>
@@ -1059,7 +1073,7 @@ describe("STM", () => {
         Effect.mapError((chunk) => Array.from(chunk)),
         Effect.exit
       ))
-      assert.deepStrictEqual(result, Exit.fail(input))
+      deepStrictEqual(result, Exit.fail(input))
     }))
 
   it.effect("validateAll - accumulate errors and ignore successes", () =>
@@ -1071,7 +1085,7 @@ describe("STM", () => {
         Effect.mapError((chunk) => Array.from(chunk)),
         Effect.exit
       ))
-      assert.deepStrictEqual(result, Exit.fail([1, 3, 5, 7, 9]))
+      deepStrictEqual(result, Exit.fail([1, 3, 5, 7, 9]))
     }))
 
   it.effect("validateAll - accumulate successes", () =>
@@ -1082,7 +1096,7 @@ describe("STM", () => {
         STM.commit(transaction),
         Effect.map((chunk) => Array.from(chunk))
       ))
-      assert.deepStrictEqual(result, input)
+      deepStrictEqual(result, input)
     }))
 
   it.effect("validateFirst - returns all errors if never valid", () =>
@@ -1094,7 +1108,7 @@ describe("STM", () => {
         Effect.mapError((chunk) => Array.from(chunk)),
         Effect.exit
       ))
-      assert.deepStrictEqual(result, Exit.fail(input))
+      deepStrictEqual(result, Exit.fail(input))
     }))
 
   it.effect("validateFirst - runs sequentially and short circuits on first success validation", () =>
@@ -1111,7 +1125,7 @@ describe("STM", () => {
         return [result, counter] as const
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [6, 6])
+      deepStrictEqual(result, [6, 6])
     }))
 
   it.effect("validateFirst - returns errors in correct order", () =>
@@ -1123,7 +1137,7 @@ describe("STM", () => {
         Effect.mapError((chunk) => Array.from(chunk)),
         Effect.exit
       ))
-      assert.deepStrictEqual(result, Exit.fail(input))
+      deepStrictEqual(result, Exit.fail(input))
     }))
 
   it.effect("when - true", () =>
@@ -1136,7 +1150,7 @@ describe("STM", () => {
         STM.zipRight(TRef.get(ref))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("when - false", () =>
@@ -1149,7 +1163,7 @@ describe("STM", () => {
         STM.zipRight(TRef.get(ref))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.effect("whenSTM - true", () =>
@@ -1163,7 +1177,7 @@ describe("STM", () => {
         STM.zipRight(TRef.get(ref))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("whenSTM - false", () =>
@@ -1177,21 +1191,21 @@ describe("STM", () => {
         STM.zipRight(TRef.get(ref))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.effect("zip - return a tuple of two computations", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.succeed(1), STM.zip(STM.succeed("A")))
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [1, "A"])
+      deepStrictEqual(result, [1, "A"])
     }))
 
   it.effect("zipWith - perform an action on two computations", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.succeed(578), STM.zipWith(STM.succeed(2), (a, b) => a + b))
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 580)
+      strictEqual(result, 580)
     }))
 
   it.effect("stack-safety - long orElse chains", () =>
@@ -1208,41 +1222,41 @@ describe("STM", () => {
             ),
           discard: true
         }))
-        assert.strictEqual(value, void 0)
+        strictEqual(value, void 0)
         return yield* $(TRef.get(ref))
       })
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 10_000)
+      strictEqual(result, 10_000)
     }))
 
   it.effect("stack-safety - long map chains", () =>
     Effect.gen(function*($) {
       const result = yield* $(chain(10_000)(STM.map((n) => n + 1)))
-      assert.strictEqual(result, 10_000)
+      strictEqual(result, 10_000)
     }))
 
   it.effect("stack-safety - long collect chains", () =>
     Effect.gen(function*($) {
       const result = yield* $(chain(10_000)(STM.collect((n) => Option.some(n + 1))))
-      assert.strictEqual(result, 10_000)
+      strictEqual(result, 10_000)
     }))
 
   it.effect("stack-safety - long collectSTM chains", () =>
     Effect.gen(function*($) {
       const result = yield* $(chain(10_000)(STM.collectSTM((n) => Option.some(STM.succeed(n + 1)))))
-      assert.strictEqual(result, 10_000)
+      strictEqual(result, 10_000)
     }))
 
   it.effect("stack-safety - long flatMap chains", () =>
     Effect.gen(function*($) {
       const result = yield* $(chain(10_000)(STM.flatMap((n) => STM.succeed(n + 1))))
-      assert.strictEqual(result, 10_000)
+      strictEqual(result, 10_000)
     }))
 
   it.effect("stack-safety - long fold chains", () =>
     Effect.gen(function*($) {
       const result = yield* $(chain(10_000)(STM.match({ onFailure: () => 0, onSuccess: (n) => n + 1 })))
-      assert.strictEqual(result, 10_000)
+      strictEqual(result, 10_000)
     }))
 
   it.effect("stack-safety - long foldSTM chains", () =>
@@ -1250,13 +1264,13 @@ describe("STM", () => {
       const result = yield* $(
         chain(10_000)(STM.matchSTM({ onFailure: () => STM.succeed(0), onSuccess: (n) => STM.succeed(n + 1) }))
       )
-      assert.strictEqual(result, 10_000)
+      strictEqual(result, 10_000)
     }))
 
   it.effect("stack-safety - long mapError chains", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.exit(chainError(10_000)))
-      assert.deepStrictEqual(result, Exit.fail(10_000))
+      deepStrictEqual(result, Exit.fail(10_000))
     }))
 
   it.effect("stack-safety - long orElse chains", () =>
@@ -1274,13 +1288,13 @@ describe("STM", () => {
         STM.flatMap(TRef.get)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 10_000)
+      strictEqual(result, 10_000)
     }))
 
   it.effect("stack-safety - long provideEnvironment chains", () =>
     Effect.gen(function*($) {
       const result = yield* $(chain(10_000)(STM.provideContext(Context.empty())))
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.effect("ZIO STM (Issue #2073)", () =>
@@ -1305,7 +1319,7 @@ describe("STM", () => {
         STM.commit
       ))
       const result = yield* $(Fiber.join(fiber))
-      assert.isTrue(result === 0 || result === 2)
+      assertTrue(result === 0 || result === 2)
     }))
 
   describe("concurrent computations", () => {
@@ -1317,7 +1331,7 @@ describe("STM", () => {
         ))
         yield* $(Fiber.join(fiber))
         const result = yield* $(TRef.get(ref))
-        assert.strictEqual(result, 1_000)
+        strictEqual(result, 1_000)
       }))
 
     it.effect("compute a `TRef` from 2 variables, increment the first `TRef` and decrement the second `TRef` in different fibers", () =>
@@ -1328,7 +1342,7 @@ describe("STM", () => {
         ))
         yield* $(Fiber.join(fiber))
         const result = yield* $(TRef.get(refs[2]))
-        assert.strictEqual(result, 10_000)
+        strictEqual(result, 10_000)
       }))
   })
 
@@ -1343,7 +1357,7 @@ describe("STM", () => {
         STM.zipRight(TRef.get(ref2)),
         STM.commit
       ))
-      assert.strictEqual(result, "success")
+      strictEqual(result, "success")
     }))
 
   it.effect("condition locks - resume directly when the condition is already satisfied and change the ref with non-satisfying value", () =>
@@ -1356,8 +1370,8 @@ describe("STM", () => {
       ))
       yield* $(pipe(ref, TRef.set(9), STM.commit))
       const value = yield* $(TRef.get(ref))
-      assert.strictEqual(result, 42)
-      assert.strictEqual(value, 9)
+      strictEqual(result, 42)
+      strictEqual(value, 9)
     }))
 
   it.effect("condition locks - resume after satisfying the condition", () => {
@@ -1384,8 +1398,8 @@ describe("STM", () => {
       yield* $(Deferred.await(done))
       const newValue = yield* $(TRef.get(ref2))
       const result = yield* $(Fiber.join(fiber))
-      assert.strictEqual(oldValue, "failed")
-      assert.strictEqual(newValue, result)
+      strictEqual(oldValue, "failed")
+      strictEqual(newValue, result)
     })
   })
 
@@ -1398,8 +1412,8 @@ describe("STM", () => {
       yield* $(pipe(TRef.get(sender), STM.retryUntil((n) => n === 50)))
       const senderValue = yield* $(TRef.get(sender))
       const receiverValue = yield* $(TRef.get(receiver))
-      assert.strictEqual(senderValue, 50)
-      assert.strictEqual(receiverValue, 150)
+      strictEqual(senderValue, 50)
+      strictEqual(receiverValue, 150)
     }))
 
   it.effect("condition locks - run both transactions sequentially", () =>
@@ -1416,8 +1430,8 @@ describe("STM", () => {
       yield* $(Fiber.join(fiber))
       const senderValue = yield* $(TRef.get(sender))
       const receiverValue = yield* $(TRef.get(receiver))
-      assert.strictEqual(senderValue, 150)
-      assert.strictEqual(receiverValue, 0)
+      strictEqual(senderValue, 150)
+      strictEqual(receiverValue, 0)
     }))
 
   it.effect("condition locks - run both transactions concurrently #1", () =>
@@ -1439,8 +1453,8 @@ describe("STM", () => {
       yield* $(Fiber.join(fiber2))
       const senderValue = yield* $(TRef.get(sender))
       const receiverValue = yield* $(TRef.get(receiver))
-      assert.strictEqual(senderValue, 100)
-      assert.strictEqual(receiverValue, 0)
+      strictEqual(senderValue, 100)
+      strictEqual(receiverValue, 0)
     }))
 
   it.effect("condition locks - run both transactions concurrently #2", () =>
@@ -1454,8 +1468,8 @@ describe("STM", () => {
       yield* $(Fiber.join(fiber))
       const senderValue = yield* $(TRef.get(sender))
       const receiverValue = yield* $(TRef.get(receiver))
-      assert.strictEqual(senderValue, 100)
-      assert.strictEqual(receiverValue, 0)
+      strictEqual(senderValue, 100)
+      strictEqual(receiverValue, 0)
     }))
 
   it.effect("condition locks - atomically run a transaction with a TRef for 20 fibers, each one checking and incrementing the value", () =>
@@ -1475,7 +1489,7 @@ describe("STM", () => {
       ))
       yield* $(Fiber.join(fiber))
       const result = yield* $(TRef.get(ref))
-      assert.strictEqual(result, 21)
+      strictEqual(result, 21)
     }))
 
   it.effect("condition locks - atomically run a transaction that could not be satisfied", () => {
@@ -1494,7 +1508,7 @@ describe("STM", () => {
       yield* $(Fiber.interrupt(fiber))
       yield* $(pipe(ref, TRef.set(10)))
       const result = yield* $(pipe(Effect.yieldNow(), Effect.zipRight(TRef.get(ref))))
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     })
   })
 
@@ -1517,7 +1531,7 @@ describe("STM", () => {
       yield* $(Fiber.interrupt(fiber))
       yield* $(pipe(ref, TRef.set(-1)))
       const result = yield* $(pipe(Effect.yieldNow(), Effect.zipRight(TRef.get(ref))))
-      assert.strictEqual(result, -1)
+      strictEqual(result, -1)
     })
   })
 
@@ -1533,7 +1547,7 @@ describe("STM", () => {
       ))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(pipe(Fiber.join(fiber), Effect.sandbox, Effect.either))
-      assert.isTrue(
+      assertTrue(
         Either.isLeft(result) &&
           pipe(
             result.left,
@@ -1549,8 +1563,8 @@ describe("STM", () => {
       yield* $(permutation(ref1, ref2))
       const result1 = yield* $(TRef.get(ref1))
       const result2 = yield* $(TRef.get(ref2))
-      assert.strictEqual(result1, 2)
-      assert.strictEqual(result2, 1)
+      strictEqual(result1, 2)
+      strictEqual(result2, 1)
     }))
 
   it.effect("permutations - permutes two variables in 100 fibers", () =>
@@ -1566,7 +1580,7 @@ describe("STM", () => {
       yield* $(Fiber.join(fiber))
       const result1 = yield* $(TRef.get(ref1))
       const result2 = yield* $(TRef.get(ref2))
-      assert.strictEqual(result1, oldValue1)
-      assert.strictEqual(result2, oldValue2)
+      strictEqual(result1, oldValue1)
+      strictEqual(result2, oldValue2)
     }))
 })

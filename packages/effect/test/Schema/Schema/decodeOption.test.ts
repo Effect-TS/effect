@@ -1,25 +1,24 @@
-import { Option, Schema as S } from "effect"
+import { Schema as S } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertNone, assertSome } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("decodeOption", () => {
   it("should return none on async", () => {
-    expect(S.decodeOption(Util.AsyncString)("a")).toStrictEqual(Option.none())
+    assertNone(S.decodeOption(Util.AsyncString)("a"))
   })
 
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return None on invalid values", () => {
-    expect(S.decodeOption(schema)({ a: "1" })).toStrictEqual(Option.some({ a: 1 }))
-    expect(S.decodeOption(schema)({ a: "10" })).toStrictEqual(Option.none())
+    assertSome(S.decodeOption(schema)({ a: "1" }), { a: 1 })
+    assertNone(S.decodeOption(schema)({ a: "10" }))
   })
 
   it("should respect outer/inner options", () => {
     const input = { a: "1", b: "b" }
-    expect(S.decodeOption(schema)(input, { onExcessProperty: "error" })).toStrictEqual(Option.none())
-    expect(S.decodeOption(schema, { onExcessProperty: "error" })(input)).toStrictEqual(Option.none())
-    expect(S.decodeOption(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" })).toStrictEqual(
-      Option.some({ a: 1 })
-    )
+    assertNone(S.decodeOption(schema)(input, { onExcessProperty: "error" }))
+    assertNone(S.decodeOption(schema, { onExcessProperty: "error" })(input))
+    assertSome(S.decodeOption(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }), { a: 1 })
   })
 })

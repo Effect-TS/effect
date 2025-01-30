@@ -4,22 +4,23 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { assertNone, assertSome, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("flatMap - empty input", () =>
     Effect.gen(function*($) {
       const sink = pipe(Sink.head<number>(), Sink.flatMap(Sink.succeed))
       const result = yield* $(Stream.empty, Stream.run(sink))
-      assert.deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("flatMap - non-empty input", () =>
     Effect.gen(function*($) {
       const sink = pipe(Sink.head<number>(), Sink.flatMap(Sink.succeed))
       const result = yield* $(Stream.make(1, 2, 3), Stream.run(sink))
-      assert.deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("flatMap - with leftovers", () =>
@@ -40,8 +41,8 @@ describe("Sink", () => {
         )
       )
       const [option, count] = yield* $(Stream.fromChunks(...chunks), Stream.run(sink))
-      assert.deepStrictEqual(option, Chunk.head(Chunk.flatten(chunks)))
-      assert.strictEqual(
+      deepStrictEqual(option, Chunk.head(Chunk.flatten(chunks)))
+      strictEqual(
         count + Option.match(option, {
           onNone: () => 0,
           onSome: () => 1

@@ -1,12 +1,12 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("runFoldWhile", () =>
@@ -15,7 +15,7 @@ describe("Stream", () => {
         Stream.make(1, 1, 1, 1, 1),
         Stream.runFoldWhile(0, (n) => n < 3, (x, y) => x + y)
       )
-      assert.strictEqual(result, 3)
+      strictEqual(result, 3)
     }))
 
   it.effect("runForEach - with a small data set", () =>
@@ -26,7 +26,7 @@ describe("Stream", () => {
         Stream.runForEach((i) => Ref.update(ref, (n) => n + i))
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 5)
+      strictEqual(result, 5)
     }))
 
   it.effect("runForEach - with a bigger data set", () =>
@@ -37,7 +37,7 @@ describe("Stream", () => {
         Stream.runForEach((i) => Ref.update(ref, (n) => n + i))
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 1_000)
+      strictEqual(result, 1_000)
     }))
 
   it.effect("runForEachWhile - with a small data set", () =>
@@ -56,7 +56,7 @@ describe("Stream", () => {
         )
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, expected)
+      strictEqual(result, expected)
     }))
 
   it.effect("runForEachWhile - with a bigger data set", () =>
@@ -73,7 +73,7 @@ describe("Stream", () => {
         )
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, expected)
+      strictEqual(result, expected)
     }))
 
   it.effect("runForEachWhile - short circuits", () =>
@@ -85,19 +85,19 @@ describe("Stream", () => {
         Stream.runForEachWhile(Effect.succeed)
       )
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("runHead - non-empty stream", () =>
     Effect.gen(function*($) {
       const result = yield* $(Stream.runHead(Stream.make(1, 2, 3, 4)))
-      assert.deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("runHead - empty stream", () =>
     Effect.gen(function*($) {
       const result = yield* $(Stream.runHead(Stream.empty))
-      assert.deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("runHead - pulls up to the first non-empty chunk", () =>
@@ -114,8 +114,8 @@ describe("Stream", () => {
         Stream.runHead
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(head, Option.some(1))
-      assert.deepStrictEqual(Array.from(result), [2, 1])
+      assertSome(head, 1)
+      deepStrictEqual(Array.from(result), [2, 1])
     }))
 
   it.effect("runLast - non-empty stream", () =>
@@ -124,13 +124,13 @@ describe("Stream", () => {
         Stream.make(1, 2, 3, 4),
         Stream.runLast
       )
-      assert.deepStrictEqual(result, Option.some(4))
+      assertSome(result, 4)
     }))
 
   it.effect("runLast - empty stream", () =>
     Effect.gen(function*($) {
       const result = yield* $(Stream.empty, Stream.runLast)
-      assert.deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("runScoped - properly closes resources", () =>
@@ -148,8 +148,8 @@ describe("Stream", () => {
         Effect.scoped
       )
       const finalState = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [1, 1, 1])
-      assert.isFalse(state)
-      assert.isTrue(finalState)
+      deepStrictEqual(Array.from(result), [1, 1, 1])
+      assertFalse(state)
+      assertTrue(finalState)
     }))
 })

@@ -2,8 +2,8 @@ import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HashSet from "effect/HashSet"
-import { deepStrictEqual } from "effect/test/util"
-import { assert, describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 class Value implements Equal.Equal {
   constructor(readonly n: number) {}
@@ -32,18 +32,21 @@ describe("HashSet", () => {
 
   it("toString", () => {
     const map = HashSet.make(0, "a")
-    expect(String(map)).toEqual(`{
+    strictEqual(
+      String(map),
+      `{
   "_id": "HashSet",
   "values": [
     0,
     "a"
   ]
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
     const map = HashSet.make(0, "a")
-    expect(map.toJSON()).toEqual({ _id: "HashSet", values: [0, "a"] })
+    deepStrictEqual(map.toJSON(), { _id: "HashSet", values: [0, "a"] })
   })
 
   it("inspect", () => {
@@ -53,7 +56,7 @@ describe("HashSet", () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { inspect } = require("node:util")
     const map = HashSet.make(0, "a")
-    expect(inspect(map)).toEqual(inspect({ _id: "HashSet", values: [0, "a"] }))
+    deepStrictEqual(inspect(map), inspect({ _id: "HashSet", values: [0, "a"] }))
   })
 
   it("add", () => {
@@ -63,12 +66,13 @@ describe("HashSet", () => {
   })
 
   it("mutation", () => {
-    let set = HashSet.empty<number>()
-    assert.nestedPropertyVal(set, "_keyMap._editable", false)
+    let set: any = HashSet.empty<number>()
+
+    assertFalse(set._keyMap._editable)
     set = HashSet.beginMutation(set)
-    assert.nestedPropertyVal(set, "_keyMap._editable", true)
+    assertTrue(set._keyMap._editable)
     set = HashSet.endMutation(set)
-    assert.nestedPropertyVal(set, "_keyMap._editable", false)
+    assertFalse(set._keyMap._editable)
   })
 
   it("flatMap", () => {
@@ -83,14 +87,14 @@ describe("HashSet", () => {
     const set2 = makeTestHashSet(2, 3, 4)
     const result = pipe(set1, HashSet.difference(set2))
 
-    assert.isTrue(Equal.equals(result, HashSet.make(value(0), value(1))))
+    assertTrue(Equal.equals(result, HashSet.make(value(0), value(1))))
   })
 
   it("every", () => {
     const set = makeTestHashSet(0, 1, 2)
 
-    assert.isTrue(pipe(set, HashSet.every(({ n }) => n >= 0)))
-    assert.isFalse(pipe(set, HashSet.every(({ n }) => n > 0)))
+    assertTrue(pipe(set, HashSet.every(({ n }) => n >= 0)))
+    assertFalse(pipe(set, HashSet.every(({ n }) => n > 0)))
   })
 
   it("filter", () => {
@@ -117,10 +121,10 @@ describe("HashSet", () => {
   it("has", () => {
     const set = makeTestHashSet(0, 1, 2)
 
-    assert.isTrue(pipe(set, HashSet.has(value(0))))
-    assert.isTrue(pipe(set, HashSet.has(value(1))))
-    assert.isTrue(pipe(set, HashSet.has(value(2))))
-    assert.isFalse(pipe(set, HashSet.has(value(3))))
+    assertTrue(pipe(set, HashSet.has(value(0))))
+    assertTrue(pipe(set, HashSet.has(value(1))))
+    assertTrue(pipe(set, HashSet.has(value(2))))
+    assertFalse(pipe(set, HashSet.has(value(3))))
   })
 
   it("intersection", () => {
@@ -136,8 +140,8 @@ describe("HashSet", () => {
     const set2 = makeTestHashSet(1, 2)
     const set3 = makeTestHashSet(0, 1, 2)
 
-    assert.isFalse(pipe(set1, HashSet.isSubset(set2)))
-    assert.isTrue(pipe(set1, HashSet.isSubset(set3)))
+    assertFalse(pipe(set1, HashSet.isSubset(set2)))
+    assertTrue(pipe(set1, HashSet.isSubset(set3)))
   })
 
   it("map", () => {
@@ -157,10 +161,10 @@ describe("HashSet", () => {
       })
     )
 
-    assert.isFalse(pipe(result, HashSet.has(value(0))))
-    assert.isTrue(pipe(result, HashSet.has(value(1))))
-    assert.isTrue(pipe(result, HashSet.has(value(2))))
-    assert.isTrue(pipe(result, HashSet.has(value(3))))
+    assertFalse(pipe(result, HashSet.has(value(0))))
+    assertTrue(pipe(result, HashSet.has(value(1))))
+    assertTrue(pipe(result, HashSet.has(value(2))))
+    assertTrue(pipe(result, HashSet.has(value(3))))
   })
 
   it("partition", () => {
@@ -175,32 +179,32 @@ describe("HashSet", () => {
     const set = makeTestHashSet(0, 1, 2)
     const result = pipe(set, HashSet.remove(value(0)))
 
-    assert.isFalse(pipe(result, HashSet.has(value(0))))
-    assert.isTrue(pipe(result, HashSet.has(value(1))))
-    assert.isTrue(pipe(result, HashSet.has(value(2))))
+    assertFalse(pipe(result, HashSet.has(value(0))))
+    assertTrue(pipe(result, HashSet.has(value(1))))
+    assertTrue(pipe(result, HashSet.has(value(2))))
   })
 
   it("size", () => {
     const hashSet = makeTestHashSet(0, 1, 2)
     const result = HashSet.size(hashSet)
 
-    assert.strictEqual(result, 3)
+    strictEqual(result, 3)
   })
 
   it("some", () => {
     const set = makeTestHashSet(0, 1, 2)
 
-    assert.isTrue(pipe(set, HashSet.some(({ n }) => n > 0)))
-    assert.isFalse(pipe(set, HashSet.some(({ n }) => n > 2)))
+    assertTrue(pipe(set, HashSet.some(({ n }) => n > 0)))
+    assertFalse(pipe(set, HashSet.some(({ n }) => n > 2)))
   })
 
   it("toggle", () => {
     let set = makeTestHashSet(0, 1, 2)
-    assert.isTrue(pipe(set, HashSet.has(value(0))))
+    assertTrue(pipe(set, HashSet.has(value(0))))
     set = pipe(set, HashSet.toggle(value(0)))
-    assert.isFalse(pipe(set, HashSet.has(value(0))))
+    assertFalse(pipe(set, HashSet.has(value(0))))
     set = pipe(set, HashSet.toggle(value(0)))
-    assert.isTrue(pipe(set, HashSet.has(value(0))))
+    assertTrue(pipe(set, HashSet.has(value(0))))
   })
 
   it("union", () => {
@@ -220,12 +224,15 @@ describe("HashSet", () => {
   })
 
   it("pipe()", () => {
-    expect(HashSet.empty<string>().pipe(HashSet.add("value"))).toEqual(HashSet.make("value"))
+    strictEqual(
+      HashSet.empty<string>().pipe(HashSet.add("value"), HashSet.size),
+      HashSet.make("value").pipe(HashSet.size)
+    )
   })
 
   it("isHashSet", () => {
-    expect(HashSet.isHashSet(HashSet.empty())).toBe(true)
-    expect(HashSet.isHashSet(null)).toBe(false)
-    expect(HashSet.isHashSet({})).toBe(false)
+    assertTrue(HashSet.isHashSet(HashSet.empty()))
+    assertFalse(HashSet.isHashSet(null))
+    assertFalse(HashSet.isHashSet({}))
   })
 })

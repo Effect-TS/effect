@@ -1,24 +1,27 @@
-import * as MutableQueue from "effect/MutableQueue"
+import { MutableQueue } from "effect"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("MutableQueue", () => {
   it("toString", () => {
     const queue = MutableQueue.bounded<number>(2)
     MutableQueue.offerAll([0, 1, 2])(queue)
-    expect(String(queue)).toEqual(`{
+    strictEqual(
+      String(queue),
+      `{
   "_id": "MutableQueue",
   "values": [
     0,
     1
   ]
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
     const queue = MutableQueue.bounded<number>(2)
     MutableQueue.offerAll([0, 1, 2])(queue)
-    expect(queue.toJSON()).toEqual({ _id: "MutableQueue", values: [0, 1] })
+    deepStrictEqual(queue.toJSON(), { _id: "MutableQueue", values: [0, 1] })
   })
 
   it("inspect", () => {
@@ -29,7 +32,7 @@ describe("MutableQueue", () => {
     const { inspect } = require("node:util")
     const queue = MutableQueue.bounded<number>(2)
     MutableQueue.offerAll([0, 1, 2])(queue)
-    expect(inspect(queue)).toEqual(inspect({ _id: "MutableQueue", values: [0, 1] }))
+    deepStrictEqual(inspect(queue), inspect({ _id: "MutableQueue", values: [0, 1] }))
   })
 
   describe("bounded", () => {

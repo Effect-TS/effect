@@ -4,8 +4,9 @@ import * as Either from "effect/Either"
 import { constFalse, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import { assertFalse, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("take", () =>
@@ -16,7 +17,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.take(take), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.take(take)))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("take - short circuits", () =>
@@ -29,13 +30,13 @@ describe("Stream", () => {
       )
       yield* $(Stream.runDrain(stream))
       const result = yield* $(Ref.get(ref))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.effect("take - taking 0 short circuits", () =>
     Effect.gen(function*($) {
       const result = yield* $(Stream.never, Stream.take(0), Stream.runCollect)
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("take - taking 1 short circuits", () =>
@@ -46,7 +47,7 @@ describe("Stream", () => {
         Stream.take(1),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1])
+      deepStrictEqual(Array.from(result), [1])
     }))
 
   it.effect("takeRight", () =>
@@ -57,7 +58,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.takeRight(take), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.takeRight(take)))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("takeUntil", () =>
@@ -77,7 +78,7 @@ describe("Stream", () => {
           )
         )
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("takeUntilEffect", () =>
@@ -106,7 +107,7 @@ describe("Stream", () => {
           )
         )
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("takeUntilEffect - laziness on chunks", () =>
@@ -121,7 +122,7 @@ describe("Stream", () => {
         Stream.either,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [Either.right(1), Either.left("boom")])
+      deepStrictEqual(Array.from(result), [Either.right(1), Either.left("boom")])
     }))
 
   it.effect("takeWhile", () =>
@@ -132,7 +133,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.takeWhile(f), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.takeWhile(f)))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("takeWhile - does not stop when hitting an empty chunk (ZIO #4272)", () =>
@@ -147,7 +148,7 @@ describe("Stream", () => {
         Stream.takeWhile((n) => n !== 4),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 3])
+      deepStrictEqual(Array.from(result), [1, 3])
     }))
 
   it.effect("takeWhile - short circuits", () =>
@@ -158,6 +159,6 @@ describe("Stream", () => {
         Stream.takeWhile(constFalse),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 })

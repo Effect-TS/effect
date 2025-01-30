@@ -1,7 +1,8 @@
 import { Cause, FiberId } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assert, describe, it } from "vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Cause", () => {
   it("test roundtrip consistency", () => {
@@ -162,15 +163,15 @@ describe("Cause", () => {
       )
 
       let failWithStack = S.encodeSync(schema)(Cause.die(new Error("fail")))
-      assert(failWithStack._tag === "Die")
-      assert.deepStrictEqual(failWithStack.defect, {
+      assertTrue(failWithStack._tag === "Die")
+      deepStrictEqual(failWithStack.defect, {
         name: "Error",
         message: "fail"
       })
 
       failWithStack = S.encodeSync(schemaUnknown)(Cause.die(new Error("fail")))
-      assert(failWithStack._tag === "Die")
-      assert.strictEqual((failWithStack.defect as Error).message, "fail")
+      assertTrue(failWithStack._tag === "Die")
+      strictEqual((failWithStack.defect as Error).message, "fail")
     })
   })
 })

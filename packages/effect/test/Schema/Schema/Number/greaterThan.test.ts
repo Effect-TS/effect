@@ -2,7 +2,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("greaterThan", () => {
   const schema = S.greaterThan(0)(S.Number)
@@ -13,9 +14,9 @@ describe("greaterThan", () => {
 
   it("is", () => {
     const is = P.is(schema)
-    expect(is(0)).toEqual(false)
-    expect(is(1)).toEqual(true)
-    expect(is(-1)).toEqual(false)
+    assertFalse(is(0))
+    assertTrue(is(1))
+    assertFalse(is(-1))
   })
 
   it("decoding", async () => {
@@ -38,6 +39,6 @@ describe("greaterThan", () => {
 
   it("pretty", () => {
     const pretty = Pretty.make(schema)
-    expect(pretty(1)).toEqual("1")
+    strictEqual(pretty(1), "1")
   })
 })

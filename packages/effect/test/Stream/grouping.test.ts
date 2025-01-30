@@ -1,7 +1,6 @@
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
@@ -11,10 +10,11 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("groupBy - values", () =>
@@ -36,7 +36,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         Array.from({ length: 100 }, (_, i) => i).map((n) => [String(n), 100] as const)
       )
@@ -62,7 +62,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [["0", 1_000], ["1", 1_000]])
+      deepStrictEqual(Array.from(result), [["0", 1_000], ["1", 1_000]])
     }))
 
   it.effect("groupBy - filter", () =>
@@ -81,7 +81,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         [0, 100],
         [1, 100],
         [2, 100],
@@ -102,7 +102,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("boom"))
+      assertLeft(result, "boom")
     }))
 
   it.effect("grouped - sanity check", () =>
@@ -112,7 +112,7 @@ describe("Stream", () => {
         Stream.grouped(2),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2], [3, 4], [5]]
       )
@@ -126,7 +126,7 @@ describe("Stream", () => {
         Stream.map(Chunk.size),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         Array.from({ length: 10 }, () => 10)
       )
@@ -139,7 +139,7 @@ describe("Stream", () => {
         Stream.grouped(5),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("grouped - emits elements properly when a failure occurs", () =>
@@ -158,8 +158,8 @@ describe("Stream", () => {
         Effect.either
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(either, Either.left("Ouch"))
-      assert.deepStrictEqual(Array.from(result), [[1, 2, 3], [4, 5, 6], [7, 8]])
+      assertLeft(either, "Ouch")
+      deepStrictEqual(Array.from(result), [[1, 2, 3], [4, 5, 6], [7, 8]])
     }))
 
   it.effect("groupedWithin - group based on time passed", () =>
@@ -192,7 +192,7 @@ describe("Stream", () => {
       )
       yield* $(coordination.offer)
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2], [3, 4], [5]]
       )
@@ -315,7 +315,7 @@ describe("Stream", () => {
         Effect.zipRight(Ref.get(ref))
       )
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [
           [1, 2, 3],
@@ -325,11 +325,11 @@ describe("Stream", () => {
           [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
         ]
       )
-      assert.strictEqual(result1, 3)
-      assert.strictEqual(result2, 6)
-      assert.strictEqual(result3, 9)
-      assert.strictEqual(result4, 19)
-      assert.strictEqual(result5, 29)
+      strictEqual(result1, 3)
+      strictEqual(result2, 6)
+      strictEqual(result3, 9)
+      strictEqual(result4, 19)
+      strictEqual(result5, 29)
     }))
 
   it.effect("groupedWithin - group immediately when chunk size is reached", () =>
@@ -339,7 +339,7 @@ describe("Stream", () => {
         Stream.groupedWithin(2, Duration.seconds(10)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2], [3, 4]]
       )
@@ -357,7 +357,7 @@ describe("Stream", () => {
         Stream.groupAdjacentBy((x) => x.code),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map(([, chunk]) => Array.from(chunk)),
         [
           [
@@ -384,7 +384,7 @@ describe("Stream", () => {
         Stream.groupAdjacentBy((x) => x.code),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map(([, chunk]) => Array.from(chunk)),
         [
           [
@@ -409,7 +409,7 @@ describe("Stream", () => {
         Stream.groupAdjacentBy((x) => x.code),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map(([, chunk]) => Array.from(chunk)),
         [
           [

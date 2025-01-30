@@ -3,82 +3,78 @@ import { absurd, identity } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
 import * as Utils from "effect/Utils"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("Hash", () => {
   it("structural", () => {
     const a = { foo: { bar: "ok", baz: { arr: [0, 1, 2] } } }
     const b = { foo: { bar: "ok", baz: { arr: [0, 1, 2] } } }
-    expect(Hash.hash(a)).not.toBe(Hash.hash(b))
-    expect(Equal.equals(a, b)).toBe(false)
+    assertTrue(Hash.hash(a) !== Hash.hash(b))
+    assertFalse(Equal.equals(a, b))
     Utils.structuralRegion(() => {
-      expect(Hash.hash(a)).toBe(Hash.hash(b))
-      expect(Equal.equals(a, b)).toBe(true)
+      strictEqual(Hash.hash(a), Hash.hash(b))
+      assertTrue(Equal.equals(a, b))
     })
-    expect(Hash.hash(a)).not.toBe(Hash.hash(b))
-    expect(Equal.equals(a, b)).toBe(false)
+    assertTrue(Hash.hash(a) !== Hash.hash(b))
+    assertFalse(Equal.equals(a, b))
   })
   it("structural cached", () => {
     const a = Option.some({ foo: { bar: "ok", baz: { arr: [0, 1, 2] } } })
     const b = Option.some({ foo: { bar: "ok", baz: { arr: [0, 1, 2] } } })
-    expect(Hash.hash(a)).not.toBe(Hash.hash(b))
-    expect(Equal.equals(a, b)).toBe(false)
+    assertTrue(Hash.hash(a) !== Hash.hash(b))
+    assertFalse(Equal.equals(a, b))
     Utils.structuralRegion(() => {
-      expect(Hash.hash(a)).toBe(Hash.hash(b))
-      expect(Equal.equals(a, b)).toBe(true)
+      strictEqual(Hash.hash(a), Hash.hash(b))
+      assertTrue(Equal.equals(a, b))
     })
-    expect(Hash.hash(a)).not.toBe(Hash.hash(b))
-    expect(Equal.equals(a, b)).toBe(false)
-  })
-  it("exports", () => {
-    expect(Hash.string).exist
-    expect(Hash.structureKeys).exist
-    expect(Hash.random).exist
+    assertTrue(Hash.hash(a) !== Hash.hash(b))
+    assertFalse(Equal.equals(a, b))
   })
 
   it("number", () => {
     const set: HashSet.HashSet<number> = HashSet.make(Infinity)
-    expect(HashSet.has(set, Infinity)).toBe(true)
-    expect(HashSet.has(set, -Infinity)).toBe(false)
-    expect(Hash.number(0.1)).not.toBe(Hash.number(0))
+    assertTrue(HashSet.has(set, Infinity))
+    assertFalse(HashSet.has(set, -Infinity))
+    assertTrue(Hash.number(0.1) !== Hash.number(0))
   })
 
   it("bigint", () => {
     const set = HashSet.make(1n)
-    expect(HashSet.has(set, 1n)).toBe(true)
-    expect(HashSet.has(set, 2n)).toBe(false)
+    assertTrue(HashSet.has(set, 1n))
+    assertFalse(HashSet.has(set, 2n))
   })
 
   it("symbol", () => {
     const a = Symbol.for("effect/test/Hash/a")
     const b = Symbol.for("effect/test/Hash/b")
     const set: HashSet.HashSet<symbol> = HashSet.make(a)
-    expect(HashSet.has(set, a)).toBe(true)
-    expect(HashSet.has(set, b)).toBe(false)
+    assertTrue(HashSet.has(set, a))
+    assertFalse(HashSet.has(set, b))
   })
 
   it("undefined", () => {
     const set: HashSet.HashSet<number | undefined> = HashSet.make(1, undefined)
-    expect(HashSet.has(set, undefined)).toBe(true)
-    expect(HashSet.has(set, 2)).toBe(false)
+    assertTrue(HashSet.has(set, undefined))
+    assertFalse(HashSet.has(set, 2))
   })
 
   it("null", () => {
     const set: HashSet.HashSet<number | null> = HashSet.make(1, null)
-    expect(HashSet.has(set, null)).toBe(true)
-    expect(HashSet.has(set, 2)).toBe(false)
+    assertTrue(HashSet.has(set, null))
+    assertFalse(HashSet.has(set, 2))
   })
 
   it("function", () => {
     const set: HashSet.HashSet<Function> = HashSet.make(identity)
-    expect(HashSet.has(set, identity)).toBe(true)
-    expect(HashSet.has(set, absurd)).toBe(false)
+    assertTrue(HashSet.has(set, identity))
+    assertFalse(HashSet.has(set, absurd))
   })
 
   it("isHash", () => {
-    expect(Hash.isHash(HashSet.empty())).toBe(true)
-    expect(Hash.isHash(null)).toBe(false)
-    expect(Hash.isHash({})).toBe(false)
+    assertTrue(Hash.isHash(HashSet.empty()))
+    assertFalse(Hash.isHash(null))
+    assertFalse(Hash.isHash({}))
   })
 })

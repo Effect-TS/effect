@@ -8,7 +8,8 @@ import * as S from "effect/Schema"
 import type { ParseOptions } from "effect/SchemaAST"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertLeft } from "effect/test/util"
+import { describe, it } from "vitest"
 
 const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 
@@ -16,7 +17,7 @@ const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Arra
   const result = S.decodeUnknownEither(schema)(input, options).pipe(
     Either.mapLeft((e) => ParseResult.ArrayFormatter.formatIssueSync(e.issue))
   )
-  expect(result).toStrictEqual(Either.left(issues))
+  assertLeft(result, issues)
 }
 
 describe("ParseResultFormatter", () => {
@@ -24,11 +25,10 @@ describe("ParseResultFormatter", () => {
     it("default message", () => {
       const schema = Util.AsyncString
       const input = ""
-      expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
-        new Error(
-          `AsyncString
+      Util.assertParseError(
+        () => S.decodeUnknownSync(schema)(input),
+        `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
-        )
       )
       expectIssues(schema, input, [{
         _tag: "Forbidden",
@@ -41,11 +41,10 @@ describe("ParseResultFormatter", () => {
     it("default message with identifier", () => {
       const schema = Util.AsyncString
       const input = ""
-      expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
-        new Error(
-          `AsyncString
+      Util.assertParseError(
+        () => S.decodeUnknownSync(schema)(input),
+        `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
-        )
       )
       expectIssues(schema, input, [{
         _tag: "Forbidden",
@@ -58,9 +57,10 @@ describe("ParseResultFormatter", () => {
     it("custom message (override=false)", () => {
       const schema = Util.AsyncString.annotations({ message: () => "custom message" })
       const input = ""
-      expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
-        new Error(`AsyncString
-└─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`)
+      Util.assertParseError(
+        () => S.decodeUnknownSync(schema)(input),
+        `AsyncString
+└─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
       )
       expectIssues(schema, input, [{
         _tag: "Forbidden",
@@ -75,9 +75,10 @@ describe("ParseResultFormatter", () => {
         message: () => ({ message: "custom message", override: true })
       })
       const input = ""
-      expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
-        new Error(`AsyncString
-└─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`)
+      Util.assertParseError(
+        () => S.decodeUnknownSync(schema)(input),
+        `AsyncString
+└─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
       )
       expectIssues(schema, input, [{
         _tag: "Forbidden",
@@ -1310,11 +1311,13 @@ it("Effect as message", () => {
   const result = S.decodeUnknownEither(Name)("")
 
   // no service
-  expect(Either.mapLeft(result, (error) => Effect.runSync(ParseResult.TreeFormatter.formatError(error))))
-    .toStrictEqual(Either.left("Invalid string"))
+  assertLeft(
+    Either.mapLeft(result, (error) => Effect.runSync(ParseResult.TreeFormatter.formatError(error))),
+    "Invalid string"
+  )
 
   // it locale
-  expect(
+  assertLeft(
     Either.mapLeft(
       result,
       (error) =>
@@ -1324,11 +1327,12 @@ it("Effect as message", () => {
             translations
           }))
         )
-    )
-  ).toStrictEqual(Either.left("Nome non valido"))
+    ),
+    "Nome non valido"
+  )
 
   // en locale
-  expect(
+  assertLeft(
     Either.mapLeft(
       result,
       (error) =>
@@ -1338,6 +1342,7 @@ it("Effect as message", () => {
             translations
           }))
         )
-    )
-  ).toStrictEqual(Either.left("Invalid name"))
+    ),
+    "Invalid name"
+  )
 })

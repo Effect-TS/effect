@@ -1,23 +1,24 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("pattern", () => {
   it("is", () => {
     const schema = S.String.pipe(S.pattern(/^abb+$/))
     const is = S.is(schema)
-    expect(is("abb")).toEqual(true)
-    expect(is("abbb")).toEqual(true)
+    assertTrue(is("abb"))
+    assertTrue(is("abbb"))
 
-    expect(is("ab")).toEqual(false)
-    expect(is("a")).toEqual(false)
+    assertFalse(is("ab"))
+    assertFalse(is("a"))
   })
 
   it("should reset lastIndex to 0 before each `test` call (#88)", () => {
     const regexp = /^(A|B)$/g
     const schema = S.String.pipe(S.pattern(regexp))
-    expect(S.decodeSync(schema)("A")).toEqual("A")
-    expect(S.decodeSync(schema)("A")).toEqual("A")
+    strictEqual(S.decodeSync(schema)("A"), "A")
+    strictEqual(S.decodeSync(schema)("A"), "A")
   })
 
   it("decoding", async () => {

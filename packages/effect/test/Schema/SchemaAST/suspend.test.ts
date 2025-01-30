@@ -1,7 +1,8 @@
 import * as S from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("AST.Suspend", () => {
   it("should memoize the thunk", async () => {
@@ -19,7 +20,7 @@ describe("AST.Suspend", () => {
     })
     await Util.assertions.decoding.succeed(schema, { a: "a1", as: [] })
     await Util.assertions.decoding.succeed(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
-    expect(log).toEqual(1)
+    strictEqual(log, 1)
   })
 
   it("should memoize the AST", () => {
@@ -28,6 +29,6 @@ describe("AST.Suspend", () => {
       () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
     )
     const ast = schema.ast as AST.Suspend
-    expect(ast.f() === ast.f()).toBe(true)
+    assertTrue(ast.f() === ast.f())
   })
 })

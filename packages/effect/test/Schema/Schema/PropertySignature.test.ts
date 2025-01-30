@@ -3,24 +3,27 @@ import * as Option from "effect/Option"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("PropertySignature", () => {
   it("should expose a from property", () => {
     const schema = S.propertySignature(S.String)
-    expect(schema.from).toStrictEqual(S.String)
+    strictEqual(schema.from, S.String)
   })
 
   it("should expose a from property after an annotations call", () => {
     const schema = S.propertySignature(S.String).annotations({})
-    expect(schema.from).toStrictEqual(S.String)
+    strictEqual(schema.from, S.String)
   })
 
   it("toString", () => {
-    expect(String(S.optional(S.String))).toStrictEqual(
+    strictEqual(
+      String(S.optional(S.String)),
       `PropertySignature<"?:", string | undefined, never, "?:", string | undefined>`
     )
-    expect(String(S.optional(S.String).pipe(S.fromKey("a")))).toStrictEqual(
+    strictEqual(
+      String(S.optional(S.String).pipe(S.fromKey("a"))),
       `PropertySignature<"?:", string | undefined, "a", "?:", string | undefined>`
     )
   })
@@ -31,7 +34,7 @@ describe("PropertySignature", () => {
         a: S.propertySignature(S.String).annotations({ description: "a description" }).annotations({ title: "a title" })
       })
       const ast = schema.ast as AST.TypeLiteral
-      expect(ast.propertySignatures[0].annotations).toEqual({
+      deepStrictEqual(ast.propertySignatures[0].annotations, {
         [AST.DescriptionAnnotationId]: "a description",
         [AST.TitleAnnotationId]: "a title"
       })
@@ -44,7 +47,7 @@ describe("PropertySignature", () => {
         })
       })
       const ast = schema.ast as AST.TypeLiteral
-      expect(ast.propertySignatures[0].annotations).toEqual({
+      deepStrictEqual(ast.propertySignatures[0].annotations, {
         [AST.DescriptionAnnotationId]: "a description",
         [AST.TitleAnnotationId]: "a title"
       })
@@ -55,7 +58,7 @@ describe("PropertySignature", () => {
         a: S.optional(S.String).annotations({ description: "a description" }).annotations({ title: "a title" })
       })
       const ast = schema.ast as AST.TypeLiteral
-      expect(ast.propertySignatures[0].annotations).toEqual({
+      deepStrictEqual(ast.propertySignatures[0].annotations, {
         [AST.DescriptionAnnotationId]: "a description",
         [AST.TitleAnnotationId]: "a title"
       })
@@ -68,7 +71,7 @@ describe("PropertySignature", () => {
         })
       })
       const ast = schema.ast as AST.TypeLiteral
-      expect(ast.propertySignatures[0].annotations).toEqual({
+      deepStrictEqual(ast.propertySignatures[0].annotations, {
         [AST.DescriptionAnnotationId]: "a description",
         [AST.TitleAnnotationId]: "a title"
       })
@@ -82,7 +85,7 @@ describe("PropertySignature", () => {
       })
       const ast = schema.ast as AST.Transformation
       const to = ast.to as AST.TypeLiteral
-      expect(to.propertySignatures[0].annotations).toEqual({
+      deepStrictEqual(to.propertySignatures[0].annotations, {
         [AST.DescriptionAnnotationId]: "a description",
         [AST.TitleAnnotationId]: "a title"
       })
@@ -95,7 +98,7 @@ describe("PropertySignature", () => {
       })
       const ast = schema.ast as AST.Transformation
       const to = ast.to as AST.TypeLiteral
-      expect(to.propertySignatures[0].annotations).toEqual({
+      deepStrictEqual(to.propertySignatures[0].annotations, {
         [AST.DescriptionAnnotationId]: "a description",
         [AST.TitleAnnotationId]: "a title"
       })

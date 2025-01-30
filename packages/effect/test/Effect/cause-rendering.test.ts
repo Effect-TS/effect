@@ -1,8 +1,7 @@
-import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
+import { Cause, Effect, Option } from "effect"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("Cause should include span data", () =>
@@ -15,10 +14,10 @@ describe("Effect", () => {
         )
       )))
       const rendered = Cause.pretty(cause)
-      assert.include(rendered, "spanA")
-      assert.include(rendered, "cause-rendering.test.ts:12")
-      assert.include(rendered, "spanB")
-      assert.include(rendered, "cause-rendering.test.ts:11")
+      assertTrue(rendered.includes("spanA"))
+      assertTrue(rendered.includes("cause-rendering.test.ts:11:18"))
+      assertTrue(rendered.includes("spanB"))
+      assertTrue(rendered.includes("cause-rendering.test.ts:10:16"))
     }))
   it.effect("catchTag should not invalidate traces", () =>
     Effect.gen(function*($) {
@@ -39,12 +38,12 @@ describe("Effect", () => {
       ).pipe(Effect.catchTag("E2", (e) => Effect.die(e)))
       const cause = yield* $(Effect.flip(Effect.sandbox(effect)))
       const rendered = Cause.pretty(cause)
-      assert.include(rendered, "spanA")
-      assert.include(rendered, "spanB")
+      assertTrue(rendered.includes("spanA"))
+      assertTrue(rendered.includes("spanB"))
       const obj = Option.getOrThrow(Cause.failureOption(cause))
-      assert.isTrue(obj instanceof E1)
-      assert.isFalse(err === obj)
-      assert.isTrue(err === Cause.originalError(obj))
+      assertTrue(obj instanceof E1)
+      assertFalse(err === obj)
+      assertTrue(err === Cause.originalError(obj))
     }))
   it.effect("refail should not invalidate traces", () =>
     Effect.gen(function*($) {
@@ -64,8 +63,8 @@ describe("Effect", () => {
       ).pipe(Effect.catchAll((e) => Effect.fail(e)))
       const cause = yield* $(Effect.flip(Effect.sandbox(effect)))
       const rendered = Cause.pretty(cause)
-      assert.include(rendered, "spanA")
-      assert.include(rendered, "spanB")
+      assertTrue(rendered.includes("spanA"))
+      assertTrue(rendered.includes("spanB"))
     }))
   it.effect("catchTags should not invalidate traces", () =>
     Effect.gen(function*($) {
@@ -85,8 +84,8 @@ describe("Effect", () => {
       ).pipe(Effect.catchTags({ E2: (e) => Effect.die(e) }))
       const cause = yield* $(Effect.flip(Effect.sandbox(effect)))
       const rendered = Cause.pretty(cause)
-      assert.include(rendered, "spanA")
-      assert.include(rendered, "spanB")
+      assertTrue(rendered.includes("spanA"))
+      assertTrue(rendered.includes("spanB"))
     }))
   it.effect("shows line where error was created", () =>
     Effect.gen(function*($) {
@@ -98,7 +97,7 @@ describe("Effect", () => {
         Effect.flip
       )
       const pretty = Cause.pretty(cause)
-      assert.include(pretty, "cause-rendering.test.ts")
+      assertTrue(pretty.includes("cause-rendering.test.ts"))
     }))
 
   it.effect("functionWithSpan PrettyError stack", () =>
@@ -109,13 +108,13 @@ describe("Effect", () => {
       })
       const cause = yield* fail(123).pipe(Effect.sandbox, Effect.flip)
       const prettyErrors = Cause.prettyErrors(cause)
-      assert.strictEqual(prettyErrors.length, 1)
+      strictEqual(prettyErrors.length, 1)
       const error = prettyErrors[0]
-      assert.strictEqual(error.name, "Error")
-      assert.notInclude(error.stack, "/internal/")
-      assert.include(error.stack, "cause-rendering.test.ts:107")
-      assert.include(error.stack, "span-123")
-      assert.include(error.stack, "cause-rendering.test.ts:110")
+      strictEqual(error.name, "Error")
+      assertTrue(!error.stack?.includes("/internal/"))
+      assertTrue(error.stack?.includes("cause-rendering.test.ts:106"))
+      assertTrue(error.stack?.includes("span-123"))
+      assertTrue(error.stack?.includes("cause-rendering.test.ts:109"))
     }))
 
   it.effect("includes span name in stack", () =>
@@ -124,7 +123,7 @@ describe("Effect", () => {
         options: (n) => ({ name: `fn-${n}` }),
         body: (a: number) =>
           Effect.sync(() => {
-            assert.strictEqual(a, 2)
+            strictEqual(a, 2)
           })
       })
       const cause = yield* fn(0).pipe(
@@ -132,7 +131,7 @@ describe("Effect", () => {
         Effect.flip
       )
       const prettyErrors = Cause.prettyErrors(cause)
-      assert.include(prettyErrors[0].stack ?? "", "at fn-0 ")
+      assertTrue(prettyErrors[0].stack?.includes("at fn-0 "))
     }))
 
   // ENABLE TO TEST EXPECT OUTPUT
@@ -149,7 +148,7 @@ describe("Effect", () => {
         Effect.flip
       )
       const pretty = Cause.pretty(cause)
-      assert.isTrue(pretty.startsWith(`Error: Multi-line
+      assertTrue(pretty.startsWith(`Error: Multi-line
 error
 message
     at`))
@@ -162,7 +161,7 @@ message
         Effect.flip
       )
       const pretty = Cause.pretty(cause, { renderErrorCause: true })
-      assert.include(pretty, "[cause]: Error: child")
+      assertTrue(pretty.includes("[cause]: Error: child"))
     }))
 
   it.effect("pretty nested cause", () =>
@@ -174,7 +173,7 @@ message
         Effect.flip
       )
       const pretty = Cause.pretty(cause, { renderErrorCause: true })
-      assert.include(pretty, "[cause]: Error: child")
-      assert.include(pretty, "[cause]: Error: child2")
+      assertTrue(pretty.includes("[cause]: Error: child"))
+      assertTrue(pretty.includes("[cause]: Error: child2"))
     }))
 })

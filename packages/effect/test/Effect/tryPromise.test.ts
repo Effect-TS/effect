@@ -1,7 +1,6 @@
-import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import { describe, expect, it } from "effect/test/utils/extend"
+import { Cause, Effect, Option } from "effect"
+import { assertLeft, assertSuccess, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "effect/test/utils/extend"
 
 describe("Effect", () => {
   it("tryPromise - success, no catch, no AbortSignal", async () => {
@@ -13,7 +12,7 @@ describe("Effect", () => {
       })
     )
     const n = await Effect.runPromise(effect)
-    expect(n).toBe(1)
+    strictEqual(n, 1)
   })
 
   it("tryPromise - failure, no catch, no AbortSignal", async () => {
@@ -25,7 +24,7 @@ describe("Effect", () => {
       })
     )
     const either = await Effect.runPromise(Effect.either(effect))
-    expect(either).toStrictEqual(Either.left(new Cause.UnknownException("error")))
+    assertLeft(either, new Cause.UnknownException("error", "An unknown error occurred in Effect.tryPromise"))
   })
 
   it("tryPromise - failure, catch, no AbortSignal", async () => {
@@ -39,7 +38,7 @@ describe("Effect", () => {
       catch: (error) => new Error(String(error))
     })
     const either = await Effect.runPromise(Effect.either(effect))
-    expect(either).toStrictEqual(Either.left(new Error("error")))
+    assertLeft(either, new Error("error"))
   })
 
   it("tryPromise - success, no catch, AbortSignal", async () => {
@@ -60,8 +59,8 @@ describe("Effect", () => {
       Effect.catchTag("TimeoutException", () => Effect.succeedNone)
     )
     const exit = await Effect.runPromiseExit(program)
-    expect(exit._tag).toBe("Success")
-    expect(aborted).toBe(true)
+    assertSuccess(exit, Option.none())
+    assertTrue(aborted)
   })
 
   it("tryPromise - success, catch, AbortSignal", async () => {
@@ -85,8 +84,8 @@ describe("Effect", () => {
       Effect.catchTag("TimeoutException", () => Effect.succeedNone)
     )
     const exit = await Effect.runPromiseExit(program)
-    expect(exit._tag).toBe("Success")
-    expect(aborted).toBe(true)
+    assertSuccess(exit, Option.none())
+    assertTrue(aborted)
   })
 
   it.effect("tryPromise - defects in catch", () =>
@@ -100,6 +99,6 @@ describe("Effect", () => {
         Effect.sandbox,
         Effect.flip
       )
-      expect(cause).toStrictEqual(Cause.die(new Error("error")))
+      deepStrictEqual(cause, Cause.die(new Error("error")))
     }))
 })

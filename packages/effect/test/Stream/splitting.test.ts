@@ -2,9 +2,10 @@ import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as fc from "fast-check"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const weirdStringForSplitLines: fc.Arbitrary<ReadonlyArray<string>> = fc.array(
   fc.string().filter((s) => s !== "\n" && s !== "\r")
@@ -50,11 +51,11 @@ describe("Stream", () => {
           Stream.runCollect
         )
       }))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result1).map((chunk) => Array.from(chunk)),
         [[1, 2, 3], [5, 6, 7], [9]]
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result2).map((chunk) => Array.from(chunk)),
         [[1, 2], [4, 5], [7, 8], [10]]
       )
@@ -70,11 +71,11 @@ describe("Stream", () => {
           Effect.map((chunk) => pipe(Chunk.of(chunk), Chunk.filter(Chunk.isNonEmpty)))
         )
       }))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result1).map((chunk) => Array.from(chunk)),
         [Array.from(Chunk.range(1, 10))]
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result1).map((chunk) => Array.from(chunk)),
         Array.from(result2).map((chunk) => Array.from(chunk))
       )
@@ -87,7 +88,7 @@ describe("Stream", () => {
         Stream.split((n: number) => n % 11 === 0),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("splitOnChunk - consecutive delimiter yields empty Chunk", () =>
@@ -105,7 +106,7 @@ describe("Stream", () => {
         Stream.map(Chunk.size),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [0, 0, 0, 1, 0])
+      deepStrictEqual(Array.from(result), [0, 0, 0, 1, 0])
     }))
 
   it.effect("splitOnChunk - preserves data", () =>
@@ -118,7 +119,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.map(Chunk.flatten)
       )
-      assert.deepStrictEqual(Array.from(result), [1, 1, 1, 1, 1, 1])
+      deepStrictEqual(Array.from(result), [1, 1, 1, 1, 1, 1])
     }))
 
   it.effect("splitOnChunk - handles leftovers", () =>
@@ -129,7 +130,7 @@ describe("Stream", () => {
         Stream.splitOnChunk(splitSequence),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 0, 2], [2, 2]]
       )
@@ -143,7 +144,7 @@ describe("Stream", () => {
         Stream.splitOnChunk(splitSequence),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2], [3, 4], [5, 6, 5, 6]]
       )
@@ -164,7 +165,7 @@ describe("Stream", () => {
         Stream.splitOnChunk(splitSequence),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2], [3, 4], [5, 6, 5, 6]]
       )
@@ -177,7 +178,7 @@ describe("Stream", () => {
         Stream.splitOnChunk(Chunk.make(0)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[]]
       )
@@ -190,7 +191,7 @@ describe("Stream", () => {
         Stream.splitOnChunk(Chunk.make(1, 1)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2, 1, 2, 1, 2]]
       )
@@ -203,7 +204,7 @@ describe("Stream", () => {
         Stream.splitOnChunk(Chunk.make(2, 1)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1], [2]]
       )
@@ -219,7 +220,7 @@ describe("Stream", () => {
         Effect.map((chunk) => Chunk.toReadonlyArray(chunk).join("\n"))
       )
       const result = await Effect.runPromise(program)
-      assert.strictEqual(result, data)
+      strictEqual(result, data)
     })))
 
   // it("splitLines - preserves data in chunks", () =>
@@ -238,7 +239,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const chunks = [Chunk.of("abc\nbc")]
       const [expected, result] = yield* $(testSplitLines(chunks))
-      assert.deepStrictEqual(expected, result)
+      deepStrictEqual(expected, result)
     }))
 
   it.effect("splitLines - handles leftovers 2", () =>
@@ -250,14 +251,14 @@ describe("Stream", () => {
         Chunk.of("abc")
       ]
       const [expected, result] = yield* $(testSplitLines(chunks))
-      assert.deepStrictEqual(expected, result)
+      deepStrictEqual(expected, result)
     }))
 
   it.effect("splitLines - aggregates chunks", () =>
     Effect.gen(function*($) {
       const chunks = [Chunk.make("abc", "\n", "bc", "\n", "bcd", "bcd")]
       const [expected, result] = yield* $(testSplitLines(chunks))
-      assert.deepStrictEqual(expected, result)
+      deepStrictEqual(expected, result)
     }))
 
   it.effect("splitLines - single newline edge case", () =>
@@ -266,27 +267,27 @@ describe("Stream", () => {
       const [, result] = yield* $(testSplitLines(chunks))
       // JavaScript arrays split `"\n"` into `["", ""]`, so we manually assert
       // that the output should be the empty string here
-      assert.deepStrictEqual([""], result)
+      deepStrictEqual([""], result)
     }))
 
   it.effect("splitLines - no newlines", () =>
     Effect.gen(function*($) {
       const chunks = [Chunk.make("abc", "abc", "abc")]
       const [expected, result] = yield* $(testSplitLines(chunks))
-      assert.deepStrictEqual(expected, result)
+      deepStrictEqual(expected, result)
     }))
 
   it.effect("splitLines - \\r\\n on the boundary", () =>
     Effect.gen(function*($) {
       const chunks = [Chunk.make("abc\r", "\nabc")]
       const [expected, result] = yield* $(testSplitLines(chunks))
-      assert.deepStrictEqual(expected, result)
+      deepStrictEqual(expected, result)
     }))
 
   it.effect("splitLines - ZIO issue #6360", () =>
     Effect.gen(function*($) {
       const chunks = [Chunk.make("AAAAABBBB#\r\r\r\n", "test")]
       const [_, result] = yield* $(testSplitLines(chunks))
-      assert.deepStrictEqual(["AAAAABBBB#\r\r", "test"], result)
+      deepStrictEqual(["AAAAABBBB#\r\r", "test"], result)
     }))
 })

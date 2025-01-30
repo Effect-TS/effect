@@ -1,25 +1,34 @@
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
-import * as FiberId from "effect/FiberId"
-import * as FiberRefs from "effect/FiberRefs"
-import { identity } from "effect/Function"
-import * as HashMap from "effect/HashMap"
+import {
+  Cause,
+  Chunk,
+  Effect,
+  FiberId,
+  FiberRefs,
+  HashMap,
+  identity,
+  List,
+  Logger,
+  LogLevel,
+  LogSpan,
+  pipe
+} from "effect"
 import { logLevelInfo } from "effect/internal/core"
-import * as List from "effect/List"
-import * as Logger from "effect/Logger"
-import * as LogLevel from "effect/LogLevel"
-import * as LogSpan from "effect/LogSpan"
-import { assert, describe, expect, it } from "effect/test/utils/extend"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "effect/test/utils/extend"
 import { afterEach, beforeEach, vi } from "vitest"
 
 describe("Logger", () => {
   it("isLogger", () => {
-    expect(Logger.isLogger(Logger.stringLogger)).toBeTruthy()
-    expect(Logger.isLogger(Logger.logfmtLogger)).toBeTruthy()
-    expect(Logger.isLogger({})).toBeFalsy()
-    expect(Logger.isLogger(null)).toBeFalsy()
-    expect(Logger.isLogger(undefined)).toBeFalsy()
+    assertTrue(Logger.isLogger(Logger.stringLogger))
+    assertTrue(Logger.isLogger(Logger.logfmtLogger))
+    assertFalse(Logger.isLogger({}))
+    assertFalse(Logger.isLogger(null))
+    assertFalse(Logger.isLogger(undefined))
+  })
+
+  it(".pipe", () => {
+    strictEqual(Logger.stringLogger.pipe(identity), Logger.stringLogger)
+    strictEqual(logLevelInfo.pipe(identity), logLevelInfo)
   })
 })
 
@@ -59,7 +68,7 @@ describe("withLeveledConsole", () => {
         Effect.withConsole(newConsole)
       )
 
-      expect(logs).toEqual([
+      deepStrictEqual(logs, [
         { level: "info", value: "log plain" },
         { level: "info", value: "log info" },
         { level: "warn", value: "log warn" },
@@ -102,7 +111,8 @@ describe("stringLogger", () => {
       date
     })
 
-    expect(result).toEqual(
+    strictEqual(
+      result,
       `timestamp=${date.toJSON()} level=INFO fiber= message="My message" imma_span__=7ms just_a_key=just_a_value good_key="I am a good value" good_bool=true I_am_bad_key_name="{
   \\"coolValue\\": \\"cool value\\"
 }" good_number=123`
@@ -131,7 +141,8 @@ describe("stringLogger", () => {
       date
     })
 
-    expect(result).toEqual(
+    strictEqual(
+      result,
       `timestamp=${date.toJSON()} level=INFO fiber= message="My
 message" imma_span__=7ms I_am_also_a_bad_key_name="{
   \\"return\\": \\"cool\\nvalue\\"
@@ -157,13 +168,12 @@ with line breaks" good_key3="I_have=a"`
       date
     })
 
-    expect(result).toEqual(
-      `timestamp=${date.toJSON()} level=INFO fiber= message=a message=b message=c`
-    )
+    strictEqual(result, `timestamp=${date.toJSON()} level=INFO fiber= message=a message=b message=c`)
   })
 })
 
-describe("logfmtLogger", () => {
+// Adding sequential to the describe block because otherwise the "batched" test fails locally
+describe.sequential("logfmtLogger", () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -192,7 +202,8 @@ describe("logfmtLogger", () => {
       date
     })
 
-    expect(result).toEqual(
+    strictEqual(
+      result,
       `timestamp=${date.toJSON()} level=INFO fiber= message="My message" imma_span__=7ms just_a_key=just_a_value good_key="I am a good value" I_am_bad_key_name="{\\"coolValue\\":\\"cool value\\"}"`
     )
   })
@@ -221,14 +232,10 @@ describe("logfmtLogger", () => {
       date
     })
 
-    expect(result).toEqual(
+    strictEqual(
+      result,
       `timestamp=${date.toJSON()} level=INFO fiber= message="My\\nmessage" imma_span__=7ms I_am_also_a_bad_key_name="{\\"return\\":\\"cool\\\\nvalue\\"}" good_key="{\\"returnWithSpace\\":\\"cool\\\\nvalue or not\\"}" good_bool=true good_number=123 good_key2="I am a good value\\nwith line breaks" good_key3="I_have=a"`
     )
-  })
-
-  it(".pipe", () => {
-    expect(Logger.stringLogger.pipe(identity)).toBe(Logger.stringLogger)
-    expect(logLevelInfo.pipe(identity)).toBe(logLevelInfo)
   })
 
   it("objects", () => {
@@ -246,9 +253,7 @@ describe("logfmtLogger", () => {
       date
     })
 
-    expect(result).toEqual(
-      `timestamp=${date.toJSON()} level=INFO fiber= message="{\\"hello\\":\\"world\\"}"`
-    )
+    strictEqual(result, `timestamp=${date.toJSON()} level=INFO fiber= message="{\\"hello\\":\\"world\\"}"`)
   })
 
   it("circular objects", () => {
@@ -269,9 +274,7 @@ describe("logfmtLogger", () => {
       date
     })
 
-    expect(result).toEqual(
-      `timestamp=${date.toJSON()} level=INFO fiber= message="{\\"hello\\":\\"world\\"}"`
-    )
+    strictEqual(result, `timestamp=${date.toJSON()} level=INFO fiber= message="{\\"hello\\":\\"world\\"}"`)
   })
 
   it("symbols", () => {
@@ -289,9 +292,7 @@ describe("logfmtLogger", () => {
       date
     })
 
-    expect(result).toEqual(
-      `timestamp=${date.toJSON()} level=INFO fiber= message=Symbol(effect/Logger/test)`
-    )
+    strictEqual(result, `timestamp=${date.toJSON()} level=INFO fiber= message=Symbol(effect/Logger/test)`)
   })
 
   it("functions", () => {
@@ -309,9 +310,7 @@ describe("logfmtLogger", () => {
       date
     })
 
-    expect(result).toEqual(
-      `timestamp=${date.toJSON()} level=INFO fiber= message="() => \\"hello world\\""`
-    )
+    strictEqual(result, `timestamp=${date.toJSON()} level=INFO fiber= message="() => \\"hello world\\""`)
   })
 
   it("annotations", () => {
@@ -331,21 +330,22 @@ describe("logfmtLogger", () => {
       date
     })
 
-    expect(result).toEqual(
+    strictEqual(
+      result,
       `timestamp=${date.toJSON()} level=INFO fiber= message="hello world" hashmap="{\\"_id\\":\\"HashMap\\",\\"values\\":[[\\"key\\",2]]}" chunk="{\\"_id\\":\\"Chunk\\",\\"values\\":[1,2]}"`
     )
   })
 
   it("batched", () =>
-    Effect.gen(function*(_) {
-      const chunks: Array<Array<string>> = []
+    Effect.gen(function*() {
+      const state: Array<Array<string>> = []
       const date = new Date()
       vi.setSystemTime(date)
-      const logger = yield* _(
+      const logger = yield* pipe(
         Logger.logfmtLogger,
-        Logger.batched("100 millis", (_) =>
+        Logger.batched("100 millis", (strings) =>
           Effect.sync(() => {
-            chunks.push(_)
+            state.push(strings)
           }))
       )
       const log = (message: string) =>
@@ -363,12 +363,12 @@ describe("logfmtLogger", () => {
       log("a")
       log("b")
       log("c")
-      yield* _(Effect.promise(() => vi.advanceTimersByTimeAsync(100)))
+      yield* Effect.promise(() => vi.advanceTimersByTimeAsync(100))
       log("d")
       log("e")
-      yield* _(Effect.promise(() => vi.advanceTimersByTimeAsync(100)))
+      yield* Effect.promise(() => vi.advanceTimersByTimeAsync(100))
 
-      assert.deepStrictEqual(chunks, [
+      deepStrictEqual(state, [
         [
           `timestamp=${date.toISOString()} level=INFO fiber= message=a`,
           `timestamp=${date.toISOString()} level=INFO fiber= message=b`,
@@ -396,9 +396,7 @@ describe("logfmtLogger", () => {
       date
     })
 
-    expect(result).toEqual(
-      `timestamp=${date.toJSON()} level=INFO fiber= message=a message=b message=c`
-    )
+    strictEqual(result, `timestamp=${date.toJSON()} level=INFO fiber= message=a message=b message=c`)
   })
 })
 
@@ -433,7 +431,8 @@ describe("jsonLogger", () => {
       date
     })
 
-    expect(result).toEqual(
+    strictEqual(
+      result,
       JSON.stringify({
         message: "My message",
         logLevel: "INFO",
@@ -466,14 +465,17 @@ describe("jsonLogger", () => {
       date
     })
 
-    expect(result).toEqual(JSON.stringify({
-      message: { hello: "world" },
-      logLevel: "INFO",
-      timestamp: date.toJSON(),
-      annotations: {},
-      spans: {},
-      fiberId: ""
-    }))
+    strictEqual(
+      result,
+      JSON.stringify({
+        message: { hello: "world" },
+        logLevel: "INFO",
+        timestamp: date.toJSON(),
+        annotations: {},
+        spans: {},
+        fiberId: ""
+      })
+    )
   })
 
   it("circular objects", () => {
@@ -494,14 +496,17 @@ describe("jsonLogger", () => {
       date
     })
 
-    expect(result).toEqual(JSON.stringify({
-      message: { hello: "world" },
-      logLevel: "INFO",
-      timestamp: date.toJSON(),
-      annotations: {},
-      spans: {},
-      fiberId: ""
-    }))
+    strictEqual(
+      result,
+      JSON.stringify({
+        message: { hello: "world" },
+        logLevel: "INFO",
+        timestamp: date.toJSON(),
+        annotations: {},
+        spans: {},
+        fiberId: ""
+      })
+    )
   })
 
   it("symbols", () => {
@@ -519,14 +524,17 @@ describe("jsonLogger", () => {
       date
     })
 
-    expect(result).toEqual(JSON.stringify({
-      message: Symbol.for("effect/Logger/test").toString(),
-      logLevel: "INFO",
-      timestamp: date.toJSON(),
-      annotations: {},
-      spans: {},
-      fiberId: ""
-    }))
+    strictEqual(
+      result,
+      JSON.stringify({
+        message: Symbol.for("effect/Logger/test").toString(),
+        logLevel: "INFO",
+        timestamp: date.toJSON(),
+        annotations: {},
+        spans: {},
+        fiberId: ""
+      })
+    )
   })
 
   it("functions", () => {
@@ -544,13 +552,16 @@ describe("jsonLogger", () => {
       date
     })
 
-    expect(result).toEqual(JSON.stringify({
-      message: "() => \"hello world\"",
-      logLevel: "INFO",
-      timestamp: date.toJSON(),
-      annotations: {},
-      spans: {},
-      fiberId: ""
-    }))
+    strictEqual(
+      result,
+      JSON.stringify({
+        message: "() => \"hello world\"",
+        logLevel: "INFO",
+        timestamp: date.toJSON(),
+        annotations: {},
+        spans: {},
+        fiberId: ""
+      })
+    )
   })
 })

@@ -1,20 +1,21 @@
 import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, deepStrictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("keyof", () => {
   it("should unify string literals with string", () => {
     const schema = S.Struct({ a: S.String }, S.Record({ key: S.String, value: S.String }))
     const keyof = S.keyof(schema)
-    expect(keyof.ast).toEqual(S.String.ast)
+    deepStrictEqual(keyof.ast, S.String.ast)
   })
 
   it("should unify symbol literals with symbol", () => {
     const a = Symbol.for("effect/Schema/test/a")
     const schema = S.Struct({ [a]: S.String }, S.Record({ key: S.SymbolFromSelf, value: S.String }))
     const keyof = S.keyof(schema)
-    expect(keyof.ast).toEqual(S.SymbolFromSelf.ast)
+    deepStrictEqual(keyof.ast, S.SymbolFromSelf.ast)
   })
 
   describe("struct", () => {
@@ -26,9 +27,9 @@ describe("keyof", () => {
       // type K = keyof S.Schema.Type<typeof schema> // "a" | "b"
       const keyOf = S.keyof(schema)
       const is = P.is(keyOf)
-      expect(is("a")).toEqual(true)
-      expect(is("b")).toEqual(true)
-      expect(is("c")).toEqual(false)
+      assertTrue(is("a"))
+      assertTrue(is("b"))
+      assertFalse(is("c"))
     })
 
     it("symbol keys", () => {
@@ -40,10 +41,10 @@ describe("keyof", () => {
       })
       const keyOf = S.keyof(schema)
       const is = P.is(keyOf)
-      expect(is(a)).toEqual(true)
-      expect(is(b)).toEqual(true)
-      expect(is("a")).toEqual(false)
-      expect(is("b")).toEqual(false)
+      assertTrue(is(a))
+      assertTrue(is(b))
+      assertFalse(is("a"))
+      assertFalse(is("b"))
     })
   })
 
@@ -51,19 +52,19 @@ describe("keyof", () => {
     it("string", () => {
       const schema = S.Record({ key: S.String, value: S.Number })
       // type K = keyof S.Schema.Type<typeof schema> // string
-      expect(AST.keyof(schema.ast)).toEqual(S.String.ast)
+      deepStrictEqual(AST.keyof(schema.ast), S.String.ast)
     })
 
     it("symbol", () => {
       const schema = S.Record({ key: S.SymbolFromSelf, value: S.Number })
       // type K = keyof S.Schema.Type<typeof schema> // symbol
-      expect(AST.keyof(schema.ast)).toEqual(S.SymbolFromSelf.ast)
+      deepStrictEqual(AST.keyof(schema.ast), S.SymbolFromSelf.ast)
     })
 
     it("template literal", () => {
       const schema = S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.Number })
       // type K = keyof S.Schema.Type<typeof schema> // `a${string}`
-      expect(AST.keyof(schema.ast)).toEqual(S.TemplateLiteral(S.Literal("a"), S.String).ast)
+      deepStrictEqual(AST.keyof(schema.ast), S.TemplateLiteral(S.Literal("a"), S.String).ast)
     })
   })
 
@@ -79,14 +80,14 @@ describe("keyof", () => {
           categories: S.Array(schema)
         })
     )
-    expect(AST.keyof(schema.ast)).toEqual(S.Literal("name", "categories").ast)
+    deepStrictEqual(AST.keyof(schema.ast), S.Literal("name", "categories").ast)
   })
 
   describe("union", () => {
     it("union of structs", () => {
       const schema = S.Union(S.Struct({ a: S.String }), S.Struct({ a: S.Number }))
       // type K = keyof S.Schema.Type<typeof schema> // "a"
-      expect(AST.keyof(schema.ast)).toEqual(S.Literal("a").ast)
+      deepStrictEqual(AST.keyof(schema.ast), S.Literal("a").ast)
     })
 
     it("union of records", () => {
@@ -95,7 +96,7 @@ describe("keyof", () => {
         S.Record({ key: S.String, value: S.Boolean })
       )
       // type K = keyof S.Schema.Type<typeof schema> // string
-      expect(AST.keyof(schema.ast)).toEqual(S.String.ast)
+      deepStrictEqual(AST.keyof(schema.ast), S.String.ast)
     })
 
     it("union of structs and records", () => {
@@ -104,18 +105,19 @@ describe("keyof", () => {
         S.Struct({ a: S.Number }, S.Record({ key: S.String, value: S.Boolean }))
       )
       // type K = keyof S.Schema.Type<typeof schema> // string
-      expect(AST.keyof(schema.ast)).toEqual(S.String.ast)
+      deepStrictEqual(AST.keyof(schema.ast), S.String.ast)
     })
   })
 
   it("should support Class", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
     // type K = keyof S.Schema.Type<typeof A> // "a"
-    expect(AST.keyof(A.ast)).toEqual(S.Literal("a").ast)
+    deepStrictEqual(AST.keyof(A.ast), S.Literal("a").ast)
   })
 
   it("should throw on unsupported schemas", () => {
-    expect(() => S.keyof(S.Option(S.String))).toThrow(
+    throws(
+      () => S.keyof(S.Option(S.String)),
       new Error(`Unsupported schema
 schema (Declaration): Option<string>`)
     )

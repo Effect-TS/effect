@@ -5,8 +5,9 @@ import { equals } from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import { assertTrue, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("acquireUseRelease - happy path", () =>
@@ -20,8 +21,8 @@ describe("Effect", () => {
         )
       )
       const released = yield* $(Ref.get(release))
-      assert.strictEqual(result, 43)
-      assert.isTrue(released)
+      strictEqual(result, 43)
+      assertTrue(released)
     }))
   it.effect("acquireUseRelease - happy path + disconnect", () =>
     Effect.gen(function*($) {
@@ -35,8 +36,8 @@ describe("Effect", () => {
         Effect.disconnect
       )
       const released = yield* $(Ref.get(release))
-      assert.strictEqual(result, 43)
-      assert.isTrue(released)
+      strictEqual(result, 43)
+      assertTrue(released)
     }))
   it.effect("acquireUseRelease - error handling", () =>
     Effect.gen(function*($) {
@@ -53,8 +54,8 @@ describe("Effect", () => {
         exit,
         Exit.matchEffect({ onFailure: Effect.succeed, onSuccess: () => Effect.fail("effect should have failed") })
       )
-      assert.isTrue(equals(Cause.failures(result), Chunk.of("use failed")))
-      assert.isTrue(equals(Cause.defects(result), Chunk.of(releaseDied)))
+      assertTrue(equals(Cause.failures(result), Chunk.of("use failed")))
+      assertTrue(equals(Cause.defects(result), Chunk.of(releaseDied)))
     }))
   it.effect("acquireUseRelease - error handling + disconnect", () =>
     Effect.gen(function*($) {
@@ -75,8 +76,8 @@ describe("Effect", () => {
           onSuccess: () => Effect.fail("effect should have failed")
         })
       )
-      assert.isTrue(equals(Cause.failures(result), Chunk.of("use failed")))
-      assert.isTrue(equals(Cause.defects(result), Chunk.of(releaseDied)))
+      assertTrue(equals(Cause.failures(result), Chunk.of("use failed")))
+      assertTrue(equals(Cause.defects(result), Chunk.of(releaseDied)))
     }))
   it.effect("acquireUseRelease - beast mode error handling + disconnect", () =>
     Effect.gen(function*($) {
@@ -105,7 +106,7 @@ describe("Effect", () => {
         )
       )
       const released = yield* $(Ref.get(release))
-      assert.isTrue(equals(Cause.defects(result), Chunk.of(useDied)))
-      assert.isTrue(released)
+      assertTrue(equals(Cause.defects(result), Chunk.of(useDied)))
+      assertTrue(released)
     }))
 })

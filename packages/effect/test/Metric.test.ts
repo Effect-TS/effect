@@ -1,20 +1,23 @@
-import * as Array from "effect/Array"
-import * as Clock from "effect/Clock"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
-import * as Fiber from "effect/Fiber"
-import { pipe } from "effect/Function"
-import * as Metric from "effect/Metric"
-import * as MetricBoundaries from "effect/MetricBoundaries"
-import * as MetricKey from "effect/MetricKey"
-import * as MetricLabel from "effect/MetricLabel"
-import * as MetricPolling from "effect/MetricPolling"
-import * as MetricState from "effect/MetricState"
-import * as Option from "effect/Option"
-import * as Schedule from "effect/Schedule"
+import {
+  Array,
+  Clock,
+  Duration,
+  Effect,
+  Equal,
+  Fiber,
+  Metric,
+  MetricBoundaries,
+  MetricKey,
+  MetricLabel,
+  MetricPolling,
+  MetricState,
+  Option,
+  pipe,
+  Schedule
+} from "effect"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe, expect } from "vitest"
+import { describe } from "vitest"
 
 const labels = [MetricLabel.make("x", "a"), MetricLabel.make("y", "b")]
 
@@ -36,7 +39,7 @@ describe("Metric", () => {
         const result = yield* $(
           counter(Effect.void).pipe(Effect.zipRight(counter(Effect.void)), Effect.zipRight(Metric.value(counter)))
         )
-        assert.deepStrictEqual(result, MetricState.counter(2))
+        deepStrictEqual(result, MetricState.counter(2))
       }))
     it.effect("direct increment", () =>
       Effect.gen(function*($) {
@@ -48,7 +51,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(counter))
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(2))
+        deepStrictEqual(result, MetricState.counter(2))
       }))
 
     it.effect("direct increment bigint", () =>
@@ -63,7 +66,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(counter))
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(BigInt(2)))
+        deepStrictEqual(result, MetricState.counter(BigInt(2)))
       }))
 
     it.effect("cannot decrement incremental", () =>
@@ -77,7 +80,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(counter))
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(2))
+        deepStrictEqual(result, MetricState.counter(2))
       }))
 
     it.effect("cannot decrement incremental bigint", () =>
@@ -94,7 +97,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(counter))
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(BigInt(2)))
+        deepStrictEqual(result, MetricState.counter(BigInt(2)))
       }))
 
     it.effect("custom increment by value as aspect", () =>
@@ -107,7 +110,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(counter))
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(15))
+        deepStrictEqual(result, MetricState.counter(15))
       }))
 
     it.effect("custom increment by bigint value as aspect", () =>
@@ -120,7 +123,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(counter))
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(BigInt(15)))
+        deepStrictEqual(result, MetricState.counter(BigInt(15)))
       }))
 
     it.effect("direct increment referential transparency", () =>
@@ -153,7 +156,7 @@ describe("Metric", () => {
             ))
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(2))
+        deepStrictEqual(result, MetricState.counter(2))
       }))
     it.effect("custom increment referential transparency", () =>
       Effect.gen(function*($) {
@@ -168,7 +171,7 @@ describe("Metric", () => {
             Effect.zipRight(pipe(Metric.counter(name), Metric.taggedWithLabels(labels), Metric.value))
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(15))
+        deepStrictEqual(result, MetricState.counter(15))
       }))
     it.effect("custom increment with mapInput", () =>
       Effect.gen(function*($) {
@@ -198,7 +201,7 @@ describe("Metric", () => {
             Effect.zipRight(pipe(Metric.counter(name), Metric.taggedWithLabels(labels), Metric.value))
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(6))
+        deepStrictEqual(result, MetricState.counter(6))
       }))
     it.effect("does not count errors", () =>
       Effect.gen(function*($) {
@@ -212,7 +215,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(counter))
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(1))
+        deepStrictEqual(result, MetricState.counter(1))
       }))
     it.effect("count + taggedWith", () =>
       Effect.gen(function*($) {
@@ -231,7 +234,7 @@ describe("Metric", () => {
             Effect.zipRight(pipe(base, Metric.tagged("dyn", "!"), Metric.value))
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(2))
+        deepStrictEqual(result, MetricState.counter(2))
       }))
     it.effect("tags are a region setting", () =>
       Effect.gen(function*($) {
@@ -248,7 +251,7 @@ describe("Metric", () => {
             )
           )
         )
-        assert.deepStrictEqual(result, MetricState.counter(1))
+        deepStrictEqual(result, MetricState.counter(1))
       }))
   })
   describe("Frequency", () => {
@@ -265,7 +268,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(frequency))
           )
         )
-        assert.deepStrictEqual(result.occurrences, new Map([["hello", 2] as const, ["world", 1] as const]))
+        deepStrictEqual(result.occurrences, new Map([["hello", 2] as const, ["world", 1] as const]))
       }))
     it.effect("direct occurrences", () =>
       Effect.gen(function*($) {
@@ -280,7 +283,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(frequency))
           )
         )
-        assert.deepStrictEqual(result.occurrences, new Map([["hello", 2] as const, ["world", 1] as const]))
+        deepStrictEqual(result.occurrences, new Map([["hello", 2] as const, ["world", 1] as const]))
       }))
     it.effect("custom occurrences with mapInput", () =>
       Effect.gen(function*($) {
@@ -299,7 +302,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(frequency))
           )
         )
-        assert.deepStrictEqual(result.occurrences, new Map([["1", 2] as const, ["2", 1] as const]))
+        deepStrictEqual(result.occurrences, new Map([["1", 2] as const, ["2", 1] as const]))
       }))
     it.effect("occurences + taggedWith", () =>
       Effect.gen(function*($) {
@@ -322,9 +325,9 @@ describe("Metric", () => {
             }))
           )
         )
-        assert.isTrue(result1.occurrences.size === 0)
-        assert.deepStrictEqual(result2.occurrences, new Map([["hello", 2] as const]))
-        assert.deepStrictEqual(result3.occurrences, new Map([["world", 1] as const]))
+        strictEqual(result1.occurrences.size, 0)
+        deepStrictEqual(result2.occurrences, new Map([["hello", 2] as const]))
+        deepStrictEqual(result3.occurrences, new Map([["world", 1] as const]))
       }))
   })
   describe("Gauge", () => {
@@ -340,7 +343,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(gauge))
           )
         )
-        assert.deepStrictEqual(result, MetricState.gauge(3))
+        deepStrictEqual(result, MetricState.gauge(3))
       }))
     it.effect("direct set", () =>
       Effect.gen(function*($) {
@@ -349,7 +352,7 @@ describe("Metric", () => {
         const result = yield* $(
           pipe(gauge, Metric.set(1), Effect.zipRight(pipe(gauge, Metric.set(3))), Effect.zipRight(Metric.value(gauge)))
         )
-        assert.deepStrictEqual(result, MetricState.gauge(3))
+        deepStrictEqual(result, MetricState.gauge(3))
       }))
     it.effect("increment", () =>
       Effect.gen(function*() {
@@ -357,7 +360,7 @@ describe("Metric", () => {
         const gauge = pipe(Metric.gauge(name), Metric.taggedWithLabels(labels))
         yield* Effect.forEach(Array.range(0, 99), () => Metric.increment(gauge), { concurrency: "unbounded" })
         const result = yield* Metric.value(gauge)
-        assert.deepStrictEqual(result, MetricState.gauge(100))
+        deepStrictEqual(result, MetricState.gauge(100))
       }))
     it.effect("custom set with mapInput", () =>
       Effect.gen(function*($) {
@@ -371,7 +374,7 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(gauge))
           )
         )
-        assert.deepStrictEqual(result, MetricState.gauge(6))
+        deepStrictEqual(result, MetricState.gauge(6))
       }))
     it.effect("gauge + taggedWith", () =>
       Effect.gen(function*($) {
@@ -390,7 +393,7 @@ describe("Metric", () => {
             Effect.zipRight(pipe(base, Metric.tagged("dyn", "!"), Metric.value))
           )
         )
-        assert.deepStrictEqual(result, MetricState.gauge(1))
+        deepStrictEqual(result, MetricState.gauge(1))
       }))
   })
   describe("Histogram", () => {
@@ -407,10 +410,10 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(histogram))
           )
         )
-        assert.strictEqual(result.count, 2)
-        assert.strictEqual(result.sum, 4)
-        assert.strictEqual(result.min, 1)
-        assert.strictEqual(result.max, 3)
+        strictEqual(result.count, 2)
+        strictEqual(result.sum, 4)
+        strictEqual(result.min, 1)
+        strictEqual(result.max, 3)
       }))
     it.effect("direct observe", () =>
       Effect.gen(function*($) {
@@ -425,10 +428,10 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(histogram))
           )
         )
-        assert.strictEqual(result.count, 2)
-        assert.strictEqual(result.sum, 4)
-        assert.strictEqual(result.min, 1)
-        assert.strictEqual(result.max, 3)
+        strictEqual(result.count, 2)
+        strictEqual(result.sum, 4)
+        strictEqual(result.min, 1)
+        strictEqual(result.max, 3)
       }))
     it.flakyTest(
       Effect.gen(function*($) {
@@ -446,13 +449,13 @@ describe("Metric", () => {
         const end = yield* $(Effect.sync(() => Date.now()))
         const elapsed = end - start
         const result = yield* $(Metric.value(histogram))
-        assert.strictEqual(result.count, 2)
-        assert.isAbove(result.sum, 0.39)
-        assert.isAtMost(result.sum, elapsed)
-        assert.isAtLeast(result.min, 0.1)
-        assert.isBelow(result.min, result.max)
-        assert.isAtLeast(result.max, 0.3)
-        assert.isBelow(result.max, elapsed)
+        strictEqual(result.count, 2)
+        assertTrue(result.sum > 0.39)
+        assertTrue(result.sum <= elapsed)
+        assertTrue(result.min >= 0.1)
+        assertTrue(result.min < result.max)
+        assertTrue(result.max >= 0.3)
+        assertTrue(result.max < elapsed)
       })
     )
     it.effect("custom observe with mapInput", () =>
@@ -472,10 +475,10 @@ describe("Metric", () => {
             Effect.zipRight(Metric.value(histogram))
           )
         )
-        assert.strictEqual(result.count, 2)
-        assert.strictEqual(result.sum, 4)
-        assert.strictEqual(result.min, 1)
-        assert.strictEqual(result.max, 3)
+        strictEqual(result.count, 2)
+        strictEqual(result.sum, 4)
+        strictEqual(result.min, 1)
+        strictEqual(result.max, 3)
       }))
     it.effect("observe + taggedWith", () =>
       Effect.gen(function*($) {
@@ -499,9 +502,9 @@ describe("Metric", () => {
             result3: pipe(base, Metric.tagged("dyn", "xyz"), Metric.value)
           }))
         )
-        assert.strictEqual(result1.count, 0)
-        assert.strictEqual(result2.count, 1)
-        assert.strictEqual(result3.count, 1)
+        strictEqual(result1.count, 0)
+        strictEqual(result2.count, 1)
+        strictEqual(result3.count, 1)
       }))
   })
   describe("Summary", () => {
@@ -523,10 +526,10 @@ describe("Metric", () => {
           Effect.zipRight(pipe(Effect.succeed(3), Effect.withMetric(summary))),
           Effect.zipRight(Metric.value(summary))
         )
-        assert.strictEqual(result.count, 2)
-        assert.strictEqual(result.sum, 4)
-        assert.strictEqual(result.min, 1)
-        assert.strictEqual(result.max, 3)
+        strictEqual(result.count, 2)
+        strictEqual(result.sum, 4)
+        strictEqual(result.min, 1)
+        strictEqual(result.max, 3)
       }))
     it.effect("direct observe", () =>
       Effect.gen(function*($) {
@@ -546,10 +549,10 @@ describe("Metric", () => {
           Effect.zipRight(pipe(summary, Metric.update(3))),
           Effect.zipRight(Metric.value(summary))
         )
-        assert.strictEqual(result.count, 2)
-        assert.strictEqual(result.sum, 4)
-        assert.strictEqual(result.min, 1)
-        assert.strictEqual(result.max, 3)
+        strictEqual(result.count, 2)
+        strictEqual(result.sum, 4)
+        strictEqual(result.min, 1)
+        strictEqual(result.max, 3)
       }))
     it.effect("custom observe with mapInput", () =>
       Effect.gen(function*($) {
@@ -570,10 +573,10 @@ describe("Metric", () => {
           Effect.zipRight(pipe(Effect.succeed("xyz"), Effect.withMetric(summary))),
           Effect.zipRight(Metric.value(summary))
         )
-        assert.strictEqual(result.count, 2)
-        assert.strictEqual(result.sum, 4)
-        assert.strictEqual(result.min, 1)
-        assert.strictEqual(result.max, 3)
+        strictEqual(result.count, 2)
+        strictEqual(result.sum, 4)
+        strictEqual(result.min, 1)
+        strictEqual(result.max, 3)
       }))
     it.effect("observeSummaryWith + taggedWith", () =>
       Effect.gen(function*($) {
@@ -601,9 +604,9 @@ describe("Metric", () => {
             result3: pipe(base, Metric.tagged("dyn", "xyz"), Metric.value)
           }))
         )
-        assert.strictEqual(result1.count, 0)
-        assert.strictEqual(result2.count, 1)
-        assert.strictEqual(result3.count, 1)
+        strictEqual(result1.count, 0)
+        strictEqual(result2.count, 1)
+        strictEqual(result3.count, 1)
       }))
   })
   describe("Polling", () => {
@@ -615,7 +618,7 @@ describe("Metric", () => {
         const fiber = yield* $(metric, MetricPolling.launch(schedule))
         yield* $(Fiber.interrupt(fiber))
         const result = yield* $(Metric.value(gauge))
-        assert.strictEqual(result.value, 0)
+        strictEqual(result.value, 0)
       }))
     it.scoped("launch should update the internal metric using the provided Schedule", () =>
       Effect.gen(function*($) {
@@ -624,7 +627,7 @@ describe("Metric", () => {
         const fiber = yield* $(metric, MetricPolling.launch(Schedule.once))
         yield* $(Fiber.join(fiber))
         const result = yield* $(Metric.value(gauge))
-        assert.strictEqual(result.value, 1)
+        strictEqual(result.value, 1)
       }))
     it.scoped("collectAll should generate a metric that polls all the provided metrics", () =>
       Effect.gen(function*($) {
@@ -640,8 +643,8 @@ describe("Metric", () => {
         yield* $(Fiber.join(fiber))
         const result1 = yield* $(Metric.value(gauge1))
         const result2 = yield* $(Metric.value(gauge2))
-        assert.strictEqual(result1.value, gaugeIncrement1 * pollingCount)
-        assert.strictEqual(result2.value, gaugeIncrement2 * pollingCount)
+        strictEqual(result1.value, gaugeIncrement1 * pollingCount)
+        strictEqual(result2.value, gaugeIncrement2 * pollingCount)
       }))
   })
 
@@ -683,25 +686,25 @@ describe("Metric", () => {
           ))
       )
 
-      expect(Equal.equals(result1, MetricState.counter(1))).toBe(true)
-      expect(Equal.equals(result2, MetricState.counter(1))).toBe(true)
-      expect(Equal.equals(result3, MetricState.counter(1))).toBe(true)
-      expect(Equal.equals(pair1.metricState, MetricState.counter(1))).toBe(true)
-      expect(Option.isNone(pair1.metricKey.description)).toBe(true)
-      expect(Equal.equals(pair2.metricState, MetricState.counter(1))).toBe(true)
-      expect(Equal.equals(
+      assertTrue(Equal.equals(result1, MetricState.counter(1)))
+      assertTrue(Equal.equals(result2, MetricState.counter(1)))
+      assertTrue(Equal.equals(result3, MetricState.counter(1)))
+      assertTrue(Equal.equals(pair1.metricState, MetricState.counter(1)))
+      assertTrue(Option.isNone(pair1.metricKey.description))
+      assertTrue(Equal.equals(pair2.metricState, MetricState.counter(1)))
+      assertTrue(Equal.equals(
         pair2.metricKey,
         MetricKey.counter(name, {
           description: "description1"
         })
-      )).toBe(true)
-      expect(Equal.equals(pair3.metricState, MetricState.counter(1))).toBe(true)
-      expect(Equal.equals(
+      ))
+      assertTrue(Equal.equals(pair3.metricState, MetricState.counter(1)))
+      assertTrue(Equal.equals(
         pair3.metricKey,
         MetricKey.counter(name, {
           description: "description2"
         })
-      )).toBe(true)
+      ))
     }))
 
   it.effect(".register()", () =>
@@ -713,6 +716,6 @@ describe("Metric", () => {
         Array.fromIterable(snapshot),
         Array.findFirst((_) => _.metricKey.name === id)
       )
-      expect(value._tag).toBe("Some")
+      strictEqual(value._tag, "Some")
     }))
 })

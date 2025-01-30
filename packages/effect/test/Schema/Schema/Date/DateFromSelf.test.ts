@@ -1,7 +1,8 @@
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("DateFromSelf", () => {
   it("test roundtrip consistency", () => {
@@ -28,6 +29,6 @@ describe("DateFromSelf", () => {
 
   it("pretty", () => {
     const pretty = Pretty.make(S.DateFromSelf)
-    expect(pretty(new Date(0))).toEqual("new Date(\"1970-01-01T00:00:00.000Z\")")
+    strictEqual(pretty(new Date(0)), `new Date("1970-01-01T00:00:00.000Z")`)
   })
 })

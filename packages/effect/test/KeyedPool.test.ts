@@ -6,9 +6,10 @@ import { pipe } from "effect/Function"
 import * as KeyedPool from "effect/KeyedPool"
 import * as Random from "effect/Random"
 import * as Ref from "effect/Ref"
+import { strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { describe, expect } from "vitest"
+import { describe } from "vitest"
 
 describe("KeyedPool", () => {
   it.scoped("acquire release many successfully while other key is blocked", () =>
@@ -40,7 +41,7 @@ describe("KeyedPool", () => {
       ))
       yield* $(TestClock.adjust(Duration.millis(10 * N)))
       const result = yield* $(Fiber.join(fiber))
-      expect(result).toBeUndefined()
+      strictEqual(result, undefined)
     }))
 
   it.scoped("acquire release many with invalidates", () =>
@@ -75,6 +76,6 @@ describe("KeyedPool", () => {
       ))
       yield* $(TestClock.adjust(Duration.millis(15 * N)))
       const result = yield* $(Fiber.join(fiber))
-      expect(result).toBeUndefined()
+      strictEqual(result, undefined)
     }))
 })

@@ -3,8 +3,9 @@ import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("scan", () =>
@@ -22,7 +23,7 @@ describe("Stream", () => {
           )
         )
       }))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result1), result2)
+      deepStrictEqual(Chunk.toReadonlyArray(result1), result2)
     }))
 
   it.effect("scanReduce", () =>
@@ -33,6 +34,6 @@ describe("Stream", () => {
         Stream.scanReduce<number, number>((acc, curr) => acc + curr),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [1, 3, 6, 10, 15])
+      deepStrictEqual(Chunk.toReadonlyArray(result), [1, 3, 6, 10, 15])
     }))
 })

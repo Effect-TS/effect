@@ -1,18 +1,19 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual, doesNotThrow } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("pick", () => {
   it("refinement", async () => {
     const schema = S.Struct({ a: S.NumberFromString, b: S.Number }).pipe(S.filter(() => true))
     const ast = schema.pipe(S.pick("a")).ast
-    expect(ast).toStrictEqual(S.Struct({ a: S.NumberFromString }).ast)
+    deepStrictEqual(ast, S.Struct({ a: S.NumberFromString }).ast)
   })
 
   it("struct", async () => {
     const schema = S.Struct({ a: S.NumberFromString, b: S.Number })
     const ast = schema.pipe(S.pick("a")).ast
-    expect(ast).toStrictEqual(S.Struct({ a: S.NumberFromString }).ast)
+    deepStrictEqual(ast, S.Struct({ a: S.NumberFromString }).ast)
   })
 
   it("struct + record", async () => {
@@ -21,7 +22,7 @@ describe("pick", () => {
       S.Record({ key: S.String, value: S.Union(S.String, S.Number) })
     )
     const ast = schema.pipe(S.pick("a", "c")).ast
-    expect(ast).toStrictEqual(S.Struct({ a: S.NumberFromString, c: S.Union(S.String, S.Number) }).ast)
+    deepStrictEqual(ast, S.Struct({ a: S.NumberFromString, c: S.Union(S.String, S.Number) }).ast)
   })
 
   it("union", async () => {
@@ -30,7 +31,7 @@ describe("pick", () => {
     const schema = S.Union(A, B)
     const pick = schema.pipe(S.pick("a"))
     const ast = pick.ast
-    expect(ast).toStrictEqual(S.Struct({ a: S.Union(S.String, S.Number) }).ast)
+    deepStrictEqual(ast, S.Struct({ a: S.Union(S.String, S.Number) }).ast)
   })
 
   describe("transformation", () => {
@@ -40,7 +41,7 @@ describe("pick", () => {
         S.Struct({ a: S.Number, b: S.Number })
       )
       const ast = schema.pipe(S.pick("a")).ast
-      expect(ast).toStrictEqual(S.compose(S.Struct({ a: S.NumberFromString }), S.Struct({ a: S.Number })).ast)
+      deepStrictEqual(ast, S.compose(S.Struct({ a: S.NumberFromString }), S.Struct({ a: S.Number })).ast)
     })
 
     describe("TypeLiteralTransformation", () => {
@@ -48,20 +49,20 @@ describe("pick", () => {
         const schema = S.Struct({ a: S.optionalWith(S.NumberFromString, { default: () => 0 }), b: S.Number })
         const pick = schema.pipe(S.pick("a"))
         const ast = pick.ast as AST.Transformation
-        expect(ast.from).toStrictEqual(S.Struct({ a: S.optional(S.NumberFromString) }).ast)
-        expect(ast.to).toStrictEqual(S.Struct({ a: S.Number }).ast)
-        expect(ast.transformation).toStrictEqual((schema.ast as AST.Transformation).transformation)
-        expect(() => pick.pipe(S.extend(S.Struct({ c: S.Boolean })))).not.Throw()
+        deepStrictEqual(ast.from, S.Struct({ a: S.optional(S.NumberFromString) }).ast)
+        deepStrictEqual(ast.to, S.Struct({ a: S.Number }).ast)
+        deepStrictEqual(ast.transformation, (schema.ast as AST.Transformation).transformation)
+        doesNotThrow(() => pick.pipe(S.extend(S.Struct({ c: S.Boolean }))))
       })
 
       it("picking keys without associated PropertySignatureTransformations", async () => {
         const schema = S.Struct({ a: S.optionalWith(S.NumberFromString, { default: () => 0 }), b: S.NumberFromString })
         const pick = schema.pipe(S.pick("b"))
         const ast = pick.ast as AST.TypeLiteral
-        expect(ast.propertySignatures).toStrictEqual([
+        deepStrictEqual(ast.propertySignatures, [
           new AST.PropertySignature("b", S.NumberFromString.ast, false, true)
         ])
-        expect(() => pick.pipe(S.extend(S.Struct({ c: S.Boolean })))).not.Throw()
+        doesNotThrow(() => pick.pipe(S.extend(S.Struct({ c: S.Boolean }))))
       })
     })
 
@@ -70,7 +71,7 @@ describe("pick", () => {
         class A extends S.Class<A>("A")({ a: S.NumberFromString, b: S.Number }) {}
         const schema = A
         const ast = schema.pipe(S.pick("a")).ast
-        expect(ast).toStrictEqual(S.Struct({ a: S.NumberFromString }).ast)
+        deepStrictEqual(ast, S.Struct({ a: S.NumberFromString }).ast)
       })
 
       it("a union of Classes", async () => {
@@ -79,7 +80,7 @@ describe("pick", () => {
         const schema = S.Union(A, B)
         const pick = schema.pipe(S.pick("a"))
         const ast = pick.ast
-        expect(ast).toStrictEqual(S.Struct({ a: S.Union(S.Number, S.String) }).ast)
+        deepStrictEqual(ast, S.Struct({ a: S.Union(S.Number, S.String) }).ast)
       })
     })
   })

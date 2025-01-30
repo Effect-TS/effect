@@ -2,13 +2,13 @@ import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import { assertLeft, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Channel", () => {
   it.it("acquireUseReleaseOut - acquire is executed uninterruptibly", async () => {
@@ -29,7 +29,7 @@ describe("Channel", () => {
     })
     const result = await Effect.runPromise(program)
     await Effect.runPromise(Deferred.succeed(latch, void 0))
-    assert.strictEqual(result, 0)
+    strictEqual(result, 0)
   }, 35_000)
 
   it.it("scoped closes the scope", async () => {
@@ -50,7 +50,7 @@ describe("Channel", () => {
     })
     const result = await Effect.runPromise(program)
     await Effect.runPromise(Deferred.succeed(latch, void 0))
-    assert.strictEqual(result, 0)
+    strictEqual(result, 0)
   }, 35_000)
 
   it.effect("finalizer failure is propagated", () =>
@@ -64,6 +64,6 @@ describe("Channel", () => {
         Effect.either
       )
 
-      assert.deepEqual(exit, Either.left(Cause.die("ok")))
+      assertLeft(exit, Cause.die("ok"))
     }))
 })

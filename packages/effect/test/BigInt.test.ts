@@ -1,21 +1,19 @@
-import * as BigInt_ from "effect/BigInt"
-import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import { deepStrictEqual } from "effect/test/util"
-import { assert, describe, expect, it } from "vitest"
+import { BigInt as BigInt_, pipe } from "effect"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("BigInt", () => {
   it("sign", () => {
-    assert.deepStrictEqual(BigInt_.sign(-5n), -1)
-    assert.deepStrictEqual(BigInt_.sign(0n), 0)
-    assert.deepStrictEqual(BigInt_.sign(5n), 1)
+    strictEqual(BigInt_.sign(-5n), -1)
+    strictEqual(BigInt_.sign(0n), 0)
+    strictEqual(BigInt_.sign(5n), 1)
   })
 
   it("isBigInt", () => {
-    expect(BigInt_.isBigInt(1n)).toEqual(true)
-    expect(BigInt_.isBigInt(1)).toEqual(false)
-    expect(BigInt_.isBigInt("a")).toEqual(false)
-    expect(BigInt_.isBigInt(true)).toEqual(false)
+    assertTrue(BigInt_.isBigInt(1n))
+    assertFalse(BigInt_.isBigInt(1))
+    assertFalse(BigInt_.isBigInt("a"))
+    assertFalse(BigInt_.isBigInt(true))
   })
 
   it("sum", () => {
@@ -31,8 +29,8 @@ describe("BigInt", () => {
   })
 
   it("divide", () => {
-    deepStrictEqual(pipe(6n, BigInt_.divide(2n)), Option.some(3n))
-    deepStrictEqual(pipe(6n, BigInt_.divide(0n)), Option.none())
+    assertSome(pipe(6n, BigInt_.divide(2n)), 3n)
+    assertNone(pipe(6n, BigInt_.divide(0n)))
   })
 
   it("unsafeDivide", () => {
@@ -48,8 +46,8 @@ describe("BigInt", () => {
   })
 
   it("Equivalence", () => {
-    expect(BigInt_.Equivalence(1n, 1n)).toBe(true)
-    expect(BigInt_.Equivalence(1n, 2n)).toBe(false)
+    assertTrue(BigInt_.Equivalence(1n, 1n))
+    assertFalse(BigInt_.Equivalence(1n, 2n))
   })
 
   it("Order", () => {
@@ -59,126 +57,126 @@ describe("BigInt", () => {
   })
 
   it("lessThan", () => {
-    assert.deepStrictEqual(BigInt_.lessThan(2n, 3n), true)
-    assert.deepStrictEqual(BigInt_.lessThan(3n, 3n), false)
-    assert.deepStrictEqual(BigInt_.lessThan(4n, 3n), false)
+    deepStrictEqual(BigInt_.lessThan(2n, 3n), true)
+    deepStrictEqual(BigInt_.lessThan(3n, 3n), false)
+    deepStrictEqual(BigInt_.lessThan(4n, 3n), false)
   })
 
   it("lessThanOrEqualTo", () => {
-    assert.deepStrictEqual(BigInt_.lessThanOrEqualTo(2n, 3n), true)
-    assert.deepStrictEqual(BigInt_.lessThanOrEqualTo(3n, 3n), true)
-    assert.deepStrictEqual(BigInt_.lessThanOrEqualTo(4n, 3n), false)
+    deepStrictEqual(BigInt_.lessThanOrEqualTo(2n, 3n), true)
+    deepStrictEqual(BigInt_.lessThanOrEqualTo(3n, 3n), true)
+    deepStrictEqual(BigInt_.lessThanOrEqualTo(4n, 3n), false)
   })
 
   it("greaterThan", () => {
-    assert.deepStrictEqual(BigInt_.greaterThan(2n, 3n), false)
-    assert.deepStrictEqual(BigInt_.greaterThan(3n, 3n), false)
-    assert.deepStrictEqual(BigInt_.greaterThan(4n, 3n), true)
+    deepStrictEqual(BigInt_.greaterThan(2n, 3n), false)
+    deepStrictEqual(BigInt_.greaterThan(3n, 3n), false)
+    deepStrictEqual(BigInt_.greaterThan(4n, 3n), true)
   })
 
   it("greaterThanOrEqualTo", () => {
-    assert.deepStrictEqual(BigInt_.greaterThanOrEqualTo(2n, 3n), false)
-    assert.deepStrictEqual(BigInt_.greaterThanOrEqualTo(3n, 3n), true)
-    assert.deepStrictEqual(BigInt_.greaterThanOrEqualTo(4n, 3n), true)
+    deepStrictEqual(BigInt_.greaterThanOrEqualTo(2n, 3n), false)
+    deepStrictEqual(BigInt_.greaterThanOrEqualTo(3n, 3n), true)
+    deepStrictEqual(BigInt_.greaterThanOrEqualTo(4n, 3n), true)
   })
 
   it("between", () => {
-    assert.deepStrictEqual(BigInt_.between({ minimum: 0n, maximum: 5n })(3n), true)
-    assert.deepStrictEqual(BigInt_.between({ minimum: 0n, maximum: 5n })(-1n), false)
-    assert.deepStrictEqual(BigInt_.between({ minimum: 0n, maximum: 5n })(6n), false)
+    deepStrictEqual(BigInt_.between({ minimum: 0n, maximum: 5n })(3n), true)
+    deepStrictEqual(BigInt_.between({ minimum: 0n, maximum: 5n })(-1n), false)
+    deepStrictEqual(BigInt_.between({ minimum: 0n, maximum: 5n })(6n), false)
 
-    assert.deepStrictEqual(BigInt_.between(3n, { minimum: 0n, maximum: 5n }), true)
+    deepStrictEqual(BigInt_.between(3n, { minimum: 0n, maximum: 5n }), true)
   })
 
   it("clamp", () => {
-    assert.deepStrictEqual(BigInt_.clamp({ minimum: 0n, maximum: 5n })(3n), 3n)
-    assert.deepStrictEqual(BigInt_.clamp({ minimum: 0n, maximum: 5n })(-1n), 0n)
-    assert.deepStrictEqual(BigInt_.clamp({ minimum: 0n, maximum: 5n })(6n), 5n)
+    deepStrictEqual(BigInt_.clamp({ minimum: 0n, maximum: 5n })(3n), 3n)
+    deepStrictEqual(BigInt_.clamp({ minimum: 0n, maximum: 5n })(-1n), 0n)
+    deepStrictEqual(BigInt_.clamp({ minimum: 0n, maximum: 5n })(6n), 5n)
 
-    assert.deepStrictEqual(BigInt_.clamp(3n, { minimum: 0n, maximum: 5n }), 3n)
+    deepStrictEqual(BigInt_.clamp(3n, { minimum: 0n, maximum: 5n }), 3n)
   })
 
   it("min", () => {
-    assert.deepStrictEqual(BigInt_.min(2n, 3n), 2n)
+    deepStrictEqual(BigInt_.min(2n, 3n), 2n)
   })
 
   it("max", () => {
-    assert.deepStrictEqual(BigInt_.max(2n, 3n), 3n)
+    deepStrictEqual(BigInt_.max(2n, 3n), 3n)
   })
 
   it("sumAll", () => {
-    assert.deepStrictEqual(BigInt_.sumAll([2n, 3n, 4n]), 9n)
+    deepStrictEqual(BigInt_.sumAll([2n, 3n, 4n]), 9n)
   })
 
   it("multiplyAll", () => {
-    assert.deepStrictEqual(BigInt_.multiplyAll([2n, 0n, 4n]), 0n)
-    assert.deepStrictEqual(BigInt_.multiplyAll([2n, 3n, 4n]), 24n)
+    deepStrictEqual(BigInt_.multiplyAll([2n, 0n, 4n]), 0n)
+    deepStrictEqual(BigInt_.multiplyAll([2n, 3n, 4n]), 24n)
   })
 
   it("abs", () => {
-    assert.deepStrictEqual(BigInt_.abs(2n), 2n)
-    assert.deepStrictEqual(BigInt_.abs(-3n), 3n)
+    deepStrictEqual(BigInt_.abs(2n), 2n)
+    deepStrictEqual(BigInt_.abs(-3n), 3n)
   })
 
   it("gcd", () => {
-    assert.deepStrictEqual(BigInt_.gcd(2n, 4n), 2n)
-    assert.deepStrictEqual(BigInt_.gcd(3n, 4n), 1n)
+    deepStrictEqual(BigInt_.gcd(2n, 4n), 2n)
+    deepStrictEqual(BigInt_.gcd(3n, 4n), 1n)
   })
 
   it("lcm", () => {
-    assert.deepStrictEqual(BigInt_.lcm(2n, 4n), 4n)
-    assert.deepStrictEqual(BigInt_.lcm(3n, 4n), 12n)
+    deepStrictEqual(BigInt_.lcm(2n, 4n), 4n)
+    deepStrictEqual(BigInt_.lcm(3n, 4n), 12n)
   })
 
   it("sqrt", () => {
-    assert.deepStrictEqual(BigInt_.sqrt(1n), Option.some(1n))
-    assert.deepStrictEqual(BigInt_.sqrt(16n), Option.some(4n))
-    assert.deepStrictEqual(BigInt_.sqrt(81n), Option.some(9n))
-    assert.deepStrictEqual(BigInt_.sqrt(-123n), Option.none())
+    assertSome(BigInt_.sqrt(1n), 1n)
+    assertSome(BigInt_.sqrt(16n), 4n)
+    assertSome(BigInt_.sqrt(81n), 9n)
+    assertNone(BigInt_.sqrt(-123n))
   })
 
   it("sqrt", () => {
-    expect(() => BigInt_.unsafeSqrt(-1n)).toThrow(new Error("Cannot take the square root of a negative number"))
+    throws(() => BigInt_.unsafeSqrt(-1n), new RangeError("Cannot take the square root of a negative number"))
   })
 
   it("toNumber", () => {
-    assert.deepStrictEqual(BigInt_.toNumber(BigInt(Number.MAX_SAFE_INTEGER)), Option.some(Number.MAX_SAFE_INTEGER))
-    assert.deepStrictEqual(BigInt_.toNumber(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)), Option.none())
-    assert.deepStrictEqual(BigInt_.toNumber(BigInt(Number.MIN_SAFE_INTEGER)), Option.some(Number.MIN_SAFE_INTEGER))
-    assert.deepStrictEqual(BigInt_.toNumber(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)), Option.none())
-    assert.deepStrictEqual(BigInt_.toNumber(BigInt(0)), Option.some(0))
-    assert.deepStrictEqual(BigInt_.toNumber(BigInt(42)), Option.some(42))
-    assert.deepStrictEqual(BigInt_.toNumber(BigInt(-42)), Option.some(-42))
+    assertSome(BigInt_.toNumber(BigInt(Number.MAX_SAFE_INTEGER)), Number.MAX_SAFE_INTEGER)
+    assertNone(BigInt_.toNumber(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)))
+    assertSome(BigInt_.toNumber(BigInt(Number.MIN_SAFE_INTEGER)), Number.MIN_SAFE_INTEGER)
+    assertNone(BigInt_.toNumber(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)))
+    assertSome(BigInt_.toNumber(BigInt(0)), 0)
+    assertSome(BigInt_.toNumber(BigInt(42)), 42)
+    assertSome(BigInt_.toNumber(BigInt(-42)), -42)
   })
 
   it("fromString", () => {
-    assert.deepStrictEqual(BigInt_.fromString("NaN"), Option.none())
-    assert.deepStrictEqual(BigInt_.fromString("Infinity"), Option.none())
-    assert.deepStrictEqual(BigInt_.fromString("-Infinity"), Option.none())
-    assert.deepStrictEqual(BigInt_.fromString("3.14"), Option.none())
-    assert.deepStrictEqual(BigInt_.fromString("-3.14"), Option.none())
-    assert.deepStrictEqual(BigInt_.fromString("1e3"), Option.none())
-    assert.deepStrictEqual(BigInt_.fromString("1e-3"), Option.none())
-    assert.deepStrictEqual(BigInt_.fromString(""), Option.none())
-    assert.deepStrictEqual(BigInt_.fromString("a"), Option.none())
-    assert.deepStrictEqual(BigInt_.fromString("42"), Option.some(BigInt(42)))
-    assert.deepStrictEqual(BigInt_.fromString("\n\r\t 42 \n\r\t"), Option.some(BigInt(42)))
+    assertNone(BigInt_.fromString("NaN"))
+    assertNone(BigInt_.fromString("Infinity"))
+    assertNone(BigInt_.fromString("-Infinity"))
+    assertNone(BigInt_.fromString("3.14"))
+    assertNone(BigInt_.fromString("-3.14"))
+    assertNone(BigInt_.fromString("1e3"))
+    assertNone(BigInt_.fromString("1e-3"))
+    assertNone(BigInt_.fromString(""))
+    assertNone(BigInt_.fromString("a"))
+    assertSome(BigInt_.fromString("42"), BigInt(42))
+    assertSome(BigInt_.fromString("\n\r\t 42 \n\r\t"), BigInt(42))
   })
 
   it("fromNumber", () => {
-    assert.deepStrictEqual(BigInt_.fromNumber(Number.MAX_SAFE_INTEGER), Option.some(BigInt(Number.MAX_SAFE_INTEGER)))
-    assert.deepStrictEqual(BigInt_.fromNumber(Number.MAX_SAFE_INTEGER + 1), Option.none())
-    assert.deepStrictEqual(BigInt_.fromNumber(Number.MIN_SAFE_INTEGER), Option.some(BigInt(Number.MIN_SAFE_INTEGER)))
-    assert.deepStrictEqual(BigInt_.fromNumber(Number.MIN_SAFE_INTEGER - 1), Option.none())
-    assert.deepStrictEqual(BigInt_.fromNumber(Infinity), Option.none())
-    assert.deepStrictEqual(BigInt_.fromNumber(-Infinity), Option.none())
-    assert.deepStrictEqual(BigInt_.fromNumber(NaN), Option.none())
-    assert.deepStrictEqual(BigInt_.fromNumber(1e100), Option.none())
-    assert.deepStrictEqual(BigInt_.fromNumber(-1e100), Option.none())
-    assert.deepStrictEqual(BigInt_.fromNumber(3.14), Option.none())
-    assert.deepStrictEqual(BigInt_.fromNumber(-3.14), Option.none())
-    assert.deepStrictEqual(BigInt_.fromNumber(0), Option.some(BigInt(0)))
-    assert.deepStrictEqual(BigInt_.fromNumber(42), Option.some(BigInt(42)))
-    assert.deepStrictEqual(BigInt_.fromNumber(-42), Option.some(BigInt(-42)))
+    assertSome(BigInt_.fromNumber(Number.MAX_SAFE_INTEGER), BigInt(Number.MAX_SAFE_INTEGER))
+    assertNone(BigInt_.fromNumber(Number.MAX_SAFE_INTEGER + 1))
+    assertSome(BigInt_.fromNumber(Number.MIN_SAFE_INTEGER), BigInt(Number.MIN_SAFE_INTEGER))
+    assertNone(BigInt_.fromNumber(Number.MIN_SAFE_INTEGER - 1))
+    assertNone(BigInt_.fromNumber(Infinity))
+    assertNone(BigInt_.fromNumber(-Infinity))
+    assertNone(BigInt_.fromNumber(NaN))
+    assertNone(BigInt_.fromNumber(1e100))
+    assertNone(BigInt_.fromNumber(-1e100))
+    assertNone(BigInt_.fromNumber(3.14))
+    assertNone(BigInt_.fromNumber(-3.14))
+    assertSome(BigInt_.fromNumber(0), BigInt(0))
+    assertSome(BigInt_.fromNumber(42), BigInt(42))
+    assertSome(BigInt_.fromNumber(-42), BigInt(-42))
   })
 })

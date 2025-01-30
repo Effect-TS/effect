@@ -7,9 +7,10 @@ import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Stream from "effect/Stream"
+import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { unify } from "effect/Unify"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream.Foreign", () => {
   it.effect("Tag", () =>
@@ -21,7 +22,7 @@ describe("Stream.Foreign", () => {
         Effect.map(Chunk.toReadonlyArray),
         Effect.provideService(tag, 10)
       )
-      assert.deepEqual(result, [10])
+      deepStrictEqual(result, [10])
     }))
 
   it.effect("Unify", () =>
@@ -30,10 +31,10 @@ describe("Stream.Foreign", () => {
       const unifiedExit = unify((yield* $(Random.nextInt)) > 1 ? Exit.succeed(0) : Exit.fail(1))
       const unifiedEither = unify((yield* $(Random.nextInt)) > 1 ? Either.right(0) : Either.left(1))
       const unifiedOption = unify((yield* $(Random.nextInt)) > 1 ? Option.some(0) : Option.none())
-      assert.deepEqual(Chunk.toReadonlyArray(yield* $(Stream.runCollect(unifiedEffect))), [0])
-      assert.deepEqual(Chunk.toReadonlyArray(yield* $(Stream.runCollect(unifiedExit))), [0])
-      assert.deepEqual(Chunk.toReadonlyArray(yield* $(Stream.runCollect(unifiedEither))), [0])
-      assert.deepEqual(Chunk.toReadonlyArray(yield* $(Stream.runCollect(unifiedOption))), [0])
+      deepStrictEqual(Chunk.toReadonlyArray(yield* $(Stream.runCollect(unifiedEffect))), [0])
+      deepStrictEqual(Chunk.toReadonlyArray(yield* $(Stream.runCollect(unifiedExit))), [0])
+      deepStrictEqual(Chunk.toReadonlyArray(yield* $(Stream.runCollect(unifiedEither))), [0])
+      deepStrictEqual(Chunk.toReadonlyArray(yield* $(Stream.runCollect(unifiedOption))), [0])
     }))
 
   it.effect("Either.right", () =>
@@ -46,7 +47,7 @@ describe("Stream.Foreign", () => {
         Effect.map(Chunk.toReadonlyArray),
         Effect.provideService(tag, 10)
       )
-      assert.deepEqual(result, [10])
+      deepStrictEqual(result, [10])
     }))
 
   it.effect("Either.left", () =>
@@ -58,7 +59,7 @@ describe("Stream.Foreign", () => {
         Effect.either,
         Effect.provideService(tag, 10)
       )
-      assert.deepEqual(result, Either.left(10))
+      assertLeft(result, 10)
     }))
 
   it.effect("Option.some", () =>
@@ -70,7 +71,7 @@ describe("Stream.Foreign", () => {
         Effect.map(Chunk.toReadonlyArray),
         Effect.provideService(tag, 10)
       )
-      assert.deepEqual(result, [10])
+      deepStrictEqual(result, [10])
     }))
 
   it.effect("Option.none", () =>
@@ -82,7 +83,7 @@ describe("Stream.Foreign", () => {
         Effect.either,
         Effect.provideService(tag, 10)
       )
-      assert.deepEqual(result, Either.left(new Cause.NoSuchElementException()))
+      assertLeft(result, new Cause.NoSuchElementException())
     }))
 
   it.effect("Effect.fail", () =>
@@ -94,7 +95,7 @@ describe("Stream.Foreign", () => {
         Effect.either,
         Effect.provideService(tag, 10)
       )
-      assert.deepEqual(result, Either.left("ok"))
+      assertLeft(result, "ok")
     }))
 
   it.effect("Effect.succeed", () =>
@@ -107,6 +108,6 @@ describe("Stream.Foreign", () => {
         Effect.either,
         Effect.provideService(tag, 10)
       )
-      assert.deepEqual(result, Either.right(["ok"]))
+      assertRight(result, ["ok"])
     }))
 })

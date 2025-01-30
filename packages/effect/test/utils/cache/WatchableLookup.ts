@@ -7,9 +7,9 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
+import { assertTrue } from "effect/test/util"
 import * as ObservableResource from "effect/test/utils/cache/ObservableResource"
 import * as TestServices from "effect/TestServices"
-import { expect } from "vitest"
 
 export interface WatchableLookup<Key, Value, Error = never> {
   (key: Key): Effect.Effect<Value, Error, Scope.Scope>
@@ -121,7 +121,7 @@ export const makeEffect = <Key, Value, Error = never>(
                 Effect.isSuccess,
                 Effect.map((isSuccess) => acc || isSuccess)
               )),
-            Effect.map((atLeastOneNotCleaned) => Effect.sync(() => expect(atLeastOneNotCleaned).toBe(true)))
+            Effect.map((atLeastOneNotCleaned) => Effect.sync(() => assertTrue(atLeastOneNotCleaned)))
           )
         })
       return Object.assign(lookup, {

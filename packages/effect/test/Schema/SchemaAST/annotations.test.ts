@@ -1,19 +1,22 @@
 import * as AST from "effect/SchemaAST"
-import { describe, expect, it } from "vitest"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("annotations", () => {
   it("should add annotations", () => {
     const symA = Symbol.for("a")
     const ast = AST.annotations(AST.stringKeyword, { [symA]: "A" })
-    expect(ast instanceof AST.StringKeyword).toBe(true)
-    expect(ast).toStrictEqual(
+    assertTrue(ast instanceof AST.StringKeyword)
+    deepStrictEqual(
+      ast,
       new AST.StringKeyword({
         [AST.TitleAnnotationId]: "string",
         [AST.DescriptionAnnotationId]: "a string",
         [symA]: "A"
       })
     )
-    expect(AST.stringKeyword).toStrictEqual(
+    deepStrictEqual(
+      AST.stringKeyword,
       new AST.StringKeyword({
         [AST.TitleAnnotationId]: "string",
         [AST.DescriptionAnnotationId]: "a string"

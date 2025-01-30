@@ -1,7 +1,7 @@
-import { Deferred, Effect, Exit, Fiber, Ref } from "effect"
-import * as FiberHandle from "effect/FiberHandle"
+import { Deferred, Effect, Exit, Fiber, FiberHandle, Ref } from "effect"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("FiberHandle", () => {
   it.effect("interrupts fibers", () =>
@@ -16,7 +16,7 @@ describe("FiberHandle", () => {
         Effect.scoped
       )
 
-      assert.strictEqual(yield* _(Ref.get(ref)), 1)
+      strictEqual(yield* _(Ref.get(ref)), 1)
     }))
 
   it.effect("runtime", () =>
@@ -34,12 +34,12 @@ describe("FiberHandle", () => {
             onlyIfMissing: true
           })
           yield* _(Effect.yieldNow())
-          assert.strictEqual(yield* _(Ref.get(ref)), 1)
+          strictEqual(yield* _(Ref.get(ref)), 1)
         }),
         Effect.scoped
       )
 
-      assert.strictEqual(yield* _(Ref.get(ref)), 2)
+      strictEqual(yield* _(Ref.get(ref)), 2)
     }))
 
   it.scoped("join", () =>
@@ -48,7 +48,7 @@ describe("FiberHandle", () => {
       FiberHandle.unsafeSet(handle, Effect.runFork(Effect.void))
       FiberHandle.unsafeSet(handle, Effect.runFork(Effect.fail("fail")))
       const result = yield* _(FiberHandle.join(handle), Effect.flip)
-      assert.strictEqual(result, "fail")
+      strictEqual(result, "fail")
     }))
 
   it.scoped("onlyIfMissing", () =>
@@ -58,9 +58,9 @@ describe("FiberHandle", () => {
       const fiberB = yield* _(FiberHandle.run(handle, Effect.never, { onlyIfMissing: true }))
       const fiberC = yield* _(FiberHandle.run(handle, Effect.never, { onlyIfMissing: true }))
       yield* _(Effect.yieldNow())
-      assert.isTrue(Exit.isInterrupted(yield* _(fiberB.await)))
-      assert.isTrue(Exit.isInterrupted(yield* _(fiberC.await)))
-      assert.strictEqual(fiberA.unsafePoll(), null)
+      assertTrue(Exit.isInterrupted(yield* _(fiberB.await)))
+      assertTrue(Exit.isInterrupted(yield* _(fiberC.await)))
+      strictEqual(fiberA.unsafePoll(), null)
     }))
 
   it.scoped("runtime onlyIfMissing", () =>
@@ -70,9 +70,9 @@ describe("FiberHandle", () => {
       const fiberB = run(Effect.never, { onlyIfMissing: true })
       const fiberC = run(Effect.never, { onlyIfMissing: true })
       yield* _(Effect.yieldNow())
-      assert.isTrue(Exit.isInterrupted(yield* _(fiberB.await)))
-      assert.isTrue(Exit.isInterrupted(yield* _(fiberC.await)))
-      assert.strictEqual(fiberA.unsafePoll(), null)
+      assertTrue(Exit.isInterrupted(yield* _(fiberB.await)))
+      assertTrue(Exit.isInterrupted(yield* _(fiberC.await)))
+      strictEqual(fiberA.unsafePoll(), null)
     }))
 
   it.scoped("propagateInterruption: false", () =>
@@ -83,7 +83,7 @@ describe("FiberHandle", () => {
       })
       yield* Effect.yieldNow()
       yield* Fiber.interrupt(fiber)
-      assert.isFalse(yield* Deferred.isDone(handle.deferred))
+      assertFalse(yield* Deferred.isDone(handle.deferred))
     }))
 
   it.scoped("propagateInterruption: true", () =>
@@ -94,7 +94,7 @@ describe("FiberHandle", () => {
       })
       yield* Effect.yieldNow()
       yield* Fiber.interrupt(fiber)
-      assert.isTrue(Exit.isInterrupted(
+      assertTrue(Exit.isInterrupted(
         yield* FiberHandle.join(handle).pipe(
           Effect.exit
         )

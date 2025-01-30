@@ -1,8 +1,9 @@
 import * as S from "effect/Schema"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("optionalElement", () => {
   it("toString", () => {
-    expect(String(S.optionalElement(S.String))).toStrictEqual("string?")
+    strictEqual(String(S.optionalElement(S.String)), "string?")
   })
 })

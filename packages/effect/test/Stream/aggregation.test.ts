@@ -14,13 +14,12 @@ import * as Schedule from "effect/Schedule"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import * as TestServices from "effect/TestServices"
-import { assert, describe } from "vitest"
-
-Stream.onError
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("aggregate - simple example", () =>
@@ -32,8 +31,8 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(Chunk.flatten(result)), [1, 1, 1, 1])
-      assert.isTrue(Array.from(result).every((chunk) => chunk.length <= 3))
+      deepStrictEqual(Array.from(Chunk.flatten(result)), [1, 1, 1, 1])
+      assertTrue(Array.from(result).every((chunk) => chunk.length <= 3))
     }))
 
   it.effect("aggregate - error propagation #1", () =>
@@ -45,7 +44,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("aggregate - error propagation #2", () =>
@@ -59,7 +58,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("aggregate - interruption propagation #1", () =>
@@ -85,7 +84,7 @@ describe("Stream", () => {
       yield* $(Deferred.await(latch))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("aggregate - interruption propagation #2", () =>
@@ -106,7 +105,7 @@ describe("Stream", () => {
       yield* $(Deferred.await(latch))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("aggregate - leftover handling", () =>
@@ -122,7 +121,7 @@ describe("Stream", () => {
         })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(Chunk.flatten(result)), input)
+      deepStrictEqual(Array.from(Chunk.flatten(result)), input)
     }))
 
   it.effect("aggregate - ZIO issue 6395", () =>
@@ -132,7 +131,7 @@ describe("Stream", () => {
         Stream.aggregate(Sink.collectAllN(2)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2], [3]]
       )
@@ -162,7 +161,7 @@ describe("Stream", () => {
         Fiber.join(fiber),
         Effect.map(Chunk.filter(Chunk.isNonEmpty))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14, 15]]
       )
@@ -196,7 +195,7 @@ describe("Stream", () => {
         Effect.repeatN(3)
       )
       const results = yield* $(Fiber.join(fiber), Effect.map(Chunk.compact))
-      assert.deepStrictEqual(Array.from(results), [2, 3])
+      deepStrictEqual(Array.from(results), [2, 3])
     }))
 
   it.effect("aggregateWithinEither - simple example", () =>
@@ -221,7 +220,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         [Either.right([2, 1, 1, 1, 1]), Either.right([2])]
       )
@@ -248,7 +247,7 @@ describe("Stream", () => {
       )
       const result = yield* $(Queue.takeAll(queue))
       yield* $(Queue.shutdown(queue))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
     }))
 
   it.effect("aggregateWithinEither - error propagation #1", () =>
@@ -263,7 +262,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("aggregateWithinEither - error propagation #2", () =>
@@ -278,7 +277,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("aggregateWithinEither - interruption propagation #1", () =>
@@ -304,7 +303,7 @@ describe("Stream", () => {
       yield* $(Deferred.await(latch))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("aggregateWithinEither - interruption propagation #2", () =>
@@ -325,7 +324,7 @@ describe("Stream", () => {
       yield* $(Deferred.await(latch))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("aggregateWithinEither - leftover handling", () =>
@@ -353,6 +352,6 @@ describe("Stream", () => {
       )
       yield* $(TestClock.adjust(Duration.minutes(31)))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), input)
+      deepStrictEqual(Array.from(result), input)
     }))
 })

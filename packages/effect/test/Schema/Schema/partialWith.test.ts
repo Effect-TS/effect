@@ -1,7 +1,8 @@
 import { identity } from "effect/Function"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("partialWith", () => {
   describe("{ exact: true }", () => {
@@ -130,14 +131,16 @@ describe("partialWith", () => {
 
   describe("unsupported schemas", () => {
     it("declarations should throw", () => {
-      expect(() => S.partialWith(S.OptionFromSelf(S.String), { exact: true })).toThrow(
+      throws(
+        () => S.partialWith(S.OptionFromSelf(S.String), { exact: true }),
         new Error(`Unsupported schema
 schema (Declaration): Option<string>`)
       )
     })
 
     it("refinements should throw", () => {
-      expect(() => S.partialWith(S.String.pipe(S.minLength(2)), { exact: true })).toThrow(
+      throws(
+        () => S.partialWith(S.String.pipe(S.minLength(2)), { exact: true }),
         new Error(`Unsupported schema
 schema (Refinement): minLength(2)`)
       )
@@ -150,7 +153,8 @@ schema (Refinement): minLength(2)`)
           b: S.propertySignature(S.String).pipe(S.fromKey("c"))
         })
         const schema = S.partialWith(original, { exact: true })
-        expect(S.format(schema)).toBe(
+        strictEqual(
+          S.format(schema),
           "({ readonly a?: string; readonly c?: string } <-> { readonly a?: string; readonly b?: string })"
         )
         await Util.assertions.decoding.succeed(schema, {})
@@ -160,11 +164,11 @@ schema (Refinement): minLength(2)`)
       })
 
       it("transformations should throw", () => {
-        expect(() =>
-          S.partialWith(S.transform(S.String, S.String, { strict: true, decode: identity, encode: identity }), {
-            exact: true
-          })
-        ).toThrow(
+        throws(
+          () =>
+            S.partialWith(S.transform(S.String, S.String, { strict: true, decode: identity, encode: identity }), {
+              exact: true
+            }),
           new Error(`Unsupported schema
 schema (Transformation): (string <-> string)`)
         )

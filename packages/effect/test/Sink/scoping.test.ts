@@ -3,8 +3,9 @@ import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("unwrapScoped - happy path", () =>
@@ -31,9 +32,9 @@ describe("Sink", () => {
       )
       const [result, state] = yield* $(Stream.make(1, 2, 3), Stream.run(sink))
       const finalState = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 103)
-      assert.isFalse(state)
-      assert.isTrue(finalState)
+      strictEqual(result, 103)
+      assertFalse(state)
+      assertTrue(finalState)
     }))
 
   it.effect("unwrapScoped - error", () =>
@@ -46,7 +47,7 @@ describe("Sink", () => {
       const sink = pipe(resource, Effect.as(Sink.succeed("ok")), Sink.unwrapScoped)
       const result = yield* $(Stream.fail("fail"), Stream.run(sink))
       const finalState = yield* $(Ref.get(ref))
-      assert.strictEqual(result, "ok")
-      assert.isTrue(finalState)
+      strictEqual(result, "ok")
+      assertTrue(finalState)
     }))
 })

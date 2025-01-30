@@ -4,8 +4,9 @@ import * as Either from "effect/Either"
 import { identity } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
+import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("collect", () =>
@@ -19,7 +20,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [2])
+      deepStrictEqual(Array.from(result), [2])
     }))
 
   it.effect("collectEffect - simple example", () =>
@@ -33,7 +34,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [4])
+      deepStrictEqual(Array.from(result), [4])
     }))
 
   it.effect("collectEffect - multiple chunks", () =>
@@ -51,7 +52,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [20, 30])
+      deepStrictEqual(Array.from(result), [20, 30])
     }))
 
   it.effect("collectEffect - handles failures", () =>
@@ -62,7 +63,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("collectEffect - laziness on chunks", () =>
@@ -77,7 +78,7 @@ describe("Stream", () => {
         Stream.either,
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         [Either.right(1), Either.right(2), Either.left("boom")]
       )
@@ -90,7 +91,7 @@ describe("Stream", () => {
         Stream.filterMapWhile(identity),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2])
+      deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("collectWhile - short circuits", () =>
@@ -102,7 +103,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.right(void 0))
+      assertRight(result, void 0)
     }))
 
   it.effect("collectWhileEffect - simple example", () =>
@@ -116,7 +117,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [2, 4])
+      deepStrictEqual(Array.from(result), [2, 4])
     }))
 
   it.effect("collectWhileEffect - short circuits", () =>
@@ -132,7 +133,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.right(void 0))
+      assertRight(result, void 0)
     }))
 
   it.effect("collectWhileEffect - fails", () =>
@@ -143,7 +144,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("collectWhileEffect - laziness on chunks", () =>
@@ -158,7 +159,7 @@ describe("Stream", () => {
         Stream.either,
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         [Either.right(1), Either.right(2), Either.left("boom")]
       )

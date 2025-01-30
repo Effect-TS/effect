@@ -2,17 +2,17 @@ import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import { assertFalse, assertLeft, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("haltWhen - halts after the current element", () =>
@@ -31,7 +31,7 @@ describe("Stream", () => {
       yield* $(Deferred.succeed(halt, void 0))
       yield* $(Deferred.succeed(latch, void 0))
       const result = yield* $(Ref.get(ref))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.effect("haltWhen - propagates errors", () =>
@@ -45,7 +45,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("fail"))
+      assertLeft(result, "fail")
     }))
 
   it.effect("haltWhenDeferred - halts after the current element", () =>
@@ -64,7 +64,7 @@ describe("Stream", () => {
       yield* $(Deferred.succeed(halt, void 0))
       yield* $(Deferred.succeed(latch, void 0))
       const result = yield* $(Ref.get(ref))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.effect("haltWhenDeferred - propagates errors", () =>
@@ -77,7 +77,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("fail"))
+      assertLeft(result, "fail")
     }))
 
   it.effect("haltAfter - halts after the given duration", () =>
@@ -116,7 +116,7 @@ describe("Stream", () => {
       )
       yield* $(coordination.offer)
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1], [2], [3]]
       )
@@ -134,6 +134,6 @@ describe("Stream", () => {
       yield* $(TestClock.adjust(Duration.seconds(6)))
       yield* $(Queue.offer(queue, 1))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [1])
+      deepStrictEqual(Array.from(result), [1])
     }))
 })

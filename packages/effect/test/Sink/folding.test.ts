@@ -5,8 +5,9 @@ import { absurd, constTrue, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("fold - empty", () =>
@@ -16,7 +17,7 @@ describe("Sink", () => {
         Stream.transduce(Sink.fold<number, number>(0, constTrue, (x, y) => x + y)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [0])
+      deepStrictEqual(Array.from(result), [0])
     }))
 
   it.effect("fold - termination in the middle", () =>
@@ -25,7 +26,7 @@ describe("Sink", () => {
         Stream.range(1, 9),
         Stream.run(Sink.fold<number, number>(0, (n) => n <= 5, (x, y) => x + y))
       )
-      assert.strictEqual(result, 6)
+      strictEqual(result, 6)
     }))
 
   it.effect("fold - immediate termination", () =>
@@ -34,7 +35,7 @@ describe("Sink", () => {
         Stream.range(1, 9),
         Stream.run(Sink.fold<number, number>(0, (n) => n <= -1, (x, y) => x + y))
       )
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.effect("fold - no termination", () =>
@@ -43,7 +44,7 @@ describe("Sink", () => {
         Stream.range(1, 9),
         Stream.run(Sink.fold<number, number>(0, (n) => n <= 500, (x, y) => x + y))
       )
-      assert.strictEqual(result, 45)
+      strictEqual(result, 45)
     }))
 
   it.effect("foldLeft equivalence with Chunk.reduce", () =>
@@ -51,14 +52,14 @@ describe("Sink", () => {
       const stream = Stream.range(1, 9)
       const result1 = yield* $(stream, Stream.run(Sink.foldLeft("", (s, n) => s + `${n}`)))
       const result2 = yield* $(stream, Stream.runCollect, Effect.map(Chunk.reduce("", (s, n) => s + `${n}`)))
-      assert.strictEqual(result1, result2)
+      strictEqual(result1, result2)
     }))
 
   it.effect("foldEffect - empty", () =>
     Effect.gen(function*($) {
       const sink = Sink.foldEffect(0, constTrue, (x, y: number) => Effect.succeed(x + y))
       const result = yield* $(Stream.empty, Stream.transduce(sink), Stream.runCollect)
-      assert.deepStrictEqual(Array.from(result), [0])
+      deepStrictEqual(Array.from(result), [0])
     }))
 
   it.effect("foldEffect - short circuits", () =>
@@ -93,10 +94,10 @@ describe("Sink", () => {
       const result2 = yield* $(run(single))
       const result3 = yield* $(run(double))
       const result4 = yield* $(run(failed))
-      assert.deepStrictEqual(result1, Exit.succeed([[0], []]))
-      assert.deepStrictEqual(result2, Exit.succeed([[30], [1]]))
-      assert.deepStrictEqual(result3, Exit.succeed([[30], [1, 2]]))
-      assert.deepStrictEqual(result4, Exit.fail("Ouch"))
+      deepStrictEqual(result1, Exit.succeed([[0], []]))
+      deepStrictEqual(result2, Exit.succeed([[30], [1]]))
+      deepStrictEqual(result3, Exit.succeed([[30], [1, 2]]))
+      deepStrictEqual(result4, Exit.fail("Ouch"))
     }))
 
   it.effect("foldUntil", () =>
@@ -106,7 +107,7 @@ describe("Sink", () => {
         Stream.transduce(Sink.foldUntil(0, 3, (x, y) => x + y)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [3, 3, 0])
+      deepStrictEqual(Array.from(result), [3, 3, 0])
     }))
 
   it.effect("foldUntilEffect", () =>
@@ -116,7 +117,7 @@ describe("Sink", () => {
         Stream.transduce(Sink.foldUntilEffect(0, 3, (x, y) => Effect.succeed(x + y))),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [3, 3, 0])
+      deepStrictEqual(Array.from(result), [3, 3, 0])
     }))
 
   it.effect("foldWeighted", () =>
@@ -131,7 +132,7 @@ describe("Sink", () => {
         })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 5], [2, 3]]
       )
@@ -150,7 +151,7 @@ describe("Sink", () => {
         })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [0])
+      deepStrictEqual(Array.from(result), [0])
     }))
 
   it.effect("foldWeightedDecompose - simple", () =>
@@ -166,7 +167,7 @@ describe("Sink", () => {
         })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 3], [1, 1, 1]]
       )
@@ -184,7 +185,7 @@ describe("Sink", () => {
         })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 5], [2, 3]]
       )
@@ -203,7 +204,7 @@ describe("Sink", () => {
         })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [0])
+      deepStrictEqual(Array.from(result), [0])
     }))
 
   it.effect("foldWeightedDecomposeEffect - simple", () =>
@@ -219,7 +220,7 @@ describe("Sink", () => {
         })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 3], [1, 1, 1]]
       )
@@ -242,6 +243,6 @@ describe("Sink", () => {
         Stream.make(1, 2, 3),
         Stream.run(sink)
       )
-      assert.deepStrictEqual(result, [[1, 2, 3], "boom"])
+      deepStrictEqual(result, [[1, 2, 3], "boom"])
     }))
 })

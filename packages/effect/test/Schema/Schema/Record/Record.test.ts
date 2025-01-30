@@ -3,14 +3,15 @@ import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assert, describe, expect, it } from "vitest"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("record", () => {
   it("annotations()", () => {
     const schema = S.Record({ key: S.String, value: S.Number }).annotations({ identifier: "X" }).annotations({
       title: "Y"
     })
-    expect(schema.ast.annotations).toStrictEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.IdentifierAnnotationId]: "X",
       [AST.TitleAnnotationId]: "Y"
     })
@@ -18,8 +19,8 @@ describe("record", () => {
 
   it("should expose the key and the value", () => {
     const schema = S.Record({ key: S.String, value: S.Number })
-    expect(schema.key).toStrictEqual(S.String)
-    expect(schema.value).toStrictEqual(S.Number)
+    strictEqual(schema.key, S.String)
+    strictEqual(schema.value, S.Number)
   })
 
   it("should compute the partial result", () => {
@@ -28,23 +29,23 @@ describe("record", () => {
     if (Either.isLeft(all)) {
       const issue = all.left.issue
       if (ParseResult.isComposite(issue)) {
-        expect(issue.output).toStrictEqual({ a: 1, c: 2 })
+        deepStrictEqual(issue.output, { a: 1, c: 2 })
       } else {
-        assert.fail("expected an And")
+        throw new Error("expected an And")
       }
     } else {
-      assert.fail("expected a Left")
+      throw new Error("expected a Left")
     }
     const first = S.decodeUnknownEither(schema)({ a: 1, b: "b", c: 2, d: "d" }, { errors: "first" })
     if (Either.isLeft(first)) {
       const issue = first.left.issue
       if (ParseResult.isComposite(issue)) {
-        expect(issue.output).toStrictEqual({ a: 1 })
+        deepStrictEqual(issue.output, { a: 1 })
       } else {
-        assert.fail("expected an And")
+        throw new Error("expected an And")
       }
     } else {
-      assert.fail("expected a Left")
+      throw new Error("expected a Left")
     }
   })
 

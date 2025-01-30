@@ -1,32 +1,32 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("AST.Union", () => {
   it("flatten should un-nest union members", () => {
     const asts = AST.flatten([S.Union(S.Literal("a", "b"), S.Literal("c", "d")).ast])
-    expect(asts.length).toBe(4)
+    strictEqual(asts.length, 4)
   })
 
   it("unify should remove never from members", () => {
-    expect(AST.Union.unify([AST.neverKeyword, AST.neverKeyword])).toEqual(
-      AST.neverKeyword
-    )
-    expect(AST.Union.unify([AST.neverKeyword, AST.stringKeyword])).toEqual(AST.stringKeyword)
-    expect(AST.Union.unify([AST.stringKeyword, AST.neverKeyword])).toEqual(AST.stringKeyword)
-    expect(
+    strictEqual(AST.Union.unify([AST.neverKeyword, AST.neverKeyword]), AST.neverKeyword)
+    strictEqual(AST.Union.unify([AST.neverKeyword, AST.stringKeyword]), AST.stringKeyword)
+    strictEqual(AST.Union.unify([AST.stringKeyword, AST.neverKeyword]), AST.stringKeyword)
+    deepStrictEqual(
       AST.Union.unify([
         AST.neverKeyword,
         AST.stringKeyword,
         AST.neverKeyword,
         AST.numberKeyword
-      ])
-    ).toEqual(AST.Union.unify([AST.stringKeyword, AST.numberKeyword]))
+      ]),
+      AST.Union.unify([AST.stringKeyword, AST.numberKeyword])
+    )
   })
 
   describe("toString", () => {
     it("string | number", () => {
-      expect(String(S.Union(S.String, S.Number))).toEqual("string | number")
+      strictEqual(String(S.Union(S.String, S.Number)), "string | number")
     })
 
     it("should support suspended schemas", () => {
@@ -42,7 +42,7 @@ describe("AST.Union", () => {
             })
         )
       )
-      expect(String(schema)).toStrictEqual("<suspended schema>")
+      strictEqual(String(schema), "<suspended schema>")
     })
 
     it("descriptions of nested unions should be preserved", () => {
@@ -50,12 +50,12 @@ describe("AST.Union", () => {
       const nested1 = u.annotations({ identifier: "nested1" })
       const nested2 = u.annotations({ identifier: "nested2" })
 
-      expect(String(u)).toStrictEqual("string | number")
-      expect(String(S.Union(nested1, nested1))).toStrictEqual("nested1 | nested1")
-      expect(String(S.Union(nested1, S.String))).toStrictEqual("nested1 | string")
-      expect(String(S.Union(nested1, u))).toStrictEqual("nested1 | string | number")
-      expect(String(S.Union(nested1, nested2))).toStrictEqual("nested1 | nested2")
-      expect(String(S.Union(nested1, nested2, S.String))).toStrictEqual("nested1 | nested2 | string")
+      strictEqual(String(u), "string | number")
+      strictEqual(String(S.Union(nested1, nested1)), "nested1 | nested1")
+      strictEqual(String(S.Union(nested1, S.String)), "nested1 | string")
+      strictEqual(String(S.Union(nested1, u)), "nested1 | string | number")
+      strictEqual(String(S.Union(nested1, nested2)), "nested1 | nested2")
+      strictEqual(String(S.Union(nested1, nested2, S.String)), "nested1 | nested2 | string")
     })
   })
 })

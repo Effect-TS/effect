@@ -1,7 +1,8 @@
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("URL", () => {
   const schema = S.URL
@@ -41,6 +42,6 @@ describe("URL", () => {
     const pretty = Pretty.make(schema)
     const input = "https://effecty.website:443"
     const prettified = "https://effecty.website/"
-    expect(pretty(new URL(input))).toEqual(prettified)
+    strictEqual(pretty(new URL(input)), prettified)
   })
 })

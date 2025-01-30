@@ -1,9 +1,10 @@
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Queue from "effect/Queue"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("bounded 0 is rendezvous", () =>
@@ -38,7 +39,7 @@ describe("Effect", () => {
 
       yield* _(Fiber.join(Fiber.zip(fiber, fiber2)))
 
-      assert.deepEqual(logs, [
+      deepStrictEqual(logs, [
         "sending message",
         "receiving message",
         "received message",

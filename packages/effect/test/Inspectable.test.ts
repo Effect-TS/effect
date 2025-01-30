@@ -1,70 +1,91 @@
 import * as Inspectable from "effect/Inspectable"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Inspectable", () => {
   describe("toString", () => {
     it("primitives", () => {
-      expect(Inspectable.format(null)).toEqual("null")
-      expect(Inspectable.format(undefined)).toEqual(undefined)
-      expect(Inspectable.format(1)).toEqual("1")
-      expect(Inspectable.format("a")).toEqual(`"a"`)
-      expect(Inspectable.format(true)).toEqual("true")
+      strictEqual(Inspectable.format(null), "null")
+      strictEqual(Inspectable.format(undefined), undefined)
+      strictEqual(Inspectable.format(1), "1")
+      strictEqual(Inspectable.format("a"), `"a"`)
+      strictEqual(Inspectable.format(true), "true")
     })
 
     it("empty collections", () => {
-      expect(Inspectable.format({})).toEqual("{}")
-      expect(Inspectable.format([])).toEqual("[]")
+      strictEqual(Inspectable.format({}), "{}")
+      strictEqual(Inspectable.format([]), "[]")
     })
 
     it("objects", () => {
-      expect(Inspectable.format({ a: 1 })).toEqual(`{
+      strictEqual(
+        Inspectable.format({ a: 1 }),
+        `{
   "a": 1
-}`)
-      expect(Inspectable.format({ a: 1, b: 2 })).toEqual(`{
+}`
+      )
+      strictEqual(
+        Inspectable.format({ a: 1, b: 2 }),
+        `{
   "a": 1,
   "b": 2
-}`)
-      expect(Inspectable.format({ a: 1, b: { c: 2 } })).toEqual(`{
+}`
+      )
+      strictEqual(
+        Inspectable.format({ a: 1, b: { c: 2 } }),
+        `{
   "a": 1,
   "b": {
     "c": 2
   }
-}`)
-      expect(Inspectable.format({ a: undefined })).toEqual("{}")
+}`
+      )
+      strictEqual(Inspectable.format({ a: undefined }), "{}")
     })
 
     it("arrays", () => {
-      expect(Inspectable.format([1, 2, 3])).toEqual(`[
+      strictEqual(
+        Inspectable.format([1, 2, 3]),
+        `[
   1,
   2,
   3
-]`)
-      expect(Inspectable.format([1, [2, 3], 4])).toEqual(`[
+]`
+      )
+      strictEqual(
+        Inspectable.format([1, [2, 3], 4]),
+        `[
   1,
   [
     2,
     3
   ],
   4
-]`)
+]`
+      )
     })
 
     it("mixed", () => {
-      expect(Inspectable.format({ "a": [] })).toEqual(`{
+      strictEqual(
+        Inspectable.format({ "a": [] }),
+        `{
   "a": []
-}`)
-      expect(Inspectable.format({
-        "_id": "Cause",
-        "_tag": "Fail",
-        "errors": [
-          {
-            "value": { "_id": "Chunk", "values": [0, 1, 2] }
-          },
-          {
-            "value": { "_id": "Chunk", "values": ["a", "b"] }
-          }
-        ]
-      })).toEqual(`{
+}`
+      )
+      strictEqual(
+        Inspectable.format({
+          "_id": "Cause",
+          "_tag": "Fail",
+          "errors": [
+            {
+              "value": { "_id": "Chunk", "values": [0, 1, 2] }
+            },
+            {
+              "value": { "_id": "Chunk", "values": ["a", "b"] }
+            }
+          ]
+        }),
+        `{
   "_id": "Cause",
   "_tag": "Fail",
   "errors": [
@@ -88,7 +109,8 @@ describe("Inspectable", () => {
       }
     }
   ]
-}`)
+}`
+      )
     })
   })
 })

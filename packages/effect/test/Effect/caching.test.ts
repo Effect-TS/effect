@@ -2,9 +2,10 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import { assertTrue, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("cached - returns new instances after duration", () =>
@@ -21,9 +22,9 @@ describe("Effect", () => {
       const c = yield* $(cache)
       yield* $(TestClock.adjust(Duration.minutes(59)))
       const d = yield* $(cache)
-      assert.strictEqual(a, b)
-      assert.notStrictEqual(b, c)
-      assert.strictEqual(c, d)
+      strictEqual(a, b)
+      assertTrue(b !== c)
+      strictEqual(c, d)
     }))
   it.effect("cached - correctly handles an infinite duration time to live", () =>
     Effect.gen(function*($) {
@@ -35,9 +36,9 @@ describe("Effect", () => {
       const a = yield* $(cached)
       const b = yield* $(cached)
       const c = yield* $(cached)
-      assert.strictEqual(a, 0)
-      assert.strictEqual(b, 0)
-      assert.strictEqual(c, 0)
+      strictEqual(a, 0)
+      strictEqual(b, 0)
+      strictEqual(c, 0)
     }))
   it.effect("cachedInvalidate - returns new instances after duration", () =>
     Effect.gen(function*($) {
@@ -57,9 +58,9 @@ describe("Effect", () => {
       const d = yield* $(cached)
       yield* $(TestClock.adjust(Duration.minutes(59)))
       const e = yield* $(cached)
-      assert.strictEqual(a, b)
-      assert.notStrictEqual(b, c)
-      assert.strictEqual(c, d)
-      assert.notStrictEqual(d, e)
+      strictEqual(a, b)
+      assertTrue(b !== c)
+      strictEqual(c, d)
+      assertTrue(d !== e)
     }))
 })

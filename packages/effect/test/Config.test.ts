@@ -1,55 +1,48 @@
-import * as Chunk from "effect/Chunk"
-import * as Config from "effect/Config"
-import * as ConfigError from "effect/ConfigError"
-import * as ConfigProvider from "effect/ConfigProvider"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
-import * as Exit from "effect/Exit"
-import { pipe } from "effect/Function"
-import * as HashSet from "effect/HashSet"
-import * as LogLevel from "effect/LogLevel"
-import * as Option from "effect/Option"
-import * as Redacted from "effect/Redacted"
-import * as Secret from "effect/Secret"
-import { assert, describe, expect, it } from "vitest"
+import {
+  Cause,
+  Chunk,
+  Config,
+  ConfigError,
+  ConfigProvider,
+  Duration,
+  Effect,
+  Equal,
+  HashSet,
+  LogLevel,
+  Option,
+  pipe,
+  Redacted,
+  Secret
+} from "effect"
+import { assertFailure, assertSuccess, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
-const assertFailure = <A>(
+const assertConfigError = <A>(
   config: Config.Config<A>,
   map: ReadonlyArray<readonly [string, string]>,
   error: ConfigError.ConfigError
 ) => {
   const configProvider = ConfigProvider.fromMap(new Map(map))
-  const result = Effect.runSync(Effect.exit(configProvider.load(config)))
-  expect(result).toStrictEqual(Exit.fail(error))
+  const result = Effect.runSyncExit(configProvider.load(config))
+  assertFailure(result, Cause.fail(error))
 }
 
-const assertSuccess = <A>(
+const assertConfig = <A>(
   config: Config.Config<A>,
   map: ReadonlyArray<readonly [string, string]>,
   a: A
 ) => {
   const configProvider = ConfigProvider.fromMap(new Map(map))
-  const result = Effect.runSync(Effect.exit(configProvider.load(config)))
-  expect(result).toStrictEqual(Exit.succeed(a))
-}
-
-const assertEqualSuccess = <A>(
-  config: Config.Config<A>,
-  map: ReadonlyArray<readonly [string, string]>,
-  a: A
-) => {
-  const configProvider = ConfigProvider.fromMap(new Map(map))
-  const result = Effect.runSync(Effect.exit(configProvider.load(config)))
-  expect(Equal.equals(Exit.succeed(a), result)).toBe(true)
+  const result = Effect.runSyncExit(configProvider.load(config))
+  assertSuccess(result, a)
 }
 
 describe("Config", () => {
   describe("boolean", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.boolean(), "ITEMS")
-      assertSuccess(config, [["ITEMS", "true"]], [true])
-      assertFailure(
+      assertConfig(config, [["ITEMS", "true"]], [true])
+      assertConfigError(
         config,
         [["ITEMS", "value"]],
         ConfigError.InvalidData(["ITEMS"], "Expected a boolean value but received value")
@@ -58,17 +51,17 @@ describe("Config", () => {
 
     it("name != undefined", () => {
       const config = Config.boolean("BOOL")
-      assertSuccess(config, [["BOOL", "true"]], true)
-      assertSuccess(config, [["BOOL", "yes"]], true)
-      assertSuccess(config, [["BOOL", "on"]], true)
-      assertSuccess(config, [["BOOL", "1"]], true)
-      assertSuccess(config, [["BOOL", "false"]], false)
-      assertSuccess(config, [["BOOL", "no"]], false)
-      assertSuccess(config, [["BOOL", "off"]], false)
-      assertSuccess(config, [["BOOL", "0"]], false)
+      assertConfig(config, [["BOOL", "true"]], true)
+      assertConfig(config, [["BOOL", "yes"]], true)
+      assertConfig(config, [["BOOL", "on"]], true)
+      assertConfig(config, [["BOOL", "1"]], true)
+      assertConfig(config, [["BOOL", "false"]], false)
+      assertConfig(config, [["BOOL", "no"]], false)
+      assertConfig(config, [["BOOL", "off"]], false)
+      assertConfig(config, [["BOOL", "0"]], false)
 
-      assertFailure(config, [], ConfigError.MissingData(["BOOL"], "Expected BOOL to exist in the provided map"))
-      assertFailure(
+      assertConfigError(config, [], ConfigError.MissingData(["BOOL"], "Expected BOOL to exist in the provided map"))
+      assertConfigError(
         config,
         [["BOOL", "value"]],
         ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
@@ -79,17 +72,17 @@ describe("Config", () => {
   describe("url", () => {
     it("name != undefined", () => {
       const config = Config.url("WEBSITE_URL")
-      assertSuccess(
+      assertConfig(
         config,
         [["WEBSITE_URL", "https://effect.website/docs/introduction#what-is-effect"]],
         new URL("https://effect.website/docs/introduction#what-is-effect")
       )
-      assertFailure(
+      assertConfigError(
         config,
         [["WEBSITE_URL", "abra-kadabra"]],
         ConfigError.InvalidData(["WEBSITE_URL"], "Expected an URL value but received abra-kadabra")
       )
-      assertFailure(
+      assertConfigError(
         config,
         [],
         ConfigError.MissingData(["WEBSITE_URL"], "Expected WEBSITE_URL to exist in the provided map")
@@ -100,15 +93,15 @@ describe("Config", () => {
   describe("nonEmptyString", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.nonEmptyString(), "ITEMS")
-      assertSuccess(config, [["ITEMS", "foo"]], ["foo"])
-      assertFailure(config, [["ITEMS", ""]], ConfigError.MissingData(["ITEMS"], "Expected a non-empty string"))
+      assertConfig(config, [["ITEMS", "foo"]], ["foo"])
+      assertConfigError(config, [["ITEMS", ""]], ConfigError.MissingData(["ITEMS"], "Expected a non-empty string"))
     })
 
     it("name != undefined", () => {
       const config = Config.nonEmptyString("NON_EMPTY_STRING")
-      assertSuccess(config, [["NON_EMPTY_STRING", "foo"]], "foo")
-      assertSuccess(config, [["NON_EMPTY_STRING", " "]], " ")
-      assertFailure(
+      assertConfig(config, [["NON_EMPTY_STRING", "foo"]], "foo")
+      assertConfig(config, [["NON_EMPTY_STRING", " "]], " ")
+      assertConfigError(
         config,
         [["NON_EMPTY_STRING", ""]],
         ConfigError.MissingData(["NON_EMPTY_STRING"], "Expected a non-empty string")
@@ -119,13 +112,13 @@ describe("Config", () => {
   describe("number", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.number(), "ITEMS")
-      assertSuccess(config, [["ITEMS", "1"]], [1])
-      assertFailure(
+      assertConfig(config, [["ITEMS", "1"]], [1])
+      assertConfigError(
         config,
         [["ITEMS", "123qq"]],
         ConfigError.InvalidData(["ITEMS"], "Expected a number value but received 123qq")
       )
-      assertFailure(
+      assertConfigError(
         config,
         [["ITEMS", "value"]],
         ConfigError.InvalidData(["ITEMS"], "Expected a number value but received value")
@@ -134,15 +127,15 @@ describe("Config", () => {
 
     it("name != undefined", () => {
       const config = Config.number("NUMBER")
-      assertSuccess(config, [["NUMBER", "1"]], 1)
-      assertSuccess(config, [["NUMBER", "1.2"]], 1.2)
-      assertSuccess(config, [["NUMBER", "-1"]], -1)
-      assertSuccess(config, [["NUMBER", "-1.2"]], -1.2)
-      assertSuccess(config, [["NUMBER", "0"]], 0)
-      assertSuccess(config, [["NUMBER", "-0"]], -0)
+      assertConfig(config, [["NUMBER", "1"]], 1)
+      assertConfig(config, [["NUMBER", "1.2"]], 1.2)
+      assertConfig(config, [["NUMBER", "-1"]], -1)
+      assertConfig(config, [["NUMBER", "-1.2"]], -1.2)
+      assertConfig(config, [["NUMBER", "0"]], 0)
+      assertConfig(config, [["NUMBER", "-0"]], -0)
 
-      assertFailure(config, [], ConfigError.MissingData(["NUMBER"], "Expected NUMBER to exist in the provided map"))
-      assertFailure(
+      assertConfigError(config, [], ConfigError.MissingData(["NUMBER"], "Expected NUMBER to exist in the provided map"))
+      assertConfigError(
         config,
         [["NUMBER", "value"]],
         ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
@@ -153,8 +146,8 @@ describe("Config", () => {
   describe("literal", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.literal("a", "b")(), "ITEMS")
-      assertSuccess(config, [["ITEMS", "a"]], ["a"])
-      assertFailure(
+      assertConfig(config, [["ITEMS", "a"]], ["a"])
+      assertConfigError(
         config,
         [["ITEMS", "value"]],
         ConfigError.InvalidData(["ITEMS"], "Expected one of (a, b) but received value")
@@ -163,15 +156,19 @@ describe("Config", () => {
 
     it("name != undefined", () => {
       const config = Config.literal("a", 0, -0.3, BigInt(5), false, null)("LITERAL")
-      assertSuccess(config, [["LITERAL", "a"]], "a")
-      assertSuccess(config, [["LITERAL", "0"]], 0)
-      assertSuccess(config, [["LITERAL", "-0.3"]], -0.3)
-      assertSuccess(config, [["LITERAL", "5"]], BigInt(5))
-      assertSuccess(config, [["LITERAL", "false"]], false)
-      assertSuccess(config, [["LITERAL", "null"]], null)
+      assertConfig(config, [["LITERAL", "a"]], "a")
+      assertConfig(config, [["LITERAL", "0"]], 0)
+      assertConfig(config, [["LITERAL", "-0.3"]], -0.3)
+      assertConfig(config, [["LITERAL", "5"]], BigInt(5))
+      assertConfig(config, [["LITERAL", "false"]], false)
+      assertConfig(config, [["LITERAL", "null"]], null)
 
-      assertFailure(config, [], ConfigError.MissingData(["LITERAL"], "Expected LITERAL to exist in the provided map"))
-      assertFailure(
+      assertConfigError(
+        config,
+        [],
+        ConfigError.MissingData(["LITERAL"], "Expected LITERAL to exist in the provided map")
+      )
+      assertConfigError(
         config,
         [["LITERAL", "value"]],
         ConfigError.InvalidData(["LITERAL"], "Expected one of (a, 0, -0.3, 5, false, null) but received value")
@@ -182,8 +179,8 @@ describe("Config", () => {
   describe("date", () => {
     it("name = undefined", () => {
       const config = Config.date()
-      assertSuccess(config, [["", "0"]], new Date(Date.parse("0")))
-      assertFailure(
+      assertConfig(config, [["", "0"]], new Date(Date.parse("0")))
+      assertConfigError(
         config,
         [["", "value"]],
         ConfigError.InvalidData([], "Expected a Date value but received value")
@@ -192,10 +189,10 @@ describe("Config", () => {
 
     it("name != undefined", () => {
       const config = Config.date("DATE")
-      assertSuccess(config, [["DATE", "0"]], new Date(Date.parse("0")))
+      assertConfig(config, [["DATE", "0"]], new Date(Date.parse("0")))
 
-      assertFailure(config, [], ConfigError.MissingData(["DATE"], "Expected DATE to exist in the provided map"))
-      assertFailure(
+      assertConfigError(config, [], ConfigError.MissingData(["DATE"], "Expected DATE to exist in the provided map"))
+      assertConfigError(
         config,
         [["DATE", "value"]],
         ConfigError.InvalidData(["DATE"], "Expected a Date value but received value")
@@ -205,7 +202,7 @@ describe("Config", () => {
 
   it("fail", () => {
     const config = Config.fail("failure message")
-    assertFailure(config, [], ConfigError.MissingData([], "failure message"))
+    assertConfigError(config, [], ConfigError.MissingData([], "failure message"))
   })
 
   it("mapAttempt", () => {
@@ -219,33 +216,33 @@ describe("Config", () => {
       }
       return n
     }))
-    assertSuccess(config, [["STRING", "1"]], 1)
-    assertFailure(
+    assertConfig(config, [["STRING", "1"]], 1)
+    assertConfigError(
       config,
       [["STRING", "value"]],
       ConfigError.InvalidData(["STRING"], "invalid number")
     )
-    assertFailure(
+    assertConfigError(
       config,
       [["STRING", "-1"]],
       ConfigError.InvalidData(["STRING"], "invalid negative number")
     )
-    assertFailure(config, [], ConfigError.MissingData(["STRING"], "Expected STRING to exist in the provided map"))
+    assertConfigError(config, [], ConfigError.MissingData(["STRING"], "Expected STRING to exist in the provided map"))
   })
 
   describe("logLevel", () => {
     it("name = undefined", () => {
       const config = Config.logLevel()
-      assertSuccess(config, [["", "DEBUG"]], LogLevel.Debug)
+      assertConfig(config, [["", "DEBUG"]], LogLevel.Debug)
 
-      assertFailure(config, [["", "-"]], ConfigError.InvalidData([], "Expected a log level but received -"))
+      assertConfigError(config, [["", "-"]], ConfigError.InvalidData([], "Expected a log level but received -"))
     })
 
     it("name != undefined", () => {
       const config = Config.logLevel("LOG_LEVEL")
-      assertSuccess(config, [["LOG_LEVEL", "DEBUG"]], LogLevel.Debug)
+      assertConfig(config, [["LOG_LEVEL", "DEBUG"]], LogLevel.Debug)
 
-      assertFailure(
+      assertConfigError(
         config,
         [["LOG_LEVEL", "-"]],
         ConfigError.InvalidData(["LOG_LEVEL"], "Expected a log level but received -")
@@ -256,16 +253,16 @@ describe("Config", () => {
   describe("duration", () => {
     it("name = undefined", () => {
       const config = Config.duration()
-      assertSuccess(config, [["", "10 seconds"]], Duration.decode("10 seconds"))
+      assertConfig(config, [["", "10 seconds"]], Duration.decode("10 seconds"))
 
-      assertFailure(config, [["", "-"]], ConfigError.InvalidData([], "Expected a duration but received -"))
+      assertConfigError(config, [["", "-"]], ConfigError.InvalidData([], "Expected a duration but received -"))
     })
 
     it("name != undefined", () => {
       const config = Config.duration("DURATION")
-      assertSuccess(config, [["DURATION", "10 seconds"]], Duration.decode("10 seconds"))
+      assertConfig(config, [["DURATION", "10 seconds"]], Duration.decode("10 seconds"))
 
-      assertFailure(
+      assertConfigError(
         config,
         [["DURATION", "-"]],
         ConfigError.InvalidData(["DURATION"], "Expected a duration but received -")
@@ -281,9 +278,9 @@ describe("Config", () => {
           validation: (n) => n >= 0
         })
       )
-      assertSuccess(flat, [["NUMBER", "1"]], 1)
-      assertSuccess(flat, [["NUMBER", "1.2"]], 1.2)
-      assertFailure(
+      assertConfig(flat, [["NUMBER", "1"]], 1)
+      assertConfig(flat, [["NUMBER", "1.2"]], 1.2)
+      assertConfigError(
         flat,
         [["NUMBER", "-1"]],
         ConfigError.InvalidData(["NUMBER"], "a positive number")
@@ -292,18 +289,18 @@ describe("Config", () => {
       const nested = flat.pipe(
         Config.nested("NESTED1")
       )
-      assertSuccess(nested, [["NESTED1.NUMBER", "1"]], 1)
-      assertSuccess(nested, [["NESTED1.NUMBER", "1.2"]], 1.2)
-      assertFailure(
+      assertConfig(nested, [["NESTED1.NUMBER", "1"]], 1)
+      assertConfig(nested, [["NESTED1.NUMBER", "1.2"]], 1.2)
+      assertConfigError(
         nested,
         [["NESTED1.NUMBER", "-1"]],
         ConfigError.InvalidData(["NESTED1", "NUMBER"], "a positive number")
       )
 
       const doubleNested = nested.pipe(Config.nested("NESTED2"))
-      assertSuccess(doubleNested, [["NESTED2.NESTED1.NUMBER", "1"]], 1)
-      assertSuccess(doubleNested, [["NESTED2.NESTED1.NUMBER", "1.2"]], 1.2)
-      assertFailure(
+      assertConfig(doubleNested, [["NESTED2.NESTED1.NUMBER", "1"]], 1)
+      assertConfig(doubleNested, [["NESTED2.NESTED1.NUMBER", "1.2"]], 1.2)
+      assertConfigError(
         doubleNested,
         [["NESTED2.NESTED1.NUMBER", "-1"]],
         ConfigError.InvalidData(["NESTED2", "NESTED1", "NUMBER"], "a positive number")
@@ -318,9 +315,9 @@ describe("Config", () => {
         Config.withDefault(0)
       )
       // available data
-      assertSuccess(config, [["key", "1"]], 1)
+      assertConfig(config, [["key", "1"]], 1)
       // missing data
-      assertSuccess(config, [], 0)
+      assertConfig(config, [], 0)
     })
 
     it("does not recover from other errors", () => {
@@ -328,14 +325,14 @@ describe("Config", () => {
         Config.integer("key"),
         Config.withDefault(0)
       )
-      assertSuccess(config, [["key", "1"]], 1)
-      assertFailure(
+      assertConfig(config, [["key", "1"]], 1)
+      assertConfigError(
         config,
         [["key", "1.2"]],
         // available data but not an integer
         ConfigError.InvalidData(["key"], "Expected an integer value but received 1.2")
       )
-      assertFailure(
+      assertConfigError(
         config,
         [["key", "value"]],
         // available data but not an integer
@@ -349,9 +346,9 @@ describe("Config", () => {
         Config.zip(Config.integer("key2")),
         Config.withDefault([0, 0])
       )
-      assertSuccess(config, [], [0, 0])
-      assertSuccess(config, [["key1", "1"], ["key2", "2"]], [1, 2])
-      assertFailure(
+      assertConfig(config, [], [0, 0])
+      assertConfig(config, [["key1", "1"], ["key2", "2"]], [1, 2])
+      assertConfigError(
         config,
         [["key2", "value"]],
         ConfigError.And(
@@ -367,10 +364,10 @@ describe("Config", () => {
         Config.orElse(() => Config.integer("key2")),
         Config.withDefault(0)
       )
-      assertSuccess(config, [], 0)
-      assertSuccess(config, [["key1", "1"]], 1)
-      assertSuccess(config, [["key2", "2"]], 2)
-      assertFailure(
+      assertConfig(config, [], 0)
+      assertConfig(config, [["key1", "1"]], 1)
+      assertConfig(config, [["key2", "2"]], 2)
+      assertConfigError(
         config,
         [["key2", "value"]],
         ConfigError.Or(
@@ -384,13 +381,13 @@ describe("Config", () => {
   describe("option", () => {
     it("recovers from missing data error", () => {
       const config = Config.option(Config.integer("key"))
-      assertSuccess(config, [], Option.none())
-      assertSuccess(config, [["key", "1"]], Option.some(1))
+      assertConfig(config, [], Option.none())
+      assertConfig(config, [["key", "1"]], Option.some(1))
     })
 
     it("does not recover from other errors", () => {
       const config = Config.option(Config.integer("key"))
-      assertFailure(
+      assertConfigError(
         config,
         [["key", "value"]],
         ConfigError.InvalidData(["key"], "Expected an integer value but received value")
@@ -403,8 +400,8 @@ describe("Config", () => {
         Config.zip(Config.integer("key2")),
         Config.option
       )
-      assertSuccess(config, [["key1", "1"], ["key2", "2"]], Option.some([1, 2]))
-      assertFailure(
+      assertConfig(config, [["key1", "1"], ["key2", "2"]], Option.some([1, 2]))
+      assertConfigError(
         config,
         [["key1", "value"]],
         ConfigError.And(
@@ -412,7 +409,7 @@ describe("Config", () => {
           ConfigError.MissingData(["key2"], "Expected key2 to exist in the provided map")
         )
       )
-      assertFailure(
+      assertConfigError(
         config,
         [["key2", "value"]],
         ConfigError.And(
@@ -428,9 +425,9 @@ describe("Config", () => {
         Config.orElse(() => Config.integer("key2")),
         Config.option
       )
-      assertSuccess(config, [["key1", "1"]], Option.some(1))
-      assertSuccess(config, [["key1", "value"], ["key2", "2"]], Option.some(2))
-      assertFailure(
+      assertConfig(config, [["key1", "1"]], Option.some(1))
+      assertConfig(config, [["key1", "value"], ["key2", "2"]], Option.some(2))
+      assertConfigError(
         config,
         [["key2", "value"]],
         ConfigError.Or(
@@ -466,7 +463,7 @@ describe("Config", () => {
           key2: Config.string("key2")
         }
       })
-      assertSuccess(config, [["key1", "123"], ["items", "1,2,3"], ["option", "123"], ["secret", "sauce"], [
+      assertConfig(config, [["key1", "123"], ["items", "1,2,3"], ["option", "123"], ["secret", "sauce"], [
         "key2",
         "value"
       ]], {
@@ -478,7 +475,7 @@ describe("Config", () => {
           key2: "value"
         }
       })
-      assertFailure(
+      assertConfigError(
         config,
         [["key1", "123"], ["items", "1,value,3"], ["option", "123"], ["secret", "sauce"], ["key2", "value"]],
         ConfigError.InvalidData(["items"], "Expected an integer value but received value")
@@ -488,30 +485,30 @@ describe("Config", () => {
 
   it("sync", () => {
     const config = Config.sync(() => 1)
-    assertSuccess(config, [], 1)
+    assertConfig(config, [], 1)
   })
 
   describe("all", () => {
     describe("tuple", () => {
       it("length = 0", () => {
         const config = Config.all([])
-        assertSuccess(config, [], [])
+        assertConfig(config, [], [])
       })
 
       it("length = 1", () => {
         const config = Config.all([Config.number("NUMBER")])
-        assertSuccess(config, [["NUMBER", "1"]], [1])
+        assertConfig(config, [["NUMBER", "1"]], [1])
       })
 
       it("length > 1", () => {
         const config = Config.all([Config.number("NUMBER"), Config.boolean("BOOL")])
-        assertSuccess(config, [["NUMBER", "1"], ["BOOL", "true"]], [1, true])
-        assertFailure(
+        assertConfig(config, [["NUMBER", "1"], ["BOOL", "true"]], [1, true])
+        assertConfigError(
           config,
           [["NUMBER", "value"], ["BOOL", "true"]],
           ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
         )
-        assertFailure(
+        assertConfigError(
           config,
           [["NUMBER", "1"], ["BOOL", "value"]],
           ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
@@ -522,13 +519,13 @@ describe("Config", () => {
     it("iterable", () => {
       const set = new Set([Config.number("NUMBER"), Config.boolean("BOOL")])
       const config = Config.all(set)
-      assertSuccess(config, [["NUMBER", "1"], ["BOOL", "true"]], [1, true])
-      assertFailure(
+      assertConfig(config, [["NUMBER", "1"], ["BOOL", "true"]], [1, true])
+      assertConfigError(
         config,
         [["NUMBER", "value"], ["BOOL", "true"]],
         ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
       )
-      assertFailure(
+      assertConfigError(
         config,
         [["NUMBER", "1"], ["BOOL", "value"]],
         ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
@@ -539,17 +536,17 @@ describe("Config", () => {
   describe("Config.redacted", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.redacted(), "ITEMS")
-      assertSuccess(config, [["ITEMS", "a"]], [Redacted.make("a")])
+      assertConfig(config, [["ITEMS", "a"]], [Redacted.make("a")])
     })
 
     it("name != undefined", () => {
       const config = Config.redacted("SECRET")
-      assertEqualSuccess(config, [["SECRET", "a"]], Redacted.make("a"))
+      assertConfig(config, [["SECRET", "a"]], Redacted.make("a"))
     })
 
     it("can wrap generic Config", () => {
       const config = Config.redacted(Config.integer("NUM"))
-      assertEqualSuccess(config, [["NUM", "2"]], Redacted.make(2))
+      assertConfig(config, [["NUM", "2"]], Redacted.make(2))
     })
   })
 
@@ -557,40 +554,40 @@ describe("Config", () => {
     describe("Config.secret", () => {
       it("name = undefined", () => {
         const config = Config.array(Config.secret(), "ITEMS")
-        assertSuccess(config, [["ITEMS", "a"]], [Secret.fromString("a")])
+        assertConfig(config, [["ITEMS", "a"]], [Secret.fromString("a")])
       })
 
       it("name != undefined", () => {
         const config = Config.secret("SECRET")
-        assertEqualSuccess(config, [["SECRET", "a"]], Secret.fromString("a"))
+        assertConfig(config, [["SECRET", "a"]], Secret.fromString("a"))
       })
     })
 
     it("chunk constructor", () => {
       const secret = Secret.fromIterable(Chunk.fromIterable("secret".split("")))
-      assert.isTrue(Equal.equals(secret, Secret.fromString("secret")))
+      assertTrue(Equal.equals(secret, Secret.fromString("secret")))
     })
 
     it("value", () => {
       const secret = Secret.fromIterable(Chunk.fromIterable("secret".split("")))
       const value = Secret.value(secret)
-      assert.strictEqual(value, "secret")
+      strictEqual(value, "secret")
     })
 
     it("toString", () => {
       const secret = Secret.fromString("secret")
-      assert.strictEqual(`${secret}`, "Secret(<redacted>)")
+      strictEqual(`${secret}`, "Secret(<redacted>)")
     })
 
     it("toJSON", () => {
       const secret = Secret.fromString("secret")
-      assert.strictEqual(JSON.stringify(secret), "\"<redacted>\"")
+      strictEqual(JSON.stringify(secret), "\"<redacted>\"")
     })
 
     it("wipe", () => {
       const secret = Secret.fromString("secret")
       Secret.unsafeWipe(secret)
-      assert.isTrue(
+      assertTrue(
         Equal.equals(
           Secret.value(secret),
           Array.from({ length: "secret".length }, () => String.fromCharCode(0)).join("")
@@ -601,18 +598,18 @@ describe("Config", () => {
 
   it("withDescription", () => {
     const config = Config.number("NUMBER").pipe(Config.withDescription("my description"))
-    expect("description" in config).toBe(true)
+    assertTrue("description" in config)
   })
 
   describe("hashSet", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.hashSet(Config.string()), "ITEMS")
-      assertSuccess(config, [["ITEMS", "a,b,c"]], [HashSet.make("a", "b", "c")])
+      assertConfig(config, [["ITEMS", "a,b,c"]], [HashSet.make("a", "b", "c")])
     })
 
     it("name != undefined", () => {
       const config = Config.hashSet(Config.string(), "HASH_SET")
-      assertSuccess(config, [["HASH_SET", "a,b,c"]], HashSet.make("a", "b", "c"))
+      assertConfig(config, [["HASH_SET", "a,b,c"]], HashSet.make("a", "b", "c"))
     })
   })
 
@@ -621,7 +618,7 @@ describe("Config", () => {
       Config.string("STRING"),
       ConfigProvider.fromMap(new Map([["STRING", "value"]]))
     ))
-    assert.strictEqual(result, "value")
+    strictEqual(result, "value")
   })
 
   it("array nested", () => {
@@ -633,6 +630,6 @@ describe("Config", () => {
       ),
       Effect.runSync
     )
-    assert.deepStrictEqual(result, [1, 2, 3])
+    deepStrictEqual(result, [1, 2, 3])
   })
 })

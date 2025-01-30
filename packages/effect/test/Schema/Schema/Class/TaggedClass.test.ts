@@ -1,48 +1,50 @@
 import { pipe, Struct } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("TaggedClass", () => {
   it("the constructor should add a `_tag` field", () => {
     class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-    expect({ ...new TA({ a: "a" }) }).toStrictEqual({ _tag: "TA", a: "a" })
+    deepStrictEqual({ ...new TA({ a: "a" }) }, { _tag: "TA", a: "a" })
   })
 
   it("should expose the fields and the tag", () => {
     class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
     Util.expectFields(TA.fields, { _tag: S.getClassTag("TA"), a: S.String })
-    expect(S.Struct(TA.fields).make({ a: "a" })).toStrictEqual({ _tag: "TA", a: "a" })
-    expect(TA._tag).toBe("TA")
+    deepStrictEqual(S.Struct(TA.fields).make({ a: "a" }), { _tag: "TA", a: "a" })
+    strictEqual(TA._tag, "TA")
   })
 
   it("should expose the identifier", () => {
     class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-    expect(TA.identifier).toEqual("TA")
+    strictEqual(TA.identifier, "TA")
     class TB extends S.TaggedClass<TB>("id")("TB", { a: S.String }) {}
-    expect(TB.identifier).toEqual("id")
+    strictEqual(TB.identifier, "id")
   })
 
   it("constructor parameters should not overwrite the tag", async () => {
     class A extends S.TaggedClass<A>()("A", {
       a: S.String
     }) {}
-    expect(new A({ ...{ _tag: "B", a: "a" } })._tag).toBe("A")
-    expect(new A({ ...{ _tag: "B", a: "a" } }, true)._tag).toBe("A")
+    strictEqual(new A({ ...{ _tag: "B", a: "a" } })._tag, "A")
+    strictEqual(new A({ ...{ _tag: "B", a: "a" } }, true)._tag, "A")
   })
 
   it("a TaggedClass with no fields should have a void constructor", () => {
     class TA extends S.TaggedClass<TA>()("TA", {}) {}
-    expect({ ...new TA() }).toStrictEqual({ _tag: "TA" })
-    expect({ ...new TA(undefined) }).toStrictEqual({ _tag: "TA" })
-    expect({ ...new TA(undefined, true) }).toStrictEqual({ _tag: "TA" })
+    deepStrictEqual({ ...new TA() }, { _tag: "TA" })
+    deepStrictEqual({ ...new TA(undefined) }, { _tag: "TA" })
+    deepStrictEqual({ ...new TA(undefined, true) }, { _tag: "TA" })
   })
 
   it("a custom _tag field should be not allowed", () => {
-    expect(() => {
-      class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.Literal("X"), a: S.String }) {}
-      _TA
-    }).toThrow(
+    throws(
+      () => {
+        class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.Literal("X"), a: S.String }) {}
+        _TA
+      },
       new Error(`Duplicate property signature
 details: Duplicate key "_tag"`)
     )
@@ -71,10 +73,11 @@ details: Duplicate key "_tag"`)
       └─ Predicate refinement failure
          └─ a should be equal to b`
     )
-    expect(() => new A({ a: 1, b: 2 })).toThrow(
-      new Error(`A (Constructor)
+    Util.assertParseError(
+      () => new A({ a: 1, b: 2 }),
+      `A (Constructor)
 └─ Predicate refinement failure
-   └─ a should be equal to b`)
+   └─ a should be equal to b`
     )
   })
 
@@ -131,7 +134,7 @@ details: Duplicate key "_tag"`)
       a: S.String,
       b: S.Number
     })
-    expect({ ...new B({ _tag: "TA", a: "a", b: 1 }) }).toStrictEqual({ _tag: "TA", a: "a", b: 1 })
+    deepStrictEqual({ ...new B({ _tag: "TA", a: "a", b: 1 }) }, { _tag: "TA", a: "a", b: 1 })
   })
 
   it("can be extended with TaggedClass fields", () => {
@@ -145,7 +148,7 @@ details: Duplicate key "_tag"`)
       a: S.String,
       b: S.Number
     })
-    expect({ ...new TB({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "TB", a: "a", b: 1 })
+    deepStrictEqual({ ...new TB({ a: "a", b: 1 }) }, { _tag: "TB", a: "a", b: 1 })
   })
 
   it("equivalence", () => {
@@ -153,18 +156,18 @@ details: Duplicate key "_tag"`)
       a: S.String
     }) {}
     const eqA = S.equivalence(A)
-    expect(eqA(new A({ a: "a" }), new A({ a: "a" }))).toBe(true)
-    expect(eqA(new A({ a: "a" }), new A({ a: "b" }))).toBe(false)
+    assertTrue(eqA(new A({ a: "a" }), new A({ a: "a" })))
+    assertFalse(eqA(new A({ a: "a" }), new A({ a: "b" })))
 
     class B extends S.TaggedClass<B>()("B", {
       b: S.Number,
       as: S.Array(A)
     }) {}
     const eqB = S.equivalence(B)
-    expect(eqB(new B({ b: 1, as: [] }), new B({ b: 1, as: [] }))).toBe(true)
-    expect(eqB(new B({ b: 1, as: [] }), new B({ b: 2, as: [] }))).toBe(false)
-    expect(eqB(new B({ b: 1, as: [new A({ a: "a" })] }), new B({ b: 1, as: [new A({ a: "a" })] }))).toBe(true)
-    expect(eqB(new B({ b: 1, as: [new A({ a: "a" })] }), new B({ b: 1, as: [new A({ a: "b" })] }))).toBe(false)
+    assertTrue(eqB(new B({ b: 1, as: [] }), new B({ b: 1, as: [] })))
+    assertFalse(eqB(new B({ b: 1, as: [] }), new B({ b: 2, as: [] })))
+    assertTrue(eqB(new B({ b: 1, as: [new A({ a: "a" })] }), new B({ b: 1, as: [new A({ a: "a" })] })))
+    assertFalse(eqB(new B({ b: 1, as: [new A({ a: "a" })] }), new B({ b: 1, as: [new A({ a: "b" })] })))
   })
 
   it("baseline", () => {
@@ -187,20 +190,17 @@ details: Duplicate key "_tag"`)
 
     let person = new TaggedPersonWithAge({ id: 1, name: "John", age: 30 })
 
-    expect(String(person)).toEqual(
-      `TaggedPersonWithAge({ "_tag": "TaggedPerson", "id": 1, "name": "John", "age": 30 })`
-    )
-    expect(person._tag).toEqual("TaggedPerson")
-    expect(person.upperName).toEqual("JOHN")
+    strictEqual(String(person), `TaggedPersonWithAge({ "_tag": "TaggedPerson", "id": 1, "name": "John", "age": 30 })`)
+    strictEqual(person._tag, "TaggedPerson")
+    strictEqual(person.upperName, "JOHN")
 
-    expect(() => S.decodeUnknownSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
-      new Error(
-        `(TaggedPersonWithAge (Encoded side) <-> TaggedPersonWithAge)
+    Util.assertParseError(
+      () => S.decodeUnknownSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 }),
+      `(TaggedPersonWithAge (Encoded side) <-> TaggedPersonWithAge)
 └─ Encoded side transformation failure
    └─ TaggedPersonWithAge (Encoded side)
       └─ ["_tag"]
          └─ is missing`
-      )
     )
     person = S.decodeUnknownSync(TaggedPersonWithAge)({
       _tag: "TaggedPerson",
@@ -208,8 +208,8 @@ details: Duplicate key "_tag"`)
       name: "John",
       age: 30
     })
-    expect(person._tag).toEqual("TaggedPerson")
-    expect(person.upperName).toEqual("JOHN")
+    strictEqual(person._tag, "TaggedPerson")
+    strictEqual(person.upperName, "JOHN")
   })
 
   it("should expose a make constructor", () => {
@@ -221,8 +221,8 @@ details: Duplicate key "_tag"`)
       }
     }
     const ta = TA.make({ n: 1 })
-    expect(ta instanceof TA).toEqual(true)
-    expect(ta._tag).toEqual("TA")
-    expect(ta.a()).toEqual("1a")
+    assertTrue(ta instanceof TA)
+    strictEqual(ta._tag, "TA")
+    strictEqual(ta.a(), "1a")
   })
 })

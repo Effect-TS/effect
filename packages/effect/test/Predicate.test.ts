@@ -1,7 +1,7 @@
 import { constFalse, constTrue, pipe } from "effect/Function"
 import * as _ from "effect/Predicate"
-import { deepStrictEqual } from "effect/test/util"
-import { assert, describe, expect, it } from "vitest"
+import { assertFalse, assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 const isPositive: _.Predicate<number> = (n) => n > 0
 const isNegative: _.Predicate<number> = (n) => n < 0
@@ -19,9 +19,9 @@ const isNonEmptyString: _.Refinement<string, NonEmptyString> = (s): s is NonEmpt
 describe("Predicate", () => {
   it("compose", () => {
     const refinement = pipe(isString, _.compose(isNonEmptyString))
-    deepStrictEqual(refinement("a"), true)
-    deepStrictEqual(refinement(null), false)
-    deepStrictEqual(refinement(""), false)
+    assertTrue(refinement("a"))
+    assertFalse(refinement(null))
+    assertFalse(refinement(""))
   })
 
   it("mapInput", () => {
@@ -32,312 +32,312 @@ describe("Predicate", () => {
       isPositive,
       _.mapInput((a: A) => a.a)
     )
-    deepStrictEqual(predicate({ a: -1 }), false)
-    deepStrictEqual(predicate({ a: 0 }), false)
-    deepStrictEqual(predicate({ a: 1 }), true)
+    assertFalse(predicate({ a: -1 }))
+    assertFalse(predicate({ a: 0 }))
+    assertTrue(predicate({ a: 1 }))
   })
 
   it("product", () => {
     const product = _.product
     const p = product(isPositive, isNegative)
-    deepStrictEqual(p([1, -1]), true)
-    deepStrictEqual(p([1, 1]), false)
-    deepStrictEqual(p([-1, -1]), false)
-    deepStrictEqual(p([-1, 1]), false)
+    assertTrue(p([1, -1]))
+    assertFalse(p([1, 1]))
+    assertFalse(p([-1, -1]))
+    assertFalse(p([-1, 1]))
   })
 
   it("productMany", () => {
     const productMany = _.productMany
     const p = productMany(isPositive, [isNegative])
-    deepStrictEqual(p([1, -1]), true)
-    deepStrictEqual(p([1, 1]), false)
-    deepStrictEqual(p([-1, -1]), false)
-    deepStrictEqual(p([-1, 1]), false)
+    assertTrue(p([1, -1]))
+    assertFalse(p([1, 1]))
+    assertFalse(p([-1, -1]))
+    assertFalse(p([-1, 1]))
   })
 
   it("tuple", () => {
     const p = _.tuple(isPositive, isNegative)
-    deepStrictEqual(p([1, -1]), true)
-    deepStrictEqual(p([1, 1]), false)
-    deepStrictEqual(p([-1, -1]), false)
-    deepStrictEqual(p([-1, 1]), false)
+    assertTrue(p([1, -1]))
+    assertFalse(p([1, 1]))
+    assertFalse(p([-1, -1]))
+    assertFalse(p([-1, 1]))
   })
 
   it("struct", () => {
     const p = _.struct({ a: isPositive, b: isNegative })
-    deepStrictEqual(p({ a: 1, b: -1 }), true)
-    deepStrictEqual(p({ a: 1, b: 1 }), false)
-    deepStrictEqual(p({ a: -1, b: -1 }), false)
-    deepStrictEqual(p({ a: -1, b: 1 }), false)
+    assertTrue(p({ a: 1, b: -1 }))
+    assertFalse(p({ a: 1, b: 1 }))
+    assertFalse(p({ a: -1, b: -1 }))
+    assertFalse(p({ a: -1, b: 1 }))
   })
 
   it("all", () => {
     const p = _.all([isPositive, isNegative])
-    deepStrictEqual(p([1]), true)
-    deepStrictEqual(p([1, -1]), true)
-    deepStrictEqual(p([1, 1]), false)
-    deepStrictEqual(p([-1, -1]), false)
-    deepStrictEqual(p([-1, 1]), false)
+    assertTrue(p([1]))
+    assertTrue(p([1, -1]))
+    assertFalse(p([1, 1]))
+    assertFalse(p([-1, -1]))
+    assertFalse(p([-1, 1]))
   })
 
   it("not", () => {
     const p = _.not(isPositive)
-    deepStrictEqual(p(1), false)
-    deepStrictEqual(p(0), true)
-    deepStrictEqual(p(-1), true)
+    assertFalse(p(1))
+    assertTrue(p(0))
+    assertTrue(p(-1))
   })
 
   it("or", () => {
     const p = pipe(isPositive, _.or(isNegative))
-    deepStrictEqual(p(-1), true)
-    deepStrictEqual(p(1), true)
-    deepStrictEqual(p(0), false)
+    assertTrue(p(-1))
+    assertTrue(p(1))
+    assertFalse(p(0))
   })
 
   it("and", () => {
     const p = pipe(isPositive, _.and(isLessThan2))
-    deepStrictEqual(p(1), true)
-    deepStrictEqual(p(-1), false)
-    deepStrictEqual(p(3), false)
+    assertTrue(p(1))
+    assertFalse(p(-1))
+    assertFalse(p(3))
   })
 
   it("xor", () => {
-    expect(pipe(constTrue, _.xor(constTrue))(null)).toBeFalsy() // true xor true = false
-    expect(pipe(constTrue, _.xor(constFalse))(null)).toBeTruthy() // true xor false = true
-    expect(pipe(constFalse, _.xor(constTrue))(null)).toBeTruthy() // false xor true = true
-    expect(pipe(constFalse, _.xor(constFalse))(null)).toBeFalsy() // false xor false = false
+    assertFalse(pipe(constTrue, _.xor(constTrue))(null)) // true xor true = false
+    assertTrue(pipe(constTrue, _.xor(constFalse))(null)) // true xor false = true
+    assertTrue(pipe(constFalse, _.xor(constTrue))(null)) // false xor true = true
+    assertFalse(pipe(constFalse, _.xor(constFalse))(null)) // false xor false = false
   })
 
   it("eqv", () => {
-    expect(pipe(constTrue, _.eqv(constTrue))(null)).toBeTruthy() // true eqv true = true
-    expect(pipe(constTrue, _.eqv(constFalse))(null)).toBeFalsy() // true eqv false = false
-    expect(pipe(constFalse, _.eqv(constTrue))(null)).toBeFalsy() // false eqv true = false
-    expect(pipe(constFalse, _.eqv(constFalse))(null)).toBeTruthy() // false eqv false = true
+    assertTrue(pipe(constTrue, _.eqv(constTrue))(null)) // true eqv true = true
+    assertFalse(pipe(constTrue, _.eqv(constFalse))(null)) // true eqv false = false
+    assertFalse(pipe(constFalse, _.eqv(constTrue))(null)) // false eqv true = false
+    assertTrue(pipe(constFalse, _.eqv(constFalse))(null)) // false eqv false = true
   })
 
   it("implies", () => {
-    expect(pipe(constTrue, _.implies(constTrue))(null)).toBeTruthy() // true implies true = true
-    expect(pipe(constTrue, _.implies(constFalse))(null)).toBeFalsy() // true implies false = false
-    expect(pipe(constFalse, _.implies(constTrue))(null)).toBeTruthy() // false implies true = true
-    expect(pipe(constFalse, _.implies(constFalse))(null)).toBeTruthy() // false implies false = true
+    assertTrue(pipe(constTrue, _.implies(constTrue))(null)) // true implies true = true
+    assertFalse(pipe(constTrue, _.implies(constFalse))(null)) // true implies false = false
+    assertTrue(pipe(constFalse, _.implies(constTrue))(null)) // false implies true = true
+    assertTrue(pipe(constFalse, _.implies(constFalse))(null)) // false implies false = true
   })
 
   it("nor", () => {
-    expect(pipe(constTrue, _.nor(constTrue))(null)).toBeFalsy() // true nor true = false
-    expect(pipe(constTrue, _.nor(constFalse))(null)).toBeFalsy() // true nor false = false
-    expect(pipe(constFalse, _.nor(constTrue))(null)).toBeFalsy() // false nor true = false
-    expect(pipe(constFalse, _.nor(constFalse))(null)).toBeTruthy() // false nor false = true
+    assertFalse(pipe(constTrue, _.nor(constTrue))(null)) // true nor true = false
+    assertFalse(pipe(constTrue, _.nor(constFalse))(null)) // true nor false = false
+    assertFalse(pipe(constFalse, _.nor(constTrue))(null)) // false nor true = false
+    assertTrue(pipe(constFalse, _.nor(constFalse))(null)) // false nor false = true
   })
 
   it("nand", () => {
-    expect(pipe(constTrue, _.nand(constTrue))(null)).toBeFalsy() // true nand true = false
-    expect(pipe(constTrue, _.nand(constFalse))(null)).toBeTruthy() // true nand false = true
-    expect(pipe(constFalse, _.nand(constTrue))(null)).toBeTruthy() // false nand true = true
-    expect(pipe(constFalse, _.nand(constFalse))(null)).toBeTruthy() // false nand false = true
+    assertFalse(pipe(constTrue, _.nand(constTrue))(null)) // true nand true = false
+    assertTrue(pipe(constTrue, _.nand(constFalse))(null)) // true nand false = true
+    assertTrue(pipe(constFalse, _.nand(constTrue))(null)) // false nand true = true
+    assertTrue(pipe(constFalse, _.nand(constFalse))(null)) // false nand false = true
   })
 
   it("some", () => {
     const predicate = _.some([isPositive, isNegative])
-    deepStrictEqual(predicate(0), false)
-    deepStrictEqual(predicate(-1), true)
-    deepStrictEqual(predicate(1), true)
+    assertFalse(predicate(0))
+    assertTrue(predicate(-1))
+    assertTrue(predicate(1))
   })
 
   it("every", () => {
     const predicate = _.every([isPositive, isLessThan2])
-    deepStrictEqual(predicate(0), false)
-    deepStrictEqual(predicate(-2), false)
-    deepStrictEqual(predicate(1), true)
+    assertFalse(predicate(0))
+    assertFalse(predicate(-2))
+    assertTrue(predicate(1))
   })
 
   it("isTruthy", () => {
-    expect(_.isTruthy(true)).toEqual(true)
-    expect(_.isTruthy(false)).toEqual(false)
-    expect(_.isTruthy("a")).toEqual(true)
-    expect(_.isTruthy("")).toEqual(false)
-    expect(_.isTruthy(1)).toEqual(true)
-    expect(_.isTruthy(0)).toEqual(false)
-    expect(_.isTruthy(1n)).toEqual(true)
-    expect(_.isTruthy(0n)).toEqual(false)
+    assertTrue(_.isTruthy(true))
+    assertFalse(_.isTruthy(false))
+    assertTrue(_.isTruthy("a"))
+    assertFalse(_.isTruthy(""))
+    assertTrue(_.isTruthy(1))
+    assertFalse(_.isTruthy(0))
+    assertTrue(_.isTruthy(1n))
+    assertFalse(_.isTruthy(0n))
   })
 
   it("isFunction", () => {
-    assert.deepStrictEqual(_.isFunction(_.isFunction), true)
-    assert.deepStrictEqual(_.isFunction("function"), false)
+    assertTrue(_.isFunction(_.isFunction))
+    assertFalse(_.isFunction("function"))
   })
 
   it("isUndefined", () => {
-    assert.deepStrictEqual(_.isUndefined(undefined), true)
-    assert.deepStrictEqual(_.isUndefined(null), false)
-    assert.deepStrictEqual(_.isUndefined("undefined"), false)
+    assertTrue(_.isUndefined(undefined))
+    assertFalse(_.isUndefined(null))
+    assertFalse(_.isUndefined("undefined"))
   })
 
   it("isNotUndefined", () => {
-    assert.deepStrictEqual(_.isNotUndefined(undefined), false)
-    assert.deepStrictEqual(_.isNotUndefined(null), true)
-    assert.deepStrictEqual(_.isNotUndefined("undefined"), true)
+    assertFalse(_.isNotUndefined(undefined))
+    assertTrue(_.isNotUndefined(null))
+    assertTrue(_.isNotUndefined("undefined"))
   })
 
   it("isNull", () => {
-    assert.deepStrictEqual(_.isNull(null), true)
-    assert.deepStrictEqual(_.isNull(undefined), false)
-    assert.deepStrictEqual(_.isNull("null"), false)
+    assertTrue(_.isNull(null))
+    assertFalse(_.isNull(undefined))
+    assertFalse(_.isNull("null"))
   })
 
   it("isNotNull", () => {
-    assert.deepStrictEqual(_.isNotNull(null), false)
-    assert.deepStrictEqual(_.isNotNull(undefined), true)
-    assert.deepStrictEqual(_.isNotNull("null"), true)
+    assertFalse(_.isNotNull(null))
+    assertTrue(_.isNotNull(undefined))
+    assertTrue(_.isNotNull("null"))
   })
 
   it("isNever", () => {
-    assert.deepStrictEqual(_.isNever(null), false)
-    assert.deepStrictEqual(_.isNever(undefined), false)
-    assert.deepStrictEqual(_.isNever({}), false)
-    assert.deepStrictEqual(_.isNever([]), false)
+    assertFalse(_.isNever(null))
+    assertFalse(_.isNever(undefined))
+    assertFalse(_.isNever({}))
+    assertFalse(_.isNever([]))
   })
 
   it("isUnknown", () => {
-    assert.deepStrictEqual(_.isUnknown(null), true)
-    assert.deepStrictEqual(_.isUnknown(undefined), true)
-    assert.deepStrictEqual(_.isUnknown({}), true)
-    assert.deepStrictEqual(_.isUnknown([]), true)
+    assertTrue(_.isUnknown(null))
+    assertTrue(_.isUnknown(undefined))
+    assertTrue(_.isUnknown({}))
+    assertTrue(_.isUnknown([]))
   })
 
   it("isObject", () => {
-    assert.deepStrictEqual(_.isObject({}), true)
-    assert.deepStrictEqual(_.isObject([]), true)
-    assert.deepStrictEqual(_.isObject(() => 1), true)
-    assert.deepStrictEqual(_.isObject(null), false)
-    assert.deepStrictEqual(_.isObject(undefined), false)
-    assert.deepStrictEqual(_.isObject("a"), false)
-    assert.deepStrictEqual(_.isObject(1), false)
-    assert.deepStrictEqual(_.isObject(true), false)
-    assert.deepStrictEqual(_.isObject(1n), false)
-    assert.deepStrictEqual(_.isObject(Symbol.for("a")), false)
+    assertTrue(_.isObject({}))
+    assertTrue(_.isObject([]))
+    assertTrue(_.isObject(() => 1))
+    assertFalse(_.isObject(null))
+    assertFalse(_.isObject(undefined))
+    assertFalse(_.isObject("a"))
+    assertFalse(_.isObject(1))
+    assertFalse(_.isObject(true))
+    assertFalse(_.isObject(1n))
+    assertFalse(_.isObject(Symbol.for("a")))
   })
 
   it("isSet", () => {
-    assert.deepStrictEqual(_.isSet(new Set([1, 2])), true)
-    assert.deepStrictEqual(_.isSet(new Set()), true)
-    assert.deepStrictEqual(_.isSet({}), false)
-    assert.deepStrictEqual(_.isSet(null), false)
-    assert.deepStrictEqual(_.isSet(undefined), false)
+    assertTrue(_.isSet(new Set([1, 2])))
+    assertTrue(_.isSet(new Set()))
+    assertFalse(_.isSet({}))
+    assertFalse(_.isSet(null))
+    assertFalse(_.isSet(undefined))
   })
 
   it("isMap", () => {
-    assert.deepStrictEqual(_.isMap(new Map()), true)
-    assert.deepStrictEqual(_.isMap({}), false)
-    assert.deepStrictEqual(_.isMap(null), false)
-    assert.deepStrictEqual(_.isMap(undefined), false)
+    assertTrue(_.isMap(new Map()))
+    assertFalse(_.isMap({}))
+    assertFalse(_.isMap(null))
+    assertFalse(_.isMap(undefined))
   })
 
   it("hasProperty", () => {
     const a = Symbol.for("effect/test/a")
 
-    assert.deepStrictEqual(_.hasProperty({ a: 1 }, "a"), true)
-    assert.deepStrictEqual(_.hasProperty("a")({ a: 1 }), true)
-    assert.deepStrictEqual(_.hasProperty({ [a]: 1 }, a), true)
-    assert.deepStrictEqual(_.hasProperty(a)({ [a]: 1 }), true)
+    assertTrue(_.hasProperty({ a: 1 }, "a"))
+    assertTrue(_.hasProperty("a")({ a: 1 }))
+    assertTrue(_.hasProperty({ [a]: 1 }, a))
+    assertTrue(_.hasProperty(a)({ [a]: 1 }))
 
-    assert.deepStrictEqual(_.hasProperty({}, "a"), false)
-    assert.deepStrictEqual(_.hasProperty(null, "a"), false)
-    assert.deepStrictEqual(_.hasProperty(undefined, "a"), false)
-    assert.deepStrictEqual(_.hasProperty({}, "a"), false)
-    assert.deepStrictEqual(_.hasProperty(() => {}, "a"), false)
+    assertFalse(_.hasProperty({}, "a"))
+    assertFalse(_.hasProperty(null, "a"))
+    assertFalse(_.hasProperty(undefined, "a"))
+    assertFalse(_.hasProperty({}, "a"))
+    assertFalse(_.hasProperty(() => {}, "a"))
 
-    assert.deepStrictEqual(_.hasProperty({}, a), false)
-    assert.deepStrictEqual(_.hasProperty(null, a), false)
-    assert.deepStrictEqual(_.hasProperty(undefined, a), false)
-    assert.deepStrictEqual(_.hasProperty({}, a), false)
-    assert.deepStrictEqual(_.hasProperty(() => {}, a), false)
+    assertFalse(_.hasProperty({}, a))
+    assertFalse(_.hasProperty(null, a))
+    assertFalse(_.hasProperty(undefined, a))
+    assertFalse(_.hasProperty({}, a))
+    assertFalse(_.hasProperty(() => {}, a))
   })
 
   it("isTagged", () => {
-    assert.deepStrictEqual(_.isTagged(1, "a"), false)
-    assert.deepStrictEqual(_.isTagged("", "a"), false)
-    assert.deepStrictEqual(_.isTagged({}, "a"), false)
-    assert.deepStrictEqual(_.isTagged("a")({}), false)
-    assert.deepStrictEqual(_.isTagged({ a: "a" }, "a"), false)
-    assert.deepStrictEqual(_.isTagged({ _tag: "a" }, "a"), true)
-    assert.deepStrictEqual(_.isTagged("a")({ _tag: "a" }), true)
+    assertFalse(_.isTagged(1, "a"))
+    assertFalse(_.isTagged("", "a"))
+    assertFalse(_.isTagged({}, "a"))
+    assertFalse(_.isTagged("a")({}))
+    assertFalse(_.isTagged({ a: "a" }, "a"))
+    assertTrue(_.isTagged({ _tag: "a" }, "a"))
+    assertTrue(_.isTagged("a")({ _tag: "a" }))
   })
 
   it("isNullable", () => {
-    assert.deepStrictEqual(_.isNullable(null), true)
-    assert.deepStrictEqual(_.isNullable(undefined), true)
-    assert.deepStrictEqual(_.isNullable({}), false)
-    assert.deepStrictEqual(_.isNullable([]), false)
+    assertTrue(_.isNullable(null))
+    assertTrue(_.isNullable(undefined))
+    assertFalse(_.isNullable({}))
+    assertFalse(_.isNullable([]))
   })
 
   it("isNotNullable", () => {
-    assert.deepStrictEqual(_.isNotNullable({}), true)
-    assert.deepStrictEqual(_.isNotNullable([]), true)
-    assert.deepStrictEqual(_.isNotNullable(null), false)
-    assert.deepStrictEqual(_.isNotNullable(undefined), false)
+    assertTrue(_.isNotNullable({}))
+    assertTrue(_.isNotNullable([]))
+    assertFalse(_.isNotNullable(null))
+    assertFalse(_.isNotNullable(undefined))
   })
 
   it("isError", () => {
-    assert.deepStrictEqual(_.isError(new Error()), true)
-    assert.deepStrictEqual(_.isError(null), false)
-    assert.deepStrictEqual(_.isError({}), false)
+    assertTrue(_.isError(new Error()))
+    assertFalse(_.isError(null))
+    assertFalse(_.isError({}))
   })
 
   it("isUint8Array", () => {
-    assert.deepStrictEqual(_.isUint8Array(new Uint8Array()), true)
-    assert.deepStrictEqual(_.isUint8Array(null), false)
-    assert.deepStrictEqual(_.isUint8Array({}), false)
+    assertTrue(_.isUint8Array(new Uint8Array()))
+    assertFalse(_.isUint8Array(null))
+    assertFalse(_.isUint8Array({}))
   })
 
   it("isDate", () => {
-    assert.deepStrictEqual(_.isDate(new Date()), true)
-    assert.deepStrictEqual(_.isDate(null), false)
-    assert.deepStrictEqual(_.isDate({}), false)
+    assertTrue(_.isDate(new Date()))
+    assertFalse(_.isDate(null))
+    assertFalse(_.isDate({}))
   })
 
   it("isIterable", () => {
-    assert.deepStrictEqual(_.isIterable([]), true)
-    assert.deepStrictEqual(_.isIterable(new Set()), true)
-    assert.deepStrictEqual(_.isIterable(null), false)
-    assert.deepStrictEqual(_.isIterable({}), false)
+    assertTrue(_.isIterable([]))
+    assertTrue(_.isIterable(new Set()))
+    assertFalse(_.isIterable(null))
+    assertFalse(_.isIterable({}))
   })
 
   it("isRecord", () => {
-    assert.deepStrictEqual(_.isRecord({}), true)
-    assert.deepStrictEqual(_.isRecord({ a: 1 }), true)
+    assertTrue(_.isRecord({}))
+    assertTrue(_.isRecord({ a: 1 }))
 
-    assert.deepStrictEqual(_.isRecord([]), false)
-    assert.deepStrictEqual(_.isRecord([1, 2, 3]), false)
-    assert.deepStrictEqual(_.isRecord(null), false)
-    assert.deepStrictEqual(_.isRecord(undefined), false)
-    assert.deepStrictEqual(_.isRecord(() => null), false)
+    assertFalse(_.isRecord([]))
+    assertFalse(_.isRecord([1, 2, 3]))
+    assertFalse(_.isRecord(null))
+    assertFalse(_.isRecord(undefined))
+    assertFalse(_.isRecord(() => null))
   })
 
   it("isReadonlyRecord", () => {
-    assert.deepStrictEqual(_.isReadonlyRecord({}), true)
-    assert.deepStrictEqual(_.isReadonlyRecord({ a: 1 }), true)
+    assertTrue(_.isReadonlyRecord({}))
+    assertTrue(_.isReadonlyRecord({ a: 1 }))
 
-    assert.deepStrictEqual(_.isReadonlyRecord([]), false)
-    assert.deepStrictEqual(_.isReadonlyRecord([1, 2, 3]), false)
-    assert.deepStrictEqual(_.isReadonlyRecord(null), false)
-    assert.deepStrictEqual(_.isReadonlyRecord(undefined), false)
+    assertFalse(_.isReadonlyRecord([]))
+    assertFalse(_.isReadonlyRecord([1, 2, 3]))
+    assertFalse(_.isReadonlyRecord(null))
+    assertFalse(_.isReadonlyRecord(undefined))
   })
 
   it("isTupleOf", () => {
-    assert.deepStrictEqual(_.isTupleOf([1, 2, 3], 3), true)
-    assert.deepStrictEqual(_.isTupleOf([1, 2, 3], 4), false)
-    assert.deepStrictEqual(_.isTupleOf([1, 2, 3], 2), false)
+    assertTrue(_.isTupleOf([1, 2, 3], 3))
+    assertFalse(_.isTupleOf([1, 2, 3], 4))
+    assertFalse(_.isTupleOf([1, 2, 3], 2))
   })
 
   it("isTupleOfAtLeast", () => {
-    assert.deepStrictEqual(_.isTupleOfAtLeast([1, 2, 3], 3), true)
-    assert.deepStrictEqual(_.isTupleOfAtLeast([1, 2, 3], 2), true)
-    assert.deepStrictEqual(_.isTupleOfAtLeast([1, 2, 3], 4), false)
+    assertTrue(_.isTupleOfAtLeast([1, 2, 3], 3))
+    assertTrue(_.isTupleOfAtLeast([1, 2, 3], 2))
+    assertFalse(_.isTupleOfAtLeast([1, 2, 3], 4))
   })
 
   it("isRegExp", () => {
-    assert.deepStrictEqual(_.isRegExp(/a/), true)
-    assert.deepStrictEqual(_.isRegExp(null), false)
-    assert.deepStrictEqual(_.isRegExp("a"), false)
+    assertTrue(_.isRegExp(/a/))
+    assertFalse(_.isRegExp(null))
+    assertFalse(_.isRegExp("a"))
   })
 })

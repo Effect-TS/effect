@@ -1,68 +1,67 @@
-import * as Boolean from "effect/Boolean"
-import { pipe } from "effect/Function"
-import { deepStrictEqual } from "effect/test/util"
-import { assert, describe, expect, it } from "vitest"
+import { Boolean, pipe } from "effect"
+import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Boolean", () => {
   it("isBoolean", () => {
-    expect(Boolean.isBoolean(true)).toEqual(true)
-    expect(Boolean.isBoolean(false)).toEqual(true)
-    expect(Boolean.isBoolean("a")).toEqual(false)
-    expect(Boolean.isBoolean(1)).toEqual(false)
+    assertTrue(Boolean.isBoolean(true))
+    assertTrue(Boolean.isBoolean(false))
+    assertFalse(Boolean.isBoolean("a"))
+    assertFalse(Boolean.isBoolean(1))
   })
 
   it("and", () => {
-    deepStrictEqual(pipe(true, Boolean.and(true)), true)
-    deepStrictEqual(pipe(true, Boolean.and(false)), false)
-    deepStrictEqual(pipe(false, Boolean.and(true)), false)
-    deepStrictEqual(pipe(false, Boolean.and(false)), false)
+    assertTrue(pipe(true, Boolean.and(true)))
+    assertFalse(pipe(true, Boolean.and(false)))
+    assertFalse(pipe(false, Boolean.and(true)))
+    assertFalse(pipe(false, Boolean.and(false)))
   })
 
   it("nand", () => {
-    deepStrictEqual(pipe(true, Boolean.nand(true)), false)
-    deepStrictEqual(pipe(true, Boolean.nand(false)), true)
-    deepStrictEqual(pipe(false, Boolean.nand(true)), true)
-    deepStrictEqual(pipe(false, Boolean.nand(false)), true)
+    assertFalse(pipe(true, Boolean.nand(true)))
+    assertTrue(pipe(true, Boolean.nand(false)))
+    assertTrue(pipe(false, Boolean.nand(true)))
+    assertTrue(pipe(false, Boolean.nand(false)))
   })
 
   it("or", () => {
-    deepStrictEqual(pipe(true, Boolean.or(true)), true)
-    deepStrictEqual(pipe(true, Boolean.or(false)), true)
-    deepStrictEqual(pipe(false, Boolean.or(true)), true)
-    deepStrictEqual(pipe(false, Boolean.or(false)), false)
+    assertTrue(pipe(true, Boolean.or(true)))
+    assertTrue(pipe(true, Boolean.or(false)))
+    assertTrue(pipe(false, Boolean.or(true)))
+    assertFalse(pipe(false, Boolean.or(false)))
   })
 
   it("nor", () => {
-    deepStrictEqual(pipe(true, Boolean.nor(true)), false)
-    deepStrictEqual(pipe(true, Boolean.nor(false)), false)
-    deepStrictEqual(pipe(false, Boolean.nor(true)), false)
-    deepStrictEqual(pipe(false, Boolean.nor(false)), true)
+    assertFalse(pipe(true, Boolean.nor(true)))
+    assertFalse(pipe(true, Boolean.nor(false)))
+    assertFalse(pipe(false, Boolean.nor(true)))
+    assertTrue(pipe(false, Boolean.nor(false)))
   })
 
   it("xor", () => {
-    deepStrictEqual(pipe(true, Boolean.xor(true)), false)
-    deepStrictEqual(pipe(true, Boolean.xor(false)), true)
-    deepStrictEqual(pipe(false, Boolean.xor(true)), true)
-    deepStrictEqual(pipe(false, Boolean.xor(false)), false)
+    assertFalse(pipe(true, Boolean.xor(true)))
+    assertTrue(pipe(true, Boolean.xor(false)))
+    assertTrue(pipe(false, Boolean.xor(true)))
+    assertFalse(pipe(false, Boolean.xor(false)))
   })
 
   it("eqv", () => {
-    deepStrictEqual(pipe(true, Boolean.eqv(true)), true)
-    deepStrictEqual(pipe(true, Boolean.eqv(false)), false)
-    deepStrictEqual(pipe(false, Boolean.eqv(true)), false)
-    deepStrictEqual(pipe(false, Boolean.eqv(false)), true)
+    assertTrue(pipe(true, Boolean.eqv(true)))
+    assertFalse(pipe(true, Boolean.eqv(false)))
+    assertFalse(pipe(false, Boolean.eqv(true)))
+    assertTrue(pipe(false, Boolean.eqv(false)))
   })
 
   it("implies", () => {
-    deepStrictEqual(pipe(true, Boolean.implies(true)), true)
-    deepStrictEqual(pipe(true, Boolean.implies(false)), false)
-    deepStrictEqual(pipe(false, Boolean.implies(true)), true)
-    deepStrictEqual(pipe(false, Boolean.implies(false)), true)
+    assertTrue(pipe(true, Boolean.implies(true)))
+    assertFalse(pipe(true, Boolean.implies(false)))
+    assertTrue(pipe(false, Boolean.implies(true)))
+    assertTrue(pipe(false, Boolean.implies(false)))
   })
 
   it("not", () => {
-    deepStrictEqual(pipe(true, Boolean.not), false)
-    deepStrictEqual(pipe(false, Boolean.not), true)
+    assertFalse(pipe(true, Boolean.not))
+    assertTrue(pipe(false, Boolean.not))
   })
 
   it("match", () => {
@@ -75,10 +74,10 @@ describe("Boolean", () => {
   })
 
   it("Equivalence", () => {
-    expect(Boolean.Equivalence(true, true)).toBe(true)
-    expect(Boolean.Equivalence(false, false)).toBe(true)
-    expect(Boolean.Equivalence(true, false)).toBe(false)
-    expect(Boolean.Equivalence(false, true)).toBe(false)
+    assertTrue(Boolean.Equivalence(true, true))
+    assertTrue(Boolean.Equivalence(false, false))
+    assertFalse(Boolean.Equivalence(true, false))
+    assertFalse(Boolean.Equivalence(false, true))
   })
 
   it("Order", () => {
@@ -88,12 +87,12 @@ describe("Boolean", () => {
   })
 
   it("every", () => {
-    assert.deepStrictEqual(Boolean.every([true, true, true]), true)
-    assert.deepStrictEqual(Boolean.every([true, false, true]), false)
+    assertTrue(Boolean.every([true, true, true]))
+    assertFalse(Boolean.every([true, false, true]))
   })
 
   it("some", () => {
-    assert.deepStrictEqual(Boolean.some([true, false, true]), true)
-    assert.deepStrictEqual(Boolean.some([false, false, false]), false)
+    assertTrue(Boolean.some([true, false, true]))
+    assertFalse(Boolean.some([false, false, false]))
   })
 })

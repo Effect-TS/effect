@@ -2,8 +2,9 @@ import * as Effect from "effect/Effect"
 import { constFalse, constTrue } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
+import { strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("retry/until - retries until condition is true", () =>
@@ -16,14 +17,14 @@ describe("Effect", () => {
         Effect.flipWith(Effect.retry({ until: (n) => n === 0 }))
       )
       const result = yield* $(Ref.get(output))
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
   it.effect("retry/until - runs at least once", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
       yield* $(Ref.update(ref, (n) => n + 1), Effect.flipWith(Effect.retry({ until: constTrue })))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
   it.effect("retry/until - retries until condition is true", () =>
     Effect.gen(function*($) {
@@ -35,7 +36,7 @@ describe("Effect", () => {
         Effect.flipWith(Effect.retry({ until: (n) => Effect.succeed(n === 0) }))
       )
       const result = yield* $(Ref.get(output))
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
   it.effect("retry/until - runs at least once", () =>
     Effect.gen(function*($) {
@@ -45,7 +46,7 @@ describe("Effect", () => {
         Effect.flipWith(Effect.retry({ until: () => Effect.succeed(true) }))
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
   it.effect("retry/while - retries while condition is true", () =>
     Effect.gen(function*($) {
@@ -57,14 +58,14 @@ describe("Effect", () => {
         Effect.flipWith(Effect.retry({ while: (n) => n >= 0 }))
       )
       const result = yield* $(Ref.get(output))
-      assert.strictEqual(result, 11)
+      strictEqual(result, 11)
     }))
   it.effect("retry/while - runs at least once", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
       yield* $(Ref.update(ref, (n) => n + 1), Effect.flipWith(Effect.retry({ while: constFalse })))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
   it.effect("retry/while - retries while condition is true", () =>
     Effect.gen(function*($) {
@@ -76,7 +77,7 @@ describe("Effect", () => {
         Effect.flipWith(Effect.retry({ while: (n) => Effect.succeed(n >= 0) }))
       )
       const result = yield* $(Ref.get(output))
-      assert.strictEqual(result, 11)
+      strictEqual(result, 11)
     }))
   it.effect("retry/while - runs at least once", () =>
     Effect.gen(function*($) {
@@ -86,7 +87,7 @@ describe("Effect", () => {
         Effect.flipWith(Effect.retry({ while: () => Effect.succeed(false) }))
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
   it.effect("retry/schedule", () =>
     Effect.gen(function*($) {
@@ -96,7 +97,7 @@ describe("Effect", () => {
         Effect.flipWith(Effect.retry(Schedule.recurs(3)))
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 4)
+      strictEqual(result, 4)
     }))
 
   it.effect("retry/schedule + until", () =>
@@ -110,7 +111,7 @@ describe("Effect", () => {
         }))
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 3)
+      strictEqual(result, 3)
     }))
 
   it.effect("retry/schedule + until effect", () =>
@@ -124,7 +125,7 @@ describe("Effect", () => {
         }))
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 3)
+      strictEqual(result, 3)
     }))
 
   it.effect("retry/schedule + until error", () =>
@@ -137,7 +138,7 @@ describe("Effect", () => {
           until: (_n) => Effect.fail("err" as const)
         }))
       )
-      assert.strictEqual(result, "err")
+      strictEqual(result, "err")
     }))
 
   it.effect("retry/schedule + while", () =>
@@ -151,7 +152,7 @@ describe("Effect", () => {
         }))
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 3)
+      strictEqual(result, 3)
     }))
 
   it.effect("retry/schedule + while error", () =>
@@ -164,7 +165,7 @@ describe("Effect", () => {
           while: (_n) => Effect.fail("err" as const)
         }))
       )
-      assert.strictEqual(result, "err")
+      strictEqual(result, "err")
     }))
 
   it.effect("retry/schedule + while effect", () =>
@@ -178,6 +179,6 @@ describe("Effect", () => {
         }))
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 3)
+      strictEqual(result, 3)
     }))
 })

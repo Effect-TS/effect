@@ -2,8 +2,9 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("filterInput", () =>
@@ -12,7 +13,7 @@ describe("Sink", () => {
         Stream.range(1, 9),
         Stream.run(pipe(Sink.collectAll<number>(), Sink.filterInput((n) => n % 2 === 0)))
       )
-      assert.deepStrictEqual(Array.from(result), [2, 4, 6, 8])
+      deepStrictEqual(Array.from(result), [2, 4, 6, 8])
     }))
 
   it.effect("filterInputEffect - happy path", () =>
@@ -24,7 +25,7 @@ describe("Sink", () => {
           Sink.filterInputEffect((n) => Effect.succeed(n % 2 === 0))
         ))
       )
-      assert.deepStrictEqual(Array.from(result), [2, 4, 6, 8])
+      deepStrictEqual(Array.from(result), [2, 4, 6, 8])
     }))
 
   it.effect("filterInputEffect - error", () =>
@@ -37,6 +38,6 @@ describe("Sink", () => {
         )),
         Effect.flip
       )
-      assert.strictEqual(result, "fail")
+      strictEqual(result, "fail")
     }))
 })

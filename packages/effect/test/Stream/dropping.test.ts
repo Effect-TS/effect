@@ -1,10 +1,10 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import { constTrue, pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
+import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("drop - simple example", () =>
@@ -15,7 +15,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.drop(n), Stream.runCollect),
         result2: pipe(stream, Stream.runCollect, Effect.map(Chunk.drop(n)))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("drop - does not swallow errors", () =>
@@ -27,7 +27,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("dropRight - simple example", () =>
@@ -38,7 +38,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.dropRight(n), Stream.runCollect),
         result2: pipe(stream, Stream.runCollect, Effect.map(Chunk.dropRight(n)))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("dropRight - does not swallow errors", () =>
@@ -50,7 +50,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("dropUntil", () =>
@@ -64,7 +64,7 @@ describe("Stream", () => {
           Effect.map((chunk) => pipe(chunk, Chunk.dropWhile((n) => !f(n)), Chunk.drop(1)))
         )
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("dropWhile", () =>
@@ -75,7 +75,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.dropWhile(f), Stream.runCollect),
         result2: pipe(stream, Stream.runCollect, Effect.map(Chunk.dropWhile(f)))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("dropWhile - short circuits", () =>
@@ -88,6 +88,6 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.right(void 0))
+      assertRight(result, void 0)
     }))
 })

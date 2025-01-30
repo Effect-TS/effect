@@ -1,81 +1,78 @@
-import * as Duration from "effect/Duration"
-import * as Equal from "effect/Equal"
-import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import { deepStrictEqual } from "effect/test/util"
-import { assert, describe, expect, it } from "vitest"
+import { Duration, Equal, pipe } from "effect"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Duration", () => {
   it("decode", () => {
     const millis100 = Duration.millis(100)
-    expect(Duration.decode(millis100) === millis100).toEqual(true)
+    assertTrue(Duration.decode(millis100) === millis100)
 
-    expect(Duration.decode(100)).toEqual(millis100)
+    deepStrictEqual(Duration.decode(100), millis100)
 
-    expect(Duration.decode(10n)).toEqual(Duration.nanos(10n))
+    deepStrictEqual(Duration.decode(10n), Duration.nanos(10n))
 
-    expect(Duration.decode("1 nano")).toEqual(Duration.nanos(1n))
-    expect(Duration.decode("10 nanos")).toEqual(Duration.nanos(10n))
-    expect(Duration.decode("1 micro")).toEqual(Duration.micros(1n))
-    expect(Duration.decode("10 micros")).toEqual(Duration.micros(10n))
-    expect(Duration.decode("1 milli")).toEqual(Duration.millis(1))
-    expect(Duration.decode("10 millis")).toEqual(Duration.millis(10))
-    expect(Duration.decode("1 second")).toEqual(Duration.seconds(1))
-    expect(Duration.decode("10 seconds")).toEqual(Duration.seconds(10))
-    expect(Duration.decode("1 minute")).toEqual(Duration.minutes(1))
-    expect(Duration.decode("10 minutes")).toEqual(Duration.minutes(10))
-    expect(Duration.decode("1 hour")).toEqual(Duration.hours(1))
-    expect(Duration.decode("10 hours")).toEqual(Duration.hours(10))
-    expect(Duration.decode("1 day")).toEqual(Duration.days(1))
-    expect(Duration.decode("10 days")).toEqual(Duration.days(10))
-    expect(Duration.decode("1 week")).toEqual(Duration.weeks(1))
-    expect(Duration.decode("10 weeks")).toEqual(Duration.weeks(10))
+    deepStrictEqual(Duration.decode("1 nano"), Duration.nanos(1n))
+    deepStrictEqual(Duration.decode("10 nanos"), Duration.nanos(10n))
+    deepStrictEqual(Duration.decode("1 micro"), Duration.micros(1n))
+    deepStrictEqual(Duration.decode("10 micros"), Duration.micros(10n))
+    deepStrictEqual(Duration.decode("1 milli"), Duration.millis(1))
+    deepStrictEqual(Duration.decode("10 millis"), Duration.millis(10))
+    deepStrictEqual(Duration.decode("1 second"), Duration.seconds(1))
+    deepStrictEqual(Duration.decode("10 seconds"), Duration.seconds(10))
+    deepStrictEqual(Duration.decode("1 minute"), Duration.minutes(1))
+    deepStrictEqual(Duration.decode("10 minutes"), Duration.minutes(10))
+    deepStrictEqual(Duration.decode("1 hour"), Duration.hours(1))
+    deepStrictEqual(Duration.decode("10 hours"), Duration.hours(10))
+    deepStrictEqual(Duration.decode("1 day"), Duration.days(1))
+    deepStrictEqual(Duration.decode("10 days"), Duration.days(10))
+    deepStrictEqual(Duration.decode("1 week"), Duration.weeks(1))
+    deepStrictEqual(Duration.decode("10 weeks"), Duration.weeks(10))
 
-    expect(Duration.decode("1.5 seconds")).toEqual(Duration.seconds(1.5))
-    expect(Duration.decode("-1.5 seconds")).toEqual(Duration.zero)
+    deepStrictEqual(Duration.decode("1.5 seconds"), Duration.seconds(1.5))
+    deepStrictEqual(Duration.decode("-1.5 seconds"), Duration.zero)
 
-    expect(Duration.decode([500, 123456789])).toEqual(Duration.nanos(500123456789n))
-    expect(Duration.decode([-500, 123456789])).toEqual(Duration.zero)
+    deepStrictEqual(Duration.decode([500, 123456789]), Duration.nanos(500123456789n))
+    deepStrictEqual(Duration.decode([-500, 123456789]), Duration.zero)
 
-    expect(() => Duration.decode("1.5 secs" as any)).toThrowError(new Error("Invalid DurationInput"))
-    expect(() => Duration.decode(true as any)).toThrowError(new Error("Invalid DurationInput"))
-    expect(() => Duration.decode({} as any)).toThrowError(new Error("Invalid DurationInput"))
+    throws(() => Duration.decode("1.5 secs" as any), new Error("Invalid DurationInput"))
+    throws(() => Duration.decode(true as any), new Error("Invalid DurationInput"))
+    throws(() => Duration.decode({} as any), new Error("Invalid DurationInput"))
   })
 
   it("decodeUnknown", () => {
     const millis100 = Duration.millis(100)
-    expect(Duration.decodeUnknown(millis100)).toEqual(Option.some(millis100))
+    assertSome(Duration.decodeUnknown(millis100), millis100)
 
-    expect(Duration.decodeUnknown(100)).toEqual(Option.some(millis100))
+    assertSome(Duration.decodeUnknown(100), millis100)
 
-    expect(Duration.decodeUnknown(10n)).toEqual(Option.some(Duration.nanos(10n)))
+    assertSome(Duration.decodeUnknown(10n), Duration.nanos(10n))
 
-    expect(Duration.decodeUnknown("1 nano")).toEqual(Option.some(Duration.nanos(1n)))
-    expect(Duration.decodeUnknown("10 nanos")).toEqual(Option.some(Duration.nanos(10n)))
-    expect(Duration.decodeUnknown("1 micro")).toEqual(Option.some(Duration.micros(1n)))
-    expect(Duration.decodeUnknown("10 micros")).toEqual(Option.some(Duration.micros(10n)))
-    expect(Duration.decodeUnknown("1 milli")).toEqual(Option.some(Duration.millis(1)))
-    expect(Duration.decodeUnknown("10 millis")).toEqual(Option.some(Duration.millis(10)))
-    expect(Duration.decodeUnknown("1 second")).toEqual(Option.some(Duration.seconds(1)))
-    expect(Duration.decodeUnknown("10 seconds")).toEqual(Option.some(Duration.seconds(10)))
-    expect(Duration.decodeUnknown("1 minute")).toEqual(Option.some(Duration.minutes(1)))
-    expect(Duration.decodeUnknown("10 minutes")).toEqual(Option.some(Duration.minutes(10)))
-    expect(Duration.decodeUnknown("1 hour")).toEqual(Option.some(Duration.hours(1)))
-    expect(Duration.decodeUnknown("10 hours")).toEqual(Option.some(Duration.hours(10)))
-    expect(Duration.decodeUnknown("1 day")).toEqual(Option.some(Duration.days(1)))
-    expect(Duration.decodeUnknown("10 days")).toEqual(Option.some(Duration.days(10)))
-    expect(Duration.decodeUnknown("1 week")).toEqual(Option.some(Duration.weeks(1)))
-    expect(Duration.decodeUnknown("10 weeks")).toEqual(Option.some(Duration.weeks(10)))
+    assertSome(Duration.decodeUnknown("1 nano"), Duration.nanos(1n))
+    assertSome(Duration.decodeUnknown("10 nanos"), Duration.nanos(10n))
+    assertSome(Duration.decodeUnknown("1 micro"), Duration.micros(1n))
+    assertSome(Duration.decodeUnknown("10 micros"), Duration.micros(10n))
+    assertSome(Duration.decodeUnknown("1 milli"), Duration.millis(1))
+    assertSome(Duration.decodeUnknown("10 millis"), Duration.millis(10))
+    assertSome(Duration.decodeUnknown("1 second"), Duration.seconds(1))
+    assertSome(Duration.decodeUnknown("10 seconds"), Duration.seconds(10))
+    assertSome(Duration.decodeUnknown("1 minute"), Duration.minutes(1))
+    assertSome(Duration.decodeUnknown("10 minutes"), Duration.minutes(10))
+    assertSome(Duration.decodeUnknown("1 hour"), Duration.hours(1))
+    assertSome(Duration.decodeUnknown("10 hours"), Duration.hours(10))
+    assertSome(Duration.decodeUnknown("1 day"), Duration.days(1))
+    assertSome(Duration.decodeUnknown("10 days"), Duration.days(10))
+    assertSome(Duration.decodeUnknown("1 week"), Duration.weeks(1))
+    assertSome(Duration.decodeUnknown("10 weeks"), Duration.weeks(10))
 
-    expect(Duration.decodeUnknown("1.5 seconds")).toEqual(Option.some(Duration.seconds(1.5)))
-    expect(Duration.decodeUnknown("-1.5 seconds")).toEqual(Option.some(Duration.zero))
+    assertSome(Duration.decodeUnknown("1.5 seconds"), Duration.seconds(1.5))
+    assertSome(Duration.decodeUnknown("-1.5 seconds"), Duration.zero)
 
-    expect(Duration.decodeUnknown([500, 123456789])).toEqual(Option.some(Duration.nanos(500123456789n)))
-    expect(Duration.decodeUnknown([-500, 123456789])).toEqual(Option.some(Duration.zero))
+    assertSome(Duration.decodeUnknown([500, 123456789]), Duration.nanos(500123456789n))
+    assertSome(Duration.decodeUnknown([-500, 123456789]), Duration.zero)
 
-    expect(Duration.decodeUnknown("1.5 secs")).toEqual(Option.none())
-    expect(Duration.decodeUnknown(true)).toEqual(Option.none())
-    expect(Duration.decodeUnknown({})).toEqual(Option.none())
+    assertNone(Duration.decodeUnknown("1.5 secs"))
+    assertNone(Duration.decodeUnknown(true))
+    assertNone(Duration.decodeUnknown({}))
   })
 
   it("Order", () => {
@@ -128,194 +125,197 @@ describe("Duration", () => {
       Duration.minutes(1.5)
     )
 
-    expect(Duration.clamp("1 millis", {
-      minimum: "2 millis",
-      maximum: "3 millis"
-    })).toStrictEqual(Duration.millis(2))
+    deepStrictEqual(
+      Duration.clamp("1 millis", {
+        minimum: "2 millis",
+        maximum: "3 millis"
+      }),
+      Duration.millis(2)
+    )
   })
 
   it("equals", () => {
-    assert.isTrue(pipe(Duration.hours(1), Duration.equals(Duration.minutes(60))))
-    expect(Duration.equals("2 seconds", "2 seconds")).toBe(true)
-    expect(Duration.equals("2 seconds", "3 seconds")).toBe(false)
+    assertTrue(pipe(Duration.hours(1), Duration.equals(Duration.minutes(60))))
+    assertTrue(Duration.equals("2 seconds", "2 seconds"))
+    assertFalse(Duration.equals("2 seconds", "3 seconds"))
   })
 
   it("between", () => {
-    assert.isTrue(Duration.between(Duration.hours(1), {
+    assertTrue(Duration.between(Duration.hours(1), {
       minimum: Duration.minutes(59),
       maximum: Duration.minutes(61)
     }))
-    assert.isTrue(
+    assertTrue(
       Duration.between(Duration.minutes(1), {
         minimum: Duration.seconds(59),
         maximum: Duration.seconds(61)
       })
     )
 
-    assert.isTrue(Duration.between("1 minutes", {
+    assertTrue(Duration.between("1 minutes", {
       minimum: "59 seconds",
       maximum: "61 seconds"
     }))
   })
 
   it("divide", () => {
-    expect(Duration.divide(Duration.minutes(1), 2)).toEqual(Option.some(Duration.seconds(30)))
-    expect(Duration.divide(Duration.seconds(1), 3)).toEqual(Option.some(Duration.nanos(333333333n)))
-    expect(Duration.divide(Duration.nanos(2n), 2)).toEqual(Option.some(Duration.nanos(1n)))
-    expect(Duration.divide(Duration.nanos(1n), 3)).toEqual(Option.some(Duration.zero))
-    expect(Duration.divide(Duration.infinity, 2)).toEqual(Option.some(Duration.infinity))
-    expect(Duration.divide(Duration.zero, 2)).toEqual(Option.some(Duration.zero))
-    expect(Duration.divide(Duration.minutes(1), 0)).toEqual(Option.none())
-    expect(Duration.divide(Duration.minutes(1), -0)).toEqual(Option.none())
-    expect(Duration.divide(Duration.nanos(1n), 0)).toEqual(Option.none())
-    expect(Duration.divide(Duration.nanos(1n), -0)).toEqual(Option.none())
-    expect(Duration.divide(Duration.minutes(1), 0.5)).toEqual(Option.some(Duration.minutes(2)))
-    expect(Duration.divide(Duration.minutes(1), 1.5)).toEqual(Option.some(Duration.seconds(40)))
-    expect(Duration.divide(Duration.minutes(1), NaN)).toEqual(Option.none())
-    expect(Duration.divide(Duration.nanos(1n), 0.5)).toEqual(Option.none())
-    expect(Duration.divide(Duration.nanos(1n), 1.5)).toEqual(Option.none())
-    expect(Duration.divide(Duration.nanos(1n), NaN)).toEqual(Option.none())
+    assertSome(Duration.divide(Duration.minutes(1), 2), Duration.seconds(30))
+    assertSome(Duration.divide(Duration.seconds(1), 3), Duration.nanos(333333333n))
+    assertSome(Duration.divide(Duration.nanos(2n), 2), Duration.nanos(1n))
+    assertSome(Duration.divide(Duration.nanos(1n), 3), Duration.zero)
+    assertSome(Duration.divide(Duration.infinity, 2), Duration.infinity)
+    assertSome(Duration.divide(Duration.zero, 2), Duration.zero)
+    assertNone(Duration.divide(Duration.minutes(1), 0))
+    assertNone(Duration.divide(Duration.minutes(1), -0))
+    assertNone(Duration.divide(Duration.nanos(1n), 0))
+    assertNone(Duration.divide(Duration.nanos(1n), -0))
+    assertSome(Duration.divide(Duration.minutes(1), 0.5), Duration.minutes(2))
+    assertSome(Duration.divide(Duration.minutes(1), 1.5), Duration.seconds(40))
+    assertNone(Duration.divide(Duration.minutes(1), NaN))
+    assertNone(Duration.divide(Duration.nanos(1n), 0.5))
+    assertNone(Duration.divide(Duration.nanos(1n), 1.5))
+    assertNone(Duration.divide(Duration.nanos(1n), NaN))
 
-    expect(Duration.divide("1 minute", 2)).toEqual(Option.some(Duration.seconds(30)))
+    assertSome(Duration.divide("1 minute", 2), Duration.seconds(30))
   })
 
   it("unsafeDivide", () => {
-    expect(Duration.unsafeDivide(Duration.minutes(1), 2)).toEqual(Duration.seconds(30))
-    expect(Duration.unsafeDivide(Duration.seconds(1), 3)).toEqual(Duration.nanos(333333333n))
-    expect(Duration.unsafeDivide(Duration.nanos(2n), 2)).toEqual(Duration.nanos(1n))
-    expect(Duration.unsafeDivide(Duration.nanos(1n), 3)).toEqual(Duration.zero)
-    expect(Duration.unsafeDivide(Duration.infinity, 2)).toEqual(Duration.infinity)
-    expect(Duration.unsafeDivide(Duration.zero, 2)).toEqual(Duration.zero)
-    expect(Duration.unsafeDivide(Duration.minutes(1), 0)).toEqual(Duration.infinity)
-    expect(Duration.unsafeDivide(Duration.minutes(1), -0)).toEqual(Duration.zero)
-    expect(Duration.unsafeDivide(Duration.nanos(1n), 0)).toEqual(Duration.infinity)
-    expect(Duration.unsafeDivide(Duration.nanos(1n), -0)).toEqual(Duration.zero)
-    expect(Duration.unsafeDivide(Duration.minutes(1), 0.5)).toEqual(Duration.minutes(2))
-    expect(Duration.unsafeDivide(Duration.minutes(1), 1.5)).toEqual(Duration.seconds(40))
-    expect(Duration.unsafeDivide(Duration.minutes(1), NaN)).toEqual(Duration.zero)
-    expect(() => Duration.unsafeDivide(Duration.nanos(1n), 0.5)).toThrow()
-    expect(() => Duration.unsafeDivide(Duration.nanos(1n), 1.5)).toThrow()
-    expect(Duration.unsafeDivide(Duration.nanos(1n), NaN)).toEqual(Duration.zero)
+    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), 2), Duration.seconds(30))
+    deepStrictEqual(Duration.unsafeDivide(Duration.seconds(1), 3), Duration.nanos(333333333n))
+    deepStrictEqual(Duration.unsafeDivide(Duration.nanos(2n), 2), Duration.nanos(1n))
+    deepStrictEqual(Duration.unsafeDivide(Duration.nanos(1n), 3), Duration.zero)
+    deepStrictEqual(Duration.unsafeDivide(Duration.infinity, 2), Duration.infinity)
+    deepStrictEqual(Duration.unsafeDivide(Duration.zero, 2), Duration.zero)
+    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), 0), Duration.infinity)
+    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), -0), Duration.zero)
+    deepStrictEqual(Duration.unsafeDivide(Duration.nanos(1n), 0), Duration.infinity)
+    deepStrictEqual(Duration.unsafeDivide(Duration.nanos(1n), -0), Duration.zero)
+    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), 0.5), Duration.minutes(2))
+    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), 1.5), Duration.seconds(40))
+    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), NaN), Duration.zero)
+    throws(() => Duration.unsafeDivide(Duration.nanos(1n), 0.5))
+    throws(() => Duration.unsafeDivide(Duration.nanos(1n), 1.5))
+    deepStrictEqual(Duration.unsafeDivide(Duration.nanos(1n), NaN), Duration.zero)
 
-    expect(Duration.unsafeDivide("1 minute", 2)).toEqual(Duration.seconds(30))
+    deepStrictEqual(Duration.unsafeDivide("1 minute", 2), Duration.seconds(30))
   })
 
   it("times", () => {
-    expect(Duration.times(Duration.seconds(1), 60)).toEqual(Duration.minutes(1))
-    expect(Duration.times(Duration.nanos(2n), 10)).toEqual(Duration.nanos(20n))
-    expect(Duration.times(Duration.seconds(Infinity), 60)).toEqual(Duration.seconds(Infinity))
+    deepStrictEqual(Duration.times(Duration.seconds(1), 60), Duration.minutes(1))
+    deepStrictEqual(Duration.times(Duration.nanos(2n), 10), Duration.nanos(20n))
+    deepStrictEqual(Duration.times(Duration.seconds(Infinity), 60), Duration.seconds(Infinity))
 
-    expect(Duration.times("1 seconds", 60)).toEqual(Duration.minutes(1))
+    deepStrictEqual(Duration.times("1 seconds", 60), Duration.minutes(1))
   })
 
   it("sum", () => {
-    expect(Duration.sum(Duration.seconds(30), Duration.seconds(30))).toEqual(Duration.minutes(1))
-    expect(Duration.sum(Duration.nanos(30n), Duration.nanos(30n))).toEqual(Duration.nanos(60n))
-    expect(Duration.sum(Duration.seconds(Infinity), Duration.seconds(30))).toEqual(Duration.seconds(Infinity))
-    expect(Duration.sum(Duration.seconds(30), Duration.seconds(Infinity))).toEqual(Duration.seconds(Infinity))
+    deepStrictEqual(Duration.sum(Duration.seconds(30), Duration.seconds(30)), Duration.minutes(1))
+    deepStrictEqual(Duration.sum(Duration.nanos(30n), Duration.nanos(30n)), Duration.nanos(60n))
+    deepStrictEqual(Duration.sum(Duration.seconds(Infinity), Duration.seconds(30)), Duration.seconds(Infinity))
+    deepStrictEqual(Duration.sum(Duration.seconds(30), Duration.seconds(Infinity)), Duration.seconds(Infinity))
 
-    expect(Duration.sum("30 seconds", "30 seconds")).toEqual(Duration.minutes(1))
+    deepStrictEqual(Duration.sum("30 seconds", "30 seconds"), Duration.minutes(1))
   })
 
   it("subtract", () => {
-    expect(Duration.subtract(Duration.seconds(30), Duration.seconds(10))).toEqual(Duration.seconds(20))
-    expect(Duration.subtract(Duration.seconds(30), Duration.seconds(30))).toEqual(Duration.zero)
-    expect(Duration.subtract(Duration.nanos(30n), Duration.nanos(10n))).toEqual(Duration.nanos(20n))
-    expect(Duration.subtract(Duration.nanos(30n), Duration.nanos(30n))).toEqual(Duration.zero)
-    expect(Duration.subtract(Duration.seconds(Infinity), Duration.seconds(30))).toEqual(Duration.seconds(Infinity))
-    expect(Duration.subtract(Duration.seconds(30), Duration.seconds(Infinity))).toEqual(Duration.zero)
+    deepStrictEqual(Duration.subtract(Duration.seconds(30), Duration.seconds(10)), Duration.seconds(20))
+    deepStrictEqual(Duration.subtract(Duration.seconds(30), Duration.seconds(30)), Duration.zero)
+    deepStrictEqual(Duration.subtract(Duration.nanos(30n), Duration.nanos(10n)), Duration.nanos(20n))
+    deepStrictEqual(Duration.subtract(Duration.nanos(30n), Duration.nanos(30n)), Duration.zero)
+    deepStrictEqual(Duration.subtract(Duration.seconds(Infinity), Duration.seconds(30)), Duration.seconds(Infinity))
+    deepStrictEqual(Duration.subtract(Duration.seconds(30), Duration.seconds(Infinity)), Duration.zero)
 
-    expect(Duration.subtract("30 seconds", "10 seconds")).toEqual(Duration.seconds(20))
+    deepStrictEqual(Duration.subtract("30 seconds", "10 seconds"), Duration.seconds(20))
   })
 
   it("greaterThan", () => {
-    assert.isTrue(pipe(Duration.seconds(30), Duration.greaterThan(Duration.seconds(20))))
-    assert.isFalse(pipe(Duration.seconds(30), Duration.greaterThan(Duration.seconds(30))))
-    assert.isFalse(pipe(Duration.seconds(30), Duration.greaterThan(Duration.seconds(60))))
+    assertTrue(pipe(Duration.seconds(30), Duration.greaterThan(Duration.seconds(20))))
+    assertFalse(pipe(Duration.seconds(30), Duration.greaterThan(Duration.seconds(30))))
+    assertFalse(pipe(Duration.seconds(30), Duration.greaterThan(Duration.seconds(60))))
 
-    assert.isTrue(pipe(Duration.nanos(30n), Duration.greaterThan(Duration.nanos(20n))))
-    assert.isFalse(pipe(Duration.nanos(30n), Duration.greaterThan(Duration.nanos(30n))))
-    assert.isFalse(pipe(Duration.nanos(30n), Duration.greaterThan(Duration.nanos(60n))))
+    assertTrue(pipe(Duration.nanos(30n), Duration.greaterThan(Duration.nanos(20n))))
+    assertFalse(pipe(Duration.nanos(30n), Duration.greaterThan(Duration.nanos(30n))))
+    assertFalse(pipe(Duration.nanos(30n), Duration.greaterThan(Duration.nanos(60n))))
 
-    assert.isTrue(pipe(Duration.millis(1), Duration.greaterThan(Duration.nanos(1n))))
+    assertTrue(pipe(Duration.millis(1), Duration.greaterThan(Duration.nanos(1n))))
 
-    expect(Duration.greaterThan("2 seconds", "2 seconds")).toBe(false)
-    expect(Duration.greaterThan("3 seconds", "2 seconds")).toBe(true)
-    expect(Duration.greaterThan("2 seconds", "3 seconds")).toBe(false)
+    assertFalse(Duration.greaterThan("2 seconds", "2 seconds"))
+    assertTrue(Duration.greaterThan("3 seconds", "2 seconds"))
+    assertFalse(Duration.greaterThan("2 seconds", "3 seconds"))
   })
 
   it("greaterThan - Infinity", () => {
-    assert.isTrue(pipe(Duration.infinity, Duration.greaterThan(Duration.seconds(20))))
-    assert.isFalse(pipe(Duration.seconds(-Infinity), Duration.greaterThan(Duration.infinity)))
-    assert.isFalse(pipe(Duration.nanos(1n), Duration.greaterThan(Duration.infinity)))
+    assertTrue(pipe(Duration.infinity, Duration.greaterThan(Duration.seconds(20))))
+    assertFalse(pipe(Duration.seconds(-Infinity), Duration.greaterThan(Duration.infinity)))
+    assertFalse(pipe(Duration.nanos(1n), Duration.greaterThan(Duration.infinity)))
   })
 
   it("greaterThanOrEqualTo", () => {
-    assert.isTrue(pipe(Duration.seconds(30), Duration.greaterThanOrEqualTo(Duration.seconds(20))))
-    assert.isTrue(pipe(Duration.seconds(30), Duration.greaterThanOrEqualTo(Duration.seconds(30))))
-    assert.isFalse(pipe(Duration.seconds(30), Duration.greaterThanOrEqualTo(Duration.seconds(60))))
+    assertTrue(pipe(Duration.seconds(30), Duration.greaterThanOrEqualTo(Duration.seconds(20))))
+    assertTrue(pipe(Duration.seconds(30), Duration.greaterThanOrEqualTo(Duration.seconds(30))))
+    assertFalse(pipe(Duration.seconds(30), Duration.greaterThanOrEqualTo(Duration.seconds(60))))
 
-    assert.isTrue(pipe(Duration.nanos(30n), Duration.greaterThanOrEqualTo(Duration.nanos(20n))))
-    assert.isTrue(pipe(Duration.nanos(30n), Duration.greaterThanOrEqualTo(Duration.nanos(30n))))
-    assert.isFalse(pipe(Duration.nanos(30n), Duration.greaterThanOrEqualTo(Duration.nanos(60n))))
+    assertTrue(pipe(Duration.nanos(30n), Duration.greaterThanOrEqualTo(Duration.nanos(20n))))
+    assertTrue(pipe(Duration.nanos(30n), Duration.greaterThanOrEqualTo(Duration.nanos(30n))))
+    assertFalse(pipe(Duration.nanos(30n), Duration.greaterThanOrEqualTo(Duration.nanos(60n))))
 
-    expect(Duration.greaterThanOrEqualTo("2 seconds", "2 seconds")).toBe(true)
-    expect(Duration.greaterThanOrEqualTo("3 seconds", "2 seconds")).toBe(true)
-    expect(Duration.greaterThanOrEqualTo("2 seconds", "3 seconds")).toBe(false)
+    assertTrue(Duration.greaterThanOrEqualTo("2 seconds", "2 seconds"))
+    assertTrue(Duration.greaterThanOrEqualTo("3 seconds", "2 seconds"))
+    assertFalse(Duration.greaterThanOrEqualTo("2 seconds", "3 seconds"))
   })
 
   it("lessThan", () => {
-    assert.isTrue(pipe(Duration.seconds(20), Duration.lessThan(Duration.seconds(30))))
-    assert.isFalse(pipe(Duration.seconds(30), Duration.lessThan(Duration.seconds(30))))
-    assert.isFalse(pipe(Duration.seconds(60), Duration.lessThan(Duration.seconds(30))))
+    assertTrue(pipe(Duration.seconds(20), Duration.lessThan(Duration.seconds(30))))
+    assertFalse(pipe(Duration.seconds(30), Duration.lessThan(Duration.seconds(30))))
+    assertFalse(pipe(Duration.seconds(60), Duration.lessThan(Duration.seconds(30))))
 
-    assert.isTrue(pipe(Duration.nanos(20n), Duration.lessThan(Duration.nanos(30n))))
-    assert.isFalse(pipe(Duration.nanos(30n), Duration.lessThan(Duration.nanos(30n))))
-    assert.isFalse(pipe(Duration.nanos(60n), Duration.lessThan(Duration.nanos(30n))))
+    assertTrue(pipe(Duration.nanos(20n), Duration.lessThan(Duration.nanos(30n))))
+    assertFalse(pipe(Duration.nanos(30n), Duration.lessThan(Duration.nanos(30n))))
+    assertFalse(pipe(Duration.nanos(60n), Duration.lessThan(Duration.nanos(30n))))
 
-    assert.isTrue(pipe(Duration.nanos(1n), Duration.lessThan(Duration.millis(1))))
+    assertTrue(pipe(Duration.nanos(1n), Duration.lessThan(Duration.millis(1))))
 
-    expect(Duration.lessThan("2 seconds", "2 seconds")).toBe(false)
-    expect(Duration.lessThan("3 seconds", "2 seconds")).toBe(false)
-    expect(Duration.lessThan("2 seconds", "3 seconds")).toBe(true)
+    assertFalse(Duration.lessThan("2 seconds", "2 seconds"))
+    assertFalse(Duration.lessThan("3 seconds", "2 seconds"))
+    assertTrue(Duration.lessThan("2 seconds", "3 seconds"))
   })
 
   it("lessThanOrEqualTo", () => {
-    assert.isTrue(pipe(Duration.seconds(20), Duration.lessThanOrEqualTo(Duration.seconds(30))))
-    assert.isTrue(pipe(Duration.seconds(30), Duration.lessThanOrEqualTo(Duration.seconds(30))))
-    assert.isFalse(pipe(Duration.seconds(60), Duration.lessThanOrEqualTo(Duration.seconds(30))))
+    assertTrue(pipe(Duration.seconds(20), Duration.lessThanOrEqualTo(Duration.seconds(30))))
+    assertTrue(pipe(Duration.seconds(30), Duration.lessThanOrEqualTo(Duration.seconds(30))))
+    assertFalse(pipe(Duration.seconds(60), Duration.lessThanOrEqualTo(Duration.seconds(30))))
 
-    assert.isTrue(pipe(Duration.nanos(20n), Duration.lessThanOrEqualTo(Duration.nanos(30n))))
-    assert.isTrue(pipe(Duration.nanos(30n), Duration.lessThanOrEqualTo(Duration.nanos(30n))))
-    assert.isFalse(pipe(Duration.nanos(60n), Duration.lessThanOrEqualTo(Duration.nanos(30n))))
+    assertTrue(pipe(Duration.nanos(20n), Duration.lessThanOrEqualTo(Duration.nanos(30n))))
+    assertTrue(pipe(Duration.nanos(30n), Duration.lessThanOrEqualTo(Duration.nanos(30n))))
+    assertFalse(pipe(Duration.nanos(60n), Duration.lessThanOrEqualTo(Duration.nanos(30n))))
 
-    expect(Duration.lessThanOrEqualTo("2 seconds", "2 seconds")).toBe(true)
-    expect(Duration.lessThanOrEqualTo("3 seconds", "2 seconds")).toBe(false)
-    expect(Duration.lessThanOrEqualTo("2 seconds", "3 seconds")).toBe(true)
+    assertTrue(Duration.lessThanOrEqualTo("2 seconds", "2 seconds"))
+    assertFalse(Duration.lessThanOrEqualTo("3 seconds", "2 seconds"))
+    assertTrue(Duration.lessThanOrEqualTo("2 seconds", "3 seconds"))
   })
 
   it("String()", () => {
-    expect(String(Duration.infinity)).toEqual(`Duration(Infinity)`)
-    expect(String(Duration.nanos(10n))).toEqual(`Duration(10ns)`)
-    expect(String(Duration.millis(2))).toEqual(`Duration(2ms)`)
-    expect(String(Duration.millis(2.125))).toEqual(`Duration(2ms 125000ns)`)
-    expect(String(Duration.seconds(2))).toEqual(`Duration(2s)`)
-    expect(String(Duration.seconds(2.5))).toEqual(`Duration(2s 500ms)`)
+    strictEqual(String(Duration.infinity), `Duration(Infinity)`)
+    strictEqual(String(Duration.nanos(10n)), `Duration(10ns)`)
+    strictEqual(String(Duration.millis(2)), `Duration(2ms)`)
+    strictEqual(String(Duration.millis(2.125)), `Duration(2ms 125000ns)`)
+    strictEqual(String(Duration.seconds(2)), `Duration(2s)`)
+    strictEqual(String(Duration.seconds(2.5)), `Duration(2s 500ms)`)
   })
 
   it("format", () => {
-    expect(Duration.format(Duration.infinity)).toEqual(`Infinity`)
-    expect(Duration.format(Duration.minutes(5))).toEqual(`5m`)
-    expect(Duration.format(Duration.minutes(5.325))).toEqual(`5m 19s 500ms`)
-    expect(Duration.format(Duration.hours(3))).toEqual(`3h`)
-    expect(Duration.format(Duration.hours(3.11125))).toEqual(`3h 6m 40s 500ms`)
-    expect(Duration.format(Duration.days(2))).toEqual(`2d`)
-    expect(Duration.format(Duration.days(2.25))).toEqual(`2d 6h`)
-    expect(Duration.format(Duration.weeks(1))).toEqual(`7d`)
+    strictEqual(Duration.format(Duration.infinity), `Infinity`)
+    strictEqual(Duration.format(Duration.minutes(5)), `5m`)
+    strictEqual(Duration.format(Duration.minutes(5.325)), `5m 19s 500ms`)
+    strictEqual(Duration.format(Duration.hours(3)), `3h`)
+    strictEqual(Duration.format(Duration.hours(3.11125)), `3h 6m 40s 500ms`)
+    strictEqual(Duration.format(Duration.days(2)), `2d`)
+    strictEqual(Duration.format(Duration.days(2.25)), `2d 6h`)
+    strictEqual(Duration.format(Duration.weeks(1)), `7d`)
   })
 
   it("format", () => {
-    expect(Duration.parts(Duration.infinity)).toStrictEqual({
+    deepStrictEqual(Duration.parts(Duration.infinity), {
       days: Infinity,
       hours: Infinity,
       minutes: Infinity,
@@ -324,7 +324,7 @@ describe("Duration", () => {
       nanos: Infinity
     })
 
-    expect(Duration.parts(Duration.minutes(5.325))).toStrictEqual({
+    deepStrictEqual(Duration.parts(Duration.minutes(5.325)), {
       days: 0,
       hours: 0,
       minutes: 5,
@@ -333,7 +333,7 @@ describe("Duration", () => {
       nanos: 0
     })
 
-    expect(Duration.parts(Duration.minutes(3.11125))).toStrictEqual({
+    deepStrictEqual(Duration.parts(Duration.minutes(3.11125)), {
       days: 0,
       hours: 0,
       minutes: 3,
@@ -344,114 +344,104 @@ describe("Duration", () => {
   })
 
   it("toJSON", () => {
-    expect(Duration.seconds(2).toJSON()).toEqual(
-      { _id: "Duration", _tag: "Millis", millis: 2000 }
-    )
+    deepStrictEqual(Duration.seconds(2).toJSON(), { _id: "Duration", _tag: "Millis", millis: 2000 })
   })
 
   it("toJSON/ non-integer millis", () => {
-    expect(Duration.millis(1.5).toJSON()).toEqual(
-      { _id: "Duration", _tag: "Nanos", hrtime: [0, 1_500_000] }
-    )
+    deepStrictEqual(Duration.millis(1.5).toJSON(), { _id: "Duration", _tag: "Nanos", hrtime: [0, 1_500_000] })
   })
 
   it("toJSON/ nanos", () => {
-    expect(Duration.nanos(5n).toJSON()).toEqual(
-      { _id: "Duration", _tag: "Nanos", hrtime: [0, 5] }
-    )
+    deepStrictEqual(Duration.nanos(5n).toJSON(), { _id: "Duration", _tag: "Nanos", hrtime: [0, 5] })
   })
 
   it("toJSON/ infinity", () => {
-    expect(Duration.infinity.toJSON()).toEqual(
-      { _id: "Duration", _tag: "Infinity" }
-    )
+    deepStrictEqual(Duration.infinity.toJSON(), { _id: "Duration", _tag: "Infinity" })
   })
 
   it(`inspect`, () => {
     if (typeof window === "undefined") {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { inspect } = require("node:util")
-      expect(inspect(Duration.millis(1000))).toEqual(
-        inspect({ _id: "Duration", _tag: "Millis", millis: 1000 })
-      )
+      deepStrictEqual(inspect(Duration.millis(1000)), inspect({ _id: "Duration", _tag: "Millis", millis: 1000 }))
     }
   })
 
   it("sum/ Infinity", () => {
-    expect(Duration.sum(Duration.seconds(1), Duration.infinity)).toEqual(Duration.infinity)
+    deepStrictEqual(Duration.sum(Duration.seconds(1), Duration.infinity), Duration.infinity)
   })
 
   it(".pipe()", () => {
-    expect(Duration.seconds(1).pipe(Duration.sum(Duration.seconds(1)))).toEqual(Duration.seconds(2))
+    deepStrictEqual(Duration.seconds(1).pipe(Duration.sum(Duration.seconds(1))), Duration.seconds(2))
   })
 
   it("isDuration", () => {
-    expect(Duration.isDuration(Duration.millis(100))).toBe(true)
-    expect(Duration.isDuration(null)).toBe(false)
+    assertTrue(Duration.isDuration(Duration.millis(100)))
+    assertFalse(Duration.isDuration(null))
   })
 
   it("zero", () => {
-    expect(Duration.zero.value).toEqual({ _tag: "Millis", millis: 0 })
+    deepStrictEqual(Duration.zero.value, { _tag: "Millis", millis: 0 })
   })
 
   it("infinity", () => {
-    expect(Duration.infinity.value).toEqual({ _tag: "Infinity" })
+    deepStrictEqual(Duration.infinity.value, { _tag: "Infinity" })
   })
 
   it("weeks", () => {
-    expect(Equal.equals(Duration.weeks(1), Duration.days(7))).toBe(true)
-    expect(Equal.equals(Duration.weeks(1), Duration.days(1))).toBe(false)
+    assertTrue(Equal.equals(Duration.weeks(1), Duration.days(7)))
+    assertFalse(Equal.equals(Duration.weeks(1), Duration.days(1)))
   })
 
   it("toMillis", () => {
-    expect(Duration.millis(1).pipe(Duration.toMillis)).toBe(1)
-    expect(Duration.nanos(1n).pipe(Duration.toMillis)).toBe(0.000001)
-    expect(Duration.infinity.pipe(Duration.toMillis)).toBe(Infinity)
+    strictEqual(Duration.millis(1).pipe(Duration.toMillis), 1)
+    strictEqual(Duration.nanos(1n).pipe(Duration.toMillis), 0.000001)
+    strictEqual(Duration.infinity.pipe(Duration.toMillis), Infinity)
 
-    expect(Duration.toMillis("1 millis")).toBe(1)
+    strictEqual(Duration.toMillis("1 millis"), 1)
   })
 
   it("toSeconds", () => {
-    expect(Duration.millis(1).pipe(Duration.toSeconds)).toBe(0.001)
-    expect(Duration.nanos(1n).pipe(Duration.toSeconds)).toBe(1e-9)
-    expect(Duration.infinity.pipe(Duration.toSeconds)).toBe(Infinity)
+    strictEqual(Duration.millis(1).pipe(Duration.toSeconds), 0.001)
+    strictEqual(Duration.nanos(1n).pipe(Duration.toSeconds), 1e-9)
+    strictEqual(Duration.infinity.pipe(Duration.toSeconds), Infinity)
 
-    expect(Duration.toSeconds("1 seconds")).toBe(1)
-    expect(Duration.toSeconds("3 seconds")).toBe(3)
-    expect(Duration.toSeconds("3 minutes")).toBe(180)
+    strictEqual(Duration.toSeconds("1 seconds"), 1)
+    strictEqual(Duration.toSeconds("3 seconds"), 3)
+    strictEqual(Duration.toSeconds("3 minutes"), 180)
   })
 
   it("toNanos", () => {
-    expect(Duration.nanos(1n).pipe(Duration.toNanos)).toEqual(Option.some(1n))
-    expect(Duration.infinity.pipe(Duration.toNanos)).toEqual(Option.none())
-    expect(Duration.millis(1.0005).pipe(Duration.toNanos)).toEqual(Option.some(1_000_500n))
-    expect(Duration.millis(100).pipe(Duration.toNanos)).toEqual(Option.some(100_000_000n))
+    assertSome(Duration.nanos(1n).pipe(Duration.toNanos), 1n)
+    assertNone(Duration.infinity.pipe(Duration.toNanos))
+    assertSome(Duration.millis(1.0005).pipe(Duration.toNanos), 1_000_500n)
+    assertSome(Duration.millis(100).pipe(Duration.toNanos), 100_000_000n)
 
-    expect(Duration.toNanos("1 nanos")).toStrictEqual(Option.some(1n))
+    assertSome(Duration.toNanos("1 nanos"), 1n)
   })
 
   it("unsafeToNanos", () => {
-    expect(Duration.nanos(1n).pipe(Duration.unsafeToNanos)).toBe(1n)
-    expect(() => Duration.infinity.pipe(Duration.unsafeToNanos)).toThrow()
-    expect(Duration.millis(1.0005).pipe(Duration.unsafeToNanos)).toBe(1_000_500n)
-    expect(Duration.millis(100).pipe(Duration.unsafeToNanos)).toEqual(100_000_000n)
+    strictEqual(Duration.nanos(1n).pipe(Duration.unsafeToNanos), 1n)
+    throws(() => Duration.infinity.pipe(Duration.unsafeToNanos))
+    strictEqual(Duration.millis(1.0005).pipe(Duration.unsafeToNanos), 1_000_500n)
+    strictEqual(Duration.millis(100).pipe(Duration.unsafeToNanos), 100_000_000n)
 
-    expect(Duration.unsafeToNanos("1 nanos")).toBe(1n)
+    strictEqual(Duration.unsafeToNanos("1 nanos"), 1n)
   })
 
   it("toHrTime", () => {
-    expect(Duration.millis(1).pipe(Duration.toHrTime)).toEqual([0, 1_000_000])
-    expect(Duration.nanos(1n).pipe(Duration.toHrTime)).toEqual([0, 1])
-    expect(Duration.nanos(1_000_000_001n).pipe(Duration.toHrTime)).toEqual([1, 1])
-    expect(Duration.millis(1001).pipe(Duration.toHrTime)).toEqual([1, 1_000_000])
-    expect(Duration.infinity.pipe(Duration.toHrTime)).toEqual([Infinity, 0])
+    deepStrictEqual(Duration.millis(1).pipe(Duration.toHrTime), [0, 1_000_000])
+    deepStrictEqual(Duration.nanos(1n).pipe(Duration.toHrTime), [0, 1])
+    deepStrictEqual(Duration.nanos(1_000_000_001n).pipe(Duration.toHrTime), [1, 1])
+    deepStrictEqual(Duration.millis(1001).pipe(Duration.toHrTime), [1, 1_000_000])
+    deepStrictEqual(Duration.infinity.pipe(Duration.toHrTime), [Infinity, 0])
 
-    expect(Duration.toHrTime("1 millis")).toEqual([0, 1_000_000])
+    deepStrictEqual(Duration.toHrTime("1 millis"), [0, 1_000_000])
   })
 
   it("floor is 0", () => {
-    expect(Duration.millis(-1)).toEqual(Duration.zero)
-    expect(Duration.nanos(-1n)).toEqual(Duration.zero)
+    deepStrictEqual(Duration.millis(-1), Duration.zero)
+    deepStrictEqual(Duration.nanos(-1n), Duration.zero)
   })
 
   it("match", () => {
@@ -459,65 +449,65 @@ describe("Duration", () => {
       onMillis: () => "millis",
       onNanos: () => "nanos"
     })
-    expect(match(Duration.decode("100 millis"))).toEqual("millis")
-    expect(match(Duration.decode("10 nanos"))).toEqual("nanos")
-    expect(match(Duration.decode(Infinity))).toEqual("millis")
+    strictEqual(match(Duration.decode("100 millis")), "millis")
+    strictEqual(match(Duration.decode("10 nanos")), "nanos")
+    strictEqual(match(Duration.decode(Infinity)), "millis")
 
-    expect(match("100 millis")).toEqual("millis")
+    strictEqual(match("100 millis"), "millis")
   })
 
   it("isFinite", () => {
-    expect(Duration.isFinite(Duration.millis(100))).toBe(true)
-    expect(Duration.isFinite(Duration.nanos(100n))).toBe(true)
-    expect(Duration.isFinite(Duration.infinity)).toBe(false)
+    assertTrue(Duration.isFinite(Duration.millis(100)))
+    assertTrue(Duration.isFinite(Duration.nanos(100n)))
+    assertFalse(Duration.isFinite(Duration.infinity))
   })
 
   it("isZero", () => {
-    expect(Duration.isZero(Duration.zero)).toBe(true)
-    expect(Duration.isZero(Duration.millis(0))).toBe(true)
-    expect(Duration.isZero(Duration.nanos(0n))).toBe(true)
-    expect(Duration.isZero(Duration.infinity)).toBe(false)
-    expect(Duration.isZero(Duration.millis(1))).toBe(false)
-    expect(Duration.isZero(Duration.nanos(1n))).toBe(false)
+    assertTrue(Duration.isZero(Duration.zero))
+    assertTrue(Duration.isZero(Duration.millis(0)))
+    assertTrue(Duration.isZero(Duration.nanos(0n)))
+    assertFalse(Duration.isZero(Duration.infinity))
+    assertFalse(Duration.isZero(Duration.millis(1)))
+    assertFalse(Duration.isZero(Duration.nanos(1n)))
   })
 
   it("toMinutes", () => {
-    expect(Duration.millis(60000).pipe(Duration.toMinutes)).toBe(1)
-    expect(Duration.nanos(60000000000n).pipe(Duration.toMinutes)).toBe(1)
-    expect(Duration.infinity.pipe(Duration.toMinutes)).toBe(Infinity)
+    strictEqual(Duration.millis(60000).pipe(Duration.toMinutes), 1)
+    strictEqual(Duration.nanos(60000000000n).pipe(Duration.toMinutes), 1)
+    strictEqual(Duration.infinity.pipe(Duration.toMinutes), Infinity)
 
-    expect(Duration.toMinutes("1 minute")).toBe(1)
-    expect(Duration.toMinutes("2 minutes")).toBe(2)
-    expect(Duration.toMinutes("1 hour")).toBe(60)
+    strictEqual(Duration.toMinutes("1 minute"), 1)
+    strictEqual(Duration.toMinutes("2 minutes"), 2)
+    strictEqual(Duration.toMinutes("1 hour"), 60)
   })
 
   it("toHours", () => {
-    expect(Duration.millis(3_600_000).pipe(Duration.toHours)).toBe(1)
-    expect(Duration.nanos(3_600_000_000_000n).pipe(Duration.toHours)).toBe(1)
-    expect(Duration.infinity.pipe(Duration.toHours)).toBe(Infinity)
+    strictEqual(Duration.millis(3_600_000).pipe(Duration.toHours), 1)
+    strictEqual(Duration.nanos(3_600_000_000_000n).pipe(Duration.toHours), 1)
+    strictEqual(Duration.infinity.pipe(Duration.toHours), Infinity)
 
-    expect(Duration.toHours("1 hour")).toBe(1)
-    expect(Duration.toHours("2 hours")).toBe(2)
-    expect(Duration.toHours("1 day")).toBe(24)
+    strictEqual(Duration.toHours("1 hour"), 1)
+    strictEqual(Duration.toHours("2 hours"), 2)
+    strictEqual(Duration.toHours("1 day"), 24)
   })
 
   it("toDays", () => {
-    expect(Duration.millis(86_400_000).pipe(Duration.toDays)).toBe(1)
-    expect(Duration.nanos(86_400_000_000_000n).pipe(Duration.toDays)).toBe(1)
-    expect(Duration.infinity.pipe(Duration.toDays)).toBe(Infinity)
+    strictEqual(Duration.millis(86_400_000).pipe(Duration.toDays), 1)
+    strictEqual(Duration.nanos(86_400_000_000_000n).pipe(Duration.toDays), 1)
+    strictEqual(Duration.infinity.pipe(Duration.toDays), Infinity)
 
-    expect(Duration.toDays("1 day")).toBe(1)
-    expect(Duration.toDays("2 days")).toBe(2)
-    expect(Duration.toDays("1 week")).toBe(7)
+    strictEqual(Duration.toDays("1 day"), 1)
+    strictEqual(Duration.toDays("2 days"), 2)
+    strictEqual(Duration.toDays("1 week"), 7)
   })
 
   it("toWeeks", () => {
-    expect(Duration.millis(604_800_000).pipe(Duration.toWeeks)).toBe(1)
-    expect(Duration.nanos(604_800_000_000_000n).pipe(Duration.toWeeks)).toBe(1)
-    expect(Duration.infinity.pipe(Duration.toWeeks)).toBe(Infinity)
+    strictEqual(Duration.millis(604_800_000).pipe(Duration.toWeeks), 1)
+    strictEqual(Duration.nanos(604_800_000_000_000n).pipe(Duration.toWeeks), 1)
+    strictEqual(Duration.infinity.pipe(Duration.toWeeks), Infinity)
 
-    expect(Duration.toWeeks("1 week")).toBe(1)
-    expect(Duration.toWeeks("2 weeks")).toBe(2)
-    expect(Duration.toWeeks("14 days")).toBe(2)
+    strictEqual(Duration.toWeeks("1 week"), 1)
+    strictEqual(Duration.toWeeks("2 weeks"), 2)
+    strictEqual(Duration.toWeeks("14 days"), 2)
   })
 })

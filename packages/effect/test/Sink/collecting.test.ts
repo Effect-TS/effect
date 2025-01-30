@@ -4,8 +4,9 @@ import { constTrue, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("collectAllN - respects the given limit", () =>
@@ -15,7 +16,7 @@ describe("Sink", () => {
         Stream.transduce(Sink.collectAllN<number>(3))
       )
       const result = yield* $(Stream.runCollect(stream))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(Chunk.map(result, (chunk) => Array.from(chunk))),
         [[1, 2, 3], [4]]
       )
@@ -28,7 +29,7 @@ describe("Sink", () => {
         Stream.transduce(Sink.collectAllN<number>(4))
       )
       const result = yield* $(Stream.runCollect(stream))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(Chunk.map(result, (chunk) => Array.from(chunk))),
         [[1, 2, 3, 4], []]
       )
@@ -41,7 +42,7 @@ describe("Sink", () => {
         Stream.transduce(Sink.collectAllN<number>(3))
       )
       const result = yield* $(Stream.runCollect(stream))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(Chunk.map(result, (chunk) => Array.from(chunk))),
         [[]]
       )
@@ -51,7 +52,7 @@ describe("Sink", () => {
     Effect.gen(function*($) {
       const stream = Stream.make(1, 2, 3, 3, 4)
       const result = yield* $(stream, Stream.run(Sink.collectAllToSet()))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4])
     }))
 
   it.effect("collectAllToSetN - respects the given limit", () =>
@@ -61,7 +62,7 @@ describe("Sink", () => {
         Stream.transduce(Sink.collectAllToSetN<number>(3))
       )
       const result = yield* $(Stream.runCollect(stream))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(Chunk.map(result, (set) => Array.from(set))),
         [[1, 2, 3], [4]]
       )
@@ -74,7 +75,7 @@ describe("Sink", () => {
         Stream.transduce(Sink.collectAllToSetN<number>(3))
       )
       const result = yield* $(Stream.runCollect(stream))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(Chunk.map(result, (set) => Array.from(set))),
         [[]]
       )
@@ -89,7 +90,7 @@ describe("Sink", () => {
           (x, y) => x + y
         ))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         [[0, 18], [1, 12], [2, 15]]
       )
@@ -106,7 +107,7 @@ describe("Sink", () => {
         )),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(Chunk.map(result, (chunk) => Array.from(chunk))),
         [[[1, 2], [2, 4]], [[0, 3], [2, 2]], [[1, 4], [2, 5]]]
       )
@@ -123,7 +124,7 @@ describe("Sink", () => {
         )),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(Chunk.map(result, (chunk) => Array.from(chunk))),
         [[[0, 18], [1, 12], [2, 15]]]
       )
@@ -140,7 +141,7 @@ describe("Sink", () => {
         )),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(Chunk.map(result, (chunk) => Array.from(chunk))),
         [[]]
       )
@@ -156,7 +157,7 @@ describe("Sink", () => {
         Chunk.empty<number>()
       )
       const result = yield* $(Stream.fromChunks(...input), Stream.transduce(sink), Stream.runCollect)
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[3, 4, 5], [6], [7], [2, 3, 4, 5], [6], [5], [4, 3, 2]]
       )
@@ -172,7 +173,7 @@ describe("Sink", () => {
         Chunk.empty<number>()
       )
       const result = yield* $(Stream.fromChunks(...input), Stream.transduce(sink), Stream.runCollect)
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[3, 4, 5], [6], [7], [2, 3, 4, 5], [6], [5], [4, 3, 2]]
       )
@@ -191,7 +192,7 @@ describe("Sink", () => {
         Chunk.empty<number>()
       )
       const result = yield* $(Stream.fromChunks(...input), Stream.transduce(sink), Stream.runCollect)
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[3, 4], [2, 3, 4], [4, 3, 2]]
       )
@@ -210,7 +211,7 @@ describe("Sink", () => {
         Chunk.empty<number>()
       )
       const result = yield* $(Stream.fromChunks(...input), Stream.transduce(sink), Stream.runCollect)
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[3, 4], [2, 3, 4], [4, 3, 2]]
       )
@@ -234,9 +235,9 @@ describe("Sink", () => {
       const result1 = yield* $(program(1))
       const result2 = yield* $(program(3))
       const result3 = yield* $(program(20))
-      assert.strictEqual(result1, 54)
-      assert.strictEqual(result2, 54)
-      assert.strictEqual(result3, 54)
+      strictEqual(result1, 54)
+      strictEqual(result2, 54)
+      strictEqual(result3, 54)
     }))
 
   it.effect("collectAllWhileWith - example 2", () =>
@@ -259,6 +260,6 @@ describe("Sink", () => {
         Stream.rechunk(3),
         Stream.run(sink)
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4])
     }))
 })

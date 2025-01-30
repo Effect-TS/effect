@@ -1,7 +1,6 @@
-import * as Either from "effect/Either"
-import * as Encoding from "effect/Encoding"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
-import { assert, describe, it } from "vitest"
+import { Either, Encoding } from "effect"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Base64", () => {
   const valid: Array<[string, string]> = [
@@ -38,13 +37,13 @@ describe("Base64", () => {
   it.each(valid)(`should decode %j <= %j`, (raw: string, b64: string) => {
     const bytes = new TextEncoder().encode(raw)
     const decoded = Encoding.decodeBase64(b64)
-    assert(Either.isRight(decoded))
+    assertTrue(Either.isRight(decoded))
     deepStrictEqual(decoded.right, bytes)
   })
 
   it.each(valid)(`should decode %j <= %j (to string)`, (raw: string, b64: string) => {
     const decoded = Encoding.decodeBase64String(b64)
-    assert(Either.isRight(decoded))
+    assertTrue(Either.isRight(decoded))
     deepStrictEqual(decoded.right, raw)
   })
 
@@ -55,8 +54,8 @@ describe("Base64", () => {
 
   it.each(invalid)(`should refuse to decode %j`, (b64: string) => {
     const result = Encoding.decodeBase64(b64)
-    assert(Either.isLeft(result))
-    assert(Encoding.isDecodeException(result.left))
+    assertTrue(Either.isLeft(result))
+    assertTrue(Encoding.isDecodeException(result.left))
   })
 })
 
@@ -83,13 +82,13 @@ describe("Base64Url", () => {
   it.each(valid)(`should decode %j <= %j`, (raw: string, b64url: string) => {
     const bytes = new TextEncoder().encode(raw)
     const decoded = Encoding.decodeBase64Url(b64url)
-    assert(Either.isRight(decoded))
+    assertTrue(Either.isRight(decoded))
     deepStrictEqual(decoded.right, bytes)
   })
 
   it.each(valid)(`should decode %j <= %j (to string)`, (raw: string, b64: string) => {
     const decoded = Encoding.decodeBase64UrlString(b64)
-    assert(Either.isRight(decoded))
+    assertTrue(Either.isRight(decoded))
     deepStrictEqual(decoded.right, raw)
   })
 
@@ -100,8 +99,8 @@ describe("Base64Url", () => {
 
   it.each(invalid)(`should refuse to decode %j`, (b64url: string) => {
     const result = Encoding.decodeBase64Url(b64url)
-    assert(Either.isLeft(result))
-    assert(Encoding.isDecodeException(result.left))
+    assertTrue(Either.isLeft(result))
+    assertTrue(Encoding.isDecodeException(result.left))
   })
 })
 
@@ -137,13 +136,13 @@ describe("Hex", () => {
 
   it.each(valid)(`should decode %j => %o`, (hex: string, bytes: Uint8Array) => {
     const decoded = Encoding.decodeHex(hex)
-    assert(Either.isRight(decoded))
+    assertTrue(Either.isRight(decoded))
     deepStrictEqual(decoded.right, bytes)
   })
 
   it.each(strings)(`should decode %j => %j to string`, (hex: string, str: string) => {
     const decoded = Encoding.decodeHexString(hex)
-    assert(Either.isRight(decoded))
+    assertTrue(Either.isRight(decoded))
     deepStrictEqual(decoded.right, str)
   })
 
@@ -157,8 +156,8 @@ describe("Hex", () => {
 
   it.each(invalid)(`should refuse to decode %j`, (hex: string) => {
     const result = Encoding.decodeHex(hex)
-    assert(Either.isLeft(result))
-    assert(Encoding.isDecodeException(result.left))
+    assertTrue(Either.isLeft(result))
+    assertTrue(Encoding.isDecodeException(result.left))
   })
 })
 
@@ -183,25 +182,25 @@ describe("UriComponent", () => {
 
   it.each(valid)(`should decode %j => %j`, (uri: string, raw: string) => {
     const decoded = Encoding.decodeUriComponent(uri)
-    assert(Either.isRight(decoded))
+    assertTrue(Either.isRight(decoded))
     deepStrictEqual(decoded.right, raw)
   })
 
   it.each(valid)(`should encode %j => %j`, (uri: string, raw: string) => {
     const encoded = Encoding.encodeUriComponent(raw)
-    assert(Either.isRight(encoded))
+    assertTrue(Either.isRight(encoded))
     deepStrictEqual(encoded.right, uri)
   })
 
   it.each(invalidDecode)(`should refuse to decode %j`, (uri: string) => {
     const result = Encoding.decodeUriComponent(uri)
-    assert(Either.isLeft(result))
-    assert(Encoding.isDecodeException(result.left))
+    assertTrue(Either.isLeft(result))
+    assertTrue(Encoding.isDecodeException(result.left))
   })
 
   it.each(invalidEncode)(`should refuse to encode %j`, (raw: string) => {
     const result = Encoding.encodeUriComponent(raw)
-    assert(Either.isLeft(result))
-    assert(Encoding.isEncodeException(result.left))
+    assertTrue(Either.isLeft(result))
+    assertTrue(Encoding.isEncodeException(result.left))
   })
 })

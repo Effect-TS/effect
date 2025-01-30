@@ -5,8 +5,9 @@ import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("tap", () =>
@@ -18,8 +19,8 @@ describe("Stream", () => {
         Stream.runCollect
       )
       const sum = yield* $(Ref.get(ref))
-      assert.strictEqual(sum, 2)
-      assert.deepStrictEqual(Array.from(result), [1, 1])
+      strictEqual(sum, 2)
+      deepStrictEqual(Array.from(result), [1, 1])
     }))
 
   it.effect("tap - laziness on chunks", () =>
@@ -30,7 +31,7 @@ describe("Stream", () => {
         Stream.either,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         Either.right(1),
         Either.right(2),
         Either.left("error")
@@ -50,8 +51,8 @@ describe("Stream", () => {
         Stream.runCollect
       )
 
-      assert.deepStrictEqual(Array.from(result), Array.from(values))
-      assert.strictEqual(yield* $(Ref.get(ref)), 2)
+      deepStrictEqual(Array.from(result), Array.from(values))
+      strictEqual(yield* $(Ref.get(ref)), 2)
     }))
 
   it.effect("tapBoth - just tap an error", () =>
@@ -67,8 +68,8 @@ describe("Stream", () => {
         Effect.either
       )
 
-      assert.deepStrictEqual(result, Either.left("Ouch"))
-      assert.strictEqual(yield* $(Ref.get(ref)), "Ouch")
+      assertLeft(result, "Ouch")
+      strictEqual(yield* $(Ref.get(ref)), "Ouch")
     }))
 
   it.effect("tapBoth - tap values and then error", () =>
@@ -87,9 +88,9 @@ describe("Stream", () => {
         Effect.either
       )
 
-      assert.deepStrictEqual(result, Either.left("Ouch"))
-      assert.strictEqual(yield* $(Ref.get(error)), "Ouch")
-      assert.strictEqual(yield* $(Ref.get(sum)), 2)
+      assertLeft(result, "Ouch")
+      strictEqual(yield* $(Ref.get(error)), "Ouch")
+      strictEqual(yield* $(Ref.get(sum)), 2)
     }))
 
   it.effect("tapBoth - tap chunks lazily", () =>
@@ -108,7 +109,7 @@ describe("Stream", () => {
         Stream.runCollect
       )
 
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         Either.right(1),
         Either.right(2),
         Either.left("error")
@@ -125,7 +126,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("tapSink - sink that is done after stream", () =>
@@ -138,8 +139,8 @@ describe("Stream", () => {
         Stream.runCollect
       )
       const sum = yield* $(Ref.get(ref))
-      assert.strictEqual(sum, 20)
-      assert.deepStrictEqual(Array.from(result), [1, 1, 2, 3, 5, 8])
+      strictEqual(sum, 20)
+      deepStrictEqual(Array.from(result), [1, 1, 2, 3, 5, 8])
     }))
 
   it.effect("tapSink - sink that is done before stream", () =>
@@ -157,8 +158,8 @@ describe("Stream", () => {
         Stream.runCollect
       )
       const sum = yield* $(Ref.get(ref))
-      assert.strictEqual(sum, 4)
-      assert.deepStrictEqual(Array.from(result), [1, 1, 2, 3, 5, 8])
+      strictEqual(sum, 4)
+      deepStrictEqual(Array.from(result), [1, 1, 2, 3, 5, 8])
     }))
 
   it.effect("tapSink - sink that fails before stream", () =>
@@ -170,7 +171,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.flip
       )
-      assert.strictEqual(result, "error")
+      strictEqual(result, "error")
     }))
 
   it.effect("tapSink - does not read ahead", () =>
@@ -186,6 +187,6 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 6)
+      strictEqual(result, 6)
     }))
 })

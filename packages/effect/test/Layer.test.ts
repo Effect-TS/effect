@@ -11,8 +11,9 @@ import * as Layer from "effect/Layer"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 export const acquire1 = "Acquiring Module 1"
 export const acquire2 = "Acquiring Module 2"
@@ -39,7 +40,7 @@ describe("Layer", () => {
       const fiber = yield* $(Effect.scoped(env), Effect.forkDaemon)
       yield* $(Deferred.await(deferred))
       const result = yield* $(Fiber.interrupt(fiber), Effect.asVoid)
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
   it.effect("preserves identity of acquired resources", () =>
     Effect.gen(function*($) {
@@ -68,7 +69,7 @@ describe("Layer", () => {
         Effect.scoped
       )
       const result = yield* $(Ref.get(testRef))
-      assert.deepStrictEqual(Array.from(result), ["test"])
+      deepStrictEqual(Array.from(result), ["test"])
     }))
   it.effect("sharing with merge", () =>
     Effect.gen(function*($) {
@@ -77,7 +78,7 @@ describe("Layer", () => {
       const env = layer.pipe(Layer.merge(layer), Layer.build)
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [acquire1, release1])
+      deepStrictEqual(Array.from(result), [acquire1, release1])
     }))
   it.scoped("sharing itself with merge", () =>
     Effect.gen(function*($) {
@@ -87,7 +88,7 @@ describe("Layer", () => {
       const result = yield* $(
         env.pipe(Effect.flatMap((context) => Effect.try(() => context.pipe(Context.get(Service1Tag)))))
       )
-      assert.strictEqual(result, service1)
+      strictEqual(result, service1)
     }))
   it.effect("finalizers", () =>
     Effect.gen(function*($) {
@@ -97,10 +98,10 @@ describe("Layer", () => {
       const env = layer1.pipe(Layer.merge(layer2), Layer.build)
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref))
-      assert.isDefined(Array.from(result).slice(0, 2).find((s) => s === acquire1))
-      assert.isDefined(Array.from(result).slice(0, 2).find((s) => s === acquire2))
-      assert.isDefined(Array.from(result).slice(2, 4).find((s) => s === release1))
-      assert.isDefined(Array.from(result).slice(2, 4).find((s) => s === release2))
+      assertTrue(Array.from(result).slice(0, 2).find((s) => s === acquire1) !== undefined)
+      assertTrue(Array.from(result).slice(0, 2).find((s) => s === acquire2) !== undefined)
+      assertTrue(Array.from(result).slice(2, 4).find((s) => s === release1) !== undefined)
+      assertTrue(Array.from(result).slice(2, 4).find((s) => s === release2) !== undefined)
     }))
   it.effect("caching values in dependencies", () =>
     Effect.gen(function*($) {
@@ -143,8 +144,8 @@ describe("Layer", () => {
         ),
         Effect.scoped
       )
-      assert.strictEqual(result[0].value, 1)
-      assert.strictEqual(result[1].value, 1)
+      strictEqual(result[0].value, 1)
+      strictEqual(result[1].value, 1)
     }))
   it.effect("orElse - uses an alternative layer", () =>
     Effect.gen(function*($) {
@@ -154,7 +155,7 @@ describe("Layer", () => {
       const env = Layer.fail("failed!").pipe(Layer.provideMerge(layer1), Layer.orElse(() => layer2), Layer.build)
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [acquire1, release1, acquire2, release2])
+      deepStrictEqual(Array.from(result), [acquire1, release1, acquire2, release2])
     }))
   it.effect("handles errors gracefully", () =>
     Effect.gen(function*($) {
@@ -183,7 +184,7 @@ describe("Layer", () => {
         )
       )
       const result = yield* $(Effect.void, Effect.provide(layer), Effect.exit)
-      assert.isTrue(Exit.isFailure(result))
+      assertTrue(Exit.isFailure(result))
     }))
   it.effect("fresh with merge", () =>
     Effect.gen(function*($) {
@@ -192,7 +193,7 @@ describe("Layer", () => {
       const env = layer.pipe(Layer.merge(Layer.fresh(layer)), Layer.build)
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [acquire1, acquire1, release1, release1])
+      deepStrictEqual(Array.from(result), [acquire1, acquire1, release1, release1])
     }))
   it.effect("fresh with to provideTo", () =>
     Effect.gen(function*($) {
@@ -204,7 +205,7 @@ describe("Layer", () => {
       )
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [acquire1, acquire1, release1, release1])
+      deepStrictEqual(Array.from(result), [acquire1, acquire1, release1, release1])
     }))
   it.effect("with multiple layers", () =>
     Effect.gen(function*($) {
@@ -217,7 +218,7 @@ describe("Layer", () => {
       )
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [acquire1, acquire1, release1, release1])
+      deepStrictEqual(Array.from(result), [acquire1, acquire1, release1, release1])
     }))
   it.effect("with identical fresh layers", () =>
     Effect.gen(function*($) {
@@ -237,7 +238,7 @@ describe("Layer", () => {
       )
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         acquire1,
         acquire2,
         acquire1,
@@ -258,10 +259,10 @@ describe("Layer", () => {
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
       if (result.find((s) => s === acquire1) !== undefined) {
-        assert.isTrue(result.some((s) => s === release1))
+        assertTrue(result.some((s) => s === release1))
       }
       if (result.find((s) => s === acquire2) !== undefined) {
-        assert.isTrue(result.some((s) => s === release2))
+        assertTrue(result.some((s) => s === release2))
       }
     }))
   it.effect("interruption with provideTo", () =>
@@ -274,10 +275,10 @@ describe("Layer", () => {
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
       if (result.find((s) => s === acquire1) !== undefined) {
-        assert.isTrue(result.some((s) => s === release1))
+        assertTrue(result.some((s) => s === release1))
       }
       if (result.find((s) => s === acquire2) !== undefined) {
-        assert.isTrue(result.some((s) => s === release2))
+        assertTrue(result.some((s) => s === release2))
       }
     }))
   it.effect("interruption with multiple layers", () =>
@@ -296,13 +297,13 @@ describe("Layer", () => {
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
       if (result.find((s) => s === acquire1) !== undefined) {
-        assert.isTrue(result.some((s) => s === release1))
+        assertTrue(result.some((s) => s === release1))
       }
       if (result.find((s) => s === acquire2) !== undefined) {
-        assert.isTrue(result.some((s) => s === release2))
+        assertTrue(result.some((s) => s === release2))
       }
       if (result.find((s) => s === acquire3) !== undefined) {
-        assert.isTrue(result.some((s) => s === release3))
+        assertTrue(result.some((s) => s === release3))
       }
     }))
   it.effect("can map a layer to an unrelated type", () =>
@@ -325,7 +326,7 @@ describe("Layer", () => {
         )
       )
       const result = yield* $(ServiceBTag, Effect.provide(live))
-      assert.strictEqual(result.name, "name")
+      strictEqual(result.name, "name")
     }))
   it.effect("memoizes acquisition of resources", () =>
     Effect.gen(function*($) {
@@ -342,7 +343,7 @@ describe("Layer", () => {
         Effect.scoped
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [acquire1, release1])
+      deepStrictEqual(Array.from(result), [acquire1, release1])
     }))
   it.scoped("fiberRef changes are memoized", () =>
     Effect.gen(function*($) {
@@ -355,7 +356,7 @@ describe("Layer", () => {
         Layer.merge(layer1)
       )
       const result = yield* $(Layer.build(layer3))
-      assert.equal(result.pipe(Context.unsafeGet(tag)), true)
+      assertTrue(result.pipe(Context.unsafeGet(tag)))
     }))
   it.effect("provides a partial environment to an effect", () =>
     Effect.gen(function*($) {
@@ -366,8 +367,8 @@ describe("Layer", () => {
       const providesString = Layer.succeed(StringTag, "hi")
       const needsString = needsNumberAndString.pipe(Effect.provide(providesNumber))
       const result = yield* $(needsString, Effect.provide(providesString))
-      assert.strictEqual(result[0], 10)
-      assert.strictEqual(result[1], "hi")
+      strictEqual(result[0], 10)
+      strictEqual(result[1], "hi")
     }))
   it.effect("to provides a partial environment to another layer", () =>
     Effect.gen(function*($) {
@@ -400,8 +401,8 @@ describe("Layer", () => {
       const needsString = fooBuilder.pipe(Layer.provide(provideNumberRef))
       const layer = needsString.pipe(Layer.provide(provideString))
       const result = yield* $(Effect.flatMap(FooTag, (_) => _.get), Effect.provide(layer))
-      assert.strictEqual(result[0], 10)
-      assert.strictEqual(result[1], "hi")
+      strictEqual(result[0], 10)
+      strictEqual(result[1], "hi")
     }))
   it.effect("andTo provides a partial environment to another layer", () =>
     Effect.gen(function*($) {
@@ -440,9 +441,9 @@ describe("Layer", () => {
         ),
         Effect.provide(layer)
       )
-      assert.strictEqual(result[0], 10)
-      assert.strictEqual(result[1], 10)
-      assert.strictEqual(result[2], "hi")
+      strictEqual(result[0], 10)
+      strictEqual(result[1], 10)
+      strictEqual(result[2], "hi")
     }))
   it.effect("passthrough passes the inputs through to the next layer", () =>
     Effect.gen(function*($) {
@@ -465,8 +466,8 @@ describe("Layer", () => {
         }),
         Effect.provide(live)
       )
-      assert.strictEqual(i.value, 1)
-      assert.strictEqual(s.value, "1")
+      strictEqual(i.value, 1)
+      strictEqual(s.value, "1")
     }))
   it.effect("project", () =>
     Effect.gen(function*($) {
@@ -481,7 +482,7 @@ describe("Layer", () => {
       const personLayer = Layer.succeed(PersonTag, { name: "User", age: 42 })
       const ageLayer = personLayer.pipe(Layer.project(PersonTag, AgeTag, (_) => ({ age: _.age })))
       const { age } = yield* $(AgeTag, Effect.provide(ageLayer))
-      assert.strictEqual(age, 42)
+      strictEqual(age, 42)
     }))
   it.effect("sharing with provideTo", () =>
     Effect.gen(function*($) {
@@ -490,7 +491,7 @@ describe("Layer", () => {
       const env = layer.pipe(Layer.provide(layer), Layer.build)
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [acquire1, release1])
+      deepStrictEqual(Array.from(result), [acquire1, release1])
     }))
   it.effect("sharing with multiple layers with provideTo", () =>
     Effect.gen(function*($) {
@@ -505,12 +506,12 @@ describe("Layer", () => {
       )
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
-      assert.strictEqual(result[0], acquire1)
-      assert.isTrue(result.slice(1, 3).some((s) => s === acquire2))
-      assert.isTrue(result.slice(1, 3).some((s) => s === acquire3))
-      assert.isTrue(result.slice(3, 5).some((s) => s === release3))
-      assert.isTrue(result.slice(3, 5).some((s) => s === release2))
-      assert.strictEqual(result[5], release1)
+      strictEqual(result[0], acquire1)
+      assertTrue(result.slice(1, 3).some((s) => s === acquire2))
+      assertTrue(result.slice(1, 3).some((s) => s === acquire3))
+      assertTrue(result.slice(3, 5).some((s) => s === release3))
+      assertTrue(result.slice(3, 5).some((s) => s === release2))
+      strictEqual(result[5], release1)
     }))
   it.effect("finalizers with provideTo", () =>
     Effect.gen(function*($) {
@@ -520,7 +521,7 @@ describe("Layer", () => {
       const env = layer2.pipe(Layer.provide(layer1), Layer.build)
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, release1])
+      deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, release1])
     }))
   it.effect("finalizers with multiple layers with provideTo", () =>
     Effect.gen(function*($) {
@@ -531,7 +532,7 @@ describe("Layer", () => {
       const env = layer3.pipe(Layer.provide(layer2), Layer.provide(layer1), Layer.build)
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [acquire1, acquire2, acquire3, release3, release2, release1])
+      deepStrictEqual(Array.from(result), [acquire1, acquire2, acquire3, release3, release2, release1])
     }))
   it.effect("retry", () =>
     Effect.gen(function*($) {
@@ -540,7 +541,7 @@ describe("Layer", () => {
       const layer = Layer.effectContext(effect).pipe(Layer.retry(Schedule.recurs(3)))
       yield* $(Effect.ignore(Effect.scoped(Layer.build(layer))))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 4)
+      strictEqual(result, 4)
     }))
   it.effect("map does not interfere with sharing", () =>
     Effect.gen(function*($) {
@@ -556,12 +557,12 @@ describe("Layer", () => {
       )
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
-      assert.strictEqual(result[0], acquire1)
-      assert.isTrue(result.slice(1, 3).some((s) => s === acquire2))
-      assert.isTrue(result.slice(1, 3).some((s) => s === acquire3))
-      assert.isTrue(result.slice(3, 5).some((s) => s === release3))
-      assert.isTrue(result.slice(3, 5).some((s) => s === release2))
-      assert.strictEqual(result[5], release1)
+      strictEqual(result[0], acquire1)
+      assertTrue(result.slice(1, 3).some((s) => s === acquire2))
+      assertTrue(result.slice(1, 3).some((s) => s === acquire3))
+      assertTrue(result.slice(3, 5).some((s) => s === release3))
+      assertTrue(result.slice(3, 5).some((s) => s === release2))
+      strictEqual(result[5], release1)
     }))
   it.effect("mapError does not interfere with sharing", () =>
     Effect.gen(function*($) {
@@ -577,12 +578,12 @@ describe("Layer", () => {
       )
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
-      assert.strictEqual(result[0], acquire1)
-      assert.isTrue(result.slice(1, 3).some((s) => s === acquire2))
-      assert.isTrue(result.slice(1, 3).some((s) => s === acquire3))
-      assert.isTrue(result.slice(3, 5).some((s) => s === release3))
-      assert.isTrue(result.slice(3, 5).some((s) => s === release2))
-      assert.strictEqual(result[5], release1)
+      strictEqual(result[0], acquire1)
+      assertTrue(result.slice(1, 3).some((s) => s === acquire2))
+      assertTrue(result.slice(1, 3).some((s) => s === acquire3))
+      assertTrue(result.slice(3, 5).some((s) => s === release3))
+      assertTrue(result.slice(3, 5).some((s) => s === release2))
+      strictEqual(result[5], release1)
     }))
   it.effect("orDie does not interfere with sharing", () =>
     Effect.gen(function*($) {
@@ -598,12 +599,12 @@ describe("Layer", () => {
       )
       yield* $(Effect.scoped(env))
       const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
-      assert.strictEqual(result[0], acquire1)
-      assert.isTrue(result.slice(1, 3).some((s) => s === acquire2))
-      assert.isTrue(result.slice(1, 3).some((s) => s === acquire3))
-      assert.isTrue(result.slice(3, 5).some((s) => s === release3))
-      assert.isTrue(result.slice(3, 5).some((s) => s === release2))
-      assert.strictEqual(result[5], release1)
+      strictEqual(result[0], acquire1)
+      assertTrue(result.slice(1, 3).some((s) => s === acquire2))
+      assertTrue(result.slice(1, 3).some((s) => s === acquire3))
+      assertTrue(result.slice(3, 5).some((s) => s === release3))
+      assertTrue(result.slice(3, 5).some((s) => s === release2))
+      strictEqual(result[5], release1)
     }))
   it.effect("tap peeks at an acquired resource", () =>
     Effect.gen(function*($) {
@@ -617,7 +618,7 @@ describe("Layer", () => {
       )
       yield* $(Effect.scoped(Layer.build(layer)))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, "bar")
+      strictEqual(result, "bar")
     }))
   it.effect("locally", () =>
     Effect.gen(function*($) {
@@ -637,7 +638,7 @@ describe("Layer", () => {
       )
       const env = yield* $(Effect.scoped(Layer.build(layer)))
       const result = Context.get(env, BarTag)
-      assert.strictEqual(result.bar, "bar: 100")
+      strictEqual(result.bar, "bar: 100")
     }))
   it.effect("locallyWith", () =>
     Effect.gen(function*($) {
@@ -657,7 +658,7 @@ describe("Layer", () => {
       )
       const env = yield* $(Effect.scoped(Layer.build(layer)))
       const result = Context.get(env, BarTag)
-      assert.strictEqual(result.bar, "bar: 1")
+      strictEqual(result.bar, "bar: 1")
     }))
 
   describe("MemoMap", () => {
@@ -679,7 +680,7 @@ describe("Layer", () => {
         yield* $(Scope.close(scope1, Exit.void))
 
         const result = yield* $(Ref.get(ref))
-        assert.deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, acquire2, release2, release1])
+        deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, acquire2, release2, release1])
       }))
 
     it.effect("layers are not released early", () =>
@@ -699,7 +700,7 @@ describe("Layer", () => {
         yield* $(Scope.close(scope2, Exit.void))
 
         const result = yield* $(Ref.get(ref))
-        assert.deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, release1])
+        deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, release1])
       }))
   })
 })

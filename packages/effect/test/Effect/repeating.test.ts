@@ -2,8 +2,9 @@ import * as Effect from "effect/Effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("succeeds eventually", () =>
@@ -20,7 +21,7 @@ describe("Effect", () => {
       }
       const ref = yield* $(Ref.make(0))
       const result = yield* $(Effect.eventually(effect(ref)))
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
 
   it.effect("repeat/until - repeats until condition is true", () =>
@@ -33,7 +34,7 @@ describe("Effect", () => {
         Effect.repeat({ until: (n) => n === 0 })
       )
       const result = yield* $(Ref.get(output))
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
 
   it.effect("repeat/until - preserves return value", () =>
@@ -43,7 +44,7 @@ describe("Effect", () => {
         Ref.updateAndGet(input, (n) => n - 1),
         Effect.repeat({ until: (n) => n === 0 })
       )
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.effect("repeat/until - always evaluates effect at least once", () =>
@@ -51,7 +52,7 @@ describe("Effect", () => {
       const ref = yield* $(Ref.make(0))
       yield* $(Ref.update(ref, (n) => n + 1), Effect.repeat({ until: constTrue }))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
   it.effect("repeat/until - repeats until the effectful condition is true", () =>
     Effect.gen(function*($) {
@@ -63,14 +64,14 @@ describe("Effect", () => {
         Effect.repeat({ until: (n) => Effect.succeed(n === 0) })
       )
       const result = yield* $(Ref.get(output))
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
   it.effect("repeat/until - always evaluates the effect at least once", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
       yield* $(Ref.update(ref, (n) => n + 1), Effect.repeat({ until: () => Effect.succeed(true) }))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
   it.effect("repeat/while - repeats while the condition is true", () =>
     Effect.gen(function*($) {
@@ -82,14 +83,14 @@ describe("Effect", () => {
         Effect.repeat({ while: (n) => n >= 0 })
       )
       const result = yield* $(Ref.get(output))
-      assert.strictEqual(result, 11)
+      strictEqual(result, 11)
     }))
   it.effect("repeat/while - always evaluates the effect at least once", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
       yield* $(Ref.update(ref, (n) => n + 1), Effect.repeat({ while: constFalse }))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
   it.effect("repeat/while - repeats while condition is true", () =>
     Effect.gen(function*($) {
@@ -101,14 +102,14 @@ describe("Effect", () => {
         Effect.repeat({ while: (v) => Effect.succeed(v >= 0) })
       )
       const result = yield* $(Ref.get(output))
-      assert.strictEqual(result, 11)
+      strictEqual(result, 11)
     }))
   it.effect("repeat/while - always evaluates effect at least once", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
       yield* $(Ref.update(ref, (n) => n + 1), Effect.repeat({ while: () => Effect.succeed(false) }))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("repeat/schedule", () =>
@@ -116,7 +117,7 @@ describe("Effect", () => {
       const ref = yield* $(Ref.make(0))
       yield* $(Ref.update(ref, (n) => n + 1), Effect.repeat(Schedule.recurs(3)))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 4)
+      strictEqual(result, 4)
     }))
 
   it.effect("repeat/schedule + until", () =>
@@ -127,7 +128,7 @@ describe("Effect", () => {
         Effect.repeat({ schedule: Schedule.recurs(3), until: (n) => n === 3 })
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 3)
+      strictEqual(result, 3)
     }))
 
   it.effect("repeat/schedule + while", () =>
@@ -138,7 +139,7 @@ describe("Effect", () => {
         Effect.repeat({ schedule: Schedule.recurs(3), while: (n) => n < 3 })
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 3)
+      strictEqual(result, 3)
     }))
 
   it.effect("repeat/times ", () =>
@@ -152,7 +153,7 @@ describe("Effect", () => {
         Effect.repeat({ times: 2 })
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(result, [0, 1, 2])
-      assert.deepStrictEqual(effectResult, [0, 1, 2])
+      deepStrictEqual(result, [0, 1, 2])
+      deepStrictEqual(effectResult, [0, 1, 2])
     }))
 })

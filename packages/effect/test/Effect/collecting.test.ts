@@ -1,8 +1,9 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Ref from "effect/Ref"
+import { deepStrictEqual, notDeepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   describe("all", () => {
@@ -12,7 +13,7 @@ describe("Effect", () => {
           const result = yield* $(Effect.all([1, 2, 3].map(Effect.succeed), {
             concurrency: "unbounded"
           }))
-          assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+          deepStrictEqual(Array.from(result), [1, 2, 3])
         }))
 
       it.effect("concurrency > 1", () =>
@@ -20,7 +21,7 @@ describe("Effect", () => {
           const result = yield* $(Effect.all([1, 2, 3].map(Effect.succeed), {
             concurrency: 2
           }))
-          assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+          deepStrictEqual(Array.from(result), [1, 2, 3])
         }))
     })
 
@@ -30,7 +31,7 @@ describe("Effect", () => {
         const op = Ref.getAndUpdate(counter, (n) => n + 1)
         const ops3 = Effect.all([op, op, op], { concurrency: "unbounded" })
         const result = yield* $(ops3, Effect.zip(ops3, { concurrent: true }))
-        assert.notDeepEqual(Array.from(result[0]), Array.from(result[1]))
+        notDeepStrictEqual(Array.from(result[0]), Array.from(result[1]))
       }))
 
     it.effect("preserves failures", () =>
@@ -42,7 +43,7 @@ describe("Effect", () => {
           }),
           Effect.flip
         )
-        assert.deepStrictEqual(result, new Cause.RuntimeException())
+        deepStrictEqual(result, new Cause.RuntimeException())
       }))
   })
 })

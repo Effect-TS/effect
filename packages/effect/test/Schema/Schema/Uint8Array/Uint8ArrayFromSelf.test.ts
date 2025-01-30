@@ -1,7 +1,8 @@
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Uint8Array > Uint8ArrayFromSelf", () => {
   it("test roundtrip consistency", () => {
@@ -24,6 +25,6 @@ describe("Uint8Array > Uint8ArrayFromSelf", () => {
 
   it("pretty", () => {
     const pretty = Pretty.make(S.Uint8ArrayFromSelf)
-    expect(pretty(Uint8Array.from([0, 1, 2, 3]))).toEqual("new Uint8Array([0,1,2,3])")
+    strictEqual(pretty(Uint8Array.from([0, 1, 2, 3])), "new Uint8Array([0,1,2,3])")
   })
 })

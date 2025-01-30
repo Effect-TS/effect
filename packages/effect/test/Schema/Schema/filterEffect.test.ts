@@ -2,13 +2,14 @@ import * as Effect from "effect/Effect"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("filterEffect", () => {
   it("shoudl expose the original schema as `from`", async () => {
     const schema = S.filterEffect(S.String, () => Effect.succeed(true))
-    expect(schema.from).toBe(S.String)
-    expect(schema.to.ast).toBe(S.String.ast)
+    strictEqual(schema.from, S.String)
+    strictEqual(schema.to.ast, S.String.ast)
   })
 
   describe("ParseIssue overloading", () => {

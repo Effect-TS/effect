@@ -1,8 +1,9 @@
 import * as D from "effect/Duration"
 import * as Effect from "effect/Effect"
+import { strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("semaphore works", () =>
@@ -18,9 +19,9 @@ describe("Effect", () => {
         ))
       )
       yield* $(TestClock.adjust(D.seconds(3)))
-      assert.equal(messages.length, 2)
+      strictEqual(messages.length, 2)
       yield* $(TestClock.adjust(D.seconds(3)))
-      assert.equal(messages.length, 4)
+      strictEqual(messages.length, 4)
       yield* $(
         Effect.fork(Effect.all(
           [0, 1, 2, 3].map((n) =>
@@ -30,9 +31,9 @@ describe("Effect", () => {
         ))
       )
       yield* $(TestClock.adjust(D.seconds(3)))
-      assert.equal(messages.length, 6)
+      strictEqual(messages.length, 6)
       yield* $(TestClock.adjust(D.seconds(3)))
-      assert.equal(messages.length, 8)
+      strictEqual(messages.length, 8)
     }))
 
   it.effect("releaseAll", () =>

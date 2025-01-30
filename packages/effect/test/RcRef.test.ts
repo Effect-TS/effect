@@ -1,5 +1,6 @@
 import { Effect, Exit, RcRef, Scope, TestClock } from "effect"
-import { assert, describe, it } from "effect/test/utils/extend"
+import { assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "effect/test/utils/extend"
 
 describe("RcRef", () => {
   it.effect("deallocation", () =>
@@ -22,35 +23,35 @@ describe("RcRef", () => {
         Scope.extend(refScope)
       )
 
-      assert.strictEqual(acquired, 0)
-      assert.strictEqual(yield* Effect.scoped(ref), "foo")
-      assert.strictEqual(acquired, 1)
-      assert.strictEqual(released, 1)
+      strictEqual(acquired, 0)
+      strictEqual(yield* Effect.scoped(ref), "foo")
+      strictEqual(acquired, 1)
+      strictEqual(released, 1)
 
       const scopeA = yield* Scope.make()
       const scopeB = yield* Scope.make()
       yield* ref.pipe(Scope.extend(scopeA))
       yield* ref.pipe(Scope.extend(scopeB))
-      assert.strictEqual(acquired, 2)
-      assert.strictEqual(released, 1)
+      strictEqual(acquired, 2)
+      strictEqual(released, 1)
       yield* Scope.close(scopeB, Exit.void)
-      assert.strictEqual(acquired, 2)
-      assert.strictEqual(released, 1)
+      strictEqual(acquired, 2)
+      strictEqual(released, 1)
       yield* Scope.close(scopeA, Exit.void)
-      assert.strictEqual(acquired, 2)
-      assert.strictEqual(released, 2)
+      strictEqual(acquired, 2)
+      strictEqual(released, 2)
 
       const scopeC = yield* Scope.make()
       yield* ref.pipe(Scope.extend(scopeC))
-      assert.strictEqual(acquired, 3)
-      assert.strictEqual(released, 2)
+      strictEqual(acquired, 3)
+      strictEqual(released, 2)
 
       yield* Scope.close(refScope, Exit.void)
-      assert.strictEqual(acquired, 3)
-      assert.strictEqual(released, 3)
+      strictEqual(acquired, 3)
+      strictEqual(released, 3)
 
       const exit = yield* ref.get.pipe(Effect.scoped, Effect.exit)
-      assert.isTrue(Exit.isInterrupted(exit))
+      assertTrue(Exit.isInterrupted(exit))
     }))
 
   it.scoped("idleTimeToLive", () =>
@@ -71,24 +72,24 @@ describe("RcRef", () => {
         idleTimeToLive: 1000
       })
 
-      assert.strictEqual(acquired, 0)
-      assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
-      assert.strictEqual(acquired, 1)
-      assert.strictEqual(released, 0)
+      strictEqual(acquired, 0)
+      strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
+      strictEqual(acquired, 1)
+      strictEqual(released, 0)
 
       yield* TestClock.adjust(1000)
-      assert.strictEqual(released, 1)
+      strictEqual(released, 1)
 
-      assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
-      assert.strictEqual(acquired, 2)
-      assert.strictEqual(released, 1)
+      strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
+      strictEqual(acquired, 2)
+      strictEqual(released, 1)
 
       yield* TestClock.adjust(500)
-      assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
-      assert.strictEqual(acquired, 2)
-      assert.strictEqual(released, 1)
+      strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
+      strictEqual(acquired, 2)
+      strictEqual(released, 1)
 
       yield* TestClock.adjust(1000)
-      assert.strictEqual(released, 2)
+      strictEqual(released, 2)
     }))
 })

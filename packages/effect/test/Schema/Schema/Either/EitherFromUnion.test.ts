@@ -1,7 +1,8 @@
 import * as E from "effect/Either"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("EitherFromUnion", () => {
   it("test roundtrip consistency", () => {
@@ -13,8 +14,8 @@ describe("EitherFromUnion", () => {
     await Util.assertions.decoding.succeed(schema, "1970-01-01T00:00:00.000Z", E.left(new Date(0)))
     await Util.assertions.decoding.succeed(schema, "1", E.right(1))
 
-    expect(E.isEither(S.decodeSync(schema)("1970-01-01T00:00:00.000Z"))).toEqual(true)
-    expect(E.isEither(S.decodeSync(schema)("1"))).toEqual(true)
+    assertTrue(E.isEither(S.decodeSync(schema)("1970-01-01T00:00:00.000Z")))
+    assertTrue(E.isEither(S.decodeSync(schema)("1")))
   })
 
   it("decoding error (Encoded side transformation failure)", async () => {

@@ -1,11 +1,8 @@
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
-import * as Layer from "effect/Layer"
-import * as Reloadable from "effect/Reloadable"
+import { Context, Effect, Layer, pipe, Reloadable } from "effect"
+import { strictEqual } from "effect/test/util"
 import * as Counter from "effect/test/utils/counter"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const DummyServiceTypeId = Symbol.for("effect/test/Reloadable/DummyService")
 type DummyServiceTypeId = typeof DummyServiceTypeId
@@ -29,7 +26,7 @@ describe("Reloadable", () => {
       })
       yield* $(Reloadable.get(Tag), Effect.provide(layer))
       const acquired = yield* $(counter.acquired())
-      assert.strictEqual(acquired, 1)
+      strictEqual(acquired, 1)
     }))
   it.effect("reload", () =>
     Effect.gen(function*($) {
@@ -39,6 +36,6 @@ describe("Reloadable", () => {
       })
       yield* $(Reloadable.reload(Tag), Effect.provide(layer))
       const acquired = yield* $(counter.acquired())
-      assert.strictEqual(acquired, 2)
+      strictEqual(acquired, 2)
     }))
 })

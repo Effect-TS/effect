@@ -1,11 +1,12 @@
 import { identity } from "effect/Function"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("required", () => {
   it("string", () => {
-    expect(S.required(S.String).ast).toEqual(S.String.ast)
+    strictEqual(S.required(S.String).ast, S.String.ast)
   })
 
   it("Struct", async () => {
@@ -189,14 +190,16 @@ describe("required", () => {
 
   describe("unsupported schemas", () => {
     it("declarations should throw", async () => {
-      expect(() => S.required(S.OptionFromSelf(S.String))).toThrow(
+      throws(
+        () => S.required(S.OptionFromSelf(S.String)),
         new Error(`Unsupported schema
 schema (Declaration): Option<string>`)
       )
     })
 
     it("refinements should throw", async () => {
-      expect(() => S.required(S.String.pipe(S.minLength(2)))).toThrow(
+      throws(
+        () => S.required(S.String.pipe(S.minLength(2))),
         new Error(`Unsupported schema
 schema (Refinement): minLength(2)`)
       )
@@ -209,17 +212,18 @@ schema (Refinement): minLength(2)`)
           b: S.propertySignature(S.String).pipe(S.fromKey("c"))
         })
         const schema = S.required(S.partial(original))
-        expect(S.format(schema)).toBe(
+        strictEqual(
+          S.format(schema),
           "({ readonly a: string | undefined; readonly c: string | undefined } <-> { readonly a: string | undefined; readonly b: string | undefined })"
         )
       })
 
       it("transformations should throw", async () => {
-        expect(() => S.required(S.transform(S.String, S.String, { strict: true, decode: identity, encode: identity })))
-          .toThrow(
-            new Error(`Unsupported schema
+        throws(
+          () => S.required(S.transform(S.String, S.String, { strict: true, decode: identity, encode: identity })),
+          new Error(`Unsupported schema
 schema (Transformation): (string <-> string)`)
-          )
+        )
       })
     })
   })

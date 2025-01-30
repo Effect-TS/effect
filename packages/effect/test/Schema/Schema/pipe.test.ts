@@ -1,5 +1,6 @@
 import * as S from "effect/Schema"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("pipe", () => {
   it("schemas should be pipeable", () => {
@@ -10,8 +11,8 @@ describe("pipe", () => {
     const PositiveInt = S.NumberFromString.pipe(int, positive)
 
     const is = S.is(PositiveInt)
-    expect(is(1)).toEqual(true)
-    expect(is(-1)).toEqual(false)
-    expect(is(1.2)).toEqual(false)
+    assertTrue(is(1))
+    assertFalse(is(-1))
+    assertFalse(is(1.2))
   })
 })

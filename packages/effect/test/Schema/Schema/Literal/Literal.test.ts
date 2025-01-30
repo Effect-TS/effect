@@ -1,12 +1,13 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Literal", () => {
   it("annotations()", () => {
     const schema = S.Literal(1).annotations({ identifier: "X" }).annotations({ title: "Y" })
-    expect(schema.ast.annotations).toStrictEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.IdentifierAnnotationId]: "X",
       [AST.TitleAnnotationId]: "Y"
     })
@@ -14,23 +15,21 @@ describe("Literal", () => {
 
   it("should expose the literals", () => {
     const schema = S.Literal("a", "b")
-    expect(schema.literals).toStrictEqual(["a", "b"])
+    deepStrictEqual(schema.literals, ["a", "b"])
   })
 
   it("should return an unwrapped AST with exactly one literal", () => {
-    expect(S.Literal(1).ast).toEqual(new AST.Literal(1))
+    deepStrictEqual(S.Literal(1).ast, new AST.Literal(1))
   })
 
   it("should return a union with more than one literal", () => {
-    expect(S.Literal(1, 2).ast).toEqual(
-      AST.Union.make([new AST.Literal(1), new AST.Literal(2)])
-    )
+    deepStrictEqual(S.Literal(1, 2).ast, AST.Union.make([new AST.Literal(1), new AST.Literal(2)]))
   })
 
   it("should return the literal interface when using the .annotations() method", () => {
     const schema = S.Literal("a", "b").annotations({ identifier: "literal test" })
-    expect(schema.ast.annotations).toStrictEqual({ [AST.IdentifierAnnotationId]: "literal test" })
-    expect(schema.literals).toStrictEqual(["a", "b"])
+    deepStrictEqual(schema.ast.annotations, { [AST.IdentifierAnnotationId]: "literal test" })
+    deepStrictEqual(schema.literals, ["a", "b"])
   })
 
   describe("decoding", () => {

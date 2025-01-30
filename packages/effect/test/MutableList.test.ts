@@ -1,24 +1,24 @@
-import { pipe } from "effect/Function"
-import * as MutableList from "effect/MutableList"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, expect, it } from "vitest"
+import { MutableList, pipe } from "effect"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("MutableList", () => {
   it("toString", () => {
-    expect(String(MutableList.make(0, 1, 2))).toEqual(`{
+    strictEqual(
+      String(MutableList.make(0, 1, 2)),
+      `{
   "_id": "MutableList",
   "values": [
     0,
     1,
     2
   ]
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
-    expect(MutableList.make(0, 1, 2).toJSON()).toEqual(
-      { _id: "MutableList", values: [0, 1, 2] }
-    )
+    deepStrictEqual(MutableList.make(0, 1, 2).toJSON(), { _id: "MutableList", values: [0, 1, 2] })
   })
 
   it("inspect", () => {
@@ -27,13 +27,11 @@ describe("MutableList", () => {
     }
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { inspect } = require("node:util")
-    expect(inspect(MutableList.make(0, 1, 2))).toEqual(
-      inspect({ _id: "MutableList", values: [0, 1, 2] })
-    )
+    deepStrictEqual(inspect(MutableList.make(0, 1, 2)), inspect({ _id: "MutableList", values: [0, 1, 2] }))
   })
 
   it("pipe()", () => {
-    expect(MutableList.empty<string>().pipe(MutableList.prepend("a"))).toEqual(MutableList.make("a"))
+    deepStrictEqual(MutableList.empty<string>().pipe(MutableList.prepend("a")), MutableList.make("a"))
   })
 
   it("empty", () => {
@@ -51,8 +49,8 @@ describe("MutableList", () => {
   })
 
   it("isEmpty", () => {
-    strictEqual(MutableList.isEmpty(MutableList.empty<number>()), true)
-    strictEqual(MutableList.isEmpty(MutableList.make(1, 2, 3)), false)
+    assertTrue(MutableList.isEmpty(MutableList.empty<number>()))
+    assertFalse(MutableList.isEmpty(MutableList.make(1, 2, 3)))
   })
 
   it("length", () => {
@@ -61,12 +59,12 @@ describe("MutableList", () => {
   })
 
   it("tail", () => {
-    deepStrictEqual(MutableList.tail(MutableList.make()), undefined)
+    strictEqual(MutableList.tail(MutableList.make()), undefined)
     deepStrictEqual(MutableList.tail(MutableList.make(1, 2, 3)), 3)
   })
 
   it("head", () => {
-    deepStrictEqual(MutableList.head(MutableList.make()), undefined)
+    strictEqual(MutableList.head(MutableList.make()), undefined)
     deepStrictEqual(MutableList.head(MutableList.make(1, 2, 3)), 1)
   })
 
@@ -103,18 +101,18 @@ describe("MutableList", () => {
 
   it("shift", () => {
     const list = MutableList.make(1, 2, 3)
-    deepStrictEqual(MutableList.shift(list), 1)
-    deepStrictEqual(MutableList.shift(list), 2)
-    deepStrictEqual(MutableList.shift(list), 3)
-    deepStrictEqual(MutableList.shift(list), undefined)
+    strictEqual(MutableList.shift(list), 1)
+    strictEqual(MutableList.shift(list), 2)
+    strictEqual(MutableList.shift(list), 3)
+    strictEqual(MutableList.shift(list), undefined)
   })
 
   it("pop", () => {
     const list = MutableList.make(1, 2, 3)
-    deepStrictEqual(MutableList.pop(list), 3)
-    deepStrictEqual(MutableList.pop(list), 2)
-    deepStrictEqual(MutableList.pop(list), 1)
-    deepStrictEqual(MutableList.pop(list), undefined)
+    strictEqual(MutableList.pop(list), 3)
+    strictEqual(MutableList.pop(list), 2)
+    strictEqual(MutableList.pop(list), 1)
+    strictEqual(MutableList.pop(list), undefined)
   })
 
   it("prepend", () => {

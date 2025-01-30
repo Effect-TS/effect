@@ -1,8 +1,9 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("changes", () =>
@@ -19,7 +20,7 @@ describe("Stream", () => {
         Effect.map(Chunk.reduce(Chunk.empty<number>(), (acc, n) =>
           acc.length === 0 || Chunk.unsafeGet(acc, 0) !== n ? Chunk.append(acc, n) : acc))
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(expected))
+      deepStrictEqual(Array.from(result), Array.from(expected))
     }))
 
   it.effect("changesWithEffect", () =>
@@ -36,6 +37,6 @@ describe("Stream", () => {
         Effect.map(Chunk.reduce(Chunk.empty<number>(), (acc, n) =>
           acc.length === 0 || Chunk.unsafeGet(acc, 0) !== n ? Chunk.append(acc, n) : acc))
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(expected))
+      deepStrictEqual(Array.from(result), Array.from(expected))
     }))
 })

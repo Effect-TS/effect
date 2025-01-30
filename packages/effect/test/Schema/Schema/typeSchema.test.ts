@@ -1,6 +1,7 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("typeSchema", () => {
   it("transformation", () => {
@@ -11,7 +12,7 @@ describe("typeSchema", () => {
       ),
       S.typeSchema
     )
-    expect(S.decodeUnknownSync(schema)([1, 2])).toEqual([1, 2])
+    deepStrictEqual(S.decodeUnknownSync(schema)([1, 2]), [1, 2])
   })
 
   it("refinement", () => {
@@ -20,10 +21,10 @@ describe("typeSchema", () => {
       S.lessThanOrEqualTo(2),
       S.typeSchema
     )
-    expect(S.is(schema)(0)).toEqual(false)
-    expect(S.is(schema)(1)).toEqual(true)
-    expect(S.is(schema)(2)).toEqual(true)
-    expect(S.is(schema)(3)).toEqual(false)
+    assertFalse(S.is(schema)(0))
+    assertTrue(S.is(schema)(1))
+    assertTrue(S.is(schema)(2))
+    assertFalse(S.is(schema)(3))
   })
 
   it("suspend", async () => {

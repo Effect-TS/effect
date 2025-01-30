@@ -4,8 +4,9 @@ import * as Exit from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("peel", () =>
@@ -22,8 +23,8 @@ describe("Stream", () => {
         ),
         Effect.scoped
       )
-      assert.deepStrictEqual(Array.from(peeled), [1, 2, 3])
-      assert.deepStrictEqual(Array.from(rest), [4, 5, 6])
+      deepStrictEqual(Array.from(peeled), [1, 2, 3])
+      deepStrictEqual(Array.from(rest), [4, 5, 6])
     }))
 
   it.effect("peel - propagates errors", () =>
@@ -40,6 +41,6 @@ describe("Stream", () => {
         Effect.exit,
         Effect.scoped
       )
-      assert.deepStrictEqual(result, Exit.fail("fail"))
+      deepStrictEqual(result, Exit.fail("fail"))
     }))
 })

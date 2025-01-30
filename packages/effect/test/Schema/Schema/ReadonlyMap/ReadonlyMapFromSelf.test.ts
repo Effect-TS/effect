@@ -2,7 +2,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("ReadonlyMapFromSelf", () => {
   it("test roundtrip consistency", () => {
@@ -50,24 +51,22 @@ describe("ReadonlyMapFromSelf", () => {
   it("is", () => {
     const schema = S.ReadonlyMapFromSelf({ key: S.Number, value: S.String })
     const is = P.is(schema)
-    expect(is(new Map())).toEqual(true)
-    expect(is(new Map([[1, "a"], [2, "b"], [3, "c"]]))).toEqual(true)
+    assertTrue(is(new Map()))
+    assertTrue(is(new Map([[1, "a"], [2, "b"], [3, "c"]])))
 
-    expect(is(null)).toEqual(false)
-    expect(is(undefined)).toEqual(false)
-    expect(is(new Map<number, string | number>([[1, "a"], [2, 1]]))).toEqual(false)
-    expect(is(new Map<number, string | number>([[1, 1], [2, "b"]]))).toEqual(false)
-    expect(is(new Map([[1, 1], [2, 2]]))).toEqual(false)
-    expect(is(new Map<string | number, number>([["a", 1], ["b", 2], [3, 1]]))).toEqual(false)
-    expect(is(new Map<number, string | number>([[1, "a"], [2, "b"], [3, 1]]))).toEqual(false)
+    assertFalse(is(null))
+    assertFalse(is(undefined))
+    assertFalse(is(new Map<number, string | number>([[1, "a"], [2, 1]])))
+    assertFalse(is(new Map<number, string | number>([[1, 1], [2, "b"]])))
+    assertFalse(is(new Map([[1, 1], [2, 2]])))
+    assertFalse(is(new Map<string | number, number>([["a", 1], ["b", 2], [3, 1]])))
+    assertFalse(is(new Map<number, string | number>([[1, "a"], [2, "b"], [3, 1]])))
   })
 
   it("pretty", () => {
     const schema = S.ReadonlyMapFromSelf({ key: S.Number, value: S.String })
     const pretty = Pretty.make(schema)
-    expect(pretty(new Map())).toEqual("new Map([])")
-    expect(pretty(new Map([[1, "a"], [2, "b"]]))).toEqual(
-      `new Map([[1, "a"], [2, "b"]])`
-    )
+    strictEqual(pretty(new Map()), "new Map([])")
+    strictEqual(pretty(new Map([[1, "a"], [2, "b"]])), `new Map([[1, "a"], [2, "b"]])`)
   })
 })

@@ -7,8 +7,9 @@ import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import { assertLeft, assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe, expect } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("absolve - happy path", () =>
@@ -21,7 +22,7 @@ describe("Stream", () => {
         Stream.mapEffect(identity),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(chunk))
+      deepStrictEqual(Array.from(result), Array.from(chunk))
     }))
 
   it.effect("absolve - failure", () =>
@@ -33,7 +34,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail("Ouch"))
+      deepStrictEqual(result, Exit.fail("Ouch"))
     }))
 
   it.effect("absolve - round trip #1", () =>
@@ -44,7 +45,7 @@ describe("Stream", () => {
         result1: Stream.runCollect(stream),
         result2: pipe(Stream.mapEffect(stream, identity), Stream.either, Stream.runCollect)
       }))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(pipe(result1, Chunk.take(result2.length))),
         Array.from(result2)
       )
@@ -58,8 +59,8 @@ describe("Stream", () => {
         result1: Effect.exit(Stream.runCollect(stream)),
         result2: pipe(stream, Stream.either, Stream.mapEffect(identity), Stream.runCollect, Effect.exit)
       }))
-      assert.deepStrictEqual(result1, Exit.fail("Ouch"))
-      assert.deepStrictEqual(result2, Exit.fail("Ouch"))
+      deepStrictEqual(result1, Exit.fail("Ouch"))
+      deepStrictEqual(result2, Exit.fail("Ouch"))
     }))
 
   it.effect("catchAllCause - recovery from errors", () =>
@@ -71,7 +72,7 @@ describe("Stream", () => {
         Stream.catchAllCause(() => stream2),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4])
     }))
 
   it.effect("catchAllCause - recovery from defects", () =>
@@ -83,7 +84,7 @@ describe("Stream", () => {
         Stream.catchAllCause(() => stream2),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4])
     }))
 
   it.effect("catchAllCause - happy path", () =>
@@ -95,7 +96,7 @@ describe("Stream", () => {
         Stream.catchAllCause(() => stream2),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2])
+      deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("catchAllCause - executes finalizers", () =>
@@ -118,7 +119,7 @@ describe("Stream", () => {
         Effect.exit
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), ["s1", "s2"])
+      deepStrictEqual(Array.from(result), ["s1", "s2"])
     }))
 
   it.effect("catchAllCause - releases all resources by the time the failover stream has started", () =>
@@ -135,7 +136,7 @@ describe("Stream", () => {
         Stream.catchAllCause(() => Stream.fromEffect(Ref.get(ref))),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(Chunk.flatten(result)), [3, 2, 1])
+      deepStrictEqual(Array.from(Chunk.flatten(result)), [3, 2, 1])
     }))
 
   it.effect("catchAllCause - propagates the right Exit value to the failing stream (ZIO #3609)", () =>
@@ -152,7 +153,7 @@ describe("Stream", () => {
         Effect.exit
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(result, Exit.fail("boom"))
+      deepStrictEqual(result, Exit.fail("boom"))
     }))
 
   it.effect("catchSome - recovery from some errors", () =>
@@ -167,7 +168,7 @@ describe("Stream", () => {
         Stream.catchSome((error) => error === "boom" ? Option.some(stream2) : Option.none()),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4])
     }))
 
   it.effect("catchSome - fails stream when partial function does not match", () =>
@@ -183,7 +184,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("boom"))
+      assertLeft(result, "boom")
     }))
 
   it.effect("catchSomeCause - recovery from some errors", () =>
@@ -202,7 +203,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4])
     }))
 
   it.effect("catchSomeCause - fails stream when partial function does not match", () =>
@@ -222,7 +223,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("boom"))
+      assertLeft(result, "boom")
     }))
 
   it.effect("catchTag", () =>
@@ -248,8 +249,8 @@ describe("Stream", () => {
         Effect.either
       )
 
-      expect(Chunk.toReadonlyArray(result1)).toEqual([1, 2])
-      assert(Either.isLeft(result2) && result2.left._tag === "ErrorA")
+      deepStrictEqual(Chunk.toReadonlyArray(result1), [1, 2])
+      assertTrue(Either.isLeft(result2) && result2.left._tag === "ErrorA")
     }))
 
   it.effect("onError", () =>
@@ -262,8 +263,8 @@ describe("Stream", () => {
         Effect.exit
       )
       const called = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(exit, Exit.fail("boom"))
-      assert.isTrue(called)
+      deepStrictEqual(exit, Exit.fail("boom"))
+      assertTrue(called)
     }))
 
   it.effect("orElse", () =>
@@ -278,7 +279,7 @@ describe("Stream", () => {
         Stream.orElse(() => stream2),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5, 6])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5, 6])
     }))
 
   it.effect("orElseEither", () =>
@@ -293,7 +294,7 @@ describe("Stream", () => {
         Stream.orElseEither(() => stream2),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [Either.left(1), Either.right(2)])
+      deepStrictEqual(Array.from(result), [Either.left(1), Either.right(2)])
     }))
 
   it.effect("orElseFail", () =>
@@ -305,7 +306,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("boomer"))
+      assertLeft(result, "boomer")
     }))
 
   it.effect("orElseIfEmpty - produce default value if stream is empty", () =>
@@ -315,7 +316,7 @@ describe("Stream", () => {
         Stream.orElseIfEmpty(() => 0),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [0])
+      deepStrictEqual(Array.from(result), [0])
     }))
 
   it.effect("orElseIfEmpty - ignores default value when stream is not empty", () =>
@@ -325,7 +326,7 @@ describe("Stream", () => {
         Stream.orElseIfEmpty(() => 0),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1])
+      deepStrictEqual(Array.from(result), [1])
     }))
 
   it.effect("orElseIfEmptyStream - consume default stream if stream is empty", () =>
@@ -335,7 +336,7 @@ describe("Stream", () => {
         Stream.orElseIfEmptyStream(() => Stream.range(0, 4)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [0, 1, 2, 3, 4])
+      deepStrictEqual(Array.from(result), [0, 1, 2, 3, 4])
     }))
 
   it.effect("orElseIfEmptyStream - should throw the correct error from the default stream", () =>
@@ -346,7 +347,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("orElseSucceed", () =>
@@ -357,6 +358,6 @@ describe("Stream", () => {
         Stream.orElseSucceed(() => 2),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2])
+      deepStrictEqual(Array.from(result), [1, 2])
     }))
 })

@@ -1,9 +1,7 @@
-import { Readable } from "effect"
-import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
-import * as Ref from "effect/Ref"
+import { Effect, Option, Readable, Ref } from "effect"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const current = "value"
 const update = "new value"
@@ -34,14 +32,14 @@ describe("Ref", () => {
   it.effect("implements Readable", () =>
     Effect.gen(function*(_) {
       const ref = yield* _(Ref.make(123))
-      assert.isTrue(Readable.isReadable(ref))
-      assert.strictEqual(yield* ref, 123)
+      assertTrue(Readable.isReadable(ref))
+      strictEqual(yield* ref, 123)
     }))
 
   it.effect("get", () =>
     Effect.gen(function*($) {
       const result = yield* $(Ref.make(current), Effect.flatMap(Ref.get))
-      assert.strictEqual(result, current)
+      strictEqual(result, current)
     }))
   it.effect("getAndSet", () =>
     Effect.gen(function*() {
@@ -49,16 +47,16 @@ describe("Ref", () => {
       const result1 = yield* Ref.getAndSet(ref, update)
 
       const result2 = yield* ref
-      assert.strictEqual(result1, current)
-      assert.strictEqual(result2, update)
+      strictEqual(result1, current)
+      strictEqual(result2, update)
     }))
   it.effect("getAndUpdate", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(current))
       const result1 = yield* $(Ref.getAndUpdate(ref, () => update))
       const result2 = yield* ref
-      assert.strictEqual(result1, current)
-      assert.strictEqual(result2, update)
+      strictEqual(result1, current)
+      strictEqual(result2, update)
     }))
   it.effect("getAndUpdateSome - once", () =>
     Effect.gen(function*($) {
@@ -67,8 +65,8 @@ describe("Ref", () => {
         Ref.getAndUpdateSome(ref, (state) => isClosed(state) ? Option.some(Changed) : Option.none())
       )
       const result2 = yield* $(Ref.get(ref))
-      assert.strictEqual(result1, Active)
-      assert.strictEqual(result2, Active)
+      strictEqual(result1, Active)
+      strictEqual(result2, Active)
     }))
   it.effect("getAndUpdateSome - twice", () =>
     Effect.gen(function*($) {
@@ -85,36 +83,36 @@ describe("Ref", () => {
             Option.none())
       )
       const result3 = yield* $(Ref.get(ref))
-      assert.strictEqual(result1, Active)
-      assert.strictEqual(result2, Changed)
-      assert.strictEqual(result3, Closed)
+      strictEqual(result1, Active)
+      strictEqual(result2, Changed)
+      strictEqual(result3, Closed)
     }))
   it.effect("set", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(current))
       yield* $(Ref.set(ref, update))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, update)
+      strictEqual(result, update)
     }))
   it.effect("update", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(current))
       yield* $(Ref.update(ref, () => update))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, update)
+      strictEqual(result, update)
     }))
   it.effect("updateAndGet", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(current))
       const result = yield* $(Ref.updateAndGet(ref, () => update))
-      assert.strictEqual(result, update)
+      strictEqual(result, update)
     }))
   it.effect("updateSome - once", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make<State>(Active))
       yield* $(Ref.updateSome(ref, (state) => isClosed(state) ? Option.some(Changed) : Option.none()))
       const result = yield* $(Ref.get(ref))
-      assert.deepEqual(result, Active)
+      deepStrictEqual(result, Active)
     }))
   it.effect("updateSome - twice", () =>
     Effect.gen(function*($) {
@@ -130,8 +128,8 @@ describe("Ref", () => {
             Option.none())
       )
       const result2 = yield* $(Ref.get(ref))
-      assert.deepEqual(result1, Changed)
-      assert.deepEqual(result2, Closed)
+      deepStrictEqual(result1, Changed)
+      deepStrictEqual(result2, Closed)
     }))
   it.effect("updateSomeAndGet - once", () =>
     Effect.gen(function*($) {
@@ -139,7 +137,7 @@ describe("Ref", () => {
       const result = yield* $(
         Ref.updateSomeAndGet(ref, (state) => isClosed(state) ? Option.some(Changed) : Option.none())
       )
-      assert.strictEqual(result, Active)
+      strictEqual(result, Active)
     }))
   it.effect("updateSomeAndGet - twice", () =>
     Effect.gen(function*($) {
@@ -156,16 +154,16 @@ describe("Ref", () => {
             Option.none()
         })
       )
-      assert.deepEqual(result1, Changed)
-      assert.deepEqual(result2, Closed)
+      deepStrictEqual(result1, Changed)
+      deepStrictEqual(result2, Closed)
     }))
   it.effect("modify", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(current))
       const result1 = yield* $(Ref.modify(ref, () => ["hello", update]))
       const result2 = yield* $(Ref.get(ref))
-      assert.strictEqual(result1, "hello")
-      assert.strictEqual(result2, update)
+      strictEqual(result1, "hello")
+      strictEqual(result2, update)
     }))
   it.effect("modifySome - once", () =>
     Effect.gen(function*($) {
@@ -176,7 +174,7 @@ describe("Ref", () => {
             Option.some(["active", Active]) :
             Option.none())
       )
-      assert.strictEqual(result, "state does not change")
+      strictEqual(result, "state does not change")
     }))
   it.effect("modifySome - twice", () =>
     Effect.gen(function*($) {
@@ -195,7 +193,7 @@ describe("Ref", () => {
             Option.some(["closed", Closed]) :
             Option.none())
       )
-      assert.strictEqual(result1, "changed")
-      assert.strictEqual(result2, "closed")
+      strictEqual(result1, "changed")
+      strictEqual(result2, "closed")
     }))
 })

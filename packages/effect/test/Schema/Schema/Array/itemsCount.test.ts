@@ -1,10 +1,12 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("itemsCount", () => {
   it("should throw for invalid argument", () => {
-    expect(() => S.Array(S.Number).pipe(S.itemsCount(-1))).toThrowError(
+    throws(
+      () => S.Array(S.Number).pipe(S.itemsCount(-1)),
       new Error(`Invalid Argument
 details: Expected an integer greater than or equal to 0, actual -1`)
     )

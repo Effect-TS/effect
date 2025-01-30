@@ -1,11 +1,12 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("brand", () => {
   it("toString", () => {
-    expect(String(S.String.pipe(S.brand("my-brand")))).toStrictEqual(`string & Brand<"my-brand">`)
+    strictEqual(String(S.String.pipe(S.brand("my-brand"))), `string & Brand<"my-brand">`)
   })
 
   it("the constructor should validate the input by default", () => {
@@ -22,8 +23,8 @@ describe("brand", () => {
 
   it("the constructor validation can be disabled", () => {
     const schema = S.NonEmptyString.pipe(S.brand("A"))
-    expect(schema.make("", true)).toStrictEqual("")
-    expect(schema.make("", { disableValidation: true })).toStrictEqual("")
+    strictEqual(schema.make("", true), "")
+    strictEqual(schema.make("", { disableValidation: true }), "")
   })
 
   describe("annotations", () => {
@@ -32,7 +33,7 @@ describe("brand", () => {
       const annotatedSchema = schema.annotations({
         description: "description"
       }).annotations({ title: "title" })
-      expect(annotatedSchema.ast.annotations).toEqual({
+      deepStrictEqual(annotatedSchema.ast.annotations, {
         [AST.BrandAnnotationId]: ["A"],
         [AST.TitleAnnotationId]: "title",
         [AST.DescriptionAnnotationId]: "description"
@@ -47,7 +48,7 @@ describe("brand", () => {
       const annotatedSchema = schema.annotations({
         description: "description"
       }).annotations({ title: "title" })
-      expect(typeof annotatedSchema.make).toBe("function")
+      strictEqual(typeof annotatedSchema.make, "function")
     })
 
     it("brand as string (1 brand)", () => {
@@ -57,9 +58,9 @@ describe("brand", () => {
           description: "description"
         })
       )
-      expect(String(schema)).toBe(`int & Brand<"A">`)
+      strictEqual(String(schema), `int & Brand<"A">`)
 
-      expect(schema.ast.annotations).toEqual({
+      deepStrictEqual(schema.ast.annotations, {
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: ["A"],
         [AST.TitleAnnotationId]: "int",
@@ -77,9 +78,9 @@ describe("brand", () => {
         })
       )
 
-      expect(String(schema)).toBe(`int & Brand<"A"> & Brand<"B">`)
+      strictEqual(String(schema), `int & Brand<"A"> & Brand<"B">`)
 
-      expect(schema.ast.annotations).toEqual({
+      deepStrictEqual(schema.ast.annotations, {
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: ["A", "B"],
         [AST.TitleAnnotationId]: "int",
@@ -99,9 +100,9 @@ describe("brand", () => {
         })
       )
 
-      expect(String(schema)).toBe("int & Brand<Symbol(A)> & Brand<Symbol(B)>")
+      strictEqual(String(schema), "int & Brand<Symbol(A)> & Brand<Symbol(B)>")
 
-      expect(schema.ast.annotations).toEqual({
+      deepStrictEqual(schema.ast.annotations, {
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: [A, B],
         [AST.TitleAnnotationId]: "int",
@@ -119,9 +120,9 @@ describe("brand", () => {
     const PositiveInt = S.NumberFromString.pipe(int, positive)
 
     const is = S.is(PositiveInt)
-    expect(is(1)).toEqual(true)
-    expect(is(-1)).toEqual(false)
-    expect(is(1.2)).toEqual(false)
+    assertTrue(is(1))
+    assertFalse(is(-1))
+    assertFalse(is(1.2))
   })
 
   describe("decoding", () => {

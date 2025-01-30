@@ -1,8 +1,7 @@
-import * as Cause from "effect/Cause"
-import * as Data from "effect/Data"
-import * as Effect from "effect/Effect"
+import { Cause, Data, Effect } from "effect"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe, expect } from "vitest"
+import { describe } from "vitest"
 
 class TestError extends Data.TaggedError("TestError")<{}> {}
 
@@ -11,11 +10,11 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const cause = yield* $(Effect.flip(Effect.sandbox(Effect.withSpan("A")(new TestError()))))
       const log = Cause.pretty(cause)
-      expect(log).includes("TestError")
+      assertTrue(log.includes("TestError"))
       if (typeof window === "undefined") {
-        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:12:78")
+        assertTrue(log.replaceAll("\\", "/").includes("test/Effect/error.test.ts:11:78"))
       }
-      expect(log).includes("at A")
+      assertTrue(log.includes("at A"))
     }))
 
   it.effect("tryPromise", () =>
@@ -31,9 +30,9 @@ describe("Effect", () => {
       )
       const log = Cause.pretty(cause)
       if (typeof window === "undefined") {
-        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:26")
+        assertTrue(log.replaceAll("\\", "/").includes("test/Effect/error.test.ts:25"))
       }
-      expect(log).includes("at A")
+      assertTrue(log.includes("at A"))
     }))
 
   it.effect("allow message prop", () =>
@@ -52,11 +51,11 @@ describe("Effect", () => {
         Effect.flip
       )
       const log = Cause.pretty(cause)
-      expect(log).includes("Failure: some message")
+      assertTrue(log.includes("Failure: some message"))
       if (typeof window === "undefined") {
-        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:48")
+        assertTrue(log.replaceAll("\\", "/").includes("test/Effect/error.test.ts:47"))
       }
-      expect(log).includes("at A")
+      assertTrue(log.includes("at A"))
     }))
 
   if (typeof window === "undefined") {
@@ -70,8 +69,8 @@ describe("Effect", () => {
         }
       }
       const err = new MessageError()
-      expect(inspect(err)).include("MessageError: fail")
-      expect(inspect(err).replaceAll("\\", "/")).include("test/Effect/error.test.ts:72")
+      assertTrue(inspect(err).includes("MessageError: fail"))
+      assertTrue(inspect(err).replaceAll("\\", "/").includes("test/Effect/error.test.ts:71"))
     })
 
     it.it("toString", () => {
@@ -80,20 +79,20 @@ describe("Effect", () => {
           return "fail"
         }
       }
-      expect(inspect(new MessageError()).startsWith("fail\n")).toBe(true)
-      assert.deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
+      assertTrue(inspect(new MessageError()).startsWith("fail\n"))
+      deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
     })
 
     it.it("cause", () => {
       class MessageError extends Data.TaggedError("MessageError")<{
         cause: unknown
       }> {}
-      expect(inspect(new MessageError({ cause: new Error("boom") }))).includes("[cause]: Error: boom")
+      assertTrue(inspect(new MessageError({ cause: new Error("boom") })).includes("[cause]: Error: boom"))
     })
   }
 
   it.it("toJSON", () => {
     class MessageError extends Data.TaggedError("MessageError")<{}> {}
-    assert.deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
+    deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
   })
 })

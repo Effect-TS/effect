@@ -2,7 +2,6 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -11,8 +10,9 @@ import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
+import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const withPermitsScoped = (permits: number) => (semaphore: Effect.Semaphore) =>
   Effect.acquireRelease(
@@ -33,7 +33,7 @@ describe("Stream", () => {
         }),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
     }))
 
   it.effect("branchAfter - emits data if less than n elements are collected", () =>
@@ -43,7 +43,7 @@ describe("Stream", () => {
         Stream.branchAfter(6, (chunk) => Stream.prepend(Stream.identity<number>(), chunk)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
     }))
 
   it.effect("branchAfter - applies the new stream once on remaining upstream", () =>
@@ -54,7 +54,7 @@ describe("Stream", () => {
         Stream.branchAfter(1, (chunk) => Stream.prepend(Stream.identity<number>(), chunk)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
     }))
 
   it.effect("execute", () =>
@@ -62,7 +62,7 @@ describe("Stream", () => {
       const ref = yield* $(Ref.make(Chunk.empty<number>()))
       yield* $(Stream.runDrain(Stream.execute(Ref.set(ref, Chunk.fromIterable([1])))))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [1])
+      deepStrictEqual(Array.from(result), [1])
     }))
 
   it.effect("flatMap - deep flatMap stack safety", () =>
@@ -80,7 +80,7 @@ describe("Stream", () => {
             )
           )
       const result = yield* $(Stream.runCollect(fib(10)))
-      assert.deepStrictEqual(Array.from(result), [55])
+      deepStrictEqual(Array.from(result), [55])
     }))
 
   it.effect("flatMap - left identity", () =>
@@ -90,7 +90,7 @@ describe("Stream", () => {
         result1: pipe(Stream.make(1), Stream.flatMap(f), Stream.runCollect),
         result2: Stream.runCollect(f(1))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("flatMap - right identity", () =>
@@ -99,7 +99,7 @@ describe("Stream", () => {
         result1: pipe(Stream.make(1), Stream.flatMap((n) => Stream.make(n)), Stream.runCollect),
         result2: Stream.runCollect(Stream.make(1))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("flatMap - associativity", () =>
@@ -111,7 +111,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.flatMap(f), Stream.flatMap(g), Stream.runCollect),
         result2: pipe(stream, Stream.flatMap((n) => pipe(f(n), Stream.flatMap(g))), Stream.runCollect)
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("flatMap - inner finalizers", () =>
@@ -138,7 +138,7 @@ describe("Stream", () => {
       yield* $(Deferred.await(latch))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [1, 1, 2, 3, 3])
+      deepStrictEqual(Array.from(result), [1, 1, 2, 3, 3])
     }))
 
   it.effect("flatMap - finalizer ordering #1", () =>
@@ -170,7 +170,7 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         "open 1",
         "use 2",
         "open 3",
@@ -201,7 +201,7 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         "use 1",
         "open 2",
         "close 2",
@@ -229,7 +229,7 @@ describe("Stream", () => {
         Effect.either
       )
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("flatMap - finalizers are registered in the proper order", () =>
@@ -244,7 +244,7 @@ describe("Stream", () => {
         Effect.scoped
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [1, 2])
+      deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("flatMap - early release finalizer concatenation is preserved", () =>
@@ -270,7 +270,7 @@ describe("Stream", () => {
           )
         )
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2])
+      deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("flatMapPar - guarantee ordering", () =>
@@ -280,7 +280,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.flatMap((n) => Stream.make(n, n)), Stream.runCollect),
         result2: pipe(stream, Stream.flatMap((n) => Stream.make(n, n), { concurrency: 2 }), Stream.runCollect)
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("flatMapPar - consistency with flatMap", () =>
@@ -298,7 +298,7 @@ describe("Stream", () => {
           Stream.runCollect
         )
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("flatMapPar - interruption propagation", () =>
@@ -320,7 +320,7 @@ describe("Stream", () => {
       yield* $(Deferred.await(latch))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("flatMap - inner errors interrupt all fibers", () =>
@@ -348,8 +348,8 @@ describe("Stream", () => {
         Effect.either
       )
       const cancelled = yield* $(Ref.get(ref))
-      assert.isTrue(cancelled)
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertTrue(cancelled)
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("flatMapPar - outer errors interrupt all fiberrs", () =>
@@ -373,8 +373,8 @@ describe("Stream", () => {
         Effect.either
       )
       const cancelled = yield* $(Ref.get(ref))
-      assert.isTrue(cancelled)
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertTrue(cancelled)
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("flatMapPar - inner defects interrupt all fibers", () =>
@@ -399,8 +399,8 @@ describe("Stream", () => {
         Effect.exit
       )
       const cancelled = yield* $(Ref.get(ref))
-      assert.isTrue(cancelled)
-      assert.deepStrictEqual(result, Exit.die(defect))
+      assertTrue(cancelled)
+      deepStrictEqual(result, Exit.die(defect))
     }))
 
   it.effect("flatMapPar - outer defects interrupt all fibers", () =>
@@ -425,8 +425,8 @@ describe("Stream", () => {
         Effect.exit
       )
       const cancelled = yield* $(Ref.get(ref))
-      assert.isTrue(cancelled)
-      assert.deepStrictEqual(result, Exit.die(defect))
+      assertTrue(cancelled)
+      deepStrictEqual(result, Exit.die(defect))
     }))
 
   it.effect("flatMapPar - finalizer ordering", () =>
@@ -446,7 +446,7 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         "Outer Acquire",
         "Inner Acquire",
         "Inner Release",
@@ -475,7 +475,7 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* $(semaphore.withPermits(1)(Ref.get(ref)))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("flatMapParSwitch - guarantee ordering with parallelism", () =>
@@ -505,7 +505,7 @@ describe("Stream", () => {
         Ref.get(ref),
         semaphore.withPermits(4)
       )
-      assert.strictEqual(result, 4)
+      strictEqual(result, 4)
     }))
 
   it.effect("flatMapParSwitch - short circuiting", () =>
@@ -516,7 +516,7 @@ describe("Stream", () => {
         Stream.take(1),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1])
+      deepStrictEqual(Array.from(result), [1])
     }))
 
   it.effect("flatMapParSwitch - interruption propagation", () =>
@@ -538,7 +538,7 @@ describe("Stream", () => {
       yield* $(Deferred.await(latch))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("flatMapParSwitch - inner errors interrupt all fibers", () =>
@@ -566,8 +566,8 @@ describe("Stream", () => {
         Effect.either
       )
       const cancelled = yield* $(Ref.get(ref))
-      assert.isTrue(cancelled)
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertTrue(cancelled)
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("flatMapParSwitch - outer errors interrupt all fibers", () =>
@@ -591,8 +591,8 @@ describe("Stream", () => {
         Effect.either
       )
       const cancelled = yield* $(Ref.get(ref))
-      assert.isTrue(cancelled)
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertTrue(cancelled)
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("flatMapParSwitch - inner defects interrupt all fibers", () =>
@@ -621,8 +621,8 @@ describe("Stream", () => {
         Effect.exit
       )
       const cancelled = yield* $(Ref.get(ref))
-      assert.isTrue(cancelled)
-      assert.deepStrictEqual(result, Exit.die(error))
+      assertTrue(cancelled)
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("flatMapParSwitch - outer defects interrupt all fibers", () =>
@@ -647,8 +647,8 @@ describe("Stream", () => {
         Effect.exit
       )
       const cancelled = yield* $(Ref.get(ref))
-      assert.isTrue(cancelled)
-      assert.deepStrictEqual(result, Exit.die(error))
+      assertTrue(cancelled)
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("flatMapParSwitch - finalizer ordering", () =>
@@ -668,7 +668,7 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         "Outer Acquire",
         "Inner Acquire",
         "Inner Release",
@@ -685,7 +685,7 @@ describe("Stream", () => {
         Stream.chunks,
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         Array.from(chunks).map((chunk) => Array.from(chunk))
       )
@@ -706,7 +706,7 @@ describe("Stream", () => {
         ),
         Effect.scoped
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(Chunk.flatten(result)),
         Array.from(Chunk.range(0, 9))
       )
@@ -730,7 +730,7 @@ describe("Stream", () => {
         Effect.scoped,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("flattenIterables", () =>
@@ -741,7 +741,7 @@ describe("Stream", () => {
         Stream.flattenIterables,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), iterables.flatMap(identity))
+      deepStrictEqual(Array.from(result), iterables.flatMap(identity))
     }))
 
   it.effect("flattenTake - happy path", () =>
@@ -753,7 +753,7 @@ describe("Stream", () => {
         Stream.flattenTake,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.flatten(chunks)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.flatten(chunks)))
     }))
 
   it.effect("flattenTake - stop collecting on Exit.Failure", () =>
@@ -767,7 +767,7 @@ describe("Stream", () => {
         Stream.flattenTake,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("flattenTake - works with empty chunks", () =>
@@ -780,7 +780,7 @@ describe("Stream", () => {
         Stream.flattenTake,
         Stream.runCollect
       )
-      assert.isTrue(Chunk.isEmpty(result))
+      assertTrue(Chunk.isEmpty(result))
     }))
 
   it.effect("flattenTake - works with empty streams", () =>
@@ -790,6 +790,6 @@ describe("Stream", () => {
         Stream.flattenTake,
         Stream.runCollect
       )
-      assert.isTrue(Chunk.isEmpty(result))
+      assertTrue(Chunk.isEmpty(result))
     }))
 })

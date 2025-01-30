@@ -1,17 +1,8 @@
-import * as Array from "effect/Array"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
-import * as Exit from "effect/Exit"
-import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as Option from "effect/Option"
-import * as STM from "effect/STM"
+import { Array, Chunk, Effect, Equal, Exit, FastCheck as fc, Hash, Option, pipe, STM, TMap } from "effect"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { equivalentElements } from "effect/test/utils/equals"
 import * as it from "effect/test/utils/extend"
-import * as TMap from "effect/TMap"
-import * as fc from "fast-check"
-import { assert, describe, expect } from "vitest"
+import { describe } from "vitest"
 
 class HashContainer implements Equal.Equal {
   constructor(readonly i: number) {}
@@ -37,7 +28,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.isEmpty)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("fromIterable", () =>
@@ -47,7 +38,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [["a", 1], ["b", 3], ["c", 2]])
+      deepStrictEqual(result, [["a", 1], ["b", 3], ["c", 2]])
     }))
 
   it.effect("get - existing element", () =>
@@ -57,7 +48,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("get - non-existing element", () =>
@@ -67,7 +58,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("getOrElse - existing element", () =>
@@ -77,7 +68,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.getOrElse("a", () => 10))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, 1)
+      deepStrictEqual(result, 1)
     }))
 
   it.effect("getOrElse - non-existing element", () =>
@@ -87,7 +78,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.getOrElse("a", () => 10))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, 10)
+      deepStrictEqual(result, 10)
     }))
 
   it.effect("has - existing element", () =>
@@ -97,7 +88,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.has("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("has - non-existing element", () =>
@@ -107,7 +98,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.has("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.it("keys - collect all keys", () =>
@@ -118,8 +109,8 @@ describe("TMap", () => {
       )
       const result = await Effect.runPromise(STM.commit(transaction))
       const keys = entries.map((entry) => entry[0])
-      assert.lengthOf(pipe(result, Array.differenceWith(equivalentElements())(keys)), 0)
-      assert.lengthOf(pipe(keys, Array.differenceWith(equivalentElements())(result)), 0)
+      strictEqual(pipe(result, Array.differenceWith(equivalentElements())(keys)).length, 0)
+      strictEqual(pipe(keys, Array.differenceWith(equivalentElements())(result)).length, 0)
     })))
 
   it.effect("merge", () =>
@@ -134,8 +125,8 @@ describe("TMap", () => {
         )
       )
       const { result1, result2 } = yield* $(STM.commit(transaction))
-      assert.strictEqual(result1, 3)
-      assert.strictEqual(result2, 2)
+      strictEqual(result1, 3)
+      strictEqual(result2, 2)
     }))
 
   it.effect("reduce - non-empty map", () =>
@@ -145,7 +136,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.reduce(0, (acc, value) => acc + value))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 6)
+      strictEqual(result, 6)
     }))
 
   it.effect("reduce - empty map", () =>
@@ -155,7 +146,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.reduce(0, (acc, value) => acc + value))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.effect("reduceSTM - non-empty map", () =>
@@ -165,7 +156,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.reduceSTM(0, (acc, value) => STM.succeed(acc + value)))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 6)
+      strictEqual(result, 6)
     }))
 
   it.effect("reduceSTM - empty map", () =>
@@ -175,7 +166,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.reduceSTM(0, (acc, value) => STM.succeed(acc + value)))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.effect("remove - remove an existing element", () =>
@@ -186,7 +177,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("remove - remove an non-existing element", () =>
@@ -197,7 +188,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("removeIf", () =>
@@ -211,7 +202,7 @@ describe("TMap", () => {
         return [removed, a, aa, aaa] as const
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [[["aaa", 3], ["aa", 2]], true, false, false])
+      deepStrictEqual(result, [[["aaa", 3], ["aa", 2]], true, false, false])
     }))
 
   it.effect("removeIf > { discard: true }", () =>
@@ -225,7 +216,7 @@ describe("TMap", () => {
         return [a, aa, aaa] as const
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [true, false, true])
+      deepStrictEqual(result, [true, false, true])
     }))
 
   it.effect("retainIf", () =>
@@ -239,7 +230,7 @@ describe("TMap", () => {
         return [removed, a, aa, aaa] as const
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [[["aaa", 3], ["a", 1]], false, true, false])
+      deepStrictEqual(result, [[["aaa", 3], ["a", 1]], false, true, false])
     }))
 
   it.effect("retainIf > { discard: true }", () =>
@@ -253,7 +244,7 @@ describe("TMap", () => {
         return [a, aa, aaa] as const
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [false, true, false])
+      deepStrictEqual(result, [false, true, false])
     }))
 
   it.effect("set - adds new element", () =>
@@ -264,7 +255,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("set - overwrites an existing element", () =>
@@ -275,7 +266,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, Option.some(10))
+      assertSome(result, 10)
     }))
 
   it.effect("set - add many keys with negative hash codes", () =>
@@ -288,8 +279,8 @@ describe("TMap", () => {
         STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.lengthOf(pipe(result, Array.differenceWith(equivalentElements())(entries)), 0)
-      assert.lengthOf(pipe(entries, Array.differenceWith(equivalentElements())(result)), 0)
+      strictEqual(pipe(result, Array.differenceWith(equivalentElements())(entries)).length, 0)
+      strictEqual(pipe(entries, Array.differenceWith(equivalentElements())(result)).length, 0)
     }))
 
   it.effect("setIfAbsent", () =>
@@ -302,8 +293,8 @@ describe("TMap", () => {
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [["a", 1], ["b", 2]]
-      assert.lengthOf(pipe(result, Array.differenceWith(equivalentElements())(expected)), 0)
-      assert.lengthOf(pipe(expected, Array.differenceWith(equivalentElements())(result)), 0)
+      strictEqual(pipe(result, Array.differenceWith(equivalentElements())(expected)).length, 0)
+      strictEqual(pipe(expected, Array.differenceWith(equivalentElements())(result)).length, 0)
     }))
 
   it.effect("size", () =>
@@ -313,7 +304,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.size)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.strictEqual(result, 2)
+      strictEqual(result, 2)
     }))
 
   it.it("toChunk - collect all elements", () =>
@@ -323,9 +314,9 @@ describe("TMap", () => {
         STM.flatMap(TMap.toChunk)
       )
       const result = await Effect.runPromise(STM.commit(transaction))
-      expect(Chunk.isChunk(result)).toBe(true)
-      assert.lengthOf(pipe(Chunk.toReadonlyArray(result), Array.differenceWith(equivalentElements())(entries)), 0)
-      assert.lengthOf(pipe(entries, Array.differenceWith(equivalentElements())(Chunk.toReadonlyArray(result))), 0)
+      assertTrue(Chunk.isChunk(result))
+      strictEqual(pipe(Chunk.toReadonlyArray(result), Array.differenceWith(equivalentElements())(entries)).length, 0)
+      strictEqual(pipe(entries, Array.differenceWith(equivalentElements())(Chunk.toReadonlyArray(result))).length, 0)
     })))
 
   it.it("toReadonlyArray - collect all elements", () =>
@@ -335,8 +326,8 @@ describe("TMap", () => {
         STM.flatMap(TMap.toArray)
       )
       const result = await Effect.runPromise(STM.commit(transaction))
-      assert.lengthOf(pipe(result, Array.differenceWith(equivalentElements())(entries)), 0)
-      assert.lengthOf(pipe(entries, Array.differenceWith(equivalentElements())(result)), 0)
+      strictEqual(pipe(result, Array.differenceWith(equivalentElements())(entries)).length, 0)
+      strictEqual(pipe(entries, Array.differenceWith(equivalentElements())(result)).length, 0)
     })))
 
   it.it("toMap - collect all elements", () =>
@@ -346,8 +337,8 @@ describe("TMap", () => {
         STM.flatMap(TMap.toMap)
       )
       const result = await Effect.runPromise(STM.commit(transaction))
-      assert.lengthOf(pipe(Array.fromIterable(result), Array.differenceWith(equivalentElements())(entries)), 0)
-      assert.lengthOf(pipe(entries, Array.differenceWith(equivalentElements())(Array.fromIterable(result))), 0)
+      strictEqual(pipe(Array.fromIterable(result), Array.differenceWith(equivalentElements())(entries)).length, 0)
+      strictEqual(pipe(entries, Array.differenceWith(equivalentElements())(Array.fromIterable(result))).length, 0)
     })))
 
   it.effect("transform", () =>
@@ -359,8 +350,8 @@ describe("TMap", () => {
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [["b", 2], ["bb", 4], ["bbb", 6]]
-      assert.lengthOf(pipe(result, Array.differenceWith(equivalentElements())(expected)), 0)
-      assert.lengthOf(pipe(expected, Array.differenceWith(equivalentElements())(result)), 0)
+      strictEqual(pipe(result, Array.differenceWith(equivalentElements())(expected)).length, 0)
+      strictEqual(pipe(expected, Array.differenceWith(equivalentElements())(result)).length, 0)
     }))
 
   it.effect("transform - handles keys with negative hash codes", () =>
@@ -372,8 +363,8 @@ describe("TMap", () => {
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [[new HashContainer(2), 2], [new HashContainer(4), 4], [new HashContainer(6), 6]]
-      assert.lengthOf(pipe(result, Array.differenceWith(equivalentElements())(expected)), 0)
-      assert.lengthOf(pipe(expected, Array.differenceWith(equivalentElements())(result)), 0)
+      strictEqual(pipe(result, Array.differenceWith(equivalentElements())(expected)).length, 0)
+      strictEqual(pipe(expected, Array.differenceWith(equivalentElements())(result)).length, 0)
     }))
 
   it.effect("transform - and shrink", () =>
@@ -384,7 +375,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [["key", 6]])
+      deepStrictEqual(result, [["key", 6]])
     }))
 
   it.effect("transformSTM", () =>
@@ -396,8 +387,8 @@ describe("TMap", () => {
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [["b", 2], ["bb", 4], ["bbb", 6]]
-      assert.lengthOf(pipe(result, Array.differenceWith(equivalentElements())(expected)), 0)
-      assert.lengthOf(pipe(expected, Array.differenceWith(equivalentElements())(result)), 0)
+      strictEqual(pipe(result, Array.differenceWith(equivalentElements())(expected)).length, 0)
+      strictEqual(pipe(expected, Array.differenceWith(equivalentElements())(result)).length, 0)
     }))
 
   it.effect("transformSTM - and shrink", () =>
@@ -408,7 +399,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [["key", 6]])
+      deepStrictEqual(result, [["key", 6]])
     }))
 
   it.effect("transformValues", () =>
@@ -420,8 +411,8 @@ describe("TMap", () => {
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [["a", 2], ["aa", 4], ["aaa", 6]]
-      assert.lengthOf(pipe(result, Array.differenceWith(equivalentElements())(expected)), 0)
-      assert.lengthOf(pipe(expected, Array.differenceWith(equivalentElements())(result)), 0)
+      strictEqual(pipe(result, Array.differenceWith(equivalentElements())(expected)).length, 0)
+      strictEqual(pipe(expected, Array.differenceWith(equivalentElements())(result)).length, 0)
     }))
 
   it.effect("transformValues - parallel", () =>
@@ -435,7 +426,7 @@ describe("TMap", () => {
       )
       yield* $(Effect.replicateEffect(effect, 2))
       const result = yield* $(pipe(map, TMap.get("a")))
-      assert.deepStrictEqual(result, Option.some(2_000))
+      assertSome(result, 2_000)
     }))
 
   it.effect("transformValuesSTM", () =>
@@ -447,8 +438,8 @@ describe("TMap", () => {
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [["a", 2], ["aa", 4], ["aaa", 6]]
-      assert.lengthOf(pipe(result, Array.differenceWith(equivalentElements())(expected)), 0)
-      assert.lengthOf(pipe(expected, Array.differenceWith(equivalentElements())(result)), 0)
+      strictEqual(pipe(result, Array.differenceWith(equivalentElements())(expected)).length, 0)
+      strictEqual(pipe(expected, Array.differenceWith(equivalentElements())(result)).length, 0)
     }))
 
   it.effect("updateWith", () =>
@@ -462,7 +453,7 @@ describe("TMap", () => {
         return yield* $(TMap.toArray(map))
       })
       const result = yield* $(STM.commit(transaction))
-      assert.deepStrictEqual(result, [["a", 2], ["c", 3]])
+      deepStrictEqual(result, [["a", 2], ["c", 3]])
     }))
 
   it.it("values - collect all values", () =>
@@ -473,8 +464,8 @@ describe("TMap", () => {
       )
       const result = await Effect.runPromise(STM.commit(transaction))
       const values = entries.map((entry) => entry[1])
-      assert.lengthOf(pipe(result, Array.differenceWith(equivalentElements())(values)), 0)
-      assert.lengthOf(pipe(values, Array.differenceWith(equivalentElements())(result)), 0)
+      strictEqual(pipe(result, Array.differenceWith(equivalentElements())(values)).length, 0)
+      strictEqual(pipe(values, Array.differenceWith(equivalentElements())(result)).length, 0)
     })))
 
   it.effect("avoid issues due to race conditions (ZIO Issue #4648)", () =>
@@ -492,6 +483,6 @@ describe("TMap", () => {
           ), { discard: true }),
         Effect.exit
       ))
-      assert.deepStrictEqual(result, Exit.void)
+      deepStrictEqual(result, Exit.void)
     }))
 })

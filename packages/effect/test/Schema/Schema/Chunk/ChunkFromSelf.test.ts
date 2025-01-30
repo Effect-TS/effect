@@ -3,7 +3,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("ChunkFromSelf", () => {
   it("test roundtrip consistency", () => {
@@ -49,19 +50,17 @@ describe("ChunkFromSelf", () => {
   it("is", () => {
     const schema = S.ChunkFromSelf(S.String)
     const is = P.is(schema)
-    expect(is(C.empty())).toEqual(true)
-    expect(is(C.fromIterable(["a", "b", "c"]))).toEqual(true)
+    assertTrue(is(C.empty()))
+    assertTrue(is(C.fromIterable(["a", "b", "c"])))
 
-    expect(is(C.fromIterable(["a", "b", 1]))).toEqual(false)
-    expect(is({ _id: Symbol.for("effect/Schema/test/FakeChunk") })).toEqual(false)
+    assertFalse(is(C.fromIterable(["a", "b", 1])))
+    assertFalse(is({ _id: Symbol.for("effect/Schema/test/FakeChunk") }))
   })
 
   it("pretty", () => {
     const schema = S.ChunkFromSelf(S.String)
     const pretty = Pretty.make(schema)
-    expect(pretty(C.empty())).toEqual("Chunk()")
-    expect(pretty(C.fromIterable(["a", "b"]))).toEqual(
-      `Chunk("a", "b")`
-    )
+    strictEqual(pretty(C.empty()), "Chunk()")
+    strictEqual(pretty(C.fromIterable(["a", "b"])), `Chunk("a", "b")`)
   })
 })

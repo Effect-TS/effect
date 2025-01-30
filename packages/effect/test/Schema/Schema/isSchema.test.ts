@@ -1,19 +1,20 @@
 import * as S from "effect/Schema"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("isSchema", () => {
   it("Schema", () => {
-    expect(S.isSchema(S.String)).toBe(true)
-    expect(S.isSchema(S.parseJson)).toBe(false)
+    assertTrue(S.isSchema(S.String))
+    assertFalse(S.isSchema(S.parseJson))
   })
 
   it("BrandSchema", () => {
-    expect(S.isSchema(S.String.pipe(S.brand("my-brand")))).toBe(true)
+    assertTrue(S.isSchema(S.String.pipe(S.brand("my-brand"))))
   })
 
   it("PropertySignature", () => {
-    expect(S.isSchema(S.propertySignature(S.String))).toBe(false)
-    expect(S.isSchema(S.optionalWith(S.String, { exact: true }))).toBe(false)
-    expect(S.isSchema(S.optionalWith(S.String, { default: () => "" }))).toBe(false)
+    assertFalse(S.isSchema(S.propertySignature(S.String)))
+    assertFalse(S.isSchema(S.optionalWith(S.String, { exact: true })))
+    assertFalse(S.isSchema(S.optionalWith(S.String, { default: () => "" })))
   })
 })

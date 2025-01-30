@@ -6,9 +6,10 @@ import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { assertTrue } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { unfoldEffect } from "effect/test/utils/unfoldEffect"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const findSink = <A>(a: A): Sink.Sink<A, A, A, void> =>
   pipe(
@@ -73,6 +74,6 @@ describe("Sink", () => {
           findSink(40)
         )
       )
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 })

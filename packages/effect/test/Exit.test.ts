@@ -1,10 +1,11 @@
-import * as Exit from "effect/Exit"
-import { describe, expect, it } from "vitest"
+import { Exit } from "effect"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Exit", () => {
   describe("toJSON", () => {
     it("succeed", () => {
-      expect(Exit.succeed(1).toJSON()).toEqual({
+      deepStrictEqual(Exit.succeed(1).toJSON(), {
         _id: "Exit",
         _tag: "Success",
         value: 1
@@ -12,7 +13,7 @@ describe("Exit", () => {
     })
 
     it("fail", () => {
-      expect(Exit.fail("failure").toJSON()).toEqual({
+      deepStrictEqual(Exit.fail("failure").toJSON(), {
         _id: "Exit",
         _tag: "Failure",
         cause: {
@@ -24,15 +25,13 @@ describe("Exit", () => {
       class MyError {
         readonly _tag = "MyError"
       }
-      expect(Exit.fail(new MyError()).toJSON()).toEqual({
+      deepStrictEqual(Exit.fail(new MyError()).toJSON(), {
         _id: "Exit",
         _tag: "Failure",
         cause: {
           _id: "Cause",
           _tag: "Fail",
-          failure: {
-            _tag: "MyError"
-          }
+          failure: new MyError()
         }
       })
     })
@@ -40,15 +39,20 @@ describe("Exit", () => {
 
   describe("toString", () => {
     it("succeed", () => {
-      expect(String(Exit.succeed(1))).toEqual(`{
+      deepStrictEqual(
+        String(Exit.succeed(1)),
+        `{
   "_id": "Exit",
   "_tag": "Success",
   "value": 1
-}`)
+}`
+      )
     })
 
     it("fail", () => {
-      expect(String(Exit.fail("failure"))).toEqual(`{
+      deepStrictEqual(
+        String(Exit.fail("failure")),
+        `{
   "_id": "Exit",
   "_tag": "Failure",
   "cause": {
@@ -56,11 +60,14 @@ describe("Exit", () => {
     "_tag": "Fail",
     "failure": "failure"
   }
-}`)
+}`
+      )
       class Error1 {
         readonly _tag = "WithTag"
       }
-      expect(String(Exit.fail(new Error1()))).toEqual(`{
+      deepStrictEqual(
+        String(Exit.fail(new Error1())),
+        `{
   "_id": "Exit",
   "_tag": "Failure",
   "cause": {
@@ -70,7 +77,8 @@ describe("Exit", () => {
       "_tag": "WithTag"
     }
   }
-}`)
+}`
+      )
     })
   })
 })

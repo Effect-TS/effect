@@ -1,9 +1,9 @@
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import { deepStrictEqual } from "effect/test/util"
+import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "effect/test/util"
 import * as Trie from "effect/Trie"
-import { assert, describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("Trie", () => {
   it("toString", () => {
@@ -13,7 +13,9 @@ describe("Trie", () => {
       Trie.insert("b", 1)
     )
 
-    expect(String(trie)).toEqual(`{
+    strictEqual(
+      String(trie),
+      `{
   "_id": "Trie",
   "values": [
     [
@@ -25,7 +27,8 @@ describe("Trie", () => {
       1
     ]
   ]
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
@@ -35,9 +38,7 @@ describe("Trie", () => {
       Trie.insert("b", 1)
     )
 
-    expect(trie.toJSON()).toEqual(
-      { _id: "Trie", values: [["a", 0], ["b", 1]] }
-    )
+    deepStrictEqual(trie.toJSON(), { _id: "Trie", values: [["a", 0], ["b", 1]] })
   })
 
   it("inspect", () => {
@@ -53,13 +54,13 @@ describe("Trie", () => {
       Trie.insert("b", 1)
     )
 
-    expect(inspect(trie)).toEqual(inspect({ _id: "Trie", values: [["a", 0], ["b", 1]] }))
+    deepStrictEqual(inspect(trie), inspect({ _id: "Trie", values: [["a", 0], ["b", 1]] }))
   })
 
   it("iterable empty", () => {
     const trie = pipe(Trie.empty<string>())
 
-    assert.equal(Trie.size(trie), 0)
+    strictEqual(Trie.size(trie), 0)
     deepStrictEqual(Array.from(trie), [])
   })
 
@@ -87,14 +88,14 @@ describe("Trie", () => {
   it("make", () => {
     const trie = Trie.make(["ca", 0], ["me", 1])
     deepStrictEqual(Array.from(trie), [["ca", 0], ["me", 1]])
-    assert.equal(Equal.equals(Trie.fromIterable([["ca", 0], ["me", 1]]), trie), true)
+    strictEqual(Equal.equals(Trie.fromIterable([["ca", 0], ["me", 1]]), trie), true)
   })
 
   it("fromIterable [1]", () => {
     const iterable: Array<[string, number]> = [["ca", 0], ["me", 1]]
     const trie = Trie.fromIterable(iterable)
     deepStrictEqual(Array.from(trie), iterable)
-    assert.equal(Equal.equals(Trie.make(["ca", 0], ["me", 1]), trie), true)
+    strictEqual(Equal.equals(Trie.make(["ca", 0], ["me", 1]), trie), true)
   })
 
   it("fromIterable [2]", () => {
@@ -127,14 +128,14 @@ describe("Trie", () => {
       Trie.insert("b", 1)
     )
 
-    assert.equal(Trie.size(trie), 2)
+    strictEqual(Trie.size(trie), 2)
   })
 
   it("isEmpty", () => {
     const trie = Trie.empty<number>()
     const trie1 = trie.pipe(Trie.insert("ma", 0))
-    assert.equal(Trie.isEmpty(trie), true)
-    assert.equal(Trie.isEmpty(trie1), false)
+    strictEqual(Trie.isEmpty(trie), true)
+    strictEqual(Trie.isEmpty(trie1), false)
   })
 
   it("get [1]", () => {
@@ -144,14 +145,14 @@ describe("Trie", () => {
       Trie.insert("mind", 2),
       Trie.insert("mid", 3)
     )
-    deepStrictEqual(Trie.get(trie, "call"), Option.some(0))
-    deepStrictEqual(Trie.get(trie, "me"), Option.some(1))
-    deepStrictEqual(Trie.get(trie, "mind"), Option.some(2))
-    deepStrictEqual(Trie.get(trie, "mid"), Option.some(3))
-    deepStrictEqual(Trie.get(trie, "cale"), Option.none())
-    deepStrictEqual(Trie.get(trie, "ma"), Option.none())
-    deepStrictEqual(Trie.get(trie, "midn"), Option.none())
-    deepStrictEqual(Trie.get(trie, "mea"), Option.none())
+    assertSome(Trie.get(trie, "call"), 0)
+    assertSome(Trie.get(trie, "me"), 1)
+    assertSome(Trie.get(trie, "mind"), 2)
+    assertSome(Trie.get(trie, "mid"), 3)
+    assertNone(Trie.get(trie, "cale"))
+    assertNone(Trie.get(trie, "ma"))
+    assertNone(Trie.get(trie, "midn"))
+    assertNone(Trie.get(trie, "mea"))
   })
 
   it("get [2]", () => {
@@ -161,10 +162,10 @@ describe("Trie", () => {
       Trie.insert("she", 2)
     )
 
-    deepStrictEqual(Trie.get(trie, "sell"), Option.none())
-    deepStrictEqual(Trie.get(trie, "sells"), Option.some(1))
-    deepStrictEqual(Trie.get(trie, "shell"), Option.none())
-    deepStrictEqual(Trie.get(trie, "she"), Option.some(2))
+    assertNone(Trie.get(trie, "sell"))
+    assertSome(Trie.get(trie, "sells"), 1)
+    assertNone(Trie.get(trie, "shell"))
+    assertSome(Trie.get(trie, "she"), 2)
   })
 
   it("has", () => {
@@ -174,14 +175,14 @@ describe("Trie", () => {
       Trie.insert("mind", 2),
       Trie.insert("mid", 3)
     )
-    assert.equal(Trie.has(trie, "call"), true)
-    assert.equal(Trie.has(trie, "me"), true)
-    assert.equal(Trie.has(trie, "mind"), true)
-    assert.equal(Trie.has(trie, "mid"), true)
-    assert.equal(Trie.has(trie, "cale"), false)
-    assert.equal(Trie.has(trie, "ma"), false)
-    assert.equal(Trie.has(trie, "midn"), false)
-    assert.equal(Trie.has(trie, "mea"), false)
+    strictEqual(Trie.has(trie, "call"), true)
+    strictEqual(Trie.has(trie, "me"), true)
+    strictEqual(Trie.has(trie, "mind"), true)
+    strictEqual(Trie.has(trie, "mid"), true)
+    strictEqual(Trie.has(trie, "cale"), false)
+    strictEqual(Trie.has(trie, "ma"), false)
+    strictEqual(Trie.has(trie, "midn"), false)
+    strictEqual(Trie.has(trie, "mea"), false)
   })
 
   it("unsafeGet", () => {
@@ -189,7 +190,7 @@ describe("Trie", () => {
       Trie.insert("call", 0),
       Trie.insert("me", 1)
     )
-    assert.throws(() => Trie.unsafeGet(trie, "mae"))
+    throws(() => Trie.unsafeGet(trie, "mae"))
   })
 
   it("remove", () => {
@@ -377,8 +378,8 @@ describe("Trie", () => {
       Trie.insert("she", 3)
     )
 
-    assert.equal(Equal.equals(Trie.map(trie, (v) => v + 1), trieMapV), true)
-    assert.equal(Equal.equals(Trie.map(trie, (_, k) => k.length), trieMapK), true)
+    strictEqual(Equal.equals(Trie.map(trie, (v) => v + 1), trieMapV), true)
+    strictEqual(Equal.equals(Trie.map(trie, (_, k) => k.length), trieMapK), true)
   })
 
   it("filter", () => {
@@ -397,8 +398,8 @@ describe("Trie", () => {
       Trie.insert("sells", 1)
     )
 
-    assert.equal(Equal.equals(Trie.filter(trie, (v) => v > 1), trieMapV), true)
-    assert.equal(Equal.equals(Trie.filter(trie, (_, k) => k.length > 3), trieMapK), true)
+    strictEqual(Equal.equals(Trie.filter(trie, (v) => v > 1), trieMapV), true)
+    strictEqual(Equal.equals(Trie.filter(trie, (_, k) => k.length > 3), trieMapK), true)
   })
 
   it("filterMap", () => {
@@ -417,8 +418,8 @@ describe("Trie", () => {
       Trie.insert("sells", 1)
     )
 
-    assert.equal(Equal.equals(Trie.filterMap(trie, (v) => v > 1 ? Option.some(v) : Option.none()), trieMapV), true)
-    assert.equal(
+    strictEqual(Equal.equals(Trie.filterMap(trie, (v) => v > 1 ? Option.some(v) : Option.none()), trieMapV), true)
+    strictEqual(
       Equal.equals(Trie.filterMap(trie, (v, k) => k.length > 3 ? Option.some(v) : Option.none()), trieMapK),
       true
     )
@@ -436,7 +437,7 @@ describe("Trie", () => {
       Trie.insert("she", 2)
     )
 
-    assert.equal(Equal.equals(Trie.compact(trie), trieMapV), true)
+    strictEqual(Equal.equals(Trie.compact(trie), trieMapV), true)
   })
 
   it("modify", () => {
@@ -447,7 +448,7 @@ describe("Trie", () => {
     )
 
     deepStrictEqual(trie.pipe(Trie.modify("she", (v) => v + 10), Trie.get("she")), Option.some(12))
-    assert.equal(Equal.equals(trie.pipe(Trie.modify("me", (v) => v)), trie), true)
+    strictEqual(Equal.equals(trie.pipe(Trie.modify("me", (v) => v)), trie), true)
   })
 
   it("removeMany", () => {
@@ -457,7 +458,7 @@ describe("Trie", () => {
       Trie.insert("she", 2)
     )
 
-    assert.equal(
+    strictEqual(
       Equal.equals(trie.pipe(Trie.removeMany(["she", "sells"])), Trie.empty<number>().pipe(Trie.insert("shells", 0))),
       true
     )
@@ -477,7 +478,7 @@ describe("Trie", () => {
       )
     )
 
-    assert.equal(
+    strictEqual(
       Equal.equals(trie, trieInsert),
       true
     )
@@ -490,19 +491,19 @@ describe("Trie", () => {
       Trie.insert("she", 2)
     )
 
-    assert.equal(
+    strictEqual(
       trie.pipe(
         Trie.reduce(0, (acc, n) => acc + n)
       ),
       3
     )
-    assert.equal(
+    strictEqual(
       trie.pipe(
         Trie.reduce(10, (acc, n) => acc + n)
       ),
       13
     )
-    assert.equal(
+    strictEqual(
       trie.pipe(
         Trie.reduce("", (acc, _, key) => acc + key)
       ),
@@ -522,15 +523,15 @@ describe("Trie", () => {
       })
     )
 
-    assert.equal(value, 17)
+    strictEqual(value, 17)
   })
 
   it("Equal.symbol", () => {
-    assert.equal(
+    strictEqual(
       Equal.equals(Trie.empty<number>(), Trie.empty<number>()),
       true
     )
-    assert.equal(
+    strictEqual(
       Equal.equals(
         Trie.make(["call", 0], ["me", 1]),
         Trie.make(["call", 0], ["me", 1])

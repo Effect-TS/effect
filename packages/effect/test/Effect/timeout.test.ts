@@ -4,10 +4,10 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constFalse, pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { assertNone, assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("timeout produces a useful error message", () =>
@@ -20,9 +20,10 @@ describe("Effect", () => {
       )
       yield* TestClock.adjust(Duration.millis(2000))
       const result = yield* Fiber.join(fiber)
-      assert.include(
-        result.toString(),
-        "TimeoutException: Operation timed out before the specified duration of '1s 500ms' elapsed"
+      assertTrue(
+        result.toString().includes(
+          "TimeoutException: Operation timed out before the specified duration of '1s 500ms' elapsed"
+        )
       )
     }))
   it.live("timeout a long computation", () =>
@@ -38,7 +39,7 @@ describe("Effect", () => {
           Effect.exit
         )
       )
-      assert.deepStrictEqual(result, Exit.fail(false))
+      deepStrictEqual(result, Exit.fail(false))
     }))
   it.live("timeout a long computation with a cause", () =>
     Effect.gen(function*($) {
@@ -55,24 +56,24 @@ describe("Effect", () => {
           Effect.flip
         )
       )
-      assert.deepStrictEqual(result, cause)
+      deepStrictEqual(result, cause)
     }))
   it.live("timeout repetition of uninterruptible effect", () =>
     Effect.gen(function*($) {
       const result = yield* $(
         pipe(Effect.void, Effect.uninterruptible, Effect.forever, Effect.timeout(Duration.millis(10)), Effect.option)
       )
-      assert.deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
   it.effect("timeout in uninterruptible region", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.void, Effect.timeout(Duration.seconds(20)), Effect.uninterruptible)
-      assert.deepStrictEqual(result, void 0)
+      deepStrictEqual(result, void 0)
     }))
   it.effect("timeout - disconnect - returns with the produced value if the effect completes before the timeout elapses", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.void, Effect.disconnect, Effect.timeout(Duration.millis(100)))
-      assert.deepStrictEqual(result, void 0)
+      deepStrictEqual(result, void 0)
     }))
   it.effect("timeout - disconnect - returns `NoSuchElementException` otherwise", () =>
     Effect.gen(function*($) {
@@ -88,6 +89,6 @@ describe("Effect", () => {
       )
       yield* $(TestClock.adjust(Duration.millis(100)))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 })

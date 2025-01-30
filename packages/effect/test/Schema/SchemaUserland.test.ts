@@ -3,7 +3,8 @@
  */
 import { Record, Schema, SchemaAST as AST } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 const structTypeSchema = <Fields extends Schema.Struct.Fields>(
   schema: Schema.Struct<Fields>
@@ -30,11 +31,11 @@ describe("SchemaUserland", () => {
       b: Schema.propertySignature(Schema.NumberFromString),
       c: Schema.optionalWith(Schema.NumberFromString, { as: "Option" })
     }))
-    expect(schema.fields.a.ast).toStrictEqual(Schema.Number.ast)
-    expect(schema.fields.b.ast).toStrictEqual(Schema.Number.ast)
+    deepStrictEqual(schema.fields.a.ast, Schema.Number.ast)
+    deepStrictEqual(schema.fields.b.ast, Schema.Number.ast)
     const c = schema.fields.c.ast
-    expect(c._tag).toStrictEqual("Declaration")
-    expect((c as AST.Declaration).typeParameters).toStrictEqual([Schema.Number.ast])
+    strictEqual(c._tag, "Declaration")
+    deepStrictEqual((c as AST.Declaration).typeParameters, [Schema.Number.ast])
   })
 
   it("detect that a struct does not contain a specific field", async () => {

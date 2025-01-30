@@ -1,41 +1,45 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("validateSync", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should throw on invalid values", () => {
-    expect(S.validateSync(schema)({ a: 1 })).toEqual({ a: 1 })
-    expect(() => S.validateSync(schema)({ a: null })).toThrow(
-      new Error(`{ readonly a: number }
+    deepStrictEqual(S.validateSync(schema)({ a: 1 }), { a: 1 })
+    Util.assertParseError(
+      () => S.validateSync(schema)({ a: null }),
+      `{ readonly a: number }
 └─ ["a"]
-   └─ Expected number, actual null`)
+   └─ Expected number, actual null`
     )
   })
 
   it("should throw on async", () => {
-    expect(() => S.validateSync(Util.AsyncDeclaration)("a")).toThrow(
-      new Error(
-        `AsyncDeclaration
+    Util.assertParseError(
+      () => S.validateSync(Util.AsyncDeclaration)("a"),
+      `AsyncDeclaration
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
-      )
     )
   })
 
   it("should respect outer/inner options", () => {
     const input = { a: 1, b: "b" }
-    expect(() => S.validateSync(schema)(input, { onExcessProperty: "error" })).toThrow(
-      new Error(`{ readonly a: number }
+    Util.assertParseError(
+      () => S.validateSync(schema)(input, { onExcessProperty: "error" }),
+      `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected: "a"`)
+   └─ is unexpected, expected: "a"`
     )
-    expect(() => S.validateSync(schema, { onExcessProperty: "error" })(input)).toThrow(
-      new Error(`{ readonly a: number }
+    Util.assertParseError(
+      () => S.validateSync(schema, { onExcessProperty: "error" })(input),
+      `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected: "a"`)
+   └─ is unexpected, expected: "a"`
     )
-    expect(S.validateSync(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
-      .toEqual({ a: 1 })
+    deepStrictEqual(S.validateSync(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }), {
+      a: 1
+    })
   })
 })

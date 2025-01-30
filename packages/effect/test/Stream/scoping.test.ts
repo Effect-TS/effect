@@ -3,16 +3,15 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
-import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import { assertFalse, assertLeft, assertSome, assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("acquireRelease - simple example", () =>
@@ -24,8 +23,8 @@ describe("Stream", () => {
       ).pipe(Stream.flatMap(Stream.fromIterable))
       const result = yield* Stream.runCollect(stream)
       const released = yield* Ref.get(ref)
-      assert.isTrue(released)
-      assert.deepStrictEqual(Chunk.toArray(result), [0, 1, 2])
+      assertTrue(released)
+      deepStrictEqual(Chunk.toArray(result), [0, 1, 2])
     }))
 
   it.effect("acquireRelease - short circuits", () =>
@@ -40,8 +39,8 @@ describe("Stream", () => {
       )
       const result = yield* Stream.runCollect(stream)
       const released = yield* Ref.get(ref)
-      assert.isTrue(released)
-      assert.deepStrictEqual(Chunk.toArray(result), [0, 1])
+      assertTrue(released)
+      deepStrictEqual(Chunk.toArray(result), [0, 1])
     }))
 
   it.effect("acquireRelease - no acquisition when short circuiting", () =>
@@ -58,7 +57,7 @@ describe("Stream", () => {
       )
       yield* Stream.runDrain(stream)
       const result = yield* Ref.get(ref)
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.effect("acquireRelease - releases when there are defects", () =>
@@ -73,7 +72,7 @@ describe("Stream", () => {
         Effect.exit
       )
       const result = yield* Ref.get(ref)
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("acquireRelease - flatMap associativity does not effect lifetime", () =>
@@ -99,8 +98,8 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.map(Chunk.head)
       )
-      assert.deepStrictEqual(leftAssoc, Option.some(true))
-      assert.deepStrictEqual(rightAssoc, Option.some(true))
+      assertSome(leftAssoc, true)
+      assertSome(rightAssoc, true)
     }))
 
   it.effect("acquireRelease - propagates errors", () =>
@@ -112,7 +111,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(new Cause.RuntimeException("die")))
+      deepStrictEqual(result, Exit.die(new Cause.RuntimeException("die")))
     }))
 
   it.effect("ensuring", () =>
@@ -127,7 +126,7 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* Ref.get(ref)
-      assert.deepStrictEqual(Chunk.toArray(result), ["Acquire", "Use", "Release", "Ensuring"])
+      deepStrictEqual(Chunk.toArray(result), ["Acquire", "Use", "Release", "Ensuring"])
     }))
 
   it.effect("scoped - preserves the failure of an effect", () =>
@@ -136,7 +135,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("fail"))
+      assertLeft(result, "fail")
     }))
 
   it.effect("scoped - preserves the interruptibility of an effect", () =>
@@ -148,8 +147,8 @@ describe("Stream", () => {
       const isInterruptible2 = yield* Effect.uninterruptible(
         Effect.checkInterruptible(Effect.succeed)
       ).pipe(Stream.scoped, Stream.runHead)
-      assert.deepStrictEqual(isInterruptible1, Option.some(true))
-      assert.deepStrictEqual(isInterruptible2, Option.some(false))
+      assertSome(isInterruptible1, true)
+      assertSome(isInterruptible2, false)
     }))
 
   it.it("unwrapScoped", async () => {
@@ -174,7 +173,7 @@ describe("Stream", () => {
     })
     const result = await Effect.runPromise(program)
     await Effect.runPromise(Deferred.succeed(awaiter, void 0))
-    assert.deepStrictEqual(result, ["acquire outer", "release outer"])
+    deepStrictEqual(result, ["acquire outer", "release outer"])
   })
 
   it.effect("preserves the scope", () =>
@@ -193,7 +192,7 @@ describe("Stream", () => {
       const before = yield* Ref.getAndSet(ref, Array.empty())
       yield* Scope.close(scope, Exit.void)
       const after = yield* Ref.get(ref)
-      assert.deepStrictEqual(before, ["Acquire: 1", "Acquire: 2"])
-      assert.deepStrictEqual(after, ["Release: 2", "Release: 1"])
+      deepStrictEqual(before, ["Acquire: 1", "Acquire: 2"])
+      deepStrictEqual(after, ["Release: 2", "Release: 1"])
     }))
 })

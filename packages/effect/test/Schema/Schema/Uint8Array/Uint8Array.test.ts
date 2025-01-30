@@ -1,6 +1,7 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Uint8Array > Uint8Array", () => {
   const schema = S.Uint8Array
@@ -10,7 +11,7 @@ describe("Uint8Array > Uint8Array", () => {
   })
 
   it("isSchema", () => {
-    expect(S.isSchema(schema)).toEqual(true)
+    assertTrue(S.isSchema(schema))
   })
 
   it("decoding", async () => {

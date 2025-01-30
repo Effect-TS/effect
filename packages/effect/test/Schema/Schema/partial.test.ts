@@ -1,6 +1,7 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("partial", () => {
   it("Struct", async () => {
@@ -64,14 +65,16 @@ describe("partial", () => {
 
   describe("unsupported schemas", () => {
     it("declarations should throw", () => {
-      expect(() => S.partial(S.OptionFromSelf(S.String))).toThrow(
+      throws(
+        () => S.partial(S.OptionFromSelf(S.String)),
         new Error(`Unsupported schema
 schema (Declaration): Option<string>`)
       )
     })
 
     it("refinements should throw", () => {
-      expect(() => S.partial(S.String.pipe(S.minLength(2)))).toThrow(
+      throws(
+        () => S.partial(S.String.pipe(S.minLength(2))),
         new Error(`Unsupported schema
 schema (Refinement): minLength(2)`)
       )
@@ -84,7 +87,8 @@ schema (Refinement): minLength(2)`)
           b: S.propertySignature(S.String).pipe(S.fromKey("c"))
         })
         const schema = S.partial(original)
-        expect(S.format(schema)).toBe(
+        strictEqual(
+          S.format(schema),
           "({ readonly a?: string | undefined; readonly c?: string | undefined } <-> { readonly a?: string | undefined; readonly b?: string | undefined })"
         )
         await Util.assertions.decoding.succeed(schema, {})

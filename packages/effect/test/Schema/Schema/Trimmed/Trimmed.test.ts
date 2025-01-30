@@ -4,7 +4,8 @@ import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Trimmed", () => {
   const schema = S.Trimmed
@@ -14,20 +15,20 @@ describe("Trimmed", () => {
     if (Option.isSome(annotation) && "pattern" in annotation.value && Predicate.isString(annotation.value.pattern)) {
       const regexp = new RegExp(annotation.value.pattern)
       const is = (s: string) => regexp.test(s)
-      expect(is("hello")).toBe(true)
-      expect(is(" hello")).toBe(false)
-      expect(is("hello ")).toBe(false)
-      expect(is(" hello ")).toBe(false)
-      expect(is("h")).toBe(true)
-      expect(is(" a b")).toBe(false)
-      expect(is("a b ")).toBe(false)
-      expect(is("a b")).toBe(true)
-      expect(is("a  b")).toBe(true)
-      expect(is("")).toBe(true)
-      expect(is("\n")).toEqual(false)
-      expect(is("a\nb")).toEqual(true)
-      expect(is("a\nb ")).toEqual(false)
-      expect(is(" a\nb")).toEqual(false)
+      assertTrue(is("hello"))
+      assertFalse(is(" hello"))
+      assertFalse(is("hello "))
+      assertFalse(is(" hello "))
+      assertTrue(is("h"))
+      assertFalse(is(" a b"))
+      assertFalse(is("a b "))
+      assertTrue(is("a b"))
+      assertTrue(is("a  b"))
+      assertTrue(is(""))
+      assertFalse(is("\n"))
+      assertTrue(is("a\nb"))
+      assertFalse(is("a\nb "))
+      assertFalse(is(" a\nb"))
     }
   })
 
@@ -37,16 +38,16 @@ describe("Trimmed", () => {
 
   it("is", () => {
     const is = P.is(schema)
-    expect(is("a")).toEqual(true)
-    expect(is("")).toEqual(true)
-    expect(is("a ")).toEqual(false)
-    expect(is(" a")).toEqual(false)
-    expect(is(" a ")).toEqual(false)
-    expect(is(" ")).toEqual(false)
-    expect(is("\n")).toEqual(false)
-    expect(is("a\nb")).toEqual(true)
-    expect(is("a\nb ")).toEqual(false)
-    expect(is(" a\nb")).toEqual(false)
+    assertTrue(is("a"))
+    assertTrue(is(""))
+    assertFalse(is("a "))
+    assertFalse(is(" a"))
+    assertFalse(is(" a "))
+    assertFalse(is(" "))
+    assertFalse(is("\n"))
+    assertTrue(is("a\nb"))
+    assertFalse(is("a\nb "))
+    assertFalse(is(" a\nb"))
   })
 
   it("decoding", async () => {
@@ -103,7 +104,7 @@ describe("Trimmed", () => {
 
   it("pretty", () => {
     const pretty = Pretty.make(schema)
-    expect(pretty("a")).toEqual(`"a"`)
-    expect(pretty("")).toEqual(`""`)
+    strictEqual(pretty("a"), `"a"`)
+    strictEqual(pretty(""), `""`)
   })
 })

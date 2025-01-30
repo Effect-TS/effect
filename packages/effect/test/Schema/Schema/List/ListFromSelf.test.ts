@@ -3,7 +3,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("ListFromSelf", () => {
   it("test roundtrip consistency", () => {
@@ -49,19 +50,17 @@ describe("ListFromSelf", () => {
   it("is", () => {
     const schema = S.ListFromSelf(S.String)
     const is = P.is(schema)
-    expect(is(List.empty())).toEqual(true)
-    expect(is(List.fromIterable(["a", "b", "c"]))).toEqual(true)
+    assertTrue(is(List.empty()))
+    assertTrue(is(List.fromIterable(["a", "b", "c"])))
 
-    expect(is(List.fromIterable(["a", "b", 1]))).toEqual(false)
-    expect(is({ _id: Symbol.for("effect/Schema/test/FakeList") })).toEqual(false)
+    assertFalse(is(List.fromIterable(["a", "b", 1])))
+    assertFalse(is({ _id: Symbol.for("effect/Schema/test/FakeList") }))
   })
 
   it("pretty", () => {
     const schema = S.ListFromSelf(S.String)
     const pretty = Pretty.make(schema)
-    expect(pretty(List.empty())).toEqual("List()")
-    expect(pretty(List.fromIterable(["a", "b"]))).toEqual(
-      `List("a", "b")`
-    )
+    strictEqual(pretty(List.empty()), "List()")
+    strictEqual(pretty(List.fromIterable(["a", "b"])), `List("a", "b")`)
   })
 })

@@ -8,8 +8,9 @@ import { constFalse, constTrue, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
+import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("andThen", () =>
@@ -24,16 +25,16 @@ describe("Effect", () => {
       const a7 = Effect.andThen(Effect.succeed(0), "ok")
       const a8 = Effect.andThen(Effect.succeed(0), () => Promise.resolve("ok"))
       const a9 = Effect.andThen(Effect.succeed(0), Promise.resolve("ok"))
-      assert.strictEqual(yield* $(a0), 1)
-      assert.strictEqual(yield* $(a1), 1)
-      assert.strictEqual(yield* $(a2), 1)
-      assert.strictEqual(yield* $(a3), 1)
-      assert.strictEqual(yield* $(a4), "ok")
-      assert.strictEqual(yield* $(a5), "ok")
-      assert.strictEqual(yield* $(a6), "ok")
-      assert.strictEqual(yield* $(a7), "ok")
-      assert.strictEqual(yield* $(a8), "ok")
-      assert.strictEqual(yield* $(a9), "ok")
+      strictEqual(yield* $(a0), 1)
+      strictEqual(yield* $(a1), 1)
+      strictEqual(yield* $(a2), 1)
+      strictEqual(yield* $(a3), 1)
+      strictEqual(yield* $(a4), "ok")
+      strictEqual(yield* $(a5), "ok")
+      strictEqual(yield* $(a6), "ok")
+      strictEqual(yield* $(a7), "ok")
+      strictEqual(yield* $(a8), "ok")
+      strictEqual(yield* $(a9), "ok")
     }))
   it.effect("tap", () =>
     Effect.gen(function*() {
@@ -50,27 +51,27 @@ describe("Effect", () => {
       const a10 = Effect.tap(Effect.succeed(0), "ok")
       const a11 = Effect.tap(Effect.succeed(0), () => Promise.resolve("ok"))
       const a12 = Effect.tap(Effect.succeed(0), Promise.resolve("ok"))
-      assert.strictEqual(yield* a0, 0)
-      assert.strictEqual(yield* a1, 0)
-      assert.strictEqual(yield* a2, 0)
-      assert.strictEqual(yield* a3, 0)
-      assert.strictEqual(yield* a4, 0)
-      assert.strictEqual(yield* a5, 0)
-      assert.strictEqual(yield* a6, 0)
-      assert.strictEqual(yield* a7, 0)
-      assert.strictEqual(yield* a8, 0)
-      assert.strictEqual(yield* a9, 0)
-      assert.strictEqual(yield* a10, 0)
-      assert.strictEqual(yield* a11, 0)
-      assert.strictEqual(yield* a12, 0)
+      strictEqual(yield* a0, 0)
+      strictEqual(yield* a1, 0)
+      strictEqual(yield* a2, 0)
+      strictEqual(yield* a3, 0)
+      strictEqual(yield* a4, 0)
+      strictEqual(yield* a5, 0)
+      strictEqual(yield* a6, 0)
+      strictEqual(yield* a7, 0)
+      strictEqual(yield* a8, 0)
+      strictEqual(yield* a9, 0)
+      strictEqual(yield* a10, 0)
+      strictEqual(yield* a11, 0)
+      strictEqual(yield* a12, 0)
     }))
   it.effect("flattens nested effects", () =>
     Effect.gen(function*($) {
       const effect = Effect.succeed(Effect.succeed("test"))
       const flatten1 = yield* $(Effect.flatten(effect))
       const flatten2 = yield* $(Effect.flatten(effect))
-      assert.strictEqual(flatten1, "test")
-      assert.strictEqual(flatten2, "test")
+      strictEqual(flatten1, "test")
+      strictEqual(flatten2, "test")
     }))
   it.effect("if - runs `onTrue` if result of `b` is `true`", () =>
     Effect.gen(function*($) {
@@ -81,7 +82,7 @@ describe("Effect", () => {
           onFalse: () => Effect.succeed(false)
         })
       )
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("if - runs `onFalse` if result of `b` is `false`", () =>
     Effect.gen(function*($) {
@@ -92,7 +93,7 @@ describe("Effect", () => {
           onTrue: () => Effect.succeed(false)
         })
       )
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   describe("", () => {
     it.effect("tapErrorCause - effectually peeks at the cause of the failure of this effect", () =>
@@ -102,8 +103,8 @@ describe("Effect", () => {
           pipe(Effect.dieMessage("die"), Effect.tapErrorCause(() => Ref.set(ref, true)), Effect.exit)
         )
         const effect = yield* $(Ref.get(ref))
-        assert.isTrue(Exit.isFailure(result) && Option.isSome(Cause.dieOption(result.effect_instruction_i0)))
-        assert.isTrue(effect)
+        assertTrue(Exit.isFailure(result) && Option.isSome(Cause.dieOption(result.effect_instruction_i0)))
+        assertTrue(effect)
       }))
   })
   it.effect("tapDefect - effectually peeks at defects", () =>
@@ -115,8 +116,8 @@ describe("Effect", () => {
         Effect.exit
       )
       const effect = yield* $(Ref.get(ref))
-      assert.isTrue(Exit.isFailure(result) && Option.isSome(Cause.dieOption(result.effect_instruction_i0)))
-      assert.isTrue(effect)
+      assertTrue(Exit.isFailure(result) && Option.isSome(Cause.dieOption(result.effect_instruction_i0)))
+      assertTrue(effect)
     }))
   it.effect("tapDefect - leaves failures", () =>
     Effect.gen(function*($) {
@@ -127,8 +128,8 @@ describe("Effect", () => {
         Effect.exit
       )
       const effect = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(result, Exit.fail("fail"))
-      assert.isFalse(effect)
+      deepStrictEqual(result, Exit.fail("fail"))
+      assertFalse(effect)
     }))
   it.effect("unless - executes correct branch only", () =>
     Effect.gen(function*($) {
@@ -140,9 +141,9 @@ describe("Effect", () => {
       const failure = new Error("expected")
       yield* $(Effect.fail(failure), Effect.unless(constTrue))
       const failed = yield* $(Effect.fail(failure), Effect.unless(constFalse), Effect.either)
-      assert.strictEqual(v1, 0)
-      assert.strictEqual(v2, 2)
-      assert.deepStrictEqual(failed, Either.left(failure))
+      strictEqual(v1, 0)
+      strictEqual(v2, 2)
+      assertLeft(failed, failure)
     }))
   it.effect("unlessEffect - executes condition effect and correct branch", () =>
     Effect.gen(function*($) {
@@ -159,11 +160,11 @@ describe("Effect", () => {
       const failure = new Error("expected")
       yield* $(Effect.fail(failure), Effect.unlessEffect(conditionTrue))
       const failed = yield* $(Effect.fail(failure), Effect.unlessEffect(conditionFalse), Effect.either)
-      assert.strictEqual(v1, 0)
-      assert.strictEqual(c1, 1)
-      assert.strictEqual(v2, 2)
-      assert.strictEqual(c2, 2)
-      assert.deepStrictEqual(failed, Either.left(failure))
+      strictEqual(v1, 0)
+      strictEqual(c1, 1)
+      strictEqual(v2, 2)
+      strictEqual(c2, 2)
+      assertLeft(failed, failure)
     }))
   it.effect("when - executes correct branch only", () =>
     Effect.gen(function*($) {
@@ -175,9 +176,9 @@ describe("Effect", () => {
       const failure = new Error("expected")
       yield* $(Effect.fail(failure), Effect.when(constFalse))
       const failed = yield* $(Effect.fail(failure), Effect.when(constTrue), Effect.either)
-      assert.strictEqual(v1, 0)
-      assert.strictEqual(v2, 2)
-      assert.deepStrictEqual(failed, Either.left(failure))
+      strictEqual(v1, 0)
+      strictEqual(v2, 2)
+      assertLeft(failed, failure)
     }))
   it.effect("whenEffect - executes condition effect and correct branch", () =>
     Effect.gen(function*($) {
@@ -194,11 +195,11 @@ describe("Effect", () => {
       const failure = new Error("expected")
       yield* $(Effect.fail(failure), Effect.whenEffect(conditionFalse))
       const failed = yield* $(Effect.fail(failure), Effect.whenEffect(conditionTrue), Effect.either)
-      assert.strictEqual(v1, 0)
-      assert.strictEqual(c1, 1)
-      assert.strictEqual(v2, 2)
-      assert.strictEqual(c2, 2)
-      assert.deepStrictEqual(failed, Either.left(failure))
+      strictEqual(v1, 0)
+      strictEqual(c1, 1)
+      strictEqual(v2, 2)
+      strictEqual(c2, 2)
+      assertLeft(failed, failure)
     }))
   it.effect("zip/parallel - combines results", () =>
     Effect.gen(function*($) {
@@ -208,7 +209,7 @@ describe("Effect", () => {
         Effect.flatMap((tuple) => Effect.succeed(tuple[0] + tuple[1])),
         Effect.map((n) => n === 3)
       )
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("zip/parallel - does not swallow exit causes of loser", () =>
     Effect.gen(function*($) {
@@ -222,7 +223,7 @@ describe("Effect", () => {
           )
         )
       )
-      assert.isAbove(HashSet.size(result), 0)
+      assertTrue(HashSet.size(result) > 0)
     }))
   it.effect("zip/parallel - does not report failure when interrupting loser after it succeeded", () =>
     Effect.gen(function*($) {
@@ -235,7 +236,7 @@ describe("Effect", () => {
           Effect.map(Either.mapLeft(Cause.isInterrupted))
         )
       )
-      assert.deepStrictEqual(result, Either.left(true))
+      assertLeft(result, true)
     }))
   it.effect("zip/parallel - paralellizes simple success values", () =>
     Effect.gen(function*($) {
@@ -249,7 +250,7 @@ describe("Effect", () => {
           )
       }
       const result = yield* $(countdown(50))
-      assert.strictEqual(result, 150)
+      strictEqual(result, 150)
     }))
   it.effect("zip/parallel - does not kill fiber when forked on parent scope", () =>
     Effect.gen(function*($) {
@@ -277,8 +278,8 @@ describe("Effect", () => {
       const rightResult = result[1]
       const leftResult = yield* $(Fiber.await(leftInnerFiber))
       const interrupted = yield* $(Ref.get(ref))
-      assert.isFalse(interrupted)
-      assert.deepStrictEqual(leftResult, Exit.succeed("foo"))
-      assert.strictEqual(rightResult, 42)
+      assertFalse(interrupted)
+      deepStrictEqual(leftResult, Exit.succeed("foo"))
+      strictEqual(rightResult, 42)
     }))
 })

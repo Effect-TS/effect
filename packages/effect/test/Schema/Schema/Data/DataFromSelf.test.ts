@@ -3,7 +3,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("DataFromSelf", () => {
   it("test roundtrip consistency", () => {
@@ -45,14 +46,14 @@ describe("DataFromSelf", () => {
   it("is", () => {
     const schema = S.DataFromSelf(S.Struct({ a: S.String, b: S.Number }))
     const is = P.is(schema)
-    expect(is(Data.struct({ a: "ok", b: 0 }))).toEqual(true)
-    expect(is({ a: "ok", b: 0 })).toEqual(false)
-    expect(is(Data.struct({ a: "ok", b: "no" }))).toEqual(false)
+    assertTrue(is(Data.struct({ a: "ok", b: 0 })))
+    assertFalse(is({ a: "ok", b: 0 }))
+    assertFalse(is(Data.struct({ a: "ok", b: "no" })))
   })
 
   it("pretty", () => {
     const schema = S.DataFromSelf(S.Struct({ a: S.String, b: S.Number }))
     const pretty = Pretty.make(schema)
-    expect(pretty(Data.struct({ a: "ok", b: 0 }))).toEqual(`Data({ "a": "ok", "b": 0 })`)
+    strictEqual(pretty(Data.struct({ a: "ok", b: 0 })), `Data({ "a": "ok", "b": 0 })`)
   })
 })

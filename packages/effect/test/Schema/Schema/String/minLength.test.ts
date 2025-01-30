@@ -2,7 +2,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("minLength", () => {
   it("test roundtrip consistency", () => {
@@ -11,9 +12,9 @@ describe("minLength", () => {
 
   it("is", () => {
     const is = P.is(S.minLength(1)(S.String))
-    expect(is("")).toEqual(false)
-    expect(is("a")).toEqual(true)
-    expect(is("aa")).toEqual(true)
+    assertFalse(is(""))
+    assertTrue(is("a"))
+    assertTrue(is("aa"))
   })
 
   it("decoding", async () => {
@@ -31,6 +32,6 @@ describe("minLength", () => {
 
   it("pretty", () => {
     const pretty = Pretty.make(S.minLength(0)(S.String))
-    expect(pretty("a")).toEqual(`"a"`)
+    strictEqual(pretty("a"), `"a"`)
   })
 })

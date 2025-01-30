@@ -1,7 +1,8 @@
 import { Effect, Either } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("DecodingFallbackAnnotation", () => {
   it("using Either", async () => {
@@ -27,7 +28,7 @@ describe("DecodingFallbackAnnotation", () => {
       null,
       "<fallback value>"
     )
-    expect(log).toEqual([null])
+    deepStrictEqual(log, [null])
   })
 
   it("using an async Effect", async () => {
@@ -45,10 +46,11 @@ describe("DecodingFallbackAnnotation", () => {
       null,
       "<fallback value>"
     )
-    expect(log).toEqual([null])
-    expect(() => S.decodeUnknownSync(schema)(null)).toThrowError(
-      new Error(`string
-└─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`)
+    deepStrictEqual(log, [null])
+    Util.assertParseError(
+      () => S.decodeUnknownSync(schema)(null),
+      `string
+└─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
     )
   })
 

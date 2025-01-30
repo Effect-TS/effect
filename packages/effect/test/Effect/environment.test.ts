@@ -2,8 +2,9 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe, expect } from "vitest"
+import { describe } from "vitest"
 
 interface NumberService {
   readonly n: number
@@ -55,7 +56,7 @@ describe("Effect", () => {
         Effect.provide(runtime),
         Effect.provideService(NumberService, { n: 1 })
       )
-      expect(env).toStrictEqual({ n: 1 })
+      deepStrictEqual(env, { n: 1 })
     }))
   describe("and Then", () => {
     it.effect("effect tag", () =>
@@ -65,9 +66,9 @@ describe("Effect", () => {
           Effect.andThen(Effect.succeed("a"), DemoTag.strings),
           Effect.andThen(Effect.succeed("a"), DemoTag.fn)
         ]))
-        expect(n).toEqual([0, 1])
-        expect(s).toEqual(["a", "b"])
-        expect(z).toEqual(["a"])
+        deepStrictEqual(n, [0, 1])
+        deepStrictEqual(s, ["a", "b"])
+        deepStrictEqual(z, ["a"])
       }).pipe(Effect.provideService(DemoTag, {
         getNumbers: () => [0, 1],
         strings: ["a", "b"],
@@ -86,12 +87,12 @@ describe("Effect", () => {
       ]))
       const s2 = yield* $(DemoTag.pipe(Effect.map((_) => _.strings)))
       const s3 = yield* $(DemoTag.use((_) => _.fnGen("hello")))
-      expect(n).toEqual([0, 1])
-      expect(s).toEqual(["a", "b"])
-      expect(z).toEqual(["a", "b", "c"])
-      expect(zUnion).toEqual([1])
-      expect(s2).toEqual(["a", "b"])
-      expect(s3).toEqual(["hello"])
+      deepStrictEqual(n, [0, 1])
+      deepStrictEqual(s, ["a", "b"])
+      deepStrictEqual(z, ["a", "b", "c"])
+      deepStrictEqual(zUnion, [1])
+      deepStrictEqual(s2, ["a", "b"])
+      deepStrictEqual(s3, ["hello"])
     }).pipe(Effect.provideService(DemoTag, {
       getNumbers: () => [0, 1],
       strings: ["a", "b"],
@@ -101,12 +102,12 @@ describe("Effect", () => {
     })))
   it.effect("effect tag with primitives", () =>
     Effect.gen(function*($) {
-      expect(yield* $(DateTag.getTime())).toEqual(DateTag.date.getTime())
-      expect(yield* $(NumberTag)).toEqual(100)
-      expect(Array.from(yield* $(MapTag.keys()))).toEqual([])
+      strictEqual(yield* $(DateTag.getTime()), DateTag.date.getTime())
+      strictEqual(yield* $(NumberTag), 100)
+      deepStrictEqual(Array.from(yield* $(MapTag.keys())), [])
       yield* $(MapTag.set("foo", "bar"))
-      expect(Array.from(yield* $(MapTag.keys()))).toEqual(["foo"])
-      expect(yield* $(MapTag.get("foo"))).toEqual("bar")
+      deepStrictEqual(Array.from(yield* $(MapTag.keys())), ["foo"])
+      strictEqual(yield* $(MapTag.get("foo")), "bar")
     }).pipe(
       Effect.provide(Layer.mergeAll(
         DateTag.Live,
@@ -133,9 +134,9 @@ describe("Effect", () => {
           )
         )
         const v3 = yield* $(NumberService)
-        assert.strictEqual(v1.n, 4)
-        assert.strictEqual(v2.n, 2)
-        assert.strictEqual(v3.n, 4)
+        strictEqual(v1.n, 4)
+        strictEqual(v2.n, 2)
+        strictEqual(v3.n, 4)
       }),
       Effect.provide(Context.make(NumberService, { n: 4 }))
     ))
@@ -144,8 +145,8 @@ describe("Effect", () => {
       Effect.gen(function*($) {
         const v1 = yield* $(NumberService)
         const v2 = yield* $(StringService)
-        assert.strictEqual(v1.n, 1)
-        assert.strictEqual(v2.s, "ok")
+        strictEqual(v1.n, 1)
+        strictEqual(v2.s, "ok")
       }),
       Effect.provide(Context.make(NumberService, { n: 1 })),
       Effect.provide(Context.make(NumberService, { n: 2 })),
@@ -157,7 +158,7 @@ describe("Effect", () => {
         Effect.async<number, never, NumberService>((cb) => cb(Effect.map(NumberService, ({ n }) => n))),
         Effect.provide(Context.make(NumberService, { n: 10 }))
       )
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
   it.effect("serviceWith - effectfully accesses a service in the environment", () =>
     Effect.gen(function*($) {
@@ -165,7 +166,7 @@ describe("Effect", () => {
         Effect.flatMap(NumberService, ({ n }) => Effect.succeed(n + 3)),
         Effect.provide(Context.make(NumberService, { n: 0 }))
       )
-      assert.strictEqual(result, 3)
+      strictEqual(result, 3)
     }))
   // TODO: remove
   // it.effect("serviceWith - traced tag", () =>
@@ -174,15 +175,15 @@ describe("Effect", () => {
   //       Effect.flatMap(NumberService.traced(sourceLocation(new Error())), ({ n }) => Effect.succeed(n + 3)),
   //       Effect.provide(Context.make(NumberService, { n: 0 }))
   //     )
-  //     assert.strictEqual(result, 3)
+  //     strictEqual(result, 3)
   //   }))
   it.effect("updateService - updates a service in the environment", () =>
     pipe(
       Effect.gen(function*($) {
         const a = yield* $(NumberService, Effect.updateService(NumberService, ({ n }) => ({ n: n + 1 })))
         const b = yield* $(NumberService)
-        assert.strictEqual(a.n, 1)
-        assert.strictEqual(b.n, 0)
+        strictEqual(a.n, 1)
+        strictEqual(b.n, 0)
       }),
       Effect.provide(pipe(Context.make(NumberService, { n: 0 })))
     ))
@@ -195,7 +196,7 @@ describe("Effect", () => {
     const { foo } = Effect.serviceFunctions(Service)
     return pipe(
       Effect.gen(function*(_) {
-        expect(yield* _(foo("a", 3))).toEqual("a3")
+        strictEqual(yield* _(foo("a", 3)), "a3")
       }),
       Effect.provideService(
         Service,
@@ -214,7 +215,7 @@ describe("Effect", () => {
     const { baz } = Effect.serviceConstants(Service)
     return pipe(
       Effect.gen(function*(_) {
-        expect(yield* _(baz)).toEqual("42!")
+        strictEqual(yield* _(baz), "42!")
       }),
       Effect.provideService(
         Service,
@@ -234,8 +235,8 @@ describe("Effect", () => {
     const { constants, functions } = Effect.serviceMembers(Service)
     return pipe(
       Effect.gen(function*(_) {
-        expect(yield* _(constants.baz)).toEqual("42!")
-        expect(yield* _(functions.foo("a", 3))).toEqual("a3")
+        strictEqual(yield* _(constants.baz), "42!")
+        strictEqual(yield* _(functions.foo("a", 3)), "a3")
       }),
       Effect.provideService(
         Service,

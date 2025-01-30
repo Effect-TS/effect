@@ -1,19 +1,22 @@
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Config from "effect/Config"
-import * as ConfigError from "effect/ConfigError"
-import * as ConfigProvider from "effect/ConfigProvider"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Equal from "effect/Equal"
-import * as Exit from "effect/Exit"
-import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
-import * as LogLevel from "effect/LogLevel"
-import * as Option from "effect/Option"
-import * as Secret from "effect/Secret"
+import {
+  Cause,
+  Chunk,
+  Config,
+  ConfigError,
+  ConfigProvider,
+  Effect,
+  Either,
+  Equal,
+  Exit,
+  HashMap,
+  HashSet,
+  LogLevel,
+  Option,
+  Secret
+} from "effect"
+import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe, expect } from "vitest"
+import { describe } from "vitest"
 
 interface HostPort {
   readonly host: string
@@ -89,24 +92,24 @@ const provider = (map: Map<string, string>): ConfigProvider.ConfigProvider => {
 
 describe("ConfigProvider", () => {
   it.effect("flat atoms", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([["host", "localhost"], ["port", "8080"]])
-      const result = yield* $(provider(map).load(hostPortConfig))
-      assert.deepStrictEqual(result, {
+      const result = yield* provider(map).load(hostPortConfig)
+      deepStrictEqual(result, {
         host: "localhost",
         port: 8080
       })
     }))
 
   it.effect("nested atoms", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([
         ["hostPort.host", "localhost"],
         ["hostPort.port", "8080"],
         ["timeout", "1000"]
       ])
-      const result = yield* $(provider(map).load(serviceConfigConfig))
-      assert.deepStrictEqual(result, {
+      const result = yield* provider(map).load(serviceConfigConfig)
+      deepStrictEqual(result, {
         hostPort: {
           host: "localhost",
           port: 8080
@@ -116,32 +119,32 @@ describe("ConfigProvider", () => {
     }))
 
   it.effect("top-level list with same number of elements per key", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([
         ["hostPorts.host", "localhost,localhost,localhost"],
         ["hostPorts.port", "8080,8080,8080"]
       ])
-      const result = yield* $(provider(map).load(hostPortsConfig))
-      assert.deepStrictEqual(result, {
+      const result = yield* provider(map).load(hostPortsConfig)
+      deepStrictEqual(result, {
         hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
       })
     }))
 
   it.effect("top-level missing list", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map()
-      const result = yield* $(Effect.exit(provider(map).load(hostPortsConfig)))
-      assert.isTrue(Exit.isFailure(result))
+      const result = yield* Effect.exit(provider(map).load(hostPortsConfig))
+      assertTrue(Exit.isFailure(result))
     }))
 
   it.effect("simple map", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([
         ["name", "Sherlock Holmes"],
         ["address", "221B Baker Street"]
       ])
-      const result = yield* $(provider(map).load(Config.hashMap(Config.string())))
-      assert.deepStrictEqual(
+      const result = yield* provider(map).load(Config.hashMap(Config.string()))
+      deepStrictEqual(
         result,
         HashMap.make(
           ["name", "Sherlock Holmes"],
@@ -151,49 +154,49 @@ describe("ConfigProvider", () => {
     }))
 
   it.effect("top-level lists with multi-character sequence delimiters", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([
         ["hostPorts.host", "localhost///localhost///localhost"],
         ["hostPorts.port", "8080///8080///8080"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map, { seqDelim: "///" }).load(hostPortsConfig))
-      assert.deepStrictEqual(result, {
+      const result = yield* ConfigProvider.fromMap(map, { seqDelim: "///" }).load(hostPortsConfig)
+      deepStrictEqual(result, {
         hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
       })
     }))
 
   it.effect("top-level lists with special regex multi-character sequence delimiter", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([
         ["hostPorts.host", "localhost|||localhost|||localhost"],
         ["hostPorts.port", "8080|||8080|||8080"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map, { seqDelim: "|||" }).load(hostPortsConfig))
-      assert.deepStrictEqual(result, {
+      const result = yield* ConfigProvider.fromMap(map, { seqDelim: "|||" }).load(hostPortsConfig)
+      deepStrictEqual(result, {
         hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
       })
     }))
 
   it.effect("top-level lists with special regex character sequence delimiter", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([
         ["hostPorts.host", "localhost*localhost*localhost"],
         ["hostPorts.port", "8080*8080*8080"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map, { seqDelim: "*" }).load(hostPortsConfig))
-      assert.deepStrictEqual(result, {
+      const result = yield* ConfigProvider.fromMap(map, { seqDelim: "*" }).load(hostPortsConfig)
+      deepStrictEqual(result, {
         hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
       })
     }))
 
   it.effect("top-level list with different number of elements per key fails", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([
         ["hostPorts.host", "localhost"],
         ["hostPorts.port", "8080,8080,8080"]
       ])
-      const result = yield* $(Effect.exit(provider(map).load(hostPortsConfig)))
-      assert.deepStrictEqual(
+      const result = yield* Effect.exit(provider(map).load(hostPortsConfig))
+      deepStrictEqual(
         result,
         Exit.fail(
           ConfigError.MissingData(
@@ -205,7 +208,7 @@ describe("ConfigProvider", () => {
     }))
 
   it.effect("flat atoms of different types", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([
         ["date", "2022-10-28"],
         ["open", "98.8"],
@@ -214,8 +217,8 @@ describe("ConfigProvider", () => {
         ["high", "151.5"],
         ["volume", "100091990"]
       ])
-      const result = yield* $(provider(map).load(stockDayConfig))
-      assert.deepStrictEqual(result, {
+      const result = yield* provider(map).load(stockDayConfig)
+      deepStrictEqual(result, {
         date: new Date("2022-10-28"),
         open: 98.8,
         close: 150.0,
@@ -226,7 +229,7 @@ describe("ConfigProvider", () => {
     }))
 
   it.effect("tables", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([
         ["Effect.date", "2022-10-28"],
         ["Effect.open", "98.8"],
@@ -235,8 +238,8 @@ describe("ConfigProvider", () => {
         ["Effect.high", "151.5"],
         ["Effect.volume", "100091990"]
       ])
-      const result = yield* $(provider(map).load(snp500Config))
-      assert.deepStrictEqual(result, {
+      const result = yield* provider(map).load(snp500Config)
+      deepStrictEqual(result, {
         stockDays: HashMap.make([
           "Effect",
           {
@@ -252,57 +255,57 @@ describe("ConfigProvider", () => {
     }))
 
   it.effect("empty tables", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(provider(new Map()).load(snp500Config))
-      assert.deepStrictEqual(result, { stockDays: HashMap.empty() })
+    Effect.gen(function*() {
+      const result = yield* provider(new Map()).load(snp500Config)
+      deepStrictEqual(result, { stockDays: HashMap.empty() })
     }))
 
   it.effect("collection of atoms", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([
         ["targets", "https://effect.website,https://github.com/Effect-TS"]
       ])
-      const result = yield* $(provider(map).load(webScrapingTargetsConfig))
-      assert.deepStrictEqual(result, {
+      const result = yield* provider(map).load(webScrapingTargetsConfig)
+      deepStrictEqual(result, {
         targets: HashSet.make("https://effect.website", "https://github.com/Effect-TS")
       })
     }))
 
   it.effect("collection of atoms falls back to default", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map()
-      const result = yield* $(provider(map).load(webScrapingTargetsConfigWithDefault))
-      assert.deepStrictEqual(result, {
+      const result = yield* provider(map).load(webScrapingTargetsConfigWithDefault)
+      deepStrictEqual(result, {
         targets: Chunk.make("https://effect.website2", "https://github.com/Effect-TS2")
       })
     }))
 
   it.effect("indexed - simple", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const config = Config.array(Config.integer(), "id")
       const map = new Map([
         ["id[0]", "1"],
         ["id[1]", "2"],
         ["id[2]", "3"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map).load(config))
-      expect(result).toEqual([1, 2, 3])
+      const result = yield* ConfigProvider.fromMap(map).load(config)
+      deepStrictEqual(result, [1, 2, 3])
     }))
 
   it.effect("indexed sequence - simple with list values", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const config = Config.array(Config.array(Config.integer()), "id")
       const map = new Map([
         ["id[0]", "1, 2"],
         ["id[1]", "3, 4"],
         ["id[2]", "5, 6"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map).load(config))
-      expect(result).toEqual([[1, 2], [3, 4], [5, 6]])
+      const result = yield* ConfigProvider.fromMap(map).load(config)
+      deepStrictEqual(result, [[1, 2], [3, 4], [5, 6]])
     }))
 
   it.effect("indexed sequence - one product type", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const config = Config.array(
         Config.all({
           age: Config.integer("age"),
@@ -314,12 +317,12 @@ describe("ConfigProvider", () => {
         ["employees[0].age", "1"],
         ["employees[0].id", "1"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map).load(config))
-      expect(result).toEqual([{ age: 1, id: 1 }])
+      const result = yield* ConfigProvider.fromMap(map).load(config)
+      deepStrictEqual(result, [{ age: 1, id: 1 }])
     }))
 
   it.effect("indexed sequence - multiple product types", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const config = Config.array(
         Config.all({
           age: Config.integer("age"),
@@ -333,12 +336,12 @@ describe("ConfigProvider", () => {
         ["employees[1].age", "3"],
         ["employees[1].id", "4"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map).load(config))
-      expect(result).toEqual([{ age: 1, id: 2 }, { age: 3, id: 4 }])
+      const result = yield* ConfigProvider.fromMap(map).load(config)
+      deepStrictEqual(result, [{ age: 1, id: 2 }, { age: 3, id: 4 }])
     }))
 
   it.effect("indexed sequence - multiple product types with missing fields", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const config = Config.array(
         Config.all({
           age: Config.integer("age"),
@@ -352,10 +355,8 @@ describe("ConfigProvider", () => {
         ["employees[1].age", "3"],
         ["employees[1]", "4"]
       ])
-      const result = yield* $(
-        Effect.exit(ConfigProvider.fromMap(map).load(config))
-      )
-      assert.isTrue(
+      const result = yield* Effect.exit(ConfigProvider.fromMap(map).load(config))
+      assertTrue(
         Exit.isFailure(result) &&
           Cause.isFailType(result.effect_instruction_i0) &&
           ConfigError.isMissingData(result.effect_instruction_i0.error) &&
@@ -369,7 +370,7 @@ describe("ConfigProvider", () => {
     }))
 
   it.effect("indexed sequence - multiple product types with optional fields", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const config = Config.array(
         Config.all({
           age: Config.option(Config.integer("age")),
@@ -382,12 +383,12 @@ describe("ConfigProvider", () => {
         ["employees[0].id", "2"],
         ["employees[1].id", "4"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map).load(config))
-      expect(result).toEqual([{ age: Option.some(1), id: 2 }, { age: Option.none(), id: 4 }])
+      const result = yield* ConfigProvider.fromMap(map).load(config)
+      deepStrictEqual(result, [{ age: Option.some(1), id: 2 }, { age: Option.none(), id: 4 }])
     }))
 
   it.effect("indexed sequence - multiple product types with sequence fields", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const config = Config.array(
         Config.all({
           refunds: Config.array(Config.integer(), "refunds"),
@@ -401,12 +402,12 @@ describe("ConfigProvider", () => {
         ["employees[1].id", "1"],
         ["employees[1].refunds", "4,5,6"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map).load(config))
-      expect(result).toEqual([{ refunds: [1, 2, 3], id: 0 }, { refunds: [4, 5, 6], id: 1 }])
+      const result = yield* ConfigProvider.fromMap(map).load(config)
+      deepStrictEqual(result, [{ refunds: [1, 2, 3], id: 0 }, { refunds: [4, 5, 6], id: 1 }])
     }))
 
   it.effect("indexed sequence - product type of indexed sequences with reusable config", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const idAndAge = Config.all({
         id: Config.integer("id"),
         age: Config.integer("age")
@@ -425,15 +426,15 @@ describe("ConfigProvider", () => {
         ["students[0].age", "2"],
         ["students[1].age", "3"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map).load(config))
-      expect(result).toEqual({
+      const result = yield* ConfigProvider.fromMap(map).load(config)
+      deepStrictEqual(result, {
         employees: [{ id: 0, age: 10 }, { id: 1, age: 11 }],
         students: [{ id: 20, age: 2 }, { id: 30, age: 3 }]
       })
     }))
 
   it.effect("indexed sequence - map of indexed sequences", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const employee = Config.all({
         age: Config.integer("age"),
         id: Config.integer("id")
@@ -449,16 +450,16 @@ describe("ConfigProvider", () => {
         ["departments.department2.employees[1].age", "20"],
         ["departments.department2.employees[1].id", "1"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map).load(config))
+      const result = yield* ConfigProvider.fromMap(map).load(config)
       const expectedEmployees = [{ age: 10, id: 0 }, { age: 20, id: 1 }]
-      expect(Array.from(result)).toEqual([
+      deepStrictEqual(Array.from(result), [
         ["department1", expectedEmployees],
         ["department2", expectedEmployees]
       ])
     }))
 
   it.effect("indexed sequence - map", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const employee = Config.hashMap(Config.integer(), "details")
       const config = Config.array(employee, "employees")
       const map = new Map([
@@ -467,15 +468,15 @@ describe("ConfigProvider", () => {
         ["employees[1].details.age", "20"],
         ["employees[1].details.id", "1"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map).load(config))
-      expect(result.map((table) => Array.from(table))).toEqual([
+      const result = yield* ConfigProvider.fromMap(map).load(config)
+      deepStrictEqual(result.map((table) => Array.from(table)), [
         [["age", 10], ["id", 0]],
         [["age", 20], ["id", 1]]
       ])
     }))
 
   it.effect("indexed sequence - indexed sequences", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const employee = Config.all({
         age: Config.integer("age"),
         id: Config.integer("id")
@@ -492,13 +493,13 @@ describe("ConfigProvider", () => {
         ["departments[1].employees[1].age", "20"],
         ["departments[1].employees[1].id", "1"]
       ])
-      const result = yield* $(ConfigProvider.fromMap(map).load(config))
+      const result = yield* ConfigProvider.fromMap(map).load(config)
       const expectedEmployees = [{ age: 10, id: 0 }, { age: 20, id: 1 }]
-      expect(result).toEqual([expectedEmployees, expectedEmployees])
+      deepStrictEqual(result, [expectedEmployees, expectedEmployees])
     }))
 
   it.effect("indexed sequence - multiple product types nested", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const employee = Config.all({
         age: Config.integer("age"),
         id: Config.integer("id")
@@ -514,12 +515,12 @@ describe("ConfigProvider", () => {
         ConfigProvider.nested("child"),
         ConfigProvider.nested("parent")
       )
-      const result = yield* $(provider.load(config))
-      expect(result).toEqual([{ age: 1, id: 2 }, { age: 3, id: 4 }])
+      const result = yield* provider.load(config)
+      deepStrictEqual(result, [{ age: 1, id: 2 }, { age: 3, id: 4 }])
     }))
 
   it.effect("indexed sequence - multiple product types unnested", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const employee = Config.all({
         age: Config.integer("age"),
         id: Config.integer("id")
@@ -538,28 +539,28 @@ describe("ConfigProvider", () => {
         ConfigProvider.unnested("parent"),
         ConfigProvider.unnested("child")
       )
-      const result = yield* $(provider.load(config))
-      expect(result).toEqual([{ age: 1, id: 2 }, { age: 3, id: 4 }])
+      const result = yield* provider.load(config)
+      deepStrictEqual(result, [{ age: 1, id: 2 }, { age: 3, id: 4 }])
     }))
 
   it.effect("logLevel", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const config = Config.logLevel("level")
       const map = new Map([["level", "ERROR"]])
-      const result = yield* $(ConfigProvider.fromMap(map).load(config))
-      expect(result).toEqual(LogLevel.Error)
+      const result = yield* ConfigProvider.fromMap(map).load(config)
+      strictEqual(result, LogLevel.Error)
     }))
 
   it.effect("accessing a non-existent key fails", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const map = new Map([
         ["k1.k3", "v"]
       ])
       const config = Config.string("k2").pipe(
         Config.nested("k1")
       )
-      const result = yield* $(Effect.exit(provider(map).load(config)))
-      assert.deepStrictEqual(
+      const result = yield* Effect.exit(provider(map).load(config))
+      deepStrictEqual(
         result,
         Exit.fail(
           ConfigError.MissingData(
@@ -571,64 +572,64 @@ describe("ConfigProvider", () => {
     }))
 
   it.effect("values are not split unless a sequence is expected", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(new Map([["greeting", "Hello, World!"]]))
-      const result = yield* $(configProvider.load(Config.string("greeting")))
-      assert.strictEqual(result, "Hello, World!")
+      const result = yield* configProvider.load(Config.string("greeting"))
+      strictEqual(result, "Hello, World!")
     }))
 
   it.effect("constantCase", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(new Map([["CONSTANT_CASE", "value"]])).pipe(
         ConfigProvider.constantCase
       )
-      const result = yield* $(configProvider.load(Config.string("constant.case")))
-      assert.strictEqual(result, "value")
+      const result = yield* configProvider.load(Config.string("constant.case"))
+      strictEqual(result, "value")
     }))
 
   it.effect("mapInputPath", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(new Map([["KEY", "VALUE"]])).pipe(
         ConfigProvider.mapInputPath((path) => path.toUpperCase())
       )
-      const result = yield* $(configProvider.load(Config.string("key")))
-      assert.strictEqual(result, "VALUE")
+      const result = yield* configProvider.load(Config.string("key"))
+      strictEqual(result, "VALUE")
     }))
 
   it.effect("kebabCase", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(new Map([["kebab-case", "value"]])).pipe(
         ConfigProvider.kebabCase
       )
-      const result = yield* $(configProvider.load(Config.string("kebabCase")))
-      assert.strictEqual(result, "value")
+      const result = yield* configProvider.load(Config.string("kebabCase"))
+      strictEqual(result, "value")
     }))
 
   it.effect("lowerCase", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(new Map([["lowercase", "value"]])).pipe(
         ConfigProvider.lowerCase
       )
-      const result = yield* $(configProvider.load(Config.string("lowerCase")))
-      assert.strictEqual(result, "value")
+      const result = yield* configProvider.load(Config.string("lowerCase"))
+      strictEqual(result, "value")
     }))
 
   it.effect("nested", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider1 = ConfigProvider.fromMap(new Map([["nested.key", "value"]]))
       const config1 = Config.string("key").pipe(Config.nested("nested"))
       const configProvider2 = ConfigProvider.fromMap(new Map([["nested.key", "value"]])).pipe(
         ConfigProvider.nested("nested")
       )
       const config2 = Config.string("key")
-      const result1 = yield* $(configProvider1.load(config1))
-      const result2 = yield* $(configProvider2.load(config2))
-      assert.strictEqual(result1, "value")
-      assert.strictEqual(result2, "value")
+      const result1 = yield* configProvider1.load(config1)
+      const result2 = yield* configProvider2.load(config2)
+      strictEqual(result1, "value")
+      strictEqual(result2, "value")
     }))
 
   it.effect("nested - multiple layers of nesting", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider1 = ConfigProvider.fromMap(new Map([["parent.child.key", "value"]]))
       const config1 = Config.string("key").pipe(
         Config.nested("child"),
@@ -639,14 +640,14 @@ describe("ConfigProvider", () => {
         ConfigProvider.nested("parent")
       )
       const config2 = Config.string("key")
-      const result1 = yield* $(configProvider1.load(config1))
-      const result2 = yield* $(configProvider2.load(config2))
-      assert.strictEqual(result1, "value")
-      assert.strictEqual(result2, "value")
+      const result1 = yield* configProvider1.load(config1)
+      const result2 = yield* configProvider2.load(config2)
+      strictEqual(result1, "value")
+      strictEqual(result2, "value")
     }))
 
   it.effect("orElse - with flat data", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(
         new Map([
           ["key1", "value1"],
@@ -662,24 +663,27 @@ describe("ConfigProvider", () => {
           )
         )
       )
-      const result1 = yield* $(configProvider.load(Config.string("key1")))
-      const result2 = yield* $(configProvider.load(Config.string("key2")))
-      const result31 = yield* $(configProvider.load(Config.option(Config.string("key3"))))
-      const result32 = yield* $(Effect.either(configProvider.load(Config.string("key3"))))
-      const result4 = yield* $(configProvider.load(Config.string("key4")))
+      const result1 = yield* configProvider.load(Config.string("key1"))
+      const result2 = yield* configProvider.load(Config.string("key2"))
+      const result31 = yield* configProvider.load(Config.option(Config.string("key3")))
+      const result32 = yield* Effect.either(configProvider.load(Config.string("key3")))
+      const result4 = yield* configProvider.load(Config.string("key4"))
 
-      expect(result1).toBe("value1")
-      expect(result2).toBe("value2")
-      expect(result31).toEqual(Option.none())
-      expect(result32).toEqual(Either.left(ConfigError.Or(
-        ConfigError.MissingData(["key3"], "Expected key3 to exist in the provided map"),
-        ConfigError.MissingData(["key3"], "Expected key3 to exist in the provided map")
-      )))
-      expect(result4).toBe("value41")
+      strictEqual(result1, "value1")
+      strictEqual(result2, "value2")
+      assertNone(result31)
+      deepStrictEqual(
+        result32,
+        Either.left(ConfigError.Or(
+          ConfigError.MissingData(["key3"], "Expected key3 to exist in the provided map"),
+          ConfigError.MissingData(["key3"], "Expected key3 to exist in the provided map")
+        ))
+      )
+      strictEqual(result4, "value41")
     }))
 
   it.effect("orElse - with indexed sequences", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(
         new Map([
           ["parent1.child.employees[0].age", "1"],
@@ -707,15 +711,15 @@ describe("ConfigProvider", () => {
       const config1 = arrayConfig.pipe(Config.nested("child"), Config.nested("parent1"))
       const config2 = arrayConfig.pipe(Config.nested("child"), Config.nested("parent2"))
 
-      const result1 = yield* $(configProvider.load(config1))
-      const result2 = yield* $(configProvider.load(config2))
+      const result1 = yield* configProvider.load(config1)
+      const result2 = yield* configProvider.load(config2)
 
-      expect(result1).toEqual([[1, 2], [3, 4], [5, 6]])
-      expect(result2).toEqual([[11, 21], [31, 41]])
+      deepStrictEqual(result1, [[1, 2], [3, 4], [5, 6]])
+      deepStrictEqual(result2, [[11, 21], [31, 41]])
     }))
 
   it.effect("orElse - with indexed sequences and each provider unnested", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(
         new Map([
           ["employees[0].age", "1"],
@@ -747,26 +751,29 @@ describe("ConfigProvider", () => {
       const config2 = arrayConfig.pipe(Config.nested("child"), Config.nested("parent2"))
       const config3 = arrayConfig.pipe(Config.nested("child"), Config.nested("parent3"))
 
-      const result1 = yield* _(configProvider.load(config1))
-      const result2 = yield* _(configProvider.load(config2))
-      const result3 = yield* _(Effect.either(configProvider.load(config3)))
+      const result1 = yield* configProvider.load(config1)
+      const result2 = yield* configProvider.load(config2)
+      const result3 = yield* Effect.either(configProvider.load(config3))
 
-      expect(result1).toEqual([[1, 2], [3, 4]])
-      expect(result2).toEqual([[11, 21], [31, 41]])
-      expect(result3).toEqual(Either.left(ConfigError.And(
-        ConfigError.MissingData(
-          ["parent3", "child", "employees"],
-          "Expected parent1 to be in path in ConfigProvider#unnested"
-        ),
-        ConfigError.MissingData(
-          ["parent3", "child", "employees"],
-          "Expected parent2 to be in path in ConfigProvider#unnested"
-        )
-      )))
+      deepStrictEqual(result1, [[1, 2], [3, 4]])
+      deepStrictEqual(result2, [[11, 21], [31, 41]])
+      deepStrictEqual(
+        result3,
+        Either.left(ConfigError.And(
+          ConfigError.MissingData(
+            ["parent3", "child", "employees"],
+            "Expected parent1 to be in path in ConfigProvider#unnested"
+          ),
+          ConfigError.MissingData(
+            ["parent3", "child", "employees"],
+            "Expected parent2 to be in path in ConfigProvider#unnested"
+          )
+        ))
+      )
     }))
 
   it.effect("orElse - with index sequences and combined provider unnested", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(
         new Map([
           ["employees[0].age", "1"],
@@ -789,44 +796,44 @@ describe("ConfigProvider", () => {
       const arrayConfig = Config.array(product, "employees")
       const config = arrayConfig.pipe(Config.nested("child"), Config.nested("parent1"))
 
-      const result = yield* _(configProvider.load(config))
+      const result = yield* configProvider.load(config)
 
-      expect(result).toEqual([[1, 2], [3, 4]])
+      deepStrictEqual(result, [[1, 2], [3, 4]])
     }))
 
   it.effect("secret", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const value = "Hello, World!"
       const configProvider = ConfigProvider.fromMap(new Map([["greeting", value]]))
-      const result = yield* $(configProvider.load(Config.secret("greeting")))
-      assert.deepStrictEqual(result, Secret.make(value.split("").map((c) => c.charCodeAt(0))))
+      const result = yield* configProvider.load(Config.secret("greeting"))
+      deepStrictEqual(result, Secret.make(value.split("").map((c) => c.charCodeAt(0))))
     }))
 
   it.effect("snakeCase", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(new Map([["snake_case", "value"]])).pipe(
         ConfigProvider.snakeCase
       )
-      const result = yield* $(configProvider.load(Config.string("snakeCase")))
-      assert.strictEqual(result, "value")
+      const result = yield* configProvider.load(Config.string("snakeCase"))
+      strictEqual(result, "value")
     }))
 
   it.effect("unnested", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider1 = ConfigProvider.fromMap(new Map([["key", "value"]]))
       const config1 = Config.string("key")
       const configProvider2 = ConfigProvider.fromMap(new Map([["key", "value"]])).pipe(
         ConfigProvider.unnested("nested")
       )
       const config2 = Config.string("key").pipe(Config.nested("nested"))
-      const result1 = yield* $(configProvider1.load(config1))
-      const result2 = yield* $(configProvider2.load(config2))
-      assert.strictEqual(result1, "value")
-      assert.strictEqual(result2, "value")
+      const result1 = yield* configProvider1.load(config1)
+      const result2 = yield* configProvider2.load(config2)
+      strictEqual(result1, "value")
+      strictEqual(result2, "value")
     }))
 
   it.effect("unnested - multiple layers of nesting", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider1 = ConfigProvider.fromMap(new Map([["key", "value"]]))
       const config1 = Config.string("key")
       const configProvider2 = ConfigProvider.fromMap(new Map([["key", "value"]])).pipe(
@@ -837,37 +844,37 @@ describe("ConfigProvider", () => {
         Config.nested("child"),
         Config.nested("parent")
       )
-      const result1 = yield* $(configProvider1.load(config1))
-      const result2 = yield* $(configProvider2.load(config2))
-      assert.strictEqual(result1, "value")
-      assert.strictEqual(result2, "value")
+      const result1 = yield* configProvider1.load(config1)
+      const result2 = yield* configProvider2.load(config2)
+      strictEqual(result1, "value")
+      strictEqual(result2, "value")
     }))
 
   it.effect("unnested - failure", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(new Map([["key", "value"]])).pipe(
         ConfigProvider.unnested("nested")
       )
       const config = Config.string("key")
-      const result = yield* $(Effect.exit(configProvider.load(config)))
+      const result = yield* Effect.exit(configProvider.load(config))
       const error = ConfigError.MissingData(
         ["key"],
         "Expected nested to be in path in ConfigProvider#unnested"
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("upperCase", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(new Map([["UPPERCASE", "value"]])).pipe(
         ConfigProvider.upperCase
       )
-      const result = yield* $(configProvider.load(Config.string("upperCase")))
-      assert.strictEqual(result, "value")
+      const result = yield* configProvider.load(Config.string("upperCase"))
+      strictEqual(result, "value")
     }))
 
   it.effect("within", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(new Map([["nesting1.key1", "value1"], ["nesting2.KEY2", "value2"]]))
         .pipe(
           ConfigProvider.within(["nesting2"], ConfigProvider.mapInputPath((s) => s.toUpperCase()))
@@ -880,12 +887,12 @@ describe("ConfigProvider", () => {
           )
         )
       )
-      const result = yield* $(configProvider.load(config))
-      assert.deepStrictEqual(result, ["value1", "value2"])
+      const result = yield* configProvider.load(config)
+      deepStrictEqual(result, ["value1", "value2"])
     }))
 
   it.effect("within - multiple layers of nesting", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const configProvider = ConfigProvider.fromMap(
         new Map([["nesting1.key1", "value1"], ["nesting2.nesting3.KEY2", "value2"]])
       ).pipe(
@@ -900,41 +907,37 @@ describe("ConfigProvider", () => {
           )
         )
       )
-      const result = yield* $(configProvider.load(config))
-      assert.deepStrictEqual(result, ["value1", "value2"])
+      const result = yield* configProvider.load(config)
+      deepStrictEqual(result, ["value1", "value2"])
     }))
 
   it.effect("fromJson - should load configs from flat JSON", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
-        ConfigProvider.fromJson({
-          host: "localhost",
-          port: 8080
-        }).load(hostPortConfig)
-      )
-      assert.deepStrictEqual(result, {
+    Effect.gen(function*() {
+      const result = yield* ConfigProvider.fromJson({
+        host: "localhost",
+        port: 8080
+      }).load(hostPortConfig)
+      deepStrictEqual(result, {
         host: "localhost",
         port: 8080
       })
     }))
 
   it.effect("fromJson - should load configs from nested JSON", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
-        ConfigProvider.fromJson({
-          hostPorts: [{
-            host: "localhost",
-            port: 8080
-          }, {
-            host: "localhost",
-            port: 8080
-          }, {
-            host: "localhost",
-            port: 8080
-          }]
-        }).load(hostPortsConfig)
-      )
-      assert.deepStrictEqual(result, {
+    Effect.gen(function*() {
+      const result = yield* ConfigProvider.fromJson({
+        hostPorts: [{
+          host: "localhost",
+          port: 8080
+        }, {
+          host: "localhost",
+          port: 8080
+        }, {
+          host: "localhost",
+          port: 8080
+        }]
+      }).load(hostPortsConfig)
+      deepStrictEqual(result, {
         hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
       })
     }))

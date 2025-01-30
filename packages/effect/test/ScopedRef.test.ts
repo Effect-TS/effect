@@ -1,9 +1,8 @@
-import * as Effect from "effect/Effect"
-import { identity, pipe } from "effect/Function"
-import * as ScopedRef from "effect/ScopedRef"
+import { Effect, identity, pipe, ScopedRef } from "effect"
+import { strictEqual } from "effect/test/util"
 import * as Counter from "effect/test/utils/counter"
 import * as it from "effect/test/utils/extend"
-import { assert, describe, expect } from "vitest"
+import { describe } from "vitest"
 
 describe("ScopedRef", () => {
   it.scoped("single set", () =>
@@ -12,7 +11,7 @@ describe("ScopedRef", () => {
       const ref = yield* $(ScopedRef.make(() => 0))
       yield* $(ScopedRef.set(ref, counter.acquire()))
       const result = yield* $(ScopedRef.get(ref))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
   it.scoped("dual set", () =>
     Effect.gen(function*($) {
@@ -23,7 +22,7 @@ describe("ScopedRef", () => {
         Effect.zipRight(ScopedRef.set(ref, counter.acquire()))
       )
       const result = yield* $(ScopedRef.get(ref))
-      assert.strictEqual(result, 2)
+      strictEqual(result, 2)
     }))
   it.scoped("release on swap", () =>
     Effect.gen(function*($) {
@@ -36,8 +35,8 @@ describe("ScopedRef", () => {
 
       const acquired = yield* $(counter.acquired())
       const released = yield* $(counter.released())
-      assert.strictEqual(acquired, 2)
-      assert.strictEqual(released, 1)
+      strictEqual(acquired, 2)
+      strictEqual(released, 1)
     }))
   it.scoped("double release on double swap", () =>
     Effect.gen(function*($) {
@@ -52,8 +51,8 @@ describe("ScopedRef", () => {
       )
       const acquired = yield* $(counter.acquired())
       const released = yield* $(counter.released())
-      assert.strictEqual(acquired, 3)
-      assert.strictEqual(released, 2)
+      strictEqual(acquired, 3)
+      strictEqual(released, 2)
     }))
   it.effect("full release", () =>
     Effect.gen(function*($) {
@@ -71,18 +70,18 @@ describe("ScopedRef", () => {
       )
       const acquired = yield* $(counter.acquired())
       const released = yield* $(counter.released())
-      assert.strictEqual(acquired, 3)
-      assert.strictEqual(released, 3)
+      strictEqual(acquired, 3)
+      strictEqual(released, 3)
     }))
   it.effect("full release", () =>
     Effect.gen(function*(_) {
       const ref = yield* _(Effect.scoped(ScopedRef.make(() => 0)))
-      expect(ref.pipe(identity)).toBe(ref)
+      strictEqual(ref.pipe(identity), ref)
     }))
   it.scoped("subtype of Effect", () =>
     Effect.gen(function*() {
       const ref = yield* ScopedRef.make(() => 0)
       const result = yield* ref
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 })

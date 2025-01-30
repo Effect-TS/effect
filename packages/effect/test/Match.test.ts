@@ -3,8 +3,9 @@ import { pipe } from "effect/Function"
 import * as M from "effect/Match"
 import * as O from "effect/Option"
 import * as Predicate from "effect/Predicate"
+import { assertFalse, assertLeft, assertRight, assertSome, assertTrue, strictEqual } from "effect/test/util"
 import { assertType } from "effect/test/utils/types"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("Match", () => {
   it("exhaustive", () => {
@@ -14,8 +15,8 @@ describe("Match", () => {
       M.when({ b: M.number }, (_) => _.b),
       M.exhaustive
     )
-    expect(match({ a: 0 })).toBe(0)
-    expect(match({ b: 1 })).toBe(1)
+    strictEqual(match({ a: 0 }), 0)
+    strictEqual(match({ b: 1 }), 1)
   })
 
   it("exhaustive-literal", () => {
@@ -25,8 +26,8 @@ describe("Match", () => {
       M.when({ _tag: "B" }, (_) => E.right(_.b)),
       M.exhaustive
     )
-    expect(match({ _tag: "A", a: 0 })).toEqual(E.right(0))
-    expect(match({ _tag: "B", b: 1 })).toEqual(E.right(1))
+    assertRight(match({ _tag: "A", a: 0 }), 0)
+    assertRight(match({ _tag: "B", b: 1 }), 1)
   })
 
   it("schema exhaustive-literal", () => {
@@ -45,9 +46,9 @@ describe("Match", () => {
         throw "absurd"
       })
     )
-    expect(match({ _tag: "A", a: 0 })).toEqual(E.right("A"))
-    expect(match({ _tag: "A", a: "hi" })).toEqual(E.right("A"))
-    expect(match({ _tag: "B", b: 1 })).toEqual(E.left("B"))
+    assertRight(match({ _tag: "A", a: 0 }), "A")
+    assertRight(match({ _tag: "A", a: "hi" }), "A")
+    assertLeft(match({ _tag: "B", b: 1 }), "B")
   })
 
   it("exhaustive literal with not", () => {
@@ -57,8 +58,8 @@ describe("Match", () => {
       M.not(1, (_) => false),
       M.exhaustive
     )
-    expect(match(1)).toEqual(true)
-    expect(match(2)).toEqual(false)
+    assertTrue(match(1))
+    assertFalse(match(2))
   })
 
   it("inline", () => {
@@ -68,7 +69,7 @@ describe("Match", () => {
       M.tag("Left", (_) => _.left),
       M.exhaustive
     )
-    expect(result).toEqual(0)
+    strictEqual(result, 0)
   })
 
   it("piped", () => {
@@ -78,7 +79,7 @@ describe("Match", () => {
       M.when({ _tag: "Right" }, (_) => _.right),
       M.option
     )
-    expect(result).toEqual(O.some(0))
+    assertSome(result, 0)
   })
 
   it("tuples", () => {
@@ -91,7 +92,7 @@ describe("Match", () => {
       M.option
     )
 
-    expect(match(["yeah", "a"])).toEqual(O.some(true))
+    assertSome(match(["yeah", "a"]), true)
   })
 
   it("literals", () => {
@@ -101,8 +102,8 @@ describe("Match", () => {
       M.orElse(() => "nah")
     )
 
-    expect(match("yeah")).toEqual(true)
-    expect(match("a")).toEqual("nah")
+    strictEqual(match("yeah"), true)
+    strictEqual(match("a"), "nah")
   })
 
   it("piped", () => {
@@ -112,7 +113,7 @@ describe("Match", () => {
       M.when({ _tag: "Right" }, (_) => _.right),
       M.option
     )
-    expect(result).toEqual(O.some(0))
+    assertSome(result, 0)
   })
 
   it("not schema", () => {
@@ -122,8 +123,8 @@ describe("Match", () => {
       M.when(M.number, (_) => "b"),
       M.exhaustive
     )
-    expect(match("hi")).toEqual("a")
-    expect(match(123)).toEqual("b")
+    strictEqual(match("hi"), "a")
+    strictEqual(match(123), "b")
   })
 
   it("not literal", () => {
@@ -135,8 +136,8 @@ describe("Match", () => {
       }),
       M.orElse((_) => "b")
     )
-    expect(match("hello")).toEqual("a")
-    expect(match("hi")).toEqual("b")
+    strictEqual(match("hello"), "a")
+    strictEqual(match("hi"), "b")
   })
 
   it("tuples", () => {
@@ -149,7 +150,7 @@ describe("Match", () => {
       M.option
     )
 
-    expect(match(["yeah", "a"])).toEqual(O.some(true))
+    assertSome(match(["yeah", "a"]), true)
   })
 
   it("literals", () => {
@@ -162,8 +163,8 @@ describe("Match", () => {
       M.orElse(() => "nah")
     )
 
-    expect(match("yeah")).toEqual(true)
-    expect(match("a")).toEqual("nah")
+    strictEqual(match("yeah"), true)
+    strictEqual(match("a"), "nah")
   })
 
   it("literals duplicate", () => {
@@ -174,7 +175,7 @@ describe("Match", () => {
       M.orElse((_) => "nah")
     )
 
-    expect(result).toEqual(true)
+    strictEqual(result, true)
   })
 
   it("discriminator", () => {
@@ -184,7 +185,7 @@ describe("Match", () => {
       M.discriminator("type")("B", (_) => _.type),
       M.exhaustive
     )
-    expect(match({ type: "B" })).toEqual("B")
+    strictEqual(match({ type: "B" }), "B")
   })
 
   it("discriminator multiple", () => {
@@ -193,7 +194,7 @@ describe("Match", () => {
       M.discriminator("_tag")("Right", "Left", (_) => "match"),
       M.exhaustive
     )
-    expect(result).toEqual("match")
+    strictEqual(result, "match")
   })
 
   it("nested", () => {
@@ -223,11 +224,11 @@ describe("Match", () => {
       M.exhaustive
     )
 
-    expect(match({ foo: { bar: { baz: { qux: 1 } } } })).toEqual(1)
-    expect(match({ foo: { bar: { baz: { qux: 2 } } } })).toEqual("literal 2")
-    expect(match({ foo: { bar: { baz: { qux: "a" } } } })).toEqual("a")
-    expect(match({ foo: { bar: { baz: { qux: "b" } } } })).toEqual("literal b")
-    expect(match({ foo: { bar: null } })).toEqual(null)
+    strictEqual(match({ foo: { bar: { baz: { qux: 1 } } } }), 1)
+    strictEqual(match({ foo: { bar: { baz: { qux: 2 } } } }), "literal 2")
+    strictEqual(match({ foo: { bar: { baz: { qux: "a" } } } }), "a")
+    strictEqual(match({ foo: { bar: { baz: { qux: "b" } } } }), "literal b")
+    strictEqual(match({ foo: { bar: null } }), null)
   })
 
   it("nested Option", () => {
@@ -237,8 +238,8 @@ describe("Match", () => {
       M.orElse((_) => "fail")
     )
 
-    expect(match({ user: O.some({ name: "a" }) })).toEqual("a")
-    expect(match({ user: O.none() })).toEqual("fail")
+    strictEqual(match({ user: O.some({ name: "a" }) }), "a")
+    strictEqual(match({ user: O.none() }), "fail")
   })
 
   it("predicate", () => {
@@ -248,8 +249,8 @@ describe("Match", () => {
       M.orElse((_) => `${_.age} is too young`)
     )
 
-    expect(match({ age: 5 })).toEqual("Age: 5")
-    expect(match({ age: 4 })).toEqual("4 is too young")
+    strictEqual(match({ age: 5 }), "Age: 5")
+    strictEqual(match({ age: 4 }), "4 is too young")
   })
 
   it("predicate not", () => {
@@ -259,8 +260,8 @@ describe("Match", () => {
       M.orElse((_) => `${_.age} is too old`)
     )
 
-    expect(match({ age: 4 })).toEqual("Age: 4")
-    expect(match({ age: 5 })).toEqual("5 is too old")
+    strictEqual(match({ age: 4 }), "Age: 4")
+    strictEqual(match({ age: 5 }), "5 is too old")
   })
 
   it("predicate with functions", () => {
@@ -277,8 +278,8 @@ describe("Match", () => {
       M.orElse(() => "fail")
     )
 
-    expect(match({ b: { c: "nested" }, a: 200 })).toEqual("nested")
-    expect(match({ b: { c: "nested" }, a: 400 })).toEqual("400")
+    strictEqual(match({ b: { c: "nested" }, a: 200 }), "nested")
+    strictEqual(match({ b: { c: "nested" }, a: 400 }), "400")
   })
 
   it("predicate at root level", () => {
@@ -298,8 +299,8 @@ describe("Match", () => {
       M.orElse(() => "fail")
     )
 
-    expect(match({ b: { c: "nested" }, a: 200 })).toEqual("nested")
-    expect(match({ b: { c: "nested" }, a: 400 })).toEqual("400")
+    strictEqual(match({ b: { c: "nested" }, a: 200 }), "nested")
+    strictEqual(match({ b: { c: "nested" }, a: 400 }), "400")
   })
 
   it("symbols", () => {
@@ -314,7 +315,7 @@ describe("Match", () => {
       M.exhaustive
     )
 
-    expect(match).toEqual("thing")
+    strictEqual(match, "thing")
   })
 
   it("unify", () => {
@@ -325,7 +326,7 @@ describe("Match", () => {
       M.exhaustive
     )
 
-    expect(match({ _tag: "B" })).toEqual(E.right(123))
+    assertRight(match({ _tag: "B" }), 123)
   })
 
   it("optional props", () => {
@@ -335,9 +336,9 @@ describe("Match", () => {
       M.orElse(() => "no user")
     )
 
-    expect(match({})).toEqual("no user")
-    expect(match({ user: undefined })).toEqual(undefined)
-    expect(match({ user: { name: "Tim" } })).toEqual("Tim")
+    strictEqual(match({}), "no user")
+    strictEqual(match({ user: undefined }), undefined)
+    strictEqual(match({ user: { name: "Tim" } }), "Tim")
   })
 
   it("optional props defined", () => {
@@ -347,10 +348,10 @@ describe("Match", () => {
       M.orElse(() => "no user")
     )
 
-    expect(match({})).toEqual("no user")
-    expect(match({ user: undefined })).toEqual("no user")
-    expect(match({ user: null })).toEqual("no user")
-    expect(match({ user: { name: "Tim" } })).toEqual("Tim")
+    strictEqual(match({}), "no user")
+    strictEqual(match({ user: undefined }), "no user")
+    strictEqual(match({ user: null }), "no user")
+    strictEqual(match({ user: { name: "Tim" } }), "Tim")
   })
 
   it("deep recursive", () => {
@@ -398,10 +399,10 @@ describe("Match", () => {
       M.exhaustive
     )
 
-    expect(match(null)).toEqual("null")
-    expect(match(123)).toEqual("number")
-    expect(match("hi")).toEqual("string")
-    expect(match({})).toEqual("record")
+    strictEqual(match(null), "null")
+    strictEqual(match(123), "number")
+    strictEqual(match("hi"), "string")
+    strictEqual(match({}), "record")
   })
 
   it("nested option", () => {
@@ -416,9 +417,9 @@ describe("Match", () => {
       M.orElse((_) => "no match")
     )
 
-    expect(match({ abc: O.some({ _tag: "A" }) })).toEqual("A")
-    expect(match({ abc: O.some({ _tag: "B" }) })).toEqual("no match")
-    expect(match({ abc: O.none() })).toEqual("no match")
+    strictEqual(match({ abc: O.some({ _tag: "A" }) }), "A")
+    strictEqual(match({ abc: O.some({ _tag: "B" }) }), "no match")
+    strictEqual(match({ abc: O.none() }), "no match")
   })
 
   it("getters", () => {
@@ -434,7 +435,7 @@ describe("Match", () => {
       M.orElse(() => "fail")
     )
 
-    expect(match).toEqual("thing")
+    strictEqual(match, "thing")
   })
 
   it("whenOr", () => {
@@ -446,9 +447,9 @@ describe("Match", () => {
       M.when({ _tag: "C" }, (_) => "C"),
       M.exhaustive
     )
-    expect(match({ _tag: "A", a: 0 })).toEqual("A or B")
-    expect(match({ _tag: "B", b: 1 })).toEqual("A or B")
-    expect(match({ _tag: "C" })).toEqual("C")
+    strictEqual(match({ _tag: "A", a: 0 }), "A or B")
+    strictEqual(match({ _tag: "B", b: 1 }), "A or B")
+    strictEqual(match({ _tag: "C" }), "C")
   })
 
   it("optional array", () => {
@@ -458,9 +459,9 @@ describe("Match", () => {
       M.orElse(() => "no match")
     )
 
-    expect(match({ a: [{ name: "Tim" }] })).toEqual("match 1")
-    expect(match({ a: [] })).toEqual("no match")
-    expect(match({})).toEqual("no match")
+    strictEqual(match({ a: [{ name: "Tim" }] }), "match 1")
+    strictEqual(match({ a: [] }), "no match")
+    strictEqual(match({}), "no match")
   })
 
   it("whenAnd", () => {
@@ -473,9 +474,9 @@ describe("Match", () => {
       M.when({ _tag: "C" }, (_) => "C"),
       M.exhaustive
     )
-    expect(match({ _tag: "A", a: 0 })).toEqual("A")
-    expect(match({ _tag: "B", b: 1 })).toEqual("B")
-    expect(match({ _tag: "C" })).toEqual("C")
+    strictEqual(match({ _tag: "A", a: 0 }), "A")
+    strictEqual(match({ _tag: "B", b: 1 }), "B")
+    strictEqual(match({ _tag: "C" }), "C")
   })
 
   it("whenAnd nested", () => {
@@ -521,35 +522,39 @@ describe("Match", () => {
       M.when({ status: M.number }, (_) => "number"),
       M.exhaustive
     )
-    expect(
+    strictEqual(
       match({
         status: 200,
         user: { name: "Tim", manager: { name: "Joe" } },
         company: { name: "Apple" }
-      })
-    ).toEqual("200, Tim, Joe, Apple")
-    expect(
+      }),
+      "200, Tim, Joe, Apple"
+    )
+    strictEqual(
       match({
         status: 200,
         user: { name: "Tim" },
         company: { name: "Apple" }
-      })
-    ).toEqual("200, Tim, Apple")
-    expect(
+      }),
+      "200, Tim, Apple"
+    )
+    strictEqual(
       match({
         status: 200,
         user: { name: "Tim" },
         company: { name: "Apple" }
-      })
-    ).toEqual("200, Tim, Apple")
-    expect(
+      }),
+      "200, Tim, Apple"
+    )
+    strictEqual(
       match({
         status: 200,
         user: { name: "Tim" }
-      })
-    ).toEqual("200, Tim")
-    expect(match({ status: 100, user: { name: "Tim" } })).toEqual("number, Tim")
-    expect(match({ status: 100 })).toEqual("number")
+      }),
+      "200, Tim"
+    )
+    strictEqual(match({ status: 100, user: { name: "Tim" } }), "number, Tim")
+    strictEqual(match({ status: 100 }), "number")
   })
 
   it("instanceOf", () => {
@@ -568,8 +573,8 @@ describe("Match", () => {
       })
     )
 
-    expect(match(new Uint8Array([1, 2, 3]))).toEqual("uint8")
-    expect(match(new Uint16Array([1, 2, 3]))).toEqual("uint16")
+    strictEqual(match(new Uint8Array([1, 2, 3])), "uint8")
+    strictEqual(match(new Uint16Array([1, 2, 3])), "uint16")
   })
 
   it("instanceOf doesnt modify type", () => {
@@ -587,7 +592,7 @@ describe("Match", () => {
       M.orElse(() => 0)
     )
 
-    expect(result).toEqual(1)
+    strictEqual(result, 1)
   })
 
   it("tags", () => {
@@ -600,8 +605,8 @@ describe("Match", () => {
       M.exhaustive
     )
 
-    expect(match({ _tag: "A", a: 1 })).toEqual(1)
-    expect(match({ _tag: "B", b: 1 })).toEqual("B")
+    strictEqual(match({ _tag: "A", a: 1 }), 1)
+    strictEqual(match({ _tag: "B", b: 1 }), "B")
   })
 
   it("tagsExhaustive", () => {
@@ -613,8 +618,8 @@ describe("Match", () => {
       })
     )
 
-    expect(match({ _tag: "A", a: 1 })).toEqual(1)
-    expect(match({ _tag: "B", b: 1 })).toEqual("B")
+    strictEqual(match({ _tag: "A", a: 1 }), 1)
+    strictEqual(match({ _tag: "B", b: 1 }), "B")
   })
 
   it("valueTags", () => {
@@ -627,26 +632,28 @@ describe("Match", () => {
       })
     )
 
-    expect(match).toEqual(123)
+    strictEqual(match, 123)
   })
 
   it("typeTags", () => {
     type Value = { _tag: "A"; a: number } | { _tag: "B"; b: number }
     const matcher = M.typeTags<Value>()
 
-    expect(
+    strictEqual(
       matcher({
         A: (_) => _.a,
         B: (_) => "fail"
-      })({ _tag: "A", a: 123 })
-    ).toEqual(123)
+      })({ _tag: "A", a: 123 }),
+      123
+    )
 
-    expect(
+    strictEqual(
       matcher({
         A: (_) => _.a,
         B: (_) => "B"
-      })({ _tag: "B", b: 123 })
-    ).toEqual("B")
+      })({ _tag: "B", b: 123 }),
+      "B"
+    )
   })
 
   it("refinement - with unknown", () => {
@@ -662,8 +669,8 @@ describe("Match", () => {
       M.exhaustive
     )
 
-    expect(match([])).toEqual("array")
-    expect(match("fail")).toEqual("string")
+    strictEqual(match([]), "array")
+    strictEqual(match("fail"), "string")
   })
 
   it("refinement nested - with unknown", () => {
@@ -678,8 +685,8 @@ describe("Match", () => {
       M.orElse(() => "fail")
     )
 
-    expect(match({ a: [123] })).toEqual("array")
-    expect(match({ a: "fail" })).toEqual("fail")
+    strictEqual(match({ a: [123] }), "array")
+    strictEqual(match({ a: "fail" }), "fail")
   })
 
   it("unknown - refinement", () => {
@@ -695,8 +702,8 @@ describe("Match", () => {
       M.orElse(() => "unknown")
     )
 
-    expect(match({})).toEqual("record")
-    expect(match([])).toEqual("unknown")
+    strictEqual(match({}), "record")
+    strictEqual(match([]), "unknown")
   })
 
   it("any - refinement", () => {
@@ -712,8 +719,8 @@ describe("Match", () => {
       M.orElse(() => "unknown")
     )
 
-    expect(match({})).toEqual("record")
-    expect(match([])).toEqual("unknown")
+    strictEqual(match({}), "record")
+    strictEqual(match([]), "unknown")
   })
 
   it("pattern type is not fixed by the function argument type", () => {
@@ -760,10 +767,10 @@ describe("Match", () => {
       M.discriminatorStartsWith("type")("B", (_) => 2 as const),
       M.orElse((_) => 3 as const)
     )
-    expect(match({ type: "A" })).toEqual(1)
-    expect(match({ type: "A.A" })).toEqual(1)
-    expect(match({ type: "B" })).toEqual(2)
-    expect(match({})).toEqual(3)
+    strictEqual(match({ type: "A" }), 1)
+    strictEqual(match({ type: "A.A" }), 1)
+    strictEqual(match({ type: "B" }), 2)
+    strictEqual(match({}), 3)
   })
 
   it("symbol", () => {
@@ -772,8 +779,8 @@ describe("Match", () => {
       M.when(M.symbol, (_) => "symbol"),
       M.orElse(() => "else")
     )
-    expect(match(Symbol.for("a"))).toEqual("symbol")
-    expect(match(123)).toEqual("else")
+    strictEqual(match(Symbol.for("a")), "symbol")
+    strictEqual(match(123), "else")
   })
 
   it("withReturnType", () => {
@@ -783,8 +790,8 @@ describe("Match", () => {
       M.when("A", (_) => "A"),
       M.orElse(() => "else")
     )
-    expect(match("A")).toEqual("A")
-    expect(match("a")).toEqual("else")
+    strictEqual(match("A"), "A")
+    strictEqual(match("a"), "else")
   })
 
   it("withReturnType after predicate", () => {
@@ -794,8 +801,8 @@ describe("Match", () => {
       M.withReturnType<string>(),
       M.orElse(() => "else")
     )
-    expect(match("A")).toEqual("A")
-    expect(match("a")).toEqual("else")
+    strictEqual(match("A"), "A")
+    strictEqual(match("a"), "else")
   })
 
   it("withReturnType mismatch", () => {
@@ -806,8 +813,9 @@ describe("Match", () => {
       M.when("A", (_) => 123),
       M.orElse(() => "else")
     )
-    expect(match("A")).toEqual(123)
-    expect(match("a")).toEqual("else")
+    // @ts-expect-error
+    strictEqual(match("A"), 123)
+    strictEqual(match("a"), "else")
   })
 
   it("withReturnType constraint mismatch", () => {
@@ -827,8 +835,8 @@ describe("Match", () => {
       M.when("A", (_) => "a"),
       M.orElse((_) => "b")
     )
-    expect(match("A")).toEqual("a")
-    expect(match("a")).toEqual("b")
+    strictEqual(match("A"), "a")
+    strictEqual(match("a"), "b")
   })
 
   it("withReturnType union mismatch", () => {

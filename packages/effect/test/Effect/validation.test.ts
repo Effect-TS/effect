@@ -3,8 +3,9 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("validate - fails", () =>
@@ -17,7 +18,7 @@ describe("Effect", () => {
           Effect.either
         )
       )
-      assert.deepStrictEqual(result, Either.left(Cause.fail(2)))
+      assertLeft(result, Cause.fail(2))
     }))
   it.effect("validate - combines both cause", () =>
     Effect.gen(function*($) {
@@ -29,24 +30,24 @@ describe("Effect", () => {
           Effect.either
         )
       )
-      assert.deepStrictEqual(result, Either.left(Cause.sequential(Cause.fail(1), Cause.fail(2))))
+      deepStrictEqual(result, Either.left(Cause.sequential(Cause.fail(1), Cause.fail(2))))
     }))
   it.effect("validateWith - succeeds", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeed(1), Effect.validateWith(Effect.succeed(2), (a, b) => a + b))
-      assert.strictEqual(result, 3)
+      strictEqual(result, 3)
     }))
   it.effect("validateAll - accumulate successes", () =>
     Effect.gen(function*($) {
       const array = Array.from({ length: 10 }, (_, i) => i)
       const result = yield* $(array, Effect.validateAll(Effect.succeed))
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     }))
   it.effect("validateAll - returns all errors if never valid", () =>
     Effect.gen(function*($) {
       const array = Array.from({ length: 10 }, () => 0)
       const result = yield* $(array, Effect.validateAll(Effect.fail), Effect.flip)
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     }))
   it.effect("validateAll - accumulate errors and ignore successes", () =>
     Effect.gen(function*($) {
@@ -54,19 +55,19 @@ describe("Effect", () => {
       const result = yield* $(
         pipe(array, Effect.validateAll((n) => n % 2 === 0 ? Effect.succeed(n) : Effect.fail(n)), Effect.flip)
       )
-      assert.deepStrictEqual(Array.from(result), [1, 3, 5, 7, 9])
+      deepStrictEqual(Array.from(result), [1, 3, 5, 7, 9])
     }))
   it.effect("validateAll/discard - returns all errors if never valid", () =>
     Effect.gen(function*($) {
       const array = Array.from({ length: 10 }, () => 0)
       const result = yield* $(array, Effect.validateAll(Effect.fail, { discard: true }), Effect.flip)
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     }))
   it.effect("validateAll/concurrency - returns all errors if never valid", () =>
     Effect.gen(function*($) {
       const array = Array.from({ length: 1000 }, () => 0)
       const result = yield* $(array, Effect.validateAll(Effect.fail, { concurrency: "unbounded" }), Effect.flip)
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     }))
   it.effect("validateAll/concurrency - accumulate errors and ignore successes", () =>
     Effect.gen(function*($) {
@@ -80,13 +81,13 @@ describe("Effect", () => {
           Effect.flip
         )
       )
-      assert.deepStrictEqual(Array.from(result), [1, 3, 5, 7, 9])
+      deepStrictEqual(Array.from(result), [1, 3, 5, 7, 9])
     }))
   it.effect("validateAll/concurrency - accumulate successes", () =>
     Effect.gen(function*($) {
       const array = Array.from({ length: 10 }, (_, i) => i)
       const result = yield* $(array, Effect.validateAll(Effect.succeed, { concurrency: "unbounded" }))
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     }))
   it.effect("validateAll/concurrency+discard - returns all errors if never valid", () =>
     Effect.gen(function*($) {
@@ -99,18 +100,18 @@ describe("Effect", () => {
         }),
         Effect.flip
       )
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     }))
   it.effect("validateFirst - returns all errors if never valid", () =>
     Effect.gen(function*($) {
       const array = Array.from({ length: 10 }, () => 0)
       const result = yield* $(array, Effect.validateFirst(Effect.fail), Effect.flip)
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     }))
   it.effect("validateFirst - returns [] as error if the input is empty", () =>
     Effect.gen(function*($) {
       const result = yield* $([], Effect.validateFirst(Effect.succeed), Effect.flip)
-      assert.deepStrictEqual(result, [])
+      deepStrictEqual(result, [])
     }))
   it.effect("validateFirst - runs sequentially and short circuits on first success validation", () =>
     Effect.gen(function*($) {
@@ -131,20 +132,20 @@ describe("Effect", () => {
         )
       )
       const count = yield* $(Ref.get(counter))
-      assert.strictEqual(result, 6)
-      assert.strictEqual(count, 6)
+      strictEqual(result, 6)
+      strictEqual(count, 6)
     }))
   it.effect("validateFirst - returns errors in correct order", () =>
     Effect.gen(function*($) {
       const result = yield* $([2, 4, 6, 3, 5, 6], Effect.validateFirst(Effect.fail), Effect.flip)
-      assert.deepStrictEqual(Array.from(result), [2, 4, 6, 3, 5, 6])
+      deepStrictEqual(Array.from(result), [2, 4, 6, 3, 5, 6])
     }))
   describe("", () => {
     it.effect("validateFirst/concurrency - returns all errors if never valid", () =>
       Effect.gen(function*($) {
         const array = Array.from({ length: 1000 }, () => 0)
         const result = yield* $(array, Effect.validateFirst(Effect.fail, { concurrency: "unbounded" }), Effect.flip)
-        assert.deepStrictEqual(Array.from(result), array)
+        deepStrictEqual(Array.from(result), array)
       }))
     it.effect("validateFirst/concurrency - returns success if valid", () =>
       Effect.gen(function*($) {
@@ -153,7 +154,7 @@ describe("Effect", () => {
         }
         const array = Array.from({ length: 10 }, (_, i) => i + 1)
         const result = yield* $(array, Effect.validateFirst(f, { concurrency: "unbounded" }))
-        assert.strictEqual(result, 6)
+        strictEqual(result, 6)
       }))
   })
 })

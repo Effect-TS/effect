@@ -5,8 +5,9 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("refineOrDie", () =>
@@ -22,7 +23,7 @@ describe("Sink", () => {
         )
       )
       const result = yield* $(Stream.make(1, 2, 3), Stream.run(sink), Effect.exit)
-      assert.deepStrictEqual(result, Exit.fail(refinedTo))
+      deepStrictEqual(result, Exit.fail(refinedTo))
     }))
 
   it.effect("refineOrDieWith - refines", () =>
@@ -37,7 +38,7 @@ describe("Sink", () => {
             Option.none(), (error) => error.message)
       )
       const result = yield* $(Stream.make(1, 2, 3), Stream.run(sink), Effect.exit)
-      assert.deepStrictEqual(result, Exit.fail(refinedTo))
+      deepStrictEqual(result, Exit.fail(refinedTo))
     }))
 
   it.effect("refineOrDieWith - dies", () =>
@@ -52,6 +53,6 @@ describe("Sink", () => {
             Option.none(), (error) => error.message)
       )
       const result = yield* $(Stream.make(1, 2, 3), Stream.run(sink), Effect.exit)
-      assert.deepStrictEqual(result, Exit.die(""))
+      deepStrictEqual(result, Exit.die(""))
     }))
 })

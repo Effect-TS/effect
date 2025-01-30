@@ -1,26 +1,27 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("optional", () => {
   it("should expose a from property", () => {
     const schema = S.optional(S.String)
-    expect(schema.from).toStrictEqual(S.String)
+    strictEqual(schema.from, S.String)
   })
 
   it("if the input is Schema.Undefined should not duplicate the schema", () => {
     const schema = S.optional(S.Undefined)
-    expect((schema.ast as any as S.PropertySignatureDeclaration).type).toStrictEqual(S.Undefined.ast)
+    strictEqual((schema.ast as any as S.PropertySignatureDeclaration).type, S.Undefined.ast)
   })
 
   it("if the input is Schema.Never should include the input in the schema", () => {
     const schema = S.optional(S.Never)
-    expect((schema.ast as any as S.PropertySignatureDeclaration).type).toStrictEqual(S.Undefined.ast)
+    strictEqual((schema.ast as any as S.PropertySignatureDeclaration).type, S.Undefined.ast)
   })
 
   it("should expose a from property after an annotations call", () => {
     const schema = S.optional(S.String).annotations({})
-    expect(schema.from).toStrictEqual(S.String)
+    strictEqual(schema.from, S.String)
   })
 
   it("decoding / encoding", async () => {

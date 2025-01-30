@@ -3,7 +3,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("HashSetFromSelf", () => {
   it("test roundtrip consistency", () => {
@@ -49,19 +50,17 @@ describe("HashSetFromSelf", () => {
   it("is", () => {
     const schema = S.HashSetFromSelf(S.String)
     const is = P.is(schema)
-    expect(is(HashSet.empty())).toEqual(true)
-    expect(is(HashSet.fromIterable(["a", "b", "c"]))).toEqual(true)
+    assertTrue(is(HashSet.empty()))
+    assertTrue(is(HashSet.fromIterable(["a", "b", "c"])))
 
-    expect(is(HashSet.fromIterable(["a", "b", 1]))).toEqual(false)
-    expect(is({ _id: Symbol.for("effect/Schema/test/FakeHashSet") })).toEqual(false)
+    assertFalse(is(HashSet.fromIterable(["a", "b", 1])))
+    assertFalse(is({ _id: Symbol.for("effect/Schema/test/FakeHashSet") }))
   })
 
   it("pretty", () => {
     const schema = S.HashSetFromSelf(S.String)
     const pretty = Pretty.make(schema)
-    expect(pretty(HashSet.empty())).toEqual("HashSet()")
-    expect(pretty(HashSet.fromIterable(["a", "b"]))).toEqual(
-      `HashSet("a", "b")`
-    )
+    strictEqual(pretty(HashSet.empty()), "HashSet()")
+    strictEqual(pretty(HashSet.fromIterable(["a", "b"])), `HashSet("a", "b")`)
   })
 })

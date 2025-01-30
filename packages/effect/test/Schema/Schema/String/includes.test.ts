@@ -2,7 +2,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("includes", () => {
   const schema = S.includes("a")(S.String)
@@ -13,11 +14,11 @@ describe("includes", () => {
 
   it("is", () => {
     const is = P.is(schema)
-    expect(is("")).toEqual(false)
-    expect(is("a")).toEqual(true)
-    expect(is("aa")).toEqual(true)
-    expect(is("bac")).toEqual(true)
-    expect(is("ba")).toEqual(true)
+    assertFalse(is(""))
+    assertTrue(is("a"))
+    assertTrue(is("aa"))
+    assertTrue(is("bac"))
+    assertTrue(is("ba"))
   })
 
   it("decoding", async () => {
@@ -36,6 +37,6 @@ describe("includes", () => {
 
   it("Pretty", () => {
     const pretty = Pretty.make(schema)
-    expect(pretty("a")).toEqual(`"a"`)
+    strictEqual(pretty("a"), `"a"`)
   })
 })

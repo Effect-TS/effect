@@ -2,8 +2,9 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
+import { strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { describe, expect } from "vitest"
+import { describe } from "vitest"
 
 export class FindIntraday extends Request.TaggedClass("FindIntraday")<string | null, never, { symbol: string }> {}
 
@@ -41,6 +42,6 @@ describe("interruption", () => {
         Effect.provide(Svc.Live),
         Effect.exit
       ))
-      expect(exit._tag).toEqual("Success")
+      strictEqual(exit._tag, "Success")
     }))
 })

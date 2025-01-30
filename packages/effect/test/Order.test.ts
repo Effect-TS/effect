@@ -1,151 +1,149 @@
-import { sort } from "effect/Array"
-import { pipe } from "effect/Function"
-import * as _ from "effect/Order"
-import * as U from "effect/test/util"
+import { Array as Arr, Order, pipe } from "effect"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("Order", () => {
   it("struct", () => {
-    const O = _.struct({ a: _.string, b: _.string })
-    U.deepStrictEqual(O({ a: "a", b: "b" }, { a: "a", b: "c" }), -1)
-    U.deepStrictEqual(O({ a: "a", b: "b" }, { a: "a", b: "b" }), 0)
-    U.deepStrictEqual(O({ a: "a", b: "c" }, { a: "a", b: "b" }), 1)
+    const O = Order.struct({ a: Order.string, b: Order.string })
+    strictEqual(O({ a: "a", b: "b" }, { a: "a", b: "c" }), -1)
+    strictEqual(O({ a: "a", b: "b" }, { a: "a", b: "b" }), 0)
+    strictEqual(O({ a: "a", b: "c" }, { a: "a", b: "b" }), 1)
   })
 
   it("tuple", () => {
-    const O = _.tuple(_.string, _.string)
-    U.deepStrictEqual(O(["a", "b"], ["a", "c"]), -1)
-    U.deepStrictEqual(O(["a", "b"], ["a", "b"]), 0)
-    U.deepStrictEqual(O(["a", "b"], ["a", "a"]), 1)
-    U.deepStrictEqual(O(["a", "b"], ["b", "a"]), -1)
+    const O = Order.tuple(Order.string, Order.string)
+    strictEqual(O(["a", "b"], ["a", "c"]), -1)
+    strictEqual(O(["a", "b"], ["a", "b"]), 0)
+    strictEqual(O(["a", "b"], ["a", "a"]), 1)
+    strictEqual(O(["a", "b"], ["b", "a"]), -1)
   })
 
   it("all", () => {
-    const O = _.all([_.string, _.string, _.string])
-    U.deepStrictEqual(O([], []), 0)
-    U.deepStrictEqual(O(["a", "b"], ["a"]), 0)
-    U.deepStrictEqual(O(["a"], ["a", "c"]), 0)
-    U.deepStrictEqual(O(["a", "b"], ["a", "c"]), -1)
-    U.deepStrictEqual(O(["a", "b"], ["a", "b"]), 0)
-    U.deepStrictEqual(O(["a", "b"], ["a", "a"]), 1)
-    U.deepStrictEqual(O(["a", "b"], ["b", "a"]), -1)
+    const O = Order.all([Order.string, Order.string, Order.string])
+    strictEqual(O([], []), 0)
+    strictEqual(O(["a", "b"], ["a"]), 0)
+    strictEqual(O(["a"], ["a", "c"]), 0)
+    strictEqual(O(["a", "b"], ["a", "c"]), -1)
+    strictEqual(O(["a", "b"], ["a", "b"]), 0)
+    strictEqual(O(["a", "b"], ["a", "a"]), 1)
+    strictEqual(O(["a", "b"], ["b", "a"]), -1)
   })
 
   it("mapInput", () => {
-    const O = _.mapInput(_.number, (s: string) => s.length)
-    U.deepStrictEqual(O("a", "b"), 0)
-    U.deepStrictEqual(O("a", "bb"), -1)
-    U.deepStrictEqual(O("aa", "b"), 1)
+    const O = Order.mapInput(Order.number, (s: string) => s.length)
+    strictEqual(O("a", "b"), 0)
+    strictEqual(O("a", "bb"), -1)
+    strictEqual(O("aa", "b"), 1)
   })
 
   it("Date", () => {
-    const O = _.Date
-    U.deepStrictEqual(O(new Date(0), new Date(1)), -1)
-    U.deepStrictEqual(O(new Date(1), new Date(1)), 0)
-    U.deepStrictEqual(O(new Date(1), new Date(0)), 1)
+    const O = Order.Date
+    strictEqual(O(new Date(0), new Date(1)), -1)
+    strictEqual(O(new Date(1), new Date(1)), 0)
+    strictEqual(O(new Date(1), new Date(0)), 1)
   })
 
   it("clamp", () => {
-    const clamp = _.clamp(_.number)({ minimum: 1, maximum: 10 })
-    U.deepStrictEqual(clamp(2), 2)
-    U.deepStrictEqual(clamp(10), 10)
-    U.deepStrictEqual(clamp(20), 10)
-    U.deepStrictEqual(clamp(1), 1)
-    U.deepStrictEqual(clamp(-10), 1)
+    const clamp = Order.clamp(Order.number)({ minimum: 1, maximum: 10 })
+    strictEqual(clamp(2), 2)
+    strictEqual(clamp(10), 10)
+    strictEqual(clamp(20), 10)
+    strictEqual(clamp(1), 1)
+    strictEqual(clamp(-10), 1)
 
-    U.deepStrictEqual(_.clamp(_.number)({ minimum: 1, maximum: 10 })(2), 2)
+    strictEqual(Order.clamp(Order.number)({ minimum: 1, maximum: 10 })(2), 2)
   })
 
   it("between", () => {
-    const between = _.between(_.number)({ minimum: 1, maximum: 10 })
-    U.deepStrictEqual(between(2), true)
-    U.deepStrictEqual(between(10), true)
-    U.deepStrictEqual(between(20), false)
-    U.deepStrictEqual(between(1), true)
-    U.deepStrictEqual(between(-10), false)
+    const between = Order.between(Order.number)({ minimum: 1, maximum: 10 })
+    assertTrue(between(2))
+    assertTrue(between(10))
+    assertFalse(between(20))
+    assertTrue(between(1))
+    assertFalse(between(-10))
 
-    U.deepStrictEqual(_.between(_.number)(2, { minimum: 1, maximum: 10 }), true)
+    assertTrue(Order.between(Order.number)(2, { minimum: 1, maximum: 10 }))
   })
 
   it("reverse", () => {
-    const O = _.reverse(_.number)
-    U.deepStrictEqual(O(1, 2), 1)
-    U.deepStrictEqual(O(2, 1), -1)
-    U.deepStrictEqual(O(2, 2), 0)
+    const O = Order.reverse(Order.number)
+    strictEqual(O(1, 2), 1)
+    strictEqual(O(2, 1), -1)
+    strictEqual(O(2, 2), 0)
   })
 
   it("lessThan", () => {
-    const lessThan = _.lessThan(_.number)
-    U.deepStrictEqual(lessThan(0, 1), true)
-    U.deepStrictEqual(lessThan(1, 1), false)
-    U.deepStrictEqual(lessThan(2, 1), false)
+    const lessThan = Order.lessThan(Order.number)
+    assertTrue(lessThan(0, 1))
+    assertFalse(lessThan(1, 1))
+    assertFalse(lessThan(2, 1))
   })
 
   it("lessThanOrEqualTo", () => {
-    const lessThanOrEqualTo = _.lessThanOrEqualTo(_.number)
-    U.deepStrictEqual(lessThanOrEqualTo(0, 1), true)
-    U.deepStrictEqual(lessThanOrEqualTo(1, 1), true)
-    U.deepStrictEqual(lessThanOrEqualTo(2, 1), false)
+    const lessThanOrEqualTo = Order.lessThanOrEqualTo(Order.number)
+    assertTrue(lessThanOrEqualTo(0, 1))
+    assertTrue(lessThanOrEqualTo(1, 1))
+    assertFalse(lessThanOrEqualTo(2, 1))
   })
 
   it("greaterThan", () => {
-    const greaterThan = _.greaterThan(_.number)
-    U.deepStrictEqual(greaterThan(0, 1), false)
-    U.deepStrictEqual(greaterThan(1, 1), false)
-    U.deepStrictEqual(greaterThan(2, 1), true)
+    const greaterThan = Order.greaterThan(Order.number)
+    assertFalse(greaterThan(0, 1))
+    assertFalse(greaterThan(1, 1))
+    assertTrue(greaterThan(2, 1))
   })
 
   it("greaterThanOrEqualTo", () => {
-    const greaterThanOrEqualTo = _.greaterThanOrEqualTo(_.number)
-    U.deepStrictEqual(greaterThanOrEqualTo(0, 1), false)
-    U.deepStrictEqual(greaterThanOrEqualTo(1, 1), true)
-    U.deepStrictEqual(greaterThanOrEqualTo(2, 1), true)
+    const greaterThanOrEqualTo = Order.greaterThanOrEqualTo(Order.number)
+    assertFalse(greaterThanOrEqualTo(0, 1))
+    assertTrue(greaterThanOrEqualTo(1, 1))
+    assertTrue(greaterThanOrEqualTo(2, 1))
   })
 
   it("min", () => {
     type A = { a: number }
-    const min = _.min(
+    const min = Order.min(
       pipe(
-        _.number,
-        _.mapInput((a: A) => a.a)
+        Order.number,
+        Order.mapInput((a: A) => a.a)
       )
     )
-    U.deepStrictEqual(min({ a: 1 }, { a: 2 }), { a: 1 })
-    U.deepStrictEqual(min({ a: 2 }, { a: 1 }), { a: 1 })
+    deepStrictEqual(min({ a: 1 }, { a: 2 }), { a: 1 })
+    deepStrictEqual(min({ a: 2 }, { a: 1 }), { a: 1 })
     const first = { a: 1 }
     const second = { a: 1 }
-    U.strictEqual(min(first, second), first)
+    deepStrictEqual(min(first, second), first)
   })
 
   it("max", () => {
     type A = { a: number }
-    const max = _.max(
+    const max = Order.max(
       pipe(
-        _.number,
-        _.mapInput((a: A) => a.a)
+        Order.number,
+        Order.mapInput((a: A) => a.a)
       )
     )
-    U.deepStrictEqual(max({ a: 1 }, { a: 2 }), { a: 2 })
-    U.deepStrictEqual(max({ a: 2 }, { a: 1 }), { a: 2 })
+    deepStrictEqual(max({ a: 1 }, { a: 2 }), { a: 2 })
+    deepStrictEqual(max({ a: 2 }, { a: 1 }), { a: 2 })
     const first = { a: 1 }
     const second = { a: 1 }
-    U.strictEqual(max(first, second), first)
+    deepStrictEqual(max(first, second), first)
   })
 
   it("product", () => {
-    const O = _.product(_.string, _.number)
-    U.deepStrictEqual(O(["a", 1], ["a", 2]), -1)
-    U.deepStrictEqual(O(["a", 1], ["a", 1]), 0)
-    U.deepStrictEqual(O(["a", 1], ["a", 0]), 1)
-    U.deepStrictEqual(O(["a", 1], ["b", 1]), -1)
+    const O = Order.product(Order.string, Order.number)
+    strictEqual(O(["a", 1], ["a", 2]), -1)
+    strictEqual(O(["a", 1], ["a", 1]), 0)
+    strictEqual(O(["a", 1], ["a", 0]), 1)
+    strictEqual(O(["a", 1], ["b", 1]), -1)
   })
 
   it("productMany", () => {
-    const O = _.productMany(_.string, [_.string, _.string])
-    U.deepStrictEqual(O(["a", "b"], ["a", "c"]), -1)
-    U.deepStrictEqual(O(["a", "b"], ["a", "b"]), 0)
-    U.deepStrictEqual(O(["a", "b"], ["a", "a"]), 1)
-    U.deepStrictEqual(O(["a", "b"], ["b", "a"]), -1)
+    const O = Order.productMany(Order.string, [Order.string, Order.string])
+    strictEqual(O(["a", "b"], ["a", "c"]), -1)
+    strictEqual(O(["a", "b"], ["a", "b"]), 0)
+    strictEqual(O(["a", "b"], ["a", "a"]), 1)
+    strictEqual(O(["a", "b"], ["b", "a"]), -1)
   })
 
   it("combine / combineMany", () => {
@@ -157,32 +155,32 @@ describe("Order", () => {
       [1, "c"]
     ]
     const sortByFst = pipe(
-      _.number,
-      _.mapInput((x: T) => x[0])
+      Order.number,
+      Order.mapInput((x: T) => x[0])
     )
     const sortBySnd = pipe(
-      _.string,
-      _.mapInput((x: T) => x[1])
+      Order.string,
+      Order.mapInput((x: T) => x[1])
     )
-    U.deepStrictEqual(sort(_.combine(sortByFst, sortBySnd))(tuples), [
+    deepStrictEqual(Arr.sort(Order.combine(sortByFst, sortBySnd))(tuples), [
       [1, "b"],
       [1, "c"],
       [2, "a"],
       [2, "c"]
     ])
-    U.deepStrictEqual(sort(_.combine(sortBySnd, sortByFst))(tuples), [
+    deepStrictEqual(Arr.sort(Order.combine(sortBySnd, sortByFst))(tuples), [
       [2, "a"],
       [1, "b"],
       [1, "c"],
       [2, "c"]
     ])
-    U.deepStrictEqual(sort(_.combineMany(sortBySnd, []))(tuples), [
+    deepStrictEqual(Arr.sort(Order.combineMany(sortBySnd, []))(tuples), [
       [2, "a"],
       [1, "b"],
       [2, "c"],
       [1, "c"]
     ])
-    U.deepStrictEqual(sort(_.combineMany(sortBySnd, [sortByFst]))(tuples), [
+    deepStrictEqual(Arr.sort(Order.combineMany(sortBySnd, [sortByFst]))(tuples), [
       [2, "a"],
       [1, "b"],
       [1, "c"],

@@ -3,8 +3,9 @@ import * as A from "effect/Arbitrary"
 import * as JSONSchema from "effect/JSONSchema"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
+import { assertFalse, assertTrue, deepStrictEqual, throws } from "effect/test/util"
 import * as fc from "fast-check"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 type Root = JSONSchema.JsonSchema7Root
 
@@ -36,10 +37,10 @@ const expectJSONSchema = <A, I>(
   expectedJsonSchema: object
 ) => {
   const jsonSchema = JSONSchema.make(schema)
-  expect(jsonSchema).toStrictEqual({
+  deepStrictEqual(jsonSchema, {
     "$schema": "http://json-schema.org/draft-07/schema#",
     ...expectedJsonSchema
-  })
+  } as any)
   return jsonSchema
 }
 
@@ -53,8 +54,8 @@ const expectJSONSchema2019 = <A, I>(
     definitions,
     target: "jsonSchema2019-09"
   })
-  expect(jsonSchema).toStrictEqual(expectedJsonSchema)
-  expect(definitions).toStrictEqual(expectedDefinitions)
+  deepStrictEqual(jsonSchema, expectedJsonSchema)
+  deepStrictEqual(definitions, expectedDefinitions)
   return jsonSchema
 }
 
@@ -68,8 +69,8 @@ const expectJSONSchemaOpenApi31 = <A, I>(
     definitions,
     target: "openApi3.1"
   })
-  expect(jsonSchema).toStrictEqual(expectedJsonSchema)
-  expect(definitions).toStrictEqual(expectedDefinitions)
+  deepStrictEqual(jsonSchema, expectedJsonSchema)
+  deepStrictEqual(definitions, expectedDefinitions)
   return jsonSchema
 }
 
@@ -96,7 +97,7 @@ const expectJSONSchemaAnnotations = <A, I>(
 }
 
 const expectError = <A, I>(schema: Schema.Schema<A, I>, message: string) => {
-  expect(() => JSONSchema.make(schema)).toThrow(new Error(message))
+  throws(() => JSONSchema.make(schema), new Error(message))
 }
 
 // Using this instead of Schema.JsonNumber to avoid cluttering the output with unnecessary description and title
@@ -110,10 +111,10 @@ describe("makeWithOptions", () => {
       definitions,
       definitionPath: "#/components/schemas/"
     })
-    expect(jsonSchema).toStrictEqual({
+    deepStrictEqual(jsonSchema, {
       "$ref": "#/components/schemas/08368672-2c02-4d6d-92b0-dd0019b33a7b"
     })
-    expect(definitions).toStrictEqual({
+    deepStrictEqual(definitions, {
       "08368672-2c02-4d6d-92b0-dd0019b33a7b": {
         "type": "string"
       }
@@ -220,11 +221,11 @@ describe("makeWithOptions", () => {
         const jsonSchema = JSONSchema.fromAST(schema.ast, {
           definitions
         })
-        expect(jsonSchema).toStrictEqual({
+        deepStrictEqual(jsonSchema, {
           "type": "string",
           "contentMediaType": "application/json"
         })
-        expect(definitions).toStrictEqual({})
+        deepStrictEqual(definitions, {})
       })
     })
 
@@ -594,10 +595,10 @@ describe("makeWithOptions", () => {
         definitions,
         topLevelReferenceStrategy: "skip"
       })
-      expect(jsonSchema).toStrictEqual({
+      deepStrictEqual(jsonSchema, {
         "type": "string"
       })
-      expect(definitions).toStrictEqual({})
+      deepStrictEqual(definitions, {})
     })
   })
 })
@@ -768,7 +769,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     }
     expectJSONSchema(Schema.Never, jsonSchema)
     const validate = getAjvValidate(jsonSchema)
-    expect(validate(null)).toEqual(false)
+    assertFalse(validate(null))
   })
 
   it("Any", () => {
@@ -798,12 +799,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     expectJSONSchemaAnnotations(Schema.Object, jsonSchema)
 
     const validate = getAjvValidate(jsonSchema)
-    expect(validate({})).toEqual(true)
-    expect(validate({ a: 1 })).toEqual(true)
-    expect(validate([])).toEqual(true)
-    expect(validate("a")).toEqual(false)
-    expect(validate(1)).toEqual(false)
-    expect(validate(true)).toEqual(false)
+    assertTrue(validate({}))
+    assertTrue(validate({ a: 1 }))
+    assertTrue(validate([]))
+    assertFalse(validate("a"))
+    assertFalse(validate(1))
+    assertFalse(validate(true))
   })
 
   it("empty struct: Schema.Struct({})", () => {
@@ -818,12 +819,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     }
     expectJSONSchemaAnnotations(schema, jsonSchema)
     const validate = getAjvValidate(jsonSchema)
-    expect(validate({})).toEqual(true)
-    expect(validate({ a: 1 })).toEqual(true)
-    expect(validate([])).toEqual(true)
-    expect(validate(null)).toEqual(false)
-    expect(validate(1)).toEqual(false)
-    expect(validate(true)).toEqual(false)
+    assertTrue(validate({}))
+    assertTrue(validate({ a: 1 }))
+    assertTrue(validate([]))
+    assertFalse(validate(null))
+    assertFalse(validate(1))
+    assertFalse(validate(true))
   })
 
   it("Void", () => {
@@ -874,10 +875,10 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     }
     expectJSONSchemaAnnotations(schema, jsonSchema)
     const validate = getAjvValidate(jsonSchema)
-    expect(validate("a1")).toEqual(true)
-    expect(validate("a12")).toEqual(true)
-    expect(validate("a")).toEqual(false)
-    expect(validate("aa")).toEqual(false)
+    assertTrue(validate("a1"))
+    assertTrue(validate("a12"))
+    assertFalse(validate("a"))
+    assertFalse(validate("aa"))
   })
 
   describe("Literal", () => {
@@ -947,7 +948,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "not": {}
       })
       const validate = getAjvValidate(jsonSchema)
-      expect(validate(1)).toEqual(false)
+      assertFalse(validate(1))
     })
 
     it("single enum", () => {
@@ -1628,8 +1629,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate([])).toEqual(true)
-      expect(validate([1])).toEqual(false)
+      assertTrue(validate([]))
+      assertFalse(validate([1]))
     })
 
     it("element", () => {
@@ -1644,10 +1645,10 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate([1])).toEqual(true)
-      expect(validate([])).toEqual(false)
-      expect(validate(["a"])).toEqual(false)
-      expect(validate([1, "a"])).toEqual(false)
+      assertTrue(validate([1]))
+      assertFalse(validate([]))
+      assertFalse(validate(["a"]))
+      assertFalse(validate([1, "a"]))
     })
 
     it("element + inner annotations", () => {
@@ -1696,10 +1697,10 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate([])).toEqual(true)
-      expect(validate([1])).toEqual(true)
-      expect(validate(["a"])).toEqual(false)
-      expect(validate([1, 2])).toEqual(false)
+      assertTrue(validate([]))
+      assertTrue(validate([1]))
+      assertFalse(validate(["a"]))
+      assertFalse(validate([1, 2]))
     })
 
     it("optionalElement + inner annotations", () => {
@@ -1762,11 +1763,11 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate(["a"])).toEqual(true)
-      expect(validate(["a", 1])).toEqual(true)
-      expect(validate([])).toEqual(false)
-      expect(validate([1])).toEqual(false)
-      expect(validate([1, 2])).toEqual(false)
+      assertTrue(validate(["a"]))
+      assertTrue(validate(["a", 1]))
+      assertFalse(validate([]))
+      assertFalse(validate([1]))
+      assertFalse(validate([1, 2]))
     })
 
     it("rest", () => {
@@ -1779,12 +1780,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate([])).toEqual(true)
-      expect(validate([1])).toEqual(true)
-      expect(validate([1, 2])).toEqual(true)
-      expect(validate([1, 2, 3])).toEqual(true)
-      expect(validate(["a"])).toEqual(false)
-      expect(validate([1, 2, 3, "a"])).toEqual(false)
+      assertTrue(validate([]))
+      assertTrue(validate([1]))
+      assertTrue(validate([1, 2]))
+      assertTrue(validate([1, 2, 3]))
+      assertFalse(validate(["a"]))
+      assertFalse(validate([1, 2, 3, "a"]))
     })
 
     it("rest + inner annotations", () => {
@@ -1817,12 +1818,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate([])).toEqual(true)
-      expect(validate(["a"])).toEqual(true)
-      expect(validate(["a", 1])).toEqual(true)
-      expect(validate([1])).toEqual(false)
-      expect(validate([1, 2])).toEqual(false)
-      expect(validate(["a", "b", 1])).toEqual(false)
+      assertTrue(validate([]))
+      assertTrue(validate(["a"]))
+      assertTrue(validate(["a", 1]))
+      assertFalse(validate([1]))
+      assertFalse(validate([1, 2]))
+      assertFalse(validate(["a", "b", 1]))
     })
 
     it("optionalElement + rest + outer annotations should override inner annotations", () => {
@@ -1861,13 +1862,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate(["a"])).toEqual(true)
-      expect(validate(["a", 1])).toEqual(true)
-      expect(validate(["a", 1, 2])).toEqual(true)
-      expect(validate(["a", 1, 2, 3])).toEqual(true)
-      expect(validate([])).toEqual(false)
-      expect(validate([1])).toEqual(false)
-      expect(validate(["a", "b"])).toEqual(false)
+      assertTrue(validate(["a"]))
+      assertTrue(validate(["a", 1]))
+      assertTrue(validate(["a", 1, 2]))
+      assertTrue(validate(["a", 1, 2, 3]))
+      assertFalse(validate([]))
+      assertFalse(validate([1]))
+      assertFalse(validate(["a", "b"]))
     })
 
     it("NonEmptyArray", () => {
@@ -1899,11 +1900,11 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate({ a: "a", b: 1 })).toEqual(true)
-      expect(validate({})).toEqual(false)
-      expect(validate({ a: "a" })).toEqual(false)
-      expect(validate({ b: 1 })).toEqual(false)
-      expect(validate({ a: "a", b: 1, c: true })).toEqual(false)
+      assertTrue(validate({ a: "a", b: 1 }))
+      assertFalse(validate({}))
+      assertFalse(validate({ a: "a" }))
+      assertFalse(validate({ b: 1 }))
+      assertFalse(validate({ a: "a", b: 1, c: true }))
     })
 
     it("field + inner annotation", () => {
@@ -1968,12 +1969,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate({ a: "a" })).toEqual(true)
-      expect(validate({ a: "a", b: "b" })).toEqual(true)
-      expect(validate({})).toEqual(false)
-      expect(validate({ b: "b" })).toEqual(false)
-      expect(validate({ a: 1 })).toEqual(false)
-      expect(validate({ a: "a", b: 1 })).toEqual(false)
+      assertTrue(validate({ a: "a" }))
+      assertTrue(validate({ a: "a", b: "b" }))
+      assertFalse(validate({}))
+      assertFalse(validate({ b: "b" }))
+      assertFalse(validate({ a: 1 }))
+      assertFalse(validate({ a: "a", b: 1 }))
     })
 
     it("exact optional field", () => {
@@ -1996,11 +1997,11 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate({ a: "a", b: 1 })).toEqual(true)
-      expect(validate({ a: "a" })).toEqual(true)
-      expect(validate({})).toEqual(false)
-      expect(validate({ b: 1 })).toEqual(false)
-      expect(validate({ a: "a", b: 1, c: true })).toEqual(false)
+      assertTrue(validate({ a: "a", b: 1 }))
+      assertTrue(validate({ a: "a" }))
+      assertFalse(validate({}))
+      assertFalse(validate({ b: 1 }))
+      assertFalse(validate({ a: "a", b: 1, c: true }))
     })
 
     it("exact optional field + inner annotation", () => {
@@ -2119,13 +2120,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate({})).toEqual(true)
-      expect(validate({ "-": 1 })).toEqual(true)
-      expect(validate({ "a-": 1 })).toEqual(true)
-      expect(validate({ "-b": 1 })).toEqual(true)
-      expect(validate({ "a-b": 1 })).toEqual(true)
-      expect(validate({ "": 1 })).toEqual(false)
-      expect(validate({ "-": "a" })).toEqual(false)
+      assertTrue(validate({}))
+      assertTrue(validate({ "-": 1 }))
+      assertTrue(validate({ "a-": 1 }))
+      assertTrue(validate({ "-b": 1 }))
+      assertTrue(validate({ "a-b": 1 }))
+      assertFalse(validate({ "": 1 }))
+      assertFalse(validate({ "-": "a" }))
     })
 
     it("Record(pattern, number)", () => {
@@ -2148,15 +2149,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         }
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
-      expect(jsonSchema).toStrictEqual(jsonSchema)
+      deepStrictEqual(jsonSchema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate({})).toEqual(true)
-      expect(validate({ "-": 1 })).toEqual(true)
-      expect(validate({ "a-": 1 })).toEqual(true)
-      expect(validate({ "-b": 1 })).toEqual(true)
-      expect(validate({ "a-b": 1 })).toEqual(true)
-      expect(validate({ "": 1 })).toEqual(false)
-      expect(validate({ "-": "a" })).toEqual(false)
+      assertTrue(validate({}))
+      assertTrue(validate({ "-": 1 }))
+      assertTrue(validate({ "a-": 1 }))
+      assertTrue(validate({ "-b": 1 }))
+      assertTrue(validate({ "a-b": 1 }))
+      assertFalse(validate({ "": 1 }))
+      assertFalse(validate({ "-": "a" }))
     })
   })
 
@@ -2822,15 +2823,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaProperty(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate({ a: "a1", as: [] })).toEqual(true)
-      expect(validate({ a: "a1", as: [{ a: "a2", as: [] }] })).toEqual(true)
-      expect(validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [] }] })).toEqual(true)
-      expect(
+      assertTrue(validate({ a: "a1", as: [] }))
+      assertTrue(validate({ a: "a1", as: [{ a: "a2", as: [] }] }))
+      assertTrue(validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [] }] }))
+      assertTrue(
         validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [] }] }] })
-      ).toEqual(true)
-      expect(
+      )
+      assertFalse(
         validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [1] }] }] })
-      ).toEqual(false)
+      )
     })
 
     it("should support inner suspended schemas with inner identifier annotation", () => {
@@ -2888,15 +2889,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaProperty(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate({ a: "a1", as: [] })).toEqual(true)
-      expect(validate({ a: "a1", as: [{ a: "a2", as: [] }] })).toEqual(true)
-      expect(validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [] }] })).toEqual(true)
-      expect(
+      assertTrue(validate({ a: "a1", as: [] }))
+      assertTrue(validate({ a: "a1", as: [{ a: "a2", as: [] }] }))
+      assertTrue(validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [] }] }))
+      assertTrue(
         validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [] }] }] })
-      ).toEqual(true)
-      expect(
+      )
+      assertFalse(
         validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [1] }] }] })
-      ).toEqual(false)
+      )
     })
 
     it("should support inner suspended schemas with outer identifier annotation", () => {
@@ -2934,22 +2935,22 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaProperty(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
-      expect(validate({ name: "a1", categories: [] })).toEqual(true)
-      expect(validate({ name: "a1", categories: [{ name: "a2", categories: [] }] })).toEqual(true)
-      expect(validate({ name: "a1", categories: [{ name: "a2", categories: [] }, { name: "a3", categories: [] }] }))
-        .toEqual(true)
-      expect(
+      assertTrue(validate({ name: "a1", categories: [] }))
+      assertTrue(validate({ name: "a1", categories: [{ name: "a2", categories: [] }] }))
+      assertTrue(validate({ name: "a1", categories: [{ name: "a2", categories: [] }, { name: "a3", categories: [] }] }))
+
+      assertTrue(
         validate({
           name: "a1",
           categories: [{ name: "a2", categories: [] }, { name: "a3", categories: [{ name: "a4", categories: [] }] }]
         })
-      ).toEqual(true)
-      expect(
+      )
+      assertFalse(
         validate({
           name: "a1",
           categories: [{ name: "a2", categories: [] }, { name: "a3", categories: [{ name: "a4", categories: [1] }] }]
         })
-      ).toEqual(false)
+      )
     })
 
     it("should support mutually suspended schemas", () => {
@@ -3040,7 +3041,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       }
       expectJSONSchemaProperty(Operation, jsonSchema, { numRuns: 5 })
       const validate = getAjvValidate(jsonSchema)
-      expect(validate({
+      assertTrue(validate({
         type: "operation",
         operator: "+",
         left: {
@@ -3062,7 +3063,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             }
           }
         }
-      })).toEqual(true)
+      }))
     })
   })
 

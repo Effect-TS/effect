@@ -2,7 +2,6 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
@@ -12,9 +11,10 @@ import * as Order from "effect/Order"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
+import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as fc from "fast-check"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const chunkArb = <A>(
   arb: fc.Arbitrary<A>,
@@ -75,7 +75,7 @@ describe("Stream", () => {
         Chunk.sort(OrderByKey)
       )
       const result = await Effect.runPromise(Stream.runCollect(actual))
-      assert.deepStrictEqual(Array.from(result), Array.from(expected))
+      deepStrictEqual(Array.from(result), Array.from(expected))
     }))
   })
 
@@ -87,7 +87,7 @@ describe("Stream", () => {
       )
       const right = Stream.fromChunks(Chunk.make("a", "b"), Chunk.of("c"))
       const result = yield* $(left, Stream.zip(right), Stream.runCollect)
-      assert.deepStrictEqual(Array.from(result), [[1, "a"], [2, "b"], [3, "c"]])
+      deepStrictEqual(Array.from(result), [[1, "a"], [2, "b"], [3, "c"]])
     }))
 
   it.it("zip - equivalence with Chunk.zip", () =>
@@ -102,7 +102,7 @@ describe("Stream", () => {
           Chunk.zip(Chunk.flatten(Chunk.unsafeFromArray(right)))
         )
         const actual = await Effect.runPromise(Stream.runCollect(stream))
-        assert.deepStrictEqual(Array.from(actual), Array.from(expected))
+        deepStrictEqual(Array.from(actual), Array.from(expected))
       })
     ))
 
@@ -114,7 +114,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.uninterruptible
       )
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
 
   it.effect("zipWith - prioritizes failures", () =>
@@ -125,7 +125,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("zipWith - dies if one of the streams throws an exception", () =>
@@ -141,7 +141,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         result,
         Exit.failCause(Cause.die(new Cause.RuntimeException("Ouch")))
       )
@@ -172,7 +172,7 @@ describe("Stream", () => {
   //           (b) => [Option.none(), Option.some(b)] as const
   //         )
   //       )
-  //       assert.deepStrictEqual(Array.from(actual), Array.from(expected))
+  //       deepStrictEqual(Array.from(actual), Array.from(expected))
   //     }
   //   )))
 
@@ -188,7 +188,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("zipWithIndex", () =>
@@ -198,7 +198,7 @@ describe("Stream", () => {
         result1: Stream.runCollect(Stream.zipWithIndex(stream)),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.map((a, i) => [a, i] as const)))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("zipLatest", () =>
@@ -229,8 +229,8 @@ describe("Stream", () => {
         Effect.map(Chunk.unsafeFromArray),
         Effect.map(Chunk.flatten)
       )
-      assert.deepStrictEqual(Array.from(chunk1), [[0, 0], [0, 1]])
-      assert.deepStrictEqual(Array.from(chunk2), [[1, 1], [2, 1]])
+      deepStrictEqual(Array.from(chunk1), [[0, 0], [0, 1]])
+      deepStrictEqual(Array.from(chunk2), [[1, 1], [2, 1]])
     }))
 
   it.effect("zipLatestWith - handles empty pulls properly", () =>
@@ -262,7 +262,7 @@ describe("Stream", () => {
       yield* $(Deferred.await(latch))
       yield* $(Deferred.succeed(deferred, 2))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [1, 1, 1])
+      deepStrictEqual(Array.from(result), [1, 1, 1])
     }))
 
   it.effect("zipLatestWith - handles empty pulls properly (JVM Only - LOL)", () =>
@@ -281,7 +281,7 @@ describe("Stream", () => {
         Stream.take(3),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 1, 1])
+      deepStrictEqual(Array.from(result), [1, 1, 1])
     }))
 
   it.it("zipLatestWith - preserves partial ordering of stream elements", () => {
@@ -302,7 +302,7 @@ describe("Stream", () => {
           ([isSorted, last], curr) => [isSorted && last <= curr, curr] as const
         )
       )
-      assert.isTrue(isSorted)
+      assertTrue(isSorted)
     }))
   })
 
@@ -313,7 +313,7 @@ describe("Stream", () => {
         Stream.zipWithNext,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         [1, Option.some(2)],
         [2, Option.some(3)],
         [3, Option.none()]
@@ -327,7 +327,7 @@ describe("Stream", () => {
         Stream.zipWithNext,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         [1, Option.some(2)],
         [2, Option.some(3)],
         [3, Option.none()]
@@ -341,7 +341,7 @@ describe("Stream", () => {
         Stream.zipWithNext,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.it("zipWithNext - should output the same values as zipping with the tail plus the last element", () =>
@@ -361,7 +361,7 @@ describe("Stream", () => {
           })
         )
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     })))
 
   it.effect("zipWithPrevious - should zip with previous element for a single chunk", () =>
@@ -371,7 +371,7 @@ describe("Stream", () => {
         Stream.zipWithPrevious,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         [Option.none(), 1],
         [Option.some(1), 2],
         [Option.some(2), 3]
@@ -385,7 +385,7 @@ describe("Stream", () => {
         Stream.zipWithPrevious,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         [Option.none(), 1],
         [Option.some(1), 2],
         [Option.some(2), 3]
@@ -399,7 +399,7 @@ describe("Stream", () => {
         Stream.zipWithPrevious,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.it("zipWithPrevious - should output same values as first element plus zipping with init", () =>
@@ -418,7 +418,7 @@ describe("Stream", () => {
           Stream.runCollect
         )
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     })))
 
   it.effect("zipWithPreviousAndNext", () =>
@@ -428,7 +428,7 @@ describe("Stream", () => {
         Stream.zipWithPreviousAndNext,
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         [Option.none(), 1, Option.some(2)],
         [Option.some(1), 2, Option.some(3)],
         [Option.some(2), 3, Option.none()]
@@ -464,7 +464,7 @@ describe("Stream", () => {
         }),
         Effect.runPromise
       )
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     })))
 
   it.effect("zipLatestAll", () =>
@@ -478,7 +478,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.map(Chunk.toReadonlyArray)
       )
-      assert.deepStrictEqual(result, [
+      deepStrictEqual(result, [
         [1, "a", true],
         [2, "a", true],
         [3, "a", true],

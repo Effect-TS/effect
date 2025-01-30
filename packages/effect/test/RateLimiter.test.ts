@@ -1,6 +1,7 @@
-import { Array, Clock, Deferred, Effect, Either, Fiber, Function, Option, RateLimiter, Ref, TestClock } from "effect"
+import { Array, Clock, Deferred, Effect, Fiber, Function, Option, RateLimiter, Ref, TestClock } from "effect"
+import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("RateLimiter", () => {
   describe.concurrent("fixed-window", () => {
@@ -25,8 +26,8 @@ describe("RateLimiter", () => {
         const nowAfter1Second = yield* _(Clock.currentTimeMillis)
 
         const times = yield* _(Fiber.join(fib))
-        assert(times.slice(0, 10).every((t) => t === now))
-        assert(times.slice(10).every((t) => t === nowAfter1Second))
+        assertTrue(times.slice(0, 10).every((t) => t === now))
+        assertTrue(times.slice(10).every((t) => t === nowAfter1Second))
       }))
 
     it.scoped("will respect different costs per effect and interleave them.", () =>
@@ -57,7 +58,7 @@ describe("RateLimiter", () => {
 
         const times = yield* _(Fiber.join(fib))
 
-        assert.deepEqual(
+        deepStrictEqual(
           times,
           [
             ["rl1", start],
@@ -105,8 +106,8 @@ describe("RateLimiter", () => {
 
         const times = yield* _(Fiber.join(fib))
 
-        assert(timestamps.length === 60)
-        assert(times.length === 32)
+        assertTrue(timestamps.length === 60)
+        assertTrue(times.length === 32)
 
         const resultTimes = [
           now,
@@ -115,7 +116,7 @@ describe("RateLimiter", () => {
           ...timestamps.slice(59).flatMap((x) => [x, x])
         ]
 
-        assert.deepEqual(times, resultTimes)
+        deepStrictEqual(times, resultTimes)
       }), 10_000)
   })
 
@@ -143,13 +144,13 @@ describe("RateLimiter", () => {
           Effect.zipRight(Deferred.succeed(deferred, void 0)),
           Effect.fork
         )
-        assert.isFalse(yield* _(Deferred.isDone(deferred)))
+        assertFalse(yield* _(Deferred.isDone(deferred)))
 
         // Ensure that the request is successful once a token is replenished
         yield* _(TestClock.adjust("100 millis"))
         yield* _(Effect.yieldNow())
 
-        assert.isTrue(yield* _(Deferred.isDone(deferred)))
+        assertTrue(yield* _(Deferred.isDone(deferred)))
       })))
   })
 })
@@ -168,7 +169,7 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
         () => limit(Clock.currentTimeMillis)
       ))
       const result = Array.every(times, (time) => time === now)
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.scoped(`${algorithm} - is not affected by stream chunk size`, () =>
@@ -193,7 +194,7 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       const times2 = yield* _(Effect.forEach(fibers, Fiber.join, { concurrency: "unbounded" }))
       const times = Array.appendAll(times1, times2)
       const result = Array.filter(times, (time) => time === now)
-      assert.strictEqual(result.length, 10)
+      strictEqual(result.length, 10)
     }))
 
   it.scoped(`${algorithm} - succeed with the result of the call`, () =>
@@ -204,7 +205,7 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
         algorithm
       }))
       const result = yield* _(limit(Effect.succeed(3)))
-      assert.strictEqual(result, 3)
+      strictEqual(result, 3)
     }))
 
   it.scoped(`${algorithm} - fail with the result of a failed call`, () =>
@@ -215,18 +216,18 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
         algorithm
       }))
       const result = yield* _(limit(Effect.either(Effect.fail(Option.none()))))
-      assert.deepStrictEqual(result, Either.left(Option.none()))
+      assertLeft(result, Option.none())
     }))
 
   it.scoped(`${algorithm} - continue after a failed call`, () =>
-    Effect.gen(function*(_) {
-      const limit = yield* _(RateLimiter.make({
+    Effect.gen(function*() {
+      const limit = yield* RateLimiter.make({
         limit: 10,
         interval: "1 seconds",
         algorithm
-      }))
-      yield* _(limit(Effect.either(Effect.fail(Option.none()))))
-      yield* _(limit(Effect.succeed(3)))
+      })
+      yield* limit(Effect.either(Effect.fail(Option.none())))
+      yield* limit(Effect.succeed(3))
     }))
 
   it.scoped(`${algorithm} - holds back up calls after the max`, () =>
@@ -252,8 +253,8 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       const times = yield* _(Fiber.join(fiber))
       const later = yield* _(Clock.currentTimeMillis)
 
-      assert.isTrue(times.slice(0, 10).every((x) => x === now))
-      assert.isTrue(times.slice(10).every((x) => x > now && x <= later))
+      assertTrue(times.slice(0, 10).every((x) => x === now))
+      assertTrue(times.slice(10).every((x) => x > now && x <= later))
     }))
 
   it.scoped(`${algorithm} - will interrupt the effect when a call is interrupted`, () =>
@@ -289,7 +290,7 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       const fiber = yield* _(Effect.fork(limit(Ref.set(count, 1))))
       const interruption = yield* _(Effect.fork(Fiber.interrupt(fiber)))
       yield* _(Fiber.join(interruption))
-      assert.strictEqual(yield* _(Ref.get(count)), 0)
+      strictEqual(yield* _(Ref.get(count)), 0)
     }))
 
   it.scoped(`${algorithm} - will wait for interruption to complete of an effect that is already executing`, () =>
@@ -311,7 +312,7 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       yield* _(Deferred.await(latch))
       yield* _(Fiber.interrupt(fiber))
       const interruptions = yield* _(Ref.get(effectInterrupted))
-      assert.strictEqual(interruptions, 1)
+      strictEqual(interruptions, 1)
     }))
 
   it.scoped(`${algorithm} - will make effects wait for interrupted effects to pass through the rate limiter`, () =>
@@ -328,7 +329,7 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       const fiber2 = yield* _(Effect.fork(limit(Clock.currentTimeMillis)))
       yield* _(TestClock.adjust("1 seconds"))
       const lastExecutionTime = yield* _(Fiber.join(fiber2))
-      assert(lastExecutionTime === 2000)
+      strictEqual(lastExecutionTime, 2000)
     }))
 
   it.scoped("will not include interrupted effects in the throttling", () =>

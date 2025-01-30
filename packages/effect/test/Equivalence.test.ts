@@ -1,22 +1,22 @@
-import * as _ from "effect/Equivalence"
-import { pipe } from "effect/Function"
-import { describe, expect, it } from "vitest"
+import { Equivalence, pipe } from "effect"
+import { assertFalse, assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Equivalence", () => {
   it("array", () => {
-    const eq = _.array(_.number)
+    const eq = Equivalence.array(Equivalence.number)
 
-    expect(eq([], [])).toEqual(true)
-    expect(eq([1, 2, 3], [1, 2, 3])).toEqual(true)
-    expect(eq([1, 2, 3], [1, 2, 4])).toEqual(false)
-    expect(eq([1, 2, 3], [1, 2])).toEqual(false)
+    assertTrue(eq([], []))
+    assertTrue(eq([1, 2, 3], [1, 2, 3]))
+    assertFalse(eq([1, 2, 3], [1, 2, 4]))
+    assertFalse(eq([1, 2, 3], [1, 2]))
   })
 
   it("strict returns an Equivalence that uses strict equality (===) to compare values", () => {
-    const eq = _.strict<{ a: number }>()
+    const eq = Equivalence.strict<{ a: number }>()
     const a = { a: 1 }
-    expect(eq(a, a)).toBe(true)
-    expect(eq({ a: 1 }, { a: 1 })).toBe(false)
+    assertTrue(eq(a, a))
+    assertFalse(eq({ a: 1 }, { a: 1 }))
   })
 
   it("mapInput", () => {
@@ -24,88 +24,88 @@ describe("Equivalence", () => {
       readonly name: string
       readonly age: number
     }
-    const eqPerson = pipe(_.string, _.mapInput((p: Person) => p.name))
-    expect(eqPerson({ name: "a", age: 1 }, { name: "a", age: 2 })).toEqual(true)
-    expect(eqPerson({ name: "a", age: 1 }, { name: "a", age: 1 })).toEqual(true)
-    expect(eqPerson({ name: "a", age: 1 }, { name: "b", age: 1 })).toEqual(false)
-    expect(eqPerson({ name: "a", age: 1 }, { name: "b", age: 2 })).toEqual(false)
+    const eqPerson = pipe(Equivalence.string, Equivalence.mapInput((p: Person) => p.name))
+    assertTrue(eqPerson({ name: "a", age: 1 }, { name: "a", age: 2 }))
+    assertTrue(eqPerson({ name: "a", age: 1 }, { name: "a", age: 1 }))
+    assertFalse(eqPerson({ name: "a", age: 1 }, { name: "b", age: 1 }))
+    assertFalse(eqPerson({ name: "a", age: 1 }, { name: "b", age: 2 }))
   })
 
   it("Date", () => {
-    const eq = _.Date
-    expect(eq(new Date(0), new Date(0))).toEqual(true)
-    expect(eq(new Date(0), new Date(1))).toEqual(false)
-    expect(eq(new Date(1), new Date(0))).toEqual(false)
+    const eq = Equivalence.Date
+    assertTrue(eq(new Date(0), new Date(0)))
+    assertFalse(eq(new Date(0), new Date(1)))
+    assertFalse(eq(new Date(1), new Date(0)))
   })
 
   it("product", () => {
-    const eq = _.product(_.string, _.string)
-    expect(eq(["a", "b"], ["a", "b"])).toEqual(true)
-    expect(eq(["a", "b"], ["c", "b"])).toEqual(false)
-    expect(eq(["a", "b"], ["a", "c"])).toEqual(false)
+    const eq = Equivalence.product(Equivalence.string, Equivalence.string)
+    assertTrue(eq(["a", "b"], ["a", "b"]))
+    assertFalse(eq(["a", "b"], ["c", "b"]))
+    assertFalse(eq(["a", "b"], ["a", "c"]))
   })
 
   it("productMany", () => {
-    const eq = _.productMany(_.string, [_.string])
-    expect(eq(["a", "b"], ["a", "b"])).toEqual(true)
-    expect(eq(["a", "b"], ["a", "b", "c"])).toEqual(true)
-    expect(eq(["a", "b", "c"], ["a", "b"])).toEqual(true)
-    expect(eq(["a", "b"], ["c", "b"])).toEqual(false)
-    expect(eq(["a", "b"], ["a", "c"])).toEqual(false)
+    const eq = Equivalence.productMany(Equivalence.string, [Equivalence.string])
+    assertTrue(eq(["a", "b"], ["a", "b"]))
+    assertTrue(eq(["a", "b"], ["a", "b", "c"]))
+    assertTrue(eq(["a", "b", "c"], ["a", "b"]))
+    assertFalse(eq(["a", "b"], ["c", "b"]))
+    assertFalse(eq(["a", "b"], ["a", "c"]))
   })
 
   it("all", () => {
-    const eq = _.all([_.string, _.string])
-    expect(eq([], [])).toEqual(true)
-    expect(eq([], ["a"])).toEqual(true)
-    expect(eq(["a"], [])).toEqual(true)
-    expect(eq(["a"], ["a"])).toEqual(true)
-    expect(eq(["a"], ["b"])).toEqual(false)
-    expect(eq(["a"], ["a", "b"])).toEqual(true)
-    expect(eq(["a", "b"], ["a"])).toEqual(true)
-    expect(eq(["a", "b"], ["a", "b"])).toEqual(true)
-    expect(eq(["a", "b"], ["a", "c"])).toEqual(false)
+    const eq = Equivalence.all([Equivalence.string, Equivalence.string])
+    assertTrue(eq([], []))
+    assertTrue(eq([], ["a"]))
+    assertTrue(eq(["a"], []))
+    assertTrue(eq(["a"], ["a"]))
+    assertFalse(eq(["a"], ["b"]))
+    assertTrue(eq(["a"], ["a", "b"]))
+    assertTrue(eq(["a", "b"], ["a"]))
+    assertTrue(eq(["a", "b"], ["a", "b"]))
+    assertFalse(eq(["a", "b"], ["a", "c"]))
   })
 
   it("combine", () => {
     type T = readonly [string, number, boolean]
-    const E0: _.Equivalence<T> = _.mapInput((x: T) => x[0])(_.string)
-    const E1: _.Equivalence<T> = _.mapInput((x: T) => x[1])(_.number)
-    const eqE0E1 = _.combine(E0, E1)
-    expect(eqE0E1(["a", 1, true], ["a", 1, true])).toEqual(true)
-    expect(eqE0E1(["a", 1, true], ["a", 1, false])).toEqual(true)
-    expect(eqE0E1(["a", 1, true], ["b", 1, true])).toEqual(false)
-    expect(eqE0E1(["a", 1, true], ["a", 2, false])).toEqual(false)
+    const E0: Equivalence.Equivalence<T> = Equivalence.mapInput((x: T) => x[0])(Equivalence.string)
+    const E1: Equivalence.Equivalence<T> = Equivalence.mapInput((x: T) => x[1])(Equivalence.number)
+    const eqE0E1 = Equivalence.combine(E0, E1)
+    assertTrue(eqE0E1(["a", 1, true], ["a", 1, true]))
+    assertTrue(eqE0E1(["a", 1, true], ["a", 1, false]))
+    assertFalse(eqE0E1(["a", 1, true], ["b", 1, true]))
+    assertFalse(eqE0E1(["a", 1, true], ["a", 2, false]))
   })
 
   it("combineMany", () => {
     type T = readonly [string, number, boolean]
-    const E0: _.Equivalence<T> = _.mapInput((x: T) => x[0])(_.string)
-    const E1: _.Equivalence<T> = _.mapInput((x: T) => x[1])(_.number)
-    const E2: _.Equivalence<T> = _.mapInput((x: T) => x[2])(_.boolean)
-    const eqE0E1E2 = _.combineMany(E0, [E1, E2])
-    expect(eqE0E1E2(["a", 1, true], ["a", 1, true])).toEqual(true)
-    expect(eqE0E1E2(["a", 1, true], ["b", 1, true])).toEqual(false)
-    expect(eqE0E1E2(["a", 1, true], ["a", 2, true])).toEqual(false)
-    expect(eqE0E1E2(["a", 1, true], ["a", 1, false])).toEqual(false)
+    const E0: Equivalence.Equivalence<T> = Equivalence.mapInput((x: T) => x[0])(Equivalence.string)
+    const E1: Equivalence.Equivalence<T> = Equivalence.mapInput((x: T) => x[1])(Equivalence.number)
+    const E2: Equivalence.Equivalence<T> = Equivalence.mapInput((x: T) => x[2])(Equivalence.boolean)
+    const eqE0E1E2 = Equivalence.combineMany(E0, [E1, E2])
+    assertTrue(eqE0E1E2(["a", 1, true], ["a", 1, true]))
+    assertFalse(eqE0E1E2(["a", 1, true], ["b", 1, true]))
+    assertFalse(eqE0E1E2(["a", 1, true], ["a", 2, true]))
+    assertFalse(eqE0E1E2(["a", 1, true], ["a", 1, false]))
   })
 
   it("combineAll", () => {
     type T = readonly [string, number, boolean]
-    const E0: _.Equivalence<T> = _.mapInput((x: T) => x[0])(_.string)
-    const E1: _.Equivalence<T> = _.mapInput((x: T) => x[1])(_.number)
-    const E2: _.Equivalence<T> = _.mapInput((x: T) => x[2])(_.boolean)
-    const eqE0E1E2 = _.combineAll([E0, E1, E2])
-    expect(eqE0E1E2(["a", 1, true], ["a", 1, true])).toEqual(true)
-    expect(eqE0E1E2(["a", 1, true], ["b", 1, true])).toEqual(false)
-    expect(eqE0E1E2(["a", 1, true], ["a", 2, true])).toEqual(false)
-    expect(eqE0E1E2(["a", 1, true], ["a", 1, false])).toEqual(false)
+    const E0: Equivalence.Equivalence<T> = Equivalence.mapInput((x: T) => x[0])(Equivalence.string)
+    const E1: Equivalence.Equivalence<T> = Equivalence.mapInput((x: T) => x[1])(Equivalence.number)
+    const E2: Equivalence.Equivalence<T> = Equivalence.mapInput((x: T) => x[2])(Equivalence.boolean)
+    const eqE0E1E2 = Equivalence.combineAll([E0, E1, E2])
+    assertTrue(eqE0E1E2(["a", 1, true], ["a", 1, true]))
+    assertFalse(eqE0E1E2(["a", 1, true], ["b", 1, true]))
+    assertFalse(eqE0E1E2(["a", 1, true], ["a", 2, true]))
+    assertFalse(eqE0E1E2(["a", 1, true], ["a", 1, false]))
   })
 
   it("tuple", () => {
-    const eq = _.tuple(_.string, _.string)
-    expect(eq(["a", "b"], ["a", "b"])).toEqual(true)
-    expect(eq(["a", "b"], ["c", "b"])).toEqual(false)
-    expect(eq(["a", "b"], ["a", "c"])).toEqual(false)
+    const eq = Equivalence.tuple(Equivalence.string, Equivalence.string)
+    assertTrue(eq(["a", "b"], ["a", "b"]))
+    assertFalse(eq(["a", "b"], ["c", "b"]))
+    assertFalse(eq(["a", "b"], ["a", "c"]))
   })
 })

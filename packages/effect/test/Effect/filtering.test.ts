@@ -3,8 +3,9 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const exactlyOnce = <R, A, A1>(
   value: A,
@@ -30,8 +31,8 @@ describe("Effect", () => {
         )
       )
       const effects = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(results), [2, 4, 6, 6])
-      assert.deepStrictEqual(Array.from(effects), [2, 4, 6, 3, 5, 6])
+      deepStrictEqual(Array.from(results), [2, 4, 6, 6])
+      deepStrictEqual(Array.from(effects), [2, 4, 6, 3, 5, 6])
     }))
   it.effect("filter/negate - filters a collection using an effectual predicate, removing all elements that satisfy the predicate", () =>
     Effect.gen(function*($) {
@@ -43,8 +44,8 @@ describe("Effect", () => {
         )
       )
       const effects = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(results), [3, 5])
-      assert.deepStrictEqual(Array.from(effects), [2, 4, 6, 3, 5, 6])
+      deepStrictEqual(Array.from(results), [3, 5])
+      deepStrictEqual(Array.from(effects), [2, 4, 6, 3, 5, 6])
     }))
   it.effect("filter/concurrency - filters a collection in parallel using an effectual predicate", () =>
     Effect.gen(function*($) {
@@ -54,7 +55,7 @@ describe("Effect", () => {
           Effect.filter((n) => Effect.succeed(n % 2 === 0), { concurrency: "unbounded" })
         )
       )
-      assert.deepStrictEqual(Array.from(result), [2, 4, 6, 6, 10, 20, 22, 28])
+      deepStrictEqual(Array.from(result), [2, 4, 6, 6, 10, 20, 22, 28])
     }))
   it.effect("filter/concurrency+negate - filters a collection in parallel using an effectual predicate, removing all elements that satisfy the predicate", () =>
     Effect.gen(function*($) {
@@ -67,7 +68,7 @@ describe("Effect", () => {
           })
         )
       )
-      assert.deepStrictEqual(Array.from(result), [3, 5, 11, 15, 17, 23, 25])
+      deepStrictEqual(Array.from(result), [3, 5, 11, 15, 17, 23, 25])
     }))
   it.effect("filterOrElse - returns checked failure from held value", () =>
     Effect.gen(function*($) {
@@ -96,8 +97,8 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      assert.deepStrictEqual(goodCase, Either.right(0 as const))
-      assert.deepStrictEqual(badCase, Either.left(Either.left("1 was not 0")))
+      assertRight(goodCase, 0)
+      assertLeft(badCase, Either.left("1 was not 0"))
     }))
   it.effect("filterOrElse - returns checked failure ignoring value", () =>
     Effect.gen(function*($) {
@@ -126,8 +127,8 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      assert.deepStrictEqual(goodCase, Either.right(0 as const))
-      assert.deepStrictEqual(badCase, Either.left(Either.left("predicate failed!")))
+      assertRight(goodCase, 0)
+      assertLeft(badCase, Either.left("predicate failed!"))
     }))
   it.effect("filterOrFail - returns failure ignoring value", () =>
     Effect.gen(function*($) {
@@ -156,8 +157,8 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      assert.deepStrictEqual(goodCase, Either.right(0 as const))
-      assert.deepStrictEqual(badCase, Either.left(Either.left("predicate failed!")))
+      assertRight(goodCase, 0)
+      assertLeft(badCase, Either.left("predicate failed!"))
     }))
   it.effect("filterOrFail - returns failure", () =>
     Effect.gen(function*($) {
@@ -186,8 +187,8 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      assert.deepStrictEqual(goodCase, Either.right(0 as const))
-      assert.deepStrictEqual(badCase, Either.left(Either.left("predicate failed, got 1!")))
+      assertRight(goodCase, 0)
+      assertLeft(badCase, Either.left("predicate failed, got 1!"))
     }))
   it.effect("filterOrFail - without orFailWith", () =>
     Effect.gen(function*($) {
@@ -203,8 +204,8 @@ describe("Effect", () => {
         Effect.filterOrFail((n) => n === 0),
         Effect.flip
       )
-      assert.deepStrictEqual(goodCase, 0)
-      assert.deepStrictEqual(goodCaseDataFirst, 0)
-      assert.deepStrictEqual(badCase, new Cause.NoSuchElementException())
+      deepStrictEqual(goodCase, 0)
+      deepStrictEqual(goodCaseDataFirst, 0)
+      deepStrictEqual(badCase, new Cause.NoSuchElementException())
     }))
 })

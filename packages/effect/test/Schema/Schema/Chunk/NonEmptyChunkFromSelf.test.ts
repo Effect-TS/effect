@@ -4,7 +4,8 @@ import * as FastCheck from "effect/FastCheck"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("NonEmptyChunkFromSelf", () => {
   it("test roundtrip consistency", () => {
@@ -56,23 +57,21 @@ describe("NonEmptyChunkFromSelf", () => {
   it("pretty", () => {
     const schema = S.NonEmptyChunkFromSelf(S.String)
     const pretty = Pretty.make(schema)
-    expect(pretty(C.make("a", "b"))).toEqual(
-      `NonEmptyChunk("a", "b")`
-    )
+    strictEqual(pretty(C.make("a", "b")), `NonEmptyChunk("a", "b")`)
   })
 
   it("equivalence", () => {
     const schema = S.NonEmptyChunkFromSelf(S.String)
     const equivalence = S.equivalence(schema)
-    expect(equivalence(C.make("a", "b"), C.make("a", "b"))).toEqual(true)
-    expect(equivalence(C.make("a", "b"), C.make("a", "c"))).toEqual(false)
-    expect(equivalence(C.make("a", "b"), C.make("a"))).toEqual(false)
+    assertTrue(equivalence(C.make("a", "b"), C.make("a", "b")))
+    assertFalse(equivalence(C.make("a", "b"), C.make("a", "c")))
+    assertFalse(equivalence(C.make("a", "b"), C.make("a")))
   })
 
   it("arbitrary", () => {
     const schema = S.NonEmptyChunkFromSelf(S.String)
     const arb = Arbitrary.make(schema)
     FastCheck.assert(FastCheck.property(arb, C.isNonEmpty))
-    expect(FastCheck.sample(arb, 10).every(C.isNonEmpty)).toBe(true)
+    assertTrue(FastCheck.sample(arb, 10).every(C.isNonEmpty))
   })
 })

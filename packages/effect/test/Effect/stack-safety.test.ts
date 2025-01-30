@@ -1,8 +1,9 @@
 import * as Effect from "effect/Effect"
 import { constVoid, identity, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const deepMapEffect = (n: number): Effect.Effect<number> => {
   const loop = (n: number, acc: Effect.Effect<number>): Effect.Effect<number> => {
@@ -18,7 +19,7 @@ describe("Effect", () => {
   it.effect("deep map of sync effect", () =>
     Effect.gen(function*($) {
       const result = yield* $(deepMapEffect(10000))
-      assert.strictEqual(result, 10000)
+      strictEqual(result, 10000)
     }))
   it.effect("deep attempt", () =>
     Effect.gen(function*($) {
@@ -27,7 +28,7 @@ describe("Effect", () => {
         (acc, _) => pipe(Effect.orDie(acc), Effect.either, Effect.asVoid),
         Effect.orDie(Effect.try(constVoid))
       ))
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
   it.effect("deep flatMap", () =>
     Effect.gen(function*($) {
@@ -45,7 +46,7 @@ describe("Effect", () => {
       const expected = BigInt(
         "113796925398360272257523782552224175572745930353730513145086634176691092536145985470146129334641866902783673042322088625863396052888690096969577173696370562180400527049497109023054114771394568040040412172632376"
       )
-      assert.deepEqual(result, expected)
+      deepStrictEqual(result, expected)
     }))
   it.effect("deep absolve/attempt is identity", () =>
     Effect.gen(function*($) {
@@ -53,7 +54,7 @@ describe("Effect", () => {
       const result = yield* $(
         array.reduce((acc, _) => Effect.flatMap(Effect.either(acc), identity), Effect.succeed(42))
       )
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
   it.effect("deep async absolve/attempt is identity", () =>
     Effect.gen(function*($) {
@@ -64,7 +65,7 @@ describe("Effect", () => {
           cb(Effect.succeed(42))
         })
       ))
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
   it.effect("deep effects", () =>
     Effect.gen(function*($) {
@@ -83,6 +84,6 @@ describe("Effect", () => {
       const left = pipe(Ref.make(0), Effect.flatMap((ref) => incLeft(100, ref)), Effect.map((n) => n === 0))
       const right = pipe(Ref.make(0), Effect.flatMap((ref) => incRight(1000, ref)), Effect.map((n) => n === 1000))
       const result = yield* $(left, Effect.zipWith(right, (a, b) => a && b))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 })

@@ -1,11 +1,12 @@
 import * as S from "effect/Schema"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("AST.Refinement", () => {
   it("toString", () => {
-    expect(String(S.Number.pipe(S.filter(() => true)))).toBe("{ number | filter }")
-    expect(String(S.Number.pipe(S.int()))).toBe("int")
-    expect(String(S.Number.pipe(S.int(), S.positive()))).toBe("int & positive")
-    expect(String(S.Int.pipe(S.positive()))).toBe("Int & positive")
+    strictEqual(String(S.Number.pipe(S.filter(() => true))), "{ number | filter }")
+    strictEqual(String(S.Number.pipe(S.int())), "int")
+    strictEqual(String(S.Number.pipe(S.int(), S.positive())), "int & positive")
+    strictEqual(String(S.Int.pipe(S.positive())), "Int & positive")
   })
 })

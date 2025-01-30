@@ -1,17 +1,20 @@
-import * as RA from "effect/Array"
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import { pipe } from "effect/Function"
-import * as number from "effect/Number"
-import * as STM from "effect/STM"
+import {
+  Array as Arr,
+  Deferred,
+  Effect,
+  FastCheck as fc,
+  Fiber,
+  Number as number,
+  pipe,
+  STM,
+  TPubSub,
+  TQueue
+} from "effect"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import * as TPubSub from "effect/TPubSub"
-import * as TQueue from "effect/TQueue"
-import * as fc from "fast-check"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
-const sort: (array: ReadonlyArray<number>) => ReadonlyArray<number> = RA.sort(number.Order)
+const sort: (array: ReadonlyArray<number>) => ReadonlyArray<number> = Arr.sort(number.Order)
 
 describe("TPubSub", () => {
   it.it("sequential publishers and subscribers - with one publisher and one subscriber", () =>
@@ -45,7 +48,7 @@ describe("TPubSub", () => {
         return yield* $(Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result), as.slice(0, n))
+      deepStrictEqual(Array.from(result), as.slice(0, n))
     })))
 
   it.it("sequential publishers and subscribers - with one publisher and two subscribers", () =>
@@ -99,8 +102,8 @@ describe("TPubSub", () => {
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result1), as.slice(0, n))
-      assert.deepStrictEqual(Array.from(result2), as.slice(0, n))
+      deepStrictEqual(Array.from(result1), as.slice(0, n))
+      deepStrictEqual(Array.from(result2), as.slice(0, n))
     })))
 
   it.it("concurrent publishers and subscribers - one to one", () =>
@@ -128,7 +131,7 @@ describe("TPubSub", () => {
         return yield* $(Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(Effect.scoped(program))
-      assert.deepStrictEqual(Array.from(result), as.slice(0, n))
+      deepStrictEqual(Array.from(result), as.slice(0, n))
     })))
 
   it.it("concurrent publishers and subscribers - one to many", () =>
@@ -171,8 +174,8 @@ describe("TPubSub", () => {
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(Effect.scoped(program))
-      assert.deepStrictEqual(Array.from(result1), as.slice(0, n))
-      assert.deepStrictEqual(Array.from(result2), as.slice(0, n))
+      deepStrictEqual(Array.from(result1), as.slice(0, n))
+      deepStrictEqual(Array.from(result2), as.slice(0, n))
     })))
 
   it.it("concurrent publishers and subscribers - many to many", () =>
@@ -228,19 +231,19 @@ describe("TPubSub", () => {
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result1).filter((n) => n > 0),
         as.slice(0, n)
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result1).filter((n) => n < 0),
         as.slice(0, n).map((n) => -n)
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result2).filter((n) => n > 0),
         as.slice(0, n)
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result2).filter((n) => n < 0),
         as.slice(0, n).map((n) => -n)
       )
@@ -268,7 +271,7 @@ describe("TPubSub", () => {
         return yield* $(Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result), as)
+      deepStrictEqual(Array.from(result), as)
     })))
 
   it.it("back pressure - one to many", () =>
@@ -309,8 +312,8 @@ describe("TPubSub", () => {
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result1), as)
-      assert.deepStrictEqual(Array.from(result2), as)
+      deepStrictEqual(Array.from(result1), as)
+      deepStrictEqual(Array.from(result2), as)
     })))
 
   it.it("back pressure - many to many", () =>
@@ -366,10 +369,10 @@ describe("TPubSub", () => {
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result1).filter((n) => n > 0), as)
-      assert.deepStrictEqual(Array.from(result1).filter((n) => n < 0), as.map((n) => -n))
-      assert.deepStrictEqual(Array.from(result2).filter((n) => n > 0), as)
-      assert.deepStrictEqual(Array.from(result2).filter((n) => n < 0), as.map((n) => -n))
+      deepStrictEqual(Array.from(result1).filter((n) => n > 0), as)
+      deepStrictEqual(Array.from(result1).filter((n) => n < 0), as.map((n) => -n))
+      deepStrictEqual(Array.from(result2).filter((n) => n > 0), as)
+      deepStrictEqual(Array.from(result2).filter((n) => n < 0), as.map((n) => -n))
     })))
 
   it.it("dropping - one to one", () =>
@@ -397,7 +400,7 @@ describe("TPubSub", () => {
         return yield* $(Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result), as.slice(0, n))
+      deepStrictEqual(Array.from(result), as.slice(0, n))
     })))
 
   it.it("dropping - one to many", () =>
@@ -444,8 +447,8 @@ describe("TPubSub", () => {
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result1), as.slice(0, n))
-      assert.deepStrictEqual(Array.from(result2), as.slice(0, n))
+      deepStrictEqual(Array.from(result1), as.slice(0, n))
+      deepStrictEqual(Array.from(result2), as.slice(0, n))
     })))
 
   it.it("dropping - many to many", () =>
@@ -501,19 +504,19 @@ describe("TPubSub", () => {
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result1).filter((n) => n > 0),
         as.slice(0, Array.from(result1).filter((n) => n > 0).length)
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result1).filter((n) => n < 0),
         as.slice(0, n).map((n) => -n).slice(0, Array.from(result1).filter((n) => n < 0).length)
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result2).filter((n) => n > 0),
         as.slice(0, Array.from(result2).filter((n) => n > 0).length)
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result2).filter((n) => n < 0),
         as.slice(0, n).map((n) => -n).slice(0, Array.from(result2).filter((n) => n < 0).length)
       )
@@ -545,7 +548,7 @@ describe("TPubSub", () => {
         return yield* $(Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result), sort(Array.from(result)))
+      deepStrictEqual(Array.from(result), sort(Array.from(result)))
     })))
 
   it.it("sliding - one to many", () =>
@@ -592,8 +595,8 @@ describe("TPubSub", () => {
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result1), sort(Array.from(result1)))
-      assert.deepStrictEqual(Array.from(result2), sort(Array.from(result2)))
+      deepStrictEqual(Array.from(result1), sort(Array.from(result1)))
+      deepStrictEqual(Array.from(result2), sort(Array.from(result2)))
     })))
 
   it.it("sliding - many to many", () =>
@@ -649,19 +652,19 @@ describe("TPubSub", () => {
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result1).filter((n) => n > 0),
         sort(Array.from(result1).filter((n) => n > 0))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result1).filter((n) => n < 0),
         sort(Array.from(result1).filter((n) => n < 0))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result2).filter((n) => n > 0),
         sort(Array.from(result2).filter((n) => n > 0))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result2).filter((n) => n < 0),
         sort(Array.from(result2).filter((n) => n < 0))
       )
@@ -689,7 +692,7 @@ describe("TPubSub", () => {
         return yield* $(Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result), as)
+      deepStrictEqual(Array.from(result), as)
     })))
 
   it.it("unbounded - one to many", () =>
@@ -730,8 +733,8 @@ describe("TPubSub", () => {
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result1), as)
-      assert.deepStrictEqual(Array.from(result2), as)
+      deepStrictEqual(Array.from(result1), as)
+      deepStrictEqual(Array.from(result2), as)
     })))
 
   it.it("unbounded - many to many", () =>
@@ -787,10 +790,10 @@ describe("TPubSub", () => {
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
-      assert.deepStrictEqual(Array.from(result1).filter((n) => n > 0), as)
-      assert.deepStrictEqual(Array.from(result1).filter((n) => n < 0), as.map((n) => -n))
-      assert.deepStrictEqual(Array.from(result2).filter((n) => n > 0), as)
-      assert.deepStrictEqual(Array.from(result2).filter((n) => n < 0), as.map((n) => -n))
+      deepStrictEqual(Array.from(result1).filter((n) => n > 0), as)
+      deepStrictEqual(Array.from(result1).filter((n) => n < 0), as.map((n) => -n))
+      deepStrictEqual(Array.from(result2).filter((n) => n > 0), as)
+      deepStrictEqual(Array.from(result2).filter((n) => n < 0), as.map((n) => -n))
     })))
 
   it.effect("unbounded - undefined/null values", () =>
@@ -828,8 +831,8 @@ describe("TPubSub", () => {
       yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
-      assert.deepStrictEqual(result1, as)
-      assert.deepStrictEqual(result2, as)
+      deepStrictEqual(result1, as)
+      deepStrictEqual(result2, as)
     }))
 
   it.effect("bounded - undefined/null values", () =>
@@ -867,8 +870,8 @@ describe("TPubSub", () => {
       yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
-      assert.deepStrictEqual(result1, as)
-      assert.deepStrictEqual(result2, as)
+      deepStrictEqual(result1, as)
+      deepStrictEqual(result2, as)
     }))
 
   it.effect("dropping - undefined/null values", () =>
@@ -895,6 +898,6 @@ describe("TPubSub", () => {
       yield* $(Deferred.await(deferred))
       yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
       const result = yield* $(Fiber.join(subscriber))
-      assert.deepStrictEqual(result, as.slice(0, n))
+      deepStrictEqual(result, as.slice(0, n))
     }))
 })

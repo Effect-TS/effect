@@ -1,22 +1,18 @@
-import * as Equal from "effect/Equal"
-import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as number from "effect/Number"
-import * as Option from "effect/Option"
-import * as Order from "effect/Order"
-import * as RedBlackTree from "effect/RedBlackTree"
-import { deepStrictEqual } from "effect/test/util"
-import { assert, describe, expect, it } from "vitest"
+import { Equal, Hash, Number as Num, Option, Order, pipe, RedBlackTree } from "effect"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("RedBlackTree", () => {
   it("toString", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b")
     )
 
-    expect(String(tree)).toEqual(`{
+    strictEqual(
+      String(tree),
+      `{
   "_id": "RedBlackTree",
   "values": [
     [
@@ -28,19 +24,18 @@ describe("RedBlackTree", () => {
       "a"
     ]
   ]
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b")
     )
 
-    expect(tree.toJSON()).toEqual(
-      { _id: "RedBlackTree", values: [[0, "b"], [1, "a"]] }
-    )
+    deepStrictEqual(tree.toJSON(), { _id: "RedBlackTree", values: [[0, "b"], [1, "a"]] })
   })
 
   it("inspect", () => {
@@ -51,18 +46,18 @@ describe("RedBlackTree", () => {
     const { inspect } = require("node:util")
 
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b")
     )
 
-    expect(inspect(tree)).toEqual(inspect({ _id: "RedBlackTree", values: [[0, "b"], [1, "a"]] }))
+    deepStrictEqual(inspect(tree), inspect({ _id: "RedBlackTree", values: [[0, "b"], [1, "a"]] }))
   })
 
   it("forEach", () => {
     const ordered: Array<[number, string]> = []
     pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -84,7 +79,7 @@ describe("RedBlackTree", () => {
 
   it("iterable", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -92,7 +87,7 @@ describe("RedBlackTree", () => {
       RedBlackTree.insert(3, "e")
     )
 
-    assert.strictEqual(RedBlackTree.size(tree), 5)
+    strictEqual(RedBlackTree.size(tree), 5)
     deepStrictEqual(Array.from(tree), [
       [-2, "d"],
       [-1, "c"],
@@ -103,15 +98,15 @@ describe("RedBlackTree", () => {
   })
 
   it("iterable empty", () => {
-    const tree = RedBlackTree.empty<number, string>(number.Order)
+    const tree = RedBlackTree.empty<number, string>(Num.Order)
 
-    assert.strictEqual(RedBlackTree.size(tree), 0)
+    strictEqual(RedBlackTree.size(tree), 0)
     deepStrictEqual(Array.from(tree), [])
   })
 
   it("backwards", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -119,7 +114,7 @@ describe("RedBlackTree", () => {
       RedBlackTree.insert(3, "e")
     )
 
-    assert.strictEqual(RedBlackTree.size(tree), 5)
+    strictEqual(RedBlackTree.size(tree), 5)
     deepStrictEqual(Array.from(RedBlackTree.reversed(tree)), [
       [3, "e"],
       [1, "a"],
@@ -130,15 +125,15 @@ describe("RedBlackTree", () => {
   })
 
   it("backwards empty", () => {
-    const tree = RedBlackTree.empty<number, string>(number.Order)
+    const tree = RedBlackTree.empty<number, string>(Num.Order)
 
-    assert.strictEqual(RedBlackTree.size(tree), 0)
+    strictEqual(RedBlackTree.size(tree), 0)
     deepStrictEqual(Array.from(RedBlackTree.reversed(tree)), [])
   })
 
   it("values", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -146,13 +141,13 @@ describe("RedBlackTree", () => {
       RedBlackTree.insert(3, "e")
     )
 
-    assert.strictEqual(RedBlackTree.size(tree), 5)
+    strictEqual(RedBlackTree.size(tree), 5)
     deepStrictEqual(Array.from(RedBlackTree.values(tree)), ["d", "c", "b", "a", "e"])
   })
 
   it("keys", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -160,13 +155,13 @@ describe("RedBlackTree", () => {
       RedBlackTree.insert(3, "e")
     )
 
-    assert.strictEqual(RedBlackTree.size(tree), 5)
+    strictEqual(RedBlackTree.size(tree), 5)
     deepStrictEqual(Array.from(RedBlackTree.keys(tree)), [-2, -1, 0, 1, 3])
   })
 
   it("begin/end", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -182,7 +177,7 @@ describe("RedBlackTree", () => {
   it("forEachGreaterThanEqual", () => {
     const ordered: Array<[number, string]> = []
     pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -199,7 +194,7 @@ describe("RedBlackTree", () => {
   it("forEachLessThan", () => {
     const ordered: Array<[number, string]> = []
     pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -216,7 +211,7 @@ describe("RedBlackTree", () => {
   it("forEachBetween", () => {
     const ordered: Array<[number, string]> = []
     pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -236,7 +231,7 @@ describe("RedBlackTree", () => {
 
   it("greaterThan", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -261,7 +256,7 @@ describe("RedBlackTree", () => {
 
   it("greaterThanEqual", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -286,7 +281,7 @@ describe("RedBlackTree", () => {
 
   it("lessThan", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -311,7 +306,7 @@ describe("RedBlackTree", () => {
 
   it("lessThanEqual", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(0, "b"),
       RedBlackTree.insert(-1, "c"),
@@ -336,7 +331,7 @@ describe("RedBlackTree", () => {
 
   it("findAll", () => {
     const tree = pipe(
-      RedBlackTree.empty<number, string>(number.Order),
+      RedBlackTree.empty<number, string>(Num.Order),
       RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(2, "c"),
       RedBlackTree.insert(1, "b"),
@@ -372,7 +367,7 @@ describe("RedBlackTree", () => {
       }
     }
 
-    const ord = pipe(number.Order, Order.mapInput((key: Key) => key.n))
+    const ord = pipe(Num.Order, Order.mapInput((key: Key) => key.n))
 
     const tree = pipe(
       RedBlackTree.empty<Key, string>(ord),
@@ -412,14 +407,14 @@ describe("RedBlackTree", () => {
   })
 
   it("Equal.symbol", () => {
-    expect(
-      Equal.equals(RedBlackTree.empty<number, string>(number.Order), RedBlackTree.empty<number, string>(number.Order))
-    ).toBe(true)
-    expect(
+    assertTrue(
+      Equal.equals(RedBlackTree.empty<number, string>(Num.Order), RedBlackTree.empty<number, string>(Num.Order))
+    )
+    assertTrue(
       Equal.equals(
-        RedBlackTree.make(number.Order)([1, true], [2, true]),
-        RedBlackTree.make(number.Order)([1, true], [2, true])
+        RedBlackTree.make(Num.Order)([1, true], [2, true]),
+        RedBlackTree.make(Num.Order)([1, true], [2, true])
       )
-    ).toBe(true)
+    )
   })
 })

@@ -6,8 +6,9 @@ import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("partitionEither - allows repeated runs without hanging", () =>
@@ -23,7 +24,7 @@ describe("Stream", () => {
         Effect.all(Array.from({ length: 100 }, () => stream)),
         Effect.as(0)
       )
-      assert.strictEqual(result, 0)
+      strictEqual(result, 0)
     }))
 
   it.effect("partition - values", () =>
@@ -39,8 +40,8 @@ describe("Stream", () => {
         ),
         Effect.scoped
       )
-      assert.deepStrictEqual(Array.from(result1), [0, 2, 4])
-      assert.deepStrictEqual(Array.from(result2), [1, 3, 5])
+      deepStrictEqual(Array.from(result1), [0, 2, 4])
+      deepStrictEqual(Array.from(result2), [1, 3, 5])
     }))
 
   it.effect("partition - errors", () =>
@@ -57,8 +58,8 @@ describe("Stream", () => {
         ),
         Effect.scoped
       )
-      assert.deepStrictEqual(result1, Either.left("boom"))
-      assert.deepStrictEqual(result2, Either.left("boom"))
+      assertLeft(result1, "boom")
+      assertLeft(result2, "boom")
     }))
 
   it.effect("partition - backpressure", () =>
@@ -96,8 +97,8 @@ describe("Stream", () => {
         ),
         Effect.scoped
       )
-      assert.deepStrictEqual(Array.from(result1), [2, 0])
-      assert.deepStrictEqual(Array.from(result2), [1, 3, 5])
-      assert.deepStrictEqual(Array.from(result3), [4, 2, 0])
+      deepStrictEqual(Array.from(result1), [2, 0])
+      deepStrictEqual(Array.from(result2), [1, 3, 5])
+      deepStrictEqual(Array.from(result3), [4, 2, 0])
     }))
 })

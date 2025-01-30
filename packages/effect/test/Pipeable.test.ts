@@ -1,29 +1,73 @@
-import * as _ from "effect/Option"
-import { describe, expect, it } from "vitest"
+import { Option } from "effect"
+import { assertSome } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Pipeable", () => {
   it("pipeArguments", () => {
     const f = (n: number): number => n + 1
     const g = (n: number): number => n * 2
-    expect(_.some(2).pipe(_.map(f))).toEqual(_.some(3))
-    expect(_.some(2).pipe(_.map(f), _.map(g))).toEqual(_.some(6))
-    expect(_.some(2).pipe(_.map(f), _.map(g), _.map(f))).toEqual(_.some(7))
-    expect(_.some(2).pipe(_.map(f), _.map(g), _.map(f), _.map(g))).toEqual(_.some(14))
-    expect(_.some(2).pipe(_.map(f), _.map(g), _.map(f), _.map(g), _.map(f))).toEqual(_.some(15))
-    expect(_.some(2).pipe(_.map(f), _.map(g), _.map(f), _.map(g), _.map(f), _.map(g))).toEqual(_.some(30))
-    expect(_.some(2).pipe(_.map(f), _.map(g), _.map(f), _.map(g), _.map(f), _.map(g), _.map(f))).toEqual(_.some(31))
-    expect(_.some(2).pipe(_.map(f), _.map(g), _.map(f), _.map(g), _.map(f), _.map(g), _.map(f), _.map(g))).toEqual(
-      _.some(62)
+    assertSome(Option.some(2).pipe(Option.map(f)), 3)
+    assertSome(Option.some(2).pipe(Option.map(f), Option.map(g)), 6)
+    assertSome(Option.some(2).pipe(Option.map(f), Option.map(g), Option.map(f)), 7)
+    assertSome(Option.some(2).pipe(Option.map(f), Option.map(g), Option.map(f), Option.map(g)), 14)
+    assertSome(Option.some(2).pipe(Option.map(f), Option.map(g), Option.map(f), Option.map(g), Option.map(f)), 15)
+    assertSome(
+      Option.some(2).pipe(Option.map(f), Option.map(g), Option.map(f), Option.map(g), Option.map(f), Option.map(g)),
+      30
     )
-    expect(_.some(2).pipe(_.map(f), _.map(g), _.map(f), _.map(g), _.map(f), _.map(g), _.map(f), _.map(g), _.map(f)))
-      .toEqual(
-        _.some(63)
-      )
-    expect(
-      _.some(2).pipe(_.map(f), _.map(g), _.map(f), _.map(g), _.map(f), _.map(g), _.map(f), _.map(g), _.map(f), _.map(g))
+    assertSome(
+      Option.some(2).pipe(
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g),
+        Option.map(f)
+      ),
+      31
     )
-      .toEqual(
-        _.some(126)
-      )
+    assertSome(
+      Option.some(2).pipe(
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g)
+      ),
+      62
+    )
+    assertSome(
+      Option.some(2).pipe(
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g),
+        Option.map(f)
+      ),
+      63
+    )
+    assertSome(
+      Option.some(2).pipe(
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g),
+        Option.map(f),
+        Option.map(g)
+      ),
+      126
+    )
   })
 })

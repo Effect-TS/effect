@@ -9,8 +9,9 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("async", () =>
@@ -25,7 +26,7 @@ describe("Stream", () => {
         Stream.take(array.length),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     }))
 
   it.effect("async - with cleanup", () =>
@@ -44,7 +45,7 @@ describe("Stream", () => {
       yield* $(Deferred.await(latch))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("async - signals the end of the stream", () =>
@@ -56,7 +57,7 @@ describe("Stream", () => {
         }),
         Stream.runCollect
       )
-      assert.isTrue(Chunk.isEmpty(result))
+      assertTrue(Chunk.isEmpty(result))
     }))
 
   it.effect("async - handles errors", () =>
@@ -70,7 +71,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("async - handles defects", () =>
@@ -83,7 +84,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("async - backpressure", () =>
@@ -116,7 +117,7 @@ describe("Stream", () => {
       yield* $(Ref.get(refCount), Effect.repeat({ while: (n) => n !== 7 }))
       const result = yield* $(Ref.get(refDone))
       yield* $(Fiber.interrupt(fiber), Effect.exit)
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.effect("asyncEffect - simple example", () =>
@@ -139,7 +140,7 @@ describe("Stream", () => {
       )
       yield* $(Deferred.await(latch))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     }))
 
   it.effect("asyncEffect - handles errors", () =>
@@ -153,7 +154,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("asyncEffect - handles defects", () =>
@@ -166,7 +167,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("asyncEffect - signals the end of the stream", () =>
@@ -178,7 +179,7 @@ describe("Stream", () => {
         }),
         Stream.runCollect
       )
-      assert.isTrue(Chunk.isEmpty(result))
+      assertTrue(Chunk.isEmpty(result))
     }))
 
   it.effect("asyncEffect - backpressure", () =>
@@ -211,7 +212,7 @@ describe("Stream", () => {
       yield* $(Ref.get(refCount), Effect.repeat({ while: (n) => n !== 7 }))
       const result = yield* $(Ref.get(refDone))
       yield* $(Fiber.interrupt(fiber))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   // it.effect("asyncOption - signals the end of the stream", () =>
@@ -223,7 +224,7 @@ describe("Stream", () => {
   //       }),
   //       Stream.runCollect
   //     )
-  //     assert.isTrue(Chunk.isEmpty(result))
+  //     assertTrue(Chunk.isEmpty(result))
   //   }))
 
   // it.effect("asyncOption - some", () =>
@@ -233,7 +234,7 @@ describe("Stream", () => {
   //       Stream.asyncOption<number>(() => Option.some(Stream.fromChunk(chunk))),
   //       Stream.runCollect
   //     )
-  //     assert.deepStrictEqual(Array.from(result), Array.from(chunk))
+  //     deepStrictEqual(Array.from(result), Array.from(chunk))
   //   }))
 
   // it.effect("asyncOption - none", () =>
@@ -249,7 +250,7 @@ describe("Stream", () => {
   //       Stream.take(array.length),
   //       Stream.runCollect
   //     )
-  //     assert.deepStrictEqual(Array.from(result), array)
+  //     deepStrictEqual(Array.from(result), array)
   //   }))
 
   // it.effect("asyncOption - handles errors", () =>
@@ -263,7 +264,7 @@ describe("Stream", () => {
   //       Stream.runCollect,
   //       Effect.exit
   //     )
-  //     assert.deepStrictEqual(result, Exit.fail(error))
+  //     deepStrictEqual(result, Exit.fail(error))
   //   }))
 
   // it.effect("asyncOption - handles defects", () =>
@@ -276,7 +277,7 @@ describe("Stream", () => {
   //       Stream.runCollect,
   //       Effect.exit
   //     )
-  //     assert.deepStrictEqual(result, Exit.die(error))
+  //     deepStrictEqual(result, Exit.die(error))
   //   }))
 
   // it.effect("asyncOption - backpressure", () =>
@@ -309,7 +310,7 @@ describe("Stream", () => {
   //     yield* $(Ref.get(refCount), Effect.repeat({ while: (n) => n !== 7 }))
   //     const result = yield* $(Ref.get(refDone))
   //     yield* $(Fiber.interrupt(fiber), Effect.exit)
-  //     assert.isFalse(result)
+  //     assertFalse(result)
   //   }))
 
   it.effect("asyncScoped", () =>
@@ -332,7 +333,7 @@ describe("Stream", () => {
       )
       yield* $(Deferred.await(latch))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     }))
 
   it.effect("asyncScoped - signals the end of the stream", () =>
@@ -344,7 +345,7 @@ describe("Stream", () => {
         }),
         Stream.runCollect
       )
-      assert.isTrue(Chunk.isEmpty(result))
+      assertTrue(Chunk.isEmpty(result))
     }))
 
   it.effect("asyncScoped - handles errors", () =>
@@ -358,7 +359,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("asyncScoped - handles defects", () =>
@@ -371,7 +372,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("asyncScoped - backpressure", () =>
@@ -404,7 +405,7 @@ describe("Stream", () => {
       yield* $(Ref.get(refCount), Effect.repeat({ while: (n) => n !== 7 }))
       const result = yield* $(Ref.get(refDone))
       yield* $(Fiber.interrupt(fiber), Effect.exit)
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.effect("asyncPush", () =>
@@ -426,7 +427,7 @@ describe("Stream", () => {
       )
       yield* Deferred.await(latch)
       const result = yield* Fiber.join(fiber)
-      assert.deepStrictEqual(Array.from(result), array)
+      deepStrictEqual(Array.from(result), array)
     }))
 
   it.effect("asyncPush - signals the end of the stream", () =>
@@ -435,7 +436,7 @@ describe("Stream", () => {
         emit.end()
         return Effect.void
       }).pipe(Stream.runCollect)
-      assert.isTrue(Chunk.isEmpty(result))
+      assertTrue(Chunk.isEmpty(result))
     }))
 
   it.effect("asyncPush - handles errors", () =>
@@ -448,7 +449,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("asyncPush - handles defects", () =>
@@ -460,6 +461,6 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 })

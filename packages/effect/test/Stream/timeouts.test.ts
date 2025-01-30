@@ -2,16 +2,16 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
+import { assertLeft, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("timeout - succeed", () =>
@@ -21,7 +21,7 @@ describe("Stream", () => {
         Stream.timeout(Duration.infinity),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1])
+      deepStrictEqual(Array.from(result), [1])
     }))
 
   it.effect("timeout - should end the stream", () =>
@@ -32,7 +32,7 @@ describe("Stream", () => {
         Stream.timeout(Duration.zero),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("timeoutFail - succeed", () =>
@@ -45,7 +45,7 @@ describe("Stream", () => {
         Effect.map(() => true),
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left(false))
+      assertLeft(result, false)
     }))
 
   it.effect("timeoutFail - failures", () =>
@@ -56,7 +56,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.flip
       )
-      assert.deepStrictEqual(result, "original")
+      deepStrictEqual(result, "original")
     }))
 
   it.effect("timeoutFailCause", () =>
@@ -70,7 +70,7 @@ describe("Stream", () => {
         Effect.sandbox,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left(Cause.die(error)))
+      assertLeft(result, Cause.die(error))
     }))
 
   it.effect("timeoutTo - succeed", () =>
@@ -80,7 +80,7 @@ describe("Stream", () => {
         Stream.timeoutTo(Duration.infinity, Stream.succeed(-1)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [0, 1, 2, 3, 4])
+      deepStrictEqual(Array.from(result), [0, 1, 2, 3, 4])
     }))
 
   it.effect("timeoutTo - should switch streams", () =>
@@ -111,7 +111,7 @@ describe("Stream", () => {
       )
       yield* $(coordination.offer)
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 4])
+      deepStrictEqual(Array.from(result), [1, 2, 4])
     }))
 
   it.effect("timeoutTo - should not apply timeout after switch", () =>
@@ -144,6 +144,6 @@ describe("Stream", () => {
         Effect.zipRight(Queue.shutdown(queue2))
       )
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 4, 5])
+      deepStrictEqual(Array.from(result), [1, 2, 4, 5])
     }))
 })

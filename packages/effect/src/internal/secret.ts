@@ -23,15 +23,17 @@ export const SecretTypeId: Secret.SecretTypeId = Symbol.for(
  */
 export const isSecret = (u: unknown): u is Secret.Secret => hasProperty(u, SecretTypeId)
 
+const SecretProto = {
+  ...redacted_.proto,
+  [SecretTypeId]: SecretTypeId
+}
+
 /**
  * @internal
  * @deprecated
  */
 export const make = (bytes: Array<number>): Secret.Secret => {
-  const secret = Object.create({
-    ...redacted_.proto,
-    [SecretTypeId]: SecretTypeId
-  })
+  const secret = Object.create(SecretProto)
   Object.defineProperty(secret, "toString", {
     enumerable: false,
     value() {

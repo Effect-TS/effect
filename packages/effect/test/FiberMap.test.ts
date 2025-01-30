@@ -1,7 +1,7 @@
-import { Array, Deferred, Effect, Exit, Fiber, Ref, Scope } from "effect"
-import * as FiberMap from "effect/FiberMap"
+import { Array, Deferred, Effect, Exit, Fiber, FiberMap, Ref, Scope } from "effect"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("FiberMap", () => {
   it.effect("interrupts fibers", () =>
@@ -24,7 +24,7 @@ describe("FiberMap", () => {
         Effect.scoped
       )
 
-      assert.strictEqual(yield* _(Ref.get(ref)), 10)
+      strictEqual(yield* _(Ref.get(ref)), 10)
     }))
 
   it.effect("runtime", () =>
@@ -48,7 +48,7 @@ describe("FiberMap", () => {
         Effect.scoped
       )
 
-      assert.strictEqual(yield* _(Ref.get(ref)), 10)
+      strictEqual(yield* _(Ref.get(ref)), 10)
     }))
 
   it.scoped("join", () =>
@@ -59,7 +59,7 @@ describe("FiberMap", () => {
       FiberMap.unsafeSet(map, "c", Effect.runFork(Effect.fail("fail")))
       FiberMap.unsafeSet(map, "d", Effect.runFork(Effect.fail("ignored")))
       const result = yield* _(FiberMap.join(map), Effect.flip)
-      assert.strictEqual(result, "fail")
+      strictEqual(result, "fail")
     }))
 
   it.effect("size", () =>
@@ -68,9 +68,9 @@ describe("FiberMap", () => {
       const set = yield* _(FiberMap.make<string>(), Scope.extend(scope))
       FiberMap.unsafeSet(set, "a", Effect.runFork(Effect.never))
       FiberMap.unsafeSet(set, "b", Effect.runFork(Effect.never))
-      assert.strictEqual(yield* _(FiberMap.size(set)), 2)
+      strictEqual(yield* _(FiberMap.size(set)), 2)
       yield* _(Scope.close(scope, Exit.void))
-      assert.strictEqual(yield* _(FiberMap.size(set)), 0)
+      strictEqual(yield* _(FiberMap.size(set)), 0)
     }))
 
   it.scoped("onlyIfMissing", () =>
@@ -80,9 +80,9 @@ describe("FiberMap", () => {
       const fiberB = yield* _(FiberMap.run(handle, "a", Effect.never, { onlyIfMissing: true }))
       const fiberC = yield* _(FiberMap.run(handle, "a", Effect.never, { onlyIfMissing: true }))
       yield* _(Effect.yieldNow())
-      assert.isTrue(Exit.isInterrupted(yield* _(fiberB.await)))
-      assert.isTrue(Exit.isInterrupted(yield* _(fiberC.await)))
-      assert.strictEqual(fiberA.unsafePoll(), null)
+      assertTrue(Exit.isInterrupted(yield* _(fiberB.await)))
+      assertTrue(Exit.isInterrupted(yield* _(fiberC.await)))
+      strictEqual(fiberA.unsafePoll(), null)
     }))
 
   it.scoped("runtime onlyIfMissing", () =>
@@ -92,9 +92,9 @@ describe("FiberMap", () => {
       const fiberB = run("a", Effect.never, { onlyIfMissing: true })
       const fiberC = run("a", Effect.never, { onlyIfMissing: true })
       yield* _(Effect.yieldNow())
-      assert.isTrue(Exit.isInterrupted(yield* _(fiberB.await)))
-      assert.isTrue(Exit.isInterrupted(yield* _(fiberC.await)))
-      assert.strictEqual(fiberA.unsafePoll(), null)
+      assertTrue(Exit.isInterrupted(yield* _(fiberB.await)))
+      assertTrue(Exit.isInterrupted(yield* _(fiberC.await)))
+      strictEqual(fiberA.unsafePoll(), null)
     }))
 
   it.scoped("propagateInterruption false", () =>
@@ -105,7 +105,7 @@ describe("FiberMap", () => {
       })
       yield* Effect.yieldNow()
       yield* Fiber.interrupt(fiber)
-      assert.isFalse(yield* Deferred.isDone(map.deferred))
+      assertFalse(yield* Deferred.isDone(map.deferred))
     }))
 
   it.scoped("propagateInterruption true", () =>
@@ -116,7 +116,7 @@ describe("FiberMap", () => {
       })
       yield* Effect.yieldNow()
       yield* Fiber.interrupt(fiber)
-      assert.isTrue(Exit.isInterrupted(
+      assertTrue(Exit.isInterrupted(
         yield* FiberMap.join(map).pipe(
           Effect.exit
         )

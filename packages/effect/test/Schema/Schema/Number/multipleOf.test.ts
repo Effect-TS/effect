@@ -1,7 +1,8 @@
 import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("multipleOf", () => {
   it("test roundtrip consistency", () => {
@@ -11,13 +12,13 @@ describe("multipleOf", () => {
   it("is", () => {
     const schema = S.Number.pipe(S.multipleOf(-.2))
     const is = P.is(schema)
-    expect(is(-2.8)).toEqual(true)
-    expect(is(-2)).toEqual(true)
-    expect(is(-1.5)).toEqual(false)
-    expect(is(0)).toEqual(true)
-    expect(is(1)).toEqual(true)
-    expect(is(2.6)).toEqual(true)
-    expect(is(3.1)).toEqual(false)
+    assertTrue(is(-2.8))
+    assertTrue(is(-2))
+    assertFalse(is(-1.5))
+    assertTrue(is(0))
+    assertTrue(is(1))
+    assertTrue(is(2.6))
+    assertFalse(is(3.1))
   })
 
   it("decoding", async () => {

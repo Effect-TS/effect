@@ -1,6 +1,7 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("make", () => {
   it("required fields", () => {
@@ -29,16 +30,16 @@ describe("make", () => {
 
   it("validation can be disabled", () => {
     const schema = S.Struct({ a: S.NonEmptyString })
-    expect(schema.make({ a: "" }, true)).toStrictEqual({ a: "" })
-    expect(schema.make({ a: "" }, { disableValidation: true })).toStrictEqual({ a: "" })
+    deepStrictEqual(schema.make({ a: "" }, true), { a: "" })
+    deepStrictEqual(schema.make({ a: "" }, { disableValidation: true }), { a: "" })
   })
 
   it("should support defaults", () => {
     const schema = S.Struct({
       a: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => 0))
     })
-    expect(schema.make({})).toStrictEqual({ a: 0 })
-    expect(schema.make({ a: 1 })).toStrictEqual({ a: 1 })
+    deepStrictEqual(schema.make({}), { a: 0 })
+    deepStrictEqual(schema.make({ a: 1 }), { a: 1 })
   })
 
   it("should support lazy defaults", () => {
@@ -46,38 +47,38 @@ describe("make", () => {
     const schema = S.Struct({
       a: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => ++i))
     })
-    expect(schema.make({})).toStrictEqual({ a: 1 })
-    expect(schema.make({})).toStrictEqual({ a: 2 })
+    deepStrictEqual(schema.make({}), { a: 1 })
+    deepStrictEqual(schema.make({}), { a: 2 })
     schema.make({ a: 10 })
-    expect(schema.make({})).toStrictEqual({ a: 3 })
+    deepStrictEqual(schema.make({}), { a: 3 })
   })
 
   it("should treat `undefined` as missing field", () => {
     const schema = S.Struct({
       a: S.propertySignature(S.UndefinedOr(S.Number)).pipe(S.withConstructorDefault(() => 0))
     })
-    expect(schema.make({})).toStrictEqual({ a: 0 })
-    expect(schema.make({ a: undefined })).toStrictEqual({ a: 0 })
+    deepStrictEqual(schema.make({}), { a: 0 })
+    deepStrictEqual(schema.make({ a: undefined }), { a: 0 })
   })
 
   it("should accept void if the struct has no fields", () => {
     const schema = S.Struct({})
-    expect(schema.make({})).toStrictEqual({})
-    expect(schema.make(undefined)).toStrictEqual({})
-    expect(schema.make(undefined, true)).toStrictEqual({})
-    expect(schema.make(undefined, false)).toStrictEqual({})
-    expect(schema.make()).toStrictEqual({})
+    deepStrictEqual(schema.make({}), {})
+    deepStrictEqual(schema.make(undefined), {})
+    deepStrictEqual(schema.make(undefined, true), {})
+    deepStrictEqual(schema.make(undefined, false), {})
+    deepStrictEqual(schema.make(), {})
   })
 
   it("should accept void if the Class has all the fields with a default", () => {
     const schema = S.Struct({
       a: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => 0))
     })
-    expect(schema.make({})).toStrictEqual({ a: 0 })
-    expect(schema.make(undefined)).toStrictEqual({ a: 0 })
-    expect(schema.make(undefined, true)).toStrictEqual({ a: 0 })
-    expect(schema.make(undefined, false)).toStrictEqual({ a: 0 })
-    expect(schema.make()).toStrictEqual({ a: 0 })
+    deepStrictEqual(schema.make({}), { a: 0 })
+    deepStrictEqual(schema.make(undefined), { a: 0 })
+    deepStrictEqual(schema.make(undefined, true), { a: 0 })
+    deepStrictEqual(schema.make(undefined, false), { a: 0 })
+    deepStrictEqual(schema.make(), { a: 0 })
   })
 
   it("props declarations with defaults (data last)", () => {

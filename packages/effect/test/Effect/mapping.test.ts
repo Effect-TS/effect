@@ -1,11 +1,11 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import { identity, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")
 
@@ -28,17 +28,17 @@ describe("Effect", () => {
   it.effect("flip must make error into value", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.flip(Effect.fail(ExampleError)))
-      assert.deepStrictEqual(result, ExampleError)
+      deepStrictEqual(result, ExampleError)
     }))
   it.effect("flip must make value into error", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.either(Effect.flip(Effect.succeed(42))))
-      assert.deepStrictEqual(result, Either.left(42))
+      assertLeft(result, 42)
     }))
   it.effect("flipping twice returns the identical value", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.flip(Effect.flip(Effect.succeed(42))))
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
   it.effect("mapBoth - maps over both error and value channels", () =>
     Effect.gen(function*($) {
@@ -50,34 +50,34 @@ describe("Effect", () => {
         }),
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("10"))
+      assertLeft(result, "10")
     }))
   it.effect("mapAccum", () =>
     Effect.gen(function*($) {
       const result = yield* $(
         Effect.mapAccum(["a", "b"], "", (prev, cur, i) => Effect.succeed([prev + cur + i, cur]))
       )
-      assert.deepStrictEqual(result, ["a0b1", ["a", "b"]])
+      deepStrictEqual(result, ["a0b1", ["a", "b"]])
     }))
   it.effect("tryMap - returns an effect whose success is mapped by the specified side effecting function", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeed("123"), Effect.tryMap({ try: parseInt, catch: identity }))
-      assert.strictEqual(result, 123)
+      strictEqual(result, 123)
     }))
   it.effect("tryMap - translates any thrown exceptions into typed failed effects", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeed("hello"), Effect.tryMap({ try: parseInt, catch: identity }), Effect.exit)
-      assert.deepStrictEqual(result, Exit.fail(new Cause.IllegalArgumentException()))
+      deepStrictEqual(result, Exit.fail(new Cause.IllegalArgumentException()))
     }))
   it.effect("negate - on true returns false", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.negate(Effect.succeed(true)))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
   it.effect("negate - on false returns true", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.negate(Effect.succeed(false)))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("summarized - returns summary and value", () =>
     Effect.gen(function*($) {
@@ -86,9 +86,9 @@ describe("Effect", () => {
       const [[start, end], value] = yield* $(
         pipe(increment, Effect.summarized(increment, (start, end) => [start, end] as const))
       )
-      assert.strictEqual(start, 1)
-      assert.strictEqual(value, 2)
-      assert.strictEqual(end, 3)
+      strictEqual(start, 1)
+      strictEqual(value, 2)
+      strictEqual(end, 3)
     }))
   it.effect("point, bind, map", () =>
     Effect.gen(function*($) {
@@ -99,7 +99,7 @@ describe("Effect", () => {
         return pipe(fibEffect(n - 1), Effect.zipWith(fibEffect(n - 2), (a, b) => a + b))
       }
       const result = yield* $(fibEffect(10))
-      assert.strictEqual(result, fib(10))
+      strictEqual(result, fib(10))
     }))
   it.effect("effect, bind, map", () =>
     Effect.gen(function*($) {
@@ -110,7 +110,7 @@ describe("Effect", () => {
         return pipe(fibEffect(n - 1), Effect.zipWith(fibEffect(n - 2), (a, b) => a + b))
       }
       const result = yield* $(fibEffect(10))
-      assert.strictEqual(result, fib(10))
+      strictEqual(result, fib(10))
     }))
   it.effect("effect, bind, map, redeem", () =>
     Effect.gen(function*($) {
@@ -126,6 +126,6 @@ describe("Effect", () => {
         return pipe(fibEffect(n - 1), Effect.zipWith(fibEffect(n - 2), (a, b) => a + b))
       }
       const result = yield* $(fibEffect(10))
-      assert.strictEqual(result, fib(10))
+      strictEqual(result, fib(10))
     }))
 })

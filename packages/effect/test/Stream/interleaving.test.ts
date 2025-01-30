@@ -3,8 +3,9 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("interleave", () =>
@@ -16,7 +17,7 @@ describe("Stream", () => {
         Stream.interleave(stream2),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [2, 5, 3, 6, 7])
+      deepStrictEqual(Array.from(result), [2, 5, 3, 6, 7])
     }))
 
   it.effect("interleaveWith", () =>
@@ -70,6 +71,6 @@ describe("Stream", () => {
       const numbers1 = yield* $(Stream.runCollect(stream1))
       const numbers2 = yield* $(Stream.runCollect(stream2))
       const interleavedChunks = interleave(bools, numbers1, numbers2)
-      assert.deepStrictEqual(Array.from(interleavedStream), Array.from(interleavedChunks))
+      deepStrictEqual(Array.from(interleavedStream), Array.from(interleavedChunks))
     }))
 })

@@ -1,31 +1,27 @@
-import * as Eq from "effect/Equal"
-import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as N from "effect/Number"
-import * as O from "effect/Option"
-import * as SM from "effect/SortedMap"
-import { assert, describe, expect, it } from "vitest"
+import { Equal, Hash, Number as N, pipe, SortedMap as SM } from "effect"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
-class Key implements Eq.Equal {
+class Key implements Equal.Equal {
   constructor(readonly id: number) {}
 
   [Hash.symbol](): number {
     return Hash.hash(this.id)
   }
 
-  [Eq.symbol](u: unknown): boolean {
+  [Equal.symbol](u: unknown): boolean {
     return u instanceof Key && this.id === u.id
   }
 }
 
-class Value implements Eq.Equal {
+class Value implements Equal.Equal {
   constructor(readonly id: number) {}
 
   [Hash.symbol](): number {
     return Hash.hash(this.id)
   }
 
-  [Eq.symbol](u: unknown): boolean {
+  [Equal.symbol](u: unknown): boolean {
     return u instanceof Value && this.id === u.id
   }
 }
@@ -53,7 +49,9 @@ describe("SortedMap", () => {
   it("toString", () => {
     const map = makeNumericSortedMap([0, 10], [1, 20], [2, 30])
 
-    expect(String(map)).toEqual(`{
+    strictEqual(
+      String(map),
+      `{
   "_id": "SortedMap",
   "values": [
     [
@@ -69,15 +67,14 @@ describe("SortedMap", () => {
       30
     ]
   ]
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
     const map = makeNumericSortedMap([0, 10], [1, 20], [2, 30])
 
-    expect(map.toJSON()).toEqual(
-      { _id: "SortedMap", values: [[0, 10], [1, 20], [2, 30]] }
-    )
+    deepStrictEqual(map.toJSON(), { _id: "SortedMap", values: [[0, 10], [1, 20], [2, 30]] })
   })
 
   it("inspect", () => {
@@ -89,9 +86,7 @@ describe("SortedMap", () => {
 
     const map = makeNumericSortedMap([0, 10], [1, 20], [2, 30])
 
-    expect(inspect(map)).toEqual(
-      inspect({ _id: "SortedMap", values: [[0, 10], [1, 20], [2, 30]] })
-    )
+    deepStrictEqual(inspect(map), inspect({ _id: "SortedMap", values: [[0, 10], [1, 20], [2, 30]] }))
   })
 
   it("entries", () => {
@@ -99,57 +94,57 @@ describe("SortedMap", () => {
 
     const result = Array.from(map)
 
-    expect([
+    deepStrictEqual([
       [key(0), value(10)],
       [key(1), value(20)],
       [key(2), value(30)]
-    ]).toEqual(result)
+    ], result)
   })
 
   it("get", () => {
     const map = makeSortedMap([0, 10], [1, 20], [2, 30])
 
-    assert.deepEqual(pipe(map, SM.get(key(0))), O.some(value(10)))
-    assert.deepEqual(pipe(map, SM.get(key(4))), O.none())
+    assertSome(pipe(map, SM.get(key(0))), value(10))
+    assertNone(pipe(map, SM.get(key(4))))
   })
 
   it("has", () => {
     const map = makeSortedMap([0, 10], [1, 20], [2, 30])
 
-    assert.isTrue(pipe(map, SM.has(key(0))))
-    assert.isFalse(pipe(map, SM.has(key(4))))
+    assertTrue(pipe(map, SM.has(key(0))))
+    assertFalse(pipe(map, SM.has(key(4))))
   })
 
   it("headOption", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
     const map2 = SM.empty<number, number>(N.Order)
 
-    assert.deepEqual(SM.headOption(map1), O.some([key(0), value(10)] as const))
-    assert.deepEqual(SM.headOption(map2), O.none())
+    assertSome(SM.headOption(map1), [key(0), value(10)])
+    assertNone(SM.headOption(map2))
   })
 
   it("lastOption", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
     const map2 = SM.empty<number, number>(N.Order)
 
-    assert.deepEqual(SM.lastOption(map1), O.some([key(2), value(30)] as const))
-    assert.deepEqual(SM.lastOption(map2), O.none())
+    assertSome(SM.lastOption(map1), [key(2), value(30)])
+    assertNone(SM.lastOption(map2))
   })
 
   it("isEmpty", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
     const map2 = SM.empty<number, number>(N.Order)
 
-    assert.isFalse(SM.isEmpty(map1))
-    assert.isTrue(SM.isEmpty(map2))
+    assertFalse(SM.isEmpty(map1))
+    assertTrue(SM.isEmpty(map2))
   })
 
   it("isNonEmpty", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
     const map2 = SM.empty<number, number>(N.Order)
 
-    assert.isTrue(SM.isNonEmpty(map1))
-    assert.isFalse(SM.isNonEmpty(map2))
+    assertTrue(SM.isNonEmpty(map1))
+    assertFalse(SM.isNonEmpty(map2))
   })
 
   it("map", () => {
@@ -157,7 +152,7 @@ describe("SortedMap", () => {
 
     const result1 = Array.from(pipe(map1, SM.map((value) => value.id)))
 
-    assert.deepEqual(
+    deepStrictEqual(
       result1,
       [
         [key(0), 10],
@@ -170,7 +165,7 @@ describe("SortedMap", () => {
 
     const result2 = Array.from(pipe(map2, SM.map((key, value) => key.id + value.id)))
 
-    assert.deepEqual(
+    deepStrictEqual(
       result2,
       [
         [key(0), 10],
@@ -188,7 +183,7 @@ describe("SortedMap", () => {
       SM.partition((member) => member.id <= 3)
     )
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(satisfying),
       [
         [key(1), value(10)],
@@ -196,7 +191,7 @@ describe("SortedMap", () => {
         [key(3), value(30)]
       ]
     )
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(excl),
       [
         [key(4), value(40)],
@@ -209,7 +204,7 @@ describe("SortedMap", () => {
       SM.partition((member) => member.id <= 6)
     )
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(satisfying2),
       [
         [key(1), value(10)],
@@ -220,7 +215,7 @@ describe("SortedMap", () => {
       ]
     )
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(excl2),
       []
     )
@@ -230,7 +225,7 @@ describe("SortedMap", () => {
       SM.partition((member) => member.id === 0)
     )
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(excl3),
       [
         [key(1), value(10)],
@@ -241,7 +236,7 @@ describe("SortedMap", () => {
       ]
     )
 
-    assert.deepEqual(
+    deepStrictEqual(
       Array.from(satisfying3),
       []
     )
@@ -250,37 +245,37 @@ describe("SortedMap", () => {
   it("reduce", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
     const result1 = pipe(map1, SM.reduce("", (acc, value) => acc + value.id))
-    assert.strictEqual(result1, "102030")
+    strictEqual(result1, "102030")
 
     const map2 = makeSortedMap([0, 10], [1, 20], [2, 30])
     const result2 = pipe(map2, SM.reduce("", (acc, value, key) => acc + key.id + value.id))
-    assert.strictEqual(result2, "010120230")
+    strictEqual(result2, "010120230")
   })
 
   it("remove", () => {
     const map = makeSortedMap([0, 10], [1, 20], [2, 30])
 
-    assert.isTrue(pipe(map, SM.has(key(0))))
+    assertTrue(pipe(map, SM.has(key(0))))
 
     const result1 = pipe(map, SM.remove(key(0)))
 
-    assert.isFalse(pipe(result1, SM.has(key(0))))
+    assertFalse(pipe(result1, SM.has(key(0))))
   })
 
   it("set", () => {
     const map = makeSortedMap([0, 10], [1, 20], [2, 30])
 
-    assert.isFalse(pipe(map, SM.has(key(4))))
+    assertFalse(pipe(map, SM.has(key(4))))
 
     const result1 = pipe(map, SM.set(key(4), value(40)))
 
-    assert.isTrue(pipe(result1, SM.has(key(4))))
+    assertTrue(pipe(result1, SM.has(key(4))))
   })
 
   it("size", () => {
     const map = makeSortedMap([0, 10], [1, 20], [2, 30])
 
-    assert.strictEqual(SM.size(map), 3)
+    strictEqual(SM.size(map), 3)
   })
 
   it("keys", () => {
@@ -288,7 +283,7 @@ describe("SortedMap", () => {
 
     const result = Array.from(SM.keys(map))
 
-    assert.deepEqual(result, [key(0), key(1), key(2)])
+    deepStrictEqual(result, [key(0), key(1), key(2)])
   })
 
   it("values", () => {
@@ -296,7 +291,7 @@ describe("SortedMap", () => {
 
     const result = Array.from(SM.values(map))
 
-    assert.deepEqual(result, [value(10), value(20), value(30)])
+    deepStrictEqual(result, [value(10), value(20), value(30)])
   })
 
   it("entries", () => {
@@ -304,6 +299,6 @@ describe("SortedMap", () => {
 
     const result = Array.from(SM.entries(map))
 
-    assert.deepEqual(result, [[key(0), value(10)], [key(1), value(20)], [key(2), value(30)]])
+    deepStrictEqual(result, [[key(0), value(10)], [key(1), value(20)], [key(2), value(30)]])
   })
 })

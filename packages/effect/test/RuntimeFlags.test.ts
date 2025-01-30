@@ -1,8 +1,6 @@
-import { pipe } from "effect/Function"
-import * as RuntimeFlags from "effect/RuntimeFlags"
-import * as RuntimeFlagsPatch from "effect/RuntimeFlagsPatch"
-import * as fc from "fast-check"
-import { assert, describe, it } from "vitest"
+import { FastCheck as fc, pipe, RuntimeFlags, RuntimeFlagsPatch } from "effect"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 const arbRuntimeFlag = fc.constantFrom(
   RuntimeFlags.None,
@@ -23,11 +21,11 @@ describe("RuntimeFlags", () => {
       RuntimeFlags.RuntimeMetrics,
       RuntimeFlags.Interruption
     )
-    assert.isTrue(RuntimeFlags.isEnabled(flags, RuntimeFlags.RuntimeMetrics))
-    assert.isTrue(RuntimeFlags.isEnabled(flags, RuntimeFlags.Interruption))
-    assert.isFalse(RuntimeFlags.isEnabled(flags, RuntimeFlags.CooperativeYielding))
-    assert.isFalse(RuntimeFlags.isEnabled(flags, RuntimeFlags.OpSupervision))
-    assert.isFalse(RuntimeFlags.isEnabled(flags, RuntimeFlags.WindDown))
+    assertTrue(RuntimeFlags.isEnabled(flags, RuntimeFlags.RuntimeMetrics))
+    assertTrue(RuntimeFlags.isEnabled(flags, RuntimeFlags.Interruption))
+    assertFalse(RuntimeFlags.isEnabled(flags, RuntimeFlags.CooperativeYielding))
+    assertFalse(RuntimeFlags.isEnabled(flags, RuntimeFlags.OpSupervision))
+    assertFalse(RuntimeFlags.isEnabled(flags, RuntimeFlags.WindDown))
   })
 
   it("enabled patching", () => {
@@ -41,7 +39,7 @@ describe("RuntimeFlags", () => {
       RuntimeFlags.RuntimeMetrics,
       RuntimeFlags.OpSupervision
     )
-    assert.strictEqual(result, expected)
+    strictEqual(result, expected)
   })
 
   it("inverse patching", () => {
@@ -58,11 +56,11 @@ describe("RuntimeFlags", () => {
       RuntimeFlagsPatch.andThen(RuntimeFlagsPatch.enable(RuntimeFlags.OpSupervision)),
       RuntimeFlagsPatch.inverse
     )
-    assert.strictEqual(
+    strictEqual(
       RuntimeFlags.patch(flags, patch1),
       RuntimeFlags.make(RuntimeFlags.OpSupervision)
     )
-    assert.strictEqual(
+    strictEqual(
       RuntimeFlags.patch(flags, patch2),
       RuntimeFlags.none
     )
@@ -71,7 +69,7 @@ describe("RuntimeFlags", () => {
   it("diff", () => {
     const flags1 = RuntimeFlags.make(RuntimeFlags.RuntimeMetrics)
     const flags2 = RuntimeFlags.make(RuntimeFlags.RuntimeMetrics, RuntimeFlags.OpSupervision)
-    assert.strictEqual(
+    strictEqual(
       RuntimeFlags.diff(flags1, flags2),
       RuntimeFlagsPatch.enable(RuntimeFlags.OpSupervision)
     )
@@ -82,14 +80,14 @@ describe("RuntimeFlags", () => {
       const result = Array.from(RuntimeFlags.toSet(flags)).every(
         (flag) => RuntimeFlags.isEnabled(flags, flag)
       )
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   })
 
   it("patching a diff between `none` and a set of flags is an identity", () => {
     fc.assert(fc.property(arbRuntimeFlags, (flags) => {
       const diff = RuntimeFlags.diff(RuntimeFlags.none, flags)
-      assert.strictEqual(
+      strictEqual(
         RuntimeFlags.patch(RuntimeFlags.none, diff),
         flags
       )
@@ -99,11 +97,11 @@ describe("RuntimeFlags", () => {
   it("patching the inverse diff between `non` and a set of flags is `none`", () => {
     fc.assert(fc.property(arbRuntimeFlags, (flags) => {
       const diff = RuntimeFlags.diff(RuntimeFlags.none, flags)
-      assert.strictEqual(
+      strictEqual(
         RuntimeFlags.patch(flags, RuntimeFlagsPatch.inverse(diff)),
         RuntimeFlags.none
       )
-      assert.strictEqual(
+      strictEqual(
         RuntimeFlags.patch(flags, RuntimeFlagsPatch.inverse(RuntimeFlagsPatch.inverse(diff))),
         flags
       )

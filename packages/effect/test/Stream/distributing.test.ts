@@ -4,8 +4,9 @@ import * as Exit from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
+import { strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("distributedWithDynamic - ensures no race between subscription and stream end", () =>
@@ -46,6 +47,6 @@ describe("Stream", () => {
         }),
         Effect.scoped
       )
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
 })

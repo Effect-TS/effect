@@ -1,13 +1,7 @@
-import { Chunk, Option } from "effect"
-import * as Array from "effect/Array"
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import { pipe } from "effect/Function"
-import * as PubSub from "effect/PubSub"
-import * as Queue from "effect/Queue"
+import { Array, Chunk, Deferred, Effect, Fiber, pipe, PubSub, Queue } from "effect"
+import { assertSome, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("PubSub", () => {
   it.effect("publishAll - capacity 2 (BoundedPubSubPow2)", () => {
@@ -21,8 +15,8 @@ describe("PubSub", () => {
             yield* _(PubSub.publishAll(pubsub, messages))
             const takes1 = yield* _(Queue.takeAll(dequeue1))
             const takes2 = yield* _(Queue.takeAll(dequeue2))
-            assert.deepStrictEqual([...takes1], messages)
-            assert.deepStrictEqual([...takes2], messages)
+            deepStrictEqual([...takes1], messages)
+            deepStrictEqual([...takes2], messages)
           })
         )
       )
@@ -39,8 +33,8 @@ describe("PubSub", () => {
             yield* _(PubSub.publishAll(pubsub, messages))
             const takes1 = yield* _(Queue.takeAll(dequeue1))
             const takes2 = yield* _(Queue.takeAll(dequeue2))
-            assert.deepStrictEqual([...takes1], messages)
-            assert.deepStrictEqual([...takes2], messages)
+            deepStrictEqual([...takes1], messages)
+            deepStrictEqual([...takes2], messages)
           })
         )
       )
@@ -57,8 +51,8 @@ describe("PubSub", () => {
             yield* _(PubSub.publishAll(pubsub, messages))
             const takes1 = yield* _(Queue.takeAll(dequeue1))
             const takes2 = yield* _(Queue.takeAll(dequeue2))
-            assert.deepStrictEqual([...takes1], messages)
-            assert.deepStrictEqual([...takes2], messages)
+            deepStrictEqual([...takes1], messages)
+            deepStrictEqual([...takes2], messages)
           })
         )
       )
@@ -88,7 +82,7 @@ describe("PubSub", () => {
       yield* $(values, Effect.forEach((n) => PubSub.publish(pubsub, n)))
       yield* $(Deferred.succeed(deferred2, void 0))
       const result = yield* $(Fiber.join(subscriber))
-      assert.deepStrictEqual(result, values)
+      deepStrictEqual(result, values)
     }))
   it.effect("sequential publishers and subscribers with one publisher and two subscribers", () =>
     Effect.gen(function*($) {
@@ -131,8 +125,8 @@ describe("PubSub", () => {
       yield* $(Deferred.succeed(deferred3, undefined))
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
-      assert.deepStrictEqual(result1, values)
-      assert.deepStrictEqual(result2, values)
+      deepStrictEqual(result1, values)
+      deepStrictEqual(result2, values)
     }))
   it.effect("backpressured concurrent publishers and subscribers - one to one", () =>
     Effect.gen(function*($) {
@@ -157,7 +151,7 @@ describe("PubSub", () => {
         Effect.fork
       )
       const result = yield* $(Fiber.join(subscriber))
-      assert.deepStrictEqual(result, values)
+      deepStrictEqual(result, values)
     }))
   it.effect("backpressured concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
@@ -196,8 +190,8 @@ describe("PubSub", () => {
       )
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
-      assert.deepStrictEqual(result1, values)
-      assert.deepStrictEqual(result2, values)
+      deepStrictEqual(result1, values)
+      deepStrictEqual(result2, values)
     }))
   it.effect("backpressured concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
@@ -246,13 +240,13 @@ describe("PubSub", () => {
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(pipe(result1, Array.filter((n) => n > 0)), values)
-      assert.deepStrictEqual(
+      deepStrictEqual(pipe(result1, Array.filter((n) => n > 0)), values)
+      deepStrictEqual(
         pipe(result1, Array.filter((n) => n < 0)),
         pipe(values, Array.map((n) => -n))
       )
-      assert.deepStrictEqual(pipe(result2, Array.filter((n) => n > 0)), values)
-      assert.deepStrictEqual(
+      deepStrictEqual(pipe(result2, Array.filter((n) => n > 0)), values)
+      deepStrictEqual(
         pipe(result2, Array.filter((n) => n < 0)),
         pipe(values, Array.map((n) => -n))
       )
@@ -280,7 +274,7 @@ describe("PubSub", () => {
         Effect.fork
       )
       const result = yield* $(Fiber.join(subscriber))
-      assert.deepStrictEqual(result, values)
+      deepStrictEqual(result, values)
     }))
   it.effect("dropping concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
@@ -319,8 +313,8 @@ describe("PubSub", () => {
       )
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
-      assert.deepStrictEqual(result1, values)
-      assert.deepStrictEqual(result2, values)
+      deepStrictEqual(result1, values)
+      deepStrictEqual(result2, values)
     }))
   it.effect("dropping concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
@@ -369,13 +363,13 @@ describe("PubSub", () => {
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(pipe(result1, Array.filter((n) => n > 0)), values)
-      assert.deepStrictEqual(
+      deepStrictEqual(pipe(result1, Array.filter((n) => n > 0)), values)
+      deepStrictEqual(
         pipe(result1, Array.filter((n) => n < 0)),
         pipe(values, Array.map((n) => -n))
       )
-      assert.deepStrictEqual(pipe(result2, Array.filter((n) => n > 0)), values)
-      assert.deepStrictEqual(
+      deepStrictEqual(pipe(result2, Array.filter((n) => n > 0)), values)
+      deepStrictEqual(
         pipe(result2, Array.filter((n) => n < 0)),
         pipe(values, Array.map((n) => -n))
       )
@@ -403,7 +397,7 @@ describe("PubSub", () => {
         Effect.fork
       )
       const result = yield* $(Fiber.join(subscriber))
-      assert.deepStrictEqual(result, values)
+      deepStrictEqual(result, values)
     }))
   it.effect("sliding concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
@@ -442,8 +436,8 @@ describe("PubSub", () => {
       )
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
-      assert.deepStrictEqual(result1, values)
-      assert.deepStrictEqual(result2, values)
+      deepStrictEqual(result1, values)
+      deepStrictEqual(result2, values)
     }))
   it.effect("sliding concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
@@ -492,13 +486,13 @@ describe("PubSub", () => {
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(pipe(result1, Array.filter((n) => n > 0)), values)
-      assert.deepStrictEqual(
+      deepStrictEqual(pipe(result1, Array.filter((n) => n > 0)), values)
+      deepStrictEqual(
         pipe(result1, Array.filter((n) => n < 0)),
         pipe(values, Array.map((n) => -n))
       )
-      assert.deepStrictEqual(pipe(result2, Array.filter((n) => n > 0)), values)
-      assert.deepStrictEqual(
+      deepStrictEqual(pipe(result2, Array.filter((n) => n > 0)), values)
+      deepStrictEqual(
         pipe(result2, Array.filter((n) => n < 0)),
         pipe(values, Array.map((n) => -n))
       )
@@ -527,7 +521,7 @@ describe("PubSub", () => {
       )
 
       const result = yield* $(Fiber.join(subscriber))
-      assert.deepStrictEqual(result, values)
+      deepStrictEqual(result, values)
     }))
   it.effect("unbounded concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
@@ -566,8 +560,8 @@ describe("PubSub", () => {
       )
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
-      assert.deepStrictEqual(result1, values)
-      assert.deepStrictEqual(result2, values)
+      deepStrictEqual(result1, values)
+      deepStrictEqual(result2, values)
     }))
   it.effect("unbounded concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
@@ -617,13 +611,13 @@ describe("PubSub", () => {
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.filter(result1, (n) => n > 0), values)
-      assert.deepStrictEqual(
+      deepStrictEqual(Array.filter(result1, (n) => n > 0), values)
+      deepStrictEqual(
         Array.filter(result1, (n) => n < 0),
         Array.map(values, (n) => -n)
       )
-      assert.deepStrictEqual(Array.filter(result2, (n) => n > 0), values)
-      assert.deepStrictEqual(
+      deepStrictEqual(Array.filter(result2, (n) => n > 0), values)
+      deepStrictEqual(
         Array.filter(result2, (n) => n < 0),
         Array.map(values, (n) => -n)
       )
@@ -639,8 +633,8 @@ describe("PubSub", () => {
             yield* PubSub.publishAll(pubsub, messages)
             const takes1 = yield* Queue.takeAll(dequeue1)
             const takes2 = yield* Queue.takeAll(dequeue2)
-            assert.deepStrictEqual([...takes1], messages)
-            assert.deepStrictEqual([...takes2], messages)
+            deepStrictEqual([...takes1], messages)
+            deepStrictEqual([...takes2], messages)
           })
         )
       )
@@ -652,14 +646,14 @@ describe("PubSub", () => {
       const pubsub = yield* PubSub.dropping<number>(2)
       yield* PubSub.publish(pubsub, 1)
       yield* PubSub.publish(pubsub, 2)
-      assert.deepStrictEqual(pubsub.unsafeSize(), Option.some(0))
+      assertSome(pubsub.unsafeSize(), 0)
     }))
 
   it.scoped("publishAll does not increase size while no subscribers", () =>
     Effect.gen(function*() {
       const pubsub = yield* PubSub.dropping<number>(2)
       yield* PubSub.publishAll(pubsub, [1, 2])
-      assert.deepStrictEqual(pubsub.unsafeSize(), Option.some(0))
+      assertSome(pubsub.unsafeSize(), 0)
     }))
 
   describe("replay", () => {
@@ -669,7 +663,7 @@ describe("PubSub", () => {
         const pubsub = yield* PubSub.unbounded<number>({ replay: 3 })
         yield* PubSub.publishAll(pubsub, messages)
         const sub = yield* PubSub.subscribe(pubsub)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [3, 4, 5])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [3, 4, 5])
       }))
 
     it.effect("unbounded takeUpTo", () => {
@@ -684,11 +678,11 @@ describe("PubSub", () => {
               yield* PubSub.publish(pubsub, 6)
               const dequeue2 = yield* PubSub.subscribe(pubsub)
 
-              assert.strictEqual(yield* Queue.size(dequeue1), 4)
-              assert.strictEqual(yield* Queue.size(dequeue2), 3)
-              assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue1, 2)), [3, 4])
-              assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue1, 2)), [5, 6])
-              assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue2, 3)), [4, 5, 6])
+              strictEqual(yield* Queue.size(dequeue1), 4)
+              strictEqual(yield* Queue.size(dequeue2), 3)
+              deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue1, 2)), [3, 4])
+              deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue1, 2)), [5, 6])
+              deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue2, 3)), [4, 5, 6])
             })
           )
         )
@@ -702,19 +696,19 @@ describe("PubSub", () => {
 
         yield* PubSub.publishAll(pubsub, messages)
         const sub = yield* PubSub.subscribe(pubsub)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [3, 4, 5])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [3, 4, 5])
         yield* PubSub.publishAll(pubsub, [6, 7])
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [6, 7])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [6, 7])
 
         const sub2 = yield* PubSub.subscribe(pubsub)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [5, 6, 7])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [5, 6, 7])
 
         yield* PubSub.publishAll(pubsub, [8, 9, 10, 11])
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [8, 9])
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [8, 9])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [8, 9])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [8, 9])
 
         const sub3 = yield* PubSub.subscribe(pubsub)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub3)), [7, 8, 9])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub3)), [7, 8, 9])
       }))
 
     it.scoped("sliding", () =>
@@ -724,19 +718,19 @@ describe("PubSub", () => {
 
         yield* PubSub.publishAll(pubsub, messages)
         const sub = yield* PubSub.subscribe(pubsub)
-        assert.deepStrictEqual(yield* Queue.take(sub), 3)
+        deepStrictEqual(yield* Queue.take(sub), 3)
         yield* PubSub.publishAll(pubsub, [6, 7, 8, 9, 10])
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [5, 6, 7, 8, 9, 10])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [5, 6, 7, 8, 9, 10])
 
         const sub2 = yield* PubSub.subscribe(pubsub)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [8, 9, 10])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [8, 9, 10])
 
         yield* PubSub.publishAll(pubsub, [11, 12, 13, 14, 15, 16])
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [13, 14, 15, 16])
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [13, 14, 15, 16])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [13, 14, 15, 16])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [13, 14, 15, 16])
 
         const sub3 = yield* PubSub.subscribe(pubsub)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub3)), [14, 15, 16])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub3)), [14, 15, 16])
       }))
   })
 })

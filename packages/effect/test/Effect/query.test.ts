@@ -9,10 +9,11 @@ import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import type { Concurrency } from "effect/Types"
-import { describe, expect } from "vitest"
+import { describe } from "vitest"
 import { pipe } from "../../src/index.js"
 
 interface Counter {
@@ -174,16 +175,16 @@ describe("Effect", () => {
         Effect.withRequestCaching(true),
         Effect.repeatN(3)
       )
-      expect(count).toBe(1)
+      strictEqual(count, 1)
     }))
   it.effect("requests are executed correctly", () =>
     provideEnv(
       Effect.gen(function*($) {
         const names = yield* $(getAllUserNames)
         const count = yield* $(Counter)
-        expect(count.count).toEqual(3)
-        expect(names.length).toBeGreaterThan(2)
-        expect(names).toEqual(userIds.map((id) => userNames.get(id)))
+        strictEqual(count.count, 3)
+        assertTrue(names.length > 2)
+        deepStrictEqual(names, userIds.map((id) => userNames.get(id)))
       })
     ))
   it.effect("requests with dual syntax are executed correctly", () =>
@@ -191,9 +192,9 @@ describe("Effect", () => {
       Effect.gen(function*($) {
         const names = yield* $(getAllUserNamesPiped)
         const count = yield* $(Counter)
-        expect(count.count).toEqual(3)
-        expect(names.length).toBeGreaterThan(2)
-        expect(names).toEqual(userIds.map((id) => userNames.get(id)))
+        strictEqual(count.count, 3)
+        assertTrue(names.length > 2)
+        deepStrictEqual(names, userIds.map((id) => userNames.get(id)))
       })
     ))
   it.effect("requests are executed correctly with fromEffectTagged", () =>
@@ -201,9 +202,9 @@ describe("Effect", () => {
       Effect.gen(function*($) {
         const names = yield* $(getAllUserNamesTagged)
         const count = yield* $(Counter)
-        expect(count.count).toEqual(3)
-        expect(names.length).toBeGreaterThan(2)
-        expect(names).toEqual(userIds.map((id) => userNames.get(id)))
+        strictEqual(count.count, 3)
+        assertTrue(names.length > 2)
+        deepStrictEqual(names, userIds.map((id) => userNames.get(id)))
       })
     ))
   it.effect("batching composes", () =>
@@ -216,10 +217,10 @@ describe("Effect", () => {
           batching: true
         }))
         const count = yield* $(Counter)
-        expect(count.count).toEqual(3)
-        expect(names[0].length).toBeGreaterThan(2)
-        expect(names[0]).toEqual(userIds.map((id) => userNames.get(id)))
-        expect(names[0]).toEqual(names[1])
+        strictEqual(count.count, 3)
+        assertTrue(names[0].length > 2)
+        deepStrictEqual(names[0], userIds.map((id) => userNames.get(id)))
+        deepStrictEqual(names[0], names[1])
       })
     ))
   it.effect("withSpan doesn't break batching", () =>
@@ -234,7 +235,7 @@ describe("Effect", () => {
           Effect.withRequestCaching(false)
         )
         const count = yield* $(Counter)
-        expect(count.count).toEqual(1)
+        strictEqual(count.count, 1)
       })
     ))
   it.effect("batching is independent from parallelism", () =>
@@ -242,9 +243,9 @@ describe("Effect", () => {
       Effect.gen(function*($) {
         const names = yield* $(getAllUserNamesN(5))
         const count = yield* $(Counter)
-        expect(count.count).toEqual(3)
-        expect(names.length).toBeGreaterThan(2)
-        expect(names).toEqual(userIds.map((id) => userNames.get(id)))
+        strictEqual(count.count, 3)
+        assertTrue(names.length > 2)
+        deepStrictEqual(names, userIds.map((id) => userNames.get(id)))
       })
     ))
   it.effect("batching doesn't break interruption", () =>
@@ -259,15 +260,15 @@ describe("Effect", () => {
             }),
             Effect.exit
           )
-          expect(exit._tag).toEqual("Failure")
+          strictEqual(exit._tag, "Failure")
           if (exit._tag === "Failure") {
-            expect(Cause.isInterruptedOnly(exit.cause)).toEqual(true)
+            assertTrue(Cause.isInterruptedOnly(exit.cause))
           }
           const cache = yield* $(FiberRef.get(FiberRef.currentRequestCache))
           const values = yield* $(cache.values)
-          expect(values[0].handle.state.current._tag).toEqual("Done")
-          expect(yield* $(Counter)).toEqual({ count: 0 })
-          expect(yield* $(FiberRef.get(interrupts))).toEqual({ interrupts: 1 })
+          strictEqual(values[0].handle.state.current._tag, "Done")
+          deepStrictEqual(yield* $(Counter), { count: 0 })
+          deepStrictEqual(yield* $(FiberRef.get(interrupts)), { interrupts: 1 })
         })
       )
     ))
@@ -279,12 +280,12 @@ describe("Effect", () => {
           yield* $(Effect.yieldNow())
           yield* $(Fiber.interrupt(fiber))
           const exit = yield* $(Fiber.await(fiber))
-          expect(exit._tag).toEqual("Failure")
+          strictEqual(exit._tag, "Failure")
           if (exit._tag === "Failure") {
-            expect(Cause.isInterruptedOnly(exit.cause)).toEqual(true)
+            assertTrue(Cause.isInterruptedOnly(exit.cause))
           }
-          expect(yield* $(Counter)).toEqual({ count: 0 })
-          expect(yield* $(FiberRef.get(interrupts))).toEqual({ interrupts: 1 })
+          deepStrictEqual(yield* $(Counter), { count: 0 })
+          deepStrictEqual(yield* $(FiberRef.get(interrupts)), { interrupts: 1 })
         })
       )
     ))
@@ -296,12 +297,12 @@ describe("Effect", () => {
           yield* $(Effect.yieldNow())
           yield* $(Fiber.interrupt(fiber))
           const exit = yield* $(Fiber.await(fiber))
-          expect(exit._tag).toEqual("Failure")
+          strictEqual(exit._tag, "Failure")
           if (exit._tag === "Failure") {
-            expect(Cause.isInterruptedOnly(exit.cause)).toEqual(true)
+            assertTrue(Cause.isInterruptedOnly(exit.cause))
           }
-          expect(yield* $(Counter)).toEqual({ count: 3 })
-          expect(yield* $(FiberRef.get(interrupts))).toEqual({ interrupts: 0 })
+          deepStrictEqual(yield* $(Counter), { count: 3 })
+          deepStrictEqual(yield* $(FiberRef.get(interrupts)), { interrupts: 0 })
         })
       )
     ))
@@ -317,12 +318,12 @@ describe("Effect", () => {
             }),
             Effect.exit
           )
-          expect(exit._tag).toEqual("Failure")
+          strictEqual(exit._tag, "Failure")
           if (exit._tag === "Failure") {
-            expect(Cause.isInterruptedOnly(exit.cause)).toEqual(true)
+            assertTrue(Cause.isInterruptedOnly(exit.cause))
           }
-          expect(yield* $(Counter)).toEqual({ count: 0 })
-          expect(yield* $(FiberRef.get(interrupts))).toEqual({ interrupts: 1 })
+          deepStrictEqual(yield* $(Counter), { count: 0 })
+          deepStrictEqual(yield* $(FiberRef.get(interrupts)), { interrupts: 1 })
         })
       )
     ))
@@ -341,9 +342,9 @@ describe("Effect", () => {
           Effect.withRequestBatching(true)
         )
         const count = yield* $(Counter)
-        expect(count.count).toEqual(2)
-        expect(a).toEqual(userNames.get(userIds[0]))
-        expect(b).toEqual(userNames.get(userIds[1]))
+        strictEqual(count.count, 2)
+        deepStrictEqual(a, userNames.get(userIds[0]))
+        deepStrictEqual(b, userNames.get(userIds[1]))
       })
     ))
   it.effect("zip/parallel is batched by default", () =>
@@ -360,9 +361,9 @@ describe("Effect", () => {
           )
         )
         const count = yield* $(Counter)
-        expect(count.count).toEqual(1)
-        expect(a).toEqual(userNames.get(userIds[0]))
-        expect(b).toEqual(userNames.get(userIds[1]))
+        strictEqual(count.count, 1)
+        deepStrictEqual(a, userNames.get(userIds[0]))
+        deepStrictEqual(b, userNames.get(userIds[1]))
       })
     ))
   it.effect("cache respects ttl", () =>
@@ -370,15 +371,15 @@ describe("Effect", () => {
       Effect.gen(function*($) {
         yield* $(getAllUserIds)
         yield* $(getAllUserIds)
-        expect(yield* $(Counter)).toEqual({ count: 1 })
+        deepStrictEqual(yield* $(Counter), { count: 1 })
         yield* $(TestClock.adjust(seconds(10)))
         yield* $(getAllUserIds)
         yield* $(getAllUserIds)
-        expect(yield* $(Counter)).toEqual({ count: 1 })
+        deepStrictEqual(yield* $(Counter), { count: 1 })
         yield* $(TestClock.adjust(seconds(60)))
         yield* $(getAllUserIds)
         yield* $(getAllUserIds)
-        expect(yield* $(Counter)).toEqual({ count: 2 })
+        deepStrictEqual(yield* $(Counter), { count: 2 })
       })
     ))
   it.effect("cache can be warmed up", () =>
@@ -387,11 +388,11 @@ describe("Effect", () => {
         yield* $(Effect.cacheRequestResult(GetAllIds({}), Exit.succeed(userIds)))
         yield* $(getAllUserIds)
         yield* $(getAllUserIds)
-        expect(yield* $(Counter)).toEqual({ count: 0 })
+        deepStrictEqual(yield* $(Counter), { count: 0 })
         yield* $(TestClock.adjust(seconds(65)))
         yield* $(getAllUserIds)
         yield* $(getAllUserIds)
-        expect(yield* $(Counter)).toEqual({ count: 1 })
+        deepStrictEqual(yield* $(Counter), { count: 1 })
       })
     ))
   it.effect("cache can be disabled", () =>
@@ -399,15 +400,15 @@ describe("Effect", () => {
       Effect.withRequestCaching(false)(Effect.gen(function*($) {
         yield* $(getAllUserIds)
         yield* $(getAllUserIds)
-        expect(yield* $(Counter)).toEqual({ count: 2 })
+        deepStrictEqual(yield* $(Counter), { count: 2 })
         yield* $(TestClock.adjust(seconds(10)))
         yield* $(getAllUserIds)
         yield* $(getAllUserIds)
-        expect(yield* $(Counter)).toEqual({ count: 4 })
+        deepStrictEqual(yield* $(Counter), { count: 4 })
         yield* $(TestClock.adjust(seconds(60)))
         yield* $(getAllUserIds)
         yield* $(getAllUserIds)
-        expect(yield* $(Counter)).toEqual({ count: 6 })
+        deepStrictEqual(yield* $(Counter), { count: 6 })
       }))
     ))
 
@@ -424,8 +425,8 @@ describe("Effect", () => {
         )
         const requests = yield* $(Requests)
         const invocations = yield* $(Counter)
-        expect(requests.count).toEqual(2)
-        expect(invocations.count).toEqual(1)
+        deepStrictEqual(requests.count, 2)
+        deepStrictEqual(invocations.count, 1)
       })
     ))
 })

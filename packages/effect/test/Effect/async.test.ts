@@ -9,7 +9,8 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Runtime from "effect/Runtime"
-import { assert, describe, it } from "effect/test/utils/extend"
+import { assertNone, assertSome, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "effect/test/utils/extend"
 
 describe("Effect", () => {
   it.effect("simple async must return", () =>
@@ -17,14 +18,14 @@ describe("Effect", () => {
       const result = yield* $(Effect.async<number, unknown, never>((cb) => {
         cb(Effect.succeed(42))
       }))
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
   it.effect("simple asyncEffect must return", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.asyncEffect<number, never, never, never, never, never>((resume) => {
         return Effect.succeed(resume(Effect.succeed(42)))
       }))
-      assert.strictEqual(result, 42)
+      strictEqual(result, 42)
     }))
   if (typeof window === "undefined") {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -45,7 +46,7 @@ describe("Effect", () => {
         }
         const procNum = Effect.sync(() => os.cpus().length)
         const result = yield* $(procNum, Effect.flatMap(stackIOs))
-        assert.strictEqual(result, 42)
+        strictEqual(result, 42)
       }))
   }
   it.effect("interrupt of asyncEffect register", () =>
@@ -68,7 +69,7 @@ describe("Effect", () => {
       yield* $(Deferred.await(acquire))
       yield* $(Fiber.interruptFork(fiber))
       const result = yield* $(Deferred.await(release))
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
   it.live("async should not resume fiber twice after interruption", () =>
     Effect.gen(function*($) {
@@ -91,8 +92,8 @@ describe("Effect", () => {
       )
       const result = yield* $(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)), Effect.option)
       const unexpected = yield* $(Ref.get(unexpectedPlace))
-      assert.deepStrictEqual(unexpected, Chunk.empty())
-      assert.deepStrictEqual(result, Option.none()) // the timeout should happen
+      deepStrictEqual(unexpected, Chunk.empty())
+      assertNone(result) // the timeout should happen
     }))
   it.live("async should not resume fiber twice after synchronous result", () =>
     Effect.gen(function*($) {
@@ -119,13 +120,13 @@ describe("Effect", () => {
       )
       const result = yield* $(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)), Effect.option)
       const unexpected = yield* $(Ref.get(unexpectedPlace))
-      assert.deepStrictEqual(unexpected, Chunk.empty())
-      assert.deepStrictEqual(result, Option.none()) // timeout should happen
+      deepStrictEqual(unexpected, Chunk.empty())
+      assertNone(result) // timeout should happen
     }))
   it.effect("sleep 0 must return", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.sleep(Duration.zero))
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
   it.effect("shallow bind of async chain", () =>
     Effect.gen(function*($) {
@@ -139,7 +140,7 @@ describe("Effect", () => {
             })
           )
         ), Effect.succeed(0)))
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
   it.effect("asyncEffect can fail before registering", () =>
     Effect.gen(function*($) {
@@ -149,7 +150,7 @@ describe("Effect", () => {
         }),
         Effect.flip
       )
-      assert.strictEqual(result, "ouch")
+      strictEqual(result, "ouch")
     }))
   it.effect("asyncEffect can defect before registering", () =>
     Effect.gen(function*($) {
@@ -170,6 +171,6 @@ describe("Effect", () => {
           onSuccess: () => Option.none()
         }))
       )
-      assert.deepStrictEqual(result, Option.some("ouch"))
+      assertSome(result, "ouch")
     }))
 })
