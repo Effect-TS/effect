@@ -36,4 +36,9 @@ export * as Completions from "./Completions.js"
 /**
  * @since 1.0.0
  */
+export * as Embeddings from "./Embeddings.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Tokenizer from "./Tokenizer.js"

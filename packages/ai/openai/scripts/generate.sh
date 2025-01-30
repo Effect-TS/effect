@@ -1,4 +1,4 @@
-
+#!/usr/bin/env sh
 mkdir -p tmp
 curl https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml > tmp/openapi.yaml
 echo "/**
