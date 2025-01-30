@@ -36,7 +36,9 @@ describe("Duration", () => {
     deepStrictEqual(Duration.decode([Infinity, 0]), Duration.infinity)
     deepStrictEqual(Duration.decode([-Infinity, 0]), Duration.zero)
     deepStrictEqual(Duration.decode([NaN, 0]), Duration.zero)
-
+    deepStrictEqual(Duration.decode([0, Infinity]), Duration.infinity)
+    deepStrictEqual(Duration.decode([0, -Infinity]), Duration.zero)
+    deepStrictEqual(Duration.decode([0, NaN]), Duration.zero)
     throws(() => Duration.decode("1.5 secs" as any), new Error("Invalid DurationInput"))
     throws(() => Duration.decode(true as any), new Error("Invalid DurationInput"))
     throws(() => Duration.decode({} as any), new Error("Invalid DurationInput"))
