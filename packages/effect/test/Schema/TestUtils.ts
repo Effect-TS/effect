@@ -1,18 +1,13 @@
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import { getFinalTransformation } from "effect/ParseResult"
-import * as ParseResult from "effect/ParseResult"
-import * as S from "effect/Schema"
-import type { ParseOptions } from "effect/SchemaAST"
-import * as AST from "effect/SchemaAST"
-import { deepStrictEqual, fail, throws } from "effect/test/util"
+import { Context, Effect, ParseResult, Schema as S, SchemaAST as AST } from "effect"
+import { deepStrictEqual, fail, strictEqual, throws } from "effect/test/util"
 import * as SchemaTest from "./SchemaTest.js"
 
 export const assertions = Effect.runSync(
   SchemaTest.assertions.pipe(
     Effect.provideService(SchemaTest.Assert, {
       deepStrictEqual,
-      throws: (fn, message) => throws(fn, (e) => e instanceof Error && e.message === message),
+      strictEqual,
+      throws,
       fail
     }),
     Effect.provideService(SchemaTest.AssertConfig, {
@@ -28,19 +23,15 @@ export const assertions = Effect.runSync(
   )
 )
 
-export const assertParseError = (f: () => void, message: string) => {
-  throws(f, (e) => e instanceof ParseResult.ParseError && e.message === message)
-}
-
-export const onExcessPropertyError: ParseOptions = {
+export const onExcessPropertyError: AST.ParseOptions = {
   onExcessProperty: "error"
 }
 
-export const onExcessPropertyPreserve: ParseOptions = {
+export const onExcessPropertyPreserve: AST.ParseOptions = {
   onExcessProperty: "preserve"
 }
 
-export const ErrorsAll: ParseOptions = {
+export const ErrorsAll: AST.ParseOptions = {
   errors: "all"
 }
 
@@ -84,13 +75,13 @@ export const Defect = S.transform(S.String, S.Object, {
 function effectifyDecode<R>(
   decode: (
     fromA: any,
-    options: ParseOptions,
+    options: AST.ParseOptions,
     self: AST.Transformation,
     fromI: any
   ) => Effect.Effect<any, ParseResult.ParseIssue, R>
 ): (
   fromA: any,
-  options: ParseOptions,
+  options: AST.ParseOptions,
   self: AST.Transformation,
   fromI: any
 ) => Effect.Effect<any, ParseResult.ParseIssue, R> {
@@ -132,8 +123,8 @@ function effectifyAST(ast: AST.AST): AST.AST {
         effectifyAST(ast.from),
         effectifyAST(ast.to),
         new AST.FinalTransformation(
-          effectifyDecode(getFinalTransformation(ast.transformation, true)),
-          effectifyDecode(getFinalTransformation(ast.transformation, false))
+          effectifyDecode(ParseResult.getFinalTransformation(ast.transformation, true)),
+          effectifyDecode(ParseResult.getFinalTransformation(ast.transformation, false))
         ),
         ast.annotations
       )

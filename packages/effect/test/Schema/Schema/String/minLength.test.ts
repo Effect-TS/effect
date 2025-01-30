@@ -1,8 +1,7 @@
 import * as P from "effect/ParseResult"
-import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("minLength", () => {
@@ -31,7 +30,7 @@ describe("minLength", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.make(S.minLength(0)(S.String))
-    strictEqual(pretty("a"), `"a"`)
+    const schema = S.minLength(0)(S.String)
+    Util.assertions.pretty(schema, "a", `"a"`)
   })
 })

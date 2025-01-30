@@ -1,8 +1,7 @@
 import * as P from "effect/ParseResult"
-import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("ReadonlyMapFromSelf", () => {
@@ -65,8 +64,7 @@ describe("ReadonlyMapFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.ReadonlyMapFromSelf({ key: S.Number, value: S.String })
-    const pretty = Pretty.make(schema)
-    strictEqual(pretty(new Map()), "new Map([])")
-    strictEqual(pretty(new Map([[1, "a"], [2, "b"]])), `new Map([[1, "a"], [2, "b"]])`)
+    Util.assertions.pretty(schema, new Map(), "new Map([])")
+    Util.assertions.pretty(schema, new Map([[1, "a"], [2, "b"]]), `new Map([[1, "a"], [2, "b"]])`)
   })
 })

@@ -1,8 +1,6 @@
 import { Duration } from "effect"
-import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { strictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("DurationFromSelf", () => {
@@ -32,10 +30,8 @@ describe("DurationFromSelf", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.make(schema)
-
-    strictEqual(pretty(Duration.millis(500)), "Duration(500ms)")
-    strictEqual(pretty(Duration.seconds(30)), "Duration(30s)")
-    strictEqual(pretty(Duration.minutes(5.25)), "Duration(5m 15s)")
+    Util.assertions.pretty(schema, Duration.millis(500), "Duration(500ms)")
+    Util.assertions.pretty(schema, Duration.seconds(30), "Duration(30s)")
+    Util.assertions.pretty(schema, Duration.minutes(5.25), "Duration(5m 15s)")
   })
 })

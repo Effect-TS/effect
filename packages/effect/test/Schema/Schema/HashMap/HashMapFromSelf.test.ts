@@ -1,9 +1,8 @@
 import * as HashMap from "effect/HashMap"
 import * as P from "effect/ParseResult"
-import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("HashMapFromSelf", () => {
@@ -66,8 +65,7 @@ describe("HashMapFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.HashMapFromSelf({ key: S.Number, value: S.String })
-    const pretty = Pretty.make(schema)
-    strictEqual(pretty(HashMap.fromIterable([])), "HashMap([])")
-    strictEqual(pretty(HashMap.fromIterable([[1, "a"], [2, "b"]])), `HashMap([[1, "a"], [2, "b"]])`)
+    Util.assertions.pretty(schema, HashMap.fromIterable([]), "HashMap([])")
+    Util.assertions.pretty(schema, HashMap.fromIterable([[1, "a"], [2, "b"]]), `HashMap([[1, "a"], [2, "b"]])`)
   })
 })

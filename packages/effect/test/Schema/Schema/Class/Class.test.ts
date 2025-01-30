@@ -1,4 +1,4 @@
-import { Context, Data, Effect, Equal, JSONSchema, ParseResult, Pretty, Schema as S, SchemaAST as AST } from "effect"
+import { Context, Data, Effect, Equal, JSONSchema, ParseResult, Schema as S, SchemaAST as AST } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
 import { assertFalse, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
 import { describe, it } from "vitest"
@@ -79,7 +79,7 @@ describe("Class", () => {
 
     it("should validate the input by default", () => {
       class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
-      Util.assertParseError(
+      Util.assertions.parseError(
         () => new A({ a: "" }),
         `A (Constructor)
 └─ ["a"]
@@ -87,7 +87,7 @@ describe("Class", () => {
       └─ Predicate refinement failure
          └─ Expected a non empty string, actual ""`
       )
-      Util.assertParseError(
+      Util.assertions.parseError(
         () => A.make({ a: "" }),
         `A (Constructor)
 └─ ["a"]
@@ -365,7 +365,7 @@ details: Duplicate key "a"`)
       └─ Predicate refinement failure
          └─ a should be equal to b`
     )
-    Util.assertParseError(
+    Util.assertions.parseError(
       () => new A({ a: 1, b: 2 }),
       `A (Constructor)
 └─ Predicate refinement failure
@@ -391,8 +391,8 @@ details: Duplicate key "a"`)
   })
 
   it("pretty", () => {
-    const pretty = Pretty.make(Person)
-    strictEqual(pretty(new Person({ id: 1, name: "John" })), `Person({ "id": 1, "name": "John" })`)
+    const schema = Person
+    Util.assertions.pretty(schema, new Person({ id: 1, name: "John" }), `Person({ "id": 1, "name": "John" })`)
   })
 
   describe("encode", () => {

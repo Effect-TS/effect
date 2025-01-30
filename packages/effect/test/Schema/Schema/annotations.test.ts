@@ -1,5 +1,5 @@
 import type * as ParseResult from "effect/ParseResult"
-import * as Pretty from "effect/Pretty"
+import type * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
@@ -137,10 +137,10 @@ describe(".annotations()", () => {
       constructor(readonly a: string) {}
     }
     const prettyA = (): Pretty.Pretty<A> => (instance) => `new A("${instance.a}")`
-    const AFromSelf = S.instanceOf(A, {
+    const schema = S.instanceOf(A, {
       pretty: prettyA
     })
-    strictEqual(Pretty.make(AFromSelf)(new A("value")), `new A("value")`)
+    Util.assertions.pretty(schema, new A("value"), `new A("value")`)
   })
 })
 

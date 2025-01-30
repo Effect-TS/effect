@@ -1,9 +1,8 @@
 import * as List from "effect/List"
 import * as P from "effect/ParseResult"
-import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("ListFromSelf", () => {
@@ -59,8 +58,7 @@ describe("ListFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.ListFromSelf(S.String)
-    const pretty = Pretty.make(schema)
-    strictEqual(pretty(List.empty()), "List()")
-    strictEqual(pretty(List.fromIterable(["a", "b"])), `List("a", "b")`)
+    Util.assertions.pretty(schema, List.empty(), "List()")
+    Util.assertions.pretty(schema, List.fromIterable(["a", "b"]), `List("a", "b")`)
   })
 })

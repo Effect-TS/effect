@@ -49,7 +49,7 @@ describe("fromBrand", () => {
 └─ Predicate refinement failure
    └─ Expected -0.5 to be positive, Expected -0.5 to be an integer`
     )
-    Util.assertParseError(
+    Util.assertions.parseError(
       () => S.decodeUnknownSync(schema)(-0.5),
       `{ number | filter }
 └─ Predicate refinement failure

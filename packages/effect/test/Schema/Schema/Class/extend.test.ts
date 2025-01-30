@@ -80,7 +80,7 @@ describe("extend", () => {
       └─ Predicate refinement failure
          └─ a should be equal to b`
     )
-    Util.assertParseError(
+    Util.assertions.parseError(
       () => new A({ base: "base", a: 1, b: 2 }),
       `A (Constructor)
 └─ Predicate refinement failure

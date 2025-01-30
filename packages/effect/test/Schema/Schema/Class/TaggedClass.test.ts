@@ -73,7 +73,7 @@ details: Duplicate key "_tag"`)
       └─ Predicate refinement failure
          └─ a should be equal to b`
     )
-    Util.assertParseError(
+    Util.assertions.parseError(
       () => new A({ a: 1, b: 2 }),
       `A (Constructor)
 └─ Predicate refinement failure
@@ -194,7 +194,7 @@ details: Duplicate key "_tag"`)
     strictEqual(person._tag, "TaggedPerson")
     strictEqual(person.upperName, "JOHN")
 
-    Util.assertParseError(
+    Util.assertions.parseError(
       () => S.decodeUnknownSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 }),
       `(TaggedPersonWithAge (Encoded side) <-> TaggedPersonWithAge)
 └─ Encoded side transformation failure
