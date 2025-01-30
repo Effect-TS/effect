@@ -77,7 +77,9 @@ describe("Duration", () => {
     assertSome(Duration.decodeUnknown([Infinity, 0]), Duration.infinity)
     assertSome(Duration.decodeUnknown([-Infinity, 0]), Duration.zero)
     assertSome(Duration.decodeUnknown([NaN, 0]), Duration.zero)
-
+    assertSome(Duration.decodeUnknown([0, Infinity]), Duration.infinity)
+    assertSome(Duration.decodeUnknown([0, -Infinity]), Duration.zero)
+    assertSome(Duration.decodeUnknown([0, NaN]), Duration.zero)
     assertNone(Duration.decodeUnknown("1.5 secs"))
     assertNone(Duration.decodeUnknown(true))
     assertNone(Duration.decodeUnknown({}))
