@@ -1,6 +1,7 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("rename", () => {
   describe("Struct", () => {
@@ -86,7 +87,7 @@ describe("rename", () => {
   it("should return the same ast if there are no mappings", () => {
     const schema = S.Struct({ a: S.String })
     const renamed = S.rename(schema, {})
-    expect(schema.ast === renamed.ast).toBe(true)
+    strictEqual(schema.ast, renamed.ast)
   })
 
   it("field transformation", async () => {

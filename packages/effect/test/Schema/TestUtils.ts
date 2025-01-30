@@ -28,7 +28,7 @@ export const assertions = Effect.runSync(
   )
 )
 
-export const expectParseError = (f: () => void, message: string) => {
+export const assertParseError = (f: () => void, message: string) => {
   throws(f, (e) => e instanceof ParseResult.ParseError && e.message === message)
 }
 

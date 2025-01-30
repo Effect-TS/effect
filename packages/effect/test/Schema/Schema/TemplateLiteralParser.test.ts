@@ -2,7 +2,8 @@ import type * as array_ from "effect/Array"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 type TemplateLiteralParameter = S.Schema.AnyNoContext | AST.LiteralValue
 
@@ -11,17 +12,19 @@ const expectPattern = (
   expectedPattern: string
 ) => {
   const ast = S.TemplateLiteral(...params).ast as AST.TemplateLiteral
-  expect(AST.getTemplateLiteralCapturingRegExp(ast).source).toEqual(expectedPattern)
+  strictEqual(AST.getTemplateLiteralCapturingRegExp(ast).source, expectedPattern)
 }
 
 describe("TemplateLiteralParser", () => {
   it("should throw on unsupported template literal spans", () => {
-    expect(() => S.TemplateLiteralParser(S.Boolean)).toThrow(
+    throws(
+      () => S.TemplateLiteralParser(S.Boolean),
       new Error(`Unsupported template literal span
 schema (BooleanKeyword): boolean`)
     )
 
-    expect(() => S.TemplateLiteralParser(S.Union(S.Boolean, S.SymbolFromSelf))).toThrow(
+    throws(
+      () => S.TemplateLiteralParser(S.Union(S.Boolean, S.SymbolFromSelf)),
       new Error(`Unsupported template literal span
 schema (Union): boolean | symbol`)
     )
@@ -62,7 +65,7 @@ schema (Union): boolean | symbol`)
   it("should expose the params", () => {
     const params = ["/", S.Int, "/", S.String] as const
     const schema = S.TemplateLiteralParser(...params)
-    expect(schema.params).toStrictEqual(params)
+    deepStrictEqual(schema.params, params)
   })
 
   describe("decoding", () => {

@@ -1,17 +1,7 @@
-import {
-  Context,
-  Data,
-  Effect,
-  Equal,
-  JSONSchema,
-  Option,
-  ParseResult,
-  Pretty,
-  Schema as S,
-  SchemaAST as AST
-} from "effect"
+import { Context, Data, Effect, Equal, JSONSchema, ParseResult, Pretty, Schema as S, SchemaAST as AST } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
@@ -59,59 +49,61 @@ describe("Class", () => {
 
   it("should be a Schema", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
-    expect(S.isSchema(A)).toEqual(true)
-    expect(String(A)).toBe("(A (Encoded side) <-> A)")
-    expect(S.format(A)).toBe("(A (Encoded side) <-> A)")
+    assertTrue(S.isSchema(A))
+    strictEqual(String(A), "(A (Encoded side) <-> A)")
+    strictEqual(S.format(A), "(A (Encoded side) <-> A)")
   })
 
   it("should expose the fields", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
-    expect(A.fields).toEqual({ a: S.String })
+    deepStrictEqual(A.fields, { a: S.String })
   })
 
   it("should expose the identifier", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
-    expect(A.identifier).toEqual("A")
+    strictEqual(A.identifier, "A")
   })
 
   it("should add an identifier annotation", () => {
     class A extends S.Class<A>("MyName")({ a: S.String }) {}
-    expect(A.ast.to.annotations[AST.IdentifierAnnotationId]).toEqual("MyName")
+    strictEqual(A.ast.to.annotations[AST.IdentifierAnnotationId], "MyName")
   })
 
   describe("constructor", () => {
     it("should be a constructor", () => {
       class A extends S.Class<A>("A")({ a: S.String }) {}
       const instance = new A({ a: "a" })
-      expect(instance.a).toStrictEqual("a")
-      expect(instance instanceof A).toBe(true)
+      strictEqual(instance.a, "a")
+      assertTrue(instance instanceof A)
     })
 
     it("should validate the input by default", () => {
       class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
-      expect(() => new A({ a: "" })).toThrow(
-        new Error(`A (Constructor)
+      Util.assertParseError(
+        () => new A({ a: "" }),
+        `A (Constructor)
 └─ ["a"]
    └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected a non empty string, actual ""`)
+         └─ Expected a non empty string, actual ""`
       )
-      expect(() => A.make({ a: "" })).toThrow(
-        new Error(`A (Constructor)
+      Util.assertParseError(
+        () => A.make({ a: "" }),
+        `A (Constructor)
 └─ ["a"]
    └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected a non empty string, actual ""`)
+         └─ Expected a non empty string, actual ""`
       )
     })
 
     it("validation can be disabled", () => {
       class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
-      expect(new A({ a: "" }, true).a).toStrictEqual("")
-      expect(new A({ a: "" }, { disableValidation: true }).a).toStrictEqual("")
+      strictEqual(new A({ a: "" }, true).a, "")
+      strictEqual(new A({ a: "" }, { disableValidation: true }).a, "")
 
-      expect(A.make({ a: "" }, true).a).toStrictEqual("")
-      expect(A.make({ a: "" }, { disableValidation: true }).a).toStrictEqual("")
+      strictEqual(A.make({ a: "" }, true).a, "")
+      strictEqual(A.make({ a: "" }, { disableValidation: true }).a, "")
     })
 
     it("should support defaults", () => {
@@ -120,15 +112,15 @@ describe("Class", () => {
         a: S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "")),
         [b]: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => 1))
       }) {}
-      expect({ ...new A({ a: "a", [b]: 2 }) }).toStrictEqual({ a: "a", [b]: 2 })
-      expect({ ...new A({ a: "a" }) }).toStrictEqual({ a: "a", [b]: 1 })
-      expect({ ...new A({ [b]: 2 }) }).toStrictEqual({ a: "", [b]: 2 })
-      expect({ ...new A({}) }).toStrictEqual({ a: "", [b]: 1 })
+      deepStrictEqual({ ...new A({ a: "a", [b]: 2 }) }, { a: "a", [b]: 2 })
+      deepStrictEqual({ ...new A({ a: "a" }) }, { a: "a", [b]: 1 })
+      deepStrictEqual({ ...new A({ [b]: 2 }) }, { a: "", [b]: 2 })
+      deepStrictEqual({ ...new A({}) }, { a: "", [b]: 1 })
 
-      expect({ ...A.make({ a: "a", [b]: 2 }) }).toStrictEqual({ a: "a", [b]: 2 })
-      expect({ ...A.make({ a: "a" }) }).toStrictEqual({ a: "a", [b]: 1 })
-      expect({ ...A.make({ [b]: 2 }) }).toStrictEqual({ a: "", [b]: 2 })
-      expect({ ...A.make({}) }).toStrictEqual({ a: "", [b]: 1 })
+      deepStrictEqual({ ...A.make({ a: "a", [b]: 2 }) }, { a: "a", [b]: 2 })
+      deepStrictEqual({ ...A.make({ a: "a" }) }, { a: "a", [b]: 1 })
+      deepStrictEqual({ ...A.make({ [b]: 2 }) }, { a: "", [b]: 2 })
+      deepStrictEqual({ ...A.make({}) }, { a: "", [b]: 1 })
     })
 
     it("should support lazy defaults", () => {
@@ -136,58 +128,58 @@ describe("Class", () => {
       class A extends S.Class<A>("A")({
         a: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => ++i))
       }) {}
-      expect({ ...new A({}) }).toStrictEqual({ a: 1 })
-      expect({ ...new A({}) }).toStrictEqual({ a: 2 })
+      deepStrictEqual({ ...new A({}) }, { a: 1 })
+      deepStrictEqual({ ...new A({}) }, { a: 2 })
       new A({ a: 10 })
-      expect({ ...new A({}) }).toStrictEqual({ a: 3 })
+      deepStrictEqual({ ...new A({}) }, { a: 3 })
 
-      expect({ ...A.make({}) }).toStrictEqual({ a: 4 })
-      expect({ ...A.make({}) }).toStrictEqual({ a: 5 })
+      deepStrictEqual({ ...A.make({}) }, { a: 4 })
+      deepStrictEqual({ ...A.make({}) }, { a: 5 })
       new A({ a: 10 })
-      expect({ ...A.make({}) }).toStrictEqual({ a: 6 })
+      deepStrictEqual({ ...A.make({}) }, { a: 6 })
     })
 
     it("should treat `undefined` as missing field", () => {
       class A extends S.Class<A>("A")({
         a: S.propertySignature(S.UndefinedOr(S.String)).pipe(S.withConstructorDefault(() => ""))
       }) {}
-      expect({ ...new A({}) }).toStrictEqual({ a: "" })
-      expect({ ...new A({ a: undefined }) }).toStrictEqual({ a: "" })
+      deepStrictEqual({ ...new A({}) }, { a: "" })
+      deepStrictEqual({ ...new A({ a: undefined }) }, { a: "" })
 
-      expect({ ...A.make({}) }).toStrictEqual({ a: "" })
-      expect({ ...A.make({ a: undefined }) }).toStrictEqual({ a: "" })
+      deepStrictEqual({ ...A.make({}) }, { a: "" })
+      deepStrictEqual({ ...A.make({ a: undefined }) }, { a: "" })
     })
 
     it("should accept void if the Class has no fields", () => {
       class A extends S.Class<A>("A")({}) {}
-      expect({ ...new A() }).toStrictEqual({})
-      expect({ ...new A(undefined) }).toStrictEqual({})
-      expect({ ...new A(undefined, true) }).toStrictEqual({})
-      expect({ ...new A(undefined, false) }).toStrictEqual({})
-      expect({ ...new A({}) }).toStrictEqual({})
+      deepStrictEqual({ ...new A() }, {})
+      deepStrictEqual({ ...new A(undefined) }, {})
+      deepStrictEqual({ ...new A(undefined, true) }, {})
+      deepStrictEqual({ ...new A(undefined, false) }, {})
+      deepStrictEqual({ ...new A({}) }, {})
 
-      expect({ ...A.make() }).toStrictEqual({})
-      expect({ ...A.make(undefined) }).toStrictEqual({})
-      expect({ ...A.make(undefined, true) }).toStrictEqual({})
-      expect({ ...A.make(undefined, false) }).toStrictEqual({})
-      expect({ ...A.make({}) }).toStrictEqual({})
+      deepStrictEqual({ ...A.make() }, {})
+      deepStrictEqual({ ...A.make(undefined) }, {})
+      deepStrictEqual({ ...A.make(undefined, true) }, {})
+      deepStrictEqual({ ...A.make(undefined, false) }, {})
+      deepStrictEqual({ ...A.make({}) }, {})
     })
 
     it("should accept void if the Class has all the fields with a default", () => {
       class A extends S.Class<A>("A")({
         a: S.String.pipe(S.propertySignature, S.withConstructorDefault(() => ""))
       }) {}
-      expect({ ...new A() }).toStrictEqual({ a: "" })
-      expect({ ...new A(undefined) }).toStrictEqual({ a: "" })
-      expect({ ...new A(undefined, true) }).toStrictEqual({ a: "" })
-      expect({ ...new A(undefined, false) }).toStrictEqual({ a: "" })
-      expect({ ...new A({}) }).toStrictEqual({ a: "" })
+      deepStrictEqual({ ...new A() }, { a: "" })
+      deepStrictEqual({ ...new A(undefined) }, { a: "" })
+      deepStrictEqual({ ...new A(undefined, true) }, { a: "" })
+      deepStrictEqual({ ...new A(undefined, false) }, { a: "" })
+      deepStrictEqual({ ...new A({}) }, { a: "" })
 
-      expect({ ...A.make() }).toStrictEqual({ a: "" })
-      expect({ ...A.make(undefined) }).toStrictEqual({ a: "" })
-      expect({ ...A.make(undefined, true) }).toStrictEqual({ a: "" })
-      expect({ ...A.make(undefined, false) }).toStrictEqual({ a: "" })
-      expect({ ...A.make({}) }).toStrictEqual({ a: "" })
+      deepStrictEqual({ ...A.make() }, { a: "" })
+      deepStrictEqual({ ...A.make(undefined) }, { a: "" })
+      deepStrictEqual({ ...A.make(undefined, true) }, { a: "" })
+      deepStrictEqual({ ...A.make(undefined, false) }, { a: "" })
+      deepStrictEqual({ ...A.make({}) }, { a: "" })
     })
   })
 
@@ -197,7 +189,7 @@ describe("Class", () => {
         return `method: ${this.a} ${b}`
       }
     }
-    expect(new A({ a: "a" }).method("b")).toEqual("method: a b")
+    strictEqual(new A({ a: "a" }).method("b"), "method: a b")
   })
 
   it("should support getters", () => {
@@ -206,29 +198,29 @@ describe("Class", () => {
         return `getter: ${this.a}`
       }
     }
-    expect(new A({ a: "a" }).getter).toEqual("getter: a")
+    strictEqual(new A({ a: "a" }).getter, "getter: a")
   })
 
   it("using S.annotations() on a Class should return a Schema", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
     const schema = A.pipe(S.annotations({ title: "X" }))
-    expect(S.isSchema(schema)).toEqual(true)
-    expect(schema.ast._tag).toEqual("Transformation")
-    expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
+    assertTrue(S.isSchema(schema))
+    strictEqual(schema.ast._tag, "Transformation")
+    strictEqual(schema.ast.annotations[AST.TitleAnnotationId], "X")
   })
 
   it("using the .annotations() method of a Class should return a Schema", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
     const schema = A.annotations({ title: "X" })
-    expect(S.isSchema(schema)).toEqual(true)
-    expect(schema.ast._tag).toEqual("Transformation")
-    expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
+    assertTrue(S.isSchema(schema))
+    strictEqual(schema.ast._tag, "Transformation")
+    strictEqual(schema.ast.annotations[AST.TitleAnnotationId], "X")
   })
 
   it("default toString()", () => {
     const b = Symbol.for("b")
     class A extends S.Class<A>("A")({ a: S.String, [b]: S.Number }) {}
-    expect(String(new A({ a: "a", [b]: 1 }))).toBe(`A({ "a": "a", Symbol(b): 1 })`)
+    strictEqual(String(new A({ a: "a", [b]: 1 })), `A({ "a": "a", Symbol(b): 1 })`)
   })
 
   it("decoding", async () => {
@@ -273,10 +265,11 @@ describe("Class", () => {
 
   it("duplicated fields should not be allowed when extending with extend()", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
-    expect(() => {
-      class A2 extends A.extend<A2>("A2")({ a: S.String }) {}
-      A2
-    }).toThrow(
+    throws(
+      () => {
+        class A2 extends A.extend<A2>("A2")({ a: S.String }) {}
+        A2
+      },
       new Error(`Duplicate property signature
 details: Duplicate key "a"`)
     )
@@ -294,7 +287,7 @@ details: Duplicate key "a"`)
       b: S.String,
       c: S.Boolean
     })
-    expect({ ...new C({ a: "a", b: "b", c: true }) }).toStrictEqual({ a: "a", b: "b", c: true })
+    deepStrictEqual({ ...new C({ a: "a", b: "b", c: true }) }, { a: "a", b: "b", c: true })
   })
 
   it("can be extended with TaggedClass fields", () => {
@@ -310,7 +303,7 @@ details: Duplicate key "a"`)
       b: S.String,
       c: S.Boolean
     })
-    expect({ ...new D({ a: "a", b: "b", c: true }) }).toStrictEqual({ _tag: "D", a: "a", b: "b", c: true })
+    deepStrictEqual({ ...new D({ a: "a", b: "b", c: true }) }, { _tag: "D", a: "a", b: "b", c: true })
   })
 
   it("S.typeSchema(Class)", async () => {
@@ -325,8 +318,8 @@ details: Duplicate key "a"`)
 
   it("is", () => {
     const is = S.is(S.typeSchema(Person))
-    expect(is(new Person({ id: 1, name: "name" }))).toEqual(true)
-    expect(is({ id: 1, name: "name" })).toEqual(false)
+    assertTrue(is(new Person({ id: 1, name: "name" })))
+    assertFalse(is({ id: 1, name: "name" }))
   })
 
   it("with a field with a context !== never", async () => {
@@ -339,7 +332,7 @@ details: Duplicate key "a"`)
       Effect.provideService(Name, "John"),
       Effect.runSync
     )
-    expect(person.name).toEqual("John")
+    strictEqual(person.name, "John")
 
     const PersonFromSelf = S.typeSchema(Person)
     await Util.assertions.decoding.succeed(PersonFromSelf, new Person({ id: 1, name: "John" }))
@@ -372,10 +365,11 @@ details: Duplicate key "a"`)
       └─ Predicate refinement failure
          └─ a should be equal to b`
     )
-    expect(() => new A({ a: 1, b: 2 })).toThrow(
-      new Error(`A (Constructor)
+    Util.assertParseError(
+      () => new A({ a: 1, b: 2 }),
+      `A (Constructor)
 └─ Predicate refinement failure
-   └─ a should be equal to b`)
+   └─ a should be equal to b`
     )
   })
 
@@ -383,24 +377,22 @@ details: Duplicate key "a"`)
     const person = new Person({ id: 1, name: "John" })
     const personAge = new PersonWithAge({ id: 1, name: "John", age: 30 })
 
-    expect(String(person)).toEqual(`Person({ "id": 1, "name": "John" })`)
-    expect(String(personAge)).toEqual(`PersonWithAge({ "id": 1, "name": "John", "age": 30 })`)
+    strictEqual(String(person), `Person({ "id": 1, "name": "John" })`)
+    strictEqual(String(personAge), `PersonWithAge({ "id": 1, "name": "John", "age": 30 })`)
 
-    expect(person instanceof Data.Class).toEqual(true)
-    expect(personAge instanceof Data.Class).toEqual(true)
+    assertTrue(person instanceof Data.Class)
+    assertTrue(personAge instanceof Data.Class)
 
     const person2 = new Person({ id: 1, name: "John" })
-    expect(Equal.equals(person, person2)).toEqual(true)
+    assertTrue(Equal.equals(person, person2))
 
     const person3 = new Person({ id: 2, name: "John" })
-    expect(Equal.equals(person, person3)).toEqual(false)
+    assertFalse(Equal.equals(person, person3))
   })
 
   it("pretty", () => {
     const pretty = Pretty.make(Person)
-    expect(pretty(new Person({ id: 1, name: "John" }))).toEqual(
-      `Person({ "id": 1, "name": "John" })`
-    )
+    strictEqual(pretty(new Person({ id: 1, name: "John" })), `Person({ "id": 1, "name": "John" })`)
   })
 
   describe("encode", () => {
@@ -487,8 +479,8 @@ details: Duplicate key "a"`)
       }
     }
     const a = A.make({ n: 1 })
-    expect(a instanceof A).toEqual(true)
-    expect(a.a()).toEqual("1a")
+    assertTrue(a instanceof A)
+    strictEqual(a.a(), "1a")
   })
 
   describe("should support annotations when declaring the Class", () => {
@@ -497,7 +489,7 @@ details: Duplicate key "a"`)
         a: S.NonEmptyString
       }, { title: "mytitle" }) {}
 
-      expect(A.ast.to.annotations[AST.TitleAnnotationId]).toEqual("mytitle")
+      strictEqual(A.ast.to.annotations[AST.TitleAnnotationId], "mytitle")
 
       await Util.assertions.encoding.fail(
         A,
@@ -523,9 +515,9 @@ details: Duplicate key "a"`)
           { identifier: "EncodedID" }
         ]
       ) {}
-      expect(AST.getIdentifierAnnotation(A.ast.to)).toEqual(Option.some("TypeID"))
-      expect(AST.getIdentifierAnnotation(A.ast)).toEqual(Option.some("TransformationID"))
-      expect(AST.getIdentifierAnnotation(A.ast.from)).toEqual(Option.some("EncodedID"))
+      assertSome(AST.getIdentifierAnnotation(A.ast.to), "TypeID")
+      assertSome(AST.getIdentifierAnnotation(A.ast), "TransformationID")
+      assertSome(AST.getIdentifierAnnotation(A.ast.from), "EncodedID")
 
       await Util.assertions.decoding.fail(
         A,
@@ -559,7 +551,7 @@ details: Duplicate key "a"`)
    └─ is missing`
       )
 
-      expect(JSONSchema.make(S.typeSchema(A))).toStrictEqual({
+      deepStrictEqual(JSONSchema.make(S.typeSchema(A)), {
         "$defs": {
           "NonEmptyString": {
             "title": "nonEmptyString",
@@ -585,33 +577,31 @@ details: Duplicate key "a"`)
         "$schema": "http://json-schema.org/draft-07/schema#"
       })
 
-      expect(JSONSchema.make(A)).toStrictEqual(
-        {
-          "$defs": {
-            "NonEmptyString": {
-              "title": "nonEmptyString",
-              "description": "a non empty string",
-              "minLength": 1,
-              "type": "string"
-            },
-            "TransformationID": {
-              "additionalProperties": false,
-              "description": "TypeDescription",
-              "properties": {
-                "a": {
-                  "$ref": "#/$defs/NonEmptyString"
-                }
-              },
-              "required": [
-                "a"
-              ],
-              "type": "object"
-            }
+      deepStrictEqual(JSONSchema.make(A), {
+        "$defs": {
+          "NonEmptyString": {
+            "title": "nonEmptyString",
+            "description": "a non empty string",
+            "minLength": 1,
+            "type": "string"
           },
-          "$ref": "#/$defs/TransformationID",
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        }
-      )
+          "TransformationID": {
+            "additionalProperties": false,
+            "description": "TypeDescription",
+            "properties": {
+              "a": {
+                "$ref": "#/$defs/NonEmptyString"
+              }
+            },
+            "required": [
+              "a"
+            ],
+            "type": "object"
+          }
+        },
+        "$ref": "#/$defs/TransformationID",
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      })
     })
   })
 })

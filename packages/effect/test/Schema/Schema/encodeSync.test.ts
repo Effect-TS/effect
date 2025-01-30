@@ -8,7 +8,7 @@ describe("encodeSync", () => {
 
   it("should throw on invalid values", () => {
     deepStrictEqual(S.encodeSync(schema)({ a: 1 }), { a: "1" })
-    Util.expectParseError(
+    Util.assertParseError(
       () => S.encodeSync(schema)({ a: 10 }),
       `{ readonly a: NumberFromChar }
 └─ ["a"]
@@ -21,7 +21,7 @@ describe("encodeSync", () => {
   })
 
   it("should throw on async", () => {
-    Util.expectParseError(
+    Util.assertParseError(
       () => S.encodeSync(Util.AsyncString)("a"),
       `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
@@ -30,13 +30,13 @@ describe("encodeSync", () => {
 
   it("should respect outer/inner options", () => {
     const input = { a: 1, b: "b" }
-    Util.expectParseError(
+    Util.assertParseError(
       () => S.encodeSync(schema)(input, { onExcessProperty: "error" }),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
     )
-    Util.expectParseError(
+    Util.assertParseError(
       () => S.encodeSync(schema, { onExcessProperty: "error" })(input),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
