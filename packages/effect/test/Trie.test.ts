@@ -1,7 +1,7 @@
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import { deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "effect/test/util"
 import * as Trie from "effect/Trie"
 import { describe, it } from "vitest"
 
@@ -145,14 +145,14 @@ describe("Trie", () => {
       Trie.insert("mind", 2),
       Trie.insert("mid", 3)
     )
-    deepStrictEqual(Trie.get(trie, "call"), Option.some(0))
-    deepStrictEqual(Trie.get(trie, "me"), Option.some(1))
-    deepStrictEqual(Trie.get(trie, "mind"), Option.some(2))
-    deepStrictEqual(Trie.get(trie, "mid"), Option.some(3))
-    deepStrictEqual(Trie.get(trie, "cale"), Option.none())
-    deepStrictEqual(Trie.get(trie, "ma"), Option.none())
-    deepStrictEqual(Trie.get(trie, "midn"), Option.none())
-    deepStrictEqual(Trie.get(trie, "mea"), Option.none())
+    assertSome(Trie.get(trie, "call"), 0)
+    assertSome(Trie.get(trie, "me"), 1)
+    assertSome(Trie.get(trie, "mind"), 2)
+    assertSome(Trie.get(trie, "mid"), 3)
+    assertNone(Trie.get(trie, "cale"))
+    assertNone(Trie.get(trie, "ma"))
+    assertNone(Trie.get(trie, "midn"))
+    assertNone(Trie.get(trie, "mea"))
   })
 
   it("get [2]", () => {
@@ -162,10 +162,10 @@ describe("Trie", () => {
       Trie.insert("she", 2)
     )
 
-    deepStrictEqual(Trie.get(trie, "sell"), Option.none())
-    deepStrictEqual(Trie.get(trie, "sells"), Option.some(1))
-    deepStrictEqual(Trie.get(trie, "shell"), Option.none())
-    deepStrictEqual(Trie.get(trie, "she"), Option.some(2))
+    assertNone(Trie.get(trie, "sell"))
+    assertSome(Trie.get(trie, "sells"), 1)
+    assertNone(Trie.get(trie, "shell"))
+    assertSome(Trie.get(trie, "she"), 2)
   })
 
   it("has", () => {

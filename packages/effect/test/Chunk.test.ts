@@ -11,7 +11,17 @@ import {
   pipe,
   type Predicate
 } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, doesNotThrow, equals, strictEqual, throws } from "effect/test/util"
+import {
+  assertFalse,
+  assertNone,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  doesNotThrow,
+  equals,
+  strictEqual,
+  throws
+} from "effect/test/util"
 import { describe, it } from "vitest"
 
 const assertTuple = <A, B>(
@@ -79,10 +89,10 @@ describe("Chunk", () => {
   })
 
   it("modifyOption", () => {
-    deepStrictEqual(pipe(Chunk.empty(), Chunk.modifyOption(0, (n: number) => n * 2)), Option.none())
-    deepStrictEqual(
+    assertNone(pipe(Chunk.empty(), Chunk.modifyOption(0, (n: number) => n * 2)))
+    assertSome(
       pipe(Chunk.make(1, 2, 3), Chunk.modifyOption(0, (n: number) => n * 2)),
-      Option.some(Chunk.make(2, 2, 3))
+      Chunk.make(2, 2, 3)
     )
   })
 
@@ -92,8 +102,8 @@ describe("Chunk", () => {
   })
 
   it("replaceOption", () => {
-    deepStrictEqual(pipe(Chunk.empty(), Chunk.replaceOption(0, 2)), Option.none())
-    deepStrictEqual(pipe(Chunk.make(1, 2, 3), Chunk.replaceOption(0, 2)), Option.some(Chunk.make(2, 2, 3)))
+    assertNone(pipe(Chunk.empty(), Chunk.replaceOption(0, 2)))
+    assertSome(pipe(Chunk.make(1, 2, 3), Chunk.replaceOption(0, 2)), Chunk.make(2, 2, 3))
   })
 
   it("replace", () => {
@@ -246,7 +256,7 @@ describe("Chunk", () => {
       const chunk = Chunk.unsafeFromArray([1, 2, 3])
 
       it("should return a None", () => {
-        deepStrictEqual(pipe(chunk, Chunk.get(4)), Option.none())
+        assertNone(pipe(chunk, Chunk.get(4)))
       })
     })
   })
@@ -648,8 +658,8 @@ describe("Chunk", () => {
   })
 
   it("last", () => {
-    deepStrictEqual(Chunk.last(Chunk.empty()), Option.none())
-    deepStrictEqual(Chunk.last(Chunk.make(1, 2, 3)), Option.some(3))
+    assertNone(Chunk.last(Chunk.empty()))
+    assertSome(Chunk.last(Chunk.make(1, 2, 3)), 3)
   })
 
   it("map", () => {
@@ -704,7 +714,8 @@ describe("Chunk", () => {
   })
 
   it("tail", () => {
-    deepStrictEqual(Chunk.tail(Chunk.empty()), Option.none())
+    assertNone(Chunk.tail(Chunk.empty()))
+    // TODO: use assertSome?
     equals(Chunk.tail(Chunk.make(1, 2, 3)), Option.some(Chunk.make(2, 3)))
   })
 

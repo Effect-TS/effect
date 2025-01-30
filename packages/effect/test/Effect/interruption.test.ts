@@ -13,7 +13,7 @@ import * as HashSet from "effect/HashSet"
 import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { withLatch, withLatchAwait } from "effect/test/utils/latch"
 import * as TestClock from "effect/TestClock"
@@ -332,7 +332,7 @@ describe("Effect", () => {
       ))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(recovered))
-      deepStrictEqual(result, Option.some(Either.left(true)))
+      assertSome(result, Either.left(true))
     }))
   it.effect("run of interruptible", () =>
     Effect.gen(function*($) {
@@ -349,7 +349,7 @@ describe("Effect", () => {
       ))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(recovered))
-      deepStrictEqual(result, Option.some(true))
+      assertSome(result, true)
     }))
   it.effect("alternating interruptibility", () =>
     Effect.gen(function*($) {

@@ -1,6 +1,6 @@
 import { Cause, Chunk, Effect, Either, Exit, Fiber, identity, Number, Option, pipe, STM, TArray, TRef } from "effect"
 import { constFalse, constTrue } from "effect/Function"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -34,14 +34,14 @@ describe("TArray", () => {
             Option.none()
         )
       ))
-      deepStrictEqual(result, Option.some("4"))
+      assertSome(result, "4")
     }))
 
   it.effect("collectFirst - succeeds for empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeTArray<Option.Option<number>>(0, Option.none()))
       const result = yield* $(pipe(array, TArray.collectFirst(identity)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("collectFirst - fails to find absent", () =>
@@ -56,7 +56,7 @@ describe("TArray", () => {
             Option.none()
         )
       ))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("collectFirst - is atomic", () =>
@@ -95,7 +95,7 @@ describe("TArray", () => {
             Option.none()
         )
       ))
-      deepStrictEqual(result, Option.some("4"))
+      assertSome(result, "4")
     }))
 
   it.effect("collectFirstSTM - succeeds for empty array", () =>
@@ -109,7 +109,7 @@ describe("TArray", () => {
             Option.none()
         )
       ))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("collectFirstSTM - fails to find absent", () =>
@@ -124,7 +124,7 @@ describe("TArray", () => {
             Option.none()
         )
       ))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("collectFirstSTM - is atomic", () =>
@@ -183,7 +183,7 @@ describe("TArray", () => {
             Option.none()
         )
       ))
-      deepStrictEqual(result, Option.some("4"))
+      assertSome(result, "4")
     }))
 
   it.effect("contains - true when in the array", () =>
@@ -339,14 +339,14 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirst((n) => n % 5 === 0)))
-      deepStrictEqual(result, Option.some(5))
+      assertSome(result, 5)
     }))
 
   it.effect("findFirst - succeeds for empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.findFirst(constTrue)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirst - fails to find absent", () =>
@@ -354,7 +354,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirst((i) => i > n)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirst - is atomic", () =>
@@ -381,49 +381,49 @@ describe("TArray", () => {
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findFirstIndex(2)))
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("findFirstIndex - none for empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.findFirstIndex(1)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndex - none if absent", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findFirstIndex(4)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexFrom - correct index if in array, with offset", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findFirstIndexFrom(2, 2)))
-      deepStrictEqual(result, Option.some(4))
+      assertSome(result, 4)
     }))
 
   it.effect("findFirstIndexFrom - none if absent after offset", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findFirstIndexFrom(1, 7)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexFrom - none for a negative offset", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findFirstIndexFrom(1, -1)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexFrom - none for an offset that is too large", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findFirstIndexFrom(1, 9)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexWhere - determines the correct index", () =>
@@ -431,14 +431,14 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhere((n) => n % 5 === 0)))
-      deepStrictEqual(result, Option.some(4))
+      assertSome(result, 4)
     }))
 
   it.effect("findFirstIndexWhere - none for empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.findFirstIndexWhere(constTrue)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexWhere - none for empty array", () =>
@@ -446,7 +446,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhere((i) => i > n)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexWhere - is atomic", () =>
@@ -474,7 +474,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhereFrom((n) => n % 2 === 0, 5)))
-      deepStrictEqual(result, Option.some(5))
+      assertSome(result, 5)
     }))
 
   it.effect("findFirstIndexWhereFrom - none if absent after offset", () =>
@@ -482,7 +482,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhereFrom((n) => n % 7 === 0, 7)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexWhereFrom - none for a negative offset", () =>
@@ -490,7 +490,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhereFrom(constTrue, -1)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexWhereFrom - none for an offset that is too large", () =>
@@ -498,7 +498,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhereFrom(constTrue, n + 1)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexWhereSTM - determines the correct index", () =>
@@ -506,14 +506,14 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhereSTM((n) => STM.succeed(n % 5 === 0))))
-      deepStrictEqual(result, Option.some(4))
+      assertSome(result, 4)
     }))
 
   it.effect("findFirstIndexWhereSTM - none for empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.findFirstIndexWhereSTM(() => STM.succeed(true))))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexWhereSTM - none for empty array", () =>
@@ -521,7 +521,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhereSTM((i) => STM.succeed(i > n))))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexWhereSTM - is atomic", () =>
@@ -564,7 +564,7 @@ describe("TArray", () => {
         array,
         TArray.findFirstIndexWhereSTM((n) => n === 6 ? STM.fail("boom") : STM.succeed(n % 5 === 0))
       ))
-      deepStrictEqual(result, Option.some(4))
+      assertSome(result, 4)
     }))
 
   it.effect("findFirstIndexWhereFromSTM - determines the correct index, with offset", () =>
@@ -572,7 +572,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhereFromSTM((n) => STM.succeed(n % 2 === 0), 5)))
-      deepStrictEqual(result, Option.some(5))
+      assertSome(result, 5)
     }))
 
   it.effect("findFirstIndexWhereFromSTM - none if absent after offset", () =>
@@ -580,7 +580,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhereFromSTM((n) => STM.succeed(n % 7 === 0), 7)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexWhereFromSTM - none for a negative offset", () =>
@@ -588,7 +588,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhereFromSTM(() => STM.succeed(true), -1)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexWherFromeSTM - none for an offset that is too large", () =>
@@ -596,7 +596,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstIndexWhereFromSTM(() => STM.succeed(true), n + 1)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstIndexWhereFromSTM - succeeds when error excluded by offset", () =>
@@ -610,7 +610,7 @@ describe("TArray", () => {
             ? STM.fail("boom")
             : STM.succeed(n % 5 === 0), 2)
       ))
-      deepStrictEqual(result, Option.some(4))
+      assertSome(result, 4)
     }))
 
   it.effect("findFirstSTM - is correct", () =>
@@ -618,14 +618,14 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstSTM((n) => STM.succeed(n % 5 === 0))))
-      deepStrictEqual(result, Option.some(5))
+      assertSome(result, 5)
     }))
 
   it.effect("findFirstSTM - succeeds for empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.findFirstSTM(() => STM.succeed(true))))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstSTM - fails to find absent", () =>
@@ -633,7 +633,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findFirstSTM((i) => STM.succeed(i > n))))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findFirstSTM - is atomic", () =>
@@ -676,7 +676,7 @@ describe("TArray", () => {
         array,
         TArray.findFirstSTM((n) => n === 6 ? STM.fail("boom") : STM.succeed(n % 5 === 0))
       ))
-      deepStrictEqual(result, Option.some(5))
+      assertSome(result, 5)
     }))
 
   it.effect("findLast - is correct", () =>
@@ -684,14 +684,14 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findLast((n) => n % 5 === 0)))
-      deepStrictEqual(result, Option.some(10))
+      assertSome(result, 10)
     }))
 
   it.effect("findLast - succeeds for empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.findLast(constTrue)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findLast - fails to find absent", () =>
@@ -699,7 +699,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findLast((i) => i > n)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findLast - is atomic", () =>
@@ -726,49 +726,49 @@ describe("TArray", () => {
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findLastIndex(2)))
-      deepStrictEqual(result, Option.some(7))
+      assertSome(result, 7)
     }))
 
   it.effect("findLastIndex - none for empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.findLastIndex(1)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findLastIndex - none if absent", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findLastIndex(4)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findLastIndexFrom - correct index if in array, with limit", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findLastIndexFrom(2, 6)))
-      deepStrictEqual(result, Option.some(4))
+      assertSome(result, 4)
     }))
 
   it.effect("findLastIndexFrom - none if absent before limit", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findLastIndexFrom(3, 1)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findLastIndexFrom - none for a negative limit", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findLastIndexFrom(2, -1)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findLastIndexFrom - none for a limit that is too large", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeRepeats(3, 3))
       const result = yield* $(pipe(array, TArray.findLastIndexFrom(2, 9)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findLastSTM - is correct", () =>
@@ -776,14 +776,14 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findLastSTM((n) => STM.succeed(n % 5 === 0))))
-      deepStrictEqual(result, Option.some(10))
+      assertSome(result, 10)
     }))
 
   it.effect("findLastSTM - succeeds for empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.findLastSTM(() => STM.succeed(true))))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findLastSTM - fails to find absent", () =>
@@ -791,7 +791,7 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.findLastSTM((i) => STM.succeed(i > n))))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findLastSTM - is atomic", () =>
@@ -822,7 +822,7 @@ describe("TArray", () => {
         array,
         TArray.findLastSTM((n) => n === 4 ? STM.fail("boom") : STM.succeed(n % 7 === 0))
       ))
-      deepStrictEqual(result, Option.some(7))
+      assertSome(result, 7)
     }))
 
   it.effect("findLastSTM - fails on errors after result found", () =>
@@ -867,14 +867,14 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(TArray.headOption(array))
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("headOption - is none for an empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(TArray.headOption(array))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("lastOption - retrieves the last entry", () =>
@@ -882,14 +882,14 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(TArray.lastOption(array))
-      deepStrictEqual(result, Option.some(n))
+      assertSome(result, n)
     }))
 
   it.effect("lastOption - is none for an empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(TArray.lastOption(array))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("maxOption - computes correct maximum", () =>
@@ -897,14 +897,14 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.maxOption(Number.Order)))
-      deepStrictEqual(result, Option.some(n))
+      assertSome(result, n)
     }))
 
   it.effect("maxOption - returns none for an empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.maxOption(Number.Order)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("minOption - computes correct minimum", () =>
@@ -912,14 +912,14 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.minOption(Number.Order)))
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("minOption - returns none for an empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.maxOption(Number.Order)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("reduce - is atomic", () =>
@@ -940,21 +940,21 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.reduceOption((x, y) => x + y)))
-      deepStrictEqual(result, Option.some((n * (n + 1)) / 2))
+      assertSome(result, (n * (n + 1)) / 2)
     }))
 
   it.effect("reduceOption - single entry", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeTArray(1, 1))
       const result = yield* $(pipe(array, TArray.reduceOption((x, y) => x + y)))
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("reduceOption - none for empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.reduceOption((x, y) => x + y)))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("reduceOption - is atomic", () =>
@@ -978,21 +978,21 @@ describe("TArray", () => {
       const n = 10
       const array = yield* $(makeStair(n))
       const result = yield* $(pipe(array, TArray.reduceOptionSTM((x, y) => STM.succeed(x + y))))
-      deepStrictEqual(result, Option.some((n * (n + 1)) / 2))
+      assertSome(result, (n * (n + 1)) / 2)
     }))
 
   it.effect("reduceOptionSTM - single entry", () =>
     Effect.gen(function*($) {
       const array = yield* $(makeTArray(1, 1))
       const result = yield* $(pipe(array, TArray.reduceOptionSTM((x, y) => STM.succeed(x + y))))
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("reduceOptionSTM - none for empty array", () =>
     Effect.gen(function*($) {
       const array = yield* $(TArray.empty<number>())
       const result = yield* $(pipe(array, TArray.reduceOptionSTM((x, y) => STM.succeed(x + y))))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("reduceOptionSTM - is atomic", () =>

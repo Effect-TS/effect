@@ -1,11 +1,10 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -92,13 +91,13 @@ describe("Stream", () => {
   it.effect("runHead - non-empty stream", () =>
     Effect.gen(function*($) {
       const result = yield* $(Stream.runHead(Stream.make(1, 2, 3, 4)))
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("runHead - empty stream", () =>
     Effect.gen(function*($) {
       const result = yield* $(Stream.runHead(Stream.empty))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("runHead - pulls up to the first non-empty chunk", () =>
@@ -115,7 +114,7 @@ describe("Stream", () => {
         Stream.runHead
       )
       const result = yield* $(Ref.get(ref))
-      deepStrictEqual(head, Option.some(1))
+      assertSome(head, 1)
       deepStrictEqual(Array.from(result), [2, 1])
     }))
 
@@ -125,13 +124,13 @@ describe("Stream", () => {
         Stream.make(1, 2, 3, 4),
         Stream.runLast
       )
-      deepStrictEqual(result, Option.some(4))
+      assertSome(result, 4)
     }))
 
   it.effect("runLast - empty stream", () =>
     Effect.gen(function*($) {
       const result = yield* $(Stream.empty, Stream.runLast)
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("runScoped - properly closes resources", () =>

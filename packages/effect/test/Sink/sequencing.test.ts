@@ -4,7 +4,7 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertNone, assertSome, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -13,14 +13,14 @@ describe("Sink", () => {
     Effect.gen(function*($) {
       const sink = pipe(Sink.head<number>(), Sink.flatMap(Sink.succeed))
       const result = yield* $(Stream.empty, Stream.run(sink))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("flatMap - non-empty input", () =>
     Effect.gen(function*($) {
       const sink = pipe(Sink.head<number>(), Sink.flatMap(Sink.succeed))
       const result = yield* $(Stream.make(1, 2, 3), Stream.run(sink))
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("flatMap - with leftovers", () =>

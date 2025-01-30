@@ -1,5 +1,5 @@
-import { Array, Chunk, Deferred, Effect, Fiber, Option, pipe, PubSub, Queue } from "effect"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { Array, Chunk, Deferred, Effect, Fiber, pipe, PubSub, Queue } from "effect"
+import { assertSome, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -646,14 +646,14 @@ describe("PubSub", () => {
       const pubsub = yield* PubSub.dropping<number>(2)
       yield* PubSub.publish(pubsub, 1)
       yield* PubSub.publish(pubsub, 2)
-      deepStrictEqual(pubsub.unsafeSize(), Option.some(0))
+      assertSome(pubsub.unsafeSize(), 0)
     }))
 
   it.scoped("publishAll does not increase size while no subscribers", () =>
     Effect.gen(function*() {
       const pubsub = yield* PubSub.dropping<number>(2)
       yield* PubSub.publishAll(pubsub, [1, 2])
-      deepStrictEqual(pubsub.unsafeSize(), Option.some(0))
+      assertSome(pubsub.unsafeSize(), 0)
     }))
 
   describe("replay", () => {

@@ -1,5 +1,14 @@
 import { BigDecimal, Equal, FastCheck as fc, Option } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, equals, strictEqual, throws } from "effect/test/util"
+import {
+  assertFalse,
+  assertNone,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  equals,
+  strictEqual,
+  throws
+} from "effect/test/util"
 import { describe, it } from "vitest"
 
 const $ = BigDecimal.unsafeFromString
@@ -246,29 +255,29 @@ describe("BigDecimal", () => {
   })
 
   it("fromString", () => {
-    deepStrictEqual(BigDecimal.fromString("2"), Option.some(BigDecimal.make(2n, 0)))
-    deepStrictEqual(BigDecimal.fromString("-2"), Option.some(BigDecimal.make(-2n, 0)))
-    deepStrictEqual(BigDecimal.fromString("0.123"), Option.some(BigDecimal.make(123n, 3)))
-    deepStrictEqual(BigDecimal.fromString("200"), Option.some(BigDecimal.make(200n, 0)))
-    deepStrictEqual(BigDecimal.fromString("20000000"), Option.some(BigDecimal.make(20000000n, 0)))
-    deepStrictEqual(BigDecimal.fromString("-20000000"), Option.some(BigDecimal.make(-20000000n, 0)))
-    deepStrictEqual(BigDecimal.fromString("2.00"), Option.some(BigDecimal.make(200n, 2)))
-    deepStrictEqual(BigDecimal.fromString("0.0000200"), Option.some(BigDecimal.make(200n, 7)))
-    deepStrictEqual(BigDecimal.fromString(""), Option.some(BigDecimal.normalize(BigDecimal.make(0n, 0))))
-    deepStrictEqual(BigDecimal.fromString("1e5"), Option.some(BigDecimal.make(1n, -5)))
-    deepStrictEqual(BigDecimal.fromString("1E15"), Option.some(BigDecimal.make(1n, -15)))
-    deepStrictEqual(BigDecimal.fromString("1e+5"), Option.some(BigDecimal.make(1n, -5)))
-    deepStrictEqual(BigDecimal.fromString("1E+15"), Option.some(BigDecimal.make(1n, -15)))
-    deepStrictEqual(BigDecimal.fromString("-1.5E3"), Option.some(BigDecimal.make(-15n, -2)))
-    deepStrictEqual(BigDecimal.fromString("-1.5e3"), Option.some(BigDecimal.make(-15n, -2)))
-    deepStrictEqual(BigDecimal.fromString("-.5e3"), Option.some(BigDecimal.make(-5n, -2)))
-    deepStrictEqual(BigDecimal.fromString("-5e3"), Option.some(BigDecimal.make(-5n, -3)))
-    deepStrictEqual(BigDecimal.fromString("-5e-3"), Option.some(BigDecimal.make(-5n, 3)))
-    deepStrictEqual(BigDecimal.fromString("15e-3"), Option.some(BigDecimal.make(15n, 3)))
-    deepStrictEqual(BigDecimal.fromString("0.00002e5"), Option.some(BigDecimal.make(2n, 0)))
-    deepStrictEqual(BigDecimal.fromString("0.00002e-5"), Option.some(BigDecimal.make(2n, 10)))
-    assertTrue(Option.isNone(BigDecimal.fromString("0.0000e2e1")))
-    assertTrue(Option.isNone(BigDecimal.fromString("0.1.2")))
+    assertSome(BigDecimal.fromString("2"), BigDecimal.make(2n, 0))
+    assertSome(BigDecimal.fromString("-2"), BigDecimal.make(-2n, 0))
+    assertSome(BigDecimal.fromString("0.123"), BigDecimal.make(123n, 3))
+    assertSome(BigDecimal.fromString("200"), BigDecimal.make(200n, 0))
+    assertSome(BigDecimal.fromString("20000000"), BigDecimal.make(20000000n, 0))
+    assertSome(BigDecimal.fromString("-20000000"), BigDecimal.make(-20000000n, 0))
+    assertSome(BigDecimal.fromString("2.00"), BigDecimal.make(200n, 2))
+    assertSome(BigDecimal.fromString("0.0000200"), BigDecimal.make(200n, 7))
+    assertSome(BigDecimal.fromString(""), BigDecimal.normalize(BigDecimal.make(0n, 0)))
+    assertSome(BigDecimal.fromString("1e5"), BigDecimal.make(1n, -5))
+    assertSome(BigDecimal.fromString("1E15"), BigDecimal.make(1n, -15))
+    assertSome(BigDecimal.fromString("1e+5"), BigDecimal.make(1n, -5))
+    assertSome(BigDecimal.fromString("1E+15"), BigDecimal.make(1n, -15))
+    assertSome(BigDecimal.fromString("-1.5E3"), BigDecimal.make(-15n, -2))
+    assertSome(BigDecimal.fromString("-1.5e3"), BigDecimal.make(-15n, -2))
+    assertSome(BigDecimal.fromString("-.5e3"), BigDecimal.make(-5n, -2))
+    assertSome(BigDecimal.fromString("-5e3"), BigDecimal.make(-5n, -3))
+    assertSome(BigDecimal.fromString("-5e-3"), BigDecimal.make(-5n, 3))
+    assertSome(BigDecimal.fromString("15e-3"), BigDecimal.make(15n, 3))
+    assertSome(BigDecimal.fromString("0.00002e5"), BigDecimal.make(2n, 0))
+    assertSome(BigDecimal.fromString("0.00002e-5"), BigDecimal.make(2n, 10))
+    assertNone(BigDecimal.fromString("0.0000e2e1"))
+    assertNone(BigDecimal.fromString("0.1.2"))
   })
 
   it("format", () => {

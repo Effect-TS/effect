@@ -1,5 +1,5 @@
-import { Array, Clock, Deferred, Effect, Either, Fiber, Function, Option, RateLimiter, Ref, TestClock } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { Array, Clock, Deferred, Effect, Fiber, Function, Option, RateLimiter, Ref, TestClock } from "effect"
+import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -216,18 +216,18 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
         algorithm
       }))
       const result = yield* _(limit(Effect.either(Effect.fail(Option.none()))))
-      deepStrictEqual(result, Either.left(Option.none()))
+      assertLeft(result, Option.none())
     }))
 
   it.scoped(`${algorithm} - continue after a failed call`, () =>
-    Effect.gen(function*(_) {
-      const limit = yield* _(RateLimiter.make({
+    Effect.gen(function*() {
+      const limit = yield* RateLimiter.make({
         limit: 10,
         interval: "1 seconds",
         algorithm
-      }))
-      yield* _(limit(Effect.either(Effect.fail(Option.none()))))
-      yield* _(limit(Effect.succeed(3)))
+      })
+      yield* limit(Effect.either(Effect.fail(Option.none())))
+      yield* limit(Effect.succeed(3))
     }))
 
   it.scoped(`${algorithm} - holds back up calls after the max`, () =>

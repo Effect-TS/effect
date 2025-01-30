@@ -1,5 +1,5 @@
 import { Array, Chunk, Effect, Equal, Exit, FastCheck as fc, Hash, Option, pipe, STM, TMap } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { equivalentElements } from "effect/test/utils/equals"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
@@ -48,7 +48,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("get - non-existing element", () =>
@@ -58,7 +58,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("getOrElse - existing element", () =>
@@ -177,7 +177,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("remove - remove an non-existing element", () =>
@@ -188,7 +188,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("removeIf", () =>
@@ -255,7 +255,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("set - overwrites an existing element", () =>
@@ -266,7 +266,7 @@ describe("TMap", () => {
         STM.flatMap(TMap.get("a"))
       )
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Option.some(10))
+      assertSome(result, 10)
     }))
 
   it.effect("set - add many keys with negative hash codes", () =>
@@ -426,7 +426,7 @@ describe("TMap", () => {
       )
       yield* $(Effect.replicateEffect(effect, 2))
       const result = yield* $(pipe(map, TMap.get("a")))
-      deepStrictEqual(result, Option.some(2_000))
+      assertSome(result, 2_000)
     }))
 
   it.effect("transformValuesSTM", () =>

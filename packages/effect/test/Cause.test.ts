@@ -1,7 +1,7 @@
 import { Array as Arr, Cause, Effect, Either, Equal, FastCheck as fc, FiberId, Hash, Option, Predicate } from "effect"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as internal from "effect/internal/cause"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { causes, equalCauses, errorCauseFunctions, errors } from "effect/test/utils/cause"
 import { describe, it } from "vitest"
 
@@ -512,44 +512,42 @@ describe("Cause", () => {
     })
 
     it("flipCauseOption", () => {
-      deepStrictEqual(Cause.flipCauseOption(empty), Option.some(empty))
-      deepStrictEqual(Cause.flipCauseOption(defect), Option.some(defect))
-      deepStrictEqual(Cause.flipCauseOption(interruption), Option.some(interruption))
-      deepStrictEqual(Cause.flipCauseOption(Cause.fail(Option.none())), Option.none())
-      deepStrictEqual(Cause.flipCauseOption(Cause.fail(Option.some("error"))), Option.some(Cause.fail("error")))
+      assertSome(Cause.flipCauseOption(empty), empty)
+      assertSome(Cause.flipCauseOption(defect), defect)
+      assertSome(Cause.flipCauseOption(interruption), interruption)
+      assertNone(Cause.flipCauseOption(Cause.fail(Option.none())))
+      assertSome(Cause.flipCauseOption(Cause.fail(Option.some("error"))), Cause.fail("error"))
       // sequential
-      deepStrictEqual(
+      assertSome(
         Cause.flipCauseOption(Cause.sequential(Cause.fail(Option.some("error1")), Cause.fail(Option.some("error2")))),
-        Option.some(Cause.sequential(Cause.fail("error1"), Cause.fail("error2")))
+        Cause.sequential(Cause.fail("error1"), Cause.fail("error2"))
       )
-      deepStrictEqual(
+      assertSome(
         Cause.flipCauseOption(Cause.sequential(Cause.fail(Option.some("error1")), Cause.fail(Option.none()))),
-        Option.some(Cause.fail("error1"))
+        Cause.fail("error1")
       )
-      deepStrictEqual(
+      assertSome(
         Cause.flipCauseOption(Cause.sequential(Cause.fail(Option.none()), Cause.fail(Option.some("error2")))),
-        Option.some(Cause.fail("error2"))
+        Cause.fail("error2")
       )
-      deepStrictEqual(
-        Cause.flipCauseOption(Cause.sequential(Cause.fail(Option.none()), Cause.fail(Option.none()))),
-        Option.none()
+      assertNone(
+        Cause.flipCauseOption(Cause.sequential(Cause.fail(Option.none()), Cause.fail(Option.none())))
       )
       // parallel
-      deepStrictEqual(
+      assertSome(
         Cause.flipCauseOption(Cause.parallel(Cause.fail(Option.some("error1")), Cause.fail(Option.some("error2")))),
-        Option.some(Cause.parallel(Cause.fail("error1"), Cause.fail("error2")))
+        Cause.parallel(Cause.fail("error1"), Cause.fail("error2"))
       )
-      deepStrictEqual(
+      assertSome(
         Cause.flipCauseOption(Cause.parallel(Cause.fail(Option.some("error1")), Cause.fail(Option.none()))),
-        Option.some(Cause.fail("error1"))
+        Cause.fail("error1")
       )
-      deepStrictEqual(
+      assertSome(
         Cause.flipCauseOption(Cause.parallel(Cause.fail(Option.none()), Cause.fail(Option.some("error2")))),
-        Option.some(Cause.fail("error2"))
+        Cause.fail("error2")
       )
-      deepStrictEqual(
-        Cause.flipCauseOption(Cause.parallel(Cause.fail(Option.none()), Cause.fail(Option.none()))),
-        Option.none()
+      assertNone(
+        Cause.flipCauseOption(Cause.parallel(Cause.fail(Option.none()), Cause.fail(Option.none())))
       )
     })
 
@@ -582,32 +580,32 @@ describe("Cause", () => {
     })
 
     it("keepDefects", () => {
-      deepStrictEqual(Cause.keepDefects(empty), Option.none())
-      deepStrictEqual(Cause.keepDefects(failure), Option.none())
-      deepStrictEqual(Cause.keepDefects(defect), Option.some(defect))
-      deepStrictEqual(
+      assertNone(Cause.keepDefects(empty))
+      assertNone(Cause.keepDefects(failure))
+      assertSome(Cause.keepDefects(defect), defect)
+      assertSome(
         Cause.keepDefects(Cause.sequential(Cause.die("defect1"), Cause.die("defect2"))),
-        Option.some(Cause.sequential(Cause.die("defect1"), Cause.die("defect2")))
+        Cause.sequential(Cause.die("defect1"), Cause.die("defect2"))
       )
-      deepStrictEqual(Cause.keepDefects(Cause.sequential(empty, empty)), Option.none())
-      deepStrictEqual(Cause.keepDefects(Cause.sequential(defect, failure)), Option.some(defect))
-      deepStrictEqual(Cause.keepDefects(Cause.parallel(empty, empty)), Option.none())
-      deepStrictEqual(Cause.keepDefects(Cause.parallel(defect, failure)), Option.some(defect))
-      deepStrictEqual(
+      assertNone(Cause.keepDefects(Cause.sequential(empty, empty)))
+      assertSome(Cause.keepDefects(Cause.sequential(defect, failure)), defect)
+      assertNone(Cause.keepDefects(Cause.parallel(empty, empty)))
+      assertSome(Cause.keepDefects(Cause.parallel(defect, failure)), defect)
+      assertSome(
         Cause.keepDefects(Cause.parallel(Cause.die("defect1"), Cause.die("defect2"))),
-        Option.some(Cause.parallel(Cause.die("defect1"), Cause.die("defect2")))
+        Cause.parallel(Cause.die("defect1"), Cause.die("defect2"))
       )
-      deepStrictEqual(
+      assertSome(
         Cause.keepDefects(
           Cause.sequential(failure, Cause.parallel(Cause.die("defect1"), Cause.die("defect2")))
         ),
-        Option.some(Cause.parallel(Cause.die("defect1"), Cause.die("defect2")))
+        Cause.parallel(Cause.die("defect1"), Cause.die("defect2"))
       )
-      deepStrictEqual(
+      assertSome(
         Cause.keepDefects(
           Cause.sequential(Cause.die("defect1"), Cause.parallel(failure, Cause.die("defect2")))
         ),
-        Option.some(Cause.sequential(Cause.die("defect1"), Cause.die("defect2")))
+        Cause.sequential(Cause.die("defect1"), Cause.die("defect2"))
       )
     })
 
@@ -692,23 +690,23 @@ describe("Cause", () => {
           ? Option.some(defect) :
           Option.none()
       )
-      deepStrictEqual(stripNumberFormatException(empty), Option.some(empty))
-      deepStrictEqual(stripNumberFormatException(failure), Option.some(failure))
-      deepStrictEqual(stripNumberFormatException(interruption), Option.some(interruption))
-      deepStrictEqual(stripNumberFormatException(cause1), Option.none())
-      deepStrictEqual(stripNumberFormatException(Cause.sequential(cause1, cause1)), Option.none())
-      deepStrictEqual(stripNumberFormatException(Cause.sequential(cause1, cause2)), Option.some(cause2))
-      deepStrictEqual(stripNumberFormatException(Cause.sequential(cause2, cause1)), Option.some(cause2))
-      deepStrictEqual(
+      assertSome(stripNumberFormatException(empty), empty)
+      assertSome(stripNumberFormatException(failure), failure)
+      assertSome(stripNumberFormatException(interruption), interruption)
+      assertNone(stripNumberFormatException(cause1))
+      assertNone(stripNumberFormatException(Cause.sequential(cause1, cause1)))
+      assertSome(stripNumberFormatException(Cause.sequential(cause1, cause2)), cause2)
+      assertSome(stripNumberFormatException(Cause.sequential(cause2, cause1)), cause2)
+      assertSome(
         stripNumberFormatException(Cause.sequential(cause2, cause2)),
-        Option.some(Cause.sequential(cause2, cause2))
+        Cause.sequential(cause2, cause2)
       )
-      deepStrictEqual(stripNumberFormatException(Cause.parallel(cause1, cause1)), Option.none())
-      deepStrictEqual(stripNumberFormatException(Cause.parallel(cause1, cause2)), Option.some(cause2))
-      deepStrictEqual(stripNumberFormatException(Cause.parallel(cause2, cause1)), Option.some(cause2))
-      deepStrictEqual(
+      assertNone(stripNumberFormatException(Cause.parallel(cause1, cause1)))
+      assertSome(stripNumberFormatException(Cause.parallel(cause1, cause2)), cause2)
+      assertSome(stripNumberFormatException(Cause.parallel(cause2, cause1)), cause2)
+      assertSome(
         stripNumberFormatException(Cause.parallel(cause2, cause2)),
-        Option.some(Cause.parallel(cause2, cause2))
+        Cause.parallel(cause2, cause2)
       )
     })
   })

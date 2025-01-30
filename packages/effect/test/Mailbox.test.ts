@@ -1,5 +1,5 @@
-import { Chunk, Effect, Exit, Fiber, Mailbox, Option, Stream } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { Chunk, Effect, Exit, Fiber, Mailbox, Stream } from "effect"
+import { assertFalse, assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "effect/test/utils/extend"
 
 describe("Mailbox", () => {
@@ -103,7 +103,7 @@ describe("Mailbox", () => {
       strictEqual(yield* mailbox.take, 1)
       strictEqual(yield* mailbox.take, 2)
       strictEqual(yield* mailbox.take, 3)
-      strictEqual(yield* mailbox.take.pipe(Effect.optionFromOptional), Option.none())
+      assertNone(yield* mailbox.take.pipe(Effect.optionFromOptional))
       strictEqual(yield* mailbox.await, void 0)
       strictEqual(yield* mailbox.offer(10), false)
     }))

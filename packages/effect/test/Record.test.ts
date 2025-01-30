@@ -123,18 +123,18 @@ describe("Record", () => {
     describe("pop", () => {
       it("should return the value associated with the given key, if the key is present in the record", () => {
         const result1 = R.pop(stringRecord, "a")
-        deepStrictEqual(result1, Option.some([1, { [symA]: null }] as [number, Record<string, number>]))
+        assertSome(result1, [1, { [symA]: null }])
 
         const result2 = R.pop(symbolRecord, symA)
-        deepStrictEqual(result2, Option.some([1, { [symB]: 2 }] as [number, Record<string, number>]))
+        assertSome(result2, [1, { [symB]: 2 }])
       })
 
       it("should return none if the key is not present in the record", () => {
         const result1 = R.pop(stringRecord, "c")
-        deepStrictEqual(result1, Option.none())
+        assertNone(result1)
 
         const result2 = R.pop(symbolRecord, symC)
-        deepStrictEqual(result2, Option.none())
+        assertNone(result2)
       })
     })
 

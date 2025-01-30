@@ -1,6 +1,6 @@
 import { Cause, Context, Duration, Effect, Fiber, FiberId, Layer, Option, TestClock, Tracer } from "effect"
 import type { NativeSpan } from "effect/internal/tracer"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import type { Span } from "effect/Tracer"
 import { describe } from "vitest"
@@ -40,7 +40,7 @@ describe("Tracer", () => {
       Effect.gen(function*() {
         const span = yield* Effect.withSpan("A")(Effect.currentSpan)
         deepStrictEqual(span.name, "A")
-        deepStrictEqual(span.parent, Option.none())
+        assertNone(span.parent)
         strictEqual(span.attributes.get("code.stacktrace"), undefined)
       }))
 
@@ -63,7 +63,7 @@ describe("Tracer", () => {
         )
 
         deepStrictEqual(span.name, "A")
-        deepStrictEqual(span.parent, Option.none())
+        assertNone(span.parent)
       }))
 
     it.effect("external parent", () =>
@@ -111,7 +111,7 @@ describe("Tracer", () => {
       )
 
       deepStrictEqual(span.name, "A")
-      deepStrictEqual(span.parent, Option.none())
+      assertNone(span.parent)
       deepStrictEqual(span.attributes.get("key"), "value")
     }))
 
@@ -139,7 +139,7 @@ describe("Tracer", () => {
       )
 
       deepStrictEqual(span.name, "A")
-      deepStrictEqual(span.parent, Option.none())
+      assertNone(span.parent)
       deepStrictEqual((span as NativeSpan).events, [["event", 10000n, {
         "effect.fiberId": FiberId.threadName(fiberId),
         "effect.logLevel": "INFO"
@@ -274,7 +274,7 @@ describe("Tracer", () => {
 
       const span = yield* _(Effect.currentSpan, Effect.provide(layer), Effect.option)
 
-      deepStrictEqual(span, Option.none())
+      assertNone(span)
       strictEqual(onEndCalled, true)
     }))
 })
@@ -338,7 +338,7 @@ describe("functionWithSpan", () => {
     Effect.gen(function*() {
       const span = yield* getSpan("A")
       deepStrictEqual(span.name, "span-A")
-      deepStrictEqual(span.parent, Option.none())
+      assertNone(span.parent)
       strictEqual(span.attributes.get("code.stacktrace"), undefined)
     }))
 

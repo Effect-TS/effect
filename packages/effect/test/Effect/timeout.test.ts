@@ -4,8 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constFalse, pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import { assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertNone, assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import { describe } from "vitest"
@@ -64,7 +63,7 @@ describe("Effect", () => {
       const result = yield* $(
         pipe(Effect.void, Effect.uninterruptible, Effect.forever, Effect.timeout(Duration.millis(10)), Effect.option)
       )
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
   it.effect("timeout in uninterruptible region", () =>
     Effect.gen(function*($) {
@@ -90,6 +89,6 @@ describe("Effect", () => {
       )
       yield* $(TestClock.adjust(Duration.millis(100)))
       const result = yield* $(Fiber.join(fiber))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 })

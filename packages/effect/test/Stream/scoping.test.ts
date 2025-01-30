@@ -7,11 +7,10 @@ import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
-import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertFalse, assertSome, assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -100,8 +99,8 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.map(Chunk.head)
       )
-      deepStrictEqual(leftAssoc, Option.some(true))
-      deepStrictEqual(rightAssoc, Option.some(true))
+      assertSome(leftAssoc, true)
+      assertSome(rightAssoc, true)
     }))
 
   it.effect("acquireRelease - propagates errors", () =>
@@ -149,8 +148,8 @@ describe("Stream", () => {
       const isInterruptible2 = yield* Effect.uninterruptible(
         Effect.checkInterruptible(Effect.succeed)
       ).pipe(Stream.scoped, Stream.runHead)
-      deepStrictEqual(isInterruptible1, Option.some(true))
-      deepStrictEqual(isInterruptible2, Option.some(false))
+      assertSome(isInterruptible1, true)
+      assertSome(isInterruptible2, false)
     }))
 
   it.it("unwrapScoped", async () => {

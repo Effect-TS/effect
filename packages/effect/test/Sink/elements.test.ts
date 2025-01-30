@@ -1,10 +1,9 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -26,7 +25,7 @@ describe("Sink", () => {
         Stream.fromChunks(Chunk.range(1, 10), Chunk.range(1, 3), Chunk.range(2, 5)),
         Stream.run(Sink.head())
       )
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("last", () =>
@@ -35,7 +34,7 @@ describe("Sink", () => {
         Stream.fromChunks(Chunk.range(1, 10), Chunk.range(1, 3), Chunk.range(2, 5)),
         Stream.run(Sink.last())
       )
-      deepStrictEqual(result, Option.some(5))
+      assertSome(result, 5)
     }))
 
   it.effect("take - repeats until the source is exhausted", () =>

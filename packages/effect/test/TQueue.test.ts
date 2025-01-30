@@ -1,5 +1,5 @@
-import { Effect, Option, pipe, STM, TQueue } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { Effect, pipe, STM, TQueue } from "effect"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -81,7 +81,7 @@ describe("TQueue", () => {
       const queue = yield* $(TQueue.bounded<number>(5))
       yield* $(pipe(queue, TQueue.offerAll([1, 2, 3])))
       const result = yield* $(TQueue.poll(queue))
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("poll undefined", () =>
@@ -89,14 +89,14 @@ describe("TQueue", () => {
       const queue = yield* $(TQueue.bounded<undefined>(5))
       yield* $(pipe(queue, TQueue.offerAll([undefined, undefined, undefined])))
       const result = yield* $(TQueue.poll(queue))
-      deepStrictEqual(result, Option.some(undefined))
+      assertSome(result, undefined)
     }))
 
   it.effect("poll - empty queue", () =>
     Effect.gen(function*($) {
       const queue = yield* $(TQueue.bounded<number>(5))
       const result = yield* $(TQueue.poll(queue))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("seek", () =>
@@ -133,7 +133,7 @@ describe("TQueue", () => {
       yield* $(pipe(queue, TQueue.offerAll([1, 2, 3, 4, 5])))
       const result = yield* $(TQueue.peekOption(queue))
       const size = yield* $(TQueue.size(queue))
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
       strictEqual(size, 5)
     }))
 
@@ -141,7 +141,7 @@ describe("TQueue", () => {
     Effect.gen(function*($) {
       const queue = yield* $(TQueue.unbounded<number>())
       const result = yield* $(TQueue.peekOption(queue))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("isEmpty", () =>

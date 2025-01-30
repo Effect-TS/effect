@@ -1,3 +1,4 @@
+import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
@@ -10,7 +11,7 @@ import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
-import { assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertFailure, assertTrue, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
@@ -276,7 +277,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      deepStrictEqual(result, Exit.fail(Option.none()))
+      assertFailure(result, Cause.fail(Option.none()))
     }))
 
   it.effect("debounce - should work with empty streams", () =>

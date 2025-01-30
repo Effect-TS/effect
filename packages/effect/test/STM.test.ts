@@ -16,7 +16,15 @@ import {
   TRef
 } from "effect"
 import { constFalse, constTrue, constVoid } from "effect/Function"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import {
+  assertFailure,
+  assertFalse,
+  assertNone,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual
+} from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -442,14 +450,14 @@ describe("STM", () => {
     Effect.gen(function*($) {
       const transaction = STM.head(STM.succeed([]))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      deepStrictEqual(result, Exit.fail(Option.none()))
+      assertFailure(result, Cause.fail(Option.none()))
     }))
 
   it.effect("head - returns Some if there is an error", () =>
     Effect.gen(function*($) {
       const transaction = STM.head(STM.fail("Ouch"))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      deepStrictEqual(result, Exit.fail(Option.some("Ouch")))
+      assertFailure(result, Cause.fail(Option.some("Ouch")))
     }))
 
   it.effect("if - runs `onTrue` if result is `true`", () =>
@@ -554,7 +562,7 @@ describe("STM", () => {
     Effect.gen(function*($) {
       const transaction = STM.none(STM.succeed(Option.some(1)))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      deepStrictEqual(result, Exit.fail(Option.none()))
+      assertFailure(result, Cause.fail(Option.none()))
     }))
 
   it.effect("none - on error", () =>
@@ -562,21 +570,21 @@ describe("STM", () => {
       const error = new Cause.RuntimeException("Ouch")
       const transaction = STM.none(STM.fail(error))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      deepStrictEqual(result, Exit.fail(Option.some(error)))
+      assertFailure(result, Cause.fail(Option.some(error)))
     }))
 
   it.effect("option - success converts to Some", () =>
     Effect.gen(function*($) {
       const transaction = STM.option(STM.succeed(42))
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Option.some(42))
+      assertSome(result, 42)
     }))
 
   it.effect("option - failure converts to None", () =>
     Effect.gen(function*($) {
       const transaction = STM.option(STM.fail("Ouch"))
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("orElse - succeeds if left succeeds", () =>
@@ -686,14 +694,14 @@ describe("STM", () => {
     Effect.gen(function*($) {
       const transaction = STM.unsome(STM.fromEither(Either.left(Option.none())))
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("unsome - no error", () =>
     Effect.gen(function*($) {
       const transaction = STM.unsome(STM.fromEither(Either.right(42)))
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Option.some(42))
+      assertSome(result, 42)
     }))
 
   it.effect("orDie - when failure should die", () =>
@@ -944,7 +952,7 @@ describe("STM", () => {
     Effect.gen(function*($) {
       const transaction = STM.some(STM.succeed(Option.none()))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      deepStrictEqual(result, Exit.fail(Option.none()))
+      assertFailure(result, Cause.fail(Option.none()))
     }))
 
   it.effect("some - fails on error", () =>
@@ -952,7 +960,7 @@ describe("STM", () => {
       const error = new Cause.RuntimeException("Ouch")
       const transaction = STM.some(STM.fail(error))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      deepStrictEqual(result, Exit.fail(Option.some(error)))
+      assertFailure(result, Cause.fail(Option.some(error)))
     }))
 
   it.effect("succeed", () =>

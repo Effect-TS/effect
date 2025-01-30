@@ -9,7 +9,7 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Runtime from "effect/Runtime"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertNone, assertSome, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "effect/test/utils/extend"
 
 describe("Effect", () => {
@@ -93,7 +93,7 @@ describe("Effect", () => {
       const result = yield* $(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)), Effect.option)
       const unexpected = yield* $(Ref.get(unexpectedPlace))
       deepStrictEqual(unexpected, Chunk.empty())
-      deepStrictEqual(result, Option.none()) // the timeout should happen
+      assertNone(result) // the timeout should happen
     }))
   it.live("async should not resume fiber twice after synchronous result", () =>
     Effect.gen(function*($) {
@@ -121,7 +121,7 @@ describe("Effect", () => {
       const result = yield* $(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)), Effect.option)
       const unexpected = yield* $(Ref.get(unexpectedPlace))
       deepStrictEqual(unexpected, Chunk.empty())
-      deepStrictEqual(result, Option.none()) // timeout should happen
+      assertNone(result) // timeout should happen
     }))
   it.effect("sleep 0 must return", () =>
     Effect.gen(function*($) {
@@ -171,6 +171,6 @@ describe("Effect", () => {
           onSuccess: () => Option.none()
         }))
       )
-      deepStrictEqual(result, Option.some("ouch"))
+      assertSome(result, "ouch")
     }))
 })

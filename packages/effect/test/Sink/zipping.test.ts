@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertSome, assertTrue, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { unfoldEffect } from "effect/test/utils/unfoldEffect"
 import { describe } from "vitest"
@@ -53,7 +53,7 @@ describe("Sink", () => {
           Sink.zipLeft(Sink.succeed("hello"), { concurrent: true })
         ))
       )
-      deepStrictEqual(result, Option.some(1))
+      assertSome(result, 1)
     }))
 
   it.effect("zipParRight", () =>

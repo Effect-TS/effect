@@ -7,7 +7,7 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as STM from "effect/STM"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertNone, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TReentrantLock from "effect/TReentrantLock"
 import { describe } from "vitest"
@@ -128,7 +128,7 @@ describe("TReentrantLock", () => {
       yield* $(pipe(wLatch, Deferred.succeed<void>(void 0)))
       const readerCount = yield* $(Fiber.join(fiber))
       strictEqual(locks, 1)
-      deepStrictEqual(option, Option.none())
+      assertNone(option)
       strictEqual(readerCount, 1)
     }))
 
@@ -226,7 +226,7 @@ describe("TReentrantLock", () => {
       const option = yield* $(pipe(Fiber.poll(fiber), Effect.repeat(pollSchedule())))
       yield* $(pipe(rLatch, Deferred.succeed<void>(void 0)))
       const count = yield* $(Fiber.join(fiber))
-      deepStrictEqual(option, Option.none())
+      assertNone(option)
       strictEqual(count, 1)
     }))
 })

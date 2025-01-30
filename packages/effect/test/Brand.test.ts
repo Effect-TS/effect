@@ -1,5 +1,14 @@
-import { Brand, Either, Option } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { Brand, Option } from "effect"
+import {
+  assertFalse,
+  assertLeft,
+  assertNone,
+  assertRight,
+  assertSome,
+  assertTrue,
+  strictEqual,
+  throws
+} from "effect/test/util"
 import { describe, it } from "vitest"
 
 declare const IntTypeId: unique symbol
@@ -31,12 +40,12 @@ describe("Brand", () => {
   it("refined (predicate overload)", () => {
     strictEqual(Int(1), 1)
     throws(() => Int(1.1))
-    deepStrictEqual(Int.option(1), Option.some(1))
-    deepStrictEqual(Int.option(1.1), Option.none())
-    deepStrictEqual(Int.either(1), Either.right(1 as Int))
-    deepStrictEqual(
+    assertSome(Int.option(1), 1 as Int)
+    assertNone(Int.option(1.1))
+    assertRight(Int.either(1), 1 as Int)
+    assertLeft(
       Int.either(1.1),
-      Either.left(Brand.error("Expected 1.1 to be an integer"))
+      Brand.error("Expected 1.1 to be an integer")
     )
     assertTrue(Int.is(1))
     assertFalse(Int.is(1.1))
@@ -53,19 +62,19 @@ describe("Brand", () => {
   it("composition", () => {
     strictEqual(PositiveInt(1), 1)
     throws(() => PositiveInt(1.1))
-    deepStrictEqual(PositiveInt.option(1), Option.some(1))
-    deepStrictEqual(PositiveInt.option(1.1), Option.none())
-    deepStrictEqual(PositiveInt.either(1), Either.right(1 as PositiveInt))
-    deepStrictEqual(
+    assertSome(PositiveInt.option(1), 1 as PositiveInt)
+    assertNone(PositiveInt.option(1.1))
+    assertRight(PositiveInt.either(1), 1 as PositiveInt)
+    assertLeft(
       PositiveInt.either(1.1),
-      Either.left(Brand.error("Expected 1.1 to be an integer"))
+      Brand.error("Expected 1.1 to be an integer")
     )
-    deepStrictEqual(
+    assertLeft(
       PositiveInt.either(-1.1),
-      Either.left(Brand.errors(
+      Brand.errors(
         Brand.error("Expected -1.1 to be an integer"),
         Brand.error("Expected -1.1 to be positive")
-      ))
+      )
     )
     assertTrue(PositiveInt.is(1))
     assertFalse(PositiveInt.is(1.1))

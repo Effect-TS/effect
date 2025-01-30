@@ -5,7 +5,7 @@ import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -58,7 +58,7 @@ describe("Sink", () => {
         Stream.fromIterable([]),
         Stream.run(sink)
       )
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("findEffect - unsatisfied condition terminates with none", () =>
@@ -74,7 +74,7 @@ describe("Sink", () => {
         Stream.fromIterable([1, 2]),
         Stream.run(sink)
       )
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
 
   it.effect("forEachWhile - handles leftovers", () =>

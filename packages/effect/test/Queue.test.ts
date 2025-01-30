@@ -1,5 +1,5 @@
-import { Array, Cause, Chunk, Deferred, Effect, Either, Exit, Fiber, identity, Option, pipe, Queue, Ref } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { Array, Cause, Chunk, Deferred, Effect, Either, Exit, Fiber, identity, pipe, Queue, Ref } from "effect"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -403,7 +403,7 @@ describe("Queue", () => {
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(5))
       const result = yield* $(Queue.poll(queue))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
   it.effect("poll on queue just emptied", () =>
     Effect.gen(function*($) {
@@ -411,7 +411,7 @@ describe("Queue", () => {
       yield* $(Queue.offerAll(queue, [1, 2, 3, 4]))
       yield* $(Queue.takeAll(queue))
       const result = yield* $(Queue.poll(queue))
-      deepStrictEqual(result, Option.none())
+      assertNone(result)
     }))
   it.effect("multiple polls", () =>
     Effect.gen(function*($) {
@@ -421,10 +421,10 @@ describe("Queue", () => {
       const result2 = yield* $(Queue.poll(queue))
       const result3 = yield* $(Queue.poll(queue))
       const result4 = yield* $(Queue.poll(queue))
-      deepStrictEqual(result1, Option.some(1))
-      deepStrictEqual(result2, Option.some(2))
-      deepStrictEqual(result3, Option.none())
-      deepStrictEqual(result4, Option.none())
+      assertSome(result1, 1)
+      assertSome(result2, 2)
+      assertNone(result3)
+      assertNone(result4)
     }))
   it.effect("shutdown with take fiber", () =>
     Effect.gen(function*($) {
