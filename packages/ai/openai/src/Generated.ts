@@ -131,9 +131,9 @@ export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("Cre
     S.String,
     S.Literal(
       "gpt-4o",
+      "gpt-4o-2024-11-20",
       "gpt-4o-2024-08-06",
       "gpt-4o-2024-05-13",
-      "gpt-4o-2024-08-06",
       "gpt-4o-mini",
       "gpt-4o-mini-2024-07-18",
       "gpt-4-turbo",
@@ -259,7 +259,7 @@ export class DeleteAssistantResponse extends S.Class<DeleteAssistantResponse>("D
 export class CreateSpeechRequest extends S.Class<CreateSpeechRequest>("CreateSpeechRequest")({
   "model": S.Union(S.String, S.Literal("tts-1", "tts-1-hd")),
   "input": S.String.pipe(S.maxLength(4096)),
-  "voice": S.Literal("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
+  "voice": S.Literal("alloy", "ash", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer"),
   "response_format": S.optionalWith(S.Literal("mp3", "opus", "aac", "flac", "wav", "pcm"), {
     nullable: true,
     default: () => "mp3" as const
@@ -398,6 +398,12 @@ export class ChatCompletionRequestMessageContentPartText extends S.Struct({
   "text": S.String
 }) {}
 
+export class ChatCompletionRequestDeveloperMessage extends S.Struct({
+  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestMessageContentPartText)),
+  "role": S.Literal("developer"),
+  "name": S.optionalWith(S.String, { nullable: true })
+}) {}
+
 export class ChatCompletionRequestSystemMessageContentPart extends ChatCompletionRequestMessageContentPartText {}
 
 export class ChatCompletionRequestSystemMessage extends S.Struct({
@@ -492,6 +498,7 @@ export class ChatCompletionRequestFunctionMessage extends S.Struct({
 }) {}
 
 export class ChatCompletionRequestMessage extends S.Union(
+  ChatCompletionRequestDeveloperMessage,
   ChatCompletionRequestSystemMessage,
   ChatCompletionRequestUserMessage,
   ChatCompletionRequestAssistantMessage,
@@ -500,6 +507,11 @@ export class ChatCompletionRequestMessage extends S.Union(
 ) {}
 
 export class ChatCompletionModalities extends S.Array(S.Literal("text", "audio")) {}
+
+export class PredictionContent extends S.Struct({
+  "type": S.Literal("content"),
+  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestMessageContentPartText))
+}) {}
 
 export class ChatCompletionStreamOptions extends S.Struct({
   "include_usage": S.optionalWith(S.Boolean, { nullable: true })
@@ -538,18 +550,21 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   "model": S.Union(
     S.String,
     S.Literal(
+      "o1",
+      "o1-2024-12-17",
       "o1-preview",
       "o1-preview-2024-09-12",
       "o1-mini",
       "o1-mini-2024-09-12",
       "gpt-4o",
+      "gpt-4o-2024-11-20",
       "gpt-4o-2024-08-06",
       "gpt-4o-2024-05-13",
-      "gpt-4o-2024-08-06",
-      "gpt-4o-realtime-preview",
-      "gpt-4o-realtime-preview-2024-10-01",
       "gpt-4o-audio-preview",
       "gpt-4o-audio-preview-2024-10-01",
+      "gpt-4o-audio-preview-2024-12-17",
+      "gpt-4o-mini-audio-preview",
+      "gpt-4o-mini-audio-preview-2024-12-17",
       "chatgpt-4o-latest",
       "gpt-4o-mini",
       "gpt-4o-mini-2024-07-18",
@@ -575,6 +590,10 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     )
   ),
   "store": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  "reasoning_effort": S.optionalWith(S.Literal("low", "medium", "high"), {
+    nullable: true,
+    default: () => "medium" as const
+  }),
   "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
   "frequency_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
     nullable: true,
@@ -590,9 +609,10 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     default: () => 1 as const
   }),
   "modalities": S.optionalWith(ChatCompletionModalities, { nullable: true }),
+  "prediction": S.optionalWith(PredictionContent, { nullable: true }),
   "audio": S.optionalWith(
     S.Struct({
-      "voice": S.Literal("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
+      "voice": S.Literal("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"),
       "format": S.Literal("wav", "mp3", "flac", "opus", "pcm16")
     }),
     { nullable: true }
@@ -604,10 +624,7 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   "response_format": S.optionalWith(S.Union(ResponseFormatText, ResponseFormatJsonObject, ResponseFormatJsonSchema), {
     nullable: true
   }),
-  "seed": S.optionalWith(
-    S.Int.pipe(S.greaterThanOrEqualTo(-9223372036854776000), S.lessThanOrEqualTo(9223372036854776000)),
-    { nullable: true }
-  ),
+  "seed": S.optionalWith(S.Int, { nullable: true }),
   "service_tier": S.optionalWith(S.Literal("auto", "default"), { nullable: true, default: () => "auto" as const }),
   "stop": S.optionalWith(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4))), { nullable: true }),
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
@@ -670,8 +687,10 @@ export class CompletionUsage extends S.Struct({
   "total_tokens": S.Int,
   "completion_tokens_details": S.optionalWith(
     S.Struct({
+      "accepted_prediction_tokens": S.optionalWith(S.Int, { nullable: true }),
       "audio_tokens": S.optionalWith(S.Int, { nullable: true }),
-      "reasoning_tokens": S.optionalWith(S.Int, { nullable: true })
+      "reasoning_tokens": S.optionalWith(S.Int, { nullable: true }),
+      "rejected_prediction_tokens": S.optionalWith(S.Int, { nullable: true })
     }),
     { nullable: true }
   ),
@@ -730,10 +749,7 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
     nullable: true,
     default: () => 0 as const
   }),
-  "seed": S.optionalWith(
-    S.Int.pipe(S.greaterThanOrEqualTo(-9223372036854776000), S.lessThanOrEqualTo(9223372036854776000)),
-    { nullable: true }
-  ),
+  "seed": S.optionalWith(S.Int, { nullable: true }),
   "stop": S.optionalWith(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4))), { nullable: true }),
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
   "stream_options": S.optionalWith(ChatCompletionStreamOptions, { nullable: true }),
@@ -799,7 +815,10 @@ export class CreateEmbeddingResponse extends S.Class<CreateEmbeddingResponse>("C
 }) {}
 
 export class ListFilesParams extends S.Struct({
-  "purpose": S.optionalWith(S.String, { nullable: true })
+  "purpose": S.optionalWith(S.String, { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 10000 as const }),
+  "order": S.optionalWith(S.Literal("asc", "desc"), { nullable: true, default: () => "desc" as const }),
+  "after": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class OpenAIFile extends S.Struct({
@@ -822,8 +841,11 @@ export class OpenAIFile extends S.Struct({
 }) {}
 
 export class ListFilesResponse extends S.Class<ListFilesResponse>("ListFilesResponse")({
+  "object": S.String,
   "data": S.Array(OpenAIFile),
-  "object": S.Literal("list")
+  "first_id": S.String,
+  "last_id": S.String,
+  "has_more": S.Boolean
 }) {}
 
 export class DeleteFileResponse extends S.Class<DeleteFileResponse>("DeleteFileResponse")({
@@ -849,6 +871,68 @@ export class FineTuningIntegration extends S.Struct({
   })
 }) {}
 
+export class FineTuneSupervisedMethod extends S.Struct({
+  "hyperparameters": S.optionalWith(
+    S.Struct({
+      "batch_size": S.optionalWith(
+        S.Union(S.Literal("auto"), S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))),
+        {
+          nullable: true,
+          default: () => "auto" as const
+        }
+      ),
+      "learning_rate_multiplier": S.optionalWith(S.Union(S.Literal("auto"), S.Number.pipe(S.greaterThan(0))), {
+        nullable: true,
+        default: () => "auto" as const
+      }),
+      "n_epochs": S.optionalWith(
+        S.Union(S.Literal("auto"), S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))),
+        {
+          nullable: true,
+          default: () => "auto" as const
+        }
+      )
+    }),
+    { nullable: true }
+  )
+}) {}
+
+export class FineTuneDPOMethod extends S.Struct({
+  "hyperparameters": S.optionalWith(
+    S.Struct({
+      "beta": S.optionalWith(S.Union(S.Literal("auto"), S.Number.pipe(S.greaterThan(0), S.lessThanOrEqualTo(2))), {
+        nullable: true,
+        default: () => "auto" as const
+      }),
+      "batch_size": S.optionalWith(
+        S.Union(S.Literal("auto"), S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))),
+        {
+          nullable: true,
+          default: () => "auto" as const
+        }
+      ),
+      "learning_rate_multiplier": S.optionalWith(S.Union(S.Literal("auto"), S.Number.pipe(S.greaterThan(0))), {
+        nullable: true,
+        default: () => "auto" as const
+      }),
+      "n_epochs": S.optionalWith(
+        S.Union(S.Literal("auto"), S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))),
+        {
+          nullable: true,
+          default: () => "auto" as const
+        }
+      )
+    }),
+    { nullable: true }
+  )
+}) {}
+
+export class FineTuneMethod extends S.Struct({
+  "type": S.optionalWith(S.Literal("supervised", "dpo"), { nullable: true }),
+  "supervised": S.optionalWith(FineTuneSupervisedMethod, { nullable: true }),
+  "dpo": S.optionalWith(FineTuneDPOMethod, { nullable: true })
+}) {}
+
 export class FineTuningJob extends S.Struct({
   "id": S.String,
   "created_at": S.Int,
@@ -860,9 +944,23 @@ export class FineTuningJob extends S.Struct({
   "fine_tuned_model": S.NullOr(S.String),
   "finished_at": S.NullOr(S.Int),
   "hyperparameters": S.Struct({
-    "n_epochs": S.Union(S.Literal("auto"), S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))).pipe(
-      S.propertySignature,
-      S.withConstructorDefault(() => "auto" as const)
+    "batch_size": S.optionalWith(
+      S.Union(S.Literal("auto"), S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))),
+      {
+        nullable: true,
+        default: () => "auto" as const
+      }
+    ),
+    "learning_rate_multiplier": S.optionalWith(S.Union(S.Literal("auto"), S.Number.pipe(S.greaterThan(0))), {
+      nullable: true,
+      default: () => "auto" as const
+    }),
+    "n_epochs": S.optionalWith(
+      S.Union(S.Literal("auto"), S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))),
+      {
+        nullable: true,
+        default: () => "auto" as const
+      }
     )
   }),
   "model": S.String,
@@ -875,7 +973,8 @@ export class FineTuningJob extends S.Struct({
   "validation_file": S.NullOr(S.String),
   "integrations": S.optionalWith(S.Array(FineTuningIntegration).pipe(S.maxItems(5)), { nullable: true }),
   "seed": S.Int,
-  "estimated_finish": S.optionalWith(S.Int, { nullable: true })
+  "estimated_finish": S.optionalWith(S.Int, { nullable: true }),
+  "method": S.optionalWith(FineTuneMethod, { nullable: true })
 }) {}
 
 export class ListPaginatedFineTuningJobsResponse
@@ -926,7 +1025,8 @@ export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobReque
     })),
     { nullable: true }
   ),
-  "seed": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2147483647)), { nullable: true })
+  "seed": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2147483647)), { nullable: true }),
+  "method": S.optionalWith(FineTuneMethod, { nullable: true })
 }) {}
 
 export class ListFineTuningJobCheckpointsParams extends S.Struct({
@@ -968,11 +1068,13 @@ export class ListFineTuningEventsParams extends S.Struct({
 }) {}
 
 export class FineTuningJobEvent extends S.Struct({
+  "object": S.Literal("fine_tuning.job.event"),
   "id": S.String,
   "created_at": S.Int,
   "level": S.Literal("info", "warn", "error"),
   "message": S.String,
-  "object": S.Literal("fine_tuning.job.event")
+  "type": S.optionalWith(S.Literal("message", "metrics"), { nullable: true }),
+  "data": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class ListFineTuningJobEventsResponse
@@ -1115,6 +1217,49 @@ export class CreateModerationResponse extends S.Class<CreateModerationResponse>(
   }))
 }) {}
 
+export class AdminApiKeysListParams extends S.Struct({
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "order": S.optionalWith(S.Literal("asc", "desc"), { nullable: true, default: () => "asc" as const }),
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const })
+}) {}
+
+export class AdminApiKey extends S.Struct({
+  "object": S.optionalWith(S.String, { nullable: true }),
+  "id": S.optionalWith(S.String, { nullable: true }),
+  "name": S.optionalWith(S.String, { nullable: true }),
+  "redacted_value": S.optionalWith(S.String, { nullable: true }),
+  "value": S.optionalWith(S.String, { nullable: true }),
+  "created_at": S.optionalWith(S.Int, { nullable: true }),
+  "owner": S.optionalWith(
+    S.Struct({
+      "type": S.optionalWith(S.String, { nullable: true }),
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "name": S.optionalWith(S.String, { nullable: true }),
+      "created_at": S.optionalWith(S.Int, { nullable: true }),
+      "role": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  )
+}) {}
+
+export class ApiKeyList extends S.Class<ApiKeyList>("ApiKeyList")({
+  "object": S.optionalWith(S.String, { nullable: true }),
+  "data": S.optionalWith(S.Array(AdminApiKey), { nullable: true }),
+  "has_more": S.optionalWith(S.Boolean, { nullable: true }),
+  "first_id": S.optionalWith(S.String, { nullable: true }),
+  "last_id": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class AdminApiKeysCreateRequest extends S.Class<AdminApiKeysCreateRequest>("AdminApiKeysCreateRequest")({
+  "name": S.String
+}) {}
+
+export class AdminApiKeysDelete200 extends S.Struct({
+  "id": S.optionalWith(S.String, { nullable: true }),
+  "object": S.optionalWith(S.String, { nullable: true }),
+  "deleted": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
 export class AuditLogEventType extends S.Literal(
   "api_key.created",
   "api_key.updated",
@@ -1133,6 +1278,8 @@ export class AuditLogEventType extends S.Literal(
   "service_account.created",
   "service_account.updated",
   "service_account.deleted",
+  "rate_limit.updated",
+  "rate_limit.deleted",
   "user.added",
   "user.updated",
   "user.deleted"
@@ -1176,8 +1323,8 @@ export class AuditLogActorApiKey extends S.Struct({
 
 export class AuditLogActor extends S.Struct({
   "type": S.optionalWith(S.Literal("session", "api_key"), { nullable: true }),
-  "session": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-  "api_key": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  "session": S.optionalWith(AuditLogActorSession, { nullable: true }),
+  "api_key": S.optionalWith(AuditLogActorApiKey, { nullable: true })
 }) {}
 
 export class AuditLog extends S.Struct({
@@ -1313,6 +1460,29 @@ export class AuditLog extends S.Struct({
     }),
     { nullable: true }
   ),
+  "rate_limit.updated": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "changes_requested": S.optionalWith(
+        S.Struct({
+          "max_requests_per_1_minute": S.optionalWith(S.Int, { nullable: true }),
+          "max_tokens_per_1_minute": S.optionalWith(S.Int, { nullable: true }),
+          "max_images_per_1_minute": S.optionalWith(S.Int, { nullable: true }),
+          "max_audio_megabytes_per_1_minute": S.optionalWith(S.Int, { nullable: true }),
+          "max_requests_per_1_day": S.optionalWith(S.Int, { nullable: true }),
+          "batch_1_day_max_input_tokens": S.optionalWith(S.Int, { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "rate_limit.deleted": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
   "service_account.created": S.optionalWith(
     S.Struct({
       "id": S.optionalWith(S.String, { nullable: true }),
@@ -1383,6 +1553,134 @@ export class ListAuditLogsResponse extends S.Class<ListAuditLogsResponse>("ListA
   "has_more": S.Boolean
 }) {}
 
+export class UsageCostsParams extends S.Struct({
+  "start_time": S.Int,
+  "end_time": S.optionalWith(S.Int, { nullable: true }),
+  "bucket_width": S.optionalWith(S.Literal("1d"), { nullable: true, default: () => "1d" as const }),
+  "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "line_item")), { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 7 as const }),
+  "page": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageCompletionsResult extends S.Struct({
+  "object": S.Literal("organization.usage.completions.result"),
+  "input_tokens": S.Int,
+  "input_cached_tokens": S.optionalWith(S.Int, { nullable: true }),
+  "output_tokens": S.Int,
+  "input_audio_tokens": S.optionalWith(S.Int, { nullable: true }),
+  "output_audio_tokens": S.optionalWith(S.Int, { nullable: true }),
+  "num_model_requests": S.Int,
+  "project_id": S.optionalWith(S.String, { nullable: true }),
+  "user_id": S.optionalWith(S.String, { nullable: true }),
+  "api_key_id": S.optionalWith(S.String, { nullable: true }),
+  "model": S.optionalWith(S.String, { nullable: true }),
+  "batch": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+export class UsageEmbeddingsResult extends S.Struct({
+  "object": S.Literal("organization.usage.embeddings.result"),
+  "input_tokens": S.Int,
+  "num_model_requests": S.Int,
+  "project_id": S.optionalWith(S.String, { nullable: true }),
+  "user_id": S.optionalWith(S.String, { nullable: true }),
+  "api_key_id": S.optionalWith(S.String, { nullable: true }),
+  "model": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageModerationsResult extends S.Struct({
+  "object": S.Literal("organization.usage.moderations.result"),
+  "input_tokens": S.Int,
+  "num_model_requests": S.Int,
+  "project_id": S.optionalWith(S.String, { nullable: true }),
+  "user_id": S.optionalWith(S.String, { nullable: true }),
+  "api_key_id": S.optionalWith(S.String, { nullable: true }),
+  "model": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageImagesResult extends S.Struct({
+  "object": S.Literal("organization.usage.images.result"),
+  "images": S.Int,
+  "num_model_requests": S.Int,
+  "source": S.optionalWith(S.String, { nullable: true }),
+  "size": S.optionalWith(S.String, { nullable: true }),
+  "project_id": S.optionalWith(S.String, { nullable: true }),
+  "user_id": S.optionalWith(S.String, { nullable: true }),
+  "api_key_id": S.optionalWith(S.String, { nullable: true }),
+  "model": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageAudioSpeechesResult extends S.Struct({
+  "object": S.Literal("organization.usage.audio_speeches.result"),
+  "characters": S.Int,
+  "num_model_requests": S.Int,
+  "project_id": S.optionalWith(S.String, { nullable: true }),
+  "user_id": S.optionalWith(S.String, { nullable: true }),
+  "api_key_id": S.optionalWith(S.String, { nullable: true }),
+  "model": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageAudioTranscriptionsResult extends S.Struct({
+  "object": S.Literal("organization.usage.audio_transcriptions.result"),
+  "seconds": S.Int,
+  "num_model_requests": S.Int,
+  "project_id": S.optionalWith(S.String, { nullable: true }),
+  "user_id": S.optionalWith(S.String, { nullable: true }),
+  "api_key_id": S.optionalWith(S.String, { nullable: true }),
+  "model": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageVectorStoresResult extends S.Struct({
+  "object": S.Literal("organization.usage.vector_stores.result"),
+  "usage_bytes": S.Int,
+  "project_id": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageCodeInterpreterSessionsResult extends S.Struct({
+  "object": S.Literal("organization.usage.code_interpreter_sessions.result"),
+  "sessions": S.Int,
+  "project_id": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class CostsResult extends S.Struct({
+  "object": S.Literal("organization.costs.result"),
+  "amount": S.optionalWith(
+    S.Struct({
+      "value": S.optionalWith(S.Number, { nullable: true }),
+      "currency": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "line_item": S.optionalWith(S.String, { nullable: true }),
+  "project_id": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageTimeBucket extends S.Struct({
+  "object": S.Literal("bucket"),
+  "start_time": S.Int,
+  "end_time": S.Int,
+  "result": S.Array(
+    S.Union(
+      UsageCompletionsResult,
+      UsageEmbeddingsResult,
+      UsageModerationsResult,
+      UsageImagesResult,
+      UsageAudioSpeechesResult,
+      UsageAudioTranscriptionsResult,
+      UsageVectorStoresResult,
+      UsageCodeInterpreterSessionsResult,
+      CostsResult
+    )
+  )
+}) {}
+
+export class UsageResponse extends S.Class<UsageResponse>("UsageResponse")({
+  "object": S.Literal("page"),
+  "data": S.Array(UsageTimeBucket),
+  "has_more": S.Boolean,
+  "next_page": S.String
+}) {}
+
 export class ListInvitesParams extends S.Struct({
   "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
   "after": S.optionalWith(S.String, { nullable: true })
@@ -1396,7 +1694,14 @@ export class Invite extends S.Struct({
   "status": S.Literal("accepted", "expired", "pending"),
   "invited_at": S.Int,
   "expires_at": S.Int,
-  "accepted_at": S.optionalWith(S.Int, { nullable: true })
+  "accepted_at": S.optionalWith(S.Int, { nullable: true }),
+  "projects": S.optionalWith(
+    S.Array(S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "role": S.optionalWith(S.Literal("member", "owner"), { nullable: true })
+    })),
+    { nullable: true }
+  )
 }) {}
 
 export class InviteListResponse extends S.Class<InviteListResponse>("InviteListResponse")({
@@ -1409,7 +1714,14 @@ export class InviteListResponse extends S.Class<InviteListResponse>("InviteListR
 
 export class InviteRequest extends S.Class<InviteRequest>("InviteRequest")({
   "email": S.String,
-  "role": S.Literal("reader", "owner")
+  "role": S.Literal("reader", "owner"),
+  "projects": S.optionalWith(
+    S.Array(S.Struct({
+      "id": S.String,
+      "role": S.Literal("member", "owner")
+    })),
+    { nullable: true }
+  )
 }) {}
 
 export class InviteDeleteResponse extends S.Class<InviteDeleteResponse>("InviteDeleteResponse")({
@@ -1509,6 +1821,45 @@ export class ProjectApiKeyDeleteResponse extends S.Class<ProjectApiKeyDeleteResp
   "deleted": S.Boolean
 }) {}
 
+export class ListProjectRateLimitsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 100 as const }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "before": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ProjectRateLimit extends S.Struct({
+  "object": S.Literal("project.rate_limit"),
+  "id": S.String,
+  "model": S.String,
+  "max_requests_per_1_minute": S.Int,
+  "max_tokens_per_1_minute": S.Int,
+  "max_images_per_1_minute": S.optionalWith(S.Int, { nullable: true }),
+  "max_audio_megabytes_per_1_minute": S.optionalWith(S.Int, { nullable: true }),
+  "max_requests_per_1_day": S.optionalWith(S.Int, { nullable: true }),
+  "batch_1_day_max_input_tokens": S.optionalWith(S.Int, { nullable: true })
+}) {}
+
+export class ProjectRateLimitListResponse
+  extends S.Class<ProjectRateLimitListResponse>("ProjectRateLimitListResponse")({
+    "object": S.Literal("list"),
+    "data": S.Array(ProjectRateLimit),
+    "first_id": S.String,
+    "last_id": S.String,
+    "has_more": S.Boolean
+  })
+{}
+
+export class ProjectRateLimitUpdateRequest
+  extends S.Class<ProjectRateLimitUpdateRequest>("ProjectRateLimitUpdateRequest")({
+    "max_requests_per_1_minute": S.optionalWith(S.Int, { nullable: true }),
+    "max_tokens_per_1_minute": S.optionalWith(S.Int, { nullable: true }),
+    "max_images_per_1_minute": S.optionalWith(S.Int, { nullable: true }),
+    "max_audio_megabytes_per_1_minute": S.optionalWith(S.Int, { nullable: true }),
+    "max_requests_per_1_day": S.optionalWith(S.Int, { nullable: true }),
+    "batch_1_day_max_input_tokens": S.optionalWith(S.Int, { nullable: true })
+  })
+{}
+
 export class ListProjectServiceAccountsParams extends S.Struct({
   "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
   "after": S.optionalWith(S.String, { nullable: true })
@@ -1585,6 +1936,115 @@ export class ProjectUserDeleteResponse extends S.Class<ProjectUserDeleteResponse
   "deleted": S.Boolean
 }) {}
 
+export class UsageAudioSpeechesParams extends S.Struct({
+  "start_time": S.Int,
+  "end_time": S.optionalWith(S.Int, { nullable: true }),
+  "bucket_width": S.optionalWith(S.Literal("1m", "1h", "1d"), { nullable: true, default: () => "1d" as const }),
+  "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "user_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "models": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model")), { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true }),
+  "page": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageAudioTranscriptionsParams extends S.Struct({
+  "start_time": S.Int,
+  "end_time": S.optionalWith(S.Int, { nullable: true }),
+  "bucket_width": S.optionalWith(S.Literal("1m", "1h", "1d"), { nullable: true, default: () => "1d" as const }),
+  "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "user_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "models": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model")), { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true }),
+  "page": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageCodeInterpreterSessionsParams extends S.Struct({
+  "start_time": S.Int,
+  "end_time": S.optionalWith(S.Int, { nullable: true }),
+  "bucket_width": S.optionalWith(S.Literal("1m", "1h", "1d"), { nullable: true, default: () => "1d" as const }),
+  "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id")), { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true }),
+  "page": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageCompletionsParams extends S.Struct({
+  "start_time": S.Int,
+  "end_time": S.optionalWith(S.Int, { nullable: true }),
+  "bucket_width": S.optionalWith(S.Literal("1m", "1h", "1d"), { nullable: true, default: () => "1d" as const }),
+  "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "user_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "models": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "batch": S.optionalWith(S.Boolean, { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model", "batch")), {
+    nullable: true
+  }),
+  "limit": S.optionalWith(S.Int, { nullable: true }),
+  "page": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageEmbeddingsParams extends S.Struct({
+  "start_time": S.Int,
+  "end_time": S.optionalWith(S.Int, { nullable: true }),
+  "bucket_width": S.optionalWith(S.Literal("1m", "1h", "1d"), { nullable: true, default: () => "1d" as const }),
+  "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "user_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "models": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model")), { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true }),
+  "page": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageImagesParams extends S.Struct({
+  "start_time": S.Int,
+  "end_time": S.optionalWith(S.Int, { nullable: true }),
+  "bucket_width": S.optionalWith(S.Literal("1m", "1h", "1d"), { nullable: true, default: () => "1d" as const }),
+  "sources": S.optionalWith(S.Array(S.Literal("image.generation", "image.edit", "image.variation")), {
+    nullable: true
+  }),
+  "sizes": S.optionalWith(S.Array(S.Literal("256x256", "512x512", "1024x1024", "1792x1792", "1024x1792")), {
+    nullable: true
+  }),
+  "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "user_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "models": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model", "size", "source")), {
+    nullable: true
+  }),
+  "limit": S.optionalWith(S.Int, { nullable: true }),
+  "page": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageModerationsParams extends S.Struct({
+  "start_time": S.Int,
+  "end_time": S.optionalWith(S.Int, { nullable: true }),
+  "bucket_width": S.optionalWith(S.Literal("1m", "1h", "1d"), { nullable: true, default: () => "1d" as const }),
+  "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "user_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "models": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model")), { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true }),
+  "page": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UsageVectorStoresParams extends S.Struct({
+  "start_time": S.Int,
+  "end_time": S.optionalWith(S.Int, { nullable: true }),
+  "bucket_width": S.optionalWith(S.Literal("1m", "1h", "1d"), { nullable: true, default: () => "1d" as const }),
+  "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id")), { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true }),
+  "page": S.optionalWith(S.String, { nullable: true })
+}) {}
+
 export class ListUsersParams extends S.Struct({
   "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
   "after": S.optionalWith(S.String, { nullable: true })
@@ -1616,6 +2076,100 @@ export class UserDeleteResponse extends S.Class<UserDeleteResponse>("UserDeleteR
   "id": S.String,
   "deleted": S.Boolean
 }) {}
+
+export class RealtimeSessionCreateRequest
+  extends S.Class<RealtimeSessionCreateRequest>("RealtimeSessionCreateRequest")({
+    "model": S.optionalWith(
+      S.Literal(
+        "gpt-4o-realtime-preview",
+        "gpt-4o-realtime-preview-2024-10-01",
+        "gpt-4o-realtime-preview-2024-12-17",
+        "gpt-4o-mini-realtime-preview",
+        "gpt-4o-mini-realtime-preview-2024-12-17"
+      ),
+      { nullable: true }
+    ),
+    "instructions": S.optionalWith(S.String, { nullable: true }),
+    "voice": S.optionalWith(S.Literal("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"), {
+      nullable: true
+    }),
+    "input_audio_format": S.optionalWith(S.Literal("pcm16", "g711_ulaw", "g711_alaw"), { nullable: true }),
+    "output_audio_format": S.optionalWith(S.Literal("pcm16", "g711_ulaw", "g711_alaw"), { nullable: true }),
+    "input_audio_transcription": S.optionalWith(
+      S.Struct({
+        "model": S.optionalWith(S.String, { nullable: true })
+      }),
+      { nullable: true }
+    ),
+    "turn_detection": S.optionalWith(
+      S.Struct({
+        "type": S.optionalWith(S.String, { nullable: true }),
+        "threshold": S.optionalWith(S.Number, { nullable: true }),
+        "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+        "silence_duration_ms": S.optionalWith(S.Int, { nullable: true }),
+        "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const })
+      }),
+      { nullable: true }
+    ),
+    "tools": S.optionalWith(
+      S.Array(S.Struct({
+        "type": S.optionalWith(S.Literal("function"), { nullable: true }),
+        "name": S.optionalWith(S.String, { nullable: true }),
+        "description": S.optionalWith(S.String, { nullable: true }),
+        "parameters": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+      })),
+      { nullable: true }
+    ),
+    "tool_choice": S.optionalWith(S.String, { nullable: true }),
+    "temperature": S.optionalWith(S.Number, { nullable: true }),
+    "max_response_output_tokens": S.optionalWith(S.Union(S.Int, S.Literal("inf")), { nullable: true })
+  })
+{}
+
+export class RealtimeSessionCreateResponse
+  extends S.Class<RealtimeSessionCreateResponse>("RealtimeSessionCreateResponse")({
+    "client_secret": S.optionalWith(
+      S.Struct({
+        "value": S.optionalWith(S.String, { nullable: true }),
+        "expires_at": S.optionalWith(S.Int, { nullable: true })
+      }),
+      { nullable: true }
+    ),
+    "instructions": S.optionalWith(S.String, { nullable: true }),
+    "voice": S.optionalWith(S.Literal("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"), {
+      nullable: true
+    }),
+    "input_audio_format": S.optionalWith(S.String, { nullable: true }),
+    "output_audio_format": S.optionalWith(S.String, { nullable: true }),
+    "input_audio_transcription": S.optionalWith(
+      S.Struct({
+        "model": S.optionalWith(S.String, { nullable: true })
+      }),
+      { nullable: true }
+    ),
+    "turn_detection": S.optionalWith(
+      S.Struct({
+        "type": S.optionalWith(S.String, { nullable: true }),
+        "threshold": S.optionalWith(S.Number, { nullable: true }),
+        "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+        "silence_duration_ms": S.optionalWith(S.Int, { nullable: true })
+      }),
+      { nullable: true }
+    ),
+    "tools": S.optionalWith(
+      S.Array(S.Struct({
+        "type": S.optionalWith(S.Literal("function"), { nullable: true }),
+        "name": S.optionalWith(S.String, { nullable: true }),
+        "description": S.optionalWith(S.String, { nullable: true }),
+        "parameters": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+      })),
+      { nullable: true }
+    ),
+    "tool_choice": S.optionalWith(S.String, { nullable: true }),
+    "temperature": S.optionalWith(S.Number, { nullable: true }),
+    "max_response_output_tokens": S.optionalWith(S.Union(S.Int, S.Literal("inf")), { nullable: true })
+  })
+{}
 
 export class MessageContentImageFileObject extends S.Struct({
   "type": S.Literal("image_file"),
@@ -1746,9 +2300,9 @@ export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest
       S.String,
       S.Literal(
         "gpt-4o",
+        "gpt-4o-2024-11-20",
         "gpt-4o-2024-08-06",
         "gpt-4o-2024-05-13",
-        "gpt-4o-2024-08-06",
         "gpt-4o-mini",
         "gpt-4o-mini-2024-07-18",
         "gpt-4-turbo",
@@ -2030,9 +2584,9 @@ export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunReques
       S.String,
       S.Literal(
         "gpt-4o",
+        "gpt-4o-2024-11-20",
         "gpt-4o-2024-08-06",
         "gpt-4o-2024-05-13",
-        "gpt-4o-2024-08-06",
         "gpt-4o-mini",
         "gpt-4o-mini-2024-07-18",
         "gpt-4-turbo",
@@ -2655,7 +3209,12 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       ),
     "listFiles": (options) =>
       HttpClientRequest.make("GET")(`/files`).pipe(
-        HttpClientRequest.setUrlParams({ "purpose": options["purpose"] }),
+        HttpClientRequest.setUrlParams({
+          "purpose": options["purpose"],
+          "limit": options["limit"],
+          "order": options["order"],
+          "after": options["after"]
+        }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
@@ -2912,6 +3471,67 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         ),
         Effect.scoped
       ),
+    "adminApiKeysList": (options) =>
+      HttpClientRequest.make("GET")(`/organization/admin_api_keys`).pipe(
+        HttpClientRequest.setUrlParams({
+          "after": options["after"],
+          "order": options["order"],
+          "limit": options["limit"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ApiKeyList)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "adminApiKeysCreate": (options) =>
+      HttpClientRequest.make("POST")(`/organization/admin_api_keys`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(AdminApiKey)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "adminApiKeysGet": (keyId) =>
+      HttpClientRequest.make("GET")(`/organization/admin_api_keys/${keyId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(AdminApiKey)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "adminApiKeysDelete": (keyId) =>
+      HttpClientRequest.make("DELETE")(`/organization/admin_api_keys/${keyId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(AdminApiKeysDelete200)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
     "listAuditLogs": (options) =>
       HttpClientRequest.make("GET")(`/organization/audit_logs`).pipe(
         HttpClientRequest.setUrlParams({
@@ -2934,6 +3554,29 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
               "200": (r) => HttpClientResponse.schemaBodyJson(ListAuditLogsResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "usageCosts": (options) =>
+      HttpClientRequest.make("GET")(`/organization/costs`).pipe(
+        HttpClientRequest.setUrlParams({
+          "start_time": options["start_time"],
+          "end_time": options["end_time"],
+          "bucket_width": options["bucket_width"],
+          "project_ids": options["project_ids"],
+          "group_by": options["group_by"],
+          "limit": options["limit"],
+          "page": options["page"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
@@ -3117,6 +3760,40 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         ),
         Effect.scoped
       ),
+    "listProjectRateLimits": (projectId, options) =>
+      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/rate_limits`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options["limit"],
+          "after": options["after"],
+          "before": options["before"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectRateLimitListResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "updateProjectRateLimits": (projectId, rateLimitId, options) =>
+      HttpClientRequest.make("POST")(`/organization/projects/${projectId}/rate_limits/${rateLimitId}`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectRateLimit)(r),
+              "400": (r) => decodeError(r, ErrorResponse),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
     "listProjectServiceAccounts": (projectId, options) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/service_accounts`).pipe(
         HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
@@ -3251,6 +3928,211 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         ),
         Effect.scoped
       ),
+    "usageAudioSpeeches": (options) =>
+      HttpClientRequest.make("GET")(`/organization/usage/audio_speeches`).pipe(
+        HttpClientRequest.setUrlParams({
+          "start_time": options["start_time"],
+          "end_time": options["end_time"],
+          "bucket_width": options["bucket_width"],
+          "project_ids": options["project_ids"],
+          "user_ids": options["user_ids"],
+          "api_key_ids": options["api_key_ids"],
+          "models": options["models"],
+          "group_by": options["group_by"],
+          "limit": options["limit"],
+          "page": options["page"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "usageAudioTranscriptions": (options) =>
+      HttpClientRequest.make("GET")(`/organization/usage/audio_transcriptions`).pipe(
+        HttpClientRequest.setUrlParams({
+          "start_time": options["start_time"],
+          "end_time": options["end_time"],
+          "bucket_width": options["bucket_width"],
+          "project_ids": options["project_ids"],
+          "user_ids": options["user_ids"],
+          "api_key_ids": options["api_key_ids"],
+          "models": options["models"],
+          "group_by": options["group_by"],
+          "limit": options["limit"],
+          "page": options["page"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "usageCodeInterpreterSessions": (options) =>
+      HttpClientRequest.make("GET")(`/organization/usage/code_interpreter_sessions`).pipe(
+        HttpClientRequest.setUrlParams({
+          "start_time": options["start_time"],
+          "end_time": options["end_time"],
+          "bucket_width": options["bucket_width"],
+          "project_ids": options["project_ids"],
+          "group_by": options["group_by"],
+          "limit": options["limit"],
+          "page": options["page"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "usageCompletions": (options) =>
+      HttpClientRequest.make("GET")(`/organization/usage/completions`).pipe(
+        HttpClientRequest.setUrlParams({
+          "start_time": options["start_time"],
+          "end_time": options["end_time"],
+          "bucket_width": options["bucket_width"],
+          "project_ids": options["project_ids"],
+          "user_ids": options["user_ids"],
+          "api_key_ids": options["api_key_ids"],
+          "models": options["models"],
+          "batch": options["batch"],
+          "group_by": options["group_by"],
+          "limit": options["limit"],
+          "page": options["page"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "usageEmbeddings": (options) =>
+      HttpClientRequest.make("GET")(`/organization/usage/embeddings`).pipe(
+        HttpClientRequest.setUrlParams({
+          "start_time": options["start_time"],
+          "end_time": options["end_time"],
+          "bucket_width": options["bucket_width"],
+          "project_ids": options["project_ids"],
+          "user_ids": options["user_ids"],
+          "api_key_ids": options["api_key_ids"],
+          "models": options["models"],
+          "group_by": options["group_by"],
+          "limit": options["limit"],
+          "page": options["page"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "usageImages": (options) =>
+      HttpClientRequest.make("GET")(`/organization/usage/images`).pipe(
+        HttpClientRequest.setUrlParams({
+          "start_time": options["start_time"],
+          "end_time": options["end_time"],
+          "bucket_width": options["bucket_width"],
+          "sources": options["sources"],
+          "sizes": options["sizes"],
+          "project_ids": options["project_ids"],
+          "user_ids": options["user_ids"],
+          "api_key_ids": options["api_key_ids"],
+          "models": options["models"],
+          "group_by": options["group_by"],
+          "limit": options["limit"],
+          "page": options["page"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "usageModerations": (options) =>
+      HttpClientRequest.make("GET")(`/organization/usage/moderations`).pipe(
+        HttpClientRequest.setUrlParams({
+          "start_time": options["start_time"],
+          "end_time": options["end_time"],
+          "bucket_width": options["bucket_width"],
+          "project_ids": options["project_ids"],
+          "user_ids": options["user_ids"],
+          "api_key_ids": options["api_key_ids"],
+          "models": options["models"],
+          "group_by": options["group_by"],
+          "limit": options["limit"],
+          "page": options["page"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "usageVectorStores": (options) =>
+      HttpClientRequest.make("GET")(`/organization/usage/vector_stores`).pipe(
+        HttpClientRequest.setUrlParams({
+          "start_time": options["start_time"],
+          "end_time": options["end_time"],
+          "bucket_width": options["bucket_width"],
+          "project_ids": options["project_ids"],
+          "group_by": options["group_by"],
+          "limit": options["limit"],
+          "page": options["page"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
     "listUsers": (options) =>
       HttpClientRequest.make("GET")(`/organization/users`).pipe(
         HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
@@ -3302,6 +4184,20 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
               "200": (r) => HttpClientResponse.schemaBodyJson(UserDeleteResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createRealtimeSession": (options) =>
+      HttpClientRequest.make("POST")(`/realtime/sessions`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(RealtimeSessionCreateResponse)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
@@ -3948,9 +4844,24 @@ export interface Client {
   readonly "createModeration": (
     options: typeof CreateModerationRequest.Encoded
   ) => Effect.Effect<typeof CreateModerationResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "adminApiKeysList": (
+    options: typeof AdminApiKeysListParams.Encoded
+  ) => Effect.Effect<typeof ApiKeyList.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "adminApiKeysCreate": (
+    options: typeof AdminApiKeysCreateRequest.Encoded
+  ) => Effect.Effect<typeof AdminApiKey.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "adminApiKeysGet": (
+    keyId: string
+  ) => Effect.Effect<typeof AdminApiKey.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "adminApiKeysDelete": (
+    keyId: string
+  ) => Effect.Effect<typeof AdminApiKeysDelete200.Type, HttpClientError.HttpClientError | ParseError>
   readonly "listAuditLogs": (
     options: typeof ListAuditLogsParams.Encoded
   ) => Effect.Effect<typeof ListAuditLogsResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "usageCosts": (
+    options: typeof UsageCostsParams.Encoded
+  ) => Effect.Effect<typeof UsageResponse.Type, HttpClientError.HttpClientError | ParseError>
   readonly "listInvites": (
     options: typeof ListInvitesParams.Encoded
   ) => Effect.Effect<typeof InviteListResponse.Type, HttpClientError.HttpClientError | ParseError>
@@ -3994,6 +4905,18 @@ export interface Client {
   readonly "archiveProject": (
     projectId: string
   ) => Effect.Effect<typeof Project.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listProjectRateLimits": (
+    projectId: string,
+    options: typeof ListProjectRateLimitsParams.Encoded
+  ) => Effect.Effect<typeof ProjectRateLimitListResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "updateProjectRateLimits": (
+    projectId: string,
+    rateLimitId: string,
+    options: typeof ProjectRateLimitUpdateRequest.Encoded
+  ) => Effect.Effect<
+    typeof ProjectRateLimit.Type,
+    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+  >
   readonly "listProjectServiceAccounts": (
     projectId: string,
     options: typeof ListProjectServiceAccountsParams.Encoded
@@ -4043,6 +4966,30 @@ export interface Client {
     typeof ProjectUserDeleteResponse.Type,
     HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
   >
+  readonly "usageAudioSpeeches": (
+    options: typeof UsageAudioSpeechesParams.Encoded
+  ) => Effect.Effect<typeof UsageResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "usageAudioTranscriptions": (
+    options: typeof UsageAudioTranscriptionsParams.Encoded
+  ) => Effect.Effect<typeof UsageResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "usageCodeInterpreterSessions": (
+    options: typeof UsageCodeInterpreterSessionsParams.Encoded
+  ) => Effect.Effect<typeof UsageResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "usageCompletions": (
+    options: typeof UsageCompletionsParams.Encoded
+  ) => Effect.Effect<typeof UsageResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "usageEmbeddings": (
+    options: typeof UsageEmbeddingsParams.Encoded
+  ) => Effect.Effect<typeof UsageResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "usageImages": (
+    options: typeof UsageImagesParams.Encoded
+  ) => Effect.Effect<typeof UsageResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "usageModerations": (
+    options: typeof UsageModerationsParams.Encoded
+  ) => Effect.Effect<typeof UsageResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "usageVectorStores": (
+    options: typeof UsageVectorStoresParams.Encoded
+  ) => Effect.Effect<typeof UsageResponse.Type, HttpClientError.HttpClientError | ParseError>
   readonly "listUsers": (
     options: typeof ListUsersParams.Encoded
   ) => Effect.Effect<typeof UserListResponse.Type, HttpClientError.HttpClientError | ParseError>
@@ -4056,6 +5003,9 @@ export interface Client {
   readonly "deleteUser": (
     userId: string
   ) => Effect.Effect<typeof UserDeleteResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createRealtimeSession": (
+    options: typeof RealtimeSessionCreateRequest.Encoded
+  ) => Effect.Effect<typeof RealtimeSessionCreateResponse.Type, HttpClientError.HttpClientError | ParseError>
   readonly "createThread": (
     options: typeof CreateThreadRequest.Encoded
   ) => Effect.Effect<typeof ThreadObject.Type, HttpClientError.HttpClientError | ParseError>
