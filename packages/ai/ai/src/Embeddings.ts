@@ -132,7 +132,7 @@ export const makeDataLoader = (options: {
     const scope = yield* Effect.scope
 
     const resolver = makeBatchedResolver(options.embedMany)
-    const resolverDelayed = dataLoader(resolver, {
+    const resolverDelayed = yield* dataLoader(resolver, {
       window: options.window,
       maxBatchSize: options.maxBatchSize
     })
