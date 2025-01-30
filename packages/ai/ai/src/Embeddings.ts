@@ -104,7 +104,7 @@ export const make = (options: {
             Effect.withRequestCaching(true),
             Effect.withRequestCache(cache)
           )
-      }).pipe(Effect.withSpan("Embeddings.create", {
+      }).pipe(Effect.withSpan("Embeddings.embed", {
         captureStackTrace: false,
         attributes: { input }
       }))
@@ -117,9 +117,9 @@ export const make = (options: {
 
 /**
  * Creates an `Embeddings` service which will aggregate all `embed` requests
- * received during the specified `window` (up to a maximum of `maxBatchSize` 
+ * received during the specified `window` (up to a maximum of `maxBatchSize`
  * requests, if specified) and execute them as a single batch.
- * 
+ *
  * @since 1.0.0
  * @category constructors
  */
@@ -139,7 +139,7 @@ export const makeDataLoader = (options: {
 
     function embed(input: string) {
       return Effect.request(new EmbeddingRequest({ input }), resolverDelayed).pipe(
-        Effect.withSpan("Embeddings.create", {
+        Effect.withSpan("Embeddings.embed", {
           captureStackTrace: false,
           attributes: { input }
         })
