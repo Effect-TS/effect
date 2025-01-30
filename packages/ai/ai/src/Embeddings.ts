@@ -104,16 +104,13 @@ export const make = (options: {
             Effect.withRequestCaching(true),
             Effect.withRequestCache(cache)
           )
-      }).pipe(Effect.withSpan("Embeddings.embed", {
-        captureStackTrace: false,
-        attributes: { input }
-      }))
+      }).pipe(Effect.withSpan("Embeddings.embed", { captureStackTrace: false }))
     }
 
     return Embeddings.of({
       embed
     })
-  }).pipe(Effect.withSpan("Embeddings.make"))
+  })
 
 /**
  * Creates an `Embeddings` service which will aggregate all `embed` requests
@@ -129,8 +126,6 @@ export const makeDataLoader = (options: {
   readonly maxBatchSize?: number
 }) =>
   Effect.gen(function*() {
-    const scope = yield* Effect.scope
-
     const resolver = makeBatchedResolver(options.embedMany)
     const resolverDelayed = yield* dataLoader(resolver, {
       window: options.window,
@@ -139,14 +134,11 @@ export const makeDataLoader = (options: {
 
     function embed(input: string) {
       return Effect.request(new EmbeddingRequest({ input }), resolverDelayed).pipe(
-        Effect.withSpan("Embeddings.embed", {
-          captureStackTrace: false,
-          attributes: { input }
-        })
-      ).pipe(Scope.extend(scope))
+        Effect.withSpan("Embeddings.embed", { captureStackTrace: false })
+      )
     }
 
     return Embeddings.of({
       embed
     })
-  }).pipe(Effect.withSpan("Embeddings.makeDataLoader"))
+  })

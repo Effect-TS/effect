@@ -83,42 +83,40 @@ const makeRequest = (
     })
   )
 
-const make = (options: {
+const make = Effect.fnUntraced(function*(options: {
   readonly model: string
   readonly maxBatchSize?: number
   readonly cache?: {
     readonly capacity: number
     readonly timeToLive: Duration.DurationInput
   }
-}) =>
-  Effect.gen(function*() {
-    const client = yield* OpenAiClient
-    const parentConfig = yield* OpenAiEmbeddingsConfig.getOrUndefined
-    return yield* Embeddings.make({
-      cache: options.cache,
-      maxBatchSize: options.maxBatchSize ?? 2048,
-      embedMany(input) {
-        return makeRequest(client, input, parentConfig, options)
-      }
-    })
+}) {
+  const client = yield* OpenAiClient
+  const parentConfig = yield* OpenAiEmbeddingsConfig.getOrUndefined
+  return yield* Embeddings.make({
+    cache: options.cache,
+    maxBatchSize: options.maxBatchSize ?? 2048,
+    embedMany(input) {
+      return makeRequest(client, input, parentConfig, options)
+    }
   })
+})
 
-const makeDataLoader = (options: {
+const makeDataLoader = Effect.fnUntraced(function*(options: {
   readonly model: string
   readonly window: Duration.DurationInput
   readonly maxBatchSize?: number
-}) =>
-  Effect.gen(function*() {
-    const client = yield* OpenAiClient
-    const parentConfig = yield* OpenAiEmbeddingsConfig.getOrUndefined
-    return yield* Embeddings.makeDataLoader({
-      window: options.window,
-      maxBatchSize: options.maxBatchSize ?? 2048,
-      embedMany(input) {
-        return makeRequest(client, input, parentConfig, options)
-      }
-    })
+}) {
+  const client = yield* OpenAiClient
+  const parentConfig = yield* OpenAiEmbeddingsConfig.getOrUndefined
+  return yield* Embeddings.makeDataLoader({
+    window: options.window,
+    maxBatchSize: options.maxBatchSize ?? 2048,
+    embedMany(input) {
+      return makeRequest(client, input, parentConfig, options)
+    }
   })
+})
 
 /**
  * @since 1.0.0
