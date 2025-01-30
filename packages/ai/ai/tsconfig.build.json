@@ -2,6 +2,7 @@
   "extends": "./tsconfig.src.json",
   "references": [
     { "path": "../../effect/tsconfig.build.json" },
+    { "path": "../../experimental/tsconfig.build.json" },
     { "path": "../../platform/tsconfig.build.json" }
   ],
   "compilerOptions": {
