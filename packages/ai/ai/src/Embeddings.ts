@@ -10,7 +10,6 @@ import * as Option from "effect/Option"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import * as Schema from "effect/Schema"
-import * as Scope from "effect/Scope"
 import { AiError } from "./AiError.js"
 
 /**
