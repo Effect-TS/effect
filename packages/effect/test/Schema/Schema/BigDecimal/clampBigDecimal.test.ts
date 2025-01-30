@@ -9,7 +9,6 @@ describe("clampBigDecimal", () => {
     const max = BigDecimal.make(1n, 0)
     const schema = S.BigDecimalFromSelf.pipe(S.clampBigDecimal(min, max)) // [-1, 1]
 
-    // TODO: remove normalize
     await Util.assertions.decoding.succeed(schema, BigDecimal.make(3n, 0), BigDecimal.normalize(BigDecimal.make(1n, 0)))
     await Util.assertions.decoding.succeed(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
     await Util.assertions.decoding.succeed(

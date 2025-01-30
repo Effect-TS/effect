@@ -25,11 +25,11 @@ describe("BigDecimal", () => {
   })
 
   it("sign", () => {
-    deepStrictEqual(BigDecimal.sign($("-5")), -1)
-    deepStrictEqual(BigDecimal.sign($("0")), 0)
-    deepStrictEqual(BigDecimal.sign($("5")), 1)
-    deepStrictEqual(BigDecimal.sign($("-123.456")), -1)
-    deepStrictEqual(BigDecimal.sign($("456.789")), 1)
+    strictEqual(BigDecimal.sign($("-5")), -1)
+    strictEqual(BigDecimal.sign($("0")), 0)
+    strictEqual(BigDecimal.sign($("5")), 1)
+    strictEqual(BigDecimal.sign($("-123.456")), -1)
+    strictEqual(BigDecimal.sign($("456.789")), 1)
   })
 
   it("equals", () => {
@@ -136,7 +136,7 @@ describe("BigDecimal", () => {
       equals(BigDecimal.unsafeDivide($(x), $(y)), $(z))
     }
 
-    assertTrue(Option.isNone(BigDecimal.divide($("5"), $("0"))))
+    assertNone(BigDecimal.divide($("5"), $("0")))
     throws(() => BigDecimal.unsafeDivide($("5"), $("0")), new RangeError("Division by zero"))
   })
 
@@ -149,15 +149,15 @@ describe("BigDecimal", () => {
   })
 
   it("Order", () => {
-    deepStrictEqual(BigDecimal.Order($("1"), $("2")), -1)
-    deepStrictEqual(BigDecimal.Order($("2"), $("1")), 1)
-    deepStrictEqual(BigDecimal.Order($("2"), $("2")), 0)
-    deepStrictEqual(BigDecimal.Order($("1"), $("1.1")), -1)
-    deepStrictEqual(BigDecimal.Order($("1.1"), $("1")), 1)
-    deepStrictEqual(BigDecimal.Order($("0.00012300"), $("0.000123")), 0)
-    deepStrictEqual(BigDecimal.Order($("5"), $("5.000")), 0)
-    deepStrictEqual(BigDecimal.Order($("5"), $("0.500")), 1)
-    deepStrictEqual(BigDecimal.Order($("5"), $("50.00")), -1)
+    strictEqual(BigDecimal.Order($("1"), $("2")), -1)
+    strictEqual(BigDecimal.Order($("2"), $("1")), 1)
+    strictEqual(BigDecimal.Order($("2"), $("2")), 0)
+    strictEqual(BigDecimal.Order($("1"), $("1.1")), -1)
+    strictEqual(BigDecimal.Order($("1.1"), $("1")), 1)
+    strictEqual(BigDecimal.Order($("0.00012300"), $("0.000123")), 0)
+    strictEqual(BigDecimal.Order($("5"), $("5.000")), 0)
+    strictEqual(BigDecimal.Order($("5"), $("0.500")), 1)
+    strictEqual(BigDecimal.Order($("5"), $("50.00")), -1)
   })
 
   it("lessThan", () => {
@@ -179,19 +179,19 @@ describe("BigDecimal", () => {
   })
 
   it("greaterThanOrEqualTo", () => {
-    deepStrictEqual(BigDecimal.greaterThanOrEqualTo($("2"), $("3")), false)
-    deepStrictEqual(BigDecimal.greaterThanOrEqualTo($("3"), $("3")), true)
-    deepStrictEqual(BigDecimal.greaterThanOrEqualTo($("4"), $("3")), true)
+    assertFalse(BigDecimal.greaterThanOrEqualTo($("2"), $("3")))
+    assertTrue(BigDecimal.greaterThanOrEqualTo($("3"), $("3")))
+    assertTrue(BigDecimal.greaterThanOrEqualTo($("4"), $("3")))
   })
 
   it("between", () => {
-    deepStrictEqual(BigDecimal.between({ minimum: $("0"), maximum: $("5") })($("3")), true)
-    deepStrictEqual(BigDecimal.between({ minimum: $("0"), maximum: $("5") })($("-1")), false)
-    deepStrictEqual(BigDecimal.between({ minimum: $("0"), maximum: $("5") })($("6")), false)
-    deepStrictEqual(BigDecimal.between({ minimum: $("0.02"), maximum: $("5") })($("0.0123")), false)
-    deepStrictEqual(BigDecimal.between({ minimum: $("0.02"), maximum: $("5") })($("0.05")), true)
+    assertTrue(BigDecimal.between({ minimum: $("0"), maximum: $("5") })($("3")))
+    assertFalse(BigDecimal.between({ minimum: $("0"), maximum: $("5") })($("-1")))
+    assertFalse(BigDecimal.between({ minimum: $("0"), maximum: $("5") })($("6")))
+    assertFalse(BigDecimal.between({ minimum: $("0.02"), maximum: $("5") })($("0.0123")))
+    assertTrue(BigDecimal.between({ minimum: $("0.02"), maximum: $("5") })($("0.05")))
 
-    deepStrictEqual(BigDecimal.between($("3"), { minimum: $("0"), maximum: $("5") }), true)
+    assertTrue(BigDecimal.between($("3"), { minimum: $("0"), maximum: $("5") }))
   })
 
   it("clamp", () => {
@@ -235,7 +235,7 @@ describe("BigDecimal", () => {
     equals(BigDecimal.remainder($("5"), $("2")).pipe(Option.getOrThrow), $("1"))
     equals(BigDecimal.remainder($("4"), $("2")).pipe(Option.getOrThrow), $("0"))
     equals(BigDecimal.remainder($("123.456"), $("0.2")).pipe(Option.getOrThrow), $("0.056"))
-    assertTrue(Option.isNone(BigDecimal.remainder($("5"), $("0"))))
+    assertNone(BigDecimal.remainder($("5"), $("0")))
   })
 
   it("unsafeRemainder", () => {
