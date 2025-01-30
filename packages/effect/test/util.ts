@@ -1,4 +1,5 @@
-import { Cause, Either, Equal, Exit, Option, Predicate } from "effect"
+import type { Cause } from "effect"
+import { Either, Equal, Exit, Option, Predicate } from "effect"
 import * as assert from "node:assert"
 
 export const fail = assert.fail
@@ -53,38 +54,34 @@ export const throws = (thunk: () => void, error?: object | ((e: unknown) => bool
 // Option
 // ----------------------------
 
-export const assertNone = <A>(actual: Option.Option<A>, ..._: Array<never>) => {
-  deepStrictEqual(actual, Option.none())
+export const assertNone = <A>(option: Option.Option<A>, ..._: Array<never>) => {
+  deepStrictEqual(option, Option.none())
 }
 
-export const assertSome = <A>(actual: Option.Option<A>, expected: A, ..._: Array<never>) => {
-  deepStrictEqual(actual, Option.some(expected))
+export const assertSome = <A>(option: Option.Option<A>, expected: A, ..._: Array<never>) => {
+  deepStrictEqual(option, Option.some(expected))
 }
 
 // ----------------------------
 // Either
 // ----------------------------
 
-export const assertLeft = <R, L>(e: Either.Either<R, L>, expected: L, ..._: Array<never>) => {
-  deepStrictEqual(e, Either.left(expected))
+export const assertLeft = <R, L>(either: Either.Either<R, L>, expected: L, ..._: Array<never>) => {
+  deepStrictEqual(either, Either.left(expected))
 }
 
-export const assertRight = <R, L>(e: Either.Either<R, L>, expected: R, ..._: Array<never>) => {
-  deepStrictEqual(e, Either.right(expected))
+export const assertRight = <R, L>(either: Either.Either<R, L>, expected: R, ..._: Array<never>) => {
+  deepStrictEqual(either, Either.right(expected))
 }
 
 // ----------------------------
 // Exit
 // ----------------------------
 
-export const assertFailure = <A, E>(
-  e: Exit.Exit<A, E>,
-  expected: Exit.Exit<A, E> | Cause.Cause<E>,
-  ..._: Array<never>
-) => {
-  deepStrictEqual(e, Cause.isCause(expected) ? Exit.failCause(expected) : expected)
+export const assertFailure = <A, E>(exit: Exit.Exit<A, E>, expected: Cause.Cause<E>, ..._: Array<never>) => {
+  deepStrictEqual(exit, Exit.failCause(expected))
 }
 
-export const assertSuccess = <A, E>(e: Exit.Exit<A, E>, expected: A, ..._: Array<never>) => {
-  deepStrictEqual(e, Exit.succeed(expected))
+export const assertSuccess = <A, E>(exit: Exit.Exit<A, E>, expected: A, ..._: Array<never>) => {
+  deepStrictEqual(exit, Exit.succeed(expected))
 }

@@ -1,5 +1,4 @@
-import { Effect, Either, Exit, ParseResult } from "effect"
-import * as P from "effect/ParseResult"
+import { Cause, Effect, Either, ParseResult } from "effect"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import {
@@ -18,7 +17,7 @@ const asEffect = <A, E>(either: Either.Either<A, E>): Effect.Effect<A, E> => eit
 
 const expectGetRefinementExpected = (schema: S.Schema.Any, expected: string) => {
   if (AST.isRefinement(schema.ast)) {
-    strictEqual(P.getRefinementExpected(schema.ast), expected)
+    strictEqual(ParseResult.getRefinementExpected(schema.ast), expected)
   } else {
     // eslint-disable-next-line no-console
     console.log(schema.ast)
@@ -27,8 +26,8 @@ const expectGetRefinementExpected = (schema: S.Schema.Any, expected: string) => 
 }
 
 describe("ParseResult", () => {
-  const typeParseError1 = P.parseError(new P.Type(S.String.ast, null))
-  const typeParseError2 = P.parseError(new P.Type(S.Number.ast, null))
+  const typeParseError1 = ParseResult.parseError(new ParseResult.Type(S.String.ast, null))
+  const typeParseError2 = ParseResult.parseError(new ParseResult.Type(S.Number.ast, null))
 
   it("getRefinementExpected", () => {
     expectGetRefinementExpected(S.Number.pipe(S.filter(() => true)), "{ number | filter }")
@@ -73,7 +72,7 @@ describe("ParseResult", () => {
 
     it("Error.stack", () => {
       assertTrue(
-        P.parseError(new P.Type(S.String.ast, 1)).stack?.startsWith(
+        ParseResult.parseError(new ParseResult.Type(S.String.ast, 1)).stack?.startsWith(
           `ParseError: Expected string, actual 1`
         )
       )
@@ -88,44 +87,47 @@ describe("ParseResult", () => {
   })
 
   it("map (Either)", () => {
-    deepStrictEqual(P.map(Either.right(1), (n) => n + 1), asEffect(Either.right(2)))
-    deepStrictEqual(P.map(Either.left(typeParseError1), (n) => n + 1), asEffect(Either.left(typeParseError1)))
+    deepStrictEqual(ParseResult.map(Either.right(1), (n) => n + 1), asEffect(Either.right(2)))
+    deepStrictEqual(ParseResult.map(Either.left(typeParseError1), (n) => n + 1), asEffect(Either.left(typeParseError1)))
     // pipeable
-    deepStrictEqual(Either.right(1).pipe(P.map((n) => n + 1)), Either.right(2))
+    deepStrictEqual(Either.right(1).pipe(ParseResult.map((n) => n + 1)), Either.right(2))
   })
 
   it("map (Effect)", () => {
-    assertSuccess(Effect.runSyncExit(P.map(Effect.succeed(1), (n) => n + 1)), 2)
-    assertFailure(Effect.runSyncExit(P.map(Effect.fail(typeParseError1), (n) => n + 1)), Exit.fail(typeParseError1))
+    assertSuccess(Effect.runSyncExit(ParseResult.map(Effect.succeed(1), (n) => n + 1)), 2)
+    assertFailure(
+      Effect.runSyncExit(ParseResult.map(Effect.fail(typeParseError1), (n) => n + 1)),
+      Cause.fail(typeParseError1)
+    )
   })
 
   it("mapLeft (Either)", () => {
-    deepStrictEqual(P.mapError(Either.right(1), () => typeParseError2), asEffect(Either.right(1)))
+    deepStrictEqual(ParseResult.mapError(Either.right(1), () => typeParseError2), asEffect(Either.right(1)))
     deepStrictEqual(
-      P.mapError(Either.left(typeParseError1), () => typeParseError2),
+      ParseResult.mapError(Either.left(typeParseError1), () => typeParseError2),
       asEffect(Either.left(typeParseError2))
     )
     // pipeable
-    deepStrictEqual(Either.right(1).pipe(P.mapError(() => typeParseError2)), Either.right(1))
+    deepStrictEqual(Either.right(1).pipe(ParseResult.mapError(() => typeParseError2)), Either.right(1))
   })
 
   it("mapLeft (Effect)", () => {
-    assertSuccess(Effect.runSyncExit(P.mapError(Effect.succeed(1), () => typeParseError2)), 1)
+    assertSuccess(Effect.runSyncExit(ParseResult.mapError(Effect.succeed(1), () => typeParseError2)), 1)
     assertFailure(
       Effect.runSyncExit(
-        P.mapError(Effect.fail(typeParseError1), () => typeParseError2)
+        ParseResult.mapError(Effect.fail(typeParseError1), () => typeParseError2)
       ),
-      Exit.fail(typeParseError2)
+      Cause.fail(typeParseError2)
     )
   })
 
   it("mapBoth (Either)", () => {
     deepStrictEqual(
-      P.mapBoth(Either.right(1), { onFailure: () => typeParseError2, onSuccess: (n) => n + 1 }),
+      ParseResult.mapBoth(Either.right(1), { onFailure: () => typeParseError2, onSuccess: (n) => n + 1 }),
       asEffect(Either.right(2))
     )
     deepStrictEqual(
-      P.mapBoth(Either.left(typeParseError1), {
+      ParseResult.mapBoth(Either.left(typeParseError1), {
         onFailure: () => typeParseError2,
         onSuccess: (n) => n + 1
       }),
@@ -133,7 +135,7 @@ describe("ParseResult", () => {
     )
     // pipeable
     deepStrictEqual(
-      Either.right(1).pipe(P.mapBoth({ onFailure: () => typeParseError2, onSuccess: (n) => n + 1 })),
+      Either.right(1).pipe(ParseResult.mapBoth({ onFailure: () => typeParseError2, onSuccess: (n) => n + 1 })),
       Either.right(2)
     )
   })
@@ -141,35 +143,35 @@ describe("ParseResult", () => {
   it("mapBoth (Effect)", () => {
     assertSuccess(
       Effect.runSyncExit(
-        P.mapBoth(Effect.succeed(1), { onFailure: () => typeParseError2, onSuccess: (n) => n + 1 })
+        ParseResult.mapBoth(Effect.succeed(1), { onFailure: () => typeParseError2, onSuccess: (n) => n + 1 })
       ),
       2
     )
     assertFailure(
       Effect.runSyncExit(
-        P.mapBoth(Effect.fail(typeParseError1), {
+        ParseResult.mapBoth(Effect.fail(typeParseError1), {
           onFailure: () => typeParseError2,
           onSuccess: (n) => n + 1
         })
       ),
-      Exit.fail(typeParseError2)
+      Cause.fail(typeParseError2)
     )
   })
 
   it("orElse (Either)", () => {
-    deepStrictEqual(P.orElse(Either.right(1), () => Either.right(2)), asEffect(Either.right(1)))
-    deepStrictEqual(P.orElse(Either.left(typeParseError1), () => Either.right(2)), asEffect(Either.right(2)))
+    deepStrictEqual(ParseResult.orElse(Either.right(1), () => Either.right(2)), asEffect(Either.right(1)))
+    deepStrictEqual(ParseResult.orElse(Either.left(typeParseError1), () => Either.right(2)), asEffect(Either.right(2)))
     // pipeable
-    deepStrictEqual(Either.right(1).pipe(P.orElse(() => Either.right(2))), Either.right(1))
+    deepStrictEqual(Either.right(1).pipe(ParseResult.orElse(() => Either.right(2))), Either.right(1))
   })
 
   it("orElse (Effect)", () => {
-    assertSuccess(Effect.runSyncExit(P.orElse(Effect.succeed(1), () => Either.right(2))), 1)
-    assertFailure(
+    assertSuccess(Effect.runSyncExit(ParseResult.orElse(Effect.succeed(1), () => Either.right(2))), 1)
+    assertSuccess(
       Effect.runSyncExit(
-        P.orElse(Effect.fail(typeParseError1), () => Either.right(2))
+        ParseResult.orElse(Effect.fail(typeParseError1), () => Either.right(2))
       ),
-      Exit.succeed(2)
+      2
     )
   })
 })
@@ -181,13 +183,13 @@ describe("ParseIssue.actual", () => {
       S.Boolean,
       {
         strict: true,
-        decode: (n, _, ast) => P.fail(new P.Type(ast, n)),
-        encode: (b, _, ast) => P.fail(new P.Type(ast, b))
+        decode: (n, _, ast) => ParseResult.fail(new ParseResult.Type(ast, n)),
+        encode: (b, _, ast) => ParseResult.fail(new ParseResult.Type(ast, b))
       }
     ))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
     strictEqual(result.left.issue.actual, "1")
-    strictEqual((result.left.issue as P.Transformation).issue.actual, 1)
+    strictEqual((result.left.issue as ParseResult.Transformation).issue.actual, 1)
   })
 
   it("transform encode", () => {
@@ -196,81 +198,87 @@ describe("ParseIssue.actual", () => {
       S.NumberFromString,
       {
         strict: true,
-        decode: (n, _, ast) => P.fail(new P.Type(ast, n)),
-        encode: (b, _, ast) => P.fail(new P.Type(ast, b))
+        decode: (n, _, ast) => ParseResult.fail(new ParseResult.Type(ast, n)),
+        encode: (b, _, ast) => ParseResult.fail(new ParseResult.Type(ast, b))
       }
     ))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
     strictEqual(result.left.issue.actual, 1)
-    strictEqual((result.left.issue as P.Transformation).issue.actual, "1")
+    strictEqual((result.left.issue as ParseResult.Transformation).issue.actual, "1")
   })
 
   it("compose decode", () => {
     const result = S.decodeEither(S.compose(S.NumberFromString, S.negative()(S.Number)))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
     strictEqual(result.left.issue.actual, "1")
-    strictEqual((result.left.issue as P.Transformation).issue.actual, 1)
+    strictEqual((result.left.issue as ParseResult.Transformation).issue.actual, 1)
   })
 
   it("compose encode", () => {
     const result = S.encodeEither(S.compose(S.length(5)(S.String), S.NumberFromString))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
     strictEqual(result.left.issue.actual, 1)
-    strictEqual((result.left.issue as P.Transformation).issue.actual, "1")
+    strictEqual((result.left.issue as ParseResult.Transformation).issue.actual, "1")
   })
 
   it("decode", () => {
-    assertTrue(Either.isEither(P.decode(S.String)("a")))
+    assertTrue(Either.isEither(ParseResult.decode(S.String)("a")))
   })
 
   it("encode", () => {
-    assertTrue(Either.isEither(P.encode(S.String)("a")))
+    assertTrue(Either.isEither(ParseResult.encode(S.String)("a")))
   })
 
   it("mergeInternalOptions", () => {
-    strictEqual(P.mergeInternalOptions(undefined, undefined), undefined)
-    deepStrictEqual(P.mergeInternalOptions({}, undefined), {})
-    deepStrictEqual(P.mergeInternalOptions(undefined, {}), {})
-    deepStrictEqual(P.mergeInternalOptions({ errors: undefined }, undefined), { errors: undefined })
-    deepStrictEqual(P.mergeInternalOptions(undefined, { errors: undefined }), { errors: undefined })
-    deepStrictEqual(P.mergeInternalOptions({ errors: "all" }, { errors: "first" }), {
+    strictEqual(ParseResult.mergeInternalOptions(undefined, undefined), undefined)
+    deepStrictEqual(ParseResult.mergeInternalOptions({}, undefined), {})
+    deepStrictEqual(ParseResult.mergeInternalOptions(undefined, {}), {})
+    deepStrictEqual(ParseResult.mergeInternalOptions({ errors: undefined }, undefined), { errors: undefined })
+    deepStrictEqual(ParseResult.mergeInternalOptions(undefined, { errors: undefined }), { errors: undefined })
+    deepStrictEqual(ParseResult.mergeInternalOptions({ errors: "all" }, { errors: "first" }), {
       errors: "first"
     })
-    deepStrictEqual(P.mergeInternalOptions({ onExcessProperty: "ignore" }, { onExcessProperty: "error" }), {
+    deepStrictEqual(ParseResult.mergeInternalOptions({ onExcessProperty: "ignore" }, { onExcessProperty: "error" }), {
       onExcessProperty: "error"
     })
-    deepStrictEqual(P.mergeInternalOptions({}, { exact: false }), { exact: false })
-    deepStrictEqual(P.mergeInternalOptions({ exact: true }, { exact: false }), { exact: false })
+    deepStrictEqual(ParseResult.mergeInternalOptions({}, { exact: false }), { exact: false })
+    deepStrictEqual(ParseResult.mergeInternalOptions({ exact: true }, { exact: false }), { exact: false })
 
-    deepStrictEqual(P.mergeInternalOptions({ isEffectAllowed: true }, {}), { isEffectAllowed: true })
-    deepStrictEqual(P.mergeInternalOptions({}, { isEffectAllowed: true }), { isEffectAllowed: true })
-    deepStrictEqual(P.mergeInternalOptions({ isEffectAllowed: false }, { isEffectAllowed: true }), {
+    deepStrictEqual(ParseResult.mergeInternalOptions({ isEffectAllowed: true }, {}), { isEffectAllowed: true })
+    deepStrictEqual(ParseResult.mergeInternalOptions({}, { isEffectAllowed: true }), { isEffectAllowed: true })
+    deepStrictEqual(ParseResult.mergeInternalOptions({ isEffectAllowed: false }, { isEffectAllowed: true }), {
       isEffectAllowed: true
     })
   })
 
   it("asserts", () => {
     const schema = S.String
-    strictEqual(P.asserts(schema)("a"), undefined)
-    throws(() => P.asserts(schema)(1), new ParseResult.ParseError({ issue: new ParseResult.Type(schema.ast, 1) }))
+    strictEqual(ParseResult.asserts(schema)("a"), undefined)
+    throws(
+      () => ParseResult.asserts(schema)(1),
+      new ParseResult.ParseError({ issue: new ParseResult.Type(schema.ast, 1) })
+    )
   })
 
   describe("getLiterals", () => {
     it("StringKeyword", () => {
-      deepStrictEqual(P.getLiterals(S.String.ast, true), [])
+      deepStrictEqual(ParseResult.getLiterals(S.String.ast, true), [])
     })
 
     it("Struct", () => {
-      deepStrictEqual(P.getLiterals(S.Struct({ _tag: S.Literal("a") }).ast, true), [["_tag", new AST.Literal("a")]])
+      deepStrictEqual(ParseResult.getLiterals(S.Struct({ _tag: S.Literal("a") }).ast, true), [[
+        "_tag",
+        new AST.Literal("a")
+      ]])
     })
 
     it("Tuple", () => {
-      deepStrictEqual(P.getLiterals(S.Tuple(S.Literal("a"), S.String).ast, true), [[0, new AST.Literal("a")]])
+      deepStrictEqual(ParseResult.getLiterals(S.Tuple(S.Literal("a"), S.String).ast, true), [[0, new AST.Literal("a")]])
     })
 
     it("Refinement", () => {
       deepStrictEqual(
-        P.getLiterals(
+        ParseResult.getLiterals(
           S.Struct({ _tag: S.Literal("a") }).pipe(
             S.filter(() => true)
           ).ast,
@@ -282,7 +290,7 @@ describe("ParseIssue.actual", () => {
 
     it("Transform (decode)", () => {
       deepStrictEqual(
-        P.getLiterals(
+        ParseResult.getLiterals(
           S.Struct({ radius: S.Number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
           true
         ),
@@ -292,7 +300,7 @@ describe("ParseIssue.actual", () => {
 
     it("Transform (encode)", () => {
       deepStrictEqual(
-        P.getLiterals(
+        ParseResult.getLiterals(
           S.Struct({ radius: S.Number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
           false
         ),
@@ -302,7 +310,7 @@ describe("ParseIssue.actual", () => {
 
     it("property Transform (encode)", () => {
       deepStrictEqual(
-        P.getLiterals(
+        ParseResult.getLiterals(
           S.Struct({
             _tag: S.transform(
               S.Literal("a"),
@@ -319,18 +327,18 @@ describe("ParseIssue.actual", () => {
 
     it("Class (decode)", () => {
       class A extends S.Class<A>("A")({ _tag: S.Literal("a") }) {}
-      deepStrictEqual(P.getLiterals(A.ast, true), [["_tag", new AST.Literal("a")]])
+      deepStrictEqual(ParseResult.getLiterals(A.ast, true), [["_tag", new AST.Literal("a")]])
     })
 
     it("Class (encode)", () => {
       class A extends S.Class<A>("A")({ _tag: S.Literal("a") }) {}
-      deepStrictEqual(P.getLiterals(A.ast, false), [["_tag", new AST.Literal("a")]])
+      deepStrictEqual(ParseResult.getLiterals(A.ast, false), [["_tag", new AST.Literal("a")]])
     })
   })
 
   describe("getSearchTree", () => {
     it("primitive + primitive", () => {
-      deepStrictEqual(P.getSearchTree([S.String.ast, S.Number.ast], true), {
+      deepStrictEqual(ParseResult.getSearchTree([S.String.ast, S.Number.ast], true), {
         keys: {},
         otherwise: [S.String.ast, S.Number.ast],
         candidates: []
@@ -339,7 +347,7 @@ describe("ParseIssue.actual", () => {
 
     it("struct + primitive", () => {
       const a = S.Struct({ _tag: S.Literal("a") })
-      deepStrictEqual(P.getSearchTree([a.ast, S.Number.ast], true), {
+      deepStrictEqual(ParseResult.getSearchTree([a.ast, S.Number.ast], true), {
         keys: {
           _tag: {
             buckets: {
@@ -357,7 +365,7 @@ describe("ParseIssue.actual", () => {
     it("struct + struct (same tag key)", () => {
       const a = S.Struct({ _tag: S.Literal("a") })
       const b = S.Struct({ _tag: S.Literal("b") })
-      deepStrictEqual(P.getSearchTree([a.ast, b.ast], true), {
+      deepStrictEqual(ParseResult.getSearchTree([a.ast, b.ast], true), {
         keys: {
           _tag: {
             buckets: {
@@ -377,7 +385,7 @@ describe("ParseIssue.actual", () => {
       const A = S.Struct({ a: S.Literal("A"), c: S.String })
       const B = S.Struct({ b: S.Literal("B"), d: S.Number })
       deepStrictEqual(
-        P.getSearchTree([A.ast, B.ast], true),
+        ParseResult.getSearchTree([A.ast, B.ast], true),
         {
           keys: {
             a: {
@@ -405,7 +413,7 @@ describe("ParseIssue.actual", () => {
       const A = S.Struct({ _tag: S.Literal("A"), _tag2: S.Literal("A1"), c: S.String })
       const B = S.Struct({ _tag: S.Literal("A"), _tag2: S.Literal("A2"), d: S.Number })
       deepStrictEqual(
-        P.getSearchTree([A.ast, B.ast], true),
+        ParseResult.getSearchTree([A.ast, B.ast], true),
         {
           keys: {
             _tag: {
@@ -433,7 +441,7 @@ describe("ParseIssue.actual", () => {
       const a = S.Tuple(S.Literal("a"), S.String)
       const b = S.Tuple(S.Literal("b"), S.Number)
       deepStrictEqual(
-        P.getSearchTree([a.ast, b.ast], true),
+        ParseResult.getSearchTree([a.ast, b.ast], true),
         {
           keys: {
             0: {
@@ -455,7 +463,7 @@ describe("ParseIssue.actual", () => {
       const a = S.Tuple(S.Literal("a"), S.String)
       const b = S.Tuple(S.Number, S.Literal("b"))
       deepStrictEqual(
-        P.getSearchTree([a.ast, b.ast], true),
+        ParseResult.getSearchTree([a.ast, b.ast], true),
         {
           keys: {
             0: {
@@ -483,7 +491,7 @@ describe("ParseIssue.actual", () => {
       const a = S.Tuple(S.Literal("a"), S.Literal("b"), S.String)
       const b = S.Tuple(S.Literal("a"), S.Literal("c"), S.Number)
       deepStrictEqual(
-        P.getSearchTree([a.ast, b.ast], true),
+        ParseResult.getSearchTree([a.ast, b.ast], true),
         {
           keys: {
             0: {
@@ -512,7 +520,7 @@ describe("ParseIssue.actual", () => {
       const b = S.Struct({ category: S.Literal("catA"), tag: S.Literal("b") })
       const c = S.Struct({ category: S.Literal("catA"), tag: S.Literal("c") })
       deepStrictEqual(
-        P.getSearchTree([
+        ParseResult.getSearchTree([
           a.ast,
           b.ast,
           c.ast
@@ -558,7 +566,7 @@ describe("ParseIssue.actual", () => {
         S.Struct({ type: S.Array(S.Number), value: S.String })
       )
       const types = (schema.ast as AST.Union).types
-      deepStrictEqual(P.getSearchTree(types, true), {
+      deepStrictEqual(ParseResult.getSearchTree(types, true), {
         keys: {
           type: {
             buckets: {
@@ -601,7 +609,7 @@ describe("ParseIssue.actual", () => {
       const AB = S.Union(A, B)
       const schema = S.Union(ab, AB)
       const types = (schema.ast as AST.Union).types
-      deepStrictEqual(P.getSearchTree(types, true), {
+      deepStrictEqual(ParseResult.getSearchTree(types, true), {
         keys: {},
         otherwise: [ab.ast, AB.ast],
         candidates: []

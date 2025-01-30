@@ -1,9 +1,5 @@
-import type * as Config from "effect/Config"
-import * as ConfigError from "effect/ConfigError"
-import * as ConfigProvider from "effect/ConfigProvider"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Schema from "effect/Schema"
+import type { Config } from "effect"
+import { Cause, ConfigError, ConfigProvider, Effect, Schema } from "effect"
 import { assertFailure, assertSuccess } from "effect/test/util"
 import { describe, it } from "vitest"
 
@@ -17,7 +13,7 @@ const assertConfigFailure = <A>(
 ) => {
   const configProvider = ConfigProvider.fromMap(new Map(map))
   const result = Effect.runSync(Effect.exit(configProvider.load(config)))
-  assertFailure(result, Exit.fail(error))
+  assertFailure(result, Cause.fail(error))
 }
 
 /**
