@@ -35,7 +35,6 @@ import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
 import * as doNotation from "./doNotation.js"
 import * as fiberRefsPatch from "./fiberRefs/patch.js"
-import * as fiberRuntime from "./fiberRuntime.js"
 import type { FiberRuntime } from "./fiberRuntime.js"
 import * as metricLabel from "./metric/label.js"
 import * as runtimeFlags from "./runtimeFlags.js"
@@ -948,30 +947,6 @@ export const logAnnotations: Effect.Effect<HashMap.HashMap<string, unknown>> = c
   .fiberRefGet(
     core.currentLogAnnotations
   )
-
-/** @internal */
-export const whenLogLevel = dual<
-  (
-    level: LogLevel.LogLevel | LogLevel.Literal
-  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<Option.Option<A>, E, R>,
-  <A, E, R>(
-    effect: Effect.Effect<A, E, R>,
-    level: LogLevel.LogLevel | LogLevel.Literal
-  ) => Effect.Effect<Option.Option<A>, E, R>
->(2, (effect, level) => {
-  const requiredLogLevel = typeof level === "string" ? LogLevel.fromLiteral(level) : level
-
-  return core.withFiberRuntime((fiberState) => {
-    const minimumLogLevel = fiberState.getFiberRef(fiberRuntime.currentMinimumLogLevel)
-
-    // Imitate the behaviour of `FiberRuntime.log`
-    if (LogLevel.greaterThan(minimumLogLevel, requiredLogLevel)) {
-      return core.succeed(Option.none())
-    }
-
-    return core.map(effect, Option.some)
-  })
-})
 
 /* @internal */
 export const loop: {
