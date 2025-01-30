@@ -36,7 +36,7 @@ export declare namespace Completions {
    * @since 1.0.0
    * @category models
    */
-  interface StructuredSchema<A, I, R> extends Schema.Schema<A, I, R> {
+  export interface StructuredSchema<A, I, R> extends Schema.Schema<A, I, R> {
     readonly _tag?: string
     readonly identifier: string
   }
