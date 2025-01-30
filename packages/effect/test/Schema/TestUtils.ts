@@ -12,7 +12,7 @@ export const assertions = Effect.runSync(
   SchemaTest.assertions.pipe(
     Effect.provideService(SchemaTest.Assert, {
       deepStrictEqual,
-      throws: (fn, message) => throws(fn, (e) => e instanceof Error && e.message === message),
+      throws,
       fail
     }),
     Effect.provideService(SchemaTest.AssertConfig, {
@@ -27,10 +27,6 @@ export const assertions = Effect.runSync(
     })
   )
 )
-
-export const assertParseError = (f: () => void, message: string) => {
-  throws(f, (e) => e instanceof ParseResult.ParseError && e.message === message)
-}
 
 export const onExcessPropertyError: ParseOptions = {
   onExcessProperty: "error"

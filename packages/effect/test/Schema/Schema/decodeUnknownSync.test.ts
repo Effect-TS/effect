@@ -14,7 +14,7 @@ describe("decodeUnknownSync", () => {
   })
 
   it("should throw on async", () => {
-    Util.assertParseError(
+    Util.assertions.parseError(
       () => S.decodeUnknownSync(Util.AsyncString)("a"),
       `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`

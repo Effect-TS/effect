@@ -25,7 +25,7 @@ describe("ParseResultFormatter", () => {
     it("default message", () => {
       const schema = Util.AsyncString
       const input = ""
-      Util.assertParseError(
+      Util.assertions.parseError(
         () => S.decodeUnknownSync(schema)(input),
         `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
@@ -41,7 +41,7 @@ describe("ParseResultFormatter", () => {
     it("default message with identifier", () => {
       const schema = Util.AsyncString
       const input = ""
-      Util.assertParseError(
+      Util.assertions.parseError(
         () => S.decodeUnknownSync(schema)(input),
         `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
@@ -57,7 +57,7 @@ describe("ParseResultFormatter", () => {
     it("custom message (override=false)", () => {
       const schema = Util.AsyncString.annotations({ message: () => "custom message" })
       const input = ""
-      Util.assertParseError(
+      Util.assertions.parseError(
         () => S.decodeUnknownSync(schema)(input),
         `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
@@ -75,7 +75,7 @@ describe("ParseResultFormatter", () => {
         message: () => ({ message: "custom message", override: true })
       })
       const input = ""
-      Util.assertParseError(
+      Util.assertions.parseError(
         () => S.decodeUnknownSync(schema)(input),
         `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`

@@ -47,7 +47,7 @@ describe("DecodingFallbackAnnotation", () => {
       "<fallback value>"
     )
     deepStrictEqual(log, [null])
-    Util.assertParseError(
+    Util.assertions.parseError(
       () => S.decodeUnknownSync(schema)(null),
       `string
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`

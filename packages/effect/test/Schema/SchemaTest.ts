@@ -21,7 +21,7 @@ export class AssertConfig extends Context.Tag("AssertConfig")<AssertConfig, {
 // Provides assertion utilities for testing
 export class Assert extends Context.Tag("Assert")<Assert, {
   readonly deepStrictEqual: (actual: unknown, expected: unknown) => void
-  readonly throws: (fn: () => unknown, message: string) => void
+  readonly throws: (thunk: () => void, predicate?: (e: unknown) => boolean) => void
   readonly fail: (message: string) => void
 }>() {}
 
@@ -53,7 +53,7 @@ export const assertions = Effect.gen(function*() {
         input: A,
         message: string
       ) {
-        throws(() => make(input), message)
+        out.parseError(() => make(input), message)
       }
     },
 
@@ -309,8 +309,12 @@ export const assertions = Effect.gen(function*() {
           readonly parseOptions?: SchemaAST.ParseOptions | undefined
         }
       ) {
-        throws(() => Schema.asserts(schema, options?.parseOptions)(input), message)
+        out.parseError(() => Schema.asserts(schema, options?.parseOptions)(input), message)
       }
+    },
+
+    parseError(f: () => void, message: string) {
+      throws(f, (err) => err instanceof ParseResult.ParseError && err.message === message)
     }
   }
 

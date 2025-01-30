@@ -17,13 +17,13 @@ describe("asserts", () => {
   it("should respect outer/inner options", () => {
     const schema = S.Struct({ a: Util.NumberFromChar })
     const input = { a: 1, b: "b" }
-    Util.assertParseError(
+    Util.assertions.parseError(
       () => S.asserts(schema)(input, { onExcessProperty: "error" }),
       `{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
     )
-    Util.assertParseError(
+    Util.assertions.parseError(
       () => S.asserts(schema, { onExcessProperty: "error" })(input),
       `{ readonly a: number }
 └─ ["b"]
