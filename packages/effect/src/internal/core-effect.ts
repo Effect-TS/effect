@@ -950,8 +950,13 @@ export const logAnnotations: Effect.Effect<HashMap.HashMap<string, unknown>> = c
 
 /** @internal */
 export const whenLogLevel = dual<
-  (level: LogLevel.LogLevel | LogLevel.Literal) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<Option.Option<A>, E, R>,
-  <A, E, R>(effect: Effect.Effect<A, E, R>, level: LogLevel.LogLevel | LogLevel.Literal) => Effect.Effect<Option.Option<A>, E, R>
+  (
+    level: LogLevel.LogLevel | LogLevel.Literal
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<Option.Option<A>, E, R>,
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    level: LogLevel.LogLevel | LogLevel.Literal
+  ) => Effect.Effect<Option.Option<A>, E, R>
 >(2, (effect, level) => {
   const requiredLogLevel = typeof level === "string" ? LogLevel.fromLiteral(level) : level
 
