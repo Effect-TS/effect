@@ -39,7 +39,7 @@ import * as runtime_ from "./internal/runtime.js"
 import * as schedule_ from "./internal/schedule.js"
 import * as internalTracer from "./internal/tracer.js"
 import type * as Layer from "./Layer.js"
-import type { LogLevel } from "./LogLevel.js"
+import type * as LogLevel from "./LogLevel.js"
 import type * as ManagedRuntime from "./ManagedRuntime.js"
 import type * as Metric from "./Metric.js"
 import type * as MetricLabel from "./MetricLabel.js"
@@ -10572,7 +10572,7 @@ export const log: (...message: ReadonlyArray<any>) => Effect<void, never, never>
  * @category Logging
  */
 export const logWithLevel = (
-  level: LogLevel,
+  level: LogLevel.LogLevel,
   ...message: ReadonlyArray<any>
 ): Effect<void> => effect.logWithLevel(level)(...message)
 
@@ -10866,8 +10866,8 @@ export const logAnnotations: Effect<HashMap.HashMap<string, unknown>> = effect.l
  * @category Logging
  */
 export const withUnhandledErrorLogLevel: {
-  (level: Option.Option<LogLevel>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
-  <A, E, R>(self: Effect<A, E, R>, level: Option.Option<LogLevel>): Effect<A, E, R>
+  (level: Option.Option<LogLevel.LogLevel>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  <A, E, R>(self: Effect<A, E, R>, level: Option.Option<LogLevel.LogLevel>): Effect<A, E, R>
 } = core.withUnhandledErrorLogLevel
 
 /**
@@ -10902,9 +10902,9 @@ export const withUnhandledErrorLogLevel: {
  * @category Logging
  */
 export const whenLogLevel: {
-  (level: LogLevel): <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>, E, R>
-  <A, E, R>(self: Effect<A, E, R>, level: LogLevel): Effect<Option.Option<A>, E, R>
-} = effect.whenLogLevel
+  (level: LogLevel.LogLevel | LogLevel.Literal): <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>, E, R>
+  <A, E, R>(self: Effect<A, E, R>, level: LogLevel.LogLevel | LogLevel.Literal): Effect<Option.Option<A>, E, R>
+} = fiberRuntime.whenLogLevel
 
 /**
  * Converts an effect's failure into a fiber termination, removing the error
