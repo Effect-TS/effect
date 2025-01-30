@@ -1,6 +1,14 @@
-import { Cause, Chunk, Effect, Either, Exit, Fiber, identity, Number, Option, pipe, STM, TArray, TRef } from "effect"
+import { Cause, Chunk, Effect, Exit, Fiber, identity, Number, Option, pipe, STM, TArray, TRef } from "effect"
 import { constFalse, constTrue } from "effect/Function"
-import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import {
+  assertFalse,
+  assertLeft,
+  assertNone,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual
+} from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -1043,7 +1051,7 @@ describe("TArray", () => {
         acc === Math.floor(n / 2) ? STM.fail("boom") : STM.succeed(acc + n)
       const array = yield* $(makeTArray(n, 1))
       const result = yield* $(pipe(array, TArray.reduceSTM(0, failInTheMiddle), STM.either))
-      deepStrictEqual(result, Either.left("boom"))
+      assertLeft(result, "boom")
     }))
 
   it.effect("size - returns the correct size", () =>
@@ -1172,7 +1180,7 @@ describe("TArray", () => {
       ))
       const first = yield* $(pipe(array, TArray.get(0)))
       strictEqual(first, 0)
-      deepStrictEqual(result, Either.left("boom"))
+      assertLeft(result, "boom")
     }))
 
   it.effect("update - happy path", () =>
@@ -1221,7 +1229,7 @@ describe("TArray", () => {
         STM.commit,
         Effect.either
       ))
-      deepStrictEqual(result, Either.left("boom"))
+      assertLeft(result, "boom")
     }))
 
   it.effect("toChunk", () =>

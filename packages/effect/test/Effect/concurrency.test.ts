@@ -6,7 +6,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertLeft, assertRight, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { withLatch } from "effect/test/utils/latch"
 import { adjust } from "effect/TestClock"
@@ -161,7 +161,7 @@ describe("Effect", () => {
   it.effect("race of fail with success", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.fail(42), Effect.race(Effect.succeed(24)), Effect.either)
-      deepStrictEqual(result, Either.right(24))
+      assertRight(result, 24)
     }))
   it.effect("race of terminate with success", () =>
     Effect.gen(function*($) {
@@ -171,7 +171,7 @@ describe("Effect", () => {
   it.effect("race of fail with fail", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.fail(42), Effect.race(Effect.fail(24)), Effect.either)
-      deepStrictEqual(result, Either.left(42))
+      assertLeft(result, 42)
     }))
   it.effect("race of value and never", () =>
     Effect.gen(function*($) {
@@ -237,7 +237,7 @@ describe("Effect", () => {
         ]),
         Effect.either
       )
-      deepStrictEqual(result, Either.right(100))
+      assertRight(result, 100)
     }))
   it.live("firstSuccessOf of failures", () =>
     Effect.gen(function*($) {
@@ -249,7 +249,7 @@ describe("Effect", () => {
         Effect.either
       )
 
-      deepStrictEqual(result, Either.left(101))
+      assertLeft(result, 101)
     }))
   it.live("firstSuccessOf of failures & 1 success", () =>
     Effect.gen(function*($) {
@@ -260,7 +260,7 @@ describe("Effect", () => {
         ]),
         Effect.either
       )
-      deepStrictEqual(result, Either.right(102))
+      assertRight(result, 102)
     }))
   it.effect("raceFirst interrupts loser on success", () =>
     Effect.gen(function*($) {

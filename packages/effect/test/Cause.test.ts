@@ -1,7 +1,16 @@
-import { Array as Arr, Cause, Effect, Either, Equal, FastCheck as fc, FiberId, Hash, Option, Predicate } from "effect"
+import { Array as Arr, Cause, Effect, Equal, FastCheck as fc, FiberId, Hash, Option, Predicate } from "effect"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as internal from "effect/internal/cause"
-import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import {
+  assertFalse,
+  assertLeft,
+  assertNone,
+  assertRight,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual
+} from "effect/test/util"
 import { causes, equalCauses, errorCauseFunctions, errors } from "effect/test/utils/cause"
 import { describe, it } from "vitest"
 
@@ -494,10 +503,10 @@ describe("Cause", () => {
 
     it("failureOrCause", () => {
       const expectLeft = <E>(cause: Cause.Cause<E>, expected: E) => {
-        deepStrictEqual(Cause.failureOrCause(cause), Either.left(expected))
+        assertLeft(Cause.failureOrCause(cause), expected)
       }
       const expectRight = (cause: Cause.Cause<never>) => {
-        deepStrictEqual(Cause.failureOrCause(cause), Either.right(cause))
+        assertRight(Cause.failureOrCause(cause), cause)
       }
 
       expectLeft(failure, "error")

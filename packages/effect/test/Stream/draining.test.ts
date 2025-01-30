@@ -2,12 +2,11 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -36,7 +35,7 @@ describe("Stream", () => {
         Effect.either
       )
       const result2 = yield* $(Ref.get(ref))
-      deepStrictEqual(result1, Either.left("fail"))
+      assertLeft(result1, "fail")
       strictEqual(result2, 1)
     }))
 

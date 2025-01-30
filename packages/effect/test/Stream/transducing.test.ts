@@ -1,10 +1,9 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import { constTrue, pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -53,6 +52,6 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("Woops"))
+      assertLeft(result, "Woops")
     }))
 })

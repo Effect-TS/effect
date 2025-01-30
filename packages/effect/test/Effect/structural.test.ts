@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Option from "effect/Option"
-import { assertNone, assertSome, deepStrictEqual } from "effect/test/util"
+import { assertLeft, assertNone, assertRight, assertSome, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { assertType, satisfies } from "effect/test/utils/types"
 import { describe } from "vitest"
@@ -157,8 +157,8 @@ describe("Effect", () => {
       Effect.gen(function*($) {
         const result = yield* $(Effect.all({ a: Effect.succeed(0), b: Effect.succeed(1) }, { mode: "either" }))
         const { a, b } = result
-        deepStrictEqual(a, Either.right(0))
-        deepStrictEqual(b, Either.right(1))
+        assertRight(a, 0)
+        assertRight(b, 1)
         satisfies<true>(
           assertType<{
             readonly a: Either.Either<number>
@@ -172,8 +172,8 @@ describe("Effect", () => {
           Effect.all({ a: Effect.fail(0), b: Effect.succeed(1) }, { mode: "either" })
         )
         const { a, b } = result
-        deepStrictEqual(a, Either.left(0))
-        deepStrictEqual(b, Either.right(1))
+        assertLeft(a, 0)
+        assertRight(b, 1)
         satisfies<true>(
           assertType<{
             readonly a: Either.Either<never, number>

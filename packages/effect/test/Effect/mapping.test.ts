@@ -1,10 +1,9 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import { identity, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -34,7 +33,7 @@ describe("Effect", () => {
   it.effect("flip must make value into error", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.either(Effect.flip(Effect.succeed(42))))
-      deepStrictEqual(result, Either.left(42))
+      assertLeft(result, 42)
     }))
   it.effect("flipping twice returns the identical value", () =>
     Effect.gen(function*($) {
@@ -51,7 +50,7 @@ describe("Effect", () => {
         }),
         Effect.either
       )
-      deepStrictEqual(result, Either.left("10"))
+      assertLeft(result, "10")
     }))
   it.effect("mapAccum", () =>
     Effect.gen(function*($) {

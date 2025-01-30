@@ -1,14 +1,13 @@
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constVoid, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
-import { assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertLeft, assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import * as TestServices from "effect/TestServices"
@@ -168,6 +167,6 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 })

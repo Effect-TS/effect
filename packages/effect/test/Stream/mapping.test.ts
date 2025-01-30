@@ -10,7 +10,7 @@ import { identity, pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import { describe } from "vitest"
@@ -55,7 +55,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("mapAccumEffect - laziness on chunks", () =>
@@ -116,7 +116,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("mapConcatEffect - happy path", () =>
@@ -138,7 +138,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("mapError", () =>
@@ -149,7 +149,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left(123))
+      assertLeft(result, 123)
     }))
 
   it.effect("mapErrorCause", () =>
@@ -160,7 +160,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left(123))
+      assertLeft(result, 123)
     }))
 
   it.effect("mapEffect - Effect.forEach equivalence", () =>
@@ -308,7 +308,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("boom"))
+      assertLeft(result, "boom")
     }))
 
   it.effect("mapEffectPar - propagates the error of the original stream", () =>

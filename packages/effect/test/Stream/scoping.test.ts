@@ -3,14 +3,13 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import { assertFalse, assertSome, assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertFalse, assertLeft, assertSome, assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -136,7 +135,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("fail"))
+      assertLeft(result, "fail")
     }))
 
   it.effect("scoped - preserves the interruptibility of an effect", () =>

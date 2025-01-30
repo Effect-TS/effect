@@ -1,9 +1,8 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import { constTrue, pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "effect/test/util"
+import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -28,7 +27,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("dropRight - simple example", () =>
@@ -51,7 +50,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("dropUntil", () =>
@@ -89,6 +88,6 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      deepStrictEqual(result, Either.right(void 0))
+      assertRight(result, void 0)
     }))
 })

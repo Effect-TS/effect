@@ -7,7 +7,7 @@ import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "effect/test/util"
+import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { unify } from "effect/Unify"
 import { describe } from "vitest"
@@ -59,7 +59,7 @@ describe("Stream.Foreign", () => {
         Effect.either,
         Effect.provideService(tag, 10)
       )
-      deepStrictEqual(result, Either.left(10))
+      assertLeft(result, 10)
     }))
 
   it.effect("Option.some", () =>
@@ -83,7 +83,7 @@ describe("Stream.Foreign", () => {
         Effect.either,
         Effect.provideService(tag, 10)
       )
-      deepStrictEqual(result, Either.left(new Cause.NoSuchElementException()))
+      assertLeft(result, new Cause.NoSuchElementException())
     }))
 
   it.effect("Effect.fail", () =>
@@ -95,7 +95,7 @@ describe("Stream.Foreign", () => {
         Effect.either,
         Effect.provideService(tag, 10)
       )
-      deepStrictEqual(result, Either.left("ok"))
+      assertLeft(result, "ok")
     }))
 
   it.effect("Effect.succeed", () =>
@@ -108,6 +108,6 @@ describe("Stream.Foreign", () => {
         Effect.either,
         Effect.provideService(tag, 10)
       )
-      deepStrictEqual(result, Either.right(["ok"]))
+      assertRight(result, ["ok"])
     }))
 })

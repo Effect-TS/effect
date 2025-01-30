@@ -1,14 +1,13 @@
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import { describe } from "vitest"
@@ -46,8 +45,8 @@ describe("Stream", () => {
         ),
         Effect.scoped
       )
-      deepStrictEqual(result1, Either.left("boom"))
-      deepStrictEqual(result2, Either.left("boom"))
+      assertLeft(result1, "boom")
+      assertLeft(result2, "boom")
     }))
 
   it.effect("broadcast - backpressure", () =>

@@ -5,7 +5,7 @@ import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import { nextInt } from "effect/Random"
-import { deepStrictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { unify } from "effect/Unify"
 import { describe } from "vitest"
@@ -39,7 +39,7 @@ describe("Foreign", () => {
         )
       )
       deepStrictEqual(a, 10)
-      deepStrictEqual(b, Either.left(10))
+      assertLeft(b, 10)
       deepStrictEqual(c, 3)
     }))
   it.effect("Option", () =>
@@ -53,7 +53,7 @@ describe("Foreign", () => {
         )
       )
       deepStrictEqual(a, 10)
-      deepStrictEqual(b, Either.left(new Cause.NoSuchElementException()))
+      assertLeft(b, new Cause.NoSuchElementException())
       deepStrictEqual(c, 3)
     }))
 })

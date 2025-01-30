@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -18,7 +18,7 @@ describe("Effect", () => {
           Effect.either
         )
       )
-      deepStrictEqual(result, Either.left(Cause.fail(2)))
+      assertLeft(result, Cause.fail(2))
     }))
   it.effect("validate - combines both cause", () =>
     Effect.gen(function*($) {

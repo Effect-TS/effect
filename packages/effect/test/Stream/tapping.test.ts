@@ -5,7 +5,7 @@ import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -68,7 +68,7 @@ describe("Stream", () => {
         Effect.either
       )
 
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
       strictEqual(yield* $(Ref.get(ref)), "Ouch")
     }))
 
@@ -88,7 +88,7 @@ describe("Stream", () => {
         Effect.either
       )
 
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
       strictEqual(yield* $(Ref.get(error)), "Ouch")
       strictEqual(yield* $(Ref.get(sum)), 2)
     }))
@@ -126,7 +126,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("tapSink - sink that is done after stream", () =>

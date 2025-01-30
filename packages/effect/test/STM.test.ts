@@ -19,7 +19,9 @@ import { constFalse, constTrue, constVoid } from "effect/Function"
 import {
   assertFailure,
   assertFalse,
+  assertLeft,
   assertNone,
+  assertRight,
   assertSome,
   assertTrue,
   deepStrictEqual,
@@ -628,7 +630,7 @@ describe("STM", () => {
       const left = STM.fail("left")
       const right = STM.fail("right")
       const result = yield* $(pipe(left, STM.orElse(() => right), Effect.exit))
-      deepStrictEqual(result, Exit.fail("right"))
+      assertFailure(result, Cause.fail("right"))
     }))
 
   it.effect("orElseEither - orElseEither returns result of the first successful transaction", () =>
@@ -636,9 +638,9 @@ describe("STM", () => {
       const result1 = yield* $(pipe(STM.retry, STM.orElseEither(() => STM.succeed(42))))
       const result2 = yield* $(pipe(STM.succeed(1), STM.orElseEither(() => STM.succeed("no"))))
       const result3 = yield* $(pipe(STM.succeed(2), STM.orElseEither(() => STM.retry)))
-      deepStrictEqual(result1, Either.right(42))
-      deepStrictEqual(result2, Either.left(1))
-      deepStrictEqual(result3, Either.left(2))
+      assertRight(result1, 42)
+      assertLeft(result2, 1)
+      assertLeft(result3, 2)
     }))
 
   it.effect("orElseFail - tries left first", () =>
@@ -652,14 +654,14 @@ describe("STM", () => {
     Effect.gen(function*($) {
       const transaction = pipe(STM.retry, STM.orElseFail(() => false), STM.either)
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Either.left(false))
+      assertLeft(result, false)
     }))
 
   it.effect("orElseFail - fails with the specified error once left fails", () =>
     Effect.gen(function*($) {
       const transaction = pipe(STM.fail(true), STM.orElseFail(() => false), STM.either)
       const result = yield* $(STM.commit(transaction))
-      deepStrictEqual(result, Either.left(false))
+      assertLeft(result, false)
     }))
 
   it.effect("orElseSucceed - tries left first", () =>

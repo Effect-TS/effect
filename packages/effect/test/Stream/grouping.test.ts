@@ -1,7 +1,6 @@
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
@@ -11,7 +10,7 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
@@ -103,7 +102,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("boom"))
+      assertLeft(result, "boom")
     }))
 
   it.effect("grouped - sanity check", () =>
@@ -159,7 +158,7 @@ describe("Stream", () => {
         Effect.either
       )
       const result = yield* $(Ref.get(ref))
-      deepStrictEqual(either, Either.left("Ouch"))
+      assertLeft(either, "Ouch")
       deepStrictEqual(Array.from(result), [[1, 2, 3], [4, 5, 6], [7, 8]])
     }))
 

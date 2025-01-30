@@ -2,14 +2,13 @@ import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-import { assertFalse, deepStrictEqual } from "effect/test/util"
+import { assertFalse, assertLeft, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
@@ -46,7 +45,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("fail"))
+      assertLeft(result, "fail")
     }))
 
   it.effect("haltWhenDeferred - halts after the current element", () =>
@@ -78,7 +77,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("fail"))
+      assertLeft(result, "fail")
     }))
 
   it.effect("haltAfter - halts after the given duration", () =>

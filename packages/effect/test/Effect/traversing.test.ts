@@ -3,12 +3,11 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constVoid, identity, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -30,7 +29,7 @@ describe("Effect", () => {
         Effect.dropWhile(() => Effect.fail("Ouch")),
         Effect.either
       )
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
   it.effect("exists - determines whether any element satisfies the effectual predicate", () =>
     Effect.gen(function*($) {
@@ -325,7 +324,7 @@ describe("Effect", () => {
         Effect.forEach((n) => n % 2 !== 0 ? Effect.succeed(n) : Effect.fail("not odd"), { concurrency: 4 }),
         Effect.either
       )
-      deepStrictEqual(result, Either.left("not odd"))
+      assertLeft(result, "not odd")
     }))
   it.effect("forEach/concurrency - parallelism - interrupts effects on first failure", () =>
     Effect.gen(function*($) {
@@ -339,7 +338,7 @@ describe("Effect", () => {
         Effect.forEach(identity, { concurrency: 4 }),
         Effect.either
       )
-      deepStrictEqual(result, Either.left("C"))
+      assertLeft(result, "C")
     }))
   it.effect("forEach/concurrency+discard - accumulates errors", () =>
     Effect.gen(function*($) {
@@ -693,7 +692,7 @@ describe("Effect", () => {
           Effect.either
         )
       )
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
   it.effect("takeWhile - happy path", () =>
     Effect.gen(function*($) {
@@ -714,6 +713,6 @@ describe("Effect", () => {
           Effect.either
         )
       )
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 })

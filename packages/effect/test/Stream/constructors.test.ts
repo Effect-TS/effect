@@ -10,7 +10,7 @@ import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
-import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertFalse, assertLeft, assertTrue, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
@@ -116,7 +116,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("error"))
+      assertLeft(result, "error")
     }))
 
   it.effect("fromEffectOption - emit one element with success", () =>
@@ -135,7 +135,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left(5))
+      assertLeft(result, 5)
     }))
 
   it.effect("fromEffectOption - do not emit any element", () =>

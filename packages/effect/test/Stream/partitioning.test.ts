@@ -6,7 +6,7 @@ import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -58,8 +58,8 @@ describe("Stream", () => {
         ),
         Effect.scoped
       )
-      deepStrictEqual(result1, Either.left("boom"))
-      deepStrictEqual(result2, Either.left("boom"))
+      assertLeft(result1, "boom")
+      assertLeft(result2, "boom")
     }))
 
   it.effect("partition - backpressure", () =>

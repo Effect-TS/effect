@@ -1,11 +1,10 @@
 import * as Channel from "effect/Channel"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, assertTrue, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -42,7 +41,7 @@ describe("Channel", () => {
       )
       yield* $(Deferred.fail(deferred, "fail"))
       const result = yield* $(Effect.either(Channel.runDrain(channel)))
-      deepStrictEqual(result, Either.left("fail"))
+      assertLeft(result, "fail")
     }))
 
   it.effect("interruptWhenDeferred - interrupts the current element", () =>
@@ -77,7 +76,7 @@ describe("Channel", () => {
       )
       yield* $(Deferred.fail(deferred, "fail"))
       const result = yield* $(Effect.either(Channel.runDrain(channel)))
-      deepStrictEqual(result, Either.left("fail"))
+      assertLeft(result, "fail")
     }))
 
   it.effect("runScoped - in uninterruptible region", () =>

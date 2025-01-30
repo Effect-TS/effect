@@ -7,7 +7,7 @@ import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { constFalse, constTrue, identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { causesArb } from "effect/test/utils/cause"
 import * as it from "effect/test/utils/extend"
 import { assertType, satisfies } from "effect/test/utils/types"
@@ -54,8 +54,8 @@ describe("Effect", () => {
       const io1 = Effect.either(ExampleErrorFail)
       const io2 = Effect.suspend(() => Effect.either(Effect.suspend(() => ExampleErrorFail)))
       const [first, second] = yield* $(io1, Effect.zip(io2))
-      deepStrictEqual(first, Either.left(ExampleError))
-      deepStrictEqual(second, Either.left(ExampleError))
+      assertLeft(first, ExampleError)
+      assertLeft(second, ExampleError)
     }))
   it.effect("attempt - deep attempt sync effect error", () =>
     Effect.gen(function*($) {
@@ -65,7 +65,7 @@ describe("Effect", () => {
   it.effect("attempt - deep attempt fail error", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.either(deepErrorFail(100)))
-      deepStrictEqual(result, Either.left(ExampleError))
+      assertLeft(result, ExampleError)
     }))
   it.effect("attempt - sandbox -> terminate", () =>
     Effect.gen(function*($) {
@@ -76,7 +76,7 @@ describe("Effect", () => {
         Effect.sandbox,
         Effect.either
       )
-      deepStrictEqual(result, Either.left(Cause.die(ExampleError)))
+      assertLeft(result, Cause.die(ExampleError))
     }))
   it.effect("catch - sandbox terminate", () =>
     Effect.gen(function*($) {

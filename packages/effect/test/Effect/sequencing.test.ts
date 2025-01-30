@@ -8,7 +8,7 @@ import { constFalse, constTrue, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -143,7 +143,7 @@ describe("Effect", () => {
       const failed = yield* $(Effect.fail(failure), Effect.unless(constFalse), Effect.either)
       strictEqual(v1, 0)
       strictEqual(v2, 2)
-      deepStrictEqual(failed, Either.left(failure))
+      assertLeft(failed, failure)
     }))
   it.effect("unlessEffect - executes condition effect and correct branch", () =>
     Effect.gen(function*($) {
@@ -164,7 +164,7 @@ describe("Effect", () => {
       strictEqual(c1, 1)
       strictEqual(v2, 2)
       strictEqual(c2, 2)
-      deepStrictEqual(failed, Either.left(failure))
+      assertLeft(failed, failure)
     }))
   it.effect("when - executes correct branch only", () =>
     Effect.gen(function*($) {
@@ -178,7 +178,7 @@ describe("Effect", () => {
       const failed = yield* $(Effect.fail(failure), Effect.when(constTrue), Effect.either)
       strictEqual(v1, 0)
       strictEqual(v2, 2)
-      deepStrictEqual(failed, Either.left(failure))
+      assertLeft(failed, failure)
     }))
   it.effect("whenEffect - executes condition effect and correct branch", () =>
     Effect.gen(function*($) {
@@ -199,7 +199,7 @@ describe("Effect", () => {
       strictEqual(c1, 1)
       strictEqual(v2, 2)
       strictEqual(c2, 2)
-      deepStrictEqual(failed, Either.left(failure))
+      assertLeft(failed, failure)
     }))
   it.effect("zip/parallel - combines results", () =>
     Effect.gen(function*($) {
@@ -236,7 +236,7 @@ describe("Effect", () => {
           Effect.map(Either.mapLeft(Cause.isInterrupted))
         )
       )
-      deepStrictEqual(result, Either.left(true))
+      assertLeft(result, true)
     }))
   it.effect("zip/parallel - paralellizes simple success values", () =>
     Effect.gen(function*($) {

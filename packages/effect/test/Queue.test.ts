@@ -1,5 +1,13 @@
-import { Array, Cause, Chunk, Deferred, Effect, Either, Exit, Fiber, identity, pipe, Queue, Ref } from "effect"
-import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { Array, Cause, Chunk, Deferred, Effect, Exit, Fiber, identity, pipe, Queue, Ref } from "effect"
+import {
+  assertFalse,
+  assertLeft,
+  assertNone,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual
+} from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -434,7 +442,7 @@ describe("Queue", () => {
       yield* $(waitForSize(queue, -1))
       yield* $(Queue.shutdown(queue))
       const result = yield* $(Effect.either(Effect.sandbox(Fiber.join(fiber))))
-      deepStrictEqual(result, Either.left(Cause.interrupt(fiberId)))
+      assertLeft(result, Cause.interrupt(fiberId))
     }))
   it.effect("shutdown with offer fiber", () =>
     Effect.gen(function*($) {
@@ -446,7 +454,7 @@ describe("Queue", () => {
       yield* $(waitForSize(queue, 3))
       yield* $(Queue.shutdown(queue))
       const result = yield* $(Effect.either(Effect.sandbox(Fiber.join(fiber))))
-      deepStrictEqual(result, Either.left(Cause.interrupt(fiberId)))
+      assertLeft(result, Cause.interrupt(fiberId))
     }))
   it.effect("shutdown with offer", () =>
     Effect.gen(function*($) {
@@ -454,7 +462,7 @@ describe("Queue", () => {
       const queue = yield* $(Queue.bounded<number>(1))
       yield* $(Queue.shutdown(queue))
       const result = yield* $(Queue.offer(queue, 1), Effect.sandbox, Effect.either)
-      deepStrictEqual(result, Either.left(Cause.interrupt(fiberId)))
+      assertLeft(result, Cause.interrupt(fiberId))
     }))
   it.effect("shutdown with take", () =>
     Effect.gen(function*($) {
@@ -462,7 +470,7 @@ describe("Queue", () => {
       const queue = yield* $(Queue.bounded<number>(1))
       yield* $(Queue.shutdown(queue))
       const result = yield* $(Queue.take(queue), Effect.sandbox, Effect.either)
-      deepStrictEqual(result, Either.left(Cause.interrupt(fiberId)))
+      assertLeft(result, Cause.interrupt(fiberId))
     }))
   it.effect("shutdown with takeAll", () =>
     Effect.gen(function*($) {
@@ -470,7 +478,7 @@ describe("Queue", () => {
       const queue = yield* $(Queue.bounded<number>(1))
       yield* $(Queue.shutdown(queue))
       const result = yield* $(Queue.takeAll(queue), Effect.sandbox, Effect.either)
-      deepStrictEqual(result, Either.left(Cause.interrupt(fiberId)))
+      assertLeft(result, Cause.interrupt(fiberId))
     }))
   it.effect("shutdown with takeUpTo", () =>
     Effect.gen(function*($) {
@@ -478,7 +486,7 @@ describe("Queue", () => {
       const queue = yield* $(Queue.bounded<number>(1))
       yield* $(Queue.shutdown(queue))
       const result = yield* $(Queue.takeUpTo(queue, 1), Effect.sandbox, Effect.either)
-      deepStrictEqual(result, Either.left(Cause.interrupt(fiberId)))
+      assertLeft(result, Cause.interrupt(fiberId))
     }))
   it.effect("shutdown with size", () =>
     Effect.gen(function*($) {
@@ -486,7 +494,7 @@ describe("Queue", () => {
       const queue = yield* $(Queue.bounded<number>(1))
       yield* $(Queue.shutdown(queue))
       const result = yield* $(Queue.size(queue), Effect.sandbox, Effect.either)
-      deepStrictEqual(result, Either.left(Cause.interrupt(fiberId)))
+      assertLeft(result, Cause.interrupt(fiberId))
     }))
   it.effect("shutdown race condition with offer", () =>
     Effect.gen(function*($) {

@@ -1,9 +1,8 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -88,6 +87,6 @@ describe("Effect", () => {
         Effect.sandbox,
         Effect.either
       )
-      deepStrictEqual(result, Either.left(Cause.die(error)))
+      assertLeft(result, Cause.die(error))
     }))
 })

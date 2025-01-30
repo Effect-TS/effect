@@ -1,10 +1,9 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -102,7 +101,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("sliding - should return an empty chunk when the stream is empty", () =>
@@ -131,7 +130,7 @@ describe("Stream", () => {
         Effect.either
       )
       const result = yield* $(Ref.get(ref))
-      deepStrictEqual(either, Either.left("Ouch"))
+      assertLeft(either, "Ouch")
       deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2, 3], [4, 5, 6], [7, 8]]

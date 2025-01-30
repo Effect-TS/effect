@@ -1,5 +1,5 @@
-import { DateTime, Duration, Effect, Either, Option, TestClock } from "effect"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { DateTime, Duration, Effect, Option, TestClock } from "effect"
+import { assertRight, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "./utils/extend.js"
 
 const setTo2024NZ = TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
@@ -13,7 +13,7 @@ describe("DateTime", () => {
           date.setUTCDate(date.getUTCDate() + 1)
         })
         const diff = DateTime.distanceDurationEither(now, tomorrow)
-        deepStrictEqual(diff, Either.right(Duration.decode("1 day")))
+        assertRight(diff, Duration.decode("1 day"))
       }))
 
     it.effect("correctly preserves the time zone", () =>
@@ -41,7 +41,7 @@ describe("DateTime", () => {
         const now = yield* DateTime.now
         const tomorrow = DateTime.add(now, { days: 1 })
         const diff = DateTime.distanceDurationEither(now, tomorrow)
-        deepStrictEqual(diff, Either.right(Duration.decode("1 day")))
+        assertRight(diff, Duration.decode("1 day"))
       }))
 
     it("to month with less days", () => {

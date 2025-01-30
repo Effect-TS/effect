@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { deepStrictEqual } from "effect/test/util"
+import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -97,8 +97,8 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      deepStrictEqual(goodCase, Either.right(0 as const))
-      deepStrictEqual(badCase, Either.left(Either.left("1 was not 0")))
+      assertRight(goodCase, 0)
+      assertLeft(badCase, Either.left("1 was not 0"))
     }))
   it.effect("filterOrElse - returns checked failure ignoring value", () =>
     Effect.gen(function*($) {
@@ -127,8 +127,8 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      deepStrictEqual(goodCase, Either.right(0 as const))
-      deepStrictEqual(badCase, Either.left(Either.left("predicate failed!")))
+      assertRight(goodCase, 0)
+      assertLeft(badCase, Either.left("predicate failed!"))
     }))
   it.effect("filterOrFail - returns failure ignoring value", () =>
     Effect.gen(function*($) {
@@ -157,8 +157,8 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      deepStrictEqual(goodCase, Either.right(0 as const))
-      deepStrictEqual(badCase, Either.left(Either.left("predicate failed!")))
+      assertRight(goodCase, 0)
+      assertLeft(badCase, Either.left("predicate failed!"))
     }))
   it.effect("filterOrFail - returns failure", () =>
     Effect.gen(function*($) {
@@ -187,8 +187,8 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      deepStrictEqual(goodCase, Either.right(0 as const))
-      deepStrictEqual(badCase, Either.left(Either.left("predicate failed, got 1!")))
+      assertRight(goodCase, 0)
+      assertLeft(badCase, Either.left("predicate failed, got 1!"))
     }))
   it.effect("filterOrFail - without orFailWith", () =>
     Effect.gen(function*($) {

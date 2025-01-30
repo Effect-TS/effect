@@ -1,5 +1,15 @@
 import { Chunk, Either, flow, Number as Num, Option, pipe, String as Str } from "effect"
-import { assertLeft, assertRight, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import {
+  assertFalse,
+  assertLeft,
+  assertNone,
+  assertRight,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual,
+  throws
+} from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("Either", () => {
@@ -112,25 +122,25 @@ describe("Either", () => {
   })
 
   it("isEither", () => {
-    deepStrictEqual(pipe(Either.right(1), Either.isEither), true)
-    deepStrictEqual(pipe(Either.left("e"), Either.isEither), true)
-    deepStrictEqual(pipe(Option.some(1), Either.isEither), false)
+    assertTrue(pipe(Either.right(1), Either.isEither))
+    assertTrue(pipe(Either.left("e"), Either.isEither))
+    assertFalse(pipe(Option.some(1), Either.isEither))
   })
 
   it("getRight", () => {
-    deepStrictEqual(pipe(Either.right(1), Either.getRight), Option.some(1))
-    deepStrictEqual(pipe(Either.left("a"), Either.getRight), Option.none())
+    assertSome(pipe(Either.right(1), Either.getRight), 1)
+    assertNone(pipe(Either.left("a"), Either.getRight))
   })
 
   it("getLeft", () => {
-    deepStrictEqual(pipe(Either.right(1), Either.getLeft), Option.none())
-    deepStrictEqual(pipe(Either.left("e"), Either.getLeft), Option.some("e"))
+    assertNone(pipe(Either.right(1), Either.getLeft))
+    assertSome(pipe(Either.left("e"), Either.getLeft), "e")
   })
 
   it("map", () => {
     const f = Either.map(Str.length)
-    deepStrictEqual(pipe(Either.right("abc"), f), Either.right(3))
-    deepStrictEqual(pipe(Either.left("s"), f), Either.left("s"))
+    assertRight(pipe(Either.right("abc"), f), 3)
+    assertLeft(pipe(Either.left("s"), f), "s")
   })
 
   it("mapBoth", () => {
@@ -138,37 +148,37 @@ describe("Either", () => {
       onLeft: Str.length,
       onRight: (n: number) => n > 2
     })
-    deepStrictEqual(pipe(Either.right(1), f), Either.right(false))
-    deepStrictEqual(pipe(Either.left("a"), f), Either.left(1))
+    assertRight(pipe(Either.right(1), f), false)
+    assertLeft(pipe(Either.left("a"), f), 1)
   })
 
   it("mapLeft", () => {
     const f = Either.mapLeft((n: number) => n * 2)
-    deepStrictEqual(pipe(Either.right("a"), f), Either.right("a"))
-    deepStrictEqual(pipe(Either.left(1), f), Either.left(2))
+    assertRight(pipe(Either.right("a"), f), "a")
+    assertLeft(pipe(Either.left(1), f), 2)
   })
 
   it("match", () => {
     const onLeft = (s: string) => `left${s.length}`
     const onRight = (s: string) => `right${s.length}`
     const match = Either.match({ onLeft, onRight })
-    deepStrictEqual(match(Either.left("abc")), "left3")
-    deepStrictEqual(match(Either.right("abc")), "right3")
+    strictEqual(match(Either.left("abc")), "left3")
+    strictEqual(match(Either.right("abc")), "right3")
   })
 
   it("isLeft", () => {
-    deepStrictEqual(Either.isLeft(Either.right(1)), false)
-    deepStrictEqual(Either.isLeft(Either.left(1)), true)
+    assertFalse(Either.isLeft(Either.right(1)))
+    assertTrue(Either.isLeft(Either.left(1)))
   })
 
   it("isRight", () => {
-    deepStrictEqual(Either.isRight(Either.right(1)), true)
-    deepStrictEqual(Either.isRight(Either.left(1)), false)
+    assertTrue(Either.isRight(Either.right(1)))
+    assertFalse(Either.isRight(Either.left(1)))
   })
 
   it("flip", () => {
-    deepStrictEqual(Either.flip(Either.right("a")), Either.left("a"))
-    deepStrictEqual(Either.flip(Either.left("b")), Either.right("b"))
+    assertLeft(Either.flip(Either.right("a")), "a")
+    assertRight(Either.flip(Either.left("b")), "b")
   })
 
   it("liftPredicate", () => {
@@ -177,38 +187,38 @@ describe("Either", () => {
     const isNumberRefinement = (n: string | number): n is number => typeof n === "number"
     const onNumberRefinementError = (n: string | number) => `${n} is not a number`
 
-    deepStrictEqual(
+    assertRight(
       pipe(1, Either.liftPredicate(isPositivePredicate, onPositivePredicateError)),
-      Either.right(1)
+      1
     )
-    deepStrictEqual(
+    assertLeft(
       pipe(-1, Either.liftPredicate(isPositivePredicate, onPositivePredicateError)),
-      Either.left(`-1 is not positive`)
+      "-1 is not positive"
     )
-    deepStrictEqual(
+    assertRight(
       pipe(1, Either.liftPredicate(isNumberRefinement, onNumberRefinementError)),
-      Either.right(1)
+      1
     )
-    deepStrictEqual(
+    assertLeft(
       pipe("string", Either.liftPredicate(isNumberRefinement, onNumberRefinementError)),
-      Either.left(`string is not a number`)
+      "string is not a number"
     )
 
-    deepStrictEqual(
+    assertRight(
       Either.liftPredicate(1, isPositivePredicate, onPositivePredicateError),
-      Either.right(1)
+      1
     )
-    deepStrictEqual(
+    assertLeft(
       Either.liftPredicate(-1, isPositivePredicate, onPositivePredicateError),
-      Either.left(`-1 is not positive`)
+      "-1 is not positive"
     )
-    deepStrictEqual(
+    assertRight(
       Either.liftPredicate(1, isNumberRefinement, onNumberRefinementError),
-      Either.right(1)
+      1
     )
-    deepStrictEqual(
+    assertLeft(
       Either.liftPredicate("string", isNumberRefinement, onNumberRefinementError),
-      Either.left(`string is not a number`)
+      "string is not a number"
     )
   })
 
@@ -273,18 +283,18 @@ describe("Either", () => {
   })
 
   it("getOrElse", () => {
-    deepStrictEqual(Either.getOrElse(Either.right(1), (error) => error + "!"), 1)
-    deepStrictEqual(Either.getOrElse(Either.left("not a number"), (error) => error + "!"), "not a number!")
+    strictEqual(Either.getOrElse(Either.right(1), (error) => error + "!"), 1)
+    strictEqual(Either.getOrElse(Either.left("not a number"), (error) => error + "!"), "not a number!")
   })
 
   it("getOrNull", () => {
-    deepStrictEqual(Either.getOrNull(Either.right(1)), 1)
-    deepStrictEqual(Either.getOrNull(Either.left("a")), null)
+    strictEqual(Either.getOrNull(Either.right(1)), 1)
+    strictEqual(Either.getOrNull(Either.left("a")), null)
   })
 
   it("getOrUndefined", () => {
-    deepStrictEqual(Either.getOrUndefined(Either.right(1)), 1)
-    deepStrictEqual(Either.getOrUndefined(Either.left("a")), undefined)
+    strictEqual(Either.getOrUndefined(Either.right(1)), 1)
+    strictEqual(Either.getOrUndefined(Either.left("a")), undefined)
   })
 
   it("getOrThrowWith", () => {
@@ -300,8 +310,8 @@ describe("Either", () => {
 
   it("flatMap", () => {
     const f = Either.flatMap(flow(Str.length, Either.right))
-    deepStrictEqual(pipe(Either.right("abc"), f), Either.right(3))
-    deepStrictEqual(pipe(Either.left("maError"), f), Either.left("maError"))
+    assertRight(pipe(Either.right("abc"), f), 3)
+    assertLeft(pipe(Either.left("maError"), f), "maError")
   })
 
   it("andThen", () => {
@@ -340,22 +350,22 @@ describe("Either", () => {
 
   it("all", () => {
     // tuples and arrays
-    deepStrictEqual(Either.all([]), Either.right([]))
-    deepStrictEqual(Either.all([Either.right(1)]), Either.right([1]))
-    deepStrictEqual(Either.all([Either.right(1), Either.right(true)]), Either.right([1, true]))
-    deepStrictEqual(Either.all([Either.right(1), Either.left("e")]), Either.left("e"))
+    assertRight(Either.all([]), [])
+    assertRight(Either.all([Either.right(1)]), [1])
+    assertRight(Either.all([Either.right(1), Either.right(true)]), [1, true])
+    assertLeft(Either.all([Either.right(1), Either.left("e")]), "e")
     // structs and records
-    deepStrictEqual(Either.all({}), Either.right({}))
-    deepStrictEqual(Either.all({ a: Either.right(1) }), Either.right({ a: 1 }))
-    deepStrictEqual(Either.all({ a: Either.right(1), b: Either.right(true) }), Either.right({ a: 1, b: true }))
-    deepStrictEqual(Either.all({ a: Either.right(1), b: Either.left("e") }), Either.left("e"))
+    assertRight(Either.all({}), {})
+    assertRight(Either.all({ a: Either.right(1) }), { a: 1 })
+    assertRight(Either.all({ a: Either.right(1), b: Either.right(true) }), { a: 1, b: true })
+    assertLeft(Either.all({ a: Either.right(1), b: Either.left("e") }), "e")
   })
 
   it("orElse", () => {
-    deepStrictEqual(pipe(Either.right(1), Either.orElse(() => Either.right(2))), Either.right(1))
-    deepStrictEqual(pipe(Either.right(1), Either.orElse(() => Either.left("b"))), Either.right(1))
-    deepStrictEqual(pipe(Either.left("a"), Either.orElse(() => Either.right(2))), Either.right(2))
-    deepStrictEqual(pipe(Either.left("a"), Either.orElse(() => Either.left("b"))), Either.left("b"))
+    assertRight(pipe(Either.right(1), Either.orElse(() => Either.right(2))), 1)
+    assertRight(pipe(Either.right(1), Either.orElse(() => Either.left("b"))), 1)
+    assertRight(pipe(Either.left("a"), Either.orElse(() => Either.right(2))), 2)
+    assertLeft(pipe(Either.left("a"), Either.orElse(() => Either.left("b"))), "b")
   })
 
   describe("do notation", () => {

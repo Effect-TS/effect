@@ -2,7 +2,6 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -11,7 +10,7 @@ import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -350,7 +349,7 @@ describe("Stream", () => {
       )
       const cancelled = yield* $(Ref.get(ref))
       assertTrue(cancelled)
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("flatMapPar - outer errors interrupt all fiberrs", () =>
@@ -375,7 +374,7 @@ describe("Stream", () => {
       )
       const cancelled = yield* $(Ref.get(ref))
       assertTrue(cancelled)
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("flatMapPar - inner defects interrupt all fibers", () =>
@@ -568,7 +567,7 @@ describe("Stream", () => {
       )
       const cancelled = yield* $(Ref.get(ref))
       assertTrue(cancelled)
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("flatMapParSwitch - outer errors interrupt all fibers", () =>
@@ -593,7 +592,7 @@ describe("Stream", () => {
       )
       const cancelled = yield* $(Ref.get(ref))
       assertTrue(cancelled)
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("flatMapParSwitch - inner defects interrupt all fibers", () =>

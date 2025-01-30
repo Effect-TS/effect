@@ -2,12 +2,11 @@ import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -65,6 +64,6 @@ describe("Channel", () => {
         Effect.either
       )
 
-      deepStrictEqual(exit, Either.left(Cause.die("ok")))
+      assertLeft(exit, Cause.die("ok"))
     }))
 })

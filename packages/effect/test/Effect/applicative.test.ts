@@ -1,6 +1,5 @@
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -19,7 +18,7 @@ describe("Effect", () => {
         Effect.succeed(add).pipe(Effect.ap(Effect.succeed(1)), Effect.ap(Effect.fail("c"))),
         Effect.either
       )
-      deepStrictEqual(result, Either.left("c"))
+      assertLeft(result, "c")
     }))
 
   it.effect("one failure in data-first position should fail", () =>
@@ -28,7 +27,7 @@ describe("Effect", () => {
         Effect.succeed(add).pipe(Effect.ap(Effect.fail("b")), Effect.ap(Effect.fail("c"))),
         Effect.either
       )
-      deepStrictEqual(result, Either.left("b"))
+      assertLeft(result, "b")
     }))
 
   it.effect("an applicative operation that starts with a failure should fail", () =>
@@ -40,6 +39,6 @@ describe("Effect", () => {
         ),
         Effect.either
       )
-      deepStrictEqual(result, Either.left("a"))
+      assertLeft(result, "a")
     }))
 })

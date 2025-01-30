@@ -1,11 +1,10 @@
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
@@ -36,7 +35,7 @@ describe("Sink", () => {
         Sink.mapInput((input: string) => Number.parseInt(input))
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink), Effect.either)
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("mapInputChunks - happy path", () =>
@@ -56,7 +55,7 @@ describe("Sink", () => {
         Sink.mapInputChunks<string, number>(Chunk.map(Number.parseInt))
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink), Effect.either)
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("mapInputEffect - happy path", () =>
@@ -76,7 +75,7 @@ describe("Sink", () => {
         Sink.mapInputEffect((s: string) => Effect.try(() => Number.parseInt(s)))
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink), Effect.either)
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("mapInputEffect - error in transformation", () =>
@@ -126,7 +125,7 @@ describe("Sink", () => {
         )
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink), Effect.either)
-      deepStrictEqual(result, Either.left("Ouch"))
+      assertLeft(result, "Ouch")
     }))
 
   it.effect("mapInputChunksEffect - error in transformation", () =>
@@ -188,6 +187,6 @@ describe("Sink", () => {
         Stream.run(pipe(Sink.fail("fail"), Sink.mapError((s) => s + "!"))),
         Effect.either
       )
-      deepStrictEqual(result, Either.left("fail!"))
+      assertLeft(result, "fail!")
     }))
 })
