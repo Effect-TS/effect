@@ -8,7 +8,7 @@ import type * as Effect from "../Effect.js"
 import type { Exit } from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import type * as FiberId from "../FiberId.js"
-import * as FiberRef from "../FiberRef.js"
+import type * as FiberRef from "../FiberRef.js"
 import * as FiberRefs from "../FiberRefs.js"
 import type * as FiberRefsPatch from "../FiberRefsPatch.js"
 import type { LazyArg } from "../Function.js"
@@ -35,6 +35,7 @@ import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
 import * as doNotation from "./doNotation.js"
 import * as fiberRefsPatch from "./fiberRefs/patch.js"
+import * as fiberRuntime from "./fiberRuntime.js"
 import type { FiberRuntime } from "./fiberRuntime.js"
 import * as metricLabel from "./metric/label.js"
 import * as runtimeFlags from "./runtimeFlags.js"
@@ -961,7 +962,7 @@ export const whenLogLevel = dual<
   const requiredLogLevel = typeof level === "string" ? LogLevel.fromLiteral(level) : level
 
   return core.withFiberRuntime((fiberState) => {
-    const minimumLogLevel = fiberState.getFiberRef(FiberRef.currentMinimumLogLevel)
+    const minimumLogLevel = fiberState.getFiberRef(fiberRuntime.currentMinimumLogLevel)
 
     // Imitate the behaviour of `FiberRuntime.log`
     if (LogLevel.greaterThan(minimumLogLevel, requiredLogLevel)) {
