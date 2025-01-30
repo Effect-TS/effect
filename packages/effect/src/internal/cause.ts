@@ -263,30 +263,8 @@ export const flipCauseOption = <E>(self: Cause.Cause<Option.Option<E>>): Option.
     onFail: (failureOption) => pipe(failureOption, Option.map(fail)),
     onDie: (defect) => Option.some(die(defect)),
     onInterrupt: (fiberId) => Option.some(interrupt(fiberId)),
-    onSequential: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(sequential(left.value, right.value))
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      return Option.none()
-    },
-    onParallel: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(parallel(left.value, right.value))
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      return Option.none()
-    }
+    onSequential: (left, right) => Option.mergeWith(left, right, sequential),
+    onParallel: (left, right) => Option.mergeWith(left, right, parallel)
   })
 
 /** @internal */
@@ -303,30 +281,8 @@ export const keepDefects = <E>(self: Cause.Cause<E>): Option.Option<Cause.Cause<
     onFail: () => Option.none(),
     onDie: (defect) => Option.some(die(defect)),
     onInterrupt: () => Option.none(),
-    onSequential: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(sequential(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    },
-    onParallel: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(parallel(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    }
+    onSequential: (left, right) => Option.mergeWith(left, right, sequential),
+    onParallel: (left, right) => Option.mergeWith(left, right, parallel)
   })
 
 /** @internal */
@@ -336,30 +292,8 @@ export const keepDefectsAndElectFailures = <E>(self: Cause.Cause<E>): Option.Opt
     onFail: (failure) => Option.some(die(failure)),
     onDie: (defect) => Option.some(die(defect)),
     onInterrupt: () => Option.none(),
-    onSequential: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(sequential(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    },
-    onParallel: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(parallel(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    }
+    onSequential: (left, right) => Option.mergeWith(left, right, sequential),
+    onParallel: (left, right) => Option.mergeWith(left, right, parallel)
   })
 
 /** @internal */
@@ -426,30 +360,8 @@ export const stripSomeDefects = dual<
       return Option.isSome(option) ? Option.none() : Option.some(die(defect))
     },
     onInterrupt: (fiberId) => Option.some(interrupt(fiberId)),
-    onSequential: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(sequential(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    },
-    onParallel: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(parallel(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    }
+    onSequential: (left, right) => Option.mergeWith(left, right, sequential),
+    onParallel: (left, right) => Option.mergeWith(left, right, parallel)
   }))
 
 // -----------------------------------------------------------------------------

@@ -545,4 +545,11 @@ describe("Option", () => {
     assertNone(Option.none().pipe(Option.asVoid))
     assertSome(Option.some(1).pipe(Option.asVoid), undefined)
   })
+
+  it("[internal] mergeWith", () => {
+    assertNone(Option.mergeWith(Option.none(), Option.none(), N.sum))
+    assertSome(Option.mergeWith(Option.some(1), Option.none(), N.sum), 1)
+    assertSome(Option.mergeWith(Option.none(), Option.some(2), N.sum), 2)
+    assertSome(Option.mergeWith(Option.some(1), Option.some(2), N.sum), 3)
+  })
 })
