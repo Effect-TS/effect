@@ -4,6 +4,7 @@
   "references": [
     { "path": "tsconfig.src.json" },
     { "path": "../../effect" },
+    { "path": "../../experimental" },
     { "path": "../../platform" },
     { "path": "../../vitest" }
   ],

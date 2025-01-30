@@ -34,16 +34,16 @@ export class Completions extends Context.Tag("@effect/ai/Completions")<
 export declare namespace Completions {
   /**
    * @since 1.0.0
-   * @models
+   * @category models
    */
-  export interface StructuredSchema<A, I, R> extends Schema.Schema<A, I, R> {
+  interface StructuredSchema<A, I, R> extends Schema.Schema<A, I, R> {
     readonly _tag?: string
     readonly identifier: string
   }
 
   /**
    * @since 1.0.0
-   * @models
+   * @category models
    */
   export interface Service {
     readonly create: (input: AiInput.Input) => Effect.Effect<AiResponse, AiError>
