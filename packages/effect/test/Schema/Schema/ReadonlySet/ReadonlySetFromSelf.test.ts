@@ -2,7 +2,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("ReadonlySetFromSelf", () => {
   it("test roundtrip consistency", () => {
@@ -40,20 +41,18 @@ describe("ReadonlySetFromSelf", () => {
   it("is", () => {
     const schema = S.ReadonlySetFromSelf(S.String)
     const is = P.is(schema)
-    expect(is(new Set())).toEqual(true)
-    expect(is(new Set(["a", "b", "c"]))).toEqual(true)
+    assertTrue(is(new Set()))
+    assertTrue(is(new Set(["a", "b", "c"])))
 
-    expect(is(new Set(["a", "b", 1]))).toEqual(false)
-    expect(is(null)).toEqual(false)
-    expect(is(undefined)).toEqual(false)
+    assertFalse(is(new Set(["a", "b", 1])))
+    assertFalse(is(null))
+    assertFalse(is(undefined))
   })
 
   it("pretty", () => {
     const schema = S.ReadonlySetFromSelf(S.String)
     const pretty = Pretty.make(schema)
-    expect(pretty(new Set())).toEqual("new Set([])")
-    expect(pretty(new Set(["a", "b"]))).toEqual(
-      `new Set(["a", "b"])`
-    )
+    strictEqual(pretty(new Set()), "new Set([])")
+    strictEqual(pretty(new Set(["a", "b"])), `new Set(["a", "b"])`)
   })
 })

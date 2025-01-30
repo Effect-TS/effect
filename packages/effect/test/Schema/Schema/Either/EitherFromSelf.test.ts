@@ -3,7 +3,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("EitherFromSelf", () => {
   it("arbitrary", () => {
@@ -17,14 +18,14 @@ describe("EitherFromSelf", () => {
   it("is", () => {
     const schema = S.EitherFromSelf({ left: S.String, right: S.Number })
     const is = P.is(schema)
-    expect(is(E.left("a"))).toEqual(true)
-    expect(is(E.right(1))).toEqual(true)
-    expect(is(null)).toEqual(false)
-    expect(is(E.right("a"))).toEqual(false)
-    expect(is(E.left(1))).toEqual(false)
+    assertTrue(is(E.left("a")))
+    assertTrue(is(E.right(1)))
+    assertFalse(is(null))
+    assertFalse(is(E.right("a")))
+    assertFalse(is(E.left(1)))
 
-    expect(is({ _tag: "Right", right: 1 })).toEqual(false)
-    expect(is({ _tag: "Left", left: "a" })).toEqual(false)
+    assertFalse(is({ _tag: "Right", right: 1 }))
+    assertFalse(is({ _tag: "Left", left: "a" }))
   })
 
   it("decoding", async () => {
@@ -60,7 +61,7 @@ describe("EitherFromSelf", () => {
   it("pretty", () => {
     const schema = S.EitherFromSelf({ left: S.String, right: S.Number })
     const pretty = Pretty.make(schema)
-    expect(pretty(E.left("a"))).toEqual(`left("a")`)
-    expect(pretty(E.right(1))).toEqual("right(1)")
+    strictEqual(pretty(E.left("a")), `left("a")`)
+    strictEqual(pretty(E.right(1)), "right(1)")
   })
 })

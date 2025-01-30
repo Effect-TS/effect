@@ -1,14 +1,15 @@
 import { Cause, Effect, Inspectable, Schema } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("TaggedError", () => {
   it("should expose the fields and the tag", () => {
     class TE extends S.TaggedError<TE>()("TE", { a: S.String }) {}
     Util.expectFields(TE.fields, { _tag: S.getClassTag("TE"), a: S.String })
-    expect(S.Struct(TE.fields).make({ a: "a" })).toStrictEqual({ _tag: "TE", a: "a" })
-    expect(TE._tag).toBe("TE")
+    deepStrictEqual(S.Struct(TE.fields).make({ a: "a" }), { _tag: "TE", a: "a" })
+    strictEqual(TE._tag, "TE")
   })
 
   it("should accept a Struct as argument", () => {
@@ -34,10 +35,11 @@ describe("TaggedError", () => {
       └─ Predicate refinement failure
          └─ a should be equal to b`
     )
-    expect(() => new A({ a: 1, b: 2 })).toThrow(
-      new Error(`A (Constructor)
+    Util.assertParseError(
+      () => new A({ a: 1, b: 2 }),
+      `A (Constructor)
 └─ Predicate refinement failure
-   └─ a should be equal to b`)
+   └─ a should be equal to b`
     )
   })
 
@@ -48,18 +50,18 @@ describe("TaggedError", () => {
 
     let err = new MyError({ id: 1 })
 
-    expect(String(err)).toEqual(`MyError: { "id": 1 }`)
-    expect(err.stack).toContain("TaggedError.test.ts:")
-    expect(err._tag).toEqual("MyError")
-    expect(err.id).toEqual(1)
+    strictEqual(String(err), `MyError: { "id": 1 }`)
+    assertTrue(err.stack?.includes("TaggedError.test.ts:"))
+    strictEqual(err._tag, "MyError")
+    strictEqual(err.id, 1)
 
     err = Effect.runSync(Effect.flip(err))
-    expect(err._tag).toEqual("MyError")
-    expect(err.id).toEqual(1)
+    strictEqual(err._tag, "MyError")
+    strictEqual(err.id, 1)
 
     err = S.decodeUnknownSync(MyError)({ _tag: "MyError", id: 1 })
-    expect(err._tag).toEqual("MyError")
-    expect(err.id).toEqual(1)
+    strictEqual(err._tag, "MyError")
+    strictEqual(err.id, 1)
   })
 
   it("message", () => {
@@ -73,10 +75,10 @@ describe("TaggedError", () => {
 
     const err = new MyError({ id: 1 })
 
-    expect(String(err).includes(`MyError: bad id: 1`)).toBe(true)
-    expect(err.stack).toContain("TaggedError.test.ts:")
-    expect(err._tag).toEqual("MyError")
-    expect(err.id).toEqual(1)
+    assertTrue(String(err).includes(`MyError: bad id: 1`))
+    assertTrue(err.stack?.includes("TaggedError.test.ts:"))
+    strictEqual(err._tag, "MyError")
+    strictEqual(err.id, 1)
   })
 
   it("message field", () => {
@@ -88,10 +90,10 @@ describe("TaggedError", () => {
 
     const err = new MyError({ id: 1, message: "boom" })
 
-    expect(String(err).includes(`MyError: boom`)).toBe(true)
-    expect(err.stack).toContain("TaggedError.test.ts:")
-    expect(err._tag).toEqual("MyError")
-    expect(err.id).toEqual(1)
+    assertTrue(String(err).includes(`MyError: boom`))
+    assertTrue(err.stack?.includes("TaggedError.test.ts:"))
+    strictEqual(err._tag, "MyError")
+    strictEqual(err.id, 1)
   })
 
   it("should expose a make constructor", () => {
@@ -103,9 +105,9 @@ describe("TaggedError", () => {
       }
     }
     const a = A.make({ n: 1 })
-    expect(a instanceof A).toEqual(true)
-    expect(a._tag).toEqual("A")
-    expect(a.a()).toEqual("1a")
+    assertTrue(a instanceof A)
+    strictEqual(a._tag, "A")
+    strictEqual(a.a(), "1a")
   })
 
   it("cause", () => {
@@ -114,8 +116,8 @@ describe("TaggedError", () => {
     }) {}
 
     const err = new MyError({ cause: new Error("child") })
-    expect(Cause.pretty(Cause.fail(err), { renderErrorCause: true })).includes("[cause]: Error: child")
+    assertTrue(Cause.pretty(Cause.fail(err), { renderErrorCause: true }).includes("[cause]: Error: child"))
     // ensure node renders the error directly
-    expect(err[Inspectable.NodeInspectSymbol]()).toEqual(err)
+    deepStrictEqual(err[Inspectable.NodeInspectSymbol](), err)
   })
 })

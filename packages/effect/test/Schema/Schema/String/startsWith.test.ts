@@ -1,17 +1,18 @@
 import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("startsWith", () => {
   it("is", () => {
     const schema = S.String.pipe(S.startsWith("a"))
     const is = P.is(schema)
-    expect(is("a")).toEqual(true)
-    expect(is("ab")).toEqual(true)
+    assertTrue(is("a"))
+    assertTrue(is("ab"))
 
-    expect(is("")).toEqual(false)
-    expect(is("b")).toEqual(false)
+    assertFalse(is(""))
+    assertFalse(is("b"))
   })
 
   it("decoding", async () => {

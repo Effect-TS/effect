@@ -1,77 +1,78 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("typeAST", () => {
   describe(`should return the same reference if the AST doesn't represent a transformation`, () => {
     it("declaration (true)", () => {
       const schema = S.OptionFromSelf(S.String)
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(true)
+      assertTrue(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("declaration (false)", () => {
       const schema = S.OptionFromSelf(S.NumberFromString)
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(false)
+      assertFalse(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("tuple (true)", () => {
       const schema = S.Tuple(S.String, S.Number)
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(true)
+      assertTrue(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("tuple (false)", () => {
       const schema = S.Tuple(S.String, S.NumberFromString)
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(false)
+      assertFalse(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("array (true)", () => {
       const schema = S.Array(S.Number)
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(true)
+      assertTrue(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("array (false)", () => {
       const schema = S.Array(S.NumberFromString)
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(false)
+      assertFalse(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("union (true)", () => {
       const schema = S.Union(S.String, S.Number)
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(true)
+      assertTrue(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("union (false)", () => {
       const schema = S.Union(S.String, S.NumberFromString)
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(false)
+      assertFalse(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("struct (true)", () => {
       const schema = S.Struct({ a: S.String, b: S.Number })
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(true)
+      assertTrue(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("struct (false)", () => {
       const schema = S.Struct({ a: S.String, b: S.NumberFromString })
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(false)
+      assertFalse(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("record (true)", () => {
       const schema = S.Record({ key: S.String, value: S.Number })
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(true)
+      assertTrue(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("record (false)", () => {
       const schema = S.Record({ key: S.String, value: S.NumberFromString })
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(false)
+      assertFalse(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("refinement (true)", () => {
       const schema = S.Number.pipe(S.filter((n) => n > 0))
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(true)
+      assertTrue(AST.typeAST(schema.ast) === schema.ast)
     })
 
     it("refinement (false)", () => {
       const schema = S.NumberFromString.pipe(S.filter((n) => n > 0))
-      expect(AST.typeAST(schema.ast) === schema.ast).toBe(false)
+      assertFalse(AST.typeAST(schema.ast) === schema.ast)
     })
   })
 })

@@ -1,16 +1,17 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("guards", () => {
   it("isDeclaration", () => {
-    expect(AST.isDeclaration(S.OptionFromSelf(S.Number).ast)).toEqual(true)
-    expect(AST.isDeclaration(S.Number.ast)).toEqual(false)
+    assertTrue(AST.isDeclaration(S.OptionFromSelf(S.Number).ast))
+    assertFalse(AST.isDeclaration(S.Number.ast))
   })
 
   it("isTemplateLiteral", () => {
-    expect(AST.isTemplateLiteral(S.TemplateLiteral(S.Literal("a"), S.String).ast)).toEqual(true)
-    expect(AST.isTemplateLiteral(S.Number.ast)).toEqual(false)
+    assertTrue(AST.isTemplateLiteral(S.TemplateLiteral(S.Literal("a"), S.String).ast))
+    assertFalse(AST.isTemplateLiteral(S.Number.ast))
   })
 
   it("isSuspend", () => {
@@ -18,33 +19,33 @@ describe("guards", () => {
     const schema: S.Schema<A> = S.suspend( // intended outer suspend
       () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
     )
-    expect(AST.isSuspend(schema.ast)).toEqual(true)
-    expect(AST.isSuspend(S.Number.ast)).toEqual(false)
+    assertTrue(AST.isSuspend(schema.ast))
+    assertFalse(AST.isSuspend(S.Number.ast))
   })
 
   it("isTransform", () => {
-    expect(AST.isTransformation(S.Trim.ast)).toEqual(true)
-    expect(AST.isTransformation(S.Number.ast)).toEqual(false)
+    assertTrue(AST.isTransformation(S.Trim.ast))
+    assertFalse(AST.isTransformation(S.Number.ast))
   })
 
   it("isUndefinedKeyword", () => {
-    expect(AST.isUndefinedKeyword(S.Undefined.ast)).toEqual(true)
-    expect(AST.isUndefinedKeyword(S.Number.ast)).toEqual(false)
+    assertTrue(AST.isUndefinedKeyword(S.Undefined.ast))
+    assertFalse(AST.isUndefinedKeyword(S.Number.ast))
   })
 
   it("isVoidKeyword", () => {
-    expect(AST.isVoidKeyword(S.Void.ast)).toEqual(true)
-    expect(AST.isVoidKeyword(S.Unknown.ast)).toEqual(false)
+    assertTrue(AST.isVoidKeyword(S.Void.ast))
+    assertFalse(AST.isVoidKeyword(S.Unknown.ast))
   })
 
   it("isSymbolKeyword", () => {
-    expect(AST.isSymbolKeyword(S.SymbolFromSelf.ast)).toEqual(true)
-    expect(AST.isSymbolKeyword(S.Unknown.ast)).toEqual(false)
+    assertTrue(AST.isSymbolKeyword(S.SymbolFromSelf.ast))
+    assertFalse(AST.isSymbolKeyword(S.Unknown.ast))
   })
 
   it("isObjectKeyword", () => {
-    expect(AST.isObjectKeyword(S.Object.ast)).toEqual(true)
-    expect(AST.isObjectKeyword(S.Unknown.ast)).toEqual(false)
+    assertTrue(AST.isObjectKeyword(S.Object.ast))
+    assertFalse(AST.isObjectKeyword(S.Unknown.ast))
   })
 
   it("isEnums", () => {
@@ -52,53 +53,48 @@ describe("guards", () => {
       Apple,
       Banana
     }
-    expect(AST.isEnums(S.Enums(Fruits).ast)).toEqual(true)
-    expect(AST.isEnums(S.Unknown.ast)).toEqual(false)
+    assertTrue(AST.isEnums(S.Enums(Fruits).ast))
+    assertFalse(AST.isEnums(S.Unknown.ast))
   })
 
   it("isNeverKeyword", () => {
-    expect(AST.isNeverKeyword(S.Never.ast)).toEqual(true)
-    expect(AST.isNeverKeyword(S.Unknown.ast)).toEqual(false)
+    assertTrue(AST.isNeverKeyword(S.Never.ast))
+    assertFalse(AST.isNeverKeyword(S.Unknown.ast))
   })
 
   it("isUniqueSymbol", () => {
-    expect(AST.isUniqueSymbol(S.UniqueSymbolFromSelf(Symbol.for("effect/Schema/test/a")).ast)).toEqual(
-      true
-    )
-    expect(AST.isUniqueSymbol(S.Unknown.ast)).toEqual(false)
+    assertTrue(AST.isUniqueSymbol(S.UniqueSymbolFromSelf(Symbol.for("effect/Schema/test/a")).ast))
+    assertFalse(AST.isUniqueSymbol(S.Unknown.ast))
   })
 
   it("isUnknownKeyword", () => {
-    expect(AST.isUnknownKeyword(S.Unknown.ast)).toEqual(true)
-    expect(AST.isUnknownKeyword(S.Any.ast)).toEqual(false)
+    assertTrue(AST.isUnknownKeyword(S.Unknown.ast))
+    assertFalse(AST.isUnknownKeyword(S.Any.ast))
   })
 
   it("isAnyKeyword", () => {
-    expect(AST.isAnyKeyword(S.Any.ast)).toEqual(true)
-    expect(AST.isAnyKeyword(S.Unknown.ast)).toEqual(false)
+    assertTrue(AST.isAnyKeyword(S.Any.ast))
+    assertFalse(AST.isAnyKeyword(S.Unknown.ast))
   })
 
   it("isBooleanKeyword", () => {
-    expect(AST.isBooleanKeyword(S.Boolean.ast)).toEqual(true)
-    expect(AST.isBooleanKeyword(S.Unknown.ast)).toEqual(false)
+    assertTrue(AST.isBooleanKeyword(S.Boolean.ast))
+    assertFalse(AST.isBooleanKeyword(S.Unknown.ast))
   })
 
   it("isBigIntKeyword", () => {
-    expect(AST.isBigIntKeyword(S.BigIntFromSelf.ast)).toEqual(true)
-    expect(AST.isBigIntKeyword(S.Unknown.ast)).toEqual(false)
+    assertTrue(AST.isBigIntKeyword(S.BigIntFromSelf.ast))
+    assertFalse(AST.isBigIntKeyword(S.Unknown.ast))
   })
 
   it("isParameter", () => {
-    expect(AST.isParameter(AST.stringKeyword)).toEqual(true)
-    expect(AST.isParameter(AST.symbolKeyword)).toEqual(true)
-    expect(AST.isParameter(S.TemplateLiteral(S.String, S.Literal("-"), S.String).ast))
-      .toEqual(true)
-    expect(AST.isParameter(S.String.pipe(S.minLength(2)).ast)).toEqual(true)
-    expect(AST.isParameter(S.TemplateLiteral(S.Literal("a", "b"), S.Literal("c")).ast)).toEqual(
-      true
-    )
-    expect(AST.isParameter(S.Number.pipe(S.int()).ast)).toEqual(false)
-    expect(AST.isParameter(S.NumberFromString.ast)).toEqual(false)
-    expect(AST.isParameter(S.NumberFromString.pipe(S.int()).ast)).toEqual(false)
+    assertTrue(AST.isParameter(AST.stringKeyword))
+    assertTrue(AST.isParameter(AST.symbolKeyword))
+    assertTrue(AST.isParameter(S.TemplateLiteral(S.String, S.Literal("-"), S.String).ast))
+    assertTrue(AST.isParameter(S.String.pipe(S.minLength(2)).ast))
+    assertTrue(AST.isParameter(S.TemplateLiteral(S.Literal("a", "b"), S.Literal("c")).ast))
+    assertFalse(AST.isParameter(S.Number.pipe(S.int()).ast))
+    assertFalse(AST.isParameter(S.NumberFromString.ast))
+    assertFalse(AST.isParameter(S.NumberFromString.pipe(S.int()).ast))
   })
 })

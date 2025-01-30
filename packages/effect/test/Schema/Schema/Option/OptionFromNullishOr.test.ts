@@ -1,7 +1,8 @@
 import * as O from "effect/Option"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertTrue } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("OptionFromNullishOr", () => {
   it("test roundtrip consistency", () => {
@@ -15,9 +16,9 @@ describe("OptionFromNullishOr", () => {
     await Util.assertions.decoding.succeed(schema, undefined, O.none())
     await Util.assertions.decoding.succeed(schema, "1", O.some(1))
 
-    expect(O.isOption(S.decodeSync(schema)(null))).toEqual(true)
-    expect(O.isOption(S.decodeSync(schema)(undefined))).toEqual(true)
-    expect(O.isOption(S.decodeSync(schema)("1"))).toEqual(true)
+    assertTrue(O.isOption(S.decodeSync(schema)(null)))
+    assertTrue(O.isOption(S.decodeSync(schema)(undefined)))
+    assertTrue(O.isOption(S.decodeSync(schema)("1")))
 
     await Util.assertions.decoding.fail(
       schema,

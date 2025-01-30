@@ -1,12 +1,13 @@
 import { identity } from "effect"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 const expectSameReference = (schema: S.Schema.Any) => {
   const mutable = AST.mutable(AST.isSuspend(schema.ast) ? schema.ast.f() : schema.ast)
   const mutable2 = AST.mutable(mutable)
-  expect(mutable === mutable2).toBe(true)
+  strictEqual(mutable, mutable2)
 }
 
 describe("mutable", () => {

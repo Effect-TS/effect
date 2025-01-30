@@ -5,7 +5,8 @@ import * as Schema from "effect/Schema"
 import * as SortedSet from "effect/SortedSet"
 import * as S from "effect/String"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("SortedSetFromSelf", () => {
   it("test roundtrip consistency", () => {
@@ -59,21 +60,19 @@ describe("SortedSetFromSelf", () => {
   it("is", () => {
     const schema = Schema.SortedSetFromSelf(Schema.String, S.Order, S.Order)
     const is = P.is(schema)
-    expect(is(SortedSet.fromIterable([], S.Order))).toEqual(true)
-    expect(is(SortedSet.fromIterable(["a", "b", "c"], S.Order))).toEqual(true)
+    assertTrue(is(SortedSet.fromIterable([], S.Order)))
+    assertTrue(is(SortedSet.fromIterable(["a", "b", "c"], S.Order)))
 
-    expect(is(new Set(["a", "b", 1]))).toEqual(false)
-    expect(is(null)).toEqual(false)
-    expect(is(undefined)).toEqual(false)
+    assertFalse(is(new Set(["a", "b", 1])))
+    assertFalse(is(null))
+    assertFalse(is(undefined))
   })
 
   it("pretty", () => {
     const schema = Schema.SortedSetFromSelf(Schema.String, S.Order, S.Order)
     const pretty = Pretty.make(schema)
-    expect(pretty(SortedSet.fromIterable([] as Array<string>, S.Order))).toEqual("new SortedSet([])")
-    expect(pretty(SortedSet.fromIterable(["a", "b"], S.Order))).toEqual(
-      `new SortedSet(["a", "b"])`
-    )
+    strictEqual(pretty(SortedSet.fromIterable([] as Array<string>, S.Order)), "new SortedSet([])")
+    strictEqual(pretty(SortedSet.fromIterable(["a", "b"], S.Order)), `new SortedSet(["a", "b"])`)
   })
 
   it("equivalence", () => {
@@ -83,9 +82,9 @@ describe("SortedSetFromSelf", () => {
     const a = SortedSet.fromIterable([] as Array<string>, S.Order)
     const b = SortedSet.fromIterable(["a"] as Array<string>, S.Order)
 
-    expect(eq(a, a)).toBeTruthy()
-    expect(eq(a, b)).toBeFalsy()
-    expect(eq(b, a)).toBeFalsy()
-    expect(eq(b, b)).toBeTruthy()
+    assertTrue(eq(a, a))
+    assertFalse(eq(a, b))
+    assertFalse(eq(b, a))
+    assertTrue(eq(b, b))
   })
 })

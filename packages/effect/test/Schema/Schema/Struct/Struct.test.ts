@@ -1,12 +1,13 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Struct", () => {
   it("annotations()", () => {
     const schema = S.Struct({}).annotations({ identifier: "X" }).annotations({ title: "Y" })
-    expect(schema.ast.annotations).toStrictEqual({
+    deepStrictEqual(schema.ast.annotations, {
       [AST.IdentifierAnnotationId]: "X",
       [AST.TitleAnnotationId]: "Y"
     })
@@ -17,7 +18,7 @@ describe("Struct", () => {
       a: S.String,
       b: S.Number
     })
-    expect(schema.fields).toStrictEqual({
+    deepStrictEqual(schema.fields, {
       a: S.String,
       b: S.Number
     })
@@ -28,8 +29,8 @@ describe("Struct", () => {
       a: S.String,
       b: S.Number
     }).annotations({ identifier: "struct test" })
-    expect(schema.ast.annotations).toStrictEqual({ [AST.IdentifierAnnotationId]: "struct test" })
-    expect(schema.fields).toStrictEqual({
+    deepStrictEqual(schema.ast.annotations, { [AST.IdentifierAnnotationId]: "struct test" })
+    deepStrictEqual(schema.fields, {
       a: S.String,
       b: S.Number
     })
@@ -37,7 +38,7 @@ describe("Struct", () => {
 
   it(`should allow a "constructor" field name`, () => {
     const schema = S.Struct({ constructor: S.String })
-    expect(schema.ast._tag).toEqual("TypeLiteral")
+    strictEqual(schema.ast._tag, "TypeLiteral")
   })
 
   describe("decoding", () => {

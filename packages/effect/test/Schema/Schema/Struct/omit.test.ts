@@ -1,9 +1,10 @@
 import * as S from "effect/Schema"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("omit", () => {
   it("should work", () => {
     const schema = S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).omit("c")
-    expect(schema.fields).toStrictEqual({ a: S.String, b: S.Number })
+    deepStrictEqual(schema.fields, { a: S.String, b: S.Number })
   })
 })

@@ -3,7 +3,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("HashMapFromSelf", () => {
   it("test roundtrip consistency", () => {
@@ -51,24 +52,22 @@ describe("HashMapFromSelf", () => {
   it("is", () => {
     const schema = S.HashMapFromSelf({ key: S.Number, value: S.String })
     const is = P.is(schema)
-    expect(is(HashMap.fromIterable([]))).toEqual(true)
-    expect(is(HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]]))).toEqual(true)
+    assertTrue(is(HashMap.fromIterable([])))
+    assertTrue(is(HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]])))
 
-    expect(is(null)).toEqual(false)
-    expect(is(undefined)).toEqual(false)
-    expect(is(HashMap.fromIterable<number, string | number>([[1, "a"], [2, 1]]))).toEqual(false)
-    expect(is(HashMap.fromIterable<number, string | number>([[1, 1], [2, "b"]]))).toEqual(false)
-    expect(is(HashMap.fromIterable([[1, 1], [2, 2]]))).toEqual(false)
-    expect(is(HashMap.fromIterable<string | number, number>([["a", 1], ["b", 2], [3, 1]]))).toEqual(false)
-    expect(is(HashMap.fromIterable<number, string | number>([[1, "a"], [2, "b"], [3, 1]]))).toEqual(false)
+    assertFalse(is(null))
+    assertFalse(is(undefined))
+    assertFalse(is(HashMap.fromIterable<number, string | number>([[1, "a"], [2, 1]])))
+    assertFalse(is(HashMap.fromIterable<number, string | number>([[1, 1], [2, "b"]])))
+    assertFalse(is(HashMap.fromIterable([[1, 1], [2, 2]])))
+    assertFalse(is(HashMap.fromIterable<string | number, number>([["a", 1], ["b", 2], [3, 1]])))
+    assertFalse(is(HashMap.fromIterable<number, string | number>([[1, "a"], [2, "b"], [3, 1]])))
   })
 
   it("pretty", () => {
     const schema = S.HashMapFromSelf({ key: S.Number, value: S.String })
     const pretty = Pretty.make(schema)
-    expect(pretty(HashMap.fromIterable([]))).toEqual("HashMap([])")
-    expect(pretty(HashMap.fromIterable([[1, "a"], [2, "b"]]))).toEqual(
-      `HashMap([[1, "a"], [2, "b"]])`
-    )
+    strictEqual(pretty(HashMap.fromIterable([])), "HashMap([])")
+    strictEqual(pretty(HashMap.fromIterable([[1, "a"], [2, "b"]])), `HashMap([[1, "a"], [2, "b"]])`)
   })
 })

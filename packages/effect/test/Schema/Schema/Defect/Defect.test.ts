@@ -1,6 +1,7 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Defect", () => {
   describe("decoding", () => {
@@ -14,21 +15,21 @@ describe("Defect", () => {
 
     it("an object with a message", () => {
       const err = S.decodeUnknownSync(S.Defect)({ message: "message" })
-      expect(err).toEqual(new Error("message"))
+      deepStrictEqual(err, new Error("message"))
     })
 
     it("an object with a message and a name", () => {
       const err = S.decodeUnknownSync(S.Defect)({ message: "message", name: "name" })
-      expect(err).toEqual(new Error("message"))
-      expect(err instanceof Error).toBe(true)
-      expect((err as Error).name).toEqual("name")
+      assertTrue(err instanceof Error)
+      strictEqual(err.message, "message")
+      strictEqual(err.name, "name")
     })
 
     it("an object with a message and a stack", () => {
       const err = S.decodeUnknownSync(S.Defect)({ message: "message", stack: "stack" })
-      expect(err).toEqual(new Error("message"))
-      expect(err instanceof Error).toBe(true)
-      expect((err as Error).stack).toEqual("stack")
+      assertTrue(err instanceof Error)
+      strictEqual(err.message, "message")
+      strictEqual(err.stack, "stack")
     })
   })
 

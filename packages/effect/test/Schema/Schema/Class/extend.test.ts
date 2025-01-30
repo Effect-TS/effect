@@ -1,6 +1,7 @@
-import { JSONSchema, Option, Schema as S, SchemaAST as AST } from "effect"
+import { JSONSchema, Schema as S, SchemaAST as AST } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
@@ -30,16 +31,16 @@ describe("extend", () => {
       name: "John",
       age: 30
     })
-    expect(PersonWithAge.fields).toStrictEqual({
+    deepStrictEqual(PersonWithAge.fields, {
       ...Person.fields,
       age: S.Number
     })
-    expect(PersonWithAge.identifier).toStrictEqual("PersonWithAge")
-    expect(person.name).toEqual("John")
-    expect(person.age).toEqual(30)
-    expect(person.isAdult).toEqual(true)
-    expect(person.upperName).toEqual("JOHN")
-    expect(typeof person.upperName).toEqual("string")
+    strictEqual(PersonWithAge.identifier, "PersonWithAge")
+    strictEqual(person.name, "John")
+    strictEqual(person.age, 30)
+    strictEqual(person.isAdult, true)
+    strictEqual(person.upperName, "JOHN")
+    strictEqual(typeof person.upperName, "string")
   })
 
   it("2 extend", () => {
@@ -49,8 +50,8 @@ describe("extend", () => {
       age: 30,
       nick: "Joe"
     })
-    expect(person.age).toEqual(30)
-    expect(person.nick).toEqual("Joe")
+    strictEqual(person.age, 30)
+    strictEqual(person.nick, "Joe")
   })
 
   it("should accept a Struct as argument", () => {
@@ -79,10 +80,11 @@ describe("extend", () => {
       └─ Predicate refinement failure
          └─ a should be equal to b`
     )
-    expect(() => new A({ base: "base", a: 1, b: 2 })).toThrow(
-      new Error(`A (Constructor)
+    Util.assertParseError(
+      () => new A({ base: "base", a: 1, b: 2 }),
+      `A (Constructor)
 └─ Predicate refinement failure
-   └─ a should be equal to b`)
+   └─ a should be equal to b`
     )
   })
 
@@ -114,9 +116,9 @@ describe("extend", () => {
       }
     }
     const b = B.make({ n: 1, c: "c" })
-    expect(b instanceof B).toEqual(true)
-    expect(b.a()).toEqual("1a")
-    expect(b.b()).toEqual("1b")
+    assertTrue(b instanceof B)
+    strictEqual(b.a(), "1a")
+    strictEqual(b.b(), "1b")
   })
 
   it("users can override an instance member property", () => {
@@ -134,7 +136,7 @@ describe("extend", () => {
       override readonly b = 2
     }
 
-    expect(new OverrideExtended1({ a: "a", c: "c" }).b).toEqual(2)
+    strictEqual(new OverrideExtended1({ a: "a", c: "c" }).b, 2)
   })
 
   it("users can override an instance member function", () => {
@@ -156,7 +158,7 @@ describe("extend", () => {
       }
     }
 
-    expect(new OverrideExtended2({ a: "a", c: "c" }).b()).toEqual(2)
+    strictEqual(new OverrideExtended2({ a: "a", c: "c" }).b(), 2)
   })
 
   it("users can override a field with an instance member property", () => {
@@ -172,7 +174,7 @@ describe("extend", () => {
       override readonly a = "default"
     }
 
-    expect(new OverrideExtended3({ a: "a", c: "c" }).a).toEqual("default")
+    strictEqual(new OverrideExtended3({ a: "a", c: "c" }).a, "default")
   })
 
   it("users can't override an instance member property with a field", () => {
@@ -188,7 +190,7 @@ describe("extend", () => {
       b: S.Number
     }) {}
 
-    expect(new OverrideExtended4({ a: "a", b: 2 }).b).toEqual(1)
+    strictEqual(new OverrideExtended4({ a: "a", b: 2 }).b, 1)
   })
 
   describe("should support annotations when declaring the Class", () => {
@@ -200,7 +202,7 @@ describe("extend", () => {
         b: S.NonEmptyString
       }, { title: "mytitle" }) {}
 
-      expect(B.ast.to.annotations[AST.TitleAnnotationId]).toEqual("mytitle")
+      strictEqual(B.ast.to.annotations[AST.TitleAnnotationId], "mytitle")
 
       await Util.assertions.encoding.fail(
         B,
@@ -226,9 +228,9 @@ describe("extend", () => {
         { identifier: "TransformationID" },
         { identifier: "EncodedID" }
       ]) {}
-      expect(AST.getIdentifierAnnotation(B.ast.to)).toEqual(Option.some("TypeID"))
-      expect(AST.getIdentifierAnnotation(B.ast)).toEqual(Option.some("TransformationID"))
-      expect(AST.getIdentifierAnnotation(B.ast.from)).toEqual(Option.some("EncodedID"))
+      assertSome(AST.getIdentifierAnnotation(B.ast.to), "TypeID")
+      assertSome(AST.getIdentifierAnnotation(B.ast), "TransformationID")
+      assertSome(AST.getIdentifierAnnotation(B.ast.from), "EncodedID")
 
       await Util.assertions.decoding.fail(
         B,
@@ -262,7 +264,7 @@ describe("extend", () => {
    └─ is missing`
       )
 
-      expect(JSONSchema.make(S.typeSchema(B))).toStrictEqual({
+      deepStrictEqual(JSONSchema.make(S.typeSchema(B)), {
         "$defs": {
           "NonEmptyString": {
             "title": "nonEmptyString",
@@ -289,34 +291,32 @@ describe("extend", () => {
         "$schema": "http://json-schema.org/draft-07/schema#"
       })
 
-      expect(JSONSchema.make(B)).toStrictEqual(
-        {
-          "$defs": {
-            "NonEmptyString": {
-              "title": "nonEmptyString",
-              "description": "a non empty string",
-              "minLength": 1,
-              "type": "string"
-            },
-            "TransformationID": {
-              "additionalProperties": false,
-              "description": "TypeDescription",
-              "properties": {
-                "a": {
-                  "$ref": "#/$defs/NonEmptyString"
-                },
-                "b": {
-                  "$ref": "#/$defs/NonEmptyString"
-                }
-              },
-              "required": ["a", "b"],
-              "type": "object"
-            }
+      deepStrictEqual(JSONSchema.make(B), {
+        "$defs": {
+          "NonEmptyString": {
+            "title": "nonEmptyString",
+            "description": "a non empty string",
+            "minLength": 1,
+            "type": "string"
           },
-          "$ref": "#/$defs/TransformationID",
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        }
-      )
+          "TransformationID": {
+            "additionalProperties": false,
+            "description": "TypeDescription",
+            "properties": {
+              "a": {
+                "$ref": "#/$defs/NonEmptyString"
+              },
+              "b": {
+                "$ref": "#/$defs/NonEmptyString"
+              }
+            },
+            "required": ["a", "b"],
+            "type": "object"
+          }
+        },
+        "$ref": "#/$defs/TransformationID",
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      })
     })
   })
 })

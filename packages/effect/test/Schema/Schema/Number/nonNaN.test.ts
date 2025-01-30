@@ -2,7 +2,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("NonNaN", () => {
   const schema = S.NonNaN
@@ -13,8 +14,8 @@ describe("NonNaN", () => {
 
   it("is", () => {
     const is = P.is(schema)
-    expect(is(1)).toEqual(true)
-    expect(is(NaN)).toEqual(false)
+    assertTrue(is(1))
+    assertFalse(is(NaN))
   })
 
   it("decoding", async () => {
@@ -30,7 +31,7 @@ describe("NonNaN", () => {
 
   it("pretty", () => {
     const pretty = Pretty.make(schema)
-    expect(pretty(1)).toEqual("1")
-    expect(pretty(NaN)).toEqual("NaN")
+    strictEqual(pretty(1), "1")
+    strictEqual(pretty(NaN), "NaN")
   })
 })

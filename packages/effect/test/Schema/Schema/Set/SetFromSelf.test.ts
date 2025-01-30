@@ -1,8 +1,9 @@
 import * as S from "effect/Schema"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("SetFromSelf", () => {
   it("description", () => {
-    expect(String(S.SetFromSelf(S.Number))).toStrictEqual("Set<number>")
+    strictEqual(String(S.SetFromSelf(S.Number)), "Set<number>")
   })
 })

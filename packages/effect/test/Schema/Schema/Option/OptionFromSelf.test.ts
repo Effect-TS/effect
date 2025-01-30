@@ -3,7 +3,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("OptionFromSelf", () => {
   it("arbitrary", () => {
@@ -17,13 +18,13 @@ describe("OptionFromSelf", () => {
   it("is", () => {
     const schema = S.OptionFromSelf(S.Number)
     const is = P.is(schema)
-    expect(is(O.none())).toEqual(true)
-    expect(is(O.some(1))).toEqual(true)
-    expect(is(null)).toEqual(false)
-    expect(is(O.some("a"))).toEqual(false)
+    assertTrue(is(O.none()))
+    assertTrue(is(O.some(1)))
+    assertFalse(is(null))
+    assertFalse(is(O.some("a")))
 
-    expect(is({ _tag: "None" })).toEqual(false)
-    expect(is({ _tag: "Some", value: 1 })).toEqual(false)
+    assertFalse(is({ _tag: "None" }))
+    assertFalse(is({ _tag: "Some", value: 1 }))
   })
 
   it("decoding", async () => {
@@ -41,7 +42,7 @@ describe("OptionFromSelf", () => {
   it("pretty", () => {
     const schema = S.OptionFromSelf(S.Number)
     const pretty = Pretty.make(schema)
-    expect(pretty(O.none())).toEqual("none()")
-    expect(pretty(O.some(1))).toEqual("some(1)")
+    strictEqual(pretty(O.none()), "none()")
+    strictEqual(pretty(O.some(1)), "some(1)")
   })
 })

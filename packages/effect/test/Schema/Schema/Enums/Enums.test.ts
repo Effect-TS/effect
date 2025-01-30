@@ -1,6 +1,7 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Enums", () => {
   it("enums should be exposed", () => {
@@ -9,8 +10,8 @@ describe("Enums", () => {
       Banana
     }
     const schema = S.Enums(Fruits).annotations({ identifier: "Fruits" })
-    expect(schema.enums.Apple).toBe(0)
-    expect(schema.enums.Banana).toBe(1)
+    strictEqual(schema.enums.Apple, 0)
+    strictEqual(schema.enums.Banana, 1)
   })
 
   describe("Numeric enums", () => {

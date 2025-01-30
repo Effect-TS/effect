@@ -3,8 +3,9 @@ import type * as array_ from "effect/Array"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
+import { deepStrictEqual, strictEqual, throws } from "effect/test/util"
 import * as fc from "fast-check"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 type TemplateLiteralParameter = S.Schema.AnyNoContext | AST.LiteralValue
 
@@ -13,7 +14,7 @@ const expectPattern = (
   expectedPattern: string
 ) => {
   const ast = S.TemplateLiteral(...params).ast as AST.TemplateLiteral
-  expect(AST.getTemplateLiteralRegExp(ast).source).toEqual(expectedPattern)
+  strictEqual(AST.getTemplateLiteralRegExp(ast).source, expectedPattern)
 }
 
 const expectAST = (
@@ -22,8 +23,8 @@ const expectAST = (
   expectedString: string
 ) => {
   const ast = S.TemplateLiteral(...params).ast
-  expect(ast).toEqual(expectedAST)
-  expect(String(ast)).toEqual(expectedString)
+  deepStrictEqual(ast, expectedAST)
+  strictEqual(String(ast), expectedString)
 }
 
 const expectProperty = <A>(
@@ -39,12 +40,14 @@ const expectProperty = <A>(
 
 describe("TemplateLiteral", () => {
   it("should throw on unsupported template literal spans", () => {
-    expect(() => S.TemplateLiteral(S.Boolean)).toThrow(
+    throws(
+      () => S.TemplateLiteral(S.Boolean),
       new Error(`Unsupported template literal span
 schema (BooleanKeyword): boolean`)
     )
 
-    expect(() => S.TemplateLiteral(S.Union(S.Boolean, S.SymbolFromSelf))).toThrow(
+    throws(
+      () => S.TemplateLiteral(S.Union(S.Boolean, S.SymbolFromSelf)),
       new Error(`Unsupported template literal span
 schema (Union): boolean | symbol`)
     )

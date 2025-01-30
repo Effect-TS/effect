@@ -1,8 +1,9 @@
 import * as S from "effect/Schema"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("MapFromSelf", () => {
   it("description", () => {
-    expect(String(S.MapFromSelf({ key: S.String, value: S.Number }))).toStrictEqual("Map<string, number>")
+    strictEqual(String(S.MapFromSelf({ key: S.String, value: S.Number })), "Map<string, number>")
   })
 })

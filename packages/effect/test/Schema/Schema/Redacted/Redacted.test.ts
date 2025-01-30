@@ -2,7 +2,8 @@ import { Redacted } from "effect"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Redacted", () => {
   const schema = S.Redacted(S.String)
@@ -40,6 +41,6 @@ describe("Redacted", () => {
 
   it("Pretty", () => {
     const pretty = Pretty.make(schema)
-    expect(pretty(Redacted.make("keep me safe"))).toEqual(`Redacted(<redacted>)`)
+    strictEqual(pretty(Redacted.make("keep me safe")), `Redacted(<redacted>)`)
   })
 })

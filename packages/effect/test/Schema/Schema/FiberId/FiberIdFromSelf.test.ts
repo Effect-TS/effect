@@ -2,7 +2,8 @@ import * as FiberId from "effect/FiberId"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("FiberIdFromSelf", () => {
   it("arbitrary", () => {
@@ -30,10 +31,8 @@ describe("FiberIdFromSelf", () => {
   it("pretty", () => {
     const schema = S.FiberIdFromSelf
     const pretty = Pretty.make(schema)
-    expect(pretty(FiberId.none)).toEqual(`FiberId.none`)
-    expect(pretty(FiberId.runtime(1, 100))).toEqual(`FiberId.runtime(1, 100)`)
-    expect(pretty(FiberId.composite(FiberId.none, FiberId.none))).toEqual(
-      `FiberId.composite(FiberId.none, FiberId.none)`
-    )
+    strictEqual(pretty(FiberId.none), `FiberId.none`)
+    strictEqual(pretty(FiberId.runtime(1, 100)), `FiberId.runtime(1, 100)`)
+    strictEqual(pretty(FiberId.composite(FiberId.none, FiberId.none)), `FiberId.composite(FiberId.none, FiberId.none)`)
   })
 })

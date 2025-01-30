@@ -2,7 +2,8 @@ import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("lessThan", () => {
   it("test roundtrip consistency", () => {
@@ -11,9 +12,9 @@ describe("lessThan", () => {
 
   it("is", () => {
     const is = P.is(S.lessThan(0)(S.Number))
-    expect(is(0)).toEqual(false)
-    expect(is(1)).toEqual(false)
-    expect(is(-1)).toEqual(true)
+    assertFalse(is(0))
+    assertFalse(is(1))
+    assertTrue(is(-1))
   })
 
   it("decoding", async () => {
@@ -37,6 +38,6 @@ describe("lessThan", () => {
 
   it("pretty", () => {
     const pretty = Pretty.make(S.lessThan(0)(S.Number))
-    expect(pretty(1)).toEqual("1")
+    strictEqual(pretty(1), "1")
   })
 })

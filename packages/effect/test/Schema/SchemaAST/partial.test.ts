@@ -1,6 +1,7 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("partial", () => {
   describe("{ exact: false }", () => {
@@ -9,7 +10,7 @@ describe("partial", () => {
       // type B = Partial<A>
       const schema = S.partial(S.Struct({ a: S.String }))
       const expected = S.Struct({ a: S.optional(S.String) })
-      expect(schema.ast).toStrictEqual(expected.ast)
+      deepStrictEqual(schema.ast, expected.ast)
     })
 
     describe("tuple", () => {
@@ -21,7 +22,8 @@ describe("partial", () => {
           [],
           true
         )
-        expect(AST.partial(tuple)).toEqual(
+        deepStrictEqual(
+          AST.partial(tuple),
           new AST.TupleType([new AST.OptionalType(AST.orUndefined(AST.stringKeyword), true)], [], true)
         )
       })
@@ -34,7 +36,8 @@ describe("partial", () => {
           [new AST.Type(AST.numberKeyword)],
           true
         )
-        expect(AST.partial(tuple)).toEqual(
+        deepStrictEqual(
+          AST.partial(tuple),
           new AST.TupleType(
             [new AST.OptionalType(AST.orUndefined(AST.stringKeyword), true)],
             [new AST.Type(AST.orUndefined(AST.numberKeyword))],
@@ -51,7 +54,8 @@ describe("partial", () => {
           [new AST.Type(AST.numberKeyword), new AST.Type(AST.booleanKeyword)],
           true
         )
-        expect(AST.partial(tuple)).toEqual(
+        deepStrictEqual(
+          AST.partial(tuple),
           new AST.TupleType(
             [new AST.OptionalType(AST.orUndefined(AST.stringKeyword), true)],
             [
@@ -70,7 +74,7 @@ describe("partial", () => {
       // type B = Partial<A>
       const schema = S.partialWith(S.Struct({ a: S.String }), { exact: true })
       const expected = S.Struct({ a: S.optionalWith(S.String, { exact: true }) })
-      expect(schema.ast).toStrictEqual(expected.ast)
+      deepStrictEqual(schema.ast, expected.ast)
     })
 
     describe("tuple", () => {
@@ -82,7 +86,8 @@ describe("partial", () => {
           [],
           true
         )
-        expect(AST.partial(tuple, { exact: true })).toEqual(
+        deepStrictEqual(
+          AST.partial(tuple, { exact: true }),
           new AST.TupleType([new AST.OptionalType(AST.stringKeyword, true)], [], true)
         )
       })
@@ -95,7 +100,8 @@ describe("partial", () => {
           [new AST.Type(AST.numberKeyword)],
           true
         )
-        expect(AST.partial(tuple, { exact: true })).toEqual(
+        deepStrictEqual(
+          AST.partial(tuple, { exact: true }),
           new AST.TupleType(
             [new AST.OptionalType(AST.stringKeyword, true)],
             [new AST.Type(AST.orUndefined(AST.numberKeyword))],
@@ -112,7 +118,8 @@ describe("partial", () => {
           [new AST.Type(AST.numberKeyword), new AST.Type(AST.booleanKeyword)],
           true
         )
-        expect(AST.partial(tuple, { exact: true })).toEqual(
+        deepStrictEqual(
+          AST.partial(tuple, { exact: true }),
           new AST.TupleType(
             [new AST.OptionalType(AST.stringKeyword, true)],
             [

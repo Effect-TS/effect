@@ -2,7 +2,8 @@ import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, expect, it } from "vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
@@ -45,16 +46,16 @@ describe("", () => {
       id: 1,
       name: "John"
     })
-    expect(PersonWithTransformFrom.fields).toStrictEqual({
+    deepStrictEqual(PersonWithTransformFrom.fields, {
       ...Person.fields,
       thing: Thing
     })
-    expect(PersonWithTransformFrom.identifier).toStrictEqual("PersonWithTransformFrom")
-    expect(person.id).toEqual(1)
-    expect(person.name).toEqual("John")
-    expect(Option.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
-    expect(person.upperName).toEqual("JOHN")
-    expect(typeof person.upperName).toEqual("string")
+    strictEqual(PersonWithTransformFrom.identifier, "PersonWithTransformFrom")
+    strictEqual(person.id, 1)
+    strictEqual(person.name, "John")
+    assertTrue(Option.isSome(person.thing) && person.thing.value.id === 123)
+    strictEqual(person.upperName, "JOHN")
+    strictEqual(typeof person.upperName, "string")
 
     await Util.assertions.decoding.fail(
       PersonWithTransformFrom,
@@ -81,7 +82,7 @@ describe("", () => {
 
   it("should expose a make constructor", () => {
     const instance = PersonWithTransformFrom.make({ id: 2, name: "John", thing: Option.some({ id: 1 }) })
-    expect(instance instanceof PersonWithTransformFrom).toEqual(true)
-    expect(instance.a()).toEqual("2a")
+    assertTrue(instance instanceof PersonWithTransformFrom)
+    strictEqual(instance.a(), "2a")
   })
 })

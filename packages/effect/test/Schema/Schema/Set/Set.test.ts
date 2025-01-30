@@ -1,8 +1,9 @@
 import * as S from "effect/Schema"
-import { describe, expect, it } from "vitest"
+import { strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Set", () => {
   it("description", () => {
-    expect(String(S.Set(S.Number))).toStrictEqual("(ReadonlyArray<number> <-> Set<number>)")
+    strictEqual(String(S.Set(S.Number)), "(ReadonlyArray<number> <-> Set<number>)")
   })
 })
