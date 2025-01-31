@@ -5,6 +5,7 @@ import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import * as FiberRefs from "effect/FiberRefs"
+import { pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
@@ -15,22 +16,22 @@ import { describe } from "vitest"
 
 describe("FiberRefs", () => {
   it.scoped("propagate FiberRef values across fiber boundaries", () =>
-    Effect.gen(function*($) {
-      const fiberRef = yield* $(FiberRef.make(false))
-      const queue = yield* $(Queue.unbounded<FiberRefs.FiberRefs>())
-      const producer = yield* $(
+    Effect.gen(function*() {
+      const fiberRef = yield* FiberRef.make(false)
+      const queue = yield* Queue.unbounded<FiberRefs.FiberRefs>()
+      const producer = yield* pipe(
         FiberRef.set(fiberRef, true).pipe(
           Effect.zipRight(Effect.getFiberRefs.pipe(Effect.flatMap((a) => Queue.offer(queue, a)))),
           Effect.fork
         )
       )
-      const consumer = yield* $(
+      const consumer = yield* pipe(
         Queue.take(queue),
         Effect.flatMap((fiberRefs) => Effect.setFiberRefs(fiberRefs).pipe(Effect.zipRight(FiberRef.get(fiberRef)))),
         Effect.fork
       )
-      yield* $(Fiber.join(producer))
-      const result = yield* $(Fiber.join(consumer))
+      yield* Fiber.join(producer)
+      const result = yield* Fiber.join(consumer)
       assertTrue(result)
     }))
   it.it("interruptedCause", () => {
