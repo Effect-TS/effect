@@ -9,9 +9,9 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("scan", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* Effect.all({
         result1: pipe(stream, Stream.scan(0, (acc, curr) => acc + curr), Stream.runCollect),
         result2: pipe(
           Stream.runCollect(stream),
@@ -22,14 +22,14 @@ describe("Stream", () => {
             )
           )
         )
-      }))
+      })
       deepStrictEqual(Chunk.toReadonlyArray(result1), result2)
     }))
 
   it.effect("scanReduce", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.scanReduce<number, number>((acc, curr) => acc + curr),
         Stream.runCollect
