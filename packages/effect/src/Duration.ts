@@ -890,15 +890,27 @@ export const unsafeFormatIso = (self: DurationInput): string => {
     seconds
   } = parts(duration)
 
-  if (days >= 7) {
-    const rest = days % 7
-    const weeks = (days - rest) / 7
+  let rest = days
+  if (rest >= 365) {
+    const years = Math.floor(rest / 365)
+    rest %= 365
+    fragments.push(`${years}Y`)
+  }
+
+  if (rest >= 30) {
+    const months = Math.floor(rest / 30)
+    rest %= 30
+    fragments.push(`${months}M`)
+  }
+
+  if (rest >= 7) {
+    const weeks = Math.floor(rest / 7)
+    rest %= 7
     fragments.push(`${weeks}W`)
-    if (rest !== 0) {
-      fragments.push(`${rest}D`)
-    }
-  } else if (days !== 0) {
-    fragments.push(`${days}D`)
+  }
+
+  if (rest > 0) {
+    fragments.push(`${rest}D`)
   }
 
   if (hours !== 0 || minutes !== 0 || seconds !== 0 || millis !== 0 || nanos !== 0) {
@@ -925,11 +937,7 @@ export const unsafeFormatIso = (self: DurationInput): string => {
 /**
  * Formats a Duration into an ISO8601 duration string.
  *
- * The ISO8601 duration format is generally specified as P[n]Y[n]M[n]W[n]DT[n]H[n]M[n]S. However, since
- * the `Duration` type does not support years or months, this function will only output the days, hours,
- * minutes and seconds. Thus, the effective format is P[n]W[n]DT[n]H[n]M[n]S.
- *
- * Milliseconds and nanoseconds are expressed as fractional seconds.
+ * Months are assumed to be 30 days and years are assumed to be 365 days.
  *
  * Returns `Option.none()` if the duration is infinite.
  *

@@ -521,83 +521,99 @@ describe("Duration", () => {
     strictEqual(Duration.toWeeks("14 days"), 2)
   })
 
-  it("unsafeFormatIso", () => {
-    expect(Duration.unsafeFormatIso(Duration.zero)).toBe("PT0S")
-    expect(Duration.unsafeFormatIso(Duration.seconds(2))).toBe("PT2S")
-    expect(Duration.unsafeFormatIso(Duration.minutes(5))).toBe("PT5M")
-    expect(Duration.unsafeFormatIso(Duration.hours(3))).toBe("PT3H")
-    expect(Duration.unsafeFormatIso(Duration.days(1))).toBe("P1D")
+  it("formatIso", () => {
+    assertSome(Duration.formatIso(Duration.zero), "PT0S")
+    assertSome(Duration.formatIso(Duration.seconds(2)), "PT2S")
+    assertSome(Duration.formatIso(Duration.minutes(5)), "PT5M")
+    assertSome(Duration.formatIso(Duration.hours(3)), "PT3H")
+    assertSome(Duration.formatIso(Duration.days(1)), "P1D")
 
-    expect(Duration.unsafeFormatIso(Duration.minutes(90))).toBe("PT1H30M")
-    expect(Duration.unsafeFormatIso(Duration.hours(25))).toBe("P1DT1H")
-    expect(Duration.unsafeFormatIso(Duration.days(7))).toBe("P1W")
-    expect(Duration.unsafeFormatIso(Duration.days(10))).toBe("P1W3D")
+    assertSome(Duration.formatIso(Duration.minutes(90)), "PT1H30M")
+    assertSome(Duration.formatIso(Duration.hours(25)), "P1DT1H")
+    assertSome(Duration.formatIso(Duration.days(7)), "P1W")
+    assertSome(Duration.formatIso(Duration.days(10)), "P1W3D")
 
-    expect(Duration.unsafeFormatIso(Duration.millis(1500))).toBe("PT1.5S")
-    expect(Duration.unsafeFormatIso(Duration.micros(1500n))).toBe("PT0.0015S")
-    expect(Duration.unsafeFormatIso(Duration.nanos(1500n))).toBe("PT0.0000015S")
+    assertSome(Duration.formatIso(Duration.millis(1500)), "PT1.5S")
+    assertSome(Duration.formatIso(Duration.micros(1500n)), "PT0.0015S")
+    assertSome(Duration.formatIso(Duration.nanos(1500n)), "PT0.0000015S")
 
-    expect(Duration.unsafeFormatIso(
-      Duration.days(1).pipe(
-        Duration.sum(Duration.hours(2)),
-        Duration.sum(Duration.minutes(30))
-      )
-    )).toBe("P1DT2H30M")
+    assertSome(
+      Duration.formatIso(
+        Duration.seconds(
+          365 * 24 * 60 * 60 + // 1 year
+            60 * 24 * 60 * 60 + // 2 months
+            3 * 24 * 60 * 60 + // 3 days
+            4 * 60 * 60 + // 4 hours
+            5 * 60 + // 5 minutes
+            6.789 // 6.789 seconds
+        )
+      ),
+      "P1Y2M3DT4H5M6.789S"
+    )
 
-    expect(Duration.unsafeFormatIso(
-      Duration.hours(2).pipe(
-        Duration.sum(Duration.minutes(30)),
-        Duration.sum(Duration.millis(1500))
-      )
-    )).toBe("PT2H30M1.5S")
+    assertSome(
+      Duration.formatIso(
+        Duration.days(1).pipe(
+          Duration.sum(Duration.hours(2)),
+          Duration.sum(Duration.minutes(30))
+        )
+      ),
+      "P1DT2H30M"
+    )
 
-    expect(Duration.unsafeFormatIso("1 day")).toBe("P1D")
-    expect(Duration.unsafeFormatIso("90 minutes")).toBe("PT1H30M")
-    expect(Duration.unsafeFormatIso("1.5 seconds")).toBe("PT1.5S")
+    assertSome(
+      Duration.formatIso(
+        Duration.hours(2).pipe(
+          Duration.sum(Duration.minutes(30)),
+          Duration.sum(Duration.millis(1500))
+        )
+      ),
+      "PT2H30M1.5S"
+    )
 
-    expect(() => Duration.unsafeFormatIso(Duration.infinity))
-      .toThrow(new RangeError("Cannot format infinite duration"))
+    assertSome(Duration.formatIso("1 day"), "P1D")
+    assertSome(Duration.formatIso("90 minutes"), "PT1H30M")
+    assertSome(Duration.formatIso("1.5 seconds"), "PT1.5S")
+
+    assertNone(Duration.formatIso(Duration.infinity))
   })
 
   it("fromIso", () => {
-    expect(Duration.fromIso("P1D")).toEqual(Option.some(Duration.days(1)))
-    expect(Duration.fromIso("PT1H")).toEqual(Option.some(Duration.hours(1)))
-    expect(Duration.fromIso("PT1M")).toEqual(Option.some(Duration.minutes(1)))
-    expect(Duration.fromIso("PT1.5S")).toEqual(Option.some(Duration.seconds(1.5)))
-    expect(Duration.fromIso("P1Y")).toEqual(Option.some(Duration.days(365)))
-    expect(Duration.fromIso("P1M")).toEqual(Option.some(Duration.days(30)))
-    expect(Duration.fromIso("P1W")).toEqual(Option.some(Duration.days(7)))
-
-    expect(Duration.fromIso("P1Y2M3DT4H5M6.789S")).toEqual(
-      Option.some(Duration.seconds(
+    assertSome(Duration.fromIso("P1D"), Duration.days(1))
+    assertSome(Duration.fromIso("PT1H"), Duration.hours(1))
+    assertSome(Duration.fromIso("PT1M"), Duration.minutes(1))
+    assertSome(Duration.fromIso("PT1.5S"), Duration.seconds(1.5))
+    assertSome(Duration.fromIso("P1Y"), Duration.days(365))
+    assertSome(Duration.fromIso("P1M"), Duration.days(30))
+    assertSome(Duration.fromIso("P1W"), Duration.days(7))
+    assertSome(Duration.fromIso("P1DT12H"), Duration.hours(36))
+    assertSome(
+      Duration.fromIso("P1Y2M3DT4H5M6.789S"),
+      Duration.seconds(
         365 * 24 * 60 * 60 + // 1 year
           60 * 24 * 60 * 60 + // 2 months
           3 * 24 * 60 * 60 + // 3 days
           4 * 60 * 60 + // 4 hours
           5 * 60 + // 5 minutes
           6.789 // 6.789 seconds
-      ))
+      )
     )
 
-    expect(Duration.fromIso("P1DT12H")).toEqual(
-      Option.some(Duration.hours(36))
-    )
-
-    expect(Duration.fromIso("1D")).toEqual(Option.none())
-    expect(Duration.fromIso("P1H")).toEqual(Option.none())
-    expect(Duration.fromIso("PT1D")).toEqual(Option.none())
-    expect(Duration.fromIso("P1.5D")).toEqual(Option.none())
-    expect(Duration.fromIso("P1.5Y")).toEqual(Option.none())
-    expect(Duration.fromIso("P1.5M")).toEqual(Option.none())
-    expect(Duration.fromIso("PT1.5H")).toEqual(Option.none())
-    expect(Duration.fromIso("PT1.5M")).toEqual(Option.none())
-    expect(Duration.fromIso("PDT1H")).toEqual(Option.none())
-    expect(Duration.fromIso("P1D2H")).toEqual(Option.none())
-    expect(Duration.fromIso("P")).toEqual(Option.none())
-    expect(Duration.fromIso("PT")).toEqual(Option.none())
-    expect(Duration.fromIso("random string")).toEqual(Option.none())
-    expect(Duration.fromIso("P1YT")).toEqual(Option.none())
-    expect(Duration.fromIso("P1S")).toEqual(Option.none())
-    expect(Duration.fromIso("P1DT1S1H")).toEqual(Option.none())
+    assertNone(Duration.fromIso("1D"))
+    assertNone(Duration.fromIso("P1H"))
+    assertNone(Duration.fromIso("PT1D"))
+    assertNone(Duration.fromIso("P1.5D"))
+    assertNone(Duration.fromIso("P1.5Y"))
+    assertNone(Duration.fromIso("P1.5M"))
+    assertNone(Duration.fromIso("PT1.5H"))
+    assertNone(Duration.fromIso("PT1.5M"))
+    assertNone(Duration.fromIso("PDT1H"))
+    assertNone(Duration.fromIso("P1D2H"))
+    assertNone(Duration.fromIso("P"))
+    assertNone(Duration.fromIso("PT"))
+    assertNone(Duration.fromIso("random string"))
+    assertNone(Duration.fromIso("P1YT"))
+    assertNone(Duration.fromIso("P1S"))
+    assertNone(Duration.fromIso("P1DT1S1H"))
   })
 })
