@@ -1,9 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import * as Equal from "effect/Equal"
-import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as HM from "effect/HashMap"
-import * as Option from "effect/Option"
+import { Equal, Hash, HashMap as HM, Option, pipe } from "effect"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
 
 class Key implements Equal.Equal {

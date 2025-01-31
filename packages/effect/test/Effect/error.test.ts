@@ -9,11 +9,11 @@ describe("Effect", () => {
     Effect.gen(function*() {
       const cause = yield* (Effect.flip(Effect.sandbox(Effect.withSpan("A")(new TestError()))))
       const log = Cause.pretty(cause)
-      assertTrue(log.includes("TestError"))
+      assertIncludes(log, "TestError")
       if (typeof window === "undefined") {
         assertIncludes(log.replaceAll("\\", "/"), "test/Effect/error.test.ts:10:77")
       }
-      assertTrue(log.includes("at A"))
+      assertIncludes(log, "at A")
     }))
 
   it.effect("tryPromise", () =>
@@ -86,7 +86,7 @@ describe("Effect", () => {
       class MessageError extends Data.TaggedError("MessageError")<{
         cause: unknown
       }> {}
-      assertTrue(inspect(new MessageError({ cause: new Error("boom") })).includes("[cause]: Error: boom"))
+      assertIncludes(inspect(new MessageError({ cause: new Error("boom") })), "[cause]: Error: boom")
     })
   }
 

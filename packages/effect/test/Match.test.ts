@@ -1,9 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import * as E from "effect/Either"
-import { pipe } from "effect/Function"
-import * as M from "effect/Match"
-import * as O from "effect/Option"
-import * as Predicate from "effect/Predicate"
+import { Either, Match as M, Option, pipe, Predicate } from "effect"
 import { assertFalse, assertLeft, assertRight, assertSome, assertTrue, strictEqual } from "effect/test/util"
 import { assertType } from "effect/test/utils/types"
 
@@ -22,8 +18,8 @@ describe("Match", () => {
   it("exhaustive-literal", () => {
     const match = pipe(
       M.type<{ _tag: "A"; a: number } | { _tag: "B"; b: number }>(),
-      M.when({ _tag: "A" }, (_) => E.right(_.a)),
-      M.when({ _tag: "B" }, (_) => E.right(_.b)),
+      M.when({ _tag: "A" }, (_) => Either.right(_.a)),
+      M.when({ _tag: "B" }, (_) => Either.right(_.b)),
       M.exhaustive
     )
     assertRight(match({ _tag: "A", a: 0 }), 0)
@@ -35,13 +31,13 @@ describe("Match", () => {
       M.type<{ _tag: "A"; a: number | string } | { _tag: "B"; b: number }>(),
       M.when({ _tag: M.is("A", "B"), a: M.number }, (_) => {
         assertType<{ _tag: "A"; a: number }>()(_) satisfies true
-        return E.right(_._tag)
+        return Either.right(_._tag)
       }),
       M.when({ _tag: M.string, a: M.string }, (_) => {
         assertType<{ _tag: "A"; a: string }>()(_) satisfies true
-        return E.right(_._tag)
+        return Either.right(_._tag)
       }),
-      M.when({ b: M.number }, (_) => E.left(_._tag)),
+      M.when({ b: M.number }, (_) => Either.left(_._tag)),
       M.orElse((_) => {
         throw "absurd"
       })
@@ -64,7 +60,7 @@ describe("Match", () => {
 
   it("inline", () => {
     const result = pipe(
-      M.value(E.right(0)),
+      M.value(Either.right(0)),
       M.tag("Right", (_) => _.right),
       M.tag("Left", (_) => _.left),
       M.exhaustive
@@ -74,7 +70,7 @@ describe("Match", () => {
 
   it("piped", () => {
     const result = pipe(
-      E.right(0),
+      Either.right(0),
       M.value,
       M.when({ _tag: "Right" }, (_) => _.right),
       M.option
@@ -108,7 +104,7 @@ describe("Match", () => {
 
   it("piped", () => {
     const result = pipe(
-      E.right(0),
+      Either.right(0),
       M.value,
       M.when({ _tag: "Right" }, (_) => _.right),
       M.option
@@ -190,7 +186,7 @@ describe("Match", () => {
 
   it("discriminator multiple", () => {
     const result = pipe(
-      M.value(E.right(0)),
+      M.value(Either.right(0)),
       M.discriminator("_tag")("Right", "Left", (_) => "match"),
       M.exhaustive
     )
@@ -233,13 +229,13 @@ describe("Match", () => {
 
   it("nested Option", () => {
     const match = pipe(
-      M.type<{ user: O.Option<{ readonly name: string }> }>(),
+      M.type<{ user: Option.Option<{ readonly name: string }> }>(),
       M.when({ user: { _tag: "Some" } }, (_) => _.user.value.name),
       M.orElse((_) => "fail")
     )
 
-    strictEqual(match({ user: O.some({ name: "a" }) }), "a")
-    strictEqual(match({ user: O.none() }), "fail")
+    strictEqual(match({ user: Option.some({ name: "a" }) }), "a")
+    strictEqual(match({ user: Option.none() }), "fail")
   })
 
   it("predicate", () => {
@@ -321,8 +317,8 @@ describe("Match", () => {
   it("unify", () => {
     const match = pipe(
       M.type<{ readonly _tag: "A" } | { readonly _tag: "B" }>(),
-      M.tag("A", () => E.right("a") as E.Either<string, number>),
-      M.tag("B", () => E.right(123) as E.Either<number, string>),
+      M.tag("A", () => Either.right("a") as Either.Either<string, number>),
+      M.tag("B", () => Either.right(123) as Either.Either<number, string>),
       M.exhaustive
     )
 
@@ -412,14 +408,14 @@ describe("Match", () => {
       | { readonly _tag: "C" }
 
     const match = pipe(
-      M.type<{ readonly abc: O.Option<ABC> }>(),
+      M.type<{ readonly abc: Option.Option<ABC> }>(),
       M.when({ abc: { value: { _tag: "A" } } }, (_) => _.abc.value._tag),
       M.orElse((_) => "no match")
     )
 
-    strictEqual(match({ abc: O.some({ _tag: "A" }) }), "A")
-    strictEqual(match({ abc: O.some({ _tag: "B" }) }), "no match")
-    strictEqual(match({ abc: O.none() }), "no match")
+    strictEqual(match({ abc: Option.some({ _tag: "A" }) }), "A")
+    strictEqual(match({ abc: Option.some({ _tag: "B" }) }), "no match")
+    strictEqual(match({ abc: Option.none() }), "no match")
   })
 
   it("getters", () => {
@@ -756,7 +752,7 @@ describe("Match", () => {
     )
 
     assertType<
-      E.Either<string, { a: number; b: string }>
+      Either.Either<string, { a: number; b: string }>
     >()(match({ a, b })) satisfies true
   })
 

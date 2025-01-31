@@ -1,17 +1,20 @@
 import { describe, it } from "@effect/vitest"
-import * as Array from "effect/Array"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
-import * as FiberRef from "effect/FiberRef"
-import * as FiberStatus from "effect/FiberStatus"
-import { constVoid, pipe } from "effect/Function"
-import * as HashSet from "effect/HashSet"
-import * as Queue from "effect/Queue"
-import * as Ref from "effect/Ref"
+import {
+  Array,
+  Chunk,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  FiberId,
+  FiberRef,
+  FiberStatus,
+  Function as Fun,
+  HashSet,
+  pipe,
+  Queue,
+  Ref
+} from "effect"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { withLatch } from "effect/test/utils/latch"
 
@@ -29,7 +32,7 @@ describe("Fiber", () => {
         Effect.flatMap((status) =>
           FiberStatus.isSuspended(status)
             ? Effect.succeed(status.blockingOn)
-            : Effect.failSync(constVoid)
+            : Effect.failSync(Fun.constVoid)
         ),
         Effect.eventually
       )
@@ -53,7 +56,7 @@ describe("Fiber", () => {
       const child = yield* withLatch((release) =>
         FiberRef.set(fiberRef, update).pipe(Effect.zipRight(release), Effect.fork)
       )
-      yield* pipe(child, Fiber.map(constVoid), Fiber.inheritAll)
+      yield* pipe(child, Fiber.map(Fun.constVoid), Fiber.inheritAll)
       const result = yield* FiberRef.get(fiberRef)
       strictEqual(result, update)
     }))

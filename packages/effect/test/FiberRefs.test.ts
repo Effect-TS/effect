@@ -1,16 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
-import * as FiberRef from "effect/FiberRef"
-import * as FiberRefs from "effect/FiberRefs"
-import { pipe } from "effect/Function"
-import * as HashMap from "effect/HashMap"
-import * as Option from "effect/Option"
-import * as Queue from "effect/Queue"
-import * as Scope from "effect/Scope"
+import { Cause, Effect, Exit, Fiber, FiberId, FiberRef, FiberRefs, HashMap, Option, pipe, Queue, Scope } from "effect"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("FiberRefs", () => {

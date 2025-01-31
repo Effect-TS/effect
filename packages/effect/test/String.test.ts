@@ -1,26 +1,26 @@
 import { describe, it } from "@effect/vitest"
-import { Order, pipe, String as S } from "effect"
+import { Order, pipe, String as Str } from "effect"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("String", () => {
   it("isString", () => {
-    assertTrue(S.isString("a"))
-    assertFalse(S.isString(1))
-    assertFalse(S.isString(true))
+    assertTrue(Str.isString("a"))
+    assertFalse(Str.isString(1))
+    assertFalse(Str.isString(true))
   })
 
   it("empty", () => {
-    strictEqual(S.empty, "")
+    strictEqual(Str.empty, "")
   })
 
   it("Equivalence", () => {
-    assertTrue(S.Equivalence("a", "a"))
-    assertFalse(S.Equivalence("a", "b"))
+    assertTrue(Str.Equivalence("a", "a"))
+    assertFalse(Str.Equivalence("a", "b"))
   })
 
   it("Order", () => {
-    const lessThan = Order.lessThan(S.Order)
-    const lessThanOrEqualTo = Order.lessThanOrEqualTo(S.Order)
+    const lessThan = Order.lessThan(Str.Order)
+    const lessThanOrEqualTo = Order.lessThanOrEqualTo(Str.Order)
     assertTrue(pipe("a", lessThan("b")))
     assertFalse(pipe("a", lessThan("a")))
     assertTrue(pipe("a", lessThanOrEqualTo("a")))
@@ -29,219 +29,219 @@ describe("String", () => {
   })
 
   it("concat", () => {
-    strictEqual(pipe("a", S.concat("b")), "ab")
+    strictEqual(pipe("a", Str.concat("b")), "ab")
   })
 
   it("isEmpty", () => {
-    assertTrue(S.isEmpty(""))
-    assertFalse(S.isEmpty("a"))
+    assertTrue(Str.isEmpty(""))
+    assertFalse(Str.isEmpty("a"))
   })
 
   it("isNonEmpty", () => {
-    assertFalse(S.isNonEmpty(""))
-    assertTrue(S.isNonEmpty("a"))
+    assertFalse(Str.isNonEmpty(""))
+    assertTrue(Str.isNonEmpty("a"))
   })
 
   it("length", () => {
-    strictEqual(S.length(""), 0)
-    strictEqual(S.length("a"), 1)
-    strictEqual(S.length("aaa"), 3)
+    strictEqual(Str.length(""), 0)
+    strictEqual(Str.length("a"), 1)
+    strictEqual(Str.length("aaa"), 3)
   })
 
   it("toUpperCase", () => {
-    strictEqual(S.toUpperCase("a"), "A")
+    strictEqual(Str.toUpperCase("a"), "A")
   })
 
   it("toLowerCase", () => {
-    strictEqual(S.toLowerCase("A"), "a")
+    strictEqual(Str.toLowerCase("A"), "a")
   })
 
   it("capitalize", () => {
-    strictEqual(S.capitalize(""), "")
-    strictEqual(S.capitalize("abc"), "Abc")
+    strictEqual(Str.capitalize(""), "")
+    strictEqual(Str.capitalize("abc"), "Abc")
   })
 
   it("uncapitalize", () => {
-    strictEqual(S.uncapitalize(""), "")
-    strictEqual(S.uncapitalize("Abc"), "abc")
+    strictEqual(Str.uncapitalize(""), "")
+    strictEqual(Str.uncapitalize("Abc"), "abc")
   })
 
   it("replace", () => {
-    strictEqual(pipe("abc", S.replace("b", "d")), "adc")
+    strictEqual(pipe("abc", Str.replace("b", "d")), "adc")
   })
 
   it("split", () => {
-    deepStrictEqual(pipe("abc", S.split("")), ["a", "b", "c"])
-    deepStrictEqual(pipe("", S.split("")), [""])
+    deepStrictEqual(pipe("abc", Str.split("")), ["a", "b", "c"])
+    deepStrictEqual(pipe("", Str.split("")), [""])
   })
 
   it("trim", () => {
-    strictEqual(pipe(" a ", S.trim), "a")
+    strictEqual(pipe(" a ", Str.trim), "a")
   })
 
   it("trimStart", () => {
-    strictEqual(pipe(" a ", S.trimStart), "a ")
+    strictEqual(pipe(" a ", Str.trimStart), "a ")
   })
 
   it("trimEnd", () => {
-    strictEqual(pipe(" a ", S.trimEnd), " a")
+    strictEqual(pipe(" a ", Str.trimEnd), " a")
   })
 
   it("includes", () => {
-    assertTrue(pipe("abc", S.includes("b")))
-    assertFalse(pipe("abc", S.includes("d")))
-    assertTrue(pipe("abc", S.includes("b", 1)))
-    assertFalse(pipe("abc", S.includes("a", 1)))
+    assertTrue(pipe("abc", Str.includes("b")))
+    assertFalse(pipe("abc", Str.includes("d")))
+    assertTrue(pipe("abc", Str.includes("b", 1)))
+    assertFalse(pipe("abc", Str.includes("a", 1)))
   })
 
   it("startsWith", () => {
-    assertTrue(pipe("abc", S.startsWith("a")))
-    assertFalse(pipe("bc", S.startsWith("a")))
-    assertTrue(pipe("abc", S.startsWith("b", 1)))
-    assertFalse(pipe("bc", S.startsWith("a", 1)))
+    assertTrue(pipe("abc", Str.startsWith("a")))
+    assertFalse(pipe("bc", Str.startsWith("a")))
+    assertTrue(pipe("abc", Str.startsWith("b", 1)))
+    assertFalse(pipe("bc", Str.startsWith("a", 1)))
   })
 
   it("endsWith", () => {
-    assertTrue(pipe("abc", S.endsWith("c")))
-    assertFalse(pipe("ab", S.endsWith("c")))
-    assertTrue(pipe("abc", S.endsWith("b", 2)))
-    assertFalse(pipe("abc", S.endsWith("c", 2)))
+    assertTrue(pipe("abc", Str.endsWith("c")))
+    assertFalse(pipe("ab", Str.endsWith("c")))
+    assertTrue(pipe("abc", Str.endsWith("b", 2)))
+    assertFalse(pipe("abc", Str.endsWith("c", 2)))
   })
 
   it("slice", () => {
-    deepStrictEqual(pipe("abcd", S.slice(1, 3)), "bc")
+    deepStrictEqual(pipe("abcd", Str.slice(1, 3)), "bc")
   })
 
   it("charCodeAt", () => {
-    assertSome(pipe("abc", S.charCodeAt(1)), 98)
-    assertNone(pipe("abc", S.charCodeAt(4)))
+    assertSome(pipe("abc", Str.charCodeAt(1)), 98)
+    assertNone(pipe("abc", Str.charCodeAt(4)))
   })
 
   it("substring", () => {
-    strictEqual(pipe("abcd", S.substring(1)), "bcd")
-    strictEqual(pipe("abcd", S.substring(1, 3)), "bc")
+    strictEqual(pipe("abcd", Str.substring(1)), "bcd")
+    strictEqual(pipe("abcd", Str.substring(1, 3)), "bc")
   })
 
   it("at", () => {
-    assertSome(pipe("abc", S.at(1)), "b")
-    assertNone(pipe("abc", S.at(4)))
+    assertSome(pipe("abc", Str.at(1)), "b")
+    assertNone(pipe("abc", Str.at(4)))
   })
 
   it("charAt", () => {
-    assertSome(pipe("abc", S.charAt(1)), "b")
-    assertNone(pipe("abc", S.charAt(4)))
+    assertSome(pipe("abc", Str.charAt(1)), "b")
+    assertNone(pipe("abc", Str.charAt(4)))
   })
 
   it("codePointAt", () => {
-    assertSome(pipe("abc", S.codePointAt(1)), 98)
-    assertNone(pipe("abc", S.codePointAt(4)))
+    assertSome(pipe("abc", Str.codePointAt(1)), 98)
+    assertNone(pipe("abc", Str.codePointAt(4)))
   })
 
   it("indexOf", () => {
-    assertSome(pipe("abbbc", S.indexOf("b")), 1)
-    assertNone(pipe("abbbc", S.indexOf("d")))
+    assertSome(pipe("abbbc", Str.indexOf("b")), 1)
+    assertNone(pipe("abbbc", Str.indexOf("d")))
   })
 
   it("lastIndexOf", () => {
-    assertSome(pipe("abbbc", S.lastIndexOf("b")), 3)
-    assertNone(pipe("abbbc", S.lastIndexOf("d")))
+    assertSome(pipe("abbbc", Str.lastIndexOf("b")), 3)
+    assertNone(pipe("abbbc", Str.lastIndexOf("d")))
   })
 
   it("localeCompare", () => {
-    strictEqual(pipe("a", S.localeCompare("b")), -1)
-    strictEqual(pipe("b", S.localeCompare("a")), 1)
-    strictEqual(pipe("a", S.localeCompare("a")), 0)
+    strictEqual(pipe("a", Str.localeCompare("b")), -1)
+    strictEqual(pipe("b", Str.localeCompare("a")), 1)
+    strictEqual(pipe("a", Str.localeCompare("a")), 0)
   })
 
   it("match", () => {
-    assertSome(pipe("a", S.match(/a/)), "a".match(/a/))
-    assertNone(pipe("a", S.match(/b/)))
+    assertSome(pipe("a", Str.match(/a/)), "a".match(/a/))
+    assertNone(pipe("a", Str.match(/b/)))
   })
 
   it("matchAll", () => {
-    strictEqual(Array.from(pipe("apple, banana", S.matchAll(/a[pn]/g))).length, 3)
-    strictEqual(Array.from(pipe("apple, banana", S.matchAll(/c/g))).length, 0)
+    strictEqual(Array.from(pipe("apple, banana", Str.matchAll(/a[pn]/g))).length, 3)
+    strictEqual(Array.from(pipe("apple, banana", Str.matchAll(/c/g))).length, 0)
   })
 
   it("normalize", () => {
     const str = "\u1E9B\u0323"
-    strictEqual(pipe(str, S.normalize()), "\u1E9B\u0323")
-    strictEqual(pipe(str, S.normalize("NFC")), "\u1E9B\u0323")
-    strictEqual(pipe(str, S.normalize("NFD")), "\u017F\u0323\u0307")
-    strictEqual(pipe(str, S.normalize("NFKC")), "\u1E69")
-    strictEqual(pipe(str, S.normalize("NFKD")), "\u0073\u0323\u0307")
+    strictEqual(pipe(str, Str.normalize()), "\u1E9B\u0323")
+    strictEqual(pipe(str, Str.normalize("NFC")), "\u1E9B\u0323")
+    strictEqual(pipe(str, Str.normalize("NFD")), "\u017F\u0323\u0307")
+    strictEqual(pipe(str, Str.normalize("NFKC")), "\u1E69")
+    strictEqual(pipe(str, Str.normalize("NFKD")), "\u0073\u0323\u0307")
   })
 
   it("padEnd", () => {
-    strictEqual(pipe("a", S.padEnd(5)), "a    ")
-    strictEqual(pipe("a", S.padEnd(5, "_")), "a____")
+    strictEqual(pipe("a", Str.padEnd(5)), "a    ")
+    strictEqual(pipe("a", Str.padEnd(5, "_")), "a____")
   })
 
   it("padStart", () => {
-    strictEqual(pipe("a", S.padStart(5)), "    a")
-    strictEqual(pipe("a", S.padStart(5, "_")), "____a")
+    strictEqual(pipe("a", Str.padStart(5)), "    a")
+    strictEqual(pipe("a", Str.padStart(5, "_")), "____a")
   })
 
   it("repeat", () => {
-    strictEqual(pipe("a", S.repeat(3)), "aaa")
+    strictEqual(pipe("a", Str.repeat(3)), "aaa")
   })
 
   it("replaceAll", () => {
-    strictEqual(pipe("ababb", S.replaceAll("b", "c")), "acacc")
-    strictEqual(pipe("ababb", S.replaceAll(/ba/g, "cc")), "accbb")
+    strictEqual(pipe("ababb", Str.replaceAll("b", "c")), "acacc")
+    strictEqual(pipe("ababb", Str.replaceAll(/ba/g, "cc")), "accbb")
   })
 
   it("search", () => {
-    assertSome(pipe("ababb", S.search("b")), 1)
-    assertSome(pipe("ababb", S.search(/abb/)), 2)
-    assertNone(pipe("ababb", S.search(/c/)))
+    assertSome(pipe("ababb", Str.search("b")), 1)
+    assertSome(pipe("ababb", Str.search(/abb/)), 2)
+    assertNone(pipe("ababb", Str.search(/c/)))
   })
 
   it("toLocaleLowerCase", () => {
     const locales = ["tr", "TR", "tr-TR", "tr-u-co-search", "tr-x-turkish"]
-    strictEqual(pipe("\u0130", S.toLocaleLowerCase(locales)), "i")
+    strictEqual(pipe("\u0130", Str.toLocaleLowerCase(locales)), "i")
   })
 
   it("toLocaleUpperCase", () => {
     const locales = ["lt", "LT", "lt-LT", "lt-u-co-phonebk", "lt-x-lietuva"]
-    strictEqual(pipe("i\u0307", S.toLocaleUpperCase(locales)), "I")
+    strictEqual(pipe("i\u0307", Str.toLocaleUpperCase(locales)), "I")
   })
 
   describe("takeLeft", () => {
     it("should take the specified number of characters from the left side of a string", () => {
-      strictEqual(S.takeLeft("Hello, World!", 7), "Hello, ")
+      strictEqual(Str.takeLeft("Hello, World!", 7), "Hello, ")
     })
 
     it("should return the string for `n` larger than the string length", () => {
       const string = "Hello, World!"
-      strictEqual(S.takeLeft(string, 100), string)
+      strictEqual(Str.takeLeft(string, 100), string)
     })
 
     it("should return the empty string for a negative `n`", () => {
-      strictEqual(S.takeLeft("Hello, World!", -1), "")
+      strictEqual(Str.takeLeft("Hello, World!", -1), "")
     })
 
     it("should round down if `n` is a float", () => {
-      strictEqual(S.takeLeft("Hello, World!", 5.5), "Hello")
+      strictEqual(Str.takeLeft("Hello, World!", 5.5), "Hello")
     })
   })
 
   describe("takeRight", () => {
     it("should take the specified number of characters from the right side of a string", () => {
-      strictEqual(S.takeRight("Hello, World!", 7), " World!")
+      strictEqual(Str.takeRight("Hello, World!", 7), " World!")
     })
 
     it("should return the string for `n` larger than the string length", () => {
       const string = "Hello, World!"
-      strictEqual(S.takeRight(string, 100), string)
+      strictEqual(Str.takeRight(string, 100), string)
     })
 
     it("should return the empty string for a negative `n`", () => {
-      strictEqual(S.takeRight("Hello, World!", -1), "")
+      strictEqual(Str.takeRight("Hello, World!", -1), "")
     })
 
     it("should round down if `n` is a float", () => {
-      strictEqual(S.takeRight("Hello, World!", 6.5), "World!")
+      strictEqual(Str.takeRight("Hello, World!", 6.5), "World!")
     })
   })
 
@@ -251,13 +251,13 @@ describe("String", () => {
     |Hello,
     |World!
     |`
-      const result = S.stripMargin(string)
+      const result = Str.stripMargin(string)
       strictEqual(result, "\nHello,\nWorld!\n")
     })
 
     it("should strip a leading prefix from each line using a margin character", () => {
       const string = "\n$\n    $Hello,\r\n    $World!\n $"
-      const result = S.stripMarginWith(string, "$")
+      const result = Str.stripMarginWith(string, "$")
       strictEqual(result, "\n\nHello,\r\nWorld!\n")
     })
   })
@@ -265,7 +265,7 @@ describe("String", () => {
   describe("linesWithSeparators", () => {
     it("should split a string into lines with separators", () => {
       const string = "\n$\n    $Hello,\r\n    $World!\n $"
-      const result = S.linesWithSeparators(string)
+      const result = Str.linesWithSeparators(string)
       deepStrictEqual(Array.from(result), ["\n", "$\n", "    $Hello,\r\n", "    $World!\n", " $"])
     })
   })
@@ -273,7 +273,7 @@ describe("String", () => {
   describe("linesIterator", () => {
     it("should split a string into lines", () => {
       const string = "\n$\n    $Hello,\r\n    $World!\n $"
-      const result = S.linesIterator(string)
+      const result = Str.linesIterator(string)
       deepStrictEqual(Array.from(result), ["", "$", "    $Hello,", "    $World!", " $"])
     })
   })

@@ -1,9 +1,5 @@
 import { describe, it, test } from "@effect/vitest"
-import { FiberRefs, List, ManagedRuntime } from "effect"
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as FiberRef from "effect/FiberRef"
-import * as Layer from "effect/Layer"
+import { Context, Effect, FiberRef, FiberRefs, Layer, List, ManagedRuntime } from "effect"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("ManagedRuntime", () => {

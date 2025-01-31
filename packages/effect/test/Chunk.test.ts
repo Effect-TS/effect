@@ -1,12 +1,12 @@
 import { describe, it } from "@effect/vitest"
 import {
-  Array as RA,
+  Array as Arr,
   Chunk,
   Either,
   Equal,
   FastCheck as fc,
   identity,
-  Number as N,
+  Number as Num,
   Option,
   Order,
   pipe,
@@ -181,7 +181,7 @@ describe("Chunk", () => {
 
       it("gives back a readonly array", () => {
         doesNotThrow(() => Chunk.toReadonlyArray(chunk))
-        deepStrictEqual(Chunk.toReadonlyArray(chunk), RA.reverse(RA.range(0, len - 1)))
+        deepStrictEqual(Chunk.toReadonlyArray(chunk), Arr.reverse(Arr.range(0, len - 1)))
       })
     })
 
@@ -855,7 +855,7 @@ describe("Chunk", () => {
   })
 
   it("getEquivalence", () => {
-    const equivalence = Chunk.getEquivalence(N.Equivalence)
+    const equivalence = Chunk.getEquivalence(Num.Equivalence)
     assertTrue(equivalence(Chunk.empty(), Chunk.empty()))
     assertTrue(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 3)))
     assertFalse(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2)))

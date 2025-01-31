@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { Cause, Effect, Inspectable, Schema } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertIncludes, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("TaggedError", () => {
   it("should expose the fields and the tag", () => {
@@ -51,7 +51,7 @@ describe("TaggedError", () => {
     let err = new MyError({ id: 1 })
 
     strictEqual(String(err), `MyError: { "id": 1 }`)
-    assertTrue(err.stack?.includes("TaggedError.test.ts:"))
+    assertIncludes(err.stack, "TaggedError.test.ts:")
     strictEqual(err._tag, "MyError")
     strictEqual(err.id, 1)
 
@@ -75,8 +75,8 @@ describe("TaggedError", () => {
 
     const err = new MyError({ id: 1 })
 
-    assertTrue(String(err).includes(`MyError: bad id: 1`))
-    assertTrue(err.stack?.includes("TaggedError.test.ts:"))
+    assertIncludes(String(err), `MyError: bad id: 1`)
+    assertIncludes(err.stack, "TaggedError.test.ts:")
     strictEqual(err._tag, "MyError")
     strictEqual(err.id, 1)
   })
@@ -90,8 +90,8 @@ describe("TaggedError", () => {
 
     const err = new MyError({ id: 1, message: "boom" })
 
-    assertTrue(String(err).includes(`MyError: boom`))
-    assertTrue(err.stack?.includes("TaggedError.test.ts:"))
+    assertIncludes(String(err), `MyError: boom`)
+    assertIncludes(err.stack, "TaggedError.test.ts:")
     strictEqual(err._tag, "MyError")
     strictEqual(err.id, 1)
   })
@@ -116,7 +116,7 @@ describe("TaggedError", () => {
     }) {}
 
     const err = new MyError({ cause: new Error("child") })
-    assertTrue(Cause.pretty(Cause.fail(err), { renderErrorCause: true }).includes("[cause]: Error: child"))
+    assertIncludes(Cause.pretty(Cause.fail(err), { renderErrorCause: true }), "[cause]: Error: child")
     // ensure node renders the error directly
     deepStrictEqual(err[Inspectable.NodeInspectSymbol](), err)
   })

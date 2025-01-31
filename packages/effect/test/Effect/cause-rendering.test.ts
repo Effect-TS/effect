@@ -37,8 +37,8 @@ describe("Effect", () => {
       ).pipe(Effect.catchTag("E2", (e) => Effect.die(e)))
       const cause = yield* (Effect.flip(Effect.sandbox(effect)))
       const rendered = Cause.pretty(cause)
-      assertTrue(rendered.includes("spanA"))
-      assertTrue(rendered.includes("spanB"))
+      assertIncludes(rendered, "spanA")
+      assertIncludes(rendered, "spanB")
       const obj = Option.getOrThrow(Cause.failureOption(cause))
       assertTrue(obj instanceof E1)
       assertFalse(err === obj)
@@ -62,8 +62,8 @@ describe("Effect", () => {
       ).pipe(Effect.catchAll((e) => Effect.fail(e)))
       const cause = yield* (Effect.flip(Effect.sandbox(effect)))
       const rendered = Cause.pretty(cause)
-      assertTrue(rendered.includes("spanA"))
-      assertTrue(rendered.includes("spanB"))
+      assertIncludes(rendered, "spanA")
+      assertIncludes(rendered, "spanB")
     }))
   it.effect("catchTags should not invalidate traces", () =>
     Effect.gen(function*() {
@@ -83,8 +83,8 @@ describe("Effect", () => {
       ).pipe(Effect.catchTags({ E2: (e) => Effect.die(e) }))
       const cause = yield* (Effect.flip(Effect.sandbox(effect)))
       const rendered = Cause.pretty(cause)
-      assertTrue(rendered.includes("spanA"))
-      assertTrue(rendered.includes("spanB"))
+      assertIncludes(rendered, "spanA")
+      assertIncludes(rendered, "spanB")
     }))
   it.effect("shows line where error was created", () =>
     Effect.gen(function*() {
@@ -96,7 +96,7 @@ describe("Effect", () => {
         Effect.flip
       )
       const pretty = Cause.pretty(cause)
-      assertTrue(pretty.includes("cause-rendering.test.ts"))
+      assertIncludes(pretty, "cause-rendering.test.ts")
     }))
 
   it.effect("functionWithSpan PrettyError stack", () =>
@@ -129,7 +129,7 @@ describe("Effect", () => {
         Effect.flip
       )
       const prettyErrors = Cause.prettyErrors(cause)
-      assertTrue(prettyErrors[0].stack?.includes("at fn-0 "))
+      assertIncludes(prettyErrors[0].stack, "at fn-0 ")
     }))
 
   // ENABLE TO TEST EXPECT OUTPUT
@@ -159,7 +159,7 @@ message
         Effect.flip
       )
       const pretty = Cause.pretty(cause, { renderErrorCause: true })
-      assertTrue(pretty.includes("[cause]: Error: child"))
+      assertIncludes(pretty, "[cause]: Error: child")
     }))
 
   it.effect("pretty nested cause", () =>
@@ -171,7 +171,7 @@ message
         Effect.flip
       )
       const pretty = Cause.pretty(cause, { renderErrorCause: true })
-      assertTrue(pretty.includes("[cause]: Error: child"))
-      assertTrue(pretty.includes("[cause]: Error: child2"))
+      assertIncludes(pretty, "[cause]: Error: child")
+      assertIncludes(pretty, "[cause]: Error: child2")
     }))
 })

@@ -1,9 +1,20 @@
 import { describe, it } from "@effect/vitest"
-import { Array as Arr, Cause, Effect, Equal, FastCheck as fc, FiberId, Hash, Option, Predicate } from "effect"
-import { NodeInspectSymbol } from "effect/Inspectable"
+import {
+  Array as Arr,
+  Cause,
+  Effect,
+  Equal,
+  FastCheck as fc,
+  FiberId,
+  Hash,
+  Inspectable,
+  Option,
+  Predicate
+} from "effect"
 import * as internal from "effect/internal/cause"
 import {
   assertFalse,
+  assertIncludes,
   assertLeft,
   assertNone,
   assertRight,
@@ -26,13 +37,13 @@ describe("Cause", () => {
     it("correctly implements toString() and the NodeInspectSymbol", () => {
       // Referenced line to be included in the string output
       const ex = new Cause.InterruptedException("my message")
-      assertTrue(ex.toString().includes("InterruptedException: my message"))
+      assertIncludes(ex.toString(), "InterruptedException: my message")
 
       // In Node.js environments, ensure the 'inspect' method includes line information
       if (typeof window === "undefined") {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { inspect } = require("node:util")
-        assertTrue(inspect(ex).includes("Cause.test.ts:28")) // <= reference to the line above
+        assertIncludes(inspect(ex), "Cause.test.ts:39") // <= reference to the line above
       }
     })
   })
@@ -98,7 +109,7 @@ describe("Cause", () => {
     describe("toJSON / [NodeInspectSymbol]", () => {
       const expectJSON = (cause: Cause.Cause<unknown>, expected: unknown) => {
         deepStrictEqual(cause.toJSON(), expected)
-        deepStrictEqual(cause[NodeInspectSymbol](), expected)
+        deepStrictEqual(cause[Inspectable.NodeInspectSymbol](), expected)
       }
 
       it("Empty", () => {
@@ -213,12 +224,12 @@ describe("Cause", () => {
 
       it("Fail", () => {
         strictEqual(String(Cause.fail("my failure")), `Error: my failure`)
-        assertTrue(String(Cause.fail(new Error("my failure"))).includes(`Error: my failure`))
+        assertIncludes(String(Cause.fail(new Error("my failure"))), "Error: my failure")
       })
 
       it("Die", () => {
         strictEqual(String(Cause.die("die message")), `Error: die message`)
-        assertTrue(String(Cause.die(new Error("die message"))).includes(`Error: die message`))
+        assertIncludes(String(Cause.die(new Error("die message"))), "Error: die message")
       })
 
       it("Interrupt", () => {
@@ -236,8 +247,8 @@ describe("Cause", () => {
           `Error: failure 1\nError: failure 2`
         )
         const actual = String(Cause.sequential(Cause.fail(new Error("failure 1")), Cause.fail(new Error("failure 2"))))
-        assertTrue(actual.includes("Error: failure 1"))
-        assertTrue(actual.includes("Error: failure 2"))
+        assertIncludes(actual, "Error: failure 1")
+        assertIncludes(actual, "Error: failure 2")
       })
 
       it("Parallel", () => {
@@ -248,8 +259,8 @@ describe("Cause", () => {
         const actual = String(
           String(Cause.parallel(Cause.fail(new Error("failure 1")), Cause.fail(new Error("failure 2"))))
         )
-        assertTrue(actual.includes("Error: failure 1"))
-        assertTrue(actual.includes("Error: failure 2"))
+        assertIncludes(actual, "Error: failure 1")
+        assertIncludes(actual, "Error: failure 2")
       })
     })
 

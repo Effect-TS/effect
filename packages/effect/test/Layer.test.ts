@@ -1,25 +1,28 @@
 import { describe, it } from "@effect/vitest"
-import * as Chunk from "effect/Chunk"
-import * as Context from "effect/Context"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as FiberRef from "effect/FiberRef"
-import { identity, pipe } from "effect/Function"
-import * as Layer from "effect/Layer"
-import * as Ref from "effect/Ref"
-import * as Schedule from "effect/Schedule"
-import * as Scope from "effect/Scope"
+import {
+  Chunk,
+  Context,
+  Deferred,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  FiberRef,
+  identity,
+  Layer,
+  pipe,
+  Ref,
+  Schedule,
+  Scope
+} from "effect"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
-export const acquire1 = "Acquiring Module 1"
-export const acquire2 = "Acquiring Module 2"
-export const acquire3 = "Acquiring Module 3"
-export const release1 = "Releasing Module 1"
-export const release2 = "Releasing Module 2"
-export const release3 = "Releasing Module 3"
+const acquire1 = "Acquiring Module 1"
+const acquire2 = "Acquiring Module 2"
+const acquire3 = "Acquiring Module 3"
+const release1 = "Releasing Module 1"
+const release2 = "Releasing Module 2"
+const release3 = "Releasing Module 3"
 
 describe("Layer", () => {
   it.effect("layers can be acquired in parallel", () =>
