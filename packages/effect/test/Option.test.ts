@@ -547,9 +547,10 @@ describe("Option", () => {
   })
 
   it("[internal] mergeWith", () => {
-    assertNone(Option.mergeWith(Option.none(), Option.none(), N.sum))
-    assertSome(Option.mergeWith(Option.some(1), Option.none(), N.sum), 1)
-    assertSome(Option.mergeWith(Option.none(), Option.some(2), N.sum), 2)
-    assertSome(Option.mergeWith(Option.some(1), Option.some(2), N.sum), 3)
+    const mergeWith = Option.mergeWith(N.sum)
+    assertNone(mergeWith(Option.none(), Option.none()))
+    assertSome(mergeWith(Option.some(1), Option.none()), 1)
+    assertSome(mergeWith(Option.none(), Option.some(2)), 2)
+    assertSome(mergeWith(Option.some(1), Option.some(2)), 3)
   })
 })

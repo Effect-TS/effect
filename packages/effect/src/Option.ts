@@ -2169,11 +2169,11 @@ export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (..
  *
  * @internal
  */
-export const mergeWith = <A>(fa: Option<A>, fb: Option<A>, f: (a1: A, a2: A) => A): Option<A> => {
-  if (isNone(fa)) {
-    return fb
-  } else if (isNone(fb)) {
-    return fa
+export const mergeWith = <A>(f: (a1: A, a2: A) => A) => (o1: Option<A>, o2: Option<A>): Option<A> => {
+  if (isNone(o1)) {
+    return o2
+  } else if (isNone(o2)) {
+    return o1
   }
-  return some(f(fa.value, fb.value))
+  return some(f(o1.value, o2.value))
 }
