@@ -35,13 +35,13 @@ const getItems = getSub("test_1")
 
 describe("interruption", () => {
   it.live("forEach interrupts residual requests", () =>
-    Effect.gen(function*($) {
-      const exit = yield* $(getItems.pipe(
+    Effect.gen(function*() {
+      const exit = yield* getItems.pipe(
         Effect.timeout("10 millis"),
         Effect.catchAll(() => getItems),
         Effect.provide(Svc.Live),
         Effect.exit
-      ))
+      )
       strictEqual(exit._tag, "Success")
     }))
 })

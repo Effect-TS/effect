@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as RuntimeFlags from "effect/RuntimeFlags"
 import * as Scope from "effect/Scope"
@@ -54,17 +55,17 @@ describe("Effect", () => {
     const all = await Effect.runPromise(Effect.all(
       [
         Effect.provide(
-          Effect.gen(function*($) {
-            const a = yield* $(FiberRef.get(ref))
-            const b = yield* $(A)
-            const c = RuntimeFlags.isEnabled(yield* $(Effect.getRuntimeFlags), RuntimeFlags.OpSupervision)
+          Effect.gen(function*() {
+            const a = yield* FiberRef.get(ref)
+            const b = yield* A
+            const c = RuntimeFlags.isEnabled(yield* pipe(Effect.getRuntimeFlags), RuntimeFlags.OpSupervision)
             return { a, b, c }
           }),
           runtime
         ),
-        Effect.gen(function*($) {
-          const a = yield* $(FiberRef.get(ref))
-          const c = RuntimeFlags.isEnabled(yield* $(Effect.getRuntimeFlags), RuntimeFlags.OpSupervision)
+        Effect.gen(function*() {
+          const a = yield* FiberRef.get(ref)
+          const c = RuntimeFlags.isEnabled(yield* pipe(Effect.getRuntimeFlags), RuntimeFlags.OpSupervision)
           return { a, c }
         })
       ]

@@ -1,6 +1,7 @@
 import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
@@ -14,15 +15,15 @@ const env = GenericTag<"context", number>("context")
 const withValue = (value: string) => Effect.locallyWith(ref, List.prepend(value))
 
 const logRef = (msg: string) =>
-  Effect.gen(function*($) {
-    const stack = yield* $(FiberRef.get(ref))
-    const value = yield* $(env)
-    yield* $(Effect.log(`${value} | ${msg} | ${List.toArray(stack).join(" > ")}`))
+  Effect.gen(function*() {
+    const stack = yield* FiberRef.get(ref)
+    const value = yield* env
+    yield* Effect.log(`${value} | ${msg} | ${List.toArray(stack).join(" > ")}`)
   })
 
 describe("Effect", () => {
   it.effect("scoped ref", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const messages: Array<unknown> = []
       const layer = Layer.mergeAll(
         Logger.replace(
@@ -34,7 +35,7 @@ describe("Effect", () => {
         Layer.succeed(env, 1)
       )
 
-      yield* $(
+      yield* pipe(
         Effect.acquireRelease(
           withValue("A")(logRef("acquire")),
           () => withValue("R")(logRef("release"))

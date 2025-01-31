@@ -1,4 +1,4 @@
-import { Cause, Data, Effect } from "effect"
+import { Cause, Data, Effect, pipe } from "effect"
 import { assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
@@ -7,19 +7,19 @@ class TestError extends Data.TaggedError("TestError")<{}> {}
 
 describe("Effect", () => {
   it.effect("TaggedError has a stack", () =>
-    Effect.gen(function*($) {
-      const cause = yield* $(Effect.flip(Effect.sandbox(Effect.withSpan("A")(new TestError()))))
+    Effect.gen(function*() {
+      const cause = yield* (Effect.flip(Effect.sandbox(Effect.withSpan("A")(new TestError()))))
       const log = Cause.pretty(cause)
       assertTrue(log.includes("TestError"))
       if (typeof window === "undefined") {
-        assertTrue(log.replaceAll("\\", "/").includes("test/Effect/error.test.ts:11:78"))
+        assertTrue(log.replaceAll("\\", "/").includes("test/Effect/error.test.ts:11:77"))
       }
       assertTrue(log.includes("at A"))
     }))
 
   it.effect("tryPromise", () =>
-    Effect.gen(function*($) {
-      const cause = yield* $(
+    Effect.gen(function*() {
+      const cause = yield* pipe(
         Effect.tryPromise({
           try: () => Promise.reject("fail"),
           catch: () => new TestError()
@@ -36,12 +36,12 @@ describe("Effect", () => {
     }))
 
   it.effect("allow message prop", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       class MessageError extends Data.TaggedError("MessageError")<{
         readonly name: string
         readonly message: string
       }> {}
-      const cause = yield* $(
+      const cause = yield* pipe(
         Effect.tryPromise({
           try: () => Promise.reject("fail"),
           catch: () => new MessageError({ name: "Failure", message: "some message" })

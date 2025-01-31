@@ -5,13 +5,13 @@ import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("can lift a value to an option", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(Effect.succeedSome(42))
+    Effect.gen(function*() {
+      const result = yield* Effect.succeedSome(42)
       assertSome(result, 42)
     }))
   it.effect("using the none value", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(Effect.succeedNone)
+    Effect.gen(function*() {
+      const result = yield* Effect.succeedNone
       assertNone(result)
     }))
   it.effect("can use .pipe for composition", () =>

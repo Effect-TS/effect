@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import { pipe } from "effect/Function"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
 import * as it from "effect/test/utils/extend"
@@ -27,8 +28,8 @@ const getAllUserNames = Effect.forEach([1, 1], getUserNameById, { batching: true
 describe("Effect", () => {
   it.it("requests are executed correctly", () =>
     Effect.runPromise(
-      Effect.gen(function*($) {
-        yield* $(
+      Effect.gen(function*() {
+        yield* pipe(
           getAllUserNames,
           Effect.withRequestCaching(true),
           Effect.withRequestBatching(true)
