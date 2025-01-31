@@ -14,15 +14,15 @@ import { describe, it } from "effect/test/utils/extend"
 
 describe("Effect", () => {
   it.effect("simple async must return", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(Effect.async<number, unknown, never>((cb) => {
+    Effect.gen(function*() {
+      const result = yield* (Effect.async<number, unknown, never>((cb) => {
         cb(Effect.succeed(42))
       }))
       strictEqual(result, 42)
     }))
   it.effect("simple asyncEffect must return", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(Effect.asyncEffect<number, never, never, never, never, never>((resume) => {
+    Effect.gen(function*() {
+      const result = yield* (Effect.asyncEffect<number, never, never, never, never, never>((resume) => {
         return Effect.succeed(resume(Effect.succeed(42)))
       }))
       strictEqual(result, 42)
@@ -31,7 +31,7 @@ describe("Effect", () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const os = require("node:os")
     it.effect("deep asyncEffect doesn't block", () =>
-      Effect.gen(function*($) {
+      Effect.gen(function*() {
         const asyncIO = (cont: Effect.Effect<number>): Effect.Effect<number> => {
           return Effect.asyncEffect((cb) => {
             return pipe(
@@ -45,15 +45,15 @@ describe("Effect", () => {
           return count < 0 ? Effect.succeed(42) : asyncIO(stackIOs(count - 1))
         }
         const procNum = Effect.sync(() => os.cpus().length)
-        const result = yield* $(procNum, Effect.flatMap(stackIOs))
+        const result = yield* pipe(procNum, Effect.flatMap(stackIOs))
         strictEqual(result, 42)
       }))
   }
   it.effect("interrupt of asyncEffect register", () =>
-    Effect.gen(function*($) {
-      const release = yield* $(Deferred.make<void>())
-      const acquire = yield* $(Deferred.make<void>())
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const release = yield* (Deferred.make<void>())
+      const acquire = yield* (Deferred.make<void>())
+      const fiber = yield* pipe(
         Effect.asyncEffect<unknown, unknown, never, never, never, never>(() =>
           // This will never complete because we never call the callback
           Effect.acquireUseRelease(
@@ -66,17 +66,17 @@ describe("Effect", () => {
         Effect.fork
       )
 
-      yield* $(Deferred.await(acquire))
-      yield* $(Fiber.interruptFork(fiber))
-      const result = yield* $(Deferred.await(release))
+      yield* (Deferred.await(acquire))
+      yield* (Fiber.interruptFork(fiber))
+      const result = yield* (Deferred.await(release))
       strictEqual(result, undefined)
     }))
   it.live("async should not resume fiber twice after interruption", () =>
-    Effect.gen(function*($) {
-      const step = yield* $(Deferred.make<void>())
-      const unexpectedPlace = yield* $(Ref.make(Chunk.empty<number>()))
-      const runtime = yield* $(Effect.runtime<never>())
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const step = yield* (Deferred.make<void>())
+      const unexpectedPlace = yield* (Ref.make(Chunk.empty<number>()))
+      const runtime = yield* (Effect.runtime<never>())
+      const fiber = yield* pipe(
         Effect.async<void, never, never>((cb) => {
           Runtime.runCallback(runtime)(pipe(
             Deferred.await(step),
@@ -90,17 +90,17 @@ describe("Effect", () => {
         Effect.ensuring(Ref.update(unexpectedPlace, Chunk.prepend(2))),
         Effect.forkDaemon
       )
-      const result = yield* $(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)), Effect.option)
-      const unexpected = yield* $(Ref.get(unexpectedPlace))
+      const result = yield* pipe(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)), Effect.option)
+      const unexpected = yield* (Ref.get(unexpectedPlace))
       deepStrictEqual(unexpected, Chunk.empty())
       assertNone(result) // the timeout should happen
     }))
   it.live("async should not resume fiber twice after synchronous result", () =>
-    Effect.gen(function*($) {
-      const step = yield* $(Deferred.make<void>())
-      const unexpectedPlace = yield* $(Ref.make(Chunk.empty<number>()))
-      const runtime = yield* $(Effect.runtime<never>())
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const step = yield* (Deferred.make<void>())
+      const unexpectedPlace = yield* (Ref.make(Chunk.empty<number>()))
+      const runtime = yield* (Effect.runtime<never>())
+      const fiber = yield* pipe(
         Effect.async<void, never, never>((resume) => {
           Runtime.runCallback(runtime)(pipe(
             Deferred.await(step),
@@ -118,20 +118,20 @@ describe("Effect", () => {
         Effect.uninterruptible,
         Effect.forkDaemon
       )
-      const result = yield* $(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)), Effect.option)
-      const unexpected = yield* $(Ref.get(unexpectedPlace))
+      const result = yield* pipe(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)), Effect.option)
+      const unexpected = yield* (Ref.get(unexpectedPlace))
       deepStrictEqual(unexpected, Chunk.empty())
       assertNone(result) // timeout should happen
     }))
   it.effect("sleep 0 must return", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(Effect.sleep(Duration.zero))
+    Effect.gen(function*() {
+      const result = yield* (Effect.sleep(Duration.zero))
       strictEqual(result, undefined)
     }))
   it.effect("shallow bind of async chain", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const array = Array.from({ length: 10 }, (_, i) => i)
-      const result = yield* $(array.reduce((acc, _) =>
+      const result = yield* (array.reduce((acc, _) =>
         pipe(
           acc,
           Effect.flatMap((n) =>
@@ -143,8 +143,8 @@ describe("Effect", () => {
       strictEqual(result, 10)
     }))
   it.effect("asyncEffect can fail before registering", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Effect.asyncEffect<unknown, unknown, never, never, string, never>((_) => {
           return Effect.fail("ouch")
         }),
@@ -153,8 +153,8 @@ describe("Effect", () => {
       strictEqual(result, "ouch")
     }))
   it.effect("asyncEffect can defect before registering", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Effect.asyncEffect<unknown, unknown, never, never, string, never>((_) =>
           Effect.sync(() => {
             throw new Error("ouch")

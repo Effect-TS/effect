@@ -11,23 +11,23 @@ import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("acquireUseRelease - happy path", () =>
-    Effect.gen(function*($) {
-      const release = yield* $(Ref.make(false))
-      const result = yield* $(
+    Effect.gen(function*() {
+      const release = yield* (Ref.make(false))
+      const result = yield* (
         Effect.acquireUseRelease(
           Effect.succeed(42),
           (n) => Effect.succeed(n + 1),
           () => Ref.set(release, true)
         )
       )
-      const released = yield* $(Ref.get(release))
+      const released = yield* (Ref.get(release))
       strictEqual(result, 43)
       assertTrue(released)
     }))
   it.effect("acquireUseRelease - happy path + disconnect", () =>
-    Effect.gen(function*($) {
-      const release = yield* $(Ref.make(false))
-      const result = yield* $(
+    Effect.gen(function*() {
+      const release = yield* (Ref.make(false))
+      const result = yield* pipe(
         Effect.acquireUseRelease(
           Effect.succeed(42),
           (n) => Effect.succeed(n + 1),
@@ -35,14 +35,14 @@ describe("Effect", () => {
         ),
         Effect.disconnect
       )
-      const released = yield* $(Ref.get(release))
+      const released = yield* (Ref.get(release))
       strictEqual(result, 43)
       assertTrue(released)
     }))
   it.effect("acquireUseRelease - error handling", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const releaseDied = new Cause.RuntimeException("release died")
-      const exit = yield* $(
+      const exit = yield* pipe(
         Effect.acquireUseRelease(
           Effect.succeed(42),
           () => Effect.fail("use failed"),
@@ -50,7 +50,7 @@ describe("Effect", () => {
         ),
         Effect.exit
       )
-      const result = yield* $(
+      const result = yield* pipe(
         exit,
         Exit.matchEffect({ onFailure: Effect.succeed, onSuccess: () => Effect.fail("effect should have failed") })
       )
@@ -58,9 +58,9 @@ describe("Effect", () => {
       assertTrue(equals(Cause.defects(result), Chunk.of(releaseDied)))
     }))
   it.effect("acquireUseRelease - error handling + disconnect", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const releaseDied = new Cause.RuntimeException("release died")
-      const exit = yield* $(
+      const exit = yield* pipe(
         Effect.acquireUseRelease(
           Effect.succeed(42),
           () => Effect.fail("use failed"),
@@ -69,7 +69,7 @@ describe("Effect", () => {
         Effect.disconnect,
         Effect.exit
       )
-      const result = yield* $(
+      const result = yield* pipe(
         exit,
         Exit.matchEffect({
           onFailure: Effect.succeed,
@@ -80,10 +80,10 @@ describe("Effect", () => {
       assertTrue(equals(Cause.defects(result), Chunk.of(releaseDied)))
     }))
   it.effect("acquireUseRelease - beast mode error handling + disconnect", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const useDied = new Cause.RuntimeException("use died")
-      const release = yield* $(Ref.make(false))
-      const exit = yield* $(
+      const release = yield* (Ref.make(false))
+      const exit = yield* (
         pipe(
           Effect.acquireUseRelease(
             Effect.succeed(42),
@@ -96,7 +96,7 @@ describe("Effect", () => {
           Effect.exit
         )
       )
-      const result = yield* $(
+      const result = yield* (
         pipe(
           exit,
           Exit.matchEffect({
@@ -105,7 +105,7 @@ describe("Effect", () => {
           })
         )
       )
-      const released = yield* $(Ref.get(release))
+      const released = yield* (Ref.get(release))
       assertTrue(equals(Cause.defects(result), Chunk.of(useDied)))
       assertTrue(released)
     }))

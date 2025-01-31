@@ -63,7 +63,7 @@ export const refReader = <A>(
 
 describe("Channel", () => {
   it.effect("simple reads", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       class Whatever implements Equal.Equal {
         constructor(readonly i: number) {}
         [Hash.symbol](): number {
@@ -90,7 +90,7 @@ describe("Channel", () => {
           )
         )
       )
-      const result = yield* $(Channel.runCollect(channel))
+      const result = yield* (Channel.runCollect(channel))
       const [chunk, value] = result
       deepStrictEqual(Chunk.toReadonlyArray(chunk), [
         new Whatever(1),
@@ -102,7 +102,7 @@ describe("Channel", () => {
     }))
 
   it.effect("read pipelining", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const innerChannel = pipe(
         Channel.fromEffect(Ref.make<ReadonlyArray<number>>([])),
         Channel.flatMap((ref) => {
@@ -131,14 +131,14 @@ describe("Channel", () => {
         Channel.pipeTo(pipe(mapper(g), Channel.concatMap((ns) => Channel.writeAll(...ns)), Channel.asVoid)),
         Channel.pipeTo(innerChannel)
       )
-      const [chunk, list] = yield* $(Channel.runCollect(channel))
+      const [chunk, list] = yield* (Channel.runCollect(channel))
       deepStrictEqual(Chunk.toReadonlyArray(chunk), [1, 1, 2, 2])
       deepStrictEqual(list, [1, 1, 2, 2])
     }))
 
   it.effect("read pipelining 2", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<ReadonlyArray<number>>([]))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make<ReadonlyArray<number>>([]))
       const intProducer: Channel.Channel<number, unknown, never, unknown, void, unknown> = Channel.writeAll(
         1,
         2,
@@ -178,13 +178,13 @@ describe("Channel", () => {
           )
         )
       )
-      const result = yield* $(Channel.run(channel), Effect.zipRight(Ref.get(ref)))
+      const result = yield* pipe(Channel.run(channel), Effect.zipRight(Ref.get(ref)))
       deepStrictEqual(result, [3, 7])
     }))
 
   it.effect("reading with resources", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make<ReadonlyArray<string>>([]))
       const event = (label: string) => Ref.update(ref, (array) => [...array, label])
       const left = pipe(
         Channel.acquireReleaseOut(
@@ -215,7 +215,7 @@ describe("Channel", () => {
         Channel.catchAll(() => Channel.void)
       )
       const channel = pipe(left, Channel.pipeTo(right))
-      const result = yield* $(Channel.runDrain(channel), Effect.zipRight(Ref.get(ref)))
+      const result = yield* pipe(Channel.runDrain(channel), Effect.zipRight(Ref.get(ref)))
       deepStrictEqual(result, [
         "Acquire outer",
         "Acquire 1",
@@ -229,11 +229,11 @@ describe("Channel", () => {
     }))
 
   it.effect("simple concurrent reads", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const capacity = 128
-      const elements = yield* $(Effect.replicateEffect(Random.nextInt, capacity))
-      const source = yield* $(Ref.make(Array.fromIterable(elements)))
-      const destination = yield* $(Ref.make<ReadonlyArray<number>>([]))
+      const elements = yield* (Effect.replicateEffect(Random.nextInt, capacity))
+      const source = yield* (Ref.make(Array.fromIterable(elements)))
+      const destination = yield* (Ref.make<ReadonlyArray<number>>([]))
       const twoWriters = pipe(
         refWriter(destination),
         Channel.mergeWith({
@@ -242,7 +242,7 @@ describe("Channel", () => {
           onOtherDone: () => MergeDecision.AwaitConst(Effect.void)
         })
       )
-      const [missing, surplus] = yield* $(
+      const [missing, surplus] = yield* pipe(
         refReader(source),
         Channel.pipeTo(twoWriters),
         Channel.mapEffect(() => Ref.get(destination)),
@@ -265,12 +265,12 @@ describe("Channel", () => {
     }))
 
   it.effect("nested concurrent reads", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const capacity = 128
       const f = (n: number) => n + 1
-      const elements = yield* $(Effect.replicateEffect(Random.nextInt, capacity))
-      const source = yield* $(Ref.make(Array.fromIterable(elements)))
-      const destination = yield* $(Ref.make<ReadonlyArray<number>>([]))
+      const elements = yield* (Effect.replicateEffect(Random.nextInt, capacity))
+      const source = yield* (Ref.make(Array.fromIterable(elements)))
+      const destination = yield* (Ref.make<ReadonlyArray<number>>([]))
       const twoWriters = pipe(
         mapper(f),
         Channel.pipeTo(refWriter(destination)),
@@ -280,7 +280,7 @@ describe("Channel", () => {
           onOtherDone: () => MergeDecision.AwaitConst(Effect.void)
         })
       )
-      const [missing, surplus] = yield* $(
+      const [missing, surplus] = yield* pipe(
         refReader(source),
         Channel.pipeTo(twoWriters),
         Channel.mapEffect(() => Ref.get(destination)),

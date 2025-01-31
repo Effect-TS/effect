@@ -13,11 +13,11 @@ import { describe } from "vitest"
 describe("Channel", () => {
   it.it("acquireUseReleaseOut - acquire is executed uninterruptibly", async () => {
     const latch = Deferred.unsafeMake<void>(FiberId.none)
-    const program = Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(0))
+    const program = Effect.gen(function*() {
+      const ref = yield* (Ref.make(0))
       const acquire = Effect.zipRight(Ref.update(ref, (n) => n + 1), Effect.yieldNow())
       const release = Ref.update(ref, (n) => n - 1)
-      yield* $(
+      yield* pipe(
         Channel.acquireReleaseOut(acquire, () => release),
         Channel.as(Channel.fromEffect(Deferred.await(latch))),
         Channel.runDrain,
@@ -25,7 +25,7 @@ describe("Channel", () => {
         Effect.flatMap((fiber) => pipe(Effect.yieldNow(), Effect.zipRight(Fiber.interrupt(fiber)))),
         Effect.repeatN(1_000)
       )
-      return yield* $(Ref.get(ref))
+      return yield* (Ref.get(ref))
     })
     const result = await Effect.runPromise(program)
     await Effect.runPromise(Deferred.succeed(latch, void 0))
@@ -34,19 +34,19 @@ describe("Channel", () => {
 
   it.it("scoped closes the scope", async () => {
     const latch = Deferred.unsafeMake<void>(FiberId.none)
-    const program = Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(0))
+    const program = Effect.gen(function*() {
+      const ref = yield* (Ref.make(0))
       const acquire = Effect.zipRight(Ref.update(ref, (n) => n + 1), Effect.yieldNow())
       const release = () => Ref.update(ref, (n) => n - 1)
       const scoped = Effect.acquireRelease(acquire, release)
-      yield* $(
+      yield* pipe(
         Channel.unwrapScoped(pipe(scoped, Effect.as(Channel.fromEffect(Deferred.await(latch))))),
         Channel.runDrain,
         Effect.fork,
         Effect.flatMap((fiber) => pipe(Effect.yieldNow(), Effect.zipRight(Fiber.interrupt(fiber)))),
         Effect.repeatN(1_000)
       )
-      return yield* $(Ref.get(ref))
+      return yield* (Ref.get(ref))
     })
     const result = await Effect.runPromise(program)
     await Effect.runPromise(Deferred.succeed(latch, void 0))
@@ -54,8 +54,8 @@ describe("Channel", () => {
   }, 35_000)
 
   it.effect("finalizer failure is propagated", () =>
-    Effect.gen(function*($) {
-      const exit = yield* $(
+    Effect.gen(function*() {
+      const exit = yield* pipe(
         Channel.void,
         Channel.ensuring(Effect.die("ok")),
         Channel.ensuring(Effect.void),

@@ -9,7 +9,7 @@ import { describe } from "vitest"
 
 describe("Channel", () => {
   it.effect("flatMap - simple", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const channel = pipe(
         Channel.succeed(1),
         Channel.flatMap((x) =>
@@ -24,19 +24,19 @@ describe("Channel", () => {
           )
         )
       )
-      const [chunk, value] = yield* $(Channel.runCollect(channel))
+      const [chunk, value] = yield* (Channel.runCollect(channel))
       assertTrue(Chunk.isEmpty(chunk))
       strictEqual(value, 6)
     }))
 
   it.effect("flatMap - structure confusion", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const channel = pipe(
         Channel.write(Chunk.make(1, 2)),
         Channel.concatMap(Channel.writeAll),
         Channel.zipRight(Channel.fail("hello"))
       )
-      const result = yield* $(Effect.exit(Channel.runDrain(channel)))
+      const result = yield* (Effect.exit(Channel.runDrain(channel)))
       deepStrictEqual(result, Exit.fail("hello"))
     }))
 })

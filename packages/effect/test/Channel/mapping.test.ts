@@ -29,8 +29,8 @@ const Second = (first: First): Second => ({ _tag: "Second", first })
 
 describe("Channel", () => {
   it.effect("map", () =>
-    Effect.gen(function*($) {
-      const [chunk, value] = yield* $(
+    Effect.gen(function*() {
+      const [chunk, value] = yield* pipe(
         Channel.succeed(1),
         Channel.map((n) => n + 1),
         Channel.runCollect
@@ -40,8 +40,8 @@ describe("Channel", () => {
     }))
 
   it.effect("mapError - structure confusion", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Channel.fail("error"),
         Channel.mapError(() => 1),
         Channel.runCollect,
@@ -51,8 +51,8 @@ describe("Channel", () => {
     }))
 
   it.effect("mapOut - simple", () =>
-    Effect.gen(function*($) {
-      const [chunk, value] = yield* $(
+    Effect.gen(function*() {
+      const [chunk, value] = yield* pipe(
         Channel.writeAll(1, 2, 3),
         Channel.mapOut((n) => n + 1),
         Channel.runCollect
@@ -62,8 +62,8 @@ describe("Channel", () => {
     }))
 
   it.effect("mapOut - mixed with flatMap", () =>
-    Effect.gen(function*($) {
-      const [chunk, value] = yield* $(
+    Effect.gen(function*() {
+      const [chunk, value] = yield* pipe(
         Channel.write(1),
         Channel.mapOut((n) => `${n}`),
         Channel.flatMap(() => Channel.write("x")),
@@ -74,8 +74,8 @@ describe("Channel", () => {
     }))
 
   it.effect("concatMap - plain", () =>
-    Effect.gen(function*($) {
-      const [result] = yield* $(
+    Effect.gen(function*() {
+      const [result] = yield* pipe(
         Channel.writeAll(1, 2, 3),
         Channel.concatMap((i) => Channel.writeAll(i, i)),
         Channel.runCollect
@@ -84,8 +84,8 @@ describe("Channel", () => {
     }))
 
   it.effect("concatMap - complex", () =>
-    Effect.gen(function*($) {
-      const [result] = yield* $(
+    Effect.gen(function*() {
+      const [result] = yield* pipe(
         Channel.writeAll(1, 2),
         Channel.concatMap((i) => Channel.writeAll(i, i)),
         Channel.mapOut(First),
@@ -106,7 +106,7 @@ describe("Channel", () => {
     }))
 
   it.effect("concatMap - read from inner channel", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const source = Channel.writeAll(1, 2, 3, 4)
       const reader = pipe(
         Channel.read<number>(),
@@ -116,7 +116,7 @@ describe("Channel", () => {
         Channel.writeAll(void 0, void 0),
         Channel.concatMap(() => pipe(reader, Channel.flatMap(() => reader)))
       )
-      const [result] = yield* $(
+      const [result] = yield* pipe(
         source,
         Channel.pipeTo(readers),
         Channel.runCollect
@@ -125,8 +125,8 @@ describe("Channel", () => {
     }))
 
   it.effect("concatMap - downstream failure", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Channel.write(0),
         Channel.concatMap(() => Channel.fail("error")),
         Channel.runCollect,
@@ -136,8 +136,8 @@ describe("Channel", () => {
     }))
 
   it.effect("concatMap - upstream acquireReleaseOut + downstream failure", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make<ReadonlyArray<string>>([]))
       const event = (label: string) => Ref.update(ref, (array) => [...array, label])
       const effect = pipe(
         Channel.acquireReleaseOut(event("Acquired"), () => event("Released")),
@@ -145,14 +145,14 @@ describe("Channel", () => {
         Channel.runDrain,
         Effect.exit
       )
-      const [exit, events] = yield* $(effect, Effect.zip(Ref.get(ref)))
+      const [exit, events] = yield* pipe(effect, Effect.zip(Ref.get(ref)))
       deepStrictEqual(exit, Exit.fail("error"))
       deepStrictEqual(events, ["Acquired", "Released"])
     }))
 
   it.effect("concatMap - multiple concatMaps with failure in first", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Channel.write(void 0),
         Channel.concatMap(() => Channel.write(Channel.fail("error"))),
         Channel.concatMap((e) => e),
@@ -163,8 +163,8 @@ describe("Channel", () => {
     }))
 
   it.effect("concatMap - with failure then flatMap", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Channel.write(void 0),
         Channel.concatMap(() => Channel.fail("error")),
         Channel.flatMap(() => Channel.write(void 0)),
@@ -175,8 +175,8 @@ describe("Channel", () => {
     }))
 
   it.effect("concatMap - multiple concatMaps with failure in first and catchAll in second", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Channel.write(void 0),
         Channel.concatMap(() => Channel.write(Channel.fail("error"))),
         Channel.concatMap(Channel.catchAllCause(() => Channel.fail("error2"))),
@@ -187,8 +187,8 @@ describe("Channel", () => {
     }))
 
   it.effect("concatMap - done value combination", () =>
-    Effect.gen(function*($) {
-      const [chunk, [array1, array2]] = yield* $(
+    Effect.gen(function*() {
+      const [chunk, [array1, array2]] = yield* pipe(
         Channel.writeAll(1, 2, 3),
         Channel.as(["Outer-0"]),
         Channel.concatMapWith(
@@ -204,8 +204,8 @@ describe("Channel", () => {
     }))
 
   it.effect("concatMap - custom 1", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Channel.writeAll(1, 2, 3, 4),
         Channel.concatMapWithCustom(
           (x) =>
@@ -253,8 +253,8 @@ describe("Channel", () => {
     }))
 
   it.effect("concatMap - custom 2", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Channel.writeAll(1, 2, 3, 4),
         Channel.concatMapWithCustom(
           (x) =>
