@@ -3,8 +3,8 @@
   "include": ["test"],
   "references": [
     { "path": "tsconfig.src.json" },
-    { "path": "../effect" },
-    { "path": "../vitest" }
+    { "path": "../effect/tsconfig.test.json" }, // We import test files from `effect`.
+    { "path": "../vitest/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",

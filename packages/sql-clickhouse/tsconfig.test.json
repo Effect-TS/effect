@@ -3,8 +3,7 @@
   "include": ["test"],
   "references": [
     { "path": "tsconfig.src.json" },
-    { "path": "../effect" },
-    { "path": "../sql" }
+    { "path": "../vitest/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",

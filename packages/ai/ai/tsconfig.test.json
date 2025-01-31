@@ -3,9 +3,7 @@
   "include": ["test"],
   "references": [
     { "path": "tsconfig.src.json" },
-    { "path": "../../effect" },
-    { "path": "../../platform" },
-    { "path": "../../vitest" }
+    { "path": "../../vitest/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",

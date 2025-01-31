@@ -3,11 +3,8 @@
   "include": ["test"],
   "references": [
     { "path": "tsconfig.src.json" },
-    { "path": "../effect" },
-    { "path": "../platform" },
-    { "path": "../platform-node" },
-    { "path": "../sql" },
-    { "path": "../sql-sqlite-node" }
+    { "path": "../vitest/tsconfig.src.json" },
+    { "path": "../sql-sqlite-node/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",

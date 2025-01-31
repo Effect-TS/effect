@@ -3,12 +3,12 @@
   "include": ["test"],
   "references": [
     { "path": "tsconfig.src.json" },
-    { "path": "../vitest" }
+    { "path": "../vitest/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "types": ["node"],
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",
     "rootDir": "test",
-    "outDir": "build/test"
+    "outDir": "build/test" // Some packages import test files from `effect`, hence we need to emit `d.ts` files here.
   }
 }

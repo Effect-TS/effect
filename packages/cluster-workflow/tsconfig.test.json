@@ -1,10 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": [
-    "test"
-  ],
+  "include": ["test"],
   "references": [
-    { "path": "tsconfig.src.json" }
+    { "path": "tsconfig.src.json" },
+    { "path": "../vitest/tsconfig.src.json" },
+    { "path": "../sql-sqlite-node/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",

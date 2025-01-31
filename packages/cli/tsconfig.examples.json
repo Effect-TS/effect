@@ -3,11 +3,7 @@
   "include": ["examples"],
   "references": [
     { "path": "tsconfig.src.json" },
-    { "path": "../effect" },
-    { "path": "../printer" },
-    { "path": "../printer-ansi" },
-    { "path": "../platform" },
-    { "path": "../platform-node" }
+    { "path": "../platform-node/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "types": ["node"],

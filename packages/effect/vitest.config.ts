@@ -5,7 +5,7 @@ const config: ViteUserConfig = {
   test: {
     coverage: {
       reporter: ["html"],
-      include: ["src/**/*ts"],
+      include: ["src/**/*.ts"],
       provider: "v8"
     }
   }
