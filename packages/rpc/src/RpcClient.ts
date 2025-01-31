@@ -681,31 +681,36 @@ export const makeProtocolWorker: (
       targetUtilization: options.targetUtilization
     })
 
-  const send = Effect.fnUntraced(
-    function*(request: FromClientEncoded, transferables?: ReadonlyArray<globalThis.Transferable>) {
-      switch (request._tag) {
-        case "Request": {
-          const scope = yield* Scope.make()
-          const worker = yield* Scope.extend(pool.get, scope)
-          entries.set(request.id, { worker, scope })
-          return yield* worker.send(request, transferables)
-        }
-        case "Interrupt": {
-          const entry = entries.get(request.requestId)
-          if (!entry) return
-          entries.delete(request.requestId)
-          yield* Scope.close(entry.scope, Exit.void)
-          return yield* entry.worker.send(request)
-        }
-        case "Ack": {
-          const entry = entries.get(request.requestId)
-          if (!entry) return
-          return yield* entry.worker.send(request)
-        }
+  const send = (request: FromClientEncoded, transferables?: ReadonlyArray<globalThis.Transferable>) => {
+    switch (request._tag) {
+      case "Request": {
+        return Scope.make().pipe(
+          Effect.flatMap((scope) =>
+            Effect.flatMap(Scope.extend(pool.get, scope), (worker) => {
+              entries.set(request.id, { worker, scope })
+              return Effect.orDie(worker.send(request, transferables))
+            })
+          ),
+          Effect.orDie
+        )
       }
-    },
-    Effect.orDie
-  )
+      case "Interrupt": {
+        const entry = entries.get(request.requestId)
+        if (!entry) return Effect.void
+        entries.delete(request.requestId)
+        return Effect.ensuring(
+          Effect.orDie(entry.worker.send(request)),
+          Scope.close(entry.scope, Exit.void)
+        )
+      }
+      case "Ack": {
+        const entry = entries.get(request.requestId)
+        if (!entry) return Effect.void
+        return Effect.orDie(entry.worker.send(request))
+      }
+    }
+    return Effect.void
+  }
 
   yield* Effect.scoped(pool.get)
 

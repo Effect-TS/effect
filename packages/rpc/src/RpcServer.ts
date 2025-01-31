@@ -229,6 +229,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
               while: () => !done,
               body: constant(Effect.flatMap(mailbox.takeAll, ([chunk, done_]) => {
                 done = done_
+                if (chunk.length === 0) return Effect.void
                 const write = writeResponse({
                   _tag: "Chunk",
                   clientId: client.id,
