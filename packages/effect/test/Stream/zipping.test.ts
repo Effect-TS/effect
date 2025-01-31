@@ -80,13 +80,13 @@ describe("Stream", () => {
   })
 
   it.effect("zip - does not pull too much when one of the streams is done", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const left = pipe(
         Stream.fromChunks(Chunk.make(1, 2), Chunk.make(3, 4), Chunk.of(5)),
         Stream.concat(Stream.fail("boom"))
       )
       const right = Stream.fromChunks(Chunk.make("a", "b"), Chunk.of("c"))
-      const result = yield* $(left, Stream.zip(right), Stream.runCollect)
+      const result = yield* pipe(left, Stream.zip(right), Stream.runCollect)
       deepStrictEqual(Array.from(result), [[1, "a"], [2, "b"], [3, "c"]])
     }))
 
@@ -118,8 +118,8 @@ describe("Stream", () => {
     }))
 
   it.effect("zipWith - prioritizes failures", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.never,
         Stream.zipWith(Stream.fail("Ouch"), () => Option.none()),
         Stream.runCollect,
@@ -129,8 +129,8 @@ describe("Stream", () => {
     }))
 
   it.effect("zipWith - dies if one of the streams throws an exception", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1),
         Stream.flatMap(() =>
           Stream.sync(() => {
@@ -177,8 +177,8 @@ describe("Stream", () => {
   //   )))
 
   it.effect("zipAll - prioritizes failures", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.never,
         Stream.zipAll({
           other: Stream.fail("Ouch"),
@@ -192,37 +192,37 @@ describe("Stream", () => {
     }))
 
   it.effect("zipWithIndex", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* Effect.all({
         result1: Stream.runCollect(Stream.zipWithIndex(stream)),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.map((a, i) => [a, i] as const)))
-      }))
+      })
       deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("zipLatest", () =>
-    Effect.gen(function*($) {
-      const left = yield* $(Queue.unbounded<Chunk.Chunk<number>>())
-      const right = yield* $(Queue.unbounded<Chunk.Chunk<number>>())
-      const output = yield* $(Queue.bounded<Take.Take<readonly [number, number]>>(1))
-      yield* $(
+    Effect.gen(function*() {
+      const left = yield* Queue.unbounded<Chunk.Chunk<number>>()
+      const right = yield* Queue.unbounded<Chunk.Chunk<number>>()
+      const output = yield* Queue.bounded<Take.Take<readonly [number, number]>>(1)
+      yield* pipe(
         Stream.fromChunkQueue(left),
         Stream.zipLatest(Stream.fromChunkQueue(right)),
         Stream.runIntoQueue(output),
         Effect.fork
       )
-      yield* $(Queue.offer(left, Chunk.make(0)))
-      yield* $(Queue.offerAll(right, [Chunk.make(0), Chunk.make(1)]))
-      const chunk1 = yield* $(
+      yield* Queue.offer(left, Chunk.make(0))
+      yield* Queue.offerAll(right, [Chunk.make(0), Chunk.make(1)])
+      const chunk1 = yield* pipe(
         Queue.take(output),
         Effect.flatMap(Take.done),
         Effect.replicateEffect(2),
         Effect.map(Chunk.unsafeFromArray),
         Effect.map(Chunk.flatten)
       )
-      yield* $(Queue.offerAll(left, [Chunk.make(1), Chunk.make(2)]))
-      const chunk2 = yield* $(
+      yield* Queue.offerAll(left, [Chunk.make(1), Chunk.make(2)])
+      const chunk2 = yield* pipe(
         Queue.take(output),
         Effect.flatMap(Take.done),
         Effect.replicateEffect(2),
@@ -234,16 +234,16 @@ describe("Stream", () => {
     }))
 
   it.effect("zipLatestWith - handles empty pulls properly", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream0 = Stream.fromChunks(
         Chunk.empty<number>(),
         Chunk.empty<number>(),
         Chunk.make(2)
       )
       const stream1 = Stream.fromChunks(Chunk.make(1), Chunk.make(1))
-      const deferred = yield* $(Deferred.make<number>())
-      const latch = yield* $(Deferred.make<void>())
-      const fiber = yield* $(
+      const deferred = yield* Deferred.make<number>()
+      const latch = yield* Deferred.make<void>()
+      const fiber = yield* pipe(
         stream0,
         Stream.concat(Stream.fromEffect(Deferred.await(deferred))),
         Stream.concat(Stream.make(2)),
@@ -259,15 +259,15 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.fork
       )
-      yield* $(Deferred.await(latch))
-      yield* $(Deferred.succeed(deferred, 2))
-      const result = yield* $(Fiber.join(fiber))
+      yield* Deferred.await(latch)
+      yield* Deferred.succeed(deferred, 2)
+      const result = yield* Fiber.join(fiber)
       deepStrictEqual(Array.from(result), [1, 1, 1])
     }))
 
   it.effect("zipLatestWith - handles empty pulls properly (JVM Only - LOL)", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.unfold(0, (n) =>
           Option.some(
             [
@@ -307,8 +307,8 @@ describe("Stream", () => {
   })
 
   it.effect("zipWithNext", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.zipWithNext,
         Stream.runCollect
@@ -321,8 +321,8 @@ describe("Stream", () => {
     }))
 
   it.effect("zipWithNext - should work with multiple chunks", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromChunks(Chunk.of(1), Chunk.of(2), Chunk.of(3)),
         Stream.zipWithNext,
         Stream.runCollect
@@ -335,8 +335,8 @@ describe("Stream", () => {
     }))
 
   it.effect("zipWithNext - should work with an empty stream", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.empty,
         Stream.zipWithNext,
         Stream.runCollect
@@ -365,8 +365,8 @@ describe("Stream", () => {
     })))
 
   it.effect("zipWithPrevious - should zip with previous element for a single chunk", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.zipWithPrevious,
         Stream.runCollect
@@ -379,8 +379,8 @@ describe("Stream", () => {
     }))
 
   it.effect("zipWithPrevious - should work with multiple chunks", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromChunks(Chunk.of(1), Chunk.of(2), Chunk.of(3)),
         Stream.zipWithPrevious,
         Stream.runCollect
@@ -393,8 +393,8 @@ describe("Stream", () => {
     }))
 
   it.effect("zipWithPrevious - should work with an empty stream", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.empty,
         Stream.zipWithPrevious,
         Stream.runCollect
@@ -422,8 +422,8 @@ describe("Stream", () => {
     })))
 
   it.effect("zipWithPreviousAndNext", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.zipWithPreviousAndNext,
         Stream.runCollect
@@ -468,8 +468,8 @@ describe("Stream", () => {
     })))
 
   it.effect("zipLatestAll", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.zipLatestAll(
           Stream.make(1, 2, 3).pipe(Stream.rechunk(1)),
           Stream.make("a", "b", "c").pipe(Stream.rechunk(1)),
