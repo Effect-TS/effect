@@ -15,13 +15,13 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("retry - retries a failing stream", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(0))
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(0)
       const stream = pipe(
         Stream.fromEffect(Ref.getAndUpdate(ref, (n) => n + 1)),
         Stream.concat(Stream.fail(Option.none()))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.retry(Schedule.forever),
         Stream.take(2),
@@ -31,8 +31,8 @@ describe("Stream", () => {
     }))
 
   it.effect("retry - cleans up resources before restarting the stream", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(0))
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(0)
       const stream = pipe(
         Effect.addFinalizer(() => Ref.getAndUpdate(ref, (n) => n + 1)),
         Effect.as(
@@ -43,7 +43,7 @@ describe("Stream", () => {
         ),
         Stream.unwrapScoped
       )
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.retry(Schedule.forever),
         Stream.take(2),
@@ -53,8 +53,8 @@ describe("Stream", () => {
     }))
 
   it.effect("retry - retries a failing stream according to a schedule", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(Chunk.empty<number>())
       const stream = pipe(
         Stream.fromEffect(
           pipe(
@@ -64,24 +64,24 @@ describe("Stream", () => {
         ),
         Stream.flatMap(() => Stream.fail(Option.none()))
       )
-      const fiber = yield* $(
+      const fiber = yield* pipe(
         stream,
         Stream.retry(Schedule.exponential(Duration.seconds(1))),
         Stream.take(3),
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(TestClock.adjust(Duration.seconds(1)))
-      yield* $(TestClock.adjust(Duration.seconds(2)))
-      yield* $(Fiber.interrupt(fiber))
-      const result = yield* $(Ref.get(ref), Effect.map(Chunk.map((n) => new Date(n).getSeconds())))
+      yield* TestClock.adjust(Duration.seconds(1))
+      yield* TestClock.adjust(Duration.seconds(2))
+      yield* Fiber.interrupt(fiber)
+      const result = yield* pipe(Ref.get(ref), Effect.map(Chunk.map((n) => new Date(n).getSeconds())))
       deepStrictEqual(Array.from(result), [3, 1, 0])
     }))
 
   it.effect("retry - reset the schedule after a successful pull", () =>
-    Effect.gen(function*($) {
-      const times = yield* $(Ref.make(Chunk.empty<number>()))
-      const ref = yield* $(Ref.make(0))
+    Effect.gen(function*() {
+      const times = yield* Ref.make(Chunk.empty<number>())
+      const ref = yield* Ref.make(0)
       const effect = pipe(
         Clock.currentTimeMillis,
         Effect.flatMap((time) =>
@@ -100,18 +100,18 @@ describe("Stream", () => {
         ),
         Stream.forever
       )
-      const fiber = yield* $(
+      const fiber = yield* pipe(
         stream,
         Stream.retry(Schedule.exponential(Duration.seconds(1))),
         Stream.take(2),
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(TestClock.adjust(Duration.seconds(1)))
-      yield* $(TestClock.adjust(Duration.seconds(2)))
-      yield* $(TestClock.adjust(Duration.seconds(1)))
-      yield* $(Fiber.join(fiber))
-      const result = yield* $(Ref.get(times))
+      yield* TestClock.adjust(Duration.seconds(1))
+      yield* TestClock.adjust(Duration.seconds(2))
+      yield* TestClock.adjust(Duration.seconds(1))
+      yield* Fiber.join(fiber)
+      const result = yield* Ref.get(times)
       deepStrictEqual(Array.from(result), [4, 3, 3, 1, 0])
     }))
 })
