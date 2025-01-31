@@ -1,6 +1,16 @@
 import { describe, it } from "@effect/vitest"
-import { Array as Arr, Cause, Effect, Equal, FastCheck as fc, FiberId, Hash, Option, Predicate } from "effect"
-import { NodeInspectSymbol } from "effect/Inspectable"
+import {
+  Array as Arr,
+  Cause,
+  Effect,
+  Equal,
+  FastCheck as fc,
+  FiberId,
+  Hash,
+  Inspectable,
+  Option,
+  Predicate
+} from "effect"
 import * as internal from "effect/internal/cause"
 import {
   assertFalse,
@@ -32,7 +42,7 @@ describe("Cause", () => {
       if (typeof window === "undefined") {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { inspect } = require("node:util")
-        assertTrue(inspect(ex).includes("Cause.test.ts:28")) // <= reference to the line above
+        assertTrue(inspect(ex).includes("Cause.test.ts:38")) // <= reference to the line above
       }
     })
   })
@@ -98,7 +108,7 @@ describe("Cause", () => {
     describe("toJSON / [NodeInspectSymbol]", () => {
       const expectJSON = (cause: Cause.Cause<unknown>, expected: unknown) => {
         deepStrictEqual(cause.toJSON(), expected)
-        deepStrictEqual(cause[NodeInspectSymbol](), expected)
+        deepStrictEqual(cause[Inspectable.NodeInspectSymbol](), expected)
       }
 
       it("Empty", () => {

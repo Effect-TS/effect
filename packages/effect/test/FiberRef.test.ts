@@ -1,14 +1,18 @@
 import { describe, it } from "@effect/vitest"
-import * as Chunk from "effect/Chunk"
-import * as Clock from "effect/Clock"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import * as FiberRef from "effect/FiberRef"
-import { constant, constTrue, identity, pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as Runtime from "effect/Runtime"
+import {
+  Chunk,
+  Clock,
+  Deferred,
+  Duration,
+  Effect,
+  Fiber,
+  FiberRef,
+  Function as Fun,
+  identity,
+  Option,
+  pipe,
+  Runtime
+} from "effect"
 import { assertTrue, strictEqual } from "effect/test/util"
 
 const initial = "initial"
@@ -234,7 +238,7 @@ describe("FiberRef", () => {
     Effect.gen(function*() {
       const n = 1000
       const fiberRef = yield* FiberRef.make(0, {
-        fork: constant(0),
+        fork: Fun.constant(0),
         join: (a, b) => a + b
       })
       yield* Effect.all(Array.from({ length: n }, () => FiberRef.update(fiberRef, (n) => n + 1)), {
@@ -335,7 +339,7 @@ describe("FiberRef", () => {
     }))
   it.scoped("fork patch is applied when a fiber is unsafely run", () =>
     Effect.gen(function*() {
-      const fiberRef = yield* FiberRef.make<boolean>(true, { fork: constTrue })
+      const fiberRef = yield* FiberRef.make<boolean>(true, { fork: Fun.constTrue })
       const deferred = yield* Deferred.make<boolean>()
       const runtime: Runtime.Runtime<never> = yield* Effect.runtime<never>().pipe(Effect.locally(fiberRef, false))
       yield* Effect.sync(() => FiberRef.get(fiberRef).pipe(Effect.intoDeferred(deferred), Runtime.runCallback(runtime)))
@@ -344,7 +348,7 @@ describe("FiberRef", () => {
     }))
   it.scoped("fork patch is applied when a fiber is unsafely forked", () =>
     Effect.gen(function*() {
-      const fiberRef = yield* FiberRef.make<boolean>(true, { fork: constTrue })
+      const fiberRef = yield* FiberRef.make<boolean>(true, { fork: Fun.constTrue })
       const deferred = yield* Deferred.make<boolean>()
       const runtime: Runtime.Runtime<never> = yield* Effect.locally(Effect.runtime<never>(), fiberRef, false)
       const fiber = yield* Effect.sync(() =>

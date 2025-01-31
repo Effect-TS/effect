@@ -1,18 +1,18 @@
 import { describe, it } from "@effect/vitest"
-import * as S from "effect/Symbol"
+import { Symbol as Sym } from "effect"
 import { assertFalse, assertTrue } from "effect/test/util"
 
 describe("Symbol", () => {
   it("isSymbol", () => {
-    assertTrue(S.isSymbol(Symbol.for("effect/test/a")))
-    assertFalse(S.isSymbol(1n))
-    assertFalse(S.isSymbol(1))
-    assertFalse(S.isSymbol("a"))
-    assertFalse(S.isSymbol(true))
+    assertTrue(Sym.isSymbol(Symbol.for("effect/test/a")))
+    assertFalse(Sym.isSymbol(1n))
+    assertFalse(Sym.isSymbol(1))
+    assertFalse(Sym.isSymbol("a"))
+    assertFalse(Sym.isSymbol(true))
   })
 
   it("Equivalence", () => {
-    const eq = S.Equivalence
+    const eq = Sym.Equivalence
     assertTrue(eq(Symbol.for("effect/test/a"), Symbol.for("effect/test/a")))
     assertFalse(eq(Symbol.for("effect/test/a"), Symbol.for("effect/test/b")))
   })

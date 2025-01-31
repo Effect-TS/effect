@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { Equal, Hash, Number as N, pipe, SortedMap as SM } from "effect"
+import { Equal, Hash, Number as Num, pipe, SortedMap as SM } from "effect"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 class Key implements Equal.Equal {
@@ -117,7 +117,7 @@ describe("SortedMap", () => {
 
   it("headOption", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
-    const map2 = SM.empty<number, number>(N.Order)
+    const map2 = SM.empty<number, number>(Num.Order)
 
     assertSome(SM.headOption(map1), [key(0), value(10)])
     assertNone(SM.headOption(map2))
@@ -125,7 +125,7 @@ describe("SortedMap", () => {
 
   it("lastOption", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
-    const map2 = SM.empty<number, number>(N.Order)
+    const map2 = SM.empty<number, number>(Num.Order)
 
     assertSome(SM.lastOption(map1), [key(2), value(30)])
     assertNone(SM.lastOption(map2))
@@ -133,7 +133,7 @@ describe("SortedMap", () => {
 
   it("isEmpty", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
-    const map2 = SM.empty<number, number>(N.Order)
+    const map2 = SM.empty<number, number>(Num.Order)
 
     assertFalse(SM.isEmpty(map1))
     assertTrue(SM.isEmpty(map2))
@@ -141,7 +141,7 @@ describe("SortedMap", () => {
 
   it("isNonEmpty", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
-    const map2 = SM.empty<number, number>(N.Order)
+    const map2 = SM.empty<number, number>(Num.Order)
 
     assertTrue(SM.isNonEmpty(map1))
     assertFalse(SM.isNonEmpty(map2))

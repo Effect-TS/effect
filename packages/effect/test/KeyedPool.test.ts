@@ -1,12 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import * as Array from "effect/Array"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import { pipe } from "effect/Function"
-import * as KeyedPool from "effect/KeyedPool"
-import * as Random from "effect/Random"
-import * as Ref from "effect/Ref"
+import { Array, Duration, Effect, Fiber, KeyedPool, pipe, Random, Ref } from "effect"
 import { strictEqual } from "effect/test/util"
 import * as TestClock from "effect/TestClock"
 
