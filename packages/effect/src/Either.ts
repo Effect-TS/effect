@@ -599,6 +599,7 @@ export const getOrThrowWith: {
   throw onLeft(self.left)
 })
 
+// TODO(4.0): by default should throw `L` (i.e getOrThrowWith with the identity function)
 /**
  * Extracts the value of an `Either` or throws if the `Either` is `Left`.
  *

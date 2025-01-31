@@ -38,9 +38,10 @@ describe("Either", () => {
     const f = Either.gen(function*() {
       yield* Either.left("err")
     })
-    const g = Either.gen({ context: "testContext" as const }, function*($) {
-      return yield* $(Either.right(this.context))
+    const g = Either.gen({ context: "testContext" as const }, function*() {
+      return yield* Either.right(this.context)
     })
+    // TODO(4.0) remove this test
     // test adapter
     const h = Either.gen(function*($) {
       const x = yield* $(Either.right(1))
