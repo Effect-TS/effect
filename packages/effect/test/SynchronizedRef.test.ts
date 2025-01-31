@@ -1,4 +1,4 @@
-import { Deferred, Effect, Exit, Fiber, Option, SynchronizedRef } from "effect"
+import { Deferred, Effect, Exit, Fiber, Option, pipe, SynchronizedRef } from "effect"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
@@ -31,8 +31,8 @@ const isClosed = (self: State): boolean => self._tag === "Closed"
 
 describe("SynchronizedRef", () => {
   it.effect("get", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(SynchronizedRef.make(current), Effect.flatMap(SynchronizedRef.get))
+    Effect.gen(function*() {
+      const result = yield* pipe(SynchronizedRef.make(current), Effect.flatMap(SynchronizedRef.get))
       strictEqual(result, current)
     }))
   it.effect("getAndUpdateEffect - happy path", () =>
@@ -44,44 +44,44 @@ describe("SynchronizedRef", () => {
       strictEqual(result2, update)
     }))
   it.effect("getAndUpdateEffect - with failure", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(SynchronizedRef.make(current))
-      const result = yield* $(SynchronizedRef.getAndUpdateEffect(ref, (_) => Effect.fail(failure)), Effect.exit)
+    Effect.gen(function*() {
+      const ref = yield* SynchronizedRef.make(current)
+      const result = yield* pipe(SynchronizedRef.getAndUpdateEffect(ref, (_) => Effect.fail(failure)), Effect.exit)
       deepStrictEqual(result, Exit.fail(failure))
     }))
   it.effect("getAndUpdateSomeEffect - happy path", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(SynchronizedRef.make<State>(Active))
-      const result1 = yield* $(SynchronizedRef.getAndUpdateSomeEffect(ref, (state) =>
+    Effect.gen(function*() {
+      const ref = yield* SynchronizedRef.make<State>(Active)
+      const result1 = yield* (SynchronizedRef.getAndUpdateSomeEffect(ref, (state) =>
         isClosed(state) ?
           Option.some(Effect.succeed(Changed)) :
           Option.none()))
-      const result2 = yield* $(SynchronizedRef.get(ref))
+      const result2 = yield* SynchronizedRef.get(ref)
       deepStrictEqual(result1, Active)
       deepStrictEqual(result2, Active)
     }))
   it.effect("getAndUpdateSomeEffect - twice", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(SynchronizedRef.make<State>(Active))
-      const result1 = yield* $(SynchronizedRef.getAndUpdateSomeEffect(ref, (state) =>
+    Effect.gen(function*() {
+      const ref = yield* SynchronizedRef.make<State>(Active)
+      const result1 = yield* SynchronizedRef.getAndUpdateSomeEffect(ref, (state) =>
         isActive(state) ?
           Option.some(Effect.succeed(Changed)) :
-          Option.none()))
-      const result2 = yield* $(SynchronizedRef.getAndUpdateSomeEffect(ref, (state) =>
+          Option.none())
+      const result2 = yield* SynchronizedRef.getAndUpdateSomeEffect(ref, (state) =>
         isClosed(state)
           ? Option.some(Effect.succeed(Active))
           : isChanged(state)
           ? Option.some(Effect.succeed(Closed))
-          : Option.none()))
+          : Option.none())
       const result3 = yield* ref
       deepStrictEqual(result1, Active)
       deepStrictEqual(result2, Changed)
       deepStrictEqual(result3, Closed)
     }))
   it.effect("getAndUpdateSomeEffect - with failure", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(SynchronizedRef.make<State>(Active))
-      const result = yield* $(
+    Effect.gen(function*() {
+      const ref = yield* SynchronizedRef.make<State>(Active)
+      const result = yield* pipe(
         SynchronizedRef.getAndUpdateSomeEffect(ref, (state) =>
           isActive(state) ?
             Option.some(Effect.fail(failure)) :
@@ -91,16 +91,16 @@ describe("SynchronizedRef", () => {
       deepStrictEqual(result, Exit.fail(failure))
     }))
   it.effect("getAndUpdateSomeEffect - interrupt parent fiber and update", () =>
-    Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<SynchronizedRef.SynchronizedRef<State>>())
-      const latch = yield* $(Deferred.make<void>())
+    Effect.gen(function*() {
+      const deferred = yield* Deferred.make<SynchronizedRef.SynchronizedRef<State>>()
+      const latch = yield* Deferred.make<void>()
       const makeAndWait = Deferred.complete(deferred, SynchronizedRef.make<State>(Active)).pipe(
         Effect.zipRight(Deferred.await(latch))
       )
-      const fiber = yield* $(Effect.fork(makeAndWait))
-      const ref = yield* $(Deferred.await(deferred))
-      yield* $(Fiber.interrupt(fiber))
-      const result = yield* $(SynchronizedRef.updateAndGetEffect(ref, (_) => Effect.succeed(Closed)))
+      const fiber = yield* Effect.fork(makeAndWait)
+      const ref = yield* Deferred.await(deferred)
+      yield* Fiber.interrupt(fiber)
+      const result = yield* SynchronizedRef.updateAndGetEffect(ref, (_) => Effect.succeed(Closed))
       deepStrictEqual(result, Closed)
     }))
 })
