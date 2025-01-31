@@ -106,7 +106,10 @@ export const runSyncExit: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effe
  * @since 2.0.0
  * @category execution
  */
-export const runSync: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>) => A = internal.unsafeRunSync
+export const runSync: {
+  <A, E, R>(effect: Effect.Effect<A, E, R>, runtime: Runtime<R>): A
+  <R>(runtime: Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => A
+} = internal.unsafeRunSync
 
 /**
  * @since 2.0.0

@@ -28,6 +28,11 @@ describe("Runtime", () => {
       assert.deepStrictEqual(result, { value: 0 })
     }))
 
+  it.it("runSync", () => {
+    assert.deepStrictEqual(Runtime.runSync(Runtime.defaultRuntime)(Effect.succeed(1)), 1)
+    assert.deepStrictEqual(Runtime.runSync(Effect.succeed(1), Runtime.defaultRuntime), 1)
+  })
+
   it.it("runPromiseExit/signal", async () => {
     const aborted = AbortSignal.abort()
     assert(Exit.isInterrupted(await Runtime.runPromiseExit(Runtime.defaultRuntime)(Effect.never, { signal: aborted })))
