@@ -1,9 +1,10 @@
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as PlatformConfigProvider from "@effect/platform/PlatformConfigProvider"
-import { assert, describe, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import { strictEqual } from "effect/test/util"
 
 const ConfigProviderLive = Layer.unwrapEffect(
   PlatformConfigProvider.fromDotEnv(".env").pipe(
@@ -23,6 +24,6 @@ describe("PlatformConfigProvider", () => {
         Effect.provide(Layer.provide(ConfigProviderLive, fileSystem))
       )
 
-      assert.strictEqual(result, "nested_config")
+      strictEqual(result, "nested_config")
     }))
 })

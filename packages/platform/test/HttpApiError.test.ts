@@ -1,6 +1,7 @@
 import * as HttpApiError from "@effect/platform/HttpApiError"
 import * as Schema from "effect/Schema"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("HttpApiError", () => {
   describe("Issue schema", () => {
@@ -8,7 +9,7 @@ describe("HttpApiError", () => {
       const encodeSync = Schema.encodeSync(HttpApiError.Issue)
       const decodeSync = Schema.decodeSync(HttpApiError.Issue)
       const expectRoundtrip = (issue: typeof HttpApiError.Issue.Type) => {
-        expect(decodeSync(encodeSync(issue))).toStrictEqual(issue)
+        deepStrictEqual(decodeSync(encodeSync(issue)), issue)
       }
 
       expectRoundtrip({
