@@ -11,6 +11,10 @@ import type { Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
 import { OpenAiClient } from "./OpenAiClient.js"
 
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export type Model = typeof Generated.CreateEmbeddingRequestModel.Encoded
 
 /**
