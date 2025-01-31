@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Clock from "effect/Clock"
@@ -13,9 +14,7 @@ import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import { assertFailure, assertTrue, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("throttleEnforce - free elements", () =>

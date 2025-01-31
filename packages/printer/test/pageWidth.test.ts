@@ -1,5 +1,5 @@
 import * as PageWidth from "@effect/printer/PageWidth"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 
 describe.concurrent("PageWidth", () => {
   it("remainingWidth", () => {

@@ -1,11 +1,10 @@
+import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as STM from "effect/STM"
 import { assertTrue } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import * as TRandom from "effect/TRandom"
 import * as fc from "fast-check"
-import { describe } from "vitest"
 
 const floatsArb: fc.Arbitrary<readonly [number, number]> = fc.tuple(
   fc.float({ noDefaultInfinity: true, noNaN: true }),
@@ -19,7 +18,7 @@ const intsArb: fc.Arbitrary<readonly [number, number]> = fc.tuple(fc.integer(), 
   .map(([a, b]) => b > a ? [a, b] : [b, a])
 
 describe("TRandom", () => {
-  it.it("nextIntBetween - generates integers in the specified range", () =>
+  it("nextIntBetween - generates integers in the specified range", () =>
     fc.assert(fc.asyncProperty(intsArb, async ([min, max]) => {
       const result = await pipe(
         STM.commit(TRandom.nextRange(min, max)),
@@ -30,7 +29,7 @@ describe("TRandom", () => {
       assertTrue(result < max)
     })))
 
-  it.it("nextRange - generates numbers in the specified range", () =>
+  it("nextRange - generates numbers in the specified range", () =>
     fc.assert(fc.asyncProperty(floatsArb, async ([min, max]) => {
       const result = await pipe(
         STM.commit(TRandom.nextRange(min, max)),

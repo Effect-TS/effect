@@ -1,7 +1,7 @@
 import * as PredicatenIstances from "@effect/typeclass/data/Predicate"
+import { describe, expect, it } from "@effect/vitest"
 import { constFalse, constTrue } from "effect/Function"
 import type * as Predicate from "effect/Predicate"
-import { describe, expect, it } from "vitest"
 import * as Util from "../util.js"
 
 describe.concurrent("Option", () => {

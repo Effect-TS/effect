@@ -1,10 +1,10 @@
 import * as ArrayInstances from "@effect/typeclass/data/Array"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as _ from "@effect/typeclass/Filterable"
+import { assert, describe, it } from "@effect/vitest"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
-import { assert, describe, it } from "vitest"
 import * as U from "./util.js"
 
 describe.concurrent("Filterable", () => {

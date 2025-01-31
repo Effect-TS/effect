@@ -1,5 +1,6 @@
 import * as NodeSink from "@effect/platform-node-shared/NodeSink"
 import * as NodeStream from "@effect/platform-node-shared/NodeStream"
+import { assert, describe, it } from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -8,7 +9,6 @@ import { createReadStream } from "fs"
 import { join } from "path"
 import { Writable } from "stream"
 import Tar from "tar"
-import { assert, describe, it } from "vitest"
 
 const TEST_TARBALL = join(__dirname, "fixtures", "helloworld.tar.gz")
 

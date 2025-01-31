@@ -1,5 +1,5 @@
 import * as NumberInstances from "@effect/typeclass/data/Number"
-import { describe, it } from "vitest"
+import { describe, it } from "@effect/vitest"
 import * as U from "../util.js"
 
 describe.concurrent("Number", () => {

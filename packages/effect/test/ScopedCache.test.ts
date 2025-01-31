@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import {
   Array,
   Cause,
@@ -32,8 +33,6 @@ import {
 } from "effect/test/util"
 import * as ObservableResource from "effect/test/utils/cache/ObservableResource"
 import * as WatchableLookup from "effect/test/utils/cache/WatchableLookup"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 const hash = dual<
   (y: number) => (x: number) => number,
@@ -46,7 +45,7 @@ const hashEffect = dual<
 >(2, (x, y) => Effect.sync(() => hash(x, y)))
 
 describe("ScopedCache", () => {
-  it.it("cacheStats - should correctly keep track of cache size, hits and misses", () =>
+  it("cacheStats - should correctly keep track of cache size, hits and misses", () =>
     fc.assert(
       fc.asyncProperty(fc.integer(), async (salt) => {
         const program = Effect.gen(function*() {
@@ -200,7 +199,7 @@ describe("ScopedCache", () => {
       })))
     }))
 
-  it.it("get - when used sequentially, should properly call correct lookup", () =>
+  it("get - when used sequentially, should properly call correct lookup", () =>
     fc.assert(fc.asyncProperty(fc.integer(), (salt) => {
       const program = Effect.gen(function*() {
         const scopedCache = ScopedCache.make({
@@ -223,7 +222,7 @@ describe("ScopedCache", () => {
       return Effect.runPromise(program)
     })))
 
-  it.it("get - when used concurrently, should properly call correct lookup", () =>
+  it("get - when used concurrently, should properly call correct lookup", () =>
     fc.assert(fc.asyncProperty(fc.integer(), (salt) => {
       const program = Effect.gen(function*() {
         const scopedCache = ScopedCache.make({
@@ -247,7 +246,7 @@ describe("ScopedCache", () => {
       return Effect.runPromise(program)
     })))
 
-  it.it("get - should clean and remove old resource to respect cache capacity", () =>
+  it("get - should clean and remove old resource to respect cache capacity", () =>
     fc.assert(fc.asyncProperty(fc.integer(), (salt) => {
       const program = Effect.gen(function*() {
         const scopedCache = ScopedCache.make({
@@ -449,7 +448,7 @@ describe("ScopedCache", () => {
       yield* (subResource.assertAcquiredOnceAndCleaned())
     }))
 
-  it.it("get - should clean old resources if the cache size is exceeded", () => {
+  it("get - should clean old resources if the cache size is exceeded", () => {
     const arb = fc.integer({ min: 1, max: 5 }).chain((cacheSize) =>
       fc.integer({ min: cacheSize, max: cacheSize + 3 })
         .map((numCreatedKey) => [cacheSize, numCreatedKey] as const)
@@ -721,7 +720,7 @@ describe("ScopedCache", () => {
       })))
     }))
 
-  it.it("refresh - should clean old resource if cache size is exceeded", () => {
+  it("refresh - should clean old resource if cache size is exceeded", () => {
     const arb = fc.integer({ min: 1, max: 5 }).chain((cacheSize) =>
       fc.integer({ min: cacheSize, max: cacheSize + 3 })
         .map((numCreatedKey) => [cacheSize, numCreatedKey] as const)

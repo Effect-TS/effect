@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import {
   Cause,
   Chunk,
@@ -15,7 +16,6 @@ import {
   Secret
 } from "effect"
 import { assertFailure, assertSuccess, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const assertConfigError = <A>(
   config: Config.Config<A>,

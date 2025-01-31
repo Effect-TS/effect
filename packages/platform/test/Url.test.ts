@@ -1,8 +1,8 @@
 import { assertTrue, deepStrictEqual } from "@effect/platform/test/util"
 import * as Url from "@effect/platform/Url"
 import * as UrlParams from "@effect/platform/UrlParams"
+import { describe, it } from "@effect/vitest"
 import { Cause, Either } from "effect"
-import { describe, it } from "vitest"
 
 describe("Url", () => {
   const testURL = new URL("https://example.com/test")

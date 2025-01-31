@@ -1,7 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Effect, Exit, FiberRef, Layer, pipe, Runtime } from "effect"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe } from "vitest"
-import * as it from "./utils/extend.js"
 
 describe("Runtime", () => {
   it.effect("setFiberRef", () =>
@@ -29,7 +28,7 @@ describe("Runtime", () => {
       deepStrictEqual(result, { value: 0 })
     }))
 
-  it.it("runPromiseExit/signal", async () => {
+  it("runPromiseExit/signal", async () => {
     const aborted = AbortSignal.abort()
     assertTrue(
       Exit.isInterrupted(await Runtime.runPromiseExit(Runtime.defaultRuntime)(Effect.never, { signal: aborted }))

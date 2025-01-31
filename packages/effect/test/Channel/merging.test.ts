@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Deferred from "effect/Deferred"
@@ -7,8 +8,6 @@ import { constTrue, pipe } from "effect/Function"
 import * as MergeDecision from "effect/MergeDecision"
 import * as Ref from "effect/Ref"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Channel", () => {
   it.effect("mergeWith - simple merge", () =>

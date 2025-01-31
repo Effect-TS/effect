@@ -1,7 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import { BigDecimal } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
 
 const max = BigDecimal.make(1n, 0)
 const min = BigDecimal.make(-1n, 0)

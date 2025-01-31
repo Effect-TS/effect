@@ -1,8 +1,8 @@
 import * as NodeStream from "@effect/platform-node-shared/NodeStream"
+import { assert, describe, it } from "@effect/vitest"
 import { Array, Channel, Chunk, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import { Duplex, Readable, Transform } from "stream"
-import { assert, describe, it } from "vitest"
 import { createGzip, createUnzip } from "zlib"
 
 describe("Stream", () => {

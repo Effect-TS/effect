@@ -1,8 +1,8 @@
+import { describe, it } from "@effect/vitest"
 import { identity } from "effect/Function"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
 import { strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("partialWith", () => {
   describe("{ exact: true }", () => {

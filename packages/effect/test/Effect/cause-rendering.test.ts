@@ -1,7 +1,6 @@
+import { describe, expect, it } from "@effect/vitest"
 import { Cause, Effect, Option, pipe } from "effect"
 import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("Cause should include span data", () =>
@@ -138,7 +137,7 @@ describe("Effect", () => {
   it.effect.skip("shows assertion message", () =>
     Effect.gen(function*() {
       yield* Effect.void
-      it.expect({ foo: "ok" }).toStrictEqual({ foo: "bar" })
+      expect({ foo: "ok" }).toStrictEqual({ foo: "bar" })
     }))
 
   it.effect("multiline message", () =>

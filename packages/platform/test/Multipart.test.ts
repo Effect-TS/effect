@@ -1,7 +1,7 @@
 import * as Multipart from "@effect/platform/Multipart"
 import { deepStrictEqual } from "@effect/platform/test/util"
+import { describe, test } from "@effect/vitest"
 import { Chunk, Effect, identity, pipe, Stream, Unify } from "effect"
-import { describe, test } from "vitest"
 
 describe("Multipart", () => {
   test("it parses", () =>

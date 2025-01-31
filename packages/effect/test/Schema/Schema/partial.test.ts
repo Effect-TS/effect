@@ -1,7 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
 import { strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("partial", () => {
   it("Struct", async () => {

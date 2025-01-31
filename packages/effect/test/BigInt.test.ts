@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { BigInt as BigInt_, pipe } from "effect"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("BigInt", () => {
   it("sign", () => {

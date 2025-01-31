@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -7,8 +8,6 @@ import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
 import { deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("toQueue", () =>

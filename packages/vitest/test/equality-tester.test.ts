@@ -1,9 +1,9 @@
+import { describe, expect, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Data from "effect/Data"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
-import { describe, expect, it } from "vitest"
 
 describe("toMatchObject", () => {
   it("plain objects", () => {

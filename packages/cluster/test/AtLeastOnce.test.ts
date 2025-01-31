@@ -15,6 +15,7 @@ import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Sqlite from "@effect/sql-sqlite-node/SqliteClient"
 import * as SqlClient from "@effect/sql/SqlClient"
+import { describe, expect, it } from "@effect/vitest"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -22,7 +23,6 @@ import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as Schema from "effect/Schema"
-import { describe, expect, it } from "vitest"
 
 class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
   "SampleMessage",

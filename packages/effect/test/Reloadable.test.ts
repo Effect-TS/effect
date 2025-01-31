@@ -1,8 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import { Context, Effect, Layer, pipe, Reloadable } from "effect"
 import { strictEqual } from "effect/test/util"
 import * as Counter from "effect/test/utils/counter"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 const DummyServiceTypeId = Symbol.for("effect/test/Reloadable/DummyService")
 type DummyServiceTypeId = typeof DummyServiceTypeId

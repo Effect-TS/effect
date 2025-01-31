@@ -2,11 +2,11 @@ import * as Doc from "@effect/printer/Doc"
 import * as DocStream from "@effect/printer/DocStream"
 import * as DocTree from "@effect/printer/DocTree"
 import * as Layout from "@effect/printer/Layout"
+import { describe, expect, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as String from "effect/String"
-import { describe, expect, it } from "vitest"
 
 describe.concurrent("DocTree", () => {
   describe.concurrent("constructors", () => {

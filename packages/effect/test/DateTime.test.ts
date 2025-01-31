@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { DateTime, Duration, Effect, Option, TestClock } from "effect"
 import { assertRight, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "./utils/extend.js"
 
 const setTo2024NZ = TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
 

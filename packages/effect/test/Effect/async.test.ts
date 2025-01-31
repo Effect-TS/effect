@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -10,7 +11,6 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Runtime from "effect/Runtime"
 import { assertNone, assertSome, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "effect/test/utils/extend"
 
 describe("Effect", () => {
   it.effect("simple async must return", () =>

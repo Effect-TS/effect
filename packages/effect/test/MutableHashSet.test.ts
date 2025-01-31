@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Equal, Hash, MutableHashSet } from "effect"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 class Value implements Equal.Equal {
   constructor(readonly a: number, readonly b: number) {}

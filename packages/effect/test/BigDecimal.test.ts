@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import { BigDecimal, Equal, FastCheck as fc, Option } from "effect"
 import {
   assertFalse,
@@ -9,7 +10,6 @@ import {
   strictEqual,
   throws
 } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const $ = BigDecimal.unsafeFromString
 

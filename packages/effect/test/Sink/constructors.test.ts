@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import type * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -15,8 +16,6 @@ import * as Queue from "effect/Queue"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import { assertTrue, deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("drain - fails if upstream fails", () =>

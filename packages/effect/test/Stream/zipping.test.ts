@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -12,9 +13,7 @@ import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
 import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import * as fc from "fast-check"
-import { describe } from "vitest"
 
 const chunkArb = <A>(
   arb: fc.Arbitrary<A>,
@@ -45,7 +44,7 @@ export const splitChunks = <A>(chunks: Chunk.Chunk<Chunk.Chunk<A>>): fc.Arbitrar
 }
 
 describe("Stream", () => {
-  it.it("zipAllSortedByKeyWith", () => {
+  it("zipAllSortedByKeyWith", () => {
     const intArb = fc.integer({ min: 1, max: 100 })
     const chunkArb = fc.array(fc.tuple(intArb, intArb)).map((entries) =>
       pipe(Chunk.fromIterable(new Map(entries)), Chunk.sort(OrderByKey))
@@ -90,7 +89,7 @@ describe("Stream", () => {
       deepStrictEqual(Array.from(result), [[1, "a"], [2, "b"], [3, "c"]])
     }))
 
-  it.it("zip - equivalence with Chunk.zip", () =>
+  it("zip - equivalence with Chunk.zip", () =>
     fc.assert(
       fc.asyncProperty(fc.array(chunkArb(fc.integer())), fc.array(chunkArb(fc.integer())), async (left, right) => {
         const stream = pipe(
@@ -148,7 +147,7 @@ describe("Stream", () => {
     }))
 
   // TODO: handle Chunk.zipAllWith
-  // it.it("zipAllWith", () =>
+  // it("zipAllWith", () =>
   //   fc.assert(fc.asyncProperty(
   //     fc.array(chunkArb(fc.integer()).filter((chunk) => chunk.length > 0)),
   //     fc.array(chunkArb(fc.integer()).filter((chunk) => chunk.length > 0)),
@@ -284,7 +283,7 @@ describe("Stream", () => {
       deepStrictEqual(Array.from(result), [1, 1, 1])
     }))
 
-  it.it("zipLatestWith - preserves partial ordering of stream elements", () => {
+  it("zipLatestWith - preserves partial ordering of stream elements", () => {
     const sortedChunkArb = chunkArb(fc.integer({ min: 1, max: 100 }))
       .map(Chunk.sort(Number.Order))
     const sortedChunksArb = sortedChunkArb.chain((chunk) => splitChunks(Chunk.of(chunk)))
@@ -344,7 +343,7 @@ describe("Stream", () => {
       deepStrictEqual(Array.from(result), [])
     }))
 
-  it.it("zipWithNext - should output the same values as zipping with the tail plus the last element", () =>
+  it("zipWithNext - should output the same values as zipping with the tail plus the last element", () =>
     fc.assert(fc.asyncProperty(fc.array(chunkArb(fc.integer())), async (chunks) => {
       const stream = Stream.fromChunks(...chunks)
       const { result1, result2 } = await Effect.runPromise(Effect.all({
@@ -402,7 +401,7 @@ describe("Stream", () => {
       deepStrictEqual(Array.from(result), [])
     }))
 
-  it.it("zipWithPrevious - should output same values as first element plus zipping with init", () =>
+  it("zipWithPrevious - should output same values as first element plus zipping with init", () =>
     fc.assert(fc.asyncProperty(fc.array(chunkArb(fc.integer())), async (chunks) => {
       const stream = Stream.fromChunks(...chunks)
       const { result1, result2 } = await Effect.runPromise(Effect.all({
@@ -435,7 +434,7 @@ describe("Stream", () => {
       ])
     }))
 
-  it.it("zipWithPreviousAndNext - should output same values as zipping with both previous and next element", () =>
+  it("zipWithPreviousAndNext - should output same values as zipping with both previous and next element", () =>
     fc.assert(fc.asyncProperty(fc.array(chunkArb(fc.integer()), { minLength: 0, maxLength: 5 }), async (chunks) => {
       const stream = Stream.fromChunks(...chunks)
       const previous = pipe(

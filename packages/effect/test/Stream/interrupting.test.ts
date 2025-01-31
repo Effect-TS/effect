@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import { Schedule } from "effect"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -12,9 +13,7 @@ import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
 import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("interruptWhen - preserves the scope of inner fibers", () =>

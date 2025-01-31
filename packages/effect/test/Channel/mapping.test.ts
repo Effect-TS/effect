@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as ChildExecutorDecision from "effect/ChildExecutorDecision"
@@ -8,10 +9,8 @@ import { constVoid, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import * as UpstreamPullRequest from "effect/UpstreamPullRequest"
 import * as UpstreamPullStrategy from "effect/UpstreamPullStrategy"
-import { describe } from "vitest"
 
 interface First {
   readonly _tag: "First"

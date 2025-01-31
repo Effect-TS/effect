@@ -1,10 +1,9 @@
+import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
 import { strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("zip/all joins fibers in the correct order", () =>

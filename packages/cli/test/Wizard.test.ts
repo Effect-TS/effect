@@ -5,11 +5,11 @@ import * as MockConsole from "@effect/cli/test/services/MockConsole"
 import * as MockTerminal from "@effect/cli/test/services/MockTerminal"
 import {} from "@effect/platform"
 import { NodeFileSystem, NodePath } from "@effect/platform-node"
+import { describe, expect, it } from "@effect/vitest"
 import { Array, Effect } from "effect"
 import * as Console from "effect/Console"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
-import { describe, expect, it } from "vitest"
 
 const MainLive = Effect.gen(function*(_) {
   const console = yield* _(MockConsole.make)

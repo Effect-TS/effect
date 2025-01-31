@@ -1,8 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import { Channel, Context, Effect, Either, Exit, Option, pipe, Random } from "effect"
 import { strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import { unify } from "effect/Unify"
-import { describe } from "vitest"
 
 describe("Channel.Foreign", () => {
   it.effect("Tag", () =>

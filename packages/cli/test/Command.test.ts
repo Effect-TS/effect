@@ -1,7 +1,7 @@
 import { Args, Command, Options } from "@effect/cli"
 import { NodeContext } from "@effect/platform-node"
+import { assert, describe, it } from "@effect/vitest"
 import { Config, ConfigProvider, Context, Effect, Layer } from "effect"
-import { assert, describe, it } from "vitest"
 
 const git = Command.make("git", {
   verbose: Options.boolean("verbose").pipe(

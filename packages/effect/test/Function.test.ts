@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Function, String } from "effect"
 import { deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const f = (n: number): number => n + 1
 const g = (n: number) => n * 2

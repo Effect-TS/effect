@@ -1,6 +1,6 @@
+import { describe, it as it_ } from "@effect/vitest"
 import { Array as Arr, Chunk, Differ, Equal, HashMap, HashSet, pipe } from "effect"
 import { assertTrue, deepStrictEqual } from "effect/test/util"
-import { describe, it as it_ } from "vitest"
 
 function diffLaws<Value, Patch>(
   differ: Differ.Differ<Value, Patch>,

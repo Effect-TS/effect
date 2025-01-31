@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -16,10 +17,8 @@ import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
 import { assertTrue, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import * as TestServices from "effect/TestServices"
-import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("aggregate - simple example", () =>

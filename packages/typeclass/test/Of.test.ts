@@ -1,8 +1,8 @@
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as _ from "@effect/typeclass/Of"
+import { describe, it } from "@effect/vitest"
 import * as RA from "effect/Array"
 import * as O from "effect/Option"
-import { describe, it } from "vitest"
 import * as U from "./util.js"
 
 describe.concurrent("Of", () => {

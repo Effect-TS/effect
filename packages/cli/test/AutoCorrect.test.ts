@@ -1,6 +1,6 @@
 import * as AutoCorrect from "@effect/cli/AutoCorrect"
 import * as CliConfig from "@effect/cli/CliConfig"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 
 describe("AutoCorrect", () => {
   it("should calculate the correct Levenstein distance between two strings", () => {

@@ -1,13 +1,12 @@
 import { OtelSpan } from "@effect/opentelemetry/internal/tracer"
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
 import * as Tracer from "@effect/opentelemetry/Tracer"
-import * as it from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Effect from "effect/Effect"
 import * as Runtime from "effect/Runtime"
-import { assert, describe, expect } from "vitest"
 
 const TracingLive = NodeSdk.layer(Effect.sync(() => ({
   resource: {

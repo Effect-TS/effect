@@ -1,9 +1,9 @@
 import * as EitherInstances from "@effect/typeclass/data/Either"
 import * as OptionInstances from "@effect/typeclass/data/Option"
+import { describe, expect, it } from "@effect/vitest"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import { describe, expect, it } from "vitest"
 import * as Util from "../util.js"
 
 describe.concurrent("Either", () => {

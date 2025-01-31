@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import {
   Array as Arr,
   Effect,
@@ -11,8 +12,6 @@ import {
 } from "effect"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { equivalentElements } from "effect/test/utils/equals"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 interface Event {
   readonly time: number
@@ -34,7 +33,7 @@ const eventsArb: fc.Arbitrary<Array<Event>> = fc.array(eventArb)
 const predicateArb: fc.Arbitrary<(event: Event) => boolean> = fc.func(fc.boolean()).map((f) => (e: Event) => f(e))
 
 describe("TPriorityQueue", () => {
-  it.it("isEmpty", () =>
+  it("isEmpty", () =>
     fc.assert(fc.asyncProperty(eventsArb, async (events) => {
       const transaction = pipe(
         TPriorityQueue.empty<Event>(orderByTime),
@@ -45,7 +44,7 @@ describe("TPriorityQueue", () => {
       strictEqual(result, events.length === 0)
     })))
 
-  it.it("isNonEmpty", () =>
+  it("isNonEmpty", () =>
     fc.assert(fc.asyncProperty(eventsArb, async (events) => {
       const transaction = pipe(
         TPriorityQueue.empty<Event>(orderByTime),
@@ -56,7 +55,7 @@ describe("TPriorityQueue", () => {
       strictEqual(result, events.length > 0)
     })))
 
-  it.it("offerAll and takeAll", () =>
+  it("offerAll and takeAll", () =>
     fc.assert(fc.asyncProperty(eventsArb, async (events) => {
       const transaction = pipe(
         TPriorityQueue.empty<Event>(orderByTime),
@@ -70,7 +69,7 @@ describe("TPriorityQueue", () => {
       deepStrictEqual(result, pipe(result, Arr.sort(orderByTime)))
     })))
 
-  it.it("removeIf", () =>
+  it("removeIf", () =>
     fc.assert(fc.asyncProperty(eventsArb, predicateArb, async (events, f) => {
       const transaction = pipe(
         TPriorityQueue.fromIterable(orderByTime)(events),
@@ -84,7 +83,7 @@ describe("TPriorityQueue", () => {
       deepStrictEqual(result, Arr.sort(orderByTime)(result))
     })))
 
-  it.it("retainIf", () =>
+  it("retainIf", () =>
     fc.assert(fc.asyncProperty(eventsArb, predicateArb, async (events, f) => {
       const transaction = pipe(
         TPriorityQueue.fromIterable(orderByTime)(events),
@@ -98,7 +97,7 @@ describe("TPriorityQueue", () => {
       deepStrictEqual(result, Arr.sort(orderByTime)(result))
     })))
 
-  it.it("take", () =>
+  it("take", () =>
     fc.assert(fc.asyncProperty(eventsArb, async (events) => {
       const transaction = pipe(
         TPriorityQueue.fromIterable(orderByTime)(events),
@@ -116,7 +115,7 @@ describe("TPriorityQueue", () => {
       deepStrictEqual(result, pipe(result, Arr.sort(orderByTime)))
     })))
 
-  it.it("takeOption", () =>
+  it("takeOption", () =>
     fc.assert(
       fc.asyncProperty(eventsArb.filter((events) => events.length > 0), async (events) => {
         const transaction = pipe(
@@ -140,7 +139,7 @@ describe("TPriorityQueue", () => {
       })
     ))
 
-  it.it("takeUpTo", () =>
+  it("takeUpTo", () =>
     fc.assert(
       fc.asyncProperty(
         eventsArb.chain((events) => fc.tuple(fc.constant(events), fc.integer({ min: 0, max: events.length }))),
@@ -168,7 +167,7 @@ describe("TPriorityQueue", () => {
       )
     ))
 
-  it.it("toChunk", () =>
+  it("toChunk", () =>
     fc.assert(fc.asyncProperty(eventsArb, async (events) => {
       const transaction = pipe(
         TPriorityQueue.fromIterable(orderByTime)(events),
@@ -181,7 +180,7 @@ describe("TPriorityQueue", () => {
       deepStrictEqual(result, pipe(result, Arr.sort(orderByTime)))
     })))
 
-  it.it("toReadonlyArray", () =>
+  it("toReadonlyArray", () =>
     fc.assert(fc.asyncProperty(eventsArb, async (events) => {
       const transaction = pipe(
         TPriorityQueue.fromIterable(orderByTime)(events),

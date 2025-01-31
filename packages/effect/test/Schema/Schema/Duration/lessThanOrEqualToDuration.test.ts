@@ -1,7 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import { Duration } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
 
 describe("lessThanOrEqualToDuration", () => {
   const schema = S.DurationFromSelf.pipe(S.lessThanOrEqualToDuration("5 seconds"))

@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import { Array as Arr, Cause, Effect, Equal, FastCheck as fc, FiberId, Hash, Option, Predicate } from "effect"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as internal from "effect/internal/cause"
@@ -12,7 +13,6 @@ import {
   strictEqual
 } from "effect/test/util"
 import { causes, equalCauses, errorCauseFunctions, errors } from "effect/test/utils/cause"
-import { describe, it } from "vitest"
 
 describe("Cause", () => {
   const empty = Cause.empty

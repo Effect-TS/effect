@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -11,8 +12,6 @@ import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
 import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 const withPermitsScoped = (permits: number) => (semaphore: Effect.Semaphore) =>
   Effect.acquireRelease(

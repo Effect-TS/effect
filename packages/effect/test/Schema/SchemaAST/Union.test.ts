@@ -1,7 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("AST.Union", () => {
   it("flatten should un-nest union members", () => {

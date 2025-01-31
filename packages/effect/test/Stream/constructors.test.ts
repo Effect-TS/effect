@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -12,10 +13,8 @@ import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import { assertFalse, assertLeft, assertTrue, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import * as fc from "fast-check"
-import { describe } from "vitest"
 
 const chunkArb = <A>(
   arb: fc.Arbitrary<A>,
@@ -31,7 +30,7 @@ const grouped = <A>(arr: Array<A>, size: number): Array<Array<A>> => {
 }
 
 describe("Stream", () => {
-  it.it("concatAll", () =>
+  it("concatAll", () =>
     fc.assert(fc.asyncProperty(fc.array(chunkArb(fc.integer())), async (chunks) => {
       const stream = pipe(
         Chunk.fromIterable(chunks),
@@ -71,14 +70,14 @@ describe("Stream", () => {
       assertFalse(result)
     }))
 
-  it.it("fromChunk", () =>
+  it("fromChunk", () =>
     fc.assert(fc.asyncProperty(chunkArb(fc.integer()), async (chunk) => {
       const stream = Stream.fromChunk(chunk)
       const result = await Effect.runPromise(Stream.runCollect(stream))
       deepStrictEqual(Array.from(result), Array.from(chunk))
     })))
 
-  it.it("fromChunks", () =>
+  it("fromChunks", () =>
     fc.assert(fc.asyncProperty(fc.array(chunkArb(fc.integer())), async (chunks) => {
       const stream = Stream.fromChunks(...chunks)
       const result = await Effect.runPromise(Stream.runCollect(stream))
@@ -308,7 +307,7 @@ describe("Stream", () => {
       )
     }))
 
-  it.it("rechunk", () =>
+  it("rechunk", () =>
     fc.assert(
       fc.asyncProperty(fc.array(chunkArb(fc.integer())), fc.integer({ min: 1, max: 100 }), async (chunks, n) => {
         const stream = pipe(

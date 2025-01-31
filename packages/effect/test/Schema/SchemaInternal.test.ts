@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import * as util from "effect/internal/schema/util"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("effect/internal/schema/util", () => {
   it("ownKeys", () => {

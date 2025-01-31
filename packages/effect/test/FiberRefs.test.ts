@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -11,8 +12,6 @@ import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("FiberRefs", () => {
   it.scoped("propagate FiberRef values across fiber boundaries", () =>
@@ -34,7 +33,7 @@ describe("FiberRefs", () => {
       const result = yield* Fiber.join(consumer)
       assertTrue(result)
     }))
-  it.it("interruptedCause", () => {
+  it("interruptedCause", () => {
     const parent = FiberId.make(1, Date.now()) as FiberId.Runtime
     const child = FiberId.make(2, Date.now()) as FiberId.Runtime
     const parentFiberRefs = FiberRefs.unsafeMake(new Map())
@@ -48,7 +47,7 @@ describe("FiberRefs", () => {
   })
 
   describe("currentLogAnnotations", () => {
-    it.it("doesnt leak", () => {
+    it("doesnt leak", () => {
       Effect.void.pipe(Effect.annotateLogs("test", "abc"), Effect.runSync)
       strictEqual(FiberRef.currentLogAnnotations.pipe(FiberRef.get, Effect.map(HashMap.size), Effect.runSync), 0)
     })

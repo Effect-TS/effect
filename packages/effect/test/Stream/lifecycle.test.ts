@@ -1,9 +1,8 @@
+import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("onStart", () =>

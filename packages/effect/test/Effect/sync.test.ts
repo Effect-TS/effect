@@ -1,10 +1,9 @@
+import { describe, expect, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 const sum = (n: number): number => {
   if (n < 0) {
@@ -14,14 +13,14 @@ const sum = (n: number): number => {
 }
 
 describe("Effect", () => {
-  it.it("runSyncExit with async is a defect with stack", () => {
+  it("runSyncExit with async is a defect with stack", () => {
     const exit = Effect.runSyncExit(
       Effect.promise(() => Promise.resolve(0)).pipe(Effect.withSpan("asyncSpan"))
     )
     if (Exit.isFailure(exit)) {
-      it.expect(Cause.pretty(exit.cause)).toContain("asyncSpan")
+      expect(Cause.pretty(exit.cause)).toContain("asyncSpan")
     } else {
-      it.expect(exit._tag).toBe("Failure")
+      expect(exit._tag).toBe("Failure")
     }
   })
   it.effect("sync - effect", () =>
@@ -35,7 +34,7 @@ describe("Effect", () => {
       const result = yield* (sumEffect(1000))
       strictEqual(result, sum(1000))
     }))
-  it.it("sync - must be lazy", async () => {
+  it("sync - must be lazy", async () => {
     let program
     try {
       program = Effect.sync(() => {
@@ -48,7 +47,7 @@ describe("Effect", () => {
     const result = await Effect.runPromise(program)
     assertTrue(result)
   })
-  it.it("suspend - must be lazy", async () => {
+  it("suspend - must be lazy", async () => {
     let program
     try {
       program = Effect.suspend(() => {

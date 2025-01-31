@@ -1,5 +1,5 @@
 import * as ArrayInstances from "@effect/typeclass/data/Array"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 
 describe.concurrent("Array", () => {
   it("Product.productAll", () => {

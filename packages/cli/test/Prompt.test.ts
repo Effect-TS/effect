@@ -5,12 +5,12 @@ import * as MockTerminal from "@effect/cli/test/services/MockTerminal"
 import { NodeFileSystem, NodePath } from "@effect/platform-node"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
+import { describe, expect, it } from "@effect/vitest"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
-import { describe, expect, it } from "vitest"
 
 const MainLive = Effect.gen(function*() {
   const console = yield* MockConsole.make

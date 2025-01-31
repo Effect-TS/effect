@@ -1,9 +1,19 @@
-import { Chunk, Deferred, Effect, Equal, Exit, Fiber, pipe, Random, STM, Stream } from "effect"
-import * as Number from "effect/Number"
+import { describe, it } from "@effect/vitest"
+import {
+  Chunk,
+  Deferred,
+  Effect,
+  Equal,
+  Exit,
+  Fiber,
+  Number,
+  pipe,
+  Random,
+  STM,
+  Stream,
+  TSubscriptionRef
+} from "effect"
 import { assertTrue, deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import * as TSubscriptionRef from "effect/TSubscriptionRef"
-import { describe } from "vitest"
 
 describe.concurrent("TSubscriptionRef", () => {
   it.effect("only emits comitted values", () =>

@@ -1,7 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import * as Option from "effect/Option"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
 
 describe("requiredToOptional", () => {
   it("two transformation schemas", async () => {

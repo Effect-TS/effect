@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as A from "effect/Arbitrary"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
@@ -10,7 +11,6 @@ import { isUnknown } from "effect/Predicate"
 import * as S from "effect/Schema"
 import { assertFalse, assertTrue, strictEqual, throws } from "effect/test/util"
 import * as fc from "fast-check"
-import { describe, it } from "vitest"
 
 /**
  * Tests that the generated Eq is a valid Eq

@@ -1,8 +1,8 @@
 import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
 import * as OptionInstances from "@effect/typeclass/data/Option"
+import { describe, it } from "@effect/vitest"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import { describe, it } from "vitest"
 import * as Util from "../util.js"
 
 describe.concurrent("Option", () => {

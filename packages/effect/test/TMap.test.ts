@@ -1,8 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import { Array, Chunk, Effect, Equal, Exit, FastCheck as fc, Hash, Option, pipe, STM, TMap } from "effect"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { equivalentElements } from "effect/test/utils/equals"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 class HashContainer implements Equal.Equal {
   constructor(readonly i: number) {}
@@ -101,7 +100,7 @@ describe("TMap", () => {
       assertFalse(result)
     }))
 
-  it.it("keys - collect all keys", () =>
+  it("keys - collect all keys", () =>
     fc.assert(fc.asyncProperty(mapEntriesArb, async (entries) => {
       const transaction = pipe(
         TMap.fromIterable(entries),
@@ -307,7 +306,7 @@ describe("TMap", () => {
       strictEqual(result, 2)
     }))
 
-  it.it("toChunk - collect all elements", () =>
+  it("toChunk - collect all elements", () =>
     fc.assert(fc.asyncProperty(mapEntriesArb, async (entries) => {
       const transaction = pipe(
         TMap.fromIterable(entries),
@@ -319,7 +318,7 @@ describe("TMap", () => {
       strictEqual(pipe(entries, Array.differenceWith(equivalentElements())(Chunk.toReadonlyArray(result))).length, 0)
     })))
 
-  it.it("toReadonlyArray - collect all elements", () =>
+  it("toReadonlyArray - collect all elements", () =>
     fc.assert(fc.asyncProperty(mapEntriesArb, async (entries) => {
       const transaction = pipe(
         TMap.fromIterable(entries),
@@ -330,7 +329,7 @@ describe("TMap", () => {
       strictEqual(pipe(entries, Array.differenceWith(equivalentElements())(result)).length, 0)
     })))
 
-  it.it("toMap - collect all elements", () =>
+  it("toMap - collect all elements", () =>
     fc.assert(fc.asyncProperty(mapEntriesArb, async (entries) => {
       const transaction = pipe(
         TMap.fromIterable(entries),
@@ -456,7 +455,7 @@ describe("TMap", () => {
       deepStrictEqual(result, [["a", 2], ["c", 3]])
     }))
 
-  it.it("values - collect all values", () =>
+  it("values - collect all values", () =>
     fc.assert(fc.asyncProperty(mapEntriesArb, async (entries) => {
       const transaction = pipe(
         TMap.fromIterable(entries),

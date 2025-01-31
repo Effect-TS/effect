@@ -1,8 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import { Cache, Effect } from "effect"
 import { strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { describe } from "vitest"
 
 describe("Cache", () => {
   it.effect("should not increment cache hits on expired entries", () =>

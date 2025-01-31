@@ -1,10 +1,10 @@
+import { describe, it } from "@effect/vitest"
 import { pipe } from "effect/Function"
 import * as Iter from "effect/Iterable"
 import * as Number from "effect/Number"
 import * as O from "effect/Option"
 import type { Predicate } from "effect/Predicate"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")

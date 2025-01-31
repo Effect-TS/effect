@@ -1,8 +1,8 @@
+import { describe, it } from "@effect/vitest"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
 import { deepStrictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("NonEmptyArrayEnsure", () => {
   it("annotations()", () => {

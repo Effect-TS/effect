@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import {
   Array as Arr,
   Either,
@@ -11,7 +12,6 @@ import {
   String as Str
 } from "effect"
 import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")

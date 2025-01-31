@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
@@ -10,10 +11,8 @@ import * as Layer from "effect/Layer"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import type { Concurrency } from "effect/Types"
-import { describe } from "vitest"
 import { pipe } from "../../src/index.js"
 
 interface Counter {

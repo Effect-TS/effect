@@ -1,7 +1,7 @@
 import * as HttpApiError from "@effect/platform/HttpApiError"
 import { deepStrictEqual } from "@effect/platform/test/util"
+import { describe, it } from "@effect/vitest"
 import * as Schema from "effect/Schema"
-import { describe, it } from "vitest"
 
 describe("HttpApiError", () => {
   describe("Issue schema", () => {

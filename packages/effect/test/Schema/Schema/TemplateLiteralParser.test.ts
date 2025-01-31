@@ -1,9 +1,9 @@
+import { describe, it } from "@effect/vitest"
 import type * as array_ from "effect/Array"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
 import { deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 type TemplateLiteralParameter = S.Schema.AnyNoContext | AST.LiteralValue
 

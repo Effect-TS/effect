@@ -1,9 +1,8 @@
+import { describe, it } from "@effect/vitest"
 import { Cause, Context, Duration, Effect, Fiber, FiberId, Layer, Option, pipe, TestClock, Tracer } from "effect"
 import type { NativeSpan } from "effect/internal/tracer"
 import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import type { Span } from "effect/Tracer"
-import { describe } from "vitest"
 
 describe("Tracer", () => {
   it.effect("includes trace when errored", () =>

@@ -1,7 +1,7 @@
 import * as Doc from "@effect/printer/Doc"
 import * as PageWidth from "@effect/printer/PageWidth"
+import { describe, expect, it } from "@effect/vitest"
 import * as String from "effect/String"
-import { describe, expect, it } from "vitest"
 
 const fun = <A>(doc: Doc.Doc<A>): Doc.Doc<A> =>
   Doc.cat(

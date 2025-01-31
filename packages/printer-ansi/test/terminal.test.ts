@@ -1,8 +1,8 @@
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Color from "@effect/printer-ansi/Color"
+import { describe, expect, it } from "@effect/vitest"
 import * as String from "effect/String"
-import { describe, expect, it } from "vitest"
 
 const simple = Doc.text("foo")
 

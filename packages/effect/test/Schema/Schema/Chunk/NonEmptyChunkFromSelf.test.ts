@@ -1,10 +1,10 @@
+import { describe, it } from "@effect/vitest"
 import * as Arbitrary from "effect/Arbitrary"
 import * as C from "effect/Chunk"
 import * as FastCheck from "effect/FastCheck"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
 import { assertFalse, assertTrue } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("NonEmptyChunkFromSelf", () => {
   it("test roundtrip consistency", () => {

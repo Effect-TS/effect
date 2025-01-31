@@ -1,3 +1,4 @@
+import { afterEach, beforeEach, describe, it, vi } from "@effect/vitest"
 import {
   Cause,
   Chunk,
@@ -14,8 +15,6 @@ import {
 } from "effect"
 import { logLevelInfo } from "effect/internal/core"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "effect/test/utils/extend"
-import { afterEach, beforeEach, vi } from "vitest"
 
 describe("Logger", () => {
   it("isLogger", () => {

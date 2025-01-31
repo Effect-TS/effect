@@ -1,7 +1,7 @@
 import * as MicroInstances from "@effect/typeclass/data/Micro"
 import * as RecordInstances from "@effect/typeclass/data/Record"
+import { describe, expect, it } from "@effect/vitest"
 import * as Micro from "effect/Micro"
-import { describe, expect, it } from "vitest"
 
 describe.concurrent("Micro", () => {
   describe("Applicative", () => {

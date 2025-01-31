@@ -1,9 +1,9 @@
+import { describe, it } from "@effect/vitest"
 import type { Duration } from "effect"
 import * as Effect from "effect/Effect"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
 import { deepStrictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("`preserveKeyOrder` option", () => {
   const b = Symbol.for("effect/Schema/test/b")

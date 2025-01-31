@@ -1,17 +1,16 @@
 import * as path from "node:path"
-import type { UserConfig } from "vitest/config"
+import type { ViteUserConfig } from "vitest/config"
 
 const alias = (pkg: string, dir = pkg) => {
   const name = pkg === "effect" ? "effect" : `@effect/${pkg}`
-  const target = process.env.TEST_DIST !== undefined ? "dist/dist/esm" : "src"
+  const target = process.env.TEST_DIST !== undefined ? path.join("dist", "dist", "esm") : "src"
   return ({
     [`${name}/test`]: path.join(__dirname, "packages", dir, "test"),
     [`${name}`]: path.join(__dirname, "packages", dir, target)
   })
 }
 
-// This is a workaround, see https://github.com/vitest-dev/vitest/issues/4744
-const config: UserConfig = {
+const config: ViteUserConfig = {
   esbuild: {
     target: "es2020"
   },

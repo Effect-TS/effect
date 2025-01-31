@@ -1,10 +1,10 @@
 import * as Activity from "@effect/cluster-workflow/Activity"
+import { vi } from "@effect/vitest"
+import type { Mock } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import type * as Schema from "effect/Schema"
-import { vi } from "vitest"
-import type { Mock } from "vitest"
 
 export function mockEffect<A, E>(
   impl: () => Exit.Exit<A, E>

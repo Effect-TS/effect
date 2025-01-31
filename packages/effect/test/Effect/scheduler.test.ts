@@ -1,9 +1,8 @@
+import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Scheduler from "effect/Scheduler"
 import { deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("matrix schedules according to priority", () =>

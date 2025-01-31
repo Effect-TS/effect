@@ -1,10 +1,10 @@
+import { describe, it } from "@effect/vitest"
 import type * as ParseResult from "effect/ParseResult"
 import type * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe(".annotations()", () => {
   it("should return a Schema", () => {

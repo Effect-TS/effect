@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Clock from "effect/Clock"
 import * as Deferred from "effect/Deferred"
@@ -9,8 +10,6 @@ import { constant, constTrue, identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import { assertTrue, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 const initial = "initial"
 const update = "update"

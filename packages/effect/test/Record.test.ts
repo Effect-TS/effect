@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Either, Number as N, Option, pipe, Record as R } from "effect"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")

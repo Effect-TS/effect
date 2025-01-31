@@ -1,7 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Effect, pipe } from "effect"
 import { assertLeft, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Effect", () => {
   const add = (a: number) => (b: number) => a + b

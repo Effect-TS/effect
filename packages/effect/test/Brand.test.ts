@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import { Brand, Option } from "effect"
 import {
   assertFalse,
@@ -9,7 +10,6 @@ import {
   strictEqual,
   throws
 } from "effect/test/util"
-import { describe, it } from "vitest"
 
 declare const IntTypeId: unique symbol
 type Int = number & Brand.Brand<typeof IntTypeId>

@@ -5,6 +5,7 @@ import * as RecipientBehaviour from "@effect/cluster/RecipientBehaviour"
 import * as RecipientBehaviourContext from "@effect/cluster/RecipientBehaviourContext"
 import * as RecipientType from "@effect/cluster/RecipientType"
 import * as ShardId from "@effect/cluster/ShardId"
+import { describe, expect, it } from "@effect/vitest"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -15,7 +16,6 @@ import * as LogLevel from "effect/LogLevel"
 import * as Queue from "effect/Queue"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
-import { describe, expect, it } from "vitest"
 
 class Sample extends Message.TaggedMessage<Sample>()("Sample", Schema.Never, Schema.Number, {
   id: Schema.String

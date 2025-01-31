@@ -1,7 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Cause, Data, Effect, pipe } from "effect"
 import { assertTrue, deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 class TestError extends Data.TaggedError("TestError")<{}> {}
 
@@ -62,7 +61,7 @@ describe("Effect", () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { inspect } = require("node:util")
 
-    it.it("inspect", () => {
+    it("inspect", () => {
       class MessageError extends Data.TaggedError("MessageError") {
         get message() {
           return "fail"
@@ -73,7 +72,7 @@ describe("Effect", () => {
       assertTrue(inspect(err).replaceAll("\\", "/").includes("test/Effect/error.test.ts:71"))
     })
 
-    it.it("toString", () => {
+    it("toString", () => {
       class MessageError extends Data.TaggedError("MessageError") {
         toString() {
           return "fail"
@@ -83,7 +82,7 @@ describe("Effect", () => {
       deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
     })
 
-    it.it("cause", () => {
+    it("cause", () => {
       class MessageError extends Data.TaggedError("MessageError")<{
         cause: unknown
       }> {}
@@ -91,7 +90,7 @@ describe("Effect", () => {
     })
   }
 
-  it.it("toJSON", () => {
+  it("toJSON", () => {
     class MessageError extends Data.TaggedError("MessageError")<{}> {}
     deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
   })

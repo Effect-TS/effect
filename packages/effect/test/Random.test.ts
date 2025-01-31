@@ -1,7 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Array, Cause, Chunk, Data, Effect, Random } from "effect"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { it } from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Random", () => {
   it.effect("integer is correctly distributed", () =>

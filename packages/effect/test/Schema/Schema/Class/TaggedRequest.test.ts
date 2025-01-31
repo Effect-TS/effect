@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import { Context, Effect, Exit } from "effect"
 import * as Equal from "effect/Equal"
 import * as ParseResult from "effect/ParseResult"
@@ -5,7 +6,6 @@ import * as Request from "effect/Request"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const Name = Context.GenericTag<"Name", string>("Name")
 const NameString = S.String.pipe(

@@ -1,7 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
 
 describe("encode", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })

@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { RegExp } from "effect"
 import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("RegExp", () => {
   it("isRegExp", () => {

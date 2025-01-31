@@ -1,7 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Array, Clock, Deferred, Effect, Fiber, Function, Option, pipe, RateLimiter, Ref, TestClock } from "effect"
 import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("RateLimiter", () => {
   describe.concurrent("fixed-window", () => {

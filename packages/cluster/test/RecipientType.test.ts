@@ -1,9 +1,9 @@
 import * as Message from "@effect/cluster/Message"
 import * as RecipientType from "@effect/cluster/RecipientType"
+import { describe, expect, it } from "@effect/vitest"
 import { equals } from "effect/Equal"
 import * as Hash from "effect/Hash"
 import * as Schema from "effect/Schema"
-import { describe, expect, it } from "vitest"
 
 class Sample extends Message.TaggedMessage<Sample>()("Sample", Schema.Never, Schema.Number, {
   id: Schema.String

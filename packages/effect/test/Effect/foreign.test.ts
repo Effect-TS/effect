@@ -1,9 +1,8 @@
+import { describe, it } from "@effect/vitest"
 import { Cause, Context, Effect, Either, Exit, Option, pipe } from "effect"
 import { nextInt } from "effect/Random"
 import { assertLeft, deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import { unify } from "effect/Unify"
-import { describe } from "vitest"
 
 describe("Foreign", () => {
   it.effect("Unify", () =>

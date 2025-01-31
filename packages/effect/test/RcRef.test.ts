@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Effect, Exit, RcRef, Scope, TestClock } from "effect"
 import { assertTrue, strictEqual } from "effect/test/util"
-import { describe, it } from "effect/test/utils/extend"
 
 describe("RcRef", () => {
   it.effect("deallocation", () =>

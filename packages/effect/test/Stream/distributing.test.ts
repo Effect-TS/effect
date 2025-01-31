@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -5,8 +6,6 @@ import { constTrue, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import { strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("distributedWithDynamic - ensures no race between subscription and stream end", () =>

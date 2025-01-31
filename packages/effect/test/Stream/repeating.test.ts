@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -11,10 +12,8 @@ import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import * as TestEnvironment from "effect/TestContext"
-import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("forever", () =>
@@ -172,7 +171,7 @@ describe("Stream", () => {
       deepStrictEqual(Array.from(result), [1, 1])
     }), 10000)
 
-  it.it("repeatEffectWithSchedule - allow schedule to rely on effect value", () =>
+  it("repeatEffectWithSchedule - allow schedule to rely on effect value", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1, max: 100 }), async (length) => {
       const effect = Effect.gen(function*() {
         const ref = yield* (Ref.make(0))

@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
@@ -6,7 +7,6 @@ import { equals, symbol } from "effect/Equal"
 import * as List from "effect/List"
 import * as Option from "effect/Option"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const testStructuralSharing = <A>(a: List.List<A>, b: List.List<A>, n = 0): number | undefined => {
   if (a === b) {

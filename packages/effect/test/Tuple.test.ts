@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { pipe, Tuple } from "effect"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("Tuple", () => {
   it("make", () => {
