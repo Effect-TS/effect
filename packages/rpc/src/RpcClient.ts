@@ -486,7 +486,7 @@ export const makeProtocolHttp: <E, R>(
       Effect.flatMap((r) =>
         Stream.runForEachChunk(r.stream, (chunk) =>
           Effect.sync(() => {
-            responses.unsafeOfferAll(Chunk.map(chunk, parser.decode) as any)
+            responses.unsafeOfferAll(Chunk.toReadonlyArray(chunk).flatMap(parser.decode) as any)
           }))
       ),
       Effect.orDie,

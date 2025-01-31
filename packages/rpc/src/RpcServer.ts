@@ -551,11 +551,17 @@ export const make: <Rpcs extends Rpc.Any>(
             yield* send(client.id, constPong)
             break
           }
-          default: {
+          case "Ack":
+          case "Eof":
+          case "Interrupt": {
             if ("requestId" in request && typeof request.requestId === "string") {
               ;(request as any).requestId = BigInt(request.requestId)
             }
             yield* server.write(clientId, request)
+            break
+          }
+          default: {
+            yield* sendDefect(client, `Unknown request tag: ${(request as any)._tag}`)
             break
           }
         }
@@ -736,30 +742,31 @@ export const makeProtocolWithHttpApp: Effect.Effect<
     const offer = (data: Uint8Array | string) =>
       typeof data === "string" ? mailbox.offer(encoder.encode(data)) : mailbox.offer(data)
 
+    clients.set(id, {
+      write: (response) => {
+        try {
+          if (!serialization.supportsBigInt) {
+            transformBigInt(response)
+          }
+          return offer(parser.encode(response))
+        } catch (cause) {
+          return offer(parser.encode(ResponseDefectEncoded(cause)))
+        }
+      },
+      end: mailbox.end
+    })
+
     try {
       const decoded = parser.decode(new Uint8Array(data)) as ReadonlyArray<FromClientEncoded>
-
-      clients.set(id, {
-        write: (response) => {
-          try {
-            if (!serialization.supportsBigInt) {
-              transformBigInt(response)
-            }
-            return offer(parser.encode(response))
-          } catch (cause) {
-            return offer(parser.encode(ResponseDefectEncoded(cause)))
-          }
-        },
-        end: mailbox.end
-      })
 
       for (const message of decoded) {
         requests.unsafeOffer([id, message])
       }
-      requests.unsafeOffer([id, constEof])
     } catch (cause) {
-      yield* offer(parser.encode(ResponseDefectEncoded(new Error("Failed to decode message", { cause }))))
+      yield* offer(parser.encode(ResponseDefectEncoded(cause)))
     }
+
+    requests.unsafeOffer([id, constEof])
 
     return HttpServerResponse.stream(
       Stream.ensuring(
