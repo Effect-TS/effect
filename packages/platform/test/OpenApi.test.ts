@@ -9,9 +9,9 @@ import {
   Multipart,
   OpenApi
 } from "@effect/platform"
-import { deepStrictEqual } from "effect/test/util"
 import { describe, it } from "@effect/vitest"
 import { Context, Schema } from "effect"
+import { deepStrictEqual } from "effect/test/util"
 
 const HttpApiDecodeError = {
   "description": "The request did not match the expected schema",

@@ -1,6 +1,6 @@
 import * as Cookies from "@effect/platform/Cookies"
-import { throws } from "effect/test/util"
 import { describe, it } from "@effect/vitest"
+import { throws } from "effect/test/util"
 
 const assertCookieError = (f: () => void, message: Cookies.CookiesError["reason"]) => {
   throws(f, new Cookies.CookiesError({ reason: message }))

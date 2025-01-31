@@ -1,7 +1,7 @@
-import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as UrlParams from "@effect/platform/UrlParams"
 import { describe, it } from "@effect/vitest"
 import { Effect, Option, Schema } from "effect"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("UrlParams", () => {
   describe("makeUrl", () => {
