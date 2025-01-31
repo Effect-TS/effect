@@ -32,8 +32,8 @@ import type { Span } from "effect/Tracer"
 import type { Mutable } from "effect/Types"
 import type * as Rpc from "./Rpc.js"
 import type * as RpcGroup from "./RpcGroup.js"
-import type { FromClient, FromClientEncoded, FromServer, FromServerEncoded } from "./RpcMessage.js"
-import { constPing, RequestId } from "./RpcMessage.js"
+import type { FromClient, FromClientEncoded, FromServer, FromServerEncoded, RequestId } from "./RpcMessage.js"
+import { constPing } from "./RpcMessage.js"
 import * as RpcSchema from "./RpcSchema.js"
 import * as RpcSerialization from "./RpcSerialization.js"
 import * as RpcWorker from "./RpcWorker.js"
@@ -73,6 +73,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     readonly onFromClient: (message: FromClient<Rpcs>) => Effect.Effect<void>
     readonly supportsAck?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly generateRequestId?: (() => RequestId) | undefined
   }
 ) => Effect.Effect<
   {
@@ -88,11 +89,13 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     readonly supportsAck?: boolean | undefined
     readonly spanPrefix?: string | undefined
     readonly clientId?: number | undefined
+    readonly generateRequestId?: (() => RequestId) | undefined
   }
 ) {
   const spanPrefix = options?.spanPrefix ?? "RpcClient"
   const supportsAck = options?.supportsAck ?? true
-  let requestId = RequestId(BigInt(0))
+  let requestId = BigInt(0)
+  const generateRequestId = options.generateRequestId ?? (() => requestId++ as RequestId)
   const scope = yield* Effect.scope
 
   type ClientEntry = {
@@ -142,7 +145,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
 
   const onEffectRequest = (rpc: Rpc.AnyWithProps, span: Span, payload: any, headers: Headers.Headers) =>
     Effect.withFiberRuntime<any, any, any>((fiber) => {
-      const id = requestId++ as RequestId
+      const id = generateRequestId()
       return options.onFromClient({
         _tag: "Request",
         id,
@@ -177,7 +180,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     const payload = yield* Effect.orDie(
       Schema.encode(rpc.payloadSchema)(rpc.payloadSchema.make(payloadEncoded) as Rpc.Payload<Rpcs>)
     )
-    const id = requestId++ as RequestId
+    const id = generateRequestId()
 
     const scope = Context.unsafeGet(fiber.currentContext, Scope.Scope)
     yield* Scope.addFinalizer(
@@ -263,7 +266,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
  */
 export const make: <Rpcs extends Rpc.Any>(
   group: RpcGroup.RpcGroup<Rpcs>,
-  options?: { readonly spanPrefix?: string | undefined; readonly streamBufferSize?: number | undefined } | undefined
+  options?: {
+    readonly spanPrefix?: string | undefined
+    readonly streamBufferSize?: number | undefined
+    readonly generateRequestId?: (() => RequestId) | undefined
+  } | undefined
 ) => Effect.Effect<
   RpcClient<Rpcs>,
   never,
