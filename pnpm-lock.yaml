@@ -363,9 +363,6 @@ importers:
 
   packages/opentelemetry:
     dependencies:
-      '@opentelemetry/sdk-logs':
-        specifier: ^0.57.1
-        version: 0.57.1(@opentelemetry/api@1.9.0)
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -391,6 +388,9 @@ importers:
       '@opentelemetry/resources':
         specifier: ^1.25.1
         version: 1.25.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-logs':
+        specifier: ^0.57.1
+        version: 0.57.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-metrics':
         specifier: ^1.25.1
         version: 1.25.1(@opentelemetry/api@1.9.0)

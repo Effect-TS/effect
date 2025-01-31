@@ -4,8 +4,11 @@
 import type * as Otel from "@opentelemetry/sdk-logs"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import type { Tag } from "effect/Context"
+import type { Effect } from "effect/Effect"
+import type { Layer } from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as internal from "./internal/logger.js"
+import type { Resource } from "./Resource.js"
 
 /**
  * @since 1.0.0
@@ -25,13 +28,15 @@ export const OtelLoggerProvider: Tag<OtelLoggerProvider, Otel.LoggerProvider> = 
  * @since 1.0.0
  * @category layers
  */
-export const layerLogger = Logger.addEffect(internal.make)
+export const layerLogger: Layer<never, never, OtelLoggerProvider> = Logger.addEffect(
+  internal.make
+)
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const logger = internal.make
+export const logger: Effect<Logger.Logger<unknown, void>, never, OtelLoggerProvider> = internal.make
 
 /**
  * @since 1.0.0
@@ -40,4 +45,4 @@ export const logger = internal.make
 export const layerLoggerProvider = (
   processor: Otel.LogRecordProcessor | NonEmptyReadonlyArray<Otel.LogRecordProcessor>,
   config?: Omit<Otel.LoggerProviderConfig, "resource">
-) => internal.layerLoggerProvider(processor, config)
+): Layer<OtelLoggerProvider, never, Resource> => internal.layerLoggerProvider(processor, config)

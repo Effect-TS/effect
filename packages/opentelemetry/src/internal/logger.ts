@@ -50,11 +50,8 @@ export const layerLoggerProvider = (
 /** @internal */
 export const make = Effect.gen(function*() {
   const loggerProvider = yield* LoggerProvider
-  const resource = yield* Resource
 
-  const otelLogger = loggerProvider.getLogger(
-    resource.attributes["service.name"] as string
-  )
+  const otelLogger = loggerProvider.getLogger("@effect/opentelemetry")
 
   return Logger.make((options) => {
     const structured = Logger.structuredLogger.log(options)

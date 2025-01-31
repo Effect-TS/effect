@@ -92,9 +92,11 @@ export const layer: {
           config.metricReader && !(Array.isArray(config.metricReader) && config.metricReader.length === 0)
             ? Metrics.layer(() => config.metricReader as any)
             : Layer.empty
-        const LoggerLive = config.loggerProviderConfig &&
-            !(Array.isArray(config.loggerProviderConfig) && config.loggerProviderConfig.length === 0)
-          ? Logger.layerLoggerProvider(config.loggerProviderConfig as any)
+        const LoggerLive = config.logRecordProcessor &&
+            !(Array.isArray(config.logRecordProcessor) && config.logRecordProcessor.length === 0)
+          ? Logger.layerLogger.pipe(
+            Layer.provide(Logger.layerLoggerProvider(config.logRecordProcessor as any, config.loggerProviderConfig))
+          )
           : Layer.empty
         return Layer.mergeAll(TracerLive, MetricsLive, LoggerLive).pipe(
           Layer.provideMerge(ResourceLive)
