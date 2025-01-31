@@ -1,4 +1,4 @@
-import { Cause, Context, Duration, Effect, Fiber, FiberId, Layer, Option, TestClock, Tracer } from "effect"
+import { Cause, Context, Duration, Effect, Fiber, FiberId, Layer, Option, pipe, TestClock, Tracer } from "effect"
 import type { NativeSpan } from "effect/internal/tracer"
 import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
@@ -45,8 +45,8 @@ describe("Tracer", () => {
       }))
 
     it.effect("parent", () =>
-      Effect.gen(function*($) {
-        const span = yield* $(
+      Effect.gen(function*() {
+        const span = yield* (
           Effect.withSpan("B")(
             Effect.withSpan("A")(Effect.currentSpan)
           )
@@ -57,8 +57,8 @@ describe("Tracer", () => {
       }))
 
     it.effect("parent when root is set", () =>
-      Effect.gen(function*($) {
-        const span = yield* $(
+      Effect.gen(function*() {
+        const span = yield* (
           Effect.withSpan("B")(Effect.withSpan("A", { root: true })(Effect.currentSpan))
         )
 
@@ -67,8 +67,8 @@ describe("Tracer", () => {
       }))
 
     it.effect("external parent", () =>
-      Effect.gen(function*($) {
-        const span = yield* $(
+      Effect.gen(function*() {
+        const span = yield* (
           Effect.withSpan("A", {
             parent: {
               _tag: "ExternalSpan",
@@ -84,14 +84,14 @@ describe("Tracer", () => {
       }))
 
     it.effect("correct time", () =>
-      Effect.gen(function*($) {
-        const spanFiber = yield* $(
+      Effect.gen(function*() {
+        const spanFiber = yield* (
           Effect.fork(Effect.withSpan("A")(Effect.delay(Duration.seconds(1))(Effect.currentSpan)))
         )
 
-        yield* $(TestClock.adjust(Duration.seconds(2)))
+        yield* (TestClock.adjust(Duration.seconds(2)))
 
-        const span = yield* $(Fiber.join(spanFiber))
+        const span = yield* (Fiber.join(spanFiber))
 
         deepStrictEqual(span.name, "A")
         deepStrictEqual(span.status.startTime, 0n)
@@ -101,8 +101,8 @@ describe("Tracer", () => {
   })
 
   it.effect("annotateSpans", () =>
-    Effect.gen(function*($) {
-      const span = yield* $(
+    Effect.gen(function*() {
+      const span = yield* (
         Effect.annotateSpans(
           Effect.withSpan("A")(Effect.currentSpan),
           "key",
@@ -116,8 +116,8 @@ describe("Tracer", () => {
     }))
 
   it.effect("annotateSpans record", () =>
-    Effect.gen(function*($) {
-      const span = yield* $(
+    Effect.gen(function*() {
+      const span = yield* (
         Effect.annotateSpans(
           Effect.withSpan("A")(Effect.currentSpan),
           { key: "value", key2: "value2" }
@@ -129,10 +129,10 @@ describe("Tracer", () => {
     }))
 
   it.effect("logger", () =>
-    Effect.gen(function*($) {
-      yield* $(TestClock.adjust(Duration.millis(0.01)))
+    Effect.gen(function*() {
+      yield* (TestClock.adjust(Duration.millis(0.01)))
 
-      const [span, fiberId] = yield* $(
+      const [span, fiberId] = yield* pipe(
         Effect.log("event"),
         Effect.zipRight(Effect.all([Effect.currentSpan, Effect.fiberId])),
         Effect.withSpan("A")
@@ -147,10 +147,10 @@ describe("Tracer", () => {
     }))
 
   it.effect("withTracerTiming false", () =>
-    Effect.gen(function*($) {
-      yield* $(TestClock.adjust(Duration.millis(1)))
+    Effect.gen(function*() {
+      yield* (TestClock.adjust(Duration.millis(1)))
 
-      const span = yield* $(
+      const span = yield* pipe(
         Effect.withSpan("A")(Effect.currentSpan),
         Effect.withTracerTiming(false)
       )
@@ -280,13 +280,13 @@ describe("Tracer", () => {
 })
 
 it.effect("withTracerEnabled", () =>
-  Effect.gen(function*($) {
-    const span = yield* $(
+  Effect.gen(function*() {
+    const span = yield* pipe(
       Effect.currentSpan,
       Effect.withSpan("A"),
       Effect.withTracerEnabled(false)
     )
-    const spanB = yield* $(
+    const spanB = yield* pipe(
       Effect.currentSpan,
       Effect.withSpan("B"),
       Effect.withTracerEnabled(true)
