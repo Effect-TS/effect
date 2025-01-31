@@ -444,14 +444,12 @@ export const unsafeNow: LazyArg<Utc> = Internal.unsafeNow
  * @category time zones
  * @example
  * ```ts
- * import { DateTime, Effect } from "effect"
+ * import { DateTime } from "effect"
  *
- * Effect.gen(function* () {
- *   const now = yield* DateTime.now
+ * const now = yield* DateTime.unsafeMakeZoned({ year: 2024 }, { timeZone: "Europe/London" })
  *
- *   // set as UTC
- *   const utc: DateTime.Utc = DateTime.toUtc(now)
- * })
+ * // set as UTC
+ * const utc: DateTime.Utc = DateTime.toUtc(now)
  * ```
  */
 export const toUtc: (self: DateTime) => Utc = Internal.toUtc
