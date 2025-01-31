@@ -7,14 +7,23 @@ import {
   HttpClientResponse,
   UrlParams
 } from "@effect/platform"
-import { assert, describe, expect, it } from "@effect/vitest"
-import { Either, FiberId, FiberRefs, Inspectable, Ref, Struct } from "effect"
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as Logger from "effect/Logger"
-import * as Schema from "effect/Schema"
-import * as Stream from "effect/Stream"
+import { describe, it } from "@effect/vitest"
+import {
+  Context,
+  Effect,
+  Either,
+  FiberId,
+  FiberRefs,
+  Inspectable,
+  Layer,
+  Logger,
+  pipe,
+  Ref,
+  Schema,
+  Stream,
+  Struct
+} from "effect"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,
@@ -30,8 +39,8 @@ const OkTodo = Schema.Struct({
   body: Todo
 })
 
-const makeJsonPlaceholder = Effect.gen(function*(_) {
-  const defaultClient = yield* _(HttpClient.HttpClient)
+const makeJsonPlaceholder = Effect.gen(function*() {
+  const defaultClient = yield* (HttpClient.HttpClient)
   const client = defaultClient.pipe(
     HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))
   )
@@ -54,33 +63,33 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
 
 describe("HttpClient", () => {
   it("google", () =>
-    Effect.gen(function*(_) {
-      const response = yield* _(
+    Effect.gen(function*() {
+      const response = yield* pipe(
         HttpClient.get("https://www.google.com/"),
         Effect.flatMap((_) => _.text),
         Effect.scoped
       )
-      expect(response).toContain("Google")
+      assertTrue(response.includes("Google"))
     }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
 
   it("google withCookiesRef", () =>
-    Effect.gen(function*(_) {
-      const ref = yield* _(Ref.make(Cookies.empty))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Cookies.empty))
       const client = (yield* HttpClient.HttpClient).pipe(
         HttpClient.withCookiesRef(ref)
       )
-      yield* _(
+      yield* pipe(
         HttpClientRequest.get("https://www.google.com/"),
         client.execute,
         Effect.scoped
       )
-      const cookieHeader = yield* _(Ref.get(ref), Effect.map(Cookies.toCookieHeader))
-      yield* _(
+      const cookieHeader = yield* pipe(Ref.get(ref), Effect.map(Cookies.toCookieHeader))
+      yield* pipe(
         HttpClientRequest.get("https://www.google.com/"),
         client.pipe(
           HttpClient.tapRequest((req) =>
             Effect.sync(() => {
-              assert.strictEqual(req.headers.cookie, cookieHeader)
+              strictEqual(req.headers.cookie, cookieHeader)
             })
           )
         ).execute,
@@ -89,14 +98,14 @@ describe("HttpClient", () => {
     }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
 
   it("google stream", () =>
-    Effect.gen(function*(_) {
-      const response = yield* _(
+    Effect.gen(function*() {
+      const response = yield* pipe(
         HttpClient.get(new URL("https://www.google.com/")),
         Effect.map((_) => _.stream),
         Stream.unwrapScoped,
         Stream.runFold("", (a, b) => a + new TextDecoder().decode(b))
       )
-      expect(response).toContain("Google")
+      assertTrue(response.includes("Google"))
     }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
 
   it("jsonplaceholder", () =>
@@ -106,18 +115,18 @@ describe("HttpClient", () => {
         Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
         Effect.scoped
       )
-      expect(response.id).toBe(1)
+      strictEqual(response.id, 1)
     }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
 
   it("jsonplaceholder schemaFunction", () =>
-    Effect.gen(function*(_) {
-      const jp = yield* _(JsonPlaceholder)
-      const response = yield* _(jp.createTodo({
+    Effect.gen(function*() {
+      const jp = yield* JsonPlaceholder
+      const response = yield* (jp.createTodo({
         userId: 1,
         title: "test",
         completed: false
       }))
-      expect(response.title).toBe("test")
+      strictEqual(response.title, "test")
     }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
 
   it("jsonplaceholder schemaJson", () =>
@@ -127,7 +136,7 @@ describe("HttpClient", () => {
         Effect.flatMap(HttpClientResponse.schemaJson(OkTodo)),
         Effect.scoped
       )
-      expect(response.body.id).toBe(1)
+      strictEqual(response.body.id, 1)
     }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
 
   it("request processing order", () =>
@@ -141,7 +150,7 @@ describe("HttpClient", () => {
         Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
         Effect.scoped
       )
-      expect(response.id).toBe(1)
+      strictEqual(response.id, 1)
     }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
 
   it("streamBody accesses the current runtime", () =>
@@ -163,7 +172,7 @@ describe("HttpClient", () => {
         Effect.scoped
       )
 
-      expect(logs).toEqual([["hello"], ["world"]])
+      deepStrictEqual(logs, [["hello"], ["world"]])
     }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
 
   it("ClientRequest parses URL instances", () => {
@@ -171,7 +180,7 @@ describe("HttpClient", () => {
       HttpClientRequest.appendUrl("/foo"),
       HttpClientRequest.setUrlParam("baz", "qux")
     )
-    assert.deepStrictEqual(
+    deepStrictEqual(
       UrlParams.makeUrl(request.url, request.urlParams, request.hash),
       Either.right(new URL("https://example.com/foo?foo=bar&baz=qux#hash"))
     )
@@ -190,7 +199,7 @@ describe("HttpClient", () => {
         ),
         Effect.scoped
       )
-      assert.deepStrictEqual(response, { id: 1, userId: 1, title: "delectus aut autem", completed: false })
+      deepStrictEqual(response, { id: 1, userId: 1, title: "delectus aut autem", completed: false })
     }).pipe(Effect.provide(JsonPlaceholderLive)))
 
   it("ClientRequest redacts headers", () => {
@@ -211,7 +220,7 @@ describe("HttpClient", () => {
     const r = Inspectable.withRedactableContext(fiberRefs, () => Inspectable.toStringUnknown(request))
     const redacted = JSON.parse(r)
 
-    assert.deepStrictEqual(redacted, {
+    deepStrictEqual(redacted, {
       _id: "@effect/platform/HttpClientRequest",
       method: "GET",
       url: "https://example.com/",
@@ -223,15 +232,15 @@ describe("HttpClient", () => {
   })
 
   it("followRedirects", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const defaultClient = yield* HttpClient.HttpClient
       const client = defaultClient.pipe(HttpClient.followRedirects())
 
-      const response = yield* _(
+      const response = yield* pipe(
         client.get("https://google.com/"),
         Effect.scoped
       )
-      expect(response.request.url).toBe("https://www.google.com/")
+      strictEqual(response.request.url, "https://www.google.com/")
     }).pipe(
       Effect.provide(FetchHttpClient.layer),
       Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" }),

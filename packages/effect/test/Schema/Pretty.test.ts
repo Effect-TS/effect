@@ -1,10 +1,10 @@
+import { describe, it } from "@effect/vitest"
 import { isUnknown } from "effect/Predicate"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
 import { strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("Pretty", () => {
   it("make", () => {

@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import { Cause, Chunk, Effect, Exit, Fiber, identity, Number, Option, pipe, STM, TArray, TRef } from "effect"
 import { constFalse, constTrue } from "effect/Function"
 import {
@@ -9,8 +10,6 @@ import {
   deepStrictEqual,
   strictEqual
 } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 const largePrime = 223
 

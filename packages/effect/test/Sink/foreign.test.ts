@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -8,9 +9,7 @@ import * as Random from "effect/Random"
 import type * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import { deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import { unify } from "effect/Unify"
-import { describe } from "vitest"
 
 const runSink = <A, E, R>(sink: Sink.Sink<A, unknown, unknown, E, R>) => Stream.run(Effect.void, sink)
 

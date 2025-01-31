@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -8,8 +9,6 @@ import * as Fiber from "effect/Fiber"
 import { constVoid, identity, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("dropWhile - happy path", () =>

@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import {
   Array,
   Cause,
@@ -17,9 +18,7 @@ import {
 } from "effect"
 import { constVoid } from "effect/Function"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { describe } from "vitest"
 
 describe("Schedule", () => {
   it.effect("collect all inputs into a list as long as the condition f holds", () =>

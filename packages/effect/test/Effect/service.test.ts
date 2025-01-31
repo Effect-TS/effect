@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import { Cause } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -5,7 +6,6 @@ import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "effect/test/utils/extend"
 
 class Prefix extends Effect.Service<Prefix>()("Prefix", {
   sync: () => ({

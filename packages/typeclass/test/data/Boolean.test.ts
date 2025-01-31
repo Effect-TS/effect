@@ -1,5 +1,5 @@
 import * as BooleanInstances from "@effect/typeclass/data/Boolean"
-import { describe, it } from "vitest"
+import { describe, it } from "@effect/vitest"
 import * as U from "../util.js"
 
 describe.concurrent("Boolean", () => {

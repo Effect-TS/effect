@@ -1,9 +1,9 @@
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as StringInstances from "@effect/typeclass/data/String"
 import * as _ from "@effect/typeclass/SemiApplicative"
+import { describe, it } from "@effect/vitest"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
-import { describe, it } from "vitest"
 import * as U from "./util.js"
 
 describe.concurrent("SemiApplicative", () => {

@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
@@ -8,8 +9,6 @@ import * as Layer from "effect/Layer"
 import * as RuntimeFlags from "effect/RuntimeFlags"
 import * as Scope from "effect/Scope"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 interface A {
   readonly value: number
@@ -43,7 +42,7 @@ describe("Effect", () => {
       Effect.provide(Layer.succeed(SomeService, someServiceImpl))
     )
   })
-  it.it("provideSomeRuntime", async () => {
+  it("provideSomeRuntime", async () => {
     const { runtime, scope } = await Effect.runPromise(
       Effect.flatMap(Scope.make(), (scope) =>
         Effect.map(

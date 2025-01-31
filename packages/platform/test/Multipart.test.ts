@@ -1,17 +1,18 @@
 import * as Multipart from "@effect/platform/Multipart"
-import { Chunk, Effect, identity, Stream, Unify } from "effect"
-import { assert, describe, test } from "vitest"
+import { describe, test } from "@effect/vitest"
+import { Chunk, Effect, identity, pipe, Stream, Unify } from "effect"
+import { deepStrictEqual } from "effect/test/util"
 
 describe("Multipart", () => {
   test("it parses", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const data = new globalThis.FormData()
       data.append("foo", "bar")
       data.append("test", "ing")
       data.append("file", new globalThis.File(["A".repeat(1024 * 1024)], "foo.txt", { type: "text/plain" }))
       const response = new Response(data)
 
-      const parts = yield* _(
+      const parts = yield* pipe(
         Stream.fromReadableStream(() => response.body!, identity),
         Stream.pipeThroughChannel(Multipart.makeChannel(Object.fromEntries(response.headers))),
         Stream.mapEffect((part) => {
@@ -27,7 +28,7 @@ describe("Multipart", () => {
         Stream.runCollect
       )
 
-      assert.deepStrictEqual(Chunk.toReadonlyArray(parts), [
+      deepStrictEqual(Chunk.toReadonlyArray(parts), [
         ["foo", "bar"],
         ["test", "ing"],
         ["foo.txt", "A".repeat(1024 * 1024)]

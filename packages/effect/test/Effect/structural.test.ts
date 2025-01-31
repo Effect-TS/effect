@@ -1,11 +1,10 @@
+import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { assertLeft, assertNone, assertRight, assertSome, deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import { assertType, satisfies } from "effect/test/utils/types"
-import { describe } from "vitest"
 
 describe("Effect", () => {
   describe("all", () => {

@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -9,7 +10,6 @@ import type { ParseOptions } from "effect/SchemaAST"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
 import { assertLeft } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 

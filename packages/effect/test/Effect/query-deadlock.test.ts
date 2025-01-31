@@ -1,10 +1,9 @@
+import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 export const userIds: ReadonlyArray<number> = [1, 1]
 
@@ -26,7 +25,7 @@ const getUserNameById = (id: number) => Effect.request(GetNameById({ id }), User
 const getAllUserNames = Effect.forEach([1, 1], getUserNameById, { batching: true })
 
 describe("Effect", () => {
-  it.it("requests are executed correctly", () =>
+  it("requests are executed correctly", () =>
     Effect.runPromise(
       Effect.gen(function*() {
         yield* pipe(

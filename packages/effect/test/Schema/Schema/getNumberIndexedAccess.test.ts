@@ -1,7 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import * as Duration from "effect/Duration"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
 
 describe("getNumberIndexedAccess", () => {
   describe("Tuple", () => {

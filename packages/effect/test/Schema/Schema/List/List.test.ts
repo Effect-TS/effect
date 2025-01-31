@@ -1,7 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import * as List from "effect/List"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
 
 describe("List", () => {
   it("test roundtrip consistency", () => {

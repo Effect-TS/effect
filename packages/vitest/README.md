@@ -59,9 +59,8 @@ To write a test, place your assertions directly within the main effect. This ens
 In the following example, we test a function that divides two numbers, but fails if the divisor is zero. The goal is to check that the function returns the correct result when given valid input.
 
 ```ts
-import { it } from "@effect/vitest"
+import { it, expect } from "@effect/vitest"
 import { Effect } from "effect"
-import { expect } from "vitest"
 
 // A simple divide function that returns an Effect, failing when dividing by zero
 function divide(a: number, b: number) {
@@ -85,9 +84,8 @@ When you need to handle both success and failure cases in a test, you can use `E
 **Example** (Testing Success and Failure with `Exit`)
 
 ```ts
-import { it } from "@effect/vitest"
+import { it, expect } from "@effect/vitest"
 import { Effect, Exit } from "effect"
-import { expect } from "vitest"
 
 // A function that divides two numbers and returns an Effect.
 // It fails if the divisor is zero.
@@ -171,7 +169,7 @@ If you need to temporarily disable a test but don't want to delete or comment ou
 ```ts
 import { it } from "@effect/vitest"
 import { Effect, Exit } from "effect"
-import { expect } from "vitest"
+import { expect } from "@effect/vitest"
 
 function divide(a: number, b: number) {
   if (b === 0) return Effect.fail("Cannot divide by zero")
@@ -196,7 +194,7 @@ When you're developing or debugging, it's often useful to run a specific test wi
 ```ts
 import { it } from "@effect/vitest"
 import { Effect, Exit } from "effect"
-import { expect } from "vitest"
+import { expect } from "@effect/vitest"
 
 function divide(a: number, b: number) {
   if (b === 0) return Effect.fail("Cannot divide by zero")

@@ -1,6 +1,6 @@
 import * as Doc from "@effect/printer/Doc"
+import { assert, describe, expect, it } from "@effect/vitest"
 import * as String from "effect/String"
-import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Doc", () => {
   describe.concurrent("constructors", () => {

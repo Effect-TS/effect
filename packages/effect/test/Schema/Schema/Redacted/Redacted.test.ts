@@ -1,7 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import { Redacted } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
 
 describe("Redacted", () => {
   const schema = S.Redacted(S.String)

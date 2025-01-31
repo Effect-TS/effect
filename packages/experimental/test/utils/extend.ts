@@ -1,6 +1,6 @@
+import * as V from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as V from "vitest"
 
 export type API = V.TestAPI<{}>
 

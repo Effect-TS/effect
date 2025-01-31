@@ -1,10 +1,10 @@
+import { describe, it } from "@effect/vitest"
 import * as Arbitrary from "effect/Arbitrary"
 import * as FastCheck from "effect/FastCheck"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
 import { assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("extend", () => {
   describe("String", () => {

@@ -8,6 +8,7 @@ import * as utils from "@effect/cluster-workflow/test/utils"
 import * as Workflow from "@effect/cluster-workflow/Workflow"
 import * as WorkflowEngine from "@effect/cluster-workflow/WorkflowEngine"
 import * as Message from "@effect/cluster/Message"
+import { describe, expect, it } from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -18,7 +19,6 @@ import * as LogLevel from "effect/LogLevel"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import { describe, expect, it } from "vitest"
 
 describe.concurrent("Workflow", () => {
   const withTestEnv = <R, E, A>(fa: Effect.Effect<R, E, A>) =>

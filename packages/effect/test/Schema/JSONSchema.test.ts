@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import Ajv from "ajv"
 import * as A from "effect/Arbitrary"
 import * as JSONSchema from "effect/JSONSchema"
@@ -5,7 +6,6 @@ import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import { assertFalse, assertTrue, deepStrictEqual, throws } from "effect/test/util"
 import * as fc from "fast-check"
-import { describe, it } from "vitest"
 
 type Root = JSONSchema.JsonSchema7Root
 

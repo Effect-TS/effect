@@ -2,11 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "include": ["src"],
   "references": [
-    { "path": "../effect" },
-    { "path": "../printer" },
-    { "path": "../printer-ansi" },
-    { "path": "../platform" },
-    { "path": "../platform-node" }
+    { "path": "../effect/tsconfig.src.json" },
+    { "path": "../printer/tsconfig.src.json" },
+    { "path": "../printer-ansi/tsconfig.src.json" },
+    { "path": "../platform/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "types": ["node"],

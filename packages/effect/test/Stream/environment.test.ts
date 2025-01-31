@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -7,9 +8,7 @@ import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import type * as Tracer from "effect/Tracer"
-import { describe } from "vitest"
 
 interface StringService {
   readonly string: string

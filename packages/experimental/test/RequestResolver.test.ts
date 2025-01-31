@@ -1,10 +1,9 @@
 import * as Persistence from "@effect/experimental/Persistence"
 import * as RequestResolverX from "@effect/experimental/RequestResolver"
 import { KeyValueStore } from "@effect/platform"
-import * as it from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { Array, Effect, Exit, Layer, PrimaryKey, Request, RequestResolver, Schema, TestClock } from "effect"
 import type { NonEmptyArray } from "effect/Array"
-import { assert, describe } from "vitest"
 
 class User extends Schema.Class<User>("User")({
   id: Schema.Number,

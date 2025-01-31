@@ -1,7 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import { deepStrictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const expectUnify = (input: Array<S.Schema.All>, expected: Array<S.Schema.All>) => {
   const actual = AST.unify(input.map((schema) => schema.ast))

@@ -1,7 +1,7 @@
 import * as _ from "@effect/typeclass/Coproduct"
 import * as OptionInstances from "@effect/typeclass/data/Option"
+import { describe, it } from "@effect/vitest"
 import * as O from "effect/Option"
-import { describe, it } from "vitest"
 import * as U from "./util.js"
 
 describe.concurrent("Coproduct", () => {

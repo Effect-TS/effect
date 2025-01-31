@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import {
   Array,
   Clock,
@@ -16,8 +17,6 @@ import {
   Schedule
 } from "effect"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 const labels = [MetricLabel.make("x", "a"), MetricLabel.make("y", "b")]
 

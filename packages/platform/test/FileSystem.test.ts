@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest"
+import { describe, it } from "@effect/vitest"
+import { assertTrue } from "effect/test/util"
 
 describe("FileSystem", () => {
   it(".", () => {
-    expect(true).toBe(true)
+    assertTrue(true)
   })
 })

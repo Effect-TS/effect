@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import {
   Array as Arr,
   Deferred,
@@ -11,13 +12,11 @@ import {
   TQueue
 } from "effect"
 import { deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 const sort: (array: ReadonlyArray<number>) => ReadonlyArray<number> = Arr.sort(number.Order)
 
 describe("TPubSub", () => {
-  it.it("sequential publishers and subscribers - with one publisher and one subscriber", () =>
+  it("sequential publishers and subscribers - with one publisher and one subscriber", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())
@@ -51,7 +50,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result), as.slice(0, n))
     })))
 
-  it.it("sequential publishers and subscribers - with one publisher and two subscribers", () =>
+  it("sequential publishers and subscribers - with one publisher and two subscribers", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())
@@ -106,7 +105,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result2), as.slice(0, n))
     })))
 
-  it.it("concurrent publishers and subscribers - one to one", () =>
+  it("concurrent publishers and subscribers - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred = yield* (Deferred.make<void>())
@@ -134,7 +133,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result), as.slice(0, n))
     })))
 
-  it.it("concurrent publishers and subscribers - one to many", () =>
+  it("concurrent publishers and subscribers - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())
@@ -178,7 +177,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result2), as.slice(0, n))
     })))
 
-  it.it("concurrent publishers and subscribers - many to many", () =>
+  it("concurrent publishers and subscribers - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())
@@ -249,7 +248,7 @@ describe("TPubSub", () => {
       )
     })))
 
-  it.it("back pressure - one to one", () =>
+  it("back pressure - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred = yield* (Deferred.make<void>())
@@ -274,7 +273,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result), as)
     })))
 
-  it.it("back pressure - one to many", () =>
+  it("back pressure - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())
@@ -316,7 +315,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result2), as)
     })))
 
-  it.it("back pressure - many to many", () =>
+  it("back pressure - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())
@@ -375,7 +374,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result2).filter((n) => n < 0), as.map((n) => -n))
     })))
 
-  it.it("dropping - one to one", () =>
+  it("dropping - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred = yield* (Deferred.make<void>())
@@ -403,7 +402,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result), as.slice(0, n))
     })))
 
-  it.it("dropping - one to many", () =>
+  it("dropping - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())
@@ -451,7 +450,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result2), as.slice(0, n))
     })))
 
-  it.it("dropping - many to many", () =>
+  it("dropping - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())
@@ -522,7 +521,7 @@ describe("TPubSub", () => {
       )
     })))
 
-  it.it("sliding - one to one", () =>
+  it("sliding - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred = yield* (Deferred.make<void>())
@@ -551,7 +550,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result), sort(Array.from(result)))
     })))
 
-  it.it("sliding - one to many", () =>
+  it("sliding - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())
@@ -599,7 +598,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result2), sort(Array.from(result2)))
     })))
 
-  it.it("sliding - many to many", () =>
+  it("sliding - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())
@@ -670,7 +669,7 @@ describe("TPubSub", () => {
       )
     })))
 
-  it.it("unbounded - one to one", () =>
+  it("unbounded - one to one", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer({ min: 1 })), async (as) => {
       const program = Effect.gen(function*() {
         const deferred = yield* (Deferred.make<void>())
@@ -695,7 +694,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result), as)
     })))
 
-  it.it("unbounded - one to many", () =>
+  it("unbounded - one to many", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer({ min: 1 })), async (as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())
@@ -737,7 +736,7 @@ describe("TPubSub", () => {
       deepStrictEqual(Array.from(result2), as)
     })))
 
-  it.it("unbounded - many to many", () =>
+  it("unbounded - many to many", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer({ min: 1 })), async (as) => {
       const program = Effect.gen(function*() {
         const deferred1 = yield* (Deferred.make<void>())

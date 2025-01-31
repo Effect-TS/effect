@@ -1,90 +1,87 @@
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
-import * as Effect from "effect/Effect"
-import { identity } from "effect/Function"
-import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as Schema from "effect/Schema"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, it } from "@effect/vitest"
+import { Effect, identity, Layer, pipe, Schema } from "effect"
+import { assertNone, assertSome, assertTrue, strictEqual } from "effect/test/util"
 
 export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>) => {
   const run = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.KeyValueStore>) =>
     Effect.runPromise(Effect.provide(effect, layer))
 
   afterEach(() =>
-    run(Effect.gen(function*(_) {
-      const kv = yield* _(KeyValueStore.KeyValueStore)
-      yield* _(kv.clear)
+    run(Effect.gen(function*() {
+      const kv = yield* (KeyValueStore.KeyValueStore)
+      yield* (kv.clear)
     }))
   )
 
   it("set", () =>
-    run(Effect.gen(function*(_) {
-      const kv = yield* _(KeyValueStore.KeyValueStore)
-      yield* _(kv.set("/foo/bar", "bar"))
+    run(Effect.gen(function*() {
+      const kv = yield* (KeyValueStore.KeyValueStore)
+      yield* (kv.set("/foo/bar", "bar"))
 
-      const value = yield* _(kv.get("/foo/bar"))
-      const length = yield* _(kv.size)
+      const value = yield* (kv.get("/foo/bar"))
+      const length = yield* (kv.size)
 
-      expect(value).toEqual(Option.some("bar"))
-      expect(length).toEqual(1)
+      assertSome(value, "bar")
+      strictEqual(length, 1)
     })))
 
   it("get/ missing", () =>
-    run(Effect.gen(function*(_) {
-      const kv = yield* _(KeyValueStore.KeyValueStore)
-      yield* _(kv.clear)
-      const value = yield* _(kv.get("foo"))
+    run(Effect.gen(function*() {
+      const kv = yield* (KeyValueStore.KeyValueStore)
+      yield* (kv.clear)
+      const value = yield* (kv.get("foo"))
 
-      expect(value).toEqual(Option.none())
+      assertNone(value)
     })))
 
   it("remove", () =>
-    run(Effect.gen(function*(_) {
-      const kv = yield* _(KeyValueStore.KeyValueStore)
-      yield* _(kv.set("foo", "bar"))
-      yield* _(kv.remove("foo"))
+    run(Effect.gen(function*() {
+      const kv = yield* (KeyValueStore.KeyValueStore)
+      yield* (kv.set("foo", "bar"))
+      yield* (kv.remove("foo"))
 
-      const value = yield* _(kv.get("foo"))
-      const length = yield* _(kv.size)
+      const value = yield* (kv.get("foo"))
+      const length = yield* (kv.size)
 
-      expect(value).toEqual(Option.none())
-      expect(length).toEqual(0)
+      assertNone(value)
+      strictEqual(length, 0)
     })))
 
   it("clear", () =>
-    run(Effect.gen(function*(_) {
-      const kv = yield* _(KeyValueStore.KeyValueStore)
-      yield* _(kv.set("foo", "bar"))
-      yield* _(kv.clear)
+    run(Effect.gen(function*() {
+      const kv = yield* (KeyValueStore.KeyValueStore)
+      yield* (kv.set("foo", "bar"))
+      yield* (kv.clear)
 
-      const value = yield* _(kv.get("foo"))
-      const length = yield* _(kv.size)
+      const value = yield* (kv.get("foo"))
+      const length = yield* (kv.size)
 
-      expect(value).toEqual(Option.none())
-      expect(length).toEqual(0)
+      assertNone(value)
+      strictEqual(length, 0)
     })))
 
   it("modify", () =>
-    run(Effect.gen(function*(_) {
-      const kv = yield* _(KeyValueStore.KeyValueStore)
-      yield* _(kv.set("foo", "bar"))
+    run(Effect.gen(function*() {
+      const kv = yield* (KeyValueStore.KeyValueStore)
+      yield* (kv.set("foo", "bar"))
 
-      const value = yield* _(kv.modify("foo", (v) => v + "bar"))
-      const length = yield* _(kv.size)
+      const value = yield* (kv.modify("foo", (v) => v + "bar"))
+      const length = yield* (kv.size)
 
-      expect(value).toEqual(Option.some("barbar"))
-      expect(length).toEqual(1)
+      assertSome(value, "barbar")
+      strictEqual(length, 1)
     })))
 
   it("modify - none", () =>
-    run(Effect.gen(function*(_) {
-      const kv = yield* _(KeyValueStore.KeyValueStore)
+    run(Effect.gen(function*() {
+      const kv = yield* (KeyValueStore.KeyValueStore)
 
-      const value = yield* _(kv.modify("foo", (v) => v + "bar"))
-      const length = yield* _(kv.size)
+      const value = yield* (kv.modify("foo", (v) => v + "bar"))
+      const length = yield* (kv.size)
 
-      expect(value).toEqual(Option.none())
-      expect(length).toEqual(0)
+      assertNone(value)
+      strictEqual(length, 0)
     })))
 }
 
@@ -92,18 +89,18 @@ describe("KeyValueStore / layerMemory", () => testLayer(KeyValueStore.layerMemor
 
 describe("KeyValueStore / prefix", () => {
   it("prefixes the keys", () =>
-    Effect.gen(function*(_) {
-      const store = yield* _(KeyValueStore.KeyValueStore)
+    Effect.gen(function*() {
+      const store = yield* (KeyValueStore.KeyValueStore)
       const prefixed = KeyValueStore.prefix(store, "prefix/")
 
-      yield* _(prefixed.set("foo", "bar"))
-      yield* _(prefixed.modify("foo", (v) => v + "bar"))
+      yield* (prefixed.set("foo", "bar"))
+      yield* (prefixed.modify("foo", (v) => v + "bar"))
 
-      expect(yield* _(prefixed.get("foo"))).toEqual(Option.some("barbar"))
-      expect(yield* _(prefixed.has("foo"))).toEqual(true)
+      assertSome(yield* (prefixed.get("foo")), "barbar")
+      assertTrue(yield* (prefixed.has("foo")))
 
-      expect(yield* _(store.get("prefix/foo"))).toEqual(Option.some("barbar"))
-      expect(yield* _(store.has("prefix/foo"))).toEqual(true)
+      assertSome(yield* (store.get("prefix/foo")), "barbar")
+      assertTrue(yield* (store.has("prefix/foo")))
     }).pipe(
       Effect.provide(KeyValueStore.layerMemory),
       Effect.runPromise
@@ -120,24 +117,24 @@ const runUserStore = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.SchemaStor
 
 describe("KeyValueStore / SchemaStore", () => {
   it("encodes & decodes", () =>
-    runUserStore(Effect.gen(function*(_) {
-      const store = yield* _(UserStore.tag)
-      yield* _(store.set("foo", new User({ name: "foo", age: 42 })))
-      yield* _(store.modify("foo", (user) => new User({ ...user, age: 43 })))
-      const value = yield* _(store.get("foo"), Effect.flatMap(identity))
+    runUserStore(Effect.gen(function*() {
+      const store = yield* (UserStore.tag)
+      yield* (store.set("foo", new User({ name: "foo", age: 42 })))
+      yield* (store.modify("foo", (user) => new User({ ...user, age: 43 })))
+      const value = yield* pipe(store.get("foo"), Effect.flatMap(identity))
 
-      expect(value.name).toEqual("foo")
-      expect(value.age).toEqual(43)
+      strictEqual(value.name, "foo")
+      strictEqual(value.age, 43)
     })))
 
   it("prefix", () =>
-    runUserStore(Effect.gen(function*(_) {
-      const store = yield* _(UserStore.tag)
+    runUserStore(Effect.gen(function*() {
+      const store = yield* (UserStore.tag)
       const prefixed = KeyValueStore.prefix(store, "prefix/")
-      yield* _(prefixed.set("foo", new User({ name: "foo", age: 42 })))
-      const value = yield* _(store.get("prefix/foo"), Effect.flatMap(identity))
+      yield* (prefixed.set("foo", new User({ name: "foo", age: 42 })))
+      const value = yield* pipe(store.get("prefix/foo"), Effect.flatMap(identity))
 
-      expect(value.name).toEqual("foo")
-      expect(value.age).toEqual(42)
+      strictEqual(value.name, "foo")
+      strictEqual(value.age, 42)
     })))
 })

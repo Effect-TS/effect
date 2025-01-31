@@ -1,7 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { assertNone, assertSome, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("can lift a value to an option", () =>

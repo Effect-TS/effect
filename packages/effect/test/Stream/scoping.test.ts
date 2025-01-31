@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -10,8 +11,6 @@ import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { assertFalse, assertLeft, assertSome, assertTrue, deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("acquireRelease - simple example", () =>
@@ -151,7 +150,7 @@ describe("Stream", () => {
       assertSome(isInterruptible2, false)
     }))
 
-  it.it("unwrapScoped", async () => {
+  it("unwrapScoped", async () => {
     const awaiter = Deferred.unsafeMake<void>(FiberId.none)
     const program = Effect.gen(function*() {
       const stream = (deferred: Deferred.Deferred<void, never>, ref: Ref.Ref<ReadonlyArray<string>>) =>

@@ -1,11 +1,10 @@
+import { describe, it } from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as STM from "effect/STM"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import * as TSet from "effect/TSet"
-import { describe } from "vitest"
 
 describe("TSet", () => {
   it.effect("add - new element", () =>

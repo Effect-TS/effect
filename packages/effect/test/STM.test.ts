@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import {
   Cause,
   Chunk,
@@ -27,8 +28,6 @@ import {
   deepStrictEqual,
   strictEqual
 } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 interface STMEnv {
   readonly ref: TRef.TRef<number>
@@ -776,21 +775,21 @@ describe("STM", () => {
       deepStrictEqual(Array.from(result), input)
     }))
 
-  it.it("reduce - with a successful step function sums the list properly", () =>
+  it("reduce - with a successful step function sums the list properly", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer()), async (array) => {
       const transaction = pipe(array, STM.reduce(0, (acc, curr) => STM.succeed(acc + curr)))
       const result = await Effect.runPromise(STM.commit(transaction))
       strictEqual(result, array.reduce((acc, curr) => acc + curr, 0))
     })))
 
-  it.it("reduce - with a failing step function returns a failed transaction", () =>
+  it("reduce - with a failing step function returns a failed transaction", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer(), { minLength: 1 }), async (array) => {
       const transaction = pipe(array, STM.reduce(0, () => STM.fail("Ouch")))
       const result = await Effect.runPromise(Effect.exit(STM.commit(transaction)))
       deepStrictEqual(result, Exit.fail("Ouch"))
     })))
 
-  it.it("reduce - run sequentially from left to right", () =>
+  it("reduce - run sequentially from left to right", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer(), { minLength: 1 }), async (array) => {
       const transaction = pipe(
         array,
@@ -823,21 +822,21 @@ describe("STM", () => {
       strictEqual(result, 1)
     }))
 
-  it.it("reduceRight - with a successful step function sums the list properly", () =>
+  it("reduceRight - with a successful step function sums the list properly", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer()), async (array) => {
       const transaction = pipe(array, STM.reduceRight(0, (acc, curr) => STM.succeed(acc + curr)))
       const result = await Effect.runPromise(STM.commit(transaction))
       strictEqual(result, array.reduce((acc, curr) => acc + curr, 0))
     })))
 
-  it.it("reduceRight - with a failing step function returns a failed transaction", () =>
+  it("reduceRight - with a failing step function returns a failed transaction", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer(), { minLength: 1 }), async (array) => {
       const transaction = pipe(array, STM.reduceRight(0, () => STM.fail("Ouch")))
       const result = await Effect.runPromise(Effect.exit(STM.commit(transaction)))
       deepStrictEqual(result, Exit.fail("Ouch"))
     })))
 
-  it.it("reduceRight - run sequentially from right to left", () =>
+  it("reduceRight - run sequentially from right to left", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer(), { minLength: 1 }), async (array) => {
       const transaction = pipe(
         array,

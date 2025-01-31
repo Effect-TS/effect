@@ -1,7 +1,7 @@
 import * as RecipientAddress from "@effect/cluster/RecipientAddress"
+import { describe, expect, it } from "@effect/vitest"
 import { equals } from "effect/Equal"
 import * as Hash from "effect/Hash"
-import { describe, expect, it } from "vitest"
 
 describe.concurrent("RecipientAddress", () => {
   it("Expect equals to work as expected", () => {

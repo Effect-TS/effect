@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -7,10 +8,8 @@ import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assertFalse, assertLeft, assertRight, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import { withLatch } from "effect/test/utils/latch"
 import { adjust } from "effect/TestClock"
-import { describe } from "vitest"
 
 export const ExampleError = new Error("Oh noes!")
 

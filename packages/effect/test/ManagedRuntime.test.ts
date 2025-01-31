@@ -1,10 +1,10 @@
+import { describe, it, test } from "@effect/vitest"
 import { FiberRefs, List, ManagedRuntime } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it, test } from "effect/test/utils/extend"
 
 describe("ManagedRuntime", () => {
   test("memoizes the layer build", async () => {

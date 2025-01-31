@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
@@ -11,8 +12,6 @@ import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Ref from "effect/Ref"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 export const mapper = <A, B>(
   f: (a: A) => B

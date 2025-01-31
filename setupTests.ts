@@ -1,3 +1,3 @@
-import * as it from "@effect/vitest"
+import { addEqualityTesters } from "@effect/vitest"
 
-it.addEqualityTesters()
+addEqualityTesters()

@@ -5,8 +5,8 @@ import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as MockConsole from "@effect/cli/test/services/MockConsole"
 import * as ValidationError from "@effect/cli/ValidationError"
 import { NodeContext } from "@effect/platform-node"
+import { describe, expect, it } from "@effect/vitest"
 import { Array, Console, Effect, FiberRef, Layer, LogLevel } from "effect"
-import { describe, expect, it } from "vitest"
 
 const MainLive = Effect.gen(function*(_) {
   const console = yield* _(MockConsole.make)

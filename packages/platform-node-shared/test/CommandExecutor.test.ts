@@ -6,6 +6,7 @@ import type * as CommandExecutor from "@effect/platform/CommandExecutor"
 import { SystemError } from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Path from "@effect/platform/Path"
+import { describe, expect, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -16,7 +17,6 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Stream from "effect/Stream"
-import { describe, expect, it } from "vitest"
 
 const TEST_BASH_SCRIPTS_PATH = [__dirname, "fixtures", "bash"]
 

@@ -1,8 +1,8 @@
+import { describe, it } from "@effect/vitest"
 import { pipe, Struct } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("TaggedClass", () => {
   it("the constructor should add a `_tag` field", () => {

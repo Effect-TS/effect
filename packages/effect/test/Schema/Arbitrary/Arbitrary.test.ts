@@ -1,7 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import { Arbitrary, FastCheck as fc, Order, Predicate, Schema as S, SchemaAST as AST } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
 import { assertTrue, deepStrictEqual, fail, strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const expectConstraints = <A, I>(
   schema: S.Schema<A, I, never>,

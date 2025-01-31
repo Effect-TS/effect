@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Order, pipe, String as S } from "effect"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("String", () => {
   it("isString", () => {

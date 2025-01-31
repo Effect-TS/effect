@@ -5,10 +5,10 @@ import * as LogLevel from "effect/LogLevel"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 
+import { describe, expect, it } from "@effect/vitest"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import { describe, expect, it } from "vitest"
 
 describe.concurrent("CrashableRuntime", () => {
   const withTestEnv = <R, E, A>(fa: Effect.Effect<R, E, A>) => pipe(fa, Logger.withMinimumLogLevel(LogLevel.Info))

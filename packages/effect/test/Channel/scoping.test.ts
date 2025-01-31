@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Deferred from "effect/Deferred"
@@ -7,11 +8,9 @@ import * as FiberId from "effect/FiberId"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assertLeft, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("Channel", () => {
-  it.it("acquireUseReleaseOut - acquire is executed uninterruptibly", async () => {
+  it("acquireUseReleaseOut - acquire is executed uninterruptibly", async () => {
     const latch = Deferred.unsafeMake<void>(FiberId.none)
     const program = Effect.gen(function*() {
       const ref = yield* (Ref.make(0))
@@ -32,7 +31,7 @@ describe("Channel", () => {
     strictEqual(result, 0)
   }, 35_000)
 
-  it.it("scoped closes the scope", async () => {
+  it("scoped closes the scope", async () => {
     const latch = Deferred.unsafeMake<void>(FiberId.none)
     const program = Effect.gen(function*() {
       const ref = yield* (Ref.make(0))

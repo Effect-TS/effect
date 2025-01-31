@@ -2,9 +2,9 @@ import * as ConfigFile from "@effect/cli/ConfigFile"
 import type { FileSystem } from "@effect/platform"
 import { Path } from "@effect/platform"
 import { NodeContext } from "@effect/platform-node"
+import { assert, describe, it } from "@effect/vitest"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
-import { assert, describe, it } from "vitest"
 
 const runEffect = <E, A>(
   self: Effect.Effect<A, E, FileSystem.FileSystem | Path.Path>

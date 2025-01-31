@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Chunk, Equal, Hash, Redacted, Secret } from "effect"
 import { assertFalse, assertTrue, strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("Redacted", () => {
   it("chunk constructor", () => {

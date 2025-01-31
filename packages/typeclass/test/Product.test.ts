@@ -4,11 +4,11 @@ import * as PredicateInstances from "@effect/typeclass/data/Predicate"
 import * as StringInstances from "@effect/typeclass/data/String"
 import * as _ from "@effect/typeclass/Product"
 import * as Semigroup from "@effect/typeclass/Semigroup"
+import { describe, it } from "@effect/vitest"
 import * as Boolean from "effect/Boolean"
 import * as Number from "effect/Number"
 import * as O from "effect/Option"
 import * as String from "effect/String"
-import { describe, it } from "vitest"
 import * as U from "./util.js"
 
 describe.concurrent("Product", () => {

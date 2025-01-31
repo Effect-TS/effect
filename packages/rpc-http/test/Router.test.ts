@@ -1,4 +1,4 @@
-import { describe, test } from "vitest"
+import { describe, test } from "@effect/vitest"
 
 describe("Router", () => {
   test("should work", () => {})

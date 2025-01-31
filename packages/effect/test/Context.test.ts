@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Context, Differ, Option, pipe } from "effect"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 interface A {
   a: number

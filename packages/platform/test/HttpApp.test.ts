@@ -1,13 +1,14 @@
 import { HttpApp, HttpServerResponse } from "@effect/platform"
+import { describe, test } from "@effect/vitest"
 import { Context, Effect, FiberRef, Runtime, Stream } from "effect"
-import { assert, describe, test } from "vitest"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Http/App", () => {
   describe("toWebHandler", () => {
     test("json", async () => {
       const handler = HttpApp.toWebHandler(HttpServerResponse.json({ foo: "bar" }))
       const response = await handler(new Request("http://localhost:3000/"))
-      assert.deepStrictEqual(await response.json(), {
+      deepStrictEqual(await response.json(), {
         foo: "bar"
       })
     })
@@ -20,11 +21,11 @@ describe("Http/App", () => {
         )
       )
       const response = await handler(new Request("http://localhost:3000/"))
-      assert.deepStrictEqual(response.headers.getSetCookie(), [
+      deepStrictEqual(response.headers.getSetCookie(), [
         "foo=bar",
         "test=123; HttpOnly; Secure; SameSite=Strict"
       ])
-      assert.deepStrictEqual(await response.json(), {
+      deepStrictEqual(await response.json(), {
         foo: "bar"
       })
     })
@@ -32,7 +33,7 @@ describe("Http/App", () => {
     test("stream", async () => {
       const handler = HttpApp.toWebHandler(HttpServerResponse.stream(Stream.make("foo", "bar").pipe(Stream.encodeText)))
       const response = await handler(new Request("http://localhost:3000/"))
-      assert.strictEqual(await response.text(), "foobar")
+      strictEqual(await response.text(), "foobar")
     })
 
     test("stream runtime", async () => {
@@ -44,7 +45,7 @@ describe("Http/App", () => {
         FiberRef.get(FiberRef.currentConcurrency).pipe(Stream.map(String), Stream.encodeText)
       ))
       const response = await handler(new Request("http://localhost:3000/"))
-      assert.strictEqual(await response.text(), "420")
+      strictEqual(await response.text(), "420")
     })
   })
 
@@ -57,7 +58,7 @@ describe("Http/App", () => {
       return yield* HttpServerResponse.json(env)
     }))
     const response = await handler(new Request("http://localhost:3000/"), Env.context({ foo: "baz" }))
-    assert.deepStrictEqual(await response.json(), {
+    deepStrictEqual(await response.json(), {
       foo: "baz"
     })
   })

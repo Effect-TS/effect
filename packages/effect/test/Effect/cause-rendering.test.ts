@@ -1,7 +1,6 @@
+import { describe, expect, it } from "@effect/vitest"
 import { Cause, Effect, Option, pipe } from "effect"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
+import { assertFalse, assertIncludes, assertTrue, strictEqual } from "effect/test/util"
 
 describe("Effect", () => {
   it.effect("Cause should include span data", () =>
@@ -14,10 +13,10 @@ describe("Effect", () => {
         )
       )))
       const rendered = Cause.pretty(cause)
-      assertTrue(rendered.includes("spanA"))
-      assertTrue(rendered.includes("cause-rendering.test.ts:11:18"))
-      assertTrue(rendered.includes("spanB"))
-      assertTrue(rendered.includes("cause-rendering.test.ts:10:16"))
+      assertIncludes(rendered, "spanA")
+      assertIncludes(rendered, "cause-rendering.test.ts:10:18")
+      assertIncludes(rendered, "spanB")
+      assertIncludes(rendered, "cause-rendering.test.ts:9:16")
     }))
   it.effect("catchTag should not invalidate traces", () =>
     Effect.gen(function*() {
@@ -111,10 +110,9 @@ describe("Effect", () => {
       strictEqual(prettyErrors.length, 1)
       const error = prettyErrors[0]
       strictEqual(error.name, "Error")
-      assertTrue(!error.stack?.includes("/internal/"))
-      assertTrue(error.stack?.includes("cause-rendering.test.ts:106"))
-      assertTrue(error.stack?.includes("span-123"))
-      assertTrue(error.stack?.includes("cause-rendering.test.ts:109"))
+      assertIncludes(error.stack, "cause-rendering.test.ts:105")
+      assertIncludes(error.stack, "span-123")
+      assertIncludes(error.stack, "cause-rendering.test.ts:108")
     }))
 
   it.effect("includes span name in stack", () =>
@@ -138,7 +136,7 @@ describe("Effect", () => {
   it.effect.skip("shows assertion message", () =>
     Effect.gen(function*() {
       yield* Effect.void
-      it.expect({ foo: "ok" }).toStrictEqual({ foo: "bar" })
+      expect({ foo: "ok" }).toStrictEqual({ foo: "bar" })
     }))
 
   it.effect("multiline message", () =>

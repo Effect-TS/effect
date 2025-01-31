@@ -3,14 +3,11 @@
   "include": ["test"],
   "references": [
     { "path": "tsconfig.src.json" },
-    { "path": "../effect" },
-    { "path": "../platform-node" },
-    { "path": "../sql" },
-    { "path": "../sql-mssql" },
-    { "path": "../sql-mysql2" },
-    { "path": "../sql-pg" },
-    { "path": "../sql-sqlite-node" },
-    { "path": "../vitest" }
+    { "path": "../vitest/tsconfig.src.json" },
+    { "path": "../sql-pg/tsconfig.src.json" },
+    { "path": "../sql-mysql2/tsconfig.src.json" },
+    { "path": "../sql-mssql/tsconfig.src.json" },
+    { "path": "../sql-sqlite-node/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",

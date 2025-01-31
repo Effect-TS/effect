@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -12,9 +13,7 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("groupBy - values", () =>

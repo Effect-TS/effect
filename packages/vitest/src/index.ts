@@ -14,6 +14,11 @@ import * as internal from "./internal.js"
 /**
  * @since 1.0.0
  */
+export * from "vitest"
+
+/**
+ * @since 1.0.0
+ */
 export type API = V.TestAPI<{}>
 
 /**
@@ -239,8 +244,3 @@ export const makeMethods: (it: V.TestAPI) => Vitest.Methods = internal.makeMetho
  */
 export const describeWrapped: (name: string, f: (it: Vitest.Methods) => void) => V.SuiteCollector =
   internal.describeWrapped
-
-/**
- * @since 1.0.0
- */
-export * from "vitest"

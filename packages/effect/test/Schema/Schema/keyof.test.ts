@@ -1,8 +1,8 @@
+import { describe, it } from "@effect/vitest"
 import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import { assertFalse, assertTrue, deepStrictEqual, throws } from "effect/test/util"
-import { describe, it } from "vitest"
 
 describe("keyof", () => {
   it("should unify string literals with string", () => {

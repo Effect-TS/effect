@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import {
   Array as RA,
   Chunk,
@@ -22,7 +23,6 @@ import {
   strictEqual,
   throws
 } from "effect/test/util"
-import { describe, it } from "vitest"
 
 const assertTuple = <A, B>(
   actual: [Chunk.Chunk<A>, Chunk.Chunk<B>],

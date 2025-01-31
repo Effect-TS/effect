@@ -9,12 +9,12 @@ import * as PodsHealth from "@effect/cluster/PodsHealth"
 import * as ShardId from "@effect/cluster/ShardId"
 import * as ShardManager from "@effect/cluster/ShardManager"
 import * as Storage from "@effect/cluster/Storage"
+import { describe, expect, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import { describe, expect, it } from "vitest"
 
 describe.concurrent("ShardManagerSpec", () => {
   const pod1 = PodWithMetadata.make(Pod.make(PodAddress.make("1", 1), "1.0.0"), 0)

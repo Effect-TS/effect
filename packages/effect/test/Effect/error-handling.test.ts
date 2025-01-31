@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -9,10 +10,8 @@ import { constFalse, constTrue, identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { causesArb } from "effect/test/utils/cause"
-import * as it from "effect/test/utils/extend"
 import { assertType, satisfies } from "effect/test/utils/types"
 import * as fc from "fast-check"
-import { describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")
 
@@ -401,7 +400,7 @@ describe("Effect", () => {
       )
       assertTrue(result)
     }))
-  it.it("orElse - is associative", async () => {
+  it("orElse - is associative", async () => {
     const smallInts = fc.integer({ min: 0, max: 100 })
     const causes = causesArb(1, smallInts, fc.string())
     const successes = smallInts.map(Effect.succeed)

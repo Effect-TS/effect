@@ -1,11 +1,10 @@
+import { describe, it } from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import * as fc from "fast-check"
-import { describe } from "vitest"
 
 const weirdStringForSplitLines: fc.Arbitrary<ReadonlyArray<string>> = fc.array(
   fc.string().filter((s) => s !== "\n" && s !== "\r")
@@ -210,7 +209,7 @@ describe("Stream", () => {
       )
     }))
 
-  it.it("splitLines - preserves data", () =>
+  it("splitLines - preserves data", () =>
     fc.assert(fc.asyncProperty(weirdStringForSplitLines, async (lines) => {
       const data = lines.join("\n")
       const program = pipe(

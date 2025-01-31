@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
 import * as M from "effect/Match"
@@ -5,7 +6,6 @@ import * as O from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import { assertFalse, assertLeft, assertRight, assertSome, assertTrue, strictEqual } from "effect/test/util"
 import { assertType } from "effect/test/utils/types"
-import { describe, it } from "vitest"
 
 describe("Match", () => {
   it("exhaustive", () => {

@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
@@ -6,8 +7,6 @@ import * as Layer from "effect/Layer"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
 import { deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 const ref = FiberRef.unsafeMake(List.empty<string>())
 const env = GenericTag<"context", number>("context")

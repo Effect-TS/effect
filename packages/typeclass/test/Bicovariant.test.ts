@@ -1,9 +1,9 @@
 import * as _ from "@effect/typeclass/Bicovariant"
 import * as ArrayInstances from "@effect/typeclass/data/Array"
 import * as EitherInstances from "@effect/typeclass/data/Either"
+import { describe, it } from "@effect/vitest"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
-import { describe, it } from "vitest"
 import * as U from "./util.js"
 
 describe.concurrent("Bicovariant", () => {

@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -14,10 +15,8 @@ import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import { assertFalse, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import { withLatch, withLatchAwait } from "effect/test/utils/latch"
 import * as TestClock from "effect/TestClock"
-import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("sync forever is interruptible", () =>

@@ -1,3 +1,4 @@
+import { describe, it } from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -8,10 +9,8 @@ import * as HashSet from "effect/HashSet"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import { assertLeft, assertTrue, deepStrictEqual } from "effect/test/util"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import * as TestServices from "effect/TestServices"
-import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("merge - slower stream", () =>

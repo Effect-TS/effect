@@ -1,9 +1,9 @@
 import * as _ from "@effect/typeclass/Contravariant"
 import * as PredicateInstances from "@effect/typeclass/data/Predicate"
+import { describe, it } from "@effect/vitest"
 import * as order from "effect/Order"
 import type * as P from "effect/Predicate"
 import * as S from "effect/String"
-import { describe, it } from "vitest"
 import * as U from "./util.js"
 
 describe.concurrent("Contravariant", () => {

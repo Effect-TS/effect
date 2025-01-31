@@ -1,16 +1,17 @@
 import * as Transferable from "@effect/platform/Transferable"
-import { Effect, Schema } from "effect"
-import { assert, describe, test } from "vitest"
+import { describe, test } from "@effect/vitest"
+import { Effect, pipe, Schema } from "effect"
+import { deepStrictEqual } from "effect/test/util"
 
 describe("Transferable", () => {
   test("collects transferables", () =>
-    Effect.gen(function*(_) {
-      const collector = yield* _(Transferable.makeCollector)
+    Effect.gen(function*() {
+      const collector = yield* Transferable.makeCollector
       const data = new Uint8Array([1, 2, 3])
-      yield* _(
+      yield* pipe(
         Schema.encode(Transferable.Uint8Array)(data),
         Effect.provideService(Transferable.Collector, collector)
       )
-      assert.deepEqual(collector.unsafeRead(), [data.buffer])
+      deepStrictEqual(collector.unsafeRead(), [data.buffer])
     }).pipe(Effect.runPromise))
 })

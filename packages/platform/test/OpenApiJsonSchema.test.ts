@@ -1,6 +1,7 @@
 import * as OpenApiJsonSchema from "@effect/platform/OpenApiJsonSchema"
+import { describe, it } from "@effect/vitest"
 import * as Schema from "effect/Schema"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
 
 describe("OpenApiJsonSchema", () => {
   it("default options", () => {
@@ -12,7 +13,7 @@ describe("OpenApiJsonSchema", () => {
     })
     const defs: Record<string, OpenApiJsonSchema.JsonSchema> = {}
     const jsonSchema = OpenApiJsonSchema.makeWithDefs(schema, { defs })
-    expect(jsonSchema).toStrictEqual({
+    deepStrictEqual(jsonSchema, {
       "additionalProperties": false,
       "properties": {
         "a": {
@@ -40,7 +41,7 @@ describe("OpenApiJsonSchema", () => {
       "required": ["a", "b"],
       "type": "object"
     })
-    expect(defs).toStrictEqual({
+    deepStrictEqual(defs, {
       "Int": {
         "description": "an integer",
         "title": "int",

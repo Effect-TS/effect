@@ -5,6 +5,7 @@ import * as ValidationError from "@effect/cli/ValidationError"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Path from "@effect/platform/Path"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { BigDecimal } from "effect"
 import * as Array from "effect/Array"
 import * as Data from "effect/Data"
@@ -14,7 +15,6 @@ import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
-import { assert, describe, expect, it } from "vitest"
 
 const firstName = Options.text("firstName").pipe(Options.withAlias("f"))
 const lastName = Options.text("lastName")

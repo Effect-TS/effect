@@ -1,6 +1,5 @@
+import { describe, it } from "@effect/vitest"
 import { Effect, pipe, Stream } from "effect"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 class TestTarget extends EventTarget {
   emit() {

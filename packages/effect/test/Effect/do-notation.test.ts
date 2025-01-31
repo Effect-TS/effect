@@ -1,9 +1,9 @@
+import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Util from "effect/test/util"
-import { describe, it } from "vitest"
 
 const expectRight = <R, L>(e: Effect.Effect<R, L>, expected: R) => {
   Util.deepStrictEqual(Effect.runSync(Effect.either(e)), Either.right(expected))

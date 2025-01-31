@@ -64,6 +64,9 @@ importers:
       '@effect/language-service':
         specifier: ^0.1.0
         version: 0.1.0
+      '@effect/vitest':
+        specifier: workspace:^
+        version: link:packages/vitest/dist
       '@eslint/compat':
         specifier: 1.1.1
         version: 1.1.1

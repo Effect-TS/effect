@@ -1,8 +1,8 @@
 import * as MsgPack from "@effect/experimental/MsgPack"
 import * as Socket from "@effect/platform-node/NodeSocket"
+import { assert, describe, test } from "@effect/vitest"
 import { Chunk, Effect, Stream } from "effect"
 import * as Net from "node:net"
-import { assert, describe, test } from "vitest"
 
 const server = Net.createServer((socket) => {
   socket.on("data", (data) => {

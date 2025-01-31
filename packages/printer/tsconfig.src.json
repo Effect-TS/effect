@@ -2,8 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "include": ["src"],
   "references": [
-    { "path": "../effect" },
-    { "path": "../typeclass" }
+    { "path": "../effect/tsconfig.src.json" },
+    { "path": "../typeclass/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",

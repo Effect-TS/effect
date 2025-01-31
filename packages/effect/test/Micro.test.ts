@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Cause, Context, Effect, Either, Exit, Fiber, Micro, Option, pipe } from "effect"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "effect/test/utils/extend"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
 class TestError extends Micro.TaggedError("TestError") {}

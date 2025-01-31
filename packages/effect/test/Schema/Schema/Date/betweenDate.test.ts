@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
 
 describe("betweenDate", () => {
   const schema = S.DateFromSelf.pipe(S.betweenDate(new Date(-1), new Date(1)))

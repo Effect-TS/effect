@@ -1,10 +1,10 @@
 import * as NumberInstances from "@effect/typeclass/data/Number"
 import * as StringInstances from "@effect/typeclass/data/String"
 import * as Semigroup from "@effect/typeclass/Semigroup"
+import { describe, expect, it } from "@effect/vitest"
 import { pipe } from "effect/Function"
 import * as Number from "effect/Number"
 import * as order from "effect/Order"
-import { describe, expect, it } from "vitest"
 import * as U from "./util.js"
 
 describe.concurrent("Semigroup", () => {

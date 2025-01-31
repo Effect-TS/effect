@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
 
 const String = S.transform(S.NonEmptyString, S.String, { strict: true, decode: (s) => s, encode: (s) => s })
   .annotations({

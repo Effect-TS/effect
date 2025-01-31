@@ -9,8 +9,9 @@ import {
   Multipart,
   OpenApi
 } from "@effect/platform"
+import { describe, it } from "@effect/vitest"
 import { Context, Schema } from "effect"
-import { describe, expect, it } from "vitest"
+import { deepStrictEqual } from "effect/test/util"
 
 const HttpApiDecodeError = {
   "description": "The request did not match the expected schema",
@@ -143,7 +144,7 @@ const expectSpec = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.
   const spec = OpenApi.fromApi(api)
   // console.log(JSON.stringify(spec.paths, null, 2))
   // console.log(JSON.stringify(spec, null, 2))
-  expect(spec).toStrictEqual(expected)
+  deepStrictEqual(spec, expected)
 }
 
 const expectPaths = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
@@ -151,7 +152,7 @@ const expectPaths = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup
   paths: ReadonlyArray<string>
 ) => {
   const spec = OpenApi.fromApi(api)
-  expect(Object.keys(spec.paths)).toStrictEqual(paths)
+  deepStrictEqual(Object.keys(spec.paths), paths)
 }
 
 describe("OpenApi", () => {

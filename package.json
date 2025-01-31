@@ -49,6 +49,7 @@
     "@effect/dtslint": "^0.1.2",
     "@effect/eslint-plugin": "^0.2.0",
     "@effect/language-service": "^0.1.0",
+    "@effect/vitest": "workspace:^",
     "@eslint/compat": "1.1.1",
     "@eslint/eslintrc": "3.1.0",
     "@eslint/js": "9.9.1",

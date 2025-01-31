@@ -1,8 +1,7 @@
+import { describe, it } from "@effect/vitest"
 import { Effect, identity, pipe, ScopedRef } from "effect"
 import { strictEqual } from "effect/test/util"
 import * as Counter from "effect/test/utils/counter"
-import * as it from "effect/test/utils/extend"
-import { describe } from "vitest"
 
 describe("ScopedRef", () => {
   it.scoped("single set", () =>

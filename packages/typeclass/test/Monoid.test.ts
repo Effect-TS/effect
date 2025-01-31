@@ -1,7 +1,7 @@
 import * as NumberInstances from "@effect/typeclass/data/Number"
 import * as StringInstances from "@effect/typeclass/data/String"
 import * as Monoid from "@effect/typeclass/Monoid"
-import { describe, it } from "vitest"
+import { describe, it } from "@effect/vitest"
 import * as U from "./util.js"
 
 describe.concurrent("Monoid", () => {

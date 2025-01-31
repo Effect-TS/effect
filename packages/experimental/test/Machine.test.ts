@@ -1,7 +1,7 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import * as Machine from "@effect/experimental/Machine"
+import { assert, describe, test } from "@effect/vitest"
 import { Cause, Chunk, Context, Deferred, Effect, Exit, Layer, Schema, Stream } from "effect"
-import { assert, describe, test } from "vitest"
 
 class Increment
   extends Schema.TaggedRequest<Increment>()("Increment", { failure: Schema.Never, success: Schema.Number, payload: {} })

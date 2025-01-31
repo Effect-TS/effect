@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Cause, Effect } from "effect"
 import { assertTrue, strictEqual } from "effect/test/util"
-import { describe, it } from "effect/test/utils/extend"
 
 describe("Effect.fn", () => {
   it.effect("catches defects in the function", () =>

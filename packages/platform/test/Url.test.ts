@@ -1,26 +1,27 @@
 import * as Url from "@effect/platform/Url"
 import * as UrlParams from "@effect/platform/UrlParams"
+import { describe, it } from "@effect/vitest"
 import { Cause, Either } from "effect"
-import { assert, describe, it } from "vitest"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
 
 describe("Url", () => {
   const testURL = new URL("https://example.com/test")
 
   const expectUrl = (updatedUrl: URL, expected: string) => {
-    assert.ok(updatedUrl !== testURL)
-    assert.notStrictEqual(updatedUrl.toString(), testURL.toString())
-    assert.deepStrictEqual(updatedUrl.toString(), expected)
+    assertTrue(updatedUrl !== testURL)
+    assertTrue(updatedUrl.toString() !== testURL.toString())
+    deepStrictEqual(updatedUrl.toString(), expected)
   }
 
   describe("fromString", () => {
     it("success", () => {
       const url = Url.fromString(testURL.toString())
-      assert.deepStrictEqual(url, Either.right(testURL))
+      deepStrictEqual(url, Either.right(testURL))
     })
 
     it("failure", () => {
       const error = Url.fromString("??")
-      assert.deepStrictEqual(error, Either.left(new Cause.IllegalArgumentException("Invalid URL")))
+      deepStrictEqual(error, Either.left(new Cause.IllegalArgumentException("Invalid URL")))
     })
   })
 
@@ -80,7 +81,7 @@ describe("Url", () => {
 
   it("urlParams", () => {
     const params = Url.urlParams(new URL("https://example.com?foo=bar&baz=qux"))
-    assert.deepStrictEqual(params, UrlParams.fromInput([["foo", "bar"], ["baz", "qux"]]))
+    deepStrictEqual(params, UrlParams.fromInput([["foo", "bar"], ["baz", "qux"]]))
   })
 
   it("setUrlParams", () => {

@@ -3,8 +3,8 @@ import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as RecordInstances from "@effect/typeclass/data/Record"
 import * as monoid from "@effect/typeclass/Monoid"
 import * as semigroup from "@effect/typeclass/Semigroup"
+import { describe, expect, it } from "@effect/vitest"
 import * as Option from "effect/Option"
-import { describe, expect, it } from "vitest"
 
 describe.concurrent("Record", () => {
   it("traverse (string)", () => {

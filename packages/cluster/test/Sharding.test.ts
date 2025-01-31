@@ -11,6 +11,7 @@ import * as ShardingConfig from "@effect/cluster/ShardingConfig"
 import * as ShardingException from "@effect/cluster/ShardingException"
 import * as ShardManagerClient from "@effect/cluster/ShardManagerClient"
 import * as Storage from "@effect/cluster/Storage"
+import { describe, expect, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
@@ -28,7 +29,6 @@ import * as PrimaryKey from "effect/PrimaryKey"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
-import { describe, expect, it } from "vitest"
 
 interface SampleService {
   value: number

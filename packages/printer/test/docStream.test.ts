@@ -1,5 +1,5 @@
 import * as DocStream from "@effect/printer/DocStream"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 
 describe.concurrent("DocStream", () => {
   it("isFailedStream", () => {

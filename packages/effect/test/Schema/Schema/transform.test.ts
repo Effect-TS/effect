@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import * as Schema from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
 
 describe("transform", () => {
   it("should receive the fromI value other than the fromA value", async () => {

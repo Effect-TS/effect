@@ -2,9 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "include": ["src"],
   "references": [
-    { "path": "../effect" },
-    { "path": "../cluster" },
-    { "path": "../rpc" }
+    { "path": "../effect/tsconfig.src.json" },
+    { "path": "../cluster/tsconfig.src.json" },
+    { "path": "../rpc/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "types": ["node"],

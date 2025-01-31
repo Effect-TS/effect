@@ -1,6 +1,6 @@
+import { describe, it } from "@effect/vitest"
 import { Equal, Hash, Order, pipe, SortedSet, String as Str } from "effect"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
 
 class Member implements Equal.Equal {
   constructor(readonly id: string) {}

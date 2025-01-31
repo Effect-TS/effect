@@ -1,5 +1,5 @@
 import * as BigintInstances from "@effect/typeclass/data/BigInt"
-import { describe, it } from "vitest"
+import { describe, it } from "@effect/vitest"
 import * as U from "../util.js"
 
 describe.concurrent("Bigint", () => {
