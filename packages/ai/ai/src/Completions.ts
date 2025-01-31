@@ -36,8 +36,21 @@ export declare namespace Completions {
    * @since 1.0.0
    * @models
    */
-  export interface StructuredSchema<A, I, R> extends Schema.Schema<A, I, R> {
-    readonly _tag?: string
+  export type StructuredSchema<A, I, R> = TaggedSchema<A, I, R> | IdentifiedSchema<A, I, R>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface TaggedSchema<A, I, R> extends Schema.Schema<A, I, R> {
+    readonly _tag: string
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface IdentifiedSchema<A, I, R> extends Schema.Schema<A, I, R> {
     readonly identifier: string
   }
 
@@ -48,12 +61,17 @@ export declare namespace Completions {
   export interface Service {
     readonly create: (input: AiInput.Input) => Effect.Effect<AiResponse, AiError>
     readonly stream: (input: AiInput.Input) => Stream.Stream<AiResponse, AiError>
-    readonly structured: <A, I, R>(
-      options: {
+    readonly structured: {
+      <A, I, R>(options: {
         readonly input: AiInput.Input
         readonly schema: StructuredSchema<A, I, R>
-      }
-    ) => Effect.Effect<WithResolved<A>, AiError, R>
+      }): Effect.Effect<WithResolved<A>, AiError, R>
+      <A, I, R>(options: {
+        readonly input: AiInput.Input
+        readonly correlationId: string
+        readonly schema: Schema.Schema<A, I, R>
+      }): Effect.Effect<WithResolved<A>, AiError, R>
+    }
     readonly toolkit: <Tools extends AiToolkit.Tool.AnySchema>(
       options: {
         readonly input: AiInput.Input
@@ -159,15 +177,21 @@ export const make = (options: {
       },
       structured(opts) {
         const input = AiInput.make(opts.input)
-        const schema = opts.schema
-        const decode = Schema.decodeUnknown(schema)
-        const toolId = schema._tag ?? schema.identifier
+        const decode = Schema.decodeUnknown(opts.schema)
+        const toolId = "correlationId" in opts
+          ? opts.correlationId
+          : "_tag" in opts.schema
+          ? opts.schema._tag
+          : opts.schema.identifier
+        const structuredSchema = "correlationId" in opts
+          ? { ...opts.schema, identifier: opts.correlationId }
+          : opts.schema
         return Effect.serviceOption(AiInput.SystemInstruction).pipe(
           Effect.flatMap((system) =>
             options.create({
               input: input as Chunk.NonEmptyChunk<Message>,
               system: Option.orElse(system, () => parentSystem),
-              tools: [convertTool(schema, true)],
+              tools: [convertTool(structuredSchema, true)],
               required: true
             })
           ),
@@ -278,10 +302,13 @@ export const make = (options: {
     })
   })
 
-const convertTool = <A, I, R>(tool: Completions.StructuredSchema<A, I, R>, structured = false) => ({
-  name: tool._tag ?? tool.identifier,
-  description: getDescription(tool.ast),
-  parameters: makeJsonSchema(tool.ast),
+const convertTool = <A, I, R>(
+  schema: Completions.StructuredSchema<A, I, R>,
+  structured = false
+) => ({
+  name: "identifier" in schema ? schema.identifier : schema._tag,
+  description: getDescription(schema.ast),
+  parameters: makeJsonSchema(schema.ast),
   structured
 })
 
