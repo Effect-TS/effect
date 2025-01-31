@@ -1,7 +1,7 @@
 import * as OpenApiJsonSchema from "@effect/platform/OpenApiJsonSchema"
 import * as Schema from "effect/Schema"
-import { deepStrictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
+import { deepStrictEqual } from "../../effect/test/util.js"
 
 describe("OpenApiJsonSchema", () => {
   it("default options", () => {

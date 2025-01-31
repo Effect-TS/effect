@@ -1,7 +1,7 @@
 import * as Transferable from "@effect/platform/Transferable"
 import { Effect, pipe, Schema } from "effect"
-import { deepStrictEqual } from "effect/test/util"
 import { describe, test } from "vitest"
+import { deepStrictEqual } from "../../effect/test/util.js"
 
 describe("Transferable", () => {
   test("collects transferables", () =>

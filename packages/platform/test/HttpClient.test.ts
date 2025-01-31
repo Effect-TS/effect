@@ -23,7 +23,7 @@ import {
   Stream,
   Struct
 } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual, strictEqual } from "../../effect/test/util.js"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,

@@ -4,7 +4,7 @@ import { describe, it } from "@effect/vitest"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { strictEqual } from "effect/test/util"
+import { strictEqual } from "../../effect/test/util.js"
 
 const ConfigProviderLive = Layer.unwrapEffect(
   PlatformConfigProvider.fromDotEnv(".env").pipe(
