@@ -191,6 +191,11 @@ describe("layer", () => {
           expect(foo).toEqual("foo")
         }))
     })
+    it.effect("adds context", () =>
+      Effect.gen(function*() {
+        const foo = yield* Foo
+        expect(foo).toEqual("foo")
+      }))
   })
 })
 
