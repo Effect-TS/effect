@@ -1,7 +1,7 @@
 import * as Terminal from "@effect/platform/Terminal"
-import { Optimize } from "@effect/printer"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
+import * as Optimize from "@effect/printer/Optimize"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Number from "effect/Number"
