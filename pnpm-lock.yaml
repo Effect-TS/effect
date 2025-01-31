@@ -23,6 +23,9 @@ patchedDependencies:
   '@changesets/get-github-info@0.6.0':
     hash: 4nwpuevfciovsbhi25hd4g5r7y
     path: patches/@changesets__get-github-info@0.6.0.patch
+  vitest-websocket-mock:
+    hash: mk4sparezdlrhylrh7gaunk27u
+    path: patches/vitest-websocket-mock.patch
 
 importers:
 
@@ -361,7 +364,7 @@ importers:
         version: 3.0.13
       vitest-websocket-mock:
         specifier: ^0.4.0
-        version: 0.4.0(vitest@3.0.4(@edge-runtime/vm@5.0.0)(@types/node@22.12.0)(@vitest/browser@3.0.4)(happy-dom@16.7.3)(msw@2.7.0(@types/node@22.12.0)(typescript@5.7.3))(terser@5.37.0))
+        version: 0.4.0(patch_hash=mk4sparezdlrhylrh7gaunk27u)(vitest@3.0.4(@edge-runtime/vm@5.0.0)(@types/node@22.12.0)(@vitest/browser@3.0.4)(happy-dom@16.7.3)(msw@2.7.0(@types/node@22.12.0)(typescript@5.7.3))(terser@5.37.0))
       ws:
         specifier: ^8.18.0
         version: 8.18.0
@@ -15939,7 +15942,7 @@ snapshots:
       fsevents: 2.3.3
       terser: 5.37.0
 
-  vitest-websocket-mock@0.4.0(vitest@3.0.4(@edge-runtime/vm@5.0.0)(@types/node@22.12.0)(@vitest/browser@3.0.4)(happy-dom@16.7.3)(msw@2.7.0(@types/node@22.12.0)(typescript@5.7.3))(terser@5.37.0)):
+  vitest-websocket-mock@0.4.0(patch_hash=mk4sparezdlrhylrh7gaunk27u)(vitest@3.0.4(@edge-runtime/vm@5.0.0)(@types/node@22.12.0)(@vitest/browser@3.0.4)(happy-dom@16.7.3)(msw@2.7.0(@types/node@22.12.0)(typescript@5.7.3))(terser@5.37.0)):
     dependencies:
       '@vitest/utils': 2.1.4
       mock-socket: 9.3.1
