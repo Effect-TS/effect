@@ -33,7 +33,7 @@ export interface EntityManager {
     envelope: Envelope.Envelope.PartialEncoded
   ) => Effect.Effect<void, EntityNotManagedByPod | MalformedMessage>
 
-  run(f: (reply: Reply.Reply<Rpc.Any>) => Effect.Effect<void>): Effect.Effect<never>
+  run(f: (reply: Reply.ReplyWithContext<Rpc.Any>) => Effect.Effect<void>): Effect.Effect<never>
 }
 
 /** @internal */
@@ -49,22 +49,19 @@ export const make = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
   const clock = yield* Effect.clock
   const context = yield* Effect.context<Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | Rpc.ToHandler<Rpcs>>()
   const gauge = ClusterMetrics.entities.pipe(Metric.tagged("type", entity.type))
-  let writeReply: (reply: Reply.Reply<Rpcs>) => Effect.Effect<void> = () => Effect.void
+  let writeReply: (reply: Reply.ReplyWithContext<Rpcs>) => Effect.Effect<void> = () => Effect.void
 
   // Represents the entities managed by this entity manager
-  const servers = new Map<EntityAddress, {
-    activeRequests: number
+  type EntityState = {
+    readonly write: RpcServer.RpcServer<Rpcs>["write"]
+    readonly activeRequests: Map<bigint, {
+      readonly envelope: Envelope.Request<any>
+      readonly rpc: Rpcs
+    }>
     lastActiveCheck: number
-  }>()
-  const entities: RcMap.RcMap<
-    EntityAddress,
-    {
-      readonly write: RpcServer.RpcServer<Rpcs>["write"]
-      activeRequests: number
-      lastActiveCheck: number
-    },
-    EntityNotManagedByPod
-  > = yield* RcMap.make({
+  }
+  const servers = new Map<EntityAddress, EntityState>()
+  const entities: RcMap.RcMap<EntityAddress, EntityState, EntityNotManagedByPod> = yield* RcMap.make({
     idleTimeToLive: Duration.infinity,
     lookup: Effect.fnUntraced(function*(address: EntityAddress) {
       if (yield* sharding.isShutdown) {
@@ -82,21 +79,31 @@ export const make = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
       const fiber: Fiber.RuntimeFiber<void> = yield* server.run((response) => {
         switch (response._tag) {
           case "Exit": {
-            state.activeRequests--
+            const request = state.activeRequests.get(response.requestId)!
+            state.activeRequests.delete(response.requestId)
             return writeReply(
-              new Reply.WithExit({
-                requestId: response.requestId as any,
-                id: snowflakeGen.unsafeNext(shardId),
-                exit: response.exit
+              new Reply.ReplyWithContext({
+                reply: new Reply.WithExit({
+                  requestId: response.requestId as any,
+                  id: snowflakeGen.unsafeNext(shardId),
+                  exit: response.exit
+                }),
+                context,
+                rpc: request.rpc
               })
             )
           }
           case "Chunk": {
+            const request = state.activeRequests.get(response.requestId)!
             return writeReply(
-              new Reply.Chunk({
-                requestId: response.requestId as any,
-                id: snowflakeGen.unsafeNext(shardId),
-                values: response.values
+              new Reply.ReplyWithContext({
+                reply: new Reply.Chunk({
+                  requestId: response.requestId as any,
+                  id: snowflakeGen.unsafeNext(shardId),
+                  values: response.values
+                }),
+                context,
+                rpc: request.rpc
               })
             )
           }
@@ -140,10 +147,20 @@ export const make = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
       yield* Metric.increment(gauge)
       yield* Scope.addFinalizer(scope, Metric.incrementBy(gauge, BigInt(-1)))
 
-      const state = { write: server.write, activeRequests: 0, lastActiveCheck: clock.unsafeCurrentTimeMillis() }
+      const state: EntityState = {
+        write: server.write,
+        activeRequests: new Map(),
+        lastActiveCheck: clock.unsafeCurrentTimeMillis()
+      }
 
       // add servers to map for expiration check
-      yield* Scope.addFinalizer(scope, Effect.sync(() => servers.delete(address)))
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.sync(() => {
+          state.activeRequests.clear()
+          return servers.delete(address)
+        })
+      )
       servers.set(address, state)
 
       return state
@@ -160,7 +177,7 @@ export const make = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
         const now = clock.unsafeCurrentTimeMillis()
         for (const [address, state] of servers) {
           const duration = Duration.millis(now - state.lastActiveCheck)
-          if (state.activeRequests > 0 || Duration.lessThan(duration, maxIdleTime)) {
+          if (state.activeRequests.size > 0 || Duration.lessThan(duration, maxIdleTime)) {
             continue
           }
           yield* Effect.fork(RcMap.invalidate(entities, address))
@@ -176,7 +193,10 @@ export const make = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
       Effect.flatMap((server) => {
         switch (envelope._tag) {
           case "Request": {
-            server.activeRequests++
+            server.activeRequests.set(envelope.id, {
+              envelope,
+              rpc: entity.protocol.requests.get(envelope.tag) as any
+            })
             return server.write(0, envelope as any)
           }
           case "AckChunk": {
@@ -193,7 +213,7 @@ export const make = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
 
   const decodeEnvelope = Schema.decode(makeEnvelopeSchema(entity))
 
-  const run = (f: (reply: Reply.Reply<Rpcs>) => Effect.Effect<void>): Effect.Effect<never> =>
+  const run = (f: (reply: Reply.ReplyWithContext<Rpcs>) => Effect.Effect<void>): Effect.Effect<never> =>
     Effect.suspend(() => {
       const prev = writeReply
       writeReply = f

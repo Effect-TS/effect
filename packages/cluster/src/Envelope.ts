@@ -4,6 +4,7 @@
 import * as Headers from "@effect/platform/Headers"
 import type * as Rpc from "@effect/rpc/Rpc"
 import type { Context } from "effect/Context"
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { globalValue } from "effect/GlobalValue"
 import type { ParseError } from "effect/ParseResult"
@@ -35,7 +36,16 @@ export type Envelope<Rpc extends Rpc.Any> = Request<Rpc> | AckChunk | Interrupt
  * @since 1.0.0
  * @category models
  */
-export type EnvelopeWithContext<Rpc extends Rpc.Any> = RequestWithContext<Rpc> | AckChunk | Interrupt
+export class EnvelopeWithContext<Rpc extends Rpc.Any> extends Data.TaggedClass("EnvelopeWithContext")<{
+  readonly envelope: Envelope<Rpc>
+  readonly context: Context<Rpc.Context<Rpc>>
+  readonly rpc: Rpc
+}> {
+  /**
+   * @since 1.0.0
+   */
+  public encodedCache?: Envelope.Encoded
+}
 
 /**
  * @since 1.0.0
@@ -51,7 +61,7 @@ export declare namespace Envelope {
    * @since 1.0.0
    * @category models
    */
-  export type Encoded = Request.Encoded | (typeof AckChunk)["Encoded"] | (typeof Interrupt)["Encoded"]
+  export type Encoded = Request.Encoded | typeof AckChunk.Encoded | typeof Interrupt.Encoded
 
   /**
    * @since 1.0.0
@@ -104,16 +114,6 @@ export class Interrupt extends Schema.TaggedClass<Interrupt>("@effect/cluster/En
    * @since 1.0.0
    */
   readonly [TypeId]: TypeId = TypeId
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface RequestWithContext<out Rpc extends Rpc.Any> extends Request<Rpc> {
-  readonly rpc: Rpc
-  readonly context: Context<Rpc.Context<Rpc>>
-  encodedCache?: Request.Encoded
 }
 
 /**
@@ -193,58 +193,27 @@ export const makeRequest = <Rpc extends Rpc.Any>(
   sampled: options.sampled
 })
 
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const makeRequestWithContext = <Rpc extends Rpc.Any>(
-  options: {
-    readonly id: Snowflake
-    readonly address: EntityAddress
-    readonly payload: Rpc.Payload<Rpc>
-    readonly headers: Headers.Headers
-    readonly traceId: string
-    readonly spanId: string
-    readonly sampled: boolean
-    readonly rpc: Rpc
-    readonly context: Context<Rpc.Context<Rpc>>
-  }
-): RequestWithContext<Rpc> => {
-  const self = makeRequest({
-    ...options,
-    tag: options.rpc._tag as Rpc.Tag<Rpc>
-  }) as any
-  self.rpc = options.rpc
-  self.context = options.context
-  Object.defineProperty(self, "encodeCache", {
-    enumerable: false,
-    writable: true,
-    value: undefined
-  })
-  return self
-}
-
 const encodeCache = globalValue(
   "@effect/cluster/Envelope/encodeCache",
   () => new WeakMap<Rpc.Any, (u: unknown) => Effect.Effect<Envelope.Encoded, ParseError>>()
 )
 
 const getEncode = <Rpc extends Rpc.Any>(
-  request: RequestWithContext<Rpc>
+  envelope: EnvelopeWithContext<Rpc>
 ): (u: unknown) => Effect.Effect<Envelope.Encoded, ParseError> => {
-  let encode = encodeCache.get(request.rpc)
+  let encode = encodeCache.get(envelope.rpc)
   if (encode !== undefined) {
     return encode
   }
   encode = Schema.encode(Schema.Union(
     Schema.Struct({
       ...PartialEncodedRequest.fields,
-      payload: (request.rpc as any as Rpc.AnyWithProps).payloadSchema
+      payload: (envelope.rpc as any as Rpc.AnyWithProps).payloadSchema
     }),
     AckChunk,
     Interrupt
   )) as any
-  encodeCache.set(request.rpc, encode!)
+  encodeCache.set(envelope.rpc, encode!)
   return encode!
 }
 
@@ -256,8 +225,8 @@ export const serialize = <Rpc extends Rpc.Any>(
   envelope: EnvelopeWithContext<Rpc>
 ): Effect.Effect<Envelope.Encoded, ParseError> => {
   return Effect.suspend(() => {
-    if (envelope._tag !== "Request") {
-      return Schema.encode(PartialEncoded)(envelope)
+    if (envelope.envelope._tag !== "Request") {
+      return Schema.encode(PartialEncoded)(envelope.envelope)
     }
 
     if (envelope.encodedCache !== undefined) {
@@ -419,16 +388,23 @@ export const deserialize = <Rpc extends Rpc.Any>(
     ParseError
   > => {
     if (partial._tag !== "Request") {
-      return Effect.succeed(partial)
-    } else if (self._tag !== "Request") {
-      return Effect.dieMessage("Envelope.deserialize: RequestWithContext required to deserialize Request")
+      return Effect.succeed(
+        new EnvelopeWithContext({
+          envelope: partial,
+          context: self.context,
+          rpc: self.rpc
+        })
+      )
     }
-    return Schema.deserialize(self.payload, partial.payload).pipe(
+    const rpc = self.rpc as any as Rpc.AnyWithProps
+    return Schema.decode(rpc.payloadSchema)(partial.payload).pipe(
       Effect.provide(self.context as Context<unknown>),
       Effect.map((payload) =>
-        makeRequestWithContext({
-          ...partial,
-          payload: payload as Rpc.Payload<Rpc>,
+        new EnvelopeWithContext({
+          envelope: makeRequest({
+            ...partial,
+            payload
+          } as any),
           rpc: self.rpc,
           context: self.context
         })

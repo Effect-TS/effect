@@ -3,10 +3,13 @@
  */
 import type * as Rpc from "@effect/rpc/Rpc"
 import type * as RpcSchema from "@effect/rpc/RpcSchema"
+import { Effect } from "effect"
+import type { Context } from "effect/Context"
 import * as Data from "effect/Data"
 import { identity } from "effect/Function"
 import { hasProperty } from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import { MalformedMessage } from "./ShardingError.js"
 import { type Snowflake, SnowflakeFromString } from "./Snowflake.js"
 
 /**
@@ -32,6 +35,16 @@ export const isReply = (u: unknown): u is Reply<Rpc.Any> => hasProperty(u, TypeI
  * @category models
  */
 export type Reply<R extends Rpc.Any> = WithExit<R> | Chunk<R>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export class ReplyWithContext<R extends Rpc.Any> extends Data.TaggedClass("ReplyWithContext")<{
+  readonly reply: Reply<R>
+  readonly context: Context<Rpc.Context<R>>
+  readonly rpc: R
+}> {}
 
 /**
  * @since 1.0.0

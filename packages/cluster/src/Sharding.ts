@@ -3,7 +3,7 @@
  */
 import type * as Rpc from "@effect/rpc/Rpc"
 import * as RpcClient from "@effect/rpc/RpcClient"
-import type { FromServer } from "@effect/rpc/RpcMessage"
+import { type FromServer, RequestId } from "@effect/rpc/RpcMessage"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import type { DurationInput } from "effect/Duration"
@@ -34,7 +34,7 @@ import * as Reply from "./Reply.js"
 import { ShardId } from "./ShardId.js"
 import { ShardingConfig } from "./ShardingConfig.js"
 import type { PodUnavailable } from "./ShardingError.js"
-import { EntityNotManagedByPod, MalformedMessage } from "./ShardingError.js"
+import { EntityNotManagedByPod, MalformedMessage, ReplyPodNotFound } from "./ShardingError.js"
 import { EntityRegistered, type ShardingRegistrationEvent } from "./ShardingRegistrationEvent.js"
 import { ShardManagerClient } from "./ShardManager.js"
 import * as Snowflake from "./Snowflake.js"
@@ -102,11 +102,21 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   /**
    * Sends a message to the specified entity.
    */
-  readonly send: (
-    message: Envelope.Envelope.PartialEncoded | Reply.Reply<any> | Reply.ReplyEncoded<any>
+  readonly sendEnvelope: (
+    message: Envelope.Envelope.PartialEncoded
   ) => Effect.Effect<
     void,
     EntityNotManagedByPod | MalformedMessage
+  >
+
+  /**
+   * Sends a message to the specified entity.
+   */
+  readonly sendReply: (
+    message: Reply.Reply<Rpc.Any> | Reply.ReplyEncoded<Rpc.Any>
+  ) => Effect.Effect<
+    void,
+    ReplyPodNotFound | MalformedMessage
   >
 }>() {}
 
@@ -174,12 +184,12 @@ export const make = Effect.gen(function*() {
     EntityNotManagedByPod | MalformedMessage
   > =>
     Effect.suspend(() => {
-      if (!isEntityOnLocalShards(envelope.address)) {
-        return Effect.fail(new EntityNotManagedByPod({ address: envelope.address }))
+      if (!isEntityOnLocalShards(envelope.envelope.address)) {
+        return Effect.fail(new EntityNotManagedByPod({ address: envelope.envelope.address }))
       }
-      const state = entityManagers.get(envelope.address.entityType)
+      const state = entityManagers.get(envelope.envelope.address.entityType)
       if (!state) {
-        return Effect.fail(new EntityNotManagedByPod({ address: envelope.address }))
+        return Effect.fail(new EntityNotManagedByPod({ address: envelope.envelope.address }))
       }
       return pods.sendLocal({
         envelope,
@@ -188,7 +198,7 @@ export const make = Effect.gen(function*() {
       })
     })
 
-  function sendEnvelope(
+  function sendEnvelopeWithContext(
     pod: PodAddress,
     envelope: Envelope.EnvelopeWithContext<any>
   ): Effect.Effect<void, EntityNotManagedByPod | MalformedMessage | PodUnavailable> {
@@ -197,48 +207,39 @@ export const make = Effect.gen(function*() {
       : pods.send(pod, envelope)
   }
 
-  const clientRequests = new Map<Snowflake.Snowflake, {
+  const sendEnvelope = (
+    message: Envelope.Envelope.PartialEncoded
+  ): Effect.Effect<void, EntityNotManagedByPod | MalformedMessage> =>
+    Effect.suspend(() => {
+      if (!isEntityOnLocalShards(message.address)) {
+        return Effect.fail(new EntityNotManagedByPod({ address: message.address }))
+      }
+      const state = entityManagers.get(message.address.entityType)
+      if (!state) {
+        return Effect.fail(new EntityNotManagedByPod({ address: message.address }))
+      }
+      return state.manager.sendEncoded(message)
+    })
+
+  type ClientRequestEntry = {
     readonly rpc: Rpc.AnyWithProps
     readonly context: Context.Context<any>
     readonly write: (reply: FromServer<any>) => Effect.Effect<void>
-  }>()
+    lastChunkId?: Snowflake.Snowflake
+  }
+  const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
-  const send = (
-    message: Envelope.Envelope.PartialEncoded | Reply.Reply<any> | Reply.ReplyEncoded<any>
-  ): Effect.Effect<void, EntityNotManagedByPod | MalformedMessage> =>
-    Effect.suspend(() => {
-      if (Reply.isReply(message)) {
-        return sendReply(message)
-      } else if (Envelope.isEnvelope(message) || message._tag === "Request") {
-        if (!isEntityOnLocalShards(message.address)) {
-          return Effect.fail(new EntityNotManagedByPod({ address: message.address }))
-        }
-        const state = entityManagers.get(message.address.entityType)
-        if (!state) {
-          return Effect.fail(new EntityNotManagedByPod({ address: message.address }))
-        }
-        return state.manager.sendEncoded(message)
-      }
-
-      const requestId = BigInt(message.requestId) as Snowflake.Snowflake
-      const entry = clientRequests.get(requestId)
-      if (!entry) return Effect.void
-      return Schema.decode(Reply.Reply(entry.rpc as any))(message).pipe(
-        Effect.locally(FiberRef.currentContext, entry.context),
-        MalformedMessage.refail,
-        Effect.flatMap(sendReply)
-      ) as Effect.Effect<void, MalformedMessage>
-    })
-
-  const sendReply = (reply: Reply.Reply<any>): Effect.Effect<void> => {
-    const entry = clientRequests.get(reply.requestId)
-    if (!entry) return Effect.void
+  const sendReplyWithEntry = (
+    entry: ClientRequestEntry,
+    reply: Reply.Reply<Rpc.Any>
+  ): Effect.Effect<void> => {
     switch (reply._tag) {
       case "Chunk": {
+        entry.lastChunkId = reply.requestId
         return entry.write({
           _tag: "Chunk",
           clientId: 0,
-          requestId: reply.requestId as any,
+          requestId: RequestId(reply.requestId),
           values: reply.values
         })
       }
@@ -247,12 +248,32 @@ export const make = Effect.gen(function*() {
         return entry.write({
           _tag: "Exit",
           clientId: 0,
-          requestId: reply.requestId as any,
+          requestId: RequestId(reply.requestId),
           exit: reply.exit
         })
       }
     }
   }
+
+  const sendReply = (
+    reply: Reply.Reply<Rpc.Any> | Reply.ReplyEncoded<Rpc.Any>
+  ): Effect.Effect<void, ReplyPodNotFound | MalformedMessage> =>
+    Effect.suspend((): Effect.Effect<void, ReplyPodNotFound | MalformedMessage> => {
+      const requestId = Snowflake.Snowflake(reply.requestId)
+      const entry = clientRequests.get(requestId)
+      if (!entry) {
+        return Effect.fail(new ReplyPodNotFound({ requestId }))
+      }
+      if (Reply.isReply(reply)) {
+        return sendReplyWithEntry(entry, reply)
+      }
+      const schema = Reply.Reply(entry.rpc as any)
+      return Schema.decode(schema)(reply).pipe(
+        Effect.locally(FiberRef.currentContext, entry.context),
+        MalformedMessage.refail,
+        Effect.flatMap((decoded) => sendReplyWithEntry(entry, decoded))
+      ) as Effect.Effect<void, MalformedMessage>
+    })
 
   const makeClient = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
     entity: Entity<Rpcs>,
@@ -270,40 +291,59 @@ export const make = Effect.gen(function*() {
 
     const { client, write } = yield* RpcClient.makeNoSerialization(entity.protocol, {
       supportsAck: true,
-      generateRequestId: () => snowflakeGen.unsafeNext(shardId) as any,
+      generateRequestId: () => RequestId(snowflakeGen.unsafeNext(shardId)),
       onFromClient(message) {
         switch (message._tag) {
           case "Request": {
+            const id = Snowflake.Snowflake(message.id)
             const rpc = entity.protocol.requests.get(message.tag)!
-            clientRequests.set(message.id as any, { context, write, rpc: rpc as any })
-            const request = Envelope.makeRequestWithContext({
-              id: message.id as any,
-              address,
-              payload: message.payload,
-              headers: message.headers,
-              traceId: message.traceId,
-              spanId: message.spanId,
-              sampled: message.sampled,
-              rpc,
-              context
-            })
-            return Effect.orDie(sendEnvelope(pod, request))
+            clientRequests.set(id, { context, write, rpc: rpc as any })
+            return Effect.orDie(sendEnvelopeWithContext(
+              pod,
+              new Envelope.EnvelopeWithContext({
+                envelope: Envelope.makeRequest({
+                  id,
+                  address,
+                  tag: message.tag,
+                  payload: message.payload,
+                  headers: message.headers,
+                  traceId: message.traceId,
+                  spanId: message.spanId,
+                  sampled: message.sampled
+                }),
+                rpc,
+                context
+              })
+            ))
           }
           case "Ack": {
-            const ack = new Envelope.AckChunk({
-              address,
-              requestId: message.requestId as any,
-              replyId: snowflakeGen.unsafeNext(shardId)
-            })
-            return Effect.orDie(sendEnvelope(pod, ack))
+            const requestId = Snowflake.Snowflake(message.requestId)
+            const entry = clientRequests.get(requestId)!
+            return Effect.orDie(sendEnvelopeWithContext(
+              pod,
+              new Envelope.EnvelopeWithContext({
+                envelope: new Envelope.AckChunk({
+                  address,
+                  requestId,
+                  replyId: entry.lastChunkId!
+                }),
+                rpc: entry.rpc as any,
+                context: entry.context
+              })
+            ))
           }
           case "Interrupt": {
-            clientRequests.delete(message.requestId as any)
-            const interrupt = new Envelope.Interrupt({
-              address,
-              requestId: message.requestId as any
-            })
-            return Effect.orDie(sendEnvelope(pod, interrupt))
+            const requestId = Snowflake.Snowflake(message.requestId)
+            const entry = clientRequests.get(requestId)!
+            clientRequests.delete(requestId)
+            return Effect.orDie(sendEnvelopeWithContext(
+              pod,
+              new Envelope.EnvelopeWithContext({
+                envelope: new Envelope.Interrupt({ address, requestId }),
+                rpc: entry.rpc as any,
+                context: entry.context
+              })
+            ))
           }
         }
         return Effect.void
@@ -346,7 +386,8 @@ export const make = Effect.gen(function*() {
     isShutdown: Ref.get(isShutdown),
     registerEntity,
     makeClient,
-    send
+    sendEnvelope,
+    sendReply
   })
 
   return sharding

@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import { EntityAddress } from "./EntityAddress.js"
 import { PodAddress } from "./PodAddress.js"
+import { SnowflakeFromString } from "./Snowflake.js"
 
 /**
  * @since 1.0.0
@@ -107,6 +108,22 @@ export class PodNotRegistered extends Schema.TaggedError<PodNotRegistered>()(
 export class PodUnavailable extends Schema.TaggedError<PodUnavailable>()(
   "PodUnavailable",
   { address: PodAddress }
+) {
+  /**
+   * @since 1.0.0
+   */
+  readonly [TypeId] = TypeId
+}
+
+/**
+ * Represents an error when the sender Pod for a reply cannot be found.
+ *
+ * @since 1.0.0
+ * @category errors
+ */
+export class ReplyPodNotFound extends Schema.TaggedError<ReplyPodNotFound>()(
+  "ReplyPodNotFound",
+  { requestId: SnowflakeFromString }
 ) {
   /**
    * @since 1.0.0

@@ -32,6 +32,13 @@ export type Snowflake = Brand.Branded<bigint, TypeId>
  * @since 1.0.0
  * @category Models
  */
+export const Snowflake = (input: string | bigint): Snowflake =>
+  typeof input === "string" ? BigInt(input) as Snowflake : input as Snowflake
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
 export declare namespace Snowflake {
   /**
    * @since 1.0.0

@@ -9,7 +9,7 @@ import * as Envelope from "./Envelope.js"
 import type { PodAddress } from "./PodAddress.js"
 import type * as Reply from "./Reply.js"
 import type { ShardId } from "./ShardId.js"
-import type { PodUnavailable } from "./ShardingError.js"
+import type { PodUnavailable, ReplyPodNotFound } from "./ShardingError.js"
 import { EntityNotManagedByPod, MalformedMessage } from "./ShardingError.js"
 
 /**
@@ -50,8 +50,8 @@ export class Pods extends Context.Tag("@effect/cluster/Pods")<Pods, {
    * Send a reply back to the sender pod
    */
   readonly sendReply: <R extends Rpc.Any>(
-    message: Reply.Reply<R>
-  ) => Effect.Effect<void, MalformedMessage>
+    message: Reply.ReplyWithContext<R>
+  ) => Effect.Effect<void, MalformedMessage | ReplyPodNotFound>
 
   /**
    * Notify a pod that it was assigned a set of shards.
@@ -73,12 +73,12 @@ export const make = (options: Omit<Pods["Type"], "sendLocal">): Pods["Type"] =>
     ...options,
     sendLocal(options) {
       if (!options.simulateRemoteSerialization) {
-        return options.send(options.envelope)
+        return options.send(options.envelope.envelope)
       }
       return Envelope.serialize(options.envelope).pipe(
         Effect.flatMap((encoded) => Envelope.deserialize(options.envelope, encoded)),
         MalformedMessage.refail,
-        Effect.flatMap(options.send)
+        Effect.flatMap(({ envelope }) => options.send(envelope))
       )
     }
   })
@@ -91,7 +91,7 @@ export const layerNoop: Layer.Layer<Pods> = Layer.effect(
   Pods,
   Effect.gen(function*() {
     return make({
-      send: (_, envelope) => Effect.fail(new EntityNotManagedByPod({ address: envelope.address })),
+      send: (_, { envelope }) => Effect.fail(new EntityNotManagedByPod({ address: envelope.address })),
       sendReply: () => Effect.die(new Error("sendLocal not implemented")),
       ping: () => Effect.void,
       assignShards: () => Effect.void,
