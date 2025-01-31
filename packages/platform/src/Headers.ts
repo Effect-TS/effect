@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import { FiberRefs } from "effect"
 import * as FiberRef from "effect/FiberRef"
+import * as FiberRefs from "effect/FiberRefs"
 import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import { type Redactable, symbolRedactable } from "effect/Inspectable"

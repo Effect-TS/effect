@@ -10,8 +10,8 @@ import {
   TELEMETRYSDKLANGUAGEVALUES_NODEJS,
   TELEMETRYSDKLANGUAGEVALUES_WEBJS
 } from "@opentelemetry/semantic-conventions"
-import { Config } from "effect"
 import * as Arr from "effect/Array"
+import * as Config from "effect/Config"
 import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
