@@ -18,7 +18,7 @@ const config: ViteUserConfig = {
     exclude: ["bun:sqlite"]
   },
   test: {
-    setupFiles: [path.join(__dirname, "setupTests.ts")],
+    setupFiles: [path.join(__dirname, "vitest.setup.ts")],
     fakeTimers: {
       toFake: undefined
     },
