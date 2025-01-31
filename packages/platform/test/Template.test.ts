@@ -1,5 +1,5 @@
 import { Template } from "@effect/platform"
-import { strictEqual } from "@effect/platform/test/util"
+import { strictEqual } from "effect/test/util"
 import { describe, test } from "@effect/vitest"
 import { Effect, Option, Stream } from "effect"
 

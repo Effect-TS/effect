@@ -1,5 +1,5 @@
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
-import { assertNone, assertSome, assertTrue, strictEqual } from "@effect/platform/test/util"
+import { assertNone, assertSome, assertTrue, strictEqual } from "effect/test/util"
 import { afterEach, describe, it } from "@effect/vitest"
 import { Effect, identity, Layer, pipe, Schema } from "effect"
 

@@ -7,7 +7,7 @@ import {
   HttpClientResponse,
   UrlParams
 } from "@effect/platform"
-import { assertTrue, deepStrictEqual, strictEqual } from "@effect/platform/test/util"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "@effect/vitest"
 import {
   Context,

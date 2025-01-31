@@ -21,7 +21,7 @@ describe("Tracer", () => {
       })
       yield* Effect.flip(getSpan("fail"))
       assertTrue(maybeSpan !== undefined)
-      assertTrue((maybeSpan!.attributes.get("code.stacktrace") as string).includes("Tracer.test.ts:23:26"))
+      assertTrue((maybeSpan!.attributes.get("code.stacktrace") as string).includes("Tracer.test.ts:22:26"))
     }))
 
   it.effect("captures stack", () =>
@@ -31,7 +31,7 @@ describe("Tracer", () => {
         Effect.sandbox,
         Effect.flip
       )
-      assertTrue(Cause.pretty(cause).includes("Tracer.test.ts:30:39"))
+      assertTrue(Cause.pretty(cause).includes("Tracer.test.ts:29:39"))
     }))
 
   describe("withSpan", () => {

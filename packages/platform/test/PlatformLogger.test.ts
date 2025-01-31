@@ -1,5 +1,5 @@
 import { FileSystem, PlatformLogger } from "@effect/platform"
-import { deepStrictEqual, strictEqual } from "@effect/platform/test/util"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, test } from "@effect/vitest"
 import { Effect, Logger, pipe } from "effect"
 

@@ -1,6 +1,6 @@
 import { BadArgument } from "@effect/platform/Error"
 import * as Path from "@effect/platform/Path"
-import { deepStrictEqual, strictEqual } from "@effect/platform/test/util"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 

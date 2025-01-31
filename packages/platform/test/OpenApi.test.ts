@@ -9,7 +9,7 @@ import {
   Multipart,
   OpenApi
 } from "@effect/platform"
-import { deepStrictEqual } from "@effect/platform/test/util"
+import { deepStrictEqual } from "effect/test/util"
 import { describe, it } from "@effect/vitest"
 import { Context, Schema } from "effect"
 

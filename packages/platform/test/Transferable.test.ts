@@ -1,4 +1,4 @@
-import { deepStrictEqual } from "@effect/platform/test/util"
+import { deepStrictEqual } from "effect/test/util"
 import * as Transferable from "@effect/platform/Transferable"
 import { describe, test } from "@effect/vitest"
 import { Effect, pipe, Schema } from "effect"

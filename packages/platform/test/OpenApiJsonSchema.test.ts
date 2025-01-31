@@ -1,5 +1,5 @@
 import * as OpenApiJsonSchema from "@effect/platform/OpenApiJsonSchema"
-import { deepStrictEqual } from "@effect/platform/test/util"
+import { deepStrictEqual } from "effect/test/util"
 import { describe, it } from "@effect/vitest"
 import * as Schema from "effect/Schema"
 

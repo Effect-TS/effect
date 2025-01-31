@@ -1,5 +1,5 @@
 import * as Headers from "@effect/platform/Headers"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/platform/test/util"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "@effect/vitest"
 import { Effect, FiberId, FiberRef, FiberRefs, HashSet, Inspectable, Logger, Redacted } from "effect"
 

@@ -1,4 +1,4 @@
-import { deepStrictEqual, strictEqual } from "@effect/platform/test/util"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as UrlParams from "@effect/platform/UrlParams"
 import { describe, it } from "@effect/vitest"
 import { Effect, Option, Schema } from "effect"

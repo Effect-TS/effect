@@ -1,4 +1,4 @@
-import { assertTrue, deepStrictEqual } from "@effect/platform/test/util"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
 import * as Url from "@effect/platform/Url"
 import * as UrlParams from "@effect/platform/UrlParams"
 import { describe, it } from "@effect/vitest"
