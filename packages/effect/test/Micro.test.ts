@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Context, Effect, Either, Exit, Fiber, Micro, Option, pipe } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertIncludes, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
 class TestError extends Micro.TaggedError("TestError") {}
@@ -12,7 +12,7 @@ describe.concurrent("Micro", () => {
         // Referenced line to be included in the string output
         const error = yield* new TestError().pipe(Micro.flip)
         deepStrictEqual(error, new TestError())
-        assertTrue(error.stack?.includes("Micro.test.ts:13")) // <= reference to the line above
+        assertIncludes(error.stack, "Micro.test.ts:13") // <= reference to the line above
       }))
 
     it.effect("withTrace", () =>
@@ -23,8 +23,8 @@ describe.concurrent("Micro", () => {
           Micro.sandbox,
           Micro.flip
         )
-        assertTrue(error.stack?.includes("at test trace"))
-        assertTrue(error.stack?.includes("Micro.test.ts:22")) // <= reference to the line above
+        assertIncludes(error.stack, "at test trace")
+        assertIncludes(error.stack, "Micro.test.ts:22") // <= reference to the line above
       }))
   })
 
@@ -569,8 +569,8 @@ describe.concurrent("Micro", () => {
         )
         strictEqual(failure.name, "MicroCause.Die")
         strictEqual(failure.message, JSON.stringify({ some: "error" }))
-        assertTrue(failure.stack?.includes(`MicroCause.Die: ${JSON.stringify({ some: "error" })}`))
-        assertTrue(failure.stack?.includes("at test trace ("))
+        assertIncludes(failure.stack, `MicroCause.Die: ${JSON.stringify({ some: "error" })}`)
+        assertIncludes(failure.stack, "at test trace (")
       }))
 
     it.effect("renders non-errors", () =>
@@ -582,8 +582,8 @@ describe.concurrent("Micro", () => {
         )
         strictEqual(failure.name, "MicroCause.Fail")
         strictEqual(failure.message, JSON.stringify({ some: "error" }))
-        assertTrue(failure.stack?.includes(`MicroCause.Fail: ${JSON.stringify({ some: "error" })}`))
-        assertTrue(failure.stack?.includes("at test trace ("))
+        assertIncludes(failure.stack, `MicroCause.Fail: ${JSON.stringify({ some: "error" })}`)
+        assertIncludes(failure.stack, "at test trace (")
       }))
 
     it.effect("renders errors", () =>
@@ -595,8 +595,8 @@ describe.concurrent("Micro", () => {
         )
         strictEqual(failure.name, "(MicroCause.Fail) Error")
         strictEqual(failure.message, "boom")
-        assertTrue(failure.stack?.includes(`(MicroCause.Fail) Error: boom`))
-        assertTrue(failure.stack?.includes("at test trace ("))
+        assertIncludes(failure.stack, `(MicroCause.Fail) Error: boom`)
+        assertIncludes(failure.stack, "at test trace (")
       }))
   })
 

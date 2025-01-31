@@ -13,7 +13,7 @@ import {
   pipe,
   Runtime
 } from "effect"
-import { assertTrue, strictEqual } from "effect/test/util"
+import { assertIncludes, assertTrue, strictEqual } from "effect/test/util"
 
 const initial = "initial"
 const update = "update"
@@ -232,7 +232,7 @@ describe("FiberRef", () => {
         Effect.orElse(() => Effect.void)
       )
       const result = yield* FiberRef.get(fiberRef)
-      assertTrue(result.includes(initial))
+      assertIncludes(result, initial)
     }))
   it.scoped("the value of all fibers in inherited when running many effects with collectAllPar", () =>
     Effect.gen(function*() {
