@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Data, Effect, pipe } from "effect"
-import { assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertIncludes, assertTrue, deepStrictEqual } from "effect/test/util"
 
 class TestError extends Data.TaggedError("TestError")<{}> {}
 
@@ -11,7 +11,7 @@ describe("Effect", () => {
       const log = Cause.pretty(cause)
       assertTrue(log.includes("TestError"))
       if (typeof window === "undefined") {
-        assertTrue(log.replaceAll("\\", "/").includes("test/Effect/error.test.ts:11:77"))
+        assertIncludes(log.replaceAll("\\", "/"), "test/Effect/error.test.ts:10:77")
       }
       assertTrue(log.includes("at A"))
     }))
@@ -29,9 +29,9 @@ describe("Effect", () => {
       )
       const log = Cause.pretty(cause)
       if (typeof window === "undefined") {
-        assertTrue(log.replaceAll("\\", "/").includes("test/Effect/error.test.ts:25"))
+        assertIncludes(log.replaceAll("\\", "/"), "test/Effect/error.test.ts:24")
       }
-      assertTrue(log.includes("at A"))
+      assertIncludes(log, "at A")
     }))
 
   it.effect("allow message prop", () =>
@@ -50,11 +50,11 @@ describe("Effect", () => {
         Effect.flip
       )
       const log = Cause.pretty(cause)
-      assertTrue(log.includes("Failure: some message"))
+      assertIncludes(log, "Failure: some message")
       if (typeof window === "undefined") {
-        assertTrue(log.replaceAll("\\", "/").includes("test/Effect/error.test.ts:47"))
+        assertIncludes(log.replaceAll("\\", "/"), "test/Effect/error.test.ts:46")
       }
-      assertTrue(log.includes("at A"))
+      assertIncludes(log, "at A")
     }))
 
   if (typeof window === "undefined") {
@@ -68,8 +68,8 @@ describe("Effect", () => {
         }
       }
       const err = new MessageError()
-      assertTrue(inspect(err).includes("MessageError: fail"))
-      assertTrue(inspect(err).replaceAll("\\", "/").includes("test/Effect/error.test.ts:71"))
+      assertIncludes(inspect(err), "MessageError: fail")
+      assertIncludes(inspect(err).replaceAll("\\", "/"), "test/Effect/error.test.ts:70")
     })
 
     it("toString", () => {

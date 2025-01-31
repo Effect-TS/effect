@@ -50,6 +50,12 @@ export const throws = (thunk: () => void, error?: object | ((e: unknown) => bool
   }
 }
 
+export const assertIncludes = (actual: string | undefined, expected: string, ..._: Array<never>) => {
+  if (!actual?.includes(expected)) {
+    assert.fail(`Expected\n\n${actual}\n\nto include\n\n${expected}`)
+  }
+}
+
 // ----------------------------
 // Option
 // ----------------------------
