@@ -259,34 +259,12 @@ export const dieOption = <E>(self: Cause.Cause<E>): Option.Option<unknown> =>
 /** @internal */
 export const flipCauseOption = <E>(self: Cause.Cause<Option.Option<E>>): Option.Option<Cause.Cause<E>> =>
   match(self, {
-    onEmpty: Option.some(empty),
-    onFail: (failureOption) => pipe(failureOption, Option.map(fail)),
+    onEmpty: Option.some<Cause.Cause<E>>(empty),
+    onFail: Option.map(fail),
     onDie: (defect) => Option.some(die(defect)),
     onInterrupt: (fiberId) => Option.some(interrupt(fiberId)),
-    onSequential: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(sequential(left.value, right.value))
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      return Option.none()
-    },
-    onParallel: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(parallel(left.value, right.value))
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      return Option.none()
-    }
+    onSequential: Option.mergeWith(sequential),
+    onParallel: Option.mergeWith(parallel)
   })
 
 /** @internal */
@@ -298,68 +276,24 @@ export const interruptOption = <E>(self: Cause.Cause<E>): Option.Option<FiberId.
 
 /** @internal */
 export const keepDefects = <E>(self: Cause.Cause<E>): Option.Option<Cause.Cause<never>> =>
-  match<Option.Option<Cause.Cause<never>>, E>(self, {
+  match(self, {
     onEmpty: Option.none(),
     onFail: () => Option.none(),
     onDie: (defect) => Option.some(die(defect)),
     onInterrupt: () => Option.none(),
-    onSequential: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(sequential(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    },
-    onParallel: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(parallel(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    }
+    onSequential: Option.mergeWith(sequential),
+    onParallel: Option.mergeWith(parallel)
   })
 
 /** @internal */
 export const keepDefectsAndElectFailures = <E>(self: Cause.Cause<E>): Option.Option<Cause.Cause<never>> =>
-  match<Option.Option<Cause.Cause<never>>, E>(self, {
+  match(self, {
     onEmpty: Option.none(),
     onFail: (failure) => Option.some(die(failure)),
     onDie: (defect) => Option.some(die(defect)),
     onInterrupt: () => Option.none(),
-    onSequential: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(sequential(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    },
-    onParallel: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(parallel(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    }
+    onSequential: Option.mergeWith(sequential),
+    onParallel: Option.mergeWith(parallel)
   })
 
 /** @internal */
@@ -370,25 +304,9 @@ export const linearize = <E>(self: Cause.Cause<E>): HashSet.HashSet<Cause.Cause<
     onDie: (defect) => HashSet.make(die(defect)),
     onInterrupt: (fiberId) => HashSet.make(interrupt(fiberId)),
     onSequential: (leftSet, rightSet) =>
-      pipe(
-        leftSet,
-        HashSet.flatMap((leftCause) =>
-          pipe(
-            rightSet,
-            HashSet.map((rightCause) => sequential(leftCause, rightCause))
-          )
-        )
-      ),
+      HashSet.flatMap(leftSet, (leftCause) => HashSet.map(rightSet, (rightCause) => sequential(leftCause, rightCause))),
     onParallel: (leftSet, rightSet) =>
-      pipe(
-        leftSet,
-        HashSet.flatMap((leftCause) =>
-          pipe(
-            rightSet,
-            HashSet.map((rightCause) => parallel(leftCause, rightCause))
-          )
-        )
-      )
+      HashSet.flatMap(leftSet, (leftCause) => HashSet.map(rightSet, (rightCause) => parallel(leftCause, rightCause)))
   })
 
 /** @internal */
@@ -396,8 +314,8 @@ export const stripFailures = <E>(self: Cause.Cause<E>): Cause.Cause<never> =>
   match(self, {
     onEmpty: empty,
     onFail: () => empty,
-    onDie: (defect) => die(defect),
-    onInterrupt: (fiberId) => interrupt(fiberId),
+    onDie: die,
+    onInterrupt: interrupt,
     onSequential: sequential,
     onParallel: parallel
   })
@@ -406,51 +324,32 @@ export const stripFailures = <E>(self: Cause.Cause<E>): Cause.Cause<never> =>
 export const electFailures = <E>(self: Cause.Cause<E>): Cause.Cause<never> =>
   match(self, {
     onEmpty: empty,
-    onFail: (failure) => die(failure),
-    onDie: (defect) => die(defect),
-    onInterrupt: (fiberId) => interrupt(fiberId),
-    onSequential: (left, right) => sequential(left, right),
-    onParallel: (left, right) => parallel(left, right)
+    onFail: die,
+    onDie: die,
+    onInterrupt: interrupt,
+    onSequential: sequential,
+    onParallel: parallel
   })
 
 /** @internal */
 export const stripSomeDefects = dual<
   (pf: (defect: unknown) => Option.Option<unknown>) => <E>(self: Cause.Cause<E>) => Option.Option<Cause.Cause<E>>,
   <E>(self: Cause.Cause<E>, pf: (defect: unknown) => Option.Option<unknown>) => Option.Option<Cause.Cause<E>>
->(2, <E>(self: Cause.Cause<E>, pf: (defect: unknown) => Option.Option<unknown>) =>
-  match(self, {
-    onEmpty: Option.some(empty),
-    onFail: (error) => Option.some(fail(error)),
-    onDie: (defect) => {
-      const option = pf(defect)
-      return Option.isSome(option) ? Option.none() : Option.some(die(defect))
-    },
-    onInterrupt: (fiberId) => Option.some(interrupt(fiberId)),
-    onSequential: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(sequential(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    },
-    onParallel: (left, right) => {
-      if (Option.isSome(left) && Option.isSome(right)) {
-        return Option.some(parallel(left.value, right.value))
-      }
-      if (Option.isSome(left) && Option.isNone(right)) {
-        return Option.some(left.value)
-      }
-      if (Option.isNone(left) && Option.isSome(right)) {
-        return Option.some(right.value)
-      }
-      return Option.none()
-    }
-  }))
+>(
+  2,
+  <E>(self: Cause.Cause<E>, pf: (defect: unknown) => Option.Option<unknown>): Option.Option<Cause.Cause<E>> =>
+    match(self, {
+      onEmpty: Option.some<Cause.Cause<E>>(empty),
+      onFail: (error) => Option.some(fail(error)),
+      onDie: (defect) => {
+        const option = pf(defect)
+        return Option.isSome(option) ? Option.none() : Option.some(die(defect))
+      },
+      onInterrupt: (fiberId) => Option.some(interrupt(fiberId)),
+      onSequential: Option.mergeWith(sequential),
+      onParallel: Option.mergeWith(parallel)
+    })
+)
 
 // -----------------------------------------------------------------------------
 // Mapping

@@ -2162,3 +2162,18 @@ export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (..
   }
   return some(state.value)
 }
+
+/**
+ * Merges two optional values, applying a function if both exist.
+ * Unlike {@link zipWith}, this function returns `None` only if both inputs are `None`.
+ *
+ * @internal
+ */
+export const mergeWith = <A>(f: (a1: A, a2: A) => A) => (o1: Option<A>, o2: Option<A>): Option<A> => {
+  if (isNone(o1)) {
+    return o2
+  } else if (isNone(o2)) {
+    return o1
+  }
+  return some(f(o1.value, o2.value))
+}
