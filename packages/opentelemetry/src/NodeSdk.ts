@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type * as Resources from "@opentelemetry/resources"
+import type { LoggerProviderConfig, LogRecordProcessor } from "@opentelemetry/sdk-logs"
 import type { MetricReader } from "@opentelemetry/sdk-metrics"
 import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node"
@@ -9,6 +10,7 @@ import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Logger from "./Logger.js"
 import * as Metrics from "./Metrics.js"
 import * as Resource from "./Resource.js"
 import * as Tracer from "./Tracer.js"
@@ -21,6 +23,8 @@ export interface Configuration {
   readonly spanProcessor?: SpanProcessor | ReadonlyArray<SpanProcessor> | undefined
   readonly tracerConfig?: Omit<TracerConfig, "resource"> | undefined
   readonly metricReader?: MetricReader | ReadonlyArray<MetricReader> | undefined
+  readonly logRecordProcessor?: LogRecordProcessor | ReadonlyArray<LogRecordProcessor> | undefined
+  readonly loggerProviderConfig?: Omit<LoggerProviderConfig, "resource"> | undefined
   readonly resource?: {
     readonly serviceName: string
     readonly serviceVersion?: string
@@ -88,7 +92,11 @@ export const layer: {
           config.metricReader && !(Array.isArray(config.metricReader) && config.metricReader.length === 0)
             ? Metrics.layer(() => config.metricReader as any)
             : Layer.empty
-        return Layer.merge(TracerLive, MetricsLive).pipe(
+        const LoggerLive = config.loggerProviderConfig &&
+            !(Array.isArray(config.loggerProviderConfig) && config.loggerProviderConfig.length === 0)
+          ? Logger.layerLoggerProvider(config.loggerProviderConfig as any)
+          : Layer.empty
+        return Layer.mergeAll(TracerLive, MetricsLive, LoggerLive).pipe(
           Layer.provideMerge(ResourceLive)
         )
       }
