@@ -6,7 +6,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
-import { identity } from "effect/Function"
+import { identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
@@ -24,9 +24,9 @@ export const release3 = "Releasing Module 3"
 
 describe("Layer", () => {
   it.effect("layers can be acquired in parallel", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const BoolTag = Context.GenericTag<boolean>("boolean")
-      const deferred = yield* $(Deferred.make<void>())
+      const deferred = yield* Deferred.make<void>()
       const layer1 = Layer.effectContext<never, never, never>(Effect.never)
       const layer2 = Layer.scopedContext(
         Effect.acquireRelease(
@@ -37,15 +37,15 @@ describe("Layer", () => {
         )
       )
       const env = layer1.pipe(Layer.merge(layer2), Layer.build)
-      const fiber = yield* $(Effect.scoped(env), Effect.forkDaemon)
-      yield* $(Deferred.await(deferred))
-      const result = yield* $(Fiber.interrupt(fiber), Effect.asVoid)
+      const fiber = yield* pipe(Effect.scoped(env), Effect.forkDaemon)
+      yield* Deferred.await(deferred)
+      const result = yield* pipe(Fiber.interrupt(fiber), Effect.asVoid)
       strictEqual(result, undefined)
     }))
   it.effect("preserves identity of acquired resources", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const ChunkTag = Context.GenericTag<Ref.Ref<Chunk.Chunk<string>>>("Ref.Ref<Chunk.Chunk<string>>")
-      const testRef = yield* $(Ref.make<Chunk.Chunk<string>>(Chunk.empty()))
+      const testRef = yield* Ref.make<Chunk.Chunk<string>>(Chunk.empty())
       const layer = Layer.scoped(
         ChunkTag,
         Effect.acquireRelease(
@@ -58,7 +58,7 @@ describe("Layer", () => {
           Effect.tap(() => Effect.void)
         )
       )
-      yield* $(
+      yield* pipe(
         Layer.build(layer),
         Effect.flatMap((context) =>
           Ref.update(
@@ -68,43 +68,43 @@ describe("Layer", () => {
         ),
         Effect.scoped
       )
-      const result = yield* $(Ref.get(testRef))
+      const result = yield* Ref.get(testRef)
       deepStrictEqual(Array.from(result), ["test"])
     }))
   it.effect("sharing with merge", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer = makeLayer1(ref)
       const env = layer.pipe(Layer.merge(layer), Layer.build)
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.scoped(env)
+      const result = yield* Ref.get(ref)
       deepStrictEqual(Array.from(result), [acquire1, release1])
     }))
   it.scoped("sharing itself with merge", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const service1 = new Service1()
       const layer = Layer.succeed(Service1Tag, service1)
       const env = layer.pipe(Layer.merge(layer), Layer.merge(layer), Layer.build)
-      const result = yield* $(
-        env.pipe(Effect.flatMap((context) => Effect.try(() => context.pipe(Context.get(Service1Tag)))))
+      const result = yield* env.pipe(
+        Effect.flatMap((context) => Effect.try(() => context.pipe(Context.get(Service1Tag))))
       )
       strictEqual(result, service1)
     }))
   it.effect("finalizers", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const env = layer1.pipe(Layer.merge(layer2), Layer.build)
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.scoped(env)
+      const result = yield* Ref.get(ref)
       assertTrue(Array.from(result).slice(0, 2).find((s) => s === acquire1) !== undefined)
       assertTrue(Array.from(result).slice(0, 2).find((s) => s === acquire2) !== undefined)
       assertTrue(Array.from(result).slice(2, 4).find((s) => s === release1) !== undefined)
       assertTrue(Array.from(result).slice(2, 4).find((s) => s === release2) !== undefined)
     }))
   it.effect("caching values in dependencies", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       class Config {
         constructor(readonly value: number) {}
       }
@@ -132,7 +132,7 @@ describe("Layer", () => {
         Layer.provideMerge(aLayer),
         Layer.provide(Layer.succeed(ConfigTag, new Config(2)))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         fedB,
         Layer.merge(fedC),
         Layer.build,
@@ -148,17 +148,17 @@ describe("Layer", () => {
       strictEqual(result[1].value, 1)
     }))
   it.effect("orElse - uses an alternative layer", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const env = Layer.fail("failed!").pipe(Layer.provideMerge(layer1), Layer.orElse(() => layer2), Layer.build)
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.scoped(env)
+      const result = yield* Ref.get(ref)
       deepStrictEqual(Array.from(result), [acquire1, release1, acquire2, release2])
     }))
   it.effect("handles errors gracefully", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       interface Bar {
         readonly bar: string
       }
@@ -183,46 +183,46 @@ describe("Layer", () => {
           Layer.provide(Layer.merge(layer2, layer3))
         )
       )
-      const result = yield* $(Effect.void, Effect.provide(layer), Effect.exit)
+      const result = yield* pipe(Effect.void, Effect.provide(layer), Effect.exit)
       assertTrue(Exit.isFailure(result))
     }))
   it.effect("fresh with merge", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer = makeLayer1(ref)
       const env = layer.pipe(Layer.merge(Layer.fresh(layer)), Layer.build)
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.scoped(env)
+      const result = yield* Ref.get(ref)
       deepStrictEqual(Array.from(result), [acquire1, acquire1, release1, release1])
     }))
   it.effect("fresh with to provideTo", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer = makeLayer1(ref)
       const env = Layer.fresh(layer).pipe(
         Layer.provide(layer),
         Layer.build
       )
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.scoped(env)
+      const result = yield* Ref.get(ref)
       deepStrictEqual(Array.from(result), [acquire1, acquire1, release1, release1])
     }))
   it.effect("with multiple layers", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer = makeLayer1(ref)
       const env = layer.pipe(
         Layer.merge(layer),
         Layer.merge(layer.pipe(Layer.merge(layer), Layer.fresh)),
         Layer.build
       )
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.scoped(env)
+      const result = yield* Ref.get(ref)
       deepStrictEqual(Array.from(result), [acquire1, acquire1, release1, release1])
     }))
   it.effect("with identical fresh layers", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const layer3 = makeLayer3(ref)
@@ -236,8 +236,8 @@ describe("Layer", () => {
         Layer.provide(Layer.fresh(layer1)),
         Layer.build
       )
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.scoped(env)
+      const result = yield* Ref.get(ref)
       deepStrictEqual(Array.from(result), [
         acquire1,
         acquire2,
@@ -250,14 +250,14 @@ describe("Layer", () => {
       ])
     }))
   it.effect("interruption with merge", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const env = layer1.pipe(Layer.merge(layer2), Layer.build)
-      const fiber = yield* $(Effect.scoped(env), Effect.fork)
-      yield* $(Fiber.interrupt(fiber))
-      const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
+      const fiber = yield* pipe(Effect.scoped(env), Effect.fork)
+      yield* Fiber.interrupt(fiber)
+      const result = yield* pipe(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
       if (result.find((s) => s === acquire1) !== undefined) {
         assertTrue(result.some((s) => s === release1))
       }
@@ -266,14 +266,14 @@ describe("Layer", () => {
       }
     }))
   it.effect("interruption with provideTo", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const env = layer2.pipe(Layer.provide(layer1), Layer.build)
-      const fiber = yield* $(Effect.scoped(env), Effect.fork)
-      yield* $(Fiber.interrupt(fiber))
-      const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
+      const fiber = yield* pipe(Effect.scoped(env), Effect.fork)
+      yield* Fiber.interrupt(fiber)
+      const result = yield* pipe(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
       if (result.find((s) => s === acquire1) !== undefined) {
         assertTrue(result.some((s) => s === release1))
       }
@@ -282,8 +282,8 @@ describe("Layer", () => {
       }
     }))
   it.effect("interruption with multiple layers", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const layer3 = makeLayer3(ref)
@@ -293,9 +293,9 @@ describe("Layer", () => {
         Layer.provide(layer1),
         Layer.build
       )
-      const fiber = yield* $(Effect.scoped(env), Effect.fork)
-      yield* $(Fiber.interrupt(fiber))
-      const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
+      const fiber = yield* pipe(Effect.scoped(env), Effect.fork)
+      yield* Fiber.interrupt(fiber)
+      const result = yield* pipe(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
       if (result.find((s) => s === acquire1) !== undefined) {
         assertTrue(result.some((s) => s === release1))
       }
@@ -307,7 +307,7 @@ describe("Layer", () => {
       }
     }))
   it.effect("can map a layer to an unrelated type", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       interface ServiceA {
         readonly name: string
         readonly value: number
@@ -325,14 +325,14 @@ describe("Layer", () => {
           Layer.map(layer1, (context) => Context.make(StringTag, context.pipe(Context.get(ServiceATag)).name))
         )
       )
-      const result = yield* $(ServiceBTag, Effect.provide(live))
+      const result = yield* pipe(ServiceBTag, Effect.provide(live))
       strictEqual(result.name, "name")
     }))
   it.effect("memoizes acquisition of resources", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const memoized = Layer.memoize(makeLayer1(ref))
-      yield* $(
+      yield* pipe(
         memoized,
         Effect.flatMap((layer) =>
           Effect.context<Service1>().pipe(
@@ -342,12 +342,12 @@ describe("Layer", () => {
         ),
         Effect.scoped
       )
-      const result = yield* $(Ref.get(ref))
+      const result = yield* Ref.get(ref)
       deepStrictEqual(Array.from(result), [acquire1, release1])
     }))
   it.scoped("fiberRef changes are memoized", () =>
-    Effect.gen(function*($) {
-      const fiberRef = yield* $(FiberRef.make<boolean>(false))
+    Effect.gen(function*() {
+      const fiberRef = yield* FiberRef.make<boolean>(false)
       const tag = Context.GenericTag<boolean>("boolean")
       const layer1 = Layer.scopedDiscard(Effect.locallyScoped(fiberRef, true))
       const layer2 = Layer.effect(tag, FiberRef.get(fiberRef))
@@ -355,23 +355,23 @@ describe("Layer", () => {
         Layer.provide(layer1),
         Layer.merge(layer1)
       )
-      const result = yield* $(Layer.build(layer3))
+      const result = yield* Layer.build(layer3)
       assertTrue(result.pipe(Context.unsafeGet(tag)))
     }))
   it.effect("provides a partial environment to an effect", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const NumberTag = Context.GenericTag<number>("number")
       const StringTag = Context.GenericTag<string>("string")
       const needsNumberAndString = Effect.all([NumberTag, StringTag])
       const providesNumber = Layer.succeed(NumberTag, 10)
       const providesString = Layer.succeed(StringTag, "hi")
       const needsString = needsNumberAndString.pipe(Effect.provide(providesNumber))
-      const result = yield* $(needsString, Effect.provide(providesString))
+      const result = yield* pipe(needsString, Effect.provide(providesString))
       strictEqual(result[0], 10)
       strictEqual(result[1], "hi")
     }))
   it.effect("to provides a partial environment to another layer", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const StringTag = Context.GenericTag<string>("string")
       const NumberRefTag = Context.GenericTag<Ref.Ref<number>>("Ref.Ref<number>")
       interface FooService {
@@ -400,12 +400,12 @@ describe("Layer", () => {
       const provideString = Layer.succeed(StringTag, "hi")
       const needsString = fooBuilder.pipe(Layer.provide(provideNumberRef))
       const layer = needsString.pipe(Layer.provide(provideString))
-      const result = yield* $(Effect.flatMap(FooTag, (_) => _.get), Effect.provide(layer))
+      const result = yield* pipe(Effect.flatMap(FooTag, (_) => _.get), Effect.provide(layer))
       strictEqual(result[0], 10)
       strictEqual(result[1], "hi")
     }))
   it.effect("andTo provides a partial environment to another layer", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const StringTag = Context.GenericTag<string>("string")
       const NumberRefTag = Context.GenericTag<Ref.Ref<number>>("Ref.Ref<number>")
       interface FooService {
@@ -434,7 +434,7 @@ describe("Layer", () => {
       const provideString = Layer.succeed(StringTag, "hi")
       const needsString = fooBuilder.pipe(Layer.provideMerge(provideNumberRef))
       const layer = needsString.pipe(Layer.provideMerge(provideString))
-      const result = yield* $(
+      const result = yield* pipe(
         Effect.flatMap(FooTag, (foo) => foo.get),
         Effect.flatMap(([i1, s]) =>
           NumberRefTag.pipe(Effect.flatMap(Ref.get), Effect.map((i2) => [i1, i2, s] as const))
@@ -446,7 +446,7 @@ describe("Layer", () => {
       strictEqual(result[2], "hi")
     }))
   it.effect("passthrough passes the inputs through to the next layer", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       interface NumberService {
         readonly value: number
       }
@@ -459,7 +459,7 @@ describe("Layer", () => {
         value: numberService.value.toString()
       }))
       const live = Layer.passthrough(layer).pipe(Layer.provide(Layer.succeed(NumberTag, { value: 1 })))
-      const { i, s } = yield* $(
+      const { i, s } = yield* pipe(
         Effect.all({
           i: NumberTag,
           s: ToStringTag
@@ -470,7 +470,7 @@ describe("Layer", () => {
       strictEqual(s.value, "1")
     }))
   it.effect("project", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       interface PersonService {
         readonly name: string
         readonly age: number
@@ -481,21 +481,21 @@ describe("Layer", () => {
       const AgeTag = Context.GenericTag<AgeService>("AgeService")
       const personLayer = Layer.succeed(PersonTag, { name: "User", age: 42 })
       const ageLayer = personLayer.pipe(Layer.project(PersonTag, AgeTag, (_) => ({ age: _.age })))
-      const { age } = yield* $(AgeTag, Effect.provide(ageLayer))
+      const { age } = yield* pipe(AgeTag, Effect.provide(ageLayer))
       strictEqual(age, 42)
     }))
   it.effect("sharing with provideTo", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer = makeLayer1(ref)
       const env = layer.pipe(Layer.provide(layer), Layer.build)
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.scoped(env)
+      const result = yield* Ref.get(ref)
       deepStrictEqual(Array.from(result), [acquire1, release1])
     }))
   it.effect("sharing with multiple layers with provideTo", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const layer3 = makeLayer3(ref)
@@ -504,8 +504,8 @@ describe("Layer", () => {
         Layer.merge(layer2.pipe(Layer.provide(layer1))),
         Layer.build
       )
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
+      yield* Effect.scoped(env)
+      const result = yield* pipe(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
       strictEqual(result[0], acquire1)
       assertTrue(result.slice(1, 3).some((s) => s === acquire2))
       assertTrue(result.slice(1, 3).some((s) => s === acquire3))
@@ -514,38 +514,38 @@ describe("Layer", () => {
       strictEqual(result[5], release1)
     }))
   it.effect("finalizers with provideTo", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const env = layer2.pipe(Layer.provide(layer1), Layer.build)
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.scoped(env)
+      const result = yield* Ref.get(ref)
       deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, release1])
     }))
   it.effect("finalizers with multiple layers with provideTo", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const layer3 = makeLayer3(ref)
       const env = layer3.pipe(Layer.provide(layer2), Layer.provide(layer1), Layer.build)
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.scoped(env)
+      const result = yield* Ref.get(ref)
       deepStrictEqual(Array.from(result), [acquire1, acquire2, acquire3, release3, release2, release1])
     }))
   it.effect("retry", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(0))
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(0)
       const effect = ref.pipe(Ref.update((n) => n + 1), Effect.zipRight(Effect.fail("fail")))
       const layer = Layer.effectContext(effect).pipe(Layer.retry(Schedule.recurs(3)))
-      yield* $(Effect.ignore(Effect.scoped(Layer.build(layer))))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.ignore(Effect.scoped(Layer.build(layer)))
+      const result = yield* Ref.get(ref)
       strictEqual(result, 4)
     }))
   it.effect("map does not interfere with sharing", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const layer3 = makeLayer3(ref)
@@ -555,8 +555,8 @@ describe("Layer", () => {
         Layer.provide(Layer.map(layer1, identity)),
         Layer.build
       )
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
+      yield* Effect.scoped(env)
+      const result = yield* pipe(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
       strictEqual(result[0], acquire1)
       assertTrue(result.slice(1, 3).some((s) => s === acquire2))
       assertTrue(result.slice(1, 3).some((s) => s === acquire3))
@@ -565,8 +565,8 @@ describe("Layer", () => {
       strictEqual(result[5], release1)
     }))
   it.effect("mapError does not interfere with sharing", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const layer3 = makeLayer3(ref)
@@ -576,8 +576,8 @@ describe("Layer", () => {
         Layer.provide(Layer.mapError(layer1, identity)),
         Layer.build
       )
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
+      yield* Effect.scoped(env)
+      const result = yield* pipe(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
       strictEqual(result[0], acquire1)
       assertTrue(result.slice(1, 3).some((s) => s === acquire2))
       assertTrue(result.slice(1, 3).some((s) => s === acquire3))
@@ -586,8 +586,8 @@ describe("Layer", () => {
       strictEqual(result[5], release1)
     }))
   it.effect("orDie does not interfere with sharing", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(makeRef())
+    Effect.gen(function*() {
+      const ref = yield* makeRef()
       const layer1 = makeLayer1(ref)
       const layer2 = makeLayer2(ref)
       const layer3 = makeLayer3(ref)
@@ -597,8 +597,8 @@ describe("Layer", () => {
         Layer.provide(Layer.orDie(layer1)),
         Layer.build
       )
-      yield* $(Effect.scoped(env))
-      const result = yield* $(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
+      yield* Effect.scoped(env)
+      const result = yield* pipe(Ref.get(ref), Effect.map((chunk) => Array.from(chunk)))
       strictEqual(result[0], acquire1)
       assertTrue(result.slice(1, 3).some((s) => s === acquire2))
       assertTrue(result.slice(1, 3).some((s) => s === acquire3))
@@ -607,21 +607,21 @@ describe("Layer", () => {
       strictEqual(result[5], release1)
     }))
   it.effect("tap peeks at an acquired resource", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       interface BarService {
         readonly bar: string
       }
       const BarTag = Context.GenericTag<BarService>("BarService")
-      const ref: Ref.Ref<string> = yield* $(Ref.make("foo"))
+      const ref: Ref.Ref<string> = yield* Ref.make("foo")
       const layer = Layer.succeed(BarTag, { bar: "bar" }).pipe(
         Layer.tap((context) => Ref.set(ref, context.pipe(Context.get(BarTag)).bar))
       )
-      yield* $(Effect.scoped(Layer.build(layer)))
-      const result = yield* $(Ref.get(ref))
+      yield* Effect.scoped(Layer.build(layer))
+      const result = yield* Ref.get(ref)
       strictEqual(result, "bar")
     }))
   it.effect("locally", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       interface BarService {
         readonly bar: string
       }
@@ -636,12 +636,12 @@ describe("Layer", () => {
           )
         )
       )
-      const env = yield* $(Effect.scoped(Layer.build(layer)))
+      const env = yield* Effect.scoped(Layer.build(layer))
       const result = Context.get(env, BarTag)
       strictEqual(result.bar, "bar: 100")
     }))
   it.effect("locallyWith", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       interface BarService {
         readonly bar: string
       }
@@ -656,50 +656,50 @@ describe("Layer", () => {
           )
         )
       )
-      const env = yield* $(Effect.scoped(Layer.build(layer)))
+      const env = yield* Effect.scoped(Layer.build(layer))
       const result = Context.get(env, BarTag)
       strictEqual(result.bar, "bar: 1")
     }))
 
   describe("MemoMap", () => {
     it.effect("memoizes layer across builds", () =>
-      Effect.gen(function*($) {
-        const ref = yield* $(makeRef())
+      Effect.gen(function*() {
+        const ref = yield* makeRef()
         const layer1 = makeLayer1(ref)
         const layer2 = makeLayer2(ref).pipe(
           Layer.provide(layer1)
         )
-        const memoMap = yield* $(Layer.makeMemoMap)
-        const scope1 = yield* $(Scope.make())
-        const scope2 = yield* $(Scope.make())
+        const memoMap = yield* Layer.makeMemoMap
+        const scope1 = yield* Scope.make()
+        const scope2 = yield* Scope.make()
 
-        yield* $(Layer.buildWithMemoMap(layer1, memoMap, scope1))
-        yield* $(Layer.buildWithMemoMap(layer2, memoMap, scope2))
-        yield* $(Scope.close(scope2, Exit.void))
-        yield* $(Layer.buildWithMemoMap(layer2, memoMap, scope1))
-        yield* $(Scope.close(scope1, Exit.void))
+        yield* Layer.buildWithMemoMap(layer1, memoMap, scope1)
+        yield* Layer.buildWithMemoMap(layer2, memoMap, scope2)
+        yield* Scope.close(scope2, Exit.void)
+        yield* Layer.buildWithMemoMap(layer2, memoMap, scope1)
+        yield* Scope.close(scope1, Exit.void)
 
-        const result = yield* $(Ref.get(ref))
+        const result = yield* Ref.get(ref)
         deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, acquire2, release2, release1])
       }))
 
     it.effect("layers are not released early", () =>
-      Effect.gen(function*($) {
-        const ref = yield* $(makeRef())
+      Effect.gen(function*() {
+        const ref = yield* makeRef()
         const layer1 = makeLayer1(ref)
         const layer2 = makeLayer2(ref).pipe(
           Layer.provide(layer1)
         )
-        const memoMap = yield* $(Layer.makeMemoMap)
-        const scope1 = yield* $(Scope.make())
-        const scope2 = yield* $(Scope.make())
+        const memoMap = yield* Layer.makeMemoMap
+        const scope1 = yield* Scope.make()
+        const scope2 = yield* Scope.make()
 
-        yield* $(Layer.buildWithMemoMap(layer1, memoMap, scope1))
-        yield* $(Layer.buildWithMemoMap(layer2, memoMap, scope2))
-        yield* $(Scope.close(scope1, Exit.void))
-        yield* $(Scope.close(scope2, Exit.void))
+        yield* Layer.buildWithMemoMap(layer1, memoMap, scope1)
+        yield* Layer.buildWithMemoMap(layer2, memoMap, scope2)
+        yield* Scope.close(scope1, Exit.void)
+        yield* Scope.close(scope2, Exit.void)
 
-        const result = yield* $(Ref.get(ref))
+        const result = yield* Ref.get(ref)
         deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, release1])
       }))
   })
