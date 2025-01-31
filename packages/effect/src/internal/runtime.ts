@@ -122,14 +122,20 @@ export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
 }
 
 /** @internal */
-export const unsafeRunSync = <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>): A => {
-  const result = unsafeRunSyncExit(runtime)(effect)
-  if (result._tag === "Failure") {
-    throw fiberFailure(result.effect_instruction_i0)
-  } else {
-    return result.effect_instruction_i0
+export const unsafeRunSync: {
+  <A, E, R>(effect: Effect.Effect<A, E, R>, runtime: Runtime.Runtime<R>): A
+  <R>(runtime: Runtime.Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => A
+} = dual(
+  2,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, runtime: Runtime.Runtime<R>) => {
+    const result = unsafeRunSyncExit(runtime)(effect)
+    if (result._tag === "Failure") {
+      throw fiberFailure(result.effect_instruction_i0)
+    } else {
+      return result.effect_instruction_i0
+    }
   }
-}
+)
 
 class AsyncFiberExceptionImpl<A, E = never> extends Error implements Runtime.AsyncFiberException<A, E> {
   readonly _tag = "AsyncFiberException"
