@@ -68,8 +68,8 @@ export declare namespace Completions {
       }): Effect.Effect<WithResolved<A>, AiError, R>
       <A, I, R>(options: {
         readonly input: AiInput.Input
-        readonly correlationId: string
         readonly schema: Schema.Schema<A, I, R>
+        readonly correlationId: string
       }): Effect.Effect<WithResolved<A>, AiError, R>
     }
     readonly toolkit: <Tools extends AiToolkit.Tool.AnySchema>(
@@ -183,15 +183,12 @@ export const make = (options: {
           : "_tag" in opts.schema
           ? opts.schema._tag
           : opts.schema.identifier
-        const structuredSchema = "correlationId" in opts
-          ? { ...opts.schema, identifier: opts.correlationId }
-          : opts.schema
         return Effect.serviceOption(AiInput.SystemInstruction).pipe(
           Effect.flatMap((system) =>
             options.create({
               input: input as Chunk.NonEmptyChunk<Message>,
               system: Option.orElse(system, () => parentSystem),
-              tools: [convertTool(structuredSchema, true)],
+              tools: [convertTool(toolId, opts.schema, true)],
               required: true
             })
           ),
@@ -245,7 +242,7 @@ export const make = (options: {
           structured: boolean
         }> = []
         for (const [, tool] of tools.toolkit.tools) {
-          toolArr.push(convertTool(tool as any))
+          toolArr.push(convertTool(tool._tag, tool as any))
         }
         return Effect.serviceOption(AiInput.SystemInstruction).pipe(
           Effect.flatMap((system) =>
@@ -274,7 +271,7 @@ export const make = (options: {
           structured: boolean
         }> = []
         for (const [, tool] of tools.toolkit.tools) {
-          toolArr.push(convertTool(tool as any))
+          toolArr.push(convertTool(tool._tag, tool as any))
         }
         return Effect.serviceOption(AiInput.SystemInstruction).pipe(
           Effect.map((system) =>
@@ -303,10 +300,11 @@ export const make = (options: {
   })
 
 const convertTool = <A, I, R>(
-  schema: Completions.StructuredSchema<A, I, R>,
+  name: string,
+  schema: Schema.Schema<A, I, R>,
   structured = false
 ) => ({
-  name: "identifier" in schema ? schema.identifier : schema._tag,
+  name,
   description: getDescription(schema.ast),
   parameters: makeJsonSchema(schema.ast),
   structured
