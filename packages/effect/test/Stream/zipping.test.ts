@@ -107,8 +107,8 @@ describe("Stream", () => {
     ))
 
   it.effect("zip - terminate in uninterruptible region", () =>
-    Effect.gen(function*(_) {
-      const result = yield* _(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1),
         Stream.zip(Stream.make(2)),
         Stream.runDrain,

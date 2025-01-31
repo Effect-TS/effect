@@ -15,13 +15,13 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("merge - slower stream", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = Stream.make(1, 2, 3, 4)
       const stream2 = Stream.tap(
         Stream.make(5, 6, 7, 8),
         () => TestServices.provideLive(Effect.sleep(Duration.millis(10)))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.merge(stream1, stream2),
         Stream.runCollect
       )
@@ -29,8 +29,8 @@ describe("Stream", () => {
     }))
 
   it.effect("mergeAll - short circuiting", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.mergeAll([Stream.never, Stream.make(1)], { concurrency: 2 }),
         Stream.take(1),
         Stream.runCollect
@@ -53,30 +53,30 @@ describe("Stream", () => {
     }))
 
   it.effect("mergeHaltLeft - terminates as soon as the first stream terminates", () =>
-    Effect.gen(function*($) {
-      const queue1 = yield* $(Queue.unbounded<number>())
-      const queue2 = yield* $(Queue.unbounded<number>())
+    Effect.gen(function*() {
+      const queue1 = yield* (Queue.unbounded<number>())
+      const queue2 = yield* (Queue.unbounded<number>())
       const stream1 = Stream.fromQueue(queue1)
       const stream2 = Stream.fromQueue(queue2)
-      const fiber = yield* $(
+      const fiber = yield* pipe(
         stream1,
         Stream.merge(stream2, { haltStrategy: "left" }),
         Stream.runCollect,
         Effect.fork
       )
-      yield* $(Queue.offer(queue1, 1), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
-      yield* $(Queue.offer(queue1, 2), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
-      yield* $(Queue.shutdown(queue1), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
-      yield* $(Queue.offer(queue2, 3))
-      const result = yield* $(Fiber.join(fiber))
+      yield* pipe(Queue.offer(queue1, 1), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
+      yield* pipe(Queue.offer(queue1, 2), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
+      yield* pipe(Queue.shutdown(queue1), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
+      yield* (Queue.offer(queue2, 3))
+      const result = yield* (Fiber.join(fiber))
       deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("mergeHaltEither - interrupts pulling on finish", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = Stream.make(1, 2, 3)
       const stream2 = Stream.fromEffect(pipe(Effect.sleep(Duration.seconds(5)), Effect.as(4)))
-      const result = yield* $(
+      const result = yield* pipe(
         stream1,
         Stream.merge(stream2, { haltStrategy: "left" }),
         Stream.runCollect
@@ -85,49 +85,49 @@ describe("Stream", () => {
     }))
 
   it.effect("mergeHaltRight - terminates as soon as the second stream terminates", () =>
-    Effect.gen(function*($) {
-      const queue1 = yield* $(Queue.unbounded<number>())
-      const queue2 = yield* $(Queue.unbounded<number>())
+    Effect.gen(function*() {
+      const queue1 = yield* (Queue.unbounded<number>())
+      const queue2 = yield* (Queue.unbounded<number>())
       const stream1 = Stream.fromQueue(queue1)
       const stream2 = Stream.fromQueue(queue2)
-      const fiber = yield* $(
+      const fiber = yield* pipe(
         stream1,
         Stream.merge(stream2, { haltStrategy: "right" }),
         Stream.runCollect,
         Effect.fork
       )
-      yield* $(Queue.offer(queue2, 1), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
-      yield* $(Queue.offer(queue2, 2), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
-      yield* $(Queue.shutdown(queue2), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
-      yield* $(Queue.offer(queue1, 3))
-      const result = yield* $(Fiber.join(fiber))
+      yield* pipe(Queue.offer(queue2, 1), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
+      yield* pipe(Queue.offer(queue2, 2), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
+      yield* pipe(Queue.shutdown(queue2), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
+      yield* (Queue.offer(queue1, 3))
+      const result = yield* (Fiber.join(fiber))
       deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("mergeHaltEither - terminates as soon as either stream terminates", () =>
-    Effect.gen(function*($) {
-      const queue1 = yield* $(Queue.unbounded<number>())
-      const queue2 = yield* $(Queue.unbounded<number>())
+    Effect.gen(function*() {
+      const queue1 = yield* (Queue.unbounded<number>())
+      const queue2 = yield* (Queue.unbounded<number>())
       const stream1 = Stream.fromQueue(queue1)
       const stream2 = Stream.fromQueue(queue2)
-      const fiber = yield* $(
+      const fiber = yield* pipe(
         stream1,
         Stream.merge(stream2, { haltStrategy: "either" }),
         Stream.runCollect,
         Effect.fork
       )
-      yield* $(Queue.shutdown(queue1))
-      yield* $(TestClock.adjust(Duration.seconds(1)))
-      yield* $(Queue.offer(queue2, 1))
-      const result = yield* $(Fiber.join(fiber))
+      yield* (Queue.shutdown(queue1))
+      yield* (TestClock.adjust(Duration.seconds(1)))
+      yield* (Queue.offer(queue2, 1))
+      const result = yield* (Fiber.join(fiber))
       assertTrue(Chunk.isEmpty(result))
     }))
 
   it.effect("merge - equivalence with set union", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = Stream.make(1, 2, 3, 4)
       const stream2 = Stream.make(5, 6, 7, 8)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(
           stream1,
           Stream.merge(stream2),
@@ -147,8 +147,8 @@ describe("Stream", () => {
     }))
 
   it.effect("merge - fails as soon as one stream fails", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.merge(Stream.fail(void 0)),
         Stream.runCollect,
@@ -158,10 +158,10 @@ describe("Stream", () => {
     }))
 
   it.effect("mergeWith - prioritizes failures", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = Stream.never
       const stream2 = Stream.fail("Ouch")
-      const result = yield* $(
+      const result = yield* pipe(
         stream1,
         Stream.mergeWith(stream2, { onSelf: constVoid, onOther: constVoid }),
         Stream.runCollect,

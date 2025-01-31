@@ -74,8 +74,8 @@ describe("ScopedRef", () => {
       strictEqual(released, 3)
     }))
   it.effect("full release", () =>
-    Effect.gen(function*(_) {
-      const ref = yield* _(Effect.scoped(ScopedRef.make(() => 0)))
+    Effect.gen(function*() {
+      const ref = yield* Effect.scoped(ScopedRef.make(() => 0))
       strictEqual(ref.pipe(identity), ref)
     }))
   it.scoped("subtype of Effect", () =>

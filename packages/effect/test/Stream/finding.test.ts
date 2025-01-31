@@ -10,10 +10,10 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("find", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
       const f = (n: number) => n === 4
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.find(f), Stream.runCollect),
         result2: pipe(
           stream,
@@ -29,10 +29,10 @@ describe("Stream", () => {
     }))
 
   it.effect("findEffect - simple example", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
       const f = (n: number) => Effect.succeed(n === 4)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.findEffect(f), Stream.runCollect),
         result2: pipe(
           Stream.runCollect(stream),
@@ -51,8 +51,8 @@ describe("Stream", () => {
     }))
 
   it.effect("findEffect - throws correct error", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.findEffect((n) =>
           n === 3 ?

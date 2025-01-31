@@ -4,6 +4,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
@@ -16,11 +17,11 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("haltWhen - halts after the current element", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<void>())
-      const halt = yield* $(Deferred.make<void>())
-      yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(false))
+      const latch = yield* (Deferred.make<void>())
+      const halt = yield* (Deferred.make<void>())
+      yield* pipe(
         Deferred.await(latch),
         Effect.onInterrupt(() => Ref.set(ref, true)),
         Stream.fromEffect,
@@ -28,17 +29,17 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(Deferred.succeed(halt, void 0))
-      yield* $(Deferred.succeed(latch, void 0))
-      const result = yield* $(Ref.get(ref))
+      yield* (Deferred.succeed(halt, void 0))
+      yield* (Deferred.succeed(latch, void 0))
+      const result = yield* (Ref.get(ref))
       assertFalse(result)
     }))
 
   it.effect("haltWhen - propagates errors", () =>
-    Effect.gen(function*($) {
-      const halt = yield* $(Deferred.make<void, string>())
-      yield* $(Deferred.fail(halt, "fail"))
-      const result = yield* $(
+    Effect.gen(function*() {
+      const halt = yield* (Deferred.make<void, string>())
+      yield* (Deferred.fail(halt, "fail"))
+      const result = yield* pipe(
         Stream.make(0),
         Stream.forever,
         Stream.haltWhen(Deferred.await(halt)),
@@ -49,11 +50,11 @@ describe("Stream", () => {
     }))
 
   it.effect("haltWhenDeferred - halts after the current element", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<void>())
-      const halt = yield* $(Deferred.make<void>())
-      yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(false))
+      const latch = yield* (Deferred.make<void>())
+      const halt = yield* (Deferred.make<void>())
+      yield* pipe(
         Deferred.await(latch),
         Effect.onInterrupt(() => Ref.set(ref, true)),
         Stream.fromEffect,
@@ -61,17 +62,17 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(Deferred.succeed(halt, void 0))
-      yield* $(Deferred.succeed(latch, void 0))
-      const result = yield* $(Ref.get(ref))
+      yield* (Deferred.succeed(halt, void 0))
+      yield* (Deferred.succeed(latch, void 0))
+      const result = yield* (Ref.get(ref))
       assertFalse(result)
     }))
 
   it.effect("haltWhenDeferred - propagates errors", () =>
-    Effect.gen(function*($) {
-      const halt = yield* $(Deferred.make<void, string>())
-      yield* $(Deferred.fail(halt, "fail"))
-      const result = yield* $(
+    Effect.gen(function*() {
+      const halt = yield* (Deferred.make<void, string>())
+      yield* (Deferred.fail(halt, "fail"))
+      const result = yield* pipe(
         Stream.make(1),
         Stream.haltWhenDeferred(halt),
         Stream.runDrain,
@@ -81,14 +82,14 @@ describe("Stream", () => {
     }))
 
   it.effect("haltAfter - halts after the given duration", () =>
-    Effect.gen(function*($) {
-      const coordination = yield* $(chunkCoordination([
+    Effect.gen(function*() {
+      const coordination = yield* (chunkCoordination([
         Chunk.of(1),
         Chunk.of(2),
         Chunk.of(3),
         Chunk.of(4)
       ]))
-      const fiber = yield* $(
+      const fiber = yield* pipe(
         Stream.fromQueue(coordination.queue),
         Stream.filterMapWhile(Exit.match({
           onFailure: Option.none,
@@ -99,23 +100,23 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.fork
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(3))),
         Effect.zipRight(coordination.awaitNext)
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(3))),
         Effect.zipRight(coordination.awaitNext)
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(3))),
         Effect.zipRight(coordination.awaitNext)
       )
-      yield* $(coordination.offer)
-      const result = yield* $(Fiber.join(fiber))
+      yield* (coordination.offer)
+      const result = yield* (Fiber.join(fiber))
       deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1], [2], [3]]
@@ -123,17 +124,17 @@ describe("Stream", () => {
     }))
 
   it.effect("haltAfter - will process first chunk", () =>
-    Effect.gen(function*($) {
-      const queue = yield* $(Queue.unbounded<number>())
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const queue = yield* (Queue.unbounded<number>())
+      const fiber = yield* pipe(
         Stream.fromQueue(queue),
         Stream.haltAfter(Duration.seconds(5)),
         Stream.runCollect,
         Effect.fork
       )
-      yield* $(TestClock.adjust(Duration.seconds(6)))
-      yield* $(Queue.offer(queue, 1))
-      const result = yield* $(Fiber.join(fiber))
+      yield* (TestClock.adjust(Duration.seconds(6)))
+      yield* (Queue.offer(queue, 1))
+      const result = yield* (Fiber.join(fiber))
       deepStrictEqual(Array.from(result), [1])
     }))
 })

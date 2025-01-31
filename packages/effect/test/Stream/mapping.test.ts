@@ -17,10 +17,10 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("map", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
       const f = (n: number) => n * 2
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.map(f), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.map(f)))
       }))
@@ -28,8 +28,8 @@ describe("Stream", () => {
     }))
 
   it.effect("mapAccum", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 1, 1),
         Stream.mapAccum(0, (acc, curr) => [acc + curr, acc + curr]),
         Stream.runCollect
@@ -38,8 +38,8 @@ describe("Stream", () => {
     }))
 
   it.effect("mapAccumEffect - happy path", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 1, 1),
         Stream.mapAccumEffect(0, (acc, curr) => Effect.succeed([acc + curr, acc + curr])),
         Stream.runCollect
@@ -48,8 +48,8 @@ describe("Stream", () => {
     }))
 
   it.effect("mapAccumEffect - error", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 1, 1),
         Stream.mapAccumEffect(0, () => Effect.fail("Ouch")),
         Stream.runCollect,
@@ -59,8 +59,8 @@ describe("Stream", () => {
     }))
 
   it.effect("mapAccumEffect - laziness on chunks", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.mapAccumEffect(void 0, (_, n) =>
           n === 3 ?
@@ -76,10 +76,10 @@ describe("Stream", () => {
     }))
 
   it.effect("mapConcat", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
       const f = (n: number) => Chunk.of(n)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.mapConcat(f), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.flatMap((n) => f(n))))
       }))
@@ -87,10 +87,10 @@ describe("Stream", () => {
     }))
 
   it.effect("mapConcatChunk", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
       const f = (n: number) => Chunk.of(n)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.mapConcatChunk(f), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.flatMap((n) => f(n))))
       }))
@@ -98,10 +98,10 @@ describe("Stream", () => {
     }))
 
   it.effect("mapConcatChunkEffect - happy path", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
       const f = (n: number) => Chunk.of(n)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.mapConcatChunkEffect((n) => Effect.succeed(f(n))), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.flatMap((n) => f(n))))
       }))
@@ -109,8 +109,8 @@ describe("Stream", () => {
     }))
 
   it.effect("mapConcatChunkEffect - error", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.mapConcatChunkEffect(() => Effect.fail("Ouch")),
         Stream.runCollect,
@@ -120,10 +120,10 @@ describe("Stream", () => {
     }))
 
   it.effect("mapConcatEffect - happy path", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
       const f = (n: number) => Chunk.of(n)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.mapConcatEffect((n) => Effect.succeed(f(n))), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.flatMap((n) => f(n))))
       }))
@@ -131,8 +131,8 @@ describe("Stream", () => {
     }))
 
   it.effect("mapConcatEffect - error", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.mapConcatEffect(() => Effect.fail("Ouch")),
         Stream.runCollect,
@@ -142,8 +142,8 @@ describe("Stream", () => {
     }))
 
   it.effect("mapError", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fail("123"),
         Stream.mapError((n) => Number.parseInt(n)),
         Stream.runCollect,
@@ -153,8 +153,8 @@ describe("Stream", () => {
     }))
 
   it.effect("mapErrorCause", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.failCause(Cause.fail("123")),
         Stream.mapErrorCause(Cause.map((s) => Number.parseInt(s))),
         Stream.runCollect,
@@ -164,11 +164,11 @@ describe("Stream", () => {
     }))
 
   it.effect("mapEffect - Effect.forEach equivalence", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunk = Chunk.make(1, 2, 3, 4, 5)
       const stream = Stream.fromIterable(chunk)
       const f = (n: number) => Effect.succeed(n * 2)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.mapEffect(f), Stream.runCollect),
         result2: pipe(chunk, Effect.forEach(f))
       }))
@@ -176,8 +176,8 @@ describe("Stream", () => {
     }))
 
   it.effect("mapEffect - laziness on chunks", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.mapEffect((n) =>
           n === 3 ?
@@ -194,12 +194,12 @@ describe("Stream", () => {
     }))
 
   it.effect("mapEffectPar - Effect.forEachParN equivalence", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const concurrency = 8
       const chunk = Chunk.make(1, 2, 3, 4, 5)
       const stream = Stream.fromIterable(chunk)
       const f = (n: number) => Effect.succeed(n * 2)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.mapEffect(f, { concurrency }), Stream.runCollect),
         result2: Effect.forEach(chunk, f, { concurrency })
       }))
@@ -207,22 +207,22 @@ describe("Stream", () => {
     }))
 
   it.effect("mapEffectPar - ordering when parallelism is 1", () =>
-    Effect.gen(function*($) {
-      const queue = yield* $(Queue.unbounded<number>())
-      yield* $(
+    Effect.gen(function*() {
+      const queue = yield* (Queue.unbounded<number>())
+      yield* pipe(
         Stream.range(0, 8),
         Stream.mapEffect((n) => pipe(Queue.offer(queue, n)), { concurrency: 1 }),
         Stream.runDrain
       )
-      const result = yield* $(Queue.takeAll(queue))
+      const result = yield* (Queue.takeAll(queue))
       deepStrictEqual(Array.from(result), [0, 1, 2, 3, 4, 5, 6, 7, 8])
     }))
 
   it.effect("mapEffectPar - interruption propagation", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<void>())
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(false))
+      const latch = yield* (Deferred.make<void>())
+      const fiber = yield* pipe(
         Stream.make(void 0),
         Stream.mapEffect(() =>
           pipe(
@@ -233,18 +233,18 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(Deferred.await(latch))
-      yield* $(Fiber.interrupt(fiber))
-      const result = yield* $(Ref.get(ref))
+      yield* (Deferred.await(latch))
+      yield* (Fiber.interrupt(fiber))
+      const result = yield* (Ref.get(ref))
       assertTrue(result)
     }))
 
   it.effect("mapEffectPar - guarantees ordering", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const n = 4096
       const chunk = Chunk.make(1, 2, 3, 4, 5)
       const stream = Stream.fromChunk(chunk)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.mapEffect(Effect.succeed), Stream.runCollect),
         result2: pipe(stream, Stream.mapEffect(Effect.succeed, { concurrency: n }), Stream.runCollect)
       }))
@@ -252,8 +252,8 @@ describe("Stream", () => {
     }))
 
   it.effect("mapEffectPar - awaits child fibers properly", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromIterable(Chunk.range(0, 10)),
         Stream.interruptWhen(Effect.never),
         Stream.mapEffect(() => pipe(Effect.succeed(1), Effect.repeatN(200)), { concurrency: 8 }),
@@ -264,11 +264,11 @@ describe("Stream", () => {
     }))
 
   it.effect("mapEffectPar - interrupts pending tasks when one of the tasks fails", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(0))
-      const latch1 = yield* $(Deferred.make<void>())
-      const latch2 = yield* $(Deferred.make<void>())
-      const result = yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(0))
+      const latch1 = yield* (Deferred.make<void>())
+      const latch2 = yield* (Deferred.make<void>())
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.mapEffect(
           (n) =>
@@ -294,14 +294,14 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      const count = yield* $(Ref.get(ref))
+      const count = yield* (Ref.get(ref))
       strictEqual(count, 2)
       deepStrictEqual(result, Exit.fail("boom"))
     }))
 
   it.effect("mapEffectPar - propagates the correct error with subsequent calls to mapEffectPar (ZIO #4514)", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromIterable(Chunk.range(1, 50)),
         Stream.mapEffect((n) => n < 10 ? Effect.succeed(n) : Effect.fail("boom"), { concurrency: 20 }),
         Stream.mapEffect((n) => Effect.succeed(n), { concurrency: 20 }),
@@ -312,22 +312,22 @@ describe("Stream", () => {
     }))
 
   it.effect("mapEffectPar - propagates the error of the original stream", () =>
-    Effect.gen(function*($) {
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const fiber = yield* pipe(
         Stream.range(1, 10),
         Stream.concat(Stream.fail(new Cause.RuntimeException("boom"))),
         Stream.mapEffect(() => Effect.sleep(Duration.seconds(1)), { concurrency: 2 }),
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(TestClock.adjust(Duration.seconds(5)))
-      const exit = yield* $(Fiber.await(fiber))
+      yield* (TestClock.adjust(Duration.seconds(5)))
+      const exit = yield* (Fiber.await(fiber))
       deepStrictEqual(exit, Exit.fail(new Cause.RuntimeException("boom")))
     }))
 
   it.effect("mapEffectParUnordered - mapping with failure is failure", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromIterable(Chunk.range(0, 3)),
         Stream.mapEffect(() => Effect.fail("fail"), { concurrency: 10, unordered: true }),
         Stream.runDrain,
@@ -337,14 +337,14 @@ describe("Stream", () => {
     }))
 
   it.effect("mapEffect with key", () =>
-    Effect.gen(function*(_) {
-      const fiber = yield* _(
+    Effect.gen(function*() {
+      const fiber = yield* pipe(
         Stream.make(10, 20, 30, 40),
         Stream.mapEffect((n) => Effect.delay(Effect.succeed(n), n), { key: identity }),
         Stream.runCollect,
         Effect.fork
       )
-      yield* _(TestClock.adjust(40))
+      yield* TestClock.adjust(40)
       const exit = fiber.unsafePoll()
       assertTrue(Exit.isExit(exit))
       assertTrue(Exit.isSuccess(exit))

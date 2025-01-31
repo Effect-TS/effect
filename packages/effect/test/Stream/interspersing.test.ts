@@ -1,5 +1,6 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
 import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
@@ -7,8 +8,8 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("intersperse - several values", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3, 4),
         Stream.map(String),
         Stream.intersperse("."),
@@ -18,8 +19,8 @@ describe("Stream", () => {
     }))
 
   it.effect("intersperseAffixes - several values", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3, 4),
         Stream.map(String),
         Stream.intersperseAffixes({ start: "[", middle: ".", end: "]" }),
@@ -29,8 +30,8 @@ describe("Stream", () => {
     }))
 
   it.effect("intersperse - single value", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1),
         Stream.map(String),
         Stream.intersperse("."),
@@ -40,8 +41,8 @@ describe("Stream", () => {
     }))
 
   it.effect("intersperseAffixes - single value", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1),
         Stream.map(String),
         Stream.intersperseAffixes({ start: "[", middle: ".", end: "]" }),
@@ -51,8 +52,8 @@ describe("Stream", () => {
     }))
 
   it.effect("intersperse - several from repeat effect (ZIO #3729)", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.repeatEffect(Effect.succeed(42)),
         Stream.map(String),
         Stream.take(4),
@@ -63,8 +64,8 @@ describe("Stream", () => {
     }))
 
   it.effect("intersperse - several from repeat effect chunk single element (ZIO #3729)", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.repeatEffectChunk(Effect.succeed(Chunk.of(42))),
         Stream.map(String),
         Stream.intersperse("."),

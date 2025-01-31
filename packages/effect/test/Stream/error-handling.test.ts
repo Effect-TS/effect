@@ -13,9 +13,9 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("absolve - happy path", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunk = Chunk.range(1, 10)
-      const result = yield* $(
+      const result = yield* pipe(
         chunk,
         Chunk.map(Either.right),
         Stream.fromIterable,
@@ -26,8 +26,8 @@ describe("Stream", () => {
     }))
 
   it.effect("absolve - failure", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromIterable(pipe(Chunk.range(1, 10), Chunk.map(Either.right))),
         Stream.concat(Stream.succeed(Either.left("Ouch"))),
         Stream.mapEffect(identity),
@@ -38,10 +38,10 @@ describe("Stream", () => {
     }))
 
   it.effect("absolve - round trip #1", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const xss = Stream.fromIterable(pipe(Chunk.range(1, 10), Chunk.map(Either.right)))
       const stream = pipe(xss, Stream.concat(Stream.succeed(Either.left("Ouch"))), Stream.concat(xss))
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: Stream.runCollect(stream),
         result2: pipe(Stream.mapEffect(stream, identity), Stream.either, Stream.runCollect)
       }))
@@ -52,10 +52,10 @@ describe("Stream", () => {
     }))
 
   it.effect("absolve - round trip #2", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const xss = Stream.fromIterable(pipe(Chunk.range(1, 10), Chunk.map(Either.right)))
       const stream = pipe(xss, Stream.concat(Stream.fail("Ouch")))
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: Effect.exit(Stream.runCollect(stream)),
         result2: pipe(stream, Stream.either, Stream.mapEffect(identity), Stream.runCollect, Effect.exit)
       }))
@@ -64,10 +64,10 @@ describe("Stream", () => {
     }))
 
   it.effect("catchAllCause - recovery from errors", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = pipe(Stream.make(1, 2), Stream.concat(Stream.fail("boom")))
       const stream2 = Stream.make(3, 4)
-      const result = yield* $(
+      const result = yield* pipe(
         stream1,
         Stream.catchAllCause(() => stream2),
         Stream.runCollect
@@ -76,10 +76,10 @@ describe("Stream", () => {
     }))
 
   it.effect("catchAllCause - recovery from defects", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = pipe(Stream.make(1, 2), Stream.concat(Stream.dieMessage("boom")))
       const stream2 = Stream.make(3, 4)
-      const result = yield* $(
+      const result = yield* pipe(
         stream1,
         Stream.catchAllCause(() => stream2),
         Stream.runCollect
@@ -88,10 +88,10 @@ describe("Stream", () => {
     }))
 
   it.effect("catchAllCause - happy path", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = Stream.make(1, 2)
       const stream2 = Stream.make(3, 4)
-      const result = yield* $(
+      const result = yield* pipe(
         stream1,
         Stream.catchAllCause(() => stream2),
         Stream.runCollect
@@ -100,8 +100,8 @@ describe("Stream", () => {
     }))
 
   it.effect("catchAllCause - executes finalizers", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<string>()))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<string>()))
       const stream1 = pipe(
         Stream.make(1, 2),
         Stream.concat(Stream.fail("boom")),
@@ -112,26 +112,26 @@ describe("Stream", () => {
         Stream.concat(Stream.fail("boom")),
         Stream.ensuring(Ref.update(ref, Chunk.append("s2")))
       )
-      yield* $(
+      yield* pipe(
         stream1,
         Stream.catchAllCause(() => stream2),
         Stream.runCollect,
         Effect.exit
       )
-      const result = yield* $(Ref.get(ref))
+      const result = yield* (Ref.get(ref))
       deepStrictEqual(Array.from(result), ["s1", "s2"])
     }))
 
   it.effect("catchAllCause - releases all resources by the time the failover stream has started", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<number>()))
       const stream = pipe(
         Stream.finalizer(Ref.update(ref, Chunk.append(1))),
         Stream.crossRight(Stream.finalizer(Ref.update(ref, Chunk.append(2)))),
         Stream.crossRight(Stream.finalizer(Ref.update(ref, Chunk.append(3)))),
         Stream.crossRight(Stream.fail("boom"))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.drain(stream),
         Stream.catchAllCause(() => Stream.fromEffect(Ref.get(ref))),
         Stream.runCollect
@@ -140,9 +140,9 @@ describe("Stream", () => {
     }))
 
   it.effect("catchAllCause - propagates the right Exit value to the failing stream (ZIO #3609)", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<Exit.Exit<unknown, unknown>>(Exit.void))
-      yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make<Exit.Exit<unknown, unknown>>(Exit.void))
+      yield* pipe(
         Stream.acquireRelease(
           Effect.void,
           (_, exit) => Ref.set(ref, exit)
@@ -152,18 +152,18 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      const result = yield* $(Ref.get(ref))
+      const result = yield* (Ref.get(ref))
       deepStrictEqual(result, Exit.fail("boom"))
     }))
 
   it.effect("catchSome - recovery from some errors", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = pipe(
         Stream.make(1, 2),
         Stream.concat(Stream.fail("boom"))
       )
       const stream2 = Stream.make(3, 4)
-      const result = yield* $(
+      const result = yield* pipe(
         stream1,
         Stream.catchSome((error) => error === "boom" ? Option.some(stream2) : Option.none()),
         Stream.runCollect
@@ -172,13 +172,13 @@ describe("Stream", () => {
     }))
 
   it.effect("catchSome - fails stream when partial function does not match", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = pipe(
         Stream.make(1, 2),
         Stream.concat(Stream.fail("boom"))
       )
       const stream2 = Stream.make(3, 4)
-      const result = yield* $(
+      const result = yield* pipe(
         stream1,
         Stream.catchSome((error) => error === "boomer" ? Option.some(stream2) : Option.none()),
         Stream.runCollect,
@@ -188,13 +188,13 @@ describe("Stream", () => {
     }))
 
   it.effect("catchSomeCause - recovery from some errors", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = pipe(
         Stream.make(1, 2),
         Stream.concat(Stream.failCause(Cause.fail("boom")))
       )
       const stream2 = Stream.make(3, 4)
-      const result = yield* $(
+      const result = yield* pipe(
         stream1,
         Stream.catchSomeCause((cause) =>
           Cause.isFailType(cause) && cause.error === "boom" ?
@@ -207,13 +207,13 @@ describe("Stream", () => {
     }))
 
   it.effect("catchSomeCause - fails stream when partial function does not match", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = pipe(
         Stream.make(1, 2),
         Stream.concat(Stream.fail("boom"))
       )
       const stream2 = Stream.make(3, 4)
-      const result = yield* $(
+      const result = yield* pipe(
         stream1,
         Stream.catchSomeCause((cause) =>
           Cause.isEmpty(cause) ?
@@ -227,7 +227,7 @@ describe("Stream", () => {
     }))
 
   it.effect("catchTag", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       class ErrorA {
         readonly _tag = "ErrorA"
       }
@@ -235,13 +235,13 @@ describe("Stream", () => {
         readonly _tag = "ErrorB"
       }
 
-      const result1 = yield* _(
+      const result1 = yield* pipe(
         Stream.fail(new ErrorA()),
         Stream.catchTag("ErrorA", () => Stream.make(1, 2)),
         Stream.runCollect
       )
 
-      const result2 = yield* _(
+      const result2 = yield* pipe(
         Stream.fail(new ErrorA()),
         Stream.flatMap(() => Stream.fail(new ErrorB())),
         Stream.catchTag("ErrorB", () => Stream.make(1, 2)),
@@ -254,27 +254,27 @@ describe("Stream", () => {
     }))
 
   it.effect("onError", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(false))
-      const exit = yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(false))
+      const exit = yield* pipe(
         Stream.fail("boom"),
         Stream.onError(() => Ref.set(ref, true)),
         Stream.runDrain,
         Effect.exit
       )
-      const called = yield* $(Ref.get(ref))
+      const called = yield* (Ref.get(ref))
       deepStrictEqual(exit, Exit.fail("boom"))
       assertTrue(called)
     }))
 
   it.effect("orElse", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = pipe(
         Stream.make(1, 2, 3),
         Stream.concat(Stream.fail("boom"))
       )
       const stream2 = Stream.make(4, 5, 6)
-      const result = yield* $(
+      const result = yield* pipe(
         stream1,
         Stream.orElse(() => stream2),
         Stream.runCollect
@@ -283,13 +283,13 @@ describe("Stream", () => {
     }))
 
   it.effect("orElseEither", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = pipe(
         Stream.make(1),
         Stream.concat(Stream.fail("boom"))
       )
       const stream2 = Stream.make(2)
-      const result = yield* $(
+      const result = yield* pipe(
         stream1,
         Stream.orElseEither(() => stream2),
         Stream.runCollect
@@ -298,9 +298,9 @@ describe("Stream", () => {
     }))
 
   it.effect("orElseFail", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = pipe(Stream.succeed(1), Stream.concat(Stream.fail("boom")))
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.orElseFail(() => "boomer"),
         Stream.runCollect,
@@ -310,8 +310,8 @@ describe("Stream", () => {
     }))
 
   it.effect("orElseIfEmpty - produce default value if stream is empty", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.empty,
         Stream.orElseIfEmpty(() => 0),
         Stream.runCollect
@@ -320,8 +320,8 @@ describe("Stream", () => {
     }))
 
   it.effect("orElseIfEmpty - ignores default value when stream is not empty", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1),
         Stream.orElseIfEmpty(() => 0),
         Stream.runCollect
@@ -330,8 +330,8 @@ describe("Stream", () => {
     }))
 
   it.effect("orElseIfEmptyStream - consume default stream if stream is empty", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.empty,
         Stream.orElseIfEmptyStream(() => Stream.range(0, 4)),
         Stream.runCollect
@@ -340,8 +340,8 @@ describe("Stream", () => {
     }))
 
   it.effect("orElseIfEmptyStream - should throw the correct error from the default stream", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.empty,
         Stream.orElseIfEmptyStream(() => Stream.fail("Ouch")),
         Stream.runCollect,
@@ -351,9 +351,9 @@ describe("Stream", () => {
     }))
 
   it.effect("orElseSucceed", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = pipe(Stream.succeed(1), Stream.concat(Stream.fail("boom")))
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.orElseSucceed(() => 2),
         Stream.runCollect

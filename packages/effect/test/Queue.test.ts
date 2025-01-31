@@ -766,8 +766,8 @@ describe("Queue", () => {
   it.effect(
     ".pipe",
     () =>
-      Effect.gen(function*(_) {
-        const queue = yield* _(Queue.unbounded<number>())
+      Effect.gen(function*() {
+        const queue = yield* Queue.unbounded<number>()
         strictEqual(queue.pipe(identity), queue)
       })
   )

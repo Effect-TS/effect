@@ -19,12 +19,12 @@ const StringService = Context.GenericTag<StringService>("string")
 
 describe("Stream", () => {
   it.effect("context", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const context = pipe(
         Context.empty(),
         Context.add(StringService, { string: "test" })
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.context<StringService>(),
         Stream.map(Context.get(StringService)),
         Stream.provideContext(context),
@@ -34,8 +34,8 @@ describe("Stream", () => {
     }))
 
   it.effect("contextWith", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         StringService,
         Stream.provideContext(
           pipe(
@@ -50,8 +50,8 @@ describe("Stream", () => {
     }))
 
   it.effect("contextWithEffect - success", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.contextWithEffect((context: Context.Context<StringService>) =>
           Effect.succeed(pipe(context, Context.get(StringService)))
         ),
@@ -68,8 +68,8 @@ describe("Stream", () => {
     }))
 
   it.effect("contextWithEffect - fails", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.contextWithEffect((_: Context.Context<StringService>) => Effect.fail("boom")),
         Stream.provideContext(
           pipe(
@@ -84,8 +84,8 @@ describe("Stream", () => {
     }))
 
   it.effect("contextWithStream - success", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.contextWithStream((context: Context.Context<StringService>) =>
           Stream.succeed(pipe(context, Context.get(StringService)))
         ),
@@ -102,8 +102,8 @@ describe("Stream", () => {
     }))
 
   it.effect("contextWithStream - fails", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.contextWithStream((_: Context.Context<StringService>) => Stream.fail("boom")),
         Stream.provideContext(
           pipe(
@@ -118,10 +118,10 @@ describe("Stream", () => {
     }))
 
   it.effect("provide", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = StringService
       const layer = Layer.succeed(StringService, { string: "test" })
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.provideLayer(layer),
         Stream.map((s) => s.string),
@@ -131,10 +131,10 @@ describe("Stream", () => {
     }))
 
   it.effect("provideServiceStream", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = StringService
       const service = Stream.succeed<StringService>({ string: "test" })
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.provideServiceStream(StringService, service),
         Stream.map((s) => s.string),
@@ -144,8 +144,8 @@ describe("Stream", () => {
     }))
 
   it.effect("serviceWith", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.map(StringService, (service) => service.string),
         Stream.provideLayer(Layer.succeed(StringService, { string: "test" })),
         Stream.runCollect
@@ -154,8 +154,8 @@ describe("Stream", () => {
     }))
 
   it.effect("serviceWithEffect", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.mapEffect(StringService, (service) => Effect.succeed(service.string)),
         Stream.provideLayer(Layer.succeed(StringService, { string: "test" })),
         Stream.runCollect
@@ -164,8 +164,8 @@ describe("Stream", () => {
     }))
 
   it.effect("serviceWithStream", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.flatMap(StringService, (service) => Stream.succeed(service.string)),
         Stream.provideLayer(Layer.succeed(StringService, { string: "test" })),
         Stream.runCollect
@@ -174,7 +174,7 @@ describe("Stream", () => {
     }))
 
   it.effect("deep provide", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const messages: Array<string> = []
       const effect = Effect.acquireRelease(
         pipe(StringService, Effect.tap((s) => Effect.sync(() => messages.push(s.string)))),
@@ -189,13 +189,13 @@ describe("Stream", () => {
         Stream.concat(pipe(Stream.scoped(effect), Stream.provideSomeLayer(L2))),
         Stream.provideSomeLayer(L0)
       )
-      yield* $(Stream.runDrain(stream))
+      yield* (Stream.runDrain(stream))
       deepStrictEqual(messages, ["test1", "test1", "test2", "test2"])
     }))
 
   it.effect("withSpan", () =>
-    Effect.gen(function*(_) {
-      const spans = yield* _(
+    Effect.gen(function*() {
+      const spans = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.mapEffect((i) =>
           Effect.withSpan(

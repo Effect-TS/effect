@@ -9,12 +9,12 @@ describe("PubSub", () => {
     return PubSub.bounded<number>(2).pipe(
       Effect.flatMap((pubsub) =>
         Effect.scoped(
-          Effect.gen(function*(_) {
-            const dequeue1 = yield* _(PubSub.subscribe(pubsub))
-            const dequeue2 = yield* _(PubSub.subscribe(pubsub))
-            yield* _(PubSub.publishAll(pubsub, messages))
-            const takes1 = yield* _(Queue.takeAll(dequeue1))
-            const takes2 = yield* _(Queue.takeAll(dequeue2))
+          Effect.gen(function*() {
+            const dequeue1 = yield* (PubSub.subscribe(pubsub))
+            const dequeue2 = yield* (PubSub.subscribe(pubsub))
+            yield* (PubSub.publishAll(pubsub, messages))
+            const takes1 = yield* (Queue.takeAll(dequeue1))
+            const takes2 = yield* (Queue.takeAll(dequeue2))
             deepStrictEqual([...takes1], messages)
             deepStrictEqual([...takes2], messages)
           })
@@ -27,12 +27,12 @@ describe("PubSub", () => {
     return PubSub.bounded<number>(4).pipe(
       Effect.flatMap((pubsub) =>
         Effect.scoped(
-          Effect.gen(function*(_) {
-            const dequeue1 = yield* _(PubSub.subscribe(pubsub))
-            const dequeue2 = yield* _(PubSub.subscribe(pubsub))
-            yield* _(PubSub.publishAll(pubsub, messages))
-            const takes1 = yield* _(Queue.takeAll(dequeue1))
-            const takes2 = yield* _(Queue.takeAll(dequeue2))
+          Effect.gen(function*() {
+            const dequeue1 = yield* (PubSub.subscribe(pubsub))
+            const dequeue2 = yield* (PubSub.subscribe(pubsub))
+            yield* (PubSub.publishAll(pubsub, messages))
+            const takes1 = yield* (Queue.takeAll(dequeue1))
+            const takes2 = yield* (Queue.takeAll(dequeue2))
             deepStrictEqual([...takes1], messages)
             deepStrictEqual([...takes2], messages)
           })
@@ -45,12 +45,12 @@ describe("PubSub", () => {
     return PubSub.bounded<number>(3).pipe(
       Effect.flatMap((pubsub) =>
         Effect.scoped(
-          Effect.gen(function*(_) {
-            const dequeue1 = yield* _(PubSub.subscribe(pubsub))
-            const dequeue2 = yield* _(PubSub.subscribe(pubsub))
-            yield* _(PubSub.publishAll(pubsub, messages))
-            const takes1 = yield* _(Queue.takeAll(dequeue1))
-            const takes2 = yield* _(Queue.takeAll(dequeue2))
+          Effect.gen(function*() {
+            const dequeue1 = yield* (PubSub.subscribe(pubsub))
+            const dequeue2 = yield* (PubSub.subscribe(pubsub))
+            yield* (PubSub.publishAll(pubsub, messages))
+            const takes1 = yield* (Queue.takeAll(dequeue1))
+            const takes2 = yield* (Queue.takeAll(dequeue2))
             deepStrictEqual([...takes1], messages)
             deepStrictEqual([...takes2], messages)
           })

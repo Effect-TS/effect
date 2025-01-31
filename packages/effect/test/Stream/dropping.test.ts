@@ -8,10 +8,10 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("drop - simple example", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const n = 2
       const stream = Stream.make(1, 2, 3, 4, 5)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.drop(n), Stream.runCollect),
         result2: pipe(stream, Stream.runCollect, Effect.map(Chunk.drop(n)))
       }))
@@ -19,8 +19,8 @@ describe("Stream", () => {
     }))
 
   it.effect("drop - does not swallow errors", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fail("Ouch"),
         Stream.concat(Stream.make(1)),
         Stream.drop(1),
@@ -31,10 +31,10 @@ describe("Stream", () => {
     }))
 
   it.effect("dropRight - simple example", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const n = 2
       const stream = Stream.make(1, 2, 3, 4, 5)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.dropRight(n), Stream.runCollect),
         result2: pipe(stream, Stream.runCollect, Effect.map(Chunk.dropRight(n)))
       }))
@@ -42,8 +42,8 @@ describe("Stream", () => {
     }))
 
   it.effect("dropRight - does not swallow errors", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1),
         Stream.concat(Stream.fail("Ouch")),
         Stream.dropRight(1),
@@ -54,10 +54,10 @@ describe("Stream", () => {
     }))
 
   it.effect("dropUntil", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
       const f = (n: number) => n < 3
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.dropUntil(f), Stream.runCollect),
         result2: pipe(
           Stream.runCollect(stream),
@@ -68,10 +68,10 @@ describe("Stream", () => {
     }))
 
   it.effect("dropWhile", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
       const f = (n: number) => n < 3
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.dropWhile(f), Stream.runCollect),
         result2: pipe(stream, Stream.runCollect, Effect.map(Chunk.dropWhile(f)))
       }))
@@ -79,8 +79,8 @@ describe("Stream", () => {
     }))
 
   it.effect("dropWhile - short circuits", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1),
         Stream.concat(Stream.fail("Ouch")),
         Stream.take(1),

@@ -140,8 +140,8 @@ describe("Scope", () => {
   it.effect(
     ".pipe",
     () =>
-      Effect.gen(function*(_) {
-        const scope = yield* _(Scope.make())
+      Effect.gen(function*() {
+        const scope = yield* Scope.make()
         strictEqual(scope.pipe(identity), scope)
       })
   )

@@ -195,8 +195,8 @@ describe("Effect", () => {
     const Service = Context.GenericTag<Service>("Service")
     const { foo } = Effect.serviceFunctions(Service)
     return pipe(
-      Effect.gen(function*(_) {
-        strictEqual(yield* _(foo("a", 3)), "a3")
+      Effect.gen(function*() {
+        strictEqual(yield* foo("a", 3), "a3")
       }),
       Effect.provideService(
         Service,
@@ -214,8 +214,8 @@ describe("Effect", () => {
     const Service = Context.GenericTag<Service>("Service")
     const { baz } = Effect.serviceConstants(Service)
     return pipe(
-      Effect.gen(function*(_) {
-        strictEqual(yield* _(baz), "42!")
+      Effect.gen(function*() {
+        strictEqual(yield* baz, "42!")
       }),
       Effect.provideService(
         Service,
@@ -234,9 +234,9 @@ describe("Effect", () => {
     const Service = Context.GenericTag<Service>("Service")
     const { constants, functions } = Effect.serviceMembers(Service)
     return pipe(
-      Effect.gen(function*(_) {
-        strictEqual(yield* _(constants.baz), "42!")
-        strictEqual(yield* _(functions.foo("a", 3)), "a3")
+      Effect.gen(function*() {
+        strictEqual(yield* constants.baz, "42!")
+        strictEqual(yield* functions.foo("a", 3), "a3")
       }),
       Effect.provideService(
         Service,

@@ -613,25 +613,25 @@ describe("Metric", () => {
   })
 
   it.effect("with a description", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const name = "counterName"
       const counter1 = Metric.counter(name)
       const counter2 = Metric.counter(name, { description: "description1" })
       const counter3 = Metric.counter(name, { description: "description2" })
 
-      yield* _(Metric.update(counter1, 1))
-      yield* _(Metric.update(counter2, 1))
-      yield* _(Metric.update(counter3, 1))
+      yield* (Metric.update(counter1, 1))
+      yield* (Metric.update(counter2, 1))
+      yield* (Metric.update(counter3, 1))
 
-      const result1 = yield* _(Metric.value(counter1))
-      const result2 = yield* _(Metric.value(counter2))
-      const result3 = yield* _(Metric.value(counter3))
+      const result1 = yield* (Metric.value(counter1))
+      const result2 = yield* (Metric.value(counter2))
+      const result3 = yield* (Metric.value(counter3))
 
-      const snapshot = yield* _(Metric.snapshot)
-      const pair1 = yield* _(
+      const snapshot = yield* (Metric.snapshot)
+      const pair1 = yield* (
         Array.findFirst(snapshot, (key) => Equal.equals(key.metricKey, MetricKey.counter(name)))
       )
-      const pair2 = yield* _(
+      const pair2 = yield* (
         Array.findFirst(snapshot, (key) =>
           Equal.equals(
             key.metricKey,
@@ -640,7 +640,7 @@ describe("Metric", () => {
             })
           ))
       )
-      const pair3 = yield* _(
+      const pair3 = yield* (
         Array.findFirst(snapshot, (key) =>
           Equal.equals(
             key.metricKey,
@@ -672,10 +672,10 @@ describe("Metric", () => {
     }))
 
   it.effect(".register()", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const id = nextName()
       Metric.counter(id).register()
-      const snapshot = yield* _(Metric.snapshot)
+      const snapshot = yield* (Metric.snapshot)
       const value = pipe(
         Array.fromIterable(snapshot),
         Array.findFirst((_) => _.metricKey.name === id)

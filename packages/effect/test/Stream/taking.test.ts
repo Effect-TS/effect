@@ -10,10 +10,10 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("take", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const take = 3
       const stream = Stream.range(1, 5)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.take(take), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.take(take)))
       }))
@@ -21,27 +21,27 @@ describe("Stream", () => {
     }))
 
   it.effect("take - short circuits", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(false))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(false))
       const stream = pipe(
         Stream.make(1),
         Stream.concat(Stream.drain(Stream.fromEffect(Ref.set(ref, true)))),
         Stream.take(0)
       )
-      yield* $(Stream.runDrain(stream))
-      const result = yield* $(Ref.get(ref))
+      yield* (Stream.runDrain(stream))
+      const result = yield* (Ref.get(ref))
       assertFalse(result)
     }))
 
   it.effect("take - taking 0 short circuits", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(Stream.never, Stream.take(0), Stream.runCollect)
+    Effect.gen(function*() {
+      const result = yield* pipe(Stream.never, Stream.take(0), Stream.runCollect)
       deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("take - taking 1 short circuits", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1),
         Stream.concat(Stream.never),
         Stream.take(1),
@@ -51,10 +51,10 @@ describe("Stream", () => {
     }))
 
   it.effect("takeRight", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const take = 3
       const stream = Stream.range(1, 5)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.takeRight(take), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.takeRight(take)))
       }))
@@ -62,10 +62,10 @@ describe("Stream", () => {
     }))
 
   it.effect("takeUntil", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.range(1, 5)
       const f = (n: number) => n % 3 === 0
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.takeUntil(f), Stream.runCollect),
         result2: pipe(
           Stream.runCollect(stream),
@@ -82,10 +82,10 @@ describe("Stream", () => {
     }))
 
   it.effect("takeUntilEffect", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.range(1, 5)
       const f = (n: number) => Effect.succeed(n % 3 === 0)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.takeUntilEffect(f), Stream.runCollect),
         result2: pipe(
           Stream.runCollect(stream),
@@ -111,8 +111,8 @@ describe("Stream", () => {
     }))
 
   it.effect("takeUntilEffect - laziness on chunks", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.takeUntilEffect((n) =>
           n === 2 ?
@@ -126,10 +126,10 @@ describe("Stream", () => {
     }))
 
   it.effect("takeWhile", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.range(1, 5)
       const f = (n: number) => n <= 3
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.takeWhile(f), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.takeWhile(f)))
       }))
@@ -137,8 +137,8 @@ describe("Stream", () => {
     }))
 
   it.effect("takeWhile - does not stop when hitting an empty chunk (ZIO #4272)", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromChunks(Chunk.of(1), Chunk.of(2), Chunk.of(3)),
         Stream.mapChunks(Chunk.flatMap((n) =>
           n === 2 ?
@@ -152,8 +152,8 @@ describe("Stream", () => {
     }))
 
   it.effect("takeWhile - short circuits", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1),
         Stream.concat(Stream.fail("Ouch")),
         Stream.takeWhile(constFalse),
