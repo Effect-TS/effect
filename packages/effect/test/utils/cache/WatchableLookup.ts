@@ -46,21 +46,21 @@ export const makeEffect = <Key, Value, Error = never>(
     ),
     ([blocked, resources]): WatchableLookup<Key, Value, Error> => {
       function lookup(key: Key): Effect.Effect<Value, Error, Scope.Scope> {
-        return Effect.flatten(Effect.gen(function*($) {
-          const observableResource = yield* $(ObservableResource.makeEffect(concreteLookup(key)))
-          yield* $(Ref.update(resources, (resourceMap) => {
+        return Effect.flatten(Effect.gen(function*() {
+          const observableResource = yield* ObservableResource.makeEffect(concreteLookup(key))
+          yield* Ref.update(resources, (resourceMap) => {
             const newResource = pipe(
               HashMap.get(resourceMap, key),
               Option.getOrElse(() => Chunk.empty<ObservableResource.ObservableResource<Error, Value>>()),
               Chunk.append(observableResource)
             )
             return HashMap.set(resourceMap, key, newResource)
-          }))
+          })
           const schedule = Schedule.intersect(
             Schedule.recurWhile<boolean>(identity),
             Schedule.exponential(Duration.millis(10), 2.0)
           )
-          yield* $(
+          yield* pipe(
             Ref.get(blocked),
             Effect.repeat(schedule),
             TestServices.provideLive

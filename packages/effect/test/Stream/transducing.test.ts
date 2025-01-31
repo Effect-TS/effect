@@ -9,8 +9,8 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("transduce - simple example", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make("1", "2", ",", "3", "4"),
         Stream.transduce(
           pipe(
@@ -25,8 +25,8 @@ describe("Stream", () => {
     }))
 
   it.effect("transduce - no remainder", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3, 4),
         Stream.transduce(Sink.fold(100, (n) => n % 2 === 0, (acc, n) => acc + n)),
         Stream.runCollect
@@ -35,8 +35,8 @@ describe("Stream", () => {
     }))
 
   it.effect("transduce - with a sink that always signals more", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.transduce(Sink.fold(0, constTrue, (acc, n) => acc + n)),
         Stream.runCollect
@@ -45,8 +45,8 @@ describe("Stream", () => {
     }))
 
   it.effect("transduce - propagates scope error", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.transduce(Sink.fail("Woops")),
         Stream.runCollect,

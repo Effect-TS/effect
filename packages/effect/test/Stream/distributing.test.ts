@@ -10,8 +10,8 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("distributedWithDynamic - ensures no race between subscription and stream end", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.empty,
         Stream.distributedWithDynamic({
           maximumLag: 1,

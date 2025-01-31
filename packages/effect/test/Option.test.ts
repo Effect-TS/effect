@@ -33,6 +33,7 @@ describe("Option", () => {
     const g = Option.gen({ ctx: "testContext" as const }, function*() {
       return yield* Option.some(this.ctx)
     })
+    // TODO(4.0) remove this test
     // test adapter
     const h = Option.gen(function*($) {
       const x = yield* $(Option.some(1))

@@ -1,4 +1,5 @@
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import { assertLeft, deepStrictEqual } from "effect/test/util"
@@ -7,8 +8,8 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("some", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.succeed(Option.some(1)),
         Stream.concat(Stream.succeed(Option.none())),
         Stream.some,
@@ -19,8 +20,8 @@ describe("Stream", () => {
     }))
 
   it.effect("some", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.succeed(Option.some(1)),
         Stream.concat(Stream.succeed(Option.none())),
         Stream.someOrElse(() => -1),
@@ -30,8 +31,8 @@ describe("Stream", () => {
     }))
 
   it.effect("someOrFail", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.succeed(Option.some(1)),
         Stream.concat(Stream.succeed(Option.none())),
         Stream.someOrFail(() => -1),

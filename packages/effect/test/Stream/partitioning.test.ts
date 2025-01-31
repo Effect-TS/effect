@@ -12,7 +12,7 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("partitionEither - allows repeated runs without hanging", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = pipe(
         Stream.fromIterable(Chunk.empty<number>()),
         Stream.partitionEither((n) => Effect.succeed(n % 2 === 0 ? Either.left(n) : Either.right(n))),
@@ -20,7 +20,7 @@ describe("Stream", () => {
         Effect.flatMap(Stream.runCollect),
         Effect.scoped
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Effect.all(Array.from({ length: 100 }, () => stream)),
         Effect.as(0)
       )
@@ -28,8 +28,8 @@ describe("Stream", () => {
     }))
 
   it.effect("partition - values", () =>
-    Effect.gen(function*($) {
-      const { result1, result2 } = yield* $(
+    Effect.gen(function*() {
+      const { result1, result2 } = yield* pipe(
         Stream.range(0, 5),
         Stream.partition((n) => n % 2 === 0),
         Effect.flatMap(([odds, evens]) =>
@@ -45,8 +45,8 @@ describe("Stream", () => {
     }))
 
   it.effect("partition - errors", () =>
-    Effect.gen(function*($) {
-      const { result1, result2 } = yield* $(
+    Effect.gen(function*() {
+      const { result1, result2 } = yield* pipe(
         Stream.make(0),
         Stream.concat(Stream.fail("boom")),
         Stream.partition((n) => n % 2 === 0),
@@ -63,15 +63,15 @@ describe("Stream", () => {
     }))
 
   it.effect("partition - backpressure", () =>
-    Effect.gen(function*($) {
-      const { result1, result2, result3 } = yield* $(
+    Effect.gen(function*() {
+      const { result1, result2, result3 } = yield* pipe(
         Stream.range(0, 5),
         Stream.partition((n) => (n % 2 === 0), { bufferSize: 1 }),
         Effect.flatMap(([odds, evens]) =>
-          Effect.gen(function*($) {
-            const ref = yield* $(Ref.make(Chunk.empty<number>()))
-            const latch = yield* $(Deferred.make<void>())
-            const fiber = yield* $(
+          Effect.gen(function*() {
+            const ref = yield* (Ref.make(Chunk.empty<number>()))
+            const latch = yield* (Deferred.make<void>())
+            const fiber = yield* pipe(
               evens,
               Stream.tap((n) =>
                 pipe(
@@ -87,11 +87,11 @@ describe("Stream", () => {
               Stream.runDrain,
               Effect.fork
             )
-            yield* $(Deferred.await(latch))
-            const result1 = yield* $(Ref.get(ref))
-            const result2 = yield* $(Stream.runCollect(odds))
-            yield* $(Fiber.await(fiber))
-            const result3 = yield* $(Ref.get(ref))
+            yield* (Deferred.await(latch))
+            const result1 = yield* (Ref.get(ref))
+            const result2 = yield* (Stream.runCollect(odds))
+            yield* (Fiber.await(fiber))
+            const result3 = yield* (Ref.get(ref))
             return { result1, result2, result3 }
           })
         ),

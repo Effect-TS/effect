@@ -179,9 +179,9 @@ describe("Effect", () => {
     }))
   it.effect("requests are executed correctly", () =>
     provideEnv(
-      Effect.gen(function*($) {
-        const names = yield* $(getAllUserNames)
-        const count = yield* $(Counter)
+      Effect.gen(function*() {
+        const names = yield* getAllUserNames
+        const count = yield* Counter
         strictEqual(count.count, 3)
         assertTrue(names.length > 2)
         deepStrictEqual(names, userIds.map((id) => userNames.get(id)))
@@ -189,9 +189,9 @@ describe("Effect", () => {
     ))
   it.effect("requests with dual syntax are executed correctly", () =>
     provideEnv(
-      Effect.gen(function*($) {
-        const names = yield* $(getAllUserNamesPiped)
-        const count = yield* $(Counter)
+      Effect.gen(function*() {
+        const names = yield* getAllUserNamesPiped
+        const count = yield* Counter
         strictEqual(count.count, 3)
         assertTrue(names.length > 2)
         deepStrictEqual(names, userIds.map((id) => userNames.get(id)))
@@ -199,9 +199,9 @@ describe("Effect", () => {
     ))
   it.effect("requests are executed correctly with fromEffectTagged", () =>
     provideEnv(
-      Effect.gen(function*($) {
-        const names = yield* $(getAllUserNamesTagged)
-        const count = yield* $(Counter)
+      Effect.gen(function*() {
+        const names = yield* getAllUserNamesTagged
+        const count = yield* Counter
         strictEqual(count.count, 3)
         assertTrue(names.length > 2)
         deepStrictEqual(names, userIds.map((id) => userNames.get(id)))
@@ -209,14 +209,14 @@ describe("Effect", () => {
     ))
   it.effect("batching composes", () =>
     provideEnv(
-      Effect.gen(function*($) {
-        const cache = yield* $(FiberRef.get(FiberRef.currentRequestCache))
-        yield* $(cache.invalidateAll)
-        const names = yield* $(Effect.zip(getAllUserNames, getAllUserNames, {
+      Effect.gen(function*() {
+        const cache = yield* (FiberRef.get(FiberRef.currentRequestCache))
+        yield* (cache.invalidateAll)
+        const names = yield* (Effect.zip(getAllUserNames, getAllUserNames, {
           concurrent: true,
           batching: true
         }))
-        const count = yield* $(Counter)
+        const count = yield* Counter
         strictEqual(count.count, 3)
         assertTrue(names[0].length > 2)
         deepStrictEqual(names[0], userIds.map((id) => userNames.get(id)))
@@ -225,8 +225,8 @@ describe("Effect", () => {
     ))
   it.effect("withSpan doesn't break batching", () =>
     provideEnv(
-      Effect.gen(function*($) {
-        yield* $(
+      Effect.gen(function*() {
+        yield* pipe(
           Effect.zip(
             getAllUserIds.pipe(Effect.withSpan("A")),
             getAllUserIds.pipe(Effect.withSpan("B")),
@@ -234,15 +234,15 @@ describe("Effect", () => {
           ),
           Effect.withRequestCaching(false)
         )
-        const count = yield* $(Counter)
+        const count = yield* Counter
         strictEqual(count.count, 1)
       })
     ))
   it.effect("batching is independent from parallelism", () =>
     provideEnv(
-      Effect.gen(function*($) {
-        const names = yield* $(getAllUserNamesN(5))
-        const count = yield* $(Counter)
+      Effect.gen(function*() {
+        const names = yield* (getAllUserNamesN(5))
+        const count = yield* Counter
         strictEqual(count.count, 3)
         assertTrue(names.length > 2)
         deepStrictEqual(names, userIds.map((id) => userNames.get(id)))
@@ -251,8 +251,8 @@ describe("Effect", () => {
   it.effect("batching doesn't break interruption", () =>
     Effect.locally(interrupts, { interrupts: 0 })(
       provideEnv(
-        Effect.gen(function*($) {
-          const exit = yield* $(
+        Effect.gen(function*() {
+          const exit = yield* pipe(
             getAllUserNames,
             Effect.zipLeft(Effect.interrupt, {
               concurrent: true,
@@ -264,53 +264,53 @@ describe("Effect", () => {
           if (exit._tag === "Failure") {
             assertTrue(Cause.isInterruptedOnly(exit.cause))
           }
-          const cache = yield* $(FiberRef.get(FiberRef.currentRequestCache))
-          const values = yield* $(cache.values)
+          const cache = yield* (FiberRef.get(FiberRef.currentRequestCache))
+          const values = yield* (cache.values)
           strictEqual(values[0].handle.state.current._tag, "Done")
-          deepStrictEqual(yield* $(Counter), { count: 0 })
-          deepStrictEqual(yield* $(FiberRef.get(interrupts)), { interrupts: 1 })
+          deepStrictEqual(yield* Counter, { count: 0 })
+          deepStrictEqual(yield* (FiberRef.get(interrupts)), { interrupts: 1 })
         })
       )
     ))
   it.effect("requests dont't break interruption", () =>
     Effect.locally(interrupts, { interrupts: 0 })(
       provideEnv(
-        Effect.gen(function*($) {
-          const fiber = yield* $(getAllUserNames, Effect.fork)
-          yield* $(Effect.yieldNow())
-          yield* $(Fiber.interrupt(fiber))
-          const exit = yield* $(Fiber.await(fiber))
+        Effect.gen(function*() {
+          const fiber = yield* pipe(getAllUserNames, Effect.fork)
+          yield* (Effect.yieldNow())
+          yield* (Fiber.interrupt(fiber))
+          const exit = yield* (Fiber.await(fiber))
           strictEqual(exit._tag, "Failure")
           if (exit._tag === "Failure") {
             assertTrue(Cause.isInterruptedOnly(exit.cause))
           }
-          deepStrictEqual(yield* $(Counter), { count: 0 })
-          deepStrictEqual(yield* $(FiberRef.get(interrupts)), { interrupts: 1 })
+          deepStrictEqual(yield* Counter, { count: 0 })
+          deepStrictEqual(yield* (FiberRef.get(interrupts)), { interrupts: 1 })
         })
       )
     ))
   it.effect("requests work with uninterruptible", () =>
     Effect.locally(interrupts, { interrupts: 0 })(
       provideEnv(
-        Effect.gen(function*($) {
-          const fiber = yield* $(getAllUserNames, Effect.uninterruptible, Effect.fork)
-          yield* $(Effect.yieldNow())
-          yield* $(Fiber.interrupt(fiber))
-          const exit = yield* $(Fiber.await(fiber))
+        Effect.gen(function*() {
+          const fiber = yield* pipe(getAllUserNames, Effect.uninterruptible, Effect.fork)
+          yield* (Effect.yieldNow())
+          yield* (Fiber.interrupt(fiber))
+          const exit = yield* (Fiber.await(fiber))
           strictEqual(exit._tag, "Failure")
           if (exit._tag === "Failure") {
             assertTrue(Cause.isInterruptedOnly(exit.cause))
           }
-          deepStrictEqual(yield* $(Counter), { count: 3 })
-          deepStrictEqual(yield* $(FiberRef.get(interrupts)), { interrupts: 0 })
+          deepStrictEqual(yield* Counter, { count: 3 })
+          deepStrictEqual(yield* (FiberRef.get(interrupts)), { interrupts: 0 })
         })
       )
     ))
   it.effect("batching doesn't break interruption when limited", () =>
     Effect.locally(interrupts, { interrupts: 0 })(
       provideEnv(
-        Effect.gen(function*($) {
-          const exit = yield* $(
+        Effect.gen(function*() {
+          const exit = yield* pipe(
             getAllUserNames,
             Effect.zipLeft(Effect.interrupt, {
               concurrent: true,
@@ -322,15 +322,15 @@ describe("Effect", () => {
           if (exit._tag === "Failure") {
             assertTrue(Cause.isInterruptedOnly(exit.cause))
           }
-          deepStrictEqual(yield* $(Counter), { count: 0 })
-          deepStrictEqual(yield* $(FiberRef.get(interrupts)), { interrupts: 1 })
+          deepStrictEqual(yield* Counter, { count: 0 })
+          deepStrictEqual(yield* (FiberRef.get(interrupts)), { interrupts: 1 })
         })
       )
     ))
   it.effect("zip/parallel is not batched when specified", () =>
     provideEnv(
-      Effect.gen(function*($) {
-        const [a, b] = yield* $(
+      Effect.gen(function*() {
+        const [a, b] = yield* pipe(
           Effect.zip(
             getUserNameById(userIds[0]),
             getUserNameById(userIds[1]),
@@ -341,7 +341,7 @@ describe("Effect", () => {
           ),
           Effect.withRequestBatching(true)
         )
-        const count = yield* $(Counter)
+        const count = yield* Counter
         strictEqual(count.count, 2)
         deepStrictEqual(a, userNames.get(userIds[0]))
         deepStrictEqual(b, userNames.get(userIds[1]))
@@ -349,8 +349,8 @@ describe("Effect", () => {
     ))
   it.effect("zip/parallel is batched by default", () =>
     provideEnv(
-      Effect.gen(function*($) {
-        const [a, b] = yield* $(
+      Effect.gen(function*() {
+        const [a, b] = yield* (
           Effect.zip(
             getUserNameById(userIds[0]),
             getUserNameById(userIds[1]),
@@ -360,7 +360,7 @@ describe("Effect", () => {
             }
           )
         )
-        const count = yield* $(Counter)
+        const count = yield* Counter
         strictEqual(count.count, 1)
         deepStrictEqual(a, userNames.get(userIds[0]))
         deepStrictEqual(b, userNames.get(userIds[1]))
@@ -368,54 +368,54 @@ describe("Effect", () => {
     ))
   it.effect("cache respects ttl", () =>
     provideEnv(
-      Effect.gen(function*($) {
-        yield* $(getAllUserIds)
-        yield* $(getAllUserIds)
-        deepStrictEqual(yield* $(Counter), { count: 1 })
-        yield* $(TestClock.adjust(seconds(10)))
-        yield* $(getAllUserIds)
-        yield* $(getAllUserIds)
-        deepStrictEqual(yield* $(Counter), { count: 1 })
-        yield* $(TestClock.adjust(seconds(60)))
-        yield* $(getAllUserIds)
-        yield* $(getAllUserIds)
-        deepStrictEqual(yield* $(Counter), { count: 2 })
+      Effect.gen(function*() {
+        yield* getAllUserIds
+        yield* getAllUserIds
+        deepStrictEqual(yield* Counter, { count: 1 })
+        yield* (TestClock.adjust(seconds(10)))
+        yield* getAllUserIds
+        yield* getAllUserIds
+        deepStrictEqual(yield* Counter, { count: 1 })
+        yield* (TestClock.adjust(seconds(60)))
+        yield* getAllUserIds
+        yield* getAllUserIds
+        deepStrictEqual(yield* Counter, { count: 2 })
       })
     ))
   it.effect("cache can be warmed up", () =>
     provideEnv(
-      Effect.gen(function*($) {
-        yield* $(Effect.cacheRequestResult(GetAllIds({}), Exit.succeed(userIds)))
-        yield* $(getAllUserIds)
-        yield* $(getAllUserIds)
-        deepStrictEqual(yield* $(Counter), { count: 0 })
-        yield* $(TestClock.adjust(seconds(65)))
-        yield* $(getAllUserIds)
-        yield* $(getAllUserIds)
-        deepStrictEqual(yield* $(Counter), { count: 1 })
+      Effect.gen(function*() {
+        yield* (Effect.cacheRequestResult(GetAllIds({}), Exit.succeed(userIds)))
+        yield* getAllUserIds
+        yield* getAllUserIds
+        deepStrictEqual(yield* Counter, { count: 0 })
+        yield* (TestClock.adjust(seconds(65)))
+        yield* getAllUserIds
+        yield* getAllUserIds
+        deepStrictEqual(yield* Counter, { count: 1 })
       })
     ))
   it.effect("cache can be disabled", () =>
     provideEnv(
-      Effect.withRequestCaching(false)(Effect.gen(function*($) {
-        yield* $(getAllUserIds)
-        yield* $(getAllUserIds)
-        deepStrictEqual(yield* $(Counter), { count: 2 })
-        yield* $(TestClock.adjust(seconds(10)))
-        yield* $(getAllUserIds)
-        yield* $(getAllUserIds)
-        deepStrictEqual(yield* $(Counter), { count: 4 })
-        yield* $(TestClock.adjust(seconds(60)))
-        yield* $(getAllUserIds)
-        yield* $(getAllUserIds)
-        deepStrictEqual(yield* $(Counter), { count: 6 })
+      Effect.withRequestCaching(false)(Effect.gen(function*() {
+        yield* getAllUserIds
+        yield* getAllUserIds
+        deepStrictEqual(yield* Counter, { count: 2 })
+        yield* (TestClock.adjust(seconds(10)))
+        yield* getAllUserIds
+        yield* getAllUserIds
+        deepStrictEqual(yield* Counter, { count: 4 })
+        yield* (TestClock.adjust(seconds(60)))
+        yield* getAllUserIds
+        yield* getAllUserIds
+        deepStrictEqual(yield* Counter, { count: 6 })
       }))
     ))
 
   it.effect("batching preserves individual & identical requests", () =>
     provideEnv(
-      Effect.gen(function*($) {
-        yield* $(
+      Effect.gen(function*() {
+        yield* pipe(
           Effect.all([getUserNameById(userIds[0]), getUserNameById(userIds[0])], {
             concurrency: "unbounded",
             batching: true,
@@ -423,8 +423,8 @@ describe("Effect", () => {
           }),
           Effect.withRequestCaching(false)
         )
-        const requests = yield* $(Requests)
-        const invocations = yield* $(Counter)
+        const requests = yield* Requests
+        const invocations = yield* Counter
         deepStrictEqual(requests.count, 2)
         deepStrictEqual(invocations.count, 1)
       })

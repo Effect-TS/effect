@@ -11,7 +11,7 @@ import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("findEffect - with head sink", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const sink = pipe(
         Sink.head<number>(),
         Sink.findEffect(Option.match({
@@ -19,7 +19,7 @@ describe("Sink", () => {
           onSome: (n) => Effect.succeed(n >= 10)
         }))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         [1, 3, 7, 20],
         Effect.forEach((n) =>
           pipe(
@@ -34,12 +34,12 @@ describe("Sink", () => {
     }))
 
   it.effect("findEffect - take sink across multiple chunks", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const sink = pipe(
         Sink.take<number>(4),
         Sink.findEffect((chunk) => Effect.succeed(pipe(chunk, Chunk.reduce(0, (x, y) => x + y)) > 10))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromIterable(Chunk.range(1, 8)),
         Stream.rechunk(2),
         Stream.run(sink),
@@ -49,12 +49,12 @@ describe("Sink", () => {
     }))
 
   it.effect("findEffect - empty stream terminates with none", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const sink = pipe(
         Sink.sum,
         Sink.findEffect((n) => Effect.succeed(n > 0))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromIterable([]),
         Stream.run(sink)
       )
@@ -62,7 +62,7 @@ describe("Sink", () => {
     }))
 
   it.effect("findEffect - unsatisfied condition terminates with none", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const sink = pipe(
         Sink.head<number>(),
         Sink.findEffect(Option.match({
@@ -70,7 +70,7 @@ describe("Sink", () => {
           onSome: (n) => Effect.succeed(n >= 3)
         }))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromIterable([1, 2]),
         Stream.run(sink)
       )
@@ -78,8 +78,8 @@ describe("Sink", () => {
     }))
 
   it.effect("forEachWhile - handles leftovers", () =>
-    Effect.gen(function*($) {
-      const [result, value] = yield* $(
+    Effect.gen(function*() {
+      const [result, value] = yield* pipe(
         Stream.range(1, 4),
         Stream.run(pipe(
           Sink.forEachWhile((n: number) => Effect.succeed(n <= 3)),
@@ -91,9 +91,9 @@ describe("Sink", () => {
     }))
 
   it.effect("splitWhere - should split a stream on a predicate and run each part into the sink", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5, 6, 7, 8)
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.transduce(pipe(Sink.collectAll<number>(), Sink.splitWhere((n) => n % 2 === 0))),
         Stream.runCollect
@@ -105,9 +105,9 @@ describe("Sink", () => {
     }))
 
   it.effect("splitWhere - should split a stream on a predicate and run each part into the sink, in several chunks", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.fromChunks(Chunk.make(1, 2, 3, 4), Chunk.make(5, 6, 7, 8))
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.transduce(pipe(Sink.collectAll<number>(), Sink.splitWhere((n) => n % 2 === 0))),
         Stream.runCollect
@@ -119,9 +119,9 @@ describe("Sink", () => {
     }))
 
   it.effect("splitWhere - should not yield an empty sink if split on the first element", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5, 6, 7, 8)
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.transduce(pipe(Sink.collectAll<number>(), Sink.splitWhere((n) => n % 2 !== 0))),
         Stream.runCollect

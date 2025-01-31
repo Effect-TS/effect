@@ -12,8 +12,8 @@ import { describe } from "vitest"
 
 describe("Channel", () => {
   it.effect("mergeWith - simple merge", () =>
-    Effect.gen(function*($) {
-      const [chunk, value] = yield* $(
+    Effect.gen(function*() {
+      const [chunk, value] = yield* pipe(
         Channel.writeAll(1, 2, 3),
         Channel.mergeWith({
           other: Channel.writeAll(4, 5, 6),
@@ -28,7 +28,7 @@ describe("Channel", () => {
     }))
 
   it.effect("mergeWith - merge with different types", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const left = pipe(
         Channel.write(1),
         Channel.zipRight(
@@ -57,7 +57,7 @@ describe("Channel", () => {
           )
         )
       )
-      const [chunk, value] = yield* $(
+      const [chunk, value] = yield* pipe(
         left,
         Channel.mergeWith({
           other: right,
@@ -74,7 +74,7 @@ describe("Channel", () => {
     }))
 
   it.effect("mergeWith - handles polymorphic failures", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const left = pipe(
         Channel.write(1),
         Channel.zipRight(pipe(Channel.fail("boom"), Channel.as(true)))
@@ -83,7 +83,7 @@ describe("Channel", () => {
         Channel.write(2),
         Channel.zipRight(pipe(Channel.fail(true), Channel.as(true)))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         left,
         Channel.mergeWith({
           other: right,
@@ -117,9 +117,9 @@ describe("Channel", () => {
     }))
 
   it.effect("mergeWith - interrupts losing side", () =>
-    Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<void>())
-      const interrupted = yield* $(Ref.make(false))
+    Effect.gen(function*() {
+      const latch = yield* (Deferred.make<void>())
+      const interrupted = yield* (Ref.make(false))
       const left = Channel.zipRight(
         Channel.write(1),
         pipe(
@@ -143,7 +143,7 @@ describe("Channel", () => {
             Effect.flatMap((isInterrupted) => isInterrupted ? Effect.void : Effect.fail(void 0))
           ))
       })
-      const result = yield* $(Effect.exit(Channel.runDrain(merged)))
+      const result = yield* (Effect.exit(Channel.runDrain(merged)))
       deepStrictEqual(result, Exit.succeed(void 0))
     }))
 })

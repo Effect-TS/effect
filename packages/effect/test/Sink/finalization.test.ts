@@ -9,25 +9,25 @@ import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("ensuring - happy path", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(false))
-      yield* $(
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(false)
+      yield* pipe(
         Stream.make(1, 2, 3, 4, 5),
         Stream.run(pipe(Sink.drain, Sink.ensuring(Ref.set(ref, true))))
       )
-      const result = yield* $(Ref.get(ref))
+      const result = yield* Ref.get(ref)
       assertTrue(result)
     }))
 
   it.effect("ensuring - error", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(false))
-      yield* $(
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(false)
+      yield* pipe(
         Stream.fail("boom!"),
         Stream.run(pipe(Sink.drain, Sink.ensuring(Ref.set(ref, true)))),
         Effect.ignore
       )
-      const result = yield* $(Ref.get(ref))
+      const result = yield* Ref.get(ref)
       assertTrue(result)
     }))
 })

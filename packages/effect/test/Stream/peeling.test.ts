@@ -10,9 +10,9 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("peel", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const sink = Sink.take<number>(3)
-      const [peeled, rest] = yield* $(
+      const [peeled, rest] = yield* pipe(
         Stream.fromChunks(Chunk.range(1, 3), Chunk.range(4, 6)),
         Stream.peel(sink),
         Effect.flatMap(([peeled, rest]) =>
@@ -28,14 +28,14 @@ describe("Stream", () => {
     }))
 
   it.effect("peel - propagates errors", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.repeatEffect(Effect.fail("fail"))
       const sink = Sink.fold<Chunk.Chunk<number>, number>(
         Chunk.empty(),
         constTrue,
         Chunk.append
       )
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.peel(sink),
         Effect.exit,

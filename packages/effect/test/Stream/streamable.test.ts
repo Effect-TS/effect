@@ -9,7 +9,7 @@ describe("Streamable", () => {
   it.effect(
     "allows creating custom Stream types",
     () =>
-      Effect.gen(function*($) {
+      Effect.gen(function*() {
         class MyStream extends Streamable.Class<number> {
           toStream() {
             return Stream.fromIterable([1, 2, 3])
@@ -17,7 +17,7 @@ describe("Streamable", () => {
         }
         const stream = new MyStream()
 
-        const values = Array.from(yield* $(Stream.runCollect(stream)))
+        const values = Array.from(yield* Stream.runCollect(stream))
 
         deepStrictEqual(values, [1, 2, 3])
       })

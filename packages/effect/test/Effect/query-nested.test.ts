@@ -137,10 +137,10 @@ const EnvLive = Layer.mergeAll(
 
 describe("Effect", () => {
   it.effect("nested queries are batched", () =>
-    Effect.gen(function*($) {
-      const parents = yield* $(getAllParents)
+    Effect.gen(function*() {
+      const parents = yield* getAllParents
 
-      yield* $(Effect.forEach(
+      yield* Effect.forEach(
         parents,
         (parent) =>
           Effect.flatMap(
@@ -167,10 +167,10 @@ describe("Effect", () => {
           concurrency: "inherit",
           batching: "inherit"
         }
-      ))
+      )
 
-      const count = yield* $(Counter)
-      const requests = yield* $(Requests)
+      const count = yield* Counter
+      const requests = yield* Requests
 
       strictEqual(count.count, 3)
       strictEqual(requests.count, 7)

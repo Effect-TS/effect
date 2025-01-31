@@ -7,13 +7,13 @@ import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("returns first success", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(Effect.raceAll([Effect.fail("fail"), Effect.succeed(24)]))
+    Effect.gen(function*() {
+      const result = yield* (Effect.raceAll([Effect.fail("fail"), Effect.succeed(24)]))
       strictEqual(result, 24)
     }))
   it.live("returns last failure", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* (
         pipe(
           Effect.raceAll([pipe(Effect.sleep(Duration.millis(100)), Effect.zipRight(Effect.fail(24))), Effect.fail(25)]),
           Effect.flip
@@ -22,8 +22,8 @@ describe("Effect", () => {
       strictEqual(result, 24)
     }))
   it.live("returns success when it happens after failure", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* (
         Effect.raceAll([
           Effect.fail(42),
           pipe(Effect.succeed(24), Effect.zipLeft(Effect.sleep(Duration.millis(100))))

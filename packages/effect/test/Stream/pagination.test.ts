@@ -1,5 +1,6 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import { deepStrictEqual } from "effect/test/util"
@@ -8,9 +9,9 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("paginate", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const s: readonly [number, Array<number>] = [0, [1, 2, 3]]
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.paginate(s, ([n, nums]) =>
           nums.length === 0 ?
             [n, Option.none()] as const :
@@ -21,9 +22,9 @@ describe("Stream", () => {
     }))
 
   it.effect("paginateEffect", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const s: readonly [number, Array<number>] = [0, [1, 2, 3]]
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.paginateEffect(
           s,
           (
@@ -39,10 +40,10 @@ describe("Stream", () => {
     }))
 
   it.effect("paginateChunk", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const s: readonly [Chunk.Chunk<number>, Array<number>] = [Chunk.of(0), [1, 2, 3, 4, 5]]
       const pageSize = 2
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.paginateChunk(s, ([chunk, nums]) =>
           nums.length === 0 ?
             [chunk, Option.none()] as const :
@@ -61,10 +62,10 @@ describe("Stream", () => {
     }))
 
   it.effect("paginateChunkEffect", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const s: readonly [Chunk.Chunk<number>, Array<number>] = [Chunk.of(0), [1, 2, 3, 4, 5]]
       const pageSize = 2
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.paginateChunkEffect(s, ([chunk, nums]) =>
           nums.length === 0 ?
             Effect.succeed([chunk, Option.none<readonly [Chunk.Chunk<number>, Array<number>]>()] as const) :

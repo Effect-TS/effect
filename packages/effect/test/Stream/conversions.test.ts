@@ -12,13 +12,13 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("toQueue", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunk = Chunk.make(1, 2, 3)
       const stream = pipe(
         Stream.fromChunk(chunk),
         Stream.flatMap(Stream.succeed)
       )
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.toQueue({ capacity: 1_000 }),
         Effect.flatMap((queue) =>
@@ -39,13 +39,13 @@ describe("Stream", () => {
     }))
 
   it.effect("toQueueUnbounded", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunk = Chunk.make(1, 2, 3)
       const stream = pipe(
         Stream.fromChunk(chunk),
         Stream.flatMap(Stream.succeed)
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.toQueue(stream, { strategy: "unbounded" }),
         Effect.flatMap((queue) =>
           pipe(
@@ -65,8 +65,8 @@ describe("Stream", () => {
     }))
 
   it.effect("toQueueOfElements - propagates defects", () =>
-    Effect.gen(function*($) {
-      const queue = yield* $(
+    Effect.gen(function*() {
+      const queue = yield* pipe(
         Stream.dieMessage("die"),
         Stream.toQueueOfElements({ capacity: 1 }),
         Effect.flatMap(Queue.take),

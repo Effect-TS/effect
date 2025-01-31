@@ -8,15 +8,15 @@ import { describe } from "vitest"
 
 describe("Channel", () => {
   it.effect("succeed", () =>
-    Effect.gen(function*($) {
-      const [chunk, value] = yield* $(Channel.runCollect(Channel.succeed(1)))
+    Effect.gen(function*() {
+      const [chunk, value] = yield* Channel.runCollect(Channel.succeed(1))
       assertTrue(Chunk.isEmpty(chunk))
       strictEqual(value, 1)
     }))
 
   it.effect("fail", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(Effect.exit(Channel.runCollect(Channel.fail("uh oh"))))
+    Effect.gen(function*() {
+      const result = yield* Effect.exit(Channel.runCollect(Channel.fail("uh oh")))
       deepStrictEqual(result, Exit.fail("uh oh"))
     }))
 })

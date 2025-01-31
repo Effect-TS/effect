@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as RuntimeFlags from "effect/RuntimeFlags"
 import * as Scope from "effect/Scope"
@@ -31,11 +32,11 @@ describe("Effect", () => {
       readonly _: unique symbol
     }
     const SomeService = Context.GenericTag<SomeService, typeof someServiceImpl>("SomeService")
-    return Effect.gen(function*(_) {
-      const rt = yield* _(Layer.succeedContext(Context.empty()), Layer.toRuntime)
-      const pre = yield* _(Effect.context<never>())
-      yield* _(Effect.provide(Effect.void, rt))
-      const post = yield* _(Effect.context<never>())
+    return Effect.gen(function*() {
+      const rt = yield* pipe(Layer.succeedContext(Context.empty()), Layer.toRuntime)
+      const pre = yield* Effect.context<never>()
+      yield* Effect.provide(Effect.void, rt)
+      const post = yield* Effect.context<never>()
       assertTrue(Equal.equals(pre, post))
     }).pipe(
       Effect.scoped,
@@ -54,17 +55,17 @@ describe("Effect", () => {
     const all = await Effect.runPromise(Effect.all(
       [
         Effect.provide(
-          Effect.gen(function*($) {
-            const a = yield* $(FiberRef.get(ref))
-            const b = yield* $(A)
-            const c = RuntimeFlags.isEnabled(yield* $(Effect.getRuntimeFlags), RuntimeFlags.OpSupervision)
+          Effect.gen(function*() {
+            const a = yield* FiberRef.get(ref)
+            const b = yield* A
+            const c = RuntimeFlags.isEnabled(yield* pipe(Effect.getRuntimeFlags), RuntimeFlags.OpSupervision)
             return { a, b, c }
           }),
           runtime
         ),
-        Effect.gen(function*($) {
-          const a = yield* $(FiberRef.get(ref))
-          const c = RuntimeFlags.isEnabled(yield* $(Effect.getRuntimeFlags), RuntimeFlags.OpSupervision)
+        Effect.gen(function*() {
+          const a = yield* FiberRef.get(ref)
+          const c = RuntimeFlags.isEnabled(yield* pipe(Effect.getRuntimeFlags), RuntimeFlags.OpSupervision)
           return { a, c }
         })
       ]

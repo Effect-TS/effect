@@ -18,20 +18,20 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("forever", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(0))
-      yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(0))
+      yield* pipe(
         Stream.make(1),
         Stream.forever,
         Stream.runForEachWhile(() => Ref.modify(ref, (sum) => [sum >= 9 ? false : true, sum + 1] as const))
       )
-      const result = yield* $(Ref.get(ref))
+      const result = yield* (Ref.get(ref))
       strictEqual(result, 10)
     }))
 
   it.effect("repeat", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1),
         Stream.repeat(Schedule.recurs(4)),
         Stream.runCollect
@@ -40,38 +40,38 @@ describe("Stream", () => {
     }))
 
   it.effect("tick", () =>
-    Effect.gen(function*($) {
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const fiber = yield* pipe(
         Stream.tick("10 millis"),
         Stream.take(2),
         Stream.runCollect,
         Effect.fork
       )
-      yield* $(TestClock.adjust(Duration.millis(50)))
-      const result = yield* $(Fiber.join(fiber))
+      yield* (TestClock.adjust(Duration.millis(50)))
+      const result = yield* (Fiber.join(fiber))
       deepStrictEqual(Array.from(result), [undefined, undefined])
     }))
 
   it.effect("repeat - short circuits", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<number>()))
+      const fiber = yield* pipe(
         Stream.fromEffect(Ref.update(ref, Chunk.prepend(1))),
         Stream.repeat(Schedule.spaced(Duration.millis(10))),
         Stream.take(2),
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(TestClock.adjust(Duration.millis(50)))
-      yield* $(Fiber.join(fiber))
-      const result = yield* $(Ref.get(ref))
+      yield* (TestClock.adjust(Duration.millis(50)))
+      yield* (Fiber.join(fiber))
+      const result = yield* (Ref.get(ref))
       deepStrictEqual(Array.from(result), [1, 1])
     }))
 
   it.effect("repeat - does not swallow errors on a repetition", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(0))
-      const result = yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(0))
+      const result = yield* pipe(
         Stream.fromEffect(pipe(
           Ref.getAndUpdate(ref, (n) => n + 1),
           Effect.flatMap((n) => n <= 2 ? Effect.succeed(n) : Effect.fail("boom"))
@@ -84,8 +84,8 @@ describe("Stream", () => {
     }))
 
   it.effect("repeatEither", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1),
         Stream.repeatEither(Schedule.recurs(4)),
         Stream.runCollect
@@ -104,8 +104,8 @@ describe("Stream", () => {
     }))
 
   it.effect("repeatEffectOption - emit elements", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.repeatEffectOption(Effect.succeed(1)),
         Stream.take(2),
         Stream.runCollect
@@ -114,9 +114,9 @@ describe("Stream", () => {
     }))
 
   it.effect("repeatEffectOption - emit elements until pull fails with None", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(0))
-      const result = yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(0))
+      const result = yield* pipe(
         Stream.repeatEffectOption(
           pipe(
             Ref.updateAndGet(ref, (n) => n + 1),
@@ -134,9 +134,9 @@ describe("Stream", () => {
     }))
 
   it.effect("repeatEffectOption - stops evaluating the effect once it fails with None", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(0))
-      yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(0))
+      yield* pipe(
         Stream.repeatEffectOption(pipe(
           Ref.updateAndGet(ref, (n) => n + 1),
           Effect.zipRight(Effect.fail(Option.none()))
@@ -150,14 +150,14 @@ describe("Stream", () => {
         ),
         Effect.scoped
       )
-      const result = yield* $(Ref.get(ref))
+      const result = yield* (Ref.get(ref))
       strictEqual(result, 1)
     }))
 
   it.effect("repeatEffectWithSchedule", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<number>()))
+      const fiber = yield* pipe(
         Stream.repeatEffectWithSchedule(
           Ref.update(ref, Chunk.append(1)),
           Schedule.spaced(Duration.millis(10))
@@ -166,16 +166,16 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(TestClock.adjust(Duration.millis(50)))
-      yield* $(Fiber.join(fiber))
-      const result = yield* $(Ref.get(ref))
+      yield* (TestClock.adjust(Duration.millis(50)))
+      yield* (Fiber.join(fiber))
+      const result = yield* (Ref.get(ref))
       deepStrictEqual(Array.from(result), [1, 1])
     }), 10000)
 
   it.it("repeatEffectWithSchedule - allow schedule to rely on effect value", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1, max: 100 }), async (length) => {
-      const effect = Effect.gen(function*($) {
-        const ref = yield* $(Ref.make(0))
+      const effect = Effect.gen(function*() {
+        const ref = yield* (Ref.make(0))
         const effect = pipe(
           Ref.getAndUpdate(ref, (n) => n + 1),
           Effect.filterOrFail(
@@ -188,7 +188,7 @@ describe("Stream", () => {
           Schedule.whileOutput((n) => n < length)
         )
         const stream = Stream.repeatEffectWithSchedule(effect, schedule)
-        return yield* $(
+        return yield* pipe(
           Stream.runCollect(stream),
           Effect.provide(TestEnvironment.TestContext)
         )
@@ -198,8 +198,8 @@ describe("Stream", () => {
     })))
 
   it.effect("repeatEffectWithSchedule - should perform repetitions in addition to the first execution (one repetition)", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.repeatEffectWithSchedule(Effect.succeed(1), Schedule.once),
         Stream.runCollect
       )
@@ -207,8 +207,8 @@ describe("Stream", () => {
     }))
 
   it.effect("repeatEffectWithSchedule - should perform repetitions in addition to the first execution (zero repetitions)", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.repeatEffectWithSchedule(Effect.succeed(1), Schedule.stop),
         Stream.runCollect
       )
@@ -216,43 +216,43 @@ describe("Stream", () => {
     }))
 
   it.effect("repeatEffectWithSchedule - emits before delaying according to the schedule", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(0))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(0))
       const schedule = Schedule.spaced(Duration.seconds(1))
-      const fiber = yield* $(
+      const fiber = yield* pipe(
         Stream.repeatEffectWithSchedule(Effect.void, schedule),
         Stream.tap(() => Ref.update(ref, (n) => n + 1)),
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(TestClock.adjust(Duration.seconds(0)))
-      const result1 = yield* $(Ref.get(ref))
-      yield* $(TestClock.adjust(Duration.seconds(1)))
-      const result2 = yield* $(Ref.get(ref))
-      yield* $(Fiber.interrupt(fiber))
+      yield* (TestClock.adjust(Duration.seconds(0)))
+      const result1 = yield* (Ref.get(ref))
+      yield* (TestClock.adjust(Duration.seconds(1)))
+      const result2 = yield* (Ref.get(ref))
+      yield* (Fiber.interrupt(fiber))
       strictEqual(result1, 1)
       strictEqual(result2, 2)
     }))
 
   it.effect("repeatEither - short circuits", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<number>()))
+      const fiber = yield* pipe(
         Stream.fromEffect(Ref.update(ref, Chunk.prepend(1))),
         Stream.repeatEither(Schedule.spaced(Duration.millis(10))),
         Stream.take(3), // take one of the schedule outputs
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(TestClock.adjust(Duration.millis(50)))
-      yield* $(Fiber.join(fiber))
-      const result = yield* $(Ref.get(ref))
+      yield* (TestClock.adjust(Duration.millis(50)))
+      yield* (Fiber.join(fiber))
+      const result = yield* (Ref.get(ref))
       deepStrictEqual(Array.from(result), [1, 1])
     }))
 
   it.effect("repeatElements - simple", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make("A", "B", "C"),
         Stream.repeatElements(Schedule.once),
         Stream.runCollect
@@ -261,8 +261,8 @@ describe("Stream", () => {
     }))
 
   it.effect("repeatElements - short circuits in a schedule", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make("A", "B", "C"),
         Stream.repeatElements(Schedule.once),
         Stream.take(4),
@@ -272,8 +272,8 @@ describe("Stream", () => {
     }))
 
   it.effect("repeatElements - short circuits after schedule", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make("A", "B", "C"),
         Stream.repeatElements(Schedule.once),
         Stream.take(3),
@@ -283,12 +283,12 @@ describe("Stream", () => {
     }))
 
   it.effect("repeatElementsWith", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const schedule = pipe(
         Schedule.recurs(0),
         Schedule.zipRight(Schedule.fromFunction(() => 123))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.make("A", "B", "C"),
         Stream.repeatElementsWith(schedule, { onElement: identity, onSchedule: String }),
         Stream.runCollect

@@ -19,11 +19,11 @@ const sort: (array: ReadonlyArray<number>) => ReadonlyArray<number> = Arr.sort(n
 describe("TPubSub", () => {
   it.it("sequential publishers and subscribers - with one publisher and one subscriber", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.bounded<number>(n))
-        const subscriber = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.bounded<number>(n))
+        const subscriber = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -39,13 +39,13 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(pipe(
+        yield* (Deferred.await(deferred1))
+        yield* (pipe(
           as.slice(0, n),
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n)))
         ))
-        yield* $(pipe(deferred2, Deferred.succeed<void>(void 0)))
-        return yield* $(Fiber.join(subscriber))
+        yield* (pipe(deferred2, Deferred.succeed<void>(void 0)))
+        return yield* (Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(program)
       deepStrictEqual(Array.from(result), as.slice(0, n))
@@ -53,12 +53,12 @@ describe("TPubSub", () => {
 
   it.it("sequential publishers and subscribers - with one publisher and two subscribers", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const deferred3 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.bounded<number>(n))
-        const subscriber1 = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const deferred3 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.bounded<number>(n))
+        const subscriber1 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -74,7 +74,7 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        const subscriber2 = yield* $(pipe(
+        const subscriber2 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -90,15 +90,15 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(Deferred.await(deferred2))
-        yield* $(pipe(
+        yield* (Deferred.await(deferred1))
+        yield* (Deferred.await(deferred2))
+        yield* (pipe(
           as.slice(0, n),
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n)))
         ))
-        yield* $(pipe(deferred3, Deferred.succeed<void>(void 0)))
-        const result1 = yield* $(Fiber.join(subscriber1))
-        const result2 = yield* $(Fiber.join(subscriber2))
+        yield* (pipe(deferred3, Deferred.succeed<void>(void 0)))
+        const result1 = yield* (Fiber.join(subscriber1))
+        const result2 = yield* (Fiber.join(subscriber2))
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
@@ -108,10 +108,10 @@ describe("TPubSub", () => {
 
   it.it("concurrent publishers and subscribers - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.bounded<number>(n))
-        const subscriber = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.bounded<number>(n))
+        const subscriber = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -122,13 +122,13 @@ describe("TPubSub", () => {
           ),
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred))
-        yield* $(pipe(
+        yield* (Deferred.await(deferred))
+        yield* (pipe(
           as.slice(0, n),
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        return yield* $(Fiber.join(subscriber))
+        return yield* (Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(Effect.scoped(program))
       deepStrictEqual(Array.from(result), as.slice(0, n))
@@ -136,11 +136,11 @@ describe("TPubSub", () => {
 
   it.it("concurrent publishers and subscribers - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.bounded<number>(n))
-        const subscriber1 = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.bounded<number>(n))
+        const subscriber1 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -151,7 +151,7 @@ describe("TPubSub", () => {
           ),
           Effect.fork
         ))
-        const subscriber2 = yield* $(pipe(
+        const subscriber2 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -162,15 +162,15 @@ describe("TPubSub", () => {
           ),
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(Deferred.await(deferred2))
-        yield* $(pipe(
+        yield* (Deferred.await(deferred1))
+        yield* (Deferred.await(deferred2))
+        yield* (pipe(
           as.slice(0, n),
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        const result1 = yield* $(Fiber.join(subscriber1))
-        const result2 = yield* $(Fiber.join(subscriber2))
+        const result1 = yield* (Fiber.join(subscriber1))
+        const result2 = yield* (Fiber.join(subscriber2))
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(Effect.scoped(program))
@@ -180,11 +180,11 @@ describe("TPubSub", () => {
 
   it.it("concurrent publishers and subscribers - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.bounded<number>(n * 2))
-        const subscriber1 = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.bounded<number>(n * 2))
+        const subscriber1 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -199,7 +199,7 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        const subscriber2 = yield* $(pipe(
+        const subscriber2 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -214,20 +214,20 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(Deferred.await(deferred2))
-        yield* $(pipe(
+        yield* (Deferred.await(deferred1))
+        yield* (Deferred.await(deferred2))
+        yield* (pipe(
           as.slice(0, n),
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        yield* $(pipe(
+        yield* (pipe(
           as.slice(0, n).map((n) => n !== 0 ? -n : n),
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        const result1 = yield* $(Fiber.join(subscriber1))
-        const result2 = yield* $(Fiber.join(subscriber2))
+        const result1 = yield* (Fiber.join(subscriber1))
+        const result2 = yield* (Fiber.join(subscriber2))
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
@@ -251,10 +251,10 @@ describe("TPubSub", () => {
 
   it.it("back pressure - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.bounded<number>(n))
-        const subscriber = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.bounded<number>(n))
+        const subscriber = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -266,9 +266,9 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred))
-        yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
-        return yield* $(Fiber.join(subscriber))
+        yield* (Deferred.await(deferred))
+        yield* (pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+        return yield* (Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(program)
       deepStrictEqual(Array.from(result), as)
@@ -276,11 +276,11 @@ describe("TPubSub", () => {
 
   it.it("back pressure - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.bounded<number>(n))
-        const subscriber1 = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.bounded<number>(n))
+        const subscriber1 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -292,7 +292,7 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        const subscriber2 = yield* $(pipe(
+        const subscriber2 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -304,11 +304,11 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(Deferred.await(deferred2))
-        yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
-        const result1 = yield* $(Fiber.join(subscriber1))
-        const result2 = yield* $(Fiber.join(subscriber2))
+        yield* (Deferred.await(deferred1))
+        yield* (Deferred.await(deferred2))
+        yield* (pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+        const result1 = yield* (Fiber.join(subscriber1))
+        const result2 = yield* (Fiber.join(subscriber2))
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
@@ -318,11 +318,11 @@ describe("TPubSub", () => {
 
   it.it("back pressure - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.bounded<number>(n * 2))
-        const subscriber1 = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.bounded<number>(n * 2))
+        const subscriber1 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -337,7 +337,7 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        const subscriber2 = yield* $(pipe(
+        const subscriber2 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -352,20 +352,20 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(Deferred.await(deferred2))
-        yield* $(pipe(
+        yield* (Deferred.await(deferred1))
+        yield* (Deferred.await(deferred2))
+        yield* (pipe(
           as,
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        yield* $(pipe(
+        yield* (pipe(
           as.map((n) => -n),
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        const result1 = yield* $(Fiber.join(subscriber1))
-        const result2 = yield* $(Fiber.join(subscriber2))
+        const result1 = yield* (Fiber.join(subscriber1))
+        const result2 = yield* (Fiber.join(subscriber2))
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
@@ -377,10 +377,10 @@ describe("TPubSub", () => {
 
   it.it("dropping - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.dropping<number>(n))
-        const subscriber = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.dropping<number>(n))
+        const subscriber = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -395,9 +395,9 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred))
-        yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
-        return yield* $(Fiber.join(subscriber))
+        yield* (Deferred.await(deferred))
+        yield* (pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+        return yield* (Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(program)
       deepStrictEqual(Array.from(result), as.slice(0, n))
@@ -405,11 +405,11 @@ describe("TPubSub", () => {
 
   it.it("dropping - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.dropping<number>(n))
-        const subscriber1 = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.dropping<number>(n))
+        const subscriber1 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -424,7 +424,7 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        const subscriber2 = yield* $(pipe(
+        const subscriber2 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -439,11 +439,11 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(Deferred.await(deferred2))
-        yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
-        const result1 = yield* $(Fiber.join(subscriber1))
-        const result2 = yield* $(Fiber.join(subscriber2))
+        yield* (Deferred.await(deferred1))
+        yield* (Deferred.await(deferred2))
+        yield* (pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+        const result1 = yield* (Fiber.join(subscriber1))
+        const result2 = yield* (Fiber.join(subscriber2))
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
@@ -453,11 +453,11 @@ describe("TPubSub", () => {
 
   it.it("dropping - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.dropping<number>(n * 2))
-        const subscriber1 = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.dropping<number>(n * 2))
+        const subscriber1 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -472,7 +472,7 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        const subscriber2 = yield* $(pipe(
+        const subscriber2 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -487,20 +487,20 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(Deferred.await(deferred2))
-        yield* $(pipe(
+        yield* (Deferred.await(deferred1))
+        yield* (Deferred.await(deferred2))
+        yield* (pipe(
           as,
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        yield* $(pipe(
+        yield* (pipe(
           as.map((n) => -n),
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        const result1 = yield* $(Fiber.join(subscriber1))
-        const result2 = yield* $(Fiber.join(subscriber2))
+        const result1 = yield* (Fiber.join(subscriber1))
+        const result2 = yield* (Fiber.join(subscriber2))
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
@@ -524,10 +524,10 @@ describe("TPubSub", () => {
 
   it.it("sliding - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.sliding<number>(n))
-        const subscriber = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.sliding<number>(n))
+        const subscriber = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -542,10 +542,10 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred))
-        const publisher = yield* $(pipe(sort(as), Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
-        yield* $(Fiber.join(publisher))
-        return yield* $(Fiber.join(subscriber))
+        yield* (Deferred.await(deferred))
+        const publisher = yield* (pipe(sort(as), Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+        yield* (Fiber.join(publisher))
+        return yield* (Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(program)
       deepStrictEqual(Array.from(result), sort(Array.from(result)))
@@ -553,11 +553,11 @@ describe("TPubSub", () => {
 
   it.it("sliding - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.sliding<number>(n))
-        const subscriber1 = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.sliding<number>(n))
+        const subscriber1 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -572,7 +572,7 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        const subscriber2 = yield* $(pipe(
+        const subscriber2 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -587,11 +587,11 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(Deferred.await(deferred2))
-        yield* $(pipe(sort(as), Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
-        const result1 = yield* $(Fiber.join(subscriber1))
-        const result2 = yield* $(Fiber.join(subscriber2))
+        yield* (Deferred.await(deferred1))
+        yield* (Deferred.await(deferred2))
+        yield* (pipe(sort(as), Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+        const result1 = yield* (Fiber.join(subscriber1))
+        const result2 = yield* (Fiber.join(subscriber2))
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
@@ -601,11 +601,11 @@ describe("TPubSub", () => {
 
   it.it("sliding - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.sliding<number>(n * 2))
-        const subscriber1 = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.sliding<number>(n * 2))
+        const subscriber1 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -620,7 +620,7 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        const subscriber2 = yield* $(pipe(
+        const subscriber2 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -635,20 +635,20 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(Deferred.await(deferred2))
-        yield* $(pipe(
+        yield* (Deferred.await(deferred1))
+        yield* (Deferred.await(deferred2))
+        yield* (pipe(
           sort(as),
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        yield* $(pipe(
+        yield* (pipe(
           sort(as.map((n) => -n)),
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        const result1 = yield* $(Fiber.join(subscriber1))
-        const result2 = yield* $(Fiber.join(subscriber2))
+        const result1 = yield* (Fiber.join(subscriber1))
+        const result2 = yield* (Fiber.join(subscriber2))
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
@@ -672,10 +672,10 @@ describe("TPubSub", () => {
 
   it.it("unbounded - one to one", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer({ min: 1 })), async (as) => {
-      const program = Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.unbounded<number>())
-        const subscriber = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.unbounded<number>())
+        const subscriber = yield* (pipe(
           STM.commit(TPubSub.subscribe(pubsub)),
           Effect.flatMap((subscription) =>
             pipe(
@@ -687,9 +687,9 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred))
-        yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
-        return yield* $(Fiber.join(subscriber))
+        yield* (Deferred.await(deferred))
+        yield* (pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+        return yield* (Fiber.join(subscriber))
       })
       const result = await Effect.runPromise(program)
       deepStrictEqual(Array.from(result), as)
@@ -697,11 +697,11 @@ describe("TPubSub", () => {
 
   it.it("unbounded - one to many", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer({ min: 1 })), async (as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.unbounded<number>())
-        const subscriber1 = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.unbounded<number>())
+        const subscriber1 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -713,7 +713,7 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        const subscriber2 = yield* $(pipe(
+        const subscriber2 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -725,11 +725,11 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(Deferred.await(deferred2))
-        yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
-        const result1 = yield* $(Fiber.join(subscriber1))
-        const result2 = yield* $(Fiber.join(subscriber2))
+        yield* (Deferred.await(deferred1))
+        yield* (Deferred.await(deferred2))
+        yield* (pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+        const result1 = yield* (Fiber.join(subscriber1))
+        const result2 = yield* (Fiber.join(subscriber2))
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
@@ -739,11 +739,11 @@ describe("TPubSub", () => {
 
   it.it("unbounded - many to many", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer({ min: 1 })), async (as) => {
-      const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<void>())
-        const deferred2 = yield* $(Deferred.make<void>())
-        const pubsub = yield* $(TPubSub.unbounded<number>())
-        const subscriber1 = yield* $(pipe(
+      const program = Effect.gen(function*() {
+        const deferred1 = yield* (Deferred.make<void>())
+        const deferred2 = yield* (Deferred.make<void>())
+        const pubsub = yield* (TPubSub.unbounded<number>())
+        const subscriber1 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -758,7 +758,7 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        const subscriber2 = yield* $(pipe(
+        const subscriber2 = yield* (pipe(
           TPubSub.subscribeScoped(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
@@ -773,20 +773,20 @@ describe("TPubSub", () => {
           Effect.scoped,
           Effect.fork
         ))
-        yield* $(Deferred.await(deferred1))
-        yield* $(Deferred.await(deferred2))
-        yield* $(pipe(
+        yield* (Deferred.await(deferred1))
+        yield* (Deferred.await(deferred2))
+        yield* (pipe(
           as,
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        yield* $(pipe(
+        yield* (pipe(
           as.map((n) => -n),
           Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))),
           Effect.fork
         ))
-        const result1 = yield* $(Fiber.join(subscriber1))
-        const result2 = yield* $(Fiber.join(subscriber2))
+        const result1 = yield* (Fiber.join(subscriber1))
+        const result2 = yield* (Fiber.join(subscriber2))
         return { result1, result2 }
       })
       const { result1, result2 } = await Effect.runPromise(program)
@@ -797,12 +797,12 @@ describe("TPubSub", () => {
     })))
 
   it.effect("unbounded - undefined/null values", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const as = [null, undefined, null, undefined]
-      const deferred1 = yield* $(Deferred.make<void>())
-      const deferred2 = yield* $(Deferred.make<void>())
-      const pubsub = yield* $(TPubSub.unbounded<null | undefined>())
-      const subscriber1 = yield* $(pipe(
+      const deferred1 = yield* (Deferred.make<void>())
+      const deferred2 = yield* (Deferred.make<void>())
+      const pubsub = yield* (TPubSub.unbounded<null | undefined>())
+      const subscriber1 = yield* (pipe(
         TPubSub.subscribeScoped(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
@@ -814,7 +814,7 @@ describe("TPubSub", () => {
         Effect.scoped,
         Effect.fork
       ))
-      const subscriber2 = yield* $(pipe(
+      const subscriber2 = yield* (pipe(
         TPubSub.subscribeScoped(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
@@ -826,22 +826,22 @@ describe("TPubSub", () => {
         Effect.scoped,
         Effect.fork
       ))
-      yield* $(Deferred.await(deferred1))
-      yield* $(Deferred.await(deferred2))
-      yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
-      const result1 = yield* $(Fiber.join(subscriber1))
-      const result2 = yield* $(Fiber.join(subscriber2))
+      yield* (Deferred.await(deferred1))
+      yield* (Deferred.await(deferred2))
+      yield* (pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+      const result1 = yield* (Fiber.join(subscriber1))
+      const result2 = yield* (Fiber.join(subscriber2))
       deepStrictEqual(result1, as)
       deepStrictEqual(result2, as)
     }))
 
   it.effect("bounded - undefined/null values", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const as = [null, undefined]
-      const deferred1 = yield* $(Deferred.make<void>())
-      const deferred2 = yield* $(Deferred.make<void>())
-      const pubsub = yield* $(TPubSub.bounded<null | undefined>(2))
-      const subscriber1 = yield* $(pipe(
+      const deferred1 = yield* (Deferred.make<void>())
+      const deferred2 = yield* (Deferred.make<void>())
+      const pubsub = yield* (TPubSub.bounded<null | undefined>(2))
+      const subscriber1 = yield* (pipe(
         TPubSub.subscribeScoped(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
@@ -853,7 +853,7 @@ describe("TPubSub", () => {
         Effect.scoped,
         Effect.fork
       ))
-      const subscriber2 = yield* $(pipe(
+      const subscriber2 = yield* (pipe(
         TPubSub.subscribeScoped(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
@@ -865,22 +865,22 @@ describe("TPubSub", () => {
         Effect.scoped,
         Effect.fork
       ))
-      yield* $(Deferred.await(deferred1))
-      yield* $(Deferred.await(deferred2))
-      yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
-      const result1 = yield* $(Fiber.join(subscriber1))
-      const result2 = yield* $(Fiber.join(subscriber2))
+      yield* (Deferred.await(deferred1))
+      yield* (Deferred.await(deferred2))
+      yield* (pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+      const result1 = yield* (Fiber.join(subscriber1))
+      const result2 = yield* (Fiber.join(subscriber2))
       deepStrictEqual(result1, as)
       deepStrictEqual(result2, as)
     }))
 
   it.effect("dropping - undefined/null values", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const as = [null, undefined, null, undefined]
       const n = 2
-      const deferred = yield* $(Deferred.make<void>())
-      const pubsub = yield* $(TPubSub.dropping<null | undefined>(n))
-      const subscriber = yield* $(pipe(
+      const deferred = yield* (Deferred.make<void>())
+      const pubsub = yield* (TPubSub.dropping<null | undefined>(n))
+      const subscriber = yield* (pipe(
         TPubSub.subscribeScoped(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
@@ -895,9 +895,9 @@ describe("TPubSub", () => {
         Effect.scoped,
         Effect.fork
       ))
-      yield* $(Deferred.await(deferred))
-      yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
-      const result = yield* $(Fiber.join(subscriber))
+      yield* (Deferred.await(deferred))
+      yield* (pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+      const result = yield* (Fiber.join(subscriber))
       deepStrictEqual(result, as.slice(0, n))
     }))
 })

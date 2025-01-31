@@ -44,8 +44,8 @@ export const isNumberService = (u: unknown): u is NumberService => {
 
 describe("Channel", () => {
   it.effect("provide - simple", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         NumberService,
         Channel.provideService(NumberService, new NumberServiceImpl(100)),
         Channel.run
@@ -54,8 +54,8 @@ describe("Channel", () => {
     }))
 
   it.effect("provide -> zip -> provide", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         NumberService,
         Channel.provideService(NumberService, new NumberServiceImpl(100)),
         Channel.zip(
@@ -70,8 +70,8 @@ describe("Channel", () => {
     }))
 
   it.effect("concatMap(provide).provide", () =>
-    Effect.gen(function*($) {
-      const [chunk, value] = yield* $(
+    Effect.gen(function*() {
+      const [chunk, value] = yield* pipe(
         Channel.fromEffect(NumberService),
         Channel.emitCollect,
         Channel.mapOut((tuple) => tuple[1]),
@@ -91,7 +91,7 @@ describe("Channel", () => {
     }))
 
   it.effect("provide is modular", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const channel1 = Channel.fromEffect(NumberService)
       const channel2 = pipe(
         NumberService,
@@ -99,7 +99,7 @@ describe("Channel", () => {
         Channel.fromEffect
       )
       const channel3 = Channel.fromEffect(NumberService)
-      const [[result1, result2], result3] = yield* $(
+      const [[result1, result2], result3] = yield* pipe(
         channel1,
         Channel.zip(channel2),
         Channel.zip(channel3),

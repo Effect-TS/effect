@@ -9,10 +9,10 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("filter", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
       const f = (n: number) => n % 2 === 0
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.filter(f), Stream.runCollect),
         result2: pipe(stream, Stream.runCollect, Effect.map(Chunk.filter(f)))
       }))
@@ -20,10 +20,10 @@ describe("Stream", () => {
     }))
 
   it.effect("filterEffect - simple example", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
       const f = (n: number) => Effect.succeed(n % 2 === 0)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.filterEffect(f), Stream.runCollect),
         result2: pipe(stream, Stream.runCollect, Effect.flatMap(Effect.filter(f)))
       }))
@@ -31,8 +31,8 @@ describe("Stream", () => {
     }))
 
   it.effect("filterEffect - laziness on chunks", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.filterEffect((n) =>
           n === 3 ?

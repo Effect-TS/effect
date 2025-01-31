@@ -19,23 +19,23 @@ const Tag = Context.GenericTag<DummyService>("DummyService")
 
 describe("Reloadable", () => {
   it.effect("initialization", () =>
-    Effect.gen(function*($) {
-      const counter = yield* $(Counter.make())
+    Effect.gen(function*() {
+      const counter = yield* Counter.make()
       const layer = Reloadable.manual(Tag, {
         layer: Layer.scoped(Tag, pipe(counter.acquire(), Effect.as(DummyService)))
       })
-      yield* $(Reloadable.get(Tag), Effect.provide(layer))
-      const acquired = yield* $(counter.acquired())
+      yield* pipe(Reloadable.get(Tag), Effect.provide(layer))
+      const acquired = yield* counter.acquired()
       strictEqual(acquired, 1)
     }))
   it.effect("reload", () =>
-    Effect.gen(function*($) {
-      const counter = yield* $(Counter.make())
+    Effect.gen(function*() {
+      const counter = yield* Counter.make()
       const layer = Reloadable.manual(Tag, {
         layer: Layer.scoped(Tag, pipe(counter.acquire(), Effect.as(DummyService)))
       })
-      yield* $(Reloadable.reload(Tag), Effect.provide(layer))
-      const acquired = yield* $(counter.acquired())
+      yield* pipe(Reloadable.reload(Tag), Effect.provide(layer))
+      const acquired = yield* counter.acquired()
       strictEqual(acquired, 2)
     }))
 })

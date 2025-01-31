@@ -1,4 +1,5 @@
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Scheduler from "effect/Scheduler"
 import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
@@ -6,7 +7,7 @@ import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("matrix schedules according to priority", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const ps000: Array<number> = []
       const ps100: Array<number> = []
       const ps200: Array<number> = []
@@ -39,33 +40,33 @@ describe("Effect", () => {
           })
         ]
       )
-      yield* $(
+      yield* pipe(
         Effect.yieldNow(),
         Effect.withScheduler(scheduler)
       )
       deepStrictEqual(ps000, [0])
-      yield* $(
+      yield* pipe(
         Effect.yieldNow({ priority: 50 }),
         Effect.withScheduler(scheduler)
       )
       deepStrictEqual(ps000, [0, 0])
-      yield* $(
+      yield* pipe(
         Effect.yieldNow({ priority: 100 }),
         Effect.withScheduler(scheduler)
       )
       deepStrictEqual(ps100, [100])
-      yield* $(
+      yield* pipe(
         Effect.yieldNow({ priority: 150 }),
         Effect.withScheduler(scheduler)
       )
       deepStrictEqual(ps100, [100, 100])
-      yield* $(
+      yield* pipe(
         Effect.yieldNow({ priority: 200 }),
         Effect.withScheduler(scheduler)
       )
       deepStrictEqual(ps100, [100, 100])
       deepStrictEqual(ps200, [200])
-      yield* $(
+      yield* pipe(
         Effect.yieldNow({ priority: 300 }),
         Effect.withScheduler(scheduler)
       )

@@ -18,13 +18,13 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("groupBy - values", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const words = pipe(
         Chunk.makeBy(() => Chunk.range(0, 99))(100),
         Chunk.flatten,
         Chunk.map((n) => String(n))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromIterable(words),
         Stream.groupByKey(identity, { bufferSize: 8192 }),
         GroupBy.evaluate((key, stream) =>
@@ -43,13 +43,13 @@ describe("Stream", () => {
     }))
 
   it.effect("groupBy - first", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const words = pipe(
         Chunk.makeBy(() => Chunk.range(0, 99))(1_000),
         Chunk.flatten,
         Chunk.map((n) => String(n))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromIterable(words),
         Stream.groupByKey(identity, { bufferSize: 1050 }),
         GroupBy.first(2),
@@ -66,9 +66,9 @@ describe("Stream", () => {
     }))
 
   it.effect("groupBy - filter", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const words = Array.from({ length: 100 }, () => Array.from({ length: 100 }, (_, i) => i)).flat()
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromIterable(words),
         Stream.groupByKey(identity, { bufferSize: 1050 }),
         GroupBy.filter((n) => n <= 5),
@@ -92,9 +92,9 @@ describe("Stream", () => {
     }))
 
   it.effect("groupBy - outer errors", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const words = ["abc", "test", "test", "foo"]
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromIterable(words),
         Stream.concat(Stream.fail("boom")),
         Stream.groupByKey(identity),
@@ -106,8 +106,8 @@ describe("Stream", () => {
     }))
 
   it.effect("grouped - sanity check", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3, 4, 5),
         Stream.grouped(2),
         Stream.runCollect
@@ -119,8 +119,8 @@ describe("Stream", () => {
     }))
 
   it.effect("grouped - group size is correct", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(0, 99),
         Stream.grouped(10),
         Stream.map(Chunk.size),
@@ -133,8 +133,8 @@ describe("Stream", () => {
     }))
 
   it.effect("grouped - does not emit empty chunks", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromIterable(Chunk.empty<number>()),
         Stream.grouped(5),
         Stream.runCollect
@@ -143,28 +143,28 @@ describe("Stream", () => {
     }))
 
   it.effect("grouped - emits elements properly when a failure occurs", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<Array<number>>()))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<Array<number>>()))
       const streamChunks = Stream.fromChunks(Chunk.range(1, 4), Chunk.range(5, 7), Chunk.of(8))
       const stream = pipe(
         streamChunks,
         Stream.concat(Stream.fail("Ouch")),
         Stream.grouped(3)
       )
-      const either = yield* $(
+      const either = yield* pipe(
         stream,
         Stream.mapEffect((chunk) => Ref.update(ref, Chunk.append(Array.from(chunk)))),
         Stream.runCollect,
         Effect.either
       )
-      const result = yield* $(Ref.get(ref))
+      const result = yield* (Ref.get(ref))
       assertLeft(either, "Ouch")
       deepStrictEqual(Array.from(result), [[1, 2, 3], [4, 5, 6], [7, 8]])
     }))
 
   it.effect("groupedWithin - group based on time passed", () =>
-    Effect.gen(function*($) {
-      const coordination = yield* $(chunkCoordination([
+    Effect.gen(function*() {
+      const coordination = yield* (chunkCoordination([
         Chunk.make(1, 2),
         Chunk.make(3, 4),
         Chunk.of(5)
@@ -179,19 +179,19 @@ describe("Stream", () => {
         Stream.groupedWithin(10, Duration.seconds(2)),
         Stream.tap(() => coordination.proceed)
       )
-      const fiber = yield* $(Effect.fork(Stream.runCollect(stream)))
-      yield* $(
+      const fiber = yield* (Effect.fork(Stream.runCollect(stream)))
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(2))),
         Effect.zipRight(coordination.awaitNext)
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(2))),
         Effect.zipRight(coordination.awaitNext)
       )
-      yield* $(coordination.offer)
-      const result = yield* $(Fiber.join(fiber))
+      yield* (coordination.offer)
+      const result = yield* (Fiber.join(fiber))
       deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2], [3, 4], [5]]
@@ -199,15 +199,15 @@ describe("Stream", () => {
     }))
 
   it.effect("groupedWithin - group based on time passed (ZIO Issue #5013)", () =>
-    Effect.gen(function*($) {
-      const coordination = yield* $(
+    Effect.gen(function*() {
+      const coordination = yield* pipe(
         Chunk.range(1, 29),
         Chunk.map(Chunk.of),
         chunkCoordination
       )
-      const latch = yield* $(Handoff.make<void>())
-      const ref = yield* $(Ref.make(0))
-      const fiber = yield* $(
+      const latch = yield* (Handoff.make<void>())
+      const ref = yield* (Ref.make(0))
+      const fiber = yield* pipe(
         Stream.fromQueue(coordination.queue),
         Stream.filterMapWhile(Exit.match({
           onSuccess: Option.some,
@@ -225,66 +225,66 @@ describe("Stream", () => {
         Stream.run(Sink.take(5)),
         Effect.fork
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(1))),
         Effect.zipRight(coordination.awaitNext)
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(1))),
         Effect.zipRight(coordination.awaitNext)
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(1))),
         Effect.zipRight(coordination.awaitNext)
       )
-      const result1 = yield* $(
+      const result1 = yield* pipe(
         Handoff.take(latch),
         Effect.zipRight(Ref.get(ref))
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(1))),
         Effect.zipRight(coordination.awaitNext)
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(1))),
         Effect.zipRight(coordination.awaitNext)
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(1))),
         Effect.zipRight(coordination.awaitNext)
       )
-      const result2 = yield* $(
+      const result2 = yield* pipe(
         Handoff.take(latch),
         Effect.zipRight(Ref.get(ref))
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(1))),
         Effect.zipRight(coordination.awaitNext)
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(1))),
         Effect.zipRight(coordination.awaitNext)
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(TestClock.adjust(Duration.seconds(1))),
         Effect.zipRight(coordination.awaitNext)
       )
-      const result3 = yield* $(
+      const result3 = yield* pipe(
         Handoff.take(latch),
         Effect.zipRight(Ref.get(ref))
       )
       // This part is to make sure schedule clock is being restarted when the
       // specified amount of elements has been reached.
-      yield* $(
+      yield* pipe(
         TestClock.adjust(Duration.seconds(2)),
         Effect.zipRight(
           pipe(
@@ -294,11 +294,11 @@ describe("Stream", () => {
           )
         )
       )
-      const result4 = yield* $(
+      const result4 = yield* pipe(
         Handoff.take(latch),
         Effect.zipRight(Ref.get(ref))
       )
-      yield* $(
+      yield* pipe(
         coordination.offer,
         Effect.zipRight(coordination.awaitNext),
         Effect.zipRight(TestClock.adjust(Duration.seconds(2))),
@@ -310,11 +310,11 @@ describe("Stream", () => {
           )
         )
       )
-      const result5 = yield* $(
+      const result5 = yield* pipe(
         Handoff.take(latch),
         Effect.zipRight(Ref.get(ref))
       )
-      const result = yield* $(Fiber.join(fiber))
+      const result = yield* (Fiber.join(fiber))
       deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [
@@ -333,8 +333,8 @@ describe("Stream", () => {
     }))
 
   it.effect("groupedWithin - group immediately when chunk size is reached", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3, 4),
         Stream.groupedWithin(2, Duration.seconds(10)),
         Stream.runCollect
@@ -346,8 +346,8 @@ describe("Stream", () => {
     }))
 
   it.effect("groupAdjacentBy - one big chunk", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromIterable([
           { code: 1, message: "A" },
           { code: 1, message: "B" },
@@ -373,8 +373,8 @@ describe("Stream", () => {
     }))
 
   it.effect("groupAdjacentBy - several single element chunks", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromChunks(
           Chunk.make({ code: 1, message: "A" }),
           Chunk.make({ code: 1, message: "B" }),
@@ -400,8 +400,8 @@ describe("Stream", () => {
     }))
 
   it.effect("groupAdjacentBy - group across chunks", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromChunks(
           Chunk.make({ code: 1, message: "A" }, { code: 1, message: "B" }),
           Chunk.make({ code: 1, message: "D" }, { code: 2, message: "C" })

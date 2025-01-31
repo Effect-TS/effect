@@ -1,12 +1,12 @@
-import { Cause, Effect, Option } from "effect"
+import { Cause, Effect, Option, pipe } from "effect"
 import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("Cause should include span data", () =>
-    Effect.gen(function*($) {
-      const cause = yield* $(Effect.flip(Effect.sandbox(
+    Effect.gen(function*() {
+      const cause = yield* (Effect.flip(Effect.sandbox(
         Effect.withSpan("spanB")(
           Effect.withSpan("spanA")(
             Effect.fail(new Error("ok"))
@@ -20,7 +20,7 @@ describe("Effect", () => {
       assertTrue(rendered.includes("cause-rendering.test.ts:10:16"))
     }))
   it.effect("catchTag should not invalidate traces", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       class E1 {
         readonly _tag = "E1"
       }
@@ -36,7 +36,7 @@ describe("Effect", () => {
           })
         )
       ).pipe(Effect.catchTag("E2", (e) => Effect.die(e)))
-      const cause = yield* $(Effect.flip(Effect.sandbox(effect)))
+      const cause = yield* (Effect.flip(Effect.sandbox(effect)))
       const rendered = Cause.pretty(cause)
       assertTrue(rendered.includes("spanA"))
       assertTrue(rendered.includes("spanB"))
@@ -46,7 +46,7 @@ describe("Effect", () => {
       assertTrue(err === Cause.originalError(obj))
     }))
   it.effect("refail should not invalidate traces", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       class E1 {
         readonly _tag = "E1"
       }
@@ -61,13 +61,13 @@ describe("Effect", () => {
           })
         )
       ).pipe(Effect.catchAll((e) => Effect.fail(e)))
-      const cause = yield* $(Effect.flip(Effect.sandbox(effect)))
+      const cause = yield* (Effect.flip(Effect.sandbox(effect)))
       const rendered = Cause.pretty(cause)
       assertTrue(rendered.includes("spanA"))
       assertTrue(rendered.includes("spanB"))
     }))
   it.effect("catchTags should not invalidate traces", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       class E1 {
         readonly _tag = "E1"
       }
@@ -82,14 +82,14 @@ describe("Effect", () => {
           })
         )
       ).pipe(Effect.catchTags({ E2: (e) => Effect.die(e) }))
-      const cause = yield* $(Effect.flip(Effect.sandbox(effect)))
+      const cause = yield* (Effect.flip(Effect.sandbox(effect)))
       const rendered = Cause.pretty(cause)
       assertTrue(rendered.includes("spanA"))
       assertTrue(rendered.includes("spanB"))
     }))
   it.effect("shows line where error was created", () =>
-    Effect.gen(function*($) {
-      const cause = yield* $(
+    Effect.gen(function*() {
+      const cause = yield* pipe(
         Effect.sync(() => {
           throw new Error("ok")
         }),

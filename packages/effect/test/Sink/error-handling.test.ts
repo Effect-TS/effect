@@ -9,11 +9,11 @@ import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("propagates errors", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const ErrorStream = "ErrorStream" as const
       const ErrorMapped = "ErrorMapped" as const
       const ErrorSink = "ErrorSink" as const
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fail(ErrorStream),
         Stream.mapError(() => ErrorMapped),
         Stream.run(

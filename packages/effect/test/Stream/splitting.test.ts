@@ -31,7 +31,7 @@ const testSplitLines = (
 
 describe("Stream", () => {
   it.effect("split - should split properly", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = Chunk.make(
         Chunk.range(1, 2),
         Chunk.range(3, 4),
@@ -39,7 +39,7 @@ describe("Stream", () => {
         Chunk.make(7, 8, 9),
         Chunk.of(10)
       )
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(
           Stream.range(0, 9),
           Stream.split((n) => n % 4 === 0),
@@ -62,9 +62,9 @@ describe("Stream", () => {
     }))
 
   it.effect("split - is equivalent to identity when the predicate is not satisfied", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.range(1, 10)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.split((n) => n % 11 === 0), Stream.runCollect),
         result2: pipe(
           Stream.runCollect(stream),
@@ -82,8 +82,8 @@ describe("Stream", () => {
     }))
 
   it.effect("split - should output empty chunk when stream is empty", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.empty,
         Stream.split((n: number) => n % 11 === 0),
         Stream.runCollect
@@ -92,7 +92,7 @@ describe("Stream", () => {
     }))
 
   it.effect("splitOnChunk - consecutive delimiter yields empty Chunk", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const input = Stream.make(
         Chunk.make(1, 2),
         Chunk.of(1),
@@ -100,7 +100,7 @@ describe("Stream", () => {
         Chunk.make(1, 2)
       )
       const splitSequence = Chunk.make(1, 2)
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.flattenChunks(input),
         Stream.splitOnChunk(splitSequence),
         Stream.map(Chunk.size),
@@ -110,10 +110,10 @@ describe("Stream", () => {
     }))
 
   it.effect("splitOnChunk - preserves data", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const splitSequence = Chunk.make(0, 1)
       const stream = Stream.make(1, 1, 1, 1, 1, 1)
-      const result = yield* $(
+      const result = yield* pipe(
         stream,
         Stream.splitOnChunk(splitSequence),
         Stream.runCollect,
@@ -123,9 +123,9 @@ describe("Stream", () => {
     }))
 
   it.effect("splitOnChunk - handles leftovers", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const splitSequence = Chunk.make(0, 1)
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromChunks(Chunk.make(1, 0, 2, 0, 1, 2), Chunk.of(2)),
         Stream.splitOnChunk(splitSequence),
         Stream.runCollect
@@ -137,9 +137,9 @@ describe("Stream", () => {
     }))
 
   it.effect("splitOnChunk - works", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const splitSequence = Chunk.make(0, 1)
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.make(1, 2, 0, 1, 3, 4, 0, 1, 5, 6, 5, 6),
         Stream.splitOnChunk(splitSequence),
         Stream.runCollect
@@ -151,9 +151,9 @@ describe("Stream", () => {
     }))
 
   it.effect("splitOnChunk - works from Chunks", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const splitSequence = Chunk.make(0, 1)
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromChunks(
           Chunk.make(1, 2),
           splitSequence,
@@ -172,8 +172,8 @@ describe("Stream", () => {
     }))
 
   it.effect("splitOnChunk - single delimiter edge case", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(0),
         Stream.splitOnChunk(Chunk.make(0)),
         Stream.runCollect
@@ -185,8 +185,8 @@ describe("Stream", () => {
     }))
 
   it.effect("splitOnChunk - no delimiter in data", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromChunks(Chunk.make(1, 2), Chunk.make(1, 2), Chunk.make(1, 2)),
         Stream.splitOnChunk(Chunk.make(1, 1)),
         Stream.runCollect
@@ -198,8 +198,8 @@ describe("Stream", () => {
     }))
 
   it.effect("splitOnChunk - delimiter on the boundary", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromChunks(Chunk.make(1, 2), Chunk.make(1, 2)),
         Stream.splitOnChunk(Chunk.make(2, 1)),
         Stream.runCollect
@@ -236,58 +236,58 @@ describe("Stream", () => {
   // //   },
 
   it.effect("splitLines - handles leftovers", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = [Chunk.of("abc\nbc")]
-      const [expected, result] = yield* $(testSplitLines(chunks))
+      const [expected, result] = yield* (testSplitLines(chunks))
       deepStrictEqual(expected, result)
     }))
 
   it.effect("splitLines - handles leftovers 2", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = [
         Chunk.make("aa", "bb"),
         Chunk.make("\nbbc\n", "ddb", "bd"),
         Chunk.make("abc", "\n"),
         Chunk.of("abc")
       ]
-      const [expected, result] = yield* $(testSplitLines(chunks))
+      const [expected, result] = yield* (testSplitLines(chunks))
       deepStrictEqual(expected, result)
     }))
 
   it.effect("splitLines - aggregates chunks", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = [Chunk.make("abc", "\n", "bc", "\n", "bcd", "bcd")]
-      const [expected, result] = yield* $(testSplitLines(chunks))
+      const [expected, result] = yield* (testSplitLines(chunks))
       deepStrictEqual(expected, result)
     }))
 
   it.effect("splitLines - single newline edge case", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = [Chunk.of("\n")]
-      const [, result] = yield* $(testSplitLines(chunks))
+      const [, result] = yield* (testSplitLines(chunks))
       // JavaScript arrays split `"\n"` into `["", ""]`, so we manually assert
       // that the output should be the empty string here
       deepStrictEqual([""], result)
     }))
 
   it.effect("splitLines - no newlines", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = [Chunk.make("abc", "abc", "abc")]
-      const [expected, result] = yield* $(testSplitLines(chunks))
+      const [expected, result] = yield* (testSplitLines(chunks))
       deepStrictEqual(expected, result)
     }))
 
   it.effect("splitLines - \\r\\n on the boundary", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = [Chunk.make("abc\r", "\nabc")]
-      const [expected, result] = yield* $(testSplitLines(chunks))
+      const [expected, result] = yield* (testSplitLines(chunks))
       deepStrictEqual(expected, result)
     }))
 
   it.effect("splitLines - ZIO issue #6360", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = [Chunk.make("AAAAABBBB#\r\r\r\n", "test")]
-      const [_, result] = yield* $(testSplitLines(chunks))
+      const [_, result] = yield* (testSplitLines(chunks))
       deepStrictEqual(["AAAAABBBB#\r\r", "test"], result)
     }))
 })

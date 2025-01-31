@@ -44,9 +44,9 @@ describe("Stream", () => {
     })))
 
   it.effect("finalizer - happy path", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<string>()))
-      yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<string>()))
+      yield* pipe(
         Stream.acquireRelease(
           Ref.update(ref, Chunk.append("Acquire")),
           () => Ref.update(ref, Chunk.append("Release"))
@@ -55,19 +55,19 @@ describe("Stream", () => {
         Stream.ensuring(Ref.update(ref, Chunk.append("Ensuring"))),
         Stream.runDrain
       )
-      const result = yield* $(Ref.get(ref))
+      const result = yield* (Ref.get(ref))
       deepStrictEqual(Array.from(result), ["Acquire", "Use", "Release", "Ensuring"])
     }))
 
   it.effect("finalizer - finalizer is not run if stream is not pulled", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(false))
-      yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(false))
+      yield* pipe(
         Stream.finalizer(Ref.set(ref, true)),
         Stream.toPull,
         Effect.scoped
       )
-      const result = yield* $(Ref.get(ref))
+      const result = yield* (Ref.get(ref))
       assertFalse(result)
     }))
 
@@ -89,9 +89,9 @@ describe("Stream", () => {
     })))
 
   it.effect("fromChunks - discards empty chunks", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = [Chunk.of(1), Chunk.empty<number>(), Chunk.of(1)]
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromChunks(...chunks),
         Stream.toPull,
         Effect.flatMap((pull) =>
@@ -110,8 +110,8 @@ describe("Stream", () => {
     }))
 
   it.effect("fromEffect - failure", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromEffect(Effect.fail("error")),
         Stream.runCollect,
         Effect.either
@@ -120,8 +120,8 @@ describe("Stream", () => {
     }))
 
   it.effect("fromEffectOption - emit one element with success", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromEffectOption(Effect.succeed(5)),
         Stream.runCollect
       )
@@ -129,8 +129,8 @@ describe("Stream", () => {
     }))
 
   it.effect("fromEffectOption - emit one element with failure", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromEffectOption(Effect.fail(Option.some(5))),
         Stream.runCollect,
         Effect.either
@@ -139,8 +139,8 @@ describe("Stream", () => {
     }))
 
   it.effect("fromEffectOption - do not emit any element", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromEffectOption(Effect.fail(Option.none())),
         Stream.runCollect
       )
@@ -148,18 +148,18 @@ describe("Stream", () => {
     }))
 
   it.effect("fromSchedule", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const schedule = pipe(
         Schedule.exponential(Duration.seconds(1)),
         Schedule.zipLeft(Schedule.recurs(5))
       )
-      const fiber = yield* $(
+      const fiber = yield* pipe(
         Stream.fromSchedule(schedule),
         Stream.runCollect,
         Effect.fork
       )
-      yield* $(TestClock.adjust(Duration.seconds(62)))
-      const result = yield* $(Fiber.join(fiber))
+      yield* (TestClock.adjust(Duration.seconds(62)))
+      const result = yield* (Fiber.join(fiber))
       const expected = [
         Duration.seconds(1),
         Duration.seconds(2),
@@ -171,9 +171,9 @@ describe("Stream", () => {
     }))
 
   it.effect("fromQueue - emits queued elements", () =>
-    Effect.gen(function*($) {
-      const coordination = yield* $(chunkCoordination([Chunk.make(1, 2)]))
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const coordination = yield* (chunkCoordination([Chunk.make(1, 2)]))
+      const fiber = yield* pipe(
         Stream.fromQueue(coordination.queue),
         Stream.filterMapWhile(Exit.match({
           onFailure: Option.none,
@@ -184,16 +184,16 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.fork
       )
-      yield* $(coordination.offer)
-      const result = yield* $(Fiber.join(fiber))
+      yield* (coordination.offer)
+      const result = yield* (Fiber.join(fiber))
       deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("fromQueue - chunks up to the max chunk size", () =>
-    Effect.gen(function*($) {
-      const queue = yield* $(Queue.unbounded<number>())
-      yield* $(Queue.offerAll(queue, [1, 2, 3, 4, 5, 6, 7]))
-      const result = yield* $(
+    Effect.gen(function*() {
+      const queue = yield* (Queue.unbounded<number>())
+      yield* (Queue.offerAll(queue, [1, 2, 3, 4, 5, 6, 7]))
+      const result = yield* pipe(
         Stream.fromQueue(queue, { maxChunkSize: 2 }),
         Stream.mapChunks((chunk) => Chunk.of(Array.from(chunk))),
         Stream.take(3),
@@ -203,7 +203,7 @@ describe("Stream", () => {
     }))
 
   it.effect("fromAsyncIterable", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       async function* asyncIterable() {
         yield 1
         yield 2
@@ -211,12 +211,12 @@ describe("Stream", () => {
       }
 
       const stream = Stream.fromAsyncIterable(asyncIterable(), identity)
-      const result = yield* $(Stream.runCollect(stream))
+      const result = yield* (Stream.runCollect(stream))
       deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("fromReadableStream", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       class FromReadableStreamError {
         readonly _tag = "FromReadableStreamError"
         constructor(readonly error: unknown) {}
@@ -229,7 +229,7 @@ describe("Stream", () => {
         }
       }
 
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromReadableStream({
           evaluate: () => new ReadableStream(new NumberSource()),
           onError: (error) => new FromReadableStreamError(error)
@@ -242,8 +242,8 @@ describe("Stream", () => {
     }))
 
   it.effect("iterate", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.iterate(1, (n) => n + 1),
         Stream.take(10),
         Stream.runCollect
@@ -252,14 +252,14 @@ describe("Stream", () => {
     }))
 
   it.effect("range - includes both endpoints", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(Stream.runCollect(Stream.range(1, 2)))
+    Effect.gen(function*() {
+      const result = yield* (Stream.runCollect(Stream.range(1, 2)))
       deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("range - two large ranges can be concatenated", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(1, 1_000),
         Stream.concat(Stream.range(1_001, 2_000)),
         Stream.runCollect
@@ -268,8 +268,8 @@ describe("Stream", () => {
     }))
 
   it.effect("range - two small ranges can be concatenated", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(1, 10),
         Stream.concat(Stream.range(11, 20)),
         Stream.runCollect
@@ -278,8 +278,8 @@ describe("Stream", () => {
     }))
 
   it.effect("range - emits no values when start > end", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(2, 1),
         Stream.runCollect
       )
@@ -287,8 +287,8 @@ describe("Stream", () => {
     }))
 
   it.effect("range - emits 1 value when start === end", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(1, 1),
         Stream.runCollect
       )
@@ -296,8 +296,8 @@ describe("Stream", () => {
     }))
 
   it.effect("range - emits values in chunks of chunkSize", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(1, 9, 2),
         Stream.mapChunks((chunk) => Chunk.make(pipe(chunk, Chunk.reduce(0, (x, y) => x + y)))),
         Stream.runCollect
@@ -326,8 +326,8 @@ describe("Stream", () => {
     ))
 
   it.effect("unfold", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.unfold(0, (n) =>
           n < 10 ?
             Option.some([n, n + 1] as const) :
@@ -338,8 +338,8 @@ describe("Stream", () => {
     }))
 
   it.effect("unfoldChunk", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.unfoldChunk(0, (n) =>
           n < 10 ?
             Option.some([Chunk.make(n, n + 1), n + 2] as const) :
@@ -350,8 +350,8 @@ describe("Stream", () => {
     }))
 
   it.effect("unfoldChunkEffect", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.unfoldChunkEffect(0, (n) =>
           n < 10 ?
             Effect.succeed(Option.some([Chunk.make(n, n + 1), n + 2] as const)) :
@@ -362,8 +362,8 @@ describe("Stream", () => {
     }))
 
   it.effect("unfoldEffect", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.unfoldEffect(0, (n) =>
           n < 10 ?
             Effect.succeed(Option.some([n, n + 1] as const)) :

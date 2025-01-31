@@ -1299,8 +1299,8 @@ it("Effect as message", () => {
 
   const Name = S.NonEmptyString.annotations({
     message: () =>
-      Effect.gen(function*(_) {
-        const service = yield* _(Effect.serviceOption(Translator))
+      Effect.gen(function*() {
+        const service = yield* Effect.serviceOption(Translator)
         return Option.match(service, {
           onNone: () => "Invalid string",
           onSome: (translator) => translator.translations[translator.locale]

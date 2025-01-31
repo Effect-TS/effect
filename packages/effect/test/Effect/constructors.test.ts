@@ -5,23 +5,23 @@ import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("can lift a value to an option", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(Effect.succeedSome(42))
+    Effect.gen(function*() {
+      const result = yield* Effect.succeedSome(42)
       assertSome(result, 42)
     }))
   it.effect("using the none value", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(Effect.succeedNone)
+    Effect.gen(function*() {
+      const result = yield* Effect.succeedNone
       assertNone(result)
     }))
   it.effect("can use .pipe for composition", () =>
-    Effect.gen(function*(_) {
-      return yield* _(Effect.succeed(1))
+    Effect.gen(function*() {
+      return yield* Effect.succeed(1)
     }).pipe(
       Effect.map((n) => n + 1),
       Effect.flatMap((n) =>
-        Effect.gen(function*(_) {
-          return yield* _(Effect.succeed(n + 1))
+        Effect.gen(function*() {
+          return yield* Effect.succeed(n + 1)
         })
       ),
       Effect.tap((n) =>
@@ -33,8 +33,8 @@ describe("Effect", () => {
   it.effect("can pass this to generator", () => {
     class MyService {
       readonly local = 1
-      compute = Effect.gen(this, function*(_) {
-        return yield* _(Effect.succeed(this.local + 1))
+      compute = Effect.gen(this, function*() {
+        return yield* Effect.succeed(this.local + 1)
       })
     }
     const instance = new MyService()

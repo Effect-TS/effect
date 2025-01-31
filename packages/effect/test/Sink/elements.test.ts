@@ -9,10 +9,10 @@ import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("every", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunk = Chunk.make(1, 2, 3, 4, 5)
       const predicate = (n: number) => n < 6
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromChunk(chunk),
         Stream.run(Sink.every(predicate))
       )
@@ -20,8 +20,8 @@ describe("Sink", () => {
     }))
 
   it.effect("head", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromChunks(Chunk.range(1, 10), Chunk.range(1, 3), Chunk.range(2, 5)),
         Stream.run(Sink.head())
       )
@@ -29,8 +29,8 @@ describe("Sink", () => {
     }))
 
   it.effect("last", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromChunks(Chunk.range(1, 10), Chunk.range(1, 3), Chunk.range(2, 5)),
         Stream.run(Sink.last())
       )
@@ -38,8 +38,8 @@ describe("Sink", () => {
     }))
 
   it.effect("take - repeats until the source is exhausted", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromChunks(
           Chunk.make(1, 2),
           Chunk.make(3, 4, 5),
@@ -56,10 +56,10 @@ describe("Sink", () => {
     }))
 
   it.effect("some", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunk = Chunk.make(1, 2, 3, 4, 5)
       const predicate = (n: number) => n === 3
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromChunk(chunk),
         Stream.run(Sink.some(predicate))
       )
@@ -67,8 +67,8 @@ describe("Sink", () => {
     }))
 
   it.effect("sum", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromChunks(
           Chunk.make(1, 2),
           Chunk.make(3, 4, 5),
@@ -85,7 +85,7 @@ describe("Sink", () => {
     }))
 
   it.effect("take", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const n = 4
       const chunks = Chunk.make(
         Chunk.make(1, 2),
@@ -94,7 +94,7 @@ describe("Sink", () => {
         Chunk.make(6, 7),
         Chunk.make(8, 9)
       )
-      const [chunk, leftover] = yield* $(
+      const [chunk, leftover] = yield* pipe(
         Stream.fromChunks(...chunks),
         Stream.peel(Sink.take<number>(n)),
         Effect.flatMap(([chunk, stream]) =>

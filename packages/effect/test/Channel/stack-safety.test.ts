@@ -8,9 +8,9 @@ import { describe } from "vitest"
 
 describe("Channel", () => {
   it.effect("mapOut is stack safe", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const N = 10_000
-      const [chunk, value] = yield* $(
+      const [chunk, value] = yield* pipe(
         Chunk.range(1, N),
         Chunk.reduce(
           Channel.write<number>(1),
@@ -27,9 +27,9 @@ describe("Channel", () => {
     }), 20_000)
 
   it.effect("concatMap is stack safe", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const N = 10_000
-      const [chunk, value] = yield* $(
+      const [chunk, value] = yield* pipe(
         Chunk.range(1, N),
         Chunk.reduce(
           Channel.write<number>(1),
@@ -47,9 +47,9 @@ describe("Channel", () => {
     }), 20_000)
 
   it.effect("flatMap is stack safe", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const N = 10_000
-      const [chunk, value] = yield* $(
+      const [chunk, value] = yield* pipe(
         Chunk.range(1, N),
         Chunk.reduce(
           Channel.write<number>(0),

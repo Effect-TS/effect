@@ -9,8 +9,8 @@ import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("unwrapScoped - happy path", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(false))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(false))
       const resource = Effect.acquireRelease(
         Effect.succeed(100),
         () => Ref.set(ref, true)
@@ -30,23 +30,23 @@ describe("Sink", () => {
         ),
         Sink.unwrapScoped
       )
-      const [result, state] = yield* $(Stream.make(1, 2, 3), Stream.run(sink))
-      const finalState = yield* $(Ref.get(ref))
+      const [result, state] = yield* pipe(Stream.make(1, 2, 3), Stream.run(sink))
+      const finalState = yield* (Ref.get(ref))
       strictEqual(result, 103)
       assertFalse(state)
       assertTrue(finalState)
     }))
 
   it.effect("unwrapScoped - error", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(false))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(false))
       const resource = Effect.acquireRelease(
         Effect.succeed(100),
         () => Ref.set(ref, true)
       )
       const sink = pipe(resource, Effect.as(Sink.succeed("ok")), Sink.unwrapScoped)
-      const result = yield* $(Stream.fail("fail"), Stream.run(sink))
-      const finalState = yield* $(Ref.get(ref))
+      const result = yield* pipe(Stream.fail("fail"), Stream.run(sink))
+      const finalState = yield* (Ref.get(ref))
       strictEqual(result, "ok")
       assertTrue(finalState)
     }))

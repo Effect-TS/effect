@@ -60,8 +60,8 @@ describe("Effect", () => {
     }))
   describe("and Then", () => {
     it.effect("effect tag", () =>
-      Effect.gen(function*($) {
-        const [n, s, z] = yield* $(Effect.all([
+      Effect.gen(function*() {
+        const [n, s, z] = yield* (Effect.all([
           Effect.andThen(Effect.void, DemoTag.getNumbers),
           Effect.andThen(Effect.succeed("a"), DemoTag.strings),
           Effect.andThen(Effect.succeed("a"), DemoTag.fn)
@@ -78,15 +78,15 @@ describe("Effect", () => {
       })))
   })
   it.effect("effect tag", () =>
-    Effect.gen(function*($) {
-      const [n, s, z, zUnion] = yield* $(Effect.all([
+    Effect.gen(function*() {
+      const [n, s, z, zUnion] = yield* (Effect.all([
         DemoTag.getNumbers(),
         DemoTag.strings,
         DemoTag.fn("a", "b", "c"),
         DemoTag.fnParamsUnion(1)
       ]))
-      const s2 = yield* $(DemoTag.pipe(Effect.map((_) => _.strings)))
-      const s3 = yield* $(DemoTag.use((_) => _.fnGen("hello")))
+      const s2 = yield* (DemoTag.pipe(Effect.map((_) => _.strings)))
+      const s3 = yield* (DemoTag.use((_) => _.fnGen("hello")))
       deepStrictEqual(n, [0, 1])
       deepStrictEqual(s, ["a", "b"])
       deepStrictEqual(z, ["a", "b", "c"])
@@ -101,13 +101,13 @@ describe("Effect", () => {
       fnParamsUnion: (..._args) => _args
     })))
   it.effect("effect tag with primitives", () =>
-    Effect.gen(function*($) {
-      strictEqual(yield* $(DateTag.getTime()), DateTag.date.getTime())
-      strictEqual(yield* $(NumberTag), 100)
-      deepStrictEqual(Array.from(yield* $(MapTag.keys())), [])
-      yield* $(MapTag.set("foo", "bar"))
-      deepStrictEqual(Array.from(yield* $(MapTag.keys())), ["foo"])
-      strictEqual(yield* $(MapTag.get("foo")), "bar")
+    Effect.gen(function*() {
+      strictEqual(yield* (DateTag.getTime()), DateTag.date.getTime())
+      strictEqual(yield* NumberTag, 100)
+      deepStrictEqual(Array.from(yield* (MapTag.keys())), [])
+      yield* (MapTag.set("foo", "bar"))
+      deepStrictEqual(Array.from(yield* (MapTag.keys())), ["foo"])
+      strictEqual(yield* (MapTag.get("foo")), "bar")
     }).pipe(
       Effect.provide(Layer.mergeAll(
         DateTag.Live,
@@ -116,8 +116,8 @@ describe("Effect", () => {
       ))
     ))
   it.effect("class tag", () =>
-    Effect.gen(function*($) {
-      yield* $(
+    Effect.gen(function*() {
+      yield* (
         Effect.flatMap(NumberRepo.numbers, (_) => Effect.log(`Numbers: ${_}`)).pipe(
           Effect.provideService(NumberRepo, { numbers: [0, 1, 2] })
         )
@@ -125,15 +125,15 @@ describe("Effect", () => {
     }))
   it.effect("environment - provide is modular", () =>
     pipe(
-      Effect.gen(function*($) {
-        const v1 = yield* $(NumberService)
-        const v2 = yield* $(
+      Effect.gen(function*() {
+        const v1 = yield* NumberService
+        const v2 = yield* (
           pipe(
             NumberService,
             Effect.provide(Context.make(NumberService, { n: 2 }))
           )
         )
-        const v3 = yield* $(NumberService)
+        const v3 = yield* NumberService
         strictEqual(v1.n, 4)
         strictEqual(v2.n, 2)
         strictEqual(v3.n, 4)
@@ -142,9 +142,9 @@ describe("Effect", () => {
     ))
   it.effect("environment - provideSomeContext provides context in the right order", () =>
     pipe(
-      Effect.gen(function*($) {
-        const v1 = yield* $(NumberService)
-        const v2 = yield* $(StringService)
+      Effect.gen(function*() {
+        const v1 = yield* NumberService
+        const v2 = yield* StringService
         strictEqual(v1.n, 1)
         strictEqual(v2.s, "ok")
       }),
@@ -153,16 +153,16 @@ describe("Effect", () => {
       Effect.provide(Context.make(StringService, { s: "ok" }))
     ))
   it.effect("environment - async can use environment", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Effect.async<number, never, NumberService>((cb) => cb(Effect.map(NumberService, ({ n }) => n))),
         Effect.provide(Context.make(NumberService, { n: 10 }))
       )
       strictEqual(result, 10)
     }))
   it.effect("serviceWith - effectfully accesses a service in the environment", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Effect.flatMap(NumberService, ({ n }) => Effect.succeed(n + 3)),
         Effect.provide(Context.make(NumberService, { n: 0 }))
       )
@@ -170,8 +170,8 @@ describe("Effect", () => {
     }))
   // TODO: remove
   // it.effect("serviceWith - traced tag", () =>
-  //   Effect.gen(function*($) {
-  //     const result = yield* $(
+  //   Effect.gen(function*() {
+  //     const result = yield* (
   //       Effect.flatMap(NumberService.traced(sourceLocation(new Error())), ({ n }) => Effect.succeed(n + 3)),
   //       Effect.provide(Context.make(NumberService, { n: 0 }))
   //     )
@@ -179,9 +179,9 @@ describe("Effect", () => {
   //   }))
   it.effect("updateService - updates a service in the environment", () =>
     pipe(
-      Effect.gen(function*($) {
-        const a = yield* $(NumberService, Effect.updateService(NumberService, ({ n }) => ({ n: n + 1 })))
-        const b = yield* $(NumberService)
+      Effect.gen(function*() {
+        const a = yield* pipe(NumberService, Effect.updateService(NumberService, ({ n }) => ({ n: n + 1 })))
+        const b = yield* NumberService
         strictEqual(a.n, 1)
         strictEqual(b.n, 0)
       }),
@@ -195,8 +195,8 @@ describe("Effect", () => {
     const Service = Context.GenericTag<Service>("Service")
     const { foo } = Effect.serviceFunctions(Service)
     return pipe(
-      Effect.gen(function*(_) {
-        strictEqual(yield* _(foo("a", 3)), "a3")
+      Effect.gen(function*() {
+        strictEqual(yield* foo("a", 3), "a3")
       }),
       Effect.provideService(
         Service,
@@ -214,8 +214,8 @@ describe("Effect", () => {
     const Service = Context.GenericTag<Service>("Service")
     const { baz } = Effect.serviceConstants(Service)
     return pipe(
-      Effect.gen(function*(_) {
-        strictEqual(yield* _(baz), "42!")
+      Effect.gen(function*() {
+        strictEqual(yield* baz, "42!")
       }),
       Effect.provideService(
         Service,
@@ -234,9 +234,9 @@ describe("Effect", () => {
     const Service = Context.GenericTag<Service>("Service")
     const { constants, functions } = Effect.serviceMembers(Service)
     return pipe(
-      Effect.gen(function*(_) {
-        strictEqual(yield* _(constants.baz), "42!")
-        strictEqual(yield* _(functions.foo("a", 3)), "a3")
+      Effect.gen(function*() {
+        strictEqual(yield* constants.baz, "42!")
+        strictEqual(yield* functions.foo("a", 3), "a3")
       }),
       Effect.provideService(
         Service,

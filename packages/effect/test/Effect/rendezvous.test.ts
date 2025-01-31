@@ -8,36 +8,36 @@ import { describe } from "vitest"
 
 describe("Effect", () => {
   it.effect("bounded 0 is rendezvous", () =>
-    Effect.gen(function*(_) {
-      const rendevous = yield* _(Queue.bounded<string>(0))
+    Effect.gen(function*() {
+      const rendevous = yield* Queue.bounded<string>(0)
       const logs: Array<string> = []
 
-      const fiber = yield* _(
+      const fiber = yield* (
         Effect.fork(
-          Effect.gen(function*(_) {
-            yield* _(Effect.sleep("50 millis"))
+          Effect.gen(function*() {
+            yield* Effect.sleep("50 millis")
             logs.push("sending message")
-            yield* _(Queue.offer(rendevous, "Hello World"))
+            yield* Queue.offer(rendevous, "Hello World")
             logs.push("sent message")
           })
         )
       )
 
-      const fiber2 = yield* _(
+      const fiber2 = yield* (
         Effect.fork(
-          Effect.gen(function*(_) {
-            yield* _(Effect.sleep("100 millis"))
+          Effect.gen(function*() {
+            yield* Effect.sleep("100 millis")
             logs.push("receiving message")
-            const message = yield* _(Queue.take(rendevous))
+            const message = yield* Queue.take(rendevous)
             logs.push("received message")
             logs.push(message)
           })
         )
       )
 
-      yield* _(TestClock.adjust("200 millis"))
+      yield* TestClock.adjust("200 millis")
 
-      yield* _(Fiber.join(Fiber.zip(fiber, fiber2)))
+      yield* Fiber.join(Fiber.zip(fiber, fiber2))
 
       deepStrictEqual(logs, [
         "sending message",

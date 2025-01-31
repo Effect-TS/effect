@@ -51,23 +51,23 @@ const sinkRaceLaw = <E, A, L>(
 
 describe("Sink", () => {
   it.effect("raceBoth", () =>
-    Effect.gen(function*($) {
-      const ints = yield* $(unfoldEffect(
+    Effect.gen(function*() {
+      const ints = yield* unfoldEffect(
         0,
         (n) =>
           Effect.map(
             Random.nextIntBetween(0, 10),
             (i) => n <= 20 ? Option.some([i, n + 1] as const) : Option.none()
           )
-      ))
-      const success1 = yield* $(Random.nextBoolean)
-      const success2 = yield* $(Random.nextBoolean)
+      )
+      const success1 = yield* (Random.nextBoolean)
+      const success2 = yield* (Random.nextBoolean)
       const chunk = pipe(
         Chunk.unsafeFromArray(ints),
         Chunk.appendAll(success1 ? Chunk.of(20) : Chunk.empty<number>()),
         Chunk.appendAll(success2 ? Chunk.of(40) : Chunk.empty<number>())
       )
-      const result = yield* $(
+      const result = yield* (
         sinkRaceLaw(
           Stream.fromIterableEffect(Random.shuffle(chunk)),
           findSink(20),
