@@ -1,0 +1,13 @@
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index 39597304a31e70ecc4730d651d1185edf0413c8e..b60ac444143b0308522a41fb024ffbd48f88a3a8 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -78,7 +78,7 @@ interface CustomMatchers<R = unknown> {
+  * @copyright Akiomi Kamakura 2023
+  */
+ 
+-declare module 'vitest' {
++declare module '@vitest/expect' {
+     interface Assertion<T = any> extends CustomMatchers<T> {
+     }
+     interface AsymmetricMatchersContaining extends CustomMatchers {

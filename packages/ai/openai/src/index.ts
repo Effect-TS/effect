@@ -21,4 +21,9 @@ export * as OpenAiConfig from "./OpenAiConfig.js"
 /**
  * @since 1.0.0
  */
+export * as OpenAiEmbeddings from "./OpenAiEmbeddings.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as OpenAiTokenizer from "./OpenAiTokenizer.js"
