@@ -2,6 +2,8 @@
  * @since 1.0.0
  */
 import type * as Rpc from "@effect/rpc/Rpc"
+import * as RpcClient from "@effect/rpc/RpcClient"
+import type { FromServer } from "@effect/rpc/RpcMessage"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import type { DurationInput } from "effect/Duration"
@@ -10,26 +12,29 @@ import * as Equal from "effect/Equal"
 import * as ExecutionStrategy from "effect/ExecutionStrategy"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as FiberRef from "effect/FiberRef"
 import * as Iterable from "effect/Iterable"
 import * as Layer from "effect/Layer"
 import * as MutableHashMap from "effect/MutableHashMap"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import * as Ref from "effect/Ref"
+import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type { Entity } from "./Entity.js"
-import type { EntityAddress } from "./EntityAddress.js"
-import type { EntityId } from "./EntityId.js"
+import { EntityAddress } from "./EntityAddress.js"
+import { EntityId } from "./EntityId.js"
 import type { EntityType } from "./EntityType.js"
-import type * as Envelope from "./Envelope.js"
+import * as Envelope from "./Envelope.js"
 import * as InternalEntityManager from "./internal/entityManager.js"
 import { PodAddress } from "./PodAddress.js"
 import { Pods } from "./Pods.js"
+import * as Reply from "./Reply.js"
 import { ShardId } from "./ShardId.js"
 import { ShardingConfig } from "./ShardingConfig.js"
-import type { MalformedMessage, PodUnavailable } from "./ShardingError.js"
-import { EntityNotManagedByPod } from "./ShardingError.js"
+import type { PodUnavailable } from "./ShardingError.js"
+import { EntityNotManagedByPod, MalformedMessage } from "./ShardingError.js"
 import { EntityRegistered, type ShardingRegistrationEvent } from "./ShardingRegistrationEvent.js"
 import { ShardManagerClient } from "./ShardManager.js"
 import * as Snowflake from "./Snowflake.js"
@@ -61,13 +66,14 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
    */
   readonly isShutdown: Effect.Effect<boolean>
 
-  // /**
-  //  * Constructs a `Messenger` which can be used to send messages to the
-  //  * specified `Entity`.
-  //  */
-  // readonly makeMessenger: <Msg extends Envelope.Envelope.AnyMessage>(
-  //   entity: Entity<Msg>
-  // ) => Effect.Effect<Messenger.Messenger<Msg>, never, Schema.SerializableWithResult.Context<Msg>>
+  /**
+   * Constructs a `RpcClient` which can be used to send messages to the
+   * specified `Entity`.
+   */
+  readonly makeClient: <Rpcs extends Rpc.Any>(
+    entity: Entity<Rpcs>,
+    entityId: string
+  ) => Effect.Effect<RpcClient.RpcClient<Rpcs>, EntityNotManagedByPod, Rpc.Context<Rpcs> | Scope.Scope>
 
   // /**
   //  * Registers the shard manager with the cluster.
@@ -92,16 +98,16 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
       readonly maxIdleTime?: DurationInput | undefined
     }
   ) => Effect.Effect<void, never, Rpc.Context<Rpcs> | Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>>
-  // /**
-  //  * Sends a message to the specified pod.
-  //  */
-  // readonly sendEnvelope: <Version extends string, Msg extends Envelope.AnyMessage>(
-  //   pod: PodAddress,
-  //   envelope: Envelope<Version, Msg>
-  // ) => Effect<
-  //   void,
-  //   EntityNotManagedByPod | MalformedMessage | PodUnavailable
-  // >
+
+  /**
+   * Sends a message to the specified entity.
+   */
+  readonly send: (
+    message: Envelope.Envelope.PartialEncoded | Reply.Reply<any> | Reply.ReplyEncoded<any>
+  ) => Effect.Effect<
+    void,
+    EntityNotManagedByPod | MalformedMessage
+  >
 }>() {}
 
 // -----------------------------------------------------------------------------
@@ -156,8 +162,7 @@ export const make = Effect.gen(function*() {
       )
       entityManagers.set(entity.type, { scope, manager })
 
-      // TODO: Send reply messages to the right pod
-      // Add `sendReply` function
+      yield* Effect.forkIn(manager.run((reply) => Effect.ignore(pods.sendReply(reply))), scope)
 
       yield* Scope.addFinalizer(scope, Effect.sync(() => entityManagers.delete(entity.type)))
       yield* PubSub.publish(events, EntityRegistered({ entity }))
@@ -192,37 +197,121 @@ export const make = Effect.gen(function*() {
       : pods.send(pod, envelope)
   }
 
-  // function makeMessenger<Msg extends Envelope.Envelope.AnyMessage>(entity: Entity<Msg>): Effect.Effect<
-  //   Messenger.Messenger<Msg>,
-  //   never,
-  //   Schema.SerializableWithResult.Context<Msg>
-  // > {
-  //   return Effect.contextWith((context) => {
-  //     const send: Messenger.Messenger<Msg>["send"] = (entityIdentifier, message) =>
-  //       Effect.suspend(() => {
-  //         const entityId = EntityId.make(entityIdentifier)
-  //         const shardId = getShardId(entityId)
-  //         const address = new EntityAddress({ shardId, entityId, entityType: entity.type })
-  //         const maybePod = MutableHashMap.get(shardAssignments, shardId)
-  //         if (Option.isNone(maybePod)) {
-  //           return Effect.fail(new EntityNotManagedByPod({ address }))
-  //         }
-  //         const envelope = Envelope.makeWithContext({
-  //           id: snowflakeGen.unsafeNext(shardId),
-  //           address,
-  //           message,
-  //           headers: Headers.empty,
-  //           context
-  //         })
-  //         return Effect.flatten(Effect.orDie(sendEnvelope(maybePod.value, envelope)))
-  //       })
-  //
-  //     return identity<Messenger.Messenger<Msg>>({
-  //       [Messenger.TypeId]: Messenger.TypeId,
-  //       send
-  //     })
-  //   })
-  // }
+  const clientRequests = new Map<Snowflake.Snowflake, {
+    readonly rpc: Rpc.AnyWithProps
+    readonly context: Context.Context<any>
+    readonly write: (reply: FromServer<any>) => Effect.Effect<void>
+  }>()
+
+  const send = (
+    message: Envelope.Envelope.PartialEncoded | Reply.Reply<any> | Reply.ReplyEncoded<any>
+  ): Effect.Effect<void, EntityNotManagedByPod | MalformedMessage> =>
+    Effect.suspend(() => {
+      if (Reply.isReply(message)) {
+        return sendReply(message)
+      } else if (Envelope.isEnvelope(message) || message._tag === "Request") {
+        if (!isEntityOnLocalShards(message.address)) {
+          return Effect.fail(new EntityNotManagedByPod({ address: message.address }))
+        }
+        const state = entityManagers.get(message.address.entityType)
+        if (!state) {
+          return Effect.fail(new EntityNotManagedByPod({ address: message.address }))
+        }
+        return state.manager.sendEncoded(message)
+      }
+
+      const requestId = BigInt(message.requestId) as Snowflake.Snowflake
+      const entry = clientRequests.get(requestId)
+      if (!entry) return Effect.void
+      return Schema.decode(Reply.Reply(entry.rpc as any))(message).pipe(
+        Effect.locally(FiberRef.currentContext, entry.context),
+        MalformedMessage.refail,
+        Effect.flatMap(sendReply)
+      ) as Effect.Effect<void, MalformedMessage>
+    })
+
+  const sendReply = (reply: Reply.Reply<any>): Effect.Effect<void> => {
+    const entry = clientRequests.get(reply.requestId)
+    if (!entry) return Effect.void
+    switch (reply._tag) {
+      case "Chunk": {
+        return entry.write({
+          _tag: "Chunk",
+          clientId: 0,
+          requestId: reply.requestId as any,
+          values: reply.values
+        })
+      }
+      case "WithExit": {
+        clientRequests.delete(reply.requestId)
+        return entry.write({
+          _tag: "Exit",
+          clientId: 0,
+          requestId: reply.requestId as any,
+          exit: reply.exit
+        })
+      }
+    }
+  }
+
+  const makeClient = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
+    entity: Entity<Rpcs>,
+    entityId: string
+  ) {
+    const id = EntityId.make(entityId)
+    const shardId = getShardId(id)
+    const address = new EntityAddress({ shardId, entityId: id, entityType: entity.type })
+    const maybePod = MutableHashMap.get(shardAssignments, shardId)
+    if (Option.isNone(maybePod)) {
+      return yield* new EntityNotManagedByPod({ address })
+    }
+    const pod = maybePod.value
+    const context = yield* Effect.context<Rpc.Context<Rpcs>>()
+
+    const { client, write } = yield* RpcClient.makeNoSerialization(entity.protocol, {
+      supportsAck: true,
+      generateRequestId: () => snowflakeGen.unsafeNext(shardId) as any,
+      onFromClient(message) {
+        switch (message._tag) {
+          case "Request": {
+            const rpc = entity.protocol.requests.get(message.tag)!
+            clientRequests.set(message.id as any, { context, write, rpc: rpc as any })
+            const request = Envelope.makeRequestWithContext({
+              id: message.id as any,
+              address,
+              payload: message.payload,
+              headers: message.headers,
+              traceId: message.traceId,
+              spanId: message.spanId,
+              sampled: message.sampled,
+              rpc,
+              context
+            })
+            return Effect.orDie(sendEnvelope(pod, request))
+          }
+          case "Ack": {
+            const ack = new Envelope.AckChunk({
+              address,
+              requestId: message.requestId as any,
+              replyId: snowflakeGen.unsafeNext(shardId)
+            })
+            return Effect.orDie(sendEnvelope(pod, ack))
+          }
+          case "Interrupt": {
+            clientRequests.delete(message.requestId as any)
+            const interrupt = new Envelope.Interrupt({
+              address,
+              requestId: message.requestId as any
+            })
+            return Effect.orDie(sendEnvelope(pod, interrupt))
+          }
+        }
+        return Effect.void
+      }
+    })
+
+    return client
+  })
 
   // Unregister pod from shard manager when scope is closed
   yield* Scope.addFinalizer(
@@ -255,8 +344,9 @@ export const make = Effect.gen(function*() {
     getRegistrationEvents,
     getShardId,
     isShutdown: Ref.get(isShutdown),
-    registerEntity
-    // makeMessenger
+    registerEntity,
+    makeClient,
+    send
   })
 
   return sharding

@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Envelope from "./Envelope.js"
 import type { PodAddress } from "./PodAddress.js"
+import type * as Reply from "./Reply.js"
 import type { ShardId } from "./ShardId.js"
 import type { PodUnavailable } from "./ShardingError.js"
 import { EntityNotManagedByPod, MalformedMessage } from "./ShardingError.js"
@@ -31,7 +32,7 @@ export class Pods extends Context.Tag("@effect/cluster/Pods")<Pods, {
     options: {
       readonly envelope: Envelope.EnvelopeWithContext<R>
       readonly send: <Rpc extends Rpc.Any>(
-        envelope: Envelope.Envelope<Rpc>
+        message: Envelope.Envelope<Rpc>
       ) => Effect.Effect<void, EntityNotManagedByPod>
       readonly simulateRemoteSerialization: boolean
     }
@@ -42,8 +43,15 @@ export class Pods extends Context.Tag("@effect/cluster/Pods")<Pods, {
    */
   readonly send: <R extends Rpc.Any>(
     address: PodAddress,
-    envelope: Envelope.EnvelopeWithContext<R>
+    message: Envelope.EnvelopeWithContext<R>
   ) => Effect.Effect<void, EntityNotManagedByPod | MalformedMessage>
+
+  /**
+   * Send a reply back to the sender pod
+   */
+  readonly sendReply: <R extends Rpc.Any>(
+    message: Reply.Reply<R>
+  ) => Effect.Effect<void, MalformedMessage>
 
   /**
    * Notify a pod that it was assigned a set of shards.
@@ -79,13 +87,16 @@ export const make = (options: Omit<Pods["Type"], "sendLocal">): Pods["Type"] =>
  * @since 1.0.0
  * @category constructors
  */
-export const layerNoop: Layer.Layer<Pods> = Layer.succeed(
+export const layerNoop: Layer.Layer<Pods> = Layer.effect(
   Pods,
-  make({
-    send: (_, envelope) => Effect.fail(new EntityNotManagedByPod({ address: envelope.address })),
-    ping: () => Effect.void,
-    assignShards: () => Effect.void,
-    unassignShards: () => Effect.void
+  Effect.gen(function*() {
+    return make({
+      send: (_, envelope) => Effect.fail(new EntityNotManagedByPod({ address: envelope.address })),
+      sendReply: () => Effect.die(new Error("sendLocal not implemented")),
+      ping: () => Effect.void,
+      assignShards: () => Effect.void,
+      unassignShards: () => Effect.void
+    })
   })
 )
 

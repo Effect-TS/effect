@@ -24,21 +24,25 @@ export class Storage extends Context.Tag("@effect/cluster/Storage")<Storage, {
    * Get the current assignments of shards to pods.
    */
   readonly getShardAssignments: Effect.Effect<ReadonlyMap<ShardId, Option.Option<PodAddress>>>
+
   /**
    * Returns a `Stream` which will emit the state of all shard assignments
    * whenever assignments are updated.
    */
   readonly streamShardAssignments: Stream.Stream<ReadonlyMap<ShardId, Option.Option<PodAddress>>>
+
   /**
    * Save the current state of shards assignments to pods.
    */
   readonly saveShardAssignments: (
     assignments: Iterable<readonly [ShardId, Option.Option<PodAddress>]>
   ) => Effect.Effect<void>
+
   /**
    * Get all pods registered with the cluster.
    */
   readonly getPods: Effect.Effect<Array<[PodAddress, Pod]>>
+
   /**
    * Save the current pods registered with the cluster.
    */

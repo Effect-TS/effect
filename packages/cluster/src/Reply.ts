@@ -61,6 +61,8 @@ export interface ChunkEncoded<R extends Rpc.Any> {
   readonly values: ReadonlyArray<Rpc.SuccessChunkEncoded<R>>
 }
 
+const schemaCache = new WeakMap<Rpc.Any, Schema.Schema<Reply<Rpc.Any>, ReplyEncoded<Rpc.Any>, Rpc.Context<Rpc.Any>>>()
+
 /**
  * @since 1.0.0
  * @category schemas
@@ -69,7 +71,14 @@ export const Reply = <R extends Rpc.Any>(rpc: R): Schema.Schema<
   Reply<R>,
   ReplyEncoded<R>,
   Rpc.Context<R>
-> => Schema.Union(WithExit.schema(rpc), Chunk.schema(rpc))
+> => {
+  if (schemaCache.has(rpc)) {
+    return schemaCache.get(rpc) as any
+  }
+  const schema = Schema.Union(WithExit.schema(rpc), Chunk.schema(rpc))
+  schemaCache.set(rpc, schema)
+  return schema
+}
 
 /**
  * @since 1.0.0

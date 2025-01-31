@@ -1,7 +1,7 @@
 # Envelope
 
 - [x] Remove Version from Envelope
-- [ ] Add Reply data type
+- [x] Add Reply data type
 - [ ] Add Envelope with last reply for resumable streams
 
 # Streams

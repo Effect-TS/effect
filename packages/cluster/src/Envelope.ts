@@ -83,7 +83,7 @@ export interface Request<in out Rpc extends Rpc.Any> {
  */
 export class AckChunk extends Schema.TaggedClass<AckChunk>("@effect/cluster/Envelope/AckChunk")("AckChunk", {
   address: EntityAddress,
-  envelopeId: SnowflakeFromString,
+  requestId: SnowflakeFromString,
   replyId: SnowflakeFromString
 }) {
   /**
@@ -98,7 +98,7 @@ export class AckChunk extends Schema.TaggedClass<AckChunk>("@effect/cluster/Enve
  */
 export class Interrupt extends Schema.TaggedClass<Interrupt>("@effect/cluster/Envelope/Interrupt")("Interrupt", {
   address: EntityAddress,
-  envelopeId: SnowflakeFromString
+  requestId: SnowflakeFromString
 }) {
   /**
    * @since 1.0.0
@@ -408,7 +408,7 @@ export const deserializePartial: (envelope: Envelope.Encoded) => Effect.Effect<
  * @category serialization / deserialization
  */
 export const deserialize = <Rpc extends Rpc.Any>(
-  self: RequestWithContext<Rpc>,
+  self: EnvelopeWithContext<Rpc>,
   encoded: Envelope.Encoded
 ): Effect.Effect<
   EnvelopeWithContext<Rpc>,
@@ -420,6 +420,8 @@ export const deserialize = <Rpc extends Rpc.Any>(
   > => {
     if (partial._tag !== "Request") {
       return Effect.succeed(partial)
+    } else if (self._tag !== "Request") {
+      return Effect.dieMessage("Envelope.deserialize: RequestWithContext required to deserialize Request")
     }
     return Schema.deserialize(self.payload, partial.payload).pipe(
       Effect.provide(self.context as Context<unknown>),

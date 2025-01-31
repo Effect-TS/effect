@@ -74,7 +74,7 @@ export const make = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
       const shardId = sharding.getShardId(address.entityId)
 
       // Initiate the behavior for the entity
-      const server = yield* RpcServer.make(entity.protocol).pipe(
+      const server = yield* RpcServer.makeNoSerialization(entity.protocol).pipe(
         Effect.locally(FiberRef.currentContext, context)
       )
 
@@ -180,10 +180,10 @@ export const make = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
             return server.write(0, envelope as any)
           }
           case "AckChunk": {
-            return server.write(0, { _tag: "Ack", requestId: envelope.envelopeId as any })
+            return server.write(0, { _tag: "Ack", requestId: envelope.requestId as any })
           }
           case "Interrupt": {
-            return server.write(0, { _tag: "Interrupt", requestId: envelope.envelopeId as any })
+            return server.write(0, { _tag: "Interrupt", requestId: envelope.requestId as any })
           }
         }
       }),

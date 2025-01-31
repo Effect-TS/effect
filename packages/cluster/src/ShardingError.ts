@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as Effect from "effect/Effect"
-import type { ParseError } from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import { EntityAddress } from "./EntityAddress.js"
 import { PodAddress } from "./PodAddress.js"

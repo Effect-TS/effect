@@ -122,9 +122,8 @@ export const layer = <
   | ShardingConfig
   | ShardManagerClient
 > =>
-  Layer.effectDiscard(Effect.flatMap(Sharding.Sharding, (sharding) => sharding.registerEntity(entity))).pipe(
-    Layer.provide([
-      Sharding.layer,
-      entity.protocol.toLayer(build)
-    ])
+  Sharding.Sharding.pipe(
+    Effect.flatMap((sharding) => sharding.registerEntity(entity)),
+    Layer.effectDiscard,
+    Layer.provide([Sharding.layer, entity.protocol.toLayer(build)])
   )
