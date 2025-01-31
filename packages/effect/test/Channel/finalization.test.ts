@@ -23,8 +23,8 @@ const Second = (first: First): Second => ({ _tag: "Second", first })
 
 describe("Channel", () => {
   it.effect("ensuring - prompt closure between continuations", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make<ReadonlyArray<string>>([]))
       const event = (label: string) => Ref.update(ref, (array) => [...array, label])
       const channel = pipe(
         Channel.fromEffect(event("Acquire1")),
@@ -37,7 +37,7 @@ describe("Channel", () => {
           )
         )
       )
-      const result = yield* $(Channel.runDrain(channel), Effect.zipRight(Ref.get(ref)))
+      const result = yield* pipe(Channel.runDrain(channel), Effect.zipRight(Ref.get(ref)))
       deepStrictEqual(result, [
         "Acquire1",
         "Release11",
@@ -48,8 +48,8 @@ describe("Channel", () => {
     }))
 
   it.effect("ensuring - last finalizers are deferred to the scope", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make<ReadonlyArray<string>>([]))
       function event(label: string) {
         return Ref.update(ref, (array) => [...array, label])
       }
@@ -65,7 +65,7 @@ describe("Channel", () => {
         ),
         Channel.ensuring(event("ReleaseOuter"))
       )
-      const [eventsInScope, eventsOutsideScope] = yield* $(
+      const [eventsInScope, eventsOutsideScope] = yield* pipe(
         Channel.toPull(channel),
         Effect.flatMap((pull) => pipe(Effect.exit(pull), Effect.zipRight(Ref.get(ref)))),
         Effect.scoped,
@@ -88,8 +88,8 @@ describe("Channel", () => {
     }))
 
   it.effect("ensuring - mixture of concatMap and ensuring", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make<ReadonlyArray<string>>([]))
       const event = (label: string) => Ref.update(ref, (array) => [...array, label])
       const channel = pipe(
         Channel.writeAll(1, 2, 3),
@@ -109,7 +109,7 @@ describe("Channel", () => {
         ),
         Channel.ensuring(event("Second concatMap"))
       )
-      const [[elements], events] = yield* $(
+      const [[elements], events] = yield* pipe(
         Channel.runCollect(channel),
         Effect.zip(Ref.get(ref))
       )
@@ -132,8 +132,8 @@ describe("Channel", () => {
     }))
 
   it.effect("ensuring - finalizer ordering 2", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make<ReadonlyArray<string>>([]))
       const event = (label: string) => Ref.update(ref, (array) => [...array, label])
       const channel = pipe(
         Channel.writeAll(1, 2),
@@ -145,8 +145,8 @@ describe("Channel", () => {
           )
         )
       )
-      yield* $(Channel.runDrain(channel))
-      const result = yield* $(Ref.get(ref))
+      yield* (Channel.runDrain(channel))
+      const result = yield* (Ref.get(ref))
       deepStrictEqual(Array.from(result), [
         "pulled 1",
         "close 1",
