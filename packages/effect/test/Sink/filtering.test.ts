@@ -8,8 +8,8 @@ import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("filterInput", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(1, 9),
         Stream.run(pipe(Sink.collectAll<number>(), Sink.filterInput((n) => n % 2 === 0)))
       )
@@ -17,8 +17,8 @@ describe("Sink", () => {
     }))
 
   it.effect("filterInputEffect - happy path", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(1, 9),
         Stream.run(pipe(
           Sink.collectAll<number>(),
@@ -29,8 +29,8 @@ describe("Sink", () => {
     }))
 
   it.effect("filterInputEffect - error", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(1, 9),
         Stream.run(pipe(
           Sink.collectAll<number>(),

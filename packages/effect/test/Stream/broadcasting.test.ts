@@ -14,8 +14,8 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("broadcast - values", () =>
-    Effect.gen(function*($) {
-      const { result1, result2 } = yield* $(
+    Effect.gen(function*() {
+      const { result1, result2 } = yield* pipe(
         Stream.range(0, 4),
         Stream.broadcast(2, 12),
         Effect.flatMap((streams) =>
@@ -32,8 +32,8 @@ describe("Stream", () => {
     }))
 
   it.effect("broadcast - errors", () =>
-    Effect.gen(function*($) {
-      const { result1, result2 } = yield* $(
+    Effect.gen(function*() {
+      const { result1, result2 } = yield* pipe(
         Stream.make(0),
         Stream.concat(Stream.fail("boom")),
         Stream.broadcast(2, 12),
@@ -50,16 +50,16 @@ describe("Stream", () => {
     }))
 
   it.effect("broadcast - backpressure", () =>
-    Effect.gen(function*($) {
-      const { result1, result2 } = yield* $(
+    Effect.gen(function*() {
+      const { result1, result2 } = yield* pipe(
         Stream.range(0, 4),
         Stream.flatMap(Stream.succeed),
         Stream.broadcast(2, 2),
         Effect.flatMap((streams) =>
-          Effect.gen(function*($) {
-            const ref = yield* $(Ref.make(Chunk.empty<number>()))
-            const latch = yield* $(Deferred.make<void>())
-            const fiber = yield* $(
+          Effect.gen(function*() {
+            const ref = yield* (Ref.make(Chunk.empty<number>()))
+            const latch = yield* (Deferred.make<void>())
+            const fiber = yield* pipe(
               streams[0],
               Stream.tap((n) =>
                 pipe(
@@ -73,11 +73,11 @@ describe("Stream", () => {
               Stream.runDrain,
               Effect.fork
             )
-            yield* $(Deferred.await(latch))
-            const result1 = yield* $(Ref.get(ref))
-            yield* $(Stream.runDrain(streams[1]))
-            yield* $(Fiber.await(fiber))
-            const result2 = yield* $(Ref.get(ref))
+            yield* (Deferred.await(latch))
+            const result1 = yield* (Ref.get(ref))
+            yield* (Stream.runDrain(streams[1]))
+            yield* (Fiber.await(fiber))
+            const result2 = yield* (Ref.get(ref))
             return { result1, result2 }
           })
         ),
@@ -88,8 +88,8 @@ describe("Stream", () => {
     }))
 
   it.effect("broadcast - unsubscribe", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(0, 4),
         Stream.broadcast(2, 2),
         Effect.flatMap((streams) =>

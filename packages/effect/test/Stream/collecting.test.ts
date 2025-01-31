@@ -1,7 +1,7 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import { identity } from "effect/Function"
+import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
@@ -10,8 +10,8 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("collect", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(Either.left(1), Either.right(2), Either.left(3)),
         Stream.filterMap((either) =>
           Either.isRight(either) ?
@@ -24,8 +24,8 @@ describe("Stream", () => {
     }))
 
   it.effect("collectEffect - simple example", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(Either.left(1), Either.right(2), Either.left(3)),
         Stream.filterMapEffect((either) =>
           Either.isRight(either) ?
@@ -38,12 +38,12 @@ describe("Stream", () => {
     }))
 
   it.effect("collectEffect - multiple chunks", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = Chunk.make(
         Chunk.make(Either.left(1), Either.right(2)),
         Chunk.make(Either.right(3), Either.left(4))
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromChunks(...chunks),
         Stream.filterMapEffect((either) =>
           Either.isRight(either) ?
@@ -56,8 +56,8 @@ describe("Stream", () => {
     }))
 
   it.effect("collectEffect - handles failures", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(Either.left(1), Either.right(2), Either.left(3)),
         Stream.filterMapEffect(() => Option.some(Effect.fail("Ouch"))),
         Stream.runDrain,
@@ -67,8 +67,8 @@ describe("Stream", () => {
     }))
 
   it.effect("collectEffect - laziness on chunks", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.filterMapEffect((n) =>
           n === 3 ?
@@ -85,8 +85,8 @@ describe("Stream", () => {
     }))
 
   it.effect("collectWhile - simple example", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(Option.some(1), Option.some(2), Option.none(), Option.some(4)),
         Stream.filterMapWhile(identity),
         Stream.runCollect
@@ -95,8 +95,8 @@ describe("Stream", () => {
     }))
 
   it.effect("collectWhile - short circuits", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(Option.some(1)),
         Stream.concat(Stream.fail("Ouch")),
         Stream.filterMapWhile((option) => Option.isNone(option) ? Option.some(1) : Option.none()),
@@ -107,8 +107,8 @@ describe("Stream", () => {
     }))
 
   it.effect("collectWhileEffect - simple example", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(Option.some(1), Option.some(2), Option.none(), Option.some(4)),
         Stream.filterMapWhileEffect((option) =>
           Option.isSome(option) ?
@@ -121,8 +121,8 @@ describe("Stream", () => {
     }))
 
   it.effect("collectWhileEffect - short circuits", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(Option.some(1)),
         Stream.concat(Stream.fail("Ouch")),
         Stream.filterMapWhileEffect((option) =>
@@ -137,8 +137,8 @@ describe("Stream", () => {
     }))
 
   it.effect("collectWhileEffect - fails", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(Option.some(1), Option.some(2), Option.none(), Option.some(3)),
         Stream.filterMapWhileEffect(() => Option.some(Effect.fail("Ouch"))),
         Stream.runDrain,
@@ -148,8 +148,8 @@ describe("Stream", () => {
     }))
 
   it.effect("collectWhileEffect - laziness on chunks", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3, 4),
         Stream.filterMapWhileEffect((n) =>
           n === 3 ?

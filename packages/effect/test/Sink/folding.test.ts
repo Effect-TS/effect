@@ -11,8 +11,8 @@ import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("fold - empty", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.empty,
         Stream.transduce(Sink.fold<number, number>(0, constTrue, (x, y) => x + y)),
         Stream.runCollect
@@ -21,8 +21,8 @@ describe("Sink", () => {
     }))
 
   it.effect("fold - termination in the middle", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(1, 9),
         Stream.run(Sink.fold<number, number>(0, (n) => n <= 5, (x, y) => x + y))
       )
@@ -30,8 +30,8 @@ describe("Sink", () => {
     }))
 
   it.effect("fold - immediate termination", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(1, 9),
         Stream.run(Sink.fold<number, number>(0, (n) => n <= -1, (x, y) => x + y))
       )
@@ -39,8 +39,8 @@ describe("Sink", () => {
     }))
 
   it.effect("fold - no termination", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.range(1, 9),
         Stream.run(Sink.fold<number, number>(0, (n) => n <= 500, (x, y) => x + y))
       )
@@ -48,22 +48,22 @@ describe("Sink", () => {
     }))
 
   it.effect("foldLeft equivalence with Chunk.reduce", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.range(1, 9)
-      const result1 = yield* $(stream, Stream.run(Sink.foldLeft("", (s, n) => s + `${n}`)))
-      const result2 = yield* $(stream, Stream.runCollect, Effect.map(Chunk.reduce("", (s, n) => s + `${n}`)))
+      const result1 = yield* pipe(stream, Stream.run(Sink.foldLeft("", (s, n) => s + `${n}`)))
+      const result2 = yield* pipe(stream, Stream.runCollect, Effect.map(Chunk.reduce("", (s, n) => s + `${n}`)))
       strictEqual(result1, result2)
     }))
 
   it.effect("foldEffect - empty", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const sink = Sink.foldEffect(0, constTrue, (x, y: number) => Effect.succeed(x + y))
-      const result = yield* $(Stream.empty, Stream.transduce(sink), Stream.runCollect)
+      const result = yield* pipe(Stream.empty, Stream.transduce(sink), Stream.runCollect)
       deepStrictEqual(Array.from(result), [0])
     }))
 
   it.effect("foldEffect - short circuits", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const empty: Stream.Stream<number> = Stream.empty
       const single = Stream.make(1)
       const double = Stream.make(1, 2)
@@ -90,10 +90,10 @@ describe("Sink", () => {
           ),
           Effect.exit
         )
-      const result1 = yield* $(run(empty))
-      const result2 = yield* $(run(single))
-      const result3 = yield* $(run(double))
-      const result4 = yield* $(run(failed))
+      const result1 = yield* run(empty)
+      const result2 = yield* run(single)
+      const result3 = yield* run(double)
+      const result4 = yield* run(failed)
       deepStrictEqual(result1, Exit.succeed([[0], []]))
       deepStrictEqual(result2, Exit.succeed([[30], [1]]))
       deepStrictEqual(result3, Exit.succeed([[30], [1, 2]]))
@@ -101,8 +101,8 @@ describe("Sink", () => {
     }))
 
   it.effect("foldUntil", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 1, 1, 1, 1, 1),
         Stream.transduce(Sink.foldUntil(0, 3, (x, y) => x + y)),
         Stream.runCollect
@@ -111,8 +111,8 @@ describe("Sink", () => {
     }))
 
   it.effect("foldUntilEffect", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 1, 1, 1, 1, 1),
         Stream.transduce(Sink.foldUntilEffect(0, 3, (x, y) => Effect.succeed(x + y))),
         Stream.runCollect
@@ -121,8 +121,8 @@ describe("Sink", () => {
     }))
 
   it.effect("foldWeighted", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 5, 2, 3),
         Stream.transduce(Sink.foldWeighted({
           initial: Chunk.empty<number>(),
@@ -139,8 +139,8 @@ describe("Sink", () => {
     }))
 
   it.effect("foldWeightedDecompose - empty", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.empty,
         Stream.transduce(Sink.foldWeightedDecompose({
           initial: 0,
@@ -155,8 +155,8 @@ describe("Sink", () => {
     }))
 
   it.effect("foldWeightedDecompose - simple", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 5, 1),
         Stream.transduce(Sink.foldWeightedDecompose({
           initial: Chunk.empty<number>(),
@@ -174,8 +174,8 @@ describe("Sink", () => {
     }))
 
   it.effect("foldWeightedEffect", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 5, 2, 3),
         Stream.transduce(Sink.foldWeightedEffect({
           initial: Chunk.empty<number>(),
@@ -192,8 +192,8 @@ describe("Sink", () => {
     }))
 
   it.effect("foldWeightedDecomposeEffect - empty", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.empty,
         Stream.transduce(Sink.foldWeightedDecomposeEffect({
           initial: 0,
@@ -208,8 +208,8 @@ describe("Sink", () => {
     }))
 
   it.effect("foldWeightedDecomposeEffect - simple", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 5, 1),
         Stream.transduce(Sink.foldWeightedDecomposeEffect({
           initial: Chunk.empty<number>(),
@@ -227,7 +227,7 @@ describe("Sink", () => {
     }))
 
   it.effect("foldSink - handles leftovers", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const sink = pipe(
         Sink.fail("boom"),
         Sink.foldSink({
@@ -239,7 +239,7 @@ describe("Sink", () => {
           onSuccess: (_) => absurd<Sink.Sink<readonly [Array<number>, string], number, never, string>>(_)
         })
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.run(sink)
       )

@@ -11,7 +11,7 @@ import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("refineOrDie", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const exception = new Cause.RuntimeException()
       const refinedTo = "refined"
       const sink = pipe(
@@ -22,12 +22,12 @@ describe("Sink", () => {
             Option.none()
         )
       )
-      const result = yield* $(Stream.make(1, 2, 3), Stream.run(sink), Effect.exit)
+      const result = yield* pipe(Stream.make(1, 2, 3), Stream.run(sink), Effect.exit)
       deepStrictEqual(result, Exit.fail(refinedTo))
     }))
 
   it.effect("refineOrDieWith - refines", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const exception = new Cause.RuntimeException()
       const refinedTo = "refined"
       const sink = pipe(
@@ -37,12 +37,12 @@ describe("Sink", () => {
             Option.some(refinedTo) :
             Option.none(), (error) => error.message)
       )
-      const result = yield* $(Stream.make(1, 2, 3), Stream.run(sink), Effect.exit)
+      const result = yield* pipe(Stream.make(1, 2, 3), Stream.run(sink), Effect.exit)
       deepStrictEqual(result, Exit.fail(refinedTo))
     }))
 
   it.effect("refineOrDieWith - dies", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const exception = new Cause.RuntimeException()
       const refinedTo = "refined"
       const sink = pipe(
@@ -52,7 +52,7 @@ describe("Sink", () => {
             Option.some(refinedTo) :
             Option.none(), (error) => error.message)
       )
-      const result = yield* $(Stream.make(1, 2, 3), Stream.run(sink), Effect.exit)
+      const result = yield* pipe(Stream.make(1, 2, 3), Stream.run(sink), Effect.exit)
       deepStrictEqual(result, Exit.die(""))
     }))
 })

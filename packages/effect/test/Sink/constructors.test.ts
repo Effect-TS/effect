@@ -20,46 +20,46 @@ import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("drain - fails if upstream fails", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = pipe(
         Stream.make(1),
         Stream.mapEffect(() => Effect.fail("boom!"))
       )
-      const result = yield* $(stream, Stream.run(Sink.drain), Effect.exit)
+      const result = yield* pipe(stream, Stream.run(Sink.drain), Effect.exit)
       deepStrictEqual(result, Exit.fail("boom!"))
     }))
 
   it.effect("fromEffect", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const sink = Sink.fromEffect(Effect.succeed("ok"))
-      const result = yield* $(Stream.make(1, 2, 3), Stream.run(sink))
+      const result = yield* pipe(Stream.make(1, 2, 3), Stream.run(sink))
       deepStrictEqual(result, "ok")
     }))
 
   it.effect("fromQueue - should enqueue all elements", () =>
-    Effect.gen(function*($) {
-      const queue = yield* $(Queue.unbounded<number>())
-      yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromQueue(queue)))
-      const result = yield* $(Queue.takeAll(queue))
+    Effect.gen(function*() {
+      const queue = yield* (Queue.unbounded<number>())
+      yield* pipe(Stream.make(1, 2, 3), Stream.run(Sink.fromQueue(queue)))
+      const result = yield* (Queue.takeAll(queue))
       deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("fromQueueWithShutdown - should enqueue all elements and shutdown the queue", () =>
-    Effect.gen(function*($) {
-      const queue = yield* $(Queue.unbounded<number>(), Effect.map(createQueueSpy))
-      yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromQueue(queue, { shutdown: true })))
-      const enqueuedValues = yield* $(Queue.takeAll(queue))
-      const isShutdown = yield* $(Queue.isShutdown(queue))
+    Effect.gen(function*() {
+      const queue = yield* pipe(Queue.unbounded<number>(), Effect.map(createQueueSpy))
+      yield* pipe(Stream.make(1, 2, 3), Stream.run(Sink.fromQueue(queue, { shutdown: true })))
+      const enqueuedValues = yield* (Queue.takeAll(queue))
+      const isShutdown = yield* (Queue.isShutdown(queue))
       deepStrictEqual(Array.from(enqueuedValues), [1, 2, 3])
       assertTrue(isShutdown)
     }))
 
   it.effect("fromPubSub - should publish all elements", () =>
-    Effect.gen(function*($) {
-      const deferred1 = yield* $(Deferred.make<void>())
-      const deferred2 = yield* $(Deferred.make<void>())
-      const pubsub = yield* $(PubSub.unbounded<number>())
-      const fiber = yield* $(
+    Effect.gen(function*() {
+      const deferred1 = yield* (Deferred.make<void>())
+      const deferred2 = yield* (Deferred.make<void>())
+      const pubsub = yield* (PubSub.unbounded<number>())
+      const fiber = yield* pipe(
         PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
@@ -71,18 +71,18 @@ describe("Sink", () => {
         Effect.scoped,
         Effect.fork
       )
-      yield* $(Deferred.await(deferred1))
-      yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromPubSub(pubsub)))
-      yield* $(Deferred.succeed(deferred2, void 0))
-      const result = yield* $(Fiber.join(fiber))
+      yield* (Deferred.await(deferred1))
+      yield* pipe(Stream.make(1, 2, 3), Stream.run(Sink.fromPubSub(pubsub)))
+      yield* (Deferred.succeed(deferred2, void 0))
+      const result = yield* (Fiber.join(fiber))
       deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("fromPubSub(_, { shutdown: true }) - should shutdown the pubsub", () =>
-    Effect.gen(function*($) {
-      const pubsub = yield* $(PubSub.unbounded<number>())
-      yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromPubSub(pubsub, { shutdown: true })))
-      const isShutdown = yield* $(PubSub.isShutdown(pubsub))
+    Effect.gen(function*() {
+      const pubsub = yield* (PubSub.unbounded<number>())
+      yield* pipe(Stream.make(1, 2, 3), Stream.run(Sink.fromPubSub(pubsub, { shutdown: true })))
+      const isShutdown = yield* (PubSub.isShutdown(pubsub))
       assertTrue(isShutdown)
     }))
 })

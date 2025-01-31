@@ -9,10 +9,10 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("concat - simple example", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream1 = Stream.make(1, 2, 3)
       const stream2 = Stream.make(4, 5, 6)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(
           stream1,
           Stream.runCollect,
@@ -31,14 +31,14 @@ describe("Stream", () => {
     }))
 
   it.effect("concat - finalizer ordering", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<string>()))
-      yield* $(
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<string>()))
+      yield* pipe(
         Stream.finalizer(Ref.update(ref, Chunk.append("Second"))),
         Stream.concat(Stream.finalizer(Ref.update(ref, Chunk.append("First")))),
         Stream.runDrain
       )
-      const result = yield* $(Ref.get(ref))
+      const result = yield* (Ref.get(ref))
       deepStrictEqual(Array.from(result), ["Second", "First"])
     }))
 })

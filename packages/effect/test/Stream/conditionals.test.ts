@@ -10,9 +10,9 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("when - returns the stream if the condition is satisfied", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const stream = Stream.make(1, 2, 3, 4, 5)
-      const { result1, result2 } = yield* $(Effect.all({
+      const { result1, result2 } = yield* (Effect.all({
         result1: pipe(stream, Stream.when(constTrue), Stream.runCollect),
         result2: Stream.runCollect(stream)
       }))
@@ -20,8 +20,8 @@ describe("Stream", () => {
     }))
 
   it.effect("when - returns an empty stream if the condition is not satisfied", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3, 4, 5),
         Stream.when(constFalse),
         Stream.runCollect
@@ -30,9 +30,9 @@ describe("Stream", () => {
     }))
 
   it.effect("when - dies if the condition throws an exception", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.when(() => {
           throw error
@@ -44,8 +44,8 @@ describe("Stream", () => {
     }))
 
   it.effect("whenCase - returns the resulting stream if the given partial function is defined for the given value", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.whenCase(
           () => Option.some(1),
           (option) =>
@@ -59,8 +59,8 @@ describe("Stream", () => {
     }))
 
   it.effect("whenCase - returns an empty stream if the given partial function is not defined for the given value", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.whenCase(
           () => Option.none(),
           (option) =>
@@ -74,9 +74,9 @@ describe("Stream", () => {
     }))
 
   it.effect("whenCase - dies if evaluating the given value throws an exception", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.whenCase(
           () => {
             throw error
@@ -90,9 +90,9 @@ describe("Stream", () => {
     }))
 
   it.effect("whenCase - dies if the partial function throws an exception", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.whenCase(
           constVoid,
           (): Option.Option<Stream.Stream<void>> => {
@@ -106,8 +106,8 @@ describe("Stream", () => {
     }))
 
   it.effect("whenCaseEffect - returns the resulting stream if the given partial function is defined for the given effectful value", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Effect.succeed(Option.some(1)),
         Stream.whenCaseEffect(
           (option) =>
@@ -121,8 +121,8 @@ describe("Stream", () => {
     }))
 
   it.effect("whenCaseEffect - returns an empty stream if the given partial function is not defined for the given effectful value", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Effect.succeed<Option.Option<number>>(Option.none()),
         Stream.whenCaseEffect(
           (option) =>
@@ -136,9 +136,9 @@ describe("Stream", () => {
     }))
 
   it.effect("whenCaseEffect - fails if the effectful value is a failure", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Effect.fail(error),
         Stream.whenCaseEffect(() => Option.some(Stream.empty)),
         Stream.runCollect,
@@ -148,9 +148,9 @@ describe("Stream", () => {
     }))
 
   it.effect("whenCaseEffect - dies if the given partial function throws an exception", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Effect.void,
         Stream.whenCaseEffect((): Option.Option<Stream.Stream<void>> => {
           throw error
@@ -162,8 +162,8 @@ describe("Stream", () => {
     }))
 
   it.effect("whenEffect - returns the stream if the effectful condition is satisfied", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3, 4, 5),
         Stream.whenEffect(Effect.succeed(true)),
         Stream.runCollect
@@ -172,8 +172,8 @@ describe("Stream", () => {
     }))
 
   it.effect("whenEffect - returns an empty stream if the effectful condition is not satisfied", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make(1, 2, 3, 4, 5),
         Stream.whenEffect(Effect.succeed(false)),
         Stream.runCollect
@@ -182,9 +182,9 @@ describe("Stream", () => {
     }))
 
   it.effect("whenEffect - fails if the effectful condition fails", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.whenEffect(Effect.fail(error)),
         Stream.runDrain,

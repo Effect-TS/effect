@@ -12,13 +12,13 @@ import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("buffer - maintains elements and ordering", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = Chunk.make(
         Chunk.range(0, 3),
         Chunk.range(2, 5),
         Chunk.range(3, 7)
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromChunks(...chunks),
         Stream.buffer({ capacity: 2 }),
         Stream.runCollect
@@ -27,9 +27,9 @@ describe("Stream", () => {
     }))
 
   it.effect("buffer - buffers a stream with a failure", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.range(0, 9),
         Stream.concat(Stream.fail(error)),
         Stream.buffer({ capacity: 2 }),
@@ -40,9 +40,9 @@ describe("Stream", () => {
     }))
 
   it.effect("buffer - fast producer progresses independently", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch = yield* $(Deferred.make<void>())
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<number>()))
+      const latch = yield* (Deferred.make<void>())
       const stream = pipe(
         Stream.range(1, 4),
         Stream.tap((n) =>
@@ -56,21 +56,21 @@ describe("Stream", () => {
         ),
         Stream.buffer({ capacity: 2 })
       )
-      const result1 = yield* $(stream, Stream.take(2), Stream.runCollect)
-      yield* $(Deferred.await(latch))
-      const result2 = yield* $(Ref.get(ref))
+      const result1 = yield* pipe(stream, Stream.take(2), Stream.runCollect)
+      yield* (Deferred.await(latch))
+      const result2 = yield* (Ref.get(ref))
       deepStrictEqual(Array.from(result1), [1, 2])
       deepStrictEqual(Array.from(result2), [1, 2, 3, 4])
     }))
 
   it.effect("bufferChunks - maintains elements and ordering", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunks = Chunk.make(
         Chunk.range(0, 3),
         Chunk.range(2, 5),
         Chunk.range(3, 7)
       )
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromChunks(...chunks),
         Stream.bufferChunks({ capacity: 2 }),
         Stream.runCollect
@@ -79,9 +79,9 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferChunks - buffers a stream with a failure", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.range(0, 9),
         Stream.concat(Stream.fail(error)),
         Stream.bufferChunks({ capacity: 2 }),
@@ -92,9 +92,9 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferChunks - fast producer progresses independently", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch = yield* $(Deferred.make<void>())
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<number>()))
+      const latch = yield* (Deferred.make<void>())
       const stream = pipe(
         Stream.range(1, 4),
         Stream.tap((n) =>
@@ -108,17 +108,17 @@ describe("Stream", () => {
         ),
         Stream.bufferChunks({ capacity: 2 })
       )
-      const result1 = yield* $(stream, Stream.take(2), Stream.runCollect)
-      yield* $(Deferred.await(latch))
-      const result2 = yield* $(Ref.get(ref))
+      const result1 = yield* pipe(stream, Stream.take(2), Stream.runCollect)
+      yield* (Deferred.await(latch))
+      const result2 = yield* (Ref.get(ref))
       deepStrictEqual(Array.from(result1), [1, 2])
       deepStrictEqual(Array.from(result2), [1, 2, 3, 4])
     }))
 
   it.effect("bufferChunksDropping - buffers a stream with a failure", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.range(1, 1_000),
         Stream.concat(Stream.fail(error)),
         Stream.concat(Stream.range(1_001, 2_000)),
@@ -130,12 +130,12 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferChunksDropping - fast producer progress independently", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch1 = yield* $(Deferred.make<void>())
-      const latch2 = yield* $(Deferred.make<void>())
-      const latch3 = yield* $(Deferred.make<void>())
-      const latch4 = yield* $(Deferred.make<void>())
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<number>()))
+      const latch1 = yield* (Deferred.make<void>())
+      const latch2 = yield* (Deferred.make<void>())
+      const latch3 = yield* (Deferred.make<void>())
+      const latch4 = yield* (Deferred.make<void>())
       const stream1 = pipe(
         Stream.make(0),
         Stream.concat(
@@ -168,14 +168,14 @@ describe("Stream", () => {
         Stream.concat(stream3),
         Stream.bufferChunks({ capacity: 8, strategy: "dropping" })
       )
-      const { result1, result2, result3 } = yield* $(
+      const { result1, result2, result3 } = yield* pipe(
         Stream.toPull(stream),
         Effect.flatMap((pull) =>
-          Effect.gen(function*($) {
-            const result1 = yield* $(pull)
-            yield* $(Deferred.succeed(latch1, void 0))
-            yield* $(Deferred.await(latch2))
-            yield* $(
+          Effect.gen(function*() {
+            const result1 = yield* pull
+            yield* (Deferred.succeed(latch1, void 0))
+            yield* (Deferred.await(latch2))
+            yield* pipe(
               pull,
               Effect.flatMap((chunk) =>
                 pipe(
@@ -184,15 +184,15 @@ describe("Stream", () => {
               ),
               Effect.repeatN(7)
             )
-            const result2 = yield* $(Ref.get(ref))
-            yield* $(Deferred.succeed(latch3, void 0))
-            yield* $(Deferred.await(latch4))
-            yield* $(
+            const result2 = yield* (Ref.get(ref))
+            yield* (Deferred.succeed(latch3, void 0))
+            yield* (Deferred.await(latch4))
+            yield* pipe(
               pull,
               Effect.flatMap((chunk) => Ref.update(ref, Chunk.appendAll(chunk))),
               Effect.repeatN(7)
             )
-            const result3 = yield* $(Ref.get(ref))
+            const result3 = yield* (Ref.get(ref))
             return { result1, result2, result3 }
           })
         ),
@@ -207,9 +207,9 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferChunksSliding - buffers a stream with a failure", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.range(1, 1_000),
         Stream.concat(Stream.fail(error)),
         Stream.concat(Stream.range(1_001, 2_000)),
@@ -221,13 +221,13 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferChunksSliding - fast producer progress independently", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch1 = yield* $(Deferred.make<void>())
-      const latch2 = yield* $(Deferred.make<void>())
-      const latch3 = yield* $(Deferred.make<void>())
-      const latch4 = yield* $(Deferred.make<void>())
-      const latch5 = yield* $(Deferred.make<void>())
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<number>()))
+      const latch1 = yield* (Deferred.make<void>())
+      const latch2 = yield* (Deferred.make<void>())
+      const latch3 = yield* (Deferred.make<void>())
+      const latch4 = yield* (Deferred.make<void>())
+      const latch5 = yield* (Deferred.make<void>())
       const stream1 = pipe(
         Stream.make(0),
         Stream.concat(
@@ -263,27 +263,27 @@ describe("Stream", () => {
         Stream.concat(stream3),
         Stream.bufferChunks({ capacity: 8, strategy: "sliding" })
       )
-      const { result1, result2, result3 } = yield* $(
+      const { result1, result2, result3 } = yield* pipe(
         Stream.toPull(stream),
         Effect.flatMap((pull) =>
-          Effect.gen(function*($) {
-            const result1 = yield* $(pull)
-            yield* $(Deferred.succeed(latch1, void 0))
-            yield* $(Deferred.await(latch2))
-            yield* $(
+          Effect.gen(function*() {
+            const result1 = yield* pull
+            yield* (Deferred.succeed(latch1, void 0))
+            yield* (Deferred.await(latch2))
+            yield* pipe(
               pull,
               Effect.flatMap((chunk) => Ref.update(ref, Chunk.appendAll(chunk))),
               Effect.repeatN(7)
             )
-            const result2 = yield* $(Ref.get(ref))
-            yield* $(Deferred.succeed(latch3, void 0))
-            yield* $(Deferred.await(latch4))
-            yield* $(
+            const result2 = yield* (Ref.get(ref))
+            yield* (Deferred.succeed(latch3, void 0))
+            yield* (Deferred.await(latch4))
+            yield* pipe(
               pull,
               Effect.flatMap((chunk) => Ref.update(ref, Chunk.appendAll(chunk))),
               Effect.repeatN(7)
             )
-            const result3 = yield* $(Ref.get(ref))
+            const result3 = yield* (Ref.get(ref))
             return { result1, result2, result3 }
           })
         ),
@@ -298,9 +298,9 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferDropping - buffers a stream with a failure", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.range(1, 1_000),
         Stream.concat(Stream.fail(error)),
         Stream.concat(Stream.range(1_000, 2_000)),
@@ -312,12 +312,12 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferDropping - fast producer progress independently", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch1 = yield* $(Deferred.make<void>())
-      const latch2 = yield* $(Deferred.make<void>())
-      const latch3 = yield* $(Deferred.make<void>())
-      const latch4 = yield* $(Deferred.make<void>())
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<number>()))
+      const latch1 = yield* (Deferred.make<void>())
+      const latch2 = yield* (Deferred.make<void>())
+      const latch3 = yield* (Deferred.make<void>())
+      const latch4 = yield* (Deferred.make<void>())
       const stream1 = pipe(
         Stream.make(0),
         Stream.concat(
@@ -350,14 +350,14 @@ describe("Stream", () => {
         Stream.concat(stream3),
         Stream.buffer({ capacity: 8, strategy: "dropping" })
       )
-      const { result1, result2, result3 } = yield* $(
+      const { result1, result2, result3 } = yield* pipe(
         Stream.toPull(stream),
         Effect.flatMap((pull) =>
-          Effect.gen(function*($) {
-            const result1 = yield* $(pull)
-            yield* $(Deferred.succeed(latch1, void 0))
-            yield* $(Deferred.await(latch2))
-            yield* $(
+          Effect.gen(function*() {
+            const result1 = yield* pull
+            yield* (Deferred.succeed(latch1, void 0))
+            yield* (Deferred.await(latch2))
+            yield* pipe(
               pull,
               Effect.flatMap((chunk) =>
                 pipe(
@@ -366,15 +366,15 @@ describe("Stream", () => {
               ),
               Effect.repeatN(7)
             )
-            const result2 = yield* $(Ref.get(ref))
-            yield* $(Deferred.succeed(latch3, void 0))
-            yield* $(Deferred.await(latch4))
-            yield* $(
+            const result2 = yield* (Ref.get(ref))
+            yield* (Deferred.succeed(latch3, void 0))
+            yield* (Deferred.await(latch4))
+            yield* pipe(
               pull,
               Effect.flatMap((chunk) => Ref.update(ref, Chunk.appendAll(chunk))),
               Effect.repeatN(7)
             )
-            const result3 = yield* $(Ref.get(ref))
+            const result3 = yield* (Ref.get(ref))
             return { result1, result2, result3 }
           })
         ),
@@ -389,9 +389,9 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferSliding - buffers a stream with a failure", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.range(1, 1_000),
         Stream.concat(Stream.fail(error)),
         Stream.concat(Stream.range(1_001, 2_000)),
@@ -403,12 +403,12 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferSliding - fast producer progress independently", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch1 = yield* $(Deferred.make<void>())
-      const latch2 = yield* $(Deferred.make<void>())
-      const latch3 = yield* $(Deferred.make<void>())
-      const latch4 = yield* $(Deferred.make<void>())
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<number>()))
+      const latch1 = yield* (Deferred.make<void>())
+      const latch2 = yield* (Deferred.make<void>())
+      const latch3 = yield* (Deferred.make<void>())
+      const latch4 = yield* (Deferred.make<void>())
       const stream1 = pipe(
         Stream.make(0),
         Stream.concat(
@@ -441,27 +441,27 @@ describe("Stream", () => {
         Stream.concat(stream3),
         Stream.buffer({ capacity: 8, strategy: "sliding" })
       )
-      const { result1, result2, result3 } = yield* $(
+      const { result1, result2, result3 } = yield* pipe(
         Stream.toPull(stream),
         Effect.flatMap((pull) =>
-          Effect.gen(function*($) {
-            const result1 = yield* $(pull)
-            yield* $(Deferred.succeed(latch1, void 0))
-            yield* $(Deferred.await(latch2))
-            yield* $(
+          Effect.gen(function*() {
+            const result1 = yield* pull
+            yield* (Deferred.succeed(latch1, void 0))
+            yield* (Deferred.await(latch2))
+            yield* pipe(
               pull,
               Effect.flatMap((chunk) => Ref.update(ref, Chunk.appendAll(chunk))),
               Effect.repeatN(7)
             )
-            const result2 = yield* $(Ref.get(ref))
-            yield* $(Deferred.succeed(latch3, void 0))
-            yield* $(Deferred.await(latch4))
-            yield* $(
+            const result2 = yield* (Ref.get(ref))
+            yield* (Deferred.succeed(latch3, void 0))
+            yield* (Deferred.await(latch4))
+            yield* pipe(
               pull,
               Effect.flatMap((chunk) => Ref.update(ref, Chunk.appendAll(chunk))),
               Effect.repeatN(7)
             )
-            const result3 = yield* $(Ref.get(ref))
+            const result3 = yield* (Ref.get(ref))
             return { result1, result2, result3 }
           })
         ),
@@ -476,8 +476,8 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferSliding - propagates defects", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.fromEffect(Effect.dieMessage("boom")),
         Stream.buffer({ capacity: 1, strategy: "sliding" }),
         Stream.runDrain,
@@ -487,9 +487,9 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferUnbounded - buffers the stream", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const chunk = Chunk.range(0, 10)
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.fromIterable(chunk),
         Stream.buffer({ capacity: "unbounded" }),
         Stream.runCollect
@@ -498,9 +498,9 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferUnbounded -  buffers a stream with a failure", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
-      const result = yield* $(
+      const result = yield* pipe(
         Stream.range(0, 9),
         Stream.concat(Stream.fail(error)),
         Stream.buffer({ capacity: "unbounded" }),
@@ -511,9 +511,9 @@ describe("Stream", () => {
     }))
 
   it.effect("bufferUnbounded - fast producer progress independently", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch = yield* $(Deferred.make<void>())
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<number>()))
+      const latch = yield* (Deferred.make<void>())
       const stream = pipe(
         Stream.range(1, 999),
         Stream.tap((n) =>
@@ -525,9 +525,9 @@ describe("Stream", () => {
         Stream.rechunk(999),
         Stream.buffer({ capacity: "unbounded" })
       )
-      const result1 = yield* $(stream, Stream.take(2), Stream.runCollect)
-      yield* $(Deferred.await(latch))
-      const result2 = yield* $(Ref.get(ref))
+      const result1 = yield* pipe(stream, Stream.take(2), Stream.runCollect)
+      yield* (Deferred.await(latch))
+      const result2 = yield* (Ref.get(ref))
       deepStrictEqual(Array.from(result1), [1, 2])
       deepStrictEqual(Array.from(result2), Array.from(Chunk.range(1, 999)))
     }))
