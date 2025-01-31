@@ -182,6 +182,16 @@ describe("layer", () => {
         yield* Fiber.join(fiber)
       }))
   })
+
+  layer(Foo.Live)("with a name", (it) => {
+    describe("with a nested describe", () => {
+      it.effect("adds context", () =>
+        Effect.gen(function*() {
+          const foo = yield* Foo
+          expect(foo).toEqual("foo")
+        }))
+    })
+  })
 })
 
 // property testing
