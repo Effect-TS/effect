@@ -1,8 +1,8 @@
 import { BadArgument } from "@effect/platform/Error"
 import * as Path from "@effect/platform/Path"
+import { deepStrictEqual, strictEqual } from "@effect/platform/test/util"
 import * as Effect from "effect/Effect"
 import { describe, it } from "vitest"
-import { deepStrictEqual, strictEqual } from "../../effect/test/util.js"
 
 const runPromise = <E, A>(effect: Effect.Effect<A, E, Path.Path>) =>
   Effect.runPromise(Effect.provide(effect, Path.layer))

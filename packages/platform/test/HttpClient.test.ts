@@ -7,6 +7,7 @@ import {
   HttpClientResponse,
   UrlParams
 } from "@effect/platform"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/platform/test/util"
 import { describe, it } from "@effect/vitest"
 import {
   Context,
@@ -23,7 +24,6 @@ import {
   Stream,
   Struct
 } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "../../effect/test/util.js"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,

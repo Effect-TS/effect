@@ -1,7 +1,7 @@
 import { HttpApp, HttpServerResponse } from "@effect/platform"
+import { deepStrictEqual, strictEqual } from "@effect/platform/test/util"
 import { Context, Effect, FiberRef, Runtime, Stream } from "effect"
 import { describe, test } from "vitest"
-import { deepStrictEqual, strictEqual } from "../../effect/test/util.js"
 
 describe("Http/App", () => {
   describe("toWebHandler", () => {
