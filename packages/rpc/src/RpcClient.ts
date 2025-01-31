@@ -42,13 +42,37 @@ import * as RpcWorker from "./RpcWorker.js"
  * @since 1.0.0
  * @category client
  */
+export type RpcClient<Rpcs extends Rpc.Any> = {
+  readonly [Current in Rpcs as Current["_tag"]]: <const AsMailbox extends boolean = false>(
+    input: Rpc.PayloadConstructor<Current>,
+    options?: {
+      readonly asMailbox?: AsMailbox | undefined
+      readonly streamBufferSize?: number | undefined
+      readonly headers?: Headers.Input | undefined
+    }
+  ) => Rpc.Success<Current> extends Stream.Stream<infer _A, infer _E, infer _R>
+    ? AsMailbox extends true ? Effect.Effect<
+        Mailbox.ReadonlyMailbox<_A, _E | Rpc.Error<Current>>,
+        never,
+        Scope.Scope
+      >
+    : Stream.Stream<_A, _E | Rpc.Error<Current>>
+    : Effect.Effect<
+      Rpc.Success<Current>,
+      Rpc.Error<Current>
+    >
+}
+
+/**
+ * @since 1.0.0
+ * @category client
+ */
 export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   group: RpcGroup.RpcGroup<Rpcs>,
   options: {
     readonly onFromClient: (message: FromClient<Rpcs>) => Effect.Effect<void>
     readonly supportsAck?: boolean | undefined
     readonly spanPrefix?: string | undefined
-    readonly streamBufferSize?: number | undefined
   }
 ) => Effect.Effect<
   {
@@ -63,12 +87,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     readonly onFromClient: (message: FromClient<Rpcs>) => Effect.Effect<void>
     readonly supportsAck?: boolean | undefined
     readonly spanPrefix?: string | undefined
-    readonly streamBufferSize?: number | undefined
     readonly clientId?: number | undefined
   }
 ) {
   const spanPrefix = options?.spanPrefix ?? "RpcClient"
-  const streamBufferSize = options?.streamBufferSize ?? 16
   const supportsAck = options?.supportsAck ?? true
   let requestId = RequestId(BigInt(0))
   const scope = yield* Effect.scope
@@ -104,6 +126,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   const onRequest = (rpc: Rpc.AnyWithProps) =>
   (payload: any, options?: {
     readonly asMailbox?: boolean | undefined
+    readonly streamBufferSize?: number | undefined
     readonly headers?: Headers.Input | undefined
   }) => {
     const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
@@ -112,7 +135,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     if (!isStream) {
       return Effect.useSpan(`${spanPrefix}.${rpc._tag}`, (span) => onEffectRequest(rpc, span, payloadDecoded, headers))
     }
-    const mailbox = onStreamRequest(rpc, payloadDecoded, headers)
+    const mailbox = onStreamRequest(rpc, payloadDecoded, headers, options?.streamBufferSize ?? 16)
     if (options?.asMailbox) return mailbox
     return Stream.unwrapScoped(Effect.map(mailbox, Mailbox.toStream))
   }
@@ -146,7 +169,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   const onStreamRequest = Effect.fnUntraced(function*(
     rpc: Rpc.AnyWithProps,
     payloadEncoded: any,
-    headers: Headers.Headers
+    headers: Headers.Headers,
+    streamBufferSize: number
   ) {
     const span = yield* Effect.makeSpanScoped(`${spanPrefix}.${rpc._tag}`)
     const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
@@ -368,30 +392,6 @@ export const make: <Rpcs extends Rpc.Any>(
 })
 
 const parseRequestId = (input: string | bigint): RequestId => typeof input === "string" ? BigInt(input) : input as any
-
-/**
- * @since 1.0.0
- * @category client
- */
-export type RpcClient<Rpcs extends Rpc.Any> = {
-  readonly [Current in Rpcs as Current["_tag"]]: <const AsMailbox extends boolean = false>(
-    input: Rpc.PayloadConstructor<Current>,
-    options?: {
-      readonly asMailbox?: AsMailbox | undefined
-      readonly headers?: Headers.Input | undefined
-    }
-  ) => Rpc.Success<Current> extends Stream.Stream<infer _A, infer _E, infer _R>
-    ? AsMailbox extends true ? Effect.Effect<
-        Mailbox.ReadonlyMailbox<_A, _E | Rpc.Error<Current>>,
-        never,
-        Scope.Scope
-      >
-    : Stream.Stream<_A, _E | Rpc.Error<Current>>
-    : Effect.Effect<
-      Rpc.Success<Current>,
-      Rpc.Error<Current>
-    >
-}
 
 /**
  * @since 1.0.0
