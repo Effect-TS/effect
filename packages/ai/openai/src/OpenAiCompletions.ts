@@ -17,8 +17,10 @@ import { OpenAiClient } from "./OpenAiClient.js"
 import { OpenAiConfig } from "./OpenAiConfig.js"
 import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
 
+export type Model = typeof Generated.CreateChatCompletionRequestModel.Encoded
+
 const make = (options: {
-  readonly model: string
+  readonly model: (string & {}) | Model
 }) =>
   Effect.gen(function*() {
     const client = yield* OpenAiClient
@@ -113,7 +115,7 @@ const make = (options: {
  * @category layers
  */
 export const layerCompletions = (options: {
-  readonly model: string
+  readonly model: (string & {}) | Model
 }): Layer.Layer<Completions.Completions, never, OpenAiClient> => Layer.effect(Completions.Completions, make(options))
 
 /**
@@ -121,7 +123,7 @@ export const layerCompletions = (options: {
  * @category layers
  */
 export const layer = (options: {
-  readonly model: string
+  readonly model: (string & {}) | Model
 }): Layer.Layer<Completions.Completions | Tokenizer.Tokenizer, never, OpenAiClient> =>
   Layer.merge(layerCompletions(options), OpenAiTokenizer.layer(options))
 

@@ -11,6 +11,8 @@ import type { Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
 import { OpenAiClient } from "./OpenAiClient.js"
 
+export type Model = typeof Generated.CreateEmbeddingRequestModel.Encoded
+
 /**
  * @since 1.0.0
  * @category tags
@@ -84,7 +86,7 @@ const makeRequest = (
   )
 
 const make = Effect.fnUntraced(function*(options: {
-  readonly model: string
+  readonly model: (string & {}) | Model
   readonly maxBatchSize?: number
   readonly cache?: {
     readonly capacity: number
@@ -103,7 +105,7 @@ const make = Effect.fnUntraced(function*(options: {
 })
 
 const makeDataLoader = Effect.fnUntraced(function*(options: {
-  readonly model: string
+  readonly model: (string & {}) | Model
   readonly window: Duration.DurationInput
   readonly maxBatchSize?: number
 }) {
@@ -123,7 +125,7 @@ const makeDataLoader = Effect.fnUntraced(function*(options: {
  * @category layers
  */
 export const layer = (options: {
-  readonly model: string
+  readonly model: (string & {}) | Model
   readonly maxBatchSize?: number
   readonly cache?: {
     readonly capacity: number
@@ -136,7 +138,7 @@ export const layer = (options: {
  * @category layers
  */
 export const layerDataLoader = (options: {
-  readonly model: string
+  readonly model: (string & {}) | Model
   readonly window: Duration.DurationInput
   readonly maxBatchSize?: number
 }): Layer.Layer<Embeddings.Embeddings, never, OpenAiClient> =>
