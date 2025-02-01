@@ -64,13 +64,17 @@ export function assertFalse(self: boolean, message?: string, ..._: Array<never>)
   strictEqual(self, false, message)
 }
 
-export function assertIncludes(actual: string | undefined, expected: string | RegExp, ..._: Array<never>) {
+export function assertInclude(actual: string | undefined, expected: string, ..._: Array<never>) {
   if (Predicate.isString(expected)) {
     if (!actual?.includes(expected)) {
       fail(`Expected\n\n${actual}\n\nto include\n\n${expected}`)
     }
-  } else if (!expected.test(actual ?? "")) {
-    fail(`Expected\n\n${actual}\n\nto match\n\n${expected}`)
+  }
+}
+
+export function assertMatch(actual: string, regexp: RegExp, ..._: Array<never>) {
+  if (!regexp.test(actual)) {
+    fail(`Expected\n\n${actual}\n\nto match\n\n${regexp}`)
   }
 }
 

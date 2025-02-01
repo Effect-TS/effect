@@ -2,8 +2,9 @@ import { describe, it } from "@effect/vitest"
 import { Context, Differ, Option, pipe } from "effect"
 import {
   assertFalse,
-  assertIncludes,
+  assertInclude,
   assertInstanceOf,
+  assertMatch,
   assertNone,
   assertSome,
   assertTrue,
@@ -39,25 +40,25 @@ describe("Context", () => {
       Context.unsafeGet(Context.empty(), A)
     }, (e) => {
       assertInstanceOf(e, Error)
-      assertIncludes(e.message, "Service not found: A")
+      assertInclude(e.message, "Service not found: A")
     })
     throws(() => {
       Context.get(Context.empty(), A as never)
     }, (e) => {
       assertInstanceOf(e, Error)
-      assertIncludes(e.message, "Service not found: A")
+      assertInclude(e.message, "Service not found: A")
     })
     throws(() => {
       Context.unsafeGet(Context.empty(), C)
     }, (e) => {
       assertInstanceOf(e, Error)
-      assertIncludes(e.message, "Service not found: C")
+      assertInclude(e.message, "Service not found: C")
     })
     throws(() => {
       Context.get(Context.empty(), C as never)
     }, (e) => {
       assertInstanceOf(e, Error)
-      assertIncludes(e.message, "Service not found: C")
+      assertInclude(e.message, "Service not found: C")
     })
     if (typeof window === "undefined") {
       throws(
@@ -66,7 +67,7 @@ describe("Context", () => {
         },
         (e) => {
           assertInstanceOf(e, Error)
-          assertIncludes(e.message, /Service not found: C \(defined at (.*)Context.test.ts:27:19\)/)
+          assertMatch(e.message, /Service not found: C \(defined at (.*)Context.test.ts:27:19\)/)
         }
       )
       throws(
@@ -75,7 +76,7 @@ describe("Context", () => {
         },
         (e) => {
           assertInstanceOf(e, Error)
-          assertIncludes(e.message, /Service not found: D \(defined at (.*)Context.test.ts:29:32\)/)
+          assertMatch(e.message, /Service not found: D \(defined at (.*)Context.test.ts:29:32\)/)
         }
       )
     }
@@ -136,7 +137,7 @@ describe("Context", () => {
       )
     }, (e) => {
       assertInstanceOf(e, Error)
-      assertIncludes(e.message, "Service not found: C")
+      assertInclude(e.message, "Service not found: C")
     })
   })
 

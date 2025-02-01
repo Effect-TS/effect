@@ -75,4 +75,21 @@ describe("utils", () => {
       Util.strictEqual(err.message, "expected 1 to be an instance of Error")
     })
   })
+
+  it("assertInclude", () => {
+    Util.assertInclude("abc", "b")
+    Util.throws(() => Util.assertInclude(undefined, "a"), (err) => {
+      Util.assertTrue(err instanceof Error)
+      Util.strictEqual(
+        err.message,
+        `Expected
+
+undefined
+
+to include
+
+a`
+      )
+    })
+  })
 })

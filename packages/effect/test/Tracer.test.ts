@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Context, Duration, Effect, Fiber, FiberId, Layer, Option, pipe, TestClock, Tracer } from "effect"
 import type { NativeSpan } from "effect/internal/tracer"
-import { assertIncludes, assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertInclude, assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import type { Span } from "effect/Tracer"
 
 describe("Tracer", () => {
@@ -21,7 +21,7 @@ describe("Tracer", () => {
       })
       yield* Effect.flip(getSpan("fail"))
       assertTrue(maybeSpan !== undefined)
-      assertIncludes(maybeSpan!.attributes.get("code.stacktrace") as string, "Tracer.test.ts:22:26")
+      assertInclude(maybeSpan!.attributes.get("code.stacktrace") as string, "Tracer.test.ts:22:26")
     }))
 
   it.effect("captures stack", () =>
@@ -31,7 +31,7 @@ describe("Tracer", () => {
         Effect.sandbox,
         Effect.flip
       )
-      assertIncludes(Cause.pretty(cause), "Tracer.test.ts:29:39")
+      assertInclude(Cause.pretty(cause), "Tracer.test.ts:29:39")
     }))
 
   describe("withSpan", () => {

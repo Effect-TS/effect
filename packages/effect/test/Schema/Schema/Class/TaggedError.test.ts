@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { Cause, Effect, Inspectable, Schema } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertIncludes, assertInstanceOf, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertInclude, assertInstanceOf, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("TaggedError", () => {
   it("should expose the fields and the tag", () => {
@@ -51,7 +51,7 @@ describe("TaggedError", () => {
     let err = new MyError({ id: 1 })
 
     strictEqual(String(err), `MyError: { "id": 1 }`)
-    assertIncludes(err.stack, "TaggedError.test.ts:")
+    assertInclude(err.stack, "TaggedError.test.ts:")
     strictEqual(err._tag, "MyError")
     strictEqual(err.id, 1)
 
@@ -75,8 +75,8 @@ describe("TaggedError", () => {
 
     const err = new MyError({ id: 1 })
 
-    assertIncludes(String(err), `MyError: bad id: 1`)
-    assertIncludes(err.stack, "TaggedError.test.ts:")
+    assertInclude(String(err), `MyError: bad id: 1`)
+    assertInclude(err.stack, "TaggedError.test.ts:")
     strictEqual(err._tag, "MyError")
     strictEqual(err.id, 1)
   })
@@ -90,8 +90,8 @@ describe("TaggedError", () => {
 
     const err = new MyError({ id: 1, message: "boom" })
 
-    assertIncludes(String(err), `MyError: boom`)
-    assertIncludes(err.stack, "TaggedError.test.ts:")
+    assertInclude(String(err), `MyError: boom`)
+    assertInclude(err.stack, "TaggedError.test.ts:")
     strictEqual(err._tag, "MyError")
     strictEqual(err.id, 1)
   })
@@ -116,7 +116,7 @@ describe("TaggedError", () => {
     }) {}
 
     const err = new MyError({ cause: new Error("child") })
-    assertIncludes(Cause.pretty(Cause.fail(err), { renderErrorCause: true }), "[cause]: Error: child")
+    assertInclude(Cause.pretty(Cause.fail(err), { renderErrorCause: true }), "[cause]: Error: child")
     // ensure node renders the error directly
     deepStrictEqual(err[Inspectable.NodeInspectSymbol](), err)
   })

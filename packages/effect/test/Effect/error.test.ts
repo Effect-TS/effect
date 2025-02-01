@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Data, Effect, pipe } from "effect"
-import { assertIncludes, assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertInclude, assertTrue, deepStrictEqual } from "effect/test/util"
 
 class TestError extends Data.TaggedError("TestError")<{}> {}
 
@@ -9,11 +9,11 @@ describe("Effect", () => {
     Effect.gen(function*() {
       const cause = yield* (Effect.flip(Effect.sandbox(Effect.withSpan("A")(new TestError()))))
       const log = Cause.pretty(cause)
-      assertIncludes(log, "TestError")
+      assertInclude(log, "TestError")
       if (typeof window === "undefined") {
-        assertIncludes(log.replaceAll("\\", "/"), "test/Effect/error.test.ts:10:77")
+        assertInclude(log.replaceAll("\\", "/"), "test/Effect/error.test.ts:10:77")
       }
-      assertIncludes(log, "at A")
+      assertInclude(log, "at A")
     }))
 
   it.effect("tryPromise", () =>
@@ -29,9 +29,9 @@ describe("Effect", () => {
       )
       const log = Cause.pretty(cause)
       if (typeof window === "undefined") {
-        assertIncludes(log.replaceAll("\\", "/"), "test/Effect/error.test.ts:24")
+        assertInclude(log.replaceAll("\\", "/"), "test/Effect/error.test.ts:24")
       }
-      assertIncludes(log, "at A")
+      assertInclude(log, "at A")
     }))
 
   it.effect("allow message prop", () =>
@@ -50,11 +50,11 @@ describe("Effect", () => {
         Effect.flip
       )
       const log = Cause.pretty(cause)
-      assertIncludes(log, "Failure: some message")
+      assertInclude(log, "Failure: some message")
       if (typeof window === "undefined") {
-        assertIncludes(log.replaceAll("\\", "/"), "test/Effect/error.test.ts:46")
+        assertInclude(log.replaceAll("\\", "/"), "test/Effect/error.test.ts:46")
       }
-      assertIncludes(log, "at A")
+      assertInclude(log, "at A")
     }))
 
   if (typeof window === "undefined") {
@@ -68,8 +68,8 @@ describe("Effect", () => {
         }
       }
       const err = new MessageError()
-      assertIncludes(inspect(err), "MessageError: fail")
-      assertIncludes(inspect(err).replaceAll("\\", "/"), "test/Effect/error.test.ts:70")
+      assertInclude(inspect(err), "MessageError: fail")
+      assertInclude(inspect(err).replaceAll("\\", "/"), "test/Effect/error.test.ts:70")
     })
 
     it("toString", () => {
@@ -86,7 +86,7 @@ describe("Effect", () => {
       class MessageError extends Data.TaggedError("MessageError")<{
         cause: unknown
       }> {}
-      assertIncludes(inspect(new MessageError({ cause: new Error("boom") })), "[cause]: Error: boom")
+      assertInclude(inspect(new MessageError({ cause: new Error("boom") })), "[cause]: Error: boom")
     })
   }
 

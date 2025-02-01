@@ -1,7 +1,7 @@
 import * as Headers from "@effect/platform/Headers"
 import { describe, it } from "@effect/vitest"
 import { Effect, FiberId, FiberRef, FiberRefs, HashSet, Inspectable, Logger, Redacted } from "effect"
-import { assertFalse, assertIncludes, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertInclude, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Headers", () => {
   describe("Redactable", () => {
@@ -72,7 +72,7 @@ describe("Headers", () => {
         yield* Effect.log(headers).pipe(
           Effect.annotateLogs({ headers })
         )
-        assertIncludes(messages[0], "application/json")
+        assertInclude(messages[0], "application/json")
         assertFalse(messages[0].includes("some-token"))
         assertFalse(messages[0].includes("some-key"))
       }))

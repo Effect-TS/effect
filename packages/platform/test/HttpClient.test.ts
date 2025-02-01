@@ -23,7 +23,7 @@ import {
   Stream,
   Struct
 } from "effect"
-import { assertIncludes, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertInclude, deepStrictEqual, strictEqual } from "effect/test/util"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,
@@ -69,7 +69,7 @@ describe("HttpClient", () => {
         Effect.flatMap((_) => _.text),
         Effect.scoped
       )
-      assertIncludes(response, "Google")
+      assertInclude(response, "Google")
     }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
 
   it("google withCookiesRef", () =>
@@ -105,7 +105,7 @@ describe("HttpClient", () => {
         Stream.unwrapScoped,
         Stream.runFold("", (a, b) => a + new TextDecoder().decode(b))
       )
-      assertIncludes(response, "Google")
+      assertInclude(response, "Google")
     }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
 
   it("jsonplaceholder", () =>
