@@ -41,4 +41,9 @@ export * as RpcServer from "./RpcServer.js"
 /**
  * @since 1.0.0
  */
+export * as RpcTest from "./RpcTest.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as RpcWorker from "./RpcWorker.js"

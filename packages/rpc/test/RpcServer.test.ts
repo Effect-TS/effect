@@ -2,10 +2,10 @@ import * as NodeSocketServer from "@effect/experimental/SocketServer/Node"
 import { HttpClient, HttpClientRequest, HttpRouter, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeSocket } from "@effect/platform-node"
 import { RpcClient, RpcSerialization, RpcServer } from "@effect/rpc"
-import { describe } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
 import { e2eSuite } from "./e2e.js"
-import { RpcLive, UsersClient } from "./fixtures/schemas.js"
+import { RpcLive, User, UsersClient } from "./fixtures/schemas.js"
 
 describe("RpcServer", () => {
   // http ndjson
@@ -102,4 +102,13 @@ describe("RpcServer", () => {
       Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack])
     )
   )
+
+  describe("RpcTest", () => {
+    it.effect("works", () =>
+      Effect.gen(function*() {
+        const client = yield* UsersClient
+        const user = yield* client.GetUser({ id: "1" })
+        assert.deepStrictEqual(user, new User({ id: "1", name: "Logged in user" }))
+      }).pipe(Effect.provide(UsersClient.layerTest)))
+  })
 })

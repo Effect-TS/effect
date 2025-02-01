@@ -1,3 +1,4 @@
+import { RpcTest } from "@effect/rpc"
 import * as Rpc from "@effect/rpc/Rpc"
 import * as RpcClient from "@effect/rpc/RpcClient"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
@@ -24,7 +25,7 @@ class StreamUsers extends Schema.TaggedRequest<StreamUsers>()("StreamUsers", {
 
 class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
 
-class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("TestMiddleware", {
+class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware", {
   provides: CurrentUser
 }) {}
 
@@ -40,13 +41,6 @@ export const UserRpcs = RpcGroup
     })
   )
   .middleware(AuthMiddleware)
-
-export class UsersClient extends Context.Tag("UsersClient")<
-  UsersClient,
-  RpcClient.RpcClient<RpcGroup.Rpcs<typeof UserRpcs>>
->() {
-  static layer = Layer.scoped(UsersClient, RpcClient.make(UserRpcs))
-}
 
 const AuthLive = Layer.succeed(
   AuthMiddleware,
@@ -88,3 +82,13 @@ export const RpcLive = RpcServer.layer(UserRpcs).pipe(
     AuthLive
   ])
 )
+
+export class UsersClient extends Context.Tag("UsersClient")<
+  UsersClient,
+  RpcClient.RpcClient<RpcGroup.Rpcs<typeof UserRpcs>>
+>() {
+  static layer = Layer.scoped(UsersClient, RpcClient.make(UserRpcs))
+  static layerTest = Layer.scoped(UsersClient, RpcTest.makeClient(UserRpcs)).pipe(
+    Layer.provide([UsersLive, AuthLive])
+  )
+}
