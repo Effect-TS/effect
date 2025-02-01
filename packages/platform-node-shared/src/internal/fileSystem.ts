@@ -508,17 +508,6 @@ const symlink = (() => {
   return (target: string, path: string) => nodeSymlink(target, path)
 })()
 
-// == sync
-
-const sync = (() => {
-  const nodeSync = effectify(
-    NFS.fsync,
-    handleErrnoException("FileSystem", "sync"),
-    handleBadArgument("sync")
-  )
-  return (fd: FileSystem.File.Descriptor) => nodeSync(fd)
-})()
-
 // == truncate
 
 const truncate = (() => {
@@ -636,7 +625,6 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     rename,
     stat,
     symlink,
-    sync,
     truncate,
     utimes,
     watch(path) {

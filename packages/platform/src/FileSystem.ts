@@ -214,13 +214,6 @@ export interface FileSystem {
     toPath: string
   ) => Effect.Effect<void, PlatformError>
   /**
-   * Synchronize a file's in-memory state with the on-disk state.
-   * This ensures that all file system updates for the file are written to the storage device.
-   */
-  readonly sync: (
-    fd: File.Descriptor
-  ) => Effect.Effect<void, PlatformError>
-  /**
    * Truncate a file to a specified length. If the `length` is not specified,
    * the file will be truncated to length `0`.
    */
