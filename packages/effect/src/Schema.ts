@@ -45,7 +45,7 @@ import type * as pretty_ from "./Pretty.js"
 import * as record_ from "./Record.js"
 import * as redacted_ from "./Redacted.js"
 import * as Request from "./Request.js"
-import * as Runtime from "./Runtime.js"
+import * as scheduler_ from "./Scheduler.js"
 import type { ParseOptions } from "./SchemaAST.js"
 import * as AST from "./SchemaAST.js"
 import * as sortedSet_ from "./SortedSet.js"
@@ -130,9 +130,22 @@ const variance = {
   _R: (_: never) => _
 }
 
+const makeStandardResult = <A>(exit: exit_.Exit<StandardSchemaV1.Result<A>>): StandardSchemaV1.Result<A> =>
+  exit_.isSuccess(exit) ? exit.value : makeStandardFailureResult(cause_.pretty(exit.cause))
+
 const makeStandardFailureResult = (message: string): StandardSchemaV1.FailureResult => ({
   issues: [{ message }]
 })
+
+const makeStandardFailureFromParseIssue = (
+  issue: ParseResult.ParseIssue
+): Effect.Effect<StandardSchemaV1.FailureResult> =>
+  Effect.map(ParseResult.ArrayFormatter.formatIssue(issue), (issues) => ({
+    issues: issues.map((issue) => ({
+      path: issue.path,
+      message: issue.message
+    }))
+  }))
 
 /**
  * Returns a "Standard Schema" object conforming to the [Standard Schema
@@ -168,42 +181,25 @@ export const standardSchemaV1 = <A, I>(schema: Schema<A, I, never>): StandardSch
     "~standard": {
       version: 1,
       vendor: "effect",
-      validate: (value) => {
-        const validation: Effect.Effect<StandardSchemaV1.Result<A>> = decodeUnknown(value).pipe(
-          Effect.matchEffect({
-            onFailure: (issue) =>
-              Effect.map(ParseResult.ArrayFormatter.formatIssue(issue), (issues) => ({
-                issues: issues.map((issue) => ({
-                  path: issue.path,
-                  message: issue.message
-                }))
-              })),
+      validate(value) {
+        const scheduler = new scheduler_.SyncScheduler()
+        const fiber = Effect.runFork(
+          Effect.matchEffect(decodeUnknown(value), {
+            onFailure: makeStandardFailureFromParseIssue,
             onSuccess: (value) => Effect.succeed({ value })
           }),
-          Effect.catchAllCause((cause) => Effect.succeed(makeStandardFailureResult(cause_.pretty(cause))))
+          { scheduler }
         )
-        try {
-          return Effect.runSync(validation)
-        } catch (e) {
-          if (Runtime.isFiberFailure(e)) {
-            const cause = e[Runtime.FiberFailureCauseId]
-            if (cause_.isDieType(cause) && Runtime.isAsyncFiberException(cause.defect)) {
-              // The error is caused by using runSync on an effect that performs async work.
-              // We can wait for the fiber to complete and return a promise
-              const fiber = cause.defect.fiber
-              return new Promise((resolve, reject) => {
-                fiber.addObserver((exit) => {
-                  if (exit_.isFailure(exit)) {
-                    reject(makeStandardFailureResult(cause_.pretty(exit.cause)))
-                  } else {
-                    resolve(exit.value as any)
-                  }
-                })
-              })
-            }
-          }
-          return makeStandardFailureResult(`Unknown error: ${e}`)
+        scheduler.flush()
+        const exit = fiber.unsafePoll()
+        if (exit) {
+          return makeStandardResult(exit)
         }
+        return new Promise((resolve) => {
+          fiber.addObserver((exit) => {
+            resolve(makeStandardResult(exit))
+          })
+        })
       }
     }
   }
