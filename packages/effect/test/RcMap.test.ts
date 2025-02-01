@@ -113,19 +113,19 @@ describe("RcMap", () => {
         idleTimeToLive: 1000
       })
 
-      assert.deepStrictEqual(acquired, [])
-      assert.strictEqual(yield* Effect.scoped(RcMap.get(map, "foo")), "foo")
-      assert.deepStrictEqual(acquired, ["foo"])
-      assert.deepStrictEqual(released, [])
+      deepStrictEqual(acquired, [])
+      strictEqual(yield* Effect.scoped(RcMap.get(map, "foo")), "foo")
+      deepStrictEqual(acquired, ["foo"])
+      deepStrictEqual(released, [])
 
       yield* TestClock.adjust(500)
-      assert.deepStrictEqual(released, [])
+      deepStrictEqual(released, [])
 
       yield* RcMap.touch(map, "foo")
       yield* TestClock.adjust(500)
-      assert.deepStrictEqual(released, [])
+      deepStrictEqual(released, [])
       yield* TestClock.adjust(500)
-      assert.deepStrictEqual(released, ["foo"])
+      deepStrictEqual(released, ["foo"])
     }))
 
   it.scoped("capacity", () =>
