@@ -5,6 +5,11 @@ import { Rpc, RpcClient, RpcGroup, RpcMiddleware, RpcSchema, RpcSerialization, R
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Layer, Mailbox, Schema, Stream, TestClock } from "effect"
 
+const liveSleep = (ms: number) =>
+  Effect.async<void>((resume) => {
+    setTimeout(() => resume(Effect.void), ms)
+  })
+
 describe("RpcServer", () => {
   const e2eSuite = <E>(name: string, layer: Layer.Layer<UsersClient, E>) => {
     describe.concurrent(name, () => {
@@ -42,14 +47,13 @@ describe("RpcServer", () => {
           )
 
           // wait for socket to connect
-          yield* Effect.async<void>((resume) => {
-            setTimeout(() => resume(Effect.void), 100)
-          })
+          yield* liveSleep(100)
           yield* TestClock.adjust(1000)
           assert.deepStrictEqual(users, [new User({ id: "1", name: "John" })])
           yield* TestClock.adjust(4000)
           assert.lengthOf(users, 5)
 
+          yield* liveSleep(100)
           const interrupts = yield* client.GetInterrupts({})
           assert.equal(interrupts, 1)
         }).pipe(Effect.provide(layer)))
