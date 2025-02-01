@@ -39,10 +39,13 @@
     "coverage": "vitest --coverage"
   },
   "devDependencies": {
+    "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "happy-dom": "^14.12.3"
   },
   "peerDependencies": {
+    "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "effect": "workspace:^"
   }

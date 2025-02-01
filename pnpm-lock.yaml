@@ -245,39 +245,6 @@ importers:
         version: link:../effect/dist
     publishDirectory: dist
 
-  packages/cluster-browser:
-    devDependencies:
-      '@effect/rpc':
-        specifier: workspace:^
-        version: link:../rpc/dist
-      effect:
-        specifier: workspace:^
-        version: link:../effect/dist
-    publishDirectory: dist
-
-  packages/cluster-node:
-    dependencies:
-      '@effect/cluster':
-        specifier: workspace:^
-        version: link:../cluster/dist
-    devDependencies:
-      '@effect/platform':
-        specifier: workspace:^
-        version: link:../platform/dist
-      '@effect/platform-node':
-        specifier: workspace:^
-        version: link:../platform-node/dist
-      '@effect/rpc':
-        specifier: workspace:^
-        version: link:../rpc/dist
-      '@effect/rpc-http':
-        specifier: workspace:^
-        version: link:../rpc-http/dist
-      effect:
-        specifier: workspace:^
-        version: link:../effect/dist
-    publishDirectory: dist
-
   packages/cluster-workflow:
     devDependencies:
       '@effect/cluster':
@@ -543,29 +510,18 @@ importers:
 
   packages/rpc:
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
       effect:
         specifier: workspace:^
         version: link:../effect/dist
-    publishDirectory: dist
-
-  packages/rpc-http:
-    dependencies:
-      '@effect/rpc':
-        specifier: workspace:^
-        version: link:../rpc/dist
-    devDependencies:
-      '@effect/platform':
-        specifier: workspace:^
-        version: link:../platform/dist
-      '@effect/platform-node':
-        specifier: workspace:^
-        version: link:../platform-node/dist
-      effect:
-        specifier: workspace:^
-        version: link:../effect/dist
+      happy-dom:
+        specifier: ^14.12.3
+        version: 14.12.3
     publishDirectory: dist
 
   packages/sql:
@@ -5533,6 +5489,7 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.6:

@@ -4,6 +4,7 @@
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
+import type * as Mailbox from "effect/Mailbox"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
@@ -15,14 +16,15 @@ import type { WorkerError } from "./WorkerError.js"
  * @category models
  */
 export interface BackingRunner<I, O> {
-  readonly run: <A, E, R>(
-    handler: (portId: number, message: I) => Effect.Effect<A, E, R>
+  readonly run: <A, E = never, R = never>(
+    handler: (portId: number, message: I) => Effect.Effect<A, E, R> | void
   ) => Effect.Effect<never, E | WorkerError, R>
   readonly send: (
     portId: number,
     message: O,
     transfers?: ReadonlyArray<unknown>
   ) => Effect.Effect<void>
+  readonly disconnects?: Mailbox.ReadonlyMailbox<number>
 }
 
 /**

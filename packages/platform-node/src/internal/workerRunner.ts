@@ -21,7 +21,11 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       const port = WorkerThreads.parentPort
       const send = (_portId: number, message: O, transfers?: ReadonlyArray<unknown>) =>
         Effect.sync(() => port.postMessage([1, message], transfers as any))
-      const run = <A, E, R>(handler: (portId: number, message: I) => Effect.Effect<A, E, R>) =>
+      const run = <A, E, R>(
+        handler: (portId: number, message: I) =>
+          | Effect.Effect<A, E, R>
+          | void
+      ) =>
         Effect.uninterruptibleMask((restore) =>
           Effect.gen(function*() {
             const runtime = (yield* Effect.runtime<R | Scope.Scope>()).pipe(
@@ -31,7 +35,10 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             const runFork = Runtime.runFork(runtime)
             port.on("message", (message: Runner.BackingRunner.Message<I>) => {
               if (message[0] === 0) {
-                FiberSet.unsafeAdd(fiberSet, runFork(restore(handler(0, message[1]))))
+                const result = handler(0, message[1])
+                if (Effect.isEffect(result)) {
+                  FiberSet.unsafeAdd(fiberSet, runFork(restore(result)))
+                }
               } else {
                 port.close()
                 Deferred.unsafeDone(fiberSet.deferred, Exit.interrupt(FiberId.none))
