@@ -3366,6 +3366,8 @@ timestamp=... level=INFO fiber=#0 message="Listening on http://localhost:3000"
 
 To avoid boilerplate code for the final server setup, we'll use a helper function from the `listen.ts` file:
 
+Node.js Example
+
 ```ts
 import type { HttpPlatform, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
@@ -3385,6 +3387,31 @@ export const listen = (
       Layer.provide(
         app,
         NodeHttpServer.layer(() => createServer(), { port })
+      )
+    )
+  )
+```
+
+Bun Example
+
+```ts
+import type { HttpPlatform, HttpServer } from "@effect/platform"
+import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
+import { Layer } from "effect"
+
+export const listen = (
+  app: Layer.Layer<
+    never,
+    never,
+    HttpPlatform.HttpPlatform | HttpServer.HttpServer
+  >,
+  port: number
+) =>
+  BunRuntime.runMain(
+    Layer.launch(
+      Layer.provide(
+        app,
+        BunHttpServer.layer({ port })
       )
     )
   )
