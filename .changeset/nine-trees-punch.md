@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Improved types for `Effect.schedule`
+A more precise signature has been applied for `Effect.schedule`
