@@ -38,7 +38,7 @@ export namespace Vitest {
   export interface Test<R> {
     <A, E>(
       name: string,
-      self: TestFunction<A, E, R, [V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext]>,
+      self: TestFunction<A, E, R, [V.TestContext]>,
       timeout?: number | V.TestOptions
     ): void
   }
@@ -75,7 +75,7 @@ export namespace Vitest {
         R,
         [
           { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
-          V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
+          V.TestContext
         ]
       >,
       timeout?:
@@ -113,7 +113,7 @@ export namespace Vitest {
       arbitraries: Arbs,
       self: (
         properties: { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
-        ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
+        ctx: V.TestContext
       ) => void,
       timeout?:
         | number
