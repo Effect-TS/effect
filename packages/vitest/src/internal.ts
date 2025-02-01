@@ -227,7 +227,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
     return args[0](makeIt(V.it))
   }
 
-  return V.describe(args[0], (it) => {
+  return V.describe(args[0], () => {
     V.beforeAll(
       () => runPromise()(Effect.asVoid(runtimeEffect)),
       options?.timeout ? Duration.toMillis(options.timeout) : undefined
@@ -236,7 +236,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
       () => runPromise()(Scope.close(scope, Exit.void)),
       options?.timeout ? Duration.toMillis(options.timeout) : undefined
     )
-    return args[1](makeIt(it))
+    return args[1](makeIt(V.it))
   })
 }
 
