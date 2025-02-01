@@ -92,4 +92,21 @@ a`
       )
     })
   })
+
+  it("assertMatch", () => {
+    Util.assertMatch("abc", /b/)
+    Util.throws(() => Util.assertMatch("a", /b/), (err) => {
+      Util.assertTrue(err instanceof Error)
+      Util.strictEqual(
+        err.message,
+        `Expected
+
+a
+
+to match
+
+/b/`
+      )
+    })
+  })
 })

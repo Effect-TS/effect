@@ -139,7 +139,7 @@ describe("Effect.Service", () => {
       const time = yield* Time
       const date = yield* Time.use((_) => _.now)
       assertInstanceOf(date, Date)
-      assertInstanceOf(time, Date)
+      assertInstanceOf(time, Time)
       assertInstanceOf(time, TimeLive)
     }).pipe(Effect.provide(Time.Default))
   })

@@ -19,7 +19,7 @@ describe.concurrent("Micro", () => {
         // Referenced line to be included in the string output
         const error = yield* new TestError().pipe(Micro.flip)
         deepStrictEqual(error, new TestError())
-        assertInclude(error.stack, "Micro.test.ts:13") // <= reference to the line above
+        assertInclude(error.stack, "Micro.test.ts:20") // <= reference to the line above
       }))
 
     it.effect("withTrace", () =>
@@ -31,7 +31,7 @@ describe.concurrent("Micro", () => {
           Micro.flip
         )
         assertInclude(error.stack, "at test trace")
-        assertInclude(error.stack, "Micro.test.ts:22") // <= reference to the line above
+        assertInclude(error.stack, "Micro.test.ts:29") // <= reference to the line above
       }))
   })
 

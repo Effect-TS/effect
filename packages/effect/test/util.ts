@@ -97,11 +97,15 @@ export function throws(thunk: () => void, error?: Error | ((u: unknown) => undef
 // Option
 // ----------------------------
 
-export function assertNone<A>(option: Option.Option<A>, ..._: Array<never>) {
+export function assertNone<A>(option: Option.Option<A>, ..._: Array<never>): asserts option is Option.None<never> {
   deepStrictEqual(option, Option.none())
 }
 
-export function assertSome<A>(option: Option.Option<A>, expected: A, ..._: Array<never>) {
+export function assertSome<A>(
+  option: Option.Option<A>,
+  expected: A,
+  ..._: Array<never>
+): asserts option is Option.Some<A> {
   deepStrictEqual(option, Option.some(expected))
 }
 
@@ -109,11 +113,19 @@ export function assertSome<A>(option: Option.Option<A>, expected: A, ..._: Array
 // Either
 // ----------------------------
 
-export function assertLeft<R, L>(either: Either.Either<R, L>, expected: L, ..._: Array<never>) {
+export function assertLeft<R, L>(
+  either: Either.Either<R, L>,
+  expected: L,
+  ..._: Array<never>
+): asserts either is Either.Left<L, never> {
   deepStrictEqual(either, Either.left(expected))
 }
 
-export function assertRight<R, L>(either: Either.Either<R, L>, expected: R, ..._: Array<never>) {
+export function assertRight<R, L>(
+  either: Either.Either<R, L>,
+  expected: R,
+  ..._: Array<never>
+): asserts either is Either.Right<never, R> {
   deepStrictEqual(either, Either.right(expected))
 }
 
@@ -121,10 +133,18 @@ export function assertRight<R, L>(either: Either.Either<R, L>, expected: R, ..._
 // Exit
 // ----------------------------
 
-export function assertFailure<A, E>(exit: Exit.Exit<A, E>, expected: Cause.Cause<E>, ..._: Array<never>) {
+export function assertFailure<A, E>(
+  exit: Exit.Exit<A, E>,
+  expected: Cause.Cause<E>,
+  ..._: Array<never>
+): asserts exit is Exit.Failure<never, E> {
   deepStrictEqual(exit, Exit.failCause(expected))
 }
 
-export function assertSuccess<A, E>(exit: Exit.Exit<A, E>, expected: A, ..._: Array<never>) {
+export function assertSuccess<A, E>(
+  exit: Exit.Exit<A, E>,
+  expected: A,
+  ..._: Array<never>
+): asserts exit is Exit.Success<A, never> {
   deepStrictEqual(exit, Exit.succeed(expected))
 }

@@ -67,7 +67,7 @@ describe("Context", () => {
         },
         (e) => {
           assertInstanceOf(e, Error)
-          assertMatch(e.message, /Service not found: C \(defined at (.*)Context.test.ts:27:19\)/)
+          assertMatch(e.message, /Service not found: C \(defined at (.*)Context.test.ts:29:19\)/)
         }
       )
       throws(
@@ -76,7 +76,7 @@ describe("Context", () => {
         },
         (e) => {
           assertInstanceOf(e, Error)
-          assertMatch(e.message, /Service not found: D \(defined at (.*)Context.test.ts:29:32\)/)
+          assertMatch(e.message, /Service not found: D \(defined at (.*)Context.test.ts:31:32\)/)
         }
       )
     }
