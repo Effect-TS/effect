@@ -4,6 +4,7 @@
  * @since 3.4.0
  * @experimental
  */
+import type { StandardSchemaV1 } from "@standard-schema/spec"
 import * as Arr from "./Array.js"
 import type { Channel } from "./Channel.js"
 import * as Context from "./Context.js"
@@ -25,7 +26,7 @@ import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import { hasProperty, isIterable, isTagged } from "./Predicate.js"
+import { hasProperty, isIterable, isPromiseLike, isTagged } from "./Predicate.js"
 import type { Sink } from "./Sink.js"
 import type { Stream } from "./Stream.js"
 import type { Concurrency, Covariant, Equals, NotFunction, Simplify } from "./Types.js"
@@ -4402,3 +4403,44 @@ export class NoSuchElementException extends TaggedError("NoSuchElementException"
  * @category errors
  */
 export class TimeoutException extends TaggedError("TimeoutException") {}
+
+/**
+ * Represents a checked exception which occurs when a validation occurs.
+ *
+ * @since 3.12.5
+ * @experimental
+ * @category errors
+ */
+export class StandardSchemaV1Exception extends TaggedError("StandardSchemaV1Exception")<{
+  vendor: string
+  issues: ReadonlyArray<StandardSchemaV1.Issue>
+}> {}
+
+/**
+ * Creates a validator function for the provided schema
+ *
+ * @since 3.12.5
+ * @experimental
+ * @category validation
+ */
+export const validateStandardV1 =
+  <T extends StandardSchemaV1>(schema: T) =>
+  (input: StandardSchemaV1.InferInput<T>): Micro<StandardSchemaV1.InferOutput<T>, StandardSchemaV1Exception> =>
+    sync(() => schema["~standard"].validate(input))
+      .pipe(
+        flatMap((r) =>
+          isPromiseLike(r)
+            ? promise(() => r) :
+            succeed(r)
+        ),
+        flatMap((r) => {
+          if (r.issues) {
+            return new StandardSchemaV1Exception({
+              vendor: schema["~standard"].vendor,
+              issues: r.issues
+            })
+          } else {
+            return succeed(r.value)
+          }
+        })
+      )
