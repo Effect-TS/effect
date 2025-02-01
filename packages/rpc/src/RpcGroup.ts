@@ -128,6 +128,12 @@ export type HandlersContext<Rpcs extends Rpc.Any, Handlers> = keyof Handlers ext
   : never
   : never
 
+/**
+ * @since 1.0.0
+ * @category groups
+ */
+export type Rpcs<Group extends RpcGroup<any>> = Group extends RpcGroup<infer R> ? R : never
+
 const RpcGroupProto = {
   add(this: RpcGroup<any>, ...rpcs: Array<any>) {
     return makeProto({

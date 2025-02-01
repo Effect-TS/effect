@@ -16,6 +16,7 @@ import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as FiberMap from "effect/FiberMap"
 import * as FiberRef from "effect/FiberRef"
 import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
@@ -32,8 +33,8 @@ import type { Span } from "effect/Tracer"
 import type { Mutable } from "effect/Types"
 import type * as Rpc from "./Rpc.js"
 import type * as RpcGroup from "./RpcGroup.js"
-import type { FromClient, FromClientEncoded, FromServer, FromServerEncoded, RequestId } from "./RpcMessage.js"
-import { constPing } from "./RpcMessage.js"
+import type { FromClient, FromClientEncoded, FromServer, FromServerEncoded } from "./RpcMessage.js"
+import { constPing, RequestId } from "./RpcMessage.js"
 import * as RpcSchema from "./RpcSchema.js"
 import * as RpcSerialization from "./RpcSerialization.js"
 import * as RpcWorker from "./RpcWorker.js"
@@ -470,9 +471,14 @@ export const makeProtocolHttp: <E, R>(
   const responses = yield* Mailbox.make<FromServerEncoded>()
   const serialization = yield* RpcSerialization.RpcSerialization
   const context = yield* Effect.context<Exclude<R, Scope.Scope>>()
+  const fiberMap = yield* FiberMap.make<RequestId>()
   const scope = yield* Effect.scope
 
   const send = (request: FromClientEncoded): Effect.Effect<void> => {
+    if (request._tag === "Interrupt") {
+      return FiberMap.remove(fiberMap, RequestId(request.requestId))
+    }
+
     const parser = serialization.unsafeMake()
     if (!serialization.supportsBigInt) transformBigInt(request)
 
@@ -492,7 +498,7 @@ export const makeProtocolHttp: <E, R>(
       Effect.orDie,
       Effect.catchAllDefect((defect) => responses.offer({ _tag: "Defect", defect })),
       Effect.scoped,
-      Effect.forkIn(scope)
+      request._tag === "Request" ? FiberMap.run(fiberMap, RequestId(request.id)) : Effect.forkIn(scope)
     )
   }
 

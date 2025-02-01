@@ -195,8 +195,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           }) :
           identity,
         Effect.locally(FiberRef.currentContext, entry.context),
-        Effect.forkIn(scope),
         Effect.interruptible,
+        Effect.forkIn(scope),
         Effect.flatMap((fiber) => {
           client.fibers.set(request.id, fiber)
           fiber.addObserver(() => {
@@ -757,11 +757,15 @@ export const makeProtocolWithHttpApp: Effect.Effect<
       end: mailbox.end
     })
 
+    const requestIds: Array<RequestId> = []
+
     try {
       const decoded = parser.decode(new Uint8Array(data)) as ReadonlyArray<FromClientEncoded>
-
       for (const message of decoded) {
         requests.unsafeOffer([id, message])
+        if (message._tag === "Request") {
+          requestIds.push(RequestId(message.id))
+        }
       }
     } catch (cause) {
       yield* offer(parser.encode(ResponseDefectEncoded(cause)))
@@ -770,12 +774,18 @@ export const makeProtocolWithHttpApp: Effect.Effect<
     requests.unsafeOffer([id, constEof])
 
     return HttpServerResponse.stream(
-      Stream.ensuring(
-        Mailbox.toStream(mailbox),
-        Effect.sync(() => {
-          clients.delete(id)
-          disconnects.unsafeOffer(id)
-        })
+      Mailbox.toStream(mailbox).pipe(
+        Stream.ensuringWith((exit) =>
+          Effect.sync(() => {
+            clients.delete(id)
+            disconnects.unsafeOffer(id)
+            if (Exit.isInterrupted(exit)) {
+              for (const requestId of requestIds) {
+                requests.unsafeOffer([id, { _tag: "Interrupt", requestId }])
+              }
+            }
+          })
+        )
       ),
       { contentType: serialization.contentType }
     )
