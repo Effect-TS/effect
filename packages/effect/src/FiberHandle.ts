@@ -339,44 +339,31 @@ export const run: {
 } = function() {
   const self = arguments[0] as FiberHandle
   if (Effect.isEffect(arguments[1])) {
-    const effect = arguments[1]
-    const options = arguments[2] as {
-      readonly onlyIfMissing?: boolean
-      readonly propagateInterruption?: boolean | undefined
-    } | undefined
-    return Effect.suspend(() => {
-      if (self.state._tag === "Closed") {
-        return Effect.interrupt
-      } else if (self.state.fiber !== undefined && options?.onlyIfMissing === true) {
-        return Effect.sync(constInterruptedFiber)
-      }
-      return Effect.uninterruptibleMask((restore) =>
-        Effect.tap(
-          restore(Effect.forkDaemon(effect)),
-          (fiber) => set(self, fiber, options)
-        )
-      )
-    }) as any
+    return runImpl(self, arguments[1], arguments[2]) as any
   }
-  const options = arguments[1] as {
+  const options = arguments[1]
+  return (effect: Effect.Effect<unknown, unknown, any>) => runImpl(self, effect, options)
+}
+
+const runImpl = <A, E, R, XE extends E, XA extends A>(
+  self: FiberHandle<A, E>,
+  effect: Effect.Effect<XA, XE, R>,
+  options?: {
     readonly onlyIfMissing?: boolean
     readonly propagateInterruption?: boolean | undefined
-  } | undefined
-  return (effect: Effect.Effect<unknown, unknown, any>) =>
-    Effect.suspend(() => {
-      if (self.state._tag === "Closed") {
-        return Effect.interrupt
-      } else if (self.state.fiber !== undefined && options?.onlyIfMissing === true) {
-        return Effect.sync(constInterruptedFiber)
-      }
-      return Effect.uninterruptibleMask((restore) =>
-        Effect.tap(
-          restore(Effect.forkDaemon(effect)),
-          (fiber) => set(self, fiber, options)
-        )
-      )
-    })
-}
+  }
+): Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R> =>
+  Effect.fiberIdWith((fiberId) => {
+    if (self.state._tag === "Closed") {
+      return Effect.interrupt
+    } else if (self.state.fiber !== undefined && options?.onlyIfMissing === true) {
+      return Effect.sync(constInterruptedFiber)
+    }
+    return Effect.tap(
+      Effect.forkDaemon(effect),
+      (fiber) => unsafeSet(self, fiber, { ...options, interruptAs: fiberId })
+    )
+  })
 
 /**
  * Capture a Runtime and use it to fork Effect's, adding the forked fibers to the FiberHandle.
@@ -470,3 +457,17 @@ export const runtime: <A, E>(
  */
 export const join = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void, E> =>
   Deferred.await(self.deferred as Deferred.Deferred<void, E>)
+
+/**
+ * Wait for the fiber in the FiberHandle to complete.
+ *
+ * @since 3.13.0
+ * @categories combinators
+ */
+export const awaitEmpty = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void, E> =>
+  Effect.suspend(() => {
+    if (self.state._tag === "Closed" || self.state.fiber === undefined) {
+      return Effect.void
+    }
+    return Fiber.await(self.state.fiber)
+  })

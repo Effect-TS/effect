@@ -89,6 +89,43 @@ describe("RcMap", () => {
 
       yield* TestClock.adjust(1000)
       deepStrictEqual(released, ["foo", "bar"])
+
+      yield* Effect.scoped(RcMap.get(map, "baz"))
+      deepStrictEqual(acquired, ["foo", "bar", "baz"])
+      yield* RcMap.invalidate(map, "baz")
+      deepStrictEqual(acquired, ["foo", "bar", "baz"])
+      deepStrictEqual(released, ["foo", "bar", "baz"])
+    }))
+
+  it.scoped(".touch", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      const released: Array<string> = []
+      const map = yield* RcMap.make({
+        lookup: (key: string) =>
+          Effect.acquireRelease(
+            Effect.sync(() => {
+              acquired.push(key)
+              return key
+            }),
+            () => Effect.sync(() => released.push(key))
+          ),
+        idleTimeToLive: 1000
+      })
+
+      deepStrictEqual(acquired, [])
+      strictEqual(yield* Effect.scoped(RcMap.get(map, "foo")), "foo")
+      deepStrictEqual(acquired, ["foo"])
+      deepStrictEqual(released, [])
+
+      yield* TestClock.adjust(500)
+      deepStrictEqual(released, [])
+
+      yield* RcMap.touch(map, "foo")
+      yield* TestClock.adjust(500)
+      deepStrictEqual(released, [])
+      yield* TestClock.adjust(500)
+      deepStrictEqual(released, ["foo"])
     }))
 
   it.scoped("capacity", () =>
