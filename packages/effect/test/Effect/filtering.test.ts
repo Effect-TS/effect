@@ -5,6 +5,7 @@ import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
+import { strictEqual } from "node:assert"
 
 const exactlyOnce = <R, A, A1>(
   value: A,
@@ -218,7 +219,7 @@ describe("Effect", () => {
             orElse: () => Effect.succeed(0)
           })
         )
-        assert.strictEqual(result, 0)
+        strictEqual(result, 0)
       }))
   })
 
@@ -232,7 +233,7 @@ describe("Effect", () => {
           }),
           Effect.flip
         )
-        assert.strictEqual(result, "boom")
+        strictEqual(result, "boom")
       }))
   })
 })
