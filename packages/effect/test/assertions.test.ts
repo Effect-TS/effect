@@ -1,6 +1,7 @@
 import { Cause, Option } from "effect"
 import * as assert from "node:assert"
 import { assert as vassert, describe, expect, it } from "vitest"
+import * as Util from "./util.js"
 
 // where `fails: false` there is a problem with the assertion library
 
@@ -62,6 +63,16 @@ describe("expect", () => {
       it("toStrictEqual", { fails: false }, () => {
         expect(Cause.sequential(Cause.empty, Cause.empty)).toStrictEqual(Cause.parallel(Cause.empty, Cause.empty))
       })
+    })
+  })
+})
+
+describe("utils", () => {
+  it("assertInstanceOf", () => {
+    Util.assertInstanceOf(new Error(), Error)
+    Util.throws(() => Util.assertInstanceOf(1, Error), (err) => {
+      Util.assertTrue(err instanceof Error)
+      Util.strictEqual(err.message, "expected 1 to be an instance of Error")
     })
   })
 })

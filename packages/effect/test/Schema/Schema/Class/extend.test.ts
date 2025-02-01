@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { JSONSchema, Schema as S, SchemaAST as AST } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertInstanceOf, assertSome, deepStrictEqual, strictEqual } from "effect/test/util"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
@@ -116,7 +116,7 @@ describe("extend", () => {
       }
     }
     const b = B.make({ n: 1, c: "c" })
-    assertTrue(b instanceof B)
+    assertInstanceOf(b, B)
     strictEqual(b.a(), "1a")
     strictEqual(b.b(), "1b")
   })

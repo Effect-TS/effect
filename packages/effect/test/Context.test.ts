@@ -1,6 +1,16 @@
 import { describe, it } from "@effect/vitest"
 import { Context, Differ, Option, pipe } from "effect"
-import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import {
+  assertFalse,
+  assertIncludes,
+  assertInstanceOf,
+  assertNone,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual,
+  throws
+} from "effect/test/util"
 
 interface A {
   a: number
@@ -27,24 +37,36 @@ describe("Context", () => {
   it("error messages", () => {
     throws(() => {
       Context.unsafeGet(Context.empty(), A)
-    }, (e) => e instanceof Error && e.message.includes("Service not found: A"))
+    }, (e) => {
+      assertInstanceOf(e, Error)
+      assertIncludes(e.message, "Service not found: A")
+    })
     throws(() => {
       Context.get(Context.empty(), A as never)
-    }, (e) => e instanceof Error && e.message.includes("Service not found: A"))
+    }, (e) => {
+      assertInstanceOf(e, Error)
+      assertIncludes(e.message, "Service not found: A")
+    })
     throws(() => {
       Context.unsafeGet(Context.empty(), C)
-    }, (e) => e instanceof Error && e.message.includes("Service not found: C"))
+    }, (e) => {
+      assertInstanceOf(e, Error)
+      assertIncludes(e.message, "Service not found: C")
+    })
     throws(() => {
       Context.get(Context.empty(), C as never)
-    }, (e) => e instanceof Error && e.message.includes("Service not found: C"))
+    }, (e) => {
+      assertInstanceOf(e, Error)
+      assertIncludes(e.message, "Service not found: C")
+    })
     if (typeof window === "undefined") {
       throws(
         () => {
           Context.get(Context.empty(), C as never)
         },
         (e) => {
-          return e instanceof Error &&
-            new RegExp(/Service not found: C \(defined at (.*)Context.test.ts:18:19\)/).test(e.message)
+          assertInstanceOf(e, Error)
+          assertIncludes(e.message, /Service not found: C \(defined at (.*)Context.test.ts:27:19\)/)
         }
       )
       throws(
@@ -52,8 +74,8 @@ describe("Context", () => {
           Context.get(Context.empty(), D as never)
         },
         (e) => {
-          return e instanceof Error &&
-            new RegExp(/Service not found: D \(defined at (.*)Context.test.ts:20:32\)/).test(e.message)
+          assertInstanceOf(e, Error)
+          assertIncludes(e.message, /Service not found: D \(defined at (.*)Context.test.ts:29:32\)/)
         }
       )
     }
@@ -112,7 +134,10 @@ describe("Context", () => {
         Services,
         Context.unsafeGet(C)
       )
-    }, (e) => e instanceof Error && e.message.includes("Service not found: C"))
+    }, (e) => {
+      assertInstanceOf(e, Error)
+      assertIncludes(e.message, "Service not found: C")
+    })
   })
 
   it("picks services in env and merges", () => {

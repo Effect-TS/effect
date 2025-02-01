@@ -1,12 +1,12 @@
 import { describe, it } from "@effect/vitest"
 import * as AST from "effect/SchemaAST"
-import { assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertInstanceOf, deepStrictEqual } from "effect/test/util"
 
 describe("annotations", () => {
   it("should add annotations", () => {
     const symA = Symbol.for("a")
     const ast = AST.annotations(AST.stringKeyword, { [symA]: "A" })
-    assertTrue(ast instanceof AST.StringKeyword)
+    assertInstanceOf(ast, AST.StringKeyword)
     deepStrictEqual(
       ast,
       new AST.StringKeyword({

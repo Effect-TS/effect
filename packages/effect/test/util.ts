@@ -1,48 +1,87 @@
 import type { Cause } from "effect"
 import { Either, Equal, Exit, Option, Predicate } from "effect"
 import * as assert from "node:assert"
+import { assert as vassert } from "vitest"
 
-export const fail = assert.fail
+// ----------------------------
+// Primitives
+// ----------------------------
 
-export function assertTrue(self: unknown, ..._: Array<never>): asserts self {
-  assert.strictEqual(self, true)
+/**
+ * Throws an `AssertionError` with the provided error message.
+ */
+export function fail(message: string) {
+  assert.fail(message)
 }
 
-export const assertFalse = (self: boolean, ..._: Array<never>) => {
-  assert.strictEqual(self, false)
+export function deepStrictEqual<A>(actual: A, expected: A, message?: string, ..._: Array<never>) {
+  assert.deepStrictEqual(actual, expected, message)
 }
 
-export const deepStrictEqual = <A>(actual: A, expected: A, ..._: Array<never>) => {
-  assert.deepStrictEqual(actual, expected)
+export function notDeepStrictEqual<A>(actual: A, expected: A, message?: string, ..._: Array<never>) {
+  assert.notDeepStrictEqual(actual, expected, message)
 }
 
-export const notDeepStrictEqual = <A>(actual: A, expected: A, ..._: Array<never>) => {
-  assert.notDeepStrictEqual(actual, expected)
-}
-
-export const strictEqual = <A>(actual: A, expected: A, message?: string, ..._: Array<never>) => {
+export function strictEqual<A>(actual: A, expected: A, message?: string, ..._: Array<never>) {
   assert.strictEqual(actual, expected, message)
 }
 
-export const equals = <A>(actual: A, expected: A, ..._: Array<never>) => {
+/**
+ * Asserts that `actual` is equal to `expected` using the `Equal.equals` trait.
+ */
+export function assertEquals<A>(actual: A, expected: A, message?: string, ..._: Array<never>) {
   if (!Equal.equals(actual, expected)) {
-    deepStrictEqual(actual, expected) // show diff
-    assert.fail("should be equal")
+    deepStrictEqual(actual, expected, message) // show diff
+    fail(message ?? "Expected values to be Equal.equals")
   }
 }
 
-export const doesNotThrow = (thunk: () => void, ..._: Array<never>) => {
-  assert.doesNotThrow(thunk)
+export function doesNotThrow(thunk: () => void, message?: string, ..._: Array<never>) {
+  assert.doesNotThrow(thunk, message)
 }
 
-export const throws = (thunk: () => void, error?: object | ((e: unknown) => boolean), ..._: Array<never>) => {
+// ----------------------------
+// Derived
+// ----------------------------
+
+/**
+ * Asserts that `value` is an instance of `constructor`.
+ */
+export function assertInstanceOf<C extends abstract new(...args: any) => any>(
+  value: unknown,
+  constructor: C,
+  message?: string,
+  ..._: Array<never>
+): asserts value is InstanceType<C> {
+  vassert.instanceOf(value, constructor, message)
+}
+
+export function assertTrue(self: unknown, message?: string, ..._: Array<never>): asserts self {
+  strictEqual(self, true, message)
+}
+
+export function assertFalse(self: boolean, message?: string, ..._: Array<never>) {
+  strictEqual(self, false, message)
+}
+
+export function assertIncludes(actual: string | undefined, expected: string | RegExp, ..._: Array<never>) {
+  if (Predicate.isString(expected)) {
+    if (!actual?.includes(expected)) {
+      fail(`Expected\n\n${actual}\n\nto include\n\n${expected}`)
+    }
+  } else if (!expected.test(actual ?? "")) {
+    fail(`Expected\n\n${actual}\n\nto match\n\n${expected}`)
+  }
+}
+
+export function throws(thunk: () => void, error?: Error | ((u: unknown) => undefined), ..._: Array<never>) {
   try {
     thunk()
-    assert.fail("expected to throw an error")
+    fail("Expected to throw an error")
   } catch (e) {
     if (error !== undefined) {
       if (Predicate.isFunction(error)) {
-        assertTrue(error(e))
+        error(e)
       } else {
         deepStrictEqual(e, error)
       }
@@ -50,21 +89,15 @@ export const throws = (thunk: () => void, error?: object | ((e: unknown) => bool
   }
 }
 
-export const assertIncludes = (actual: string | undefined, expected: string, ..._: Array<never>) => {
-  if (!actual?.includes(expected)) {
-    assert.fail(`Expected\n\n${actual}\n\nto include\n\n${expected}`)
-  }
-}
-
 // ----------------------------
 // Option
 // ----------------------------
 
-export const assertNone = <A>(option: Option.Option<A>, ..._: Array<never>) => {
+export function assertNone<A>(option: Option.Option<A>, ..._: Array<never>) {
   deepStrictEqual(option, Option.none())
 }
 
-export const assertSome = <A>(option: Option.Option<A>, expected: A, ..._: Array<never>) => {
+export function assertSome<A>(option: Option.Option<A>, expected: A, ..._: Array<never>) {
   deepStrictEqual(option, Option.some(expected))
 }
 
@@ -72,11 +105,11 @@ export const assertSome = <A>(option: Option.Option<A>, expected: A, ..._: Array
 // Either
 // ----------------------------
 
-export const assertLeft = <R, L>(either: Either.Either<R, L>, expected: L, ..._: Array<never>) => {
+export function assertLeft<R, L>(either: Either.Either<R, L>, expected: L, ..._: Array<never>) {
   deepStrictEqual(either, Either.left(expected))
 }
 
-export const assertRight = <R, L>(either: Either.Either<R, L>, expected: R, ..._: Array<never>) => {
+export function assertRight<R, L>(either: Either.Either<R, L>, expected: R, ..._: Array<never>) {
   deepStrictEqual(either, Either.right(expected))
 }
 
@@ -84,10 +117,10 @@ export const assertRight = <R, L>(either: Either.Either<R, L>, expected: R, ..._
 // Exit
 // ----------------------------
 
-export const assertFailure = <A, E>(exit: Exit.Exit<A, E>, expected: Cause.Cause<E>, ..._: Array<never>) => {
+export function assertFailure<A, E>(exit: Exit.Exit<A, E>, expected: Cause.Cause<E>, ..._: Array<never>) {
   deepStrictEqual(exit, Exit.failCause(expected))
 }
 
-export const assertSuccess = <A, E>(exit: Exit.Exit<A, E>, expected: A, ..._: Array<never>) => {
+export function assertSuccess<A, E>(exit: Exit.Exit<A, E>, expected: A, ..._: Array<never>) {
   deepStrictEqual(exit, Exit.succeed(expected))
 }

@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { Cause, Effect, Inspectable, Schema } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertIncludes, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertIncludes, assertInstanceOf, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("TaggedError", () => {
   it("should expose the fields and the tag", () => {
@@ -105,7 +105,7 @@ describe("TaggedError", () => {
       }
     }
     const a = A.make({ n: 1 })
-    assertTrue(a instanceof A)
+    assertInstanceOf(a, A)
     strictEqual(a._tag, "A")
     strictEqual(a.a(), "1a")
   })

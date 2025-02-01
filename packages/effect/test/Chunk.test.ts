@@ -13,13 +13,13 @@ import {
   type Predicate
 } from "effect"
 import {
+  assertEquals,
   assertFalse,
   assertNone,
   assertSome,
   assertTrue,
   deepStrictEqual,
   doesNotThrow,
-  equals,
   strictEqual,
   throws
 } from "effect/test/util"
@@ -28,8 +28,8 @@ const assertTuple = <A, B>(
   actual: [Chunk.Chunk<A>, Chunk.Chunk<B>],
   expected: [Chunk.Chunk<A>, Chunk.Chunk<B>]
 ) => {
-  equals(actual[0], expected[0])
-  equals(actual[1], expected[1])
+  assertEquals(actual[0], expected[0])
+  assertEquals(actual[1], expected[1])
 }
 
 describe("Chunk", () => {
@@ -84,7 +84,7 @@ describe("Chunk", () => {
     if (typeof window === "undefined") {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { inspect } = require("node:util")
-      equals(inspect(Chunk.make(0, 1, 2)), inspect({ _id: "Chunk", values: [0, 1, 2] }))
+      assertEquals(inspect(Chunk.make(0, 1, 2)), inspect({ _id: "Chunk", values: [0, 1, 2] }))
     }
   })
 
@@ -97,8 +97,8 @@ describe("Chunk", () => {
   })
 
   it("modify", () => {
-    equals(pipe(Chunk.empty(), Chunk.modify(0, (n: number) => n * 2)), Chunk.empty())
-    equals(pipe(Chunk.make(1, 2, 3), Chunk.modify(0, (n: number) => n * 2)), Chunk.make(2, 2, 3))
+    assertEquals(pipe(Chunk.empty(), Chunk.modify(0, (n: number) => n * 2)), Chunk.empty())
+    assertEquals(pipe(Chunk.make(1, 2, 3), Chunk.modify(0, (n: number) => n * 2)), Chunk.make(2, 2, 3))
   })
 
   it("replaceOption", () => {
@@ -107,44 +107,44 @@ describe("Chunk", () => {
   })
 
   it("replace", () => {
-    equals(pipe(Chunk.empty(), Chunk.replace(0, 2)), Chunk.empty())
-    equals(pipe(Chunk.make(1, 2, 3), Chunk.replace(0, 2)), Chunk.make(2, 2, 3))
+    assertEquals(pipe(Chunk.empty(), Chunk.replace(0, 2)), Chunk.empty())
+    assertEquals(pipe(Chunk.make(1, 2, 3), Chunk.replace(0, 2)), Chunk.make(2, 2, 3))
   })
 
   it("remove", () => {
-    equals(pipe(Chunk.empty(), Chunk.remove(0)), Chunk.empty())
-    equals(pipe(Chunk.make(1, 2, 3), Chunk.remove(0)), Chunk.make(2, 3))
+    assertEquals(pipe(Chunk.empty(), Chunk.remove(0)), Chunk.empty())
+    assertEquals(pipe(Chunk.make(1, 2, 3), Chunk.remove(0)), Chunk.make(2, 3))
   })
 
   it("chunksOf", () => {
-    equals(pipe(Chunk.empty(), Chunk.chunksOf(2)), Chunk.empty())
-    equals(
+    assertEquals(pipe(Chunk.empty(), Chunk.chunksOf(2)), Chunk.empty())
+    assertEquals(
       pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(2)),
       Chunk.make(Chunk.make(1, 2), Chunk.make(3, 4), Chunk.make(5))
     )
-    equals(
+    assertEquals(
       pipe(Chunk.make(1, 2, 3, 4, 5, 6), Chunk.chunksOf(2)),
       Chunk.make(Chunk.make(1, 2), Chunk.make(3, 4), Chunk.make(5, 6))
     )
-    equals(
+    assertEquals(
       pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(1)),
       Chunk.make(Chunk.make(1), Chunk.make(2), Chunk.make(3), Chunk.make(4), Chunk.make(5))
     )
-    equals(pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(5)), Chunk.make(Chunk.make(1, 2, 3, 4, 5)))
+    assertEquals(pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(5)), Chunk.make(Chunk.make(1, 2, 3, 4, 5)))
     // out of bounds
-    equals(
+    assertEquals(
       pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(0)),
       Chunk.make(Chunk.make(1), Chunk.make(2), Chunk.make(3), Chunk.make(4), Chunk.make(5))
     )
-    equals(
+    assertEquals(
       pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(-1)),
       Chunk.make(Chunk.make(1), Chunk.make(2), Chunk.make(3), Chunk.make(4), Chunk.make(5))
     )
-    equals(pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(10)), Chunk.make(Chunk.make(1, 2, 3, 4, 5)))
+    assertEquals(pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(10)), Chunk.make(Chunk.make(1, 2, 3, 4, 5)))
   })
 
   it(".pipe() method", () => {
-    equals(Chunk.empty().pipe(Chunk.append(1)), Chunk.make(1))
+    assertEquals(Chunk.empty().pipe(Chunk.append(1)), Chunk.make(1))
   })
 
   describe("toArray", () => {
@@ -231,7 +231,7 @@ describe("Chunk", () => {
       }
 
       it("should process it", () => {
-        equals(Chunk.fromIterable(myIterable), Chunk.unsafeFromArray([1, 2, 3, 4, 5]))
+        assertEquals(Chunk.fromIterable(myIterable), Chunk.unsafeFromArray([1, 2, 3, 4, 5]))
       })
     })
 
@@ -399,14 +399,14 @@ describe("Chunk", () => {
   })
 
   it("prependAll", () => {
-    equals(pipe(Chunk.empty(), Chunk.prependAll(Chunk.make(1))), Chunk.make(1))
-    equals(pipe(Chunk.make(1), Chunk.prependAll(Chunk.empty())), Chunk.make(1))
+    assertEquals(pipe(Chunk.empty(), Chunk.prependAll(Chunk.make(1))), Chunk.make(1))
+    assertEquals(pipe(Chunk.make(1), Chunk.prependAll(Chunk.empty())), Chunk.make(1))
 
-    equals(pipe(Chunk.empty(), Chunk.prependAll(Chunk.make(1, 2))), Chunk.make(1, 2))
-    equals(pipe(Chunk.make(1, 2), Chunk.prependAll(Chunk.empty())), Chunk.make(1, 2))
+    assertEquals(pipe(Chunk.empty(), Chunk.prependAll(Chunk.make(1, 2))), Chunk.make(1, 2))
+    assertEquals(pipe(Chunk.make(1, 2), Chunk.prependAll(Chunk.empty())), Chunk.make(1, 2))
 
-    equals(pipe(Chunk.make(2, 3), Chunk.prependAll(Chunk.make(1))), Chunk.make(1, 2, 3))
-    equals(pipe(Chunk.make(3), Chunk.prependAll(Chunk.make(1, 2))), Chunk.make(1, 2, 3))
+    assertEquals(pipe(Chunk.make(2, 3), Chunk.prependAll(Chunk.make(1))), Chunk.make(1, 2, 3))
+    assertEquals(pipe(Chunk.make(3), Chunk.prependAll(Chunk.make(1, 2))), Chunk.make(1, 2, 3))
   })
 
   it("prepend", () => {
@@ -428,7 +428,7 @@ describe("Chunk", () => {
   describe("take", () => {
     describe("Given a Chunk with more elements than the amount taken", () => {
       it("should return the subset", () => {
-        equals(pipe(Chunk.unsafeFromArray([1, 2, 3]), Chunk.take(2)), Chunk.unsafeFromArray([1, 2]))
+        assertEquals(pipe(Chunk.unsafeFromArray([1, 2, 3]), Chunk.take(2)), Chunk.unsafeFromArray([1, 2]))
       })
     })
 
@@ -437,7 +437,7 @@ describe("Chunk", () => {
       const amount = 5
 
       it("should return the available subset", () => {
-        equals(pipe(chunk, Chunk.take(amount)), Chunk.unsafeFromArray([1, 2, 3]))
+        assertEquals(pipe(chunk, Chunk.take(amount)), Chunk.unsafeFromArray([1, 2, 3]))
       })
     })
 
@@ -446,7 +446,7 @@ describe("Chunk", () => {
       const amount = 3
 
       it("should return the available subset", () => {
-        equals(pipe(chunk, Chunk.take(amount)), Chunk.unsafeFromArray([1, 2, 3]))
+        assertEquals(pipe(chunk, Chunk.take(amount)), Chunk.unsafeFromArray([1, 2, 3]))
       })
     })
 
@@ -455,7 +455,7 @@ describe("Chunk", () => {
       const amount = 2
 
       it("should return the available subset", () => {
-        equals(pipe(chunk, Chunk.take(amount)), Chunk.unsafeFromArray([1]))
+        assertEquals(pipe(chunk, Chunk.take(amount)), Chunk.unsafeFromArray([1]))
       })
     })
 
@@ -513,7 +513,7 @@ describe("Chunk", () => {
       const toDrop = 1
 
       it("should remove the given amount of items", () => {
-        equals(pipe(chunk, Chunk.dropRight(toDrop)), Chunk.unsafeFromArray([1, 2]))
+        assertEquals(pipe(chunk, Chunk.dropRight(toDrop)), Chunk.unsafeFromArray([1, 2]))
       })
     })
 
@@ -522,7 +522,7 @@ describe("Chunk", () => {
       const toDrop = 3
 
       it("should return an empty chunk", () => {
-        equals(pipe(chunk, Chunk.dropRight(toDrop)), Chunk.unsafeFromArray([]))
+        assertEquals(pipe(chunk, Chunk.dropRight(toDrop)), Chunk.unsafeFromArray([]))
       })
     })
   })
@@ -533,7 +533,7 @@ describe("Chunk", () => {
       const criteria = (n: number) => n < 3
 
       it("should return the subset that doesn't pass the criteria", () => {
-        equals(pipe(chunk, Chunk.dropWhile(criteria)), Chunk.unsafeFromArray([3]))
+        assertEquals(pipe(chunk, Chunk.dropWhile(criteria)), Chunk.unsafeFromArray([3]))
       })
     })
 
@@ -542,7 +542,7 @@ describe("Chunk", () => {
       const criteria = (n: number) => n < 4
 
       it("should return an empty chunk", () => {
-        equals(pipe(chunk, Chunk.dropWhile(criteria)), Chunk.unsafeFromArray([]))
+        assertEquals(pipe(chunk, Chunk.dropWhile(criteria)), Chunk.unsafeFromArray([]))
       })
     })
   })
@@ -553,7 +553,7 @@ describe("Chunk", () => {
       const chunk2 = Chunk.unsafeFromArray([2, 3])
 
       it("should concatenate them following order", () => {
-        equals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([0, 1, 2, 3]))
+        assertEquals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([0, 1, 2, 3]))
       })
     })
 
@@ -562,7 +562,7 @@ describe("Chunk", () => {
       const chunk2 = Chunk.unsafeFromArray([3])
 
       it("should concatenate them following order", () => {
-        equals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2, 3]))
+        assertEquals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2, 3]))
       })
     })
 
@@ -571,7 +571,7 @@ describe("Chunk", () => {
       const chunk2 = Chunk.unsafeFromArray([2, 3, 4])
 
       it("should concatenate them following order", () => {
-        equals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2, 3, 4]))
+        assertEquals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2, 3, 4]))
       })
     })
 
@@ -583,7 +583,7 @@ describe("Chunk", () => {
       const chunk2 = Chunk.unsafeFromArray([2, 3, 4])
 
       it("should concatenate them following order", () => {
-        equals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2, 3, 4]))
+        assertEquals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2, 3, 4]))
       })
     })
 
@@ -595,7 +595,7 @@ describe("Chunk", () => {
       )
 
       it("should concatenate them following order", () => {
-        equals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2]))
+        assertEquals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2]))
       })
     })
 
@@ -604,7 +604,7 @@ describe("Chunk", () => {
       const chunk2 = Chunk.unsafeFromArray([1, 2])
 
       it("should concatenate them following order", () => {
-        equals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2]))
+        assertEquals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2]))
       })
     })
 
@@ -613,7 +613,7 @@ describe("Chunk", () => {
       const chunk2 = Chunk.empty()
 
       it("should concatenate them following order", () => {
-        equals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2]))
+        assertEquals(pipe(chunk1, Chunk.appendAll(chunk2)), Chunk.unsafeFromArray([1, 2]))
       })
     })
 
@@ -625,7 +625,7 @@ describe("Chunk", () => {
       const chunk5 = Chunk.unsafeFromArray([5, 6])
 
       it("should concatenate them following order", () => {
-        equals(
+        assertEquals(
           pipe(
             chunk1,
             Chunk.appendAll(chunk2),
@@ -640,9 +640,9 @@ describe("Chunk", () => {
   })
 
   it("zip", () => {
-    equals(Chunk.zip(Chunk.empty(), Chunk.empty()), Chunk.empty())
-    equals(Chunk.zip(Chunk.make(1), Chunk.empty()), Chunk.empty())
-    equals(Chunk.zip(Chunk.empty(), Chunk.make(1)), Chunk.empty())
+    assertEquals(Chunk.zip(Chunk.empty(), Chunk.empty()), Chunk.empty())
+    assertEquals(Chunk.zip(Chunk.make(1), Chunk.empty()), Chunk.empty())
+    assertEquals(Chunk.zip(Chunk.empty(), Chunk.make(1)), Chunk.empty())
     deepStrictEqual(Chunk.toArray(Chunk.zip(Chunk.make(1), Chunk.make(2))), [[1, 2]])
   })
 
@@ -662,10 +662,10 @@ describe("Chunk", () => {
   })
 
   it("map", () => {
-    equals(Chunk.map(Chunk.empty(), (n) => n + 1), Chunk.empty())
-    equals(Chunk.map(Chunk.of(1), (n) => n + 1), Chunk.of(2))
-    equals(Chunk.map(Chunk.make(1, 2, 3), (n) => n + 1), Chunk.make(2, 3, 4))
-    equals(Chunk.map(Chunk.make(1, 2, 3), (n, i) => n + i), Chunk.make(1, 3, 5))
+    assertEquals(Chunk.map(Chunk.empty(), (n) => n + 1), Chunk.empty())
+    assertEquals(Chunk.map(Chunk.of(1), (n) => n + 1), Chunk.of(2))
+    assertEquals(Chunk.map(Chunk.make(1, 2, 3), (n) => n + 1), Chunk.make(2, 3, 4))
+    assertEquals(Chunk.map(Chunk.make(1, 2, 3), (n, i) => n + i), Chunk.make(1, 3, 5))
   })
 
   it("mapAccum", () => {
@@ -702,11 +702,11 @@ describe("Chunk", () => {
   })
 
   it("split", () => {
-    equals(pipe(Chunk.empty(), Chunk.split(2)), Chunk.empty())
-    equals(pipe(Chunk.make(1), Chunk.split(2)), Chunk.make(Chunk.make(1)))
-    equals(pipe(Chunk.make(1, 2), Chunk.split(2)), Chunk.make(Chunk.make(1), Chunk.make(2)))
-    equals(pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.split(2)), Chunk.make(Chunk.make(1, 2, 3), Chunk.make(4, 5)))
-    equals(
+    assertEquals(pipe(Chunk.empty(), Chunk.split(2)), Chunk.empty())
+    assertEquals(pipe(Chunk.make(1), Chunk.split(2)), Chunk.make(Chunk.make(1)))
+    assertEquals(pipe(Chunk.make(1, 2), Chunk.split(2)), Chunk.make(Chunk.make(1), Chunk.make(2)))
+    assertEquals(pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.split(2)), Chunk.make(Chunk.make(1, 2, 3), Chunk.make(4, 5)))
+    assertEquals(
       pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.split(3)),
       Chunk.make(Chunk.make(1, 2), Chunk.make(3, 4), Chunk.make(5))
     )
@@ -715,55 +715,55 @@ describe("Chunk", () => {
   it("tail", () => {
     assertNone(Chunk.tail(Chunk.empty()))
     // TODO: use assertSome?
-    equals(Chunk.tail(Chunk.make(1, 2, 3)), Option.some(Chunk.make(2, 3)))
+    assertEquals(Chunk.tail(Chunk.make(1, 2, 3)), Option.some(Chunk.make(2, 3)))
   })
 
   it("filter", () => {
-    equals(Chunk.filter(Chunk.make(1, 2, 3), (n) => n % 2 === 1), Chunk.make(1, 3))
-    equals(
+    assertEquals(Chunk.filter(Chunk.make(1, 2, 3), (n) => n % 2 === 1), Chunk.make(1, 3))
+    assertEquals(
       Chunk.filter(Chunk.make(Option.some(3), Option.some(2), Option.some(1)), Option.isSome),
       Chunk.make(Option.some(3), Option.some(2), Option.some(1)) as any
     )
-    equals(
+    assertEquals(
       Chunk.filter(Chunk.make(Option.some(3), Option.none(), Option.some(1)), Option.isSome),
       Chunk.make(Option.some(3), Option.some(1)) as any
     )
   })
 
   it("filterMapWhile", () => {
-    equals(
+    assertEquals(
       Chunk.filterMapWhile(Chunk.make(1, 3, 4, 5), (n) => n % 2 === 1 ? Option.some(n) : Option.none()),
       Chunk.make(1, 3)
     )
   })
 
   it("compact", () => {
-    equals(Chunk.compact(Chunk.empty()), Chunk.empty())
-    equals(Chunk.compact(Chunk.make(Option.some(1), Option.some(2), Option.some(3))), Chunk.make(1, 2, 3))
-    equals(Chunk.compact(Chunk.make(Option.some(1), Option.none(), Option.some(3))), Chunk.make(1, 3))
+    assertEquals(Chunk.compact(Chunk.empty()), Chunk.empty())
+    assertEquals(Chunk.compact(Chunk.make(Option.some(1), Option.some(2), Option.some(3))), Chunk.make(1, 2, 3))
+    assertEquals(Chunk.compact(Chunk.make(Option.some(1), Option.none(), Option.some(3))), Chunk.make(1, 3))
   })
 
   it("dedupeAdjacent", () => {
-    equals(Chunk.dedupeAdjacent(Chunk.empty()), Chunk.empty())
-    equals(Chunk.dedupeAdjacent(Chunk.make(1, 2, 3)), Chunk.make(1, 2, 3))
-    equals(Chunk.dedupeAdjacent(Chunk.make(1, 2, 2, 3, 3)), Chunk.make(1, 2, 3))
+    assertEquals(Chunk.dedupeAdjacent(Chunk.empty()), Chunk.empty())
+    assertEquals(Chunk.dedupeAdjacent(Chunk.make(1, 2, 3)), Chunk.make(1, 2, 3))
+    assertEquals(Chunk.dedupeAdjacent(Chunk.make(1, 2, 2, 3, 3)), Chunk.make(1, 2, 3))
   })
 
   it("flatMap", () => {
-    equals(Chunk.flatMap(Chunk.make(1), (n) => Chunk.make(n, n + 1)), Chunk.make(1, 2))
-    equals(Chunk.flatMap(Chunk.make(1, 2, 3), (n) => Chunk.make(n, n + 1)), Chunk.make(1, 2, 2, 3, 3, 4))
+    assertEquals(Chunk.flatMap(Chunk.make(1), (n) => Chunk.make(n, n + 1)), Chunk.make(1, 2))
+    assertEquals(Chunk.flatMap(Chunk.make(1, 2, 3), (n) => Chunk.make(n, n + 1)), Chunk.make(1, 2, 2, 3, 3, 4))
   })
 
   it("union", () => {
-    equals(Chunk.union(Chunk.make(1, 2, 3), Chunk.empty()), Chunk.make(1, 2, 3))
-    equals(Chunk.union(Chunk.empty(), Chunk.make(1, 2, 3)), Chunk.make(1, 2, 3))
-    equals(Chunk.union(Chunk.make(1, 2, 3), Chunk.make(2, 3, 4)), Chunk.make(1, 2, 3, 4))
+    assertEquals(Chunk.union(Chunk.make(1, 2, 3), Chunk.empty()), Chunk.make(1, 2, 3))
+    assertEquals(Chunk.union(Chunk.empty(), Chunk.make(1, 2, 3)), Chunk.make(1, 2, 3))
+    assertEquals(Chunk.union(Chunk.make(1, 2, 3), Chunk.make(2, 3, 4)), Chunk.make(1, 2, 3, 4))
   })
 
   it("intersection", () => {
-    equals(Chunk.intersection(Chunk.make(1, 2, 3), Chunk.empty()), Chunk.empty())
-    equals(Chunk.intersection(Chunk.empty(), Chunk.make(2, 3, 4)), Chunk.empty())
-    equals(Chunk.intersection(Chunk.make(1, 2, 3), Chunk.make(2, 3, 4)), Chunk.make(2, 3))
+    assertEquals(Chunk.intersection(Chunk.make(1, 2, 3), Chunk.empty()), Chunk.empty())
+    assertEquals(Chunk.intersection(Chunk.empty(), Chunk.make(2, 3, 4)), Chunk.empty())
+    assertEquals(Chunk.intersection(Chunk.make(1, 2, 3), Chunk.make(2, 3, 4)), Chunk.make(2, 3))
   })
 
   it("isEmpty", () => {
@@ -788,14 +788,14 @@ describe("Chunk", () => {
   })
 
   it("takeWhile", () => {
-    equals(Chunk.takeWhile(Chunk.empty(), (n) => n <= 2), Chunk.empty())
-    equals(Chunk.takeWhile(Chunk.make(1, 2, 3), (n) => n <= 2), Chunk.make(1, 2))
+    assertEquals(Chunk.takeWhile(Chunk.empty(), (n) => n <= 2), Chunk.empty())
+    assertEquals(Chunk.takeWhile(Chunk.make(1, 2, 3), (n) => n <= 2), Chunk.make(1, 2))
   })
 
   it("dedupe", () => {
-    equals(Chunk.dedupe(Chunk.empty()), Chunk.empty())
-    equals(Chunk.dedupe(Chunk.make(1, 2, 3)), Chunk.make(1, 2, 3))
-    equals(Chunk.dedupe(Chunk.make(1, 2, 3, 2, 1, 3)), Chunk.make(1, 2, 3))
+    assertEquals(Chunk.dedupe(Chunk.empty()), Chunk.empty())
+    assertEquals(Chunk.dedupe(Chunk.make(1, 2, 3)), Chunk.make(1, 2, 3))
+    assertEquals(Chunk.dedupe(Chunk.make(1, 2, 3, 2, 1, 3)), Chunk.make(1, 2, 3))
   })
 
   it("unzip", () => {
@@ -807,30 +807,30 @@ describe("Chunk", () => {
   })
 
   it("reverse", () => {
-    equals(Chunk.reverse(Chunk.empty()), Chunk.empty())
-    equals(Chunk.reverse(Chunk.make(1, 2, 3)), Chunk.make(3, 2, 1))
-    equals(Chunk.reverse(Chunk.take(Chunk.make(1, 2, 3, 4), 3)), Chunk.make(3, 2, 1))
+    assertEquals(Chunk.reverse(Chunk.empty()), Chunk.empty())
+    assertEquals(Chunk.reverse(Chunk.make(1, 2, 3)), Chunk.make(3, 2, 1))
+    assertEquals(Chunk.reverse(Chunk.take(Chunk.make(1, 2, 3, 4), 3)), Chunk.make(3, 2, 1))
   })
 
   it("flatten", () => {
-    equals(Chunk.flatten(Chunk.make(Chunk.make(1), Chunk.make(2), Chunk.make(3))), Chunk.make(1, 2, 3))
+    assertEquals(Chunk.flatten(Chunk.make(Chunk.make(1), Chunk.make(2), Chunk.make(3))), Chunk.make(1, 2, 3))
   })
 
   it("makeBy", () => {
-    equals(Chunk.makeBy(5, (n) => n * 2), Chunk.make(0, 2, 4, 6, 8))
-    equals(Chunk.makeBy(2.2, (n) => n * 2), Chunk.make(0, 2))
+    assertEquals(Chunk.makeBy(5, (n) => n * 2), Chunk.make(0, 2, 4, 6, 8))
+    assertEquals(Chunk.makeBy(2.2, (n) => n * 2), Chunk.make(0, 2))
   })
 
   it("range", () => {
-    equals(Chunk.range(0, 0), Chunk.make(0))
-    equals(Chunk.range(0, 1), Chunk.make(0, 1))
-    equals(Chunk.range(1, 5), Chunk.make(1, 2, 3, 4, 5))
-    equals(Chunk.range(10, 15), Chunk.make(10, 11, 12, 13, 14, 15))
-    equals(Chunk.range(-1, 0), Chunk.make(-1, 0))
-    equals(Chunk.range(-5, -1), Chunk.make(-5, -4, -3, -2, -1))
+    assertEquals(Chunk.range(0, 0), Chunk.make(0))
+    assertEquals(Chunk.range(0, 1), Chunk.make(0, 1))
+    assertEquals(Chunk.range(1, 5), Chunk.make(1, 2, 3, 4, 5))
+    assertEquals(Chunk.range(10, 15), Chunk.make(10, 11, 12, 13, 14, 15))
+    assertEquals(Chunk.range(-1, 0), Chunk.make(-1, 0))
+    assertEquals(Chunk.range(-5, -1), Chunk.make(-5, -4, -3, -2, -1))
     // out of bound
-    equals(Chunk.range(2, 1), Chunk.make(2))
-    equals(Chunk.range(-1, -2), Chunk.make(-1))
+    assertEquals(Chunk.range(2, 1), Chunk.make(2))
+    assertEquals(Chunk.range(-1, -2), Chunk.make(-1))
   })
 
   it("some", () => {
@@ -869,17 +869,17 @@ describe("Chunk", () => {
     const chunk = Chunk.make({ id: 1 }, { id: 2 }, { id: 3 })
 
     deepStrictEqual(differenceWith(Chunk.make({ id: 1 }, { id: 2 }), chunk), Chunk.make({ id: 3 }))
-    equals(differenceWith(Chunk.empty(), chunk), chunk)
-    equals(differenceWith(chunk, Chunk.empty()), Chunk.empty())
-    equals(differenceWith(chunk, chunk), Chunk.empty())
+    assertEquals(differenceWith(Chunk.empty(), chunk), chunk)
+    assertEquals(differenceWith(chunk, Chunk.empty()), Chunk.empty())
+    assertEquals(differenceWith(chunk, chunk), Chunk.empty())
   })
 
   it("difference", () => {
     const curr = Chunk.make(1, 3, 5, 7, 9)
 
-    equals(Chunk.difference(Chunk.make(1, 2, 3, 4, 5), curr), Chunk.make(7, 9))
-    equals(Chunk.difference(Chunk.empty(), curr), curr)
-    equals(Chunk.difference(curr, Chunk.empty()), Chunk.empty())
-    equals(Chunk.difference(curr, curr), Chunk.empty())
+    assertEquals(Chunk.difference(Chunk.make(1, 2, 3, 4, 5), curr), Chunk.make(7, 9))
+    assertEquals(Chunk.difference(Chunk.empty(), curr), curr)
+    assertEquals(Chunk.difference(curr, Chunk.empty()), Chunk.empty())
+    assertEquals(Chunk.difference(curr, curr), Chunk.empty())
   })
 })

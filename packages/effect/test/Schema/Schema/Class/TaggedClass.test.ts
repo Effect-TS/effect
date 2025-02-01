@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { pipe, Struct } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { assertFalse, assertInstanceOf, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
 
 describe("TaggedClass", () => {
   it("the constructor should add a `_tag` field", () => {
@@ -221,7 +221,7 @@ details: Duplicate key "_tag"`)
       }
     }
     const ta = TA.make({ n: 1 })
-    assertTrue(ta instanceof TA)
+    assertInstanceOf(ta, TA)
     strictEqual(ta._tag, "TA")
     strictEqual(ta.a(), "1a")
   })

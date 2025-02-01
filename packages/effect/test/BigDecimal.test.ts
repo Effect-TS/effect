@@ -1,12 +1,12 @@
 import { describe, it } from "@effect/vitest"
 import { BigDecimal, Equal, FastCheck as fc, Option } from "effect"
 import {
+  assertEquals,
   assertFalse,
   assertNone,
   assertSome,
   assertTrue,
   deepStrictEqual,
-  equals,
   strictEqual,
   throws
 } from "effect/test/util"
@@ -43,31 +43,31 @@ describe("BigDecimal", () => {
   })
 
   it("sum", () => {
-    equals(BigDecimal.sum($("2"), $("0")), $("2"))
-    equals(BigDecimal.sum($("0"), $("2")), $("2"))
-    equals(BigDecimal.sum($("0"), $("0")), $("0"))
-    equals(BigDecimal.sum($("2"), $("1")), $("3"))
-    equals(BigDecimal.sum($("3.00000"), $("50")), $("53"))
-    equals(BigDecimal.sum($("1.23"), $("0.0045678")), $("1.2345678"))
-    equals(BigDecimal.sum($("123.456"), $("-123.456")), $("0"))
+    assertEquals(BigDecimal.sum($("2"), $("0")), $("2"))
+    assertEquals(BigDecimal.sum($("0"), $("2")), $("2"))
+    assertEquals(BigDecimal.sum($("0"), $("0")), $("0"))
+    assertEquals(BigDecimal.sum($("2"), $("1")), $("3"))
+    assertEquals(BigDecimal.sum($("3.00000"), $("50")), $("53"))
+    assertEquals(BigDecimal.sum($("1.23"), $("0.0045678")), $("1.2345678"))
+    assertEquals(BigDecimal.sum($("123.456"), $("-123.456")), $("0"))
   })
 
   it("multiply", () => {
-    equals(BigDecimal.multiply($("3"), $("2")), $("6"))
-    equals(BigDecimal.multiply($("3"), $("0")), $("0"))
-    equals(BigDecimal.multiply($("3"), $("-1")), $("-3"))
-    equals(BigDecimal.multiply($("3"), $("0.5")), $("1.5"))
-    equals(BigDecimal.multiply($("3"), $("-2.5")), $("-7.5"))
+    assertEquals(BigDecimal.multiply($("3"), $("2")), $("6"))
+    assertEquals(BigDecimal.multiply($("3"), $("0")), $("0"))
+    assertEquals(BigDecimal.multiply($("3"), $("-1")), $("-3"))
+    assertEquals(BigDecimal.multiply($("3"), $("0.5")), $("1.5"))
+    assertEquals(BigDecimal.multiply($("3"), $("-2.5")), $("-7.5"))
   })
 
   it("subtract", () => {
-    equals(BigDecimal.subtract($("0"), $("1")), $("-1"))
-    equals(BigDecimal.subtract($("2.1"), $("1")), $("1.1"))
-    equals(BigDecimal.subtract($("3"), $("1")), $("2"))
-    equals(BigDecimal.subtract($("3"), $("0")), $("3"))
-    equals(BigDecimal.subtract($("3"), $("-1")), $("4"))
-    equals(BigDecimal.subtract($("3"), $("0.5")), $("2.5"))
-    equals(BigDecimal.subtract($("3"), $("-2.5")), $("5.5"))
+    assertEquals(BigDecimal.subtract($("0"), $("1")), $("-1"))
+    assertEquals(BigDecimal.subtract($("2.1"), $("1")), $("1.1"))
+    assertEquals(BigDecimal.subtract($("3"), $("1")), $("2"))
+    assertEquals(BigDecimal.subtract($("3"), $("0")), $("3"))
+    assertEquals(BigDecimal.subtract($("3"), $("-1")), $("4"))
+    assertEquals(BigDecimal.subtract($("3"), $("0.5")), $("2.5"))
+    assertEquals(BigDecimal.subtract($("3"), $("-2.5")), $("5.5"))
   })
 
   it("roundTerminal", () => {
@@ -132,8 +132,8 @@ describe("BigDecimal", () => {
     ]
 
     for (const [x, y, z] of cases) {
-      equals(BigDecimal.divide($(x), $(y)).pipe(Option.getOrThrow), $(z))
-      equals(BigDecimal.unsafeDivide($(x), $(y)), $(z))
+      assertEquals(BigDecimal.divide($(x), $(y)).pipe(Option.getOrThrow), $(z))
+      assertEquals(BigDecimal.unsafeDivide($(x), $(y)), $(z))
     }
 
     assertNone(BigDecimal.divide($("5"), $("0")))
@@ -195,53 +195,53 @@ describe("BigDecimal", () => {
   })
 
   it("clamp", () => {
-    equals(BigDecimal.clamp({ minimum: $("0"), maximum: $("5") })($("3")), $("3"))
-    equals(BigDecimal.clamp({ minimum: $("0"), maximum: $("5") })($("-1")), $("0"))
-    equals(BigDecimal.clamp({ minimum: $("0"), maximum: $("5") })($("6")), $("5"))
-    equals(BigDecimal.clamp({ minimum: $("0.02"), maximum: $("5") })($("0.0123")), $("0.02"))
+    assertEquals(BigDecimal.clamp({ minimum: $("0"), maximum: $("5") })($("3")), $("3"))
+    assertEquals(BigDecimal.clamp({ minimum: $("0"), maximum: $("5") })($("-1")), $("0"))
+    assertEquals(BigDecimal.clamp({ minimum: $("0"), maximum: $("5") })($("6")), $("5"))
+    assertEquals(BigDecimal.clamp({ minimum: $("0.02"), maximum: $("5") })($("0.0123")), $("0.02"))
 
-    equals(BigDecimal.clamp($("3"), { minimum: $("0"), maximum: $("5") }), $("3"))
+    assertEquals(BigDecimal.clamp($("3"), { minimum: $("0"), maximum: $("5") }), $("3"))
   })
 
   it("min", () => {
-    equals(BigDecimal.min($("2"), $("3")), $("2"))
-    equals(BigDecimal.min($("5"), $("0.1")), $("0.1"))
-    equals(BigDecimal.min($("0.005"), $("3")), $("0.005"))
-    equals(BigDecimal.min($("123.456"), $("1.2")), $("1.2"))
+    assertEquals(BigDecimal.min($("2"), $("3")), $("2"))
+    assertEquals(BigDecimal.min($("5"), $("0.1")), $("0.1"))
+    assertEquals(BigDecimal.min($("0.005"), $("3")), $("0.005"))
+    assertEquals(BigDecimal.min($("123.456"), $("1.2")), $("1.2"))
   })
 
   it("max", () => {
-    equals(BigDecimal.max($("2"), $("3")), $("3"))
-    equals(BigDecimal.max($("5"), $("0.1")), $("5"))
-    equals(BigDecimal.max($("0.005"), $("3")), $("3"))
-    equals(BigDecimal.max($("123.456"), $("1.2")), $("123.456"))
+    assertEquals(BigDecimal.max($("2"), $("3")), $("3"))
+    assertEquals(BigDecimal.max($("5"), $("0.1")), $("5"))
+    assertEquals(BigDecimal.max($("0.005"), $("3")), $("3"))
+    assertEquals(BigDecimal.max($("123.456"), $("1.2")), $("123.456"))
   })
 
   it("abs", () => {
-    equals(BigDecimal.abs($("2")), $("2"))
-    equals(BigDecimal.abs($("-3")), $("3"))
-    equals(BigDecimal.abs($("0.000456")), $("0.000456"))
-    equals(BigDecimal.abs($("-0.123")), $("0.123"))
+    assertEquals(BigDecimal.abs($("2")), $("2"))
+    assertEquals(BigDecimal.abs($("-3")), $("3"))
+    assertEquals(BigDecimal.abs($("0.000456")), $("0.000456"))
+    assertEquals(BigDecimal.abs($("-0.123")), $("0.123"))
   })
 
   it("negate", () => {
-    equals(BigDecimal.negate($("2")), $("-2"))
-    equals(BigDecimal.negate($("-3")), $("3"))
-    equals(BigDecimal.negate($("0.000456")), $("-0.000456"))
-    equals(BigDecimal.negate($("-0.123")), $("0.123"))
+    assertEquals(BigDecimal.negate($("2")), $("-2"))
+    assertEquals(BigDecimal.negate($("-3")), $("3"))
+    assertEquals(BigDecimal.negate($("0.000456")), $("-0.000456"))
+    assertEquals(BigDecimal.negate($("-0.123")), $("0.123"))
   })
 
   it("remainder", () => {
-    equals(BigDecimal.remainder($("5"), $("2")).pipe(Option.getOrThrow), $("1"))
-    equals(BigDecimal.remainder($("4"), $("2")).pipe(Option.getOrThrow), $("0"))
-    equals(BigDecimal.remainder($("123.456"), $("0.2")).pipe(Option.getOrThrow), $("0.056"))
+    assertEquals(BigDecimal.remainder($("5"), $("2")).pipe(Option.getOrThrow), $("1"))
+    assertEquals(BigDecimal.remainder($("4"), $("2")).pipe(Option.getOrThrow), $("0"))
+    assertEquals(BigDecimal.remainder($("123.456"), $("0.2")).pipe(Option.getOrThrow), $("0.056"))
     assertNone(BigDecimal.remainder($("5"), $("0")))
   })
 
   it("unsafeRemainder", () => {
-    equals(BigDecimal.unsafeRemainder($("5"), $("2")), $("1"))
-    equals(BigDecimal.unsafeRemainder($("4"), $("2")), $("0"))
-    equals(BigDecimal.unsafeRemainder($("123.456"), $("0.2")), $("0.056"))
+    assertEquals(BigDecimal.unsafeRemainder($("5"), $("2")), $("1"))
+    assertEquals(BigDecimal.unsafeRemainder($("4"), $("2")), $("0"))
+    assertEquals(BigDecimal.unsafeRemainder($("123.456"), $("0.2")), $("0.056"))
     throws(() => BigDecimal.unsafeRemainder($("5"), $("0")), new RangeError("Division by zero"))
   })
 

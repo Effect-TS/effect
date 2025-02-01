@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 class Prefix extends Effect.Service<Prefix>()("Prefix", {
   sync: () => ({
@@ -93,7 +93,7 @@ describe("Effect.Service", () => {
     }
     return Effect.gen(function*() {
       const time = yield* Time.use((_) => _.now)
-      assertTrue(time instanceof Date)
+      assertInstanceOf(time, Date)
     }).pipe(Effect.provide(Time.Default))
   })
 
@@ -138,9 +138,9 @@ describe("Effect.Service", () => {
     return Effect.gen(function*() {
       const time = yield* Time
       const date = yield* Time.use((_) => _.now)
-      assertTrue(date instanceof Date)
-      assertTrue(time instanceof Time)
-      assertTrue(time instanceof TimeLive)
+      assertInstanceOf(date, Date)
+      assertInstanceOf(time, Date)
+      assertInstanceOf(time, TimeLive)
     }).pipe(Effect.provide(Time.Default))
   })
 
@@ -155,15 +155,15 @@ describe("Effect.Service", () => {
         Effect.provide(MapThing.Default)
       )
 
-      assertTrue(map instanceof MapThing)
-      assertTrue(map instanceof Map)
+      assertInstanceOf(map, MapThing)
+      assertInstanceOf(map, Map)
 
       const map2 = yield* MapThing.set("a", 1).pipe(
         Effect.provide(MapThing.Default)
       )
 
-      assertTrue(map2 instanceof MapThing)
-      assertTrue(map2 instanceof Map)
+      assertInstanceOf(map2, MapThing)
+      assertInstanceOf(map2, Map)
     }))
 
   it.effect("scoped", () =>

@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Effect, ParseResult, Predicate, Schema as S } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
-import { strictEqual, throws } from "effect/test/util"
+import { assertIncludes, assertInstanceOf, strictEqual, throws } from "effect/test/util"
 
 const SyncEffectfulString = S.declare([], {
   decode: () => (u, _, ast) =>
@@ -32,7 +32,8 @@ describe("decodeUnknownSync", () => {
 
   it("should throw an error when required dependencies are missing", () => {
     throws(() => S.decodeUnknownSync(Util.DependencyString as any)("a"), (err) => {
-      return err instanceof ParseResult.ParseError && err.message.includes("Service not found: Name")
+      assertInstanceOf(err, ParseResult.ParseError)
+      assertIncludes(err.message, "Service not found: Name")
     })
   })
 })

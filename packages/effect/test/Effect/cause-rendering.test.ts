@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import { Cause, Effect, Option, pipe } from "effect"
-import { assertFalse, assertIncludes, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertIncludes, assertInstanceOf, assertTrue, strictEqual } from "effect/test/util"
 
 describe("Effect", () => {
   it.effect("Cause should include span data", () =>
@@ -40,7 +40,7 @@ describe("Effect", () => {
       assertIncludes(rendered, "spanA")
       assertIncludes(rendered, "spanB")
       const obj = Option.getOrThrow(Cause.failureOption(cause))
-      assertTrue(obj instanceof E1)
+      assertInstanceOf(obj, E1)
       assertFalse(err === obj)
       assertTrue(err === Cause.originalError(obj))
     }))

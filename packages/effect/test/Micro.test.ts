@@ -1,6 +1,13 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Context, Effect, Either, Exit, Fiber, Micro, Option, pipe } from "effect"
-import { assertFalse, assertIncludes, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import {
+  assertFalse,
+  assertIncludes,
+  assertInstanceOf,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual
+} from "effect/test/util"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
 class TestError extends Micro.TaggedError("TestError") {}
@@ -107,7 +114,7 @@ describe.concurrent("Micro", () => {
       Option.none().pipe(
         Micro.fromOption,
         Micro.flip,
-        Micro.tap((error) => assertTrue(error instanceof Micro.NoSuchElementException)),
+        Micro.tap((error) => assertInstanceOf(error, Micro.NoSuchElementException)),
         Micro.runPromise
       ))
   })
