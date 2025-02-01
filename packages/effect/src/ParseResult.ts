@@ -2,11 +2,12 @@
  * @since 3.10.0
  */
 
-import * as array_ from "./Array.js"
-import * as cause_ from "./Cause.js"
+import * as Arr from "./Array.js"
+import * as Cause from "./Cause.js"
 import { TaggedError } from "./Data.js"
 import * as Effect from "./Effect.js"
 import * as Either from "./Either.js"
+import * as Exit from "./Exit.js"
 import type { LazyArg } from "./Function.js"
 import { dual } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
@@ -14,7 +15,7 @@ import * as Inspectable from "./Inspectable.js"
 import * as util_ from "./internal/schema/util.js"
 import * as Option from "./Option.js"
 import * as Predicate from "./Predicate.js"
-import * as Runtime from "./Runtime.js"
+import * as Scheduler from "./Scheduler.js"
 import type * as Schema from "./Schema.js"
 import * as AST from "./SchemaAST.js"
 import type { Concurrency } from "./Types.js"
@@ -41,7 +42,7 @@ export type ParseIssue =
  * @category model
  * @since 3.10.0
  */
-export type SingleOrNonEmpty<A> = A | array_.NonEmptyReadonlyArray<A>
+export type SingleOrNonEmpty<A> = A | Arr.NonEmptyReadonlyArray<A>
 
 /**
  * @category model
@@ -912,7 +913,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       const concurrency = getConcurrency(ast)
       const batching = getBatching(ast)
       return (input: unknown, options) => {
-        if (!array_.isArray(input)) {
+        if (!Arr.isArray(input)) {
           return Either.left(new Type(ast, input))
         }
         const allErrors = options?.errors === "all"
@@ -1010,7 +1011,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
-        if (array_.isNonEmptyReadonlyArray(rest)) {
+        if (Arr.isNonEmptyReadonlyArray(rest)) {
           const [head, ...tail] = rest
           for (; i < len - tail.length; i++) {
             const te = head(input[i], options)
@@ -1106,15 +1107,15 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
-          array_.isNonEmptyArray(es) ?
+          Arr.isNonEmptyArray(es) ?
             Either.left(new Composite(ast, input, sortByIndex(es), sortByIndex(output))) :
             Either.right(sortByIndex(output))
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
             const state: State = {
-              es: array_.copy(es),
-              output: array_.copy(output)
+              es: Arr.copy(es),
+              output: Arr.copy(output)
             }
             return Effect.flatMap(
               Effect.forEach(cqueue, (f) => f(state), { concurrency, batching, discard: true }),
@@ -1332,7 +1333,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) => {
-          if (array_.isNonEmptyArray(es)) {
+          if (Arr.isNonEmptyArray(es)) {
             return Either.left(new Composite(ast, input, sortByIndex(es), output))
           }
           if (options?.propertyOrder === "original") {
@@ -1357,7 +1358,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           const cqueue = queue
           return Effect.suspend(() => {
             const state: State = {
-              es: array_.copy(es),
+              es: Arr.copy(es),
               output: Object.assign({}, output)
             }
             return Effect.flatMap(
@@ -1481,7 +1482,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = (es: State["es"]) =>
-          array_.isNonEmptyArray(es) ?
+          Arr.isNonEmptyArray(es) ?
             es.length === 1 && es[0][1]._tag === "Type" ?
               Either.left(es[0][1]) :
               Either.left(new Composite(ast, input, sortByIndex(es))) :
@@ -1491,7 +1492,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
-            const state: State = { es: array_.copy(es) }
+            const state: State = { es: Arr.copy(es) }
             return Effect.flatMap(
               Effect.forEach(cqueue, (f) => f(state), { concurrency, batching, discard: true }),
               () => {
@@ -1640,37 +1641,53 @@ const handleForbidden = <A, R>(
   actual: unknown,
   options: InternalOptions | undefined
 ): Effect.Effect<A, ParseIssue, R> => {
-  const eu = eitherOrUndefined(effect)
-  if (eu) {
-    return eu
-  }
+  // If effects are allowed, return the original effect
   if (options?.isEffectAllowed === true) {
     return effect
   }
-  try {
-    return Effect.runSync(Effect.either(effect as Effect.Effect<A, ParseIssue>))
-  } catch (e) {
-    if (Runtime.isFiberFailure(e)) {
-      const cause = e[Runtime.FiberFailureCauseId]
-      if (cause_.isDieType(cause) && Runtime.isAsyncFiberException(cause.defect)) {
-        return Either.left(
-          new Forbidden(
-            ast,
-            actual,
-            "cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work"
-          )
-        )
-      }
-    }
-    return Either.left(new Forbidden(ast, actual, String(e)))
+
+  // Convert the effect to an Either, if possible
+  const eu = eitherOrUndefined(effect)
+  // If the effect is already an Either, return it directly
+  if (eu) {
+    return eu
   }
+
+  // Otherwise, attempt to execute the effect synchronously
+  const scheduler = new Scheduler.SyncScheduler()
+  const fiber = Effect.runFork(effect as Effect.Effect<A, ParseIssue>, { scheduler })
+  scheduler.flush()
+  const exit = fiber.unsafePoll()
+
+  if (exit) {
+    if (Exit.isSuccess(exit)) {
+      // If the effect successfully resolves, wrap the value in a Right
+      return Either.right(exit.value)
+    }
+    const cause = exit.cause
+    if (Cause.isFailType(cause)) {
+      // The effect executed synchronously but failed due to a ParseIssue
+      return Either.left(cause.error)
+    }
+    // The effect executed synchronously but failed due to a defect (e.g., a missing dependency)
+    return Either.left(new Forbidden(ast, actual, Cause.pretty(cause)))
+  }
+
+  // The effect could not be resolved synchronously, meaning it performs async work
+  return Either.left(
+    new Forbidden(
+      ast,
+      actual,
+      "cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work"
+    )
+  )
 }
 
 const compare = ([a]: [number, ...Array<unknown>], [b]: [number, ...Array<unknown>]) => a > b ? 1 : a < b ? -1 : 0
 
 function sortByIndex<T>(
-  es: array_.NonEmptyArray<[number, T]>
-): array_.NonEmptyArray<T>
+  es: Arr.NonEmptyArray<[number, T]>
+): Arr.NonEmptyArray<T>
 function sortByIndex<T>(es: Array<[number, T]>): Array<T>
 function sortByIndex(es: Array<[number, any]>) {
   return es.sort(compare).map((t) => t[1])
@@ -1809,7 +1826,7 @@ interface CurrentMessage {
 
 const getCurrentMessage = (
   issue: ParseIssue
-): Effect.Effect<CurrentMessage, cause_.NoSuchElementException> =>
+): Effect.Effect<CurrentMessage, Cause.NoSuchElementException> =>
   getAnnotated(issue).pipe(
     Option.flatMap(AST.getMessageAnnotation),
     Effect.flatMap((annotation) => {
@@ -1841,7 +1858,7 @@ const isTransformation = createParseIssueGuard("Transformation")
 
 const getMessage: (
   issue: ParseIssue
-) => Effect.Effect<string, cause_.NoSuchElementException> = (issue: ParseIssue) =>
+) => Effect.Effect<string, Cause.NoSuchElementException> = (issue: ParseIssue) =>
   getCurrentMessage(issue).pipe(
     Effect.flatMap((currentMessage) => {
       const useInnerMessage = !currentMessage.override && (
@@ -2017,7 +2034,7 @@ const formatArray = (
     case "Composite":
       return getArray(e, path, () =>
         util_.isNonEmpty(e.issues)
-          ? Effect.map(Effect.forEach(e.issues, (issue) => formatArray(issue, path)), array_.flatten)
+          ? Effect.map(Effect.forEach(e.issues, (issue) => formatArray(issue, path)), Arr.flatten)
           : formatArray(e.issues, path))
     case "Refinement":
     case "Transformation":
