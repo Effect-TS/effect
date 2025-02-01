@@ -491,6 +491,7 @@ export interface File {
   readonly fd: File.Descriptor
   readonly stat: Effect.Effect<File.Info, PlatformError>
   readonly seek: (offset: SizeInput, from: SeekMode) => Effect.Effect<void>
+  readonly sync: Effect.Effect<void, PlatformError>
   readonly read: (buffer: Uint8Array) => Effect.Effect<Size, PlatformError>
   readonly readAlloc: (size: SizeInput) => Effect.Effect<Option<Uint8Array>, PlatformError>
   readonly truncate: (length?: SizeInput) => Effect.Effect<void, PlatformError>

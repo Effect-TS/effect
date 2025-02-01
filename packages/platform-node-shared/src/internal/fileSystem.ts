@@ -210,6 +210,12 @@ const makeFile = (() => {
     handleBadArgument("truncate")
   )
 
+  const nodeSync = effectify(
+    NFS.fsync,
+    handleErrnoException("FileSystem", "sync"),
+    handleBadArgument("sync")
+  )
+
   const nodeWriteFactory = (method: string) =>
     effectify(
       NFS.write,
@@ -234,6 +240,10 @@ const makeFile = (() => {
 
     get stat() {
       return Effect.map(nodeStat(this.fd), makeFileInfo)
+    }
+
+    get sync() {
+      return nodeSync(this.fd)
     }
 
     seek(offset: FileSystem.SizeInput, from: FileSystem.SeekMode) {
