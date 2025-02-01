@@ -1,65 +1,13 @@
 import * as NodeSocketServer from "@effect/experimental/SocketServer/Node"
 import { HttpClient, HttpClientRequest, HttpRouter, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeSocket } from "@effect/platform-node"
-import { Rpc, RpcClient, RpcGroup, RpcMiddleware, RpcSchema, RpcSerialization, RpcServer } from "@effect/rpc"
-import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Layer, Mailbox, Schema, Stream, TestClock } from "effect"
-
-const liveSleep = (ms: number) =>
-  Effect.async<void>((resume) => {
-    setTimeout(() => resume(Effect.void), ms)
-  })
+import { RpcClient, RpcSerialization, RpcServer } from "@effect/rpc"
+import { describe } from "@effect/vitest"
+import { Effect, Layer } from "effect"
+import { e2eSuite } from "./e2e.js"
+import { RpcLive, UsersClient } from "./fixtures/schemas.js"
 
 describe("RpcServer", () => {
-  const e2eSuite = <E>(name: string, layer: Layer.Layer<UsersClient, E>) => {
-    describe.concurrent(name, () => {
-      it.effect("should get user", () =>
-        Effect.gen(function*() {
-          const client = yield* UsersClient
-          const user = yield* client.GetUser({ id: "1" })
-          assert.instanceOf(user, User)
-          assert.deepStrictEqual(user, new User({ id: "1", name: "Logged in user" }))
-        }).pipe(Effect.provide(layer)))
-
-      it.effect("headers", () =>
-        Effect.gen(function*() {
-          const client = yield* UsersClient
-          const user = yield* client.GetUser({ id: "1" })
-          assert.instanceOf(user, User)
-          assert.deepStrictEqual(user, new User({ id: "1", name: "John" }))
-        }).pipe(
-          RpcClient.withHeaders({ name: "John" }),
-          Effect.provide(layer)
-        ))
-
-      it.effect("Stream", () =>
-        Effect.gen(function*() {
-          const client = yield* UsersClient
-          const users: Array<User> = []
-          yield* client.StreamUsers({ id: "1" }).pipe(
-            Stream.take(5),
-            Stream.runForEach((user) =>
-              Effect.sync(() => {
-                users.push(user)
-              })
-            ),
-            Effect.fork
-          )
-
-          // wait for socket to connect
-          yield* liveSleep(100)
-          yield* TestClock.adjust(1000)
-          assert.deepStrictEqual(users, [new User({ id: "1", name: "John" })])
-          yield* TestClock.adjust(4000)
-          assert.lengthOf(users, 5)
-
-          yield* liveSleep(100)
-          const interrupts = yield* client.GetInterrupts({})
-          assert.equal(interrupts, 1)
-        }).pipe(Effect.provide(layer)))
-    })
-  }
-
   // http ndjson
   const HttpNdjsonServer = HttpRouter.Default.serve().pipe(
     Layer.provide(RpcLive),
@@ -155,86 +103,3 @@ describe("RpcServer", () => {
     )
   )
 })
-
-class User extends Schema.Class<User>("User")({
-  id: Schema.String,
-  name: Schema.String
-}) {}
-
-class StreamUsers extends Schema.TaggedRequest<StreamUsers>()("StreamUsers", {
-  success: RpcSchema.Stream({
-    success: User,
-    failure: Schema.Never
-  }),
-  failure: Schema.Never,
-  payload: {
-    id: Schema.String
-  }
-}) {}
-
-class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
-
-class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("TestMiddleware", {
-  provides: CurrentUser
-}) {}
-
-const UserRpcs = RpcGroup
-  .make(
-    Rpc.make("GetUser", {
-      success: User,
-      payload: { id: Schema.String }
-    }),
-    StreamUsers,
-    Rpc.make("GetInterrupts", {
-      success: Schema.Number
-    })
-  )
-  .middleware(AuthMiddleware)
-
-class UsersClient extends Context.Tag("UsersClient")<
-  UsersClient,
-  RpcClient.RpcClient<RpcGroup.Rpcs<typeof UserRpcs>>
->() {
-  static layer = Layer.scoped(UsersClient, RpcClient.make(UserRpcs))
-}
-
-const AuthLive = Layer.succeed(
-  AuthMiddleware,
-  AuthMiddleware.of((options) =>
-    Effect.succeed(
-      new User({ id: "1", name: options.headers.name ?? "Logged in user" })
-    )
-  )
-)
-
-const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
-  let interrupts = 0
-  return {
-    GetUser: (_) => CurrentUser,
-    StreamUsers: Effect.fnUntraced(function*(req) {
-      const mailbox = yield* Mailbox.make<User>()
-
-      yield* Effect.addFinalizer(() =>
-        Effect.sync(() => {
-          interrupts++
-        })
-      )
-
-      yield* mailbox.offer(new User({ id: req.id, name: "John" })).pipe(
-        Effect.delay(1000),
-        Effect.forever,
-        Effect.forkScoped
-      )
-
-      return mailbox
-    }),
-    GetInterrupts: () => Effect.sync(() => interrupts)
-  }
-}))
-
-const RpcLive = RpcServer.layer(UserRpcs).pipe(
-  Layer.provide([
-    UsersLive,
-    AuthLive
-  ])
-)
