@@ -33,8 +33,8 @@ export class AssertConfig extends Context.Tag("AssertConfig")<AssertConfig, {
 // Provides assertion utilities for testing
 export class Assert extends Context.Tag("Assert")<Assert, {
   readonly deepStrictEqual: (actual: unknown, expected: unknown) => void
-  readonly strictEqual: (actual: unknown, expected: unknown) => void
-  readonly throws: (thunk: () => void, predicate?: (e: unknown) => boolean) => void
+  readonly strictEqual: (actual: unknown, expected: unknown, message?: string) => void
+  readonly throws: (thunk: () => void, error?: Error | ((u: unknown) => undefined)) => void
   readonly fail: (message: string) => void
 }>() {}
 
@@ -42,6 +42,17 @@ export class Assert extends Context.Tag("Assert")<Assert, {
 export const assertions = Effect.gen(function*() {
   const { deepStrictEqual, fail, strictEqual, throws } = yield* Assert
   const config = yield* AssertConfig
+
+  function assertInstanceOf<C extends abstract new(...args: any) => any>(
+    value: unknown,
+    constructor: C,
+    message?: string,
+    ..._: Array<never>
+  ): asserts value is InstanceType<C> {
+    if (!(value instanceof constructor)) {
+      fail(message ?? `expected ${value} to be an instance of ${constructor}`)
+    }
+  }
 
   const out = {
     make: {
@@ -327,7 +338,10 @@ export const assertions = Effect.gen(function*() {
     },
 
     parseError(f: () => void, message: string) {
-      throws(f, (err) => err instanceof ParseResult.ParseError && err.message === message)
+      throws(f, (err) => {
+        assertInstanceOf(err, ParseResult.ParseError)
+        strictEqual(err.message, message)
+      })
     },
 
     pretty<A, I, R>(schema: Schema.Schema<A, I, R>, a: A, expected: string) {

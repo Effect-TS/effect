@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Effect } from "effect"
-import { assertTrue, strictEqual } from "effect/test/util"
+import { assertInstanceOf, assertTrue, strictEqual } from "effect/test/util"
 
 describe("Effect.fn", () => {
   it.effect("catches defects in the function", () =>
@@ -20,7 +20,8 @@ describe("Effect.fn", () => {
         Effect.flip
       )
       assertTrue(Cause.isDieType(cause))
-      assertTrue(cause.defect instanceof Error && cause.defect.message === "test")
+      assertInstanceOf(cause.defect, Error)
+      strictEqual(cause.defect.message, "test")
       strictEqual(caught, cause)
     }))
 
@@ -37,7 +38,8 @@ describe("Effect.fn", () => {
         Effect.flip
       )
       assertTrue(Cause.isDieType(cause))
-      assertTrue(cause.defect instanceof Error && cause.defect.message === "test")
+      assertInstanceOf(cause.defect, Error)
+      strictEqual(cause.defect.message, "test")
     }))
 
   it.effect("catches defects in both fn & pipeline", () =>
@@ -57,7 +59,9 @@ describe("Effect.fn", () => {
       assertTrue(Cause.isSequentialType(cause))
       assertTrue(Cause.isDieType(cause.left))
       assertTrue(Cause.isDieType(cause.right))
-      assertTrue(cause.left.defect instanceof Error && cause.left.defect.message === "test")
-      assertTrue(cause.right.defect instanceof Error && cause.right.defect.message === "test2")
+      assertInstanceOf(cause.left.defect, Error)
+      strictEqual(cause.left.defect.message, "test")
+      assertInstanceOf(cause.right.defect, Error)
+      strictEqual(cause.right.defect.message, "test2")
     }))
 })

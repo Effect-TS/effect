@@ -5,7 +5,7 @@ import * as ParseResult from "effect/ParseResult"
 import * as Request from "effect/Request"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 const Name = Context.GenericTag<"Name", string>("Name")
 const NameString = S.String.pipe(
@@ -200,7 +200,7 @@ describe("TaggedRequest", () => {
       }
     }
     const tra = TRA.make({ n: 1 })
-    assertTrue(tra instanceof TRA)
+    assertInstanceOf(tra, TRA)
     strictEqual(tra._tag, "TRA")
     strictEqual(tra.a(), "1a")
   })

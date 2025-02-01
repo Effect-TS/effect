@@ -3,7 +3,7 @@ import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
@@ -88,7 +88,7 @@ describe("transformOrFail", () => {
 
   it("should expose a make constructor", () => {
     const instance = PersonWithTransform.make({ id: 2, name: "John", thing: Option.some({ id: 1 }) })
-    assertTrue(instance instanceof PersonWithTransform)
+    assertInstanceOf(instance, PersonWithTransform)
     strictEqual(instance.a(), "2a")
   })
 })

@@ -1,7 +1,15 @@
 import { describe, it } from "@effect/vitest"
 import { Context, Data, Effect, Equal, JSONSchema, ParseResult, Schema as S, SchemaAST as AST } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import {
+  assertFalse,
+  assertInstanceOf,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual,
+  throws
+} from "effect/test/util"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
@@ -74,7 +82,7 @@ describe("Class", () => {
       class A extends S.Class<A>("A")({ a: S.String }) {}
       const instance = new A({ a: "a" })
       strictEqual(instance.a, "a")
-      assertTrue(instance instanceof A)
+      assertInstanceOf(instance, A)
     })
 
     it("should validate the input by default", () => {
@@ -380,8 +388,8 @@ details: Duplicate key "a"`)
     strictEqual(String(person), `Person({ "id": 1, "name": "John" })`)
     strictEqual(String(personAge), `PersonWithAge({ "id": 1, "name": "John", "age": 30 })`)
 
-    assertTrue(person instanceof Data.Class)
-    assertTrue(personAge instanceof Data.Class)
+    assertInstanceOf(person, Data.Class)
+    assertInstanceOf(personAge, Data.Class)
 
     const person2 = new Person({ id: 1, name: "John" })
     assertTrue(Equal.equals(person, person2))
@@ -479,7 +487,7 @@ details: Duplicate key "a"`)
       }
     }
     const a = A.make({ n: 1 })
-    assertTrue(a instanceof A)
+    assertInstanceOf(a, A)
     strictEqual(a.a(), "1a")
   })
 

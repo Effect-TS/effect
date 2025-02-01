@@ -7,6 +7,7 @@ import {
   assertRight,
   assertSome,
   assertTrue,
+  deepStrictEqual,
   strictEqual,
   throws
 } from "effect/test/util"
@@ -49,14 +50,18 @@ describe("Brand", () => {
     )
     assertTrue(Int.is(1))
     assertFalse(Int.is(1.1))
-    throws(() => Int(1.1), Brand.error("Expected 1.1 to be an integer"))
+    throws(() => Int(1.1), (err) => {
+      deepStrictEqual(err, Brand.error("Expected 1.1 to be an integer"))
+    })
   })
 
   it("refined (Option overload)", () => {
     const Int = Brand.refined<Int>(
       (n) => Number.isInteger(n) ? Option.none() : Option.some(Brand.error(`Expected ${n} to be an integer`))
     )
-    throws(() => Int(1.1), Brand.error("Expected 1.1 to be an integer"))
+    throws(() => Int(1.1), (err) => {
+      deepStrictEqual(err, Brand.error("Expected 1.1 to be an integer"))
+    })
   })
 
   it("composition", () => {
