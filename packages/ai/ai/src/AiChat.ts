@@ -47,7 +47,7 @@ export declare namespace AiChat {
       <A, I, R>(options: {
         readonly input: AiInput.Input
         readonly schema: Schema.Schema<A, I, R>
-        readonly correlationId: string
+        readonly toolCallId: string
       }): Effect.Effect<A, AiError, R>
     }
     readonly toolkit: <Tools extends AiToolkit.Tool.AnySchema>(
@@ -165,8 +165,8 @@ export const fromInput = Effect.fnUntraced(
           Effect.withSpan("AiChat.structured", {
             attributes: {
               input: options.input,
-              schema: "correlationId" in options
-                ? options.correlationId
+              schema: "toolCallId" in options
+                ? options.toolCallId
                 : "_tag" in options.schema
                 ? options.schema._tag
                 : options.schema.identifier
