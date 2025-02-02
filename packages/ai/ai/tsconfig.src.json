@@ -3,6 +3,7 @@
   "include": ["src"],
   "references": [
     { "path": "../../effect/tsconfig.src.json" },
+    { "path": "../../experimental/tsconfig.src.json" },
     { "path": "../../platform/tsconfig.src.json" }
   ],
   "compilerOptions": {

@@ -40,10 +40,12 @@
   },
   "dependencies": {},
   "peerDependencies": {
+    "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
+    "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "effect": "workspace:^"
   }

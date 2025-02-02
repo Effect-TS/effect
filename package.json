@@ -84,7 +84,8 @@
   "pnpm": {
     "patchedDependencies": {
       "@changesets/get-github-info@0.6.0": "patches/@changesets__get-github-info@0.6.0.patch",
-      "@changesets/assemble-release-plan@6.0.3": "patches/@changesets__assemble-release-plan@6.0.3.patch"
+      "@changesets/assemble-release-plan@6.0.3": "patches/@changesets__assemble-release-plan@6.0.3.patch",
+      "vitest-websocket-mock": "patches/vitest-websocket-mock.patch"
     }
   }
 }
