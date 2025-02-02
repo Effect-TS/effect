@@ -69,7 +69,7 @@ export declare namespace Completions {
       <A, I, R>(options: {
         readonly input: AiInput.Input
         readonly schema: Schema.Schema<A, I, R>
-        readonly correlationId: string
+        readonly toolCallId: string
       }): Effect.Effect<WithResolved<A>, AiError, R>
     }
     readonly toolkit: <Tools extends AiToolkit.Tool.AnySchema>(
@@ -178,8 +178,8 @@ export const make = (options: {
       structured(opts) {
         const input = AiInput.make(opts.input)
         const decode = Schema.decodeUnknown(opts.schema)
-        const toolId = "correlationId" in opts
-          ? opts.correlationId
+        const toolId = "toolCallId" in opts
+          ? opts.toolCallId
           : "_tag" in opts.schema
           ? opts.schema._tag
           : opts.schema.identifier
