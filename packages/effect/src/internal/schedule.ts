@@ -1990,16 +1990,16 @@ const retryOrElse_EffectLoop = <A, E, R, R1, A1, A2, E2, R2>(
 
 /** @internal */
 export const schedule_Effect = dual<
-  <R2, Out>(
-    schedule: Schedule.Schedule<Out, unknown, R2>
-  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Out, E, R | R2>,
+  <A, R2, Out>(
+    schedule: Schedule.Schedule<Out, NoInfer<A> | undefined, R2>
+  ) => <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Out, E, R | R2>,
   <A, E, R, R2, Out>(
     self: Effect.Effect<A, E, R>,
-    schedule: Schedule.Schedule<Out, unknown, R2>
+    schedule: Schedule.Schedule<Out, A | undefined, R2>
   ) => Effect.Effect<Out, E, R | R2>
 >(2, <A, E, R, R2, Out>(
   self: Effect.Effect<A, E, R>,
-  schedule: Schedule.Schedule<Out, unknown, R2>
+  schedule: Schedule.Schedule<Out, A | undefined, R2>
 ) => scheduleFrom_Effect(self, void 0, schedule))
 
 /** @internal */
