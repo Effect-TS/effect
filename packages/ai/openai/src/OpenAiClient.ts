@@ -101,7 +101,6 @@ export const make = (options: {
         Stream.mapAccum(new Map<number, ContentPart | Array<ToolCallPart>>(), (acc, chunk) => {
           const parts: Array<StreamChunkPart> = []
           if ("usage" in chunk && Predicate.isNotNullable(chunk.usage)) {
-            console.log(chunk)
             parts.push({
               _tag: "Usage",
               id: chunk.id,
@@ -316,6 +315,10 @@ export interface ToolCallPart {
   readonly arguments: unknown
 }
 
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export interface UsagePart {
   readonly _tag: "Usage"
   readonly id: string
