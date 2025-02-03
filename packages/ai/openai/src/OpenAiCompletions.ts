@@ -11,10 +11,13 @@ import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
+import type { Span } from "effect/Tracer"
 import type * as Generated from "./Generated.js"
 import { OpenAiClient } from "./OpenAiClient.js"
 import { OpenAiConfig } from "./OpenAiConfig.js"
+import { addGenAIAnnotations } from "./OpenAiTelemetry.js"
 import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
 
 /**
@@ -72,9 +75,20 @@ const make = (options: {
     }
 
     return yield* Completions.make({
-      create(options) {
+      create({ span, ...options }) {
         return makeRequest(options).pipe(
+          Effect.tap((request) => annotateSpanRequest(span, request)),
           Effect.flatMap(client.client.createChatCompletion),
+          Effect.tap((response) => annotateSpanResponse(span, response)),
+          Effect.flatMap((response) =>
+            makeResponse(
+              response,
+              "create",
+              options.tools.length === 1 && options.tools[0].structured
+                ? options.tools[0]
+                : undefined
+            )
+          ),
           Effect.catchAll((cause) =>
             Effect.fail(
               new AiError({
@@ -84,13 +98,6 @@ const make = (options: {
                 cause
               })
             )
-          ),
-          Effect.flatMap((response) =>
-            makeResponse(
-              response,
-              "create",
-              options.tools.length === 1 && options.tools[0].structured ? options.tools[0] : undefined
-            )
           )
         )
       },
@@ -98,6 +105,7 @@ const make = (options: {
         return makeRequest(options).pipe(
           Effect.map(client.stream),
           Stream.unwrap,
+          Stream.map((response) => response.asAiResponse),
           Stream.catchAll((cause) =>
             Effect.fail(
               new AiError({
@@ -107,8 +115,7 @@ const make = (options: {
                 cause
               })
             )
-          ),
-          Stream.map((response) => response.asAiResponse)
+          )
         )
       }
     })
@@ -297,3 +304,52 @@ const makeSystemMessage = (content: string): typeof Generated.ChatCompletionRequ
 }
 
 const safeName = (name: string) => name.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/, "_")
+
+const annotateSpanRequest = (
+  span: Span,
+  request: typeof Generated.CreateChatCompletionRequest.Encoded
+): void => {
+  addGenAIAnnotations(span, {
+    system: "openai",
+    operation: { name: "chat" },
+    request: {
+      model: request.model,
+      temperature: request.temperature,
+      topP: request.top_p,
+      maxTokens: request.max_tokens,
+      stopSequences: Arr.ensure(request.stop).filter(Predicate.isNotNullable),
+      frequencyPenalty: request.frequency_penalty,
+      presencePenalty: request.presence_penalty,
+      seed: request.seed
+    },
+    openai: {
+      request: {
+        responseFormat: request.response_format?.type,
+        serviceTier: request.service_tier
+      }
+    }
+  })
+}
+
+const annotateSpanResponse = (
+  span: Span,
+  response: Generated.CreateChatCompletionResponse
+): void => {
+  addGenAIAnnotations(span, {
+    response: {
+      id: response.id,
+      model: response.model,
+      finishReasons: response.choices.map((choice) => choice.finish_reason)
+    },
+    usage: {
+      inputTokens: response.usage?.prompt_tokens,
+      outputTokens: response.usage?.completion_tokens
+    },
+    openai: {
+      response: {
+        systemFingerprint: response.system_fingerprint,
+        serviceTier: response.service_tier
+      }
+    }
+  })
+}

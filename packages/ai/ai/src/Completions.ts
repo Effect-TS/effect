@@ -10,6 +10,7 @@ import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
+import type { Span } from "effect/Tracer"
 import type { Concurrency } from "effect/Types"
 import { AiError } from "./AiError.js"
 import type { Message } from "./AiInput.js"
@@ -132,6 +133,7 @@ export const make = (options: {
       readonly structured: boolean
     }>
     readonly required: boolean | string
+    readonly span: Span
   }) => Effect.Effect<AiResponse, AiError>
   readonly stream: (options: {
     readonly system: Option.Option<string>
@@ -148,16 +150,21 @@ export const make = (options: {
   Effect.map(Effect.serviceOption(AiInput.SystemInstruction), (parentSystem) => {
     return Completions.of({
       create(input) {
-        return Effect.serviceOption(AiInput.SystemInstruction).pipe(
-          Effect.flatMap((system) =>
-            options.create({
-              input: AiInput.make(input) as Chunk.NonEmptyChunk<Message>,
-              system: Option.orElse(system, () => parentSystem),
-              tools: [],
-              required: false
-            })
-          ),
-          Effect.withSpan("Completions.create", { captureStackTrace: false })
+        return Effect.useSpan(
+          "Completions.create",
+          { captureStackTrace: false },
+          (span) =>
+            Effect.serviceOption(AiInput.SystemInstruction).pipe(
+              Effect.flatMap((system) =>
+                options.create({
+                  input: AiInput.make(input) as Chunk.NonEmptyChunk<Message>,
+                  system: Option.orElse(system, () => parentSystem),
+                  tools: [],
+                  required: false,
+                  span
+                })
+              )
+            )
         )
       },
       stream(input_) {
@@ -183,54 +190,56 @@ export const make = (options: {
           : "_tag" in opts.schema
           ? opts.schema._tag
           : opts.schema.identifier
-        return Effect.serviceOption(AiInput.SystemInstruction).pipe(
-          Effect.flatMap((system) =>
-            options.create({
-              input: input as Chunk.NonEmptyChunk<Message>,
-              system: Option.orElse(system, () => parentSystem),
-              tools: [convertTool(toolId, opts.schema, true)],
-              required: true
-            })
-          ),
-          Effect.flatMap((response) =>
-            Chunk.findFirst(
-              response.parts,
-              (part): part is ToolCallPart => part._tag === "ToolCall" && part.name === toolId
-            ).pipe(
-              Option.match({
-                onNone: () =>
-                  Effect.fail(
-                    new AiError({
-                      module: "Completions",
-                      method: "structured",
-                      description: `Tool call '${toolId}' not found in response`
-                    })
-                  ),
-                onSome: (toolCall) =>
-                  Effect.matchEffect(decode(toolCall.params), {
-                    onFailure: (cause) =>
-                      new AiError({
-                        module: "Completions",
-                        method: "structured",
-                        description: `Failed to decode tool call '${toolId}' parameters`,
-                        cause
-                      }),
-                    onSuccess: (resolved) =>
-                      Effect.succeed(
-                        new WithResolved({
-                          response,
-                          resolved: new Map([[toolCall.id, resolved]]),
-                          encoded: new Map([[toolCall.id, toolCall.params]])
+        return Effect.useSpan(
+          "Completions.structured",
+          { attributes: { toolId }, captureStackTrace: false },
+          (span) =>
+            Effect.serviceOption(AiInput.SystemInstruction).pipe(
+              Effect.flatMap((system) =>
+                options.create({
+                  input: input as Chunk.NonEmptyChunk<Message>,
+                  system: Option.orElse(system, () => parentSystem),
+                  tools: [convertTool(toolId, opts.schema, true)],
+                  required: true,
+                  span
+                })
+              ),
+              Effect.flatMap((response) =>
+                Chunk.findFirst(
+                  response.parts,
+                  (part): part is ToolCallPart => part._tag === "ToolCall" && part.name === toolId
+                ).pipe(
+                  Option.match({
+                    onNone: () =>
+                      Effect.fail(
+                        new AiError({
+                          module: "Completions",
+                          method: "structured",
+                          description: `Tool call '${toolId}' not found in response`
                         })
-                      )
+                      ),
+                    onSome: (toolCall) =>
+                      Effect.matchEffect(decode(toolCall.params), {
+                        onFailure: (cause) =>
+                          new AiError({
+                            module: "Completions",
+                            method: "structured",
+                            description: `Failed to decode tool call '${toolId}' parameters`,
+                            cause
+                          }),
+                        onSuccess: (resolved) =>
+                          Effect.succeed(
+                            new WithResolved({
+                              response,
+                              resolved: new Map([[toolCall.id, resolved]]),
+                              encoded: new Map([[toolCall.id, toolCall.params]])
+                            })
+                          )
+                      })
                   })
-              }),
-              Effect.withSpan("Completions.structured", {
-                attributes: { tool: toolId },
-                captureStackTrace: false
-              })
+                )
+              )
             )
-          )
         )
       },
       toolkit({ concurrency, input: inputInput, required = false, tools }) {
@@ -244,24 +253,23 @@ export const make = (options: {
         for (const [, tool] of tools.toolkit.tools) {
           toolArr.push(convertTool(tool._tag, tool as any))
         }
-        return Effect.serviceOption(AiInput.SystemInstruction).pipe(
-          Effect.flatMap((system) =>
-            options.create({
-              input: input as Chunk.NonEmptyChunk<Message>,
-              system: Option.orElse(system, () => parentSystem),
-              tools: toolArr,
-              required: required as any
-            })
-          ),
-          Effect.flatMap((response) => resolveParts({ response, tools, concurrency, method: "toolkit" })),
-          Effect.withSpan("Completions.toolkit", {
-            captureStackTrace: false,
-            attributes: {
-              concurrency,
-              required
-            }
-          })
-        ) as any
+        return Effect.useSpan(
+          "Completions.toolkit",
+          { attributes: { concurrency, required }, captureStackTrace: false },
+          (span) =>
+            Effect.serviceOption(AiInput.SystemInstruction).pipe(
+              Effect.flatMap((system) =>
+                options.create({
+                  input: input as Chunk.NonEmptyChunk<Message>,
+                  system: Option.orElse(system, () => parentSystem),
+                  tools: toolArr,
+                  required: required as any,
+                  span
+                })
+              ),
+              Effect.flatMap((response) => resolveParts({ response, tools, concurrency, method: "toolkit" }))
+            ) as any
+        )
       },
       toolkitStream({ concurrency, input, required = false, tools }) {
         const toolArr: Array<{
