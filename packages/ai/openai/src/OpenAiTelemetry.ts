@@ -129,7 +129,7 @@ export const addGenAIAnnotations = dual<
   (options: OpenAiTelemetryAttributeOptions) => (span: Span) => void,
   (span: Span, options: OpenAiTelemetryAttributeOptions) => void
 >(2, (span, options) => {
-  addGenAIAnnotations(span, options)
+  AiTelemetry.addGenAIAnnotations(span, options)
   if (Predicate.isNotNullable(options.openai)) {
     if (Predicate.isNotNullable(options.openai.request)) {
       addOpenAiRequestAttributes(span, options.openai.request)

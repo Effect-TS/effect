@@ -145,6 +145,7 @@ export const make = (options: {
       readonly structured: boolean
     }>
     readonly required: boolean | string
+    readonly span: Span
   }) => Stream.Stream<AiResponse, AiError>
 }): Effect.Effect<Completions.Service> =>
   Effect.map(Effect.serviceOption(AiInput.SystemInstruction), (parentSystem) => {
@@ -169,17 +170,18 @@ export const make = (options: {
       },
       stream(input_) {
         const input = AiInput.make(input_)
-        return Effect.serviceOption(AiInput.SystemInstruction).pipe(
-          Effect.map((system) =>
+        return Effect.makeSpanScoped("Completions.stream", { captureStackTrace: false }).pipe(
+          Effect.zip(Effect.serviceOption(AiInput.SystemInstruction)),
+          Effect.map(([span, system]) =>
             options.stream({
               input: input as Chunk.NonEmptyChunk<Message>,
               system: Option.orElse(system, () => parentSystem),
               tools: [],
-              required: false
+              required: false,
+              span
             })
           ),
-          Stream.unwrap,
-          Stream.withSpan("Completions.stream", { captureStackTrace: false })
+          Stream.unwrapScoped
         )
       },
       structured(opts) {
@@ -281,27 +283,25 @@ export const make = (options: {
         for (const [, tool] of tools.toolkit.tools) {
           toolArr.push(convertTool(tool._tag, tool as any))
         }
-        return Effect.serviceOption(AiInput.SystemInstruction).pipe(
-          Effect.map((system) =>
+        return Effect.makeSpanScoped("Completions.stream", {
+          captureStackTrace: false,
+          attributes: { required, concurrency }
+        }).pipe(
+          Effect.zip(Effect.serviceOption(AiInput.SystemInstruction)),
+          Effect.map(([span, system]) =>
             options.stream({
               input: AiInput.make(input) as Chunk.NonEmptyChunk<Message>,
               system: Option.orElse(system, () => parentSystem),
               tools: toolArr,
-              required: required as any
+              required: required as any,
+              span
             })
           ),
-          Stream.unwrap,
+          Stream.unwrapScoped,
           Stream.mapEffect(
             (chunk) => resolveParts({ response: chunk, tools, concurrency, method: "toolkitStream" }),
             { concurrency: "unbounded" }
-          ),
-          Stream.withSpan("Completions.toolkitStream", {
-            captureStackTrace: false,
-            attributes: {
-              concurrency,
-              required
-            }
-          })
+          )
         ) as any
       }
     })

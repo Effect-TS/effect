@@ -101,10 +101,33 @@ const make = (options: {
           )
         )
       },
-      stream(options) {
+      stream({ span, ...options }) {
         return makeRequest(options).pipe(
+          Effect.tap((request) => annotateSpanRequest(span, request)),
           Effect.map(client.stream),
           Stream.unwrap,
+          Stream.tap((response) => {
+            const usage = response.parts.find((part) => part._tag === "Usage")
+            if (Predicate.isNotNullable(usage)) {
+              addGenAIAnnotations(span, {
+                response: {
+                  id: usage.id,
+                  model: usage.model
+                },
+                usage: {
+                  inputTokens: usage.promptTokens,
+                  outputTokens: usage.completionTokens
+                },
+                openai: {
+                  response: {
+                    systemFingerprint: usage.systemFingerprint,
+                    serviceTier: usage.serviceTier
+                  }
+                }
+              })
+            }
+            return Effect.void
+          }),
           Stream.map((response) => response.asAiResponse),
           Stream.catchAll((cause) =>
             Effect.fail(
