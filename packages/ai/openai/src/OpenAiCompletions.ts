@@ -15,6 +15,7 @@ import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type * as Generated from "./Generated.js"
+import type { StreamChunk } from "./OpenAiClient.js"
 import { OpenAiClient } from "./OpenAiClient.js"
 import { OpenAiConfig } from "./OpenAiConfig.js"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.js"
@@ -77,9 +78,9 @@ const make = (options: {
     return yield* Completions.make({
       create({ span, ...options }) {
         return makeRequest(options).pipe(
-          Effect.tap((request) => annotateSpanRequest(span, request)),
+          Effect.tap((request) => annotateRequest(span, request)),
           Effect.flatMap(client.client.createChatCompletion),
-          Effect.tap((response) => annotateSpanResponse(span, response)),
+          Effect.tap((response) => annotateChatResponse(span, response)),
           Effect.flatMap((response) =>
             makeResponse(
               response,
@@ -103,29 +104,11 @@ const make = (options: {
       },
       stream({ span, ...options }) {
         return makeRequest(options).pipe(
-          Effect.tap((request) => annotateSpanRequest(span, request)),
+          Effect.tap((request) => annotateRequest(span, request)),
           Effect.map(client.stream),
           Stream.unwrap,
           Stream.tap((response) => {
-            const usage = response.parts.find((part) => part._tag === "Usage")
-            if (Predicate.isNotNullable(usage)) {
-              addGenAIAnnotations(span, {
-                response: {
-                  id: usage.id,
-                  model: usage.model
-                },
-                usage: {
-                  inputTokens: usage.promptTokens,
-                  outputTokens: usage.completionTokens
-                },
-                openai: {
-                  response: {
-                    systemFingerprint: usage.systemFingerprint,
-                    serviceTier: usage.serviceTier
-                  }
-                }
-              })
-            }
+            annotateStreamResponse(span, response)
             return Effect.void
           }),
           Stream.map((response) => response.asAiResponse),
@@ -328,7 +311,7 @@ const makeSystemMessage = (content: string): typeof Generated.ChatCompletionRequ
 
 const safeName = (name: string) => name.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/, "_")
 
-const annotateSpanRequest = (
+const annotateRequest = (
   span: Span,
   request: typeof Generated.CreateChatCompletionRequest.Encoded
 ): void => {
@@ -354,7 +337,7 @@ const annotateSpanRequest = (
   })
 }
 
-const annotateSpanResponse = (
+const annotateChatResponse = (
   span: Span,
   response: Generated.CreateChatCompletionResponse
 ): void => {
@@ -375,4 +358,29 @@ const annotateSpanResponse = (
       }
     }
   })
+}
+
+const annotateStreamResponse = (
+  span: Span,
+  response: StreamChunk
+) => {
+  const usage = response.parts.find((part) => part._tag === "Usage")
+  if (Predicate.isNotNullable(usage)) {
+    addGenAIAnnotations(span, {
+      response: {
+        id: usage.id,
+        model: usage.model
+      },
+      usage: {
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      },
+      openai: {
+        response: {
+          systemFingerprint: usage.systemFingerprint,
+          serviceTier: usage.serviceTier
+        }
+      }
+    })
+  }
 }
