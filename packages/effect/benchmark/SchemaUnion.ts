@@ -6,17 +6,16 @@ import { Bench } from "tinybench"
 import { z } from "zod"
 
 /*
-n = 100
-┌─────────┬──────────────────────────────────────────┬───────────┬────────────────────┬──────────┬─────────┐
-│ (index) │                Task Name                 │  ops/sec  │ Average Time (ns)  │  Margin  │ Samples │
-├─────────┼──────────────────────────────────────────┼───────────┼────────────────────┼──────────┼─────────┤
-│    0    │   'Schema.decodeUnknownEither (good)'    │ '762,351' │ 1311.7303972762459 │ '±0.93%' │ 762352  │
-│    1    │ 'ParseResult.decodeUnknownEither (good)' │ '783,576' │ 1276.199792010595  │ '±0.54%' │ 783577  │
-│    2    │               'zod (good)'               │ '958,140' │ 1043.6878259825853 │ '±0.82%' │ 958141  │
-│    3    │    'Schema.decodeUnknownEither (bad)'    │ '53,537'  │ 18678.624151070893 │ '±0.58%' │  53538  │
-│    4    │ 'ParseResult.decodeUnknownEither (bad)'  │ '484,651' │ 2063.3393040682363 │ '±0.67%' │ 484652  │
-│    5    │               'zod (bad)'                │ '997,081' │ 1002.9270279182039 │ '±0.67%' │ 997082  │
-└─────────┴──────────────────────────────────────────┴───────────┴────────────────────┴──────────┴─────────┘
+┌─────────┬──────────────────────────────────────────┬─────────────┬────────────────────┬──────────┬─────────┐
+│ (index) │ Task Name                                │ ops/sec     │ Average Time (ns)  │ Margin   │ Samples │
+├─────────┼──────────────────────────────────────────┼─────────────┼────────────────────┼──────────┼─────────┤
+│ 0       │ 'Schema.decodeUnknownEither (good)'      │ '2,777,583' │ 360.025132633242   │ '±0.31%' │ 2777584 │
+│ 1       │ 'ParseResult.decodeUnknownEither (good)' │ '2,763,947' │ 361.80132983691675 │ '±0.03%' │ 2763948 │
+│ 2       │ 'zod (good)'                             │ '3,335,028' │ 299.8475137697173  │ '±0.31%' │ 3335029 │
+│ 3       │ 'Schema.decodeUnknownEither (bad)'       │ '207,579'   │ 4817.437354273092  │ '±0.08%' │ 207580  │
+│ 4       │ 'ParseResult.decodeUnknownEither (bad)'  │ '1,707,747' │ 585.5667206168476  │ '±0.31%' │ 1707748 │
+│ 5       │ 'zod (bad)'                              │ '3,305,101' │ 302.5625463294264  │ '±0.24%' │ 3305102 │
+└─────────┴──────────────────────────────────────────┴─────────────┴────────────────────┴──────────┴─────────┘
 */
 
 const bench = new Bench({ time: 1000 })
@@ -55,25 +54,25 @@ const bad = {
   c: "c"
 }
 
-const schemadecodeUnknownEither = S.decodeUnknownEither(schema)
-const parseResultdecodeUnknownEither = ParseResult.decodeUnknownEither(schema)
+const schemaDecodeUnknownEither = S.decodeUnknownEither(schema)
+const parseResultDecodeUnknownEither = ParseResult.decodeUnknownEither(schema)
 const options: ParseOptions = { errors: "all" }
 
 bench
   .add("Schema.decodeUnknownEither (good)", function() {
-    schemadecodeUnknownEither(good, options)
+    schemaDecodeUnknownEither(good, options)
   })
   .add("ParseResult.decodeUnknownEither (good)", function() {
-    parseResultdecodeUnknownEither(good, options)
+    parseResultDecodeUnknownEither(good, options)
   })
   .add("zod (good)", function() {
     schemaZod.safeParse(good)
   })
   .add("Schema.decodeUnknownEither (bad)", function() {
-    schemadecodeUnknownEither(bad, options)
+    schemaDecodeUnknownEither(bad, options)
   })
   .add("ParseResult.decodeUnknownEither (bad)", function() {
-    parseResultdecodeUnknownEither(bad, options)
+    parseResultDecodeUnknownEither(bad, options)
   })
   .add("zod (bad)", function() {
     schemaZod.safeParse(good)

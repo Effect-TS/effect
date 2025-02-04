@@ -4,12 +4,12 @@ import { Bench } from "tinybench"
 
 /*
 ┌─────────┬────────────────────────────────────────────────────────────┬──────────────┬────────────────────┬──────────┬──────────┐
-│ (index) │                         Task Name                          │   ops/sec    │ Average Time (ns)  │  Margin  │ Samples  │
+│ (index) │ Task Name                                                  │ ops/sec      │ Average Time (ns)  │ Margin   │ Samples  │
 ├─────────┼────────────────────────────────────────────────────────────┼──────────────┼────────────────────┼──────────┼──────────┤
-│    0    │            'decodeUnknownEither (valid input)'             │ '1,249,635'  │ 800.2333527737999  │ '±0.30%' │ 1249636  │
-│    1    │  'decodeUnknownEitherPreserveInputKeyOrder (valid input)'  │  '853,288'   │ 1171.9369854943957 │ '±0.17%' │  853289  │
-│    2    │           'decodeUnknownEither (invalid input)'            │ '11,534,459' │ 86.69673906736591  │ '±0.31%' │ 11534460 │
-│    3    │ 'decodeUnknownEitherPreserveInputKeyOrder (invalid input)' │ '11,435,077' │ 87.45021734921293  │ '±0.34%' │ 11435078 │
+│ 0       │ 'decodeUnknownEither (valid input)'                        │ '1,286,800'  │ 777.1212922589341  │ '±0.29%' │ 1286801  │
+│ 1       │ 'decodeUnknownEitherPreserveInputKeyOrder (valid input)'   │ '843,338'    │ 1185.7631901288776 │ '±0.18%' │ 843339   │
+│ 2       │ 'decodeUnknownEither (invalid input)'                      │ '13,934,307' │ 71.76531493346903  │ '±0.31%' │ 13934308 │
+│ 3       │ 'decodeUnknownEitherPreserveInputKeyOrder (invalid input)' │ '13,450,784' │ 74.3451049138201   │ '±0.56%' │ 13450785 │
 └─────────┴────────────────────────────────────────────────────────────┴──────────────┴────────────────────┴──────────┴──────────┘
 */
 
@@ -31,16 +31,16 @@ const decodeUnknownEither = ParseResult.decodeUnknownEither(schema)
 const decodeUnknownEitherPreserveInputKeyOrder = ParseResult.decodeUnknownEither(schema, { propertyOrder: "original" })
 
 bench
-  .add("decodeUnknownEither (valid input)", function() {
+  .add("ParseResult.decodeUnknownEither (valid input)", function() {
     decodeUnknownEither(validInput)
   })
-  .add("decodeUnknownEitherPreserveInputKeyOrder (valid input)", function() {
+  .add("ParseResult.decodeUnknownEitherPreserveInputKeyOrder (valid input)", function() {
     decodeUnknownEitherPreserveInputKeyOrder(validInput)
   })
-  .add("decodeUnknownEither (invalid input)", function() {
+  .add("ParseResult.decodeUnknownEither (invalid input)", function() {
     decodeUnknownEither(invalidInput)
   })
-  .add("decodeUnknownEitherPreserveInputKeyOrder (invalid input)", function() {
+  .add("ParseResult.decodeUnknownEitherPreserveInputKeyOrder (invalid input)", function() {
     decodeUnknownEitherPreserveInputKeyOrder(invalidInput)
   })
 

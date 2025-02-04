@@ -4,12 +4,11 @@ import * as S from "effect/Schema"
 import { Bench } from "tinybench"
 
 /*
-┌─────────┬────────────────────────────────────────┬───────────┬───────────────────┬──────────┬─────────┐
-│ (index) │               Task Name                │  ops/sec  │ Average Time (ns) │  Margin  │ Samples │
-├─────────┼────────────────────────────────────────┼───────────┼───────────────────┼──────────┼─────────┤
-│    0    │      'decodeUnknownEither(input)'      │ '237,016' │ 4219.109046468101 │ '±0.20%' │ 237017  │
-│    1    │ 'TreeFormatter.formatIssueSync(issue)' │ '16,676'  │ 59965.88636461105 │ '±0.18%' │  16677  │
-└─────────┴────────────────────────────────────────┴───────────┴───────────────────┴──────────┴─────────┘
+┌─────────┬────────────────────────────────────────┬──────────┬───────────────────┬──────────┬─────────┐
+│ (index) │ Task Name                              │ ops/sec  │ Average Time (ns) │ Margin   │ Samples │
+├─────────┼────────────────────────────────────────┼──────────┼───────────────────┼──────────┼─────────┤
+│ 0       │ 'TreeFormatter.formatIssueSync(issue)' │ '27,902' │ 35839.27072357856 │ '±0.29%' │ 27903   │
+└─────────┴────────────────────────────────────────┴──────────┴───────────────────┴──────────┴─────────┘
 */
 
 const bench = new Bench({ time: 1000 })
@@ -30,9 +29,6 @@ const issue = (result as any as Either.Left<ParseResult.ParseError, unknown>).le
 // console.log(issue)
 
 bench
-  .add("decodeUnknownEither(input)", function() {
-    decodeUnknownEither(input)
-  })
   .add("TreeFormatter.formatIssueSync(issue)", function() {
     ParseResult.TreeFormatter.formatIssueSync(issue)
   })
