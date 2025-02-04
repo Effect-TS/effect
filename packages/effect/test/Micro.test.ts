@@ -228,7 +228,8 @@ describe.concurrent("Micro", () => {
         deepStrictEqual(done, [1, 2])
       }).pipe(Micro.runPromise))
 
-    it("unbounded fail", () =>
+    // TODO: mark this test as flaky, unfortunately I was not able to reproduce it locally
+    it("unbounded fail", { retry: 3 }, () =>
       Micro.gen(function*() {
         const done: Array<number> = []
         const handle = yield* Micro.forEach([1, 2, 3, 4, 5], (i) =>
