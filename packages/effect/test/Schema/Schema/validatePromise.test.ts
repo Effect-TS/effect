@@ -1,13 +1,14 @@
 import { describe, it } from "@effect/vitest"
-import * as S from "effect/Schema"
+import { ParseResult, Schema as S } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
 import { deepStrictEqual } from "effect/test/util"
 
 describe("validatePromise", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
-  it("should return None on invalid values", async () => {
+  it("should reject on invalid values", async () => {
     deepStrictEqual(await S.validatePromise(schema)({ a: 1 }), { a: 1 })
+    deepStrictEqual(await ParseResult.validatePromise(schema)({ a: 1 }), { a: 1 })
 
     await Util.assertions.promise.fail(
       S.validatePromise(schema)({ a: null }),

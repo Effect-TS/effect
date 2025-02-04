@@ -20,7 +20,7 @@ const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Arra
   assertLeft(result, issues)
 }
 
-describe("ParseResultFormatter", () => {
+describe("Formatters output", () => {
   describe("Forbidden", () => {
     it("default message", () => {
       const schema = Util.AsyncString
