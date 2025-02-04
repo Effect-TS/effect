@@ -445,7 +445,7 @@ const HttpUsersLive = HttpApiBuilder.group(
               new User({
                 id: 1,
                 name: `page ${_.headers.page}`,
-                createdAt: DateTime.unsafeMake(now.epochMillis)
+                createdAt: DateTime.toUtc(now)
               })
             ]))
         .handle("upload", (_) =>
