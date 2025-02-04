@@ -47,7 +47,7 @@
     "ast-types": "^0.14.2",
     "jscodeshift": "^0.16.1",
     "tinybench": "^2.9.0",
-    "zod": "^3.23.5"
+    "zod": "^3.24.1"
   },
   "dependencies": {
     "fast-check": "^3.23.1"

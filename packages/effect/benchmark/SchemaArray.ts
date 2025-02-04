@@ -4,14 +4,14 @@ import type { ParseOptions } from "effect/SchemaAST"
 import { Bench } from "tinybench"
 
 /*
-┌─────────┬──────────────────────────────────────────┬─────────────┬────────────────────┬──────────┬─────────┐
-│ (index) │                Task Name                 │   ops/sec   │ Average Time (ns)  │  Margin  │ Samples │
-├─────────┼──────────────────────────────────────────┼─────────────┼────────────────────┼──────────┼─────────┤
-│    0    │   'Schema.decodeUnknownEither (good)'    │  '895,956'  │ 1116.1254758522336 │ '±0.74%' │ 895957  │
-│    1    │ 'ParseResult.decodeUnknownEither (good)' │  '920,683'  │ 1086.1500037698897 │ '±0.51%' │ 920684  │
-│    2    │    'Schema.decodeUnknownEither (bad)'    │  '51,965'   │ 19243.401944836874 │ '±7.55%' │  51966  │
-│    3    │ 'ParseResult.decodeUnknownEither (bad)'  │ '1,026,508' │ 974.1762449907689  │ '±1.75%' │ 1026509 │
-└─────────┴──────────────────────────────────────────┴─────────────┴────────────────────┴──────────┴─────────┘
+┌─────────┬──────────────────────────────────────────┬─────────────┬───────────────────┬──────────┬─────────┐
+│ (index) │ Task Name                                │ ops/sec     │ Average Time (ns) │ Margin   │ Samples │
+├─────────┼──────────────────────────────────────────┼─────────────┼───────────────────┼──────────┼─────────┤
+│ 0       │ 'Schema.decodeUnknownEither (good)'      │ '3,390,518' │ 294.9401324693781 │ '±0.32%' │ 3390519 │
+│ 1       │ 'ParseResult.decodeUnknownEither (good)' │ '3,388,065' │ 295.1536946952488 │ '±0.27%' │ 3388087 │
+│ 2       │ 'Schema.decodeUnknownEither (bad)'       │ '228,525'   │ 4375.873939945003 │ '±0.13%' │ 228526  │
+│ 3       │ 'ParseResult.decodeUnknownEither (bad)'  │ '3,236,794' │ 308.9476420349623 │ '±0.30%' │ 3236795 │
+└─────────┴──────────────────────────────────────────┴─────────────┴───────────────────┴──────────┴─────────┘
 */
 
 const bench = new Bench({ time: 1000 })
@@ -22,22 +22,22 @@ const good = ["a", "b", "c"]
 
 const bad = ["a", 2, "c"]
 
-const schemadecodeUnknownEither = S.decodeUnknownEither(schema)
-const parseResultdecodeUnknownEither = ParseResult.decodeUnknownEither(schema)
+const schemaDecodeUnknownEither = S.decodeUnknownEither(schema)
+const parseResultDecodeUnknownEither = ParseResult.decodeUnknownEither(schema)
 const options: ParseOptions = { errors: "all" }
 
 bench
   .add("Schema.decodeUnknownEither (good)", function() {
-    schemadecodeUnknownEither(good, options)
+    schemaDecodeUnknownEither(good, options)
   })
   .add("ParseResult.decodeUnknownEither (good)", function() {
-    parseResultdecodeUnknownEither(good, options)
+    parseResultDecodeUnknownEither(good, options)
   })
   .add("Schema.decodeUnknownEither (bad)", function() {
-    schemadecodeUnknownEither(bad, options)
+    schemaDecodeUnknownEither(bad, options)
   })
   .add("ParseResult.decodeUnknownEither (bad)", function() {
-    parseResultdecodeUnknownEither(bad, options)
+    parseResultDecodeUnknownEither(bad, options)
   })
 
 await bench.run()

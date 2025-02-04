@@ -3,12 +3,12 @@ import * as S from "effect/Schema"
 import { Bench } from "tinybench"
 
 /*
-┌─────────┬──────────────────────────────┬──────────────┬───────────────────┬──────────┬──────────┐
-│ (index) │          Task Name           │   ops/sec    │ Average Time (ns) │  Margin  │ Samples  │
-├─────────┼──────────────────────────────┼──────────────┼───────────────────┼──────────┼──────────┤
-│    0    │ 'decodeUnknownEither (good)' │ '1,264,842'  │ 790.612353027686  │ '±0.36%' │ 1264843  │
-│    1    │ 'decodeUnknownEither (bad)'  │ '14,080,309' │ 71.02116622111869 │ '±0.22%' │ 14080310 │
-└─────────┴──────────────────────────────┴──────────────┴───────────────────┴──────────┴──────────┘
+┌─────────┬──────────────────────────────────────────┬──────────────┬───────────────────┬──────────┬──────────┐
+│ (index) │ Task Name                                │ ops/sec      │ Average Time (ns) │ Margin   │ Samples  │
+├─────────┼──────────────────────────────────────────┼──────────────┼───────────────────┼──────────┼──────────┤
+│ 0       │ 'ParseResult.decodeUnknownEither (good)' │ '1,253,290'  │ 797.8996777284824 │ '±0.23%' │ 1253291  │
+│ 1       │ 'ParseResult.decodeUnknownEither (bad)'  │ '13,713,888' │ 72.91877607298059 │ '±0.36%' │ 13713890 │
+└─────────┴──────────────────────────────────────────┴──────────────┴───────────────────┴──────────┴──────────┘
 */
 
 const bench = new Bench({ time: 1000 })
@@ -31,10 +31,10 @@ const decodeUnknownEither = ParseResult.decodeUnknownEither(schema)
 // console.log(decodeUnknownEither(bad))
 
 bench
-  .add("decodeUnknownEither (good)", function() {
+  .add("ParseResult.decodeUnknownEither (good)", function() {
     decodeUnknownEither(good)
   })
-  .add("decodeUnknownEither (bad)", function() {
+  .add("ParseResult.decodeUnknownEither (bad)", function() {
     decodeUnknownEither(bad)
   })
 
