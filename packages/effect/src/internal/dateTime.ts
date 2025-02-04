@@ -307,6 +307,9 @@ export const unsafeNow: LazyArg<DateTime.Utc> = () => makeUtc(Date.now())
 // =============================================================================
 
 /** @internal */
+export const toUtc = (self: DateTime.DateTime): DateTime.Utc => makeUtc(self.epochMillis)
+
+/** @internal */
 export const setZone: {
   (zone: DateTime.TimeZone, options?: {
     readonly adjustForTimeZone?: boolean | undefined

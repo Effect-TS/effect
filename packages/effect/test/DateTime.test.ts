@@ -421,4 +421,21 @@ describe("DateTime", () => {
     const dt = DateTime.unsafeMakeZoned(date)
     deepStrictEqual(dt.zone, DateTime.zoneMakeOffset(60 * 60 * 1000))
   })
+
+  describe("toUtc", () => {
+    it.effect("with a Utc", () =>
+      Effect.gen(function*() {
+        const dt = DateTime.unsafeMake("2024-01-01T01:00:00")
+        strictEqual(dt.toJSON(), "2024-01-01T01:00:00.000Z")
+      }))
+
+    it.effect("with a Zoned", () =>
+      Effect.gen(function*() {
+        const dt = DateTime.unsafeMakeZoned("2024-01-01T01:00:00Z", {
+          timeZone: "Pacific/Auckland",
+          adjustForTimeZone: true
+        })
+        strictEqual(dt.toJSON(), "2023-12-31T12:00:00.000Z")
+      }))
+  })
 })

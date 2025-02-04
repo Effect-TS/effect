@@ -438,6 +438,23 @@ export const unsafeNow: LazyArg<Utc> = Internal.unsafeNow
 // =============================================================================
 
 /**
+ * For a `DateTime` returns a new `DateTime.Utc`.
+ *
+ * @since 3.13.0
+ * @category time zones
+ * @example
+ * ```ts
+ * import { DateTime } from "effect"
+ *
+ * const now = DateTime.unsafeMakeZoned({ year: 2024 }, { timeZone: "Europe/London" })
+ *
+ * // set as UTC
+ * const utc: DateTime.Utc = DateTime.toUtc(now)
+ * ```
+ */
+export const toUtc: (self: DateTime) => Utc = Internal.toUtc
+
+/**
  * Set the time zone of a `DateTime`, returning a new `DateTime.Zoned`.
  *
  * @since 3.6.0
