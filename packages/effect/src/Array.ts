@@ -92,14 +92,17 @@ export const allocate = <A = never>(n: number): Array<A | undefined> => new Arra
  * @category constructors
  * @since 2.0.0
  */
-export const makeBy = <A>(n: number, f: (i: number) => A): NonEmptyArray<A> => {
+export const makeBy: {
+  <A>(f: (i: number) => A): (n: number) => NonEmptyArray<A>
+  <A>(n: number, f: (i: number) => A): NonEmptyArray<A>
+} = dual(2, <A>(n: number, f: (i: number) => A) => {
   const max = Math.max(1, Math.floor(n))
   const out = new Array(max)
   for (let i = 0; i < max; i++) {
     out[i] = f(i)
   }
   return out as NonEmptyArray<A>
-}
+})
 
 /**
  * Return a `NonEmptyArray` containing a range of integers, including both endpoints.

@@ -1154,7 +1154,9 @@ describe("Array", () => {
 
   it("makeBy", () => {
     deepStrictEqual(Arr.makeBy(5, (n) => n * 2), [0, 2, 4, 6, 8])
+    deepStrictEqual(Arr.makeBy((n) => n * 2)(5), [0, 2, 4, 6, 8])
     deepStrictEqual(Arr.makeBy(2.2, (n) => n * 2), [0, 2])
+    deepStrictEqual(Arr.makeBy((n) => n * 2)(2.2), [0, 2])
   })
 
   it("replicate", () => {
