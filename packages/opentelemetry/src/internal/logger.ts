@@ -1,15 +1,13 @@
-import * as Otel from "@opentelemetry/sdk-logs"
-import type { NonEmptyReadonlyArray } from "effect/Array"
+import type * as Otel from "@opentelemetry/sdk-logs"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Inspectable from "effect/Inspectable"
-import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
-import * as Match from "effect/Match"
-import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
+import * as FiberRefs from "../../../effect/src/FiberRefs.js"
+import * as defaultServices from "../../../effect/src/internal/defaultServices.js"
 import type { OtelLoggerProvider } from "../Logger.js"
-import { Resource } from "../Resource.js"
+import { recordToAttributes, unknownToAttributeValue } from "./utils.js"
 
 /** @internal */
 export const LoggerProvider = Context.GenericTag<
@@ -20,54 +18,28 @@ export const LoggerProvider = Context.GenericTag<
 )
 
 /** @internal */
-export const layerLoggerProvider = (
-  processor: Otel.LogRecordProcessor | NonEmptyReadonlyArray<Otel.LogRecordProcessor>,
-  config?: Omit<Otel.LoggerProviderConfig, "resource">
-) =>
-  Layer.scoped(
-    LoggerProvider,
-    Effect.flatMap(
-      Resource,
-      (resource) =>
-        Effect.acquireRelease(
-          Effect.sync(() => {
-            const provider = new Otel.LoggerProvider({
-              ...(config ?? undefined),
-              resource
-            })
-            if (Array.isArray(processor)) {
-              processor.forEach((p) => provider.addLogRecordProcessor(p))
-            } else {
-              provider.addLogRecordProcessor(processor as any)
-            }
-            return provider
-          }),
-          (provider) => Effect.ignoreLogged(Effect.promise(() => provider.forceFlush().then(() => provider.shutdown())))
-        )
-    )
-  )
-
-/** @internal */
 export const make = Effect.gen(function*() {
   const loggerProvider = yield* LoggerProvider
 
   const otelLogger = loggerProvider.getLogger("@effect/opentelemetry")
 
   return Logger.make((options) => {
+    const services = FiberRefs.getOrDefault(options.context, defaultServices.currentServices)
+    const clock = Context.get(services, Clock.Clock)
     const structured = Logger.structuredLogger.log(options)
 
     const attributes = {
       fiberId: structured.fiberId,
-      ...formatLogSpans(structured.spans),
-      ...formatAnnotations(structured.annotations)
+      ...recordToAttributes(structured.annotations),
+      ...formatLogSpans(structured.spans)
     }
 
     otelLogger.emit({
-      body: formatMessage(structured.message),
+      body: unknownToAttributeValue(structured.message),
       severityText: structured.logLevel,
       severityNumber: options.logLevel.ordinal,
       timestamp: options.date,
-      observedTimestamp: new Date(),
+      observedTimestamp: clock.unsafeCurrentTimeMillis(),
       attributes
     })
   })
@@ -76,22 +48,4 @@ export const make = Effect.gen(function*() {
 /** @internal */
 const formatLogSpans = Record.mapEntries(
   (value, key) => [`logSpan.${key}`, `${value}ms`] as const
-)
-
-/** @internal */
-const formatAnnotations = Record.map(
-  (value) => Predicate.isString(value) ? value : Inspectable.format(value)
-)
-
-/** @internal */
-const formatMessage = Match.type<unknown>().pipe(
-  Match.whenOr(
-    Predicate.isString,
-    Predicate.isNumber,
-    Predicate.isBoolean,
-    Predicate.isUndefined,
-    Predicate.isNull,
-    (value) => value
-  ),
-  Match.orElse((_) => Inspectable.format(_))
 )
