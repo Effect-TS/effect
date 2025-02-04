@@ -1,5 +1,77 @@
 # effect
 
+## 3.12.8
+
+### Patch Changes
+
+- [#4341](https://github.com/Effect-TS/effect/pull/4341) [`766113c`](https://github.com/Effect-TS/effect/commit/766113c0ea3512cdb887650ead8ba314236e22ee) Thanks @fubhy! - Improve `Duration.decode` Handling of High-Resolution Time
+
+  - **Ensured Immutability**: Added the `readonly` modifier to `[seconds: number, nanos: number]` in `DurationInput` to prevent accidental modifications.
+  - **Better Edge Case Handling**: Now correctly processes special values like `-Infinity` and `NaN` when they appear in the tuple representation of duration.
+
+- [#4333](https://github.com/Effect-TS/effect/pull/4333) [`712277f`](https://github.com/Effect-TS/effect/commit/712277f949052a24b46e4aa234063a6abf395c90) Thanks @gcanti! - Cron: `unsafeParse` now throws a more informative error instead of a generic one
+
+- [#4387](https://github.com/Effect-TS/effect/pull/4387) [`f269122`](https://github.com/Effect-TS/effect/commit/f269122508693b111142994dd48698ddc75f3d69) Thanks @KhraksMamtsov! - A more precise signature has been applied for `Effect.schedule`
+
+- [#4351](https://github.com/Effect-TS/effect/pull/4351) [`430c846`](https://github.com/Effect-TS/effect/commit/430c846cbac05b187e3d24ac8dfee0cf22506f7c) Thanks @tim-smart! - fix Layer.scope types to correctly use the Scope tag identifier
+
+- [#4344](https://github.com/Effect-TS/effect/pull/4344) [`7b03057`](https://github.com/Effect-TS/effect/commit/7b03057507d2dab5e6793beb9c578dedaaeb15fe) Thanks @IMax153! - Expose `Schedule.isSchedule`
+
+- [#4313](https://github.com/Effect-TS/effect/pull/4313) [`a9c94c8`](https://github.com/Effect-TS/effect/commit/a9c94c807755610831211a686d2fad849ab38eb4) Thanks @gcanti! - Schema: Update `Duration` Encoding to a Tagged Union Format.
+
+  This changeset fixes the `Duration` schema to support all possible duration types, including finite, infinite, and nanosecond durations. The encoding format has been updated from a tuple (`readonly [seconds: number, nanos: number]`) to a tagged union.
+
+  This update introduces a change to the encoding format. The previous tuple representation is replaced with a more expressive tagged union, which accommodates all duration types:
+
+  ```ts
+  type DurationEncoded =
+    | {
+        readonly _tag: "Millis"
+        readonly millis: number
+      }
+    | {
+        readonly _tag: "Nanos"
+        readonly nanos: string
+      }
+    | {
+        readonly _tag: "Infinity"
+      }
+  ```
+
+  **Rationale**
+
+  The `Duration` schema is primarily used to encode durations for transmission. The new tagged union format ensures clear and precise encoding for:
+
+  - Finite durations, such as milliseconds.
+  - Infinite durations, such as `Duration.infinity`.
+  - Nanosecond durations.
+
+  **Example**
+
+  ```ts
+  import { Duration, Schema } from "effect"
+
+  // Encoding a finite duration in milliseconds
+  console.log(Schema.encodeSync(Schema.Duration)(Duration.millis(1000)))
+  // Output: { _tag: 'Millis', millis: 1000 }
+
+  // Encoding an infinite duration
+  console.log(Schema.encodeSync(Schema.Duration)(Duration.infinity))
+  // Output: { _tag: 'Infinity' }
+
+  // Encoding a duration in nanoseconds
+  console.log(Schema.encodeSync(Schema.Duration)(Duration.nanos(1000n)))
+  // Output: { _tag: 'Nanos', nanos: '1000' }
+  ```
+
+- [#4331](https://github.com/Effect-TS/effect/pull/4331) [`107e6f0`](https://github.com/Effect-TS/effect/commit/107e6f0557a1e2d3b0dce25d62fa1e2601521752) Thanks @gcanti! - Schema: Improve encoding in `Defect` and add test for array-based defects.
+
+- [#4329](https://github.com/Effect-TS/effect/pull/4329) [`65c11b9`](https://github.com/Effect-TS/effect/commit/65c11b9266ec9447c31c26fe3ed35c73bd3b81fd) Thanks @gcanti! - Schema: Update `itemsCount` to allow `0` as a valid argument, closes #4328.
+
+- [#4330](https://github.com/Effect-TS/effect/pull/4330) [`e386d2f`](https://github.com/Effect-TS/effect/commit/e386d2f1b3ab3ac2c14ee76de11f5963d32a3df4) Thanks @gcanti! - Add missing overload for `Option.as`.
+
+- [#4352](https://github.com/Effect-TS/effect/pull/4352) [`9172efb`](https://github.com/Effect-TS/effect/commit/9172efba98bc6a82353e6ec2af61ac08f038ba64) Thanks @tim-smart! - optimize Stream.toReadableStream
+
 ## 3.12.7
 
 ### Patch Changes

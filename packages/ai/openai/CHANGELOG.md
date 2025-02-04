@@ -1,5 +1,51 @@
 # @effect/ai-openai
 
+## 0.11.2
+
+### Patch Changes
+
+- [#4389](https://github.com/Effect-TS/effect/pull/4389) [`f089470`](https://github.com/Effect-TS/effect/commit/f0894708e9d591b70eccf3a50ae91ac6e0f6d6e3) Thanks @IMax153! - Add support for [GenAI telemetry annotations](https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/).
+
+- [#4368](https://github.com/Effect-TS/effect/pull/4368) [`a0c85e6`](https://github.com/Effect-TS/effect/commit/a0c85e6601fd3e10d08085969f7453b7b517347b) Thanks @IMax153! - Support creation of embeddings from the AI integration packages.
+
+  For example, the following program will create an OpenAI `Embeddings` service
+  that will aggregate all embedding requests received within a `500` millisecond
+  window into a single batch.
+
+  ```ts
+  import { Embeddings } from "@effect/ai"
+  import { OpenAiClient, OpenAiEmbeddings } from "@effect/ai-openai"
+  import { NodeHttpClient } from "@effect/platform-node"
+  import { Config, Effect, Layer } from "effect"
+
+  // Create the OpenAI client
+  const OpenAi = OpenAiClient.layerConfig({
+    apiKey: Config.redacted("OPENAI_API_KEY")
+  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
+
+  // Create an embeddings service for the `text-embedding-3-large` model
+  const TextEmbeddingsLarge = OpenAiEmbeddings.layerDataLoader({
+    model: "text-embedding-3-large",
+    window: "500 millis",
+    maxBatchSize: 2048
+  }).pipe(Layer.provide(OpenAi))
+
+  // Use the generic `Embeddings` service interface in your program
+  const program = Effect.gen(function* () {
+    const embeddings = yield* Embeddings.Embeddings
+    const result = yield* embeddings.embed("The input to embed")
+  })
+
+  // Provide the specific implementation to use
+  program.pipe(Effect.provide(TextEmbeddingsLarge), Effect.runPromise)
+  ```
+
+- Updated dependencies [[`f5e3b1b`](https://github.com/Effect-TS/effect/commit/f5e3b1bcdf24b440251ce8425d750353cf022e96), [`59b3cfb`](https://github.com/Effect-TS/effect/commit/59b3cfbbd5713dd9475998e95fad5534c0b21466), [`766113c`](https://github.com/Effect-TS/effect/commit/766113c0ea3512cdb887650ead8ba314236e22ee), [`fcf3b7c`](https://github.com/Effect-TS/effect/commit/fcf3b7cc07a28635a5b53243b01cdeb6592dab3c), [`bb05fb8`](https://github.com/Effect-TS/effect/commit/bb05fb83457355b1ca567228a9e041edfb6fd85d), [`712277f`](https://github.com/Effect-TS/effect/commit/712277f949052a24b46e4aa234063a6abf395c90), [`f269122`](https://github.com/Effect-TS/effect/commit/f269122508693b111142994dd48698ddc75f3d69), [`8f6006a`](https://github.com/Effect-TS/effect/commit/8f6006a610fb6d6c7b8d14209a7323338a8964ff), [`f089470`](https://github.com/Effect-TS/effect/commit/f0894708e9d591b70eccf3a50ae91ac6e0f6d6e3), [`c45b559`](https://github.com/Effect-TS/effect/commit/c45b5592b5fd1189a5c932cfe05bd7d5f6d68508), [`430c846`](https://github.com/Effect-TS/effect/commit/430c846cbac05b187e3d24ac8dfee0cf22506f7c), [`7b03057`](https://github.com/Effect-TS/effect/commit/7b03057507d2dab5e6793beb9c578dedaaeb15fe), [`a9c94c8`](https://github.com/Effect-TS/effect/commit/a9c94c807755610831211a686d2fad849ab38eb4), [`107e6f0`](https://github.com/Effect-TS/effect/commit/107e6f0557a1e2d3b0dce25d62fa1e2601521752), [`c9175ae`](https://github.com/Effect-TS/effect/commit/c9175aef41cb1e3b689d0ac0a4f53d8107376b58), [`65c11b9`](https://github.com/Effect-TS/effect/commit/65c11b9266ec9447c31c26fe3ed35c73bd3b81fd), [`e386d2f`](https://github.com/Effect-TS/effect/commit/e386d2f1b3ab3ac2c14ee76de11f5963d32a3df4), [`9172efb`](https://github.com/Effect-TS/effect/commit/9172efba98bc6a82353e6ec2af61ac08f038ba64), [`a0c85e6`](https://github.com/Effect-TS/effect/commit/a0c85e6601fd3e10d08085969f7453b7b517347b)]:
+  - @effect/ai@0.8.2
+  - @effect/platform@0.75.2
+  - effect@3.12.8
+  - @effect/experimental@0.39.2
+
 ## 0.11.1
 
 ### Patch Changes
