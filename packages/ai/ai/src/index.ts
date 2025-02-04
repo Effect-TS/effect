@@ -26,6 +26,11 @@ export * as AiRole from "./AiRole.js"
 /**
  * @since 1.0.0
  */
+export * as AiTelemetry from "./AiTelemetry.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as AiToolkit from "./AiToolkit.js"
 
 /**

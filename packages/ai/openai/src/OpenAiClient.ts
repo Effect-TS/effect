@@ -90,62 +90,86 @@ export const make = (options: {
         Stream.map((event) => JSON.parse(event.data) as A)
       )
     const stream = (request: StreamCompletionRequest) =>
-      streamRequest<RawCompletionChunk>(HttpClientRequest.post("/chat/completions", {
-        body: HttpBody.unsafeJson({
-          ...request,
-          stream: true
-        })
-      })).pipe(
-        Stream.mapAccum(new Map<number, ContentPart | Array<ToolCallPart>>(), (acc, chunk) => {
-          const parts: Array<StreamChunkPart> = []
-          for (let i = 0; i < chunk.choices.length; i++) {
-            const choice = chunk.choices[i]
-            if ("content" in choice.delta && typeof choice.delta.content === "string") {
-              let part = acc.get(choice.index) as ContentPart | undefined
-              part = {
-                _tag: "Content",
-                content: choice.delta.content
+      Stream.suspend(() => {
+        const finishReasons: Array<string> = []
+        return streamRequest<RawCompletionChunk>(HttpClientRequest.post("/chat/completions", {
+          body: HttpBody.unsafeJson({
+            ...request,
+            stream: true,
+            stream_options: { include_usage: true }
+          })
+        })).pipe(
+          Stream.mapAccum(new Map<number, ContentPart | Array<ToolCallPart>>(), (acc, chunk) => {
+            const parts: Array<StreamChunkPart> = []
+            if (chunk.usage !== null) {
+              parts.push({
+                _tag: "Usage",
+                id: chunk.id,
+                model: chunk.model,
+                inputTokens: chunk.usage.prompt_tokens,
+                outputTokens: chunk.usage.completion_tokens,
+                finishReasons,
+                systemFingerprint: chunk.system_fingerprint,
+                serviceTier: chunk.service_tier
+              })
+            }
+            for (let i = 0; i < chunk.choices.length; i++) {
+              const choice = chunk.choices[i]
+              if (choice.finish_reason !== null) {
+                finishReasons.push(choice.finish_reason)
               }
-              acc.set(choice.index, part)
-              parts.push(part)
-            } else if ("tool_calls" in choice.delta && Array.isArray(choice.delta.tool_calls)) {
-              const parts = (acc.get(choice.index) ?? []) as Array<ToolCallPart>
-              for (const toolCall of choice.delta.tool_calls) {
-                const part = parts[toolCall.index]
-                const toolPart = part?._tag === "ToolCall" ?
-                  {
-                    ...part,
-                    arguments: part.arguments + toolCall.function.arguments
-                  } :
-                  {
-                    _tag: "ToolCall",
-                    ...toolCall,
-                    ...toolCall.function,
-                    role: choice.delta.role!
-                  } as any
-                parts[toolCall.index] = toolPart
-              }
-              acc.set(choice.index, parts)
-            } else if (choice.finish_reason === "tool_calls") {
-              const toolParts = acc.get(choice.index) as Array<ToolCallPart>
-              for (const part of toolParts) {
-                try {
-                  const args = JSON.parse(part.arguments as string)
-                  parts.push({
-                    _tag: "ToolCall",
-                    id: part.id,
-                    name: part.name,
-                    arguments: args
-                  })
-                  // eslint-disable-next-line no-empty
-                } catch {}
+              if ("content" in choice.delta && typeof choice.delta.content === "string") {
+                let part = acc.get(choice.index) as ContentPart | undefined
+                part = {
+                  _tag: "Content",
+                  content: choice.delta.content
+                }
+                acc.set(choice.index, part)
+                parts.push(part)
+              } else if ("tool_calls" in choice.delta && Array.isArray(choice.delta.tool_calls)) {
+                const parts = (acc.get(choice.index) ?? []) as Array<ToolCallPart>
+                for (const toolCall of choice.delta.tool_calls) {
+                  const part = parts[toolCall.index]
+                  const toolPart = part?._tag === "ToolCall" ?
+                    {
+                      ...part,
+                      arguments: part.arguments + toolCall.function.arguments
+                    } :
+                    {
+                      _tag: "ToolCall",
+                      ...toolCall,
+                      ...toolCall.function,
+                      role: choice.delta.role!
+                    } as any
+                  parts[toolCall.index] = toolPart
+                }
+                acc.set(choice.index, parts)
+              } else if (choice.finish_reason === "tool_calls") {
+                const toolParts = acc.get(choice.index) as Array<ToolCallPart>
+                for (const part of toolParts) {
+                  try {
+                    const args = JSON.parse(part.arguments as string)
+                    parts.push({
+                      _tag: "ToolCall",
+                      id: part.id,
+                      name: part.name,
+                      arguments: args
+                    })
+                    // eslint-disable-next-line no-empty
+                  } catch {}
+                }
               }
             }
-          }
-          return [acc, parts.length === 0 ? Option.none() : Option.some(new StreamChunk({ parts }))]
-        }),
-        Stream.filterMap(identity)
-      )
+            return [
+              acc,
+              parts.length === 0
+                ? Option.none()
+                : Option.some(new StreamChunk({ parts }))
+            ]
+          }),
+          Stream.filterMap(identity)
+        )
+      })
     return OpenAiClient.of({ client, streamRequest, stream })
   })
 
@@ -202,6 +226,13 @@ interface RawCompletionChunk {
     }
   >
   readonly system_fingerprint: string
+  readonly service_tier: string
+  readonly usage: RawUsage | null
+}
+
+interface RawUsage {
+  readonly prompt_tokens: number
+  readonly completion_tokens: number
 }
 
 type RawDelta = {
@@ -254,19 +285,24 @@ export class StreamChunk extends Data.Class<{
       })
     }
     const part = this.parts[0]
-    return part._tag === "Content" ?
-      AiResponse.AiResponse.fromText({
-        role: AiRole.model,
-        content: part.content
-      }) :
-      new AiResponse.AiResponse({
-        role: AiRole.model,
-        parts: Chunk.of(AiResponse.ToolCallPart.fromUnknown({
-          id: part.id,
-          name: part.name,
-          params: part.arguments
-        }))
-      })
+    switch (part._tag) {
+      case "Content":
+        return AiResponse.AiResponse.fromText({
+          role: AiRole.model,
+          content: part.content
+        })
+      case "ToolCall":
+        return new AiResponse.AiResponse({
+          role: AiRole.model,
+          parts: Chunk.of(AiResponse.ToolCallPart.fromUnknown({
+            id: part.id,
+            name: part.name,
+            params: part.arguments
+          }))
+        })
+      case "Usage":
+        return AiResponse.AiResponse.empty
+    }
   }
 }
 
@@ -274,7 +310,7 @@ export class StreamChunk extends Data.Class<{
  * @since 1.0.0
  * @category models
  */
-export type StreamChunkPart = ContentPart | ToolCallPart
+export type StreamChunkPart = ContentPart | ToolCallPart | UsagePart
 
 /**
  * @since 1.0.0
@@ -295,4 +331,19 @@ export interface ToolCallPart {
   readonly id: string
   readonly name: string
   readonly arguments: unknown
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface UsagePart {
+  readonly _tag: "Usage"
+  readonly id: string
+  readonly model: string
+  readonly inputTokens: number
+  readonly outputTokens: number
+  readonly finishReasons: ReadonlyArray<string>
+  readonly systemFingerprint: string
+  readonly serviceTier: string | null
 }
