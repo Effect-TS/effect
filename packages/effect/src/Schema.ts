@@ -2,7 +2,6 @@
  * @since 3.10.0
  */
 
-import * as internalCause_ from "effect/internal/cause"
 import type { ArbitraryAnnotation, ArbitraryGenerationContext, LazyArbitrary } from "./Arbitrary.js"
 import * as array_ from "./Array.js"
 import * as bigDecimal_ from "./BigDecimal.js"
@@ -29,6 +28,7 @@ import { dual, identity } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import * as hashMap_ from "./HashMap.js"
 import * as hashSet_ from "./HashSet.js"
+import * as internalCause_ from "./internal/cause.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as schemaId_ from "./internal/schema/schemaId.js"
 import * as util_ from "./internal/schema/util.js"
