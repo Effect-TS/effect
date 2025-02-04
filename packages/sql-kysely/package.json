@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-kysely",
-  "version": "0.24.2",
+  "version": "0.24.3",
   "type": "module",
   "license": "MIT",
   "description": "Kysely integration for @effect/sql",

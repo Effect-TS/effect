@@ -1,5 +1,11 @@
 # effect
 
+## 3.12.9
+
+### Patch Changes
+
+- [#4392](https://github.com/Effect-TS/effect/pull/4392) [`1b4a4e9`](https://github.com/Effect-TS/effect/commit/1b4a4e904ef5227ec7d9114d4e417eca19eed940) Thanks @gcanti! - Fix internal import in Schema.ts, closes #4391
+
 ## 3.12.8
 
 ### Patch Changes
