@@ -369,7 +369,8 @@ const annotateStreamResponse = (
     addGenAIAnnotations(span, {
       response: {
         id: usage.id,
-        model: usage.model
+        model: usage.model,
+        finishReasons: usage.finishReasons
       },
       usage: {
         inputTokens: usage.inputTokens,
