@@ -308,6 +308,9 @@ importers:
 
   packages/effect:
     dependencies:
+      '@standard-schema/spec':
+        specifier: ^1.0.0
+        version: 1.0.0
       fast-check:
         specifier: ^3.23.1
         version: 3.23.1
@@ -3166,6 +3169,9 @@ packages:
 
   '@sinonjs/fake-timers@10.3.0':
     resolution: {integrity: sha512-V4BG07kuYSUkTCSBHG8G8TNhM+F19jXFWnQtzj+we8DrkpSBCee9Z3Ms8yiGer/dlmhe35/Xdgyo3/0rQKg7YA==}
+
+  '@standard-schema/spec@1.0.0':
+    resolution: {integrity: sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA==}
 
   '@testcontainers/mssqlserver@10.11.0':
     resolution: {integrity: sha512-/Rh/MEwCrsVbIQ/IJm1ScCY4dZ6wS3nOpG/xqdBTxAnQMN0pVpCIoQ1KzksKmoofP3XHDtveHrKp2cahfxsgeQ==}
@@ -10930,6 +10936,8 @@ snapshots:
   '@sinonjs/fake-timers@10.3.0':
     dependencies:
       '@sinonjs/commons': 3.0.1
+
+  '@standard-schema/spec@1.0.0': {}
 
   '@testcontainers/mssqlserver@10.11.0':
     dependencies:
