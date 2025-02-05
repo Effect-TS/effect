@@ -299,6 +299,8 @@ export const fromOption: {
   <A>(self: Option.Option<A>, onNone: () => ParseIssue): Either.Either<A, ParseIssue>
 } = Either.fromOption
 
+const isEither: <A, E, R>(self: Effect.Effect<A, E, R>) => self is Either.Either<A, E> = Either.isEither as any
+
 /**
  * @category optimisation
  * @since 3.10.0
@@ -315,14 +317,9 @@ export const flatMap: {
   self: Effect.Effect<A, E, R>,
   f: (a: A) => Effect.Effect<B, E1, R1>
 ): Effect.Effect<B, E | E1, R | R1> => {
-  const s: any = self
-  if (s["_tag"] === "Left") {
-    return s
-  }
-  if (s["_tag"] === "Right") {
-    return f(s.right)
-  }
-  return Effect.flatMap(self, f)
+  return isEither(self) ?
+    Either.match(self, { onLeft: Either.left, onRight: f }) :
+    Effect.flatMap(self, f)
 })
 
 /**
@@ -333,14 +330,9 @@ export const map: {
   <A, B>(f: (a: A) => B): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E, R>
   <A, E, R, B>(self: Effect.Effect<A, E, R>, f: (a: A) => B): Effect.Effect<B, E, R>
 } = dual(2, <A, E, R, B>(self: Effect.Effect<A, E, R>, f: (a: A) => B): Effect.Effect<B, E, R> => {
-  const s: any = self
-  if (s["_tag"] === "Left") {
-    return s
-  }
-  if (s["_tag"] === "Right") {
-    return Either.right(f(s.right))
-  }
-  return Effect.map(self, f)
+  return isEither(self) ?
+    Either.map(self, f) :
+    Effect.map(self, f)
 })
 
 /**
@@ -351,16 +343,12 @@ export const mapError: {
   <E, E2>(f: (e: E) => E2): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E2, R>
   <A, E, R, E2>(self: Effect.Effect<A, E, R>, f: (e: E) => E2): Effect.Effect<A, E2, R>
 } = dual(2, <A, E, R, E2>(self: Effect.Effect<A, E, R>, f: (e: E) => E2): Effect.Effect<A, E2, R> => {
-  const s: any = self
-  if (s["_tag"] === "Left") {
-    return Either.left(f(s.left))
-  }
-  if (s["_tag"] === "Right") {
-    return s
-  }
-  return Effect.mapError(self, f)
+  return isEither(self) ?
+    Either.mapLeft(self, f) :
+    Effect.mapError(self, f)
 })
 
+// TODO(4.0): remove
 /**
  * @category optimisation
  * @since 3.10.0
@@ -368,9 +356,8 @@ export const mapError: {
 export const eitherOrUndefined = <A, E, R>(
   self: Effect.Effect<A, E, R>
 ): Either.Either<A, E> | undefined => {
-  const s: any = self
-  if (s["_tag"] === "Left" || s["_tag"] === "Right") {
-    return s
+  if (isEither(self)) {
+    return self
   }
 }
 
@@ -390,14 +377,9 @@ export const mapBoth: {
   self: Effect.Effect<A, E, R>,
   options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
 ): Effect.Effect<A2, E2, R> => {
-  const s: any = self
-  if (s["_tag"] === "Left") {
-    return Either.left(options.onFailure(s.left))
-  }
-  if (s["_tag"] === "Right") {
-    return Either.right(options.onSuccess(s.right))
-  }
-  return Effect.mapBoth(self, options)
+  return isEither(self) ?
+    Either.mapBoth(self, { onLeft: options.onFailure, onRight: options.onSuccess }) :
+    Effect.mapBoth(self, options)
 })
 
 /**
@@ -416,14 +398,9 @@ export const orElse: {
   self: Effect.Effect<A, E, R>,
   f: (e: E) => Effect.Effect<A2, E2, R2>
 ): Effect.Effect<A2 | A, E2, R2 | R> => {
-  const s: any = self
-  if (s["_tag"] === "Left") {
-    return f(s.left)
-  }
-  if (s["_tag"] === "Right") {
-    return s
-  }
-  return Effect.catchAll(self, f)
+  return isEither(self) ?
+    Either.match(self, { onLeft: f, onRight: Either.right }) :
+    Effect.catchAll(self, f)
 })
 
 /**
@@ -970,11 +947,10 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           } else {
             const parser = elements[i]
             const te = parser(input[i], options)
-            const eu = eitherOrUndefined(te)
-            if (eu) {
-              if (Either.isLeft(eu)) {
+            if (isEither(te)) {
+              if (Either.isLeft(te)) {
                 // the input element is present but is not valid
-                const e = new Pointer(i, input, eu.left)
+                const e = new Pointer(i, input, te.left)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
@@ -982,7 +958,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   return Either.left(new Composite(ast, input, e, sortByIndex(output)))
                 }
               }
-              output.push([stepKey++, eu.right])
+              output.push([stepKey++, te.right])
             } else {
               const nk = stepKey++
               const index = i
@@ -1015,10 +991,9 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           const [head, ...tail] = rest
           for (; i < len - tail.length; i++) {
             const te = head(input[i], options)
-            const eu = eitherOrUndefined(te)
-            if (eu) {
-              if (Either.isLeft(eu)) {
-                const e = new Pointer(i, input, eu.left)
+            if (isEither(te)) {
+              if (Either.isLeft(te)) {
+                const e = new Pointer(i, input, te.left)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
@@ -1026,7 +1001,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   return Either.left(new Composite(ast, input, e, sortByIndex(output)))
                 }
               } else {
-                output.push([stepKey++, eu.right])
+                output.push([stepKey++, te.right])
               }
             } else {
               const nk = stepKey++
@@ -1062,11 +1037,10 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               continue
             } else {
               const te = tail[j](input[i], options)
-              const eu = eitherOrUndefined(te)
-              if (eu) {
-                if (Either.isLeft(eu)) {
+              if (isEither(te)) {
+                if (Either.isLeft(te)) {
                   // the input element is present but is not valid
-                  const e = new Pointer(i, input, eu.left)
+                  const e = new Pointer(i, input, te.left)
                   if (allErrors) {
                     es.push([stepKey++, e])
                     continue
@@ -1074,7 +1048,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                     return Either.left(new Composite(ast, input, e, sortByIndex(output)))
                   }
                 }
-                output.push([stepKey++, eu.right])
+                output.push([stepKey++, te.right])
               } else {
                 const nk = stepKey++
                 const index = i
@@ -1173,8 +1147,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         if (onExcessPropertyError || onExcessPropertyPreserve) {
           inputKeys = util_.ownKeys(input)
           for (const key of inputKeys) {
-            const eu = eitherOrUndefined(expected(key, options))!
-            if (Either.isLeft(eu)) {
+            const te = expected(key, options)
+            if (isEither(te) && Either.isLeft(te)) {
               // key is unexpected
               if (onExcessPropertyError) {
                 const e = new Pointer(
@@ -1227,10 +1201,9 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           }
           const parser = propertySignatures[i][0]
           const te = parser(input[name], options)
-          const eu = eitherOrUndefined(te)
-          if (eu) {
-            if (Either.isLeft(eu)) {
-              const e = new Pointer(name, input, hasKey ? eu.left : new Missing(ps))
+          if (isEither(te)) {
+            if (Either.isLeft(te)) {
+              const e = new Pointer(name, input, hasKey ? te.left : new Missing(ps))
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
@@ -1238,7 +1211,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 return Either.left(new Composite(ast, input, e, output))
               }
             }
-            output[name] = eu.right
+            output[name] = te.right
           } else {
             const nk = stepKey++
             const index = name
@@ -1276,16 +1249,15 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             // ---------------------------------------------
             // handle keys
             // ---------------------------------------------
-            const keu = eitherOrUndefined(parameter(key, options))
-            if (keu && Either.isRight(keu)) {
+            const keu = parameter(key, options)
+            if (isEither(keu) && Either.isRight(keu)) {
               // ---------------------------------------------
               // handle values
               // ---------------------------------------------
               const vpr = type(input[key], options)
-              const veu = eitherOrUndefined(vpr)
-              if (veu) {
-                if (Either.isLeft(veu)) {
-                  const e = new Pointer(key, input, veu.left)
+              if (isEither(vpr)) {
+                if (Either.isLeft(vpr)) {
+                  const e = new Pointer(key, input, vpr.left)
                   if (allErrors) {
                     es.push([stepKey++, e])
                     continue
@@ -1294,7 +1266,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   }
                 } else {
                   if (!Object.prototype.hasOwnProperty.call(expectedKeysMap, key)) {
-                    output[key] = veu.right
+                    output[key] = vpr.right
                   }
                 }
               } else {
@@ -1446,12 +1418,11 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           // the members of a union are ordered based on which one should be decoded first,
           // therefore if one member has added a task, all subsequent members must
           // also add a task to the queue even if they are synchronous
-          const eu = !queue || queue.length === 0 ? eitherOrUndefined(pr) : undefined
-          if (eu) {
-            if (Either.isRight(eu)) {
-              return eu
+          if (isEither(pr) && (!queue || queue.length === 0)) {
+            if (Either.isRight(pr)) {
+              return pr
             } else {
-              es.push([stepKey++, eu.left])
+              es.push([stepKey++, pr.left])
             }
           } else {
             const nk = stepKey++
@@ -1646,11 +1617,9 @@ const handleForbidden = <A, R>(
     return effect
   }
 
-  // Convert the effect to an Either, if possible
-  const eu = eitherOrUndefined(effect)
   // If the effect is already an Either, return it directly
-  if (eu) {
-    return eu
+  if (isEither(effect)) {
+    return effect
   }
 
   // Otherwise, attempt to execute the effect synchronously

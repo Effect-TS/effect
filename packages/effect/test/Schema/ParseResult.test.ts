@@ -86,14 +86,48 @@ describe("ParseResult", () => {
     })
   })
 
-  it("map (Either)", () => {
-    deepStrictEqual(ParseResult.map(Either.right(1), (n) => n + 1), asEffect(Either.right(2)))
-    deepStrictEqual(ParseResult.map(Either.left(typeParseError1), (n) => n + 1), asEffect(Either.left(typeParseError1)))
-    // pipeable
-    deepStrictEqual(Either.right(1).pipe(ParseResult.map((n) => n + 1)), Either.right(2))
+  it("eitherOrUndefined", () => {
+    deepStrictEqual(ParseResult.eitherOrUndefined(Either.right(1)), Either.right(1))
+    deepStrictEqual(ParseResult.eitherOrUndefined(Either.left("err")), Either.left("err"))
+    strictEqual(ParseResult.eitherOrUndefined(Effect.succeed(1)), undefined)
+    strictEqual(ParseResult.eitherOrUndefined(Effect.fail("err")), undefined)
   })
 
-  it("map (Effect)", () => {
+  it("flatMap", () => {
+    deepStrictEqual(
+      ParseResult.flatMap(Either.right(1), (a) => Either.right(a)),
+      Either.right(1) as Effect.Effect<number>
+    )
+    deepStrictEqual(
+      ParseResult.flatMap(Either.right(1), () => Either.left("err")),
+      Either.left("err") as Effect.Effect<never, string>
+    )
+    assertSuccess(
+      Effect.runSyncExit(
+        ParseResult.flatMap(Either.right(1), (a) => Either.right(a))
+      ),
+      1
+    )
+    assertSuccess(
+      Effect.runSyncExit(
+        ParseResult.flatMap(Either.right(1), (a) => Effect.succeed(a))
+      ),
+      1
+    )
+    assertFailure(
+      Effect.runSyncExit(ParseResult.flatMap(Either.right(1), () => Either.left("err"))),
+      Cause.fail("err")
+    )
+    assertFailure(
+      Effect.runSyncExit(ParseResult.flatMap(Either.right(1), () => Effect.fail("err"))),
+      Cause.fail("err")
+    )
+  })
+
+  it("map", () => {
+    deepStrictEqual(ParseResult.map(Either.right(1), (n) => n + 1), asEffect(Either.right(2)))
+    deepStrictEqual(ParseResult.map(Either.left(typeParseError1), (n) => n + 1), asEffect(Either.left(typeParseError1)))
+    deepStrictEqual(Either.right(1).pipe(ParseResult.map((n) => n + 1)), Either.right(2))
     assertSuccess(Effect.runSyncExit(ParseResult.map(Effect.succeed(1), (n) => n + 1)), 2)
     assertFailure(
       Effect.runSyncExit(ParseResult.map(Effect.fail(typeParseError1), (n) => n + 1)),
@@ -101,7 +135,7 @@ describe("ParseResult", () => {
     )
   })
 
-  it("mapLeft (Either)", () => {
+  it("mapError", () => {
     deepStrictEqual(ParseResult.mapError(Either.right(1), () => typeParseError2), asEffect(Either.right(1)))
     deepStrictEqual(
       ParseResult.mapError(Either.left(typeParseError1), () => typeParseError2),
@@ -109,9 +143,6 @@ describe("ParseResult", () => {
     )
     // pipeable
     deepStrictEqual(Either.right(1).pipe(ParseResult.mapError(() => typeParseError2)), Either.right(1))
-  })
-
-  it("mapLeft (Effect)", () => {
     assertSuccess(Effect.runSyncExit(ParseResult.mapError(Effect.succeed(1), () => typeParseError2)), 1)
     assertFailure(
       Effect.runSyncExit(
@@ -121,7 +152,7 @@ describe("ParseResult", () => {
     )
   })
 
-  it("mapBoth (Either)", () => {
+  it("mapBoth", () => {
     deepStrictEqual(
       ParseResult.mapBoth(Either.right(1), { onFailure: () => typeParseError2, onSuccess: (n) => n + 1 }),
       asEffect(Either.right(2))
@@ -138,9 +169,6 @@ describe("ParseResult", () => {
       Either.right(1).pipe(ParseResult.mapBoth({ onFailure: () => typeParseError2, onSuccess: (n) => n + 1 })),
       Either.right(2)
     )
-  })
-
-  it("mapBoth (Effect)", () => {
     assertSuccess(
       Effect.runSyncExit(
         ParseResult.mapBoth(Effect.succeed(1), { onFailure: () => typeParseError2, onSuccess: (n) => n + 1 })
@@ -158,14 +186,11 @@ describe("ParseResult", () => {
     )
   })
 
-  it("orElse (Either)", () => {
+  it("orElse", () => {
     deepStrictEqual(ParseResult.orElse(Either.right(1), () => Either.right(2)), asEffect(Either.right(1)))
     deepStrictEqual(ParseResult.orElse(Either.left(typeParseError1), () => Either.right(2)), asEffect(Either.right(2)))
     // pipeable
     deepStrictEqual(Either.right(1).pipe(ParseResult.orElse(() => Either.right(2))), Either.right(1))
-  })
-
-  it("orElse (Effect)", () => {
     assertSuccess(Effect.runSyncExit(ParseResult.orElse(Effect.succeed(1), () => Either.right(2))), 1)
     assertSuccess(
       Effect.runSyncExit(
