@@ -821,6 +821,9 @@ export const format = (self: DurationInput): string => {
   if (duration.value._tag === "Infinity") {
     return "Infinity"
   }
+  if (isZero(duration)) {
+    return "0"
+  }
 
   const fragments = parts(duration)
   const pieces = []
