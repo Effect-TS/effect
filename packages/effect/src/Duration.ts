@@ -853,3 +853,150 @@ export const format = (self: DurationInput): string => {
 
   return pieces.join(" ")
 }
+
+/**
+ * Formats a Duration into an ISO8601 duration string.
+ *
+ * The ISO8601 duration format is generally specified as P[n]Y[n]M[n]DT[n]H[n]M[n]S. However, since
+ * the `Duration` type does not support years or months, this function will only output the days, hours,
+ * minutes and seconds. Thus, the effective format is P[n]DT[n]H[n]M[n]S.
+ *
+ * Milliseconds and nanoseconds are expressed as fractional seconds.
+ *
+ * @throws `RangeError` If the duration is not finite.
+ *
+ * @example
+ * ```ts
+ * import { Duration } from "effect"
+ *
+ * Duration.unsafeFormatIso(Duration.days(1)) // => "P1D"
+ * Duration.unsafeFormatIso(Duration.minutes(90)) // => "PT1H30M"
+ * Duration.unsafeFormatIso(Duration.millis(1500)) // => "PT1.5S"
+ * ```
+ *
+ * @since 3.13.0
+ * @category conversions
+ */
+export const unsafeFormatIso = (self: DurationInput): string => {
+  const duration = decode(self)
+  if (!isFinite(duration)) {
+    throw new RangeError("Cannot format infinite duration")
+  }
+
+  const fragments = []
+  const {
+    days,
+    hours,
+    millis,
+    minutes,
+    nanos,
+    seconds
+  } = parts(duration)
+
+  let rest = days
+  if (rest >= 365) {
+    const years = Math.floor(rest / 365)
+    rest %= 365
+    fragments.push(`${years}Y`)
+  }
+
+  if (rest >= 30) {
+    const months = Math.floor(rest / 30)
+    rest %= 30
+    fragments.push(`${months}M`)
+  }
+
+  if (rest >= 7) {
+    const weeks = Math.floor(rest / 7)
+    rest %= 7
+    fragments.push(`${weeks}W`)
+  }
+
+  if (rest > 0) {
+    fragments.push(`${rest}D`)
+  }
+
+  if (hours !== 0 || minutes !== 0 || seconds !== 0 || millis !== 0 || nanos !== 0) {
+    fragments.push("T")
+
+    if (hours !== 0) {
+      fragments.push(`${hours}H`)
+    }
+
+    if (minutes !== 0) {
+      fragments.push(`${minutes}M`)
+    }
+
+    if (seconds !== 0 || millis !== 0 || nanos !== 0) {
+      const total = BigInt(seconds) * bigint1e9 + BigInt(millis) * bigint1e6 + BigInt(nanos)
+      const str = (Number(total) / 1e9).toFixed(9).replace(/\.?0+$/, "")
+      fragments.push(`${str}S`)
+    }
+  }
+
+  return `P${fragments.join("") || "T0S"}`
+}
+
+/**
+ * Formats a Duration into an ISO8601 duration string.
+ *
+ * Months are assumed to be 30 days and years are assumed to be 365 days.
+ *
+ * Returns `Option.none()` if the duration is infinite.
+ *
+ * @example
+ * ```ts
+ * import { Duration, Option } from "effect"
+ *
+ * Duration.formatIso(Duration.days(1)) // => Option.some("P1D")
+ * Duration.formatIso(Duration.minutes(90)) // => Option.some("PT1H30M")
+ * Duration.formatIso(Duration.millis(1500)) // => Option.some("PT1.5S")
+ * Duration.formatIso(Duration.infinity) // => Option.none()
+ * ```
+ *
+ * @since 3.13.0
+ * @category conversions
+ */
+export const formatIso = (self: DurationInput): Option.Option<string> => {
+  const duration = decode(self)
+  return isFinite(duration) ? Option.some(unsafeFormatIso(duration)) : Option.none()
+}
+
+/**
+ * Parses an ISO8601 duration string into a `Duration`.
+ *
+ * Months are assumed to be 30 days and years are assumed to be 365 days.
+ *
+ * @example
+ * ```ts
+ * import { Duration, Option } from "effect"
+ *
+ * Duration.fromIso("P1D") // => Option.some(Duration.days(1))
+ * Duration.fromIso("PT1H") // => Option.some(Duration.hours(1))
+ * Duration.fromIso("PT1M") // => Option.some(Duration.minutes(1))
+ * Duration.fromIso("PT1.5S") // => Option.some(Duration.seconds(1.5))
+ * ```
+ *
+ * @since 3.13.0
+ * @category conversions
+ */
+export const fromIso = (iso: string): Option.Option<Duration> => {
+  const result = DURATION_ISO_REGEX.exec(iso)
+  if (result == null) {
+    return Option.none()
+  }
+
+  const [years, months, weeks, days, hours, mins, secs] = result.slice(1, 8).map((_) => _ ? Number(_) : 0)
+  const value = years * 365 * 24 * 60 * 60 +
+    months * 30 * 24 * 60 * 60 +
+    weeks * 7 * 24 * 60 * 60 +
+    days * 24 * 60 * 60 +
+    hours * 60 * 60 +
+    mins * 60 +
+    secs
+
+  return Option.some(seconds(value))
+}
+
+const DURATION_ISO_REGEX =
+  /^P(?!$)(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?!$)(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/
