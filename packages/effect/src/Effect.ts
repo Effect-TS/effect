@@ -1593,7 +1593,7 @@ export const forEach: {
       readonly concurrentFinalizers?: boolean | undefined
     }
   ): Effect<void, E, R>
-} = fiberRuntime.forEach as any
+} = fiberRuntime.forEach
 
 /**
  * Returns the first element of the iterable if the collection is non-empty, or
