@@ -2,6 +2,7 @@
  * @since 3.10.0
  */
 
+import type { StandardSchemaV1 } from "@standard-schema/spec"
 import type { ArbitraryAnnotation, ArbitraryGenerationContext, LazyArbitrary } from "./Arbitrary.js"
 import * as array_ from "./Array.js"
 import * as bigDecimal_ from "./BigDecimal.js"
@@ -44,6 +45,7 @@ import type * as pretty_ from "./Pretty.js"
 import * as record_ from "./Record.js"
 import * as redacted_ from "./Redacted.js"
 import * as Request from "./Request.js"
+import * as scheduler_ from "./Scheduler.js"
 import type { ParseOptions } from "./SchemaAST.js"
 import * as AST from "./SchemaAST.js"
 import * as sortedSet_ from "./SortedSet.js"
@@ -126,6 +128,81 @@ const variance = {
   _I: (_: any) => _,
   /* c8 ignore next */
   _R: (_: never) => _
+}
+
+const makeStandardResult = <A>(exit: exit_.Exit<StandardSchemaV1.Result<A>>): StandardSchemaV1.Result<A> =>
+  exit_.isSuccess(exit) ? exit.value : makeStandardFailureResult(cause_.pretty(exit.cause))
+
+const makeStandardFailureResult = (message: string): StandardSchemaV1.FailureResult => ({
+  issues: [{ message }]
+})
+
+const makeStandardFailureFromParseIssue = (
+  issue: ParseResult.ParseIssue
+): Effect.Effect<StandardSchemaV1.FailureResult> =>
+  Effect.map(ParseResult.ArrayFormatter.formatIssue(issue), (issues) => ({
+    issues: issues.map((issue) => ({
+      path: issue.path,
+      message: issue.message
+    }))
+  }))
+
+/**
+ * Returns a "Standard Schema" object conforming to the [Standard Schema
+ * v1](https://standardschema.dev/) specification.
+ *
+ * This function creates a schema whose `validate` method attempts to decode and
+ * validate the provided input synchronously. If the underlying `Schema`
+ * includes any asynchronous components (e.g., asynchronous message resolutions
+ * or checks), then validation will necessarily return a `Promise` instead.
+ *
+ * Any detected defects will be reported via a single issue containing no
+ * `path`.
+ *
+ * @example
+ * ```ts
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.Struct({
+ *   name: Schema.String
+ * })
+ *
+ * //      ┌─── StandardSchemaV1<{ readonly name: string; }>
+ * //      ▼
+ * const standardSchema = Schema.standardSchemaV1(schema)
+ * ```
+ *
+ * @category Standard Schema
+ * @since 3.13.0
+ */
+export const standardSchemaV1 = <A, I>(schema: Schema<A, I, never>): StandardSchemaV1<I, A> => {
+  const decodeUnknown = ParseResult.decodeUnknown(schema)
+  return {
+    "~standard": {
+      version: 1,
+      vendor: "effect",
+      validate(value) {
+        const scheduler = new scheduler_.SyncScheduler()
+        const fiber = Effect.runFork(
+          Effect.matchEffect(decodeUnknown(value), {
+            onFailure: makeStandardFailureFromParseIssue,
+            onSuccess: (value) => Effect.succeed({ value })
+          }),
+          { scheduler }
+        )
+        scheduler.flush()
+        const exit = fiber.unsafePoll()
+        if (exit) {
+          return makeStandardResult(exit)
+        }
+        return new Promise((resolve) => {
+          fiber.addObserver((exit) => {
+            resolve(makeStandardResult(exit))
+          })
+        })
+      }
+    }
+  }
 }
 
 interface AllAnnotations<A, TypeParameters extends ReadonlyArray<any>>
