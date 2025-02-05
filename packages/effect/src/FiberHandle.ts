@@ -143,6 +143,25 @@ export const makeRuntime = <R, E = unknown, A = unknown>(): Effect.Effect<
     (self) => runtime(self)<R>()
   )
 
+/**
+ * Create an Effect run function that is backed by a FiberHandle.
+ *
+ * @since 3.13.0
+ * @categories constructors
+ */
+export const makeRuntimePromise = <R = never, A = unknown, E = unknown>(): Effect.Effect<
+  <XE extends E, XA extends A>(
+    effect: Effect.Effect<XA, XE, R>,
+    options?: Runtime.RunForkOptions | undefined
+  ) => Promise<XA>,
+  never,
+  Scope.Scope | R
+> =>
+  Effect.flatMap(
+    make<A, E>(),
+    (self) => runtimePromise(self)<R>()
+  )
+
 const internalFiberIdId = -1
 const internalFiberId = FiberId.make(internalFiberIdId, 0)
 const isInternalInterruption = Cause.reduceWithContext(undefined, {
@@ -434,6 +453,46 @@ export const runtime: <A, E>(
         return fiber
       }
     }
+  )
+
+/**
+ * Capture a Runtime and use it to fork Effect's, adding the forked fibers to the FiberHandle.
+ *
+ * The returned run function will return Promise's that will resolve when the
+ * fiber completes.
+ *
+ * @since 3.13.0
+ * @categories combinators
+ */
+export const runtimePromise = <A, E>(self: FiberHandle<A, E>): <R = never>() => Effect.Effect<
+  <XE extends E, XA extends A>(
+    effect: Effect.Effect<XA, XE, R>,
+    options?:
+      | Runtime.RunForkOptions & { readonly propagateInterruption?: boolean | undefined }
+      | undefined
+  ) => Promise<XA>,
+  never,
+  R
+> =>
+<R>() =>
+  Effect.map(
+    runtime(self)<R>(),
+    (runFork) =>
+    <XE extends E, XA extends A>(
+      effect: Effect.Effect<XA, XE, R>,
+      options?:
+        | Runtime.RunForkOptions & { readonly propagateInterruption?: boolean | undefined }
+        | undefined
+    ): Promise<XA> =>
+      new Promise((resolve, reject) =>
+        runFork(effect, options).addObserver((exit) => {
+          if (Exit.isSuccess(exit)) {
+            resolve(exit.value)
+          } else {
+            reject(Cause.squash(exit.cause))
+          }
+        })
+      )
   )
 
 /**

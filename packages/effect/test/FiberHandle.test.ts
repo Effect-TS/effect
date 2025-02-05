@@ -111,4 +111,11 @@ describe("FiberHandle", () => {
       yield* TestClock.adjust(500)
       assert.isDefined(fiber.unsafePoll())
     }))
+
+  it.scoped("makeRuntimePromise", () =>
+    Effect.gen(function*() {
+      const run = yield* FiberHandle.makeRuntimePromise()
+      const result = yield* Effect.promise(() => run(Effect.succeed("done")))
+      strictEqual(result, "done")
+    }))
 })

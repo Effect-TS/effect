@@ -108,4 +108,11 @@ describe("FiberSet", () => {
       yield* TestClock.adjust(500)
       assert.isDefined(fiber.unsafePoll())
     }))
+
+  it.scoped("makeRuntimePromise", () =>
+    Effect.gen(function*() {
+      const run = yield* FiberSet.makeRuntimePromise()
+      const result = yield* Effect.promise(() => run(Effect.succeed("done")))
+      strictEqual(result, "done")
+    }))
 })

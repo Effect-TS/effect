@@ -136,4 +136,11 @@ describe("FiberMap", () => {
       yield* TestClock.adjust(500)
       assert.isDefined(fiber.unsafePoll())
     }))
+
+  it.scoped("makeRuntimePromise", () =>
+    Effect.gen(function*() {
+      const run = yield* FiberMap.makeRuntimePromise<never, string>()
+      const result = yield* Effect.promise(() => run("a", Effect.succeed("done")))
+      strictEqual(result, "done")
+    }))
 })
