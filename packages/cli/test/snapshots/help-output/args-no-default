@@ -1,0 +1,31 @@
+{
+  "_tag": "DescriptionList",
+  "definitions": [
+    [
+      {
+        "_tag": "Weak",
+        "value": {
+          "_tag": "Text",
+          "value": "<name>",
+        },
+      },
+      {
+        "_tag": "Sequence",
+        "left": {
+          "_tag": "Paragraph",
+          "value": {
+            "_tag": "Text",
+            "value": "A user-defined piece of text.",
+          },
+        },
+        "right": {
+          "_tag": "Paragraph",
+          "value": {
+            "_tag": "Text",
+            "value": "This setting is optional.",
+          },
+        },
+      },
+    ],
+  ],
+}

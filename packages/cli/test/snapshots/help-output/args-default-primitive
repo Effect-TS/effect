@@ -1,0 +1,31 @@
+{
+  "_tag": "DescriptionList",
+  "definitions": [
+    [
+      {
+        "_tag": "Weak",
+        "value": {
+          "_tag": "Text",
+          "value": "<value>",
+        },
+      },
+      {
+        "_tag": "Sequence",
+        "left": {
+          "_tag": "Paragraph",
+          "value": {
+            "_tag": "Text",
+            "value": "An integer.",
+          },
+        },
+        "right": {
+          "_tag": "Paragraph",
+          "value": {
+            "_tag": "Text",
+            "value": "This setting is optional. Defaults to: 123",
+          },
+        },
+      },
+    ],
+  ],
+}
