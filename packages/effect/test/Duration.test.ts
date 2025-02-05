@@ -521,4 +521,100 @@ describe("Duration", () => {
     strictEqual(Duration.toWeeks("2 weeks"), 2)
     strictEqual(Duration.toWeeks("14 days"), 2)
   })
+
+  it("formatIso", () => {
+    assertSome(Duration.formatIso(Duration.zero), "PT0S")
+    assertSome(Duration.formatIso(Duration.seconds(2)), "PT2S")
+    assertSome(Duration.formatIso(Duration.minutes(5)), "PT5M")
+    assertSome(Duration.formatIso(Duration.hours(3)), "PT3H")
+    assertSome(Duration.formatIso(Duration.days(1)), "P1D")
+
+    assertSome(Duration.formatIso(Duration.minutes(90)), "PT1H30M")
+    assertSome(Duration.formatIso(Duration.hours(25)), "P1DT1H")
+    assertSome(Duration.formatIso(Duration.days(7)), "P1W")
+    assertSome(Duration.formatIso(Duration.days(10)), "P1W3D")
+
+    assertSome(Duration.formatIso(Duration.millis(1500)), "PT1.5S")
+    assertSome(Duration.formatIso(Duration.micros(1500n)), "PT0.0015S")
+    assertSome(Duration.formatIso(Duration.nanos(1500n)), "PT0.0000015S")
+
+    assertSome(
+      Duration.formatIso(
+        Duration.seconds(
+          365 * 24 * 60 * 60 + // 1 year
+            60 * 24 * 60 * 60 + // 2 months
+            3 * 24 * 60 * 60 + // 3 days
+            4 * 60 * 60 + // 4 hours
+            5 * 60 + // 5 minutes
+            6.789 // 6.789 seconds
+        )
+      ),
+      "P1Y2M3DT4H5M6.789S"
+    )
+
+    assertSome(
+      Duration.formatIso(
+        Duration.days(1).pipe(
+          Duration.sum(Duration.hours(2)),
+          Duration.sum(Duration.minutes(30))
+        )
+      ),
+      "P1DT2H30M"
+    )
+
+    assertSome(
+      Duration.formatIso(
+        Duration.hours(2).pipe(
+          Duration.sum(Duration.minutes(30)),
+          Duration.sum(Duration.millis(1500))
+        )
+      ),
+      "PT2H30M1.5S"
+    )
+
+    assertSome(Duration.formatIso("1 day"), "P1D")
+    assertSome(Duration.formatIso("90 minutes"), "PT1H30M")
+    assertSome(Duration.formatIso("1.5 seconds"), "PT1.5S")
+
+    assertNone(Duration.formatIso(Duration.infinity))
+  })
+
+  it("fromIso", () => {
+    assertSome(Duration.fromIso("P1D"), Duration.days(1))
+    assertSome(Duration.fromIso("PT1H"), Duration.hours(1))
+    assertSome(Duration.fromIso("PT1M"), Duration.minutes(1))
+    assertSome(Duration.fromIso("PT1.5S"), Duration.seconds(1.5))
+    assertSome(Duration.fromIso("P1Y"), Duration.days(365))
+    assertSome(Duration.fromIso("P1M"), Duration.days(30))
+    assertSome(Duration.fromIso("P1W"), Duration.days(7))
+    assertSome(Duration.fromIso("P1DT12H"), Duration.hours(36))
+    assertSome(
+      Duration.fromIso("P1Y2M3DT4H5M6.789S"),
+      Duration.seconds(
+        365 * 24 * 60 * 60 + // 1 year
+          60 * 24 * 60 * 60 + // 2 months
+          3 * 24 * 60 * 60 + // 3 days
+          4 * 60 * 60 + // 4 hours
+          5 * 60 + // 5 minutes
+          6.789 // 6.789 seconds
+      )
+    )
+
+    assertNone(Duration.fromIso("1D"))
+    assertNone(Duration.fromIso("P1H"))
+    assertNone(Duration.fromIso("PT1D"))
+    assertNone(Duration.fromIso("P1.5D"))
+    assertNone(Duration.fromIso("P1.5Y"))
+    assertNone(Duration.fromIso("P1.5M"))
+    assertNone(Duration.fromIso("PT1.5H"))
+    assertNone(Duration.fromIso("PT1.5M"))
+    assertNone(Duration.fromIso("PDT1H"))
+    assertNone(Duration.fromIso("P1D2H"))
+    assertNone(Duration.fromIso("P"))
+    assertNone(Duration.fromIso("PT"))
+    assertNone(Duration.fromIso("random string"))
+    assertNone(Duration.fromIso("P1YT"))
+    assertNone(Duration.fromIso("P1S"))
+    assertNone(Duration.fromIso("P1DT1S1H"))
+  })
 })
