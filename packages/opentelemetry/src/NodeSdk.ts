@@ -79,25 +79,25 @@ export const layer: {
         ? evaluate as Effect.Effect<Configuration>
         : Effect.sync(evaluate),
       (config) => {
-        const ResourceLive = config.resource === undefined
-          ? Resource.layerFromEnv()
-          : Resource.layer(config.resource)
-        const TracerLive =
-          config.spanProcessor && !(Array.isArray(config.spanProcessor) && config.spanProcessor.length === 0) ?
-            Tracer.layer.pipe(
-              Layer.provide(layerTracerProvider(config.spanProcessor as any, config.tracerConfig))
-            )
-            : Layer.empty
-        const MetricsLive =
-          config.metricReader && !(Array.isArray(config.metricReader) && config.metricReader.length === 0)
-            ? Metrics.layer(() => config.metricReader as any)
-            : Layer.empty
-        const LoggerLive = config.logRecordProcessor &&
-            !(Array.isArray(config.logRecordProcessor) && config.logRecordProcessor.length === 0)
-          ? Logger.layerLogger.pipe(
-            Layer.provide(Logger.layerLoggerProvider(config.logRecordProcessor as any, config.loggerProviderConfig))
+        const ResourceLive = Resource.layerFromEnv(
+          config.resource ? Resource.configToAttributes(config.resource) : undefined
+        )
+
+        const TracerLive = isNonEmpty(config.spanProcessor)
+          ? Layer.provide(Tracer.layer, layerTracerProvider(config.spanProcessor as any, config.tracerConfig))
+          : Layer.empty
+
+        const MetricsLive = isNonEmpty(config.metricReader)
+          ? Metrics.layer(() => config.metricReader as any)
+          : Layer.empty
+
+        const LoggerLive = isNonEmpty(config.logRecordProcessor)
+          ? Layer.provide(
+            Logger.layerLoggerAdd,
+            Logger.layerLoggerProvider(config.logRecordProcessor, config.loggerProviderConfig)
           )
           : Layer.empty
+
         return Layer.mergeAll(TracerLive, MetricsLive, LoggerLive).pipe(
           Layer.provideMerge(ResourceLive)
         )
@@ -110,3 +110,8 @@ export const layer: {
  * @category layer
  */
 export const layerEmpty: Layer.Layer<Resource.Resource> = Resource.layerEmpty
+
+// internal
+
+const isNonEmpty = <A>(a: A | ReadonlyArray<A> | undefined): a is A | NonEmptyReadonlyArray<A> =>
+  a !== undefined && !(Array.isArray(a) && a.length === 0)
