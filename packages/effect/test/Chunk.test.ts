@@ -840,9 +840,9 @@ describe("Chunk", () => {
   })
 
   it("forEach", () => {
-    const as: Array<number> = []
-    Chunk.forEach(Chunk.make(1, 2, 3, 4), (n) => as.push(n))
-    deepStrictEqual(as, [1, 2, 3, 4])
+    const as: Array<string> = []
+    Chunk.forEach(Chunk.make(1, 2, 3, 4), (n, i) => as.push(`${n}-${i}`))
+    deepStrictEqual(as, ["1-0", "2-1", "3-2", "4-3"])
   })
 
   it("sortWith", () => {
