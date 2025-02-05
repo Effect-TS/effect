@@ -4,12 +4,12 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type { Exit } from "effect/Exit"
 import { dual } from "effect/Function"
-import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
 import { Resource } from "../Resource.js"
 import type { OtelTraceFlags, OtelTracer, OtelTracerProvider, OtelTraceState } from "../Tracer.js"
+import { nanosToHrTime, recordToAttributes, unknownToAttributeValue } from "./utils.js"
 
 const OtelSpanTypeId = Symbol.for("@effect/opentelemetry/Tracer/OtelSpan")
 
@@ -257,11 +257,6 @@ export const layer = layerWithoutOtelTracer.pipe(
 // utils
 // -------------------------------------------------------------------------------------
 
-const bigint1e9 = 1_000_000_000n
-const nanosToHrTime = (timestamp: bigint): OtelApi.HrTime => {
-  return [Number(timestamp / bigint1e9), Number(timestamp % bigint1e9)]
-}
-
 const createTraceState = Option.liftThrowable(OtelApi.createTraceState)
 
 const populateContext = (
@@ -299,22 +294,6 @@ const extractTraceTag = <I, S>(
     Context.getOption(context, tag),
     () => Context.getOption(parent.context, tag)
   )
-
-const recordToAttributes = (value: Record<string, unknown>): OtelApi.Attributes => {
-  return Object.entries(value).reduce((acc, [key, value]) => {
-    acc[key] = unknownToAttributeValue(value)
-    return acc
-  }, {} as OtelApi.Attributes)
-}
-
-const unknownToAttributeValue = (value: unknown): OtelApi.AttributeValue => {
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return value
-  } else if (typeof value === "bigint") {
-    return Number(value)
-  }
-  return Inspectable.toStringUnknown(value)
-}
 
 /** @internal */
 export const withSpanContext = dual<

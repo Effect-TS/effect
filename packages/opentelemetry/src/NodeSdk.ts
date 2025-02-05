@@ -2,13 +2,16 @@
  * @since 1.0.0
  */
 import type * as Resources from "@opentelemetry/resources"
+import type { LoggerProviderConfig, LogRecordProcessor } from "@opentelemetry/sdk-logs"
 import type { MetricReader } from "@opentelemetry/sdk-metrics"
 import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Effect from "effect/Effect"
-import type { LazyArg } from "effect/Function"
+import { constant, type LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
+import { isNonEmpty } from "./internal/utils.js"
+import * as Logger from "./Logger.js"
 import * as Metrics from "./Metrics.js"
 import * as Resource from "./Resource.js"
 import * as Tracer from "./Tracer.js"
@@ -21,6 +24,8 @@ export interface Configuration {
   readonly spanProcessor?: SpanProcessor | ReadonlyArray<SpanProcessor> | undefined
   readonly tracerConfig?: Omit<TracerConfig, "resource"> | undefined
   readonly metricReader?: MetricReader | ReadonlyArray<MetricReader> | undefined
+  readonly logRecordProcessor?: LogRecordProcessor | ReadonlyArray<LogRecordProcessor> | undefined
+  readonly loggerProviderConfig?: Omit<LoggerProviderConfig, "resource"> | undefined
   readonly resource?: {
     readonly serviceName: string
     readonly serviceVersion?: string
@@ -75,20 +80,24 @@ export const layer: {
         ? evaluate as Effect.Effect<Configuration>
         : Effect.sync(evaluate),
       (config) => {
-        const ResourceLive = config.resource === undefined
-          ? Resource.layerFromEnv()
-          : Resource.layer(config.resource)
-        const TracerLive =
-          config.spanProcessor && !(Array.isArray(config.spanProcessor) && config.spanProcessor.length === 0) ?
-            Tracer.layer.pipe(
-              Layer.provide(layerTracerProvider(config.spanProcessor as any, config.tracerConfig))
-            )
-            : Layer.empty
-        const MetricsLive =
-          config.metricReader && !(Array.isArray(config.metricReader) && config.metricReader.length === 0)
-            ? Metrics.layer(() => config.metricReader as any)
-            : Layer.empty
-        return Layer.merge(TracerLive, MetricsLive).pipe(
+        const ResourceLive = Resource.layerFromEnv(config.resource && Resource.configToAttributes(config.resource))
+
+        const TracerLive = isNonEmpty(config.spanProcessor)
+          ? Layer.provide(Tracer.layer, layerTracerProvider(config.spanProcessor, config.tracerConfig))
+          : Layer.empty
+
+        const MetricsLive = isNonEmpty(config.metricReader)
+          ? Metrics.layer(constant(config.metricReader))
+          : Layer.empty
+
+        const LoggerLive = isNonEmpty(config.logRecordProcessor)
+          ? Layer.provide(
+            Logger.layerLoggerAdd,
+            Logger.layerLoggerProvider(config.logRecordProcessor, config.loggerProviderConfig)
+          )
+          : Layer.empty
+
+        return Layer.mergeAll(TracerLive, MetricsLive, LoggerLive).pipe(
           Layer.provideMerge(ResourceLive)
         )
       }
