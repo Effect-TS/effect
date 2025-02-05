@@ -8,8 +8,9 @@ import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Effect from "effect/Effect"
-import type { LazyArg } from "effect/Function"
+import { constant, type LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
+import { isNonEmpty } from "./internal/utils.js"
 import * as Logger from "./Logger.js"
 import * as Metrics from "./Metrics.js"
 import * as Resource from "./Resource.js"
@@ -79,16 +80,14 @@ export const layer: {
         ? evaluate as Effect.Effect<Configuration>
         : Effect.sync(evaluate),
       (config) => {
-        const ResourceLive = Resource.layerFromEnv(
-          config.resource ? Resource.configToAttributes(config.resource) : undefined
-        )
+        const ResourceLive = Resource.layerFromEnv(config.resource && Resource.configToAttributes(config.resource))
 
         const TracerLive = isNonEmpty(config.spanProcessor)
-          ? Layer.provide(Tracer.layer, layerTracerProvider(config.spanProcessor as any, config.tracerConfig))
+          ? Layer.provide(Tracer.layer, layerTracerProvider(config.spanProcessor, config.tracerConfig))
           : Layer.empty
 
         const MetricsLive = isNonEmpty(config.metricReader)
-          ? Metrics.layer(() => config.metricReader as any)
+          ? Metrics.layer(constant(config.metricReader))
           : Layer.empty
 
         const LoggerLive = isNonEmpty(config.logRecordProcessor)
@@ -110,8 +109,3 @@ export const layer: {
  * @category layer
  */
 export const layerEmpty: Layer.Layer<Resource.Resource> = Resource.layerEmpty
-
-// internal
-
-const isNonEmpty = <A>(a: A | ReadonlyArray<A> | undefined): a is A | NonEmptyReadonlyArray<A> =>
-  a !== undefined && !(Array.isArray(a) && a.length === 0)
