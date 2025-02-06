@@ -118,6 +118,15 @@ export declare namespace Either {
  */
 export const right: <R>(right: R) => Either<R> = either.right
 
+const void_: Either<void> = right(void 0)
+export {
+  /**
+   * @category constructors
+   * @since 3.13.0
+   */
+  void_ as void
+}
+
 /**
  * Constructs a new `Either` holding a `Left` value. This usually represents a failure, due to the right-bias of this
  * structure.
