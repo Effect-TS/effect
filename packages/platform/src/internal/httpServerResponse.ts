@@ -448,6 +448,29 @@ export const setCookies = dual<
 )
 
 /** @internal */
+export const mergeCookies = dual<
+  (
+    cookies: Cookies.Cookies
+  ) => (
+    self: ServerResponse.HttpServerResponse
+  ) => ServerResponse.HttpServerResponse,
+  (
+    self: ServerResponse.HttpServerResponse,
+    cookies: Cookies.Cookies
+  ) => ServerResponse.HttpServerResponse
+>(
+  2,
+  (self, cookies) =>
+    new ServerResponseImpl(
+      self.status,
+      self.statusText,
+      self.headers,
+      Cookies.merge(self.cookies, cookies),
+      self.body
+    )
+)
+
+/** @internal */
 export const unsafeSetCookies = dual<
   (
     cookies: Iterable<readonly [name: string, value: string, options?: Cookies.Cookie["options"]]>
