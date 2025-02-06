@@ -190,7 +190,7 @@ export const make = (
 
     yield* Effect.acquireRelease(
       Effect.async<void, SqlError>((resume) => {
-        ;(pool as any).execute("SELECT 1", (cause: Error) => {
+        ;(pool as any).query("SELECT 1", (cause: Error) => {
           if (cause) {
             resume(Effect.fail(
               new SqlError({

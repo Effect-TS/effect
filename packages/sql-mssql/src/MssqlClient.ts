@@ -344,7 +344,7 @@ export const make = (
     })
 
     yield* pool.get.pipe(
-      Effect.tap((connection) => connection.executeRaw("SELECT 1", [])),
+      Effect.tap((connection) => connection.executeUnprepared("SELECT 1", [], undefined)),
       Effect.mapError(({ cause }) => new SqlError({ cause, message: "MssqlClient: Failed to connect" })),
       Effect.scoped,
       Effect.timeoutFail({
