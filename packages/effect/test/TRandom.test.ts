@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as fc from "effect/FastCheck"
 import { pipe } from "effect/Function"
 import * as STM from "effect/STM"
 import { assertTrue } from "effect/test/util"
 import * as TRandom from "effect/TRandom"
-import * as fc from "fast-check"
 
 const floatsArb: fc.Arbitrary<readonly [number, number]> = fc.tuple(
   fc.float({ noDefaultInfinity: true, noNaN: true }),

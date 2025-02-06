@@ -1,11 +1,11 @@
 import { describe, it } from "@effect/vitest"
 import * as A from "effect/Arbitrary"
 import type * as array_ from "effect/Array"
+import * as fc from "effect/FastCheck"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
 import { deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import * as fc from "fast-check"
 
 type TemplateLiteralParameter = S.Schema.AnyNoContext | AST.LiteralValue
 

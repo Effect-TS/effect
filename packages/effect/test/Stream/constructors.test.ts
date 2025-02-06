@@ -4,6 +4,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
+import * as fc from "effect/FastCheck"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
@@ -14,7 +15,6 @@ import * as Stream from "effect/Stream"
 import { assertFalse, assertLeft, assertTrue, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as TestClock from "effect/TestClock"
-import * as fc from "fast-check"
 
 const chunkArb = <A>(
   arb: fc.Arbitrary<A>,

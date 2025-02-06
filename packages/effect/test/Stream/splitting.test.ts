@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
+import * as fc from "effect/FastCheck"
 import { pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
-import * as fc from "fast-check"
 
 const weirdStringForSplitLines: fc.Arbitrary<ReadonlyArray<string>> = fc.array(
   fc.string().filter((s) => s !== "\n" && s !== "\r")
