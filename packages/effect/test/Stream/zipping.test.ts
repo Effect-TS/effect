@@ -4,6 +4,7 @@ import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as fc from "effect/FastCheck"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Number from "effect/Number"
@@ -13,7 +14,6 @@ import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
 import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import * as fc from "fast-check"
 
 const chunkArb = <A>(
   arb: fc.Arbitrary<A>,

@@ -5,12 +5,12 @@ import * as Data from "effect/Data"
 import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
 import * as Equivalence from "effect/Equivalence"
+import * as fc from "effect/FastCheck"
 import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import { isUnknown } from "effect/Predicate"
 import * as S from "effect/Schema"
 import { assertFalse, assertTrue, strictEqual, throws } from "effect/test/util"
-import * as fc from "fast-check"
 
 /**
  * Tests that the generated Eq is a valid Eq

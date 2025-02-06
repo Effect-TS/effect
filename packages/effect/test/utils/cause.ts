@@ -1,6 +1,6 @@
 import * as Cause from "effect/Cause"
+import * as fc from "effect/FastCheck"
 import * as FiberId from "effect/FiberId"
-import * as fc from "fast-check"
 
 export const causesArb = <E>(
   n: number,
