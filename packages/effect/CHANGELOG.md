@@ -1,5 +1,60 @@
 # effect
 
+## 3.12.10
+
+### Patch Changes
+
+- [#4412](https://github.com/Effect-TS/effect/pull/4412) [`e30f132`](https://github.com/Effect-TS/effect/commit/e30f132c336c9d0760bad39f82a55c7ce5159eb7) Thanks @KhraksMamtsov! - Fix STM unification
+
+- [#4403](https://github.com/Effect-TS/effect/pull/4403) [`33fa667`](https://github.com/Effect-TS/effect/commit/33fa667c2623be1026e1ccee91bd44f73b09020a) Thanks @gcanti! - Duration: fix `format` output when the input is zero.
+
+  Before
+
+  ```ts
+  import { Duration } from "effect"
+
+  console.log(Duration.format(Duration.zero))
+  // Output: ""
+  ```
+
+  After
+
+  ```ts
+  import { Duration } from "effect"
+
+  console.log(Duration.format(Duration.zero))
+  // Output: "0"
+  ```
+
+- [#4411](https://github.com/Effect-TS/effect/pull/4411) [`87f5f28`](https://github.com/Effect-TS/effect/commit/87f5f2842e4196cb88d13f10f443ff0567e82832) Thanks @gcanti! - Enhance `TagClass` and `ReferenceClass` to enforce `key` type narrowing, closes #4409.
+
+  The `key` property in `TagClass` and `ReferenceClass` now correctly retains its specific string value, just like in `Effect.Service`
+
+  ```ts
+  import { Context, Effect } from "effect"
+
+  // -------------------------------------------------------------------------------------
+  // `key` field
+  // -------------------------------------------------------------------------------------
+
+  class A extends Effect.Service<A>()("A", { succeed: { a: "value" } }) {}
+
+  // $ExpectType "A"
+  A.key
+
+  class B extends Context.Tag("B")<B, { a: "value" }>() {}
+
+  // $ExpectType "B"
+  B.key
+
+  class C extends Context.Reference<C>()("C", { defaultValue: () => 0 }) {}
+
+  // $ExpectType "C"
+  C.key
+  ```
+
+- [#4397](https://github.com/Effect-TS/effect/pull/4397) [`4dbd170`](https://github.com/Effect-TS/effect/commit/4dbd170538e8fb7a36aa7c469c6f93b6c7000091) Thanks @thewilkybarkid! - Make Array.makeBy dual
+
 ## 3.12.9
 
 ### Patch Changes
