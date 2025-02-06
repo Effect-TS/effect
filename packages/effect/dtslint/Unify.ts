@@ -14,6 +14,7 @@ import type * as RcRef from "effect/RcRef"
 import type * as Ref from "effect/Ref"
 import type * as Resource from "effect/Resource"
 import type * as ScopedRef from "effect/ScopedRef"
+import type * as STM from "effect/STM"
 import type * as Stream from "effect/Stream"
 import type * as SubscriptionRef from "effect/SubscriptionRef"
 import type * as SynchronizedRef from "effect/SynchronizedRef"
@@ -60,6 +61,13 @@ hole<
   Unify.Unify<
     | Effect.Effect<0, 1, 2>
     | Effect.Effect<"a", "b", "c">
+  >
+>()
+// $ExpectType STM<0 | "a", "b" | 1, "c" | 2>
+hole<
+  Unify.Unify<
+    | STM.STM<0, 1, 2>
+    | STM.STM<"a", "b", "c">
   >
 >()
 

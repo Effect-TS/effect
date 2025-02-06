@@ -81,7 +81,7 @@ export interface STM<out A, out E = never, out R = never>
  * @category models
  */
 export interface STMUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
-  STM?: () => A[Unify.typeSymbol] extends STM<infer A0, infer E0, infer R0> | infer _ ? STM<R0, E0, A0> : never
+  STM?: () => A[Unify.typeSymbol] extends STM<infer A0, infer E0, infer R0> | infer _ ? STM<A0, E0, R0> : never
 }
 
 /**
