@@ -291,6 +291,15 @@ export const updateCookies: {
  * @since 1.0.0
  * @category combinators
  */
+export const mergeCookies: {
+  (cookies: Cookies): (self: HttpServerResponse) => HttpServerResponse
+  (self: HttpServerResponse, cookies: Cookies): HttpServerResponse
+} = internal.mergeCookies
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const setCookies: {
   (
     cookies: Iterable<
