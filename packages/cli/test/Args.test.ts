@@ -172,4 +172,32 @@ describe("Args", () => {
       )
       expect(result).toEqual([Array.empty(), Array.of(content)])
     }).pipe(runEffect))
+
+  it("displays default value in help when default wrapped in Option.Some (primitive)", () =>
+    Effect.gen(function*(_) {
+      const option = Args.withDefault(Args.integer({ name: "value" }), Option.some(123))
+      const helpDoc = Args.getHelp(option)
+      yield* _(
+        Effect.promise(() => expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/args-default-primitive"))
+      )
+    }).pipe(runEffect))
+
+  it("displays default value in help when default wrapped in Option.Some (object)", () =>
+    Effect.gen(function*(_) {
+      const defaultObject = { key: "value", number: 456 }
+      const option = Args.withDefault(Args.text({ name: "config" }), Option.some(defaultObject))
+      const helpDoc = Args.getHelp(option)
+      yield* _(
+        Effect.promise(() => expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/args-default-object"))
+      )
+    }).pipe(runEffect))
+
+  it("displays no default value in help when default is not Option.Some", () =>
+    Effect.gen(function*(_) {
+      const option = Args.withDefault(Args.text({ name: "name" }), Option.none())
+      const helpDoc = Args.getHelp(option)
+      yield* _(
+        Effect.promise(() => expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/args-no-default"))
+      )
+    }).pipe(runEffect))
 })

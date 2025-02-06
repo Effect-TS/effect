@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual, pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
+import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as ParseResult from "effect/ParseResult"
@@ -791,7 +792,11 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
           const optionalDescription = Option.isOption(self.fallback)
             ? Option.match(self.fallback, {
               onNone: () => InternalHelpDoc.p("This setting is optional."),
-              onSome: () => InternalHelpDoc.p(`This setting is optional. Defaults to: ${self.fallback}`)
+              onSome: (fallbackValue) => {
+                const inspectableValue = Predicate.isObject(fallbackValue) ? fallbackValue : String(fallbackValue)
+                const displayValue = Inspectable.toStringUnknown(inspectableValue, 0)
+                return InternalHelpDoc.p(`This setting is optional. Defaults to: ${displayValue}`)
+              }
             })
             : InternalHelpDoc.p("This setting is optional.")
           return [span, InternalHelpDoc.sequence(block, optionalDescription)]

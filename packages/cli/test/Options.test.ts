@@ -705,4 +705,32 @@ describe("Options", () => {
       const content = yield* _(fs.readFileString(jsonPath), Effect.map(JSON.parse))
       assert.deepStrictEqual(result, [[], content])
     }).pipe(runEffect))
+
+  it("displays default value in help when default wrapped in Option.Some (primitive)", () =>
+    Effect.gen(function*(_) {
+      const option = Options.withDefault(Options.integer("value"), Option.some(123))
+      const helpDoc = Options.getHelp(option)
+      yield* _(
+        Effect.promise(() => expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/options-default-primitive"))
+      )
+    }).pipe(runEffect))
+
+  it("displays default value in help when default wrapped in Option.Some (object)", () =>
+    Effect.gen(function*(_) {
+      const defaultObject = { key: "value", number: 456 }
+      const option = Options.withDefault(Options.text("config"), Option.some(defaultObject))
+      const helpDoc = Options.getHelp(option)
+      yield* _(
+        Effect.promise(() => expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/options-default-object"))
+      )
+    }).pipe(runEffect))
+
+  it("displays no default value in help when default is not Option.Some", () =>
+    Effect.gen(function*(_) {
+      const option = Options.withDefault(Options.text("name"), Option.none())
+      const helpDoc = Options.getHelp(option)
+      yield* _(
+        Effect.promise(() => expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/options-no-default"))
+      )
+    }).pipe(runEffect))
 })

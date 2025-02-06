@@ -1,0 +1,42 @@
+{
+  "_tag": "DescriptionList",
+  "definitions": [
+    [
+      {
+        "_tag": "Sequence",
+        "left": {
+          "_tag": "Text",
+          "value": "--value",
+        },
+        "right": {
+          "_tag": "Sequence",
+          "left": {
+            "_tag": "Text",
+            "value": " ",
+          },
+          "right": {
+            "_tag": "Text",
+            "value": "integer",
+          },
+        },
+      },
+      {
+        "_tag": "Sequence",
+        "left": {
+          "_tag": "Paragraph",
+          "value": {
+            "_tag": "Text",
+            "value": "An integer.",
+          },
+        },
+        "right": {
+          "_tag": "Paragraph",
+          "value": {
+            "_tag": "Text",
+            "value": "This setting is optional. Defaults to: 123",
+          },
+        },
+      },
+    ],
+  ],
+}
