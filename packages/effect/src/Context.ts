@@ -87,20 +87,24 @@ export interface TagClassShape<Id, Shape> {
   readonly Id: Id
 }
 
+// TODO(4.0): move key narrowing to the Tag interface
 /**
  * @since 2.0.0
  * @category models
  */
-export interface TagClass<Self, Id, Type> extends Tag<Self, Type> {
+export interface TagClass<Self, Id extends string, Type> extends Tag<Self, Type> {
   new(_: never): TagClassShape<Id, Type>
+  readonly key: Id
 }
 
+// TODO(4.0): move key narrowing to the Reference interface
 /**
  * @since 3.11.0
  * @category models
  */
-export interface ReferenceClass<Self, Id, Type> extends Reference<Self, Type> {
+export interface ReferenceClass<Self, Id extends string, Type> extends Reference<Self, Type> {
   new(_: never): TagClassShape<Id, Type>
+  readonly key: Id
 }
 
 /**
