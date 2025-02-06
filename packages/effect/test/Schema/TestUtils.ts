@@ -50,6 +50,7 @@ export const AsyncDeclaration = S.declare(
   }
 )
 
+export const AsyncStringWithoutIdentifier = effectify(S.String)
 export const AsyncString = effectify(S.String).annotations({ identifier: "AsyncString" })
 
 const Name = Context.GenericTag<"Name", string>("Name")
