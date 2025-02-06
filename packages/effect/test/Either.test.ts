@@ -13,6 +13,10 @@ import {
 } from "effect/test/util"
 
 describe("Either", () => {
+  it("void", () => {
+    deepStrictEqual(Either.void, Either.right(undefined))
+  })
+
   it("gen", () => {
     const a = Either.gen(function*() {
       const x = yield* Either.right(1)
