@@ -13567,7 +13567,8 @@ export namespace fn {
           AEff,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
-        >
+        >,
+        ...args: Args
       ) => A
     ): (...args: Args) => A
     <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A, B extends Effect<any, any, any>>(
@@ -13768,7 +13769,7 @@ export namespace fn {
     ): (...args: Args) => Eff
     <Eff extends Effect<any, any, any>, A, Args extends Array<any>>(
       body: (...args: Args) => A,
-      a: (_: A) => Eff
+      a: (_: A, ...args: Args) => Eff
     ): (...args: Args) => Eff
     <Eff extends Effect<any, any, any>, A, B, Args extends Array<any>>(
       body: (...args: Args) => A,
@@ -13993,8 +13994,12 @@ function fnApply(options: {
   }
   if (options.pipeables.length > 0) {
     try {
-      for (const x of options.pipeables) {
-        effect = x(effect)
+      if (options.pipeables.length === 1) {
+        effect = options.pipeables[0](effect, ...options.args)
+      } else {
+        for (const x of options.pipeables) {
+          effect = x(effect)
+        }
       }
     } catch (error) {
       effect = fnError
