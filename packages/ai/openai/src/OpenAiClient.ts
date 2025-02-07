@@ -20,6 +20,7 @@ import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import * as Stream from "effect/Stream"
 import * as Generated from "./Generated.js"
+import { OpenAiConfig } from "./OpenAiConfig.js"
 
 /**
  * @since 1.0.0
@@ -79,7 +80,12 @@ export const make = (options: {
       options.transformClient ? options.transformClient : identity
     )
     const httpClientOk = HttpClient.filterStatusOk(httpClient)
-    const client = Generated.make(httpClient)
+    const client = Generated.make(httpClient, {
+      transformClient: (client) =>
+        OpenAiConfig.getOrUndefined.pipe(
+          Effect.map((config) => config?.transformClient ? config.transformClient(client) : client)
+        )
+    })
     const streamRequest = <A = unknown>(request: HttpClientRequest.HttpClientRequest) =>
       httpClientOk.execute(request).pipe(
         Effect.map((r) => r.stream),

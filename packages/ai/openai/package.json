@@ -49,7 +49,7 @@
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",
-    "@tim-smart/openapi-gen": "^0.3.2",
+    "@tim-smart/openapi-gen": "^0.3.3",
     "effect": "workspace:^"
   },
   "dependencies": {
