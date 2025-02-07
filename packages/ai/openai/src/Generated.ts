@@ -64,6 +64,8 @@ export class AssistantToolsFunction extends S.Struct({
   "function": FunctionObject
 }) {}
 
+export class Metadata extends S.Record({ key: S.String, value: S.Unknown }) {}
+
 export class ResponseFormatTextType extends S.Literal("text") {}
 
 export class ResponseFormatText extends S.Struct({
@@ -124,7 +126,7 @@ export class AssistantObject extends S.Struct({
     }),
     { nullable: true }
   ),
-  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  "metadata": S.NullOr(Metadata),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 1 as const
@@ -205,7 +207,7 @@ export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("Cre
             S.Array(S.Struct({
               "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(10000)), { nullable: true }),
               "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-              "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+              "metadata": S.optionalWith(Metadata, { nullable: true })
             })).pipe(S.maxItems(1)),
             { nullable: true }
           )
@@ -215,7 +217,7 @@ export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("Cre
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "metadata": S.optionalWith(Metadata, { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 1 as const
@@ -259,7 +261,7 @@ export class ModifyAssistantRequest extends S.Class<ModifyAssistantRequest>("Mod
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "metadata": S.optionalWith(Metadata, { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 1 as const
@@ -326,7 +328,7 @@ export class TranscriptionSegment extends S.Struct({
 
 export class CreateTranscriptionResponseVerboseJson extends S.Struct({
   "language": S.String,
-  "duration": S.String,
+  "duration": S.Number,
   "text": S.String,
   "words": S.optionalWith(S.Array(TranscriptionWord), { nullable: true }),
   "segments": S.optionalWith(S.Array(TranscriptionSegment), { nullable: true })
@@ -342,7 +344,7 @@ export class CreateTranslationResponseJson extends S.Struct({
 
 export class CreateTranslationResponseVerboseJson extends S.Struct({
   "language": S.String,
-  "duration": S.String,
+  "duration": S.Number,
   "text": S.String,
   "segments": S.optionalWith(S.Array(TranscriptionSegment), { nullable: true })
 }) {}
@@ -410,7 +412,7 @@ export class Batch extends S.Struct({
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
 export class ListBatchesResponseObject extends S.Literal("list") {}
@@ -433,7 +435,7 @@ export class CreateBatchRequest extends S.Class<CreateBatchRequest>("CreateBatch
   "input_file_id": S.String,
   "endpoint": CreateBatchRequestEndpoint,
   "completion_window": CreateBatchRequestCompletionWindow,
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
 export class ChatCompletionRequestMessageContentPartTextType extends S.Literal("text") {}
@@ -579,6 +581,8 @@ export class ChatCompletionRequestMessage extends S.Union(
 ) {}
 
 export class CreateChatCompletionRequestModel extends S.Literal(
+  "o3-mini",
+  "o3-mini-2025-01-31",
   "o1",
   "o1-2024-12-17",
   "o1-preview",
@@ -683,7 +687,7 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     nullable: true,
     default: () => "medium" as const
   }),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "metadata": S.optionalWith(Metadata, { nullable: true }),
   "frequency_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 0 as const
@@ -784,22 +788,22 @@ export class CreateChatCompletionResponseServiceTier extends S.Literal("scale", 
 export class CreateChatCompletionResponseObject extends S.Literal("chat.completion") {}
 
 export class CompletionUsage extends S.Struct({
-  "completion_tokens": S.Int,
-  "prompt_tokens": S.Int,
-  "total_tokens": S.Int,
+  "completion_tokens": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const)),
+  "prompt_tokens": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const)),
+  "total_tokens": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const)),
   "completion_tokens_details": S.optionalWith(
     S.Struct({
-      "accepted_prediction_tokens": S.optionalWith(S.Int, { nullable: true }),
-      "audio_tokens": S.optionalWith(S.Int, { nullable: true }),
-      "reasoning_tokens": S.optionalWith(S.Int, { nullable: true }),
-      "rejected_prediction_tokens": S.optionalWith(S.Int, { nullable: true })
+      "accepted_prediction_tokens": S.optionalWith(S.Int, { nullable: true, default: () => 0 as const }),
+      "audio_tokens": S.optionalWith(S.Int, { nullable: true, default: () => 0 as const }),
+      "reasoning_tokens": S.optionalWith(S.Int, { nullable: true, default: () => 0 as const }),
+      "rejected_prediction_tokens": S.optionalWith(S.Int, { nullable: true, default: () => 0 as const })
     }),
     { nullable: true }
   ),
   "prompt_tokens_details": S.optionalWith(
     S.Struct({
-      "audio_tokens": S.optionalWith(S.Int, { nullable: true }),
-      "cached_tokens": S.optionalWith(S.Int, { nullable: true })
+      "audio_tokens": S.optionalWith(S.Int, { nullable: true, default: () => 0 as const }),
+      "cached_tokens": S.optionalWith(S.Int, { nullable: true, default: () => 0 as const })
     }),
     { nullable: true }
   )
@@ -2428,7 +2432,8 @@ export class UsageVectorStoresParams extends S.Struct({
 
 export class ListUsersParams extends S.Struct({
   "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
-  "after": S.optionalWith(S.String, { nullable: true })
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "emails": S.optionalWith(S.Array(S.String), { nullable: true })
 }) {}
 
 export class UserListResponseObject extends S.Literal("list") {}
@@ -2497,7 +2502,9 @@ export class RealtimeSessionCreateRequest
     "output_audio_format": S.optionalWith(RealtimeSessionCreateRequestOutputAudioFormat, { nullable: true }),
     "input_audio_transcription": S.optionalWith(
       S.Struct({
-        "model": S.optionalWith(S.String, { nullable: true })
+        "model": S.optionalWith(S.String, { nullable: true }),
+        "language": S.optionalWith(S.String, { nullable: true }),
+        "prompt": S.optionalWith(S.String, { nullable: true })
       }),
       { nullable: true }
     ),
@@ -2538,13 +2545,10 @@ export class RealtimeSessionCreateResponseMaxResponseOutputTokens extends S.Lite
 
 export class RealtimeSessionCreateResponse
   extends S.Class<RealtimeSessionCreateResponse>("RealtimeSessionCreateResponse")({
-    "client_secret": S.optionalWith(
-      S.Struct({
-        "value": S.optionalWith(S.String, { nullable: true }),
-        "expires_at": S.optionalWith(S.Int, { nullable: true })
-      }),
-      { nullable: true }
-    ),
+    "client_secret": S.Struct({
+      "value": S.String,
+      "expires_at": S.Int
+    }),
     "instructions": S.optionalWith(S.String, { nullable: true }),
     "voice": S.optionalWith(RealtimeSessionCreateResponseVoice, { nullable: true }),
     "input_audio_format": S.optionalWith(S.String, { nullable: true }),
@@ -2643,7 +2647,7 @@ export class CreateMessageRequest extends S.Struct({
     })),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
 export class CreateThreadRequestToolResourcesFileSearchVectorStoresChunkingStrategyType extends S.Literal("static") {}
@@ -2668,7 +2672,7 @@ export class CreateThreadRequest extends S.Class<CreateThreadRequest>("CreateThr
             S.Array(S.Struct({
               "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(10000)), { nullable: true }),
               "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-              "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+              "metadata": S.optionalWith(Metadata, { nullable: true })
             })).pipe(S.maxItems(1)),
             { nullable: true }
           )
@@ -2678,7 +2682,7 @@ export class CreateThreadRequest extends S.Class<CreateThreadRequest>("CreateThr
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
 export class ThreadObjectObject extends S.Literal("thread") {}
@@ -2704,7 +2708,7 @@ export class ThreadObject extends S.Class<ThreadObject>("ThreadObject")({
       { nullable: true }
     )
   })),
-  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
+  "metadata": S.NullOr(Metadata)
 }) {}
 
 export class CreateThreadAndRunRequestModel extends S.Literal(
@@ -2786,7 +2790,7 @@ export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "metadata": S.optionalWith(Metadata, { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 1 as const
@@ -2870,7 +2874,7 @@ export class RunObject extends S.Class<RunObject>("RunObject")({
   "instructions": S.String,
   "tools": S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(20))
     .pipe(S.propertySignature, S.withConstructorDefault(() => [] as const)),
-  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  "metadata": S.NullOr(Metadata),
   "usage": S.NullOr(RunCompletionUsage),
   "temperature": S.optionalWith(S.Number, { nullable: true }),
   "top_p": S.optionalWith(S.Number, { nullable: true }),
@@ -2903,7 +2907,7 @@ export class ModifyThreadRequest extends S.Class<ModifyThreadRequest>("ModifyThr
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
 export class DeleteThreadResponseObject extends S.Literal("thread.deleted") {}
@@ -3003,7 +3007,7 @@ export class MessageObject extends S.Struct({
     "file_id": S.optionalWith(S.String, { nullable: true }),
     "tools": S.optionalWith(S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearchTypeOnly)), { nullable: true })
   }))),
-  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
+  "metadata": S.NullOr(Metadata)
 }) {}
 
 export class ListMessagesResponse extends S.Class<ListMessagesResponse>("ListMessagesResponse")({
@@ -3015,7 +3019,7 @@ export class ListMessagesResponse extends S.Class<ListMessagesResponse>("ListMes
 }) {}
 
 export class ModifyMessageRequest extends S.Class<ModifyMessageRequest>("ModifyMessageRequest")({
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
 export class DeleteMessageResponseObject extends S.Literal("thread.message.deleted") {}
@@ -3086,7 +3090,7 @@ export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunReques
     S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(20)),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "metadata": S.optionalWith(Metadata, { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 1 as const
@@ -3105,7 +3109,7 @@ export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunReques
 }) {}
 
 export class ModifyRunRequest extends S.Class<ModifyRunRequest>("ModifyRunRequest")({
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
 export class ListRunStepsParamsOrder extends S.Literal("asc", "desc") {}
@@ -3246,7 +3250,7 @@ export class RunStepObject extends S.Struct({
   "cancelled_at": S.NullOr(S.Int),
   "failed_at": S.NullOr(S.Int),
   "completed_at": S.NullOr(S.Int),
-  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  "metadata": S.NullOr(Metadata),
   "usage": S.NullOr(RunStepCompletionUsage)
 }) {}
 
@@ -3348,7 +3352,7 @@ export class VectorStoreObject extends S.Struct({
   "expires_after": S.optionalWith(VectorStoreExpirationAfter, { nullable: true }),
   "expires_at": S.optionalWith(S.Int, { nullable: true }),
   "last_active_at": S.NullOr(S.Int),
-  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
+  "metadata": S.NullOr(Metadata)
 }) {}
 
 export class ListVectorStoresResponse extends S.Class<ListVectorStoresResponse>("ListVectorStoresResponse")({
@@ -3382,13 +3386,13 @@ export class CreateVectorStoreRequest extends S.Class<CreateVectorStoreRequest>(
   "name": S.optionalWith(S.String, { nullable: true }),
   "expires_after": S.optionalWith(VectorStoreExpirationAfter, { nullable: true }),
   "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
 export class UpdateVectorStoreRequest extends S.Class<UpdateVectorStoreRequest>("UpdateVectorStoreRequest")({
   "name": S.optionalWith(S.String, { nullable: true }),
   "expires_after": S.optionalWith(VectorStoreExpirationAfter, { nullable: true }),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
 export class DeleteVectorStoreResponseObject extends S.Literal("vector_store.deleted") {}
@@ -3513,7 +3517,12 @@ export class DeleteVectorStoreFileResponse
   })
 {}
 
-export const make = (httpClient: HttpClient.HttpClient): Client => {
+export const make = (
+  httpClient: HttpClient.HttpClient,
+  options: {
+    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+  } = {}
+): Client => {
   const unexpectedStatus = (
     request: HttpClientRequest.HttpClientRequest,
     response: HttpClientResponse.HttpClientResponse
@@ -3530,6 +3539,8 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
           })
         )
     )
+  const applyClientTransform = (client: HttpClient.HttpClient): Effect.Effect<HttpClient.HttpClient> =>
+    options.transformClient ? options.transformClient(client) : Effect.succeed(client)
   const decodeError = <A, I, R>(response: HttpClientResponse.HttpClientResponse, schema: S.Schema<A, I, R>) =>
     Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)(response), Effect.fail)
   return {
@@ -3543,13 +3554,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListAssistantsResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ListAssistantsResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3557,13 +3569,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/assistants`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3571,13 +3584,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/assistants/${assistantId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3585,13 +3599,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/assistants/${assistantId}`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3599,13 +3614,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("DELETE")(`/assistants/${assistantId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(DeleteAssistantResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(DeleteAssistantResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3613,12 +3629,13 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/audio/speech`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3627,13 +3644,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         HttpClientRequest.bodyFormData(options),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(CreateTranscription200)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(CreateTranscription200)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3642,13 +3660,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         HttpClientRequest.bodyFormData(options),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(CreateTranslation200)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(CreateTranslation200)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3657,13 +3676,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         HttpClientRequest.setUrlParams({ "after": options["after"], "limit": options["limit"] }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListBatchesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ListBatchesResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3671,13 +3691,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/batches`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3685,13 +3706,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/batches/${batchId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3699,13 +3721,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/batches/${batchId}/cancel`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3713,13 +3736,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/chat/completions`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(CreateChatCompletionResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(CreateChatCompletionResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3727,13 +3751,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/completions`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(CreateCompletionResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(CreateCompletionResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3741,13 +3766,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/embeddings`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(CreateEmbeddingResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(CreateEmbeddingResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3761,13 +3787,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListFilesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ListFilesResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3776,13 +3803,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         HttpClientRequest.bodyFormData(options),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(OpenAIFile)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(OpenAIFile)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3790,13 +3818,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/files/${fileId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(OpenAIFile)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(OpenAIFile)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3804,13 +3833,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("DELETE")(`/files/${fileId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(DeleteFileResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(DeleteFileResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3818,13 +3848,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/files/${fileId}/content`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(DownloadFile200)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(DownloadFile200)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3833,13 +3864,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         HttpClientRequest.setUrlParams({ "after": options["after"], "limit": options["limit"] }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListPaginatedFineTuningJobsResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ListPaginatedFineTuningJobsResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3847,13 +3879,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/fine_tuning/jobs`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(FineTuningJob)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(FineTuningJob)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3862,11 +3895,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(FineTuningJob)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(FineTuningJob)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -3876,11 +3913,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(FineTuningJob)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(FineTuningJob)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -3891,11 +3932,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListFineTuningJobCheckpointsResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ListFineTuningJobCheckpointsResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -3906,11 +3951,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListFineTuningJobEventsResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ListFineTuningJobEventsResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -3920,13 +3969,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         HttpClientRequest.bodyFormData(options),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3934,13 +3984,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/images/generations`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3949,13 +4000,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         HttpClientRequest.bodyFormData(options),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3963,13 +4015,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/models`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListModelsResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ListModelsResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3977,13 +4030,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/models/${model}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Model)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Model)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -3991,13 +4045,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("DELETE")(`/models/${model}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(DeleteModelResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(DeleteModelResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4005,13 +4060,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/moderations`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(CreateModerationResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(CreateModerationResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4024,13 +4080,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ApiKeyList)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ApiKeyList)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4038,13 +4095,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/organization/admin_api_keys`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(AdminApiKey)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(AdminApiKey)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4052,13 +4110,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/organization/admin_api_keys/${keyId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(AdminApiKey)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(AdminApiKey)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4066,13 +4125,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("DELETE")(`/organization/admin_api_keys/${keyId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(AdminApiKeysDelete200)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(AdminApiKeysDelete200)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4094,13 +4154,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListAuditLogsResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ListAuditLogsResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4117,13 +4178,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4132,13 +4194,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(InviteListResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(InviteListResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4146,13 +4209,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/organization/invites`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Invite)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Invite)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4160,13 +4224,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/organization/invites/${inviteId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Invite)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Invite)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4174,13 +4239,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("DELETE")(`/organization/invites/${inviteId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(InviteDeleteResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(InviteDeleteResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4193,13 +4259,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectListResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ProjectListResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4207,13 +4274,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/organization/projects`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4221,13 +4289,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4235,14 +4304,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/organization/projects/${projectId}`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
+                "400": (r) => decodeError(r, ErrorResponse),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4252,11 +4322,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKeyListResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKeyListResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4266,11 +4340,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKey)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKey)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4280,12 +4358,16 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKeyDeleteResponse)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKeyDeleteResponse)(r),
+                  "400": (r) => decodeError(r, ErrorResponse),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4294,13 +4376,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/organization/projects/${projectId}/archive`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4314,11 +4397,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectRateLimitListResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectRateLimitListResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4328,12 +4415,16 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectRateLimit)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectRateLimit)(r),
+                  "400": (r) => decodeError(r, ErrorResponse),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4344,12 +4435,16 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountListResponse)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountListResponse)(r),
+                  "400": (r) => decodeError(r, ErrorResponse),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4359,12 +4454,16 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountCreateResponse)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountCreateResponse)(r),
+                  "400": (r) => decodeError(r, ErrorResponse),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4374,11 +4473,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccount)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccount)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4388,11 +4491,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountDeleteResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountDeleteResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4403,12 +4510,16 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUserListResponse)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUserListResponse)(r),
+                  "400": (r) => decodeError(r, ErrorResponse),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4418,12 +4529,16 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
+                  "400": (r) => decodeError(r, ErrorResponse),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4433,11 +4548,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4447,12 +4566,16 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
+                  "400": (r) => decodeError(r, ErrorResponse),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4462,12 +4585,16 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUserDeleteResponse)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUserDeleteResponse)(r),
+                  "400": (r) => decodeError(r, ErrorResponse),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4488,13 +4615,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4515,11 +4643,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4538,11 +4670,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4564,13 +4700,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4590,13 +4727,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4618,13 +4756,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4644,13 +4783,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4667,28 +4807,34 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(UsageResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
     "listUsers": (options) =>
       HttpClientRequest.make("GET")(`/organization/users`).pipe(
-        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
+        HttpClientRequest.setUrlParams({
+          "limit": options["limit"],
+          "after": options["after"],
+          "emails": options["emails"]
+        }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UserListResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(UserListResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4696,13 +4842,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/organization/users/${userId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(User)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(User)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4710,13 +4857,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/organization/users/${userId}`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(User)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(User)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4724,13 +4872,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("DELETE")(`/organization/users/${userId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UserDeleteResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(UserDeleteResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4738,13 +4887,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/realtime/sessions`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(RealtimeSessionCreateResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(RealtimeSessionCreateResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4752,13 +4902,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/threads`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ThreadObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ThreadObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4766,13 +4917,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/threads/runs`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4780,13 +4932,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/threads/${threadId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ThreadObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ThreadObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4794,13 +4947,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/threads/${threadId}`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ThreadObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ThreadObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4808,13 +4962,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("DELETE")(`/threads/${threadId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(DeleteThreadResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(DeleteThreadResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4829,13 +4984,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListMessagesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ListMessagesResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4843,13 +4999,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/threads/${threadId}/messages`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(MessageObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(MessageObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4858,11 +5015,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(MessageObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(MessageObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4872,11 +5033,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(MessageObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(MessageObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4886,11 +5051,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(DeleteMessageResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(DeleteMessageResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4905,13 +5074,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListRunsResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ListRunsResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4920,13 +5090,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         HttpClientRequest.setUrlParams({ "include[]": options.params["include[]"] }),
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options.payload)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4934,13 +5105,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/threads/${threadId}/runs/${runId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4949,11 +5121,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4962,13 +5138,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/threads/${threadId}/runs/${runId}/cancel`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -4984,11 +5161,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListRunStepsResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ListRunStepsResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -4999,11 +5180,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(RunStepObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(RunStepObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -5013,11 +5198,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -5026,13 +5215,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/uploads`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -5040,13 +5230,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/uploads/${uploadId}/cancel`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -5054,13 +5245,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/uploads/${uploadId}/complete`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -5069,13 +5261,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         HttpClientRequest.bodyFormData(options),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UploadPart)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(UploadPart)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -5089,13 +5282,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListVectorStoresResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ListVectorStoresResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -5103,13 +5297,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("POST")(`/vector_stores`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -5117,13 +5312,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreObject)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -5132,11 +5328,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -5145,13 +5345,14 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
       HttpClientRequest.make("DELETE")(`/vector_stores/${vectorStoreId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(DeleteVectorStoreResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(DeleteVectorStoreResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
         ),
         Effect.scoped
       ),
@@ -5160,11 +5361,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileBatchObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileBatchObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -5174,11 +5379,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileBatchObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileBatchObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -5188,11 +5397,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileBatchObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileBatchObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -5209,11 +5422,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListVectorStoreFilesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ListVectorStoreFilesResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -5230,11 +5447,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListVectorStoreFilesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ListVectorStoreFilesResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -5244,11 +5465,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -5258,11 +5483,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
@@ -5272,11 +5501,15 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(DeleteVectorStoreFileResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(DeleteVectorStoreFileResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
           )
         ),
         Effect.scoped
