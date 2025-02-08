@@ -30,11 +30,9 @@ describe("Match", () => {
     const match = pipe(
       M.type<{ _tag: "A"; a: number | string } | { _tag: "B"; b: number }>(),
       M.when({ _tag: M.is("A", "B"), a: M.number }, (_) => {
-        assertType<{ _tag: "A"; a: number }>()(_) satisfies true
         return Either.right(_._tag)
       }),
       M.when({ _tag: M.string, a: M.string }, (_) => {
-        assertType<{ _tag: "A"; a: string }>()(_) satisfies true
         return Either.right(_._tag)
       }),
       M.when({ b: M.number }, (_) => Either.left(_._tag)),
@@ -82,7 +80,6 @@ describe("Match", () => {
     const match = pipe(
       M.type<[string, string]>(),
       M.when(["yeah"], (_) => {
-        assertType<readonly ["yeah", string]>()(_) satisfies true
         return true
       }),
       M.option
@@ -127,7 +124,6 @@ describe("Match", () => {
     const match = pipe(
       M.type<string | number>(),
       M.not("hi", (_) => {
-        assertType<string | number>()(_) satisfies true
         return "a"
       }),
       M.orElse((_) => "b")
@@ -136,24 +132,10 @@ describe("Match", () => {
     strictEqual(match("hi"), "b")
   })
 
-  it("tuples", () => {
-    const match = pipe(
-      M.type<[string, string]>(),
-      M.when(["yeah", M.string], (_) => {
-        assertType<readonly ["yeah", string]>()(_) satisfies true
-        return true
-      }),
-      M.option
-    )
-
-    assertSome(match(["yeah", "a"]), true)
-  })
-
   it("literals", () => {
     const match = pipe(
       M.type<string>(),
       M.when("yeah", (_) => {
-        assertType<"yeah">()(_) satisfies true
         return _ === "yeah"
       }),
       M.orElse(() => "nah")
@@ -201,11 +183,9 @@ describe("Match", () => {
         | { foo: { bar: null } }
       >(),
       M.when({ foo: { bar: { baz: { qux: 2 } } } }, (_) => {
-        assertType<{ foo: { bar: { baz: { qux: 2 } } } }>()(_) satisfies true
         return `literal ${_.foo.bar.baz.qux}`
       }),
       M.when({ foo: { bar: { baz: { qux: "b" } } } }, (_) => {
-        assertType<{ foo: { bar: { baz: { qux: "b" } } } }>()(_) satisfies true
         return `literal ${_.foo.bar.baz.qux}`
       }),
       M.when(
@@ -360,36 +340,24 @@ describe("Match", () => {
     const match = pipe(
       M.type<A>(),
       M.when(Predicate.isNull, (_) => {
-        assertType<null>()(_) satisfies true
         return "null"
       }),
       M.when(Predicate.isBoolean, (_) => {
-        assertType<boolean>()(_) satisfies true
         return "boolean"
       }),
       M.when(Predicate.isNumber, (_) => {
-        assertType<number>()(_) satisfies true
         return "number"
       }),
       M.when(Predicate.isString, (_) => {
-        assertType<string>()(_) satisfies true
         return "string"
       }),
       M.when(M.record, (_) => {
-        assertType<
-          Record<string, A>
-        >()(_) satisfies true
         return "record"
       }),
       M.when(Predicate.isSymbol, (_) => {
-        assertType<symbol>()(_) satisfies true
         return "symbol"
       }),
       M.when(Predicate.isReadonlyRecord, (_) => {
-        assertType<{
-          readonly [x: string]: unknown
-          readonly [x: symbol]: unknown
-        }>()(_) satisfies true
         return "readonlyrecord"
       }),
       M.exhaustive
@@ -554,6 +522,8 @@ describe("Match", () => {
   })
 
   it("instanceOf", () => {
+    // These type-level tests cannot be moved to a dtslint test because
+    // of the difference in the way the type is retrieved in ts 5.7
     const match = pipe(
       M.type<Uint8Array | Uint16Array>(),
       M.when(M.instanceOf(Uint8Array), (_) => {
@@ -571,24 +541,6 @@ describe("Match", () => {
 
     strictEqual(match(new Uint8Array([1, 2, 3])), "uint8")
     strictEqual(match(new Uint16Array([1, 2, 3])), "uint16")
-  })
-
-  it("instanceOf doesnt modify type", () => {
-    class Test {}
-    class Test2 {}
-
-    const a = new Test()
-
-    const result = pipe(
-      M.value<Test | Test2>(a),
-      M.when(M.instanceOf(Test), (_) => {
-        assertType<Test>()(_) satisfies true
-        return 1
-      }),
-      M.orElse(() => 0)
-    )
-
-    strictEqual(result, 1)
   })
 
   it("tags", () => {
@@ -658,7 +610,6 @@ describe("Match", () => {
     const match = pipe(
       M.type<string | Array<number>>(),
       M.when(isArray, (_) => {
-        assertType<Array<number>>()(_) satisfies true
         return "array"
       }),
       M.when(Predicate.isString, () => "string"),
@@ -674,10 +625,7 @@ describe("Match", () => {
 
     const match = pipe(
       M.type<{ readonly a: string | Array<number> }>(),
-      M.when({ a: isArray }, (_) => {
-        assertType<{ a: ReadonlyArray<number> }>()(_) satisfies true
-        return "array"
-      }),
+      M.when({ a: isArray }, (_) => "array"),
       M.orElse(() => "fail")
     )
 
@@ -688,13 +636,7 @@ describe("Match", () => {
   it("unknown - refinement", () => {
     const match = pipe(
       M.type<unknown>(),
-      M.when(Predicate.isReadonlyRecord, (_) => {
-        assertType<{
-          readonly [x: string]: unknown
-          readonly [x: symbol]: unknown
-        }>()(_) satisfies true
-        return "record"
-      }),
+      M.when(Predicate.isReadonlyRecord, (_) => "record"),
       M.orElse(() => "unknown")
     )
 
@@ -705,55 +647,12 @@ describe("Match", () => {
   it("any - refinement", () => {
     const match = pipe(
       M.type<any>(),
-      M.when(Predicate.isReadonlyRecord, (_) => {
-        assertType<{
-          readonly [x: string]: unknown
-          readonly [x: symbol]: unknown
-        }>()(_) satisfies true
-        return "record"
-      }),
+      M.when(Predicate.isReadonlyRecord, (_) => "record"),
       M.orElse(() => "unknown")
     )
 
     strictEqual(match({}), "record")
     strictEqual(match([]), "unknown")
-  })
-
-  it("pattern type is not fixed by the function argument type", () => {
-    type T =
-      | { resolveType: "A"; value: number }
-      | { resolveType: "B"; value: number }
-      | { resolveType: "C"; value: number }
-
-    const value = { resolveType: "A", value: 12 } as T
-
-    const doStuff = (x: { value: number }) => x
-
-    const result = pipe(
-      M.value(value),
-      M.when({ resolveType: M.is("A", "B") }, doStuff),
-      M.not({ resolveType: M.is("A", "B") }, doStuff),
-      M.exhaustive
-    )
-
-    assertType<{ value: number }>()(result) satisfies true
-  })
-
-  it("non literal refinement", () => {
-    const a: number = 1
-    const b: string = "b"
-
-    const match = M.type<{ a: number; b: string }>().pipe(
-      M.when({ a, b }, (_) => {
-        assertType<{ a: number; b: string }>()(_) satisfies true
-        return "ok"
-      }),
-      M.either
-    )
-
-    assertType<
-      Either.Either<string, { a: number; b: string }>
-    >()(match({ a, b })) satisfies true
   })
 
   it("discriminatorStartsWith", () => {

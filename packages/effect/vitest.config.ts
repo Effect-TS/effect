@@ -5,7 +5,7 @@ const config: ViteUserConfig = {
   test: {
     coverage: {
       reporter: ["html"],
-      include: ["src/ParseResult.ts"]
+      include: ["src/Match.ts", "src/internal/matcher.ts"]
     }
   }
 }
