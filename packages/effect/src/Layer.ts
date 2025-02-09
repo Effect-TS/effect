@@ -24,7 +24,7 @@ import * as Context from "./Context.js"
 import type * as Effect from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import type { FiberRef } from "./FiberRef.js"
-import type { LazyArg } from "./Function.js"
+import { dual, type LazyArg } from "./Function.js"
 import { clockTag } from "./internal/clock.js"
 import * as core from "./internal/core.js"
 import * as defaultServices from "./internal/defaultServices.js"
@@ -1099,3 +1099,37 @@ export const buildWithMemoMap: {
     scope: Scope.Scope
   ): Effect.Effect<Context.Context<ROut>, E, RIn>
 } = internal.buildWithMemoMap
+
+/**
+ * Updates a service in the context with a new implementation.
+ *
+ * **Details**
+ *
+ * This function modifies the existing implementation of a service in the
+ * context. It retrieves the current service, applies the provided
+ * transformation function `f`, and replaces the old service with the
+ * transformed one.
+ *
+ * **When to Use**
+ *
+ * This is useful for adapting or extending a service's behavior during the
+ * creation of a layer.
+ *
+ * @since 3.13.0
+ * @category utils
+ */
+export const updateService = dual<
+  <I, A>(
+    tag: Context.Tag<I, A>,
+    f: (a: A) => A
+  ) => <A1, E1, R1>(layer: Layer<A1, E1, R1>) => Layer<A1, E1, I | R1>,
+  <A1, E1, R1, I, A>(
+    layer: Layer<A1, E1, R1>,
+    tag: Context.Tag<I, A>,
+    f: (a: A) => A
+  ) => Layer<A1, E1, I | R1>
+>(3, (layer, tag, f) =>
+  provide(
+    layer,
+    map(context(), (c) => Context.add(c, tag, f(Context.unsafeGet(c, tag))))
+  ))

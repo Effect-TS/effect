@@ -663,6 +663,19 @@ describe("Layer", () => {
       strictEqual(result.bar, "bar: 1")
     }))
 
+  it.effect("Updates service via updateService", () =>
+    Effect.gen(function*() {
+      const Foo = Context.GenericTag<"Foo", string>("Foo")
+      const FooDefault = Layer.succeed(Foo, "Foo")
+      const Bar = Context.GenericTag<"Bar", string>("Bar")
+      const BarDefault = Layer.effect(Bar, Foo).pipe(
+        Layer.updateService(Foo, (x) => `Bar: ${x}`),
+        Layer.provide(FooDefault)
+      )
+      const result = yield* Bar.pipe(Effect.provide(BarDefault))
+      deepStrictEqual(result, "Bar: Foo")
+    }))
+
   describe("MemoMap", () => {
     it.effect("memoizes layer across builds", () =>
       Effect.gen(function*() {
