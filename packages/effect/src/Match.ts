@@ -484,6 +484,28 @@ export const whenAnd: <
 > = internal.whenAnd
 
 /**
+ * Matches values based on a specified discriminant field.
+ *
+ * **Details**
+ *
+ * This function is used to define pattern matching on objects that follow a
+ * **discriminated union** structure, where a specific field (e.g., `type`,
+ * `kind`, `_tag`) determines the variant of the object. It allows matching
+ * multiple values of the discriminant and provides a function to handle the
+ * matched cases.
+ *
+ * @example
+ * ```ts
+ * import { Match, pipe } from "effect"
+ *
+ * const match = pipe(
+ *   Match.type<{ type: "A"; a: string } | { type: "B"; b: number } | { type: "C"; c: boolean }>(),
+ *   Match.discriminator("type")("A", "B", (_) => `A or B: ${_.type}`),
+ *   Match.discriminator("type")("C", (_) => `C(${_.c})`),
+ *   Match.exhaustive
+ * )
+ * ```
+ *
  * @category Defining patterns
  * @since 1.0.0
  */
@@ -503,6 +525,36 @@ export const discriminator: <D extends string>(
 > = internal.discriminator
 
 /**
+ * Matches values where a specified field starts with a given prefix.
+ *
+ * **Details**
+ *
+ * This function is useful for working with discriminated unions where the
+ * discriminant field follows a hierarchical or namespaced structure. It allows
+ * you to match values based on whether the specified field starts with a given
+ * prefix, making it easier to handle grouped cases.
+ *
+ * Instead of checking for exact matches, this function lets you match values
+ * that share a common prefix. For example, if your discriminant field contains
+ * hierarchical names like `"A"`, `"A.A"`, and `"B"`, you can match all values
+ * starting with `"A"` using a single rule.
+ *
+ * @example
+ * ```ts
+ * import { Match, pipe } from "effect"
+ *
+ * const match = pipe(
+ *   Match.type<{ type: "A" } | { type: "B" } | { type: "A.A" } | {}>(),
+ *   Match.discriminatorStartsWith("type")("A", (_) => 1 as const),
+ *   Match.discriminatorStartsWith("type")("B", (_) => 2 as const),
+ *   Match.orElse((_) => 3 as const)
+ * )
+ *
+ * console.log(match({ type: "A" })) // 1
+ * console.log(match({ type: "B" })) // 2
+ * console.log(match({ type: "A.A" })) // 1
+ * ```
+ *
  * @category Defining patterns
  * @since 1.0.0
  */
@@ -523,6 +575,33 @@ export const discriminatorStartsWith: <D extends string>(
 > = internal.discriminatorStartsWith as any
 
 /**
+ * Matches values based on a field that serves as a discriminator, mapping each
+ * possible value to a corresponding handler.
+ *
+ * **Details**
+ *
+ * This function simplifies working with discriminated unions by letting you
+ * define a set of handlers for each possible value of a given field. Instead of
+ * chaining multiple calls to {@link discriminator}, this function allows
+ * defining all possible cases at once using an object where the keys are the
+ * possible values of the field, and the values are the corresponding handler
+ * functions.
+ *
+ * @example
+ * ```ts
+ * import { Match, pipe } from "effect"
+ *
+ * const match = pipe(
+ *   Match.type<{ type: "A"; a: string } | { type: "B"; b: number } | { type: "C"; c: boolean }>(),
+ *   Match.discriminators("type")({
+ *     A: (a) => a.a,
+ *     B: (b) => b.b,
+ *     C: (c) => c.c
+ *   }),
+ *   Match.exhaustive
+ * )
+ * ```
+ *
  * @category Defining patterns
  * @since 1.0.0
  */
@@ -548,6 +627,34 @@ export const discriminators: <D extends string>(
 > = internal.discriminators
 
 /**
+ * Matches values based on a discriminator field and **ensures all cases are
+ * handled**.
+ *
+ * **Details*+
+ *
+ * This function is similar to {@link discriminators}, but **requires that all
+ * possible cases** are explicitly handled. It is useful when working with
+ * discriminated unions, where a specific field (e.g., `"type"`) determines the
+ * shape of an object. Each possible value of the field must have a
+ * corresponding handler, ensuring **exhaustiveness checking** at compile time.
+ *
+ * This function **does not require** `Match.exhaustive` at the end of the
+ * pipeline because it enforces exhaustiveness by design.
+ *
+ * @example
+ * ```ts
+ * import { Match, pipe } from "effect"
+ *
+ * const match = pipe(
+ *   Match.type<{ type: "A"; a: string } | { type: "B"; b: number } | { type: "C"; c: boolean }>(),
+ *   Match.discriminatorsExhaustive("type")({
+ *     A: (a) => a.a,
+ *     B: (b) => b.b,
+ *     C: (c) => c.c
+ *   })
+ * )
+ * ```
+ *
  * @category Defining patterns
  * @since 1.0.0
  */
@@ -623,6 +730,31 @@ export const tag: <R, P extends Types.Tags<"_tag", R> & string, Ret, B extends R
 > = internal.tag
 
 /**
+ * Matches values where the `_tag` field starts with a given prefix.
+ *
+ * **Details**
+ *
+ * This function allows you to match on values in a **discriminated union**
+ * based on whether the `_tag` field starts with a specified prefix. It is
+ * useful for handling hierarchical or namespaced tags, where multiple related
+ * cases share a common prefix.
+ *
+ * @example
+ * ```ts
+ * import { Match, pipe } from "effect"
+ *
+ * const match = pipe(
+ *   Match.type<{ _tag: "A" } | { _tag: "B" } | { _tag: "A.A" } | {}>(),
+ *   Match.tagStartsWith("A", (_) => 1 as const),
+ *   Match.tagStartsWith("B", (_) => 2 as const),
+ *   Match.orElse((_) => 3 as const)
+ * )
+ *
+ * console.log(match({ _tag: "A" })) // 1
+ * console.log(match({ _tag: "B" })) // 2
+ * console.log(match({ _tag: "A.A" })) // 1
+ * ```
+ *
  * @category Defining patterns
  * @since 1.0.0
  */
@@ -638,9 +770,34 @@ export const tagStartsWith: <R, P extends string, Ret, B extends Ret>(
   B | A,
   Pr,
   Ret
-> = internal.tagStartsWith as any
+> = internal.tagStartsWith
 
 /**
+ * Matches values based on their `_tag` field, mapping each tag to a
+ * corresponding handler.
+ *
+ * **Details**
+ *
+ * This function provides a way to handle discriminated unions by mapping `_tag`
+ * values to specific functions. Each handler receives the matched value and
+ * returns a transformed result. If all possible tags are handled, you can
+ * enforce exhaustiveness using `Match.exhaustive` to ensure no case is missed.
+ *
+ * @example
+ * ```ts
+ * import { Match, pipe } from "effect"
+ *
+ * const match = pipe(
+ *   Match.type<{ _tag: "A"; a: string } | { _tag: "B"; b: number } | { _tag: "C"; c: boolean }>(),
+ *   Match.tags({
+ *     A: (a) => a.a,
+ *     B: (b) => b.b,
+ *     C: (c) => c.c
+ *   }),
+ *   Match.exhaustive
+ * )
+ * ```
+ *
  * @category Defining patterns
  * @since 1.0.0
  */
@@ -664,6 +821,31 @@ export const tags: <
 > = internal.tags
 
 /**
+ * Matches values based on their `_tag` field and requires handling of all
+ * possible cases.
+ *
+ * **Details**
+ *
+ * This function is designed for **discriminated unions** where every possible
+ * `_tag` value must have a corresponding handler. Unlike {@link tags}, this
+ * function ensures **exhaustiveness**, meaning all cases must be explicitly
+ * handled. If a `_tag` value is missing from the mapping, TypeScript will
+ * report an error.
+ *
+ * @example
+ * ```ts
+ * import { Match, pipe } from "effect"
+ *
+ * const match = pipe(
+ *   Match.type<{ _tag: "A"; a: string } | { _tag: "B"; b: number } | { _tag: "C"; c: boolean }>(),
+ *   Match.tagsExhaustive({
+ *     A: (a) => a.a,
+ *     B: (b) => b.b,
+ *     C: (c) => c.c
+ *   })
+ * )
+ * ```
+ *
  * @category Defining patterns
  * @since 1.0.0
  */
@@ -681,8 +863,15 @@ export const tagsExhaustive: <
   internal.tagsExhaustive
 
 /**
- * The `Match.not` function allows you to exclude specific values while matching
- * all others.
+ * Excludes a specific value from matching while allowing all others.
+ *
+ * **Details**
+ *
+ * This function is useful when you need to **handle all values except one or
+ * more specific cases**. Instead of listing all possible matches manually, this
+ * function simplifies the logic by allowing you to specify values to exclude.
+ * Any excluded value will bypass the provided function and continue matching
+ * through other cases.
  *
  * @example
  * ```ts
@@ -729,7 +918,7 @@ export const not: <
 /**
  * Matches non-empty strings.
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const nonEmptyString: SafeRefinement<string, never> = internal.nonEmptyString
@@ -737,7 +926,7 @@ export const nonEmptyString: SafeRefinement<string, never> = internal.nonEmptySt
 /**
  * Matches a specific set of literal values (e.g., `Match.is("a", 42, true)`).
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const is: <
@@ -747,7 +936,7 @@ export const is: <
 /**
  * Matches values of type `string`.
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const string: Predicate.Refinement<unknown, string> = Predicate.isString
@@ -755,7 +944,7 @@ export const string: Predicate.Refinement<unknown, string> = Predicate.isString
 /**
  * Matches values of type `number`.
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const number: Predicate.Refinement<unknown, number> = Predicate.isNumber
@@ -763,7 +952,7 @@ export const number: Predicate.Refinement<unknown, number> = Predicate.isNumber
 /**
  * Matches any value without restrictions.
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const any: SafeRefinement<unknown, any> = internal.any
@@ -771,7 +960,7 @@ export const any: SafeRefinement<unknown, any> = internal.any
 /**
  * Matches any defined (non-null and non-undefined) value.
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const defined: <A>(u: A) => u is A & {} = internal.defined
@@ -779,7 +968,7 @@ export const defined: <A>(u: A) => u is A & {} = internal.defined
 /**
  * Matches values of type `boolean`.
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const boolean: Predicate.Refinement<unknown, boolean> = Predicate.isBoolean
@@ -789,7 +978,7 @@ export {
   /**
    * Matches the value `undefined`.
    *
-   * @category predicates
+   * @category Predicates
    * @since 1.0.0
    */
   _undefined as undefined
@@ -800,7 +989,7 @@ export {
   /**
    * Matches the value `null`.
    *
-   * @category predicates
+   * @category Predicates
    * @since 1.0.0
    */
   _null as null
@@ -809,7 +998,7 @@ export {
 /**
  * Matches values of type `bigint`.
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const bigint: Predicate.Refinement<unknown, bigint> = Predicate.isBigInt
@@ -817,7 +1006,7 @@ export const bigint: Predicate.Refinement<unknown, bigint> = Predicate.isBigInt
 /**
  * Matches values of type `symbol`.
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const symbol: Predicate.Refinement<unknown, symbol> = Predicate.isSymbol
@@ -825,7 +1014,7 @@ export const symbol: Predicate.Refinement<unknown, symbol> = Predicate.isSymbol
 /**
  * Matches values that are instances of `Date`.
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const date: Predicate.Refinement<unknown, Date> = Predicate.isDate
@@ -833,7 +1022,7 @@ export const date: Predicate.Refinement<unknown, Date> = Predicate.isDate
 /**
  * Matches objects where keys are `string` or `symbol` and values are `unknown`.
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const record: Predicate.Refinement<unknown, { [x: string | symbol]: unknown }> = Predicate.isRecord
@@ -841,7 +1030,7 @@ export const record: Predicate.Refinement<unknown, { [x: string | symbol]: unkno
 /**
  * Matches instances of a given class.
  *
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const instanceOf: <A extends abstract new(...args: any) => any>(
@@ -849,7 +1038,7 @@ export const instanceOf: <A extends abstract new(...args: any) => any>(
 ) => SafeRefinement<InstanceType<A>, never> = internal.instanceOf
 
 /**
- * @category predicates
+ * @category Predicates
  * @since 1.0.0
  */
 export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(
@@ -857,8 +1046,14 @@ export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(
 ) => SafeRefinement<InstanceType<A>, InstanceType<A>> = internal.instanceOf
 
 /**
- * The `Match.orElse` method defines a fallback value to return when no other
- * patterns match. This ensures that the matcher always produces a valid result.
+ * Provides a fallback value when no patterns match.
+ *
+ * **Details**
+ *
+ * This function ensures that a matcher always returns a valid result, even if
+ * no defined patterns match. It acts as a default case, similar to the
+ * `default` clause in a `switch` statement or the final `else` in an `if-else`
+ * chain.
  *
  * @example
  * ```ts
@@ -880,7 +1075,7 @@ export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(
  * // Output: "fallback"
  * ```
  *
- * @category conversions
+ * @category Completion
  * @since 1.0.0
  */
 export const orElse: <RA, Ret, F extends (_: RA) => Ret>(
@@ -889,8 +1084,21 @@ export const orElse: <RA, Ret, F extends (_: RA) => Ret>(
   self: Matcher<I, R, RA, A, Pr, Ret>
 ) => [Pr] extends [never] ? (input: I) => Unify<ReturnType<F> | A> : Unify<ReturnType<F> | A> = internal.orElse
 
+// TODO(4.0): Rename to "orThrow"? Like Either.getOrThrow
 /**
- * @category conversions
+ * Throws an error if no pattern matches.
+ *
+ * **Details**
+ *
+ * This function finalizes a matcher by ensuring that if no patterns match, an
+ * error is thrown. It is useful when all cases should be covered, and any
+ * unexpected input should trigger an error instead of returning a default
+ * value.
+ *
+ * When used, this function removes the need for an explicit fallback case and
+ * ensures that an unmatched value is never silently ignored.
+ *
+ * @category Completion
  * @since 1.0.0
  */
 export const orElseAbsurd: <I, R, RA, A, Pr, Ret>(
@@ -898,9 +1106,19 @@ export const orElseAbsurd: <I, R, RA, A, Pr, Ret>(
 ) => [Pr] extends [never] ? (input: I) => Unify<A> : Unify<A> = internal.orElseAbsurd
 
 /**
- * The `Match.either` method wraps the result in an `Either`, providing a
- * structured way to distinguish between matched and unmatched cases. If a match
- * is found, it returns `Right(value)`, otherwise, it returns `Left(no match)`.
+ * Wraps the match result in an `Either`, distinguishing matched and unmatched
+ * cases.
+ *
+ * **Details**
+ *
+ * This function ensures that the result of a matcher is always wrapped in an
+ * `Either`, allowing clear differentiation between successful matches
+ * (`Right(value)`) and cases where no pattern matched (`Left(unmatched
+ * value)`).
+ *
+ * This approach is particularly useful when handling optional values or when an
+ * unmatched case should be explicitly handled rather than returning a default
+ * value or throwing an error.
  *
  * @example
  * ```ts
@@ -923,7 +1141,7 @@ export const orElseAbsurd: <I, R, RA, A, Pr, Ret>(
  * // Output: { _id: 'Either', _tag: 'Left', left: { role: 'viewer' } }
  * ```
  *
- * @category conversions
+ * @category Completion
  * @since 1.0.0
  */
 export const either: <I, F, R, A, Pr, Ret>(
@@ -931,8 +1149,17 @@ export const either: <I, F, R, A, Pr, Ret>(
 ) => [Pr] extends [never] ? (input: I) => Either.Either<Unify<A>, R> : Either.Either<Unify<A>, R> = internal.either
 
 /**
- * `Match.option` wraps the match result in an `Option`. If a match is found, it
- * returns `Some(value)`, otherwise, it returns `None`.
+ * Wraps the match result in an `Option`, representing an optional match.
+ *
+ * **Details**
+ *
+ * This function ensures that the result of a matcher is wrapped in an `Option`,
+ * making it easy to handle cases where no pattern matches. If a match is found,
+ * it returns `Some(value)`, otherwise, it returns `None`.
+ *
+ * This is useful in cases where a missing match is expected and should be
+ * handled explicitly rather than throwing an error or returning a default
+ * value.
  *
  * @example
  * ```ts
@@ -955,7 +1182,7 @@ export const either: <I, F, R, A, Pr, Ret>(
  * // Output: { _id: 'Option', _tag: 'None' }
  * ```
  *
- * @category conversions
+ * @category Completion
  * @since 1.0.0
  */
 export const option: <I, F, R, A, Pr, Ret>(
@@ -984,7 +1211,7 @@ export const option: <I, F, R, A, Pr, Ret>(
  * )
  * ```
  *
- * @category conversions
+ * @category Completion
  * @since 1.0.0
  */
 export const exhaustive: <I, F, A, Pr, Ret>(
