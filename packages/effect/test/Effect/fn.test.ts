@@ -71,9 +71,10 @@ describe("Effect.fn", () => {
         function*(n: number) {
           return n
         },
+        (effect, n) => Effect.map(effect, (a) => a + n),
         (effect, n) => Effect.map(effect, (a) => a + n)
       )
       const n = yield* fn(1)
-      assertEquals(n, 2)
+      assertEquals(n, 3)
     }))
 })
