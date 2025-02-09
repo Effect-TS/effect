@@ -22,10 +22,10 @@ const CommonProto = {
   [TypeId]: {
     _R: (_: never) => _
   },
-  [NodeInspectSymbol]<L, R>(this: Either.Either<R, L>) {
+  [NodeInspectSymbol]<R, L>(this: Either.Either<R, L>) {
     return this.toJSON()
   },
-  toString<L, R>(this: Either.Left<L, R>) {
+  toString<R, L>(this: Either.Left<R, L>) {
     return format(this.toJSON())
   }
 }
@@ -33,13 +33,13 @@ const CommonProto = {
 const RightProto = Object.assign(Object.create(CommonProto), {
   _tag: "Right",
   _op: "Right",
-  [Equal.symbol]<L, R>(this: Either.Right<L, R>, that: unknown): boolean {
+  [Equal.symbol]<R, L>(this: Either.Right<R, L>, that: unknown): boolean {
     return isEither(that) && isRight(that) && Equal.equals(this.right, that.right)
   },
-  [Hash.symbol]<L, R>(this: Either.Right<L, R>) {
+  [Hash.symbol]<R, L>(this: Either.Right<R, L>) {
     return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.right))
   },
-  toJSON<L, R>(this: Either.Right<L, R>) {
+  toJSON<R, L>(this: Either.Right<R, L>) {
     return {
       _id: "Either",
       _tag: this._tag,
@@ -51,13 +51,13 @@ const RightProto = Object.assign(Object.create(CommonProto), {
 const LeftProto = Object.assign(Object.create(CommonProto), {
   _tag: "Left",
   _op: "Left",
-  [Equal.symbol]<L, R>(this: Either.Left<L, R>, that: unknown): boolean {
+  [Equal.symbol]<R, L>(this: Either.Left<R, L>, that: unknown): boolean {
     return isEither(that) && isLeft(that) && Equal.equals(this.left, that.left)
   },
-  [Hash.symbol]<L, R>(this: Either.Left<L, R>) {
+  [Hash.symbol]<R, L>(this: Either.Left<R, L>) {
     return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.left))
   },
-  toJSON<E, A>(this: Either.Left<E, A>) {
+  toJSON<A, E>(this: Either.Left<A, E>) {
     return {
       _id: "Either",
       _tag: this._tag,
@@ -70,10 +70,10 @@ const LeftProto = Object.assign(Object.create(CommonProto), {
 export const isEither = (input: unknown): input is Either.Either<unknown, unknown> => hasProperty(input, TypeId)
 
 /** @internal */
-export const isLeft = <R, L>(ma: Either.Either<R, L>): ma is Either.Left<L, R> => ma._tag === "Left"
+export const isLeft = <R, L>(ma: Either.Either<R, L>): ma is Either.Left<R, L> => ma._tag === "Left"
 
 /** @internal */
-export const isRight = <R, L>(ma: Either.Either<R, L>): ma is Either.Right<L, R> => ma._tag === "Right"
+export const isRight = <R, L>(ma: Either.Either<R, L>): ma is Either.Right<R, L> => ma._tag === "Right"
 
 /** @internal */
 export const left = <L>(left: L): Either.Either<never, L> => {

@@ -115,10 +115,10 @@ declare module "./Context.js" {
  * @category models
  */
 declare module "./Either.js" {
-  interface Left<L, R> extends STM<R, L> {
+  interface Left<R, L> extends STM<R, L> {
     readonly _tag: "Left"
   }
-  interface Right<L, R> extends STM<R, L> {
+  interface Right<R, L> extends STM<R, L> {
     readonly _tag: "Right"
   }
 }

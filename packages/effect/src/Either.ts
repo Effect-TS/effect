@@ -21,7 +21,7 @@ import * as Gen from "./Utils.js"
  * @category models
  * @since 2.0.0
  */
-export type Either<R, L = never> = Left<L, R> | Right<L, R>
+export type Either<R, L = never> = Left<R, L> | Right<R, L>
 
 /**
  * @category symbols
@@ -39,7 +39,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 2.0.0
  */
-export interface Left<out L, out R> extends Pipeable, Inspectable {
+export interface Left<out R, out L> extends Pipeable, Inspectable {
   readonly _tag: "Left"
   readonly _op: "Left"
   readonly left: L
@@ -56,7 +56,7 @@ export interface Left<out L, out R> extends Pipeable, Inspectable {
  * @category models
  * @since 2.0.0
  */
-export interface Right<out L, out R> extends Pipeable, Inspectable {
+export interface Right<out R, out L> extends Pipeable, Inspectable {
   readonly _tag: "Right"
   readonly _op: "Right"
   readonly right: R
@@ -241,7 +241,7 @@ export const isEither: (input: unknown) => input is Either<unknown, unknown> = e
  * @category guards
  * @since 2.0.0
  */
-export const isLeft: <R, L>(self: Either<R, L>) => self is Left<L, R> = either.isLeft
+export const isLeft: <R, L>(self: Either<R, L>) => self is Left<R, L> = either.isLeft
 
 /**
  * Determine if a `Either` is a `Right`.
@@ -259,7 +259,7 @@ export const isLeft: <R, L>(self: Either<R, L>) => self is Left<L, R> = either.i
  * @category guards
  * @since 2.0.0
  */
-export const isRight: <R, L>(self: Either<R, L>) => self is Right<L, R> = either.isRight
+export const isRight: <R, L>(self: Either<R, L>) => self is Right<R, L> = either.isRight
 
 /**
  * Converts a `Either` to an `Option` discarding the `Left`.

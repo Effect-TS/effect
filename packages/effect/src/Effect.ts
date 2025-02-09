@@ -173,13 +173,13 @@ declare module "./Context.js" {
  * @category Models
  */
 declare module "./Either.js" {
-  interface Left<L, R> extends Effect<R, L> {
+  interface Left<R, L> extends Effect<R, L> {
     readonly _tag: "Left"
-    [Symbol.iterator](): EffectGenerator<Left<L, R>>
+    [Symbol.iterator](): EffectGenerator<Left<R, L>>
   }
-  interface Right<L, R> extends Effect<R, L> {
+  interface Right<R, L> extends Effect<R, L> {
     readonly _tag: "Right"
-    [Symbol.iterator](): EffectGenerator<Right<L, R>>
+    [Symbol.iterator](): EffectGenerator<Right<R, L>>
   }
   interface EitherUnifyIgnore {
     Effect?: true

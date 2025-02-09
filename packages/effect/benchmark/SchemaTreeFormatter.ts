@@ -25,7 +25,7 @@ const schema = S.Struct({
 const decodeUnknownEither = S.decodeUnknownEither(schema)
 const input = { a: { b: { c: "" } } }
 const result = decodeUnknownEither(input)
-const issue = (result as any as Either.Left<ParseResult.ParseError, unknown>).left.issue
+const issue = (result as any as Either.Left<unknown, ParseResult.ParseError>).left.issue
 
 // console.log(issue)
 

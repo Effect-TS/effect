@@ -552,7 +552,7 @@ export const setAll: {
     for (const [name, value, options] of cookies) {
       const either = makeCookie(name, value, options)
       if (Either.isLeft(either)) {
-        return either as Either.Left<CookiesError, never>
+        return either as Either.Left<never, CookiesError>
       }
       record[name] = either.right
     }
