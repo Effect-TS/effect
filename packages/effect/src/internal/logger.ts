@@ -3,7 +3,6 @@ import * as Context from "../Context.js"
 import * as FiberRefs from "../FiberRefs.js"
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
-import { globalValue } from "../GlobalValue.js"
 import * as HashMap from "../HashMap.js"
 import * as Inspectable from "../Inspectable.js"
 import * as List from "../List.js"
@@ -341,7 +340,7 @@ export const structuredMessage = (u: unknown): unknown => {
       return String(u)
     }
     default: {
-      return u
+      return Inspectable.toJSON(u)
     }
   }
 }
@@ -488,13 +487,13 @@ const prettyLoggerTty = (options: {
 
       if (messageIndex < message.length) {
         for (; messageIndex < message.length; messageIndex++) {
-          log(message[messageIndex])
+          log(Inspectable.redact(message[messageIndex]))
         }
       }
 
       if (HashMap.size(annotations) > 0) {
         for (const [key, value] of annotations) {
-          log(color(`${key}:`, colors.bold, colors.white), value)
+          log(color(`${key}:`, colors.bold, colors.white), Inspectable.redact(value))
         }
       }
 
@@ -553,16 +552,17 @@ const prettyLoggerBrowser = (options: {
 
       if (messageIndex < message.length) {
         for (; messageIndex < message.length; messageIndex++) {
-          console.log(message[messageIndex])
+          console.log(Inspectable.redact(message[messageIndex]))
         }
       }
 
       if (HashMap.size(annotations) > 0) {
         for (const [key, value] of annotations) {
+          const redacted = Inspectable.redact(value)
           if (options.colors) {
-            console.log(`%c${key}:`, "color:gray", value)
+            console.log(`%c${key}:`, "color:gray", redacted)
           } else {
-            console.log(`${key}:`, value)
+            console.log(`${key}:`, redacted)
           }
         }
       }
@@ -571,6 +571,3 @@ const prettyLoggerBrowser = (options: {
     }
   )
 }
-
-/** @internal */
-export const prettyLoggerDefault = globalValue("effect/Logger/prettyLoggerDefault", () => prettyLogger())

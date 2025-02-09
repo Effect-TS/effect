@@ -26,6 +26,26 @@ describe("Mailbox", () => {
       assert.deepStrictEqual(fiber.unsafePoll(), Exit.succeed(Chunk.empty()))
     }))
 
+  it.effect("offer dropping", () =>
+    Effect.gen(function*() {
+      const mailbox = yield* Mailbox.make<number>({ capacity: 2, strategy: "dropping" })
+      const remaining = yield* mailbox.offerAll([1, 2, 3, 4])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(remaining), [3, 4])
+      const result = yield* mailbox.offer(5)
+      assert.isFalse(result)
+      assert.deepStrictEqual(Chunk.toReadonlyArray((yield* mailbox.takeAll)[0]), [1, 2])
+    }))
+
+  it.effect("offer sliding", () =>
+    Effect.gen(function*() {
+      const mailbox = yield* Mailbox.make<number>({ capacity: 2, strategy: "sliding" })
+      const remaining = yield* mailbox.offerAll([1, 2, 3, 4])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(remaining), [])
+      const result = yield* mailbox.offer(5)
+      assert.isTrue(result)
+      assert.deepStrictEqual(Chunk.toReadonlyArray((yield* mailbox.takeAll)[0]), [4, 5])
+    }))
+
   it.effect("offerAll can be interrupted", () =>
     Effect.gen(function*() {
       const mailbox = yield* Mailbox.make<number>(2)
@@ -147,5 +167,18 @@ describe("Mailbox", () => {
       assert.isTrue(done)
       yield* Effect.yieldNow()
       assert.isNotNull(fiber.unsafePoll())
+    }))
+
+  it.effect("bounded 0 capacity", () =>
+    Effect.gen(function*() {
+      const mailbox = yield* Mailbox.make<number>(0)
+      yield* mailbox.offer(1).pipe(Effect.fork)
+      let result = yield* mailbox.take
+      assert.strictEqual(result, 1)
+
+      const fiber = yield* mailbox.take.pipe(Effect.fork)
+      yield* mailbox.offer(2)
+      result = yield* Fiber.join(fiber)
+      assert.strictEqual(result, 2)
     }))
 })

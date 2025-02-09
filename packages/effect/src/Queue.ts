@@ -64,7 +64,7 @@ export type BackingQueueTypeId = typeof BackingQueueTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Queue<in out A> extends Enqueue<A>, Dequeue<A>, Pipeable {
+export interface Queue<in out A> extends Enqueue<A>, Dequeue<A> {
   /** @internal */
   readonly queue: BackingQueue<A>
   /** @internal */
@@ -134,7 +134,7 @@ export interface Enqueue<in A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipe
  * @since 2.0.0
  * @category models
  */
-export interface Dequeue<out A> extends Effect.Effect<A>, Queue.DequeueVariance<A>, BaseQueue, Pipeable {
+export interface Dequeue<out A> extends Effect.Effect<A>, Queue.DequeueVariance<A>, BaseQueue {
   /**
    * Takes the oldest value in the queue. If the queue is empty, this will return
    * a computation that resumes when an item has been added to the queue.

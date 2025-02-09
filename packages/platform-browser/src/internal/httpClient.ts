@@ -37,7 +37,7 @@ export const withXHRArrayBuffer = <A, E, R>(effect: Effect.Effect<A, E, R>): Eff
 
 const makeXhr = () => new XMLHttpRequest()
 
-const makeXMLHttpRequest = Client.makeService((request, url, signal, fiber) =>
+const makeXMLHttpRequest = Client.make((request, url, signal, fiber) =>
   Effect.suspend(() => {
     const xhr = Context.getOrElse(
       fiber.getFiberRef(FiberRef.currentContext),
@@ -314,25 +314,11 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
   }
 
   toJSON(): unknown {
-    let body: unknown
-    try {
-      body = Effect.runSync(this.json)
-    } catch (_) {
-      //
-    }
-    try {
-      body = body ?? Effect.runSync(this.text)
-    } catch (_) {
-      //
-    }
-    return {
+    return IncomingMessage.inspect(this, {
       _id: "@effect/platform/HttpClientResponse",
       request: this.request.toJSON(),
-      status: this.status,
-      headers: this.headers,
-      remoteAddress: this.remoteAddress.toJSON(),
-      body
-    }
+      status: this.status
+    })
   }
 }
 

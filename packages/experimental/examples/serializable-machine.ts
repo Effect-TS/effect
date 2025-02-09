@@ -1,7 +1,6 @@
 import { Machine } from "@effect/experimental"
 import { runMain } from "@effect/platform-node/NodeRuntime"
-import { Schema } from "@effect/schema"
-import { Effect, List, pipe, Schedule } from "effect"
+import { Effect, List, pipe, Schedule, Schema } from "effect"
 
 class SendError extends Schema.TaggedError<SendError>()(
   "SendError",

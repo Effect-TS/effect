@@ -1,4 +1,3 @@
-import { internalCall } from "effect/Utils"
 import * as Cause from "../../Cause.js"
 import * as Context from "../../Context.js"
 import * as Effect from "../../Effect.js"
@@ -15,11 +14,10 @@ import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
 import type * as Scheduler from "../../Scheduler.js"
 import type * as STM from "../../STM.js"
-import { StreamTypeId } from "../../Stream.js"
-import { YieldWrap } from "../../Utils.js"
+import { internalCall, YieldWrap } from "../../Utils.js"
 import { ChannelTypeId } from "../core-stream.js"
 import { withFiberRuntime } from "../core.js"
-import { effectVariance } from "../effectable.js"
+import { effectVariance, StreamTypeId } from "../effectable.js"
 import { OP_COMMIT } from "../opCodes/effect.js"
 import { SingleShotGen } from "../singleShotGen.js"
 import { SinkTypeId } from "../sink.js"
@@ -56,7 +54,7 @@ export type Primitive =
 
 /** @internal */
 type Op<Tag extends string, Body = {}> = STM.STM<never> & Body & {
-  readonly _tag: OP_COMMIT
+  readonly _op: OP_COMMIT
   readonly effect_instruction_i0: Tag
 }
 
@@ -150,7 +148,6 @@ const stmVariance = {
 
 /** @internal */
 class STMPrimitive implements STM.STM<any, any, any> {
-  public _tag = OP_COMMIT
   public _op = OP_COMMIT
   public effect_instruction_i1: any = undefined
   public effect_instruction_i2: any = undefined;
@@ -481,7 +478,7 @@ export class STMDriver<in out R, out E, out A> {
       try {
         const current = curr
         if (current) {
-          switch (current._tag) {
+          switch (current._op) {
             case "Tag": {
               curr = effect((_, __, env) => Context.unsafeGet(env, current)) as Primitive
               break

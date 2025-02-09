@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
+import type * as ParseResult from "effect/ParseResult"
+import type * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type { Unify } from "effect/Unify"
@@ -50,6 +50,7 @@ export type TypeId = typeof TypeId
  */
 export interface HttpClientResponse extends IncomingMessage.HttpIncomingMessage<Error.ResponseError> {
   readonly [TypeId]: TypeId
+  readonly request: ClientRequest.HttpClientRequest
   readonly status: number
   readonly cookies: Cookies.Cookies
   readonly formData: Effect.Effect<FormData, Error.ResponseError>
@@ -130,3 +131,19 @@ export const matchStatus: {
     }
   >(self: HttpClientResponse, cases: Cases): Cases[keyof Cases] extends (_: any) => infer R ? Unify<R> : never
 } = internal.matchStatus
+
+/**
+ * @since 1.0.0
+ * @category filters
+ */
+export const filterStatus: {
+  (f: (status: number) => boolean): (self: HttpClientResponse) => Effect.Effect<HttpClientResponse, Error.ResponseError>
+  (self: HttpClientResponse, f: (status: number) => boolean): Effect.Effect<HttpClientResponse, Error.ResponseError>
+} = internal.filterStatus
+
+/**
+ * @since 1.0.0
+ * @category filters
+ */
+export const filterStatusOk: (self: HttpClientResponse) => Effect.Effect<HttpClientResponse, Error.ResponseError> =
+  internal.filterStatusOk

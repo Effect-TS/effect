@@ -108,6 +108,15 @@ export const isEmpty: <A>(self: TPubSub<A>) => STM.STM<boolean> = internal.isEmp
 export const isFull: <A>(self: TPubSub<A>) => STM.STM<boolean> = internal.isFull
 
 /**
+ * Interrupts any fibers that are suspended on `offer` or `take`. Future calls
+ * to `offer*` and `take*` will be interrupted immediately.
+ *
+ * @since 2.0.0
+ * @category utils
+ */
+export const shutdown: <A>(self: TPubSub<A>) => STM.STM<void> = internal.shutdown
+
+/**
  * Returns `true` if `shutdown` has been called, otherwise returns `false`.
  *
  * @since 2.0.0

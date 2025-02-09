@@ -38,6 +38,20 @@ describe("Stream", () => {
       assert.deepStrictEqual(Array.from(result), [1])
     }))
 
+  it.effect("mergeWithTag", (ctx) =>
+    Effect.gen(function*() {
+      const stream = Stream.mergeWithTag({
+        a: Stream.make(0),
+        b: Stream.make("")
+      }, { concurrency: 1 })
+
+      const res = Chunk.toArray(yield* Stream.runCollect(stream))
+      ctx.expect(res).toEqual([
+        { _tag: "a", value: 0 },
+        { _tag: "b", value: "" }
+      ])
+    }))
+
   it.effect("mergeHaltLeft - terminates as soon as the first stream terminates", () =>
     Effect.gen(function*($) {
       const queue1 = yield* $(Queue.unbounded<number>())

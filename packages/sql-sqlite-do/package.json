@@ -1,0 +1,55 @@
+{
+  "name": "@effect/sql-sqlite-do",
+  "version": "0.2.2",
+  "type": "module",
+  "license": "MIT",
+  "description": "A SQLite toolkit for Effect",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/sql-sqlite-do"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "tags": [
+    "typescript",
+    "sql",
+    "database"
+  ],
+  "keywords": [
+    "typescript",
+    "sql",
+    "database"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist",
+    "provenance": true
+  },
+  "scripts": {
+    "codegen": "build-utils prepare-v2",
+    "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "@opentelemetry/semantic-conventions": "^1.25.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240806.0",
+    "@effect/experimental": "workspace:^",
+    "@effect/sql": "workspace:^",
+    "effect": "workspace:^"
+  },
+  "peerDependencies": {
+    "@effect/experimental": "workspace:^",
+    "@effect/sql": "workspace:^",
+    "effect": "workspace:^"
+  }
+}

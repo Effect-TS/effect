@@ -12,6 +12,7 @@ import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, type Predicate } from "../Predicate.js"
 import * as Queue from "../Queue.js"
 import * as Ref from "../Ref.js"
+import * as Scope from "../Scope.js"
 import type * as Stream from "../Stream.js"
 import type * as Take from "../Take.js"
 import type { NoInfer } from "../Types.js"
@@ -277,7 +278,7 @@ export const mapEffectOptions = dual<
 export const bindEffect = dual<
   <N extends string, A, B, E2, R2>(
     tag: Exclude<N, keyof A>,
-    f: (_: A) => Effect.Effect<B, E2, R2>,
+    f: (_: NoInfer<A>) => Effect.Effect<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
@@ -290,7 +291,7 @@ export const bindEffect = dual<
   <A, E, R, N extends string, B, E2, R2>(
     self: Stream.Stream<A, E, R>,
     tag: Exclude<N, keyof A>,
-    f: (_: A) => Effect.Effect<B, E2, R2>,
+    f: (_: NoInfer<A>) => Effect.Effect<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly unordered?: boolean | undefined
@@ -487,29 +488,19 @@ export const groupByKey = dual<
             )
           )
       })
-    return make(stream.unwrapScoped(
-      pipe(
-        Effect.sync(() => new Map<K, Queue.Queue<Take.Take<A, E>>>()),
-        Effect.flatMap((map) =>
-          pipe(
-            Effect.acquireRelease(
-              Queue.unbounded<Take.Take<readonly [K, Queue.Queue<Take.Take<A, E>>], E>>(),
-              (queue) => Queue.shutdown(queue)
-            ),
-            Effect.flatMap((queue) =>
-              pipe(
-                self,
-                stream.toChannel,
-                core.pipeTo(loop(map, queue)),
-                channel.drain,
-                channelExecutor.runScoped,
-                Effect.forkScoped,
-                Effect.as(stream.flattenTake(stream.fromQueue(queue, { shutdown: true })))
-              )
-            )
-          )
+    return make(stream.unwrapScopedWith((scope) =>
+      Effect.gen(function*() {
+        const map = new Map<K, Queue.Queue<Take.Take<A, E>>>()
+        const queue = yield* Queue.unbounded<Take.Take<readonly [K, Queue.Queue<Take.Take<A, E>>], E>>()
+        yield* Scope.addFinalizer(scope, Queue.shutdown(queue))
+        return yield* stream.toChannel(self).pipe(
+          core.pipeTo(loop(map, queue)),
+          channel.drain,
+          channelExecutor.runIn(scope),
+          Effect.forkIn(scope),
+          Effect.as(stream.flattenTake(stream.fromQueue(queue, { shutdown: true })))
         )
-      )
+      })
     ))
   }
 )

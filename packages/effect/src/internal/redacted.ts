@@ -2,6 +2,7 @@ import * as Equal from "../Equal.js"
 import { pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
+import { NodeInspectSymbol } from "../Inspectable.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Redacted from "../Redacted.js"
@@ -32,6 +33,9 @@ export const proto = {
     return "<redacted>"
   },
   toJSON() {
+    return "<redacted>"
+  },
+  [NodeInspectSymbol]() {
     return "<redacted>"
   },
   [Hash.symbol]<T>(this: Redacted.Redacted<T>): number {

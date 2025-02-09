@@ -1,9 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { ParseError } from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
@@ -12,8 +9,10 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { dual, pipe } from "effect/Function"
 import * as Mailbox from "effect/Mailbox"
+import type { ParseError } from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { StreamRequestTypeId, withRequestTag } from "./internal/rpc.js"
 import * as Rpc from "./Rpc.js"
@@ -55,7 +54,7 @@ export declare namespace RpcRouter {
    * @category models
    */
   export type Context<A extends RpcRouter<any, any>> = A extends RpcRouter<infer Req, infer R>
-    ? R | Serializable.SerializableWithResult.Context<Req>
+    ? R | Schema.SerializableWithResult.Context<Req>
     : never
 
   /**
@@ -63,7 +62,7 @@ export declare namespace RpcRouter {
    * @category models
    */
   export type ContextRaw<A extends RpcRouter<any, any>> = A extends RpcRouter<infer Req, infer R>
-    ? R | Serializable.Serializable.Context<Req>
+    ? R | Schema.Serializable.Context<Req>
     : never
 
   /**
@@ -182,12 +181,20 @@ const emptyExit = Schema.encodeSync(Schema.Exit({
  * @since 1.0.0
  * @category combinators
  */
-export const toHandler = <R extends RpcRouter<any, any>>(router: R, options?: {
-  readonly spanPrefix?: string
-}) => {
-  const spanPrefix = options?.spanPrefix ?? "Rpc.router "
-  const schema = Schema
-    .Union(
+export const toHandler: {
+  (options?: {
+    readonly spanPrefix?: string
+  }): <R extends RpcRouter<any, any>>(
+    self: R
+  ) => (u: unknown) => Stream.Stream<RpcRouter.Response, ParseError, RpcRouter.Context<R>>
+  <R extends RpcRouter<any, any>>(self: R, options?: {
+    readonly spanPrefix?: string
+  }): (u: unknown) => Stream.Stream<RpcRouter.Response, ParseError, RpcRouter.Context<R>>
+} = dual(
+  (args) => isRpcRouter(args[0]),
+  <R extends RpcRouter<any, any>>(router: R, options?: { readonly spanPrefix?: string }) => {
+    const spanPrefix = options?.spanPrefix ?? "Rpc.router "
+    const schema = Schema.Union(
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
           rpc.schema,
@@ -196,30 +203,63 @@ export const toHandler = <R extends RpcRouter<any, any>>(router: R, options?: {
         )
       )
     )
-  const schemaArray = Schema.Array(Rpc.RequestSchema(schema))
-  const decode = Schema.decodeUnknown(schemaArray)
-  const getEncode = withRequestTag((req) => Schema.encode(Serializable.exitSchema(req)))
-  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Serializable.exitSchema(req))))
+    const schemaArray = Schema.Array(Rpc.RequestSchema(schema))
+    const decode = Schema.decodeUnknown(schemaArray)
+    const getEncode = withRequestTag((req) => Schema.encode(Schema.exitSchema(req)))
+    const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Schema.exitSchema(req))))
 
-  return (u: unknown): Stream.Stream<RpcRouter.Response, ParseError, RpcRouter.Context<R>> =>
-    pipe(
-      decode(u),
-      Effect.zip(Mailbox.make<RpcRouter.Response>(4)),
-      Effect.tap(([requests, mailbox]) =>
-        pipe(
-          Effect.forEach(requests, (req, index) => {
-            const [request, rpc] = req.request
-            if (rpc._tag === "Effect") {
-              const encode = getEncode(request)
+    return (u: unknown): Stream.Stream<RpcRouter.Response, ParseError, RpcRouter.Context<R>> =>
+      pipe(
+        decode(u),
+        Effect.zip(Mailbox.make<RpcRouter.Response>(4)),
+        Effect.tap(([requests, mailbox]) =>
+          pipe(
+            Effect.forEach(requests, (req, index) => {
+              const [request, rpc] = req.request
+              if (rpc._tag === "Effect") {
+                const encode = getEncode(request)
+                return pipe(
+                  Effect.exit(rpc.handler(request)),
+                  Effect.flatMap(encode),
+                  Effect.orDie,
+                  Effect.matchCauseEffect({
+                    onSuccess: (response) => mailbox.offer([index, response]),
+                    onFailure: (cause) =>
+                      Effect.flatMap(
+                        encode(Exit.failCause(cause)),
+                        (response) => mailbox.offer([index, response])
+                      )
+                  }),
+                  Effect.locally(Rpc.currentHeaders, req.headers as any),
+                  Effect.withSpan(`${spanPrefix}${request._tag}`, {
+                    kind: "server",
+                    parent: {
+                      _tag: "ExternalSpan",
+                      traceId: req.traceId,
+                      spanId: req.spanId,
+                      sampled: req.sampled,
+                      context: Context.empty()
+                    },
+                    captureStackTrace: false
+                  })
+                )
+              }
+              const encode = getEncodeChunk(request)
               return pipe(
-                Effect.exit(rpc.handler(request)),
-                Effect.flatMap(encode),
-                Effect.orDie,
+                rpc.handler(request),
+                Stream.toChannel,
+                Channel.mapOutEffect((chunk) =>
+                  Effect.flatMap(
+                    encode(Chunk.map(chunk, Exit.succeed)),
+                    (response) => mailbox.offer([index, response])
+                  )
+                ),
+                Channel.runDrain,
                 Effect.matchCauseEffect({
-                  onSuccess: (response) => mailbox.offer([index, response]),
+                  onSuccess: () => mailbox.offer([index, [emptyExit]]),
                   onFailure: (cause) =>
                     Effect.flatMap(
-                      encode(Exit.failCause(cause)),
+                      encode(Chunk.of(Exit.failCause(cause))),
                       (response) => mailbox.offer([index, response])
                     )
                 }),
@@ -236,71 +276,47 @@ export const toHandler = <R extends RpcRouter<any, any>>(router: R, options?: {
                   captureStackTrace: false
                 })
               )
-            }
-            const encode = getEncodeChunk(request)
-            return pipe(
-              rpc.handler(request),
-              Stream.toChannel,
-              Channel.mapOutEffect((chunk) =>
-                Effect.flatMap(
-                  encode(Chunk.map(chunk, Exit.succeed)),
-                  (response) => mailbox.offer([index, response])
-                )
-              ),
-              Channel.runDrain,
-              Effect.matchCauseEffect({
-                onSuccess: () => mailbox.offer([index, [emptyExit]]),
-                onFailure: (cause) =>
-                  Effect.flatMap(
-                    encode(Chunk.of(Exit.failCause(cause))),
-                    (response) => mailbox.offer([index, response])
-                  )
-              }),
-              Effect.locally(Rpc.currentHeaders, req.headers as any),
-              Effect.withSpan(`${spanPrefix}${request._tag}`, {
-                kind: "server",
-                parent: {
-                  _tag: "ExternalSpan",
-                  traceId: req.traceId,
-                  spanId: req.spanId,
-                  sampled: req.sampled,
-                  context: Context.empty()
-                },
-                captureStackTrace: false
-              })
-            )
-          }, { concurrency: "unbounded", discard: true }),
-          Effect.ensuring(mailbox.end),
-          Effect.forkScoped
-        )
-      ),
-      Effect.map(([_, mailbox]) => Mailbox.toStream(mailbox)),
-      Stream.unwrapScoped
-    )
-}
+            }, { concurrency: "unbounded", discard: true }),
+            Effect.ensuring(mailbox.end),
+            Effect.forkScoped
+          )
+        ),
+        Effect.map(([_, mailbox]) => Mailbox.toStream(mailbox)),
+        Stream.unwrapScoped
+      )
+  }
+)
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const toHandlerNoStream = <R extends RpcRouter<any, any>>(router: R, options?: {
+export const toHandlerNoStream: {
+  (options?: {
+    readonly spanPrefix?: string
+  }): <R extends RpcRouter<any, any>>(
+    self: R
+  ) => (u: unknown) => Effect.Effect<RpcRouter.ResponseEffect, ParseError, RpcRouter.Context<R>>
+  <R extends RpcRouter<any, any>>(self: R, options?: {
+    readonly spanPrefix?: string
+  }): (u: unknown) => Effect.Effect<RpcRouter.ResponseEffect, ParseError, RpcRouter.Context<R>>
+} = dual((args) => isRpcRouter(args[0]), <R extends RpcRouter<any, any>>(router: R, options?: {
   readonly spanPrefix?: string
 }) => {
   const spanPrefix = options?.spanPrefix ?? "Rpc.router "
-  const schema = Schema
-    .Union(
-      ...[...router.rpcs].map((rpc) =>
-        Schema.transform(
-          rpc.schema,
-          Schema.typeSchema(Schema.Tuple(rpc.schema, Schema.Any)),
-          { strict: true, decode: (request) => [request, rpc] as const, encode: ([request]) => request }
-        )
+  const schema = Schema.Union(
+    ...[...router.rpcs].map((rpc) =>
+      Schema.transform(
+        rpc.schema,
+        Schema.typeSchema(Schema.Tuple(rpc.schema, Schema.Any)),
+        { strict: true, decode: (request) => [request, rpc] as const, encode: ([request]) => request }
       )
     )
+  )
   const schemaArray = Schema.Array(Rpc.RequestSchema(schema))
   const decode = Schema.decodeUnknown(schemaArray)
-  const getEncode = withRequestTag((req) => Schema.encode(Serializable.exitSchema(req)))
-  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Serializable.exitSchema(req))))
+  const getEncode = withRequestTag((req) => Schema.encode(Schema.exitSchema(req)))
+  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Schema.exitSchema(req))))
 
   return (u: unknown): Effect.Effect<Array<RpcRouter.ResponseEffect>, ParseError, RpcRouter.Context<R>> =>
     Effect.flatMap(
@@ -349,7 +365,7 @@ export const toHandlerNoStream = <R extends RpcRouter<any, any>>(router: R, opti
         )
       }, { concurrency: "unbounded" })
     )
-}
+})
 
 /**
  * @since 1.0.0
@@ -391,8 +407,8 @@ export const toHandlerRaw = <R extends RpcRouter<any, any>>(router: R) => {
  */
 export const toHandlerUndecoded = <R extends RpcRouter<any, any>>(router: R) => {
   const handler = toHandlerRaw(router)
-  const getEncode = withRequestTag((req) => Schema.encode(Serializable.successSchema(req)))
-  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.ChunkFromSelf(Serializable.successSchema(req))))
+  const getEncode = withRequestTag((req) => Schema.encode(Schema.successSchema(req)))
+  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.ChunkFromSelf(Schema.successSchema(req))))
   return <Req extends RpcRouter.Request<R>>(request: Req): Rpc.Rpc.ResultUndecoded<Req, RpcRouter.Context<R>> => {
     const result = handler(request)
     if (Effect.isEffect(result)) {

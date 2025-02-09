@@ -1,21 +1,18 @@
 /**
  * @since 1.0.0
  */
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
 import type { Inspectable } from "effect/Inspectable"
 import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
 import type { Redacted } from "effect/Redacted"
-import type { Scope } from "effect/Scope"
+import type * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "./Error.js"
 import type * as FileSystem from "./FileSystem.js"
 import type * as Headers from "./Headers.js"
 import type * as Body from "./HttpBody.js"
-import type { HttpClient } from "./HttpClient.js"
-import type { HttpClientError } from "./HttpClientError.js"
-import type { HttpClientResponse } from "./HttpClientResponse.js"
 import type { HttpMethod } from "./HttpMethod.js"
 import * as internal from "./internal/httpClientRequest.js"
 import type * as UrlParams from "./UrlParams.js"
@@ -36,9 +33,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface HttpClientRequest
-  extends Effect.Effect<HttpClientResponse, HttpClientError, HttpClient.Service | Scope>, Inspectable
-{
+export interface HttpClientRequest extends Inspectable, Pipeable {
   readonly [TypeId]: TypeId
   readonly method: HttpMethod
   readonly url: string

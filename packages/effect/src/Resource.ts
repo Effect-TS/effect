@@ -8,6 +8,7 @@ import type * as Schedule from "./Schedule.js"
 import type * as Scope from "./Scope.js"
 import type * as ScopedRef from "./ScopedRef.js"
 import type * as Types from "./Types.js"
+import type * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -28,11 +29,31 @@ export type ResourceTypeId = typeof ResourceTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Resource<in out A, in out E = never> extends Resource.Variance<A, E> {
+export interface Resource<in out A, in out E = never> extends Effect.Effect<A, E>, Resource.Variance<A, E> {
   /** @internal */
   readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<A, E>>
   /** @internal */
   readonly acquire: Effect.Effect<A, E, Scope.Scope>
+
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: ResourceUnify<this>
+  readonly [Unify.ignoreSymbol]?: ResourceUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface ResourceUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  Resource?: () => Extract<A[Unify.typeSymbol], Resource<any, any>>
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface ResourceUnifyIgnore extends Effect.EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**

@@ -3,7 +3,7 @@ import { PgDrizzle } from "@effect/sql-drizzle/Pg"
 import { assert, describe, it } from "@effect/vitest"
 import * as D from "drizzle-orm/pg-core"
 import { Effect } from "effect"
-import { PgContainer } from "./utils.js"
+import { DrizzlePgLive } from "./utils.js"
 
 const users = D.pgTable("users", {
   id: D.serial("id").primaryKey(),
@@ -22,7 +22,7 @@ describe.sequential("Pg", () => {
       const results = yield* db.select().from(users)
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice" }])
     }).pipe(
-      Effect.provide(PgContainer.DrizzleLive),
+      Effect.provide(DrizzlePgLive),
       Effect.catchTag("ContainerError", () => Effect.void)
     ), {
     timeout: 60000
@@ -37,7 +37,7 @@ describe.sequential("Pg", () => {
       const results = yield* Effect.promise(() => db.select().from(users))
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "snake" }])
     }).pipe(
-      Effect.provide(PgContainer.DrizzleLive),
+      Effect.provide(DrizzlePgLive),
       Effect.catchTag("ContainerError", () => Effect.void)
     ), {
     timeout: 60000

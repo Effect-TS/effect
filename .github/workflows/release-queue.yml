@@ -22,11 +22,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.EFFECT_BOT_GH }}
       - run: gh pr checkout ${{ github.event.pull_request.number }}
         if: github.event.pull_request
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.EFFECT_BOT_GH }}
       - uses: tim-smart/next-release-action@main
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          packages: effect,@effect/schema,@effect/platform
+          github_token: ${{ secrets.EFFECT_BOT_GH }}
+          packages: effect,@effect/platform
+          git_user: effect-bot
+          git_email: tech-ops@effectful.co

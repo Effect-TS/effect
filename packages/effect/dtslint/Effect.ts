@@ -5,6 +5,7 @@ import { hole, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
+import type { Simplify } from "../src/Types.js"
 
 declare const string: Effect.Effect<string, "err-1", "dep-1">
 declare const number: Effect.Effect<number, "err-2", "dep-2">
@@ -1263,3 +1264,89 @@ pipe(
     ) => "b" as const
   )
 )
+
+// -------------------------------------------------------------------------------------
+// mapAccum
+// -------------------------------------------------------------------------------------
+
+declare const nonEmptyReadonlyStrings: NonEmptyReadonlyArray<string>
+declare const strings: Array<string>
+
+// $ExpectType Effect<[number, string[]], never, never>
+Effect.mapAccum(strings, 0, (s, a, i) => Effect.succeed([s + i, a]))
+
+// $ExpectType Effect<[number, [string, ...string[]]], never, never>
+Effect.mapAccum(nonEmptyReadonlyStrings, 0, (s, a, i) => Effect.succeed([s + i, a]))
+
+// $ExpectType Effect<[number, string[]], never, never>
+pipe(
+  strings,
+  Effect.mapAccum(0, (s, a, i) => Effect.succeed([s + i, a]))
+)
+
+// $ExpectType Effect<[number, [string, ...string[]]], never, never>
+pipe(
+  nonEmptyReadonlyStrings,
+  Effect.mapAccum(0, (s, a, i) => Effect.succeed([s + i, a]))
+)
+
+// -------------------------------------------------------------------------------------
+// Tag.Proxy
+// -------------------------------------------------------------------------------------
+
+// $ExpectType {}
+hole<Simplify<Effect.Tag.Proxy<"R", {}>>>()
+
+// $ExpectType { a: () => Effect<1, never, "R">; }
+hole<
+  Simplify<
+    Effect.Tag.Proxy<"R", {
+      a: () => 1
+    }>
+  >
+>()
+
+// $ExpectType { a: (...args: readonly number[]) => Effect<void, never, "R">; }
+hole<
+  Simplify<
+    Effect.Tag.Proxy<"R", {
+      a: (...args: ReadonlyArray<number>) => void
+    }>
+  >
+>()
+
+// $ExpectType { a: (...args: Readonly<[1] | [2, 3]>) => Effect<void, never, "R">; }
+hole<
+  Simplify<
+    Effect.Tag.Proxy<"R", {
+      a: (...args: [1] | [2, 3]) => void
+    }>
+  >
+>()
+
+// $ExpectType { a: (...args: Readonly<[1] | [2, 3]>) => Effect<1, 2, 3 | "R">; }
+hole<
+  Simplify<
+    Effect.Tag.Proxy<"R", {
+      a: (...args: [1] | [2, 3]) => Effect.Effect<1, 2, 3>
+    }>
+  >
+>()
+
+// $ExpectType { a: Effect<1, never, "R">; }
+hole<
+  Simplify<
+    Effect.Tag.Proxy<"R", {
+      a: 1
+    }>
+  >
+>()
+
+// $ExpectType { a: () => Effect<1, UnknownException, "R">; }
+hole<
+  Simplify<
+    Effect.Tag.Proxy<"R", {
+      a: () => Promise<1>
+    }>
+  >
+>()

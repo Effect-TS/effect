@@ -36,12 +36,22 @@ export * as Persistence from "./Persistence.js"
 /**
  * @since 1.0.0
  */
+export * as Reactivity from "./Reactivity.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as RequestResolver from "./RequestResolver.js"
 
 /**
  * @since 1.0.0
  */
 export * as SocketServer from "./SocketServer.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Sse from "./Sse.js"
 
 /**
  * @since 1.0.0

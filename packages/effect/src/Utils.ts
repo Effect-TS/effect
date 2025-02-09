@@ -614,21 +614,7 @@ export class PCGRandom {
    * @since 2.0.0
    */
   integer(max: number) {
-    if (!max) {
-      return this._next()
-    }
-    max = max >>> 0
-    if ((max & (max - 1)) === 0) {
-      return this._next() & (max - 1) // fast path for power of 2
-    }
-
-    let num = 0
-    const skew = (-max >>> 0) % max >>> 0
-    for (num = this._next(); num < skew; num = this._next()) {
-      // this loop will rarely execute more than twice,
-      // and is intentionally empty
-    }
-    return num % max
+    return Math.round(this.number() * Number.MAX_SAFE_INTEGER) % max
   }
 
   /**
@@ -805,3 +791,11 @@ const tracingFunction = (name: string) => {
  * @category tracing
  */
 export const internalCall = tracingFunction("effect_internal_function")
+
+const genConstructor = (function*() {}).constructor
+
+/**
+ * @since 3.11.0
+ */
+export const isGeneratorFunction = (u: unknown): u is (...args: Array<any>) => Generator<any, any, any> =>
+  isObject(u) && u.constructor === genConstructor

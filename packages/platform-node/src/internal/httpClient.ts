@@ -54,8 +54,8 @@ export const makeAgentLayer = (options?: Https.AgentOptions): Layer.Layer<NodeCl
 /** @internal */
 export const agentLayer = makeAgentLayer()
 
-const fromAgent = (agent: NodeClient.HttpAgent): Client.HttpClient.Service =>
-  Client.makeService((request, url, signal) => {
+const fromAgent = (agent: NodeClient.HttpAgent): Client.HttpClient =>
+  Client.make((request, url, signal) => {
     const nodeRequest = url.protocol === "https:" ?
       Https.request(url, {
         agent: agent.https,

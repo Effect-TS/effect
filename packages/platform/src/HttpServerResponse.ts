@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
 import type { Inspectable } from "effect/Inspectable"
 import type * as Runtime from "effect/Runtime"
+import type * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 import type * as Stream from "effect/Stream"
 import type { Cookie, Cookies, CookiesError } from "./Cookies.js"
 import type * as PlatformError from "./Error.js"
@@ -50,7 +50,7 @@ export interface HttpServerResponse extends Effect.Effect<HttpServerResponse>, I
 export interface Options {
   readonly status?: number | undefined
   readonly statusText?: string | undefined
-  readonly headers?: Headers.Headers | undefined
+  readonly headers?: Headers.Input | undefined
   readonly cookies?: Cookies | undefined
   readonly contentType?: string | undefined
   readonly contentLength?: number | undefined
@@ -83,6 +83,13 @@ export const isServerResponse: (u: unknown) => u is HttpServerResponse = interna
  * @category constructors
  */
 export const empty: (options?: Options.WithContent | undefined) => HttpServerResponse = internal.empty
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const redirect: (location: string | URL, options?: Options.WithContentType | undefined) => HttpServerResponse =
+  internal.redirect
 
 /**
  * @since 1.0.0

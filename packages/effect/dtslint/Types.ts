@@ -57,18 +57,56 @@ hole<Types.Equals<{ a: number }, { a: number }>>()
 hole<Types.Equals<{ a: number }, { b: number }>>()
 
 // -------------------------------------------------------------------------------------
+// MergeRecord
+// -------------------------------------------------------------------------------------
+
+// No tests needed as MergeRecord is just an alias of MergeLeft
+
+// -------------------------------------------------------------------------------------
 // MergeLeft
 // -------------------------------------------------------------------------------------
 
-// $ExpectType { a: number; b: number; }
-hole<Types.MergeLeft<{ a: number; b: number }, { a: string }>>()
+// No tests needed as MergeLeft is just MergeRight with arguments flipped
 
 // -------------------------------------------------------------------------------------
 // MergeRight
 // -------------------------------------------------------------------------------------
 
-// $ExpectType { a: string; b: number; }
-hole<Types.MergeRight<{ a: number; b: number }, { a: string }>>()
+// mutable overwrites mutable
+// $ExpectType { a: string; c: boolean; b: number; }
+hole<Types.MergeRight<{ a: number; b: number }, { a: string; c: boolean }>>()
+
+// mutable overwrites readonly
+// $ExpectType { a: string; c: boolean; b: number; }
+hole<Types.MergeRight<{ readonly a: number; b: number }, { a: string; c: boolean }>>()
+
+// readonly overwrites mutable
+// $ExpectType { readonly a: string; c: boolean; b: number; }
+hole<Types.MergeRight<{ a: number; b: number }, { readonly a: string; c: boolean }>>()
+
+// required overwrites optional
+// $ExpectType { a: string; c: boolean; b: number; }
+hole<Types.MergeRight<{ a?: number; b: number }, { a: string; c: boolean }>>()
+
+// optional overwrites optional
+// $ExpectType { a?: string; c: boolean; b: number; }
+hole<Types.MergeRight<{ a?: number; b: number }, { a?: string; c: boolean }>>()
+
+// optional overwrites required
+// $ExpectType { a?: string; c: boolean; b: number; }
+hole<Types.MergeRight<{ a: number; b: number }, { a?: string; c: boolean }>>()
+
+// readonly optional overwrites mutable required
+// $ExpectType { readonly a?: string; c: boolean; b: number; }
+hole<Types.MergeRight<{ a: number; b: number }, { readonly a?: string; c: boolean }>>()
+
+// mutable required overwrites readonly optional
+// $ExpectType { a: string; c: boolean; b: number; }
+hole<Types.MergeRight<{ readonly a?: number; b: number }, { a: string; c: boolean }>>()
+
+// optionality of non involved keys must be preserved
+// $ExpectType { readonly c?: string; readonly a?: number; b: number; }
+hole<Types.MergeRight<{ readonly a?: number; b: number }, { readonly c?: string }>>()
 
 // -------------------------------------------------------------------------------------
 // Mutable

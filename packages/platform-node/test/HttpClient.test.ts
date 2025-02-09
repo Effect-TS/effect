@@ -1,10 +1,11 @@
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform"
 import * as NodeClient from "@effect/platform-node/NodeHttpClient"
-import * as Schema from "@effect/schema/Schema"
 import { describe, expect, it } from "@effect/vitest"
+import { Struct } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 
 const Todo = Schema.Struct({
@@ -13,23 +14,24 @@ const Todo = Schema.Struct({
   title: Schema.String,
   completed: Schema.Boolean
 })
+const TodoWithoutId = Schema.Struct({
+  ...Struct.omit(Todo.fields, "id")
+})
 
 const makeJsonPlaceholder = Effect.gen(function*(_) {
   const defaultClient = yield* _(HttpClient.HttpClient)
   const client = defaultClient.pipe(
     HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))
   )
-  const todoClient = client.pipe(
-    HttpClient.mapEffect(HttpClientResponse.schemaBodyJson(Todo)),
-    HttpClient.scoped
-  )
-  const createTodo = HttpClient.schemaFunction(
-    todoClient,
-    Todo.pipe(Schema.omit("id"))
-  )(HttpClientRequest.post("/todos"))
+  const createTodo = (todo: typeof TodoWithoutId.Type) =>
+    HttpClientRequest.post("/todos").pipe(
+      HttpClientRequest.schemaBodyJson(TodoWithoutId)(todo),
+      Effect.flatMap(client.execute),
+      Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
+      Effect.scoped
+    )
   return {
     client,
-    todoClient,
     createTodo
   } as const
 })
@@ -50,7 +52,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
     it.effect("google", () =>
       Effect.gen(function*(_) {
         const response = yield* _(
-          HttpClientRequest.get("https://www.google.com/"),
+          HttpClient.get("https://www.google.com/"),
           Effect.flatMap((_) => _.text),
           Effect.scoped
         )
@@ -83,13 +85,16 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
     it.effect("jsonplaceholder", () =>
       Effect.gen(function*() {
         const jp = yield* JsonPlaceholder
-        const response = yield* jp.todoClient.get("/todos/1")
+        const response = yield* jp.client.get("/todos/1").pipe(
+          Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
+          Effect.scoped
+        )
         expect(response.id).toBe(1)
       }).pipe(Effect.provide(JsonPlaceholderLive.pipe(
         Layer.provide(layer)
       ))))
 
-    it.effect("jsonplaceholder schemaFunction", () =>
+    it.effect("jsonplaceholder schemaBodyJson", () =>
       Effect.gen(function*() {
         const jp = yield* JsonPlaceholder
         const response = yield* jp.createTodo({
@@ -130,7 +135,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
     it.effect("close early", () =>
       Effect.gen(function*(_) {
         const response = yield* _(
-          HttpClientRequest.get("https://www.google.com/"),
+          HttpClient.get("https://www.google.com/"),
           Effect.scoped
         )
         expect(response.status).toBe(200)

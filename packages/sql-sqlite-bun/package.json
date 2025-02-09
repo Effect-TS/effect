@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-bun",
-  "version": "0.12.7",
+  "version": "0.25.2",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
@@ -42,12 +42,14 @@
     "@opentelemetry/semantic-conventions": "^1.25.1"
   },
   "devDependencies": {
+    "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
-    "bun-types": "1.1.22",
+    "@types/bun": "^1.1.13",
     "effect": "workspace:^"
   },
   "peerDependencies": {
+    "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^"

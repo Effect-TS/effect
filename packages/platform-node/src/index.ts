@@ -82,3 +82,8 @@ export * as NodeWorker from "./NodeWorker.js"
  * @since 1.0.0
  */
 export * as NodeWorkerRunner from "./NodeWorkerRunner.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Undici from "./Undici.js"

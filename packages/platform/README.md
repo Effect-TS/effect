@@ -31,8 +31,8 @@ Let's define a simple CRUD API for managing users. First, we need to make an
 `HttpApiGroup` that contains our endpoints.
 
 ```ts
-import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform"
-import { Schema } from "@effect/schema"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
+import { Schema } from "effect"
 
 // Our domain "User" Schema
 class User extends Schema.Class<User>("User")({
@@ -41,58 +41,52 @@ class User extends Schema.Class<User>("User")({
   createdAt: Schema.DateTimeUtc
 }) {}
 
-const usersApi = HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
+// Our user id path parameter schema
+const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+
+const usersApi = HttpApiGroup.make("users")
+  .add(
     // each endpoint has a name and a path
-    HttpApiEndpoint.get("findById", "/users/:id").pipe(
+    // You can use a template string to define path parameter schemas
+    HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
       // the endpoint can have a Schema for a successful response
-      HttpApiEndpoint.setSuccess(User),
-      // and here is a Schema for the path parameters
-      HttpApiEndpoint.setPath(
-        Schema.Struct({
-          id: Schema.NumberFromString
-        })
-      )
-    )
-  ),
-  HttpApiGroup.add(
-    HttpApiEndpoint.post("create", "/users").pipe(
-      HttpApiEndpoint.setSuccess(User),
+      .addSuccess(User)
+  )
+  .add(
+    // you can also pass the path as a string and use `.setPath` to define the
+    // path parameter schema
+    HttpApiEndpoint.post("create", "/users")
+      .addSuccess(User)
       // and here is a Schema for the request payload / body
       //
       // this is a POST request, so the payload is in the body
       // but for a GET request, the payload would be in the URL search params
-      HttpApiEndpoint.setPayload(
+      .setPayload(
         Schema.Struct({
           name: Schema.String
         })
       )
-    )
-  ),
-  // by default, the endpoint will respond with a 204 No Content
-  HttpApiGroup.add(HttpApiEndpoint.del("delete", "/users/:id")),
-  HttpApiGroup.add(
-    HttpApiEndpoint.patch("update", "/users/:id").pipe(
-      HttpApiEndpoint.setSuccess(User),
-      HttpApiEndpoint.setPayload(
-        Schema.Struct({
-          name: Schema.String
-        })
-      )
-    )
   )
-)
+  // by default, the endpoint will respond with a 204 No Content
+  .add(HttpApiEndpoint.del("delete")`/users/${UserIdParam}`)
+  .add(
+    HttpApiEndpoint.patch("update")`/users/${UserIdParam}`
+      .addSuccess(User)
+      .setPayload(
+        Schema.Struct({
+          name: Schema.String
+        })
+      )
+  )
 ```
 
 You can also extend the `HttpApiGroup` with a class to gain an opaque type.
 We will use this API style in the following examples:
 
 ```ts
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("findById", "/users/:id")
-    // ... same as above
-  )
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
+  // ... same as above
 ) {}
 ```
 
@@ -103,13 +97,13 @@ Once you have defined your groups, you can combine them into a single `HttpApi`.
 ```ts
 import { HttpApi } from "@effect/platform"
 
-class MyApi extends HttpApi.empty.pipe(HttpApi.addGroup(UsersApi)) {}
+class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
 ```
 
 Or with the non-opaque style:
 
 ```ts
-const api = HttpApi.empty.pipe(HttpApi.addGroup(usersApi))
+const api = HttpApi.make("myApi").add(usersApi)
 ```
 
 ### Adding OpenApi annotations
@@ -121,17 +115,21 @@ Let's add a title to our `UsersApi` group:
 ```ts
 import { OpenApi } from "@effect/platform"
 
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("findById", "/users/:id")
+class UsersApi extends HttpApiGroup.make("users")
+  .add(
+    HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
     // ... same as above
-  ),
+  )
   // add an OpenApi title & description
-  OpenApi.annotate({
-    title: "Users API",
-    description: "API for managing users"
-  })
-) {}
+  // You can set one attribute at a time
+  .annotate(OpenApi.Title, "Users API")
+  // or multiple at once
+  .annotateContext(
+    OpenApi.annotations({
+      title: "Users API",
+      description: "API for managing users"
+    })
+  ) {}
 ```
 
 Now when you generate OpenApi documentation, the title and description will be
@@ -140,13 +138,9 @@ included.
 You can also add OpenApi annotations to the top-level `HttpApi`:
 
 ```ts
-class MyApi extends HttpApi.empty.pipe(
-  HttpApi.addGroup(UsersApi),
-  OpenApi.annotate({
-    title: "My API",
-    description: "My awesome API"
-  })
-) {}
+class MyApi extends HttpApi.make("myApi")
+  .add(UsersApi)
+  .annotate(OpenApi.Title, "My API") {}
 ```
 
 ### Adding errors
@@ -174,18 +168,15 @@ class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   {}
 ) {}
 
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("findById", "/users/:id").pipe(
+class UsersApi extends HttpApiGroup.make("users")
+  .add(
+    HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
       // here we are adding our error response
-      HttpApiEndpoint.addError(UserNotFound, { status: 404 }),
-      HttpApiEndpoint.setSuccess(User),
-      HttpApiEndpoint.setPath(Schema.Struct({ id: Schema.NumberFromString }))
-    )
-  ),
+      .addError(UserNotFound, { status: 404 })
+      .addSuccess(User)
+  )
   // or we could add an error to the group
-  HttpApiGroup.addError(Unauthorized, { status: 401 })
-) {}
+  .addError(Unauthorized, { status: 401 }) {}
 ```
 
 It is worth noting that you can add multiple error responses to an endpoint,
@@ -202,59 +193,15 @@ shape of the multipart request.
 ```ts
 import { HttpApiSchema, Multipart } from "@effect/platform"
 
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.post("upload", "/users/upload").pipe(
-      HttpApiEndpoint.setPayload(
-        HttpApiSchema.Multipart(
-          Schema.Struct({
-            // add a "files" field to the schema
-            files: Multipart.FilesSchema
-          })
-        )
-      )
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.post("upload")`/users/upload`.setPayload(
+    HttpApiSchema.Multipart(
+      Schema.Struct({
+        // add a "files" field to the schema
+        files: Multipart.FilesSchema
+      })
     )
   )
-) {}
-```
-
-### Adding security annotations
-
-The `HttpApiSecurity` module provides a way to add security annotations to your
-API.
-
-It offers the following authorization types:
-
-- `HttpApiSecurity.apiKey` - API key authorization through headers, query
-  parameters, or cookies.
-- `HttpApiSecurity.basicAuth` - HTTP Basic authentication.
-- `HttpApiSecurity.bearerAuth` - Bearer token authentication.
-
-You can annotate your API with these security types using the
-`OpenApi.annotate` api as before.
-
-```ts
-import { HttpApiSecurity } from "@effect/platform"
-
-const security = HttpApiSecurity.apiKey({
-  in: "cookie",
-  key: "token"
-})
-
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("findById", "/users/:id").pipe(
-      // add the security annotation to the endpoint
-      OpenApi.annotate({ security })
-    )
-  ),
-  // or at the group level
-  OpenApi.annotate({ security }),
-
-  // or just for the endpoints above this line
-  HttpApiGroup.annotateEndpoints(OpenApi.Security, security),
-  // this endpoint will not have the security annotation
-  HttpApiGroup.add(HttpApiEndpoint.get("list", "/users"))
 ) {}
 ```
 
@@ -266,17 +213,13 @@ the `HttpApiSchema.withEncoding` api.
 Here is an example of changing the encoding to text/csv:
 
 ```ts
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("csv", "/users/csv").pipe(
-      HttpApiEndpoint.setSuccess(
-        Schema.String.pipe(
-          HttpApiSchema.withEncoding({
-            kind: "Text",
-            contentType: "text/csv"
-          })
-        )
-      )
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("csv")`/users/csv`.addSuccess(
+    Schema.String.pipe(
+      HttpApiSchema.withEncoding({
+        kind: "Text",
+        contentType: "text/csv"
+      })
     )
   )
 ) {}
@@ -304,10 +247,10 @@ import {
   HttpApi,
   HttpApiBuilder,
   HttpApiEndpoint,
-  HttpApiGroup
+  HttpApiGroup,
+  HttpApiSchema
 } from "@effect/platform"
-import { Schema } from "@effect/schema"
-import { DateTime, Effect } from "effect"
+import { DateTime, Effect, Layer, Schema } from "effect"
 
 // here is our api definition
 class User extends Schema.Class<User>("User")({
@@ -316,40 +259,33 @@ class User extends Schema.Class<User>("User")({
   createdAt: Schema.DateTimeUtc
 }) {}
 
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("findById", "/users/:id").pipe(
-      HttpApiEndpoint.setSuccess(User),
-      HttpApiEndpoint.setPath(
-        Schema.Struct({
-          id: Schema.NumberFromString
-        })
-      )
-    )
-  )
+// Our user id path parameter schema
+const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
 ) {}
 
-class MyApi extends HttpApi.empty.pipe(HttpApi.addGroup(UsersApi)) {}
+class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
 
 // --------------------------------------------
 // Implementation
 // --------------------------------------------
 
 // the `HttpApiBuilder.group` api returns a `Layer`
-const UsersApiLive: Layer.Layer<HttpApiGroup.HttpApiGroup.Service<"users">> =
+const UsersApiLive: Layer.Layer<HttpApiGroup.ApiGroup<"users">> =
   HttpApiBuilder.group(MyApi, "users", (handlers) =>
-    handlers.pipe(
+    handlers
       // the parameters & payload are passed to the handler function.
-      HttpApiBuilder.handle("findById", ({ path: { id } }) =>
+      .handle("findById", ({ path: { userId } }) =>
         Effect.succeed(
           new User({
-            id,
+            id: userId,
             name: "John Doe",
             createdAt: DateTime.unsafeNow()
           })
         )
       )
-    )
   )
 ```
 
@@ -368,17 +304,15 @@ class UsersRepository extends Context.Tag("UsersRepository")<
 
 // the dependencies will show up in the resulting `Layer`
 const UsersApiLive: Layer.Layer<
-  HttpApiGroup.HttpApiGroup.Service<"users">,
+  HttpApiGroup.ApiGroup<"users">,
   never,
   UsersRepository
 > = HttpApiBuilder.group(MyApi, "users", (handlers) =>
   // we can return an Effect that creates our handlers
   Effect.gen(function* () {
     const repository = yield* UsersRepository
-    return handlers.pipe(
-      HttpApiBuilder.handle("findById", ({ path: { id } }) =>
-        repository.findById(id)
-      )
+    return handlers.handle("findById", ({ path: { userId } }) =>
+      repository.findById(userId)
     )
   })
 )
@@ -392,9 +326,9 @@ This is done using the `HttpApiBuilder.api` api, and then using `Layer.provide`
 to add all the group implementations.
 
 ```ts
-const MyApiLive: Layer.Layer<HttpApi.HttpApi.Service> = HttpApiBuilder.api(
-  MyApi
-).pipe(Layer.provide(UsersApiLive))
+const MyApiLive: Layer.Layer<HttpApi.Api> = HttpApiBuilder.api(MyApi).pipe(
+  Layer.provide(UsersApiLive)
+)
 ```
 
 ### Serving the API
@@ -426,95 +360,6 @@ const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
 Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 ```
 
-## Implementing `HttpApiSecurity`
-
-If you are using `HttpApiSecurity` in your API, you can use the security
-definition to implement a middleware that will protect your endpoints.
-
-The `HttpApiBuilder.middlewareSecurity` api will assist you in creating this
-middleware.
-
-Here is an example:
-
-```ts
-// our cookie security definition
-const security = HttpApiSecurity.apiKey({
-  in: "cookie",
-  key: "token"
-})
-
-// the user repository service
-class UsersRepository extends Context.Tag("UsersRepository")<
-  UsersRepository,
-  {
-    readonly findByToken: (token: Redacted.Redacted) => Effect.Effect<User>
-  }
->() {}
-
-// the security middleware will supply the current user to the handlers
-class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
-
-// implement the middleware
-const makeSecurityMiddleware: Effect.Effect<
-  HttpApiBuilder.SecurityMiddleware<CurrentUser>,
-  never,
-  UsersRepository
-> = Effect.gen(function* () {
-  const repository = yield* UsersRepository
-  return HttpApiBuilder.middlewareSecurity(
-    // the security definition
-    security,
-    // the Context.Tag this middleware will provide
-    CurrentUser,
-    // the function to get the user from the token
-    (token) => repository.findByToken(token)
-  )
-})
-
-// use the middleware
-const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
-  Effect.gen(function* () {
-    // construct the security middleware
-    const securityMiddleware = yield* makeSecurityMiddleware
-
-    return handlers.pipe(
-      HttpApiBuilder.handle("findById", ({ path: { id } }) =>
-        Effect.succeed(
-          new User({ id, name: "John Doe", createdAt: DateTime.unsafeNow() })
-        )
-      ),
-      // apply the middleware to the findById endpoint
-      securityMiddleware
-      // any endpoint after this will not be protected
-    )
-  })
-)
-```
-
-If you need to set the security cookie from within a handler, you can use the
-`HttpApiBuilder.securitySetCookie` api.
-
-By default, the cookie will be set with the `HttpOnly` and `Secure` flags.
-
-```ts
-const security = HttpApiSecurity.apiKey({
-  in: "cookie",
-  key: "token"
-})
-
-const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
-  handlers.pipe(
-    HttpApiBuilder.handle("login", () =>
-      // set the security cookie
-      HttpApiBuilder.securitySetCookie(
-        security,
-        Redacted.make("keep me secret")
-      )
-    )
-  )
-)
-```
-
 ### Serving Swagger documentation
 
 You can add Swagger documentation to your API using the `HttpApiSwagger` module.
@@ -539,6 +384,236 @@ const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
 )
 ```
 
+## Adding middleware
+
+### Defining middleware
+
+The `HttpApiMiddleware` module provides a way to add middleware to your API.
+
+You can create a `HttpApiMiddleware.Tag` that represents your middleware, which
+allows you to set:
+
+- `failure` - a Schema for any errors that the middleware can return
+- `provides` - a `Context.Tag` that the middleware will provide
+- `security` - `HttpApiSecurity` definitions that the middleware will
+  implement
+- `optional` - a boolean that indicates that if the middleware fails with an
+  expected error, the request should continue. When using optional middleware,
+  `provides` & `failure` options will not affect the handlers or final error type.
+
+Here is an example of defining a simple logger middleware:
+
+```ts
+import {
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiMiddleware
+} from "@effect/platform"
+import { Schema } from "effect"
+
+class LoggerError extends Schema.TaggedError<LoggerError>()(
+  "LoggerError",
+  {}
+) {}
+
+// first extend the HttpApiMiddleware.Tag class
+class Logger extends HttpApiMiddleware.Tag<Logger>()("Http/Logger", {
+  // optionally define any errors that the middleware can return
+  failure: LoggerError
+}) {}
+
+// apply the middleware to an `HttpApiGroup`
+class UsersApi extends HttpApiGroup.make("users")
+  .add(
+    HttpApiEndpoint.get("findById")`/${Schema.NumberFromString}`
+      // apply the middleware to a single endpoint
+      .middleware(Logger)
+  )
+  // or apply the middleware to the group
+  .middleware(Logger) {}
+```
+
+### Defining security middleware
+
+The `HttpApiSecurity` module provides a way to add security annotations to your
+API.
+
+It offers the following authorization types:
+
+- `HttpApiSecurity.apiKey` - API key authorization through headers, query
+  parameters, or cookies.
+- `HttpApiSecurity.basicAuth` - HTTP Basic authentication.
+- `HttpApiSecurity.bearerAuth` - Bearer token authentication.
+
+You can then use these security annotations in combination with `HttpApiMiddleware`
+to define middleware that will protect your endpoints.
+
+```ts
+import {
+  HttpApiGroup,
+  HttpApiEndpoint,
+  HttpApiMiddleware,
+  HttpApiSchema,
+  HttpApiSecurity
+} from "@effect/platform"
+import { Context, Schema } from "effect"
+
+class User extends Schema.Class<User>("User")({ id: Schema.Number }) {}
+
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+  "Unauthorized",
+  {},
+  HttpApiSchema.annotations({ status: 401 })
+) {}
+
+class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
+
+// first extend the HttpApiMiddleware.Tag class
+class Authorization extends HttpApiMiddleware.Tag<Authorization>()(
+  "Authorization",
+  {
+    // add your error schema
+    failure: Unauthorized,
+    // add the Context.Tag that the middleware will provide
+    provides: CurrentUser,
+    // add the security definitions
+    security: {
+      // the object key is a custom name for the security definition
+      myBearer: HttpApiSecurity.bearer
+      // You can add more security definitions here.
+      // They will attempt to be resolved in the order they are defined
+    }
+  }
+) {}
+
+// apply the middleware to an `HttpApiGroup`
+class UsersApi extends HttpApiGroup.make("users")
+  .add(
+    HttpApiEndpoint.get("findById")`/${Schema.NumberFromString}`
+      // apply the middleware to a single endpoint
+      .middleware(Authorization)
+  )
+  // or apply the middleware to the group
+  .middleware(Authorization) {}
+```
+
+### Implementing `HttpApiMiddleware`
+
+Once your `HttpApiMiddleware` is defined, you can use the
+`HttpApiMiddleware.Tag` definition to implement your middleware.
+
+By using the `Layer` apis, you can create a Layer that implements your
+middleware.
+
+Here is an example:
+
+```ts
+import { HttpApiMiddleware, HttpServerRequest } from "@effect/platform"
+import { Effect, Layer } from "effect"
+
+class Logger extends HttpApiMiddleware.Tag<Logger>()("Http/Logger") {}
+
+const LoggerLive = Layer.effect(
+  Logger,
+  Effect.gen(function* () {
+    yield* Effect.log("creating Logger middleware")
+
+    // standard middleware is just an Effect, that can access the `HttpRouter`
+    // context.
+    return Logger.of(
+      Effect.gen(function* () {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        yield* Effect.log(`Request: ${request.method} ${request.url}`)
+      })
+    )
+  })
+)
+```
+
+When the `Layer` is created, you can then provide it to your group layers:
+
+```ts
+const UsersApiLive = HttpApiBuilder.group(...).pipe(
+  Layer.provide(LoggerLive)
+)
+```
+
+### Implementing `HttpApiSecurity` middleware
+
+If you are using `HttpApiSecurity` in your middleware, implementing the `Layer`
+looks a bit different.
+
+Here is an example of implementing a `HttpApiSecurity.bearer` middleware:
+
+```ts
+import {
+  HttpApiMiddleware,
+  HttpApiSchema,
+  HttpApiSecurity
+} from "@effect/platform"
+import { Context, Effect, Layer, Redacted, Schema } from "effect"
+
+class User extends Schema.Class<User>("User")({ id: Schema.Number }) {}
+
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+  "Unauthorized",
+  {},
+  HttpApiSchema.annotations({ status: 401 })
+) {}
+
+class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
+
+class Authorization extends HttpApiMiddleware.Tag<Authorization>()(
+  "Authorization",
+  {
+    failure: Unauthorized,
+    provides: CurrentUser,
+    security: { myBearer: HttpApiSecurity.bearer }
+  }
+) {}
+
+const AuthorizationLive = Layer.effect(
+  Authorization,
+  Effect.gen(function* () {
+    yield* Effect.log("creating Authorization middleware")
+
+    // return the security handlers
+    return Authorization.of({
+      myBearer: (bearerToken) =>
+        Effect.gen(function* () {
+          yield* Effect.log(
+            "checking bearer token",
+            Redacted.value(bearerToken)
+          )
+          // return the `User` that will be provided as the `CurrentUser`
+          return new User({ id: 1 })
+        })
+    })
+  })
+)
+```
+
+### Setting `HttpApiSecurity` cookies
+
+If you need to set the security cookie from within a handler, you can use the
+`HttpApiBuilder.securitySetCookie` api.
+
+By default, the cookie will be set with the `HttpOnly` and `Secure` flags.
+
+```ts
+const security = HttpApiSecurity.apiKey({
+  in: "cookie",
+  key: "token"
+})
+
+const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+  handlers.handle("login", () =>
+    // set the security cookie
+    HttpApiBuilder.securitySetCookie(security, Redacted.make("keep me secret"))
+  )
+)
+```
+
 ## Deriving a client
 
 Once you have defined your API, you can derive a client that can interact with
@@ -555,7 +630,7 @@ Effect.gen(function* () {
     // You can transform the HttpClient to add things like authentication
     // transformClient: ....
   })
-  const user = yield* client.users.findById({ path: { id: 1 } })
+  const user = yield* client.users.findById({ path: { userId: 1 } })
   yield* Effect.log(user)
 })
 ```
@@ -574,8 +649,7 @@ The `HttpClient` interface has a set of methods for sending requests:
   executing it in one step
 
 To access the `HttpClient`, you can use the `HttpClient.HttpClient` [tag](https://effect.website/docs/guides/context-management/services).
-This will give you access to a `HttpClient.Service` instance, which is the default
-instance of the `HttpClient` interface.
+This will give you access to a `HttpClient` instance.
 
 **Example: Retrieving JSON Data (GET)**
 
@@ -599,6 +673,42 @@ const program = Effect.gen(function* () {
   // Ensure request is aborted if the program is interrupted
   Effect.scoped,
   // Provide the HttpClient
+  Effect.provide(FetchHttpClient.layer)
+)
+
+Effect.runPromise(program)
+/*
+Output:
+{
+  userId: 1,
+  id: 1,
+  title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+  body: 'quia et suscipit\n' +
+    'suscipit recusandae consequuntur expedita et cum\n' +
+    'reprehenderit molestiae ut ut quas totam\n' +
+    'nostrum rerum est autem sunt rem eveniet architecto'
+}
+*/
+```
+
+**Example: Retrieving JSON Data with accessor apis (GET)**
+
+The `HttpClient` module also provides a set of accessor apis that allow you to
+easily send requests without first accessing the `HttpClient` service.
+
+Below is an example of using the `get` accessor api to send a GET request:
+
+(The following examples will continue to use the `HttpClient` service approach).
+
+```ts
+import { FetchHttpClient, HttpClient } from "@effect/platform"
+import { Effect } from "effect"
+
+const program = HttpClient.get(
+  "https://jsonplaceholder.typicode.com/posts/1"
+).pipe(
+  Effect.andThen((response) => response.json),
+  Effect.scoped,
   Effect.provide(FetchHttpClient.layer)
 )
 
@@ -668,6 +778,30 @@ Output:
 */
 ```
 
+## Understanding Scope
+
+When working with a request, note that there is a `Scope` requirement:
+
+```ts
+import { FetchHttpClient, HttpClient } from "@effect/platform"
+import { Effect } from "effect"
+
+// const program: Effect<void, HttpClientError, Scope>
+const program = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  )
+  const json = yield* response.json
+  console.log(json)
+}).pipe(
+  // Provide the HttpClient implementation without scoping
+  Effect.provide(FetchHttpClient.layer)
+)
+```
+
+A `Scope` is required because there is an open connection between the HTTP response and the body processing. For instance, if you have a streaming body, you receive the response before processing the body. This connection is managed within a scope, and using `Effect.scoped` controls when it is closed.
+
 ## Customize a HttpClient
 
 The `HttpClient` module allows you to customize the client in various ways. For instance, you can log details of a request before execution using the `tapRequest` function.
@@ -721,20 +855,17 @@ Output:
 
 | Operation                | Description                                                                             |
 | ------------------------ | --------------------------------------------------------------------------------------- |
+| `get`,`post`,`put`...    | Send a request without first accessing the `HttpClient` service.                        |
 | `filterOrElse`           | Filters the result of a response, or runs an alternative effect if the predicate fails. |
 | `filterOrFail`           | Filters the result of a response, or throws an error if the predicate fails.            |
 | `filterStatus`           | Filters responses by HTTP status code.                                                  |
 | `filterStatusOk`         | Filters responses that return a 2xx status code.                                        |
 | `followRedirects`        | Follows HTTP redirects up to a specified number of times.                               |
-| `map`                    | Transforms the result of a request.                                                     |
-| `mapEffect`              | Transforms the result of a request using an effectful function.                         |
 | `mapRequest`             | Appends a transformation of the request object before sending it.                       |
 | `mapRequestEffect`       | Appends an effectful transformation of the request object before sending it.            |
 | `mapRequestInput`        | Prepends a transformation of the request object before sending it.                      |
 | `mapRequestInputEffect`  | Prepends an effectful transformation of the request object before sending it.           |
 | `retry`                  | Retries the request based on a provided schedule or policy.                             |
-| `schemaFunction`         | Creates a function that validates request data against a schema before sending it.      |
-| `scoped`                 | Ensures resources are properly scoped and released after execution.                     |
 | `tap`                    | Performs an additional effect after a successful request.                               |
 | `tapRequest`             | Performs an additional effect on the request before sending it.                         |
 | `withCookiesRef`         | Associates a `Ref` of cookies with the client for handling cookies across requests.     |
@@ -795,48 +926,6 @@ Output:
 */
 ```
 
-### Integration with Schema
-
-The `HttpClient.schemaFunction` allows you to integrate schemas into your HTTP client requests. This function ensures that the data you send conforms to a specified schema, enhancing type safety and validation.
-
-```ts
-import {
-  FetchHttpClient,
-  HttpClient,
-  HttpClientRequest
-} from "@effect/platform"
-import { Schema } from "@effect/schema"
-import { Effect } from "effect"
-
-const program = Effect.gen(function* () {
-  const client = yield* HttpClient.HttpClient
-  const addTodo = HttpClient.schemaFunction(
-    client,
-    Schema.Struct({
-      title: Schema.String,
-      body: Schema.String,
-      userId: Schema.Number
-    })
-  )(HttpClientRequest.post("https://jsonplaceholder.typicode.com/posts"))
-
-  const response = yield* addTodo({
-    title: "foo",
-    body: "bar",
-    userId: 1
-  })
-
-  const json = yield* response.json
-
-  console.log(json)
-}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
-
-Effect.runPromise(program)
-/*
-Output:
-{ title: 'foo', body: 'bar', userId: 1, id: 101 }
-*/
-```
-
 ### Persisting Cookies
 
 You can manage cookies across requests using the `HttpClient.withCookiesRef` function, which associates a reference to a `Cookies` object with the client.
@@ -867,9 +956,9 @@ Effect.runPromise(program)
 
 ## RequestInit Options
 
-You can customize the `HttpClient` by passing `RequestInit` options to configure aspects of the HTTP requests, such as credentials, headers, and more.
+You can customize the `FetchHttpClient` by passing `RequestInit` options to configure aspects of the HTTP requests, such as credentials, headers, and more.
 
-In this example, we customize the `HttpClient` to include credentials with every request:
+In this example, we customize the `FetchHttpClient` to include credentials with every request:
 
 ```ts
 import { FetchHttpClient, HttpClient } from "@effect/platform"
@@ -895,13 +984,13 @@ const program = Effect.gen(function* () {
 
 ## Create a Custom HttpClient
 
-You can create a custom `HttpClient.Service` using the `HttpClient.makeService` function. This allows you to simulate or mock server responses within your application.
+You can create a custom `HttpClient` using the `HttpClient.make` function. This allows you to simulate or mock server responses within your application.
 
 ```ts
 import { HttpClient, HttpClientResponse } from "@effect/platform"
 import { Effect, Layer } from "effect"
 
-const myClient = HttpClient.makeService((req) =>
+const myClient = HttpClient.make((req) =>
   Effect.succeed(
     HttpClientResponse.fromWeb(
       req,
@@ -1147,7 +1236,7 @@ string {
 
 ### Decoding Data with Schemas
 
-A common use case when fetching data is to validate the received format. For this purpose, the `HttpClientResponse` module is integrated with `@effect/schema`.
+A common use case when fetching data is to validate the received format. For this purpose, the `HttpClientResponse` module is integrated with `effect/Schema`.
 
 ```ts
 import {
@@ -1156,8 +1245,7 @@ import {
   HttpClientResponse
 } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
-import { Schema } from "@effect/schema"
-import { Console, Effect } from "effect"
+import { Console, Effect, Schema } from "effect"
 
 const Post = Schema.Struct({
   id: Schema.Number,
@@ -1315,7 +1403,7 @@ Output:
 
 ### Decoding Data with Schemas
 
-A common use case when fetching data is to validate the received format. For this purpose, the `HttpClientResponse` module is integrated with `@effect/schema`.
+A common use case when fetching data is to validate the received format. For this purpose, the `HttpClientResponse` module is integrated with `effect/Schema`.
 
 ```ts
 import {
@@ -1325,8 +1413,7 @@ import {
   HttpClientResponse
 } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
-import { Schema } from "@effect/schema"
-import { Console, Effect } from "effect"
+import { Console, Effect, Schema } from "effect"
 
 const Post = Schema.Struct({
   id: Schema.Number,
@@ -1703,8 +1790,7 @@ To define routes with parameters, include the parameter names in the path and us
 
 ```ts
 import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
-import { Schema } from "@effect/schema"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { listen } from "./listen.js"
 
 // Define the schema for route parameters
@@ -2299,6 +2385,7 @@ timestamp=2024-05-19T09:53:29.877Z level=INFO fiber=#0 message="Listening on htt
 ### xForwardedHeaders
 
 This middleware handles `X-Forwarded-*` headers, useful when your app is behind a reverse proxy or load balancer and you need to retrieve the original client's IP and host information.
+**WARNING:** The `X-Forwarded-*` headers are untrustworthy when no trusted reverse proxy or load balancer is between the client and server.
 
 ```ts
 import {
@@ -2394,7 +2481,7 @@ curl -i http://localhost:3000/fail
 
 ## Validations
 
-Validation is a critical aspect of handling HTTP requests to ensure that the data your server receives is as expected. We'll explore how to validate headers and cookies using the `@effect/platform` and `@effect/schema` libraries, which provide structured and robust methods for these tasks.
+Validation is a critical aspect of handling HTTP requests to ensure that the data your server receives is as expected. We'll explore how to validate headers and cookies using the `@effect/platform` and `effect/Schema` libraries, which provide structured and robust methods for these tasks.
 
 ### Headers
 
@@ -2407,8 +2494,7 @@ import {
   HttpServerRequest,
   HttpServerResponse
 } from "@effect/platform"
-import { Schema } from "@effect/schema"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { listen } from "./listen.js"
 
 const router = HttpRouter.empty.pipe(
@@ -2458,8 +2544,7 @@ import {
   HttpServerRequest,
   HttpServerResponse
 } from "@effect/platform"
-import { Schema } from "@effect/schema"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { listen } from "./listen.js"
 
 const router = HttpRouter.empty.pipe(

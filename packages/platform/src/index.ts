@@ -76,6 +76,16 @@ export * as HttpApiGroup from "./HttpApiGroup.js"
 /**
  * @since 1.0.0
  */
+export * as HttpApiMiddleware from "./HttpApiMiddleware.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiScalar from "./HttpApiScalar.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as HttpApiSchema from "./HttpApiSchema.js"
 
 /**
@@ -193,6 +203,11 @@ export * as Multipart from "./Multipart.js"
  * @since 1.0.0
  */
 export * as OpenApi from "./OpenApi.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as OpenApiJsonSchema from "./OpenApiJsonSchema.js"
 
 /**
  * @since 1.0.0

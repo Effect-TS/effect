@@ -4,7 +4,7 @@
 import * as Pod from "@effect/cluster/Pod"
 import * as PodAddress from "@effect/cluster/PodAddress"
 import * as ShardId from "@effect/cluster/ShardId"
-import * as Schema from "@effect/schema/Schema"
+import * as Schema from "effect/Schema"
 
 /**
  * @since 1.0.0

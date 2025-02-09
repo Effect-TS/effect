@@ -75,6 +75,7 @@ export declare namespace Refinement {
  * @param f - a function to transform `B` to `A`.
  *
  * @example
+ * ```ts
  * import { Predicate, Number } from "effect"
  *
  * const minLength3 = Predicate.mapInput(Number.greaterThan(2), (s: string) => s.length)
@@ -83,6 +84,7 @@ export declare namespace Refinement {
  * assert.deepStrictEqual(minLength3("aa"), false)
  * assert.deepStrictEqual(minLength3("aaa"), true)
  * assert.deepStrictEqual(minLength3("aaaa"), true)
+ * ```
  *
  * @category combinators
  * @since 2.0.0
@@ -101,6 +103,7 @@ export const mapInput: {
  * @param n - The exact number of elements that the `Array` should have to be considered a `TupleOf`.
  *
  * @example
+ * ```ts
  * import { isTupleOf } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isTupleOf([1, 2, 3], 3), true);
@@ -112,6 +115,7 @@ export const mapInput: {
  *   console.log(arr);
  *   // ^? [number, number, number]
  * }
+ * ```
  *
  * @category guards
  * @since 3.3.0
@@ -130,6 +134,7 @@ export const isTupleOf: {
  * @param n - The minimum number of elements that the `Array` should have to be considered a `TupleOfAtLeast`.
  *
  * @example
+ * ```ts
  * import { isTupleOfAtLeast } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isTupleOfAtLeast([1, 2, 3], 3), true);
@@ -141,6 +146,7 @@ export const isTupleOf: {
  *   console.log(arr);
  *   // ^? [number, number, number, ...number[]]
  * }
+ * ```
  *
  * @category guards
  * @since 3.3.0
@@ -156,11 +162,13 @@ export const isTupleOfAtLeast: {
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isTruthy } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isTruthy(1), true)
  * assert.deepStrictEqual(isTruthy(0), false)
  * assert.deepStrictEqual(isTruthy(""), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -173,6 +181,7 @@ export const isTruthy = (input: unknown) => !!input
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isSet } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isSet(new Set([1, 2])), true)
@@ -180,6 +189,7 @@ export const isTruthy = (input: unknown) => !!input
  * assert.deepStrictEqual(isSet({}), false)
  * assert.deepStrictEqual(isSet(null), false)
  * assert.deepStrictEqual(isSet(undefined), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -192,12 +202,14 @@ export const isSet = (input: unknown): input is Set<unknown> => input instanceof
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isMap } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isMap(new Map()), true)
  * assert.deepStrictEqual(isMap({}), false)
  * assert.deepStrictEqual(isMap(null), false)
  * assert.deepStrictEqual(isMap(undefined), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -210,11 +222,13 @@ export const isMap = (input: unknown): input is Map<unknown, unknown> => input i
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isString } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isString("a"), true)
  *
  * assert.deepStrictEqual(isString(1), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -227,11 +241,13 @@ export const isString = (input: unknown): input is string => typeof input === "s
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isNumber } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNumber(2), true)
  *
  * assert.deepStrictEqual(isNumber("2"), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -244,11 +260,13 @@ export const isNumber = (input: unknown): input is number => typeof input === "n
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isBoolean } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isBoolean(true), true)
  *
  * assert.deepStrictEqual(isBoolean("true"), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -261,11 +279,13 @@ export const isBoolean = (input: unknown): input is boolean => typeof input === 
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isBigInt } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isBigInt(1n), true)
  *
  * assert.deepStrictEqual(isBigInt(1), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -278,11 +298,13 @@ export const isBigInt = (input: unknown): input is bigint => typeof input === "b
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isSymbol } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isSymbol(Symbol.for("a")), true)
  *
  * assert.deepStrictEqual(isSymbol("a"), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -295,11 +317,13 @@ export const isSymbol = (input: unknown): input is symbol => typeof input === "s
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isFunction } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isFunction(isFunction), true)
  *
  * assert.deepStrictEqual(isFunction("function"), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -312,12 +336,14 @@ export const isFunction: (input: unknown) => input is Function = isFunction_
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isUndefined } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isUndefined(undefined), true)
  *
  * assert.deepStrictEqual(isUndefined(null), false)
  * assert.deepStrictEqual(isUndefined("undefined"), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -330,12 +356,14 @@ export const isUndefined = (input: unknown): input is undefined => input === und
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isNotUndefined } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNotUndefined(null), true)
  * assert.deepStrictEqual(isNotUndefined("undefined"), true)
  *
  * assert.deepStrictEqual(isNotUndefined(undefined), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -348,12 +376,14 @@ export const isNotUndefined = <A>(input: A): input is Exclude<A, undefined> => i
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isNull } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNull(null), true)
  *
  * assert.deepStrictEqual(isNull(undefined), false)
  * assert.deepStrictEqual(isNull("null"), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -366,12 +396,14 @@ export const isNull = (input: unknown): input is null => input === null
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isNotNull } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNotNull(undefined), true)
  * assert.deepStrictEqual(isNotNull("null"), true)
  *
  * assert.deepStrictEqual(isNotNull(null), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -384,12 +416,14 @@ export const isNotNull = <A>(input: A): input is Exclude<A, null> => input !== n
  * @param _ - The value to test.
  *
  * @example
+ * ```ts
  * import { isNever } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNever(null), false)
  * assert.deepStrictEqual(isNever(undefined), false)
  * assert.deepStrictEqual(isNever({}), false)
  * assert.deepStrictEqual(isNever([]), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -402,6 +436,7 @@ export const isNever: (input: unknown) => input is never = (_: unknown): _ is ne
  * @param _ - The value to test.
  *
  * @example
+ * ```ts
  * import { isUnknown } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isUnknown(null), true)
@@ -409,13 +444,16 @@ export const isNever: (input: unknown) => input is never = (_: unknown): _ is ne
  *
  * assert.deepStrictEqual(isUnknown({}), true)
  * assert.deepStrictEqual(isUnknown([]), true)
+ * ```
  *
  * @category guards
  * @since 2.0.0
  */
 export const isUnknown: (input: unknown) => input is unknown = (_): _ is unknown => true
 
-const isRecordOrArray = (input: unknown) => typeof input === "object" && input !== null
+/** @internal */
+export const isRecordOrArray = (input: unknown): input is { [x: PropertyKey]: unknown } =>
+  typeof input === "object" && input !== null
 
 /**
  * Tests if a value is an `object`.
@@ -423,6 +461,7 @@ const isRecordOrArray = (input: unknown) => typeof input === "object" && input !
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isObject } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isObject({}), true)
@@ -430,6 +469,7 @@ const isRecordOrArray = (input: unknown) => typeof input === "object" && input !
  *
  * assert.deepStrictEqual(isObject(null), false)
  * assert.deepStrictEqual(isObject(undefined), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -461,6 +501,7 @@ export const hasProperty: {
  * @param tag - The tag to test for.
  *
  * @example
+ * ```ts
  * import { isTagged } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isTagged(1, "a"), false)
@@ -469,6 +510,7 @@ export const hasProperty: {
  * assert.deepStrictEqual(isTagged({ a: "a" }, "a"), false)
  * assert.deepStrictEqual(isTagged({ _tag: "a" }, "a"), true)
  * assert.deepStrictEqual(isTagged("a")({ _tag: "a" }), true)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -487,6 +529,7 @@ export const isTagged: {
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isNullable } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNullable(null), true)
@@ -494,6 +537,7 @@ export const isTagged: {
  *
  * assert.deepStrictEqual(isNullable({}), false)
  * assert.deepStrictEqual(isNullable([]), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -506,6 +550,7 @@ export const isNullable = <A>(input: A): input is Extract<A, null | undefined> =
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isNotNullable } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNotNullable({}), true)
@@ -513,6 +558,7 @@ export const isNullable = <A>(input: A): input is Extract<A, null | undefined> =
  *
  * assert.deepStrictEqual(isNotNullable(null), false)
  * assert.deepStrictEqual(isNotNullable(undefined), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -525,12 +571,14 @@ export const isNotNullable = <A>(input: A): input is NonNullable<A> => input !==
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isError } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isError(new Error()), true)
  *
  * assert.deepStrictEqual(isError(null), false)
  * assert.deepStrictEqual(isError({}), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -543,12 +591,14 @@ export const isError = (input: unknown): input is Error => input instanceof Erro
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isUint8Array } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isUint8Array(new Uint8Array()), true)
  *
  * assert.deepStrictEqual(isUint8Array(null), false)
  * assert.deepStrictEqual(isUint8Array({}), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -561,12 +611,14 @@ export const isUint8Array = (input: unknown): input is Uint8Array => input insta
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isDate } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isDate(new Date()), true)
  *
  * assert.deepStrictEqual(isDate(null), false)
  * assert.deepStrictEqual(isDate({}), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -579,6 +631,7 @@ export const isDate = (input: unknown): input is Date => input instanceof Date
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isIterable } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isIterable([]), true)
@@ -586,6 +639,7 @@ export const isDate = (input: unknown): input is Date => input instanceof Date
  *
  * assert.deepStrictEqual(isIterable(null), false)
  * assert.deepStrictEqual(isIterable({}), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -598,6 +652,7 @@ export const isIterable = (input: unknown): input is Iterable<unknown> => hasPro
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isRecord } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isRecord({}), true)
@@ -608,6 +663,7 @@ export const isIterable = (input: unknown): input is Iterable<unknown> => hasPro
  * assert.deepStrictEqual(isRecord(null), false)
  * assert.deepStrictEqual(isRecord(undefined), false)
  * assert.deepStrictEqual(isRecord(() => null), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -621,6 +677,7 @@ export const isRecord = (input: unknown): input is { [x: string | symbol]: unkno
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isReadonlyRecord } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isReadonlyRecord({}), true)
@@ -630,6 +687,7 @@ export const isRecord = (input: unknown): input is { [x: string | symbol]: unkno
  * assert.deepStrictEqual(isReadonlyRecord([1, 2, 3]), false)
  * assert.deepStrictEqual(isReadonlyRecord(null), false)
  * assert.deepStrictEqual(isReadonlyRecord(undefined), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -644,10 +702,12 @@ export const isReadonlyRecord: (
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isPromise } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isPromise({}), false)
  * assert.deepStrictEqual(isPromise(Promise.resolve("hello")), true)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -664,6 +724,24 @@ export const isPromise = (
 export const isPromiseLike = (
   input: unknown
 ): input is PromiseLike<unknown> => hasProperty(input, "then") && isFunction(input.then)
+
+/**
+ * Tests if a value is a `RegExp`.
+ *
+ * @param input - The value to test.
+ *
+ * @example
+ * ```ts
+ * import { Predicate } from "effect"
+ *
+ * assert.deepStrictEqual(Predicate.isRegExp(/a/), true)
+ * assert.deepStrictEqual(Predicate.isRegExp("a"), false)
+ * ```
+ *
+ * @category guards
+ * @since 3.9.0
+ */
+export const isRegExp = (input: unknown): input is RegExp => input instanceof RegExp
 
 /**
  * @since 2.0.0
@@ -778,6 +856,7 @@ export const struct: {
  * @param self - A predicate.
  *
  * @example
+ * ```ts
  * import { Predicate, Number } from "effect"
  *
  * const isPositive = Predicate.not(Number.lessThan(0))
@@ -785,6 +864,7 @@ export const struct: {
  * assert.deepStrictEqual(isPositive(-1), false)
  * assert.deepStrictEqual(isPositive(0), true)
  * assert.deepStrictEqual(isPositive(1), true)
+ * ```
  *
  * @category combinators
  * @since 2.0.0
@@ -798,6 +878,7 @@ export const not = <A>(self: Predicate<A>): Predicate<A> => (a) => !self(a)
  * @param that - A predicate.
  *
  * @example
+ * ```ts
  * import { Predicate, Number } from "effect"
  *
  * const nonZero = Predicate.or(Number.lessThan(0), Number.greaterThan(0))
@@ -805,6 +886,7 @@ export const not = <A>(self: Predicate<A>): Predicate<A> => (a) => !self(a)
  * assert.deepStrictEqual(nonZero(-1), true)
  * assert.deepStrictEqual(nonZero(0), false)
  * assert.deepStrictEqual(nonZero(1), true)
+ * ```
  *
  * @category combinators
  * @since 2.0.0
@@ -823,6 +905,7 @@ export const or: {
  * @param that - A predicate.
  *
  * @example
+ * ```ts
  * import { Predicate } from "effect"
  *
  * const minLength = (n: number) => (s: string) => s.length >= n
@@ -833,6 +916,7 @@ export const or: {
  * assert.deepStrictEqual(length(2)("aa"), true)
  * assert.deepStrictEqual(length(2)("a"), false)
  * assert.deepStrictEqual(length(2)("aaa"), false)
+ * ```
  *
  * @category combinators
  * @since 2.0.0
@@ -884,6 +968,7 @@ export const eqv: {
  * must be true.
  *
  * @example
+ * ```ts
  * import { Predicate } from "effect"
  *
  * type Triple = {
@@ -902,6 +987,7 @@ export const eqv: {
  * assert.equal(transitivity({ a: 1, b: 2, c: 3 }), true)
  * // antecedent is `false`, so the result is `true`
  * assert.equal(transitivity({ a: 1, b: 0, c: 0 }), true)
+ * ```
  *
  * @category combinators
  * @since 2.0.0

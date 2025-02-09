@@ -15,9 +15,9 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import * as Undici from "undici"
 import type * as NodeClient from "../NodeHttpClient.js"
 import * as NodeStream from "../NodeStream.js"
+import * as Undici from "../Undici.js"
 
 /** @internal */
 export const Dispatcher = Context.GenericTag<NodeClient.Dispatcher, Undici.Dispatcher>(
@@ -40,8 +40,8 @@ export const dispatcherLayerGlobal = Layer.sync(Dispatcher, () => Undici.getGlob
 export const undiciOptionsTagKey = "@effect/platform-node/NodeHttpClient/undiciOptions"
 
 /** @internal */
-export const make = (dispatcher: Undici.Dispatcher): Client.HttpClient.Service =>
-  Client.makeService((request, url, signal, fiber) => {
+export const make = (dispatcher: Undici.Dispatcher): Client.HttpClient =>
+  Client.make((request, url, signal, fiber) => {
     const context = fiber.getFiberRef(FiberRef.currentContext)
     const options: Undici.Dispatcher.RequestOptions = context.unsafeMap.get(undiciOptionsTagKey) ?? {}
     return convertBody(request.body).pipe(
@@ -58,8 +58,7 @@ export const make = (dispatcher: Undici.Dispatcher): Client.HttpClient.Service =
               body,
               // leave timeouts to Effect.timeout etc
               headersTimeout: 60 * 60 * 1000,
-              bodyTimeout: 0,
-              throwOnError: false
+              bodyTimeout: 0
             }),
           catch: (cause) =>
             new Error.RequestError({

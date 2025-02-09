@@ -1,7 +1,7 @@
 {
   "name": "@effect/cluster-workflow",
   "type": "module",
-  "version": "0.7.6",
+  "version": "0.19.2",
   "description": "A workflow runtime using effect-cluster",
   "publishConfig": {
     "access": "public",
@@ -27,13 +27,11 @@
   },
   "peerDependencies": {
     "@effect/cluster": "workspace:^",
-    "@effect/schema": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/cluster": "workspace:^",
-    "@effect/schema": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",
     "@effect/sql": "workspace:^",

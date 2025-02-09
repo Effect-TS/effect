@@ -1,17 +1,15 @@
-import * as Chunk from "effect/Chunk"
+import { Equal } from "effect"
 import * as Config from "effect/Config"
 import * as ConfigError from "effect/ConfigError"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as LogLevel from "effect/LogLevel"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
-import * as Secret from "effect/Secret"
 import { assert, describe, expect, it } from "vitest"
 
 const assertFailure = <A>(
@@ -32,6 +30,16 @@ const assertSuccess = <A>(
   const configProvider = ConfigProvider.fromMap(new Map(map))
   const result = Effect.runSync(Effect.exit(configProvider.load(config)))
   expect(result).toStrictEqual(Exit.succeed(a))
+}
+
+const assertEqualSuccess = <A>(
+  config: Config.Config<A>,
+  map: ReadonlyArray<readonly [string, string]>,
+  a: A
+) => {
+  const configProvider = ConfigProvider.fromMap(new Map(map))
+  const result = Effect.runSync(Effect.exit(configProvider.load(config)))
+  expect(Equal.equals(Exit.succeed(a), result)).toBe(true)
 }
 
 describe("Config", () => {
@@ -66,6 +74,27 @@ describe("Config", () => {
     })
   })
 
+  describe("url", () => {
+    it("name != undefined", () => {
+      const config = Config.url("WEBSITE_URL")
+      assertSuccess(
+        config,
+        [["WEBSITE_URL", "https://effect.website/docs/introduction#what-is-effect"]],
+        new URL("https://effect.website/docs/introduction#what-is-effect")
+      )
+      assertFailure(
+        config,
+        [["WEBSITE_URL", "abra-kadabra"]],
+        ConfigError.InvalidData(["WEBSITE_URL"], "Expected an URL value but received abra-kadabra")
+      )
+      assertFailure(
+        config,
+        [],
+        ConfigError.MissingData(["WEBSITE_URL"], "Expected WEBSITE_URL to exist in the provided map")
+      )
+    })
+  })
+
   describe("nonEmptyString", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.nonEmptyString(), "ITEMS")
@@ -89,6 +118,11 @@ describe("Config", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.number(), "ITEMS")
       assertSuccess(config, [["ITEMS", "1"]], [1])
+      assertFailure(
+        config,
+        [["ITEMS", "123qq"]],
+        ConfigError.InvalidData(["ITEMS"], "Expected a number value but received 123qq")
+      )
       assertFailure(
         config,
         [["ITEMS", "value"]],
@@ -293,6 +327,12 @@ describe("Config", () => {
         Config.withDefault(0)
       )
       assertSuccess(config, [["key", "1"]], 1)
+      assertFailure(
+        config,
+        [["key", "1.2"]],
+        // available data but not an integer
+        ConfigError.InvalidData(["key"], "Expected an integer value but received 1.2")
+      )
       assertFailure(
         config,
         [["key", "value"]],
@@ -502,53 +542,12 @@ describe("Config", () => {
 
     it("name != undefined", () => {
       const config = Config.redacted("SECRET")
-      assertSuccess(config, [["SECRET", "a"]], Redacted.make("a"))
-    })
-  })
-
-  describe("Secret", () => {
-    describe("Config.secret", () => {
-      it("name = undefined", () => {
-        const config = Config.array(Config.secret(), "ITEMS")
-        assertSuccess(config, [["ITEMS", "a"]], [Secret.fromString("a")])
-      })
-
-      it("name != undefined", () => {
-        const config = Config.secret("SECRET")
-        assertSuccess(config, [["SECRET", "a"]], Secret.fromString("a"))
-      })
+      assertEqualSuccess(config, [["SECRET", "a"]], Redacted.make("a"))
     })
 
-    it("chunk constructor", () => {
-      const secret = Secret.fromIterable(Chunk.fromIterable("secret".split("")))
-      assert.isTrue(Equal.equals(secret, Secret.fromString("secret")))
-    })
-
-    it("value", () => {
-      const secret = Secret.fromIterable(Chunk.fromIterable("secret".split("")))
-      const value = Secret.value(secret)
-      assert.strictEqual(value, "secret")
-    })
-
-    it("toString", () => {
-      const secret = Secret.fromString("secret")
-      assert.strictEqual(`${secret}`, "Secret(<redacted>)")
-    })
-
-    it("toJSON", () => {
-      const secret = Secret.fromString("secret")
-      assert.strictEqual(JSON.stringify(secret), "\"<redacted>\"")
-    })
-
-    it("wipe", () => {
-      const secret = Secret.fromString("secret")
-      Secret.unsafeWipe(secret)
-      assert.isTrue(
-        Equal.equals(
-          Secret.value(secret),
-          Array.from({ length: "secret".length }, () => String.fromCharCode(0)).join("")
-        )
-      )
+    it("can wrap generic Config", () => {
+      const config = Config.redacted(Config.integer("NUM"))
+      assertEqualSuccess(config, [["NUM", "2"]], Redacted.make(2))
     })
   })
 

@@ -1,10 +1,12 @@
-import { currentOtelSpan, OtelSpan } from "@effect/opentelemetry/internal/tracer"
+import { OtelSpan } from "@effect/opentelemetry/internal/tracer"
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
+import * as Tracer from "@effect/opentelemetry/Tracer"
 import * as it from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Effect from "effect/Effect"
+import * as Runtime from "effect/Runtime"
 import { assert, describe, expect } from "vitest"
 
 const TracingLive = NodeSdk.layer(Effect.sync(() => ({
@@ -23,8 +25,8 @@ describe("Tracer", () => {
     it.effect("withSpan", () =>
       Effect.provide(
         Effect.withSpan("ok")(
-          Effect.gen(function*(_) {
-            const span = yield* _(Effect.currentSpan)
+          Effect.gen(function*() {
+            const span = yield* Effect.currentSpan
             expect(span).instanceOf(OtelSpan)
           })
         ),
@@ -32,10 +34,9 @@ describe("Tracer", () => {
       ))
 
     it.effect("withSpan links", () =>
-      Effect.gen(function*(_) {
-        const linkedSpan = yield* _(Effect.makeSpanScoped("B"))
-        const span = yield* _(
-          Effect.currentSpan,
+      Effect.gen(function*() {
+        const linkedSpan = yield* Effect.makeSpanScoped("B")
+        const span = yield* Effect.currentSpan.pipe(
           Effect.withSpan("A"),
           Effect.linkSpans(linkedSpan)
         )
@@ -57,8 +58,8 @@ describe("Tracer", () => {
       ))
 
     it.effect("supervisor sets context generator", () =>
-      Effect.gen(function*(_) {
-        yield* _(Effect.yieldNow())
+      Effect.gen(function*() {
+        yield* Effect.yieldNow()
         expect(OtelApi.trace.getSpan(OtelApi.context.active())).toBeDefined()
       }).pipe(
         Effect.withSpan("ok"),
@@ -68,21 +69,54 @@ describe("Tracer", () => {
     it.effect("currentOtelSpan", () =>
       Effect.provide(
         Effect.withSpan("ok")(
-          Effect.gen(function*(_) {
-            const span = yield* _(Effect.currentSpan)
-            const otelSpan = yield* _(currentOtelSpan)
+          Effect.gen(function*() {
+            const span = yield* Effect.currentSpan
+            const otelSpan = yield* Tracer.currentOtelSpan
             expect((span as OtelSpan).span).toBe(otelSpan)
           })
         ),
         TracingLive
       ))
+
+    it.scoped("withSpanContext", () =>
+      Effect.gen(function*() {
+        const effect = Effect.gen(function*() {
+          const span = yield* Effect.currentParentSpan
+          assert(span._tag === "Span")
+          const parent = yield* span.parent
+          return parent
+        }).pipe(Effect.withSpan("child"))
+
+        const runtime = yield* Effect.runtime()
+
+        yield* Effect.promise(async () => {
+          await OtelApi.trace.getTracer("test").startActiveSpan("otel-span", {
+            root: true,
+            attributes: { "root": "yes" }
+          }, async (span) => {
+            try {
+              const parent = await Runtime.runPromise(runtime)(Tracer.withSpanContext(
+                effect,
+                span.spanContext()
+              ))
+              const { spanId, traceId } = span.spanContext()
+              expect(parent).toMatchObject({
+                spanId,
+                traceId
+              })
+            } finally {
+              span.end()
+            }
+          })
+        })
+      }).pipe(Effect.provide(TracingLive)))
   })
 
   describe("not provided", () => {
     it.effect("withSpan", () =>
       Effect.withSpan("ok")(
-        Effect.gen(function*(_) {
-          const span = yield* _(Effect.currentSpan)
+        Effect.gen(function*() {
+          const span = yield* Effect.currentSpan
           expect(span).not.instanceOf(OtelSpan)
         })
       ))

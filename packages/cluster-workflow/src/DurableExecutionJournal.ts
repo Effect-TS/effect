@@ -2,11 +2,11 @@
  * @since 1.0.0
  */
 import * as DurableExecutionEvent from "@effect/cluster-workflow/DurableExecutionEvent"
-import * as Schema from "@effect/schema/Schema"
 import * as SqlClient from "@effect/sql/SqlClient"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 
 const SymbolKey = "@effect/cluster-workflow/DurableExecutionJournal"
@@ -69,7 +69,7 @@ export const make = ({ table }: DurableExecutionJournal.MakeOptions) =>
   Effect.gen(function*() {
     const sql = yield* SqlClient.SqlClient
 
-    yield* sql.onDialect({
+    yield* sql.onDialectOrElse({
       mssql: () =>
         sql`
           IF OBJECT_ID(N'${sql.literal(table)}', N'U') IS NULL
@@ -98,7 +98,7 @@ export const make = ({ table }: DurableExecutionJournal.MakeOptions) =>
             CONSTRAINT ${sql(table)}_pkey PRIMARY KEY (execution_id, sequence)
           )
         `,
-      sqlite: () =>
+      orElse: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${sql(table)} (
             execution_id VARCHAR(255) NOT NULL,

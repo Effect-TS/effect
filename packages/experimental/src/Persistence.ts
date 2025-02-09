@@ -3,9 +3,6 @@
  */
 import { TypeIdError } from "@effect/platform/Error"
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import * as Serializable from "@effect/schema/Serializable"
-import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import type * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -14,7 +11,9 @@ import type * as Exit from "effect/Exit"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as ParseResult from "effect/ParseResult"
 import * as PrimaryKey from "effect/PrimaryKey"
+import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 
 /**
@@ -52,7 +51,7 @@ export class PersistenceParseError extends TypeIdError(ErrorTypeId, "Persistence
   }
 
   get message() {
-    return TreeFormatter.formatIssueSync(this.error)
+    return ParseResult.TreeFormatter.formatIssueSync(this.error)
   }
 }
 
@@ -178,7 +177,7 @@ export declare namespace ResultPersistence {
    * @since 1.0.0
    * @category models
    */
-  export interface Key<R, IE, E, IA, A> extends Serializable.WithResult<A, IA, E, IE, R>, PrimaryKey.PrimaryKey {}
+  export interface Key<R, IE, E, IA, A> extends Schema.WithResult<A, IA, E, IE, R>, PrimaryKey.PrimaryKey {}
 
   /**
    * @since 1.0.0
@@ -226,7 +225,7 @@ export const layerResult = Layer.effect(
             value: unknown
           ) =>
             Effect.mapError(
-              Serializable.deserializeExit(key, value),
+              Schema.deserializeExit(key, value),
               (_) => PersistenceParseError.make(method, _.issue)
             )
           const encode = <R, IE, E, IA, A>(
@@ -235,7 +234,7 @@ export const layerResult = Layer.effect(
             value: Exit.Exit<A, E>
           ) =>
             Effect.mapError(
-              Serializable.serializeExit(key, value),
+              Schema.serializeExit(key, value),
               (_) => PersistenceParseError.make(method, _.issue)
             )
           const makeKey = <R, IE, E, IA, A>(

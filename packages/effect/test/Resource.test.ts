@@ -51,4 +51,12 @@ describe("Resource", () => {
       assert.strictEqual(result1, 0)
       assert.strictEqual(result2, 0)
     }))
+  it.scoped("subtype of Effect", () =>
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(0)
+      const cached = yield* Cached.manual(ref)
+      const resul1 = yield* cached
+
+      assert.strictEqual(resul1, 0)
+    }))
 })

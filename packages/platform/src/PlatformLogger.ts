@@ -14,6 +14,7 @@ import * as internal from "./internal/platformLogger.js"
  *
  * @since 1.0.0
  * @example
+ * ```ts
  * import { PlatformLogger } from "@effect/platform"
  * import { NodeFileSystem, NodeRuntime } from "@effect/platform-node"
  * import { Effect, Layer, Logger } from "effect"
@@ -31,6 +32,7 @@ import * as internal from "./internal/platformLogger.js"
  *   Effect.provide(LoggerLive),
  *   NodeRuntime.runMain
  * )
+ * ```
  */
 export const toFile: {
   (

@@ -1,18 +1,19 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@effect/schema/AST"
-import * as JSONSchema from "@effect/schema/JSONSchema"
-import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
-import { dual } from "effect/Function"
+import { constFalse } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
+import * as Schema from "effect/Schema"
 import type { DeepMutable, Mutable } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
+import * as HttpApiMiddleware from "./HttpApiMiddleware.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
 import type { HttpApiSecurity } from "./HttpApiSecurity.js"
 import * as HttpMethod from "./HttpMethod.js"
+import * as JsonSchema from "./OpenApiJsonSchema.js"
 
 /**
  * @since 1.0.0
@@ -48,12 +49,6 @@ export class License extends Context.Tag("@effect/platform/OpenApi/License")<Lic
  * @since 1.0.0
  * @category annotations
  */
-export class Security extends Context.Tag("@effect/platform/OpenApi/Security")<Security, HttpApiSecurity>() {}
-
-/**
- * @since 1.0.0
- * @category annotations
- */
 export class ExternalDocs
   extends Context.Tag("@effect/platform/OpenApi/ExternalDocs")<ExternalDocs, OpenAPISpecExternalDocs>()
 {}
@@ -62,98 +57,117 @@ export class ExternalDocs
  * @since 1.0.0
  * @category annotations
  */
-export const annotations = (annotations: {
-  readonly identifier?: string | undefined
-  readonly title?: string | undefined
-  readonly description?: string | undefined
-  readonly version?: string | undefined
-  readonly license?: OpenAPISpecLicense | undefined
-  readonly security?: HttpApiSecurity | undefined
-  readonly externalDocs?: OpenAPISpecExternalDocs | undefined
-}): Context.Context<never> => {
-  let context = Context.empty()
-  if (annotations.identifier !== undefined) {
-    context = Context.add(context, Identifier, annotations.identifier)
+export class Servers
+  extends Context.Tag("@effect/platform/OpenApi/Servers")<Servers, ReadonlyArray<OpenAPISpecServer>>()
+{}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Format extends Context.Tag("@effect/platform/OpenApi/Format")<Format, string>() {}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Summary extends Context.Tag("@effect/platform/OpenApi/Summary")<Summary, string>() {}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Deprecated extends Context.Tag("@effect/platform/OpenApi/Deprecated")<Deprecated, boolean>() {}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Override extends Context.Tag("@effect/platform/OpenApi/Override")<Override, Record<string, unknown>>() {}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Exclude extends Context.Reference<Exclude>()("@effect/platform/OpenApi/Exclude", {
+  defaultValue: constFalse
+}) {}
+
+/**
+ * Transforms the generated OpenAPI specification
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Transform extends Context.Tag("@effect/platform/OpenApi/Transform")<
+  Transform,
+  (openApiSpec: Record<string, any>) => Record<string, any>
+>() {}
+
+const contextPartial = <Tags extends Record<string, Context.Tag<any, any>>>(tags: Tags): (
+  options: {
+    readonly [K in keyof Tags]?: Context.Tag.Service<Tags[K]> | undefined
   }
-  if (annotations.title !== undefined) {
-    context = Context.add(context, Title, annotations.title)
+) => Context.Context<never> => {
+  const entries = Object.entries(tags)
+  return (options) => {
+    let context = Context.empty()
+    for (const [key, tag] of entries) {
+      if (options[key] !== undefined) {
+        context = Context.add(context, tag, options[key]!)
+      }
+    }
+    return context
   }
-  if (annotations.description !== undefined) {
-    context = Context.add(context, Description, annotations.description)
-  }
-  if (annotations.version !== undefined) {
-    context = Context.add(context, Version, annotations.version)
-  }
-  if (annotations.license !== undefined) {
-    context = Context.add(context, License, annotations.license)
-  }
-  if (annotations.security !== undefined) {
-    context = Context.add(context, Security, annotations.security)
-  }
-  if (annotations.externalDocs !== undefined) {
-    context = Context.add(context, ExternalDocs, annotations.externalDocs)
-  }
-  return context
 }
 
 /**
  * @since 1.0.0
  * @category annotations
  */
-export interface Annotatable {
-  readonly annotations: Context.Context<never>
-}
-
-/**
- * @since 1.0.0
- * @category annotations
- */
-export const annotate: {
-  (annotations: {
+export const annotations: (
+  options: {
     readonly identifier?: string | undefined
     readonly title?: string | undefined
-    readonly description?: string | undefined
     readonly version?: string | undefined
-    readonly license?: OpenAPISpecLicense | undefined
-    readonly security?: HttpApiSecurity | undefined
-    readonly externalDocs?: OpenAPISpecExternalDocs | undefined
-  }): <A extends Annotatable>(self: A) => A
-  <A extends Annotatable>(self: A, annotations: {
-    readonly identifier?: string | undefined
-    readonly title?: string | undefined
     readonly description?: string | undefined
-    readonly version?: string | undefined
     readonly license?: OpenAPISpecLicense | undefined
-    readonly security?: HttpApiSecurity | undefined
+    readonly summary?: string | undefined
     readonly externalDocs?: OpenAPISpecExternalDocs | undefined
-  }): A
-} = dual(2, <A extends Annotatable>(self: A, annotations_: {
-  readonly identifier?: string | undefined
-  readonly title?: string | undefined
-  readonly description?: string | undefined
-  readonly version?: string | undefined
-  readonly license?: OpenAPISpecLicense | undefined
-  readonly security?: HttpApiSecurity | undefined
-  readonly externalDocs?: OpenAPISpecExternalDocs | undefined
-}): A => {
-  const base = typeof self === "function" ? function() {} : self
-  Object.setPrototypeOf(base, Object.getPrototypeOf(self))
-  const context = Context.merge(
-    self.annotations,
-    annotations(annotations_)
-  )
-  return Object.assign(base, self, {
-    annotations: context
-  })
+    readonly servers?: ReadonlyArray<OpenAPISpecServer> | undefined
+    readonly format?: string | undefined
+    readonly override?: Record<string, unknown> | undefined
+    readonly exclude?: boolean | undefined
+    readonly transform?: ((openApiSpec: Record<string, any>) => Record<string, any>) | undefined
+  }
+) => Context.Context<never> = contextPartial({
+  identifier: Identifier,
+  title: Title,
+  version: Version,
+  description: Description,
+  license: License,
+  summary: Summary,
+  externalDocs: ExternalDocs,
+  servers: Servers,
+  format: Format,
+  override: Override,
+  exclude: Exclude,
+  transform: Transform
 })
+
+const apiCache = globalValue("@effect/platform/OpenApi/apiCache", () => new WeakMap<HttpApi.HttpApi.Any, OpenAPISpec>())
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
-  const spec: DeepMutable<OpenAPISpec> = {
-    openapi: "3.0.3",
+export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => {
+  if (apiCache.has(self)) {
+    return apiCache.get(self)!
+  }
+  const api = self as unknown as HttpApi.HttpApi.AnyWithProps
+  const jsonSchemaDefs: Record<string, JsonSchema.JsonSchema> = {}
+  let spec: DeepMutable<OpenAPISpec> = {
+    openapi: "3.1.0",
     info: {
       title: Context.getOrElse(api.annotations, Title, () => "Api"),
       version: Context.getOrElse(api.annotations, Version, () => "0.0.1")
@@ -161,38 +175,59 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
     paths: {},
     tags: [],
     components: {
-      schemas: {},
+      schemas: jsonSchemaDefs,
       securitySchemes: {}
     },
     security: []
   }
-  const securityMap = new Map<HttpApiSecurity, string>()
-  let securityCount = 0
-  function registerSecurity(security: HttpApiSecurity): string {
-    if (securityMap.has(security)) {
-      return securityMap.get(security)!
-    }
-    const count = securityCount++
-    const id = `${security._tag}${count === 0 ? "" : count}`
-    const scheme = makeSecurityScheme(security)
-    spec.components!.securitySchemes![id] = scheme
-    securityMap.set(security, id)
-    return id
+  function makeJsonSchemaOrRef(schema: Schema.Schema.All): JsonSchema.JsonSchema {
+    return JsonSchema.makeWithDefs(schema as any, {
+      defs: jsonSchemaDefs
+    })
   }
+  function registerSecurity(
+    name: string,
+    security: HttpApiSecurity
+  ) {
+    if (spec.components!.securitySchemes![name]) {
+      return
+    }
+    const scheme = makeSecurityScheme(security)
+    spec.components!.securitySchemes![name] = scheme
+  }
+  Option.map(Context.getOption(api.annotations, HttpApi.AdditionalSchemas), (componentSchemas) => {
+    componentSchemas.forEach((componentSchema) => makeJsonSchemaOrRef(componentSchema))
+  })
   Option.map(Context.getOption(api.annotations, Description), (description) => {
     spec.info.description = description
   })
   Option.map(Context.getOption(api.annotations, License), (license) => {
     spec.info.license = license
   })
-  Option.map(Context.getOption(api.annotations, Security), (apiSecurity) => {
-    spec.security!.push({
-      [registerSecurity(apiSecurity)]: []
-    })
+  Option.map(Context.getOption(api.annotations, Summary), (summary) => {
+    spec.info.summary = summary as any
+  })
+  Option.map(Context.getOption(api.annotations, Servers), (servers) => {
+    spec.servers = servers as any
+  })
+  Option.map(Context.getOption(api.annotations, Override), (override) => {
+    Object.assign(spec, override)
+  })
+  api.middlewares.forEach((middleware) => {
+    if (!HttpApiMiddleware.isSecurity(middleware)) {
+      return
+    }
+    for (const [name, security] of Object.entries(middleware.security)) {
+      registerSecurity(name, security)
+      spec.security!.push({ [name]: [] })
+    }
   })
   HttpApi.reflect(api as any, {
     onGroup({ group }) {
-      const tag: Mutable<OpenAPISpecTag> = {
+      if (Context.get(group.annotations, Exclude)) {
+        return
+      }
+      let tag: Mutable<OpenAPISpecTag> = {
         name: Context.getOrElse(group.annotations, Title, () => group.identifier)
       }
       Option.map(Context.getOption(group.annotations, Description), (description) => {
@@ -201,105 +236,144 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
       Option.map(Context.getOption(group.annotations, ExternalDocs), (externalDocs) => {
         tag.externalDocs = externalDocs
       })
+      Option.map(Context.getOption(group.annotations, Override), (override) => {
+        Object.assign(tag, override)
+      })
+      Option.map(Context.getOption(group.annotations, Transform), (fn) => {
+        tag = fn(tag) as OpenAPISpecTag
+      })
       spec.tags!.push(tag)
     },
-    onEndpoint({ endpoint, errors, group, mergedAnnotations, successAST, successEncoding, successStatus }) {
+    onEndpoint({ endpoint, errors, group, mergedAnnotations, middleware, payloads, successes }) {
+      if (Context.get(mergedAnnotations, Exclude)) {
+        return
+      }
       const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
-      const op: DeepMutable<OpenAPISpecOperation> = {
+      let op: DeepMutable<OpenAPISpecOperation> = {
         tags: [Context.getOrElse(group.annotations, Title, () => group.identifier)],
-        operationId: Context.getOrElse(endpoint.annotations, Identifier, () => `${group.identifier}.${endpoint.name}`),
+        operationId: Context.getOrElse(
+          endpoint.annotations,
+          Identifier,
+          () => group.topLevel ? endpoint.name : `${group.identifier}.${endpoint.name}`
+        ),
         parameters: [],
         security: [],
-        responses: {
-          [successStatus]: {
-            description: Option.getOrElse(getDescriptionOrIdentifier(successAST), () => "Success")
-          }
-        }
+        responses: {}
       }
       Option.map(Context.getOption(endpoint.annotations, Description), (description) => {
         op.description = description
       })
+      Option.map(Context.getOption(endpoint.annotations, Summary), (summary) => {
+        op.summary = summary
+      })
+      Option.map(Context.getOption(endpoint.annotations, Deprecated), (deprecated) => {
+        op.deprecated = deprecated
+      })
       Option.map(Context.getOption(endpoint.annotations, ExternalDocs), (externalDocs) => {
         op.externalDocs = externalDocs
       })
-      Option.map(Context.getOption(mergedAnnotations, Security), (apiSecurity) => {
-        op.security!.push({
-          [registerSecurity(apiSecurity)]: []
-        })
+      middleware.forEach((middleware) => {
+        if (!HttpApiMiddleware.isSecurity(middleware)) {
+          return
+        }
+        for (const [name, security] of Object.entries(middleware.security)) {
+          registerSecurity(name, security)
+          op.security!.push({ [name]: [] })
+        }
       })
-      endpoint.payloadSchema.pipe(
-        Option.filter(() => HttpMethod.hasBody(endpoint.method)),
-        Option.map((schema) => {
-          op.requestBody = {
-            content: {
-              [HttpApiSchema.getMultipart(schema.ast) ? "multipart/form-data" : "application/json"]: {
-                schema: makeJsonSchema(schema)
-              }
-            },
-            required: true
+      if (payloads.size > 0) {
+        const content: Mutable<OpenApiSpecContent> = {}
+        payloads.forEach(({ ast }, contentType) => {
+          content[contentType as OpenApiSpecContentType] = {
+            schema: makeJsonSchemaOrRef(Schema.make(ast))
           }
         })
-      )
-      successAST.pipe(
-        Option.map((ast) => {
-          op.responses![successStatus].content = {
-            [successEncoding.contentType]: {
-              schema: makeJsonSchema(Schema.make(ast))
-            }
-          }
-        })
-      )
-      if (Option.isSome(endpoint.pathSchema)) {
-        const schema = makeJsonSchema(endpoint.pathSchema.value) as JSONSchema.JsonSchema7Object
-        if ("properties" in schema) {
-          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
-            op.parameters!.push({
-              name,
-              in: "path",
-              schema: jsonSchema,
-              required: schema.required.includes(name)
-            })
-          })
-        }
+        op.requestBody = { content, required: true }
       }
-      if (!HttpMethod.hasBody(endpoint.method) && Option.isSome(endpoint.payloadSchema)) {
-        const schema = makeJsonSchema(endpoint.payloadSchema.value) as JSONSchema.JsonSchema7Object
-        if ("properties" in schema) {
-          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
-            op.parameters!.push({
-              name,
-              in: "query",
-              schema: jsonSchema,
-              required: schema.required.includes(name)
-            })
-          })
-        }
-      }
-      if (Option.isSome(endpoint.headersSchema)) {
-        const schema = makeJsonSchema(endpoint.headersSchema.value) as JSONSchema.JsonSchema7Object
-        if ("properties" in schema) {
-          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
-            op.parameters!.push({
-              name,
-              in: "header",
-              schema: jsonSchema,
-              required: schema.required.includes(name)
-            })
-          })
-        }
-      }
-      for (const [status, ast] of errors) {
+      for (const [status, { ast, description }] of successes) {
         if (op.responses![status]) continue
         op.responses![status] = {
-          description: Option.getOrElse(getDescriptionOrIdentifier(ast), () => "Error")
+          description: Option.getOrElse(description, () => "Success")
         }
         ast.pipe(
           Option.filter((ast) => !HttpApiSchema.getEmptyDecodeable(ast)),
           Option.map((ast) => {
             op.responses![status].content = {
               "application/json": {
-                schema: makeJsonSchema(Schema.make(ast))
+                schema: makeJsonSchemaOrRef(Schema.make(ast))
+              }
+            }
+          })
+        )
+      }
+      if (Option.isSome(endpoint.pathSchema)) {
+        const schema = makeJsonSchemaOrRef(endpoint.pathSchema.value) as JsonSchema.Object
+        if ("properties" in schema) {
+          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
+            op.parameters!.push({
+              name,
+              in: "path",
+              schema: jsonSchema,
+              required: schema.required.includes(name),
+              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
+            })
+          })
+        }
+      }
+      if (!HttpMethod.hasBody(endpoint.method) && Option.isSome(endpoint.payloadSchema)) {
+        const schema = makeJsonSchemaOrRef(endpoint.payloadSchema.value) as JsonSchema.Object
+        if ("properties" in schema) {
+          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
+            op.parameters!.push({
+              name,
+              in: "query",
+              schema: jsonSchema,
+              required: schema.required.includes(name),
+              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
+            })
+          })
+        }
+      }
+      if (Option.isSome(endpoint.headersSchema)) {
+        const schema = makeJsonSchemaOrRef(endpoint.headersSchema.value) as JsonSchema.Object
+        if ("properties" in schema) {
+          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
+            op.parameters!.push({
+              name,
+              in: "header",
+              schema: jsonSchema,
+              required: schema.required.includes(name),
+              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
+            })
+          })
+        }
+      }
+      if (Option.isSome(endpoint.urlParamsSchema)) {
+        const schema = makeJsonSchemaOrRef(endpoint.urlParamsSchema.value) as JsonSchema.Object
+        if ("properties" in schema) {
+          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
+            op.parameters!.push({
+              name,
+              in: "query",
+              schema: jsonSchema,
+              required: schema.required.includes(name),
+              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
+            })
+          })
+        }
+      }
+      for (const [status, { ast, description }] of errors) {
+        if (op.responses![status]) continue
+        op.responses![status] = {
+          description: Option.getOrElse(description, () => "Error")
+        }
+        ast.pipe(
+          Option.filter((ast) => !HttpApiSchema.getEmptyDecodeable(ast)),
+          Option.map((ast) => {
+            op.responses![status].content = {
+              "application/json": {
+                schema: makeJsonSchemaOrRef(Schema.make(ast))
               }
             }
           })
@@ -308,9 +382,21 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
       if (!spec.paths[path]) {
         spec.paths[path] = {}
       }
+      Option.map(Context.getOption(endpoint.annotations, Override), (override) => {
+        Object.assign(op, override)
+      })
+      Option.map(Context.getOption(endpoint.annotations, Transform), (transformFn) => {
+        op = transformFn(op)
+      })
       spec.paths[path][method] = op
     }
   })
+
+  Option.map(Context.getOption(api.annotations, Transform), (transformFn) => {
+    spec = transformFn(spec) as OpenAPISpec
+  })
+
+  apiCache.set(self, spec)
 
   return spec
 }
@@ -329,10 +415,15 @@ const makeSecurityScheme = (security: HttpApiSecurity): OpenAPISecurityScheme =>
       }
     }
     case "Bearer": {
+      const format = Context.getOption(security.annotations, Format).pipe(
+        Option.map((format) => ({ bearerFormat: format })),
+        Option.getOrUndefined
+      )
       return {
         ...meta,
         type: "http",
-        scheme: "bearer"
+        scheme: "bearer",
+        ...format
       }
     }
     case "ApiKey": {
@@ -346,33 +437,12 @@ const makeSecurityScheme = (security: HttpApiSecurity): OpenAPISecurityScheme =>
   }
 }
 
-const getDescriptionOrIdentifier = (ast: Option.Option<AST.PropertySignature | AST.AST>): Option.Option<string> =>
-  ast.pipe(
-    Option.map((ast) =>
-      "to" in ast ?
-        {
-          ...ast.to.annotations,
-          ...ast.annotations
-        } :
-        ast.annotations
-    ),
-    Option.flatMapNullable((annotations) =>
-      annotations[AST.DescriptionAnnotationId] ?? annotations[AST.IdentifierAnnotationId] as any
-    )
-  )
-
-const makeJsonSchema = (schema: Schema.Schema.All): OpenAPIJSONSchema => {
-  const jsonSchema = JSONSchema.make(schema as any)
-  delete jsonSchema.$schema
-  return jsonSchema
-}
-
 /**
  * @category models
  * @since 1.0.0
  */
 export interface OpenAPISpec {
-  readonly openapi: "3.0.3"
+  readonly openapi: "3.1.0"
   readonly info: OpenAPISpecInfo
   readonly servers?: Array<OpenAPISpecServer>
   readonly paths: OpenAPISpecPaths
@@ -391,6 +461,7 @@ export interface OpenAPISpecInfo {
   readonly version: string
   readonly description?: string
   readonly license?: OpenAPISpecLicense
+  readonly summary?: string
 }
 
 /**
@@ -482,16 +553,10 @@ export type OpenAPISpecPathItem =
  * @category models
  * @since 1.0.0
  */
-export type OpenAPIJSONSchema = JSONSchema.JsonSchema7
-
-/**
- * @category models
- * @since 1.0.0
- */
 export interface OpenAPISpecParameter {
   readonly name: string
   readonly in: "query" | "header" | "path" | "cookie"
-  readonly schema: OpenAPIJSONSchema
+  readonly schema: JsonSchema.JsonSchema
   readonly description?: string
   readonly required?: boolean
   readonly deprecated?: boolean
@@ -524,7 +589,7 @@ export type OpenApiSpecContent = {
  */
 export interface OpenApiSpecResponseHeader {
   readonly description?: string
-  readonly schema: OpenAPIJSONSchema
+  readonly schema: JsonSchema.JsonSchema
 }
 
 /**
@@ -551,7 +616,7 @@ export interface OpenApiSpecResponse {
  * @since 1.0.0
  */
 export interface OpenApiSpecMediaType {
-  readonly schema?: OpenAPIJSONSchema
+  readonly schema?: JsonSchema.JsonSchema
   readonly example?: object
   readonly description?: string
 }
@@ -571,7 +636,7 @@ export interface OpenAPISpecRequestBody {
  * @since 1.0.0
  */
 export interface OpenAPIComponents {
-  readonly schemas?: ReadonlyRecord<string, OpenAPIJSONSchema>
+  readonly schemas?: ReadonlyRecord<string, JsonSchema.JsonSchema>
   readonly securitySchemes?: ReadonlyRecord<string, OpenAPISecurityScheme>
 }
 

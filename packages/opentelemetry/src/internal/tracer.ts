@@ -3,11 +3,13 @@ import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type { Exit } from "effect/Exit"
+import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
 import { Resource } from "../Resource.js"
+import type { OtelTraceFlags, OtelTracer, OtelTracerProvider, OtelTraceState } from "../Tracer.js"
 
 const OtelSpanTypeId = Symbol.for("@effect/opentelemetry/Tracer/OtelSpan")
 
@@ -122,10 +124,12 @@ export class OtelSpan implements EffectTracer.Span {
 }
 
 /** @internal */
-export const TracerProvider = Context.GenericTag<OtelApi.TracerProvider>("@effect/opentelemetry/Tracer/TracerProvider")
+export const TracerProvider = Context.GenericTag<OtelTracerProvider, OtelApi.TracerProvider>(
+  "@effect/opentelemetry/Tracer/OtelTracerProvider"
+)
 
 /** @internal */
-export const Tracer = Context.GenericTag<OtelApi.Tracer>("@effect/opentelemetry/Tracer/Tracer")
+export const Tracer = Context.GenericTag<OtelTracer, OtelApi.Tracer>("@effect/opentelemetry/Tracer/OtelTracer")
 
 /** @internal */
 export const make = Effect.map(Tracer, (tracer) =>
@@ -157,10 +161,14 @@ export const make = Effect.map(Tracer, (tracer) =>
   }))
 
 /** @internal */
-export const traceFlagsTag = Context.GenericTag<OtelApi.TraceFlags>("@effect/opentelemetry/traceFlags")
+export const traceFlagsTag = Context.GenericTag<OtelTraceFlags, OtelApi.TraceFlags>(
+  "@effect/opentelemetry/Tracer/OtelTraceFlags"
+)
 
 /** @internal */
-export const traceStateTag = Context.GenericTag<OtelApi.TraceState>("@effect/opentelemetry/traceState")
+export const traceStateTag = Context.GenericTag<OtelTraceState, OtelApi.TraceState>(
+  "@effect/opentelemetry/Tracer/OtelTraceState"
+)
 
 /** @internal */
 export const makeExternalSpan = (options: {
@@ -234,12 +242,15 @@ export const layerGlobalTracer = layerTracer.pipe(
 
 /** @internal */
 export const layerGlobal = Layer.unwrapEffect(Effect.map(make, Layer.setTracer)).pipe(
-  Layer.provide(layerGlobalTracer)
+  Layer.provideMerge(layerGlobalTracer)
 )
 
 /** @internal */
-export const layer = Layer.unwrapEffect(Effect.map(make, Layer.setTracer)).pipe(
-  Layer.provide(layerTracer)
+export const layerWithoutOtelTracer = Layer.unwrapEffect(Effect.map(make, Layer.setTracer))
+
+/** @internal */
+export const layer = layerWithoutOtelTracer.pipe(
+  Layer.provideMerge(layerTracer)
 )
 
 // -------------------------------------------------------------------------------------
@@ -304,3 +315,18 @@ const unknownToAttributeValue = (value: unknown): OtelApi.AttributeValue => {
   }
   return Inspectable.toStringUnknown(value)
 }
+
+/** @internal */
+export const withSpanContext = dual<
+  (
+    spanContext: OtelApi.SpanContext
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, EffectTracer.ParentSpan>>,
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    spanContext: OtelApi.SpanContext
+  ) => Effect.Effect<A, E, Exclude<R, EffectTracer.ParentSpan>>
+>(2, <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  spanContext: OtelApi.SpanContext
+): Effect.Effect<A, E, Exclude<R, EffectTracer.ParentSpan>> =>
+  Effect.withParentSpan(effect, makeExternalSpan(spanContext)))

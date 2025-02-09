@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
@@ -15,9 +16,10 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
-import type { Scope } from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as NodeStream from "node:stream"
+import type { ConnectionOptions } from "node:tls"
 import postgres from "postgres"
 
 /**
@@ -61,7 +63,7 @@ export interface PgClientConfig {
   readonly host?: string | undefined
   readonly port?: number | undefined
   readonly path?: string | undefined
-  readonly ssl?: boolean | undefined
+  readonly ssl?: boolean | ConnectionOptions | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
   readonly password?: Redacted.Redacted | undefined
@@ -72,6 +74,7 @@ export interface PgClientConfig {
    * [readme](https://github.com/porsager/postgres?tab=readme-ov-file#connection-details) instead.
    *
    * @example
+   * ```ts
    * import { AuthTypes, Connector } from "@google-cloud/cloud-sql-connector";
    * import { PgClient } from "@effect/sql-pg";
    * import { Config, Effect, Layer } from "effect"
@@ -82,8 +85,9 @@ export interface PgClientConfig {
    *     instanceConnectionName: "project:region:instance",
    *     authType: AuthTypes.IAM,
    *   }));
-   *   return PgClient.layer({ socket: Config.succeed(clientOpts.stream), username: Config.succeed("iam-user") });
+   *   return PgClient.layer({ socket: clientOpts.stream, username: "iam-user" });
    * }).pipe(Layer.unwrapEffect)
+   * ```
    */
   readonly socket?: (() => NodeStream.Duplex) | undefined
 
@@ -107,10 +111,12 @@ export interface PgClientConfig {
    * By default, postgres.js logs these with console.log.
    * To silence notices, see the following example:
    * @example
+   * ```ts
    * import { PgClient } from "@effect/sql-pg";
    * import { Config, Layer } from "effect"
    *
    * const layer = PgClient.layer({ onnotice: Config.succeed(() => {}) })
+   * ```
    */
   readonly onnotice?: (notice: postgres.Notice) => void
   readonly types?: Record<string, postgres.PostgresType> | undefined
@@ -130,16 +136,18 @@ interface PostgresOptions extends postgres.Options<{}> {
  */
 export const make = (
   options: PgClientConfig
-): Effect.Effect<PgClient, never, Scope> =>
+): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*(_) {
     const compiler = makeCompiler(
       options.transformQueryNames,
       options.transformJson
     )
-    const transformRows = Statement.defaultTransforms(
-      options.transformResultNames!,
-      options.transformJson
-    ).array
+    const transformRows = options.transformResultNames ?
+      Statement.defaultTransforms(
+        options.transformResultNames,
+        options.transformJson
+      ).array :
+      undefined
 
     const opts: PartialWithUndefined<PostgresOptions> = {
       max: options.maxConnections ?? 10,
@@ -181,7 +189,22 @@ export const make = (
       ? postgres(Redacted.value(options.url), opts as any)
       : postgres(opts as any)
 
-    yield* _(Effect.addFinalizer(() => Effect.promise(() => client.end())))
+    yield* Effect.acquireRelease(
+      Effect.tryPromise({
+        try: () => client`select 1`,
+        catch: (cause) => new SqlError({ cause, message: "PgClient: Failed to connect" })
+      }),
+      () => Effect.promise(() => client.end())
+    ).pipe(
+      Effect.timeoutFail({
+        duration: options.connectTimeout ?? Duration.seconds(5),
+        onTimeout: () =>
+          new SqlError({
+            cause: new Error("Connection timed out"),
+            message: "PgClient: Connection timed out"
+          })
+      })
+    )
 
     class ConnectionImpl implements Connection {
       constructor(private readonly pg: postgres.Sql<{}>) {}
@@ -196,14 +219,14 @@ export const make = (
         })
       }
 
-      private runTransform(query: postgres.PendingQuery<any>) {
-        return options.transformResultNames
-          ? Effect.map(this.run(query), transformRows)
-          : this.run(query)
-      }
-
-      execute(sql: string, params: ReadonlyArray<Primitive>) {
-        return this.runTransform(this.pg.unsafe(sql, params as any))
+      execute(
+        sql: string,
+        params: ReadonlyArray<Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
+        return transformRows
+          ? Effect.map(this.run(this.pg.unsafe(sql, params as any)), transformRows)
+          : this.run(this.pg.unsafe(sql, params as any))
       }
       executeRaw(sql: string, params: ReadonlyArray<Primitive>) {
         return this.run(this.pg.unsafe(sql, params as any))
@@ -214,10 +237,18 @@ export const make = (
       executeValues(sql: string, params: ReadonlyArray<Primitive>) {
         return this.run(this.pg.unsafe(sql, params as any).values())
       }
-      executeUnprepared(sql: string, params?: ReadonlyArray<Primitive>) {
-        return this.runTransform(this.pg.unsafe(sql, params as any))
+      executeUnprepared(
+        sql: string,
+        params: ReadonlyArray<Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
+        return this.execute(sql, params, transformRows)
       }
-      executeStream(sql: string, params: ReadonlyArray<Primitive>) {
+      executeStream(
+        sql: string,
+        params: ReadonlyArray<Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
         return Stream.mapChunks(
           Stream.fromAsyncIterable(
             this.pg.unsafe(sql, params as any).cursor(16) as AsyncIterable<
@@ -225,17 +256,13 @@ export const make = (
             >,
             (cause) => new SqlError({ cause, message: "Failed to execute statement" })
           ),
-          Chunk.flatMap((rows) =>
-            Chunk.unsafeFromArray(
-              options.transformResultNames ? transformRows(rows) : rows
-            )
-          )
+          Chunk.flatMap((rows) => Chunk.unsafeFromArray(transformRows ? transformRows(rows) : rows))
         )
       }
     }
 
     return Object.assign(
-      Client.make({
+      yield* Client.make({
         acquirer: Effect.succeed(new ConnectionImpl(client)),
         transactionAcquirer: Effect.map(
           Effect.acquireRelease(
@@ -254,7 +281,8 @@ export const make = (
           [Otel.SEMATTRS_DB_NAME, opts.database ?? options.username ?? "postgres"],
           ["server.address", opts.host ?? "localhost"],
           ["server.port", opts.port ?? 5432]
-        ]
+        ],
+        transformRows
       }),
       {
         [TypeId]: TypeId as TypeId,
@@ -288,12 +316,12 @@ export const make = (
   })
 
 /**
- * @category constructor
+ * @category layers
  * @since 1.0.0
  */
-export const layer = (
+export const layerConfig = (
   config: Config.Config.Wrap<PgClientConfig>
-): Layer.Layer<PgClient | Client.SqlClient, ConfigError> =>
+): Layer.Layer<PgClient | Client.SqlClient, ConfigError | SqlError> =>
   Layer.scopedContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -303,7 +331,21 @@ export const layer = (
         )
       )
     )
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layer = (
+  config: PgClientConfig
+): Layer.Layer<PgClient | Client.SqlClient, ConfigError | SqlError> =>
+  Layer.scopedContext(
+    Effect.map(make(config), (client) =>
+      Context.make(PgClient, client).pipe(
+        Context.add(Client.SqlClient, client)
+      ))
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category constructor
@@ -341,7 +383,7 @@ export const makeCompiler = (
       switch (type.kind) {
         case "PgJson": {
           return [
-            placeholder(),
+            placeholder(undefined),
             [
               pg.json(
                 withoutTransform || transformValue === undefined
@@ -368,7 +410,7 @@ export const makeCompiler = (
               break
             }
           }
-          return [placeholder(), [param]]
+          return [placeholder(undefined), [param]]
         }
       }
     }

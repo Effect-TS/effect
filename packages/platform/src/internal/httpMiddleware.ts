@@ -1,4 +1,3 @@
-import type { HttpApp } from "@effect/platform"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
@@ -16,6 +15,7 @@ import * as ServerRequest from "../HttpServerRequest.js"
 import * as ServerResponse from "../HttpServerResponse.js"
 import type { HttpServerResponse } from "../HttpServerResponse.js"
 import * as TraceContext from "../HttpTraceContext.js"
+import * as internalHttpApp from "./httpApp.js"
 
 /** @internal */
 export const make = <M extends Middleware.HttpMiddleware>(middleware: M): M => middleware
@@ -76,8 +76,7 @@ export const withTracerDisabledForUrls = dual<
 export const logger = make((httpApp) => {
   let counter = 0
   return Effect.withFiberRuntime((fiber) => {
-    const context = fiber.getFiberRef(FiberRef.currentContext)
-    const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
+    const request = Context.unsafeGet(fiber.currentContext, ServerRequest.HttpServerRequest)
     return Effect.withLogSpan(
       Effect.flatMap(Effect.exit(httpApp), (exit) => {
         if (fiber.getFiberRef(loggerDisabled)) {
@@ -110,8 +109,7 @@ export const logger = make((httpApp) => {
 /** @internal */
 export const tracer = make((httpApp) =>
   Effect.withFiberRuntime((fiber) => {
-    const context = fiber.getFiberRef(FiberRef.currentContext)
-    const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
+    const request = Context.unsafeGet(fiber.currentContext, ServerRequest.HttpServerRequest)
     const disabled = fiber.getFiberRef(currentTracerDisabledWhen)(request)
     if (disabled) {
       return httpApp
@@ -276,28 +274,40 @@ export const cors = (options?: {
     ? { "access-control-max-age": opts.maxAge.toString() }
     : undefined
 
-  return <E, R>(httpApp: HttpApp.Default<E, R>): HttpApp.Default<E, R> =>
+  const headersFromRequest = (request: ServerRequest.HttpServerRequest) => {
+    const origin = request.headers["origin"]
+    return Headers.unsafeFromRecord({
+      ...allowOrigin(origin),
+      ...allowCredentials,
+      ...exposeHeaders
+    })
+  }
+
+  const headersFromRequestOptions = (request: ServerRequest.HttpServerRequest) => {
+    const origin = request.headers["origin"]
+    const accessControlRequestHeaders = request.headers["access-control-request-headers"]
+    return Headers.unsafeFromRecord({
+      ...allowOrigin(origin),
+      ...allowCredentials,
+      ...exposeHeaders,
+      ...allowMethods,
+      ...allowHeaders(accessControlRequestHeaders),
+      ...maxAge
+    })
+  }
+
+  const preResponseHandler = (request: ServerRequest.HttpServerRequest, response: HttpServerResponse) =>
+    Effect.succeed(ServerResponse.setHeaders(response, headersFromRequest(request)))
+
+  return <E, R>(httpApp: App.Default<E, R>): App.Default<E, R> =>
     Effect.withFiberRuntime((fiber) => {
-      const context = fiber.getFiberRef(FiberRef.currentContext)
-      const request = Context.unsafeGet(
-        context,
-        ServerRequest.HttpServerRequest
-      )
-      const origin = request.headers["origin"]
-      const accessControlRequestHeaders = request.headers["access-control-request-headers"]
-      const corsHeaders = Headers.unsafeFromRecord({
-        ...allowOrigin(origin),
-        ...allowCredentials,
-        ...exposeHeaders
-      })
+      const request = Context.unsafeGet(fiber.currentContext, ServerRequest.HttpServerRequest)
       if (request.method === "OPTIONS") {
-        Object.assign(corsHeaders, {
-          ...allowMethods,
-          ...allowHeaders(accessControlRequestHeaders),
-          ...maxAge
-        })
-        return Effect.succeed(ServerResponse.empty({ status: 204, headers: corsHeaders }))
+        return Effect.succeed(ServerResponse.empty({
+          status: 204,
+          headers: headersFromRequestOptions(request)
+        }))
       }
-      return Effect.map(httpApp, ServerResponse.setHeaders(corsHeaders))
+      return Effect.zipRight(internalHttpApp.appendPreResponseHandler(preResponseHandler), httpApp)
     })
 }

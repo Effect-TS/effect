@@ -1,6 +1,6 @@
 import * as Message from "@effect/cluster/Message"
 import * as RecipientType from "@effect/cluster/RecipientType"
-import * as Schema from "@effect/schema/Schema"
+import * as Schema from "effect/Schema"
 
 export class GetCurrent extends Message.TaggedMessage<GetCurrent>()("GetCurrent", Schema.Never, Schema.Number, {
   messageId: Schema.String

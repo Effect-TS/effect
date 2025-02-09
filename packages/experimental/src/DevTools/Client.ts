@@ -4,7 +4,9 @@
 import * as Socket from "@effect/platform/Socket"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
@@ -104,6 +106,8 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
     }
   }
 
+  const connected = yield* Deferred.make<void>()
+
   yield* Mailbox.toStream(requests).pipe(
     Stream.pipeThroughChannel(
       Ndjson.duplexSchemaString(Socket.toChannelString(socket), {
@@ -112,6 +116,7 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
       })
     ),
     Stream.runForEach((req) => {
+      Deferred.unsafeDone(connected, Exit.void)
       switch (req._tag) {
         case "MetricsRequest": {
           return requests.offer(metricsSnapshot())
@@ -121,8 +126,8 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
         }
       }
     }),
+    Effect.tapErrorCause(Effect.logDebug),
     Effect.retry(Schedule.spaced("1 seconds")),
-    Effect.catchAllCause(Effect.logDebug),
     Effect.forkScoped,
     Effect.uninterruptible
   )
@@ -137,6 +142,10 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
     Effect.forever,
     Effect.forkScoped,
     Effect.interruptible
+  )
+
+  yield* Deferred.await(connected).pipe(
+    Effect.timeoutOption("1 second")
   )
 
   return Client.of({

@@ -3,13 +3,13 @@
  */
 import * as RRX from "@effect/experimental/RequestResolver"
 import * as VariantSchema from "@effect/experimental/VariantSchema"
-import * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import type { Brand } from "effect/Brand"
 import * as DateTime from "effect/DateTime"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as ParseResult from "effect/ParseResult"
+import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import { SqlClient } from "./SqlClient.js"
 import * as SqlResolver from "./SqlResolver.js"
@@ -23,7 +23,8 @@ const {
   Struct,
   Union,
   extract,
-  fieldEvolve
+  fieldEvolve,
+  fieldFromKey
 } = VariantSchema.make({
   variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
   defaultVariant: "select"
@@ -76,7 +77,8 @@ export {
    * @since 1.0.0
    * @category constructors
    * @example
-   * import { Schema } from "@effect/schema"
+   * ```ts
+   * import { Schema } from "effect"
    * import { Model } from "@effect/sql"
    *
    * export const GroupId = Schema.Number.pipe(Schema.brand("GroupId"))
@@ -108,6 +110,7 @@ export {
    *     return this.name.toUpperCase()
    *   }
    * }
+   * ```
    */
   Class,
   /**
@@ -130,6 +133,11 @@ export {
    * @category fields
    */
   FieldExcept,
+  /**
+   * @since 1.0.0
+   * @category fields
+   */
+  fieldFromKey,
   /**
    * @since 1.0.0
    * @category fields
@@ -848,13 +856,10 @@ select * from ${sql(options.tableName)} where ${sql(idColumn)} = LAST_INSERT_ID(
         })
       ) as any
 
-    const findByIdResolver = yield* SqlResolver.grouped(`${options.spanPrefix}/findById`, {
-      Request: idSchema,
-      RequestGroupKey(id) {
-        return id
-      },
+    const findByIdResolver = yield* SqlResolver.findById(`${options.spanPrefix}/findById`, {
+      Id: idSchema,
       Result: Model,
-      ResultGroupKey(request) {
+      ResultId(request) {
         return request[idColumn]
       },
       execute: (ids) => sql`select * from ${sql(options.tableName)} where ${sql.in(idColumn, ids)}`

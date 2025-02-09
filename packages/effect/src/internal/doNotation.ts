@@ -1,5 +1,6 @@
 import { dual } from "../Function.js"
 import type { Kind, TypeLambda } from "../HKT.js"
+import type { NoInfer } from "../Types.js"
 
 type Map<F extends TypeLambda> = {
   <A, B>(f: (a: A) => B): <R, O, E>(self: Kind<F, R, O, E, A>) => Kind<F, R, O, E, B>
@@ -22,20 +23,20 @@ export const let_ = <F extends TypeLambda>(
 ): {
   <N extends string, A extends object, B>(
     name: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): <R, O, E>(
     self: Kind<F, R, O, E, A>
   ) => Kind<F, R, O, E, { [K in keyof A | N]: K extends keyof A ? A[K] : B }>
   <R, O, E, A extends object, N extends string, B>(
     self: Kind<F, R, O, E, A>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): Kind<F, R, O, E, { [K in keyof A | N]: K extends keyof A ? A[K] : B }>
 } =>
   dual(3, <R, O, E, A extends object, N extends string, B>(
     self: Kind<F, R, O, E, A>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): Kind<F, R, O, E, { [K in keyof A | N]: K extends keyof A ? A[K] : B }> =>
     map(self, (a) => Object.assign({}, a, { [name]: f(a) }) as any))
 
@@ -58,20 +59,20 @@ export const bindTo = <F extends TypeLambda>(map: Map<F>): {
 export const bind = <F extends TypeLambda>(map: Map<F>, flatMap: FlatMap<F>): {
   <N extends string, A extends object, R2, O2, E2, B>(
     name: Exclude<N, keyof A>,
-    f: (a: A) => Kind<F, R2, O2, E2, B>
+    f: (a: NoInfer<A>) => Kind<F, R2, O2, E2, B>
   ): <R1, O1, E1>(
     self: Kind<F, R1, O1, E1, A>
   ) => Kind<F, R1 & R2, O1 | O2, E1 | E2, { [K in keyof A | N]: K extends keyof A ? A[K] : B }>
   <R1, O1, E1, A extends object, N extends string, R2, O2, E2, B>(
     self: Kind<F, R1, O1, E1, A>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => Kind<F, R2, O2, E2, B>
+    f: (a: NoInfer<A>) => Kind<F, R2, O2, E2, B>
   ): Kind<F, R1 & R2, O1 | O2, E1 | E2, { [K in keyof A | N]: K extends keyof A ? A[K] : B }>
 } =>
   dual(3, <R1, O1, E1, A, N extends string, R2, O2, E2, B>(
     self: Kind<F, R1, O1, E1, A>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => Kind<F, R2, O2, E2, B>
+    f: (a: NoInfer<A>) => Kind<F, R2, O2, E2, B>
   ): Kind<F, R1 & R2, O1 | O2, E1 | E2, { [K in keyof A | N]: K extends keyof A ? A[K] : B }> =>
     flatMap(self, (a) =>
       map(f(a), (b) => Object.assign({}, a, { [name]: b }) as { [K in keyof A | N]: K extends keyof A ? A[K] : B })))

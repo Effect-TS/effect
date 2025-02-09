@@ -69,10 +69,12 @@ export const empty = <K extends string | symbol = never, V = never>(): Record<
  * @param self - record to test for emptiness.
  *
  * @example
+ * ```ts
  * import { isEmptyRecord } from "effect/Record"
  *
  * assert.deepStrictEqual(isEmptyRecord({}), true);
  * assert.deepStrictEqual(isEmptyRecord({ a: 3 }), false);
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -86,10 +88,12 @@ export const isEmptyRecord = <K extends string, A>(self: Record<K, A>): self is 
  * @param self - record to test for emptiness.
  *
  * @example
+ * ```ts
  * import { isEmptyReadonlyRecord } from "effect/Record"
  *
  * assert.deepStrictEqual(isEmptyReadonlyRecord({}), true);
  * assert.deepStrictEqual(isEmptyReadonlyRecord({ a: 3 }), false);
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -106,6 +110,7 @@ export const isEmptyReadonlyRecord: <K extends string, A>(
  * @param f - A projection function that maps values of the iterable to a tuple of a key and a value.
  *
  * @example
+ * ```ts
  * import { fromIterableWith } from "effect/Record"
  *
  * const input = [1, 2, 3, 4]
@@ -114,6 +119,7 @@ export const isEmptyReadonlyRecord: <K extends string, A>(
  *   fromIterableWith(input, a => [String(a), a * 2]),
  *   { '1': 2, '2': 4, '3': 6, '4': 8 }
  * )
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -148,6 +154,7 @@ export const fromIterableWith: {
  * @param f - A function that extracts the key for each element.
  *
  * @example
+ * ```ts
  * import { fromIterableBy } from "effect/Record"
  *
  * const users = [
@@ -162,6 +169,7 @@ export const fromIterableWith: {
  *     "1": { id: "1", name: "name1" }
  *   }
  * )
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -180,11 +188,13 @@ export const fromIterableBy = <A, K extends string | symbol>(
  * @param self - The iterable of key-value pairs.
  *
  * @example
+ * ```ts
  * import { fromEntries } from "effect/Record"
  *
  * const input: Array<[string, number]> = [["a", 1], ["b", 2]]
  *
  * assert.deepStrictEqual(fromEntries(input), { a: 1, b: 2 })
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -200,10 +210,12 @@ export const fromEntries: <Entry extends readonly [string | symbol, any]>(
  * @param f - The custom mapping function to apply to each key/value of the record.
  *
  * @example
+ * ```ts
  * import { collect } from "effect/Record"
  *
  * const x = { a: 1, b: 2, c: 3 }
  * assert.deepStrictEqual(collect(x, (key, n) => [key, n]), [["a", 1], ["b", 2], ["c", 3]])
+ * ```
  *
  * @category conversions
  * @since 2.0.0
@@ -228,10 +240,12 @@ export const collect: {
  * @param self - The record to transform.
  *
  * @example
+ * ```ts
  * import { toEntries } from "effect/Record"
  *
  * const x = { a: 1, b: 2, c: 3 }
  * assert.deepStrictEqual(toEntries(x), [["a", 1], ["b", 2], ["c", 3]])
+ * ```
  *
  * @category conversions
  * @since 2.0.0
@@ -247,9 +261,11 @@ export const toEntries: <K extends string, A>(self: ReadonlyRecord<K, A>) => Arr
  * @param self - A record to calculate the number of key/value pairs in.
  *
  * @example
+ * ```ts
  * import { size } from "effect/Record";
  *
  * assert.deepStrictEqual(size({ a: "a", b: 1, c: true }), 3);
+ * ```
  *
  * @since 2.0.0
  */
@@ -262,10 +278,12 @@ export const size = <K extends string, A>(self: ReadonlyRecord<K, A>): number =>
  * @param key - the key to look for in the record.
  *
  * @example
+ * ```ts
  * import { empty, has } from "effect/Record"
  *
  * assert.deepStrictEqual(has({ a: 1, b: 2 }, "a"), true);
  * assert.deepStrictEqual(has(empty<string>(), "c"), false);
+ * ```
  *
  * @since 2.0.0
  */
@@ -292,12 +310,14 @@ export const has: {
  * @param key - Key to retrieve from record.
  *
  * @example
+ * ```ts
  * import { Record as R, Option } from "effect"
  *
  * const person: Record<string, unknown> = { name: "John Doe", age: 35 }
  *
  * assert.deepStrictEqual(R.get(person, "name"), Option.some("John Doe"))
  * assert.deepStrictEqual(R.get(person, "email"), Option.none())
+ * ```
  *
  * @since 2.0.0
  */
@@ -319,6 +339,7 @@ export const get: {
  * @param f - The function to apply to the element.
  *
  * @example
+ * ```ts
  * import { Record as R } from "effect"
  *
  * const f = (x: number) => x * 2
@@ -331,6 +352,7 @@ export const get: {
  *  R.modify({ a: 3 } as Record<string, number>, 'b', f),
  *  { a: 3 }
  * )
+ * ```
  *
  * @since 2.0.0
  */
@@ -359,6 +381,7 @@ export const modify: {
  * @param f - The function to apply to the element.
  *
  * @example
+ * ```ts
  * import { Record as R, Option } from "effect"
  *
  * const f = (x: number) => x * 2
@@ -371,6 +394,7 @@ export const modify: {
  *  R.modifyOption({ a: 3 } as Record<string, number>, 'b', f),
  *  Option.none()
  * )
+ * ```
  *
  * @since 2.0.0
  */
@@ -406,6 +430,7 @@ export const modifyOption: {
  * @param b - The new value to replace the existing value with.
  *
  * @example
+ * ```ts
  * import { Record, Option } from "effect"
  *
  * assert.deepStrictEqual(
@@ -413,6 +438,7 @@ export const modifyOption: {
  *   Option.some({ a: 10, b: 2, c: 3 })
  * )
  * assert.deepStrictEqual(Record.replaceOption(Record.empty<string>(), 'a', 10), Option.none())
+ * ```
  *
  * @since 2.0.0
  */
@@ -443,9 +469,11 @@ export const replaceOption: {
  * @param key - the key to remove from the record.
  *
  * @example
+ * ```ts
  * import { remove } from "effect/Record"
  *
  * assert.deepStrictEqual(remove({ a: 1, b: 2 }, "a"), { b: 2 })
+ * ```
  *
  * @since 2.0.0
  */
@@ -473,10 +501,12 @@ export const remove: {
  * @param key - The key of the property to retrieve.
  *
  * @example
+ * ```ts
  * import { Record as R, Option } from "effect"
  *
  * assert.deepStrictEqual(R.pop({ a: 1, b: 2 }, "a"), Option.some([1, { b: 2 }]))
  * assert.deepStrictEqual(R.pop({ a: 1, b: 2 } as Record<string, number>, "c"), Option.none())
+ * ```
  *
  * @category record
  * @since 2.0.0
@@ -502,6 +532,7 @@ export const pop: {
  * @param f - A transformation function that will be applied to each of the values in the record.
  *
  * @example
+ * ```ts
  * import { map } from "effect/Record"
  *
  * const f = (n: number) => `-${n}`
@@ -511,6 +542,7 @@ export const pop: {
  * const g = (n: number, key: string) => `${key.toUpperCase()}-${n}`
  *
  * assert.deepStrictEqual(map({ a: 3, b: 5 }, g), { a: "A-3", b: "B-5" })
+ * ```
  *
  * @category mapping
  * @since 2.0.0
@@ -533,9 +565,11 @@ export const map: {
  * Maps the keys of a `ReadonlyRecord` while preserving the corresponding values.
  *
  * @example
+ * ```ts
  * import { mapKeys } from "effect/Record"
  *
  * assert.deepStrictEqual(mapKeys({ a: 3, b: 5 }, (key) => key.toUpperCase()), { A: 3, B: 5 })
+ * ```
  *
  * @category mapping
  * @since 2.0.0
@@ -567,9 +601,11 @@ export const mapKeys: {
  * Maps entries of a `ReadonlyRecord` using the provided function, allowing modification of both keys and corresponding values.
  *
  * @example
+ * ```ts
  * import { mapEntries } from "effect/Record"
  *
  * assert.deepStrictEqual(mapEntries({ a: 3, b: 5 }, (a, key) => [key.toUpperCase(), a + 1]), { A: 4, B: 6 })
+ * ```
  *
  * @category mapping
  * @since 2.0.0
@@ -605,11 +641,13 @@ export const mapEntries: {
  * @param f - The transformation function.
  *
  * @example
+ * ```ts
  * import { Record, Option } from "effect"
  *
  * const x = { a: 1, b: 2, c: 3 }
  * const f = (a: number, key: string) => a > 2 ? Option.some(a * 2) : Option.none()
  * assert.deepStrictEqual(Record.filterMap(x, f), { c: 6 })
+ * ```
  *
  * @since 2.0.0
  */
@@ -645,10 +683,12 @@ export const filterMap: {
  * @param predicate - A function that returns a `boolean` value to determine if the entry should be included in the new record.
  *
  * @example
+ * ```ts
  * import { filter } from "effect/Record"
  *
  * const x = { a: 1, b: 2, c: 3, d: 4 }
  * assert.deepStrictEqual(filter(x, (n) => n > 2), { c: 3, d: 4 })
+ * ```
  *
  * @category filtering
  * @since 2.0.0
@@ -690,12 +730,14 @@ export const filter: {
  * @param self - A record with `Option` values.
  *
  * @example
+ * ```ts
  * import { Record, Option } from "effect"
  *
  * assert.deepStrictEqual(
  *   Record.getSomes({ a: Option.some(1), b: Option.none(), c: Option.some(2) }),
  *   { a: 1, c: 2 }
  * )
+ * ```
  *
  * @category filtering
  * @since 2.0.0
@@ -710,12 +752,14 @@ export const getSomes: <K extends string, A>(
  * Given a record with `Either` values, returns a new record containing only the `Left` values, preserving the original keys.
  *
  * @example
+ * ```ts
  * import { Record, Either } from "effect"
  *
  * assert.deepStrictEqual(
  *   Record.getLefts({ a: Either.right(1), b: Either.left("err"), c: Either.right(2) }),
  *   { b: "err" }
  * )
+ * ```
  *
  * @category filtering
  * @since 2.0.0
@@ -738,12 +782,14 @@ export const getLefts = <K extends string, R, L>(
  * Given a record with `Either` values, returns a new record containing only the `Right` values, preserving the original keys.
  *
  * @example
+ * ```ts
  * import { Record, Either } from "effect"
  *
  * assert.deepStrictEqual(
  *   Record.getRights({ a: Either.right(1), b: Either.left("err"), c: Either.right(2) }),
  *   { a: 1, c: 2 }
  * )
+ * ```
  *
  * @category filtering
  * @since 2.0.0
@@ -769,11 +815,13 @@ export const getRights = <K extends string, R, L>(
  * @param f - The predicate function to apply to each element.
  *
  * @example
+ * ```ts
  * import { Record, Either } from "effect"
  *
  * const x = { a: 1, b: 2, c: 3 }
  * const f = (n: number) => (n % 2 === 0 ? Either.right(n) : Either.left(n))
  * assert.deepStrictEqual(Record.partitionMap(x, f), [{ a: 1, c: 3 }, { b: 2}])
+ * ```
  *
  * @category filtering
  * @since 2.0.0
@@ -815,12 +863,14 @@ export const partitionMap: {
  * @param self - the record to partition.
  *
  * @example
+ * ```ts
  * import { Record, Either } from "effect"
  *
  * assert.deepStrictEqual(
  *   Record.separate({ a: Either.left("e"), b: Either.right(1) }),
  *   [{ a: "e" }, { b: 1 }]
  * )
+ * ```
  *
  * @category filtering
  * @since 2.0.0
@@ -836,12 +886,14 @@ export const separate: <K extends string, A, B>(
  * @param predicate - The partitioning function to determine the partitioning of each value of the record.
  *
  * @example
+ * ```ts
  * import { partition } from "effect/Record"
  *
  * assert.deepStrictEqual(
  *   partition({ a: 1, b: 3 }, (n) => n > 2),
  *   [{ a: 1 }, { b: 3 }]
  * )
+ * ```
  *
  * @category filtering
  * @since 2.0.0
@@ -915,10 +967,12 @@ export const values = <K extends string, A>(self: ReadonlyRecord<K, A>): Array<A
  * @param values - The value you want to associate with the key.
  *
  * @example
+ * ```ts
  * import { set } from "effect/Record"
  *
  * assert.deepStrictEqual(set("a", 5)({ a: 1, b: 2 }), { a: 5, b: 2 });
  * assert.deepStrictEqual(set("c", 5)({ a: 1, b: 2 }), { a: 1, b: 2, c: 5 });
+ * ```
  *
  * @since 2.0.0
  */
@@ -952,10 +1006,12 @@ export const set: {
  * @param value - The new value to associate with the key.
  *
  * @example
+ * ```ts
  * import { Record } from "effect"
  *
  * assert.deepStrictEqual(Record.replace("a", 3)({ a: 1, b: 2 }), { a: 3, b: 2 });
  * assert.deepStrictEqual(Record.replace("c", 3)({ a: 1, b: 2 }), { a: 1, b: 2 });
+ * ```
  *
  * @since 2.0.0
  */

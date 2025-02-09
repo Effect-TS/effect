@@ -15,7 +15,6 @@
 /packages/printer-ansi/            @IMax153
 /packages/rpc/                     @tim-smart
 /packages/rpc-http/                @tim-smart
-/packages/schema/                  @gcanti
 /packages/sql/                     @tim-smart
 /packages/sql-mssql/               @tim-smart
 /packages/sql-mysql2/              @tim-smart

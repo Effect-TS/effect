@@ -77,6 +77,7 @@ export declare namespace Logger {
  * function.
  *
  * @example
+ * ```ts
  * import { Effect, Logger, LogLevel } from "effect"
  *
  * const logger = Logger.make(({ logLevel, message }) => {
@@ -101,6 +102,7 @@ export declare namespace Logger {
  * // [DEBUG] task1 done
  * // [DEBUG] task2 done
  * // [INFO] done
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -195,6 +197,7 @@ export const map: {
  * @param window - The time window in which to batch log messages.
  *
  * @example
+ * ```ts
  * import { Console, Effect, Logger } from "effect"
  *
  * const LoggerLive = Logger.replaceScoped(
@@ -216,6 +219,7 @@ export const map: {
  * // timestamp=... level=INFO fiber=#0 message=two
  * // timestamp=... level=INFO fiber=#0 message=three
  * // ]
+ * ```
  *
  * @since 2.0.0
  * @category mapping
@@ -243,6 +247,7 @@ export const withConsoleLog: <M, O>(self: Logger<M, O>) => Logger<M, void> = fib
  * based on the log level.
  *
  * @example
+ * ```ts
  * import { Logger, Effect } from "effect"
  *
  * const loggerLayer = Logger.replace(
@@ -254,6 +259,7 @@ export const withConsoleLog: <M, O>(self: Logger<M, O>) => Logger<M, void> = fib
  *   yield* Effect.logError("an error")
  *   yield* Effect.logInfo("an info")
  * }).pipe(Effect.provide(loggerLayer))
+ * ```
  *
  * @since 3.8.0
  * @category console
@@ -344,12 +350,14 @@ export const test: {
  * control over which log messages are displayed based on their severity.
  *
  * @example
+ * ```ts
  * import { Effect, Logger, LogLevel } from "effect"
  *
  * const program = Effect.logDebug("message1").pipe(Logger.withMinimumLogLevel(LogLevel.Debug))
  *
  * // Effect.runFork(program)
  * // timestamp=... level=DEBUG fiber=#0 message=message1
+ * ```
  *
  * @since 2.0.0
  * @category context
@@ -422,6 +430,7 @@ export const defaultLogger: Logger<unknown, void> = fiberRuntime.defaultLogger
  * integrate with logging systems that consume JSON data.
  *
  * @example
+ * ```ts
  * import { Effect, Logger } from "effect"
  *
  * const program = Effect.log("message1", "message2").pipe(
@@ -431,6 +440,7 @@ export const defaultLogger: Logger<unknown, void> = fiberRuntime.defaultLogger
  *
  * // Effect.runFork(program.pipe(Effect.provide(Logger.json)))
  * // {"message":["message1","message2"],"logLevel":"INFO","timestamp":"...","annotations":{"key2":"value2","key1":"value1"},"spans":{"myspan":0},"fiberId":"#0"}
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -442,6 +452,7 @@ export const jsonLogger: Logger<unknown, string> = internal.jsonLogger
  * during development or in a production console.
  *
  * @example
+ * ```ts
  * import { Effect, Logger } from "effect"
  *
  * const program = Effect.log("message1", "message2").pipe(
@@ -451,6 +462,7 @@ export const jsonLogger: Logger<unknown, string> = internal.jsonLogger
  *
  * // Effect.runFork(program.pipe(Effect.provide(Logger.logFmt)))
  * // timestamp=... level=INFO fiber=#0 message=message1 message=message2 myspan=0ms key2=value2 key1=value1
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -470,6 +482,7 @@ export const stringLogger: Logger<unknown, string> = internal.stringLogger
  * development and debugging processes.
  *
  * @example
+ * ```ts
  * import { Effect, Logger } from "effect"
  *
  * const program = Effect.log("message1", "message2").pipe(
@@ -484,6 +497,7 @@ export const stringLogger: Logger<unknown, string> = internal.stringLogger
  * //    v-- bold
  * //   key2: value2
  * //   key1: value1
+ * ```
  *
  * @since 3.5.0
  * @category constructors
@@ -498,19 +512,12 @@ export const prettyLogger: (
 ) => Logger<unknown, void> = internal.prettyLogger
 
 /**
- * A default version of the pretty logger.
- *
- * @since 3.8.0
- * @category constructors
- */
-export const prettyLoggerDefault: Logger<unknown, void> = internal.prettyLoggerDefault
-
-/**
  * The structured logger provides detailed log outputs, structured in a way that
  * retains comprehensive traceability of the events, suitable for deeper
  * analysis and troubleshooting.
  *
  * @example
+ * ```ts
  * import { Effect, Logger } from "effect"
  *
  * const program = Effect.log("message1", "message2").pipe(
@@ -528,6 +535,7 @@ export const prettyLoggerDefault: Logger<unknown, void> = internal.prettyLoggerD
  * //   spans: { myspan: 0 },
  * //   fiberId: '#0'
  * // }
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -556,6 +564,7 @@ export const tracerLogger: Logger<unknown, void> = fiberRuntime.tracerLogger
  * integrate with logging systems that consume JSON data.
  *
  * @example
+ * ```ts
  * import { Effect, Logger } from "effect"
  *
  * const program = Effect.log("message1", "message2").pipe(
@@ -565,6 +574,7 @@ export const tracerLogger: Logger<unknown, void> = fiberRuntime.tracerLogger
  *
  * // Effect.runFork(program.pipe(Effect.provide(Logger.json)))
  * // {"message":["message1","message2"],"logLevel":"INFO","timestamp":"...","annotations":{"key2":"value2","key1":"value1"},"spans":{"myspan":0},"fiberId":"#0"}
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -576,6 +586,7 @@ export const json: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fibe
  * during development or in a production console.
  *
  * @example
+ * ```ts
  * import { Effect, Logger } from "effect"
  *
  * const program = Effect.log("message1", "message2").pipe(
@@ -585,6 +596,7 @@ export const json: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fibe
  *
  * // Effect.runFork(program.pipe(Effect.provide(Logger.logFmt)))
  * // timestamp=... level=INFO fiber=#0 message=message1 message=message2 myspan=0ms key2=value2 key1=value1
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -592,31 +604,10 @@ export const json: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fibe
 export const logFmt: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.logFmtLogger)
 
 /**
- * The pretty logger utilizes the capabilities of the console API to generate
- * visually engaging and color-enhanced log outputs. This feature is
- * particularly useful for improving the readability of log messages during
- * development and debugging processes.
- *
- * @example
- * import { Effect, Logger } from "effect"
- *
- * const program = Effect.log("message1", "message2").pipe(
- *   Effect.annotateLogs({ key1: "value1", key2: "value2" }),
- *   Effect.withLogSpan("myspan")
- * )
- *
- * // Effect.runFork(program.pipe(Effect.provide(Logger.pretty)))
- * //         green --v                      v-- bold and cyan
- * // [07:51:54.434] INFO (#0) myspan=1ms: message1
- * //   message2
- * //    v-- bold
- * //   key2: value2
- * //   key1: value1
- *
- * @since 3.5.0
+ * @since 4.0.0
  * @category constructors
  */
-export const pretty: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.prettyLogger)
+export const string: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.stringLogger)
 
 /**
  * The structured logger provides detailed log outputs, structured in a way that
@@ -624,6 +615,7 @@ export const pretty: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fi
  * analysis and troubleshooting.
  *
  * @example
+ * ```ts
  * import { Effect, Logger } from "effect"
  *
  * const program = Effect.log("message1", "message2").pipe(
@@ -641,6 +633,7 @@ export const pretty: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fi
  * //   spans: { myspan: 0 },
  * //   fiberId: '#0'
  * // }
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -652,6 +645,7 @@ export const structured: Layer.Layer<never> = replace(fiberRuntime.defaultLogger
  * which log messages are displayed based on their severity.
  *
  * @example
+ * ```ts
  * import { Effect, Logger, LogLevel } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -663,6 +657,7 @@ export const structured: Layer.Layer<never> = replace(fiberRuntime.defaultLogger
  * // Logging disabled using a layer
  * // Effect.runFork(program.pipe(Effect.provide(Logger.minimumLogLevel(LogLevel.None))))
  * // task done
+ * ```
  *
  * @since 2.0.0
  * @category context

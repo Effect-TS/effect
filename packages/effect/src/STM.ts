@@ -106,6 +106,8 @@ export interface STMTypeLambda extends TypeLambda {
  */
 declare module "./Context.js" {
   interface Tag<Id, Value> extends STM<Value, never, Id> {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface Reference<Id, Value> extends STM<Value> {}
 }
 
 /**
@@ -2010,24 +2012,24 @@ export const Do: STM<{}> = succeed({})
 export const bind: {
   <N extends string, K, A, E2, R2>(
     tag: Exclude<N, keyof K>,
-    f: (_: K) => STM<A, E2, R2>
+    f: (_: NoInfer<K>) => STM<A, E2, R2>
   ): <E, R>(self: STM<K, E, R>) => STM<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
   <K, E, R, N extends string, A, E2, R2>(
     self: STM<K, E, R>,
     tag: Exclude<N, keyof K>,
-    f: (_: K) => STM<A, E2, R2>
+    f: (_: NoInfer<K>) => STM<A, E2, R2>
   ): STM<MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
 } = stm.bind
 
 const let_: {
   <N extends string, K, A>(
     tag: Exclude<N, keyof K>,
-    f: (_: K) => A
+    f: (_: NoInfer<K>) => A
   ): <E, R>(self: STM<K, E, R>) => STM<MergeRecord<K, { [k in N]: A }>, E, R>
   <K, E, R, N extends string, A>(
     self: STM<K, E, R>,
     tag: Exclude<N, keyof K>,
-    f: (_: K) => A
+    f: (_: NoInfer<K>) => A
   ): STM<MergeRecord<K, { [k in N]: A }>, E, R>
 } = stm.let_
 

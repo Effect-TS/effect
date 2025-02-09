@@ -1,11 +1,11 @@
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Runtime from "effect/Runtime"
+import type * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
 import * as Cookies from "../Cookies.js"
 import type * as PlatformError from "../Error.js"
@@ -75,7 +75,7 @@ class ServerResponseImpl extends Effectable.StructuralClass<ServerResponse.HttpS
       _id: "@effect/platform/HttpServerResponse",
       status: this.status,
       statusText: this.statusText,
-      headers: this.headers,
+      headers: Inspectable.redact(this.headers),
       cookies: this.cookies.toJSON(),
       body: this.body.toJSON()
     }
@@ -91,36 +91,60 @@ export const empty = (options?: ServerResponse.Options.WithContent | undefined):
   new ServerResponseImpl(
     options?.status ?? 204,
     options?.statusText,
-    options?.headers ?? Headers.empty,
+    options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
     options?.cookies ?? Cookies.empty,
     internalBody.empty
   )
 
 /** @internal */
+export const redirect = (
+  location: string | URL,
+  options?: ServerResponse.Options.WithContentType | undefined
+): ServerResponse.HttpServerResponse => {
+  const headers = Headers.unsafeFromRecord({ location: location.toString() })
+  return new ServerResponseImpl(
+    options?.status ?? 301,
+    options?.statusText,
+    options?.headers ?
+      Headers.merge(
+        headers,
+        Headers.fromInput(options.headers)
+      ) :
+      headers,
+    options?.cookies ?? Cookies.empty,
+    internalBody.empty
+  )
+}
+
+/** @internal */
 export const uint8Array = (
   body: Uint8Array,
   options?: ServerResponse.Options.WithContentType
-): ServerResponse.HttpServerResponse =>
-  new ServerResponseImpl(
+): ServerResponse.HttpServerResponse => {
+  const headers = options?.headers ? Headers.fromInput(options.headers) : Headers.empty
+  return new ServerResponseImpl(
     options?.status ?? 200,
     options?.statusText,
-    options?.headers ?? Headers.empty,
+    headers,
     options?.cookies ?? Cookies.empty,
-    internalBody.uint8Array(body, getContentType(options))
+    internalBody.uint8Array(body, getContentType(options, headers))
   )
+}
 
 /** @internal */
 export const text = (
   body: string,
   options?: ServerResponse.Options.WithContentType
-): ServerResponse.HttpServerResponse =>
-  new ServerResponseImpl(
+): ServerResponse.HttpServerResponse => {
+  const headers = options?.headers ? Headers.fromInput(options.headers) : Headers.empty
+  return new ServerResponseImpl(
     options?.status ?? 200,
     options?.statusText,
-    options?.headers ?? Headers.empty,
+    headers,
     options?.cookies ?? Cookies.empty,
-    internalBody.text(body, getContentType(options))
+    internalBody.text(body, getContentType(options, headers))
   )
+}
 
 /** @internal */
 export const html: {
@@ -177,7 +201,7 @@ export const json = (
     new ServerResponseImpl(
       options?.status ?? 200,
       options?.statusText,
-      options?.headers ?? Headers.empty,
+      options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
       options?.cookies ?? Cookies.empty,
       body
     ))
@@ -190,7 +214,7 @@ export const unsafeJson = (
   new ServerResponseImpl(
     options?.status ?? 200,
     options?.statusText,
-    options?.headers ?? Headers.empty,
+    options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
     options?.cookies ?? Cookies.empty,
     internalBody.unsafeJson(body)
   )
@@ -209,7 +233,7 @@ export const schemaJson = <A, I, R>(
       new ServerResponseImpl(
         options?.status ?? 200,
         options?.statusText,
-        options?.headers ?? Headers.empty,
+        options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
         options?.cookies ?? Cookies.empty,
         body
       ))
@@ -245,7 +269,7 @@ export const urlParams = (
   new ServerResponseImpl(
     options?.status ?? 200,
     options?.statusText,
-    options?.headers ?? Headers.empty,
+    options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
     options?.cookies ?? Cookies.empty,
     internalBody.text(UrlParams.toString(UrlParams.fromInput(body)), "application/x-www-form-urlencoded")
   )
@@ -255,7 +279,7 @@ export const raw = (body: unknown, options?: ServerResponse.Options | undefined)
   new ServerResponseImpl(
     options?.status ?? 200,
     options?.statusText,
-    options?.headers ?? Headers.empty,
+    options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
     options?.cookies ?? Cookies.empty,
     internalBody.raw(body)
   )
@@ -268,7 +292,7 @@ export const formData = (
   new ServerResponseImpl(
     options?.status ?? 200,
     options?.statusText,
-    options?.headers ?? Headers.empty,
+    options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
     options?.cookies ?? Cookies.empty,
     internalBody.formData(body)
   )
@@ -277,21 +301,26 @@ export const formData = (
 export const stream = <E>(
   body: Stream.Stream<Uint8Array, E>,
   options?: ServerResponse.Options | undefined
-): ServerResponse.HttpServerResponse =>
-  new ServerResponseImpl(
+): ServerResponse.HttpServerResponse => {
+  const headers = options?.headers ? Headers.fromInput(options.headers) : Headers.empty
+  return new ServerResponseImpl(
     options?.status ?? 200,
     options?.statusText,
-    options?.headers ?? Headers.empty,
+    headers,
     options?.cookies ?? Cookies.empty,
-    internalBody.stream(body, getContentType(options), options?.contentLength)
+    internalBody.stream(body, getContentType(options, headers), options?.contentLength)
   )
+}
 
 /** @internal */
-export const getContentType = (options?: ServerResponse.Options | undefined): string | undefined => {
+export const getContentType = (
+  options: ServerResponse.Options | undefined,
+  headers: Headers.Headers
+): string | undefined => {
   if (options?.contentType) {
     return options.contentType
   } else if (options?.headers) {
-    return options.headers["content-type"]
+    return headers["content-type"]
   } else {
     return
   }

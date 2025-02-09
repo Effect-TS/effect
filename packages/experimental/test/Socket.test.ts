@@ -2,7 +2,7 @@ import * as SocketServer from "@effect/experimental/SocketServer/Node"
 import * as NodeSocket from "@effect/platform-node/NodeSocket"
 import * as Socket from "@effect/platform/Socket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Chunk, Effect, Fiber, Queue, Stream } from "effect"
+import { Chunk, Effect, Queue, Stream } from "effect"
 import WS from "vitest-websocket-mock"
 
 const makeServer = Effect.gen(function*(_) {
@@ -10,9 +10,9 @@ const makeServer = Effect.gen(function*(_) {
 
   yield* _(
     server.run((socket) =>
-      Effect.gen(function*(_) {
-        const write = yield* _(socket.writer)
-        yield* _(socket.run(write))
+      Effect.gen(function*() {
+        const write = yield* socket.writer
+        yield* socket.run(write)
       }).pipe(Effect.scoped)
     ),
     Effect.forkScoped
@@ -23,10 +23,9 @@ const makeServer = Effect.gen(function*(_) {
 
 describe("Socket", () => {
   it.scoped("open", () =>
-    Effect.gen(function*(_) {
-      const server = yield* _(makeServer)
-      const address = yield* _(server.address)
-      const channel = NodeSocket.makeNetChannel({ port: (address as SocketServer.TcpAddress).port })
+    Effect.gen(function*() {
+      const server = yield* makeServer
+      const channel = NodeSocket.makeNetChannel({ port: (server.address as SocketServer.TcpAddress).port })
 
       const outputEffect = Stream.make("Hello", "World").pipe(
         Stream.encodeText,
@@ -36,7 +35,7 @@ describe("Socket", () => {
         Stream.runCollect
       )
 
-      const output = yield* _(outputEffect)
+      const output = yield* outputEffect
       assert.strictEqual(Chunk.join(output, ""), "HelloWorld")
     }))
 
@@ -52,40 +51,40 @@ describe("Socket", () => {
         })
     )
 
-    it.effect("messages", () =>
-      Effect.gen(function*(_) {
-        const server = yield* _(makeServer)
-        const socket = yield* _(Socket.makeWebSocket(Effect.succeed(url)))
-        const messages = yield* _(Queue.unbounded<Uint8Array>())
-        const fiber = yield* _(Effect.fork(socket.run((_) => messages.offer(_))))
-        yield* _(
-          Effect.gen(function*(_) {
-            const write = yield* _(socket.writer)
-            yield* _(write(new TextEncoder().encode("Hello")))
-            yield* _(write(new TextEncoder().encode("World")))
-          }),
-          Effect.scoped
-        )
-        yield* _(Effect.promise(async () => {
+    it.scoped("messages", () =>
+      Effect.gen(function*() {
+        const server = yield* makeServer
+        const socket = yield* Socket.makeWebSocket(Effect.succeed(url))
+        const messages = yield* Queue.unbounded<Uint8Array>()
+        const fiber = yield* Effect.fork(socket.run((_) => messages.offer(_)))
+        yield* Effect.gen(function*() {
+          const write = yield* socket.writer
+          yield* write(new TextEncoder().encode("Hello"))
+          yield* write(new TextEncoder().encode("World"))
+        }).pipe(Effect.scoped)
+        yield* Effect.promise(async () => {
           await expect(server).toReceiveMessage(new TextEncoder().encode("Hello"))
           await expect(server).toReceiveMessage(new TextEncoder().encode("World"))
-        }))
+        })
 
         server.send("Right back at you!")
-        const message = yield* _(messages.take)
+        let message = yield* messages.take
         expect(message).toEqual(new TextEncoder().encode("Right back at you!"))
 
+        server.send(new Blob(["A Blob message"]))
+        message = yield* messages.take
+        expect(message).toEqual(new TextEncoder().encode("A Blob message"))
+
         server.close()
-        const exit = yield* _(Fiber.join(fiber), Effect.exit)
+        const exit = yield* fiber.await
         expect(exit._tag).toEqual("Success")
       }).pipe(
-        Effect.scoped,
         Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))
       ))
   })
 
   describe("TransformStream", () => {
-    it.effect("works", () =>
+    it.scoped("works", () =>
       Effect.gen(function*() {
         const readable = Stream.make("A", "B", "C").pipe(
           Stream.tap(() => Effect.sleep(50)),
@@ -109,7 +108,8 @@ describe("Socket", () => {
               Effect.zipRight(write("World"))
             )
           ),
-          Effect.scoped
+          Effect.scoped,
+          Effect.forkScoped
         )
         const received: Array<string> = []
         yield* socket.run((chunk) =>

@@ -1,12 +1,12 @@
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
 import type { ReadonlyRecord } from "effect/Record"
+import * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Cookies from "../Cookies.js"
@@ -122,7 +122,11 @@ export const schemaBodyForm = <A, I extends Partial<Multipart.Persisted>, R>(
 }
 
 /** @internal */
-export const schemaBodyUrlParams = <A, I extends Readonly<Record<string, string | undefined>>, R>(
+export const schemaBodyUrlParams = <
+  A,
+  I extends Readonly<Record<string, string | ReadonlyArray<string> | undefined>>,
+  R
+>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {

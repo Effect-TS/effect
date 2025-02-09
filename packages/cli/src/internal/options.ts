@@ -1,8 +1,6 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
-import * as Schema from "@effect/schema/Schema"
-import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import * as Console from "effect/Console"
@@ -12,11 +10,12 @@ import { dual, pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
+import * as ParseResult from "effect/ParseResult"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as Redacted from "effect/Redacted"
 import * as Ref from "effect/Ref"
-import type * as Secret from "effect/Secret"
+import type * as Schema from "effect/Schema"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Options from "../Options.js"
@@ -387,10 +386,6 @@ export const redacted = (name: string): Options.Options<Redacted.Redacted> =>
   makeSingle(name, Arr.empty(), InternalPrimitive.redacted)
 
 /** @internal */
-export const secret = (name: string): Options.Options<Secret.Secret> =>
-  makeSingle(name, Arr.empty(), InternalPrimitive.secret)
-
-/** @internal */
 export const text = (name: string): Options.Options<string> => makeSingle(name, Arr.empty(), InternalPrimitive.text)
 
 // =============================================================================
@@ -671,11 +666,12 @@ export const withSchema = dual<
     schema: Schema.Schema<B, I, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
   ) => Options.Options<B>
 >(2, (self, schema) => {
-  const decode = Schema.decode(schema)
+  const decode = ParseResult.decode(schema)
   return mapEffect(self, (_) =>
     Effect.mapError(
       decode(_ as any),
-      (error) => InternalValidationError.invalidValue(InternalHelpDoc.p(TreeFormatter.formatErrorSync(error)))
+      (issue) =>
+        InternalValidationError.invalidValue(InternalHelpDoc.p(ParseResult.TreeFormatter.formatIssueSync(issue)))
     ))
 })
 
@@ -1832,23 +1828,24 @@ const parseCommandLine = (
       )
       let optionName: string | undefined = undefined
       let values = Arr.empty<string>()
-      let leftover = args as ReadonlyArray<string>
-      while (Arr.isNonEmptyReadonlyArray(leftover)) {
-        const name = Arr.headNonEmpty(leftover)
+      let unparsed = args as ReadonlyArray<string>
+      let leftover = Arr.empty<string>()
+      while (Arr.isNonEmptyReadonlyArray(unparsed)) {
+        const name = Arr.headNonEmpty(unparsed)
         const normalizedName = InternalCliConfig.normalizeCase(config, name)
-        if (leftover.length >= 2 && Arr.contains(normalizedNames, normalizedName)) {
+
+        if (Arr.contains(normalizedNames, normalizedName)) {
           if (optionName === undefined) {
             optionName = name
           }
-          const value = leftover[1]
+          const value = unparsed[1]
           if (value !== undefined && value.length > 0) {
             values = Arr.append(values, value.trim())
-            leftover = leftover.slice(2)
-            continue
           }
-          break
+          unparsed = unparsed.slice(2)
         } else {
-          break
+          leftover = Arr.append(leftover, Arr.headNonEmpty(unparsed))
+          unparsed = unparsed.slice(1)
         }
       }
       const parsed = Option.fromNullable(optionName).pipe(

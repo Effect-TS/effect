@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type { ParseError } from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import type * as Option from "effect/Option"
+import type { ParseError } from "effect/ParseResult"
+import * as Schema from "effect/Schema"
 
 /**
  * Run a sql query with a request schema and a result schema.

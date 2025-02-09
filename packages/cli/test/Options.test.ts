@@ -5,7 +5,6 @@ import * as ValidationError from "@effect/cli/ValidationError"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Path from "@effect/platform/Path"
-import * as Schema from "@effect/schema/Schema"
 import { BigDecimal } from "effect"
 import * as Array from "effect/Array"
 import * as Data from "effect/Data"
@@ -14,6 +13,7 @@ import * as Either from "effect/Either"
 import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 import { assert, describe, expect, it } from "vitest"
 
 const firstName = Options.text("firstName").pipe(Options.withAlias("f"))
@@ -492,14 +492,20 @@ describe("Options", () => {
       const args2 = ["--foo", "1", "--foo", "2", "--foo", "3"]
       const args3 = ["--foo", "v2"]
       const args4 = ["--foo", "1", "--foo", "v2", "--foo", "3"]
+      const args5 = ["--foo", "1", "-d", "--foo", "2"]
+      const args6 = ["--foo", "1", "-f", "firstName", "--foo", "2"]
       const result1 = yield* _(process(option, [], CliConfig.defaultConfig))
       const result2 = yield* _(process(option, args2, CliConfig.defaultConfig))
       const result3 = yield* _(Effect.flip(process(option, args3, CliConfig.defaultConfig)))
       const result4 = yield* _(Effect.flip(process(option, args4, CliConfig.defaultConfig)))
+      const result5 = yield* _(process(option, args5, CliConfig.defaultConfig))
+      const result6 = yield* _(process(option, args6, CliConfig.defaultConfig))
       expect(result1).toEqual([Array.empty(), []])
       expect(result2).toEqual([Array.empty(), [1, 2, 3]])
       expect(result3).toEqual(ValidationError.invalidValue(HelpDoc.p("'v2' is not a integer")))
       expect(result4).toEqual(ValidationError.invalidValue(HelpDoc.p("'v2' is not a integer")))
+      expect(result5).toEqual([["-d"], [1, 2]])
+      expect(result6).toEqual([["-f", "firstName"], [1, 2]])
     }).pipe(runEffect))
 
   it("atLeast", () =>

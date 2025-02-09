@@ -3,7 +3,6 @@ import { FlatCompat } from "@eslint/eslintrc"
 import js from "@eslint/js"
 import tsParser from "@typescript-eslint/parser"
 import codegen from "eslint-plugin-codegen"
-import deprecation from "eslint-plugin-deprecation"
 import _import from "eslint-plugin-import"
 import simpleImportSort from "eslint-plugin-simple-import-sort"
 import sortDestructureKeys from "eslint-plugin-sort-destructure-keys"
@@ -30,7 +29,6 @@ export default [
   ),
   {
     plugins: {
-      deprecation,
       import: fixupPluginRules(_import),
       "sort-destructure-keys": sortDestructureKeys,
       "simple-import-sort": simpleImportSort,
@@ -72,6 +70,7 @@ export default [
       ],
 
       "no-unused-vars": "off",
+      "require-yield": "off",
       "prefer-rest-params": "off",
       "prefer-spread": "off",
       "import/first": "error",

@@ -24,9 +24,11 @@ import type { NoInfer } from "./Types.js"
  * **Note**. `length` is normalized to an integer >= 1.
  *
  * @example
+ * ```ts
  * import { makeBy } from "effect/Iterable"
  *
  * assert.deepStrictEqual(Array.from(makeBy(n => n * 2, { length: 5 })), [0, 2, 4, 6, 8])
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -56,9 +58,11 @@ export const makeBy = <A>(f: (i: number) => A, options?: {
  * If `end` is omitted, the range will not have an upper bound.
  *
  * @example
+ * ```ts
  * import { range } from "effect/Iterable"
  *
  * assert.deepStrictEqual(Array.from(range(1, 3)), [1, 2, 3])
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -78,9 +82,11 @@ export const range = (start: number, end?: number): Iterable<number> => {
  * **Note**. `n` is normalized to an integer >= 1.
  *
  * @example
+ * ```ts
  * import { replicate } from "effect/Iterable"
  *
  * assert.deepStrictEqual(Array.from(replicate("a", 3)), ["a", "a", "a"])
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -96,10 +102,12 @@ export const replicate: {
  * @param self - The record to transform.
  *
  * @example
+ * ```ts
  * import { fromRecord } from "effect/Iterable"
  *
  * const x = { a: 1, b: 2, c: 3 }
  * assert.deepStrictEqual(Array.from(fromRecord(x)), [["a", 1], ["b", 2], ["c", 3]])
+ * ```
  *
  * @category conversions
  * @since 2.0.0
@@ -129,12 +137,14 @@ export const prepend: {
  * Prepends the specified prefix iterable to the beginning of the specified iterable.
  *
  * @example
+ * ```ts
  * import { Iterable } from "effect"
  *
  * assert.deepStrictEqual(
  *   Array.from(Iterable.prependAll([1, 2], ["a", "b"])),
  *   ["a", "b", 1, 2]
  * )
+ * ```
  *
  * @category concatenating
  * @since 2.0.0
@@ -225,10 +235,12 @@ export const scan: {
  * Determine if an `Iterable` is empty
  *
  * @example
+ * ```ts
  * import { isEmpty } from "effect/Iterable"
  *
  * assert.deepStrictEqual(isEmpty([]), true);
  * assert.deepStrictEqual(isEmpty([1, 2, 3]), false);
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -819,12 +831,14 @@ export const filterMapWhile: {
  * Retrieves the `Some` values from an `Iterable` of `Option`s.
  *
  * @example
+ * ```ts
  * import { Iterable, Option } from "effect"
  *
  * assert.deepStrictEqual(
  *   Array.from(Iterable.getSomes([Option.some(1), Option.none(), Option.some(2)])),
  *   [1, 2]
  * )
+ * ```
  *
  * @category filtering
  * @since 2.0.0
@@ -835,12 +849,14 @@ export const getSomes: <A>(self: Iterable<Option<A>>) => Iterable<A> = filterMap
  * Retrieves the `Left` values from an `Iterable` of `Either`s.
  *
  * @example
+ * ```ts
  * import { Iterable, Either } from "effect"
  *
  * assert.deepStrictEqual(
  *   Array.from(Iterable.getLefts([Either.right(1), Either.left("err"), Either.right(2)])),
  *   ["err"]
  * )
+ * ```
  *
  * @category filtering
  * @since 2.0.0
@@ -851,12 +867,14 @@ export const getLefts = <R, L>(self: Iterable<Either<R, L>>): Iterable<L> => fil
  * Retrieves the `Right` values from an `Iterable` of `Either`s.
  *
  * @example
+ * ```ts
  * import { Iterable, Either } from "effect"
  *
  * assert.deepStrictEqual(
  *   Array.from(Iterable.getRights([Either.right(1), Either.left("err"), Either.right(2)])),
  *   [1, 2]
  * )
+ * ```
  *
  * @category filtering
  * @since 2.0.0

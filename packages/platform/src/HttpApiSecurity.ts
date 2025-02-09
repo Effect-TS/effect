@@ -140,7 +140,7 @@ export const basic: Basic = Object.assign(Object.create(Proto), {
  * @since 1.0.0
  * @category annotations
  */
-export const annotateMerge: {
+export const annotateContext: {
   <I>(context: Context.Context<I>): <A extends HttpApiSecurity>(self: A) => A
   <A extends HttpApiSecurity, I>(self: A, context: Context.Context<I>): A
 } = dual(

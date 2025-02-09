@@ -7,11 +7,11 @@ import * as ClientRequest from "@effect/platform/HttpClientRequest"
 import type * as Rpc from "@effect/rpc/Rpc"
 import * as Resolver from "@effect/rpc/RpcResolver"
 import type * as Router from "@effect/rpc/RpcRouter"
-import type * as Serializable from "@effect/schema/Serializable"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import type * as RequestResolver from "effect/RequestResolver"
 import * as Schedule from "effect/Schedule"
+import type * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 
 /**
@@ -19,10 +19,10 @@ import * as Stream from "effect/Stream"
  * @since 1.0.0
  */
 export const make = <R extends Router.RpcRouter<any, any>>(
-  client: Client.HttpClient.Service
+  client: Client.HttpClient
 ): RequestResolver.RequestResolver<
   Rpc.Request<Router.RpcRouter.Request<R>>,
-  Serializable.SerializableWithResult.Context<Router.RpcRouter.Request<R>>
+  Schema.SerializableWithResult.Context<Router.RpcRouter.Request<R>>
 > =>
   Resolver.make((requests) =>
     client.post("", {
@@ -46,7 +46,7 @@ export const make = <R extends Router.RpcRouter<any, any>>(
  */
 export const makeClient = <R extends Router.RpcRouter<any, any>>(
   baseUrl: string
-): Serializable.SerializableWithResult.Context<Router.RpcRouter.Request<R>> extends never ? Effect.Effect<
+): Schema.SerializableWithResult.Context<Router.RpcRouter.Request<R>> extends never ? Effect.Effect<
     Resolver.Client<
       RequestResolver.RequestResolver<
         Rpc.Request<Router.RpcRouter.Request<R>>

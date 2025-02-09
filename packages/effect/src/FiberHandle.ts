@@ -1,23 +1,21 @@
 /**
  * @since 2.0.0
  */
-import * as Effect from "effect/Effect"
-import type * as Scope from "effect/Scope"
 import type { NoSuchElementException } from "./Cause.js"
 import * as Cause from "./Cause.js"
 import * as Deferred from "./Deferred.js"
+import * as Effect from "./Effect.js"
 import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
 import * as FiberId from "./FiberId.js"
-import * as FiberRef from "./FiberRef.js"
 import { constFalse, dual } from "./Function.js"
 import * as HashSet from "./HashSet.js"
 import * as Inspectable from "./Inspectable.js"
-import type { FiberRuntime } from "./internal/fiberRuntime.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 import * as Runtime from "./Runtime.js"
+import type * as Scope from "./Scope.js"
 
 /**
  * @since 2.0.0
@@ -89,6 +87,7 @@ const unsafeMake = <A = unknown, E = unknown>(
  * be automatically removed from the FiberHandle when it completes.
  *
  * @example
+ * ```ts
  * import { Effect, FiberHandle } from "effect"
  *
  * Effect.gen(function*(_) {
@@ -103,6 +102,7 @@ const unsafeMake = <A = unknown, E = unknown>(
  * }).pipe(
  *   Effect.scoped // The fiber will be interrupted when the scope is closed
  * )
+ * ```
  *
  * @since 2.0.0
  * @categories constructors
@@ -202,7 +202,6 @@ export const unsafeSet: {
     self.state.fiber = undefined
   }
 
-  ;(fiber as FiberRuntime<unknown, unknown>).setFiberRef(FiberRef.unhandledErrorLogLevel, Option.none())
   self.state.fiber = fiber
   fiber.addObserver((exit) => {
     if (self.state._tag === "Open" && fiber === self.state.fiber) {
@@ -383,6 +382,7 @@ export const run: {
  * Capture a Runtime and use it to fork Effect's, adding the forked fibers to the FiberHandle.
  *
  * @example
+ * ```ts
  * import { Context, Effect, FiberHandle } from "effect"
  *
  * interface Users {
@@ -404,6 +404,7 @@ export const run: {
  * }).pipe(
  *   Effect.scoped // The fiber will be interrupted when the scope is closed
  * )
+ * ```
  *
  * @since 2.0.0
  * @categories combinators
@@ -455,6 +456,7 @@ export const runtime: <A, E>(
  * @since 2.0.0
  * @categories combinators
  * @example
+ * ```ts
  * import { Effect, FiberHandle } from "effect";
  *
  * Effect.gen(function* (_) {
@@ -464,6 +466,7 @@ export const runtime: <A, E>(
  *   // parent fiber will fail with "error"
  *   yield* _(FiberHandle.join(handle));
  * });
+ * ```
  */
 export const join = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void, E> =>
   Deferred.await(self.deferred as Deferred.Deferred<void, E>)

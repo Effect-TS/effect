@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform",
   "type": "module",
-  "version": "0.65.5",
+  "version": "0.71.6",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
@@ -44,11 +44,10 @@
     "multipasta": "^0.2.5"
   },
   "peerDependencies": {
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "@effect/schema": "workspace:^",
+    "ajv": "^8.17.1",
     "effect": "workspace:^"
   }
 }

@@ -8,7 +8,7 @@ interface MyWorkerPool {
 }
 const Pool = Context.GenericTag<MyWorkerPool, Worker.WorkerPool<number, never, number>>("@app/MyWorkerPool")
 const PoolLive = Worker.makePoolLayer(Pool, { size: 3 }).pipe(
-  Layer.provide(NodeWorker.layer(() => new WT.Worker("./examples/worker/range.ts")))
+  Layer.provide(NodeWorker.layer(() => tsWorker("./worker/range.ts")))
 )
 
 Effect.gen(function*() {
@@ -25,3 +25,10 @@ Effect.gen(function*() {
     )
   ], { concurrency: "inherit" })
 }).pipe(Effect.provide(PoolLive), NodeRuntime.runMain)
+
+const tsWorker = (path: string) => {
+  const url = new URL(path, import.meta.url)
+  return new WT.Worker(`import('tsx/esm/api').then(({ register }) => { register(); import('${url.pathname}') })`, {
+    eval: true
+  })
+}

@@ -14,6 +14,16 @@ const sum = (n: number): number => {
 }
 
 describe("Effect", () => {
+  it.it("runSyncExit with async is a defect with stack", () => {
+    const exit = Effect.runSyncExit(
+      Effect.promise(() => Promise.resolve(0)).pipe(Effect.withSpan("asyncSpan"))
+    )
+    if (Exit.isFailure(exit)) {
+      it.expect(Cause.pretty(exit.cause)).toContain("asyncSpan")
+    } else {
+      it.expect(exit._tag).toBe("Failure")
+    }
+  })
   it.effect("sync - effect", () =>
     Effect.gen(function*($) {
       const sumEffect = (n: number): Effect.Effect<number, unknown> => {

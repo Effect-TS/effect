@@ -3,6 +3,9 @@
  */
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
+import type * as FC from "effect/FastCheck"
+import type * as Layer from "effect/Layer"
+import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as TestServices from "effect/TestServices"
 import * as V from "vitest"
@@ -38,6 +41,11 @@ export namespace Vitest {
   /**
    * @since 1.0.0
    */
+  export type SchemaObj = Array<Schema.Schema.Any> | { [K in string]: Schema.Schema.Any }
+
+  /**
+   * @since 1.0.0
+   */
   export interface Tester<R> extends Vitest.Test<R> {
     skip: Vitest.Test<R>
     skipIf: (condition: unknown) => Vitest.Test<R>
@@ -46,8 +54,57 @@ export namespace Vitest {
     each: <T>(
       cases: ReadonlyArray<T>
     ) => <A, E>(name: string, self: TestFunction<A, E, R, Array<T>>, timeout?: number | V.TestOptions) => void
+
+    /**
+     * @since 1.0.0
+     */
+    prop: <const S extends SchemaObj, A, E>(
+      name: string,
+      schemas: S,
+      self: TestFunction<
+        A,
+        E,
+        R,
+        [{ [K in keyof S]: Schema.Schema.Type<S[K]> }, V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext]
+      >,
+      timeout?: number | V.TestOptions & { fastCheck?: FC.Parameters<{ [K in keyof S]: Schema.Schema.Type<S[K]> }> }
+    ) => void
+  }
+
+  /**
+   * @since 1.0.0
+   */
+  export interface Methods<R = never> extends API {
+    readonly effect: Vitest.Tester<TestServices.TestServices | R>
+    readonly live: Vitest.Tester<R>
+    readonly flakyTest: <A, E, R2>(
+      self: Effect.Effect<A, E, R2>,
+      timeout?: Duration.DurationInput
+    ) => Effect.Effect<A, never, R2>
+    readonly scoped: Vitest.Tester<TestServices.TestServices | Scope.Scope | R>
+    readonly scopedLive: Vitest.Tester<Scope.Scope | R>
+    readonly layer: <R2, E>(layer: Layer.Layer<R2, E, R>, options?: {
+      readonly timeout?: Duration.DurationInput
+    }) => {
+      (f: (it: Vitest.Methods<R | R2>) => void): void
+      (name: string, f: (it: Vitest.Methods<R | R2>) => void): void
+    }
+
+    /**
+     * @since 1.0.0
+     */
+    readonly prop: <const S extends SchemaObj>(
+      name: string,
+      schemas: S,
+      self: (
+        schemas: { [K in keyof S]: Schema.Schema.Type<S[K]> },
+        ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
+      ) => void,
+      timeout?: number | V.TestOptions & { fastCheck?: FC.Parameters<{ [K in keyof S]: Schema.Schema.Type<S[K]> }> }
+    ) => void
   }
 }
+
 /**
  * @since 1.0.0
  */
@@ -74,6 +131,54 @@ export const live: Vitest.Tester<never> = internal.live
 export const scopedLive: Vitest.Tester<Scope.Scope> = internal.scopedLive
 
 /**
+ * Share a `Layer` between multiple tests, optionally wrapping
+ * the tests in a `describe` block if a name is provided.
+ *
+ * @since 1.0.0
+ *
+ * ```ts
+ * import { expect, layer } from "@effect/vitest"
+ * import { Context, Effect, Layer } from "effect"
+ *
+ * class Foo extends Context.Tag("Foo")<Foo, "foo">() {
+ *   static Live = Layer.succeed(Foo, "foo")
+ * }
+ *
+ * class Bar extends Context.Tag("Bar")<Bar, "bar">() {
+ *   static Live = Layer.effect(
+ *     Bar,
+ *     Effect.map(Foo, () => "bar" as const)
+ *   )
+ * }
+ *
+ * layer(Foo.Live)("layer", (it) => {
+ *   it.effect("adds context", () =>
+ *     Effect.gen(function* () {
+ *       const foo = yield* Foo
+ *       expect(foo).toEqual("foo")
+ *     })
+ *   )
+ *
+ *   it.layer(Bar.Live)("nested", (it) => {
+ *     it.effect("adds context", () =>
+ *       Effect.gen(function* () {
+ *         const foo = yield* Foo
+ *         const bar = yield* Bar
+ *         expect(foo).toEqual("foo")
+ *         expect(bar).toEqual("bar")
+ *       })
+ *     )
+ *   })
+ * })
+ * ```
+ */
+export const layer: <R, E>(
+  layer_: Layer.Layer<R, E>,
+  options?: { readonly memoMap?: Layer.MemoMap; readonly timeout?: Duration.DurationInput }
+) => { (f: (it: Vitest.Methods<R>) => void): void; (name: string, f: (it: Vitest.Methods<R>) => void): void } =
+  internal.layer
+
+/**
  * @since 1.0.0
  */
 export const flakyTest: <A, E, R>(
@@ -81,13 +186,30 @@ export const flakyTest: <A, E, R>(
   timeout?: Duration.DurationInput
 ) => Effect.Effect<A, never, R> = internal.flakyTest
 
-/** @ignored */
-const methods = { effect, live, flakyTest, scoped, scopedLive } as const
+/**
+ * @since 1.0.0
+ */
+export const prop: <const S extends Vitest.SchemaObj>(
+  name: string,
+  schemas: S,
+  self: (
+    schemas: { [K in keyof S]: Schema.Schema.Type<S[K]> },
+    ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
+  ) => void,
+  timeout?: number | V.TestOptions & { fastCheck?: FC.Parameters<{ [K in keyof S]: Schema.Schema.Type<S[K]> }> }
+) => void = internal.prop
 
 /**
  * @since 1.0.0
  */
-export const it: API & typeof methods = Object.assign(V.it, methods)
+
+/** @ignored */
+const methods = { effect, live, flakyTest, scoped, scopedLive, layer, prop } as const
+
+/**
+ * @since 1.0.0
+ */
+export const it: Vitest.Methods = Object.assign(V.it, methods)
 
 /**
  * @since 1.0.0

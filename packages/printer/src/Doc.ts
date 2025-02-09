@@ -472,6 +472,7 @@ export const string: (str: string) => Doc<never> = internal.string
  * render an empty line of output.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -490,6 +491,7 @@ export const string: (str: string) => Doc<never> = internal.string
  *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(expected)
  * )
+ * ```
  *
  * @since 1.0.0
  * @category primitives
@@ -513,6 +515,7 @@ export const fail: Doc<never> = internal.fail
  * undone by `group`.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -533,6 +536,7 @@ export const fail: Doc<never> = internal.fail
  *   Doc.render(Doc.group(doc), { style: "pretty" }),
  *   "lorem ipsum dolor sit amet"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category primitives
@@ -544,6 +548,7 @@ export const line: Doc<never> = internal.line
  * break is undone by `group` (instead of `space`).
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -564,6 +569,7 @@ export const line: Doc<never> = internal.line
  *   Doc.render(Doc.group(doc), { style: "pretty" }),
  *   "lorem ipsumdolor sit amet"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category primitives
@@ -575,6 +581,7 @@ export const lineBreak: Doc<never> = internal.lineBreak
  * onto the page, otherwise it behaves like `line`.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -605,6 +612,7 @@ export const lineBreak: Doc<never> = internal.lineBreak
  *      |dolor sit amet`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category primitives
@@ -617,6 +625,7 @@ export const softLine: Doc<never> = internal.softLine
  * `space`).
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -647,6 +656,7 @@ export const softLine: Doc<never> = internal.softLine
  *      |IsWayTooLong`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category primitives
@@ -658,6 +668,7 @@ export const softLineBreak: Doc<never> = internal.softLineBreak
  * space or whether or not the document was `group`"ed.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -678,6 +689,7 @@ export const softLineBreak: Doc<never> = internal.softLineBreak
  *      |dolor sit amet`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category primitives
@@ -858,6 +870,7 @@ export const cat: {
  * which always lays out documents beneath one another.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -884,6 +897,7 @@ export const cat: {
  *      |dolor`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category concatenation
@@ -895,6 +909,7 @@ export const cats: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.cats
  * document between them.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -911,6 +926,7 @@ export const cats: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.cats
  *      |b`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category concatenation
@@ -925,6 +941,7 @@ export const catWithLine: {
  * `lineBreak` document between them.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -946,6 +963,7 @@ export const catWithLine: {
  *   Doc.render(Doc.group(doc), { style: "pretty" }),
  *   "ab"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category concatenation
@@ -960,6 +978,7 @@ export const catWithLineBreak: {
  * `softLine` document between them.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -984,6 +1003,7 @@ export const catWithLineBreak: {
  *      |b`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category concatenation
@@ -998,6 +1018,7 @@ export const catWithSoftLine: {
  * placing a `softLineBreak` document between them.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1022,6 +1043,7 @@ export const catWithSoftLine: {
  *      |b`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category concatenation
@@ -1036,6 +1058,7 @@ export const catWithSoftLineBreak: {
  * `space` document between them.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  *
@@ -1048,6 +1071,7 @@ export const catWithSoftLineBreak: {
  *   Doc.render(doc, { style: "pretty" }),
  *   "a b"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category concatenation
@@ -1062,6 +1086,7 @@ export const catWithSpace: {
  * element-wise with the specified binary function.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  *
@@ -1074,6 +1099,7 @@ export const catWithSpace: {
  *   Doc.render(doc, { style: "pretty" }),
  *   "a b"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category concatenation
@@ -1091,6 +1117,7 @@ export const concatWith: {
  * replaced by spaces.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1104,6 +1131,7 @@ export const concatWith: {
  *      |dolor`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category concatenation
@@ -1115,6 +1143,7 @@ export const vcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.vcat
  * without any spacing.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1124,6 +1153,7 @@ export const vcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.vcat
  *   Doc.render(doc, { style: "pretty" }),
  *   "loremipsumdolor"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category concatenation
@@ -1156,6 +1186,7 @@ export const fillCat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillCat
  * For automatic line breaks, consider using `fillSep`.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  *
  * const doc: Doc.Doc<never> = Doc.hsep(Doc.words("lorem ipsum dolor sit amet"))
@@ -1177,6 +1208,7 @@ export const fillCat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillCat
  *   }),
  *   "lorem ipsum dolor sit amet"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category separation
@@ -1193,6 +1225,7 @@ export const hsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.hsep
  * function for this use case.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1227,6 +1260,7 @@ export const hsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.hsep
  *      |       out`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category separation
@@ -1255,6 +1289,7 @@ export const fillSep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillSep
  * `vsep`, which always lays out documents beneath one another.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1281,6 +1316,7 @@ export const fillSep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillSep
  *      |out`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category separation
@@ -1302,6 +1338,7 @@ export const seps: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.seps
  * algorithms will fall back to an even wider layout.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1357,6 +1394,7 @@ export const seps: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.seps
  *      |   putStrLn greet`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category alternative layouts
@@ -1396,6 +1434,7 @@ export const group: <A>(self: Doc<A>) => Doc<A> = internal.group
  * Lays out a document depending upon the column at which the document starts.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1425,6 +1464,7 @@ export const group: <A>(self: Doc<A>) => Doc<A> = internal.group
  *      |        prefix | <- column 15`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category reactive layouts
@@ -1436,6 +1476,7 @@ export const column: <A>(react: (position: number) => Doc<A>) => Doc<A> = intern
  * current indentation of the document).
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1454,6 +1495,7 @@ export const column: <A>(react: (position: number) => Doc<A>) => Doc<A> = intern
  *      |        prefix [Nested: 8]`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category reactive layouts
@@ -1465,6 +1507,7 @@ export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = internal
  * document while rendering.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1494,6 +1537,7 @@ export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = internal
  *      |    ---] <- width: 8`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category reactive layouts
@@ -1507,6 +1551,7 @@ export const width: {
  * Lays out a document according to the document"s`PageWidth`.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1540,6 +1585,7 @@ export const width: {
  *      |        prefix [Width: 32, Ribbon Fraction: 1]`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category constructors
@@ -1565,6 +1611,7 @@ export const pageWidth: <A>(react: (pageWidth: PageWidth) => Doc<A>) => Doc<A> =
  * any empty space with spaces
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1585,6 +1632,7 @@ export const pageWidth: <A>(react: (pageWidth: PageWidth) => Doc<A>) => Doc<A> =
  *      |amet`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category alignment
@@ -1599,6 +1647,7 @@ export const nest: {
  * current column.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1633,6 +1682,7 @@ export const nest: {
  *      |      dolor`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category alignment
@@ -1649,6 +1699,7 @@ export const align: <A>(self: Doc<A>) => Doc<A> = internal.align
  * more efficient combinator (`nest`) first.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1669,6 +1720,7 @@ export const align: <A>(self: Doc<A>) => Doc<A> = internal.align
  *      |           hang`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category alignment
@@ -1683,6 +1735,7 @@ export const hang: {
  * beginning from the current cursor position.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1704,6 +1757,7 @@ export const hang: {
  *      |          words!`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category alignment
@@ -1723,6 +1777,7 @@ export const indent: {
  * combinator.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1758,6 +1813,7 @@ export const indent: {
  *      |     ,4000]`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category alignment
@@ -1776,6 +1832,7 @@ export const encloseSep: {
  * and braces as the enclosure for a collection of documents.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  *
  * const doc = Doc.list(
@@ -1788,6 +1845,7 @@ export const encloseSep: {
  *   Doc.render(doc, { style: "pretty" }),
  *   "[1, 20, 300, 4000]"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category alignment
@@ -1799,6 +1857,7 @@ export const list: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.list
  * and parentheses as the enclosure for a collection of documents.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  *
  * const doc = Doc.tupled(
@@ -1811,6 +1870,7 @@ export const list: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.list
  *   Doc.render(doc, { style: "pretty" }),
  *   "(1, 20, 300, 4000)"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category alignment
@@ -1828,6 +1888,7 @@ export const tupled: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.tupled
  * appended.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1860,6 +1921,7 @@ export const tupled: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.tupled
  *      |    fillSep :: [Doc] -> Doc`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category filling
@@ -1876,6 +1938,7 @@ export const fill: {
  * level is increased by the specified `width` and a `line` is appended.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1909,6 +1972,7 @@ export const fill: {
  *      |          :: [Doc] -> Doc`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category filling
@@ -2135,6 +2199,7 @@ export const Invariant: invariant.Invariant<Doc.TypeLambda> = internal.Invariant
  * documents.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  *
@@ -2147,6 +2212,7 @@ export const Invariant: invariant.Invariant<Doc.TypeLambda> = internal.Invariant
  *   Doc.render(doc, { style: "pretty" }),
  *   "A-Z"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category utilities
@@ -2209,6 +2275,7 @@ export const curlyBraced: <A>(self: Doc<A>) => Doc<A> = internal.curlyBraced
  * values for `n` count as `0` spaces.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  *
  * const doc = Doc.squareBracketed(Doc.doubleQuoted(Doc.spaces(5)))
@@ -2217,6 +2284,7 @@ export const curlyBraced: <A>(self: Doc<A>) => Doc<A> = internal.curlyBraced
  *   Doc.render(doc, { style: "pretty" }),
  *   "[\"     \"]"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category utilities
@@ -2234,6 +2302,7 @@ export const textSpaces: (n: number) => string = internal.textSpaces
  * specified `char` to split on (defaults to `" "`).
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  *
  * const doc = Doc.tupled(Doc.words("lorem ipsum dolor"))
@@ -2242,6 +2311,7 @@ export const textSpaces: (n: number) => string = internal.textSpaces
  *   Doc.render(doc, { style: "pretty" }),
  *   "(lorem, ipsum, dolor)"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category utilities
@@ -2255,6 +2325,7 @@ export const words: (s: string, char?: string) => ReadonlyArray<Doc<never>> = in
  * be broken into multiple lines.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -2276,6 +2347,7 @@ export const words: (s: string, char?: string) => ReadonlyArray<Doc<never>> = in
  *      |aliqua.`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category utilities
@@ -2289,6 +2361,7 @@ export const reflow: (s: string, char?: string) => Doc<never> = internal.reflow
  * vertically.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -2315,6 +2388,7 @@ export const reflow: (s: string, char?: string) => Doc<never> = internal.reflow
  *      |amet`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category utilities

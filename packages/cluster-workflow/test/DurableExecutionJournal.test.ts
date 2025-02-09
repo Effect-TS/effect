@@ -1,23 +1,24 @@
 import * as DurableExecutionEvent from "@effect/cluster-workflow/DurableExecutionEvent"
 import * as DurableExecutionJournal from "@effect/cluster-workflow/DurableExecutionJournal"
+import { Reactivity } from "@effect/experimental"
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as FileSystem from "@effect/platform/FileSystem"
-import * as Schema from "@effect/schema/Schema"
 import * as Sqlite from "@effect/sql-sqlite-node/SqliteClient"
 import * as SqlClient from "@effect/sql/SqlClient"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { describe, expect, it } from "vitest"
 
-const makeSqlClient = Effect.gen(function*(_) {
-  const fs = yield* _(FileSystem.FileSystem)
-  const dir = yield* _(fs.makeTempDirectoryScoped())
-  return yield* _(Sqlite.make({
+const makeSqlClient = Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const dir = yield* fs.makeTempDirectoryScoped()
+  return yield* Sqlite.make({
     filename: dir + "/test.db"
-  }))
-}).pipe(Effect.provide(NodeFileSystem.layer))
+  })
+}).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
 
 const runTest =
   (options: DurableExecutionJournal.DurableExecutionJournal.MakeOptions) =>

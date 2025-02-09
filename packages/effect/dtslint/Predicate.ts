@@ -152,8 +152,12 @@ unknowns.filter(Predicate.isError)
 // isUint8Array
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Uint8Array[]
-unknowns.filter(Predicate.isUint8Array)
+// TODO: Re-enable this test when the minimum TypeScript version used by @effect/dtslint is 5.7.2
+// This test has been disabled because it is not possible to test it
+// after upgrading to TypeScript 5.7.2. For versions less than 5.7.2,
+// the inferred type is just `Uint8Array[]`.
+// // $ExpectType Uint8Array<ArrayBufferLike>[]
+// unknowns.filter(Predicate.isUint8Array)
 
 // -------------------------------------------------------------------------------------
 // isDate
@@ -193,6 +197,13 @@ if (Predicate.isTupleOfAtLeast(unknowns, 3)) {
   // $ExpectType [unknown, unknown, unknown, ...unknown[]]
   unknowns
 }
+
+// -------------------------------------------------------------------------------------
+// isRegExp
+// -------------------------------------------------------------------------------------
+
+// $ExpectType RegExp[]
+unknowns.filter(Predicate.isRegExp)
 
 // -------------------------------------------------------------------------------------
 // compose

@@ -46,7 +46,7 @@ export const layer: (
  * @category layers
  */
 export const layerTest: Layer.Layer<
-  | HttpClient.HttpClient.Service
+  | HttpClient.HttpClient
   | Server.HttpServer
   | Platform.HttpPlatform
   | Etag.Generator
@@ -64,3 +64,19 @@ export const layerConfig: (
   Server.HttpServer | Platform.HttpPlatform | Etag.Generator | BunContext.BunContext,
   ConfigError.ConfigError
 > = internal.layerConfig
+
+/**
+ * A Layer providing the `HttpPlatform`, `FileSystem`, `Etag.Generator`, and `Path`
+ * services.
+ *
+ * The `FileSystem` service is a no-op implementation, so this layer is only
+ * useful for platforms that have no file system.
+ *
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerContext: Layer.Layer<
+  | Platform.HttpPlatform
+  | Etag.Generator
+  | BunContext.BunContext
+> = internal.layerContext

@@ -1,4 +1,4 @@
-import { Cookies, HttpClientRequest } from "@effect/platform"
+import { Cookies, HttpClient } from "@effect/platform"
 import { BrowserHttpClient } from "@effect/platform-browser"
 import { assert, describe, it } from "@effect/vitest"
 import { Chunk, Effect, Layer, Stream } from "effect"
@@ -15,7 +15,7 @@ const layer = (...args: Parameters<typeof MXHR.newServer>) =>
 describe("BrowserHttpClient", () => {
   it.effect("json", () =>
     Effect.gen(function*() {
-      const body = yield* HttpClientRequest.get("http://localhost:8080/my/url").pipe(
+      const body = yield* HttpClient.get("http://localhost:8080/my/url").pipe(
         Effect.flatMap((_) => _.json),
         Effect.scoped
       )
@@ -29,7 +29,7 @@ describe("BrowserHttpClient", () => {
 
   it.effect("stream", () =>
     Effect.gen(function*() {
-      const body = yield* HttpClientRequest.get("http://localhost:8080/my/url").pipe(
+      const body = yield* HttpClient.get("http://localhost:8080/my/url").pipe(
         Effect.map((_) =>
           _.stream.pipe(
             Stream.decodeText(),
@@ -49,7 +49,7 @@ describe("BrowserHttpClient", () => {
 
   it.effect("cookies", () =>
     Effect.gen(function*() {
-      const cookies = yield* HttpClientRequest.get("http://localhost:8080/my/url").pipe(
+      const cookies = yield* HttpClient.get("http://localhost:8080/my/url").pipe(
         Effect.map((res) => res.cookies),
         Effect.scoped
       )
@@ -67,7 +67,7 @@ describe("BrowserHttpClient", () => {
 
   it.effect("arrayBuffer", () =>
     Effect.gen(function*() {
-      const body = yield* HttpClientRequest.get("http://localhost:8080/my/url").pipe(
+      const body = yield* HttpClient.get("http://localhost:8080/my/url").pipe(
         Effect.flatMap((_) => _.arrayBuffer),
         Effect.scoped,
         BrowserHttpClient.withXHRArrayBuffer

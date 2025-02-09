@@ -1,7 +1,7 @@
 {
   "name": "@effect/cluster-browser",
   "type": "module",
-  "version": "0.7.5",
+  "version": "0.14.6",
   "description": "Unified interfaces for common cluster-browser-specific services",
   "publishConfig": {
     "access": "public",
@@ -27,12 +27,10 @@
   },
   "peerDependencies": {
     "@effect/rpc": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/rpc": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   }
 }

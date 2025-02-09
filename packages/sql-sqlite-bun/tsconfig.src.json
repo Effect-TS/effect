@@ -6,6 +6,6 @@
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
     "rootDir": "src",
     "outDir": "build/src",
-    "types": ["bun-types"]
+    "types": ["bun"]
   }
 }

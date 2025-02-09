@@ -1,11 +1,15 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@effect/schema/AST"
-import * as Schema from "@effect/schema/Schema"
 import type { Brand } from "effect/Brand"
+import * as Effect from "effect/Effect"
+import * as Effectable from "effect/Effectable"
 import type { LazyArg } from "effect/Function"
-import { constVoid, dual } from "effect/Function"
+import { constant, constVoid, dual } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
+import { hasProperty } from "effect/Predicate"
+import * as Schema from "effect/Schema"
+import * as AST from "effect/SchemaAST"
 import * as Struct from "effect/Struct"
 
 /**
@@ -35,6 +39,38 @@ export const AnnotationEmptyDecodeable: unique symbol = Symbol.for(
  * @category annotations
  */
 export const AnnotationEncoding: unique symbol = Symbol.for("@effect/platform/HttpApiSchema/AnnotationEncoding")
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const AnnotationParam: unique symbol = Symbol.for(
+  "@effect/platform/HttpApiSchema/AnnotationParam"
+)
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const extractAnnotations = (ast: AST.Annotations): AST.Annotations => {
+  const result: Record<symbol, unknown> = {}
+  if (AnnotationStatus in ast) {
+    result[AnnotationStatus] = ast[AnnotationStatus]
+  }
+  if (AnnotationEmptyDecodeable in ast) {
+    result[AnnotationEmptyDecodeable] = ast[AnnotationEmptyDecodeable]
+  }
+  if (AnnotationEncoding in ast) {
+    result[AnnotationEncoding] = ast[AnnotationEncoding]
+  }
+  if (AnnotationParam in ast) {
+    result[AnnotationParam] = ast[AnnotationParam]
+  }
+  if (AnnotationMultipart in ast) {
+    result[AnnotationMultipart] = ast[AnnotationMultipart]
+  }
+  return result
+}
 
 const mergedAnnotations = (ast: AST.AST): Record<symbol, unknown> =>
   ast._tag === "Transformation" ?
@@ -76,6 +112,12 @@ const encodingJson: Encoding = {
  * @category annotations
  */
 export const getEncoding = (ast: AST.AST): Encoding => getAnnotation<Encoding>(ast, AnnotationEncoding) ?? encodingJson
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const getParam = (ast: AST.AST): string | undefined => ast.annotations[AnnotationParam] as string | undefined
 
 /**
  * @since 1.0.0
@@ -146,21 +188,44 @@ export const UnionUnify = <A extends Schema.Schema.All, B extends Schema.Schema.
   A["Encoded"] | B["Encoded"],
   A["Context"] | B["Context"]
 > => {
-  const selfTypes = self.ast._tag === "Union" ? self.ast.types : [self.ast]
-  const thatTypes = that.ast._tag === "Union" ? that.ast.types : [that.ast]
-  return Schema.make(AST.Union.make([
-    ...selfTypes,
-    ...thatTypes
-  ]))
+  return Schema.make(AST.Union.make(Array.from(
+    new Set<AST.AST>([
+      ...(self.ast._tag === "Union" ? self.ast.types : [self.ast]),
+      ...(that.ast._tag === "Union" ? that.ast.types : [that.ast])
+    ])
+  )))
+}
+
+type Void$ = typeof Schema.Void
+
+/**
+ * @since 1.0.0
+ * @category path params
+ */
+export interface Param<Name extends string, S extends Schema.Schema.Any>
+  extends Schema.Schema<S["Type"], S["Encoded"], S["Context"]>
+{
+  readonly [AnnotationParam]: Name
 }
 
 /**
  * @since 1.0.0
- * @category params
+ * @category path params
  */
-export interface PathParams extends Schema.Record$<typeof Schema.String, typeof Schema.String> {}
+export const param: {
+  <Name extends string>(name: Name): <S extends AnyString>(schema: S) => Param<Name, S>
+  <Name extends string, S extends AnyString>(name: Name, schema: S): Param<Name, S>
+} = dual(
+  2,
+  <Name extends string, S extends AnyString>(name: Name, schema: S): Param<Name, S> =>
+    schema.annotations({ [AnnotationParam]: name }) as any
+)
 
-type Void$ = typeof Schema.Void
+/**
+ * @since 1.0.0
+ * @category path params
+ */
+export type AnyString = Schema.Schema<any, string, never> | Schema.Schema<any, string, any>
 
 /**
  * @since 1.0.0
@@ -189,7 +254,7 @@ export const asEmpty: {
     self: S,
     options: {
       readonly status: number
-      readonly decode?: LazyArg<Schema.Schema.Type<S>>
+      readonly decode: LazyArg<Schema.Schema.Type<S>>
     }
   ): asEmpty<S>
 } = dual(
@@ -198,14 +263,14 @@ export const asEmpty: {
     self: S,
     options: {
       readonly status: number
-      readonly decode?: LazyArg<Schema.Schema.Type<S>>
+      readonly decode: LazyArg<Schema.Schema.Type<S>>
     }
   ): asEmpty<S> =>
     Schema.transform(
-      Schema.Void,
+      Schema.Void.annotations(self.ast.annotations),
       Schema.typeSchema(self),
       {
-        decode: options.decode as any,
+        decode: options.decode,
         encode: constVoid
       }
     ).annotations(annotations({
@@ -382,3 +447,94 @@ export const Text = (options?: {
 export const Uint8Array = (options?: {
   readonly contentType?: string
 }): typeof Schema.Uint8ArrayFromSelf => withEncoding(Schema.Uint8ArrayFromSelf, { kind: "Uint8Array", ...options })
+
+const astCache = globalValue(
+  "@effect/platform/HttpApiSchema/astCache",
+  () => new WeakMap<AST.AST, Schema.Schema.Any>()
+)
+
+/**
+ * @since 1.0.0
+ */
+export const deunionize = (
+  schemas: Set<Schema.Schema.Any>,
+  schema: Schema.Schema.Any
+): void => {
+  if (astCache.has(schema.ast)) {
+    schemas.add(astCache.get(schema.ast)!)
+    return
+  }
+  const ast = schema.ast
+  if (ast._tag === "Union") {
+    for (const astType of ast.types) {
+      if (astCache.has(astType)) {
+        schemas.add(astCache.get(astType)!)
+        continue
+      }
+      const memberSchema = Schema.make(AST.annotations(astType, {
+        ...ast.annotations,
+        ...astType.annotations
+      }))
+      astCache.set(astType, memberSchema)
+      schemas.add(memberSchema)
+    }
+  } else {
+    astCache.set(ast, schema)
+    schemas.add(schema)
+  }
+}
+
+/**
+ * @since 1.0.0
+ * @category empty errors
+ */
+export interface EmptyErrorClass<Self, Tag> extends Schema.Schema<Self, void> {
+  new(_: void): { readonly _tag: Tag } & Effect.Effect<never, Self>
+}
+
+/**
+ * @since 1.0.0
+ * @category empty errors
+ */
+export const EmptyError = <Self>() =>
+<const Tag extends string>(options: {
+  readonly tag: Tag
+  readonly status: number
+}): EmptyErrorClass<Self, Tag> => {
+  const symbol = Symbol.for(`@effect/platform/HttpApiSchema/EmptyError/${options.tag}`)
+  class EmptyError extends Effectable.StructuralClass<never, Self> {
+    readonly _tag: Tag = options.tag
+    commit(): Effect.Effect<never, Self> {
+      return Effect.fail(this) as any
+    }
+  }
+  ;(EmptyError as any).prototype[symbol] = symbol
+  Object.assign(EmptyError, {
+    [Schema.TypeId]: Schema.Void[Schema.TypeId],
+    pipe: Schema.Void.pipe,
+    annotations(this: any, annotations: any) {
+      return Schema.make(this.ast).annotations(annotations)
+    }
+  })
+  let transform: Schema.Schema.Any | undefined
+  Object.defineProperty(EmptyError, "ast", {
+    get() {
+      if (transform) {
+        return transform.ast
+      }
+      const self = this as any
+      transform = asEmpty(
+        Schema.declare((u) => hasProperty(u, symbol), {
+          identifier: options.tag,
+          title: options.tag
+        }),
+        {
+          status: options.status,
+          decode: constant(new self())
+        }
+      )
+      return transform.ast
+    }
+  })
+  return EmptyError as any
+}

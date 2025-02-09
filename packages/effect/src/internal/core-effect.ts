@@ -1,5 +1,3 @@
-import type { Exit } from "effect/Exit"
-import { internalCall } from "effect/Utils"
 import * as Arr from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
@@ -7,6 +5,7 @@ import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
+import type { Exit } from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import type * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
@@ -29,7 +28,7 @@ import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
 import type { NoInfer } from "../Types.js"
 import type { Unify } from "../Unify.js"
-import { yieldWrapGet } from "../Utils.js"
+import { internalCall } from "../Utils.js"
 import * as internalCause from "./cause.js"
 import { clockTag } from "./clock.js"
 import * as core from "./core.js"
@@ -85,7 +84,7 @@ export const try_: {
     readonly try: LazyArg<A>
     readonly catch: (error: unknown) => E
   }): Effect.Effect<A, E>
-  <A>(evaluate: LazyArg<A>): Effect.Effect<A, Cause.UnknownException>
+  <A>(thunk: LazyArg<A>): Effect.Effect<A, Cause.UnknownException>
 } = <A, E>(
   arg: LazyArg<A> | {
     readonly try: LazyArg<A>
@@ -375,14 +374,14 @@ export const Do: Effect.Effect<{}> = core.succeed({})
 export const bind: {
   <N extends string, A extends object, B, E2, R2>(
     name: Exclude<N, keyof A>,
-    f: (a: A) => Effect.Effect<B, E2, R2>
+    f: (a: NoInfer<A>) => Effect.Effect<B, E2, R2>
   ): <E1, R1>(
     self: Effect.Effect<A, E1, R1>
   ) => Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E1, R2 | R1>
   <A extends object, N extends string, E1, R1, B, E2, R2>(
     self: Effect.Effect<A, E1, R1>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => Effect.Effect<B, E2, R2>
+    f: (a: NoInfer<A>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E1 | E2, R1 | R2>
 } = doNotation.bind<Effect.EffectTypeLambda>(core.map, core.flatMap)
 
@@ -396,14 +395,14 @@ export const bindTo: {
 export const let_: {
   <N extends string, A extends object, B>(
     name: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): <E, R>(
     self: Effect.Effect<A, E, R>
   ) => Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
   <A extends object, N extends string, E, R, B>(
     self: Effect.Effect<A, E, R>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = doNotation.let_<Effect.EffectTypeLambda>(core.map)
 
@@ -665,23 +664,23 @@ export const filterOrFail: {
 /* @internal */
 export const findFirst: {
   <A, E, R>(
-    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): (elements: Iterable<A>) => Effect.Effect<Option.Option<A>, E, R>
   <A, E, R>(
     elements: Iterable<A>,
-    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Option.Option<A>, E, R>
 } = dual(
   2,
   <A, E, R>(
     elements: Iterable<A>,
-    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Option.Option<A>, E, R> =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
       const next = iterator.next()
       if (!next.done) {
-        return findLoop(iterator, 0, f, next.value)
+        return findLoop(iterator, 0, predicate, next.value)
       }
       return core.succeed(Option.none())
     })
@@ -763,15 +762,18 @@ export const match: {
 /* @internal */
 export const every: {
   <A, E, R>(
-    f: (a: A, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>
   ): (elements: Iterable<A>) => Effect.Effect<boolean, E, R>
-  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>): Effect.Effect<boolean, E, R>
+  <A, E, R>(
+    elements: Iterable<A>,
+    predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>
+  ): Effect.Effect<boolean, E, R>
 } = dual(
   2,
   <A, E, R>(
     elements: Iterable<A>,
-    f: (a: A, i: number) => Effect.Effect<boolean, E, R>
-  ): Effect.Effect<boolean, E, R> => core.suspend(() => forAllLoop(elements[Symbol.iterator](), 0, f))
+    predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>
+  ): Effect.Effect<boolean, E, R> => core.suspend(() => forAllLoop(elements[Symbol.iterator](), 0, predicate))
 )
 
 const forAllLoop = <A, E, R>(
@@ -792,33 +794,6 @@ const forAllLoop = <A, E, R>(
 export const forever = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<never, E, R> => {
   const loop: Effect.Effect<never, E, R> = core.flatMap(core.flatMap(self, () => core.yieldNow()), () => loop)
   return loop
-}
-
-/**
- * Inspired by https://github.com/tusharmath/qio/pull/22 (revised)
-  @internal */
-export const gen: typeof Effect.gen = function() {
-  let f: any
-  if (arguments.length === 1) {
-    f = arguments[0]
-  } else {
-    f = arguments[1].bind(arguments[0])
-  }
-  return core.suspend(() => {
-    const iterator = f(pipe)
-    const state = internalCall(() => iterator.next())
-    const run = (
-      state: IteratorYieldResult<any> | IteratorReturnResult<any>
-    ): Effect.Effect<any, any, any> => {
-      return (state.done
-        ? core.succeed(state.value)
-        : core.flatMap(
-          yieldWrapGet(state.value) as any,
-          (val: any) => run(internalCall(() => iterator.next(val)))
-        ))
-    }
-    return run(state)
-  })
 }
 
 /* @internal */
@@ -1055,24 +1030,24 @@ const loopDiscard = <S, X, E, R>(
 
 /* @internal */
 export const mapAccum: {
-  <S, A, B, E, R>(
-    zero: S,
-    f: (s: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
-  ): (elements: Iterable<A>) => Effect.Effect<[S, Array<B>], E, R>
-  <A, S, B, E, R>(
-    elements: Iterable<A>,
-    zero: S,
-    f: (s: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
-  ): Effect.Effect<[S, Array<B>], E, R>
-} = dual(3, <A, S, B, E, R>(
-  elements: Iterable<A>,
-  zero: S,
-  f: (s: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
+  <S, A, B, E, R, I extends Iterable<A> = Iterable<A>>(
+    initial: S,
+    f: (state: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
+  ): (elements: I) => Effect.Effect<[S, Arr.ReadonlyArray.With<I, B>], E, R>
+  <A, S, B, E, R, I extends Iterable<A> = Iterable<A>>(
+    elements: I,
+    initial: S,
+    f: (state: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
+  ): Effect.Effect<[S, Arr.ReadonlyArray.With<I, B>], E, R>
+} = dual(3, <A, S, B, E, R, I extends Iterable<A> = Iterable<A>>(
+  elements: I,
+  initial: S,
+  f: (state: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
 ): Effect.Effect<[S, Array<B>], E, R> =>
   core.suspend(() => {
     const iterator = elements[Symbol.iterator]()
     const builder: Array<B> = []
-    let result: Effect.Effect<S, E, R> = core.succeed(zero)
+    let result: Effect.Effect<S, E, R> = core.succeed(initial)
     let next: IteratorResult<A, any>
     let i = 0
     while (!(next = iterator.next()).done) {
@@ -1656,7 +1631,7 @@ export const tryPromise: {
       readonly catch: (error: unknown) => E
     }
   ): Effect.Effect<A, E>
-  <A>(try_: (signal: AbortSignal) => PromiseLike<A>): Effect.Effect<A, Cause.UnknownException>
+  <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): Effect.Effect<A, Cause.UnknownException>
 } = <A, E>(
   arg: ((signal: AbortSignal) => PromiseLike<A>) | {
     readonly try: (signal: AbortSignal) => PromiseLike<A>
@@ -2045,61 +2020,75 @@ export const linkSpans = dual<
 
 const bigint0 = BigInt(0)
 
+const filterDisablePropagation: (self: Option.Option<Tracer.AnySpan>) => Option.Option<Tracer.AnySpan> = Option.flatMap(
+  (span) =>
+    Context.get(span.context, internalTracer.DisablePropagation)
+      ? span._tag === "Span" ? filterDisablePropagation(span.parent) : Option.none()
+      : Option.some(span)
+)
+
 /** @internal */
 export const unsafeMakeSpan = <XA, XE>(
   fiber: FiberRuntime<XA, XE>,
   name: string,
   options: Tracer.SpanOptions
 ) => {
-  const enabled = fiber.getFiberRef(core.currentTracerEnabled)
-  if (enabled === false) {
-    return core.noopSpan(name)
-  }
-
+  const disablePropagation = !fiber.getFiberRef(core.currentTracerEnabled) ||
+    (options.context && Context.get(options.context, internalTracer.DisablePropagation))
   const context = fiber.getFiberRef(core.currentContext)
-  const services = fiber.getFiberRef(defaultServices.currentServices)
-
-  const tracer = Context.get(services, internalTracer.tracerTag)
-  const clock = Context.get(services, Clock.Clock)
-  const timingEnabled = fiber.getFiberRef(core.currentTracerTimingEnabled)
-
-  const fiberRefs = fiber.getFiberRefs()
-  const annotationsFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanAnnotations)
-  const linksFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanLinks)
-
   const parent = options.parent
     ? Option.some(options.parent)
     : options.root
     ? Option.none()
-    : Context.getOption(context, internalTracer.spanTag)
+    : filterDisablePropagation(Context.getOption(context, internalTracer.spanTag))
 
-  const links = linksFromEnv._tag === "Some" ?
-    options.links !== undefined ?
-      [
-        ...Chunk.toReadonlyArray(linksFromEnv.value),
-        ...(options.links ?? [])
-      ] :
-      Chunk.toReadonlyArray(linksFromEnv.value) :
-    options.links ?? Arr.empty()
+  let span: Tracer.Span
 
-  const span = tracer.span(
-    name,
-    parent,
-    options.context ?? Context.empty(),
-    links,
-    timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0,
-    options.kind ?? "internal"
-  )
+  if (disablePropagation) {
+    span = core.noopSpan({
+      name,
+      parent,
+      context: Context.add(options.context ?? Context.empty(), internalTracer.DisablePropagation, true)
+    })
+  } else {
+    const services = fiber.getFiberRef(defaultServices.currentServices)
+
+    const tracer = Context.get(services, internalTracer.tracerTag)
+    const clock = Context.get(services, Clock.Clock)
+    const timingEnabled = fiber.getFiberRef(core.currentTracerTimingEnabled)
+
+    const fiberRefs = fiber.getFiberRefs()
+    const annotationsFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanAnnotations)
+    const linksFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanLinks)
+
+    const links = linksFromEnv._tag === "Some" ?
+      options.links !== undefined ?
+        [
+          ...Chunk.toReadonlyArray(linksFromEnv.value),
+          ...(options.links ?? [])
+        ] :
+        Chunk.toReadonlyArray(linksFromEnv.value) :
+      options.links ?? Arr.empty()
+
+    span = tracer.span(
+      name,
+      parent,
+      options.context ?? Context.empty(),
+      links,
+      timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0,
+      options.kind ?? "internal"
+    )
+
+    if (annotationsFromEnv._tag === "Some") {
+      HashMap.forEach(annotationsFromEnv.value, (value, key) => span.attribute(key, value))
+    }
+    if (options.attributes !== undefined) {
+      Object.entries(options.attributes).forEach(([k, v]) => span.attribute(k, v))
+    }
+  }
 
   if (typeof options.captureStackTrace === "function") {
     internalCause.spanToTrace.set(span, options.captureStackTrace)
-  }
-
-  if (annotationsFromEnv._tag === "Some") {
-    HashMap.forEach(annotationsFromEnv.value, (value, key) => span.attribute(key, value))
-  }
-  if (options.attributes !== undefined) {
-    Object.entries(options.attributes).forEach(([k, v]) => span.attribute(k, v))
   }
 
   return span

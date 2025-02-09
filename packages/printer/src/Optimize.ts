@@ -102,6 +102,7 @@ export const Deep: FusionDepth = {
  * strings that are used many times.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as Optimize from "@effect/printer/Optimize"
  *
@@ -120,6 +121,7 @@ export const Deep: FusionDepth = {
  *
  * // We can optimize the `inefficient` document using `Optimize`
  * Optimize.optimize(Optimize.Deep)(inefficient)
+ * ```
  *
  * @since 1.0.0
  * @category optimization

@@ -1,17 +1,17 @@
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
-import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
-import { dual, flow, pipe } from "effect/Function"
+import { dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
+import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
-import * as Queue from "effect/Queue"
+import * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 import type * as Scope from "effect/Scope"
 import type * as AsyncInput from "effect/SingleProducerAsyncInput"
 import * as Stream from "effect/Stream"
@@ -169,28 +169,21 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: Pa
 export const makeConfig = (
   headers: Record<string, string>
 ): Effect.Effect<MP.BaseConfig> =>
-  Effect.map(
-    Effect.all({
-      maxParts: Effect.map(FiberRef.get(maxParts), Option.getOrUndefined),
-      maxFieldSize: Effect.map(FiberRef.get(maxFieldSize), Number),
-      maxPartSize: Effect.map(FiberRef.get(maxFileSize), flow(Option.map(Number), Option.getOrUndefined)),
-      maxTotalSize: Effect.map(
-        FiberRef.get(IncomingMessage.maxBodySize),
-        flow(Option.map(Number), Option.getOrUndefined)
-      ),
-      isFile: Effect.map(FiberRef.get(fieldMimeTypes), (mimeTypes) => {
-        if (mimeTypes.length === 0) {
-          return undefined
-        }
-        return (info: MP.PartInfo): boolean =>
-          !Chunk.some(
-            mimeTypes,
-            (_) => info.contentType.includes(_)
-          ) && MP.defaultIsFile(info)
-      })
-    }),
-    (_) => ({ ..._, headers })
-  )
+  Effect.withFiberRuntime((fiber) => {
+    const mimeTypes = fiber.getFiberRef(fieldMimeTypes)
+    return Effect.succeed<MP.BaseConfig>({
+      headers,
+      maxParts: Option.getOrUndefined(fiber.getFiberRef(maxParts)),
+      maxFieldSize: Number(fiber.getFiberRef(maxFieldSize)),
+      maxPartSize: fiber.getFiberRef(maxFileSize).pipe(Option.map(Number), Option.getOrUndefined),
+      maxTotalSize: fiber.getFiberRef(IncomingMessage.maxBodySize).pipe(Option.map(Number), Option.getOrUndefined),
+      isFile: mimeTypes.length === 0 ? undefined : (info: MP.PartInfo): boolean =>
+        !Chunk.some(
+          mimeTypes,
+          (_) => info.contentType.includes(_)
+        ) && MP.defaultIsFile(info)
+    })
+  })
 
 /** @internal */
 export const makeChannel = <IE>(
@@ -207,52 +200,35 @@ export const makeChannel = <IE>(
   Channel.acquireUseRelease(
     Effect.all([
       makeConfig(headers),
-      Queue.bounded<Chunk.Chunk<Uint8Array> | null>(bufferSize)
+      Mailbox.make<Chunk.Chunk<Uint8Array>>(bufferSize)
     ]),
-    ([config, queue]) => makeFromQueue(config, queue),
-    ([, queue]) => Queue.shutdown(queue)
-  )
+    ([config, mailbox]) => {
+      let partsBuffer: Array<Multipart.Part> = []
+      let exit = Option.none<Exit.Exit<void, IE | Multipart.MultipartError>>()
 
-const makeFromQueue = <IE>(
-  config: MP.BaseConfig,
-  queue: Queue.Queue<Chunk.Chunk<Uint8Array> | null>
-): Channel.Channel<
-  Chunk.Chunk<Multipart.Part>,
-  Chunk.Chunk<Uint8Array>,
-  IE | Multipart.MultipartError,
-  IE,
-  unknown,
-  unknown
-> =>
-  Channel.suspend(() => {
-    let error = Option.none<Cause.Cause<IE | Multipart.MultipartError>>()
-    let partsBuffer: Array<Multipart.Part> = []
-    let partsFinished = false
-
-    const input: AsyncInput.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array>, unknown> = {
-      awaitRead: () => Effect.void,
-      emit(element) {
-        return Queue.offer(queue, element)
-      },
-      error(cause) {
-        error = Option.some(cause)
-        return Queue.offer(queue, null)
-      },
-      done(_value) {
-        return Queue.offer(queue, null)
+      const input: AsyncInput.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array>, unknown> = {
+        awaitRead: () => Effect.void,
+        emit(element) {
+          return mailbox.offer(element)
+        },
+        error(cause) {
+          exit = Option.some(Exit.failCause(cause))
+          return mailbox.end
+        },
+        done(_value) {
+          return mailbox.end
+        }
       }
-    }
 
-    const parser = MP.make({
-      ...config,
-      onField(info, value) {
-        partsBuffer.push(new FieldImpl(info.name, info.contentType, MP.decodeField(info, value)))
-      },
-      onFile(info) {
-        let chunks: Array<Uint8Array> = []
-        let finished = false
-        const take: Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, never, unknown, void, unknown> = Channel
-          .suspend(() => {
+      const parser = MP.make({
+        ...config,
+        onField(info, value) {
+          partsBuffer.push(new FieldImpl(info.name, info.contentType, MP.decodeField(info, value)))
+        },
+        onFile(info) {
+          let chunks: Array<Uint8Array> = []
+          let finished = false
+          const take: Channel.Channel<Chunk.Chunk<Uint8Array>> = Channel.suspend(() => {
             if (chunks.length === 0) {
               return finished ? Channel.void : Channel.zipRight(pump, take)
             }
@@ -263,65 +239,61 @@ const makeFromQueue = <IE>(
               Channel.zipRight(pump, take)
             )
           })
-        partsBuffer.push(new FileImpl(info, take))
-        return function(chunk) {
-          if (chunk === null) {
-            finished = true
-          } else {
-            chunks.push(chunk)
+          partsBuffer.push(new FileImpl(info, take))
+          return function(chunk) {
+            if (chunk === null) {
+              finished = true
+            } else {
+              chunks.push(chunk)
+            }
           }
+        },
+        onError(error_) {
+          exit = Option.some(Exit.fail(convertError(error_)))
+        },
+        onDone() {
+          exit = Option.some(Exit.void)
         }
-      },
-      onError(error_) {
-        error = Option.some(Cause.fail(convertError(error_)))
-      },
-      onDone() {
-        partsFinished = true
-      }
-    })
-
-    const pump = Channel.flatMap(
-      Queue.take(queue),
-      (chunk) =>
-        Channel.sync(() => {
-          if (chunk === null) {
-            parser.end()
-          } else {
-            Chunk.forEach(chunk, parser.write)
-          }
-        })
-    )
-
-    const takeParts = Channel.zipRight(
-      pump,
-      Channel.suspend(() => {
-        if (partsBuffer.length === 0) {
-          return Channel.void
-        }
-        const parts = Chunk.unsafeFromArray(partsBuffer)
-        partsBuffer = []
-        return Channel.write(parts)
       })
-    )
 
-    const partsChannel: Channel.Channel<
-      Chunk.Chunk<Multipart.Part>,
-      unknown,
-      IE | Multipart.MultipartError,
-      unknown,
-      void,
-      unknown
-    > = Channel.suspend(() => {
-      if (error._tag === "Some") {
-        return Channel.failCause(error.value)
-      } else if (partsFinished) {
-        return Channel.void
-      }
-      return Channel.zipRight(takeParts, partsChannel)
-    })
+      const pump = Channel.flatMap(
+        mailbox.takeAll,
+        ([chunks, done]) =>
+          Channel.sync(() => {
+            Chunk.forEach(chunks, Chunk.forEach(parser.write))
+            if (done) {
+              parser.end()
+            }
+          })
+      )
 
-    return Channel.embedInput(partsChannel, input)
-  })
+      const partsChannel: Channel.Channel<
+        Chunk.Chunk<Multipart.Part>,
+        unknown,
+        IE | Multipart.MultipartError
+      > = Channel.flatMap(
+        pump,
+        () => {
+          if (partsBuffer.length === 0) {
+            return exit._tag === "None" ? partsChannel : writeExit(exit.value)
+          }
+          const chunk = Chunk.unsafeFromArray(partsBuffer)
+          partsBuffer = []
+          return Channel.zipRight(
+            Channel.write(chunk),
+            exit._tag === "None" ? partsChannel : writeExit(exit.value)
+          )
+        }
+      )
+
+      return Channel.embedInput(partsChannel, input)
+    },
+    ([, mailbox]) => mailbox.shutdown
+  )
+
+const writeExit = <A, E>(
+  self: Exit.Exit<A, E>
+): Channel.Channel<never, unknown, E> => self._tag === "Success" ? Channel.void : Channel.failCause(self.cause)
 
 function convertError(cause: MP.MultipartError): Multipart.MultipartError {
   switch (cause._tag) {
@@ -421,37 +393,41 @@ export const toPersisted = (
   stream: Stream.Stream<Multipart.Part, Multipart.MultipartError>,
   writeFile = defaultWriteFile
 ): Effect.Effect<Multipart.Persisted, Multipart.MultipartError, FileSystem.FileSystem | Path.Path | Scope.Scope> =>
-  pipe(
-    Effect.Do,
-    Effect.bind("fs", () => FileSystem.FileSystem),
-    Effect.bind("path", () => Path.Path),
-    Effect.bind("dir", ({ fs }) => fs.makeTempDirectoryScoped()),
-    Effect.flatMap(({ dir, path: path_ }) =>
-      Stream.runFoldEffect(
-        stream,
-        Object.create(null) as Record<string, Array<Multipart.PersistedFile> | string>,
-        (persisted, part) => {
-          if (part._tag === "Field") {
-            persisted[part.key] = part.value
-            return Effect.succeed(persisted)
-          }
-          const file = part
-          const path = path_.join(dir, path_.basename(file.name).slice(-128))
-          if (!Array.isArray(persisted[part.key])) {
-            persisted[part.key] = []
-          }
-          ;(persisted[part.key] as Array<Multipart.PersistedFile>).push(
-            new PersistedFileImpl(
-              file.key,
-              file.name,
-              file.contentType,
-              path
-            )
-          )
-          return Effect.as(writeFile(path, file), persisted)
+  Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const path_ = yield* Path.Path
+    const dir = yield* fs.makeTempDirectoryScoped()
+    const persisted: Record<string, Array<Multipart.PersistedFile> | Array<string> | string> = Object.create(null)
+    yield* Stream.runForEach(stream, (part) => {
+      if (part._tag === "Field") {
+        if (!(part.key in persisted)) {
+          persisted[part.key] = part.value
+        } else if (typeof persisted[part.key] === "string") {
+          persisted[part.key] = [persisted[part.key] as string, part.value]
+        } else {
+          ;(persisted[part.key] as Array<string>).push(part.value)
         }
+        return Effect.void
+      } else if (part.name === "") {
+        return Effect.void
+      }
+      const file = part
+      const path = path_.join(dir, path_.basename(file.name).slice(-128))
+      const filePart = new PersistedFileImpl(
+        file.key,
+        file.name,
+        file.contentType,
+        path
       )
-    ),
+      if (Array.isArray(persisted[part.key])) {
+        ;(persisted[part.key] as Array<Multipart.PersistedFile>).push(filePart)
+      } else {
+        persisted[part.key] = [filePart]
+      }
+      return writeFile(path, file)
+    })
+    return persisted
+  }).pipe(
     Effect.catchTags({
       SystemError: (cause) => Effect.fail(new MultipartError({ reason: "InternalError", cause })),
       BadArgument: (cause) => Effect.fail(new MultipartError({ reason: "InternalError", cause }))

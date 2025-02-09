@@ -4,7 +4,6 @@
 import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Path } from "@effect/platform/Path"
 import type { QuitException, Terminal } from "@effect/platform/Terminal"
-import type { Schema } from "@effect/schema/Schema"
 import type { NonEmptyArray } from "effect/Array"
 import type { Config } from "effect/Config"
 import type { Effect } from "effect/Effect"
@@ -13,7 +12,7 @@ import type { HashMap } from "effect/HashMap"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { Redacted } from "effect/Redacted"
-import type { Secret } from "effect/Secret"
+import type { Schema } from "effect/Schema"
 import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalOptions from "./internal/options.js"
@@ -154,12 +153,14 @@ export const boolean: (name: string, options?: Options.BooleanOptionsConfig) => 
  * inputs. The input will be mapped to it's associated value during parsing.
  *
  * @example
+ * ```ts
  * import * as Options from "@effect/cli/Options"
  *
  * export const animal: Options.Options<"dog" | "cat"> = Options.choice(
  *   "animal",
  *   ["dog", "cat"]
  * )
+ * ```
  *
  * @since 1.0.0
  * @category constructors
@@ -174,6 +175,7 @@ export const choice: <A extends string, C extends ReadonlyArray<A>>(
  * inputs. The input will be mapped to it's associated value during parsing.
  *
  * @example
+ * ```ts
  * import * as Options from "@effect/cli/Options"
  * import * as Data from "effect/Data"
  *
@@ -195,6 +197,7 @@ export const choice: <A extends string, C extends ReadonlyArray<A>>(
  *   ["dog", Dog()],
  *   ["cat", Cat()],
  * ])
+ * ```
  *
  * @since 1.0.0
  * @category constructors
@@ -314,13 +317,6 @@ export const none: Options<void> = InternalOptions.none
  * @category constructors
  */
 export const redacted: (name: string) => Options<Redacted> = InternalOptions.redacted
-
-/**
- * @since 1.0.0
- * @category constructors
- * @deprecated
- */
-export const secret: (name: string) => Options<Secret> = InternalOptions.secret
 
 /**
  * @since 1.0.0

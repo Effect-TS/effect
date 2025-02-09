@@ -17,10 +17,12 @@ export interface FunctionTypeLambda extends TypeLambda {
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isFunction } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isFunction(isFunction), true)
  * assert.deepStrictEqual(isFunction("function"), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -46,6 +48,7 @@ export const isFunction = (input: unknown): input is Function => typeof input ==
  * @param body - The definition of the uncurried function.
  *
  * @example
+ * ```ts
  * import { dual, pipe } from "effect/Function"
  *
  * // Exampe using arity to determine data-first or data-last style
@@ -65,6 +68,7 @@ export const isFunction = (input: unknown): input is Function => typeof input ==
  *
  * assert.deepStrictEqual(sum(2, 3), 5)
  * assert.deepStrictEqual(pipe(2, sum(3)), 5)
+ * ```
  *
  * @since 2.0.0
  */
@@ -153,10 +157,12 @@ export const dual: {
  * @param self - The function to be applied to a value.
  *
  * @example
+ * ```ts
  * import { pipe, apply } from "effect/Function"
  * import { length } from "effect/String"
  *
  * assert.deepStrictEqual(pipe(length, apply("hello")), 5)
+ * ```
  *
  * @since 2.0.0
  */
@@ -166,9 +172,11 @@ export const apply = <A>(a: A) => <B>(self: (a: A) => B): B => self(a)
  * A lazy argument.
  *
  * @example
+ * ```ts
  * import { LazyArg, constant } from "effect/Function"
  *
  * const constNull: LazyArg<null> = constant(null)
+ * ```
  *
  * @since 2.0.0
  */
@@ -178,9 +186,11 @@ export interface LazyArg<A> {
 
 /**
  * @example
+ * ```ts
  * import { FunctionN } from "effect/Function"
  *
  * const sum: FunctionN<[number, number], number> = (a, b) => a + b
+ * ```
  *
  * @since 2.0.0
  */
@@ -194,9 +204,11 @@ export interface FunctionN<A extends ReadonlyArray<unknown>, B> {
  * @param a - The input argument.
  *
  * @example
+ * ```ts
  * import { identity } from "effect/Function"
  *
  * assert.deepStrictEqual(identity(5), 5)
+ * ```
  *
  * @since 2.0.0
  */
@@ -207,6 +219,7 @@ export const identity = <A>(a: A): A => a
  * without changing the resulting type of that expression.
  *
  * @example
+ * ```ts
  * import { satisfies } from "effect/Function"
  *
  * const test1 = satisfies<number>()(5 as const)
@@ -216,6 +229,7 @@ export const identity = <A>(a: A): A => a
  *     //^? Argument of type 'number' is not assignable to parameter of type 'string'
  *
  * assert.deepStrictEqual(satisfies<number>()(5), 5)
+ * ```
  *
  * @since 2.0.0
  */
@@ -227,9 +241,11 @@ export const satisfies = <A>() => <B extends A>(b: B) => b
  * @param a - The value to be casted to the target type.
  *
  * @example
+ * ```ts
  * import { unsafeCoerce, identity } from "effect/Function"
  *
  * assert.deepStrictEqual(unsafeCoerce, identity)
+ * ```
  *
  * @since 2.0.0
  */
@@ -244,12 +260,14 @@ export const unsafeCoerce: <A, B>(a: A) => B = identity as any
  * @param value - The constant value to be returned.
  *
  * @example
+ * ```ts
  * import { constant } from "effect/Function"
  *
  * const constNull = constant(null)
  *
  * assert.deepStrictEqual(constNull(), null)
  * assert.deepStrictEqual(constNull(), null)
+ * ```
  *
  * @since 2.0.0
  */
@@ -259,9 +277,11 @@ export const constant = <A>(value: A): LazyArg<A> => () => value
  * A thunk that returns always `true`.
  *
  * @example
+ * ```ts
  * import { constTrue } from "effect/Function"
  *
  * assert.deepStrictEqual(constTrue(), true)
+ * ```
  *
  * @since 2.0.0
  */
@@ -271,9 +291,11 @@ export const constTrue: LazyArg<boolean> = constant(true)
  * A thunk that returns always `false`.
  *
  * @example
+ * ```ts
  * import { constFalse } from "effect/Function"
  *
  * assert.deepStrictEqual(constFalse(), false)
+ * ```
  *
  * @since 2.0.0
  */
@@ -283,9 +305,11 @@ export const constFalse: LazyArg<boolean> = constant(false)
  * A thunk that returns always `null`.
  *
  * @example
+ * ```ts
  * import { constNull } from "effect/Function"
  *
  * assert.deepStrictEqual(constNull(), null)
+ * ```
  *
  * @since 2.0.0
  */
@@ -295,9 +319,11 @@ export const constNull: LazyArg<null> = constant(null)
  * A thunk that returns always `undefined`.
  *
  * @example
+ * ```ts
  * import { constUndefined } from "effect/Function"
  *
  * assert.deepStrictEqual(constUndefined(), undefined)
+ * ```
  *
  * @since 2.0.0
  */
@@ -307,9 +333,11 @@ export const constUndefined: LazyArg<undefined> = constant(undefined)
  * A thunk that returns always `void`.
  *
  * @example
+ * ```ts
  * import { constVoid } from "effect/Function"
  *
  * assert.deepStrictEqual(constVoid(), undefined)
+ * ```
  *
  * @since 2.0.0
  */
@@ -321,11 +349,13 @@ export const constVoid: LazyArg<void> = constUndefined
  * @param f - A curried function that takes multiple arguments.
  *
  * @example
+ * ```ts
  * import { flip } from "effect/Function"
  *
  * const f = (a: number) => (b: string) => a - b.length
  *
  * assert.deepStrictEqual(flip(f)('aaa')(2), -1)
+ * ```
  *
  * @since 2.0.0
  */
@@ -343,12 +373,14 @@ export const flip = <A extends Array<unknown>, B extends Array<unknown>, C>(
  * @param bc - A function that maps from `B` to `C`.
  *
  * @example
+ * ```ts
  * import { compose } from "effect/Function"
  *
  * const increment = (n: number) => n + 1;
  * const square = (n: number) => n * n;
  *
  * assert.strictEqual(compose(increment, square)(2), 9);
+ * ```
  *
  * @since 2.0.0
  */
@@ -361,7 +393,7 @@ export const compose: {
  * The `absurd` function is a stub for cases where a value of type `never` is encountered in your code,
  * meaning that it should be impossible for this code to be executed.
  *
- * This function is particularly when it's necessary to specify that certain cases are impossible.
+ * This function is particularly useful when it's necessary to specify that certain cases are impossible.
  *
  * @since 2.0.0
  */
@@ -373,11 +405,13 @@ export const absurd = <A>(_: never): A => {
  * Creates a tupled version of this function: instead of `n` arguments, it accepts a single tuple argument.
  *
  * @example
+ * ```ts
  * import { tupled } from "effect/Function"
  *
  * const sumTupled = tupled((x: number, y: number): number => x + y)
  *
  * assert.deepStrictEqual(sumTupled([1, 2]), 3)
+ * ```
  *
  * @since 2.0.0
  */
@@ -387,11 +421,13 @@ export const tupled = <A extends ReadonlyArray<unknown>, B>(f: (...a: A) => B): 
  * Inverse function of `tupled`
  *
  * @example
+ * ```ts
  * import { untupled } from "effect/Function"
  *
  * const getFirst = untupled(<A, B>(tuple: [A, B]): A => tuple[0])
  *
  * assert.deepStrictEqual(getFirst(1, 2), 1)
+ * ```
  *
  * @since 2.0.0
  */
@@ -400,37 +436,92 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
 /**
  * Pipes the value of an expression into a pipeline of functions.
  *
- * This is useful in combination with data-last functions as a simulation of methods:
+ * **When to Use**
  *
+ * This is useful in combination with data-last functions as a simulation of
+ * methods:
+ *
+ * ```ts
+ * as.map(f).filter(g)
  * ```
- * as.map(f).filter(g) -> pipe(as, map(f), filter(g))
+ *
+ * becomes:
+ *
+ * ```ts
+ * import { pipe, Array } from "effect"
+ *
+ * pipe(as, Array.map(f), Array.filter(g))
  * ```
+ *
+ * **Details**
+ *
+ * The `pipe` function is a utility that allows us to compose functions in a
+ * readable and sequential manner. It takes the output of one function and
+ * passes it as the input to the next function in the pipeline. This enables us
+ * to build complex transformations by chaining multiple functions together.
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ *
+ * const result = pipe(input, func1, func2, ..., funcN)
+ * ```
+ *
+ * In this syntax, `input` is the initial value, and `func1`, `func2`, ...,
+ * `funcN` are the functions to be applied in sequence. The result of each
+ * function becomes the input for the next function, and the final result is
+ * returned.
+ *
+ * Here's an illustration of how `pipe` works:
+ *
+ * ```text
+ * ┌───────┐    ┌───────┐    ┌───────┐    ┌───────┐    ┌───────┐    ┌────────┐
+ * │ input │───►│ func1 │───►│ func2 │───►│  ...  │───►│ funcN │───►│ result │
+ * └───────┘    └───────┘    └───────┘    └───────┘    └───────┘    └────────┘
+ * ```
+ *
+ * It's important to note that functions passed to `pipe` must have a **single
+ * argument** because they are only called with a single argument.
  *
  * @example
- * import { pipe } from "effect/Function"
- * // Alternatively, you can use the following import syntax, as `pipe` is also conveniently exported from the `effect` entry point:
- * // import { pipe } from "effect"
+ * ```ts
+ * // Example: Chaining Arithmetic Operations
+ * import { pipe } from "effect"
  *
- * const length = (s: string): number => s.length
- * const double = (n: number): number => n * 2
- * const decrement = (n: number): number => n - 1
+ * // Define simple arithmetic operations
+ * const increment = (x: number) => x + 1
+ * const double = (x: number) => x * 2
+ * const subtractTen = (x: number) => x - 10
  *
- * assert.deepStrictEqual(pipe(length("hello"), double, decrement), 9)
+ * // Sequentially apply these operations using `pipe`
+ * const result = pipe(5, increment, double, subtractTen)
+ *
+ * console.log(result)
+ * // Output: 2
+ * ```
  *
  * @since 2.0.0
  */
 export function pipe<A>(a: A): A
-export function pipe<A, B>(a: A, ab: (a: A) => B): B
-export function pipe<A, B, C>(a: A, ab: (a: A) => B, bc: (b: B) => C): C
-export function pipe<A, B, C, D>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D): D
-export function pipe<A, B, C, D, E>(
+export function pipe<A, B = never>(a: A, ab: (a: A) => B): B
+export function pipe<A, B = never, C = never>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C
+): C
+export function pipe<A, B = never, C = never, D = never>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D
+): D
+export function pipe<A, B = never, C = never, D = never, E = never>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
   de: (d: D) => E
 ): E
-export function pipe<A, B, C, D, E, F>(
+export function pipe<A, B = never, C = never, D = never, E = never, F = never>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -438,7 +529,15 @@ export function pipe<A, B, C, D, E, F>(
   de: (d: D) => E,
   ef: (e: E) => F
 ): F
-export function pipe<A, B, C, D, E, F, G>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -447,7 +546,16 @@ export function pipe<A, B, C, D, E, F, G>(
   ef: (e: E) => F,
   fg: (f: F) => G
 ): G
-export function pipe<A, B, C, D, E, F, G, H>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -457,7 +565,17 @@ export function pipe<A, B, C, D, E, F, G, H>(
   fg: (f: F) => G,
   gh: (g: G) => H
 ): H
-export function pipe<A, B, C, D, E, F, G, H, I>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -468,7 +586,18 @@ export function pipe<A, B, C, D, E, F, G, H, I>(
   gh: (g: G) => H,
   hi: (h: H) => I
 ): I
-export function pipe<A, B, C, D, E, F, G, H, I, J>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -480,7 +609,19 @@ export function pipe<A, B, C, D, E, F, G, H, I, J>(
   hi: (h: H) => I,
   ij: (i: I) => J
 ): J
-export function pipe<A, B, C, D, E, F, G, H, I, J, K>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -493,7 +634,20 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K>(
   ij: (i: I) => J,
   jk: (j: J) => K
 ): K
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -507,7 +661,21 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
   jk: (j: J) => K,
   kl: (k: K) => L
 ): L
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -522,7 +690,22 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
   kl: (k: K) => L,
   lm: (l: L) => M
 ): M
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -538,7 +721,23 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
   lm: (l: L) => M,
   mn: (m: M) => N
 ): N
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -555,7 +754,24 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
   mn: (m: M) => N,
   no: (n: N) => O
 ): O
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never,
+  P = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -573,7 +789,25 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
   no: (n: N) => O,
   op: (o: O) => P
 ): P
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never,
+  P = never,
+  Q = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -592,7 +826,26 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
   op: (o: O) => P,
   pq: (p: P) => Q
 ): Q
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never,
+  P = never,
+  Q = never,
+  R = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -612,7 +865,27 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
   pq: (p: P) => Q,
   qr: (q: Q) => R
 ): R
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never,
+  P = never,
+  Q = never,
+  R = never,
+  S = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -633,7 +906,28 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
   qr: (q: Q) => R,
   rs: (r: R) => S
 ): S
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never,
+  P = never,
+  Q = never,
+  R = never,
+  S = never,
+  T = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -701,6 +995,7 @@ export function pipe(
  * See also [`pipe`](#pipe).
  *
  * @example
+ * ```ts
  * import { flow } from "effect/Function"
  *
  * const len = (s: string): number => s.length
@@ -709,30 +1004,58 @@ export function pipe(
  * const f = flow(len, double)
  *
  * assert.strictEqual(f('aaa'), 6)
+ * ```
  *
  * @since 2.0.0
  */
-export function flow<A extends ReadonlyArray<unknown>, B>(ab: (...a: A) => B): (...a: A) => B
-export function flow<A extends ReadonlyArray<unknown>, B, C>(ab: (...a: A) => B, bc: (b: B) => C): (...a: A) => C
-export function flow<A extends ReadonlyArray<unknown>, B, C, D>(
+export function flow<A extends ReadonlyArray<unknown>, B = never>(
+  ab: (...a: A) => B
+): (...a: A) => B
+export function flow<A extends ReadonlyArray<unknown>, B = never, C = never>(
   ab: (...a: A) => B,
-  bc: (b: B) => C,
-  cd: (c: C) => D
-): (...a: A) => D
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E>(
+  bc: (b: B) => C
+): (...a: A) => C
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never
+>(ab: (...a: A) => B, bc: (b: B) => C, cd: (c: C) => D): (...a: A) => D
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
   de: (d: D) => E
 ): (...a: A) => E
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F>(
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
   de: (d: D) => E,
   ef: (e: E) => F
 ): (...a: A) => F
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G>(
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
@@ -740,7 +1063,16 @@ export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G>(
   ef: (e: E) => F,
   fg: (f: F) => G
 ): (...a: A) => G
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H>(
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
@@ -749,7 +1081,17 @@ export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H>(
   fg: (f: F) => G,
   gh: (g: G) => H
 ): (...a: A) => H
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I>(
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
@@ -759,7 +1101,18 @@ export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I>(
   gh: (g: G) => H,
   hi: (h: H) => I
 ): (...a: A) => I
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I, J>(
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
@@ -837,9 +1190,11 @@ export const hole: <T>() => T = unsafeCoerce(absurd)
  * @param b - The second argument to be returned.
  *
  * @example
+ * ```ts
  * import { SK } from "effect/Function";
  *
  * assert.deepStrictEqual(SK(0, "hello"), "hello")
+ * ```
  *
  * @since 2.0.0
  */

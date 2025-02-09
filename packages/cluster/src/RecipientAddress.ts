@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
 import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
+import * as Schema from "effect/Schema"
 import { TypeIdSchema } from "./internal/utils.js"
 
 const RecipientAddressSymbolKey = "@effect/cluster/RecipientAddress"

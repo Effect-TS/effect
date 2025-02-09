@@ -22,6 +22,7 @@ import { type LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
+import * as Runtime from "effect/Runtime"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Http from "node:http"
@@ -134,8 +135,9 @@ export const makeHandler: {
   >
 } = <E, R>(httpApp: App.Default<E, R>, middleware?: Middleware.HttpMiddleware) => {
   const handledApp = App.toHandled(httpApp, handleResponse, middleware)
-  return Effect.map(FiberSet.makeRuntime<R>(), (runFork) =>
-    function handler(
+  return Effect.map(Effect.runtime<R>(), (runtime) => {
+    const runFork = Runtime.runFork(runtime)
+    return function handler(
       nodeRequest: Http.IncomingMessage,
       nodeResponse: Http.ServerResponse
     ) {
@@ -151,7 +153,8 @@ export const makeHandler: {
           fiber.unsafeInterruptAsFork(Error.clientAbortFiberId)
         }
       })
-    })
+    }
+  })
 }
 
 /** @internal */
@@ -319,15 +322,20 @@ export const layerServer = (
 ) => Layer.scoped(Server.HttpServer, make(evaluate, options))
 
 /** @internal */
+export const layerContext = Layer.mergeAll(
+  internalPlatform.layer,
+  Etag.layerWeak,
+  NodeContext.layer
+)
+
+/** @internal */
 export const layer = (
   evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
 ) =>
   Layer.mergeAll(
     Layer.scoped(Server.HttpServer, make(evaluate, options)),
-    internalPlatform.layer,
-    Etag.layerWeak,
-    NodeContext.layer
+    layerContext
   )
 
 /** @internal */

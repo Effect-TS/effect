@@ -1,8 +1,8 @@
-import { equals } from "effect/Equal"
 import type * as ReadonlyArray from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"
+import { equals } from "../Equal.js"
 import * as Exit from "../Exit.js"
 import * as Fiber from "../Fiber.js"
 import * as FiberId from "../FiberId.js"
@@ -250,7 +250,7 @@ export const unsafeRunSyncExit =
     if (result) {
       return result
     }
-    throw asyncFiberException(fiberRuntime)
+    return core.exitDie(core.capture(asyncFiberException(fiberRuntime), core.currentSpanFromFiber(fiberRuntime)))
   }
 
 /** @internal */

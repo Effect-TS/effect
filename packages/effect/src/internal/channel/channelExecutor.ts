@@ -7,7 +7,7 @@ import * as Effect from "../../Effect.js"
 import * as ExecutionStrategy from "../../ExecutionStrategy.js"
 import * as Exit from "../../Exit.js"
 import * as Fiber from "../../Fiber.js"
-import { identity, pipe } from "../../Function.js"
+import { dual, identity, pipe } from "../../Function.js"
 import * as Option from "../../Option.js"
 import * as Scope from "../../Scope.js"
 import type * as UpstreamPullStrategy from "../../UpstreamPullStrategy.js"
@@ -101,247 +101,246 @@ export class ChannelExecutor<
           } else {
             if (Effect.isEffect(this._currentChannel)) {
               this._currentChannel = core.fromEffect(this._currentChannel) as core.Primitive
-            } else {
-              switch (this._currentChannel._tag) {
-                case ChannelOpCodes.OP_BRACKET_OUT: {
-                  result = this.runBracketOut(this._currentChannel)
-                  break
-                }
+            }
+            switch (this._currentChannel._tag) {
+              case ChannelOpCodes.OP_BRACKET_OUT: {
+                result = this.runBracketOut(this._currentChannel)
+                break
+              }
 
-                case ChannelOpCodes.OP_BRIDGE: {
-                  const bridgeInput = this._currentChannel.input
+              case ChannelOpCodes.OP_BRIDGE: {
+                const bridgeInput = this._currentChannel.input
 
-                  // PipeTo(left, Bridge(queue, channel))
-                  // In a fiber: repeatedly run left and push its outputs to the queue
-                  // Add a finalizer to interrupt the fiber and close the executor
-                  this._currentChannel = this._currentChannel.channel as core.Primitive
+                // PipeTo(left, Bridge(queue, channel))
+                // In a fiber: repeatedly run left and push its outputs to the queue
+                // Add a finalizer to interrupt the fiber and close the executor
+                this._currentChannel = this._currentChannel.channel as core.Primitive
 
-                  if (this._input !== undefined) {
-                    const inputExecutor = this._input
-                    this._input = undefined
+                if (this._input !== undefined) {
+                  const inputExecutor = this._input
+                  this._input = undefined
 
-                    const drainer = (): Effect.Effect<unknown, never, Env> =>
-                      Effect.flatMap(bridgeInput.awaitRead(), () =>
-                        Effect.suspend(() => {
-                          const state = inputExecutor.run() as ChannelState.Primitive
-                          switch (state._tag) {
-                            case ChannelStateOpCodes.OP_DONE: {
-                              return Exit.match(inputExecutor.getDone(), {
-                                onFailure: (cause) => bridgeInput.error(cause),
-                                onSuccess: (value) => bridgeInput.done(value)
-                              })
-                            }
-                            case ChannelStateOpCodes.OP_EMIT: {
-                              return Effect.flatMap(
-                                bridgeInput.emit(inputExecutor.getEmit()),
-                                () => drainer()
-                              )
-                            }
-                            case ChannelStateOpCodes.OP_FROM_EFFECT: {
-                              return Effect.matchCauseEffect(state.effect, {
-                                onFailure: (cause) => bridgeInput.error(cause),
-                                onSuccess: () => drainer()
-                              })
-                            }
-                            case ChannelStateOpCodes.OP_READ: {
-                              return readUpstream(
-                                state,
-                                () => drainer(),
-                                (cause) => bridgeInput.error(cause)
-                              )
-                            }
+                  const drainer = (): Effect.Effect<unknown, never, Env> =>
+                    Effect.flatMap(bridgeInput.awaitRead(), () =>
+                      Effect.suspend(() => {
+                        const state = inputExecutor.run() as ChannelState.Primitive
+                        switch (state._tag) {
+                          case ChannelStateOpCodes.OP_DONE: {
+                            return Exit.match(inputExecutor.getDone(), {
+                              onFailure: (cause) => bridgeInput.error(cause),
+                              onSuccess: (value) => bridgeInput.done(value)
+                            })
                           }
-                        })) as Effect.Effect<unknown, never, Env>
-
-                    result = ChannelState.fromEffect(
-                      Effect.flatMap(
-                        Effect.forkDaemon(drainer()),
-                        (fiber) =>
-                          Effect.sync(() =>
-                            this.addFinalizer((exit) =>
-                              Effect.flatMap(Fiber.interrupt(fiber), () =>
-                                Effect.suspend(() => {
-                                  const effect = this.restorePipe(exit, inputExecutor)
-                                  return effect !== undefined ? effect : Effect.void
-                                }))
+                          case ChannelStateOpCodes.OP_EMIT: {
+                            return Effect.flatMap(
+                              bridgeInput.emit(inputExecutor.getEmit()),
+                              () => drainer()
                             )
-                          )
-                      )
-                    )
-                  }
-
-                  break
-                }
-
-                case ChannelOpCodes.OP_CONCAT_ALL: {
-                  const executor: ErasedExecutor<Env> = new ChannelExecutor(
-                    this._currentChannel.value() as Channel.Channel<
-                      never,
-                      unknown,
-                      never,
-                      unknown,
-                      never,
-                      unknown,
-                      Env
-                    >,
-                    this._providedEnv,
-                    (effect) =>
-                      Effect.sync(() => {
-                        const prevLastClose = this._closeLastSubstream === undefined
-                          ? Effect.void
-                          : this._closeLastSubstream
-                        this._closeLastSubstream = pipe(prevLastClose, Effect.zipRight(effect))
-                      })
-                  )
-                  executor._input = this._input
-
-                  const channel = this._currentChannel
-                  this._activeSubexecutor = new Subexecutor.PullFromUpstream(
-                    executor,
-                    (value) => channel.k(value),
-                    undefined,
-                    [],
-                    (x, y) => channel.combineInners(x, y),
-                    (x, y) => channel.combineAll(x, y),
-                    (request) => channel.onPull(request),
-                    (value) => channel.onEmit(value)
-                  )
-
-                  this._closeLastSubstream = undefined
-                  this._currentChannel = undefined
-
-                  break
-                }
-
-                case ChannelOpCodes.OP_EMIT: {
-                  this._emitted = this._currentChannel.out
-                  this._currentChannel = (this._activeSubexecutor !== undefined ?
-                    undefined :
-                    core.void) as core.Primitive | undefined
-                  result = ChannelState.Emit()
-                  break
-                }
-
-                case ChannelOpCodes.OP_ENSURING: {
-                  this.runEnsuring(this._currentChannel)
-                  break
-                }
-
-                case ChannelOpCodes.OP_FAIL: {
-                  result = this.doneHalt(this._currentChannel.error())
-                  break
-                }
-
-                case ChannelOpCodes.OP_FOLD: {
-                  this._doneStack.push(this._currentChannel.k as ErasedContinuation<Env>)
-                  this._currentChannel = this._currentChannel.channel as core.Primitive
-                  break
-                }
-
-                case ChannelOpCodes.OP_FROM_EFFECT: {
-                  const effect = this._providedEnv === undefined ?
-                    this._currentChannel.effect() :
-                    pipe(
-                      this._currentChannel.effect(),
-                      Effect.provide(this._providedEnv)
-                    )
+                          }
+                          case ChannelStateOpCodes.OP_FROM_EFFECT: {
+                            return Effect.matchCauseEffect(state.effect, {
+                              onFailure: (cause) => bridgeInput.error(cause),
+                              onSuccess: () => drainer()
+                            })
+                          }
+                          case ChannelStateOpCodes.OP_READ: {
+                            return readUpstream(
+                              state,
+                              () => drainer(),
+                              (cause) => bridgeInput.error(cause)
+                            )
+                          }
+                        }
+                      })) as Effect.Effect<unknown, never, Env>
 
                   result = ChannelState.fromEffect(
-                    Effect.matchCauseEffect(effect, {
-                      onFailure: (cause) => {
-                        const state = this.doneHalt(cause)
-                        return state !== undefined && ChannelState.isFromEffect(state) ?
-                          state.effect :
-                          Effect.void
-                      },
-                      onSuccess: (value) => {
-                        const state = this.doneSucceed(value)
-                        return state !== undefined && ChannelState.isFromEffect(state) ?
-                          state.effect :
-                          Effect.void
-                      }
-                    })
-                  ) as ChannelState.ChannelState<unknown, Env> | undefined
-
-                  break
-                }
-
-                case ChannelOpCodes.OP_PIPE_TO: {
-                  const previousInput = this._input
-
-                  const leftExec: ErasedExecutor<Env> = new ChannelExecutor(
-                    this._currentChannel.left() as Channel.Channel<never, unknown, never, unknown, never, unknown, Env>,
-                    this._providedEnv,
-                    (effect) => this._executeCloseLastSubstream(effect)
+                    Effect.flatMap(
+                      Effect.forkDaemon(Effect.interruptible(drainer())),
+                      (fiber) =>
+                        Effect.sync(() =>
+                          this.addFinalizer((exit) =>
+                            Effect.flatMap(Fiber.interrupt(fiber), () =>
+                              Effect.suspend(() => {
+                                const effect = this.restorePipe(exit, inputExecutor)
+                                return effect !== undefined ? effect : Effect.void
+                              }))
+                          )
+                        )
+                    )
                   )
-                  leftExec._input = previousInput
-                  this._input = leftExec
-
-                  this.addFinalizer((exit) => {
-                    const effect = this.restorePipe(exit, previousInput)
-                    return effect !== undefined ? effect : Effect.void
-                  })
-
-                  this._currentChannel = this._currentChannel.right() as core.Primitive
-
-                  break
                 }
 
-                case ChannelOpCodes.OP_PROVIDE: {
-                  const previousEnv = this._providedEnv
-                  this._providedEnv = this._currentChannel.context()
-                  this._currentChannel = this._currentChannel.inner as core.Primitive
-                  this.addFinalizer(() =>
+                break
+              }
+
+              case ChannelOpCodes.OP_CONCAT_ALL: {
+                const executor: ErasedExecutor<Env> = new ChannelExecutor(
+                  this._currentChannel.value() as Channel.Channel<
+                    never,
+                    unknown,
+                    never,
+                    unknown,
+                    never,
+                    unknown,
+                    Env
+                  >,
+                  this._providedEnv,
+                  (effect) =>
                     Effect.sync(() => {
-                      this._providedEnv = previousEnv
+                      const prevLastClose = this._closeLastSubstream === undefined
+                        ? Effect.void
+                        : this._closeLastSubstream
+                      this._closeLastSubstream = pipe(prevLastClose, Effect.zipRight(effect))
                     })
-                  )
-                  break
-                }
+                )
+                executor._input = this._input
 
-                case ChannelOpCodes.OP_READ: {
-                  const read = this._currentChannel
-                  result = ChannelState.Read(
-                    this._input!,
-                    identity,
-                    (emitted) => {
-                      try {
-                        this._currentChannel = read.more(emitted) as core.Primitive
-                      } catch (error) {
-                        this._currentChannel = read.done.onExit(Exit.die(error)) as core.Primitive
-                      }
-                      return undefined
+                const channel = this._currentChannel
+                this._activeSubexecutor = new Subexecutor.PullFromUpstream(
+                  executor,
+                  (value) => channel.k(value),
+                  undefined,
+                  [],
+                  (x, y) => channel.combineInners(x, y),
+                  (x, y) => channel.combineAll(x, y),
+                  (request) => channel.onPull(request),
+                  (value) => channel.onEmit(value)
+                )
+
+                this._closeLastSubstream = undefined
+                this._currentChannel = undefined
+
+                break
+              }
+
+              case ChannelOpCodes.OP_EMIT: {
+                this._emitted = this._currentChannel.out
+                this._currentChannel = (this._activeSubexecutor !== undefined ?
+                  undefined :
+                  core.void) as core.Primitive | undefined
+                result = ChannelState.Emit()
+                break
+              }
+
+              case ChannelOpCodes.OP_ENSURING: {
+                this.runEnsuring(this._currentChannel)
+                break
+              }
+
+              case ChannelOpCodes.OP_FAIL: {
+                result = this.doneHalt(this._currentChannel.error())
+                break
+              }
+
+              case ChannelOpCodes.OP_FOLD: {
+                this._doneStack.push(this._currentChannel.k as ErasedContinuation<Env>)
+                this._currentChannel = this._currentChannel.channel as core.Primitive
+                break
+              }
+
+              case ChannelOpCodes.OP_FROM_EFFECT: {
+                const effect = this._providedEnv === undefined ?
+                  this._currentChannel.effect() :
+                  pipe(
+                    this._currentChannel.effect(),
+                    Effect.provide(this._providedEnv)
+                  )
+
+                result = ChannelState.fromEffect(
+                  Effect.matchCauseEffect(effect, {
+                    onFailure: (cause) => {
+                      const state = this.doneHalt(cause)
+                      return state !== undefined && ChannelState.isFromEffect(state) ?
+                        state.effect :
+                        Effect.void
                     },
-                    (exit) => {
-                      const onExit = (exit: Exit.Exit<unknown, unknown>): core.Primitive => {
-                        return read.done.onExit(exit) as core.Primitive
-                      }
-                      this._currentChannel = onExit(exit)
-                      return undefined
+                    onSuccess: (value) => {
+                      const state = this.doneSucceed(value)
+                      return state !== undefined && ChannelState.isFromEffect(state) ?
+                        state.effect :
+                        Effect.void
                     }
-                  )
-                  break
-                }
+                  })
+                ) as ChannelState.ChannelState<unknown, Env> | undefined
 
-                case ChannelOpCodes.OP_SUCCEED: {
-                  result = this.doneSucceed(this._currentChannel.evaluate())
-                  break
-                }
+                break
+              }
 
-                case ChannelOpCodes.OP_SUCCEED_NOW: {
-                  result = this.doneSucceed(this._currentChannel.terminal)
-                  break
-                }
+              case ChannelOpCodes.OP_PIPE_TO: {
+                const previousInput = this._input
 
-                case ChannelOpCodes.OP_SUSPEND: {
-                  this._currentChannel = this._currentChannel.channel() as core.Primitive
-                  break
-                }
+                const leftExec: ErasedExecutor<Env> = new ChannelExecutor(
+                  this._currentChannel.left() as Channel.Channel<never, unknown, never, unknown, never, unknown, Env>,
+                  this._providedEnv,
+                  (effect) => this._executeCloseLastSubstream(effect)
+                )
+                leftExec._input = previousInput
+                this._input = leftExec
 
-                default: {
-                  // @ts-expect-error
-                  this._currentChannel._tag
-                }
+                this.addFinalizer((exit) => {
+                  const effect = this.restorePipe(exit, previousInput)
+                  return effect !== undefined ? effect : Effect.void
+                })
+
+                this._currentChannel = this._currentChannel.right() as core.Primitive
+
+                break
+              }
+
+              case ChannelOpCodes.OP_PROVIDE: {
+                const previousEnv = this._providedEnv
+                this._providedEnv = this._currentChannel.context()
+                this._currentChannel = this._currentChannel.inner as core.Primitive
+                this.addFinalizer(() =>
+                  Effect.sync(() => {
+                    this._providedEnv = previousEnv
+                  })
+                )
+                break
+              }
+
+              case ChannelOpCodes.OP_READ: {
+                const read = this._currentChannel
+                result = ChannelState.Read(
+                  this._input!,
+                  identity,
+                  (emitted) => {
+                    try {
+                      this._currentChannel = read.more(emitted) as core.Primitive
+                    } catch (error) {
+                      this._currentChannel = read.done.onExit(Exit.die(error)) as core.Primitive
+                    }
+                    return undefined
+                  },
+                  (exit) => {
+                    const onExit = (exit: Exit.Exit<unknown, unknown>): core.Primitive => {
+                      return read.done.onExit(exit) as core.Primitive
+                    }
+                    this._currentChannel = onExit(exit)
+                    return undefined
+                  }
+                )
+                break
+              }
+
+              case ChannelOpCodes.OP_SUCCEED: {
+                result = this.doneSucceed(this._currentChannel.evaluate())
+                break
+              }
+
+              case ChannelOpCodes.OP_SUCCEED_NOW: {
+                result = this.doneSucceed(this._currentChannel.terminal)
+                break
+              }
+
+              case ChannelOpCodes.OP_SUSPEND: {
+                this._currentChannel = this._currentChannel.channel() as core.Primitive
+                break
+              }
+
+              default: {
+                // @ts-expect-error
+                this._currentChannel._tag
               }
             }
           }
@@ -1093,14 +1092,18 @@ export const readUpstream = <A, E2, R, E>(
 }
 
 /** @internal */
-export const run = <Env, InErr, InDone, OutErr, OutDone>(
-  self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
-): Effect.Effect<OutDone, OutErr, Exclude<Env, Scope.Scope>> => pipe(runScoped(self), Effect.scoped)
-
-/** @internal */
-export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
-  self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
-): Effect.Effect<OutDone, OutErr, Env | Scope.Scope> => {
+export const runIn = dual<
+  (scope: Scope.Scope) => <Env, InErr, InDone, OutErr, OutDone>(
+    self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
+  ) => Effect.Effect<OutDone, OutErr, Env>,
+  <Env, InErr, InDone, OutErr, OutDone>(
+    self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>,
+    scope: Scope.Scope
+  ) => Effect.Effect<OutDone, OutErr, Env>
+>(2, <Env, InErr, InDone, OutErr, OutDone>(
+  self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>,
+  scope: Scope.Scope
+) => {
   const run = (
     channelDeferred: Deferred.Deferred<OutDone, OutErr>,
     scopeDeferred: Deferred.Deferred<void>,
@@ -1110,8 +1113,7 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
       Effect.sync(() => new ChannelExecutor(self, void 0, identity)),
       (exec) =>
         Effect.suspend(() =>
-          pipe(
-            runScopedInterpret(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec),
+          runScopedInterpret(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec).pipe(
             Effect.intoDeferred(channelDeferred),
             Effect.zipRight(Deferred.await(channelDeferred)),
             Effect.zipLeft(Deferred.await(scopeDeferred))
@@ -1129,33 +1131,34 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
       }
     )
   return Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(Effect.scope, (parent) =>
-      pipe(
-        Effect.all([
-          Scope.fork(parent, ExecutionStrategy.sequential),
-          Deferred.make<OutDone, OutErr>(),
-          Deferred.make<void>()
-        ]),
-        Effect.flatMap(([child, channelDeferred, scopeDeferred]) =>
-          pipe(
-            Effect.forkScoped(restore(run(channelDeferred, scopeDeferred, child))),
-            Effect.flatMap((fiber) =>
-              pipe(
-                Scope.addFinalizer(
-                  parent,
-                  Deferred.succeed(scopeDeferred, void 0).pipe(
-                    Effect.zipRight(Effect.yieldNow())
+    Effect.all([
+      Scope.fork(scope, ExecutionStrategy.sequential),
+      Deferred.make<OutDone, OutErr>(),
+      Deferred.make<void>()
+    ]).pipe(Effect.flatMap(([child, channelDeferred, scopeDeferred]) =>
+      restore(run(channelDeferred, scopeDeferred, child)).pipe(
+        Effect.forkIn(scope),
+        Effect.flatMap((fiber) =>
+          scope.addFinalizer(() =>
+            Deferred.isDone(channelDeferred).pipe(
+              Effect.flatMap((isDone) =>
+                isDone
+                  ? Deferred.succeed(scopeDeferred, void 0).pipe(
+                    Effect.zipRight(Fiber.await(fiber)),
+                    Effect.zipRight(Fiber.inheritAll(fiber))
                   )
-                ),
-                Effect.zipRight(restore(Deferred.await(channelDeferred))),
-                Effect.zipLeft(Fiber.inheritAll(fiber))
+                  : Deferred.succeed(scopeDeferred, void 0).pipe(
+                    Effect.zipRight(Fiber.interrupt(fiber)),
+                    Effect.zipRight(Fiber.inheritAll(fiber))
+                  )
               )
             )
-          )
+          ).pipe(Effect.zipRight(restore(Deferred.await(channelDeferred))))
         )
-      ))
+      )
+    ))
   )
-}
+})
 
 /** @internal */
 const runScopedInterpret = <Env, InErr, InDone, OutErr, OutDone>(

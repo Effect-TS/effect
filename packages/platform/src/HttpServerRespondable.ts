@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as ParseResult from "@effect/schema/ParseResult"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import * as ParseResult from "effect/ParseResult"
 import { hasProperty } from "effect/Predicate"
 import type { HttpServerResponse } from "./HttpServerResponse.js"
 import * as ServerResponse from "./HttpServerResponse.js"

@@ -1,7 +1,8 @@
-import type { Cause } from "effect/Cause"
+import type { Cause } from "../Cause.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type { Effect, Semaphore } from "../Effect.js"
+import * as Effectable from "../Effectable.js"
 import type { Exit } from "../Exit.js"
 import { dual, identity } from "../Function.js"
 import * as Iterable from "../Iterable.js"
@@ -51,6 +52,7 @@ export const makeWith = <A, E, R>(options: {
         Scope
       >
       const pool = new PoolImpl<A, E>(
+        scope,
         acquire,
         options.concurrency ?? 1,
         options.min,
@@ -122,17 +124,19 @@ interface Strategy<A, E> {
   readonly reclaim: (pool: PoolImpl<A, E>) => Effect<Option.Option<PoolItem<A, E>>>
 }
 
-class PoolImpl<A, E> implements Pool<A, E> {
+class PoolImpl<A, E> extends Effectable.Class<A, E, Scope> implements Pool<A, E> {
   readonly [PoolTypeId]: Pool.Variance<A, E>[PoolTypeId_]
 
   isShuttingDown = false
   readonly semaphore: Semaphore
   readonly items = new Set<PoolItem<A, E>>()
   readonly available = new Set<PoolItem<A, E>>()
+  readonly availableLatch = circular.unsafeMakeLatch(false)
   readonly invalidated = new Set<PoolItem<A, E>>()
   waiters = 0
 
   constructor(
+    readonly scope: Scope,
     readonly acquire: Effect<A, E, Scope>,
     readonly concurrency: number,
     readonly minSize: number,
@@ -140,6 +144,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
     readonly strategy: Strategy<A, E>,
     readonly targetUtilization: number
   ) {
+    super()
     this[PoolTypeId] = poolVariance
     this.semaphore = circular.unsafeMakeSemaphore(concurrency * maxSize)
   }
@@ -198,7 +203,8 @@ class PoolImpl<A, E> implements Pool<A, E> {
         onNone: () => this.allocate,
         onSome: core.succeed
       })),
-      core.zipRight(this.resizeLoop)
+      core.zipLeft(this.availableLatch.open),
+      core.flatMap((item) => item.exit._tag === "Success" ? this.resizeLoop : core.void)
     )
   })
   readonly resizeSemaphore = circular.unsafeMakeSemaphore(1)
@@ -213,9 +219,21 @@ class PoolImpl<A, E> implements Pool<A, E> {
           if (this.isShuttingDown) {
             return core.interrupt
           } else if (this.targetSize > this.activeSize) {
-            return core.zipRight(
-              restore(this.resize),
-              core.sync(() => Iterable.unsafeHead(this.available))
+            // eslint-disable-next-line @typescript-eslint/no-this-alias
+            const self = this
+            return core.flatMap(
+              this.resizeSemaphore.withPermitsIfAvailable(1)(
+                circular.forkIn(core.interruptible(this.resize), this.scope)
+              ),
+              function loop(): Effect<PoolItem<A, E>> {
+                if (self.isShuttingDown) {
+                  return core.interrupt
+                } else if (self.available.size > 0) {
+                  return core.succeed(Iterable.unsafeHead(self.available))
+                }
+                self.availableLatch.unsafeClose()
+                return core.flatMap(self.availableLatch.await, loop)
+              }
             )
           }
           return core.succeed(Iterable.unsafeHead(this.available))
@@ -241,7 +259,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
                     return this.invalidatePoolItem(item)
                   }
                   this.available.add(item)
-                  return core.void
+                  return core.exitVoid
                 }),
                 this.semaphore.release(1)
               )
@@ -252,6 +270,10 @@ class PoolImpl<A, E> implements Pool<A, E> {
       )
     )
   )
+
+  commit() {
+    return this.get
+  }
 
   readonly get: Effect<A, E, Scope> = core.flatMap(
     core.suspend(() => this.isShuttingDown ? core.interrupt : this.getPoolItem),
@@ -279,7 +301,10 @@ class PoolImpl<A, E> implements Pool<A, E> {
         this.items.delete(poolItem)
         this.available.delete(poolItem)
         this.invalidated.delete(poolItem)
-        return core.zipRight(poolItem.finalizer, this.resize)
+        return core.zipRight(
+          poolItem.finalizer,
+          circular.forkIn(core.interruptible(this.resize), this.scope)
+        )
       }
       this.invalidated.add(poolItem)
       this.available.delete(poolItem)
@@ -305,6 +330,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
         return item.finalizer
       }).pipe(
         core.zipRight(this.semaphore.releaseAll),
+        core.zipRight(this.availableLatch.open),
         core.zipRight(semaphore.take(size))
       )
     })

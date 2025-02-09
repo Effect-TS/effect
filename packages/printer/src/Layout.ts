@@ -92,6 +92,7 @@ export const wadlerLeijen: {
  * can be used for output that is read by other programs.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -127,6 +128,7 @@ export const wadlerLeijen: {
  *      |sit`
  *   )
  * )
+ * ```
  *
  * @since 1.0.0
  * @category layout algorithms
@@ -159,6 +161,7 @@ export const pretty: {
  * onto one line.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import type * as DocStream from "@effect/printer/DocStream"
  * import * as Layout from "@effect/printer/Layout"
@@ -242,6 +245,7 @@ export const pretty: {
  * // `pretty` will check only the first line, ignoring whether the second line
  * // may already be too wide. In contrast, `Layout.smart` stops only once it reaches
  * // the fourth line 4, where the `B` has the same indentation as the first `A`.
+ * ```
  *
  * @since 1.0.0
  * @category layout algorithms

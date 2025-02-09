@@ -11,10 +11,12 @@ import * as predicate from "./Predicate.js"
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { Predicate } from "effect"
  *
  * assert.deepStrictEqual(Predicate.isSymbol(Symbol.for("a")), true)
  * assert.deepStrictEqual(Predicate.isSymbol("a"), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0

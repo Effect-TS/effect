@@ -30,6 +30,11 @@ export {
 } from "./Function.js"
 
 /**
+ * @since 3.10.0
+ */
+export * as Arbitrary from "./Arbitrary.js"
+
+/**
  * This module provides utility functions for working with arrays in TypeScript.
  *
  * @since 2.0.0
@@ -263,6 +268,11 @@ export * as ExecutionStrategy from "./ExecutionStrategy.js"
 export * as Exit from "./Exit.js"
 
 /**
+ * @since 3.10.0
+ */
+export * as FastCheck from "./FastCheck.js"
+
+/**
  * @since 2.0.0
  */
 export * as Fiber from "./Fiber.js"
@@ -313,6 +323,17 @@ export * as FiberStatus from "./FiberStatus.js"
 export * as Function from "./Function.js"
 
 /**
+ * The `GlobalValue` module ensures that a single instance of a value is created globally,
+ * even when modules are imported multiple times (e.g., due to mixing CommonJS and ESM builds)
+ * or during hot-reloading in development environments like Next.js or Remix.
+ *
+ * It achieves this by using a versioned global store, identified by a unique `Symbol` tied to
+ * the current version of the `effect` library. The store holds values that are keyed by an identifier,
+ * allowing the reuse of previously computed instances across imports or reloads.
+ *
+ * This pattern is particularly useful in scenarios where frequent reloading can cause services or
+ * single-instance objects to be recreated unnecessarily, such as in development environments with hot-reloading.
+ *
  * @since 2.0.0
  */
 export * as GlobalValue from "./GlobalValue.js"
@@ -353,6 +374,11 @@ export * as Inspectable from "./Inspectable.js"
  * @since 2.0.0
  */
 export * as Iterable from "./Iterable.js"
+
+/**
+ * @since 3.10.0
+ */
+export * as JSONSchema from "./JSONSchema.js"
 
 /**
  * @since 2.0.0
@@ -575,6 +601,11 @@ export * as Order from "./Order.js"
 export * as Ordering from "./Ordering.js"
 
 /**
+ * @since 3.10.0
+ */
+export * as ParseResult from "./ParseResult.js"
+
+/**
  * @since 2.0.0
  */
 export * as Pipeable from "./Pipeable.js"
@@ -588,6 +619,11 @@ export * as Pool from "./Pool.js"
  * @since 2.0.0
  */
 export * as Predicate from "./Predicate.js"
+
+/**
+ * @since 3.10.0
+ */
+export * as Pretty from "./Pretty.js"
 
 /**
  * @since 2.0.0
@@ -736,6 +772,16 @@ export * as ScheduleIntervals from "./ScheduleIntervals.js"
 export * as Scheduler from "./Scheduler.js"
 
 /**
+ * @since 3.10.0
+ */
+export * as Schema from "./Schema.js"
+
+/**
+ * @since 3.10.0
+ */
+export * as SchemaAST from "./SchemaAST.js"
+
+/**
  * @since 2.0.0
  */
 export * as Scope from "./Scope.js"
@@ -749,12 +795,6 @@ export * as ScopedCache from "./ScopedCache.js"
  * @since 2.0.0
  */
 export * as ScopedRef from "./ScopedRef.js"
-
-/**
- * @since 2.0.0
- * @deprecated
- */
-export * as Secret from "./Secret.js"
 
 /**
  * @since 2.0.0
@@ -894,6 +934,11 @@ export * as TSemaphore from "./TSemaphore.js"
  * @since 2.0.0
  */
 export * as TSet from "./TSet.js"
+
+/**
+ * @since 3.10.0
+ */
+export * as TSubscriptionRef from "./TSubscriptionRef.js"
 
 /**
  * @since 2.0.0

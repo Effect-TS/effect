@@ -2,6 +2,8 @@
  * @since 2.0.0
  */
 
+import type * as FiberRefs from "./FiberRefs.js"
+import { globalValue } from "./GlobalValue.js"
 import { hasProperty, isFunction } from "./Predicate.js"
 
 /**
@@ -30,15 +32,19 @@ export interface Inspectable {
  * @since 2.0.0
  */
 export const toJSON = (x: unknown): unknown => {
-  if (
-    hasProperty(x, "toJSON") && isFunction(x["toJSON"]) &&
-    x["toJSON"].length === 0
-  ) {
-    return x.toJSON()
-  } else if (Array.isArray(x)) {
-    return x.map(toJSON)
+  try {
+    if (
+      hasProperty(x, "toJSON") && isFunction(x["toJSON"]) &&
+      x["toJSON"].length === 0
+    ) {
+      return x.toJSON()
+    } else if (Array.isArray(x)) {
+      return x.map(toJSON)
+    }
+  } catch (_) {
+    return {}
   }
-  return x
+  return redact(x)
 }
 
 /**
@@ -108,10 +114,62 @@ export const stringifyCircular = (obj: unknown, whitespace?: number | string | u
       typeof value === "object" && value !== null
         ? cache.includes(value)
           ? undefined // circular reference
-          : cache.push(value) && value
+          : cache.push(value) && (redactableState.fiberRefs !== undefined && isRedactable(value)
+            ? value[symbolRedactable](redactableState.fiberRefs)
+            : value)
         : value,
     whitespace
   )
   ;(cache as any) = undefined
   return retVal
+}
+
+/**
+ * @since 3.10.0
+ * @category redactable
+ */
+export interface Redactable {
+  readonly [symbolRedactable]: (fiberRefs: FiberRefs.FiberRefs) => unknown
+}
+
+/**
+ * @since 3.10.0
+ * @category redactable
+ */
+export const symbolRedactable: unique symbol = Symbol.for("effect/Inspectable/Redactable")
+
+/**
+ * @since 3.10.0
+ * @category redactable
+ */
+export const isRedactable = (u: unknown): u is Redactable =>
+  typeof u === "object" && u !== null && symbolRedactable in u
+
+const redactableState = globalValue("effect/Inspectable/redactableState", () => ({
+  fiberRefs: undefined as FiberRefs.FiberRefs | undefined
+}))
+
+/**
+ * @since 3.10.0
+ * @category redactable
+ */
+export const withRedactableContext = <A>(context: FiberRefs.FiberRefs, f: () => A): A => {
+  const prev = redactableState.fiberRefs
+  redactableState.fiberRefs = context
+  try {
+    return f()
+  } finally {
+    redactableState.fiberRefs = prev
+  }
+}
+
+/**
+ * @since 3.10.0
+ * @category redactable
+ */
+export const redact = (u: unknown): unknown => {
+  if (isRedactable(u) && redactableState.fiberRefs !== undefined) {
+    return u[symbolRedactable](redactableState.fiberRefs)
+  }
+  return u
 }

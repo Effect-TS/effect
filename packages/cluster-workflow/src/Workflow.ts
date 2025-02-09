@@ -2,13 +2,13 @@
  * @since 1.0.0
  */
 import type * as Message from "@effect/cluster/Message"
-import * as Schema from "@effect/schema/Schema"
 import * as Array from "effect/Array"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 import * as Activity from "./Activity.js"
 import * as WorkflowContext from "./WorkflowContext.js"
 

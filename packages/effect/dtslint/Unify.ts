@@ -4,11 +4,15 @@ import * as Either from "effect/Either"
 import type * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
 import type * as FiberRef from "effect/FiberRef"
+import type * as ManagedRuntime from "effect/ManagedRuntime"
 import type * as Micro from "effect/Micro"
 import type * as Option from "effect/Option"
+import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
 import type * as RcRef from "effect/RcRef"
 import type * as Ref from "effect/Ref"
+import type * as Resource from "effect/Resource"
+import type * as ScopedRef from "effect/ScopedRef"
 import type * as Stream from "effect/Stream"
 import type * as SubscriptionRef from "effect/SubscriptionRef"
 import type * as SynchronizedRef from "effect/SynchronizedRef"
@@ -90,7 +94,11 @@ export type RuntimeFiberUnify = Unify.Unify<
   | Fiber.RuntimeFiber<1, 2>
   | Fiber.RuntimeFiber<"a", "b">
 >
-
+// $ExpectType ManagedRuntime<1, 2> | ManagedRuntime<"a", "b">
+export type ManagedRuntimeUnify = Unify.Unify<
+  | ManagedRuntime.ManagedRuntime<1, 2>
+  | ManagedRuntime.ManagedRuntime<"a", "b">
+>
 // $ExpectType Queue<1> | Queue<"a">
 export type QueueUnify = Unify.Unify<
   | Queue.Queue<1>
@@ -101,34 +109,64 @@ export type DequeueUnify = Unify.Unify<
   | Queue.Dequeue<1>
   | Queue.Dequeue<"a">
 >
+// $ExpectType Pool<1, 2> | Pool<"a", "b" | "c">
+export type PoolUnify = Unify.Unify<
+  | Pool.Pool<1, 2>
+  | Pool.Pool<"a", "b">
+  | Pool.Pool<"a", "c">
+>
 
-// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Fiber<"a" | 1, "b" | 2> | RuntimeFiber<"a" | 1, "b" | 2> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
+// $ExpectType ScopedRef<1> | ScopedRef<"a">
+export type ScopedRefUnify = Unify.Unify<
+  | ScopedRef.ScopedRef<1>
+  | ScopedRef.ScopedRef<"a">
+>
+// $ExpectType Resource<1, never> | Resource<never, 2> | Resource<1, 2> | Resource<"a", "b"> | Resource<any, any>
+export type ResourceUnify = Unify.Unify<
+  | Resource.Resource<1>
+  | Resource.Resource<never, 2>
+  | Resource.Resource<1, 2>
+  | Resource.Resource<"a", "b">
+  | Resource.Resource<any, any>
+>
+
+// $ExpectType 0 | Option<string | number> | Ref<1> | Ref<"a"> | SynchronizedRef<1> | SynchronizedRef<"a"> | SubscriptionRef<1> | SubscriptionRef<"a"> | Deferred<"a", "b"> | FiberRef<1> | FiberRef<"a"> | ManagedRuntime<"a", "b"> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | Pool<1, 2> | Pool<"a", "b" | "c"> | ScopedRef<1> | ScopedRef<"a"> | Resource<"a", "b"> | Deferred<1, 0> | Resource<1, 0> | Latch | ManagedRuntime<1, 0> | RcRef<"a" | 1, 0 | "b"> | Fiber<"a" | 1, 0 | "b"> | RuntimeFiber<"a" | 1, 0 | "b"> | Either<"a" | 1, 0 | "b"> | Effect<"a" | 1, 0 | "b", "R" | "R1">
 export type AllUnify = Unify.Unify<
   | Either.Either<1, 0>
-  | Either.Either<"A", "E">
+  | Either.Either<"a", "b">
   | Option.Option<number>
   | Option.Option<string>
-  | Effect.Effect<"A", "E", "R">
+  | Effect.Effect<"a", "b", "R">
   | Effect.Effect<1, 0, "R1">
   | Ref.Ref<1>
-  | Ref.Ref<"A">
+  | Ref.Ref<"a">
   | SynchronizedRef.SynchronizedRef<1>
-  | SynchronizedRef.SynchronizedRef<"A">
+  | SynchronizedRef.SynchronizedRef<"a">
   | SubscriptionRef.SubscriptionRef<1>
-  | SubscriptionRef.SubscriptionRef<"A">
+  | SubscriptionRef.SubscriptionRef<"a">
   | RcRef.RcRef<1, 0>
-  | RcRef.RcRef<"A", "E">
-  | Deferred.Deferred<1, 2>
+  | RcRef.RcRef<"a", "b">
+  | Deferred.Deferred<1, 0>
   | Deferred.Deferred<"a", "b">
-  | FiberRef.FiberRef<12>
-  | FiberRef.FiberRef<"a2">
-  | Fiber.Fiber<1, 2>
+  | FiberRef.FiberRef<1>
+  | FiberRef.FiberRef<"a">
+  | Fiber.Fiber<1, 0>
   | Fiber.Fiber<"a", "b">
-  | Fiber.RuntimeFiber<1, 2>
+  | Fiber.RuntimeFiber<1, 0>
   | Fiber.RuntimeFiber<"a", "b">
   | Queue.Queue<1>
   | Queue.Queue<"a">
   | Queue.Dequeue<1>
   | Queue.Dequeue<"a">
+  | Pool.Pool<1, 2>
+  | Pool.Pool<"a", "b">
+  | Pool.Pool<"a", "c">
+  | ScopedRef.ScopedRef<1>
+  | ScopedRef.ScopedRef<"a">
+  | Resource.Resource<1, 0>
+  | Resource.Resource<"a", "b">
+  | Effect.Latch
+  | ManagedRuntime.ManagedRuntime<1, 0>
+  | ManagedRuntime.ManagedRuntime<"a", "b">
   | 0
 >

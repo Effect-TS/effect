@@ -1,8 +1,8 @@
 import * as DevTools from "@effect/experimental/DevTools"
-import * as Schema from "@effect/schema/Schema"
 import { SqlClient, SqlResolver } from "@effect/sql"
 import { PgClient } from "@effect/sql-pg"
-import { Config, Effect, Layer, String } from "effect"
+import { Effect, Layer, String } from "effect"
+import * as Schema from "effect/Schema"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
@@ -73,9 +73,9 @@ const program = Effect.gen(function*() {
 })
 
 const PgLive = PgClient.layer({
-  database: Config.succeed("effect_pg_dev"),
-  transformQueryNames: Config.succeed(String.camelToSnake),
-  transformResultNames: Config.succeed(String.snakeToCamel)
+  database: "effect_pg_dev",
+  transformQueryNames: String.camelToSnake,
+  transformResultNames: String.snakeToCamel
 })
 
 program.pipe(

@@ -8,6 +8,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type * as Scope from "./Scope.js"
 import type * as Synchronized from "./SynchronizedRef.js"
 import type * as Types from "./Types.js"
+import type * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -31,9 +32,29 @@ export type ScopedRefTypeId = typeof ScopedRefTypeId
  * @since 2.0.0
  * @category models
  */
-export interface ScopedRef<in out A> extends ScopedRef.Variance<A>, Pipeable {
+export interface ScopedRef<in out A> extends Effect.Effect<A>, ScopedRef.Variance<A>, Pipeable {
   /** @internal */
   readonly ref: Synchronized.SynchronizedRef<readonly [Scope.Scope.Closeable, A]>
+
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: ScopedRefUnify<this>
+  readonly [Unify.ignoreSymbol]?: ScopedRefUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface ScopedRefUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  ScopedRef?: () => Extract<A[Unify.typeSymbol], ScopedRef<any>>
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface ScopedRefUnifyIgnore extends Effect.EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**

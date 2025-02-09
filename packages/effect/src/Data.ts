@@ -27,6 +27,7 @@ export declare namespace Case {
 
 /**
  * @example
+ * ```ts
  * import { Data, Equal } from "effect"
  *
  * const alice = Data.struct({ name: "Alice", age: 30 })
@@ -38,6 +39,7 @@ export declare namespace Case {
  *
  * assert.deepStrictEqual(Equal.equals(alice, { name: "Alice", age: 30 }), false)
  * assert.deepStrictEqual(Equal.equals(alice, bob), false)
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -53,6 +55,7 @@ export const unsafeStruct = <A extends Record<string, any>>(as: A): { readonly [
 
 /**
  * @example
+ * ```ts
  * import { Data, Equal } from "effect"
  *
  * const alice = Data.tuple("Alice", 30)
@@ -64,6 +67,7 @@ export const unsafeStruct = <A extends Record<string, any>>(as: A): { readonly [
  *
  * assert.deepStrictEqual(Equal.equals(alice, ["Alice", 30]), false)
  * assert.deepStrictEqual(Equal.equals(alice, bob), false)
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -72,6 +76,7 @@ export const tuple = <As extends ReadonlyArray<any>>(...as: As): Readonly<As> =>
 
 /**
  * @example
+ * ```ts
  * import { Data, Equal } from "effect"
  *
  * const alice = Data.struct({ name: "Alice", age: 30 })
@@ -89,6 +94,7 @@ export const tuple = <As extends ReadonlyArray<any>>(...as: As): Readonly<As> =>
  *   ),
  *   true
  * )
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -110,6 +116,7 @@ export {
    * Provides a constructor for the specified `Case`.
    *
    * @example
+   * ```ts
    * import { Data, Equal } from "effect"
    *
    * interface Person {
@@ -128,6 +135,7 @@ export {
    * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
    * assert.deepStrictEqual(Equal.equals(mike1, john), false)
    *
+   * ```
    * @since 2.0.0
    * @category constructors
    */
@@ -138,6 +146,7 @@ export {
  * Provides a tagged constructor for the specified `Case`.
  *
  * @example
+ * ```ts
  * import { Data } from "effect"
  *
  * interface Person {
@@ -150,6 +159,7 @@ export {
  * const mike = Person({ name: "Mike" })
  *
  * assert.deepEqual(mike, { _tag: "Person", name: "Mike" })
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -167,6 +177,7 @@ export const tagged = <A extends { readonly _tag: string }>(
  * Provides a constructor for a Case Class.
  *
  * @example
+ * ```ts
  * import { Data, Equal } from "effect"
  *
  * class Person extends Data.Class<{ readonly name: string }> {}
@@ -179,6 +190,7 @@ export const tagged = <A extends { readonly _tag: string }>(
  * // Checking equality
  * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
  * assert.deepStrictEqual(Equal.equals(mike1, john), false)
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -192,6 +204,7 @@ export const Class: new<A extends Record<string, any> = {}>(
  * Provides a Tagged constructor for a Case Class.
  *
  * @example
+ * ```ts
  * import { Data, Equal } from "effect"
  *
  * class Person extends Data.TaggedClass("Person")<{ readonly name: string }> {}
@@ -206,6 +219,7 @@ export const Class: new<A extends Record<string, any> = {}>(
  * assert.deepStrictEqual(Equal.equals(mike1, john), false)
  *
  * assert.deepStrictEqual(mike1._tag, "Person")
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -260,11 +274,21 @@ export const Structural: new<A>(
  * @category models
  */
 export type TaggedEnum<
-  A extends Record<string, Record<string, any>> & UntaggedChildren<A>
+  A extends
+    & Record<string, Record<string, any>>
+    & CapitalConstructorNames<A>
+    & UntaggedChildren<A>
 > = keyof A extends infer Tag ?
   Tag extends keyof A ? Types.Simplify<{ readonly _tag: Tag } & { readonly [K in keyof A[Tag]]: A[Tag][K] }>
   : never
   : never
+
+type CapitalConstructorNames<A> = Record<
+  Uncapitalize<string>,
+  keyof A extends infer X extends string
+    ? X extends Uncapitalize<X> ? `Use capitalized constructor name. Did you mean "${Capitalize<X>}"?` : never
+    : never
+>
 
 type ChildrenAreTagged<A> = keyof A extends infer K ? K extends keyof A ? "_tag" extends keyof A[K] ? true
     : false
@@ -336,8 +360,8 @@ export declare namespace TaggedEnum {
       readonly [Tag in A["_tag"]]: Case.Constructor<Extract<A, { readonly _tag: Tag }>, "_tag">
     }
     & {
-      readonly $is: <Tag extends A["_tag"]>(tag: Tag) => (u: unknown) => u is Extract<A, { readonly _tag: Tag }>
-      readonly $match: {
+      readonly is: <Tag extends A["_tag"]>(tag: Tag) => (u: unknown) => u is Extract<A, { readonly _tag: Tag }>
+      readonly match: {
         <
           Cases extends {
             readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => any
@@ -356,7 +380,7 @@ export declare namespace TaggedEnum {
    * @since 3.2.0
    */
   export interface GenericMatchers<Z extends WithGenerics<number>> {
-    readonly $is: <Tag extends Z["taggedEnum"]["_tag"]>(
+    readonly is: <Tag extends Z["taggedEnum"]["_tag"]>(
       tag: Tag
     ) => {
       <T extends TaggedEnum.Kind<Z, any, any, any, any>>(
@@ -364,7 +388,7 @@ export declare namespace TaggedEnum {
       ): u is T & { readonly _tag: Tag }
       (u: unknown): u is Extract<TaggedEnum.Kind<Z>, { readonly _tag: Tag }>
     }
-    readonly $match: {
+    readonly match: {
       <
         A,
         B,
@@ -403,6 +427,7 @@ export declare namespace TaggedEnum {
  * the constructor.
  *
  * @example
+ * ```ts
  * import { Data } from "effect"
  *
  * const { BadRequest, NotFound } = Data.taggedEnum<
@@ -411,6 +436,7 @@ export declare namespace TaggedEnum {
  * >()
  *
  * const notFound = NotFound({ status: 404, message: "Not Found" })
+ * ```
  *
  * @example
  * import { Data } from "effect"
@@ -482,9 +508,9 @@ export const taggedEnum: {
 } = () =>
   new Proxy({}, {
     get(_target, tag, _receiver) {
-      if (tag === "$is") {
+      if (tag === "is") {
         return Predicate.isTagged
-      } else if (tag === "$match") {
+      } else if (tag === "match") {
         return taggedMatch
       }
       return tagged(tag as string)

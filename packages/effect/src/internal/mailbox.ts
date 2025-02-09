@@ -14,10 +14,14 @@ import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type { Scheduler } from "../Scheduler.js"
+import type { Scope } from "../Scope.js"
 import type { Stream } from "../Stream.js"
 import * as channel from "./channel.js"
+import * as channelExecutor from "./channel/channelExecutor.js"
 import * as coreChannel from "./core-stream.js"
 import * as core from "./core.js"
+import * as circular from "./effect/circular.js"
+import * as fiberRuntime from "./fiberRuntime.js"
 import * as stream from "./stream.js"
 
 /** @internal */
@@ -81,7 +85,8 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
   private messagesChunk = Chunk.empty<A>()
   constructor(
     readonly scheduler: Scheduler,
-    readonly capacity: number
+    private capacity: number,
+    readonly strategy: "suspend" | "dropping" | "sliding"
   ) {
     super()
   }
@@ -91,7 +96,21 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       if (this.state._tag !== "Open") {
         return exitFalse
       } else if (this.messages.length + this.messagesChunk.length >= this.capacity) {
-        return this.offerRemainingSingle(message)
+        switch (this.strategy) {
+          case "dropping":
+            return exitFalse
+          case "suspend":
+            if (this.capacity <= 0 && this.state.takers.size > 0) {
+              this.messages.push(message)
+              this.releaseTaker()
+              return exitTrue
+            }
+            return this.offerRemainingSingle(message)
+          case "sliding":
+            this.unsafeTake()
+            this.messages.push(message)
+            return exitTrue
+        }
       }
       this.messages.push(message)
       this.scheduleReleaseTaker()
@@ -102,6 +121,15 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
     if (this.state._tag !== "Open") {
       return false
     } else if (this.messages.length + this.messagesChunk.length >= this.capacity) {
+      if (this.strategy === "sliding") {
+        this.unsafeTake()
+        this.messages.push(message)
+        return true
+      } else if (this.capacity <= 0 && this.state.takers.size > 0) {
+        this.messages.push(message)
+        this.releaseTaker()
+        return true
+      }
       return false
     }
     this.messages.push(message)
@@ -116,6 +144,8 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       const remaining = this.unsafeOfferAllArray(messages)
       if (remaining.length === 0) {
         return exitEmpty
+      } else if (this.strategy === "dropping") {
+        return core.succeed(Chunk.unsafeFromArray(remaining))
       }
       return this.offerRemainingArray(remaining)
     })
@@ -126,11 +156,16 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
   unsafeOfferAllArray(messages: Iterable<A>): Array<A> {
     if (this.state._tag !== "Open") {
       return Arr.fromIterable(messages)
-    } else if (this.capacity === Number.POSITIVE_INFINITY) {
+    } else if (this.capacity === Number.POSITIVE_INFINITY || this.strategy === "sliding") {
       if (this.messages.length > 0) {
         this.messagesChunk = Chunk.appendAll(this.messagesChunk, Chunk.unsafeFromArray(this.messages))
       }
-      if (Chunk.isChunk(messages)) {
+      if (this.strategy === "sliding") {
+        this.messagesChunk = this.messagesChunk.pipe(
+          Chunk.appendAll(Chunk.fromIterable(messages)),
+          Chunk.takeRight(this.capacity)
+        )
+      } else if (Chunk.isChunk(messages)) {
         this.messagesChunk = Chunk.appendAll(this.messagesChunk, messages)
       } else {
         this.messages = Arr.fromIterable(messages)
@@ -138,7 +173,9 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       this.scheduleReleaseTaker()
       return []
     }
-    const free = this.capacity - this.messages.length - this.messagesChunk.length
+    const free = this.capacity <= 0
+      ? this.state.takers.size
+      : this.capacity - this.messages.length - this.messagesChunk.length
     if (free === 0) {
       return Arr.fromIterable(messages)
     }
@@ -236,7 +273,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       return core.succeed([messages, this.releaseCapacity()])
     })
   }
-  take: Effect<A, E | NoSuchElementException> = core.suspend(() => {
+  unsafeTake(): Exit<A, E | NoSuchElementException> | undefined {
     if (this.state._tag === "Done") {
       return core.exitZipRight(this.state.exit, core.exitFail(new NoSuchElementException()))
     }
@@ -248,13 +285,21 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       message = this.messages[0]
       this.messagesChunk = Chunk.drop(Chunk.unsafeFromArray(this.messages), 1)
       this.messages = []
+    } else if (this.capacity <= 0 && this.state.offers.size > 0) {
+      this.capacity = 1
+      this.releaseCapacity()
+      this.capacity = 0
+      return this.messages.length > 0 ? core.exitSucceed(this.messages.pop()!) : undefined
     } else {
-      return core.zipRight(this.awaitTake, this.take)
+      return undefined
     }
     this.releaseCapacity()
-    return core.succeed(message)
-  })
-  await: Effect<void, E> = core.unsafeAsync<void, E>((resume) => {
+    return core.exitSucceed(message)
+  }
+  take: Effect<A, E | NoSuchElementException> = core.suspend(() =>
+    this.unsafeTake() ?? core.zipRight(this.awaitTake, this.take)
+  )
+  await: Effect<void, E> = core.asyncInterrupt<void, E>((resume) => {
     if (this.state._tag === "Done") {
       return resume(this.state.exit)
     }
@@ -292,7 +337,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
   }
 
   private offerRemainingSingle(message: A) {
-    return core.unsafeAsync<boolean>((resume) => {
+    return core.asyncInterrupt<boolean>((resume) => {
       if (this.state._tag !== "Open") {
         return resume(exitFalse)
       }
@@ -306,7 +351,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
     })
   }
   private offerRemainingArray(remaining: Array<A>) {
-    return core.unsafeAsync<Chunk.Chunk<A>>((resume) => {
+    return core.asyncInterrupt<Chunk.Chunk<A>>((resume) => {
       if (this.state._tag !== "Open") {
         return resume(core.exitSucceed(Chunk.unsafeFromArray(remaining)))
       }
@@ -349,7 +394,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
     }
     return false
   }
-  private awaitTake = core.unsafeAsync<void, E>((resume) => {
+  private awaitTake = core.asyncInterrupt<void, E>((resume) => {
     if (this.state._tag === "Done") {
       return resume(this.state.exit)
     }
@@ -393,6 +438,11 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       const messages = Chunk.unsafeFromArray(this.messages)
       this.messages = []
       return messages
+    } else if (this.state._tag !== "Done" && this.state.offers.size > 0) {
+      this.capacity = 1
+      this.releaseCapacity()
+      this.capacity = 0
+      return Chunk.of(this.messages.pop()!)
     }
     return empty
   }
@@ -415,12 +465,18 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
 }
 
 /** @internal */
-export const make = <A, E = never>(capacity?: number | undefined): Effect<Api.Mailbox<A, E>> =>
+export const make = <A, E = never>(
+  capacity?: number | {
+    readonly capacity?: number | undefined
+    readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+  } | undefined
+): Effect<Api.Mailbox<A, E>> =>
   core.withFiberRuntime((fiber) =>
     core.succeed(
       new MailboxImpl<A, E>(
         fiber.currentScheduler,
-        capacity ?? Number.POSITIVE_INFINITY
+        typeof capacity === "number" ? capacity : capacity?.capacity ?? Number.POSITIVE_INFINITY,
+        typeof capacity === "number" ? "suspend" : capacity?.strategy ?? "suspend"
       )
     )
   )
@@ -459,3 +515,44 @@ export const toChannel = <A, E>(self: Api.ReadonlyMailbox<A, E>): Channel<Chunk.
 
 /** @internal */
 export const toStream = <A, E>(self: Api.ReadonlyMailbox<A, E>): Stream<A, E> => stream.fromChannel(toChannel(self))
+
+/** @internal */
+export const fromStream: {
+  (options?: {
+    readonly capacity?: number | undefined
+    readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+  }): <A, E, R>(self: Stream<A, E, R>) => Effect<Api.ReadonlyMailbox<A, E>, never, R | Scope>
+  <A, E, R>(
+    self: Stream<A, E, R>,
+    options?: {
+      readonly capacity?: number | undefined
+      readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+    }
+  ): Effect<Api.ReadonlyMailbox<A, E>, never, R | Scope>
+} = dual((args) => stream.isStream(args[0]), <A, E, R>(
+  self: Stream<A, E, R>,
+  options?: {
+    readonly capacity?: number | undefined
+    readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+  }
+): Effect<Api.ReadonlyMailbox<A, E>, never, R | Scope> =>
+  core.tap(
+    fiberRuntime.acquireRelease(
+      make<A, E>(options),
+      (mailbox) => mailbox.shutdown
+    ),
+    (mailbox) => {
+      const writer: Channel<never, Chunk.Chunk<A>, never, E> = coreChannel.readWithCause({
+        onInput: (input: Chunk.Chunk<A>) => coreChannel.flatMap(mailbox.offerAll(input), () => writer),
+        onFailure: (cause: Cause<E>) => mailbox.failCause(cause),
+        onDone: () => mailbox.end
+      })
+      return channel.unwrapScopedWith((scope) =>
+        stream.toChannel(self).pipe(
+          coreChannel.pipeTo(writer),
+          channelExecutor.runIn(scope),
+          circular.forkIn(scope)
+        )
+      )
+    }
+  ))

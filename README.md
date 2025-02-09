@@ -2,7 +2,6 @@
 
 Welcome to Effect, a powerful TypeScript framework that provides a fully-fledged functional effect system with a rich standard library.
 
-
 # Requirements
 
 - TypeScript 5.4 or newer
@@ -13,8 +12,8 @@ Welcome to Effect, a powerful TypeScript framework that provides a fully-fledged
   // ...
   "compilerOptions": {
     // ...
-    "strict": true,
-  },
+    "strict": true
+  }
 }
 ```
 
@@ -77,7 +76,7 @@ Run the following commands to ensure your changes do not introduce any issues:
 
 ### Document Your Changes
 
-**JSDoc Comments**
+#### JSDoc Comments
 
 When adding a new feature, it's important to document your code using JSDoc comments. This helps other developers understand the purpose and usage of your changes. Include at least the following in your JSDoc comments:
 
@@ -86,7 +85,51 @@ When adding a new feature, it's important to document your code using JSDoc comm
 - **Since Version**: Use the `@since` tag to indicate the version in which the feature was introduced. If you're unsure about the version, please consult with a project maintainer.
 - **Category (Optional)**: You can categorize the feature with the `@category` tag to help organize the documentation. If you're unsure about what category to assign, ask a project maintainer.
 
-**Changeset Documentation**
+**Note**: A HTML utility file, [`code2jsdoc-example.html`](/scripts/jsdocs/code2jsdoc-example.html), has been added to assist with creating JSDoc `@example` comments. This web-based interface includes two text areas:
+
+1. An input textarea for pasting example code.
+2. An output textarea that dynamically generates formatted JSDoc `@example` comments.
+
+This utility helps ensure consistent formatting and streamlines the process of documenting examples. See the following example of its usage:
+
+Example Input:
+
+```ts
+import { Effect } from "effect"
+
+console.log(Effect.runSyncExit(Effect.succeed(1)))
+/*
+Output:
+{
+  _id: "Exit",
+  _tag: "Success",
+  value: 1
+}
+*/
+```
+
+Output:
+
+````
+*
+* @example
+* ```ts
+* import { Effect } from "effect"
+*
+* console.log(Effect.runSyncExit(Effect.succeed(1)))
+* // Output:
+* // {
+* //   _id: "Exit",
+* //   _tag: "Success",
+* //   value: 1
+* // }
+* ```
+*
+````
+
+By using this utility, you can save time and maintain consistency in your JSDoc comments, especially for complex examples.
+
+#### Changeset Documentation
 
 Before committing your changes, document them with a changeset. This process helps in tracking modifications and effectively communicating them to the project team and users:
 

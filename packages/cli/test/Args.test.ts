@@ -4,10 +4,10 @@ import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as ValidationError from "@effect/cli/ValidationError"
 import { FileSystem, Path } from "@effect/platform"
 import { NodeContext } from "@effect/platform-node"
-import * as Schema from "@effect/schema/Schema"
 import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(
@@ -111,7 +111,7 @@ describe("Args", () => {
       expect(result).toEqual(ValidationError.invalidArgument(HelpDoc.p(
         "Positive\n" +
           "└─ Predicate refinement failure\n" +
-          "   └─ Expected Positive, actual -123"
+          "   └─ Expected a positive number, actual -123"
       )))
     }).pipe(runEffect))
 

@@ -49,7 +49,11 @@ export const make = (impl: {
           Effect.map(({ etag, info }) => {
             const start = Number(options?.offset ?? 0)
             const end = options?.bytesToRead !== undefined ? start + Number(options.bytesToRead) : undefined
-            const headers = Headers.set(options?.headers ?? Headers.empty, "etag", Etag.toString(etag))
+            const headers = Headers.set(
+              options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
+              "etag",
+              Etag.toString(etag)
+            )
             if (info.mtime._tag === "Some") {
               ;(headers as any)["last-modified"] = info.mtime.value.toUTCString()
             }
@@ -69,7 +73,7 @@ export const make = (impl: {
       fileWebResponse(file, options) {
         return Effect.map(etagGen.fromFileWeb(file), (etag) => {
           const headers = Headers.merge(
-            options?.headers ?? Headers.empty,
+            options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
             Headers.unsafeFromRecord({
               etag: Etag.toString(etag),
               "last-modified": new Date(file.lastModified).toUTCString()

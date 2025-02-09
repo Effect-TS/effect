@@ -10,6 +10,7 @@ import type { LazyArg } from "../Function.js"
 import { dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import type * as Layer from "../Layer.js"
+import type * as ManagedRuntime from "../ManagedRuntime.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Runtime from "../Runtime.js"
@@ -23,6 +24,7 @@ import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as circular from "./effect/circular.js"
 import * as fiberRuntime from "./fiberRuntime.js"
+import * as circularManagedRuntime from "./managedRuntime/circular.js"
 import * as EffectOpCodes from "./opCodes/effect.js"
 import * as OpCodes from "./opCodes/layer.js"
 import * as ref from "./ref.js"
@@ -49,7 +51,7 @@ const layerVariance = {
 }
 
 /** @internal */
-const proto = {
+export const proto = {
   [LayerTypeId]: layerVariance,
   pipe() {
     return pipeArguments(this, arguments)
@@ -79,7 +81,7 @@ export type Primitive =
 
 /** @internal */
 export type Op<Tag extends string, Body = {}> = Layer.Layer<unknown, unknown, unknown> & Body & {
-  readonly _tag: Tag
+  readonly _op_layer: Tag
 }
 
 /** @internal */
@@ -165,7 +167,7 @@ export const isLayer = (u: unknown): u is Layer.Layer<unknown, unknown, unknown>
 
 /** @internal */
 export const isFresh = <RIn, E, ROut>(self: Layer.Layer<ROut, E, RIn>): boolean => {
-  return (self as Primitive)._tag === OpCodes.OP_FRESH
+  return (self as Primitive)._op_layer === OpCodes.OP_FRESH
 }
 
 // -----------------------------------------------------------------------------
@@ -356,7 +358,7 @@ const makeBuilder = <RIn, E, ROut>(
   inMemoMap = false
 ): Effect.Effect<(memoMap: Layer.MemoMap) => Effect.Effect<Context.Context<ROut>, E, RIn>> => {
   const op = self as Primitive
-  switch (op._tag) {
+  switch (op._op_layer) {
     case "Locally": {
       return core.sync(() => (memoMap: Layer.MemoMap) => op.f(memoMap.getOrElseMemoize(op.self, scope)))
     }
@@ -487,7 +489,7 @@ export const extendScope = <RIn, E, ROut>(
   self: Layer.Layer<ROut, E, RIn>
 ): Layer.Layer<ROut, E, RIn | Scope.Scope> => {
   const extendScope = Object.create(proto)
-  extendScope._tag = OpCodes.OP_EXTEND_SCOPE
+  extendScope._op_layer = OpCodes.OP_EXTEND_SCOPE
   extendScope.layer = self
   return extendScope
 }
@@ -533,7 +535,7 @@ export const flatten = dual<
 /** @internal */
 export const fresh = <A, E, R>(self: Layer.Layer<A, E, R>): Layer.Layer<A, E, R> => {
   const fresh = Object.create(proto)
-  fresh._tag = OpCodes.OP_FRESH
+  fresh._op_layer = OpCodes.OP_FRESH
   fresh.layer = self
   return fresh
 }
@@ -565,7 +567,7 @@ export function fromEffectContext<A, E, R>(
   effect: Effect.Effect<Context.Context<A>, E, R>
 ): Layer.Layer<A, E, R> {
   const fromEffect = Object.create(proto)
-  fromEffect._tag = OpCodes.OP_FROM_EFFECT
+  fromEffect._op_layer = OpCodes.OP_FROM_EFFECT
   fromEffect.effect = effect
   return fromEffect
 }
@@ -587,7 +589,7 @@ export const locallyEffect = dual<
   ) => Layer.Layer<ROut2, E2, RIn2>
 >(2, (self, f) => {
   const locally = Object.create(proto)
-  locally._tag = "Locally"
+  locally._op_layer = "Locally"
   locally.self = self
   locally.f = f
   return locally
@@ -658,7 +660,7 @@ export const matchCause = dual<
   ) => Layer.Layer<A2 & A3, E2 | E3, R | R2 | R3>
 >(2, (self, { onFailure, onSuccess }) => {
   const fold = Object.create(proto)
-  fold._tag = OpCodes.OP_FOLD
+  fold._op_layer = OpCodes.OP_FOLD
   fold.layer = self
   fold.failureK = onFailure
   fold.successK = onSuccess
@@ -866,7 +868,7 @@ export const scopedContext = <A, E, R>(
   effect: Effect.Effect<Context.Context<A>, E, R>
 ): Layer.Layer<A, E, Exclude<R, Scope.Scope>> => {
   const scoped = Object.create(proto)
-  scoped._tag = OpCodes.OP_SCOPED
+  scoped._op_layer = OpCodes.OP_SCOPED
   scoped.effect = effect
   return scoped
 }
@@ -920,7 +922,7 @@ export const suspend = <RIn, E, ROut>(
   evaluate: LazyArg<Layer.Layer<ROut, E, RIn>>
 ): Layer.Layer<ROut, E, RIn> => {
   const suspend = Object.create(proto)
-  suspend._tag = OpCodes.OP_SUSPEND
+  suspend._op_layer = OpCodes.OP_SUSPEND
   suspend.evaluate = evaluate
   return suspend
 }
@@ -1024,29 +1026,52 @@ export const toRuntimeWithMemoMap = dual<
 
 /** @internal */
 export const provide = dual<
-  <RIn, E, ROut>(
-    self: Layer.Layer<ROut, E, RIn>
-  ) => <RIn2, E2, ROut2>(
-    that: Layer.Layer<ROut2, E2, RIn2>
-  ) => Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>,
-  <RIn2, E2, ROut2, RIn, E, ROut>(
-    that: Layer.Layer<ROut2, E2, RIn2>,
-    self: Layer.Layer<ROut, E, RIn>
-  ) => Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
->(2, <RIn2, E2, ROut2, RIn, E, ROut>(
-  that: Layer.Layer<ROut2, E2, RIn2>,
-  self: Layer.Layer<ROut, E, RIn>
+  {
+    <RIn, E, ROut>(
+      that: Layer.Layer<ROut, E, RIn>
+    ): <RIn2, E2, ROut2>(
+      self: Layer.Layer<ROut2, E2, RIn2>
+    ) => Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
+    <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+      that: Layers
+    ): <A, E, R>(
+      self: Layer.Layer<A, E, R>
+    ) => Layer.Layer<
+      A,
+      E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+      | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+      | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+    >
+  },
+  {
+    <RIn2, E2, ROut2, RIn, E, ROut>(
+      self: Layer.Layer<ROut2, E2, RIn2>,
+      that: Layer.Layer<ROut, E, RIn>
+    ): Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
+    <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+      self: Layer.Layer<A, E, R>,
+      that: Layers
+    ): Layer.Layer<
+      A,
+      E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+      | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+      | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+    >
+  }
+>(2, (
+  self: Layer.Layer.Any,
+  that: Layer.Layer.Any | ReadonlyArray<Layer.Layer.Any>
 ) =>
   suspend(() => {
     const provideTo = Object.create(proto)
-    provideTo._tag = OpCodes.OP_PROVIDE
+    provideTo._op_layer = OpCodes.OP_PROVIDE
     provideTo.first = Object.create(proto, {
-      _tag: { value: OpCodes.OP_PROVIDE_MERGE, enumerable: true },
-      first: { value: context<Exclude<RIn2, ROut>>(), enumerable: true },
-      second: { value: self },
-      zipK: { value: (a: Context.Context<ROut>, b: Context.Context<ROut2>) => pipe(a, Context.merge(b)) }
+      _op_layer: { value: OpCodes.OP_PROVIDE_MERGE, enumerable: true },
+      first: { value: context(), enumerable: true },
+      second: { value: Array.isArray(that) ? mergeAll(...that as any) : that },
+      zipK: { value: (a: Context.Context<any>, b: Context.Context<any>) => pipe(a, Context.merge(b)) }
     })
-    provideTo.second = that
+    provideTo.second = self
     return provideTo
   }))
 
@@ -1063,7 +1088,7 @@ export const provideMerge = dual<
   ) => Layer.Layer<ROut | ROut2, E2 | E, RIn | Exclude<RIn2, ROut>>
 >(2, <RIn2, E2, ROut2, RIn, E, ROut>(that: Layer.Layer<ROut2, E2, RIn2>, self: Layer.Layer<ROut, E, RIn>) => {
   const zipWith = Object.create(proto)
-  zipWith._tag = OpCodes.OP_PROVIDE_MERGE
+  zipWith._op_layer = OpCodes.OP_PROVIDE_MERGE
   zipWith.first = self
   zipWith.second = provide(that, self)
   zipWith.zipK = (a: Context.Context<ROut>, b: Context.Context<ROut2>): Context.Context<ROut | ROut2> => {
@@ -1086,7 +1111,7 @@ export const zipWith = dual<
 >(3, (self, that, f) =>
   suspend(() => {
     const zipWith = Object.create(proto)
-    zipWith._tag = OpCodes.OP_ZIP_WITH
+    zipWith._op_layer = OpCodes.OP_ZIP_WITH
     zipWith.first = self
     zipWith.second = that
     zipWith.zipK = f
@@ -1249,14 +1274,11 @@ const provideSomeLayer = dual<
     layer: Layer.Layer<A2, E2, R2>
   ) => Effect.Effect<A, E | E2, R2 | Exclude<R, A2>>
 >(2, (self, layer) =>
-  core.acquireUseRelease(
-    fiberRuntime.scopeMake(),
-    (scope) =>
-      core.flatMap(
-        buildWithScope(layer, scope),
-        (context) => core.provideSomeContext(self, context)
-      ),
-    (scope, exit) => core.scopeClose(scope, exit)
+  fiberRuntime.scopedWith((scope) =>
+    core.flatMap(
+      buildWithScope(layer, scope),
+      (context) => core.provideSomeContext(self, context)
+    )
   ))
 
 const provideSomeRuntime = dual<
@@ -1291,6 +1313,16 @@ const provideSomeRuntime = dual<
 /** @internal */
 export const effect_provide = dual<
   {
+    <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+      layers: Layers
+    ): <A, E, R>(
+      self: Effect.Effect<A, E, R>
+    ) => Effect.Effect<
+      A,
+      E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+      | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+      | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+    >
     <ROut, E2, RIn>(
       layer: Layer.Layer<ROut, E2, RIn>
     ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, RIn | Exclude<R, ROut>>
@@ -1300,8 +1332,20 @@ export const effect_provide = dual<
     <R2>(
       runtime: Runtime.Runtime<R2>
     ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, R2>>
+    <E2, R2>(
+      managedRuntime: ManagedRuntime.ManagedRuntime<R2, E2>
+    ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, Exclude<R, R2>>
   },
   {
+    <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+      self: Effect.Effect<A, E, R>,
+      layers: Layers
+    ): Effect.Effect<
+      A,
+      E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+      | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+      | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+    >
     <A, E, R, ROut, E2, RIn>(
       self: Effect.Effect<A, E, R>,
       layer: Layer.Layer<ROut, E2, RIn>
@@ -1314,16 +1358,36 @@ export const effect_provide = dual<
       self: Effect.Effect<A, E, R>,
       runtime: Runtime.Runtime<R2>
     ): Effect.Effect<A, E, Exclude<R, R2>>
+    <A, E, E2, R, R2>(
+      self: Effect.Effect<A, E, R>,
+      managedRuntime: ManagedRuntime.ManagedRuntime<R2, E2>
+    ): Effect.Effect<A, E | E2, Exclude<R, R2>>
   }
 >(
   2,
   <A, E, R, ROut>(
     self: Effect.Effect<A, E, R>,
-    source: Layer.Layer<ROut, any, any> | Context.Context<ROut> | Runtime.Runtime<ROut>
-  ): Effect.Effect<any, any, Exclude<R, ROut>> =>
-    isLayer(source)
-      ? provideSomeLayer(self, source as Layer.Layer<ROut, any, any>)
-      : Context.isContext(source)
-      ? core.provideSomeContext(self, source)
-      : provideSomeRuntime(self, source as Runtime.Runtime<ROut>)
+    source:
+      | Layer.Layer<ROut, any, any>
+      | Context.Context<ROut>
+      | Runtime.Runtime<ROut>
+      | ManagedRuntime.ManagedRuntime<ROut, any>
+      | Array<Layer.Layer.Any>
+  ): Effect.Effect<any, any, Exclude<R, ROut>> => {
+    if (Array.isArray(source)) {
+      // @ts-expect-error
+      return provideSomeLayer(self, mergeAll(...source))
+    } else if (isLayer(source)) {
+      return provideSomeLayer(self, source as Layer.Layer<ROut, any, any>)
+    } else if (Context.isContext(source)) {
+      return core.provideSomeContext(self, source)
+    } else if (circularManagedRuntime.TypeId in source) {
+      return core.flatMap(
+        (source as ManagedRuntime.ManagedRuntime<ROut, any>).runtimeEffect,
+        (rt) => provideSomeRuntime(self, rt)
+      )
+    } else {
+      return provideSomeRuntime(self, source as Runtime.Runtime<ROut>)
+    }
+  }
 )

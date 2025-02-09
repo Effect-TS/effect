@@ -3,11 +3,10 @@
   "include": ["src"],
   "references": [
     { "path": "../effect" },
-    { "path": "../schema" },
     { "path": "../printer" },
     { "path": "../printer-ansi" },
     { "path": "../platform" },
-    { "path": "../platform-node" },
+    { "path": "../platform-node" }
   ],
   "compilerOptions": {
     "types": ["node"],

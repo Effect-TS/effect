@@ -3,11 +3,13 @@
   "type": "module",
   "packageManager": "pnpm@9.10.0+sha512.73a29afa36a0d092ece5271de5177ecbf8318d454ecd701343131b8ebc0c1a91c487da46ab77c8e596d6acf1461e3594ced4becedf8921b074fbd8653ed7051c",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/ai/*"
   ],
   "scripts": {
     "clean": "node scripts/clean.mjs",
     "codegen": "pnpm --recursive --parallel run codegen",
+    "codemod": "node scripts/codemod.mjs",
     "build": "tsc -b tsconfig.build.json && pnpm --recursive --parallel run build",
     "circular": "node scripts/circular.mjs",
     "test": "vitest",
@@ -18,9 +20,9 @@
     "lint-fix": "pnpm lint --fix",
     "docgen": "pnpm --recursive --parallel exec docgen && node scripts/docs.mjs",
     "dtslint": "pnpm --recursive --parallel run dtslint",
-    "dtslint-clean": "dtslint --installAll",
+    "dtslint-clean": "dtslint --clean",
     "changeset-version": "changeset version && node scripts/version.mjs",
-    "changeset-publish": "pnpm build && TEST_DIST= pnpm vitest && changeset publish"
+    "changeset-publish": "pnpm codemod && pnpm lint-fix && pnpm build && TEST_DIST= pnpm vitest && changeset publish"
   },
   "resolutions": {
     "dependency-tree": "^10.0.9",
@@ -32,8 +34,7 @@
     "detective-sass": "^5.0.3",
     "detective-scss": "^4.0.3",
     "detective-stylus": "^4.0.0",
-    "detective-typescript": "^11.1.0",
-    "@types/node": "^22.5.4"
+    "detective-typescript": "^11.1.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.24.8",
@@ -44,43 +45,42 @@
     "@changesets/cli": "^2.27.7",
     "@edge-runtime/vm": "^4.0.0",
     "@effect/build-utils": "^0.7.7",
-    "@effect/docgen": "^0.4.4",
-    "@effect/dtslint": "^0.1.1",
+    "@effect/docgen": "^0.5.1",
+    "@effect/dtslint": "^0.1.2",
     "@effect/eslint-plugin": "^0.2.0",
     "@effect/language-service": "^0.1.0",
     "@eslint/compat": "1.1.1",
     "@eslint/eslintrc": "3.1.0",
     "@eslint/js": "9.9.1",
-    "@types/node": "^22.5.4",
+    "@types/jscodeshift": "^0.11.11",
+    "@types/node": "^22.9.3",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
-    "@vitest/browser": "^2.0.5",
-    "@vitest/coverage-v8": "^2.0.5",
-    "@vitest/expect": "^2.0.5",
-    "@vitest/web-worker": "^2.0.5",
+    "@vitest/browser": "^2.1.4",
+    "@vitest/coverage-v8": "^2.1.4",
+    "@vitest/expect": "^2.1.4",
+    "@vitest/web-worker": "^2.1.4",
+    "ast-types": "^0.14.2",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "eslint": "^9.9.1",
     "eslint-import-resolver-typescript": "^3.6.3",
     "eslint-plugin-codegen": "^0.28.0",
-    "eslint-plugin-deprecation": "^3.0.0",
     "eslint-plugin-import": "^2.30.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-sort-destructure-keys": "^2.0.0",
-    "fast-check": "^3.21.0",
+    "fast-check": "^3.23.1",
     "glob": "^11.0.0",
+    "jscodeshift": "^0.16.1",
     "madge": "^8.0.0",
     "playwright": "^1.46.0",
     "prettier": "^3.3.3",
     "rimraf": "^6.0.1",
     "tsx": "^4.17.0",
-    "typescript": "^5.6.2",
+    "typescript": "^5.7.2",
     "vite": "^5.4.0",
-    "vitest": "^2.0.5"
+    "vitest": "^2.1.4"
   },
   "pnpm": {
-    "overrides": {
-      "vitest": "^2.0.5"
-    },
     "patchedDependencies": {
       "@changesets/get-github-info@0.6.0": "patches/@changesets__get-github-info@0.6.0.patch",
       "@changesets/assemble-release-plan@6.0.3": "patches/@changesets__assemble-release-plan@6.0.3.patch",

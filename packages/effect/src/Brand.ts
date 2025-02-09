@@ -196,6 +196,7 @@ export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors 
  * @param onFailure - Takes the unbranded value that did not pass the `refinement` predicate and returns a `BrandErrors`.
  *
  * @example
+ * ```ts
  * import { Brand } from "effect"
  *
  * type Int = number & Brand.Brand<"Int">
@@ -207,6 +208,7 @@ export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors 
  *
  * assert.strictEqual(Int(1), 1)
  * assert.throws(() => Int(1.1))
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -247,6 +249,7 @@ export function refined<A extends Brand<any>>(
  * If you also want to perform some validation, see {@link refined}.
  *
  * @example
+ * ```ts
  * import { Brand } from "effect"
  *
  * type UserId = number & Brand.Brand<"UserId">
@@ -254,6 +257,7 @@ export function refined<A extends Brand<any>>(
  * const UserId = Brand.nominal<UserId>()
  *
  * assert.strictEqual(UserId(1), 1)
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -275,6 +279,7 @@ export const nominal = <A extends Brand<any>>(): Brand.Constructor<
  * This API is useful when you want to validate that the input data passes multiple brand validators.
  *
  * @example
+ * ```ts
  * import { Brand } from "effect"
  *
  * type Int = number & Brand.Brand<"Int">
@@ -292,6 +297,7 @@ export const nominal = <A extends Brand<any>>(): Brand.Constructor<
  *
  * assert.strictEqual(PositiveInt(1), 1)
  * assert.throws(() => PositiveInt(1.1))
+ * ```
  *
  * @since 2.0.0
  * @category combining

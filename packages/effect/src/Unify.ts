@@ -34,26 +34,21 @@ export declare const ignoreSymbol: unique symbol
  */
 export type ignoreSymbol = typeof ignoreSymbol
 
-type MaybeReturn<F> = F extends () => any ? ReturnType<F> : F
+type MaybeReturn<F> = F extends () => infer R ? R : NonNullable<F>
 
-type Values<X extends [any, any]> = X extends any
-  ? { [k in keyof X[0]]-?: k extends X[1] ? never : MaybeReturn<X[0][k]> }[keyof X[0]]
+type Values<X extends [any, any]> = X extends [infer A, infer Ignore]
+  ? Exclude<keyof A, Ignore> extends infer k ? k extends keyof A ? MaybeReturn<A[k]> : never : never
   : never
 
-type Ignore<X> = X extends {
-  [ignoreSymbol]?: any
-} ? keyof NonNullable<X[ignoreSymbol]>
+type Ignore<X> = X extends { [ignoreSymbol]?: infer Obj } ? keyof NonNullable<Obj>
   : never
 
 type ExtractTypes<
-  X extends {
-    [typeSymbol]?: any
-    [unifySymbol]?: any
-  }
-> = X extends any ? [
-    NonNullable<X[unifySymbol]>,
-    Ignore<X>
-  ]
+  X
+> = X extends {
+  [typeSymbol]?: infer _Type
+  [unifySymbol]?: infer _Unify
+} ? [NonNullable<_Unify>, Ignore<X>]
   : never
 
 type FilterIn<A> = A extends any ? typeSymbol extends keyof A ? A : never : never

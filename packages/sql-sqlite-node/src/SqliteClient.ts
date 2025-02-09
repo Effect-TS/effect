@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
@@ -87,12 +88,14 @@ interface SqliteConnection extends Connection {
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, never, Scope.Scope> =>
+): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
-    const transformRows = Statement.defaultTransforms(
-      options.transformResultNames!
-    ).array
+    const transformRows = options.transformResultNames ?
+      Statement.defaultTransforms(
+        options.transformResultNames
+      ).array :
+      undefined
 
     const makeConnection = Effect.gen(function*() {
       const scope = yield* Effect.scope
@@ -141,14 +144,6 @@ export const make = (
           (s) => runStatement(s, params, raw)
         )
 
-      const runTransform = options.transformResultNames
-        ? (sql: string, params: ReadonlyArray<Statement.Primitive>) =>
-          Effect.map(
-            run(sql, params),
-            transformRows
-          )
-        : run
-
       const runValues = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive>
@@ -173,8 +168,10 @@ export const make = (
         )
 
       return identity<SqliteConnection>({
-        execute(sql, params) {
-          return runTransform(sql, params)
+        execute(sql, params, transformRows) {
+          return transformRows
+            ? Effect.map(run(sql, params), transformRows)
+            : run(sql, params)
         },
         executeRaw(sql, params) {
           return run(sql, params, true)
@@ -182,14 +179,9 @@ export const make = (
         executeValues(sql, params) {
           return runValues(sql, params)
         },
-        executeWithoutTransform(sql, params) {
-          return run(sql, params)
-        },
-        executeUnprepared(sql, params) {
-          return Effect.map(
-            runStatement(db.prepare(sql), params ?? [], false),
-            transformRows
-          )
+        executeUnprepared(sql, params, transformRows) {
+          const effect = runStatement(db.prepare(sql), params ?? [], false)
+          return transformRows ? Effect.map(effect, transformRows) : effect
         },
         executeStream(_sql, _params) {
           return Effect.dieMessage("executeStream not implemented")
@@ -231,15 +223,16 @@ export const make = (
     )
 
     return Object.assign(
-      Client.make({
+      (yield* Client.make({
         acquirer,
         compiler,
         transactionAcquirer,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
-        ]
-      }) as SqliteClient,
+        ],
+        transformRows
+      })) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
         config: options,
@@ -254,7 +247,7 @@ export const make = (
  * @category layers
  * @since 1.0.0
  */
-export const layer = (
+export const layerConfig = (
   config: Config.Config.Wrap<SqliteClientConfig>
 ): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError> =>
   Layer.scopedContext(
@@ -266,4 +259,18 @@ export const layer = (
         )
       )
     )
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layer = (
+  config: SqliteClientConfig
+): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError> =>
+  Layer.scopedContext(
+    Effect.map(make(config), (client) =>
+      Context.make(SqliteClient, client).pipe(
+        Context.add(Client.SqlClient, client)
+      ))
+  ).pipe(Layer.provide(Reactivity.layer))

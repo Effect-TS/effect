@@ -2,11 +2,11 @@ import * as Terminal from "@effect/platform/Terminal"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
-import * as Schema from "@effect/schema/Schema"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as EffectNumber from "effect/Number"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
 import { Action } from "./action.js"
@@ -202,7 +202,7 @@ const initialState: State = {
 
 function handleRenderInteger(options: IntegerOptions) {
   return (state: State, action: Prompt.Prompt.Action<State, Number>) => {
-    return Action.$match(action, {
+    return Action.match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),
       Submit: () => renderSubmission(state, options)
@@ -298,7 +298,7 @@ export const integer = (options: Prompt.Prompt.IntegerOptions): Prompt.Prompt<nu
 
 function handleRenderFloat(options: FloatOptions) {
   return (state: State, action: Prompt.Prompt.Action<State, number>) => {
-    return Action.$match(action, {
+    return Action.match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),
       Submit: () => renderSubmission(state, options)

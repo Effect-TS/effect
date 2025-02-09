@@ -4,6 +4,7 @@ import type * as Resource from "../Resource.js"
 import type * as Schedule from "../Schedule.js"
 import type * as Scope from "../Scope.js"
 import * as core from "./core.js"
+import * as effectable from "./effectable.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as _schedule from "./schedule.js"
 import * as scopedRef from "./scopedRef.js"
@@ -21,6 +22,15 @@ const resourceVariance = {
   _E: (_: any) => _,
   /* c8 ignore next */
   _A: (_: any) => _
+}
+
+/** @internal  */
+const proto: ThisType<Resource.Resource<any, any>> = {
+  ...effectable.CommitPrototype,
+  commit() {
+    return get(this)
+  },
+  [ResourceTypeId]: resourceVariance
 }
 
 /** @internal */
@@ -46,11 +56,12 @@ export const manual = <A, E, R>(
   core.flatMap(core.context<R>(), (env) =>
     pipe(
       scopedRef.fromAcquire(core.exit(acquire)),
-      core.map((ref) => ({
-        [ResourceTypeId]: resourceVariance,
-        scopedRef: ref,
-        acquire: core.provideContext(acquire, env)
-      }))
+      core.map((ref) => {
+        const resource = Object.create(proto)
+        resource.scopedRef = ref
+        resource.acquire = core.provideContext(acquire, env)
+        return resource
+      })
     ))
 
 /** @internal */

@@ -1,5 +1,5 @@
-import { expect, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { afterAll, describe, expect, it, layer } from "@effect/vitest"
+import { Context, Effect, Layer, Schema } from "effect"
 
 it.live(
   "live %s",
@@ -85,3 +85,100 @@ it.scopedLive("interrupts on timeout", (ctx) =>
     )
     yield* Effect.sleep(1000)
   }), { timeout: 100, fails: true })
+
+class Foo extends Context.Tag("Foo")<Foo, "foo">() {
+  static Live = Layer.succeed(Foo, "foo")
+}
+
+class Bar extends Context.Tag("Bar")<Bar, "bar">() {
+  static Live = Layer.effect(Bar, Effect.map(Foo, () => "bar" as const))
+}
+
+layer(Foo.Live)("layer", (it) => {
+  it.effect("adds context", () =>
+    Effect.gen(function*() {
+      const foo = yield* Foo
+      expect(foo).toEqual("foo")
+    }))
+
+  it.layer(Bar.Live)("nested", (it) => {
+    it.effect("adds context", () =>
+      Effect.gen(function*() {
+        const foo = yield* Foo
+        const bar = yield* Bar
+        expect(foo).toEqual("foo")
+        expect(bar).toEqual("bar")
+      }))
+  })
+
+  it.layer(Bar.Live)((it) => {
+    it.effect("without name", () =>
+      Effect.gen(function*() {
+        const foo = yield* Foo
+        const bar = yield* Bar
+        expect(foo).toEqual("foo")
+        expect(bar).toEqual("bar")
+      }))
+  })
+
+  describe("release", () => {
+    let released = false
+    afterAll(() => {
+      expect(released).toEqual(true)
+    })
+
+    class Scoped extends Context.Tag("Scoped")<Scoped, "scoped">() {
+      static Live = Layer.scoped(
+        Scoped,
+        Effect.acquireRelease(
+          Effect.succeed("scoped" as const),
+          () => Effect.sync(() => released = true)
+        )
+      )
+    }
+
+    it.layer(Scoped.Live)((it) => {
+      it.effect("adds context", () =>
+        Effect.gen(function*() {
+          const foo = yield* Foo
+          const scoped = yield* Scoped
+          expect(foo).toEqual("foo")
+          expect(scoped).toEqual("scoped")
+        }))
+    })
+
+    it.effect.prop(
+      "adds context",
+      [realNumber],
+      ([num]) =>
+        Effect.gen(function*() {
+          const foo = yield* Foo
+          expect(foo).toEqual("foo")
+          return num === num
+        }),
+      { fastCheck: { numRuns: 200 } }
+    )
+  })
+})
+
+// property testing
+
+const realNumber = Schema.Finite.pipe(Schema.nonNaN())
+
+it.prop("symmetry", [realNumber, realNumber], ([a, b]) => a + b === b + a)
+
+it.effect.prop("symmetry", [realNumber, realNumber], ([a, b]) =>
+  Effect.gen(function*() {
+    yield* Effect.void
+    return a + b === b + a
+  }))
+
+it.scoped.prop(
+  "should detect the substring",
+  { a: Schema.String, b: Schema.String, c: Schema.String },
+  ({ a, b, c }) =>
+    Effect.gen(function*() {
+      yield* Effect.scope
+      return (a + b + c).includes(b)
+    })
+)

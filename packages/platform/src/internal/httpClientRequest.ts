@@ -1,18 +1,16 @@
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as Schema from "@effect/schema/Schema"
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
+import { pipeArguments } from "effect/Pipeable"
 import * as Redacted from "effect/Redacted"
+import type * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../Error.js"
 import type * as FileSystem from "../FileSystem.js"
 import * as Headers from "../Headers.js"
 import type * as Body from "../HttpBody.js"
-import type { HttpClient } from "../HttpClient.js"
 import type * as ClientRequest from "../HttpClientRequest.js"
 import type { HttpMethod } from "../HttpMethod.js"
 import * as UrlParams from "../UrlParams.js"
@@ -21,16 +19,9 @@ import * as internalBody from "./httpBody.js"
 /** @internal */
 export const TypeId: ClientRequest.TypeId = Symbol.for("@effect/platform/HttpClientRequest") as ClientRequest.TypeId
 
-/** @internal */
-export const clientTag = Context.GenericTag<HttpClient.Service>("@effect/platform/HttpClient")
-
 const Proto = {
   [TypeId]: TypeId,
-  ...Effectable.CommitPrototype,
   ...Inspectable.BaseProto,
-  commit(this: ClientRequest.HttpClientRequest) {
-    return Effect.flatMap(clientTag, (client) => client.execute(this))
-  },
   toJSON(this: ClientRequest.HttpClientRequest): unknown {
     return {
       _id: "@effect/platform/HttpClientRequest",
@@ -38,9 +29,12 @@ const Proto = {
       url: this.url,
       urlParams: this.urlParams,
       hash: this.hash,
-      headers: this.headers,
+      headers: Inspectable.redact(this.headers),
       body: this.body.toJSON()
     }
+  },
+  pipe() {
+    return pipeArguments(this, arguments)
   }
 }
 

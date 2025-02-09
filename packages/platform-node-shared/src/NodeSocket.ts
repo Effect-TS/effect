@@ -5,12 +5,10 @@ import * as Socket from "@effect/platform/Socket"
 import * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as FiberRef from "effect/FiberRef"
 import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import * as Net from "node:net"
 import type { Duplex } from "node:stream"
@@ -30,7 +28,6 @@ export interface NetSocket {
 export const NetSocket: Context.Tag<NetSocket, Net.Socket> = Context.GenericTag(
   "@effect/platform-node/NodeSocket/NetSocket"
 )
-const EOF = Symbol.for("@effect/experimental/Socket/Node/EOF")
 
 /**
  * @since 1.0.0
@@ -75,105 +72,105 @@ export const makeNet = (
 export const fromDuplex = <RO>(
   open: Effect.Effect<Duplex, Socket.SocketError, RO>
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
-  FiberRef.get(Socket.currentSendQueueCapacity).pipe(
-    Effect.flatMap((sendQueueCapacity) =>
-      Queue.dropping<Uint8Array | string | Socket.CloseEvent | typeof EOF>(
-        sendQueueCapacity
-      )
-    ),
-    Effect.bindTo("sendQueue"),
-    Effect.bind("openContext", () => Effect.context<Exclude<RO, Scope.Scope>>()),
-    Effect.map(({ openContext, sendQueue }) => {
-      const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
-        Effect.scope.pipe(
-          Effect.bindTo("scope"),
-          Effect.bind("conn", ({ scope }) =>
-            open.pipe(
-              Effect.provide(Context.add(openContext, Scope.Scope, scope))
-            ) as Effect.Effect<Net.Socket>),
-          Effect.bind("fiberSet", (_) => FiberSet.make<any, E | Socket.SocketError>()),
-          Effect.bind("run", ({ conn, fiberSet }) =>
-            FiberSet.runtime(fiberSet)<R>().pipe(
-              Effect.provideService(NetSocket, conn)
-            )),
-          Effect.tap(({ conn, fiberSet }) =>
-            Queue.take(sendQueue).pipe(
-              Effect.tap((chunk) =>
-                Effect.async<void, Socket.SocketError, never>((resume) => {
-                  if (Socket.isCloseEvent(chunk)) {
-                    conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
-                  } else if (chunk === EOF) {
-                    conn.end(() => resume(Effect.void))
-                  } else {
-                    conn.write(chunk, (cause) => {
-                      resume(
-                        cause ? Effect.fail(new Socket.SocketGenericError({ reason: "Write", cause })) : Effect.void
-                      )
-                    })
-                  }
-                  return Effect.void
+  Effect.withFiberRuntime<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
+    let currentSocket: Duplex | undefined
+    const latch = Effect.unsafeMakeLatch(false)
+    const openContext = fiber.currentContext as Context.Context<RO>
+    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
+      Effect.scopedWith((scope) =>
+        Effect.gen(function*() {
+          const fiberSet = yield* FiberSet.make<any, E | Socket.SocketError>().pipe(
+            Scope.extend(scope)
+          )
+          const conn = yield* Scope.extend(open, scope)
+          const run = yield* Effect.provideService(FiberSet.runtime(fiberSet)<R>(), NetSocket, conn as Net.Socket)
+
+          function onData(chunk: Uint8Array) {
+            const result = handler(chunk)
+            if (Effect.isEffect(result)) {
+              run(result)
+            }
+          }
+          function onEnd() {
+            Deferred.unsafeDone(fiberSet.deferred, Effect.void)
+          }
+          function onError(cause: Error) {
+            Deferred.unsafeDone(
+              fiberSet.deferred,
+              Effect.fail(new Socket.SocketGenericError({ reason: "Read", cause }))
+            )
+          }
+          function onClose(hadError: boolean) {
+            Deferred.unsafeDone(
+              fiberSet.deferred,
+              Effect.fail(
+                new Socket.SocketCloseError({
+                  reason: "Close",
+                  code: hadError ? 1006 : 1000
                 })
-              ),
-              Effect.forever,
-              Effect.withUnhandledErrorLogLevel(Option.none()),
-              FiberSet.run(fiberSet)
+              )
             )
-          ),
-          Effect.tap(({ conn, fiberSet, run }) => {
-            conn.on("data", (chunk) => {
-              const result = handler(chunk)
-              if (Effect.isEffect(result)) {
-                run(result)
-              }
+          }
+          yield* Scope.addFinalizer(
+            scope,
+            Effect.sync(() => {
+              conn.off("data", onData)
+              conn.off("end", onEnd)
+              conn.off("error", onError)
+              conn.off("close", onClose)
             })
+          )
+          conn.on("data", onData)
+          conn.on("end", onEnd)
+          conn.on("error", onError)
+          conn.on("close", onClose)
 
-            return Effect.async<void, Socket.SocketError, never>((resume) => {
-              function onEnd() {
-                resume(Effect.void)
-              }
-              function onError(cause: Error) {
-                resume(Effect.fail(new Socket.SocketGenericError({ reason: "Read", cause })))
-              }
-              function onClose(hadError: boolean) {
-                resume(
-                  Effect.fail(
-                    new Socket.SocketCloseError({
-                      reason: "Close",
-                      code: hadError ? 1006 : 1000
-                    })
-                  )
-                )
-              }
-              conn.on("end", onEnd)
-              conn.on("error", onError)
-              conn.on("close", onClose)
-              return Effect.sync(() => {
-                conn.off("end", onEnd)
-                conn.off("error", onError)
-                conn.off("close", onClose)
-              })
-            }).pipe(
-              Effect.raceFirst(FiberSet.join(fiberSet))
-            )
-          }),
-          Effect.scoped,
-          Effect.interruptible
-        )
+          currentSocket = conn
+          yield* latch.open
 
-      const write = (chunk: Uint8Array | string | Socket.CloseEvent) => Queue.offer(sendQueue, chunk)
-      const writer = Effect.acquireRelease(
-        Effect.succeed(write),
-        () => Queue.offer(sendQueue, EOF)
+          return yield* FiberSet.join(fiberSet)
+        })
+      ).pipe(
+        Effect.mapInputContext((input: Context.Context<R>) => Context.merge(openContext, input)),
+        Effect.ensuring(Effect.sync(() => {
+          latch.unsafeClose()
+          currentSocket = undefined
+        })),
+        Effect.interruptible
       )
 
-      return Socket.Socket.of({
-        [Socket.TypeId]: Socket.TypeId,
-        run,
-        runRaw: run,
-        writer
-      })
-    })
-  )
+    const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
+      latch.whenOpen(Effect.async<void, Socket.SocketError>((resume) => {
+        const conn = currentSocket!
+        if (Socket.isCloseEvent(chunk)) {
+          conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
+          return resume(Effect.void)
+        }
+        currentSocket!.write(chunk, (cause) => {
+          resume(
+            cause
+              ? Effect.fail(new Socket.SocketGenericError({ reason: "Write", cause }))
+              : Effect.void
+          )
+        })
+      }))
+
+    const writer = Effect.acquireRelease(
+      Effect.succeed(write),
+      () =>
+        Effect.sync(() => {
+          if (!currentSocket || currentSocket.writableEnded) return
+          currentSocket.end()
+        })
+    )
+
+    return Effect.succeed(Socket.Socket.of({
+      [Socket.TypeId]: Socket.TypeId,
+      run,
+      runRaw: run,
+      writer
+    }))
+  })
 
 /**
  * @since 1.0.0

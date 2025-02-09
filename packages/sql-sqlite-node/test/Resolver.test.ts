@@ -1,10 +1,11 @@
+import { Reactivity } from "@effect/experimental"
 import { FileSystem } from "@effect/platform"
 import { NodeFileSystem } from "@effect/platform-node"
-import * as Schema from "@effect/schema/Schema"
 import { SqlError, SqlResolver } from "@effect/sql"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Array, Effect, Option } from "effect"
+import * as Schema from "effect/Schema"
 
 const makeClient = Effect.gen(function*(_) {
   const fs = yield* _(FileSystem.FileSystem)
@@ -12,7 +13,7 @@ const makeClient = Effect.gen(function*(_) {
   return yield* _(SqliteClient.make({
     filename: dir + "/test.db"
   }))
-}).pipe(Effect.provide(NodeFileSystem.layer))
+}).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
 
 const seededClient = Effect.gen(function*(_) {
   const sql = yield* _(makeClient)

@@ -1,6 +1,5 @@
 import * as Transferable from "@effect/platform/Transferable"
-import { Schema } from "@effect/schema"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { assert, describe, test } from "vitest"
 
 describe("Transferable", () => {

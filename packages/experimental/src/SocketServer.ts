@@ -32,7 +32,7 @@ export const SocketServer: Context.Tag<SocketServer, SocketServer> = Context.Gen
  */
 export interface SocketServer {
   readonly [SocketServerTypeId]: SocketServerTypeId
-  readonly address: Effect.Effect<Address>
+  readonly address: Address
   readonly run: <R, E, _>(
     handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>
   ) => Effect.Effect<never, SocketServerError, R>
@@ -44,13 +44,13 @@ export interface SocketServer {
  */
 export class SocketServerError extends Data.TaggedError("SocketServerError")<{
   readonly reason: "Open" | "Unknown"
-  readonly error: unknown
+  readonly cause: unknown
 }> {
   /**
    * @since 1.0.0
    */
-  toString(): string {
-    return `SocketServerError: ${this.reason} - ${this.error}`
+  get message(): string {
+    return this.reason
   }
 }
 

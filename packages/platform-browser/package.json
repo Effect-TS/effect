@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-browser",
   "type": "module",
-  "version": "0.44.5",
+  "version": "0.50.6",
   "license": "MIT",
   "description": "Platform specific implementations for the browser",
   "homepage": "https://effect.website",
@@ -46,7 +46,6 @@
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^",
     "happy-dom": "^14.12.3",
     "mock-xmlhttprequest": "^8.3.0"

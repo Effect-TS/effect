@@ -1,9 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
@@ -17,6 +14,7 @@ import * as FiberSet from "effect/FiberSet"
 import { dual, identity, pipe } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import * as PubSub from "effect/PubSub"
@@ -24,6 +22,7 @@ import * as Queue from "effect/Queue"
 import * as Readable from "effect/Readable"
 import type { Request } from "effect/Request"
 import type * as Schedule from "effect/Schedule"
+import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Subscribable from "effect/Subscribable"
@@ -409,19 +408,19 @@ export const makeSerializable: {
   initialize:
     | Machine.InitializeSerializable<Input, State, Public, Private, R, InitErr, R>
     | Effect.Effect<SerializableProcedureList<State, Public, Private, R>, InitErr, R>
-): SerializableMachine<State, Public, Private, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>, RS | RI> =>
-  ({
-    [TypeId]: TypeId,
-    [SerializableTypeId]: SerializableTypeId,
-    initialize: Effect.isEffect(initialize) ? (() => initialize) : initialize as any,
-    identifier: "SerializableMachine",
-    retryPolicy: undefined,
-    schemaInput: options.input as any,
-    schemaState: options.state as any,
-    pipe() {
-      return pipeArguments(this, arguments)
-    }
-  }) as any
+): SerializableMachine<State, Public, Private, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>, RS | RI> => (({
+  [TypeId]: TypeId,
+  [SerializableTypeId]: SerializableTypeId,
+  initialize: Effect.isEffect(initialize) ? (() => initialize) : initialize as any,
+  identifier: "SerializableMachine",
+  retryPolicy: undefined,
+  schemaInput: options.input as any,
+  schemaState: options.state as any,
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}) as any)
 
 /**
  * @since 1.0.0
@@ -438,11 +437,10 @@ export const retry: {
 } = dual(2, <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineDefect, R>(
   self: M,
   retryPolicy: Schedule.Schedule<Out, In, R>
-): Machine.AddContext<M, R> =>
-  ({
-    ...self,
-    retryPolicy
-  }) as any)
+): Machine.AddContext<M, R> => (({
+  ...self,
+  retryPolicy
+}) as any))
 
 /**
  * @since 1.0.0
@@ -586,7 +584,7 @@ export const boot = <
           Effect.flatMap((req) =>
             Effect.flatMap(
               Effect.exit(send(req)),
-              (exit) => Serializable.serializeExit(req, exit)
+              (exit) => Schema.serializeExit(req, exit)
             )
           ),
           Effect.provide(context)

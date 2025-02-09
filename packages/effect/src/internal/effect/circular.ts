@@ -47,7 +47,7 @@ class Semaphore {
   }
 
   readonly take = (n: number): Effect.Effect<number> =>
-    core.async<number>((resume) => {
+    core.asyncInterrupt<number>((resume) => {
       if (this.free < n) {
         const observer = () => {
           if (this.free < n) {
@@ -112,10 +112,16 @@ export const unsafeMakeSemaphore = (permits: number): Semaphore => new Semaphore
 /** @internal */
 export const makeSemaphore = (permits: number) => core.sync(() => unsafeMakeSemaphore(permits))
 
-class Latch implements Effect.Latch {
+class Latch extends Effectable.Class<void> implements Effect.Latch {
   waiters: Array<(_: Effect.Effect<void>) => void> = []
   scheduled = false
-  constructor(private isOpen: boolean) {}
+  constructor(private isOpen: boolean) {
+    super()
+  }
+
+  commit() {
+    return this.await
+  }
 
   private unsafeSchedule(fiber: Fiber.RuntimeFiber<void>) {
     if (this.scheduled || this.waiters.length === 0) {
@@ -147,7 +153,7 @@ class Latch implements Effect.Latch {
     }
     return this.unsafeSchedule(fiber)
   })
-  await = core.unsafeAsync<void>((resume) => {
+  await = core.asyncInterrupt<void>((resume) => {
     if (this.isOpen) {
       return resume(core.void)
     }
@@ -159,6 +165,9 @@ class Latch implements Effect.Latch {
       }
     })
   })
+  unsafeClose() {
+    this.isOpen = false
+  }
   close = core.sync(() => {
     this.isOpen = false
   })

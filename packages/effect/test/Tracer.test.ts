@@ -1,3 +1,4 @@
+import { Cause, Tracer } from "effect"
 import * as Context from "effect/Context"
 import { millis, seconds } from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -274,6 +275,44 @@ it.effect("withTracerEnabled", () =>
     assert.deepEqual(spanB.name, "B")
   }))
 
+describe("Tracer.DisablePropagation", () => {
+  it.effect("creates noop span", () =>
+    Effect.gen(function*() {
+      const span = yield* Effect.currentSpan.pipe(
+        Effect.withSpan("A", { context: Tracer.DisablePropagation.context(true) })
+      )
+      const spanB = yield* Effect.currentSpan.pipe(
+        Effect.withSpan("B")
+      )
+
+      assert.deepEqual(span.name, "A")
+      assert.deepEqual(span.spanId, "noop")
+      assert.deepEqual(spanB.name, "B")
+    }))
+
+  it.effect("captures stack", () =>
+    Effect.gen(function*() {
+      const cause = yield* Effect.die(new Error("boom")).pipe(
+        Effect.withSpan("C", { context: Tracer.DisablePropagation.context(true) }),
+        Effect.sandbox,
+        Effect.flip
+      )
+      assert.include(Cause.pretty(cause), "Tracer.test.ts:295")
+    }))
+
+  it.effect("isnt used as parent span", () =>
+    Effect.gen(function*() {
+      const span = yield* Effect.currentSpan.pipe(
+        Effect.withSpan("child"),
+        Effect.withSpan("disabled", { context: Tracer.DisablePropagation.context(true) }),
+        Effect.withSpan("parent")
+      )
+      assert.strictEqual(span.name, "child")
+      assert(span.parent._tag === "Some" && span.parent.value._tag === "Span")
+      assert.strictEqual(span.parent.value.name, "parent")
+    }))
+})
+
 it.effect("includes trace when errored", () =>
   Effect.gen(function*() {
     let maybeSpan: undefined | Span
@@ -290,7 +329,7 @@ it.effect("includes trace when errored", () =>
     })
     yield* Effect.flip(getSpan("fail"))
     assert.isDefined(maybeSpan)
-    assert.include(maybeSpan!.attributes.get("code.stacktrace"), "Tracer.test.ts:291:24")
+    assert.include(maybeSpan!.attributes.get("code.stacktrace"), "Tracer.test.ts:330:24")
   }))
 
 describe("functionWithSpan", () => {

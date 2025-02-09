@@ -12,6 +12,6 @@
     "tsBuildInfoFile": ".tsbuildinfo/examples.tsbuildinfo",
     "rootDir": "examples",
     "noEmit": true,
-    "types": ["bun-types"]
+    "types": ["bun"]
   }
 }

@@ -1,5 +1,3 @@
-/// <reference types="bun-types" />
-import * as MultipartNode from "@effect/platform-node-shared/NodeMultipart"
 import * as Cookies from "@effect/platform/Cookies"
 import * as Etag from "@effect/platform/Etag"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
@@ -22,7 +20,6 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberSet from "effect/FiberSet"
-import { pipe } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -30,15 +27,15 @@ import type { ReadonlyRecord } from "effect/Record"
 import type * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import { Readable } from "node:stream"
 import * as BunContext from "../BunContext.js"
 import * as Platform from "../BunHttpPlatform.js"
+import * as MultipartBun from "./multipart.js"
 
 /** @internal */
 export const make = (
   options: Omit<ServeOptions, "fetch" | "error">
 ): Effect.Effect<Server.HttpServer, never, Scope.Scope> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const handlerStack: Array<(request: Request, server: BunServer) => Response | Promise<Response>> = [
       function(_request, _server) {
         return new Response("not found", { status: 404 })
@@ -65,51 +62,48 @@ export const make = (
       }
     })
 
-    yield* _(Effect.addFinalizer(() =>
+    yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         server.stop()
       })
-    ))
+    )
 
     return Server.make({
       address: { _tag: "TcpAddress", port: server.port, hostname: server.hostname },
       serve(httpApp, middleware) {
-        return pipe(
-          FiberSet.makeRuntime<never>(),
-          Effect.bindTo("runFork"),
-          Effect.bind("runtime", () => Effect.runtime<never>()),
-          Effect.let("app", ({ runtime }) =>
-            App.toHandled(httpApp, (request, response) =>
-              Effect.sync(() => {
-                const impl = request as ServerRequestImpl
-                impl.resolve(makeResponse(request, response, runtime))
-              }), middleware)),
-          Effect.flatMap(({ app, runFork }) =>
-            Effect.async<never>((_) => {
-              function handler(request: Request, server: BunServer) {
-                return new Promise<Response>((resolve, _reject) => {
-                  const fiber = runFork(Effect.provideService(
-                    app,
-                    ServerRequest.HttpServerRequest,
-                    new ServerRequestImpl(request, resolve, removeHost(request.url), server)
-                  ))
-                  request.signal.addEventListener("abort", () => {
-                    runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
-                  }, { once: true })
-                })
-              }
+        return Effect.gen(function*() {
+          const runFork = yield* FiberSet.makeRuntime<never>()
+          const runtime = yield* Effect.runtime<never>()
+          const app = App.toHandled(httpApp, (request, response) =>
+            Effect.sync(() => {
+              ;(request as ServerRequestImpl).resolve(makeResponse(request, response, runtime))
+            }), middleware)
+
+          function handler(request: Request, server: BunServer) {
+            return new Promise<Response>((resolve, _reject) => {
+              const fiber = runFork(Effect.provideService(
+                app,
+                ServerRequest.HttpServerRequest,
+                new ServerRequestImpl(request, resolve, removeHost(request.url), server)
+              ))
+              request.signal.addEventListener("abort", () => {
+                runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
+              }, { once: true })
+            })
+          }
+
+          yield* Effect.acquireRelease(
+            Effect.sync(() => {
               handlerStack.push(handler)
               server.reload({ fetch: handler } as ServeOptions)
-              return Effect.sync(() => {
+            }),
+            () =>
+              Effect.sync(() => {
                 handlerStack.pop()
                 server.reload({ fetch: handlerStack[handlerStack.length - 1] } as ServeOptions)
               })
-            })
-          ),
-          Effect.interruptible,
-          Effect.forkScoped,
-          Effect.asVoid
-        )
+          )
+        })
       }
     })
   })
@@ -168,14 +162,19 @@ export const layerServer = (
 ) => Layer.scoped(Server.HttpServer, make(options))
 
 /** @internal */
+export const layerContext = Layer.mergeAll(
+  Platform.layer,
+  Etag.layerWeak,
+  BunContext.layer
+)
+
+/** @internal */
 export const layer = (
   options: Omit<ServeOptions, "fetch" | "error">
 ) =>
   Layer.mergeAll(
     Layer.scoped(Server.HttpServer, make(options)),
-    Platform.layer,
-    Etag.layerWeak,
-    BunContext.layer
+    layerContext
   )
 
 /** @internal */
@@ -192,9 +191,7 @@ export const layerConfig = (
 ) =>
   Layer.mergeAll(
     Layer.scoped(Server.HttpServer, Effect.flatMap(Config.unwrap(options), make)),
-    Platform.layer,
-    Etag.layerWeak,
-    BunContext.layer
+    layerContext
   )
 
 interface WebSocketContext {
@@ -253,7 +250,9 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return this.source.url
   }
   get remoteAddress(): Option.Option<string> {
-    return this.remoteAddressOverride ? Option.some(this.remoteAddressOverride) : Option.none()
+    return this.remoteAddressOverride
+      ? Option.some(this.remoteAddressOverride)
+      : Option.fromNullable(this.bunServer.requestIP(this.source)?.address)
   }
   get headers(): Headers.Headers {
     this.headersOverride ??= Headers.fromInput(this.source.headers)
@@ -345,13 +344,13 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
       return this.multipartEffect
     }
     this.multipartEffect = Effect.runSync(Effect.cached(
-      MultipartNode.persisted(Readable.fromWeb(this.source.body! as any), this.headers)
+      MultipartBun.persisted(this.source)
     ))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return MultipartNode.stream(Readable.fromWeb(this.source.body! as any), this.headers)
+    return MultipartBun.stream(this.source)
   }
 
   private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.RequestError> | undefined

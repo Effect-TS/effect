@@ -10,17 +10,33 @@ import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
+import { dual } from "effect/Function"
 import * as Stream from "effect/Stream"
 
 /**
  * @since 1.0.0
  * @category conversions
  */
-export const toHttpApp = <R extends Router.RpcRouter<any, any>>(self: R): App.Default<
+export const toHttpApp: {
+  (options?: {
+    readonly spanPrefix?: string
+  }): <R extends Router.RpcRouter<any, any>>(self: R) => App.Default<
+    ServerError.RequestError,
+    Router.RpcRouter.Context<R>
+  >
+  <R extends Router.RpcRouter<any, any>>(self: R, options?: {
+    readonly spanPrefix?: string
+  }): App.Default<
+    ServerError.RequestError,
+    Router.RpcRouter.Context<R>
+  >
+} = dual((args) => Router.isRpcRouter(args[0]), <R extends Router.RpcRouter<any, any>>(self: R, options?: {
+  readonly spanPrefix?: string
+}): App.Default<
   ServerError.RequestError,
   Router.RpcRouter.Context<R>
 > => {
-  const handler = Router.toHandler(self)
+  const handler = Router.toHandler(self, options)
   return Effect.withFiberRuntime((fiber) => {
     const context = fiber.getFiberRef(FiberRef.currentContext)
     const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
@@ -28,12 +44,11 @@ export const toHttpApp = <R extends Router.RpcRouter<any, any>>(self: R): App.De
       ServerResponse.stream(
         handler(_).pipe(
           Stream.chunks,
-          Stream.map((_) => JSON.stringify(Chunk.toArray(_))),
-          Stream.intersperse("\n"),
+          Stream.map((_) => JSON.stringify(Chunk.toReadonlyArray(_)) + "\n"),
           Stream.encodeText,
           Stream.provideContext(context)
         ),
         { contentType: "application/ndjson" }
       ))
   })
-}
+})

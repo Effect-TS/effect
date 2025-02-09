@@ -8,11 +8,17 @@
  */
 export interface Pipeable {
   pipe<A>(this: A): A
-  pipe<A, B>(this: A, ab: (_: A) => B): B
-  pipe<A, B, C>(this: A, ab: (_: A) => B, bc: (_: B) => C): C
-  pipe<A, B, C, D>(this: A, ab: (_: A) => B, bc: (_: B) => C, cd: (_: C) => D): D
-  pipe<A, B, C, D, E>(this: A, ab: (_: A) => B, bc: (_: B) => C, cd: (_: C) => D, de: (_: D) => E): E
-  pipe<A, B, C, D, E, F>(
+  pipe<A, B = never>(this: A, ab: (_: A) => B): B
+  pipe<A, B = never, C = never>(this: A, ab: (_: A) => B, bc: (_: B) => C): C
+  pipe<A, B = never, C = never, D = never>(this: A, ab: (_: A) => B, bc: (_: B) => C, cd: (_: C) => D): D
+  pipe<A, B = never, C = never, D = never, E = never>(
+    this: A,
+    ab: (_: A) => B,
+    bc: (_: B) => C,
+    cd: (_: C) => D,
+    de: (_: D) => E
+  ): E
+  pipe<A, B = never, C = never, D = never, E = never, F = never>(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -20,7 +26,7 @@ export interface Pipeable {
     de: (_: D) => E,
     ef: (_: E) => F
   ): F
-  pipe<A, B, C, D, E, F, G>(
+  pipe<A, B = never, C = never, D = never, E = never, F = never, G = never>(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -29,7 +35,7 @@ export interface Pipeable {
     ef: (_: E) => F,
     fg: (_: F) => G
   ): G
-  pipe<A, B, C, D, E, F, G, H>(
+  pipe<A, B = never, C = never, D = never, E = never, F = never, G = never, H = never>(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -39,7 +45,7 @@ export interface Pipeable {
     fg: (_: F) => G,
     gh: (_: G) => H
   ): H
-  pipe<A, B, C, D, E, F, G, H, I>(
+  pipe<A, B = never, C = never, D = never, E = never, F = never, G = never, H = never, I = never>(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -50,7 +56,7 @@ export interface Pipeable {
     gh: (_: G) => H,
     hi: (_: H) => I
   ): I
-  pipe<A, B, C, D, E, F, G, H, I, J>(
+  pipe<A, B = never, C = never, D = never, E = never, F = never, G = never, H = never, I = never, J = never>(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -62,7 +68,7 @@ export interface Pipeable {
     hi: (_: H) => I,
     ij: (_: I) => J
   ): J
-  pipe<A, B, C, D, E, F, G, H, I, J, K>(
+  pipe<A, B = never, C = never, D = never, E = never, F = never, G = never, H = never, I = never, J = never, K = never>(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -75,7 +81,20 @@ export interface Pipeable {
     ij: (_: I) => J,
     jk: (_: J) => K
   ): K
-  pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
+  pipe<
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    G = never,
+    H = never,
+    I = never,
+    J = never,
+    K = never,
+    L = never
+  >(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -89,7 +108,21 @@ export interface Pipeable {
     jk: (_: J) => K,
     kl: (_: K) => L
   ): L
-  pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
+  pipe<
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    G = never,
+    H = never,
+    I = never,
+    J = never,
+    K = never,
+    L = never,
+    M = never
+  >(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -104,7 +137,22 @@ export interface Pipeable {
     kl: (_: K) => L,
     lm: (_: L) => M
   ): M
-  pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
+  pipe<
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    G = never,
+    H = never,
+    I = never,
+    J = never,
+    K = never,
+    L = never,
+    M = never,
+    N = never
+  >(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -120,7 +168,23 @@ export interface Pipeable {
     lm: (_: L) => M,
     mn: (_: M) => N
   ): N
-  pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
+  pipe<
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    G = never,
+    H = never,
+    I = never,
+    J = never,
+    K = never,
+    L = never,
+    M = never,
+    N = never,
+    O = never
+  >(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -137,7 +201,24 @@ export interface Pipeable {
     mn: (_: M) => N,
     no: (_: N) => O
   ): O
-  pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
+  pipe<
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    G = never,
+    H = never,
+    I = never,
+    J = never,
+    K = never,
+    L = never,
+    M = never,
+    N = never,
+    O = never,
+    P = never
+  >(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -155,7 +236,25 @@ export interface Pipeable {
     no: (_: N) => O,
     op: (_: O) => P
   ): P
-  pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
+  pipe<
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    G = never,
+    H = never,
+    I = never,
+    J = never,
+    K = never,
+    L = never,
+    M = never,
+    N = never,
+    O = never,
+    P = never,
+    Q = never
+  >(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -174,7 +273,26 @@ export interface Pipeable {
     op: (_: O) => P,
     pq: (_: P) => Q
   ): Q
-  pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
+  pipe<
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    G = never,
+    H = never,
+    I = never,
+    J = never,
+    K = never,
+    L = never,
+    M = never,
+    N = never,
+    O = never,
+    P = never,
+    Q = never,
+    R = never
+  >(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -194,7 +312,27 @@ export interface Pipeable {
     pq: (_: P) => Q,
     qr: (_: Q) => R
   ): R
-  pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
+  pipe<
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    G = never,
+    H = never,
+    I = never,
+    J = never,
+    K = never,
+    L = never,
+    M = never,
+    N = never,
+    O = never,
+    P = never,
+    Q = never,
+    R = never,
+    S = never
+  >(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -215,7 +353,28 @@ export interface Pipeable {
     qr: (_: Q) => R,
     rs: (_: R) => S
   ): S
-  pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T>(
+  pipe<
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    G = never,
+    H = never,
+    I = never,
+    J = never,
+    K = never,
+    L = never,
+    M = never,
+    N = never,
+    O = never,
+    P = never,
+    Q = never,
+    R = never,
+    S = never,
+    T = never
+  >(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -237,7 +396,29 @@ export interface Pipeable {
     rs: (_: R) => S,
     st: (_: S) => T
   ): T
-  pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U>(
+  pipe<
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    G = never,
+    H = never,
+    I = never,
+    J = never,
+    K = never,
+    L = never,
+    M = never,
+    N = never,
+    O = never,
+    P = never,
+    Q = never,
+    R = never,
+    S = never,
+    T = never,
+    U = never
+  >(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,
@@ -260,7 +441,29 @@ export interface Pipeable {
     st: (_: S) => T,
     tu: (_: T) => U
   ): U
-  pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U>(
+  pipe<
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    G = never,
+    H = never,
+    I = never,
+    J = never,
+    K = never,
+    L = never,
+    M = never,
+    N = never,
+    O = never,
+    P = never,
+    Q = never,
+    R = never,
+    S = never,
+    T = never,
+    U = never
+  >(
     this: A,
     ab: (_: A) => B,
     bc: (_: B) => C,

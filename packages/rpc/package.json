@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc",
-  "version": "0.39.5",
+  "version": "0.46.6",
   "type": "module",
   "license": "MIT",
   "description": "Functional programming in TypeScript",
@@ -40,12 +40,10 @@
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   }
 }

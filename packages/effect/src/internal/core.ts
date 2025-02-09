@@ -1,4 +1,3 @@
-import { internalCall } from "effect/Utils"
 import * as Arr from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
@@ -38,7 +37,7 @@ import * as RuntimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import type * as Scope from "../Scope.js"
 import type * as Tracer from "../Tracer.js"
 import type { NoInfer, NotFunction } from "../Types.js"
-import { YieldWrap } from "../Utils.js"
+import { internalCall, YieldWrap } from "../Utils.js"
 import * as _blockedRequests from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
@@ -122,6 +121,7 @@ export type Primitive =
   | Sync
   | UpdateRuntimeFlags
   | While
+  | FromIterator
   | WithRuntime
   | Yield
   | OpTag
@@ -137,6 +137,7 @@ export type Continuation =
   | OnSuccessAndFailure
   | OnFailure
   | While
+  | FromIterator
   | RevertFlags
 
 /** @internal */
@@ -388,6 +389,13 @@ export interface While extends
 {}
 
 /** @internal */
+export interface FromIterator extends
+  Op<OpCodes.OP_ITERATOR, {
+    effect_instruction_i0: Iterator<YieldWrap<Primitive>, any>
+  }>
+{}
+
+/** @internal */
 export interface WithRuntime extends
   Op<OpCodes.OP_WITH_RUNTIME, {
     effect_instruction_i0(fiber: FiberRuntime.FiberRuntime<unknown, unknown>, status: FiberStatus.Running): Primitive
@@ -435,7 +443,7 @@ export const acquireUseRelease: {
               onFailure: (cause) => {
                 switch (exit._tag) {
                   case OpCodes.OP_FAILURE:
-                    return failCause(internalCause.parallel(exit.effect_instruction_i0, cause))
+                    return failCause(internalCause.sequential(exit.effect_instruction_i0, cause))
                   case OpCodes.OP_SUCCESS:
                     return failCause(cause)
                 }
@@ -520,14 +528,21 @@ export const unsafeAsync = <A, E = never, R = never>(
 }
 
 /* @internal */
-export const async = <A, E = never, R = never>(
+export const asyncInterrupt = <A, E = never, R = never>(
   register: (
+    callback: (_: Effect.Effect<A, E, R>) => void
+  ) => void | Effect.Effect<void, never, R>,
+  blockingOn: FiberId.FiberId = FiberId.none
+): Effect.Effect<A, E, R> => suspend(() => unsafeAsync(register, blockingOn))
+
+const async_ = <A, E = never, R = never>(
+  resume: (
     callback: (_: Effect.Effect<A, E, R>) => void,
     signal: AbortSignal
   ) => void | Effect.Effect<void, never, R>,
   blockingOn: FiberId.FiberId = FiberId.none
 ): Effect.Effect<A, E, R> => {
-  return custom(register, function() {
+  return custom(resume, function() {
     let backingResume: ((_: Effect.Effect<A, E, R>) => void) | undefined = undefined
     let pendingEffect: Effect.Effect<A, E, R> | undefined = undefined
     function proxyResume(effect: Effect.Effect<A, E, R>) {
@@ -562,6 +577,10 @@ export const async = <A, E = never, R = never>(
       }) :
       effect
   })
+}
+export {
+  /** @internal */
+  async_ as async
 }
 
 /* @internal */
@@ -673,7 +692,7 @@ export const originalInstance = <E>(obj: E): E => {
 }
 
 /* @internal */
-const capture = <E>(obj: E & object, span: Option.Option<Tracer.Span>): E => {
+export const capture = <E>(obj: E & object, span: Option.Option<Tracer.Span>): E => {
   if (Option.isSome(span)) {
     return new Proxy(obj, {
       has(target, p) {
@@ -803,7 +822,7 @@ export const andThen: {
     if (isEffect(b)) {
       return b
     } else if (isPromiseLike(b)) {
-      return async<any, Cause.UnknownException>((resume) => {
+      return unsafeAsync<any, Cause.UnknownException>((resume) => {
         b.then((a) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
       })
     }
@@ -1212,13 +1231,16 @@ export const succeed = <A>(value: A): Effect.Effect<A> => {
 }
 
 /* @internal */
-export const suspend = <A, E, R>(effect: LazyArg<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> =>
-  flatMap(sync(effect), identity)
+export const suspend = <A, E, R>(evaluate: LazyArg<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> => {
+  const effect = new EffectPrimitive(OpCodes.OP_COMMIT) as any
+  effect.commit = evaluate
+  return effect
+}
 
 /* @internal */
-export const sync = <A>(evaluate: LazyArg<A>): Effect.Effect<A> => {
+export const sync = <A>(thunk: LazyArg<A>): Effect.Effect<A> => {
   const effect = new EffectPrimitive(OpCodes.OP_SYNC) as any
-  effect.effect_instruction_i0 = evaluate
+  effect.effect_instruction_i0 = thunk
   return effect
 }
 
@@ -1284,7 +1306,7 @@ export const tap = dual<
       if (isEffect(b)) {
         return as(b, a)
       } else if (isPromiseLike(b)) {
-        return async<any, Cause.UnknownException>((resume) => {
+        return unsafeAsync<any, Cause.UnknownException>((resume) => {
           b.then((_) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
         })
       }
@@ -1402,6 +1424,26 @@ export const whileLoop = <A, E, R>(
   effect.effect_instruction_i1 = options.body
   effect.effect_instruction_i2 = options.step
   return effect
+}
+
+/* @internal */
+export const fromIterator = <Eff extends YieldWrap<Effect.Effect<any, any, any>>, AEff>(
+  iterator: LazyArg<Iterator<Eff, AEff, never>>
+): Effect.Effect<
+  AEff,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect.Effect<infer _A, infer E, infer _R>>] ? E : never,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect.Effect<infer _A, infer _E, infer R>>] ? R : never
+> =>
+  suspend(() => {
+    const effect = new EffectPrimitive(OpCodes.OP_ITERATOR) as any
+    effect.effect_instruction_i0 = iterator()
+    return effect
+  })
+
+/* @internal */
+export const gen: typeof Effect.gen = function() {
+  const f = arguments.length === 1 ? arguments[0] : arguments[1].bind(arguments[0])
+  return fromIterator(() => f(pipe))
 }
 
 /* @internal */
@@ -1537,7 +1579,7 @@ export const zipWith: {
 ): Effect.Effect<B, E | E2, R | R2> => flatMap(self, (a) => map(that, (b) => f(a, b))))
 
 /* @internal */
-export const never: Effect.Effect<never> = async<never>(() => {
+export const never: Effect.Effect<never> = asyncInterrupt<never>(() => {
   const interval = setInterval(() => {
     //
   }, 2 ** 31 - 1)
@@ -2812,7 +2854,7 @@ export const deferredMakeAs = <A, E = never>(fiberId: FiberId.FiberId): Effect.E
 
 /* @internal */
 export const deferredAwait = <A, E>(self: Deferred.Deferred<A, E>): Effect.Effect<A, E> =>
-  async<A, E>((resume) => {
+  asyncInterrupt<A, E>((resume) => {
     const state = MutableRef.get(self.state)
     switch (state._tag) {
       case DeferredOpCodes.OP_STATE_DONE: {
@@ -3030,14 +3072,11 @@ export const currentSpanFromFiber = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Opt
   return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()
 }
 
-const NoopSpanProto: Tracer.Span = {
+const NoopSpanProto: Omit<Tracer.Span, "parent" | "name" | "context"> = {
   _tag: "Span",
   spanId: "noop",
   traceId: "noop",
-  name: "noop",
   sampled: false,
-  parent: Option.none(),
-  context: Context.empty(),
   status: {
     _tag: "Ended",
     startTime: BigInt(0),
@@ -3053,8 +3092,8 @@ const NoopSpanProto: Tracer.Span = {
 }
 
 /** @internal */
-export const noopSpan = (name: string): Tracer.Span => {
-  const span = Object.create(NoopSpanProto)
-  span.name = name
-  return span
-}
+export const noopSpan = (options: {
+  readonly name: string
+  readonly parent: Option.Option<Tracer.AnySpan>
+  readonly context: Context.Context<never>
+}): Tracer.Span => Object.assign(Object.create(NoopSpanProto), options)

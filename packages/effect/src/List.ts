@@ -325,12 +325,14 @@ export const append: {
  * If either list is non-empty, the result is also a non-empty list.
  *
  * @example
+ * ```ts
  * import { List } from "effect"
  *
  * assert.deepStrictEqual(
  *   List.make(1, 2).pipe(List.appendAll(List.make("a", "b")), List.toArray),
  *   [1, 2, "a", "b"]
  * )
+ * ```
  *
  * @category concatenating
  * @since 2.0.0
@@ -358,12 +360,14 @@ export const prepend: {
  * If either list is non-empty, the result is also a non-empty list.
  *
  * @example
+ * ```ts
  * import { List } from "effect"
  *
  * assert.deepStrictEqual(
  *   List.make(1, 2).pipe(List.prependAll(List.make("a", "b")), List.toArray),
  *   ["a", "b", 1, 2]
  * )
+ * ```
  *
  * @category concatenating
  * @since 2.0.0

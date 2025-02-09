@@ -1,0 +1,23 @@
+{
+  "$schema": "../../../node_modules/@effect/docgen/schema.json",
+  "exclude": ["src/internal/**/*.ts"],
+  "examplesCompilerOptions": {
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "moduleResolution": "Bundler",
+    "module": "ES2022",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "paths": {
+      "effect": ["../../../../effect/src/index.js"],
+      "effect/*": ["../../../../effect/src/*.js"],
+      "@effect/platform": ["../../../../platform/src/index.js"],
+      "@effect/platform/*": ["../../../../platform/src/*.js"],
+      "@effect/ai": ["../../../ai/src/index.js"],
+      "@effect/ai/*": ["../../../ai/src/*.js"],
+      "@effect/ai-openai": ["../../../ai-openai/src/index.js"],
+      "@effect/ai-openai/*": ["../../../ai-openai/src/*.js"]
+    }
+  }
+}

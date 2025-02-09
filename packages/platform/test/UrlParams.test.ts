@@ -1,6 +1,6 @@
 import * as UrlParams from "@effect/platform/UrlParams"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Option } from "effect"
+import { Effect, Option, Schema } from "effect"
 
 describe("UrlParams", () => {
   describe("makeUrl", () => {
@@ -83,5 +83,62 @@ describe("UrlParams", () => {
         ]
       )
     })
+  })
+
+  describe("toRecord", () => {
+    it("works when empty", () => {
+      assert.deepStrictEqual(
+        UrlParams.toRecord(UrlParams.empty),
+        {}
+      )
+    })
+
+    it("builds non empty array from same keys", () => {
+      assert.deepStrictEqual(
+        UrlParams.toRecord(UrlParams.fromInput({ "a": [10, "string", false] })),
+        { a: ["10", "string", "false"] }
+      )
+    })
+
+    it("works with non-strings", () => {
+      const urlParams = UrlParams.fromInput({ a: 1, b: true, c: "string", e: [1, 2, 3] })
+      const result = UrlParams.toRecord(urlParams)
+      assert.deepStrictEqual(
+        result,
+        { "a": "1", "b": "true", "c": "string", "e": ["1", "2", "3"] }
+      )
+    })
+  })
+
+  describe("schemaStruct", () => {
+    it.effect("works when empty", () =>
+      Effect.gen(function*() {
+        const result = yield* UrlParams.schemaStruct(Schema.Struct({}))(UrlParams.empty)
+        assert.deepStrictEqual(result, {})
+      }))
+
+    it.effect("parse original values", () =>
+      Effect.gen(function*() {
+        const urlParams = UrlParams.fromInput({ "a": [10, "string", false] })
+        const result = yield* UrlParams.schemaStruct(Schema.Struct({
+          a: Schema.Tuple(Schema.NumberFromString, Schema.String, Schema.BooleanFromString)
+        }))(urlParams)
+        assert.deepStrictEqual(result, {
+          a: [10, "string", false]
+        })
+      }))
+
+    it.effect("parse multiple keys", () =>
+      Effect.gen(function*() {
+        const urlParams = UrlParams.fromInput({ "a": [10, "string"], "b": false })
+        const result = yield* UrlParams.schemaStruct(Schema.Struct({
+          a: Schema.Tuple(Schema.NumberFromString, Schema.String),
+          b: Schema.BooleanFromString
+        }))(urlParams)
+        assert.deepStrictEqual(result, {
+          a: [10, "string"],
+          b: false
+        })
+      }))
   })
 })

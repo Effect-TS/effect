@@ -7,6 +7,7 @@ import * as Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as order from "./Order.js"
+import type { TupleOf } from "./Types.js"
 
 /**
  * @category type lambdas
@@ -22,9 +23,11 @@ export interface TupleTypeLambda extends TypeLambda {
  * @param elements - The list of elements to create the tuple from.
  *
  * @example
+ * ```ts
  * import { make } from "effect/Tuple"
  *
  * assert.deepStrictEqual(make(1, 'hello', true), [1, 'hello', true])
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -37,9 +40,11 @@ export const make = <A extends ReadonlyArray<any>>(...elements: A): A => element
  * @param self - A tuple of length `2`.
  *
  * @example
+ * ```ts
  * import { getFirst } from "effect/Tuple"
  *
  * assert.deepStrictEqual(getFirst(["hello", 42]), "hello")
+ * ```
  *
  * @category getters
  * @since 2.0.0
@@ -52,14 +57,52 @@ export const getFirst = <L, R>(self: readonly [L, R]): L => self[0]
  * @param self - A tuple of length `2`.
  *
  * @example
+ * ```ts
  * import { getSecond } from "effect/Tuple"
  *
  * assert.deepStrictEqual(getSecond(["hello", 42]), 42)
+ * ```
  *
  * @category getters
  * @since 2.0.0
  */
 export const getSecond = <L, R>(self: readonly [L, R]): R => self[1]
+
+/**
+ * Transforms each element of tuple using the given function, treating tuple homomorphically
+ *
+ * @param self - A tuple.
+ * @param f - The function to transform elements of the tuple.
+ *
+ * @example
+ * ```ts
+ * import { pipe, Tuple } from "effect"
+ *
+ * const result = pipe(
+ *   ["a", 1, false] as const,
+ *   Tuple.map((el) => el.toString().toUpperCase())
+ * )
+ * assert.deepStrictEqual(result, ['A', '1', 'FALSE'])
+ * ```
+ *
+ * @category mapping
+ * @since 3.9.0
+ */
+export const map: {
+  <T extends ReadonlyArray<any> | [], B>(
+    fn: (element: T[number]) => B
+  ): (self: T) => TupleOf<T["length"], B>
+  <B, T extends ReadonlyArray<any> | []>(
+    self: T,
+    fn: (element: T[number]) => B
+  ): TupleOf<T["length"], B>
+} = dual(
+  2,
+  <N extends number, A, B>(
+    self: TupleOf<N, A>,
+    fn: (element: A) => B
+  ): TupleOf<N, B> => self.map((element) => fn(element)) as TupleOf<N, B>
+)
 
 /**
  * Transforms both elements of a tuple using the given functions.
@@ -69,12 +112,14 @@ export const getSecond = <L, R>(self: readonly [L, R]): R => self[1]
  * @param g - The function to transform the second element of the tuple.
  *
  * @example
+ * ```ts
  * import { mapBoth } from "effect/Tuple"
  *
  * assert.deepStrictEqual(
  *   mapBoth(["hello", 42], { onFirst: s => s.toUpperCase(), onSecond: n => n.toString() }),
  *   ["HELLO", "42"]
  * )
+ * ```
  *
  * @category mapping
  * @since 2.0.0
@@ -106,12 +151,14 @@ export const mapBoth: {
  * @param f - The function to transform the first element of the tuple.
  *
  * @example
+ * ```ts
  * import { mapFirst } from "effect/Tuple"
  *
  * assert.deepStrictEqual(
  *   mapFirst(["hello", 42], s => s.toUpperCase()),
  *   ["HELLO", 42]
  * )
+ * ```
  *
  * @category mapping
  * @since 2.0.0
@@ -128,12 +175,14 @@ export const mapFirst: {
  * @param f - The function to transform the second element of the tuple.
  *
  * @example
+ * ```ts
  * import { mapSecond } from "effect/Tuple"
  *
  * assert.deepStrictEqual(
  *   mapSecond(["hello", 42], n => n.toString()),
  *   ["hello", "42"]
  * )
+ * ```
  *
  * @category mapping
  * @since 2.0.0
@@ -149,9 +198,11 @@ export const mapSecond: {
  * @param self - A tuple of length `2`.
  *
  * @example
+ * ```ts
  * import { swap } from "effect/Tuple"
  *
  * assert.deepStrictEqual(swap(["hello", 42]), [42, "hello"])
+ * ```
  *
  * @since 2.0.0
  */
@@ -201,9 +252,11 @@ export const appendElement: {
  * @param index - The index of the element to retrieve.
  *
  * @example
+ * ```ts
  * import { Tuple } from "effect"
  *
  * assert.deepStrictEqual(Tuple.at([1, 'hello', true], 1), 'hello')
+ * ```
  *
  * @category getters
  * @since 3.4.0
@@ -223,6 +276,7 @@ export {
    * @param n - The exact number of elements that the `Array` should have to be considered a `TupleOf`.
    *
    * @example
+   * ```ts
    * import { isTupleOf } from "effect/Tuple"
    *
    * assert.deepStrictEqual(isTupleOf([1, 2, 3], 3), true);
@@ -235,6 +289,7 @@ export {
    *   // ^? [number, number, number]
    * }
    *
+   * ```
    * @category guards
    * @since 3.3.0
    */
@@ -248,6 +303,7 @@ export {
    * @param n - The minimum number of elements that the `Array` should have to be considered a `TupleOfAtLeast`.
    *
    * @example
+   * ```ts
    * import { isTupleOfAtLeast } from "effect/Tuple"
    *
    * assert.deepStrictEqual(isTupleOfAtLeast([1, 2, 3], 3), true);
@@ -260,6 +316,7 @@ export {
    *   // ^? [number, number, number, ...number[]]
    * }
    *
+   * ```
    * @category guards
    * @since 3.3.0
    */

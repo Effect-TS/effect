@@ -1,6 +1,6 @@
 import * as Rpc from "@effect/rpc/Rpc"
-import * as S from "@effect/schema/Schema"
 import { pipe } from "effect/Function"
+import * as S from "effect/Schema"
 
 export const UserId = pipe(S.Number, S.int(), S.brand("UserId"))
 export type UserId = S.Schema.Type<typeof UserId>

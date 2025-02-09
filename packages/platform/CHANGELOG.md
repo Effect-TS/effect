@@ -1,5 +1,1004 @@
 # @effect/platform
 
+## 0.71.6
+
+### Patch Changes
+
+- Updated dependencies [[`1c08a0b`](https://github.com/Effect-TS/effect/commit/1c08a0b8505badcffb4d9cade5a746ea90c9557e), [`1ce703b`](https://github.com/Effect-TS/effect/commit/1ce703b041bbd7560c5c437c9b9be48f027937fd), [`1ce703b`](https://github.com/Effect-TS/effect/commit/1ce703b041bbd7560c5c437c9b9be48f027937fd)]:
+  - effect@3.11.9
+
+## 0.71.5
+
+### Patch Changes
+
+- [#4154](https://github.com/Effect-TS/effect/pull/4154) [`05d71f8`](https://github.com/Effect-TS/effect/commit/05d71f85622305705d8316817694a09762e60865) Thanks @thewilkybarkid! - Support URL objects in HttpServerResponse.redirect
+
+- [#4157](https://github.com/Effect-TS/effect/pull/4157) [`e66b920`](https://github.com/Effect-TS/effect/commit/e66b9205f25ab425d30640886eb3fb2c4715bc26) Thanks @tim-smart! - ensure WebSocket's are always closed with an explicit code
+
+## 0.71.4
+
+### Patch Changes
+
+- [#4152](https://github.com/Effect-TS/effect/pull/4152) [`909181a`](https://github.com/Effect-TS/effect/commit/909181a9ce9052a80432ccf52187e0723004bf7f) Thanks @tim-smart! - accept Headers.Input in HttpServerResponse constructors
+
+- [#4152](https://github.com/Effect-TS/effect/pull/4152) [`909181a`](https://github.com/Effect-TS/effect/commit/909181a9ce9052a80432ccf52187e0723004bf7f) Thanks @tim-smart! - add HttpServerResponse.redirect api
+
+- Updated dependencies [[`1a6b52d`](https://github.com/Effect-TS/effect/commit/1a6b52dcf020d36e38a7bc90b648152cf5a8ccba)]:
+  - effect@3.11.8
+
+## 0.71.3
+
+### Patch Changes
+
+- [#4147](https://github.com/Effect-TS/effect/pull/4147) [`6984508`](https://github.com/Effect-TS/effect/commit/6984508c87f1bd91213b44c19b25ab5e2dcc1ce0) Thanks @tim-smart! - ensure HttpApi union schemas don't transfer non-api related annotations
+
+- [#4145](https://github.com/Effect-TS/effect/pull/4145) [`883639c`](https://github.com/Effect-TS/effect/commit/883639cc8ce47757f1cd39439391a8028c0812fe) Thanks @tim-smart! - ensure HttpApi preserves referential equality of error schemas
+
+## 0.71.2
+
+### Patch Changes
+
+- [#4138](https://github.com/Effect-TS/effect/pull/4138) [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e) Thanks @gcanti! - JSONSchema: handle the `nullable` keyword for OpenAPI target, closes #4075.
+
+  Before
+
+  ```ts
+  import { OpenApiJsonSchema } from "@effect/platform"
+  import { Schema } from "effect"
+
+  const schema = Schema.NullOr(Schema.String)
+
+  console.log(JSON.stringify(OpenApiJsonSchema.make(schema), null, 2))
+  /*
+  {
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "enum": [
+          null
+        ]
+      }
+    ]
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { OpenApiJsonSchema } from "@effect/platform"
+  import { Schema } from "effect"
+
+  const schema = Schema.NullOr(Schema.String)
+
+  console.log(JSON.stringify(OpenApiJsonSchema.make(schema), null, 2))
+  /*
+  {
+    "type": "string",
+    "nullable": true
+  }
+  */
+  ```
+
+- [#4128](https://github.com/Effect-TS/effect/pull/4128) [`8d978c5`](https://github.com/Effect-TS/effect/commit/8d978c53f6fcc98d9d645ecba3e4b55d4297dd36) Thanks @gcanti! - JSONSchema: add `type` for homogeneous enum schemas, closes #4127
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Literal("a", "b")
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "enum": [
+      "a",
+      "b"
+    ]
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Literal("a", "b")
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "enum": [
+      "a",
+      "b"
+    ]
+  }
+  */
+  ```
+
+- [#4138](https://github.com/Effect-TS/effect/pull/4138) [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e) Thanks @gcanti! - JSONSchema: use `{ "type": "null" }` to represent the `null` literal
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NullOr(Schema.String)
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "enum": [
+          null
+        ]
+      }
+    ]
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NullOr(Schema.String)
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "null"
+      }
+    ]
+  }
+  */
+  ```
+
+- Updated dependencies [[`2408616`](https://github.com/Effect-TS/effect/commit/24086163b60b09cc6d0885bd565ef080dcbe866b), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e), [`8d978c5`](https://github.com/Effect-TS/effect/commit/8d978c53f6fcc98d9d645ecba3e4b55d4297dd36), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e)]:
+  - effect@3.11.7
+
+## 0.71.1
+
+### Patch Changes
+
+- [#4132](https://github.com/Effect-TS/effect/pull/4132) [`1d3df5b`](https://github.com/Effect-TS/effect/commit/1d3df5bc4324e88a392c348db35fd9d029c7b25e) Thanks @tim-smart! - allow passing Context to HttpApp web handlers
+
+  This allows you to pass request-scoped data to your handlers.
+
+  ```ts
+  import { Context, Effect } from "effect"
+  import { HttpApp, HttpServerResponse } from "@effect/platform"
+
+  class Env extends Context.Reference<Env>()("Env", {
+    defaultValue: () => ({ foo: "bar" })
+  }) {}
+
+  const handler = HttpApp.toWebHandler(
+    Effect.gen(function* () {
+      const env = yield* Env
+      return yield* HttpServerResponse.json(env)
+    })
+  )
+
+  const response = await handler(
+    new Request("http://localhost:3000/"),
+    Env.context({ foo: "baz" })
+  )
+
+  assert.deepStrictEqual(await response.json(), {
+    foo: "baz"
+  })
+  ```
+
+## 0.71.0
+
+### Minor Changes
+
+- [#4129](https://github.com/Effect-TS/effect/pull/4129) [`c99a0f3`](https://github.com/Effect-TS/effect/commit/c99a0f376d049d3793ed33e146d9873b8a5e5b78) Thanks @tim-smart! - replace HttpApi.empty with HttpApi.make(identifier)
+
+  This ensures if you have multiple HttpApi instances, the HttpApiGroup's are
+  implemented correctly.
+
+  ```ts
+  import { HttpApi } from "@effect/platform"
+
+  // Before
+  class Api extends HttpApi.empty.add(...) {}
+
+  // After
+  class Api extends HttpApi.make("api").add(...) {}
+  ```
+
+### Patch Changes
+
+- [#4130](https://github.com/Effect-TS/effect/pull/4130) [`11fc401`](https://github.com/Effect-TS/effect/commit/11fc401f436f99bf4be95f56d50b0e4bdfe5edea) Thanks @tim-smart! - add predefined empty errors to HttpApiError
+
+- [#4129](https://github.com/Effect-TS/effect/pull/4129) [`c99a0f3`](https://github.com/Effect-TS/effect/commit/c99a0f376d049d3793ed33e146d9873b8a5e5b78) Thanks @tim-smart! - add OpenApi annotation for exluding parts of the api from the spec
+
+- Updated dependencies [[`662d1ce`](https://github.com/Effect-TS/effect/commit/662d1ce6fb7da384a95888d5b2bb5605bdf3208d), [`31c62d8`](https://github.com/Effect-TS/effect/commit/31c62d83cbdcf9850a8b5331faa239601c60f78a)]:
+  - effect@3.11.6
+
+## 0.70.7
+
+### Patch Changes
+
+- [#4111](https://github.com/Effect-TS/effect/pull/4111) [`22905cf`](https://github.com/Effect-TS/effect/commit/22905cf5addfb1ff3d2a6135c52036be958ae911) Thanks @gcanti! - JSONSchema: merge refinement fragments instead of just overwriting them.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  export const schema = Schema.String.pipe(
+    Schema.startsWith("a"), // <= overwritten!
+    Schema.endsWith("c")
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a string ending with \"c\"",
+    "pattern": "^.*c$" // <= overwritten!
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  export const schema = Schema.String.pipe(
+    Schema.startsWith("a"), // <= preserved!
+    Schema.endsWith("c")
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "type": "string",
+    "description": "a string ending with \"c\"",
+    "pattern": "^.*c$",
+    "allOf": [
+      {
+        "pattern": "^a" // <= preserved!
+      }
+    ],
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  }
+  */
+  ```
+
+- [#4019](https://github.com/Effect-TS/effect/pull/4019) [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8) Thanks @gcanti! - OpenApiJsonSchema: Use the experimental `JSONSchema.fromAST` API for implementation.
+
+- Updated dependencies [[`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`22905cf`](https://github.com/Effect-TS/effect/commit/22905cf5addfb1ff3d2a6135c52036be958ae911), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`1e59e4f`](https://github.com/Effect-TS/effect/commit/1e59e4fd778da18296812a2a32f36ca8ae50f60d), [`8d914e5`](https://github.com/Effect-TS/effect/commit/8d914e504e7a22d0ea628e8af265ee450ff9530f), [`03bb00f`](https://github.com/Effect-TS/effect/commit/03bb00faa74f9e168a54a8cc0828a664fbb1ab05), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`14e1149`](https://github.com/Effect-TS/effect/commit/14e1149f1af5a022f06eb8c2e4ba9fec17fe7426), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8)]:
+  - effect@3.11.5
+
+## 0.70.6
+
+### Patch Changes
+
+- [#4097](https://github.com/Effect-TS/effect/pull/4097) [`9a5b8e3`](https://github.com/Effect-TS/effect/commit/9a5b8e36d184bd4967a88752cb6e755e1be263af) Thanks @tim-smart! - handle WebSocket's that emit ArrayBuffer instead of Uint8Array
+
+## 0.70.5
+
+### Patch Changes
+
+- [#4091](https://github.com/Effect-TS/effect/pull/4091) [`415f4c9`](https://github.com/Effect-TS/effect/commit/415f4c98321868531727a83cbaad70164f5e4c40) Thanks @ryskajakub! - http api param inherits description from schema
+
+- [#4087](https://github.com/Effect-TS/effect/pull/4087) [`518b258`](https://github.com/Effect-TS/effect/commit/518b258a8a67ecd332a9252c35cc060f8368dee2) Thanks @tim-smart! - remove Socket write indirection
+
+- Updated dependencies [[`518b258`](https://github.com/Effect-TS/effect/commit/518b258a8a67ecd332a9252c35cc060f8368dee2), [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f), [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f)]:
+  - effect@3.11.4
+
+## 0.70.4
+
+### Patch Changes
+
+- Updated dependencies [[`90906f7`](https://github.com/Effect-TS/effect/commit/90906f7f154b12c7182e8f39e3c55ef3937db857), [`3862cd3`](https://github.com/Effect-TS/effect/commit/3862cd3c7f6a542ed65fb81255b3bd696ce2f567), [`3862cd3`](https://github.com/Effect-TS/effect/commit/3862cd3c7f6a542ed65fb81255b3bd696ce2f567), [`343b6aa`](https://github.com/Effect-TS/effect/commit/343b6aa6ac4a74276bfc7c63ccbf4a1d72bc1bed), [`afba339`](https://github.com/Effect-TS/effect/commit/afba339adc11dad56b5a3b7ca94487e58f34d613)]:
+  - effect@3.11.3
+
+## 0.70.3
+
+### Patch Changes
+
+- [#4065](https://github.com/Effect-TS/effect/pull/4065) [`7044730`](https://github.com/Effect-TS/effect/commit/70447306be1aeeb7d87c230b2a96ec87b993ede9) Thanks @KhraksMamtsov! - Ensure the uniqueness of the parameters at the type level
+
+  ```ts
+  import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
+  import { Schema } from "effect"
+
+  HttpApiEndpoint.get(
+    "test"
+  )`/${HttpApiSchema.param("id", Schema.NumberFromString)}/${
+    // @ts-expect-error: Argument of type 'Param<"id", typeof NumberFromString>' is not assignable to parameter of type '"Duplicate param :id"'
+    HttpApiSchema.param("id", Schema.NumberFromString)
+  }`
+  ```
+
+## 0.70.2
+
+### Patch Changes
+
+- [#4064](https://github.com/Effect-TS/effect/pull/4064) [`c2249ea`](https://github.com/Effect-TS/effect/commit/c2249ea13fd98ab7d9aa628787931356d8ec2860) Thanks @tim-smart! - HttpApi OpenApi adjustments
+
+  - Allow using transform annotation on endpoints & groups
+  - Preserve descriptions for "empty" schemas
+
+- [#4055](https://github.com/Effect-TS/effect/pull/4055) [`1358aa5`](https://github.com/Effect-TS/effect/commit/1358aa5326eaa85ef13ee8d1fed0b4a4288ed3eb) Thanks @thewilkybarkid! - Allow creating a route for all methods
+
+- [#4062](https://github.com/Effect-TS/effect/pull/4062) [`1de3fe7`](https://github.com/Effect-TS/effect/commit/1de3fe7d1cbafd6391eaa38c2300b99e332cc2aa) Thanks @tim-smart! - simplify HttpApiClient param regex
+
+- Updated dependencies [[`01cee56`](https://github.com/Effect-TS/effect/commit/01cee560b58d94b24cc20e98083251b73e658b41)]:
+  - effect@3.11.2
+
+## 0.70.1
+
+### Patch Changes
+
+- Updated dependencies [[`dd8a2d8`](https://github.com/Effect-TS/effect/commit/dd8a2d8e80d33b16719fc69361eaedf0b59d4620), [`a71bfef`](https://github.com/Effect-TS/effect/commit/a71bfef46f5061bb2502a61a333638a987b62273)]:
+  - effect@3.11.1
+
+## 0.70.0
+
+### Minor Changes
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`672bde5`](https://github.com/Effect-TS/effect/commit/672bde5bec51c7d6f9862828e6a654cb2cb6f93d) Thanks @tim-smart! - support array of values in /platform url param schemas
+
+### Patch Changes
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`5eff3f6`](https://github.com/Effect-TS/effect/commit/5eff3f6fa3aae7e86948a62cbfd63b8d6c3bdf92) Thanks @tim-smart! - fix multipart support for bun http server
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`b4ce4ea`](https://github.com/Effect-TS/effect/commit/b4ce4ea7fd514a7e572f2dcd879c98f334981b0e) Thanks @SandroMaglione! - New methods `extractAll` and `extractSchema` to `UrlParams` (added `Schema.BooleanFromString`).
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`1e2747c`](https://github.com/Effect-TS/effect/commit/1e2747c63a4820d1459cbbc88c71212983bd68bd) Thanks @KhraksMamtsov! - - JSONSchema module
+  - add `format?: string` optional field to `JsonSchema7String` interface
+  - Schema module
+    - add custom json schema annotation to `UUID` schema including `format: "uuid"`
+  - OpenApiJsonSchema module
+    - add `format?: string` optional field to `String` and ` Numeric` interfaces
+- Updated dependencies [[`147434b`](https://github.com/Effect-TS/effect/commit/147434b03d5e1fd692dd9f126e5ab0910f3b76d3), [`6e69493`](https://github.com/Effect-TS/effect/commit/6e694930048bbaf98110f35f41566aeb9752d471), [`147434b`](https://github.com/Effect-TS/effect/commit/147434b03d5e1fd692dd9f126e5ab0910f3b76d3), [`5eff3f6`](https://github.com/Effect-TS/effect/commit/5eff3f6fa3aae7e86948a62cbfd63b8d6c3bdf92), [`d9fe79b`](https://github.com/Effect-TS/effect/commit/d9fe79bb5a3fe105d8e7a3bc2922a8ad936a5d10), [`251d189`](https://github.com/Effect-TS/effect/commit/251d189420bbba71990574e91098c499065f9a9b), [`5a259f3`](https://github.com/Effect-TS/effect/commit/5a259f3711b4369f55d885b568bdb21136155261), [`b4ce4ea`](https://github.com/Effect-TS/effect/commit/b4ce4ea7fd514a7e572f2dcd879c98f334981b0e), [`15fcc5a`](https://github.com/Effect-TS/effect/commit/15fcc5a0ea4bbf40ab48fa6a04fdda74f76f4c07), [`9bc9a47`](https://github.com/Effect-TS/effect/commit/9bc9a476800dc645903c888a68bb1d3baa3383c6), [`aadb8a4`](https://github.com/Effect-TS/effect/commit/aadb8a48d2cba197c06ec9996505510e48e4e5cb), [`1e2747c`](https://github.com/Effect-TS/effect/commit/1e2747c63a4820d1459cbbc88c71212983bd68bd), [`9264162`](https://github.com/Effect-TS/effect/commit/9264162a82783a651776fb7b87604564a63e7070), [`e0b9b09`](https://github.com/Effect-TS/effect/commit/e0b9b09e70c386b2da17d1f0a15b0511861c89e8), [`c36f3b9`](https://github.com/Effect-TS/effect/commit/c36f3b95df5ce9d71b66f22f26ce12eda8d3e848), [`aadb8a4`](https://github.com/Effect-TS/effect/commit/aadb8a48d2cba197c06ec9996505510e48e4e5cb)]:
+  - effect@3.11.0
+
+## 0.69.32
+
+### Patch Changes
+
+- Updated dependencies [[`3069614`](https://github.com/Effect-TS/effect/commit/30696149271129fc618f6f2ccd1d8f2f6c0f9cd7), [`09a5e52`](https://github.com/Effect-TS/effect/commit/09a5e522fd9b221f05d85b1d1c8a740d4973c302)]:
+  - effect@3.10.20
+
+## 0.69.31
+
+### Patch Changes
+
+- [#4035](https://github.com/Effect-TS/effect/pull/4035) [`e6d4a37`](https://github.com/Effect-TS/effect/commit/e6d4a37c1d7e657b5ea44063a1cf586808228fe5) Thanks @tim-smart! - add template literal api for defining HttpApiEndpoint path schema
+
+## 0.69.30
+
+### Patch Changes
+
+- [#4025](https://github.com/Effect-TS/effect/pull/4025) [`270f199`](https://github.com/Effect-TS/effect/commit/270f199b31810fd643e4c22818698adcbdb5d396) Thanks @tim-smart! - update OpenApi version to 3.1.0
+
+## 0.69.29
+
+### Patch Changes
+
+- [#4024](https://github.com/Effect-TS/effect/pull/4024) [`24cc35e`](https://github.com/Effect-TS/effect/commit/24cc35e26d6ed4a076470bc687ffd99cc50991b3) Thanks @tim-smart! - improve HttpApi handling of payload encoding types
+
+## 0.69.28
+
+### Patch Changes
+
+- [#4017](https://github.com/Effect-TS/effect/pull/4017) [`edd72be`](https://github.com/Effect-TS/effect/commit/edd72be57b904d60c9cbffc2537901821a9da537) Thanks @tim-smart! - try encode defects that match an Error schema in HttpApi
+
+- [#4014](https://github.com/Effect-TS/effect/pull/4014) [`a3e2771`](https://github.com/Effect-TS/effect/commit/a3e277170a1f7cf61fd629acb60304c7e81d9498) Thanks @tim-smart! - consider TimeoutException a transient error in HttpClient.retryTransient
+
+- [#4007](https://github.com/Effect-TS/effect/pull/4007) [`944025b`](https://github.com/Effect-TS/effect/commit/944025bc5ce139f4a85846aa689bf30ec06a8ec1) Thanks @gcanti! - Wrap JSDoc @example tags with a TypeScript fence, closes #4002
+
+- [#4016](https://github.com/Effect-TS/effect/pull/4016) [`a9e00e4`](https://github.com/Effect-TS/effect/commit/a9e00e43f0b5dd22c1f9d5b78be6383daea09c20) Thanks @tim-smart! - allow using HttpApiSchema.Multipart in a union
+
+- Updated dependencies [[`944025b`](https://github.com/Effect-TS/effect/commit/944025bc5ce139f4a85846aa689bf30ec06a8ec1), [`54addee`](https://github.com/Effect-TS/effect/commit/54addee438a644bf010646c52042c7b89c5fc0a7)]:
+  - effect@3.10.19
+
+## 0.69.27
+
+### Patch Changes
+
+- [#4005](https://github.com/Effect-TS/effect/pull/4005) [`beaccae`](https://github.com/Effect-TS/effect/commit/beaccae2d15931e9fe475fb50a0b3638243fe3f7) Thanks @tim-smart! - fix HttpApiBuilder.middleware when used multiple times
+
+- Updated dependencies [[`af409cf`](https://github.com/Effect-TS/effect/commit/af409cf1d2ff973be11cc079ea373eaeedca25de)]:
+  - effect@3.10.18
+
+## 0.69.26
+
+### Patch Changes
+
+- [#3977](https://github.com/Effect-TS/effect/pull/3977) [`c963886`](https://github.com/Effect-TS/effect/commit/c963886d5817986fcbd6bfa4ddf50aca8b6c8184) Thanks @KhraksMamtsov! - `HttpApiClient.group` & `HttpApiClient.endpoint` have been added
+  This makes it possible to create `HttpApiClient` for some part of the `HttpApi`
+  This eliminates the need to provide all the dependencies for the entire `HttpApi` - but only those necessary for its specific part to work
+- Updated dependencies [[`42c4ce6`](https://github.com/Effect-TS/effect/commit/42c4ce6f8d8c7d847e97757650a8ad9419a829d7)]:
+  - effect@3.10.17
+
+## 0.69.25
+
+### Patch Changes
+
+- [#3968](https://github.com/Effect-TS/effect/pull/3968) [`320557a`](https://github.com/Effect-TS/effect/commit/320557ab18d13c5e22fc7dc0d2a157eae461012f) Thanks @KhraksMamtsov! - `OpenApi.Transform` annotation has been added
+
+  This customization point allows you to transform the generated specification in an arbitrary way
+
+  ```ts
+  class Api extends HttpApi.empty
+    .annotateContext(OpenApi.annotations({
+      title: "API",
+      summary: "test api summary",
+      transform: (openApiSpec) => ({
+        ...openApiSpec,
+        tags: [...openApiSpec.tags ?? [], {
+          name: "Tag from OpenApi.Transform annotation"
+        }]
+      })
+    }))
+  ```
+
+- [#3962](https://github.com/Effect-TS/effect/pull/3962) [`7b93dd6`](https://github.com/Effect-TS/effect/commit/7b93dd622e2ab79c7072d79d0d9611e446202201) Thanks @KhraksMamtsov! - fix HttpApiGroup.addError signature
+
+- Updated dependencies [[`4dca30c`](https://github.com/Effect-TS/effect/commit/4dca30cfcdafe4542e236489f71d6f171a5b4e38), [`1d99867`](https://github.com/Effect-TS/effect/commit/1d998671be3cd11043f232822e91dd8c98fccfa9), [`6dae414`](https://github.com/Effect-TS/effect/commit/6dae4147991a97ec14a99289bd25fadae7541e8d), [`6b0d737`](https://github.com/Effect-TS/effect/commit/6b0d737078bf63b97891e6bc47affc04b28f9cf7), [`d8356aa`](https://github.com/Effect-TS/effect/commit/d8356aad428a0c2290db52380220f81d9ec94232)]:
+  - effect@3.10.16
+
+## 0.69.24
+
+### Patch Changes
+
+- [#3939](https://github.com/Effect-TS/effect/pull/3939) [`3cc6514`](https://github.com/Effect-TS/effect/commit/3cc6514d2dd64e010cb760cc29bfce98c349bb10) Thanks @KhraksMamtsov! - Added the ability to annotate the `HttpApi` with additional schemas
+  Which will be taken into account when generating `components.schemas` section of `OpenApi` schema
+
+  ```ts
+  import { Schema } from "effect"
+  import { HttpApi } from "@effect/platform"
+
+  HttpApi.empty.annotate(HttpApi.AdditionalSchemas, [
+    Schema.Struct({
+      contentType: Schema.String,
+      length: Schema.Int
+    }).annotations({
+      identifier: "ComponentsSchema"
+    })
+  ])
+  /**
+   {
+    "openapi": "3.0.3",
+    ...
+    "components": {
+      "schemas": {
+        "ComponentsSchema": {...},
+        ...
+    },
+    ...
+    }
+   */
+  ```
+
+## 0.69.23
+
+### Patch Changes
+
+- [#3944](https://github.com/Effect-TS/effect/pull/3944) [`3aff4d3`](https://github.com/Effect-TS/effect/commit/3aff4d38837c213bb2987973dc4b98febb9f92d2) Thanks @KhraksMamtsov! - `OpenApi.Summary` & `OpenApi.Deprecated` annotations have been added
+
+## 0.69.22
+
+### Patch Changes
+
+- Updated dependencies [[`8398b32`](https://github.com/Effect-TS/effect/commit/8398b3208242a88239d4449910b7baf923cfe3b6), [`72e55b7`](https://github.com/Effect-TS/effect/commit/72e55b7c610784fcebdbadc592c876e23e76a986)]:
+  - effect@3.10.15
+
+## 0.69.21
+
+### Patch Changes
+
+- Updated dependencies [[`f983946`](https://github.com/Effect-TS/effect/commit/f9839467b4cad6e788297764ef9f9f0b9fd203f9), [`2d8a750`](https://github.com/Effect-TS/effect/commit/2d8a75081eb83a0a81f817fdf6f428369c5064ab)]:
+  - effect@3.10.14
+
+## 0.69.20
+
+### Patch Changes
+
+- Updated dependencies [[`995bbdf`](https://github.com/Effect-TS/effect/commit/995bbdffea2e332f203cd5b474cd6a1c77dfa6ae)]:
+  - effect@3.10.13
+
+## 0.69.19
+
+### Patch Changes
+
+- [#3908](https://github.com/Effect-TS/effect/pull/3908) [`eb8c52d`](https://github.com/Effect-TS/effect/commit/eb8c52d8b4c5e067ebf0a81eb742f5822e6439b5) Thanks @tim-smart! - use plain js data structures for HttpApi properties
+
+## 0.69.18
+
+### Patch Changes
+
+- [#3906](https://github.com/Effect-TS/effect/pull/3906) [`a0584ec`](https://github.com/Effect-TS/effect/commit/a0584ece92ed784bfb139e9c5a699f02d1e71c2d) Thanks @tim-smart! - ensure Socket send queue is not ended
+
+- [#3904](https://github.com/Effect-TS/effect/pull/3904) [`dd14efe`](https://github.com/Effect-TS/effect/commit/dd14efe0ace255f571273aae876adea96267d7e6) Thanks @tim-smart! - improve platform/Worker shutdown and logging
+
+- Updated dependencies [[`dd14efe`](https://github.com/Effect-TS/effect/commit/dd14efe0ace255f571273aae876adea96267d7e6)]:
+  - effect@3.10.12
+
+## 0.69.17
+
+### Patch Changes
+
+- [#3898](https://github.com/Effect-TS/effect/pull/3898) [`8240b1c`](https://github.com/Effect-TS/effect/commit/8240b1c10d45312fc863cb679b1a1e8441af0c1a) Thanks @mattphillips! - Fixed handling of basic auth header values
+
+- [#3903](https://github.com/Effect-TS/effect/pull/3903) [`5eef499`](https://github.com/Effect-TS/effect/commit/5eef4998b6ccb7a5404d9e4fef85e57fa35fbb8a) Thanks @tim-smart! - add HttpApi.addHttpApi method, for merging two HttpApi instances
+
+- Updated dependencies [[`5eef499`](https://github.com/Effect-TS/effect/commit/5eef4998b6ccb7a5404d9e4fef85e57fa35fbb8a)]:
+  - effect@3.10.11
+
+## 0.69.16
+
+### Patch Changes
+
+- [#3893](https://github.com/Effect-TS/effect/pull/3893) [`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28) Thanks @tim-smart! - refactor Socket internal code
+
+- [#3892](https://github.com/Effect-TS/effect/pull/3892) [`7d89650`](https://github.com/Effect-TS/effect/commit/7d8965036cd2ea435c8441ffec3345488baebf85) Thanks @tim-smart! - simplify HttpApiClient implementation
+
+- Updated dependencies [[`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28), [`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28), [`b631f40`](https://github.com/Effect-TS/effect/commit/b631f40abbe649b2a089764585b5c39f6a695ac6)]:
+  - effect@3.10.10
+
+## 0.69.15
+
+### Patch Changes
+
+- [#3885](https://github.com/Effect-TS/effect/pull/3885) [`8a30e1d`](https://github.com/Effect-TS/effect/commit/8a30e1dfa3a7103bf5414fc6a7fca3088d8c8c00) Thanks @tim-smart! - simplify HttpApiBuilder handler logic
+
+## 0.69.14
+
+### Patch Changes
+
+- [#3884](https://github.com/Effect-TS/effect/pull/3884) [`07c493a`](https://github.com/Effect-TS/effect/commit/07c493a598e096c7810cd06def8cfa43493c46b1) Thanks @tim-smart! - add withResponse option to HttpApiClient methods
+
+- [#3882](https://github.com/Effect-TS/effect/pull/3882) [`257ab1b`](https://github.com/Effect-TS/effect/commit/257ab1b539fa6e930b7ae2583a188376372200d7) Thanks @tim-smart! - simplify Socket internal code
+
+- Updated dependencies [[`a123e80`](https://github.com/Effect-TS/effect/commit/a123e80f111a625428a5b5622b7f55ee1073566b), [`bd5fcd3`](https://github.com/Effect-TS/effect/commit/bd5fcd3e6b603b1e505af90d6a00627c8eca6d41), [`0289d3b`](https://github.com/Effect-TS/effect/commit/0289d3b6391031d00329365bab9791b355031fe3), [`7386b71`](https://github.com/Effect-TS/effect/commit/7386b710e5be570e17f468928a6ed19d549a3e12), [`4211a23`](https://github.com/Effect-TS/effect/commit/4211a2355bb3af3f0e756e2aae9d293379f25662)]:
+  - effect@3.10.9
+
+## 0.69.13
+
+### Patch Changes
+
+- Updated dependencies [[`68b5c9e`](https://github.com/Effect-TS/effect/commit/68b5c9e44f34192cef26e1cadda5e661a027df41), [`9c9928d`](https://github.com/Effect-TS/effect/commit/9c9928dfeacd9ac33dc37eb0ca3d7d8c39175ada), [`6306e66`](https://github.com/Effect-TS/effect/commit/6306e6656092b350d4ede5746da6f245ec9f7e07), [`361c7f3`](https://github.com/Effect-TS/effect/commit/361c7f39a2c10ede9324847c3d3ba192a6f9b20a)]:
+  - effect@3.10.8
+
+## 0.69.12
+
+### Patch Changes
+
+- Updated dependencies [[`33f5b9f`](https://github.com/Effect-TS/effect/commit/33f5b9ffaebea4f1bd0e391b44c41fb6230e743a), [`50f0281`](https://github.com/Effect-TS/effect/commit/50f0281b0d2116726b8927a6217622d5f394f3e4)]:
+  - effect@3.10.7
+
+## 0.69.11
+
+### Patch Changes
+
+- [#3856](https://github.com/Effect-TS/effect/pull/3856) [`81ddd45`](https://github.com/Effect-TS/effect/commit/81ddd45fc074b98206fafab416d9a5a28b31e07a) Thanks @KhraksMamtsov! - Integration with [Scalar](https://scalar.com/) has been implemented
+
+- Updated dependencies [[`ce1c21f`](https://github.com/Effect-TS/effect/commit/ce1c21ffc11902ac9ab453a51904207859d38552)]:
+  - effect@3.10.6
+
+## 0.69.10
+
+### Patch Changes
+
+- Updated dependencies [[`3a6d757`](https://github.com/Effect-TS/effect/commit/3a6d757badeebe00d8ef4d67530d073c8264dcfa), [`59d813a`](https://github.com/Effect-TS/effect/commit/59d813aa4973d1115cfc70cc3667508335f49693)]:
+  - effect@3.10.5
+
+## 0.69.9
+
+### Patch Changes
+
+- [#3842](https://github.com/Effect-TS/effect/pull/3842) [`2367708`](https://github.com/Effect-TS/effect/commit/2367708be449f9526a2047e321302d7bfb16f18e) Thanks @gcanti! - add support for `Schema.OptionFromUndefinedOr` in JSON Schema generation, closes #3839
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.OptionFromUndefinedOr(Schema.Number)
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  throws:
+  Error: Missing annotation
+  at path: ["a"]
+  details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
+  schema (UndefinedKeyword): undefined
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.OptionFromUndefinedOr(Schema.Number)
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [],
+    "properties": {
+      "a": {
+        "type": "number"
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
+- Updated dependencies [[`2367708`](https://github.com/Effect-TS/effect/commit/2367708be449f9526a2047e321302d7bfb16f18e)]:
+  - effect@3.10.4
+
+## 0.69.8
+
+### Patch Changes
+
+- [#3837](https://github.com/Effect-TS/effect/pull/3837) [`522f7c5`](https://github.com/Effect-TS/effect/commit/522f7c518a5acfb55ef96d6796869f002cc3eaf8) Thanks @tim-smart! - eliminate HttpApiEndpoint context in .handle
+
+## 0.69.7
+
+### Patch Changes
+
+- [#3836](https://github.com/Effect-TS/effect/pull/3836) [`690d6c5`](https://github.com/Effect-TS/effect/commit/690d6c54d2145adb0af545c447db7d4755bf3c6b) Thanks @tim-smart! - add HttpApiBuilder.handler, for defining a single handler
+
+- [#3831](https://github.com/Effect-TS/effect/pull/3831) [`279fe3a`](https://github.com/Effect-TS/effect/commit/279fe3a7168fe84e520c2cc88ba189a15f03a2bc) Thanks @tim-smart! - ensure parent annotations take precedence over surrogate annotations
+
+- Updated dependencies [[`b9423d8`](https://github.com/Effect-TS/effect/commit/b9423d8bf8181a2389fdbce1e3c14ac6fe8d54f5)]:
+  - effect@3.10.3
+
+## 0.69.6
+
+### Patch Changes
+
+- [#3826](https://github.com/Effect-TS/effect/pull/3826) [`42cd72a`](https://github.com/Effect-TS/effect/commit/42cd72a44ca9593e4d81fbb50e8111625fd0fb81) Thanks @juliusmarminge! - ensure requests & responses have headers redacted when inspecting
+
+- Updated dependencies [[`714e119`](https://github.com/Effect-TS/effect/commit/714e11945e45e5a2554ee058e6c43f82a8e309cf), [`c1afd55`](https://github.com/Effect-TS/effect/commit/c1afd55c54e61f9c432823d21b3d016f79160a37)]:
+  - effect@3.10.2
+
+## 0.69.5
+
+### Patch Changes
+
+- Updated dependencies [[`9604d6b`](https://github.com/Effect-TS/effect/commit/9604d6b616435103dafea8b53637a9d1450b4750)]:
+  - effect@3.10.1
+
+## 0.69.4
+
+### Patch Changes
+
+- [#3816](https://github.com/Effect-TS/effect/pull/3816) [`c86b1d7`](https://github.com/Effect-TS/effect/commit/c86b1d7cd47b66df190ef9775a475467c1abdbd6) Thanks @tim-smart! - allow Request.signal to be missing in .toWebHandler apis
+
+## 0.69.3
+
+### Patch Changes
+
+- [#3814](https://github.com/Effect-TS/effect/pull/3814) [`d5fba63`](https://github.com/Effect-TS/effect/commit/d5fba6391e1005e374aa0238f13edfbd65848313) Thanks @tim-smart! - cache OpenApi schema generation
+
+- [#3813](https://github.com/Effect-TS/effect/pull/3813) [`1eb2c30`](https://github.com/Effect-TS/effect/commit/1eb2c30ba064398db5790e376dedcfad55b7b005) Thanks @KhraksMamtsov! - Add support for bearer format OpenApi annotation
+
+- [#3811](https://github.com/Effect-TS/effect/pull/3811) [`02d413e`](https://github.com/Effect-TS/effect/commit/02d413e7b6bc1c64885969c37cc3e4e690c94d7d) Thanks @KhraksMamtsov! - A bug related to the format of the security schema keys has been fixed. According to the OpenAPI specification, it must match the regular expression` ^[a-zA-Z0-9.-_]+# @effect/platform
+
+## 0.69.2
+
+### Patch Changes
+
+- [#3808](https://github.com/Effect-TS/effect/pull/3808) [`e7afc47`](https://github.com/Effect-TS/effect/commit/e7afc47ce83e381c3f4aed2b2974e3b3d86a2340) Thanks @tim-smart! - ensure HttpMiddleware is only initialized once
+
+## 0.69.1
+
+### Patch Changes
+
+- [#3802](https://github.com/Effect-TS/effect/pull/3802) [`7564f56`](https://github.com/Effect-TS/effect/commit/7564f56bb2844cf39d2b0d2d9e93cf9b2205e9a8) Thanks @tim-smart! - simplify HttpApiMiddleware.TagClass type
+
+- [#3802](https://github.com/Effect-TS/effect/pull/3802) [`7564f56`](https://github.com/Effect-TS/effect/commit/7564f56bb2844cf39d2b0d2d9e93cf9b2205e9a8) Thanks @tim-smart! - add HttpServer.layerContext to platform-node/bun
+
+## 0.69.0
+
+### Minor Changes
+
+- [#3764](https://github.com/Effect-TS/effect/pull/3764) [`6d9de6b`](https://github.com/Effect-TS/effect/commit/6d9de6b871c5c08e6509a4e830c3d74758faa198) Thanks @tim-smart! - HttpApi second revision
+
+  - `HttpApi`, `HttpApiGroup` & `HttpApiEndpoint` now use a chainable api instead
+    of a pipeable api.
+  - `HttpApiMiddleware` module has been added, with a updated way of defining
+    security middleware.
+  - You can now add multiple success schemas
+  - A url search parameter schema has been added
+  - Error schemas now support `HttpApiSchema` encoding apis
+  - `toWebHandler` has been simplified
+
+  For more information, see the [README](https://github.com/Effect-TS/effect/blob/main/packages/platform/README.md#http-api).
+
+- [#3764](https://github.com/Effect-TS/effect/pull/3764) [`5821ce3`](https://github.com/Effect-TS/effect/commit/5821ce3455b47d25e0a40cae6ce22af9db5fa556) Thanks @patroza! - feat: implement Redactable. Used by Headers to not log sensitive information
+
+### Patch Changes
+
+- Updated dependencies [[`4a01828`](https://github.com/Effect-TS/effect/commit/4a01828b66d6213e9bbe18979c893b13f7bb29bf), [`4a01828`](https://github.com/Effect-TS/effect/commit/4a01828b66d6213e9bbe18979c893b13f7bb29bf), [`c79c4c1`](https://github.com/Effect-TS/effect/commit/c79c4c178390fe61ff6dda88c9e058862349343a), [`38d30f0`](https://github.com/Effect-TS/effect/commit/38d30f08b8da62f9c3e308b9250738cb8d17bdb5), [`5821ce3`](https://github.com/Effect-TS/effect/commit/5821ce3455b47d25e0a40cae6ce22af9db5fa556)]:
+  - effect@3.10.0
+
+## 0.68.6
+
+### Patch Changes
+
+- Updated dependencies [[`382556f`](https://github.com/Effect-TS/effect/commit/382556f8930780c0634de681077706113a8c8239), [`97cb014`](https://github.com/Effect-TS/effect/commit/97cb0145114b2cd2f378e98f6c4ff5bf2c1865f5)]:
+  - @effect/schema@0.75.5
+
+## 0.68.5
+
+### Patch Changes
+
+- [#3784](https://github.com/Effect-TS/effect/pull/3784) [`2036402`](https://github.com/Effect-TS/effect/commit/20364020b8b75a684791aa93d90626758023e9e9) Thanks @patroza! - fix HttpMiddleware circular import
+
+## 0.68.4
+
+### Patch Changes
+
+- [#3780](https://github.com/Effect-TS/effect/pull/3780) [`1b1ef29`](https://github.com/Effect-TS/effect/commit/1b1ef29ae302322f69dc938f9337aa97b4c63266) Thanks @tim-smart! - ensure cors middleware also affects error responses
+
+## 0.68.3
+
+### Patch Changes
+
+- [#3769](https://github.com/Effect-TS/effect/pull/3769) [`8c33087`](https://github.com/Effect-TS/effect/commit/8c330879425e80bed2f65e407cd59e991f0d7bec) Thanks @tim-smart! - add support for WebSocket protocols option
+
+- Updated dependencies [[`61a99b2`](https://github.com/Effect-TS/effect/commit/61a99b2bf9d757870ef0c2ec9d4c877cdd364a3d)]:
+  - effect@3.9.2
+  - @effect/schema@0.75.4
+
+## 0.68.2
+
+### Patch Changes
+
+- Updated dependencies [[`360ec14`](https://github.com/Effect-TS/effect/commit/360ec14dd4102c526aef7433a8881ad4d9beab75)]:
+  - @effect/schema@0.75.3
+
+## 0.68.1
+
+### Patch Changes
+
+- [#3743](https://github.com/Effect-TS/effect/pull/3743) [`b75ac5d`](https://github.com/Effect-TS/effect/commit/b75ac5d0909115507bedc90f18f2d34deb217769) Thanks @sukovanej! - Add support for `ConfigProvider` based on .env files.
+
+  ```ts
+  import { PlatformConfigProvider } from "@effect/platform"
+  import { NodeContext } from "@effect/platform-node"
+  import { Config } from "effect"
+
+  Effect.gen(function* () {
+    const config = yield* Config.all({
+      api_url: Config.string("API_URL"),
+      api_key: Config.string("API_KEY")
+    })
+
+    console.log(`Api config: ${config}`)
+  }).pipe(
+    Effect.provide(
+      PlatformConfigProvider.layerDotEnvAdd(".env").pipe(
+        Layer.provide(NodeContext.layer)
+      )
+    )
+  )
+  ```
+
+## 0.68.0
+
+### Minor Changes
+
+- [#3756](https://github.com/Effect-TS/effect/pull/3756) [`90ceeab`](https://github.com/Effect-TS/effect/commit/90ceeab3a04051b740af18c8af8bd73ee8ec6363) Thanks @tim-smart! - remove HttpClient.Service type
+
+- [#3756](https://github.com/Effect-TS/effect/pull/3756) [`90ceeab`](https://github.com/Effect-TS/effect/commit/90ceeab3a04051b740af18c8af8bd73ee8ec6363) Thanks @tim-smart! - constrain HttpClient success type to HttpClientResponse
+
+- [#3756](https://github.com/Effect-TS/effect/pull/3756) [`90ceeab`](https://github.com/Effect-TS/effect/commit/90ceeab3a04051b740af18c8af8bd73ee8ec6363) Thanks @tim-smart! - add HttpClient accessor apis
+
+  These apis allow you to easily send requests without first accessing the `HttpClient` service.
+
+  Below is an example of using the `get` accessor api to send a GET request:
+
+  ```ts
+  import { FetchHttpClient, HttpClient } from "@effect/platform"
+  import { Effect } from "effect"
+
+  const program = HttpClient.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  ).pipe(
+    Effect.andThen((response) => response.json),
+    Effect.scoped,
+    Effect.provide(FetchHttpClient.layer)
+  )
+
+  Effect.runPromise(program)
+  /*
+  Output:
+  {
+    userId: 1,
+    id: 1,
+    title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+    body: 'quia et suscipit\n' +
+      'suscipit recusandae consequuntur expedita et cum\n' +
+      'reprehenderit molestiae ut ut quas totam\n' +
+      'nostrum rerum est autem sunt rem eveniet architecto'
+  }
+  */
+  ```
+
+### Patch Changes
+
+- Updated dependencies [[`f02b354`](https://github.com/Effect-TS/effect/commit/f02b354ab5b0451143b82bb73dc866be29adec85)]:
+  - @effect/schema@0.75.2
+
+## 0.67.1
+
+### Patch Changes
+
+- [#3740](https://github.com/Effect-TS/effect/pull/3740) [`3b2ad1d`](https://github.com/Effect-TS/effect/commit/3b2ad1d58a2e33dc1a72b7037396bd25ca1702a9) Thanks @tim-smart! - revert deno Inspectable changes
+
+- Updated dependencies [[`3b2ad1d`](https://github.com/Effect-TS/effect/commit/3b2ad1d58a2e33dc1a72b7037396bd25ca1702a9)]:
+  - effect@3.9.1
+  - @effect/schema@0.75.1
+
+## 0.67.0
+
+### Minor Changes
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`0ba66f2`](https://github.com/Effect-TS/effect/commit/0ba66f2451641fd6990e02ec1ed01c014db9dab0) Thanks @tim-smart! - add deno support to Inspectable
+
+### Patch Changes
+
+- Updated dependencies [[`ff3d1aa`](https://github.com/Effect-TS/effect/commit/ff3d1aab290b4d1173b2dfc7e4c76abb4babdc16), [`0ba66f2`](https://github.com/Effect-TS/effect/commit/0ba66f2451641fd6990e02ec1ed01c014db9dab0), [`bf77f51`](https://github.com/Effect-TS/effect/commit/bf77f51b323c383224ebf08adf77a7a6e8c9b3cd), [`016f9ad`](https://github.com/Effect-TS/effect/commit/016f9ad931a4b3d09a34e5caf13d87c5b8e9c984), [`0779681`](https://github.com/Effect-TS/effect/commit/07796813f07de035719728733096ba64ce333469), [`534129f`](https://github.com/Effect-TS/effect/commit/534129f8113ce1a8ec50828083e16da9c86326c6), [`d75140c`](https://github.com/Effect-TS/effect/commit/d75140c7a664ceda43142d999f4ff8dcd36d6dda), [`be0451c`](https://github.com/Effect-TS/effect/commit/be0451c149b6618af79cb839cdf04af2db1efb03), [`9237ac6`](https://github.com/Effect-TS/effect/commit/9237ac69bc07de5b3b60076a0ad2921c21de7457), [`be0451c`](https://github.com/Effect-TS/effect/commit/be0451c149b6618af79cb839cdf04af2db1efb03), [`5b36494`](https://github.com/Effect-TS/effect/commit/5b364942e9a9003fdb8217324f8a2d8369c969da), [`c716adb`](https://github.com/Effect-TS/effect/commit/c716adb250ebbea1d1048d818ef7fed4f621d186), [`4986391`](https://github.com/Effect-TS/effect/commit/49863919cd8628c962a712fb1df30d2983820933), [`d75140c`](https://github.com/Effect-TS/effect/commit/d75140c7a664ceda43142d999f4ff8dcd36d6dda), [`d1387ae`](https://github.com/Effect-TS/effect/commit/d1387aebd1ff01bbebde26be46d488956e4daef6)]:
+  - effect@3.9.0
+  - @effect/schema@0.75.0
+
+## 0.66.3
+
+### Patch Changes
+
+- [#3736](https://github.com/Effect-TS/effect/pull/3736) [`f40da15`](https://github.com/Effect-TS/effect/commit/f40da15fbeb7c491840b8f409d47de79720891c3) Thanks @tim-smart! - add HttpClientResponse.filterStatus apis
+
+- [#3732](https://github.com/Effect-TS/effect/pull/3732) [`8e94585`](https://github.com/Effect-TS/effect/commit/8e94585abe62753bf3af28bfae77926a7c570ac3) Thanks @sukovanej! - Fix: handle `Blob` message data from a websocket.
+
+- [#3736](https://github.com/Effect-TS/effect/pull/3736) [`f40da15`](https://github.com/Effect-TS/effect/commit/f40da15fbeb7c491840b8f409d47de79720891c3) Thanks @tim-smart! - add HttpClient.retryTransient api
+
+- Updated dependencies [[`88e85db`](https://github.com/Effect-TS/effect/commit/88e85db34bd402526e27a323e950d053fa34d232), [`83887ca`](https://github.com/Effect-TS/effect/commit/83887ca1b1793916913d8550a4db4450cd14a044), [`5266b6c`](https://github.com/Effect-TS/effect/commit/5266b6cd86d76c3886da041c8829bca04b1a3110), [`cdead5c`](https://github.com/Effect-TS/effect/commit/cdead5c9cfd54dc6c4f215d9732f654c4a12e991), [`766a8af`](https://github.com/Effect-TS/effect/commit/766a8af307b414aca3648d91c4eab7493a5ec862)]:
+  - effect@3.8.5
+  - @effect/schema@0.74.2
+
+## 0.66.2
+
+### Patch Changes
+
+- [#3667](https://github.com/Effect-TS/effect/pull/3667) [`fd83d0e`](https://github.com/Effect-TS/effect/commit/fd83d0e548feff9ea2d53d370a0b626c4a1d940e) Thanks @gcanti! - Remove default json schema annotations from string, number and boolean.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.String.annotations({ examples: ["a", "b"] })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a string",
+    "title": "string",
+    "examples": [
+      "a",
+      "b"
+    ]
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.String.annotations({ examples: ["a", "b"] })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "examples": [
+      "a",
+      "b"
+    ]
+  }
+  */
+  ```
+
+- [#3672](https://github.com/Effect-TS/effect/pull/3672) [`090e41c`](https://github.com/Effect-TS/effect/commit/090e41c636d720b1c7d89684a739855765ed4382) Thanks @gcanti! - JSON Schema: handle refinements where the 'from' part includes a transformation, closes #3662
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.Date
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  throws
+  Error: Missing annotation
+  details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
+  schema (Refinement): Date
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.Date
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a string that will be parsed into a Date"
+  }
+  */
+  ```
+
+- Updated dependencies [[`734eae6`](https://github.com/Effect-TS/effect/commit/734eae654f215e4adca457d04d2a1728b1a55c83), [`fd83d0e`](https://github.com/Effect-TS/effect/commit/fd83d0e548feff9ea2d53d370a0b626c4a1d940e), [`4509656`](https://github.com/Effect-TS/effect/commit/45096569d50262275ee984f44c456f5c83b62683), [`ad7e1de`](https://github.com/Effect-TS/effect/commit/ad7e1de948745c0751bfdac96671028ff4b7a727), [`090e41c`](https://github.com/Effect-TS/effect/commit/090e41c636d720b1c7d89684a739855765ed4382), [`090e41c`](https://github.com/Effect-TS/effect/commit/090e41c636d720b1c7d89684a739855765ed4382)]:
+  - @effect/schema@0.74.1
+  - effect@3.8.4
+
+## 0.66.1
+
+### Patch Changes
+
+- [#3664](https://github.com/Effect-TS/effect/pull/3664) [`3812788`](https://github.com/Effect-TS/effect/commit/3812788d79caaab8f559a62fd443018a04ac5647) Thanks @tim-smart! - add OpenApiJsonSchema module
+
+## 0.66.0
+
+### Patch Changes
+
+- Updated dependencies [[`de48aa5`](https://github.com/Effect-TS/effect/commit/de48aa54e98d97722a8a4c2c8f9e1fe1d4560ea2)]:
+  - @effect/schema@0.74.0
+
 ## 0.65.5
 
 ### Patch Changes

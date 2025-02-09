@@ -1,9 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import type * as Schema from "@effect/schema/Schema"
 import type * as Cause from "effect/Cause"
 import type * as Chunk from "effect/Chunk"
 import type * as Context from "effect/Context"
@@ -12,6 +9,9 @@ import type { FiberRef } from "effect/FiberRef"
 import type { Inspectable } from "effect/Inspectable"
 import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
+import type * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 import type * as Scope from "effect/Scope"
 import type { RouterConfig } from "find-my-way-ts"
 import type * as Etag from "./Etag.js"
@@ -351,7 +351,7 @@ export const fromIterable: <R extends Route<any, any>>(
  * @category constructors
  */
 export const makeRoute: <E, R>(
-  method: Method.HttpMethod,
+  method: Method.HttpMethod | "*",
   path: PathInput,
   handler: Route.Handler<E, R>,
   options?: { readonly prefix?: string | undefined; readonly uninterruptible?: boolean | undefined } | undefined

@@ -1,23 +1,20 @@
 /**
  * @since 2.0.0
  */
-import * as Effect from "effect/Effect"
-import * as FiberId from "effect/FiberId"
-import type * as Scope from "effect/Scope"
 import * as Cause from "./Cause.js"
 import * as Deferred from "./Deferred.js"
+import * as Effect from "./Effect.js"
 import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
-import * as FiberRef from "./FiberRef.js"
+import * as FiberId from "./FiberId.js"
 import { constFalse, dual } from "./Function.js"
 import * as HashSet from "./HashSet.js"
 import * as Inspectable from "./Inspectable.js"
-import type { FiberRuntime } from "./internal/fiberRuntime.js"
 import * as Iterable from "./Iterable.js"
-import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 import * as Runtime from "./Runtime.js"
+import type * as Scope from "./Scope.js"
 
 /**
  * @since 2.0.0
@@ -98,6 +95,7 @@ const unsafeMake = <A, E>(
  * be automatically removed from the FiberSet when they complete.
  *
  * @example
+ * ```ts
  * import { Effect, FiberSet } from "effect"
  *
  * Effect.gen(function*(_) {
@@ -111,6 +109,7 @@ const unsafeMake = <A, E>(
  * }).pipe(
  *   Effect.scoped // The fibers will be interrupted when the scope is closed
  * )
+ * ```
  *
  * @since 2.0.0
  * @categories constructors
@@ -194,7 +193,6 @@ export const unsafeAdd: {
   } else if (self.state.backing.has(fiber)) {
     return
   }
-  ;(fiber as FiberRuntime<unknown, unknown>).setFiberRef(FiberRef.unhandledErrorLogLevel, Option.none())
   self.state.backing.add(fiber)
   fiber.addObserver((exit) => {
     if (self.state._tag === "Closed") {
@@ -326,6 +324,7 @@ export const run: {
  * Capture a Runtime and use it to fork Effect's, adding the forked fibers to the FiberSet.
  *
  * @example
+ * ```ts
  * import { Context, Effect, FiberSet } from "effect"
  *
  * interface Users {
@@ -344,6 +343,7 @@ export const run: {
  * }).pipe(
  *   Effect.scoped // The fibers will be interrupted when the scope is closed
  * )
+ * ```
  *
  * @since 2.0.0
  * @categories combinators
@@ -391,6 +391,7 @@ export const size = <A, E>(self: FiberSet<A, E>): Effect.Effect<number> =>
  * @since 2.0.0
  * @categories combinators
  * @example
+ * ```ts
  * import { Effect, FiberSet } from "effect";
  *
  * Effect.gen(function* (_) {
@@ -400,6 +401,7 @@ export const size = <A, E>(self: FiberSet<A, E>): Effect.Effect<number> =>
  *   // parent fiber will fail with "error"
  *   yield* _(FiberSet.join(set));
  * });
+ * ```
  */
 export const join = <A, E>(self: FiberSet<A, E>): Effect.Effect<void, E> =>
   Deferred.await(self.deferred as Deferred.Deferred<void, E>)

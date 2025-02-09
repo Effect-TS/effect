@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { TracerProvider } from "@opentelemetry/api"
 import type * as Resources from "@opentelemetry/resources"
 import type { MetricReader } from "@opentelemetry/sdk-metrics"
 import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
@@ -36,9 +35,9 @@ export interface Configuration {
 export const layerTracerProvider = (
   processor: SpanProcessor | NonEmptyReadonlyArray<SpanProcessor>,
   config?: Omit<TracerConfig, "resource">
-): Layer.Layer<TracerProvider, never, Resource.Resource> =>
+): Layer.Layer<Tracer.OtelTracerProvider, never, Resource.Resource> =>
   Layer.scoped(
-    Tracer.TracerProvider,
+    Tracer.OtelTracerProvider,
     Effect.flatMap(
       Resource.Resource,
       (resource) =>
@@ -66,9 +65,9 @@ export const layerTracerProvider = (
  */
 export const layer: {
   (evaluate: LazyArg<Configuration>): Layer.Layer<Resource.Resource>
-  <R, E>(evaluate: Effect.Effect<R, E, Configuration>): Layer.Layer<Resource.Resource, E, R>
+  <E, R>(evaluate: Effect.Effect<Configuration, E, R>): Layer.Layer<Resource.Resource, E, R>
 } = (
-  evaluate: LazyArg<Configuration> | Effect.Effect<any, any, Configuration>
+  evaluate: LazyArg<Configuration> | Effect.Effect<Configuration, any, any>
 ): Layer.Layer<Resource.Resource> =>
   Layer.unwrapEffect(
     Effect.map(

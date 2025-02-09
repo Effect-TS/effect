@@ -1,12 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": [
-    "src"
-  ],
+  "include": ["src"],
   "references": [
     { "path": "../effect" },
     { "path": "../platform" },
-    { "path": "../schema" },
     { "path": "../sql" }
   ],
   "compilerOptions": {
