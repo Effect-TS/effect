@@ -12,7 +12,7 @@ import * as Option from "../../Option.js"
 import type { Predicate, Refinement } from "../../Predicate.js"
 import * as predicate from "../../Predicate.js"
 import type * as STM from "../../STM.js"
-import type { MergeRecord, NoInfer } from "../../Types.js"
+import type * as Types from "../../Types.js"
 import { yieldWrapGet } from "../../Utils.js"
 import * as effectCore from "../core.js"
 import * as core from "./core.js"
@@ -114,12 +114,12 @@ export const bind = dual<
   <N extends string, K, A, E2, R2>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM.STM<A, E2, R2>
-  ) => <E, R>(self: STM.STM<K, E, R>) => STM.STM<MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>,
+  ) => <E, R>(self: STM.STM<K, E, R>) => STM.STM<Types.MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>,
   <K, E, R, N extends string, A, E2, R2>(
     self: STM.STM<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM.STM<A, E2, R2>
-  ) => STM.STM<MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
+  ) => STM.STM<Types.MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
 >(3, <K, E, R, N extends string, A, E2, R2>(
   self: STM.STM<K, E, R>,
   tag: Exclude<N, keyof K>,
@@ -128,7 +128,7 @@ export const bind = dual<
   core.flatMap(self, (k) =>
     core.map(
       f(k),
-      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
+      (a): Types.MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
     )))
 
 /* @internal */
@@ -158,7 +158,7 @@ export const let_ = dual<
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
   ) => <E, R>(self: STM.STM<K, E, R>) => STM.STM<
-    MergeRecord<K, { [k in N]: A }>,
+    Types.MergeRecord<K, { [k in N]: A }>,
     E,
     R
   >,
@@ -167,14 +167,14 @@ export const let_ = dual<
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
   ) => STM.STM<
-    MergeRecord<K, { [k in N]: A }>,
+    Types.MergeRecord<K, { [k in N]: A }>,
     E,
     R
   >
 >(3, <K, E, R, N extends string, A>(self: STM.STM<K, E, R>, tag: Exclude<N, keyof K>, f: (_: K) => A) =>
   core.map(
     self,
-    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
+    (k): Types.MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
   ))
 
 /** @internal */
@@ -330,7 +330,9 @@ export const eventually = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<A, E, R> =>
 
 /** @internal */
 export const every = dual<
-  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<boolean, E, R>) => (iterable: Iterable<A>) => STM.STM<boolean, E, R>,
+  <A, R, E>(
+    predicate: (a: Types.NoInfer<A>) => STM.STM<boolean, E, R>
+  ) => (iterable: Iterable<A>) => STM.STM<boolean, E, R>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<boolean, E, R>) => STM.STM<boolean, E, R>
 >(
   2,
@@ -357,7 +359,9 @@ export const every = dual<
 
 /** @internal */
 export const exists = dual<
-  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<boolean, E, R>) => (iterable: Iterable<A>) => STM.STM<boolean, E, R>,
+  <A, R, E>(
+    predicate: (a: Types.NoInfer<A>) => STM.STM<boolean, E, R>
+  ) => (iterable: Iterable<A>) => STM.STM<boolean, E, R>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<boolean, E, R>) => STM.STM<boolean, E, R>
 >(
   2,
@@ -382,7 +386,9 @@ export const fiberId: STM.STM<FiberId.FiberId> = core.effect<never, FiberId.Fibe
 
 /** @internal */
 export const filter = dual<
-  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<boolean, E, R>) => (iterable: Iterable<A>) => STM.STM<Array<A>, E, R>,
+  <A, R, E>(
+    predicate: (a: Types.NoInfer<A>) => STM.STM<boolean, E, R>
+  ) => (iterable: Iterable<A>) => STM.STM<Array<A>, E, R>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<boolean, E, R>) => STM.STM<Array<A>, E, R>
 >(
   2,
@@ -405,7 +411,9 @@ export const filter = dual<
 
 /** @internal */
 export const filterNot = dual<
-  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<boolean, E, R>) => (iterable: Iterable<A>) => STM.STM<Array<A>, E, R>,
+  <A, R, E>(
+    predicate: (a: Types.NoInfer<A>) => STM.STM<boolean, E, R>
+  ) => (iterable: Iterable<A>) => STM.STM<Array<A>, E, R>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<boolean, E, R>) => STM.STM<Array<A>, E, R>
 >(
   2,
@@ -416,11 +424,11 @@ export const filterNot = dual<
 /** @internal */
 export const filterOrDie: {
   <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>,
+    refinement: Refinement<Types.NoInfer<A>, B>,
     defect: LazyArg<unknown>
   ): <E, R>(self: STM.STM<A, E, R>) => STM.STM<B, E, R>
   <A>(
-    predicate: Predicate<NoInfer<A>>,
+    predicate: Predicate<Types.NoInfer<A>>,
     defect: LazyArg<unknown>
   ): <E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E, R>
   <A, E, R, B extends A>(
@@ -438,10 +446,10 @@ export const filterOrDie: {
 /** @internal */
 export const filterOrDieMessage: {
   <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>,
+    refinement: Refinement<Types.NoInfer<A>, B>,
     message: string
   ): <E, R>(self: STM.STM<A, E, R>) => STM.STM<B, E, R>
-  <A>(predicate: Predicate<NoInfer<A>>, message: string): <E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E, R>
+  <A>(predicate: Predicate<Types.NoInfer<A>>, message: string): <E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E, R>
   <A, E, R, B extends A>(self: STM.STM<A, E, R>, refinement: Refinement<A, B>, message: string): STM.STM<B, E, R>
   <A, E, R>(self: STM.STM<A, E, R>, predicate: Predicate<A>, message: string): STM.STM<A, E, R>
 } = dual(
@@ -453,12 +461,12 @@ export const filterOrDieMessage: {
 /** @internal */
 export const filterOrElse: {
   <A, B extends A, C, E2, R2>(
-    refinement: Refinement<NoInfer<A>, B>,
-    orElse: (a: NoInfer<A>) => STM.STM<C, E2, R2>
+    refinement: Refinement<Types.NoInfer<A>, B>,
+    orElse: (a: Types.NoInfer<A>) => STM.STM<C, E2, R2>
   ): <E, R>(self: STM.STM<A, E, R>) => STM.STM<B | C, E2 | E, R2 | R>
   <A, B, E2, R2>(
-    predicate: Predicate<NoInfer<A>>,
-    orElse: (a: NoInfer<A>) => STM.STM<B, E2, R2>
+    predicate: Predicate<Types.NoInfer<A>>,
+    orElse: (a: Types.NoInfer<A>) => STM.STM<B, E2, R2>
   ): <E, R>(self: STM.STM<A, E, R>) => STM.STM<A | B, E2 | E, R2 | R>
   <A, E, R, B extends A, C, E2, R2>(
     self: STM.STM<A, E, R>,
@@ -483,12 +491,12 @@ export const filterOrElse: {
 /** @internal */
 export const filterOrFail: {
   <A, B extends A, E2>(
-    refinement: Refinement<NoInfer<A>, B>,
-    orFailWith: (a: NoInfer<A>) => E2
+    refinement: Refinement<Types.NoInfer<A>, B>,
+    orFailWith: (a: Types.NoInfer<A>) => E2
   ): <E, R>(self: STM.STM<A, E, R>) => STM.STM<B, E2 | E, R>
   <A, E2>(
-    predicate: Predicate<NoInfer<A>>,
-    orFailWith: (a: NoInfer<A>) => E2
+    predicate: Predicate<Types.NoInfer<A>>,
+    orFailWith: (a: Types.NoInfer<A>) => E2
   ): <E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E2 | E, R>
   <A, E, R, B extends A, E2>(
     self: STM.STM<A, E, R>,
@@ -975,38 +983,38 @@ export const provideSomeContext = dual<
 
 /** @internal */
 export const provideService = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    resource: Context.Tag.Service<T>
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    resource: Types.NoInfer<S>
   ) => <A, E, R>(
     self: STM.STM<A, E, R>
-  ) => STM.STM<A, E, Exclude<R, Context.Tag.Identifier<T>>>,
-  <A, E, R, T extends Context.Tag<any, any>>(
+  ) => STM.STM<A, E, Exclude<R, I>>,
+  <A, E, R, I, S>(
     self: STM.STM<A, E, R>,
-    tag: T,
-    resource: Context.Tag.Service<T>
-  ) => STM.STM<A, E, Exclude<R, Context.Tag.Identifier<T>>>
+    tag: Context.Tag<I, S>,
+    resource: Types.NoInfer<S>
+  ) => STM.STM<A, E, Exclude<R, I>>
 >(3, (self, tag, resource) => provideServiceSTM(self, tag, core.succeed(resource)))
 
 /** @internal */
 export const provideServiceSTM = dual<
-  <T extends Context.Tag<any, any>, E1, R1>(
-    tag: T,
-    stm: STM.STM<Context.Tag.Service<T>, E1, R1>
+  <I, S, E1, R1>(
+    tag: Context.Tag<I, S>,
+    stm: STM.STM<Types.NoInfer<S>, E1, R1>
   ) => <A, E, R>(
     self: STM.STM<A, E, R>
-  ) => STM.STM<A, E1 | E, R1 | Exclude<R, Context.Tag.Identifier<T>>>,
-  <A, E, R, T extends Context.Tag<any, any>, E1, R1>(
+  ) => STM.STM<A, E1 | E, R1 | Exclude<R, I>>,
+  <A, E, R, I, S, E1, R1>(
     self: STM.STM<A, E, R>,
-    tag: T,
-    stm: STM.STM<Context.Tag.Service<T>, E1, R1>
-  ) => STM.STM<A, E1 | E, R1 | Exclude<R, Context.Tag.Identifier<T>>>
->(3, <A, E, R, T extends Context.Tag<any, any>, E1, R1>(
+    tag: Context.Tag<I, S>,
+    stm: STM.STM<Types.NoInfer<S>, E1, R1>
+  ) => STM.STM<A, E1 | E, R1 | Exclude<R, I>>
+>(3, <A, E, R, I, S, E1, R1>(
   self: STM.STM<A, E, R>,
-  tag: T,
-  stm: STM.STM<Context.Tag.Service<T>, E1, R1>
-): STM.STM<A, E1 | E, R1 | Exclude<R, Context.Tag.Identifier<T>>> =>
-  core.contextWithSTM((env: Context.Context<R1 | Exclude<R, Context.Tag.Identifier<T>>>) =>
+  tag: Context.Tag<I, S>,
+  stm: STM.STM<Types.NoInfer<S>, E1, R1>
+): STM.STM<A, E1 | E, R1 | Exclude<R, I>> =>
+  core.contextWithSTM((env: Context.Context<R1 | Exclude<R, I>>) =>
     core.flatMap(
       stm,
       (service) =>
@@ -1176,7 +1184,7 @@ export const replicateSTMDiscard = dual<
 /** @internal */
 export const retryUntil = dual<
   {
-    <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): <E, R>(self: STM.STM<A, E, R>) => STM.STM<B, E, R>
+    <A, B extends A>(refinement: Refinement<Types.NoInfer<A>, B>): <E, R>(self: STM.STM<A, E, R>) => STM.STM<B, E, R>
     <A>(predicate: Predicate<A>): <E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E, R>
   },
   {
@@ -1318,7 +1326,7 @@ export const tapBoth = dual<
 /** @internal */
 export const tapError: {
   <E, X, E2, R2>(
-    f: (error: NoInfer<E>) => STM.STM<X, E2, R2>
+    f: (error: Types.NoInfer<E>) => STM.STM<X, E2, R2>
   ): <A, R>(self: STM.STM<A, E, R>) => STM.STM<A, E | E2, R2 | R>
   <A, E, R, X, E2, R2>(self: STM.STM<A, E, R>, f: (error: E) => STM.STM<X, E2, R2>): STM.STM<A, E | E2, R | R2>
 } = dual(

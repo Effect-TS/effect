@@ -20,6 +20,7 @@ import * as Intervals from "../ScheduleIntervals.js"
 import * as Scope from "../Scope.js"
 import type * as Synchronized from "../SynchronizedRef.js"
 import type * as Tracer from "../Tracer.js"
+import type * as Types from "../Types.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as circular from "./effect/circular.js"
@@ -542,15 +543,15 @@ export const fresh = <A, E, R>(self: Layer.Layer<A, E, R>): Layer.Layer<A, E, R>
 
 /** @internal */
 export const fromEffect = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T
+  <I, S>(
+    tag: Context.Tag<I, S>
   ) => <E, R>(
-    effect: Effect.Effect<Context.Tag.Service<T>, E, R>
-  ) => Layer.Layer<Context.Tag.Identifier<T>, E, R>,
-  <T extends Context.Tag<any, any>, E, R>(
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E, R>
-  ) => Layer.Layer<Context.Tag.Identifier<T>, E, R>
+    effect: Effect.Effect<Types.NoInfer<S>, E, R>
+  ) => Layer.Layer<I, E, R>,
+  <I, S, E, R>(
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<Types.NoInfer<S>, E, R>
+  ) => Layer.Layer<I, E, R>
 >(2, (a, b) => {
   const tagFirst = Context.isTag(a)
   const tag = (tagFirst ? a : b) as Context.Tag<unknown, unknown>
@@ -610,12 +611,11 @@ export const fiberRefLocallyScopedWith = <A>(self: FiberRef<A>, value: (_: A) =>
   scopedDiscard(fiberRuntime.fiberRefLocallyScopedWith(self, value))
 
 /** @internal */
-export const fromFunction = <A extends Context.Tag<any, any>, B extends Context.Tag<any, any>>(
-  tagA: A,
-  tagB: B,
-  f: (a: Context.Tag.Service<A>) => Context.Tag.Service<B>
-): Layer.Layer<Context.Tag.Identifier<B>, never, Context.Tag.Identifier<A>> =>
-  fromEffectContext(core.map(tagA, (a) => Context.make(tagB, f(a))))
+export const fromFunction = <I1, S1, I2, S2>(
+  tagA: Context.Tag<I1, S1>,
+  tagB: Context.Tag<I2, S2>,
+  f: (a: Types.NoInfer<S1>) => Types.NoInfer<S2>
+): Layer.Layer<I2, never, I1> => fromEffectContext(core.map(tagA, (a) => Context.make(tagB, f(a))))
 
 /** @internal */
 export const launch = <RIn, E, ROut>(self: Layer.Layer<ROut, E, RIn>): Effect.Effect<never, E, RIn> =>
@@ -761,17 +761,17 @@ export const passthrough = <RIn, E, ROut>(self: Layer.Layer<ROut, E, RIn>): Laye
 
 /** @internal */
 export const project = dual<
-  <A extends Context.Tag<any, any>, B extends Context.Tag<any, any>>(
-    tagA: A,
-    tagB: B,
-    f: (a: Context.Tag.Service<A>) => Context.Tag.Service<B>
-  ) => <RIn, E>(self: Layer.Layer<Context.Tag.Identifier<A>, E, RIn>) => Layer.Layer<Context.Tag.Identifier<B>, E, RIn>,
-  <RIn, E, A extends Context.Tag<any, any>, B extends Context.Tag<any, any>>(
-    self: Layer.Layer<Context.Tag.Identifier<A>, E, RIn>,
-    tagA: A,
-    tagB: B,
-    f: (a: Context.Tag.Service<A>) => Context.Tag.Service<B>
-  ) => Layer.Layer<Context.Tag.Identifier<B>, E, RIn>
+  <I1, S1, I2, S2>(
+    tagA: Context.Tag<I1, S1>,
+    tagB: Context.Tag<I2, S2>,
+    f: (a: Types.NoInfer<S1>) => Types.NoInfer<S2>
+  ) => <RIn, E>(self: Layer.Layer<I1, E, RIn>) => Layer.Layer<I2, E, RIn>,
+  <RIn, E, I1, S1, I2, S2>(
+    self: Layer.Layer<I1, E, RIn>,
+    tagA: Context.Tag<I1, S1>,
+    tagB: Context.Tag<I2, S2>,
+    f: (a: Types.NoInfer<S1>) => Types.NoInfer<S2>
+  ) => Layer.Layer<I2, E, RIn>
 >(4, (self, tagA, tagB, f) => map(self, (context) => Context.make(tagB, f(Context.unsafeGet(context, tagA)))))
 
 /** @internal */
@@ -842,15 +842,15 @@ const retryUpdate = <X, E, RIn>(
 
 /** @internal */
 export const scoped = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T
+  <I, S>(
+    tag: Context.Tag<I, S>
   ) => <E, R>(
-    effect: Effect.Effect<Context.Tag.Service<T>, E, R>
-  ) => Layer.Layer<Context.Tag.Identifier<T>, E, Exclude<R, Scope.Scope>>,
-  <T extends Context.Tag<any, any>, E, R>(
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E, R>
-  ) => Layer.Layer<Context.Tag.Identifier<T>, E, Exclude<R, Scope.Scope>>
+    effect: Effect.Effect<Types.NoInfer<S>, E, R>
+  ) => Layer.Layer<I, E, Exclude<R, Scope.Scope>>,
+  <I, S, E, R>(
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<Types.NoInfer<S>, E, R>
+  ) => Layer.Layer<I, E, Exclude<R, Scope.Scope>>
 >(2, (a, b) => {
   const tagFirst = Context.isTag(a)
   const tag = (tagFirst ? a : b) as Context.Tag<unknown, unknown>
@@ -885,21 +885,21 @@ export const scope: Layer.Layer<Scope.Scope> = scopedContext(
 )
 
 /** @internal */
-export const service = <T extends Context.Tag<any, any>>(
-  tag: T
-): Layer.Layer<Context.Tag.Identifier<T>, never, Context.Tag.Identifier<T>> => fromEffect(tag, tag)
+export const service = <I, S>(
+  tag: Context.Tag<I, S>
+): Layer.Layer<I, never, I> => fromEffect(tag, tag)
 
 /** @internal */
 export const succeed = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T
+  <I, S>(
+    tag: Context.Tag<I, S>
   ) => (
-    resource: Context.Tag.Service<T>
-  ) => Layer.Layer<Context.Tag.Identifier<T>>,
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    resource: Context.Tag.Service<T>
-  ) => Layer.Layer<Context.Tag.Identifier<T>>
+    resource: Types.NoInfer<S>
+  ) => Layer.Layer<I>,
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    resource: Types.NoInfer<S>
+  ) => Layer.Layer<I>
 >(2, (a, b) => {
   const tagFirst = Context.isTag(a)
   const tag = (tagFirst ? a : b) as Context.Tag<unknown, unknown>
@@ -929,15 +929,15 @@ export const suspend = <RIn, E, ROut>(
 
 /** @internal */
 export const sync = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T
+  <I, S>(
+    tag: Context.Tag<I, S>
   ) => (
-    evaluate: LazyArg<Context.Tag.Service<T>>
-  ) => Layer.Layer<Context.Tag.Identifier<T>>,
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    evaluate: LazyArg<Context.Tag.Service<T>>
-  ) => Layer.Layer<Context.Tag.Identifier<T>>
+    evaluate: LazyArg<Types.NoInfer<S>>
+  ) => Layer.Layer<I>,
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    evaluate: LazyArg<Types.NoInfer<S>>
+  ) => Layer.Layer<I>
 >(2, (a, b) => {
   const tagFirst = Context.isTag(a)
   const tag = (tagFirst ? a : b) as Context.Tag<unknown, unknown>

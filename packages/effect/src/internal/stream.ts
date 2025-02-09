@@ -35,7 +35,7 @@ import * as TPubSub from "../TPubSub.js"
 import * as TQueue from "../TQueue.js"
 import type * as Tracer from "../Tracer.js"
 import * as Tuple from "../Tuple.js"
-import type { NoInfer, TupleOf } from "../Types.js"
+import type * as Types from "../Types.js"
 import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
 import * as MergeStrategy from "./channel/mergeStrategy.js"
@@ -759,7 +759,7 @@ export const broadcast = dual<
     }
   ) => <A, E, R>(
     self: Stream.Stream<A, E, R>
-  ) => Effect.Effect<TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R>,
+  ) => Effect.Effect<Types.TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R>,
   <A, E, R, N extends number>(
     self: Stream.Stream<A, E, R>,
     n: N,
@@ -771,7 +771,7 @@ export const broadcast = dual<
       readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
       readonly replay?: number | undefined
     }
-  ) => Effect.Effect<TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R>
+  ) => Effect.Effect<Types.TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R>
 >(3, <A, E, R, N extends number>(
   self: Stream.Stream<A, E, R>,
   n: N,
@@ -783,12 +783,12 @@ export const broadcast = dual<
     readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
     readonly replay?: number | undefined
   }
-): Effect.Effect<TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R> =>
+): Effect.Effect<Types.TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R> =>
   pipe(
     self,
     broadcastedQueues(n, maximumLag),
     Effect.map((tuple) =>
-      tuple.map((queue) => flattenTake(fromQueue(queue, { shutdown: true }))) as TupleOf<N, Stream.Stream<A, E>>
+      tuple.map((queue) => flattenTake(fromQueue(queue, { shutdown: true }))) as Types.TupleOf<N, Stream.Stream<A, E>>
     )
   ))
 
@@ -894,7 +894,7 @@ export const broadcastedQueues = dual<
     }
   ) => <A, E, R>(
     self: Stream.Stream<A, E, R>
-  ) => Effect.Effect<TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R>,
+  ) => Effect.Effect<Types.TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R>,
   <A, E, R, N extends number>(
     self: Stream.Stream<A, E, R>,
     n: N,
@@ -906,7 +906,7 @@ export const broadcastedQueues = dual<
       readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
       readonly replay?: number | undefined
     }
-  ) => Effect.Effect<TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R>
+  ) => Effect.Effect<Types.TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R>
 >(3, <A, E, R, N extends number>(
   self: Stream.Stream<A, E, R>,
   n: N,
@@ -918,11 +918,11 @@ export const broadcastedQueues = dual<
     readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
     readonly replay?: number | undefined
   }
-): Effect.Effect<TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R> =>
+): Effect.Effect<Types.TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R> =>
   Effect.flatMap(pubsubFromOptions(maximumLag), (pubsub) =>
     pipe(
       Effect.all(Array.from({ length: n }, () => PubSub.subscribe(pubsub))) as Effect.Effect<
-        TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>,
+        Types.TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>,
         never,
         R
       >,
@@ -1950,7 +1950,7 @@ export const distributedWith = dual<
   ) => <E, R>(
     self: Stream.Stream<A, E, R>
   ) => Effect.Effect<
-    TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>,
+    Types.TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>,
     never,
     Scope.Scope | R
   >,
@@ -1962,7 +1962,7 @@ export const distributedWith = dual<
       readonly decide: (a: A) => Effect.Effect<Predicate<number>>
     }
   ) => Effect.Effect<
-    TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>,
+    Types.TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>,
     never,
     Scope.Scope | R
   >
@@ -1976,7 +1976,7 @@ export const distributedWith = dual<
       readonly decide: (a: A) => Effect.Effect<Predicate<number>>
     }
   ): Effect.Effect<
-    TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>,
+    Types.TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>,
     never,
     Scope.Scope | R
   > =>
@@ -2015,7 +2015,7 @@ export const distributedWith = dual<
                   Deferred.succeed(deferred, (a: A) =>
                     Effect.map(options.decide(a), (f) => (key: number) => pipe(f(mappings.get(key)!)))),
                   Effect.as(
-                    Array.from(queues) as TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>
+                    Array.from(queues) as Types.TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>
                   )
                 )
               })
@@ -2314,7 +2314,7 @@ export const dropRight = dual<
 
 /** @internal */
 export const dropUntil = dual<
-  <A>(predicate: Predicate<NoInfer<A>>) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>,
+  <A>(predicate: Predicate<Types.NoInfer<A>>) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>,
   <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>) => Stream.Stream<A, E, R>
 >(
   2,
@@ -2325,17 +2325,17 @@ export const dropUntil = dual<
 /** @internal */
 export const dropUntilEffect = dual<
   <A, E2, R2>(
-    predicate: (a: NoInfer<A>) => Effect.Effect<boolean, E2, R2>
+    predicate: (a: Types.NoInfer<A>) => Effect.Effect<boolean, E2, R2>
   ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>,
   <A, E, R, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    predicate: (a: NoInfer<A>) => Effect.Effect<boolean, E2, R2>
+    predicate: (a: Types.NoInfer<A>) => Effect.Effect<boolean, E2, R2>
   ) => Stream.Stream<A, E2 | E, R2 | R>
 >(
   2,
   <A, E, R, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    predicate: (a: NoInfer<A>) => Effect.Effect<boolean, E2, R2>
+    predicate: (a: Types.NoInfer<A>) => Effect.Effect<boolean, E2, R2>
   ): Stream.Stream<A, E2 | E, R2 | R> => {
     const loop: Channel.Channel<Chunk.Chunk<A>, Chunk.Chunk<A>, E | E2, E, unknown, unknown, R2> = core.readWith({
       onInput: (input: Chunk.Chunk<A>) =>
@@ -2363,7 +2363,7 @@ export const dropUntilEffect = dual<
 
 /** @internal */
 export const dropWhile = dual<
-  <A>(predicate: Predicate<NoInfer<A>>) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>,
+  <A>(predicate: Predicate<Types.NoInfer<A>>) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>,
   <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>): Stream.Stream<A, E, R> => {
   const loop: Channel.Channel<Chunk.Chunk<A>, Chunk.Chunk<A>, never, never, unknown, unknown> = core.readWith({
@@ -2386,7 +2386,7 @@ export const dropWhile = dual<
 /** @internal */
 export const dropWhileEffect = dual<
   <A, E2, R2>(
-    predicate: (a: NoInfer<A>) => Effect.Effect<boolean, E2, R2>
+    predicate: (a: Types.NoInfer<A>) => Effect.Effect<boolean, E2, R2>
   ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>,
   <A, E, R, E2, R2>(
     self: Stream.Stream<A, E, R>,
@@ -2493,7 +2493,7 @@ export const failCauseSync = <E>(evaluate: LazyArg<Cause.Cause<E>>): Stream.Stre
 /** @internal */
 export const filter: {
   <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>
+    refinement: Refinement<Types.NoInfer<A>, B>
   ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<B, E, R>
   <A, B extends A>(predicate: Predicate<B>): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
   <A, E, R, B extends A>(self: Stream.Stream<A, E, R>, refinement: Refinement<A, B>): Stream.Stream<B, E, R>
@@ -2506,7 +2506,7 @@ export const filter: {
 /** @internal */
 export const filterEffect = dual<
   <A, E2, R2>(
-    f: (a: NoInfer<A>) => Effect.Effect<boolean, E2, R2>
+    f: (a: Types.NoInfer<A>) => Effect.Effect<boolean, E2, R2>
   ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>,
   <A, E, R, E2, R2>(
     self: Stream.Stream<A, E, R>,
@@ -2669,9 +2669,9 @@ export const finalizer = <R, X>(finalizer: Effect.Effect<X, never, R>): Stream.S
 /** @internal */
 export const find: {
   <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>
+    refinement: Refinement<Types.NoInfer<A>, B>
   ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<B, E, R>
-  <A>(predicate: Predicate<NoInfer<A>>): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
+  <A>(predicate: Predicate<Types.NoInfer<A>>): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
   <A, E, R, B extends A>(self: Stream.Stream<A, E, R>, refinement: Refinement<A, B>): Stream.Stream<B, E, R>
   <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>): Stream.Stream<A, E, R>
 } = dual(2, <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>): Stream.Stream<A, E, R> => {
@@ -2690,17 +2690,17 @@ export const find: {
 /** @internal */
 export const findEffect: {
   <A, E2, R2>(
-    predicate: (a: NoInfer<A>) => Effect.Effect<boolean, E2, R2>
+    predicate: (a: Types.NoInfer<A>) => Effect.Effect<boolean, E2, R2>
   ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>
   <A, E, R, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    predicate: (a: NoInfer<A>) => Effect.Effect<boolean, E2, R2>
+    predicate: (a: Types.NoInfer<A>) => Effect.Effect<boolean, E2, R2>
   ): Stream.Stream<A, E | E2, R | R2>
 } = dual(
   2,
   <A, E, R, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    predicate: (a: NoInfer<A>) => Effect.Effect<boolean, E2, R2>
+    predicate: (a: Types.NoInfer<A>) => Effect.Effect<boolean, E2, R2>
   ): Stream.Stream<A, E | E2, R | R2> => {
     const loop: Channel.Channel<Chunk.Chunk<A>, Chunk.Chunk<A>, E | E2, E, unknown, unknown, R2> = core.readWith({
       onInput: (input: Chunk.Chunk<A>) =>
@@ -4646,7 +4646,7 @@ export const peel = dual<
 /** @internal */
 export const partition: {
   <C extends A, B extends A, A = C>(
-    refinement: Refinement<NoInfer<A>, B>,
+    refinement: Refinement<Types.NoInfer<A>, B>,
     options?: {
       bufferSize?: number | undefined
     }
@@ -4706,7 +4706,7 @@ export const partition: {
 /** @internal */
 export const partitionEither = dual<
   <A, A3, A2, E2, R2>(
-    predicate: (a: NoInfer<A>) => Effect.Effect<Either.Either<A3, A2>, E2, R2>,
+    predicate: (a: Types.NoInfer<A>) => Effect.Effect<Either.Either<A3, A2>, E2, R2>,
     options?: {
       readonly bufferSize?: number | undefined
     }
@@ -4874,63 +4874,63 @@ export const provideLayer = dual<
 
 /** @internal */
 export const provideService = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    resource: Context.Tag.Service<T>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, Exclude<R, Context.Tag.Identifier<T>>>,
-  <A, E, R, T extends Context.Tag<any, any>>(
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    resource: Types.NoInfer<S>
+  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, Exclude<R, I>>,
+  <A, E, R, I, S>(
     self: Stream.Stream<A, E, R>,
-    tag: T,
-    resource: Context.Tag.Service<T>
-  ) => Stream.Stream<A, E, Exclude<R, Context.Tag.Identifier<T>>>
+    tag: Context.Tag<I, S>,
+    resource: Types.NoInfer<S>
+  ) => Stream.Stream<A, E, Exclude<R, I>>
 >(
   3,
-  <A, E, R, T extends Context.Tag<any, any>>(
+  <A, E, R, I, S>(
     self: Stream.Stream<A, E, R>,
-    tag: T,
-    resource: Context.Tag.Service<T>
+    tag: Context.Tag<I, S>,
+    resource: Types.NoInfer<S>
   ) => provideServiceEffect(self, tag, Effect.succeed(resource))
 )
 
 /** @internal */
 export const provideServiceEffect = dual<
-  <T extends Context.Tag<any, any>, E2, R2>(
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | Exclude<R, Context.Tag.Identifier<T>>>,
-  <A, E, R, T extends Context.Tag<any, any>, E2, R2>(
+  <I, S, E2, R2>(
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<Types.NoInfer<S>, E2, R2>
+  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | Exclude<R, I>>,
+  <A, E, R, I, S, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E2, R2>
-  ) => Stream.Stream<A, E2 | E, R2 | Exclude<R, Context.Tag.Identifier<T>>>
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<Types.NoInfer<S>, E2, R2>
+  ) => Stream.Stream<A, E2 | E, R2 | Exclude<R, I>>
 >(
   3,
-  <A, E, R, T extends Context.Tag<any, any>, E2, R2>(
+  <A, E, R, I, S, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E2, R2>
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<Types.NoInfer<S>, E2, R2>
   ) => provideServiceStream(self, tag, fromEffect(effect))
 )
 
 /** @internal */
 export const provideServiceStream = dual<
-  <T extends Context.Tag<any, any>, E2, R2>(
-    tag: T,
-    stream: Stream.Stream<Context.Tag.Service<T>, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | Exclude<R, Context.Tag.Identifier<T>>>,
-  <A, E, R, T extends Context.Tag<any, any>, E2, R2>(
+  <I, S, E2, R2>(
+    tag: Context.Tag<I, S>,
+    stream: Stream.Stream<Types.NoInfer<S>, E2, R2>
+  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | Exclude<R, I>>,
+  <A, E, R, I, S, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    tag: T,
-    stream: Stream.Stream<Context.Tag.Service<T>, E2, R2>
-  ) => Stream.Stream<A, E2 | E, R2 | Exclude<R, Context.Tag.Identifier<T>>>
+    tag: Context.Tag<I, S>,
+    stream: Stream.Stream<Types.NoInfer<S>, E2, R2>
+  ) => Stream.Stream<A, E2 | E, R2 | Exclude<R, I>>
 >(
   3,
-  <A, E, R, T extends Context.Tag<any, any>, E2, R2>(
+  <A, E, R, I, S, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    tag: T,
-    stream: Stream.Stream<Context.Tag.Service<T>, E2, R2>
-  ): Stream.Stream<A, E2 | E, R2 | Exclude<R, Context.Tag.Identifier<T>>> =>
-    contextWithStream((env: Context.Context<R2 | Exclude<R, Context.Tag.Identifier<T>>>) =>
+    tag: Context.Tag<I, S>,
+    stream: Stream.Stream<Types.NoInfer<S>, E2, R2>
+  ): Stream.Stream<A, E2 | E, R2 | Exclude<R, I>> =>
+    contextWithStream((env: Context.Context<R2 | Exclude<R, I>>) =>
       flatMap(
         stream,
         (service) => pipe(self, provideContext(Context.add(env, tag, service) as Context.Context<R | R2>))
@@ -6184,10 +6184,10 @@ export const slidingSize = dual<
 /** @internal */
 export const split: {
   <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>
+    refinement: Refinement<Types.NoInfer<A>, B>
   ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Chunk.Chunk<Exclude<A, B>>, E, R>
   <A>(
-    predicate: Predicate<NoInfer<A>>
+    predicate: Predicate<Types.NoInfer<A>>
   ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Chunk.Chunk<A>, E, R>
   <A, E, R, B extends A>(
     self: Stream.Stream<A, E, R>,
@@ -6370,7 +6370,7 @@ export const takeRight = dual<
 
 /** @internal */
 export const takeUntil: {
-  <A>(predicate: Predicate<NoInfer<A>>): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
+  <A>(predicate: Predicate<Types.NoInfer<A>>): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
   <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>): Stream.Stream<A, E, R>
 } = dual(2, <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>): Stream.Stream<A, E, R> => {
   const loop: Channel.Channel<Chunk.Chunk<A>, Chunk.Chunk<A>, never, never, unknown, unknown> = core.readWith({
@@ -6391,7 +6391,7 @@ export const takeUntil: {
 /** @internal */
 export const takeUntilEffect: {
   <A, E2, R2>(
-    predicate: (a: NoInfer<A>) => Effect.Effect<boolean, E2, R2>
+    predicate: (a: Types.NoInfer<A>) => Effect.Effect<boolean, E2, R2>
   ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>
   <A, E, R, E2, R2>(
     self: Stream.Stream<A, E, R>,
@@ -6434,9 +6434,9 @@ export const takeUntilEffect: {
 /** @internal */
 export const takeWhile: {
   <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>
+    refinement: Refinement<Types.NoInfer<A>, B>
   ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<B, E, R>
-  <A>(predicate: Predicate<NoInfer<A>>): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
+  <A>(predicate: Predicate<Types.NoInfer<A>>): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
   <A, E, R, B extends A>(self: Stream.Stream<A, E, R>, refinement: Refinement<A, B>): Stream.Stream<B, E, R>
   <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>): Stream.Stream<A, E, R>
 } = dual(2, <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>): Stream.Stream<A, E, R> => {
@@ -6458,17 +6458,17 @@ export const takeWhile: {
 /** @internal */
 export const tap: {
   <A, X, E2, R2>(
-    f: (a: NoInfer<A>) => Effect.Effect<X, E2, R2>
+    f: (a: Types.NoInfer<A>) => Effect.Effect<X, E2, R2>
   ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>
   <A, E, R, X, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    f: (a: NoInfer<A>) => Effect.Effect<X, E2, R2>
+    f: (a: Types.NoInfer<A>) => Effect.Effect<X, E2, R2>
   ): Stream.Stream<A, E | E2, R | R2>
 } = dual(
   2,
   <A, E, R, X, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    f: (a: NoInfer<A>) => Effect.Effect<X, E2, R2>
+    f: (a: Types.NoInfer<A>) => Effect.Effect<X, E2, R2>
   ): Stream.Stream<A, E | E2, R | R2> => mapEffectSequential(self, (a) => Effect.as(f(a), a))
 )
 
@@ -6476,15 +6476,15 @@ export const tap: {
 export const tapBoth: {
   <E, X1, E2, R2, A, X2, E3, R3>(
     options: {
-      readonly onFailure: (e: NoInfer<E>) => Effect.Effect<X1, E2, R2>
-      readonly onSuccess: (a: NoInfer<A>) => Effect.Effect<X2, E3, R3>
+      readonly onFailure: (e: Types.NoInfer<E>) => Effect.Effect<X1, E2, R2>
+      readonly onSuccess: (a: Types.NoInfer<A>) => Effect.Effect<X2, E3, R3>
     }
   ): <R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E | E2 | E3, R | R2 | R3>
   <A, E, R, X1, E2, R2, X2, E3, R3>(
     self: Stream.Stream<A, E, R>,
     options: {
-      readonly onFailure: (e: NoInfer<E>) => Effect.Effect<X1, E2, R2>
-      readonly onSuccess: (a: NoInfer<A>) => Effect.Effect<X2, E3, R3>
+      readonly onFailure: (e: Types.NoInfer<E>) => Effect.Effect<X1, E2, R2>
+      readonly onSuccess: (a: Types.NoInfer<A>) => Effect.Effect<X2, E3, R3>
     }
   ): Stream.Stream<A, E | E2 | E3, R | R2 | R3>
 } = dual(
@@ -6492,8 +6492,8 @@ export const tapBoth: {
   <A, E, R, X1, E2, R2, X2, E3, R3>(
     self: Stream.Stream<A, E, R>,
     options: {
-      readonly onFailure: (e: NoInfer<E>) => Effect.Effect<X1, E2, R2>
-      readonly onSuccess: (a: NoInfer<A>) => Effect.Effect<X2, E3, R3>
+      readonly onFailure: (e: Types.NoInfer<E>) => Effect.Effect<X1, E2, R2>
+      readonly onSuccess: (a: Types.NoInfer<A>) => Effect.Effect<X2, E3, R3>
     }
   ): Stream.Stream<A, E | E2 | E3, R | R2 | R3> => pipe(self, tapError(options.onFailure), tap(options.onSuccess))
 )
@@ -6501,7 +6501,7 @@ export const tapBoth: {
 /** @internal */
 export const tapError: {
   <E, X, E2, R2>(
-    f: (error: NoInfer<E>) => Effect.Effect<X, E2, R2>
+    f: (error: Types.NoInfer<E>) => Effect.Effect<X, E2, R2>
   ): <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E | E2, R2 | R>
   <A, E, R, X, E2, R2>(
     self: Stream.Stream<A, E, R>,
@@ -6519,7 +6519,7 @@ export const tapError: {
 /** @internal */
 export const tapErrorCause: {
   <E, X, E2, R2>(
-    f: (cause: Cause.Cause<NoInfer<E>>) => Effect.Effect<X, E2, R2>
+    f: (cause: Cause.Cause<Types.NoInfer<E>>) => Effect.Effect<X, E2, R2>
   ): <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E | E2, R2 | R>
   <A, E, R, X, E2, R2>(
     self: Stream.Stream<A, E, R>,
@@ -7266,22 +7266,22 @@ export const unwrapScopedWith = <A, E2, R2, E, R>(
 
 /** @internal */
 export const updateService = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, T | R>,
-  <A, E, R, T extends Context.Tag<any, any>>(
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    f: (service: Types.NoInfer<S>) => Types.NoInfer<S>
+  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, I | R>,
+  <A, E, R, I, S>(
     self: Stream.Stream<A, E, R>,
-    tag: T,
-    f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>
-  ) => Stream.Stream<A, E, T | R>
+    tag: Context.Tag<I, S>,
+    f: (service: Types.NoInfer<S>) => Types.NoInfer<S>
+  ) => Stream.Stream<A, E, I | R>
 >(
   3,
-  <A, E, R, T extends Context.Tag<any, any>>(
+  <A, E, R, I, S>(
     self: Stream.Stream<A, E, R>,
-    tag: T,
-    f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>
-  ): Stream.Stream<A, E, T | R> =>
+    tag: Context.Tag<I, S>,
+    f: (service: Types.NoInfer<S>) => Types.NoInfer<S>
+  ): Stream.Stream<A, E, I | R> =>
     pipe(
       self,
       mapInputContext((context) =>
@@ -8501,7 +8501,7 @@ export const Do: Stream.Stream<{}> = succeed({})
 export const bind = dual<
   <N extends string, A, B, E2, R2>(
     tag: Exclude<N, keyof A>,
-    f: (_: NoInfer<A>) => Stream.Stream<B, E2, R2>,
+    f: (_: Types.NoInfer<A>) => Stream.Stream<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
@@ -8514,7 +8514,7 @@ export const bind = dual<
   <A, E, R, N extends string, B, E2, R2>(
     self: Stream.Stream<A, E, R>,
     tag: Exclude<N, keyof A>,
-    f: (_: NoInfer<A>) => Stream.Stream<B, E2, R2>,
+    f: (_: Types.NoInfer<A>) => Stream.Stream<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
@@ -8549,14 +8549,14 @@ export const bindTo: {
 export const let_: {
   <N extends string, A extends object, B>(
     name: Exclude<N, keyof A>,
-    f: (a: NoInfer<A>) => B
+    f: (a: Types.NoInfer<A>) => B
   ): <E, R>(
     self: Stream.Stream<A, E, R>
   ) => Stream.Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
   <A extends object, E, R, N extends string, B>(
     self: Stream.Stream<A, E, R>,
     name: Exclude<N, keyof A>,
-    f: (a: NoInfer<A>) => B
+    f: (a: Types.NoInfer<A>) => B
   ): Stream.Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = doNotation.let_<Stream.StreamTypeLambda>(map)
 

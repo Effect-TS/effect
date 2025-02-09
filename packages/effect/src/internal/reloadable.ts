@@ -25,13 +25,13 @@ const reloadableVariance = {
 }
 
 /** @internal */
-export const auto = <Out extends Context.Tag<any, any>, E, In, R>(
-  tag: Out,
+export const auto = <I, S, E, In, R>(
+  tag: Context.Tag<I, S>,
   options: {
-    readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In>
+    readonly layer: Layer.Layer<I, E, In>
     readonly schedule: Schedule.Schedule<unknown, unknown, R>
   }
-): Layer.Layer<Reloadable.Reloadable<Context.Tag.Identifier<Out>>, E, R | In> =>
+): Layer.Layer<Reloadable.Reloadable<I>, E, R | In> =>
   layer_.scoped(
     reloadableTag(tag),
     pipe(
@@ -52,13 +52,13 @@ export const auto = <Out extends Context.Tag<any, any>, E, In, R>(
   )
 
 /** @internal */
-export const autoFromConfig = <Out extends Context.Tag<any, any>, E, In, R>(
-  tag: Out,
+export const autoFromConfig = <I, S, E, In, R>(
+  tag: Context.Tag<I, S>,
   options: {
-    readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In>
+    readonly layer: Layer.Layer<I, E, In>
     readonly scheduleFromConfig: (context: Context.Context<In>) => Schedule.Schedule<unknown, unknown, R>
   }
-): Layer.Layer<Reloadable.Reloadable<Context.Tag.Identifier<Out>>, E, R | In> =>
+): Layer.Layer<Reloadable.Reloadable<I>, E, R | In> =>
   layer_.scoped(
     reloadableTag(tag),
     pipe(
@@ -76,21 +76,21 @@ export const autoFromConfig = <Out extends Context.Tag<any, any>, E, In, R>(
   )
 
 /** @internal */
-export const get = <T extends Context.Tag<any, any>>(
-  tag: T
-): Effect.Effect<Context.Tag.Service<T>, never, Reloadable.Reloadable<Context.Tag.Identifier<T>>> =>
+export const get = <I, S>(
+  tag: Context.Tag<I, S>
+): Effect.Effect<S, never, Reloadable.Reloadable<I>> =>
   core.flatMap(
     reloadableTag(tag),
     (reloadable) => scopedRef.get(reloadable.scopedRef)
   )
 
 /** @internal */
-export const manual = <Out extends Context.Tag<any, any>, In, E>(
-  tag: Out,
+export const manual = <I, S, In, E>(
+  tag: Context.Tag<I, S>,
   options: {
-    readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In>
+    readonly layer: Layer.Layer<I, E, In>
   }
-): Layer.Layer<Reloadable.Reloadable<Context.Tag.Identifier<Out>>, E, In> =>
+): Layer.Layer<Reloadable.Reloadable<I>, E, In> =>
   layer_.scoped(
     reloadableTag(tag),
     pipe(
@@ -112,28 +112,25 @@ export const manual = <Out extends Context.Tag<any, any>, In, E>(
   )
 
 /** @internal */
-export const reloadableTag = <T extends Context.Tag<any, any>>(
-  tag: T
-): Context.Tag<Reloadable.Reloadable<Context.Tag.Identifier<T>>, Reloadable.Reloadable<Context.Tag.Service<T>>> => {
-  return Context.GenericTag<
-    Reloadable.Reloadable<Context.Tag.Identifier<T>>,
-    Reloadable.Reloadable<Context.Tag.Service<T>>
-  >(`effect/Reloadable<${tag.key}>`)
+export const reloadableTag = <I, S>(
+  tag: Context.Tag<I, S>
+): Context.Tag<Reloadable.Reloadable<I>, Reloadable.Reloadable<S>> => {
+  return Context.GenericTag<Reloadable.Reloadable<I>, Reloadable.Reloadable<S>>(`effect/Reloadable<${tag.key}>`)
 }
 
 /** @internal */
-export const reload = <T extends Context.Tag<any, any>>(
-  tag: T
-): Effect.Effect<void, unknown, Reloadable.Reloadable<Context.Tag.Identifier<T>>> =>
+export const reload = <I, S>(
+  tag: Context.Tag<I, S>
+): Effect.Effect<void, unknown, Reloadable.Reloadable<I>> =>
   core.flatMap(
     reloadableTag(tag),
     (reloadable) => reloadable.reload
   )
 
 /** @internal */
-export const reloadFork = <T extends Context.Tag<any, any>>(
-  tag: T
-): Effect.Effect<void, unknown, Reloadable.Reloadable<Context.Tag.Identifier<T>>> =>
+export const reloadFork = <I, S>(
+  tag: Context.Tag<I, S>
+): Effect.Effect<void, unknown, Reloadable.Reloadable<I>> =>
   core.flatMap(reloadableTag(tag), (reloadable) =>
     pipe(
       reloadable.reload,

@@ -3647,15 +3647,8 @@ export const provideLayer: {
  * @category context
  */
 export const provideService: {
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    resource: Context.Tag.Service<T>
-  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, Exclude<R, Context.Tag.Identifier<T>>>
-  <A, E, R, T extends Context.Tag<any, any>>(
-    self: Stream<A, E, R>,
-    tag: T,
-    resource: Context.Tag.Service<T>
-  ): Stream<A, E, Exclude<R, Context.Tag.Identifier<T>>>
+  <I, S>(tag: Context.Tag<I, S>, resource: NoInfer<S>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, Exclude<R, I>>
+  <A, E, R, I, S>(self: Stream<A, E, R>, tag: Context.Tag<I, S>, resource: NoInfer<S>): Stream<A, E, Exclude<R, I>>
 } = internal.provideService
 
 /**
@@ -3666,15 +3659,15 @@ export const provideService: {
  * @category context
  */
 export const provideServiceEffect: {
-  <T extends Context.Tag<any, any>, E2, R2>(
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E2, R2>
-  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | Exclude<R, Context.Tag.Identifier<T>>>
-  <A, E, R, T extends Context.Tag<any, any>, E2, R2>(
+  <I, S, E2, R2>(
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<NoInfer<S>, E2, R2>
+  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | Exclude<R, I>>
+  <A, E, R, I, S, E2, R2>(
     self: Stream<A, E, R>,
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E2, R2>
-  ): Stream<A, E | E2, R2 | Exclude<R, Context.Tag.Identifier<T>>>
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<NoInfer<S>, E2, R2>
+  ): Stream<A, E2 | E, R2 | Exclude<R, I>>
 } = internal.provideServiceEffect
 
 /**
@@ -3685,15 +3678,15 @@ export const provideServiceEffect: {
  * @category context
  */
 export const provideServiceStream: {
-  <T extends Context.Tag<any, any>, E2, R2>(
-    tag: T,
-    stream: Stream<Context.Tag.Service<T>, E2, R2>
-  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | Exclude<R, Context.Tag.Identifier<T>>>
-  <A, E, R, T extends Context.Tag<any, any>, E2, R2>(
+  <I, S, E2, R2>(
+    tag: Context.Tag<I, S>,
+    stream: Stream<NoInfer<S>, E2, R2>
+  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | Exclude<R, I>>
+  <A, E, R, I, S, E2, R2>(
     self: Stream<A, E, R>,
-    tag: T,
-    stream: Stream<Context.Tag.Service<T>, E2, R2>
-  ): Stream<A, E | E2, R2 | Exclude<R, Context.Tag.Identifier<T>>>
+    tag: Context.Tag<I, S>,
+    stream: Stream<NoInfer<S>, E2, R2>
+  ): Stream<A, E2 | E, R2 | Exclude<R, I>>
 } = internal.provideServiceStream
 
 /**
@@ -5478,15 +5471,15 @@ export const unwrapScopedWith: <A, E2, R2, E, R>(
  * @category context
  */
 export const updateService: {
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>
-  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, T | R>
-  <A, E, R, T extends Context.Tag<any, any>>(
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    f: (service: NoInfer<S>) => NoInfer<S>
+  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, I | R>
+  <A, E, R, I, S>(
     self: Stream<A, E, R>,
-    tag: T,
-    f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>
-  ): Stream<A, E, R | T>
+    tag: Context.Tag<I, S>,
+    f: (service: NoInfer<S>) => NoInfer<S>
+  ): Stream<A, E, I | R>
 } = internal.updateService
 
 /**

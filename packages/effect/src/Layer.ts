@@ -270,13 +270,8 @@ export const discard: <RIn, E, ROut>(self: Layer<ROut, E, RIn>) => Layer<never, 
  * @category constructors
  */
 export const effect: {
-  <T extends Context.Tag<any, any>>(
-    tag: T
-  ): <E, R>(effect: Effect.Effect<Context.Tag.Service<T>, E, R>) => Layer<Context.Tag.Identifier<T>, E, R>
-  <T extends Context.Tag<any, any>, E, R>(
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E, R>
-  ): Layer<Context.Tag.Identifier<T>, E, R>
+  <I, S>(tag: Context.Tag<I, S>): <E, R>(effect: Effect.Effect<Types.NoInfer<S>, E, R>) => Layer<I, E, R>
+  <I, S, E, R>(tag: Context.Tag<I, S>, effect: Effect.Effect<Types.NoInfer<S>, E, R>): Layer<I, E, R>
 } = internal.fromEffect
 
 /**
@@ -384,11 +379,11 @@ export const flatten: {
  */
 export const fresh: <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, R> = internal.fresh
 
-const fromFunction: <A extends Context.Tag<any, any>, B extends Context.Tag<any, any>>(
-  tagA: A,
-  tagB: B,
-  f: (a: Context.Tag.Service<A>) => Context.Tag.Service<B>
-) => Layer<Context.Tag.Identifier<B>, never, Context.Tag.Identifier<A>> = internal.fromFunction
+const fromFunction: <I1, S1, I2, S2>(
+  tagA: Context.Tag<I1, S1>,
+  tagB: Context.Tag<I2, S2>,
+  f: (a: Types.NoInfer<S1>) => Types.NoInfer<S2>
+) => Layer<I2, never, I1> = internal.fromFunction
 
 export {
   /**
@@ -558,17 +553,17 @@ export const passthrough: <RIn, E, ROut>(self: Layer<ROut, E, RIn>) => Layer<RIn
  * @category utils
  */
 export const project: {
-  <A extends Context.Tag<any, any>, B extends Context.Tag<any, any>>(
-    tagA: A,
-    tagB: B,
-    f: (a: Context.Tag.Service<A>) => Context.Tag.Service<B>
-  ): <RIn, E>(self: Layer<Context.Tag.Identifier<A>, E, RIn>) => Layer<Context.Tag.Identifier<B>, E, RIn>
-  <RIn, E, A extends Context.Tag<any, any>, B extends Context.Tag<any, any>>(
-    self: Layer<Context.Tag.Identifier<A>, E, RIn>,
-    tagA: A,
-    tagB: B,
-    f: (a: Context.Tag.Service<A>) => Context.Tag.Service<B>
-  ): Layer<Context.Tag.Identifier<B>, E, RIn>
+  <I1, S1, I2, S2>(
+    tagA: Context.Tag<I1, S1>,
+    tagB: Context.Tag<I2, S2>,
+    f: (a: Types.NoInfer<S1>) => Types.NoInfer<S2>
+  ): <RIn, E>(self: Layer<I1, E, RIn>) => Layer<I2, E, RIn>
+  <RIn, E, I1, S1, I2, S2>(
+    self: Layer<I1, E, RIn>,
+    tagA: Context.Tag<I1, S1>,
+    tagB: Context.Tag<I2, S2>,
+    f: (a: Types.NoInfer<S1>) => Types.NoInfer<S2>
+  ): Layer<I2, E, RIn>
 } = internal.project
 
 /**
@@ -657,15 +652,13 @@ export const scope: Layer<Scope.Scope> = internal.scope
  * @category constructors
  */
 export const scoped: {
-  <T extends Context.Tag<any, any>>(
-    tag: T
-  ): <E, R>(
-    effect: Effect.Effect<Context.Tag.Service<T>, E, R>
-  ) => Layer<Context.Tag.Identifier<T>, E, Exclude<R, Scope.Scope>>
-  <T extends Context.Tag<any, any>, E, R>(
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E, R>
-  ): Layer<Context.Tag.Identifier<T>, E, Exclude<R, Scope.Scope>>
+  <I, S>(
+    tag: Context.Tag<I, S>
+  ): <E, R>(effect: Effect.Effect<Types.NoInfer<S>, E, R>) => Layer<I, E, Exclude<R, Scope.Scope>>
+  <I, S, E, R>(
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<Types.NoInfer<S>, E, R>
+  ): Layer<I, E, Exclude<R, Scope.Scope>>
 } = internal.scoped
 
 /**
@@ -695,9 +688,7 @@ export const scopedContext: <A, E, R>(
  * @since 2.0.0
  * @category constructors
  */
-export const service: <T extends Context.Tag<any, any>>(
-  tag: T
-) => Layer<Context.Tag.Identifier<T>, never, Context.Tag.Identifier<T>> = internal.service
+export const service: <I, S>(tag: Context.Tag<I, S>) => Layer<I, never, I> = internal.service
 
 /**
  * Constructs a layer from the specified value.
@@ -706,13 +697,8 @@ export const service: <T extends Context.Tag<any, any>>(
  * @category constructors
  */
 export const succeed: {
-  <T extends Context.Tag<any, any>>(
-    tag: T
-  ): (resource: Context.Tag.Service<T>) => Layer<Context.Tag.Identifier<T>>
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    resource: Context.Tag.Service<T>
-  ): Layer<Context.Tag.Identifier<T>>
+  <I, S>(tag: Context.Tag<I, S>): (resource: Types.NoInfer<S>) => Layer<I>
+  <I, S>(tag: Context.Tag<I, S>, resource: Types.NoInfer<S>): Layer<I>
 } = internal.succeed
 
 /**
@@ -740,13 +726,8 @@ export const suspend: <RIn, E, ROut>(evaluate: LazyArg<Layer<ROut, E, RIn>>) => 
  * @category constructors
  */
 export const sync: {
-  <T extends Context.Tag<any, any>>(
-    tag: T
-  ): (evaluate: LazyArg<Context.Tag.Service<T>>) => Layer<Context.Tag.Identifier<T>>
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    evaluate: LazyArg<Context.Tag.Service<T>>
-  ): Layer<Context.Tag.Identifier<T>>
+  <I, S>(tag: Context.Tag<I, S>): (evaluate: LazyArg<Types.NoInfer<S>>) => Layer<I>
+  <I, S>(tag: Context.Tag<I, S>, evaluate: LazyArg<Types.NoInfer<S>>): Layer<I>
 } = internal.sync
 
 /**

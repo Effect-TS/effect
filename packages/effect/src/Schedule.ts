@@ -920,15 +920,15 @@ export const provideContext: {
  * @category context
  */
 export const provideService: {
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    service: Context.Tag.Service<T>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, Exclude<R, Context.Tag.Identifier<T>>>
-  <Out, In, R, T extends Context.Tag<any, any>>(
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    service: Types.NoInfer<S>
+  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, Exclude<R, I>>
+  <Out, In, R, I, S>(
     self: Schedule<Out, In, R>,
-    tag: T,
-    service: Context.Tag.Service<T>
-  ): Schedule<Out, In, Exclude<R, Context.Tag.Identifier<T>>>
+    tag: Context.Tag<I, S>,
+    service: Types.NoInfer<S>
+  ): Schedule<Out, In, Exclude<R, I>>
 } = internal.provideService
 
 /**
