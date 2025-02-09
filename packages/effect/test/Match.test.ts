@@ -1,9 +1,40 @@
 import { describe, it } from "@effect/vitest"
 import { Either, Match as M, Option, pipe, Predicate } from "effect"
-import { assertFalse, assertLeft, assertRight, assertSome, assertTrue, strictEqual } from "effect/test/util"
+import {
+  assertFalse,
+  assertLeft,
+  assertNone,
+  assertRight,
+  assertSome,
+  assertTrue,
+  strictEqual,
+  throws
+} from "effect/test/util"
 import { assertType } from "effect/test/utils/types"
 
 describe("Match", () => {
+  it("TypeMatcher.pipe() method", () => {
+    const match = M.type<string | number>().pipe(
+      M.when(M.number, (n) => `number: ${n}`),
+      M.when(M.string, (s) => `string: ${s}`),
+      M.exhaustive
+    )
+
+    strictEqual(match(123), "number: 123")
+    strictEqual(match("hello"), "string: hello")
+  })
+
+  it("ValueMatcher.pipe() method", () => {
+    const input: string | number = 123
+    const match = M.value(input).pipe(
+      M.when(M.number, (n) => `number: ${n}`),
+      M.when(M.string, (s) => `string: ${s}`),
+      M.exhaustive
+    )
+
+    strictEqual(match, "number: 123")
+  })
+
   it("exhaustive", () => {
     const match = pipe(
       M.type<{ a: number } | { b: number }>(),
@@ -85,6 +116,8 @@ describe("Match", () => {
       M.option
     )
 
+    assertNone(match({ length: 2 } as any))
+    assertNone(match(["a", "b"]))
     assertSome(match(["yeah", "a"]), true)
   })
 
@@ -238,6 +271,13 @@ describe("Match", () => {
 
     strictEqual(match({ age: 4 }), "Age: 4")
     strictEqual(match({ age: 5 }), "5 is too old")
+
+    const result = pipe(
+      M.value({ age: 4 }),
+      M.not({ age: (a) => a >= 5 }, (_) => `Age: ${_.age}`),
+      M.orElse((_) => `${_.age} is too old`)
+    )
+    strictEqual(result, "Age: 4")
   })
 
   it("predicate with functions", () => {
@@ -742,5 +782,67 @@ describe("Match", () => {
       // @ts-expect-error
       M.orElse((_) => "c")
     )
+  })
+
+  it("nonEmptyString", () => {
+    const match = M.type<string | number>().pipe(
+      M.when(M.nonEmptyString, () => "ok"),
+      M.orElse(() => "empty")
+    )
+
+    strictEqual(match("hello"), "ok")
+    strictEqual(match(""), "empty")
+  })
+
+  it("is", () => {
+    const match = M.type<string>().pipe(
+      M.when(M.is("A"), () => "ok"),
+      M.orElse(() => "ko")
+    )
+
+    strictEqual(match("A"), "ok")
+    strictEqual(match("C"), "ko")
+  })
+
+  it("orElseAbsurd should throw if a match is not found", () => {
+    const match = M.type<string>().pipe(
+      M.when(M.is("A", "B"), () => "ok"),
+      M.orElseAbsurd
+    )
+    strictEqual(match("A"), "ok")
+    strictEqual(match("B"), "ok")
+    throws(() => match("C"), new Error("effect/Match/orElseAbsurd: absurd"))
+  })
+
+  it("option (with M.value) should return None if a match is not found", () => {
+    const result = M.value("C").pipe(
+      M.when(M.is("A", "B"), () => "ok"),
+      M.option
+    )
+    assertNone(result)
+  })
+
+  it("exhaustive should throw on invalid inputs", () => {
+    const match = M.type<"A">().pipe(
+      M.when(M.is("A"), () => "ok"),
+      M.exhaustive
+    )
+
+    throws(() => match("C" as "A"))
+
+    throws(() =>
+      M.value("C" as "A").pipe(
+        M.when(M.is("A"), () => "ok"),
+        M.exhaustive
+      )
+    )
+  })
+
+  it("orElse (with M.value) should return the default if a match is not found", () => {
+    const result = M.value("C").pipe(
+      M.when(M.is("A", "B"), () => "ok"),
+      M.orElse(() => "default")
+    )
+    strictEqual(result, "default")
   })
 })
