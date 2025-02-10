@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Effect } from "effect"
-import { assertInstanceOf, assertTrue, strictEqual } from "effect/test/util"
+import { assertEquals, assertInstanceOf, assertTrue, strictEqual } from "effect/test/util"
 
 describe("Effect.fn", () => {
   it.effect("catches defects in the function", () =>
@@ -63,5 +63,18 @@ describe("Effect.fn", () => {
       strictEqual(cause.left.defect.message, "test")
       assertInstanceOf(cause.right.defect, Error)
       strictEqual(cause.right.defect.message, "test2")
+    }))
+
+  it.effect("can access args in single pipe", () =>
+    Effect.gen(function*() {
+      const fn = Effect.fn("test")(
+        function*(n: number) {
+          return n
+        },
+        (effect, n) => Effect.map(effect, (a) => a + n),
+        (effect, n) => Effect.map(effect, (a) => a + n)
+      )
+      const n = yield* fn(1)
+      assertEquals(n, 3)
     }))
 })
