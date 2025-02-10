@@ -1,8 +1,6 @@
-# Comparisons
+# Schema vs. Zod: Key Differences and Features
 
-## Zod (v3)
-
-`effect/Schema` provides similar functionality to `zod`, with additional features and key differences that may suit specific use cases. Below is a summary of the main distinctions:
+`effect/Schema` provides similar functionality to `zod` (v3), with additional features and key differences that may suit specific use cases. Below is a summary of the main distinctions:
 
 1. **Bidirectional Transformations**
    `effect/Schema` supports both decoding (transforming raw data into validated data) and encoding (transforming validated data back into a format for external use). This makes it suitable for scenarios where data needs to be sent or received over a network. In contrast, `zod` focuses primarily on decoding.
@@ -16,7 +14,7 @@
 4. **Functional Programming Style**
    `effect/Schema` uses a style based on combinators and transformations. This approach provides greater flexibility when composing schemas and enables better tree shaking for optimized bundle sizes. On the other hand, `zod` uses a chainable API for defining schemas.
 
-### Parse, don't validate
+## Parse, don't validate
 
 `effect/Schema` adheres to the principle of [parse, don't validate](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/). This means that schemas are designed to parse input data into a validated and usable form, rather than simply checking if the data matches a set of rules. For example, instead of validating that a string conforms to a URL format (like `zod`'s `z.string().url()`), `effect/Schema` provides a schema to parse a string directly into a `URL` object.
 
@@ -53,7 +51,7 @@ ParseError: URL
 */
 ```
 
-### Basic usage
+## Basic usage
 
 Here are a couple of examples to introduce the basic usage of `zod` and `effect/Schema`.
 
@@ -129,11 +127,11 @@ type User = typeof User.Type
 // { readonly username: string }
 ```
 
-### Naming Conventions
+## Naming Conventions
 
 The naming conventions in `effect/Schema` are designed to be straightforward and logical, **focusing primarily on compatibility with JSON serialization**. This approach simplifies the understanding and use of schemas, especially for developers who are integrating web technologies where JSON is a standard data interchange format.
 
-#### Overview of Naming Strategies
+### Overview of Naming Strategies
 
 **JSON-Compatible Types**
 
@@ -155,11 +153,11 @@ For instance:
 
 The primary goal of these schemas is to ensure that domain objects can be easily serialized ("encoded") and deserialized ("decoded") for transmission over network connections, thus facilitating their transfer between different parts of an application or across different applications.
 
-#### Rationale
+### Rationale
 
 While JSON's ubiquity justifies its primary consideration in naming, the conventions also accommodate serialization for other types of transport. For instance, converting a `Date` to a string is a universally useful method for various communication protocols, not just JSON. Thus, the selected naming conventions serve as sensible defaults that prioritize clarity and ease of use, facilitating the serialization and deserialization processes across diverse technological environments.
 
-### Primitives
+## Primitives
 
 | Feature  | Zod           | Schema                  |
 | -------- | ------------- | ----------------------- |
@@ -191,11 +189,11 @@ While JSON's ubiquity justifies its primary consideration in naming, the convent
 | ------- | ----------- | -------------- |
 | Never   | `z.never()` | `Schema.Never` |
 
-### Coercion for primitives
+## Coercion for primitives
 
 No direct equivalent in `effect/Schema`.
 
-### Literals
+## Literals
 
 | Feature          | Zod                        | Schema                                       | Differences                                                                                         |
 | ---------------- | -------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------- |
@@ -206,7 +204,7 @@ No direct equivalent in `effect/Schema`.
 | Unique Symbol    | `z.literal(Symbol("foo"))` | `Schema.UniqueSymbolFromSelf(Symbol("foo"))` | Zod uses `z.literal`, while `effect/Schema` has a specific function for unique symbols.             |
 | Retrieving Value | `tuna.value // "tuna"`     | `tuna.literals // ["tuna"]`                  | Zod uses `.value` for a single literal, while Schema returns an array of literals with `.literals`. |
 
-### Strings
+## Strings
 
 The following tables compare the string handling features in `zod` and `effect/Schema`.
 
@@ -244,7 +242,7 @@ The following tables compare the string handling features in `zod` and `effect/S
 | Lowercase       | `z.string().toLowerCase()` | `Schema.Lowercase` | Syntax differs, but functionality is the same. |
 | Uppercase       | `z.string().toUpperCase()` | `Schema.Uppercase` | Syntax differs, but functionality is the same. |
 
-### Custom Error Messages
+## Custom Error Messages
 
 | Feature                      | zod                                                       | effect/Schema                                                                         | Differences                                          |
 | ---------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------- |
@@ -293,7 +291,7 @@ Schema.String.pipe(
 )
 ```
 
-### URLs
+## URLs
 
 In `zod`, the `z.string().url()` method validates string URLs. In `effect/Schema`, there is no direct equivalent. However, you can use `Schema.URL` to parse string URLs into `URL` objects.
 
@@ -316,7 +314,7 @@ ParseError: URL
 */
 ```
 
-### Datetimes
+## Datetimes
 
 In `zod`, the `z.string().datetime()` method validates ISO 8601 datetime strings. In `effect/Schema`, there is no direct equivalent. However, you can use `Schema.Date`, which parses a string into a `Date` object using the `new Date()` constructor.
 
@@ -343,7 +341,7 @@ ParseError: Date
 */
 ```
 
-### Numbers
+## Numbers
 
 The following tables provide a detailed comparison of number validations and custom error handling in `zod` and `effect/Schema`.
 
@@ -386,7 +384,7 @@ import { Schema } from "effect"
 Schema.Number.pipe(Schema.lessThanOrEqualTo(5, { message: () => "my message" }))
 ```
 
-### BigInts
+## BigInts
 
 | Feature                  | zod                         | effect/Schema                                               | Differences                                                              |
 | ------------------------ | --------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
@@ -400,7 +398,7 @@ Schema.Number.pipe(Schema.lessThanOrEqualTo(5, { message: () => "my message" }))
 | Non-Positive             | `z.bigint().nonpositive()`  | `Schema.BigInt.pipe(Schema.nonPositiveBigInt())`            |                                                                          |
 | Multiple Of              | `z.bigint().multipleOf(5n)` | Not available                                               | `zod` supports `.multipleOf`, which is not available in `effect/Schema`. |
 
-### Zod enums
+## Zod enums
 
 The table below summarizes the differences between `zod` and `effect/Schema` for enums.
 
@@ -427,7 +425,7 @@ const FishEnum = Schema.Literal("Salmon", "Tuna", "Trout")
 FishEnum.literals // readonly ["Salmon", "Tuna", "Trout"]
 ```
 
-### Native enums
+## Native enums
 
 Both `zod` and `effect/Schema` support working with native TypeScript `enum`s, enabling validation of enum values.
 
@@ -477,7 +475,7 @@ Schema.decodeUnknownSync(FruitEnum)(1) // passes
 Schema.decodeUnknownSync(FruitEnum)(3) // fails
 ```
 
-### Optionals
+## Optionals
 
 In both `zod` and `effect/Schema`, you can mark a field as optional, indicating that the property may or may not be present in the object.
 
@@ -505,7 +503,7 @@ const user = Schema.Struct({
 type Type = typeof user.Type // { readonly username?: string | undefined };
 ```
 
-### Nullables
+## Nullables
 
 Both `zod` and `effect/Schema` allow you to define nullable fields, meaning a value can either have the specified type or be `null`.
 
@@ -531,7 +529,7 @@ Schema.decodeUnknownSync(nullableString)("asdf") // => "asdf"
 Schema.decodeUnknownSync(nullableString)(null) // => null
 ```
 
-### Objects
+## Objects
 
 Both `zod` and `effect/Schema` support object schemas where all properties are required by default.
 
@@ -577,7 +575,7 @@ type Dog = {
 }
 ```
 
-#### shape
+### shape
 
 Both libraries allow access to the individual schemas of object fields.
 
@@ -597,7 +595,7 @@ Dog.fields.name // => String schema
 Dog.fields.age // => Number schema
 ```
 
-#### keyof
+### keyof
 
 Both libraries allow extracting the keys of an object schema as a new schema.
 
@@ -618,7 +616,7 @@ Schema
 const keySchema = Schema.keyof(Dog)
 ```
 
-#### extend
+### extend
 
 Objects can be extended to include additional properties.
 
@@ -650,7 +648,7 @@ const DogWithBreed = Schema.Struct({
 })
 ```
 
-#### pick / omit
+### pick / omit
 
 Fields can be selected or removed from an object schema.
 
@@ -686,7 +684,7 @@ const JustTheName = Recipe.pick("name")
 const NoIDRecipe = Recipe.omit("id")
 ```
 
-#### partial
+### partial
 
 All fields in an object schema can be made optional.
 
@@ -716,11 +714,11 @@ const user = Schema.Struct({
 const partialUser = Schema.partial(user)
 ```
 
-#### deepPartial
+### deepPartial
 
 There is no direct equivalent for deeply making all fields optional in `effect/Schema`.
 
-#### required
+### required
 
 Both `zod` and `effect/Schema` allow you to make all fields in an object schema required.
 
@@ -752,7 +750,7 @@ const user = Schema.Struct({
 const requiredUser = Schema.required(user) // Converts all fields back to required
 ```
 
-#### passthrough
+### passthrough
 
 Both `zod` and `effect/Schema` provide mechanisms to handle additional properties that are not explicitly defined in an object schema. By default, both libraries ignore or strip these extra properties, but they also allow configurations to preserve them.
 
@@ -801,7 +799,7 @@ Schema.decodeUnknownSync(person)(
 // => { name: "bob dylan", extraKey: 61 }
 ```
 
-#### strict
+### strict
 
 Both `zod` and `effect/Schema` offer a way to enforce strict object schemas, meaning that any additional properties not defined in the schema will result in an error.
 
@@ -845,7 +843,7 @@ Schema.decodeUnknownSync(person)(
 // => throws ParseError
 ```
 
-#### catch
+### catch
 
 Both `zod` and `effect/Schema` allow you to define fallback values when parsing fails.
 
@@ -878,7 +876,7 @@ console.log(Schema.decodeUnknownSync(schema)(5)) // => 5
 console.log(Schema.decodeUnknownSync(schema)("tuna")) // => 42
 ```
 
-#### catchall
+### catchall
 
 Both `zod` and `effect/Schema` allow you to handle additional properties that are not explicitly defined in an object schema by applying a "catchall" schema to validate those properties. This is useful when dealing with objects that may include dynamic keys with uniform value types.
 
@@ -932,7 +930,7 @@ Schema.decodeUnknownSync(person)({
 // => throws ParseError
 ```
 
-### Arrays
+## Arrays
 
 Both `zod` and `effect/Schema` provide tools for defining schemas for arrays. These schemas validate that the input is an array and that each element in the array conforms to the specified schema.
 
@@ -955,7 +953,7 @@ import { Schema } from "effect"
 const stringArray = Schema.Array(Schema.String)
 ```
 
-#### Accessing the Element Schema
+### Accessing the Element Schema
 
 - In `zod`, the `.element` property is used to access the schema for the elements in the array.
 - In `effect/Schema`, the `.value` property serves the same purpose.
@@ -974,7 +972,7 @@ Schema
 stringArray.value // => String schema
 ```
 
-#### Defining Non-Empty Arrays
+### Defining Non-Empty Arrays
 
 - `zod` provides the `.nonempty()` method for array schemas to enforce that the array has at least one element.
 - `effect/Schema` uses `Schema.NonEmptyArray()` for the same functionality.
@@ -1010,7 +1008,7 @@ Error: readonly [string, ...string[]]
 Schema.decodeUnknownSync(nonEmptyStrings)(["Ariana Grande"]) // passes
 ```
 
-#### Array Length Validations
+### Array Length Validations
 
 - In `zod`, methods like `.min()`, `.max()`, and `.length()` are chained to set array length constraints.
 - In `effect/Schema`, length validations are applied using `pipe()` with combinators like `Schema.minItems()`, `Schema.maxItems()`, and `Schema.itemsCount()`.
@@ -1035,7 +1033,7 @@ Schema.Array(Schema.String).pipe(Schema.maxItems(5)) // must contain 5 or fewer 
 Schema.Array(Schema.String).pipe(Schema.itemsCount(5)) // must contain 5 items exactly
 ```
 
-### Tuples
+## Tuples
 
 Both `zod` and `effect/Schema` support tuples, allowing you to define fixed-length arrays where each element has a specific type.
 
@@ -1078,7 +1076,7 @@ const athleteSchema = Schema.Tuple(
 type Athlete = typeof athleteSchema.Type
 ```
 
-#### Variadic Tuples
+### Variadic Tuples
 
 - `zod` supports variadic tuples with the `.rest()` method, allowing the tuple to include additional elements of a specific type.
 - `effect/Schema` handles this by combining a fixed tuple schema with a rest schema for additional elements.
@@ -1104,7 +1102,7 @@ const result = Schema.decodeUnknownSync(variadicTuple)(["hello", 1, 2, 3])
 // => readonly [string, ...number[]];
 ```
 
-### Unions
+## Unions
 
 Both `zod` and `effect/Schema` support unions, which allow you to define a schema that accepts multiple types.
 
@@ -1138,12 +1136,12 @@ Schema.decodeUnknownSync(stringOrNumber)("foo") // passes
 Schema.decodeUnknownSync(stringOrNumber)(14) // passes
 ```
 
-### Discriminated unions
+## Discriminated unions
 
 In `zod`, discriminated unions must be explicitly declared using the `z.discriminatedUnion()` method.
 In `effect/Schema`, discriminated unions are automatically detected based on shared properties. No special method is needed to handle them.
 
-### Records
+## Records
 
 Both `zod` and `effect/Schema` support record schemas, which are used to validate objects with dynamic keys. A record schema ensures that all keys in the object match a specified schema and that their corresponding values also conform to a schema.
 
@@ -1175,7 +1173,7 @@ const UserStore = Schema.Record({ key: Schema.String, value: User })
 type UserStore = typeof UserStore.Type
 ```
 
-### Maps
+## Maps
 
 Both `zod` and `effect/Schema` support schemas for `Map` objects, where keys and values can be validated using specified schemas.
 
@@ -1211,7 +1209,7 @@ const map2 = Schema.ReadonlyMap({ key: Schema.String, value: Schema.Number })
 type Map2 = typeof map2.Type
 ```
 
-### Sets
+## Sets
 
 Both `zod` and `effect/Schema` support schemas for `Set` objects, allowing you to validate sets where all elements conform to a specified schema.
 
@@ -1246,13 +1244,13 @@ const set2 = Schema.ReadonlySet(Schema.Number)
 type Set2 = typeof set2.Type
 ```
 
-### Intersections
+## Intersections
 
 In `zod`, intersections are used to combine multiple schemas into one, requiring the input to satisfy all the combined schemas.
 
 `effect/Schema` does not have a direct equivalent for intersections. However, similar behavior can be achieved using `Schema.extend()` to merge two or more struct schemas, or by spreading fields from multiple schemas into a new `Schema.Struct()`.
 
-### Recursive types
+## Recursive types
 
 Both `zod` and `effect/Schema` support defining recursive types, which are types that reference themselves. Recursive types are commonly used for hierarchical data structures such as trees, graphs, or nested categories.
 
@@ -1296,11 +1294,11 @@ const categorySchema: Schema.Schema<Category> = Schema.Struct({
 })
 ```
 
-### Promises
+## Promises
 
 No direct equivalent in `effect/Schema`.
 
-### Instanceof
+## Instanceof
 
 Both `zod` and `effect/Schema` support validating instances of classes or constructors using their `instanceof` functionality.
 
@@ -1340,15 +1338,15 @@ Schema.decodeUnknownSync(TestSchema)(new Test()) // passes
 Schema.decodeUnknownSync(TestSchema)(blob) // throws
 ```
 
-### Functions
+## Functions
 
 No direct equivalent in `effect/Schema`.
 
-### Preprocess
+## Preprocess
 
 No direct equivalent in `effect/Schema`.
 
-### Custom schemas
+## Custom schemas
 
 Both `zod` and `effect/Schema` allow you to define custom schemas for validation scenarios that fall outside the scope of built-in schema types.
 
@@ -1357,7 +1355,7 @@ Both `zod` and `effect/Schema` allow you to define custom schemas for validation
 
 See the [Schema.declare](https://effect.website/docs/schema/advanced-usage/#declaring-new-data-types) documentation for more details.
 
-### refine / superRefine
+## refine / superRefine
 
 Both `zod` and `effect/Schema` allow you to add custom validation rules to existing schemas. These rules are useful for applying constraints that go beyond the basic validation logic provided by the libraries' built-in schema types.
 
@@ -1366,7 +1364,7 @@ Both `zod` and `effect/Schema` allow you to add custom validation rules to exist
 
 See the [Schema.filter](https://effect.website/docs/schema/filters/) and [Schema.filterEffect](https://effect.website/docs/schema/transformations/#effectful-filters) documentation for more details.
 
-### transform
+## transform
 
 Both `zod` and `effect/Schema` provide functionality to transform input data into a desired format during parsing. Transformations are useful when you need to derive new values, normalize input, or map raw data into a structure that is more convenient for further processing. While the capabilities of the two libraries overlap, there are differences in how transformations are defined and applied.
 
@@ -1375,7 +1373,7 @@ Both `zod` and `effect/Schema` provide functionality to transform input data int
 
 See the [transform](https://effect.website/docs/schema/transformations/#transform) and [transformOrFail](https://effect.website/docs/schema/transformations/#transformorfail) documentation for more details.
 
-### describe
+## describe
 
 Both `zod` and `effect/Schema` allow you to attach descriptive metadata to schemas. This feature is useful for documentation, error reporting, or providing additional context about a schema's purpose. The description does not affect validation or parsing; it serves purely as a human-readable explanation.
 
@@ -1413,7 +1411,7 @@ Output:
 */
 ```
 
-### nullish
+## nullish
 
 Both `zod` and `effect/Schema` provide support for schemas that allow values to be `null` or `undefined` in addition to a specified type.
 
@@ -1436,7 +1434,7 @@ import { Schema } from "effect"
 const nullishString = Schema.NullishOr(Schema.String) // string | null | undefined
 ```
 
-### brand
+## brand
 
 Both `zod` and `effect/Schema` support branding, a feature that allows you to tag types with a unique identifier without changing their runtime behavior. Branding is useful when you need stronger type distinctions for otherwise identical structures, preventing accidental misuse or mixing of similar types.
 
@@ -1459,6 +1457,6 @@ import { Schema } from "effect"
 const Cat = Schema.Struct({ name: Schema.String }).pipe(Schema.brand("Cat"))
 ```
 
-### readonly
+## readonly
 
 No equivalent as it's the default behavior.

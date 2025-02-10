@@ -1,1 +1,1 @@
-# @effect/ai-openai
+# `@effect/ai-openai`

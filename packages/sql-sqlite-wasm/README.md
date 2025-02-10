@@ -1,5 +1,7 @@
-# Effect SQL - SQLite
+# `@effect/sql-sqlite-wasm`
 
-An @effect/sql implementation using the `@sqlite.org/sqlite-wasm` library.
+An `@effect/sql` implementation using the `@sqlite.org/sqlite-wasm` library.
 
-See here for more information: https://github.com/Effect-TS/effect/tree/main/packages/sql
+## Documentation
+
+- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/sql-sqlite-wasm).

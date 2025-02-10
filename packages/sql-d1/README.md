@@ -1,5 +1,7 @@
-# Effect SQL - Cloudflare D1
+# `@effect/sql-d1`
 
-An @effect/sql implementation using cloudflare D1.
+An `@effect/sql` implementation for [Cloudflare D1](https://developers.cloudflare.com/d1/).
 
-See here for more information: https://github.com/Effect-TS/effect/tree/main/packages/sql
+## Documentation
+
+- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/sql-d1).

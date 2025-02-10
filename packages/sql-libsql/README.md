@@ -1,5 +1,7 @@
-# Effect SQL - libSQL
+# `@effect/sql-libsql`
 
-An @effect/sql implementation using the `@libsql/client` library.
+An `@effect/sql` implementation using the `@libsql/client` library.
 
-See here for more information: https://github.com/Effect-TS/effect/tree/main/packages/sql
+## Documentation
+
+- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/sql-libsql).
