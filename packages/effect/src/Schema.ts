@@ -9771,7 +9771,7 @@ export class BooleanFromUnknown extends transform(
  * @since 3.11.0
  */
 export class BooleanFromString extends transform(
-  Literal("true", "false"),
+  Literal("true", "false").annotations({ description: "a string to be decoded into a boolean" }),
   Boolean$,
   { strict: true, decode: (value) => value === "true", encode: (value) => value ? "true" : "false" }
 ).annotations({ identifier: "BooleanFromString" }) {}

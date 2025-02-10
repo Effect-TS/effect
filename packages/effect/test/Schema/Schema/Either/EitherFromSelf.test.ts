@@ -43,7 +43,7 @@ describe("EitherFromSelf", () => {
       `Either<BooleanFromString, NumberFromString>
 └─ BooleanFromString
    └─ Encoded side transformation failure
-      └─ "true" | "false"
+      └─ a string to be decoded into a boolean
          ├─ Expected "true", actual ""
          └─ Expected "false", actual ""`
     )

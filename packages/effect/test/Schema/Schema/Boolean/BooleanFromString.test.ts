@@ -12,7 +12,7 @@ describe("BooleanFromString", () => {
       "a",
       `BooleanFromString
 └─ Encoded side transformation failure
-   └─ "true" | "false"
+   └─ a string to be decoded into a boolean
       ├─ Expected "true", actual "a"
       └─ Expected "false", actual "a"`
     )
