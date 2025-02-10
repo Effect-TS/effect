@@ -1,5 +1,7 @@
-# Effect SQL - Postgresql
+# `@effect/sql-pg`
 
-An @effect/sql implementation using the `postgres.js` library.
+An `@effect/sql` implementation using the `postgres.js` library.
 
-See here for more information: https://github.com/Effect-TS/effect/tree/main/packages/sql
+## Documentation
+
+- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/sql-pg).

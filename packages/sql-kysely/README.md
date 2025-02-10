@@ -1,6 +1,6 @@
-# Effect SQL - Kysely
+# `@effect/sql-kysely`
 
-A Kysely integration for @effect/sql.
+An `@effect/sql` implementation for [Kysely](https://kysely.dev/).
 
 ## Disclaimer
 
@@ -13,3 +13,7 @@ So use it at your own risk or pin your `Kysely` version to be sure to not have a
 | Kysely version  | Effect SQL - Kysely support |
 | --------------- | --------------------------- |
 | 0.26.1 - 0.27.3 | ✅                          |
+
+## Documentation
+
+- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/sql-kysely).

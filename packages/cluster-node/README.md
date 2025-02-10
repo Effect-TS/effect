@@ -1,3 +1,5 @@
-WIP.
+# `@effect/cluster-node`
 
-Docs: [https://effect-ts.github.io/effect/docs/cluster-node](https://effect-ts.github.io/effect/docs/cluster-node)
+## Documentation
+
+- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/cluster-node).
