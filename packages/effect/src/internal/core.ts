@@ -1431,7 +1431,7 @@ export const fnUntraced: Effect.fn.Gen = (body: Function, ...pipeables: Array<an
       : function(this: any, ...args: Array<any>) {
         let effect = fromIterator(() => body.apply(this, args))
         for (const x of pipeables) {
-          effect = x(effect)
+          effect = x(effect, ...args)
         }
         return effect
       },
