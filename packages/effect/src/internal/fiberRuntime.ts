@@ -3211,7 +3211,7 @@ export const scope: Effect.Effect<Scope.Scope, never, Scope.Scope> = scopeTag
 export interface ScopeImpl extends Scope.CloseableScope {
   state: {
     readonly _tag: "Open"
-    readonly finalizers: Set<Scope.Scope.Finalizer>
+    readonly finalizers: Map<{}, Scope.Scope.Finalizer>
   } | {
     readonly _tag: "Closed"
     readonly exit: Exit.Exit<unknown, unknown>
@@ -3220,7 +3220,7 @@ export interface ScopeImpl extends Scope.CloseableScope {
 
 const scopeUnsafeAddFinalizer = (scope: ScopeImpl, fin: Scope.Scope.Finalizer): void => {
   if (scope.state._tag === "Open") {
-    scope.state.finalizers.add(fin)
+    scope.state.finalizers.set({}, fin)
   }
 }
 
@@ -3237,12 +3237,13 @@ const ScopeImplProto: Omit<ScopeImpl, "strategy" | "state"> = {
         newScope.state = this.state
         return newScope
       }
+      const key = {}
       const fin = (exit: Exit.Exit<unknown, unknown>) => newScope.close(exit)
-      this.state.finalizers.add(fin)
+      this.state.finalizers.set(key, fin)
       scopeUnsafeAddFinalizer(newScope, (_) =>
         core.sync(() => {
           if (this.state._tag === "Open") {
-            this.state.finalizers.delete(fin)
+            this.state.finalizers.delete(key)
           }
         }))
       return newScope
@@ -3297,7 +3298,7 @@ const ScopeImplProto: Omit<ScopeImpl, "strategy" | "state"> = {
       if (this.state._tag === "Closed") {
         return fin(this.state.exit)
       }
-      this.state.finalizers.add(fin)
+      this.state.finalizers.set({}, fin)
       return core.void
     })
   }
@@ -3308,7 +3309,7 @@ const scopeUnsafeMake = (
 ): ScopeImpl => {
   const scope = Object.create(ScopeImplProto)
   scope.strategy = strategy
-  scope.state = { _tag: "Open", finalizers: new Set() }
+  scope.state = { _tag: "Open", finalizers: new Map() }
   return scope
 }
 

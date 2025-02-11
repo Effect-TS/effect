@@ -371,10 +371,11 @@ export const forkIn = dual<
               core.void :
               core.asVoid(core.interruptFiber(fiber))
           )
-        scopeImpl.state.finalizers.add(finalizer)
+        const key = {}
+        scopeImpl.state.finalizers.set(key, finalizer)
         fiber.addObserver(() => {
           if (scopeImpl.state._tag === "Closed") return
-          scopeImpl.state.finalizers.delete(finalizer)
+          scopeImpl.state.finalizers.delete(key)
         })
       } else {
         fiber.unsafeInterruptAsFork(parent.id())
