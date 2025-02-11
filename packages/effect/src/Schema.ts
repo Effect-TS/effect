@@ -8178,7 +8178,7 @@ type ClassAnnotations<Self, A> =
   | Annotations.Schema<Self>
   | readonly [
     Annotations.Schema<Self> | undefined,
-    Annotations.Schema<Self>?,
+    (Annotations.Schema<Self> | undefined)?,
     Annotations.Schema<A>?
   ]
 
@@ -8457,7 +8457,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
 <Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
   fieldsOr: Fields | HasFields<Fields>,
-  annotations?: ClassAnnotations<Self, Struct.Type<Fields>>
+  annotations?: ClassAnnotations<Self, Struct.Type<{ readonly _tag: tag<Tag> } & Fields>>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : TaggedClass<Self, Tag, { readonly _tag: tag<Tag> } & Fields> =>
 {
@@ -8520,7 +8520,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 <Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
   fieldsOr: Fields | HasFields<Fields>,
-  annotations?: ClassAnnotations<Self, Struct.Type<Fields>>
+  annotations?: ClassAnnotations<Self, Struct.Type<{ readonly _tag: tag<Tag> } & Fields>>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : TaggedErrorClass<
     Self,
@@ -10270,7 +10270,7 @@ export const TaggedRequest =
       success: Success
       payload: Payload
     },
-    annotations?: Annotations.Schema<Self>
+    annotations?: ClassAnnotations<Self, Struct.Type<{ readonly _tag: tag<Tag> } & Payload>>
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
     : TaggedRequestClass<
       Self,
