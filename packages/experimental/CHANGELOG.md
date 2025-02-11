@@ -1,5 +1,14 @@
 # @effect/experimental
 
+## 0.40.0
+
+### Patch Changes
+
+- Updated dependencies [[`b6a032f`](https://github.com/Effect-TS/effect/commit/b6a032f07bffa020a848c813881879395134fa20), [`42ddd5f`](https://github.com/Effect-TS/effect/commit/42ddd5f144ce9f9d94a036679ebbd626446d37f5), [`2fe447c`](https://github.com/Effect-TS/effect/commit/2fe447c6354d334f9c591b8a8481818f5f0e797e), [`2473ad5`](https://github.com/Effect-TS/effect/commit/2473ad5cf23582e3a41338091fa526ffe611288d)]:
+  - effect@3.12.11
+  - @effect/platform-node@0.72.0
+  - @effect/platform@0.76.0
+
 ## 0.39.4
 
 ### Patch Changes
