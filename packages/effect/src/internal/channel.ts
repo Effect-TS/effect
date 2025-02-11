@@ -1855,9 +1855,15 @@ export const orDieWith = dual<
   self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
   f: (e: OutErr) => unknown
 ): Channel.Channel<OutElem, InElem, never, InErr, OutDone, InDone, Env> =>
-  catchAll(self, (e) => {
-    throw f(e)
-  }) as Channel.Channel<OutElem, InElem, never, InErr, OutDone, InDone, Env>)
+  catchAll(self, (e) => core.failCause(Cause.die(f(e)))) as Channel.Channel<
+    OutElem,
+    InElem,
+    never,
+    InErr,
+    OutDone,
+    InDone,
+    Env
+  >)
 
 /** @internal */
 export const orElse = dual<
