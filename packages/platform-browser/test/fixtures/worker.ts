@@ -6,4 +6,4 @@ const WorkerLive = Runner.layer((n: number) => Stream.range(0, n)).pipe(
   Layer.provide(BrowserRunner.layer)
 )
 
-Effect.runFork(Layer.launch(WorkerLive))
+Effect.runFork(Runner.launch(WorkerLive))
