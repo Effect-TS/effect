@@ -2584,16 +2584,13 @@ export const filterMapEffect = dual<
             onFailure: core.failCause,
             onDone: core.succeed
           })
-        } else {
-          return pipe(
-            pf(next.value),
-            Option.match({
-              onNone: () => Effect.sync(() => loop(iterator)),
-              onSome: Effect.map((a2) => core.flatMap(core.write(Chunk.of(a2)), () => loop(iterator)))
-            }),
-            channel.unwrap
-          )
         }
+        const o = pf(next.value)
+        if (Option.isNone(o)) return loop(iterator)
+        return core.flatMap(
+          core.flatMap(o.value, (a2) => core.write(Chunk.of(a2))),
+          () => loop(iterator)
+        )
       }
       return new StreamImpl(pipe(toChannel(self), core.pipeTo(loop(Chunk.empty<A>()[Symbol.iterator]()))))
     })
@@ -2625,18 +2622,16 @@ export const filterMapEffectOption = dual<
             onFailure: core.failCause,
             onDone: core.succeed
           })
-        } else {
-          return pipe(
-            f(next.value),
-            Effect.map(Option.match({
-              onNone: () => loop(iterator),
-              onSome: (a2) => core.flatMap(core.write(Chunk.of(a2)), () => loop(iterator))
-            })),
-            channel.unwrap
-          )
         }
+        return core.flatMap(
+          core.fromEffect(f(next.value)),
+          (o) =>
+            Option.isNone(o)
+              ? loop(iterator)
+              : core.flatMap(core.write(Chunk.of(o.value)), () => loop(iterator))
+        )
       }
-      return new StreamImpl(pipe(toChannel(self), core.pipeTo(loop(Chunk.empty<A>()[Symbol.iterator]()))))
+      return new StreamImpl(core.pipeTo(toChannel(self), loop(Chunk.empty<A>()[Symbol.iterator]())))
     })
 )
 
