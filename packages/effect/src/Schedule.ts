@@ -534,8 +534,19 @@ export const compose: {
 } = internal.compose
 
 /**
- * Returns a new schedule that deals with a narrower class of inputs than this
- * schedule.
+ * Transforms the input type of a schedule.
+ *
+ * **Details**
+ *
+ * This function modifies a given schedule by applying a transformation function
+ * to its inputs. Instead of directly receiving values of type `In`, the
+ * schedule will now accept values of type `In2`, which are converted to `In`
+ * using the provided mapping function `f`.
+ *
+ * This is useful when you have a schedule that expects a specific input type
+ * but you need to adapt it to work with a different type.
+ *
+ * @see {@link mapInputEffect} If you need to use an effectful transformation function.
  *
  * @since 2.0.0
  * @category Mapping
@@ -546,25 +557,19 @@ export const mapInput: {
 } = internal.mapInput
 
 /**
- * Transforms the context being provided to this schedule with the
- * specified function.
+ * Transforms the input type of a schedule using an effectful function.
  *
- * @since 2.0.0
- * @category Mapping
- */
-export const mapInputContext: {
-  <R0, R>(
-    f: (env0: Context.Context<R0>) => Context.Context<R>
-  ): <Out, In>(self: Schedule<Out, In, R>) => Schedule<Out, In, R0>
-  <Out, In, R, R0>(
-    self: Schedule<Out, In, R>,
-    f: (env0: Context.Context<R0>) => Context.Context<R>
-  ): Schedule<Out, In, R0>
-} = internal.mapInputContext
-
-/**
- * Returns a new schedule that deals with a narrower class of inputs than this
- * schedule.
+ * **Details**
+ *
+ * This function modifies a schedule by applying an effectful transformation to
+ * its inputs. Instead of directly receiving values of type `In`, the schedule
+ * will now accept values of type `In2`, which are converted to `In` via an
+ * effectful function `f`.
+ *
+ * This is useful when the input transformation involves external dependencies,
+ * such as API calls, database lookups, or other asynchronous computations.
+ *
+ * @see {@link mapInput} If you need to use a pure transformation function.
  *
  * @since 2.0.0
  * @category Mapping
@@ -580,7 +585,39 @@ export const mapInputEffect: {
 } = internal.mapInputEffect
 
 /**
- * A schedule that always recurs, which counts the number of recurrences.
+ * Transforms the required context of a schedule.
+ *
+ * **Details**
+ *
+ * This function modifies a schedule by mapping its required context (`R`) into
+ * a new context (`R0`) using the provided function `f`.
+ *
+ * This is useful when you need to adapt a schedule to work with a different
+ * dependency environment without changing its core logic.
+ *
+ * @since 2.0.0
+ * @category Mapping
+ */
+export const mapInputContext: {
+  <R0, R>(
+    f: (env0: Context.Context<R0>) => Context.Context<R>
+  ): <Out, In>(self: Schedule<Out, In, R>) => Schedule<Out, In, R0>
+  <Out, In, R, R0>(
+    self: Schedule<Out, In, R>,
+    f: (env0: Context.Context<R0>) => Context.Context<R>
+  ): Schedule<Out, In, R0>
+} = internal.mapInputContext
+
+/**
+ * A schedule that recurs indefinitely, counting the number of recurrences.
+ *
+ * **Details**
+ *
+ * This schedule never stops and simply counts how many times it has executed.
+ * Each recurrence increases the count, starting from `0`.
+ *
+ * This is useful when tracking the number of attempts in retry policies,
+ * measuring execution loops, or implementing infinite polling scenarios.
  *
  * @since 2.0.0
  * @category Constructors
@@ -588,11 +625,16 @@ export const mapInputEffect: {
 export const count: Schedule<number> = internal.count
 
 /**
- * Cron schedule that recurs every interval that matches the schedule.
+ * Creates a schedule that recurs based on a cron expression.
  *
- * It triggers at the beginning of each cron interval, producing the timestamps of the cron window.
+ * **Details**
  *
- * NOTE: `expression` parameter is validated lazily. Must be a valid cron expression.
+ * This schedule automatically executes at intervals defined by a cron
+ * expression. It triggers at the beginning of each matched interval and
+ * produces timestamps representing the start and end of the cron window.
+ *
+ * The cron `expression` is validated lazily, meaning errors may only be
+ * detected when the schedule is executed.
  *
  * @since 2.0.0
  * @category Constructors
@@ -603,12 +645,59 @@ export const cron: {
 } = internal.cron
 
 /**
- * Cron-like schedule that recurs every specified `day` of month. Won't recur
- * on months containing less days than specified in `day` param.
+ * Creates a schedule that recurs every specified minute of each hour.
  *
- * It triggers at zero hour of the day. Producing a count of repeats: 0, 1, 2.
+ * **Details**
  *
- * NOTE: `day` parameter is validated lazily. Must be in range 1...31.
+ * This schedule triggers once per hour at the specified `minute`, starting
+ * exactly at `minute:00` (zero seconds). The schedule produces a count of
+ * executions (`0, 1, 2, ...`), representing how many times it has run.
+ *
+ * The `minute` parameter must be between `0` and `59`. It is validated lazily,
+ * meaning an invalid value will cause errors only when the schedule is
+ * executed.
+ *
+ * @since 2.0.0
+ * @category Constructors
+ */
+export const minuteOfHour: (minute: number) => Schedule<number> = internal.minuteOfHour
+
+/**
+ * Creates a schedule that recurs at a specific hour of each day.
+ *
+ * **Details**
+ *
+ * This schedule triggers once per day at the specified `hour`, starting at zero
+ * minutes of that hour. The schedule produces a count of executions (`0, 1, 2,
+ * ...`), indicating how many times it has been triggered.
+ *
+ * The `hour` parameter must be between `0` (midnight) and `23` (11 PM). It is
+ * validated lazily, meaning an invalid value will cause errors only when the
+ * schedule is executed.
+ *
+ * This is useful for scheduling daily recurring tasks at a fixed time, such as
+ * running batch jobs or refreshing data.
+ *
+ * @since 2.0.0
+ * @category Constructors
+ */
+export const hourOfDay: (hour: number) => Schedule<number> = internal.hourOfDay
+
+/**
+ * Creates a schedule that recurs on a specific day of the month.
+ *
+ * **Details**
+ *
+ * This schedule triggers at midnight on the specified day of each month. It
+ * will not execute in months that have fewer days than the given day. For
+ * example, if the schedule is set to run on the 31st, it will not execute in
+ * months with only 30 days.
+ *
+ * The schedule produces a count of executions, starting at 0 and incrementing
+ * with each recurrence.
+ *
+ * The `day` parameter is validated lazily, meaning errors may only be detected
+ * when the schedule is executed.
  *
  * @since 2.0.0
  * @category Constructors
@@ -616,11 +705,17 @@ export const cron: {
 export const dayOfMonth: (day: number) => Schedule<number> = internal.dayOfMonth
 
 /**
- * Cron-like schedule that recurs every specified `day` of each week. It
- * triggers at zero hour of the week. Producing a count of repeats: 0, 1, 2.
+ * Creates a schedule that recurs on a specific day of the week.
  *
- * NOTE: `day` parameter is validated lazily. Must be in range 1 (Monday)...7
- * (Sunday).
+ * **Details**
+ *
+ * This schedule triggers at midnight on the specified day of the week. The
+ * `day` parameter follows the standard convention where **Monday = 1** and
+ * **Sunday = 7**. The schedule produces a count of executions, starting at 0
+ * and incrementing with each recurrence.
+ *
+ * The `day` parameter is validated lazily, meaning errors may only be detected
+ * when the schedule is executed.
  *
  * @since 2.0.0
  * @category Constructors
@@ -628,8 +723,19 @@ export const dayOfMonth: (day: number) => Schedule<number> = internal.dayOfMonth
 export const dayOfWeek: (day: number) => Schedule<number> = internal.dayOfWeek
 
 /**
- * Returns a new schedule with the specified effectfully computed delay added
- * before the start of each interval produced by this schedule.
+ * Modifies a schedule by adding a computed delay before each execution.
+ *
+ * **Details**
+ *
+ * This function adjusts an existing schedule by applying a transformation to
+ * its delays. Instead of using the default interval, each delay is modified
+ * using the provided function `f`, which takes the current delay and returns a
+ * new delay.
+ *
+ * This is useful for dynamically adjusting wait times between executions, such
+ * as introducing jitter, exponential backoff, or custom delay logic.
+ *
+ * @see {@link delayedEffect} If you need to compute the delay using an effectful function.
  *
  * @since 2.0.0
  * @category Timing & Delay
@@ -645,8 +751,20 @@ export const delayed: {
 } = internal.delayed
 
 /**
- * Returns a new schedule with the specified effectfully computed delay added
- * before the start of each interval produced by this schedule.
+ * Modifies a schedule by adding an effectfully computed delay before each
+ * execution.
+ *
+ * **Details**
+ *
+ * This function adjusts an existing schedule by introducing a delay that is
+ * computed via an effect. Instead of using a fixed delay, each interval is
+ * dynamically adjusted based on an effectful function `f`, which takes the
+ * current delay and returns a new delay wrapped in an `Effect`.
+ *
+ * This is useful for adaptive scheduling where delays depend on external
+ * factors, such as API calls, database queries, or dynamic system conditions.
+ *
+ * @see {@link delayed} If you need to compute the delay using a pure function.
  *
  * @since 2.0.0
  * @category Timing & Delay
@@ -662,8 +780,13 @@ export const delayedEffect: {
 } = internal.delayedEffect
 
 /**
- * Takes a schedule that produces a delay, and returns a new schedule that
- * uses this delay to further delay intervals in the resulting schedule.
+ * Uses the delays produced by a schedule to further delay its intervals.
+ *
+ * **Details**
+ *
+ * This function modifies a schedule by using its own output delays to control
+ * its execution timing. Instead of executing immediately at each interval, the
+ * schedule will be delayed by the duration it produces.
  *
  * @since 2.0.0
  * @category Timing & Delay
@@ -673,7 +796,12 @@ export const delayedSchedule: <In, R>(
 ) => Schedule<Duration.Duration, In, R> = internal.delayedSchedule
 
 /**
- * Returns a new schedule that outputs the delay between each occurence.
+ * Transforms a schedule to output the delay between each occurrence.
+ *
+ * **Details**
+ *
+ * This function modifies an existing schedule so that instead of producing its
+ * original output, it now returns the delay between each scheduled execution.
  *
  * @since 2.0.0
  * @category Constructors
@@ -681,7 +809,16 @@ export const delayedSchedule: <In, R>(
 export const delays: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Duration.Duration, In, R> = internal.delays
 
 /**
- * Returns a new schedule that maps both the input and output.
+ * Transforms both the input and output of a schedule.
+ *
+ * **Details**
+ *
+ * This function modifies an existing schedule by applying a transformation to
+ * both its input values and its output values. The provided transformation
+ * functions `onInput` and `onOutput` allow you to map the schedule to work with
+ * a different input type while modifying its outputs as well.
+ *
+ * @see {@link mapBothEffect} If you need to use effectful transformation functions.
  *
  * @since 2.0.0
  * @category Mapping
@@ -697,7 +834,18 @@ export const mapBoth: {
 } = internal.mapBoth
 
 /**
- * Returns a new schedule that maps both the input and output.
+ * Transforms both the input and output of a schedule using effectful
+ * computations.
+ *
+ * **Details**
+ *
+ * This function modifies an existing schedule by applying effectful
+ * transformations to both its input values and its output values. The provided
+ * effectful functions `onInput` and `onOutput` allow you to transform inputs
+ * and outputs using computations that may involve additional logic, resource
+ * access, or side effects.
+ *
+ * @see {@link mapBoth} If you need to use pure transformation functions.
  *
  * @since 2.0.0
  * @category Mapping
@@ -719,8 +867,17 @@ export const mapBothEffect: {
 } = internal.mapBothEffect
 
 /**
- * Returns a driver that can be used to step the schedule, appropriately
- * handling sleeping.
+ * Creates a driver to manually control the execution of a schedule.
+ *
+ * **Details**
+ *
+ * This function returns a `ScheduleDriver`, which allows stepping through a
+ * schedule manually while handling delays and sleeping appropriately. A driver
+ * is useful when you need fine-grained control over how a schedule progresses,
+ * rather than relying on automatic execution.
+ *
+ * The returned driver exposes methods for retrieving the current state,
+ * executing the next step, and resetting the schedule when needed.
  *
  * @since 2.0.0
  * @category getter
@@ -729,18 +886,18 @@ export const driver: <Out, In, R>(
   self: Schedule<Out, In, R>
 ) => Effect.Effect<ScheduleDriver<Out, In, R>> = internal.driver
 
+// TODO(4.0): remove?
 /**
- * A schedule that can recur one time, the specified amount of time into the
- * future.
+ * Alias of {@link fromDelay}.
  *
  * @since 2.0.0
  * @category Constructors
  */
 export const duration: (duration: Duration.DurationInput) => Schedule<Duration.Duration> = internal.duration
 
+// TODO(4.0): remove?
 /**
- * Returns a new schedule that performs a geometric union on the intervals
- * defined by both schedules.
+ * Alias of {@link union}.
  *
  * @since 2.0.0
  * @category Alternatives
@@ -755,8 +912,9 @@ export const either: {
   ): Schedule<[Out, Out2], In & In2, R | R2>
 } = internal.either
 
+// TODO(4.0): remove?
 /**
- * The same as `either` followed by `map`.
+ * Alias of {@link unionWith}.
  *
  * @since 2.0.0
  * @category Alternatives
@@ -774,8 +932,16 @@ export const eitherWith: {
 } = internal.eitherWith
 
 /**
- * A schedule that occurs everywhere, which returns the total elapsed duration
- * since the first step.
+ * Creates a schedule that tracks the total elapsed duration since it started.
+ *
+ * **Details**
+ *
+ * This schedule executes continuously and returns the total time that has
+ * passed since the first execution. The duration keeps increasing with each
+ * step, providing a way to measure elapsed time.
+ *
+ * This is useful for tracking execution time, monitoring delays, or
+ * implementing logic based on how long a process has been running.
  *
  * @since 2.0.0
  * @category Constructors
@@ -783,11 +949,19 @@ export const eitherWith: {
 export const elapsed: Schedule<Duration.Duration> = internal.elapsed
 
 /**
- * Returns a new schedule that will run the specified finalizer as soon as the
- * schedule is complete. Note that unlike `Effect.ensuring`, this method does not
- * guarantee the finalizer will be run. The `Schedule` may not initialize or
- * the driver of the schedule may not run to completion. However, if the
- * `Schedule` ever decides not to continue, then the finalizer will be run.
+ * Attaches a finalizer to a schedule that runs when the schedule completes.
+ *
+ * **Details**
+ *
+ * This function returns a new schedule that executes a given finalizer when the
+ * schedule reaches completion. Unlike `Effect.ensuring`, this method does not
+ * **guarantee** the finalizer will run in all cases. If the schedule never
+ * initializes or is not driven to completion, the finalizer may not execute.
+ * However, if the schedule decides not to continue, the finalizer will be
+ * invoked.
+ *
+ * This is useful for cleaning up resources, logging, or executing other side
+ * effects when a schedule completes.
  *
  * @since 2.0.0
  * @category Finalization
@@ -798,9 +972,16 @@ export const ensuring: {
 } = internal.ensuring
 
 /**
- * A schedule that always recurs, but will wait a certain amount between
- * repetitions, given by `base * factor.pow(n)`, where `n` is the number of
- * repetitions so far. Returns the current duration between recurrences.
+ * Creates a schedule that recurs indefinitely with exponentially increasing
+ * delays.
+ *
+ * **Details**
+ *
+ * This schedule starts with an initial delay of `base` and increases the delay
+ * exponentially on each repetition using the formula `base * factor^n`, where
+ * `n` is the number of times the schedule has executed so far. If no `factor`
+ * is provided, it defaults to `2`, causing the delay to double after each
+ * execution.
  *
  * @since 2.0.0
  * @category Constructors
@@ -811,9 +992,19 @@ export const exponential: (
 ) => Schedule<Duration.Duration> = internal.exponential
 
 /**
- * A schedule that always recurs, increasing delays by summing the preceding
- * two delays (similar to the fibonacci sequence). Returns the current
- * duration between recurrences.
+ * Creates a schedule that recurs indefinitely with Fibonacci-based increasing
+ * delays.
+ *
+ * **Details**
+ *
+ * This schedule starts with an initial delay of `one` and increases subsequent
+ * delays by summing the two previous delays, following the Fibonacci sequence.
+ * The delay pattern follows: `one, one, one + one, (one + one) + one, ...`,
+ * resulting in `1s, 1s, 2s, 3s, 5s, 8s, 13s, ...` if `one = 1s`.
+ *
+ * This is useful for **progressive backoff strategies**, where delays grow
+ * naturally over time without increasing as aggressively as an exponential
+ * schedule.
  *
  * @since 2.0.0
  * @category Constructors
@@ -821,11 +1012,15 @@ export const exponential: (
 export const fibonacci: (one: Duration.DurationInput) => Schedule<Duration.Duration> = internal.fibonacci
 
 /**
- * A schedule that recurs on a fixed interval. Returns the number of
- * repetitions of the schedule so far.
+ * Creates a schedule that recurs at a fixed interval.
  *
- * If the action run between updates takes longer than the interval, then the
- * action will be run immediately, but re-runs will not "pile up".
+ * **Details**
+ *
+ * This schedule executes at regular, evenly spaced intervals, returning the
+ * number of times it has run so far. If the action being executed takes longer
+ * than the interval, the next execution will happen immediately to prevent
+ * "pile-ups," ensuring that the schedule remains consistent without overlapping
+ * executions.
  *
  * ```
  * |-----interval-----|-----interval-----|-----interval-----|
@@ -838,7 +1033,14 @@ export const fibonacci: (one: Duration.DurationInput) => Schedule<Duration.Durat
 export const fixed: (interval: Duration.DurationInput) => Schedule<number> = internal.fixed
 
 /**
- * A schedule that always recurs, producing a count of repeats: 0, 1, 2.
+ * Creates a schedule that recurs indefinitely, producing a count of
+ * repetitions.
+ *
+ * **Details**
+ *
+ * This schedule runs indefinitely, returning an increasing count of executions
+ * (`0, 1, 2, 3, ...`). Each step increments the count by one, allowing tracking
+ * of how many times it has executed.
  *
  * @since 2.0.0
  * @category Constructors
@@ -846,7 +1048,14 @@ export const fixed: (interval: Duration.DurationInput) => Schedule<number> = int
 export const forever: Schedule<number> = internal.forever
 
 /**
- * A schedule that recurs once with the specified delay.
+ * Creates a schedule that recurs once after a specified duration.
+ *
+ * **Details**
+ *
+ * This schedule executes a single time after waiting for the given duration.
+ * Once it has executed, it does not repeat.
+ *
+ * @see {@link fromDelays} If you need to create a schedule with multiple delays.
  *
  * @since 2.0.0
  * @category Constructors
@@ -854,9 +1063,18 @@ export const forever: Schedule<number> = internal.forever
 export const fromDelay: (delay: Duration.DurationInput) => Schedule<Duration.Duration> = internal.fromDelay
 
 /**
- * A schedule that recurs once for each of the specified durations, delaying
- * each time for the length of the specified duration. Returns the length of
- * the current duration between recurrences.
+ * Creates a schedule that recurs once for each specified duration, applying the
+ * given delays sequentially.
+ *
+ * **Details**
+ *
+ * This schedule executes multiple times, each time waiting for the
+ * corresponding duration from the provided list of delays. The first execution
+ * waits for `delay`, the next for the second value in `delays`, and so on. Once
+ * all delays have been used, the schedule stops executing.
+ *
+ * This is useful for defining a **custom delay sequence** that does not follow
+ * a fixed pattern like exponential or Fibonacci backoff.
  *
  * @since 2.0.0
  * @category Constructors
@@ -867,8 +1085,18 @@ export const fromDelays: (
 ) => Schedule<Duration.Duration> = internal.fromDelays
 
 /**
- * A schedule that always recurs, mapping input values through the specified
- * function.
+ * Creates a schedule that always recurs, transforming input values using the
+ * specified function.
+ *
+ * **Details**
+ *
+ * This schedule continuously executes and applies the given function `f` to
+ * each input value, producing a transformed output. The schedule itself does
+ * not control delays or stopping conditions; it simply transforms the input
+ * values as they are processed.
+ *
+ * This is useful when defining schedules that **map inputs to outputs**,
+ * allowing dynamic transformations of incoming data.
  *
  * @since 2.0.0
  * @category Constructors
@@ -876,18 +1104,13 @@ export const fromDelays: (
 export const fromFunction: <A, B>(f: (a: A) => B) => Schedule<B, A> = internal.fromFunction
 
 /**
- * Cron-like schedule that recurs every specified `hour` of each day. It
- * triggers at zero minute of the hour. Producing a count of repeats: 0, 1, 2.
+ * Creates a schedule that always recurs, passing inputs directly as outputs.
  *
- * NOTE: `hour` parameter is validated lazily. Must be in range 0...23.
+ * **Details**
  *
- * @since 2.0.0
- * @category Constructors
- */
-export const hourOfDay: (hour: number) => Schedule<number> = internal.hourOfDay
-
-/**
- * A schedule that always recurs, which returns inputs as outputs.
+ * This schedule runs indefinitely, returning each input value as its output
+ * without modification. It effectively acts as a **pass-through** that simply
+ * echoes its input values at each step.
  *
  * @since 2.0.0
  * @category Constructors
@@ -895,8 +1118,36 @@ export const hourOfDay: (hour: number) => Schedule<number> = internal.hourOfDay
 export const identity: <A>() => Schedule<A, A> = internal.identity
 
 /**
- * Combines two schedules and recurs only if both schedules want to continue,
+ * Transforms a schedule to pass through its inputs as outputs.
+ *
+ * **Details**
+ *
+ * This function modifies an existing schedule so that it returns its input
+ * values instead of its original output values. The schedule's timing remains
+ * unchanged, but its outputs are replaced with whatever inputs it receives.
+ *
+ * @since 2.0.0
+ */
+export const passthrough: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<In, In, R> = internal.passthrough
+
+/**
+ * Combines two schedules, continuing only if both schedules want to continue,
  * using the longer delay.
+ *
+ * **Details**
+ *
+ * This function takes two schedules and creates a new schedule that only
+ * continues execution if **both** schedules allow it. The interval between
+ * recurrences is determined by the **longer** delay between the two schedules.
+ *
+ * The output of the resulting schedule is a tuple containing the outputs of
+ * both schedules. The input type is the intersection of both schedules' input
+ * types.
+ *
+ * This is useful when coordinating multiple scheduling conditions where
+ * execution should proceed only when both schedules permit it.
+ *
+ * @see {@link intersectWith} If you need to use a custom merge function.
  *
  * @since 2.0.0
  * @category Composition
@@ -912,9 +1163,20 @@ export const intersect: {
 } = internal.intersect
 
 /**
- * Returns a new schedule that combines this schedule with the specified
- * schedule, continuing as long as both schedules want to continue and merging
- * the next intervals according to the specified merge function.
+ * Combines two schedules, continuing only if both want to continue, merging
+ * intervals using a custom function.
+ *
+ * **Details**
+ *
+ * This function takes two schedules and creates a new schedule that only
+ * continues execution if **both** schedules allow it. Instead of automatically
+ * using the longer delay (like {@link intersect}), this function applies a
+ * user-provided merge function `f` to determine the next interval between
+ * executions.
+ *
+ * The output of the resulting schedule is a tuple containing the outputs of
+ * both schedules, and the input type is the intersection of both schedules'
+ * input types.
  *
  * @since 2.0.0
  * @category Composition
@@ -932,13 +1194,21 @@ export const intersectWith: {
 } = internal.intersectWith
 
 /**
- * Returns a new schedule that randomly modifies the size of the intervals of
- * this schedule.
+ * Returns a new schedule that randomly adjusts the interval size within a
+ * range.
  *
- * Defaults `min` to `0.8` and `max` to `1.2`.
+ * **Details**
  *
- * The new interval size is between `min * old interval size` and `max * old
- * interval size`.
+ * This function modifies a schedule so that its delay between executions is
+ * **randomly varied** within a range. By default, the delay is adjusted between
+ * **80%** (`0.8 * interval`) and **120%** (`1.2 * interval`) of the original
+ * interval size.
+ *
+ * This is useful for adding randomness to repeated executions, reducing
+ * contention in distributed systems, and avoiding synchronized execution
+ * patterns that can cause bottlenecks.
+ *
+ * @see {@link jitteredWith} If you need to specify custom min/max values.
  *
  * @since 2.0.0
  * @category Timing & Delay
@@ -946,11 +1216,22 @@ export const intersectWith: {
 export const jittered: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R> = internal.jittered
 
 /**
- * Returns a new schedule that randomly modifies the size of the intervals of
- * this schedule.
+ * Returns a new schedule that randomly adjusts the interval size within a
+ * user-defined range.
  *
- * The new interval size is between `min * old interval size` and `max * old
- * interval size`.
+ * **Details**
+ *
+ * This function modifies a schedule so that its delay between executions is
+ * **randomly varied** within a specified range. Instead of using the default
+ * `0.8 - 1.2` range like {@link jittered}, this function allows customizing the
+ * `min` and `max` multipliers.
+ *
+ * The delay for each step will be adjusted within `min * original_interval` and
+ * `max * original_interval`. If `min` and `max` are not provided, the defaults
+ * are `0.8` and `1.2`, respectively.
+ *
+ * This is useful for **introducing randomness** into scheduling behavior while
+ * having precise control over the jitter range.
  *
  * @since 2.0.0
  * @category Timing & Delay
@@ -966,9 +1247,20 @@ export const jitteredWith: {
 } = internal.jitteredWith
 
 /**
- * A schedule that always recurs, but will repeat on a linear time interval,
- * given by `base * n` where `n` is the number of repetitions so far. Returns
- * the current duration between recurrences.
+ * Creates a schedule that recurs indefinitely, increasing the delay linearly.
+ *
+ * **Details**
+ *
+ * This schedule starts with an initial delay of `base` and increases the delay
+ * on each recurrence in a **linear** fashion, following the formula:
+ *
+ * `delay = base * n`
+ *
+ * where `n` is the number of times the schedule has executed so far. This
+ * results in increasing intervals between executions.
+ *
+ * This is useful for implementing **linear backoff** strategies where the wait
+ * time between retries increases at a steady rate.
  *
  * @since 2.0.0
  * @category Constructors
@@ -976,8 +1268,20 @@ export const jitteredWith: {
 export const linear: (base: Duration.DurationInput) => Schedule<Duration.Duration> = internal.linear
 
 /**
- * Returns a new schedule that maps the output of this schedule through the
- * specified function.
+ * Returns a new schedule that transforms its output using the specified
+ * function.
+ *
+ * **Details**
+ *
+ * This function modifies an existing schedule so that its outputs are
+ * **transformed** by the provided function `f`. The timing and recurrence
+ * behavior of the schedule remain unchanged, but the values it produces are
+ * mapped to new values.
+ *
+ * This is useful when composing schedules where you need to adjust the output
+ * format or apply additional processing.
+ *
+ * @see {@link mapEffect} If you need to use an effectful transformation function.
  *
  * @since 2.0.0
  * @category Mapping
@@ -988,8 +1292,20 @@ export const map: {
 } = internal.map
 
 /**
- * Returns a new schedule that maps the output of this schedule through the
- * specified effectful function.
+ * Returns a new schedule that applies an effectful transformation to its
+ * output.
+ *
+ * **Details**
+ *
+ * This function modifies an existing schedule by applying an **effectful
+ * function** `f` to its output values. The timing and recurrence behavior of
+ * the schedule remain unchanged, but each output is mapped to a new value
+ * within an `Effect`.
+ *
+ * This is useful when you need to **perform side effects** or **asynchronous
+ * transformations** before passing the output forward.
+ *
+ * @see {@link map} If you need to use a pure transformation function.
  *
  * @since 2.0.0
  * @category Mapping
@@ -1005,20 +1321,17 @@ export const mapEffect: {
 } = internal.mapEffect
 
 /**
- * Cron-like schedule that recurs every specified `minute` of each hour. It
- * triggers at zero second of the minute. Producing a count of repeats: 0, 1,
- * 2.
+ * Returns a new schedule that modifies the delay between executions using a
+ * custom function.
  *
- * NOTE: `minute` parameter is validated lazily. Must be in range 0...59.
+ * **Details**
  *
- * @since 2.0.0
- * @category Constructors
- */
-export const minuteOfHour: (minute: number) => Schedule<number> = internal.minuteOfHour
-
-/**
- * Returns a new schedule that modifies the delay using the specified
- * function.
+ * This function transforms an existing schedule by applying `f` to modify the
+ * delay before each execution. The function receives both the schedule's output
+ * (`out`) and the originally computed delay (`duration`), and returns a new
+ * adjusted delay.
+ *
+ * @see {@link modifyDelayEffect} If you need to use an effectful function.
  *
  * @since 2.0.0
  * @category Timing & Delay
@@ -1034,8 +1347,17 @@ export const modifyDelay: {
 } = internal.modifyDelay
 
 /**
- * Returns a new schedule that modifies the delay using the specified
- * effectual function.
+ * Returns a new schedule that modifies the delay before execution using an
+ * effectful function.
+ *
+ * **Details**
+ *
+ * This function takes an existing schedule and applies an effectful function
+ * `f` to dynamically adjust the delay before each execution. The function
+ * receives both the schedule's output (`out`) and the originally computed delay
+ * (`duration`), returning a new adjusted delay wrapped in an `Effect`.
+ *
+ * @see {@link modifyDelay} If you need to use a pure function.
  *
  * @since 2.0.0
  * @category Timing & Delay
@@ -1051,9 +1373,16 @@ export const modifyDelayEffect: {
 } = internal.modifyDelayEffect
 
 /**
- * Returns a new schedule that applies the current one but runs the specified
- * effect for every decision of this schedule. This can be used to create
- * schedules that log failures, decisions, or computed values.
+ * Returns a new schedule that executes an effect every time the schedule makes
+ * a decision.
+ *
+ * **Details**
+ *
+ * This function enhances an existing schedule by running an effectful function
+ * `f` whenever a scheduling decision is made. The function receives the current
+ * schedule output (`out`) and the decision (`ScheduleDecision`), allowing
+ * additional logic to be executed, such as logging, monitoring, or side
+ * effects.
  *
  * @since 2.0.0
  */
@@ -1068,7 +1397,12 @@ export const onDecision: {
 } = internal.onDecision
 
 /**
- * A schedule that recurs one time.
+ * A schedule that executes only once and then stops.
+ *
+ * **Details**
+ *
+ * This schedule triggers a single execution and then terminates. It does not
+ * repeat or apply any additional logic.
  *
  * @since 2.0.0
  * @category Constructors
@@ -1076,15 +1410,19 @@ export const onDecision: {
 export const once: Schedule<void> = internal.once
 
 /**
- * Returns a new schedule that passes through the inputs of this schedule.
+ * Returns a new schedule with a provided context, eliminating the need for
+ * external dependencies.
  *
- * @since 2.0.0
- */
-export const passthrough: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<In, In, R> = internal.passthrough
-
-/**
- * Returns a new schedule with its context provided to it, so the
- * resulting schedule does not require any context.
+ * **Details**
+ *
+ * This function supplies a required `context` to a schedule, allowing it to run
+ * **without requiring external dependencies**. After calling this function, the
+ * schedule can be used freely without needing to pass a context at execution
+ * time.
+ *
+ * This is useful when working with schedules that rely on contextual
+ * information, such as logging services, database connections, or configuration
+ * settings.
  *
  * @since 2.0.0
  * @category Context
@@ -1095,9 +1433,17 @@ export const provideContext: {
 } = internal.provideContext
 
 /**
- * Returns a new schedule with the single service it requires provided to it.
- * If the schedule requires multiple services use `provideContext`
- * instead.
+ * Returns a new schedule with a single required service provided, eliminating
+ * the need for external dependencies.
+ *
+ * **Details**
+ *
+ * This function supplies a single service dependency to a schedule, allowing it
+ * to run **without requiring that service externally**. If a schedule depends
+ * on multiple services, consider using `provideContext` instead.
+ *
+ * This is useful when working with schedules that require a specific service,
+ * such as logging, metrics, or configuration retrieval.
  *
  * @since 2.0.0
  * @category Context
@@ -1115,55 +1461,125 @@ export const provideService: {
 } = internal.provideService
 
 /**
- * A schedule that recurs for until the predicate evaluates to true.
+ * A schedule that recurs until the given predicate evaluates to true.
+ *
+ * **Details**
+ *
+ * This schedule will continue executing as long as the provided predicate `f`
+ * returns `false` for the input value. Once `f` evaluates to `true`, the
+ * schedule stops recurring.
+ *
+ * This is useful for defining schedules that should stop when a certain
+ * condition is met, such as detecting a success state, reaching a threshold, or
+ * avoiding unnecessary retries.
+ *
+ * @see {@link recurUntilEffect} If you need to use an effectful predicate.
  *
  * @since 2.0.0
+ * @category Recurrence Conditions
  */
 export const recurUntil: <A>(f: Predicate<A>) => Schedule<A, A> = internal.recurUntil
 
 /**
- * A schedule that recurs for until the predicate evaluates to true.
+ * A schedule that recurs until the given effectful predicate evaluates to true.
+ *
+ * **Details**
+ *
+ * This schedule continues executing as long as the provided effectful predicate
+ * `f` returns `false`. Once `f` evaluates to `true`, the schedule stops
+ * recurring. Unlike {@link recurUntil}, this function allows the stopping
+ * condition to be computed asynchronously or based on external dependencies.
+ *
+ * This is useful when the stopping condition depends on an effectful
+ * computation, such as checking a database, making an API call, or retrieving
+ * system state dynamically.
+ *
+ * @see {@link recurUntil} If you need to use a pure predicate.
  *
  * @since 2.0.0
+ * @category Recurrence Conditions
  */
 export const recurUntilEffect: <A, R>(f: (a: A) => Effect.Effect<boolean, never, R>) => Schedule<A, A, R> =
   internal.recurUntilEffect
 
 /**
- * A schedule that recurs for until the input value becomes applicable to
- * partial function and then map that value with given function.
+ * A schedule that recurs until the input value matches a partial function, then
+ * maps the value.
+ *
+ * **Details**
+ *
+ * This schedule continues executing until the provided partial function `pf`
+ * returns `Some(value)`. At that point, it stops and maps the resulting value
+ * to an `Option<B>`. If `pf` returns `None`, the schedule continues.
+ *
+ * This is useful when defining schedules that should stop once a certain
+ * condition is met and transform the final value before completion.
  *
  * @since 2.0.0
+ * @category Recurrence Conditions
  */
 export const recurUntilOption: <A, B>(pf: (a: A) => Option.Option<B>) => Schedule<Option.Option<B>, A> =
   internal.recurUntilOption
 
 /**
- * A schedule that recurs during the given duration.
+ * A schedule that recurs until the specified duration has elapsed.
+ *
+ * **Details**
+ *
+ * This schedule continues executing for the given `duration`, after which it
+ * stops. The schedule outputs the elapsed time on each recurrence.
+ *
+ * This is useful for limiting the duration of retries, enforcing time-based
+ * constraints, or ensuring that an operation does not run indefinitely.
  *
  * @since 2.0.0
+ * @category Recurrence Conditions
  */
 export const recurUpTo: (duration: Duration.DurationInput) => Schedule<Duration.Duration> = internal.recurUpTo
 
 /**
- * A schedule that recurs for as long as the predicate evaluates to true.
+ * A schedule that recurs as long as the given predicate evaluates to true.
+ *
+ * **Details*
+ *
+ * This schedule continues executing as long as the provided predicate `f`
+ * returns `true` for the input value. Once `f` evaluates to `false`, the
+ * schedule stops recurring.
+ *
+ * @see {@link recurWhileEffect} If you need to use an effectful predicate.
  *
  * @since 2.0.0
+ * @category Recurrence Conditions
  */
 export const recurWhile: <A>(f: Predicate<A>) => Schedule<A, A> = internal.recurWhile
 
 /**
- * A schedule that recurs for as long as the effectful predicate evaluates to
+ * A schedule that recurs as long as the given effectful predicate evaluates to
  * true.
  *
+ * **Details**
+ *
+ * This schedule continues executing as long as the provided effectful predicate
+ * `f` returns `true`. Once `f` evaluates to `false`, the schedule stops
+ * recurring. Unlike {@link recurWhile}, this function allows the condition to
+ * be computed dynamically using an effectful computation.
+ *
+ * @see {@link recurWhile} If you need to use a pure predicate.
+ *
  * @since 2.0.0
+ * @category Recurrence Conditions
  */
 export const recurWhileEffect: <A, R>(f: (a: A) => Effect.Effect<boolean, never, R>) => Schedule<A, A, R> =
   internal.recurWhileEffect
 
 /**
- * A schedule spanning all time, which can be stepped only the specified
- * number of times before it terminates.
+ * A schedule that recurs a fixed number of times before terminating.
+ *
+ * **Details**
+ *
+ * This schedule will continue executing until it has been stepped `n` times,
+ * after which it will stop. The output of the schedule is the current count of
+ * recurrences.
  *
  * @category Constructors
  * @since 2.0.0
@@ -1172,6 +1588,17 @@ export const recurs: (n: number) => Schedule<number> = internal.recurs
 
 /**
  * Returns a new schedule that folds over the outputs of this one.
+ *
+ * **Details**
+ *
+ * This schedule transforms the output by accumulating values over time
+ * using a reducer function `f`. It starts with an initial value `zero`
+ * and updates it each time the schedule produces an output.
+ *
+ * This is useful for **tracking statistics**, **aggregating results**,
+ * or **summarizing data** across multiple executions.
+ *
+ * @see {@link reduceEffect} If you need to use an effectful reducer function.
  *
  * @since 2.0.0
  * @category Reducing
@@ -1183,6 +1610,18 @@ export const reduce: {
 
 /**
  * Returns a new schedule that effectfully folds over the outputs of this one.
+ *
+ * **Details**
+ *
+ * This schedule accumulates outputs over time using an **effectful** reducer
+ * function `f`. It starts with an initial value `zero` and updates it
+ * asynchronously or based on external dependencies.
+ *
+ * This is useful for asynchronous state tracking, logging, external metrics
+ * aggregation, or any scenario where accumulation needs to involve an effectful
+ * computation.
+ *
+ * @see {@link reduce} If you need to use a pure reducer function.
  *
  * @since 2.0.0
  * @category Reducing
@@ -1199,9 +1638,9 @@ export const reduceEffect: {
   ): Schedule<Z, In, R | R2>
 } = internal.reduceEffect
 
+// TODO(4.0): remove?
 /**
- * Returns a new schedule that loops this one continuously, resetting the
- * state when this schedule is done.
+ * Alias of {@link forever}.
  *
  * @since 2.0.0
  * @category Constructors
