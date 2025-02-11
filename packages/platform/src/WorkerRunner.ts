@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type * as Context from "effect/Context"
+import type * as Deferred from "effect/Deferred"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Schema from "effect/Schema"
@@ -17,7 +18,7 @@ import type { WorkerError } from "./WorkerError.js"
 export interface BackingRunner<I, O> {
   readonly run: <A, E, R>(
     handler: (portId: number, message: I) => Effect.Effect<A, E, R>
-  ) => Effect.Effect<never, E | WorkerError, R>
+  ) => Effect.Effect<void, never, Scope.Scope | R>
   readonly send: (
     portId: number,
     message: O,
@@ -55,7 +56,7 @@ export type PlatformRunnerTypeId = typeof PlatformRunnerTypeId
  */
 export interface PlatformRunner {
   readonly [PlatformRunnerTypeId]: PlatformRunnerTypeId
-  readonly start: <I, O>() => Effect.Effect<BackingRunner<I, O>, WorkerError>
+  readonly start: <I, O>(closeLatch: typeof CloseLatch.Service) => Effect.Effect<BackingRunner<I, O>, WorkerError>
 }
 
 /**
@@ -63,6 +64,32 @@ export interface PlatformRunner {
  * @category tags
  */
 export const PlatformRunner: Context.Tag<PlatformRunner, PlatformRunner> = internal.PlatformRunner
+
+/**
+ * The worker close latch is used by platform runners to signal that the worker
+ * has been closed.
+ *
+ * @since 1.0.0
+ * @category CloseLatch
+ */
+export interface CloseLatch {
+  readonly _: unique symbol
+}
+
+/**
+ * The worker close latch is used by platform runners to signal that the worker
+ * has been closed.
+ *
+ * @since 1.0.0
+ * @category CloseLatch
+ */
+export const CloseLatch: Context.Reference<CloseLatch, Deferred.Deferred<void, WorkerError>> = internal.CloseLatch
+
+/**
+ * @since 1.0.0
+ * @category CloseLatch
+ */
+export const layerCloseLatch: Layer.Layer<CloseLatch> = internal.layerCloseLatch
 
 /**
  * @since 1.0.0
@@ -87,15 +114,6 @@ export declare namespace Runner {
     ) => Effect.Effect<unknown, WorkerError>
   }
 }
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const run: <I, E, R, O>(
-  process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
-  options?: Runner.Options<I, O, E>
-) => Effect.Effect<never, WorkerError, PlatformRunner | R> = internal.run
 
 /**
  * @since 1.0.0
@@ -198,8 +216,11 @@ export const makeSerialized: <
 >(
   schema: Schema.Schema<A, I, R>,
   handlers: Handlers
-) => Effect.Effect<void, WorkerError, PlatformRunner | Scope.Scope | R | SerializedRunner.HandlersContext<Handlers>> =
-  internal.makeSerialized
+) => Effect.Effect<
+  void,
+  WorkerError,
+  PlatformRunner | Scope.Scope | R | SerializedRunner.HandlersContext<Handlers>
+> = internal.makeSerialized
 
 /**
  * @since 1.0.0
@@ -215,3 +236,12 @@ export const layerSerialized: <
   handlers: Handlers
 ) => Layer.Layer<never, WorkerError, PlatformRunner | R | SerializedRunner.HandlersContext<Handlers>> =
   internal.layerSerialized
+
+/**
+ * Launch the specified layer, interrupting the fiber when the CloseLatch is
+ * triggered.
+ *
+ * @since 1.0.0
+ * @category Execution
+ */
+export const launch: <A, E, R>(layer: Layer.Layer<A, E, R>) => Effect.Effect<void, E | WorkerError, R> = internal.launch

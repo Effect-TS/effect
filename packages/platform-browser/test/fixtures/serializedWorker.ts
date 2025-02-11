@@ -35,4 +35,4 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
     Layer.provide(BrowserRunner.layer)
   )
 
-Effect.runFork(Layer.launch(WorkerLive))
+Effect.runFork(Runner.launch(WorkerLive))
