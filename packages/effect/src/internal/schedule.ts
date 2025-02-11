@@ -1362,19 +1362,25 @@ export const tapInput = dual<
 
 /** @internal */
 export const tapOutput = dual<
-  <XO extends Out, X, R2, Out>(
-    f: (out: XO) => Effect.Effect<X, never, R2>
-  ) => <In, R>(self: Schedule.Schedule<Out, In, R>) => Schedule.Schedule<Out, In, R | R2>,
-  <Out, In, R, XO extends Out, X, R2>(
+  <X, R2, Out>(
+    f: (out: Types.NoInfer<Out>) => Effect.Effect<X, never, R2>
+  ) => <In, R>(self: Schedule.Schedule<Out, In, R>) => Schedule.Schedule<Out, In, R2 | R>,
+  <Out, In, R, X, R2>(
     self: Schedule.Schedule<Out, In, R>,
-    f: (out: XO) => Effect.Effect<X, never, R2>
+    f: (out: Out) => Effect.Effect<X, never, R2>
   ) => Schedule.Schedule<Out, In, R | R2>
->(2, (self, f) =>
-  makeWithState(self.initial, (now, input, state) =>
-    core.tap(
-      self.step(now, input, state),
-      ([, out]) => f(out as any)
-    )))
+>(
+  2,
+  <Out, In, R, X, R2>(
+    self: Schedule.Schedule<Out, In, R>,
+    f: (out: Out) => Effect.Effect<X, never, R2>
+  ): Schedule.Schedule<Out, In, R | R2> =>
+    makeWithState(self.initial, (now, input, state) =>
+      core.tap(
+        self.step(now, input, state),
+        ([, out]) => f(out)
+      ))
+)
 
 /** @internal */
 export const unfold = <A>(initial: A, f: (a: A) => A): Schedule.Schedule<A> =>
