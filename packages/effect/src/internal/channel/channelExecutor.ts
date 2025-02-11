@@ -345,7 +345,6 @@ export class ChannelExecutor<
             }
           }
         } catch (error) {
-          console.error(error)
           this._currentChannel = core.failCause(Cause.die(error)) as core.Primitive
         }
       }
