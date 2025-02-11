@@ -59,13 +59,14 @@ export const make = (self: MessagePort | Window) =>
                   FiberSet.unsafeAdd(fiberSet, fiber)
                 } else {
                   const port = ports.get(portId)
-                  if (port) {
-                    Effect.runFork(Scope.close(port[1], Exit.void))
+                  if (!port) {
+                    return
+                  } else if (ports.size === 1) {
+                    // let the last port close with the outer scope
+                    return Deferred.unsafeDone(closeLatch, Exit.void)
                   }
                   ports.delete(portId)
-                  if (ports.size === 0) {
-                    Deferred.unsafeDone(closeLatch, Exit.void)
-                  }
+                  Effect.runFork(Scope.close(port[1], Exit.void))
                 }
               }
             }
