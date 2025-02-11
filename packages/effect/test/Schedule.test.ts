@@ -814,6 +814,20 @@ describe("Schedule", () => {
         )
         deepStrictEqual(exit, Exit.die(exception))
       }))
+    it.effect("tapOutput", () =>
+      Effect.gen(function*() {
+        const log: Array<number | string> = []
+        const schedule = Schedule.once.pipe(
+          Schedule.as<number | string>(1),
+          Schedule.tapOutput((x) =>
+            Effect.sync(() => {
+              log.push(x)
+            })
+          )
+        )
+        yield* Effect.void.pipe(Effect.schedule(schedule))
+        deepStrictEqual(log, [1, 1])
+      }))
   })
 })
 

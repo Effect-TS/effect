@@ -1763,7 +1763,8 @@ export const spaced: (duration: Duration.DurationInput) => Schedule<number> = in
 export const stop: Schedule<void> = internal.stop
 
 /**
- * Returns a schedule that runs once and produces the specified constant value.
+ * Returns a schedule that recurs indefinitely, always producing the specified
+ * constant value.
  *
  * @since 2.0.0
  * @category Constructors
@@ -1771,8 +1772,8 @@ export const stop: Schedule<void> = internal.stop
 export const succeed: <A>(value: A) => Schedule<A> = internal.succeed
 
 /**
- * Returns a schedule that runs once, evaluating the given function to produce a
- * constant value.
+ * Returns a schedule that recurs indefinitely, evaluating the given function to
+ * produce a constant value.
  *
  * @category Constructors
  * @since 2.0.0
@@ -1816,12 +1817,12 @@ export const tapInput: {
  * @category Tapping
  */
 export const tapOutput: {
-  <XO extends Out, X, R2, Out>(
-    f: (out: XO) => Effect.Effect<X, never, R2>
+  <X, R2, Out>(
+    f: (out: Types.NoInfer<Out>) => Effect.Effect<X, never, R2>
   ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, XO extends Out, X, R2>(
+  <Out, In, R, X, R2>(
     self: Schedule<Out, In, R>,
-    f: (out: XO) => Effect.Effect<X, never, R2>
+    f: (out: Out) => Effect.Effect<X, never, R2>
   ): Schedule<Out, In, R | R2>
 } = internal.tapOutput
 
