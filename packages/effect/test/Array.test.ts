@@ -452,6 +452,20 @@ describe("Array", () => {
       deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.remove(10)), [1, 2, 3])
     })
 
+    it("removeOption", () => {
+      assertSome(pipe([1, 2, 3], Arr.removeOption(0)), [2, 3])
+      // out of bound
+      assertNone(pipe([], Arr.removeOption(0)))
+      assertNone(pipe([1, 2, 3], Arr.removeOption(-1)))
+      assertNone(pipe([1, 2, 3], Arr.removeOption(10)))
+
+      assertSome(pipe(new Set([1, 2, 3]), Arr.removeOption(0)), [2, 3])
+      // out of bound
+      assertNone(pipe(new Set([]), Arr.removeOption(0)))
+      assertNone(pipe(new Set([1, 2, 3]), Arr.removeOption(-1)))
+      assertNone(pipe(new Set([1, 2, 3]), Arr.removeOption(10)))
+    })
+
     it("reverse", () => {
       deepStrictEqual(Arr.reverse([]), [])
       deepStrictEqual(Arr.reverse([1]), [1])
