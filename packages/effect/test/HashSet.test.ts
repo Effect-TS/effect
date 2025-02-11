@@ -219,6 +219,14 @@ describe("HashSet", () => {
     deepStrictEqual(result, [value(0), value(1), value(2)])
   })
 
+  it("toValues", () => {
+    const hashSet = makeTestHashSet(0, 1, 2)
+
+    const result = HashSet.toValues(hashSet)
+
+    deepStrictEqual(result, [value(0), value(1), value(2)])
+  })
+
   it("pipe()", () => {
     expect(HashSet.empty<string>().pipe(HashSet.add("value"))).toEqual(HashSet.make("value"))
   })

@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add HashMap.toValues getter
+Add `HashMap.toValues` and `HashSet.toValues` getters
