@@ -19,3 +19,25 @@ TRA.success
 
 // $ExpectType typeof String$
 TRA.failure
+
+// ---------------------------------------------
+// Annotations as tuple
+// ---------------------------------------------
+
+// @ts-expect-error
+export class Annotations extends S.TaggedRequest<Annotations>()("Annotations", {
+  failure: S.String,
+  success: S.Number,
+  payload: {
+    id: S.Number
+  }
+}, [
+  undefined,
+  undefined,
+  {
+    pretty: () =>
+    (
+      _x // $ExpectType { readonly _tag: "Annotations"; } & { readonly id: number; }
+    ) => ""
+  }
+]) {}

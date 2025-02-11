@@ -1,11 +1,7 @@
 import { describe, it } from "@effect/vitest"
-import { Context, Effect, Exit } from "effect"
-import * as Equal from "effect/Equal"
-import * as ParseResult from "effect/ParseResult"
-import * as Request from "effect/Request"
-import * as S from "effect/Schema"
+import { Context, Effect, Equal, Exit, JSONSchema, ParseResult, Request, Schema as S, SchemaAST as AST } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertInstanceOf, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 const Name = Context.GenericTag<"Name", string>("Name")
 const NameString = S.String.pipe(
@@ -203,5 +199,140 @@ describe("TaggedRequest", () => {
     assertInstanceOf(tra, TRA)
     strictEqual(tra._tag, "TRA")
     strictEqual(tra.a(), "1a")
+  })
+
+  describe("should support annotations when declaring the Class", () => {
+    it("single argument", async () => {
+      class A extends S.TaggedRequest<A>()("A", {
+        failure: S.String,
+        success: S.Number,
+        payload: {
+          a: S.NonEmptyString
+        }
+      }, { title: "mytitle" }) {}
+
+      strictEqual(A.ast.to.annotations[AST.TitleAnnotationId], "mytitle")
+
+      await Util.assertions.encoding.fail(
+        A,
+        { _tag: "A", a: "" } as any,
+        `(A (Encoded side) <-> A)
+└─ Type side transformation failure
+   └─ mytitle
+      └─ ["a"]
+         └─ NonEmptyString
+            └─ Predicate refinement failure
+               └─ Expected a non empty string, actual ""`
+      )
+    })
+
+    it("tuple argument", async () => {
+      class A extends S.TaggedRequest<A>()("A", {
+        failure: S.String,
+        success: S.Number,
+        payload: {
+          a: S.NonEmptyString
+        }
+      }, [
+        { identifier: "TypeID", description: "TypeDescription" },
+        { identifier: "TransformationID" },
+        { identifier: "EncodedID" }
+      ]) {}
+      assertSome(AST.getIdentifierAnnotation(A.ast.to), "TypeID")
+      assertSome(AST.getIdentifierAnnotation(A.ast), "TransformationID")
+      assertSome(AST.getIdentifierAnnotation(A.ast.from), "EncodedID")
+
+      await Util.assertions.decoding.fail(
+        A,
+        {},
+        `TransformationID
+└─ Encoded side transformation failure
+   └─ EncodedID
+      └─ ["_tag"]
+         └─ is missing`
+      )
+
+      await Util.assertions.encoding.fail(
+        A,
+        { _tag: "A", a: "" } as any,
+        `TransformationID
+└─ Type side transformation failure
+   └─ TypeID
+      └─ ["a"]
+         └─ NonEmptyString
+            └─ Predicate refinement failure
+               └─ Expected a non empty string, actual ""`
+      )
+
+      const ctor = { make: A.make.bind(A) }
+
+      Util.assertions.make.fail(
+        ctor,
+        null,
+        `TypeID
+└─ ["a"]
+   └─ is missing`
+      )
+
+      deepStrictEqual(JSONSchema.make(S.typeSchema(A)), {
+        "$defs": {
+          "NonEmptyString": {
+            "title": "nonEmptyString",
+            "description": "a non empty string",
+            "minLength": 1,
+            "type": "string"
+          },
+          "TypeID": {
+            "additionalProperties": false,
+            "description": "TypeDescription",
+            "properties": {
+              "_tag": {
+                "enum": [
+                  "A"
+                ],
+                "type": "string"
+              },
+              "a": {
+                "$ref": "#/$defs/NonEmptyString"
+              }
+            },
+            "required": ["_tag", "a"],
+            "type": "object"
+          }
+        },
+        "$ref": "#/$defs/TypeID",
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      })
+
+      deepStrictEqual(JSONSchema.make(A), {
+        "$defs": {
+          "NonEmptyString": {
+            "title": "nonEmptyString",
+            "description": "a non empty string",
+            "minLength": 1,
+            "type": "string"
+          },
+          "TransformationID": {
+            "additionalProperties": false,
+            "description": "TypeDescription",
+            "properties": {
+              "_tag": {
+                "enum": [
+                  "A"
+                ],
+                "type": "string"
+              },
+              "a": {
+                "$ref": "#/$defs/NonEmptyString"
+              }
+            },
+            "required": ["_tag", "a"],
+            "type": "object"
+          }
+        },
+        "$ref": "#/$defs/TransformationID",
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      })
+    })
   })
 })
