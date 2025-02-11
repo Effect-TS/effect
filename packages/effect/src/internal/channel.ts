@@ -1855,7 +1855,7 @@ export const orDieWith = dual<
   self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
   f: (e: OutErr) => unknown
 ): Channel.Channel<OutElem, InElem, never, InErr, OutDone, InDone, Env> =>
-  catchAll(self, (e) => core.failCause(Cause.die(f(e)))) as Channel.Channel<
+  catchAll(self, (e) => core.failCauseSync(() => Cause.die(f(e)))) as Channel.Channel<
     OutElem,
     InElem,
     never,
