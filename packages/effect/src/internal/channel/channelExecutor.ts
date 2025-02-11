@@ -503,7 +503,11 @@ export class ChannelExecutor<
     const head = this._doneStack[this._doneStack.length - 1] as Continuation.Primitive
     if (head._tag === ContinuationOpCodes.OP_CONTINUATION_K) {
       this._doneStack.pop()
-      this._currentChannel = head.onHalt(cause) as core.Primitive
+      try {
+        this._currentChannel = head.onHalt(cause) as core.Primitive
+      } catch (error) {
+        this._currentChannel = core.failCause(Cause.die(error)) as core.Primitive
+      }
       return undefined
     }
 
