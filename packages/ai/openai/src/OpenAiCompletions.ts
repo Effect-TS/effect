@@ -25,7 +25,7 @@ import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
  * @since 1.0.0
  * @category models
  */
-export type Model = typeof Generated.CreateChatCompletionRequestModel.Encoded
+export type Model = typeof Generated.CreateChatCompletionRequestModelEnum.Encoded
 
 const make = (options: {
   readonly model: (string & {}) | Model

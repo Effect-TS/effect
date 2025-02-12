@@ -1,14 +1,14 @@
 {
-  "name": "@effect/ai-openai",
+  "name": "@effect/ai-anthropic",
   "type": "module",
-  "version": "0.12.0",
+  "version": "0.0.0",
   "license": "MIT",
   "description": "Effect modules for working with AI apis",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/effect.git",
-    "directory": "packages/ai/openai"
+    "directory": "packages/ai/anthropic"
   },
   "bugs": {
     "url": "https://github.com/Effect-TS/effect/issues"
@@ -53,6 +53,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "gpt-tokenizer": "^2.8.1"
+    "@anthropic-ai/tokenizer": "^0.0.4"
   }
 }

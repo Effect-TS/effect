@@ -66,6 +66,8 @@ export class AssistantToolsFunction extends S.Struct({
 
 export class Metadata extends S.Record({ key: S.String, value: S.Unknown }) {}
 
+export class AssistantsApiResponseFormatOptionEnum extends S.Literal("auto") {}
+
 export class ResponseFormatTextType extends S.Literal("text") {}
 
 export class ResponseFormatText extends S.Struct({
@@ -92,9 +94,12 @@ export class ResponseFormatJsonSchema extends S.Struct({
   })
 }) {}
 
-export class AssistantsApiResponseFormatOption
-  extends S.Union(S.Literal("auto"), ResponseFormatText, ResponseFormatJsonObject, ResponseFormatJsonSchema)
-{}
+export class AssistantsApiResponseFormatOption extends S.Union(
+  AssistantsApiResponseFormatOptionEnum,
+  ResponseFormatText,
+  ResponseFormatJsonObject,
+  ResponseFormatJsonSchema
+) {}
 
 export class AssistantObject extends S.Struct({
   "id": S.String,
@@ -146,7 +151,11 @@ export class ListAssistantsResponse extends S.Class<ListAssistantsResponse>("Lis
   "has_more": S.Boolean
 }) {}
 
-export class CreateAssistantRequestModel extends S.Literal(
+export class AssistantSupportedModels extends S.Literal(
+  "o3-mini",
+  "o3-mini-2025-01-31",
+  "o1",
+  "o1-2024-12-17",
   "gpt-4o",
   "gpt-4o-2024-11-20",
   "gpt-4o-2024-08-06",
@@ -173,15 +182,14 @@ export class CreateAssistantRequestModel extends S.Literal(
   "gpt-3.5-turbo-16k-0613"
 ) {}
 
-export class CreateAssistantRequestToolResourcesFileSearchVectorStoresChunkingStrategyType
-  extends S.Literal("static")
-{}
+export class ReasoningEffort extends S.Literal("low", "medium", "high") {}
 
 export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("CreateAssistantRequest")({
-  "model": S.Union(S.String, CreateAssistantRequestModel),
+  "model": S.Union(S.String, AssistantSupportedModels),
   "name": S.optionalWith(S.String.pipe(S.maxLength(256)), { nullable: true }),
   "description": S.optionalWith(S.String.pipe(S.maxLength(512)), { nullable: true }),
   "instructions": S.optionalWith(S.String.pipe(S.maxLength(256000)), { nullable: true }),
+  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
   "tools": S.optionalWith(
     S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(128)),
     {
@@ -230,7 +238,8 @@ export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("Cre
 }) {}
 
 export class ModifyAssistantRequest extends S.Class<ModifyAssistantRequest>("ModifyAssistantRequest")({
-  "model": S.optionalWith(S.String, { nullable: true }),
+  "model": S.optionalWith(S.Union(S.String, AssistantSupportedModels), { nullable: true }),
+  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
   "name": S.optionalWith(S.String.pipe(S.maxLength(256)), { nullable: true }),
   "description": S.optionalWith(S.String.pipe(S.maxLength(512)), { nullable: true }),
   "instructions": S.optionalWith(S.String.pipe(S.maxLength(256000)), { nullable: true }),
@@ -281,7 +290,7 @@ export class DeleteAssistantResponse extends S.Class<DeleteAssistantResponse>("D
   "object": DeleteAssistantResponseObject
 }) {}
 
-export class CreateSpeechRequestModel extends S.Literal("tts-1", "tts-1-hd") {}
+export class CreateSpeechRequestModelEnum extends S.Literal("tts-1", "tts-1-hd") {}
 
 export class CreateSpeechRequestVoice
   extends S.Literal("alloy", "ash", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer")
@@ -290,7 +299,7 @@ export class CreateSpeechRequestVoice
 export class CreateSpeechRequestResponseFormat extends S.Literal("mp3", "opus", "aac", "flac", "wav", "pcm") {}
 
 export class CreateSpeechRequest extends S.Class<CreateSpeechRequest>("CreateSpeechRequest")({
-  "model": S.Union(S.String, CreateSpeechRequestModel),
+  "model": S.Union(S.String, CreateSpeechRequestModelEnum),
   "input": S.String.pipe(S.maxLength(4096)),
   "voice": CreateSpeechRequestVoice,
   "response_format": S.optionalWith(CreateSpeechRequestResponseFormat, {
@@ -580,7 +589,7 @@ export class ChatCompletionRequestMessage extends S.Union(
   ChatCompletionRequestFunctionMessage
 ) {}
 
-export class CreateChatCompletionRequestModel extends S.Literal(
+export class CreateChatCompletionRequestModelEnum extends S.Literal(
   "o3-mini",
   "o3-mini-2025-01-31",
   "o1",
@@ -622,8 +631,6 @@ export class CreateChatCompletionRequestModel extends S.Literal(
   "gpt-3.5-turbo-16k-0613"
 ) {}
 
-export class CreateChatCompletionRequestReasoningEffort extends S.Literal("low", "medium", "high") {}
-
 export class ChatCompletionModalities extends S.Array(S.Literal("text", "audio")) {}
 
 export class PredictionContentType extends S.Literal("content") {}
@@ -652,6 +659,8 @@ export class ChatCompletionTool extends S.Struct({
   "function": FunctionObject
 }) {}
 
+export class ChatCompletionToolChoiceOptionEnum extends S.Literal("none", "auto", "required") {}
+
 export class ChatCompletionNamedToolChoiceType extends S.Literal("function") {}
 
 export class ChatCompletionNamedToolChoice extends S.Struct({
@@ -662,12 +671,12 @@ export class ChatCompletionNamedToolChoice extends S.Struct({
 }) {}
 
 export class ChatCompletionToolChoiceOption
-  extends S.Union(S.Literal("none", "auto", "required"), ChatCompletionNamedToolChoice)
+  extends S.Union(ChatCompletionToolChoiceOptionEnum, ChatCompletionNamedToolChoice)
 {}
 
 export class ParallelToolCalls extends S.Boolean {}
 
-export class CreateChatCompletionRequestFunctionCall extends S.Literal("none", "auto") {}
+export class CreateChatCompletionRequestFunctionCallEnum extends S.Literal("none", "auto") {}
 
 export class ChatCompletionFunctionCallOption extends S.Struct({
   "name": S.String
@@ -681,18 +690,15 @@ export class ChatCompletionFunctions extends S.Struct({
 
 export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionRequest>("CreateChatCompletionRequest")({
   "messages": S.NonEmptyArray(ChatCompletionRequestMessage),
-  "model": S.Union(S.String, CreateChatCompletionRequestModel),
+  "model": S.Union(S.String, CreateChatCompletionRequestModelEnum),
   "store": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
-  "reasoning_effort": S.optionalWith(CreateChatCompletionRequestReasoningEffort, {
-    nullable: true,
-    default: () => "medium" as const
-  }),
+  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
   "metadata": S.optionalWith(Metadata, { nullable: true }),
   "frequency_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 0 as const
   }),
-  "logit_bias": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "logit_bias": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true, default: () => null }),
   "logprobs": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
   "top_logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(20)), { nullable: true }),
   "max_tokens": S.optionalWith(S.Int, { nullable: true }),
@@ -722,9 +728,12 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     nullable: true,
     default: () => "auto" as const
   }),
-  "stop": S.optionalWith(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4))), { nullable: true }),
+  "stop": S.optionalWith(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4))), {
+    nullable: true,
+    default: () => null
+  }),
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
-  "stream_options": S.optionalWith(ChatCompletionStreamOptions, { nullable: true }),
+  "stream_options": S.optionalWith(ChatCompletionStreamOptions, { nullable: true, default: () => null }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 1 as const
@@ -737,15 +746,12 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   "tool_choice": S.optionalWith(ChatCompletionToolChoiceOption, { nullable: true }),
   "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
   "user": S.optionalWith(S.String, { nullable: true }),
-  "function_call": S.optionalWith(S.Union(CreateChatCompletionRequestFunctionCall, ChatCompletionFunctionCallOption), {
-    nullable: true
-  }),
+  "function_call": S.optionalWith(
+    S.Union(CreateChatCompletionRequestFunctionCallEnum, ChatCompletionFunctionCallOption),
+    { nullable: true }
+  ),
   "functions": S.optionalWith(S.Array(ChatCompletionFunctions).pipe(S.minItems(1), S.maxItems(128)), { nullable: true })
 }) {}
-
-export class CreateChatCompletionResponseChoicesFinishReason
-  extends S.Literal("stop", "length", "tool_calls", "content_filter", "function_call")
-{}
 
 export class ChatCompletionResponseMessageRole extends S.Literal("assistant") {}
 
@@ -813,7 +819,7 @@ export class CreateChatCompletionResponse
   extends S.Class<CreateChatCompletionResponse>("CreateChatCompletionResponse")({
     "id": S.String,
     "choices": S.Array(S.Struct({
-      "finish_reason": CreateChatCompletionResponseChoicesFinishReason,
+      "finish_reason": S.Literal("stop", "length", "tool_calls", "content_filter", "function_call"),
       "index": S.Int,
       "message": ChatCompletionResponseMessage,
       "logprobs": S.NullOr(S.Struct({
@@ -830,10 +836,12 @@ export class CreateChatCompletionResponse
   })
 {}
 
-export class CreateCompletionRequestModel extends S.Literal("gpt-3.5-turbo-instruct", "davinci-002", "babbage-002") {}
+export class CreateCompletionRequestModelEnum
+  extends S.Literal("gpt-3.5-turbo-instruct", "davinci-002", "babbage-002")
+{}
 
 export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("CreateCompletionRequest")({
-  "model": S.Union(S.String, CreateCompletionRequestModel),
+  "model": S.Union(S.String, CreateCompletionRequestModelEnum),
   "prompt": S.NullOr(
     S.Union(S.String, S.Array(S.String), S.NonEmptyArray(S.Int), S.NonEmptyArray(S.NonEmptyArray(S.Int)))
   ).pipe(S.propertySignature, S.withConstructorDefault(() => "<|endoftext|>" as const)),
@@ -846,8 +854,11 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
     nullable: true,
     default: () => 0 as const
   }),
-  "logit_bias": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-  "logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(5)), { nullable: true }),
+  "logit_bias": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true, default: () => null }),
+  "logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(5)), {
+    nullable: true,
+    default: () => null
+  }),
   "max_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true, default: () => 16 as const }),
   "n": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(128)), {
     nullable: true,
@@ -858,10 +869,13 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
     default: () => 0 as const
   }),
   "seed": S.optionalWith(S.Int, { nullable: true }),
-  "stop": S.optionalWith(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4))), { nullable: true }),
+  "stop": S.optionalWith(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4))), {
+    nullable: true,
+    default: () => null
+  }),
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
-  "stream_options": S.optionalWith(ChatCompletionStreamOptions, { nullable: true }),
-  "suffix": S.optionalWith(S.String, { nullable: true }),
+  "stream_options": S.optionalWith(ChatCompletionStreamOptions, { nullable: true, default: () => null }),
+  "suffix": S.optionalWith(S.String, { nullable: true, default: () => null }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 1 as const
@@ -873,14 +887,12 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
   "user": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class CreateCompletionResponseChoicesFinishReason extends S.Literal("stop", "length", "content_filter") {}
-
 export class CreateCompletionResponseObject extends S.Literal("text_completion") {}
 
 export class CreateCompletionResponse extends S.Class<CreateCompletionResponse>("CreateCompletionResponse")({
   "id": S.String,
   "choices": S.Array(S.Struct({
-    "finish_reason": CreateCompletionResponseChoicesFinishReason,
+    "finish_reason": S.Literal("stop", "length", "content_filter"),
     "index": S.Int,
     "logprobs": S.NullOr(S.Struct({
       "text_offset": S.optionalWith(S.Array(S.Int), { nullable: true }),
@@ -897,7 +909,7 @@ export class CreateCompletionResponse extends S.Class<CreateCompletionResponse>(
   "usage": S.optionalWith(CompletionUsage, { nullable: true })
 }) {}
 
-export class CreateEmbeddingRequestModel
+export class CreateEmbeddingRequestModelEnum
   extends S.Literal("text-embedding-ada-002", "text-embedding-3-small", "text-embedding-3-large")
 {}
 
@@ -910,7 +922,7 @@ export class CreateEmbeddingRequest extends S.Class<CreateEmbeddingRequest>("Cre
     S.Array(S.Int).pipe(S.minItems(1), S.maxItems(2048)),
     S.Array(S.NonEmptyArray(S.Int)).pipe(S.minItems(1), S.maxItems(2048))
   ),
-  "model": S.Union(S.String, CreateEmbeddingRequestModel),
+  "model": S.Union(S.String, CreateEmbeddingRequestModelEnum),
   "encoding_format": S.optionalWith(CreateEmbeddingRequestEncodingFormat, {
     nullable: true,
     default: () => "float" as const
@@ -996,11 +1008,11 @@ export class ListPaginatedFineTuningJobsParams extends S.Struct({
   "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const })
 }) {}
 
-export class FineTuningJobHyperparametersBatchSize extends S.Literal("auto") {}
+export class FineTuningJobHyperparametersBatchSizeEnum extends S.Literal("auto") {}
 
-export class FineTuningJobHyperparametersLearningRateMultiplier extends S.Literal("auto") {}
+export class FineTuningJobHyperparametersLearningRateMultiplierEnum extends S.Literal("auto") {}
 
-export class FineTuningJobHyperparametersNEpochs extends S.Literal("auto") {}
+export class FineTuningJobHyperparametersNEpochsEnum extends S.Literal("auto") {}
 
 export class FineTuningJobObject extends S.Literal("fine_tuning.job") {}
 
@@ -1022,24 +1034,24 @@ export class FineTuningIntegration extends S.Struct({
 
 export class FineTuneMethodType extends S.Literal("supervised", "dpo") {}
 
-export class FineTuneSupervisedMethodHyperparametersBatchSize extends S.Literal("auto") {}
+export class FineTuneSupervisedMethodHyperparametersBatchSizeEnum extends S.Literal("auto") {}
 
-export class FineTuneSupervisedMethodHyperparametersLearningRateMultiplier extends S.Literal("auto") {}
+export class FineTuneSupervisedMethodHyperparametersLearningRateMultiplierEnum extends S.Literal("auto") {}
 
-export class FineTuneSupervisedMethodHyperparametersNEpochs extends S.Literal("auto") {}
+export class FineTuneSupervisedMethodHyperparametersNEpochsEnum extends S.Literal("auto") {}
 
 export class FineTuneSupervisedMethod extends S.Struct({
   "hyperparameters": S.optionalWith(
     S.Struct({
       "batch_size": S.optionalWith(
         S.Union(
-          FineTuneSupervisedMethodHyperparametersBatchSize,
+          FineTuneSupervisedMethodHyperparametersBatchSizeEnum,
           S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))
         ),
         { nullable: true, default: () => "auto" as const }
       ),
       "learning_rate_multiplier": S.optionalWith(
-        S.Union(FineTuneSupervisedMethodHyperparametersLearningRateMultiplier, S.Number.pipe(S.greaterThan(0))),
+        S.Union(FineTuneSupervisedMethodHyperparametersLearningRateMultiplierEnum, S.Number.pipe(S.greaterThan(0))),
         {
           nullable: true,
           default: () => "auto" as const
@@ -1047,7 +1059,7 @@ export class FineTuneSupervisedMethod extends S.Struct({
       ),
       "n_epochs": S.optionalWith(
         S.Union(
-          FineTuneSupervisedMethodHyperparametersNEpochs,
+          FineTuneSupervisedMethodHyperparametersNEpochsEnum,
           S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))
         ),
         { nullable: true, default: () => "auto" as const }
@@ -1057,19 +1069,19 @@ export class FineTuneSupervisedMethod extends S.Struct({
   )
 }) {}
 
-export class FineTuneDPOMethodHyperparametersBeta extends S.Literal("auto") {}
+export class FineTuneDPOMethodHyperparametersBetaEnum extends S.Literal("auto") {}
 
-export class FineTuneDPOMethodHyperparametersBatchSize extends S.Literal("auto") {}
+export class FineTuneDPOMethodHyperparametersBatchSizeEnum extends S.Literal("auto") {}
 
-export class FineTuneDPOMethodHyperparametersLearningRateMultiplier extends S.Literal("auto") {}
+export class FineTuneDPOMethodHyperparametersLearningRateMultiplierEnum extends S.Literal("auto") {}
 
-export class FineTuneDPOMethodHyperparametersNEpochs extends S.Literal("auto") {}
+export class FineTuneDPOMethodHyperparametersNEpochsEnum extends S.Literal("auto") {}
 
 export class FineTuneDPOMethod extends S.Struct({
   "hyperparameters": S.optionalWith(
     S.Struct({
       "beta": S.optionalWith(
-        S.Union(FineTuneDPOMethodHyperparametersBeta, S.Number.pipe(S.greaterThan(0), S.lessThanOrEqualTo(2))),
+        S.Union(FineTuneDPOMethodHyperparametersBetaEnum, S.Number.pipe(S.greaterThan(0), S.lessThanOrEqualTo(2))),
         {
           nullable: true,
           default: () => "auto" as const
@@ -1077,13 +1089,13 @@ export class FineTuneDPOMethod extends S.Struct({
       ),
       "batch_size": S.optionalWith(
         S.Union(
-          FineTuneDPOMethodHyperparametersBatchSize,
+          FineTuneDPOMethodHyperparametersBatchSizeEnum,
           S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))
         ),
         { nullable: true, default: () => "auto" as const }
       ),
       "learning_rate_multiplier": S.optionalWith(
-        S.Union(FineTuneDPOMethodHyperparametersLearningRateMultiplier, S.Number.pipe(S.greaterThan(0))),
+        S.Union(FineTuneDPOMethodHyperparametersLearningRateMultiplierEnum, S.Number.pipe(S.greaterThan(0))),
         {
           nullable: true,
           default: () => "auto" as const
@@ -1091,7 +1103,7 @@ export class FineTuneDPOMethod extends S.Struct({
       ),
       "n_epochs": S.optionalWith(
         S.Union(
-          FineTuneDPOMethodHyperparametersNEpochs,
+          FineTuneDPOMethodHyperparametersNEpochsEnum,
           S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))
         ),
         { nullable: true, default: () => "auto" as const }
@@ -1119,21 +1131,21 @@ export class FineTuningJob extends S.Struct({
   "finished_at": S.NullOr(S.Int),
   "hyperparameters": S.Struct({
     "batch_size": S.optionalWith(
-      S.Union(FineTuningJobHyperparametersBatchSize, S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))),
-      {
-        nullable: true,
-        default: () => "auto" as const
-      }
+      S.Union(
+        FineTuningJobHyperparametersBatchSizeEnum,
+        S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))
+      ),
+      { nullable: true, default: () => "auto" as const }
     ),
     "learning_rate_multiplier": S.optionalWith(
-      S.Union(FineTuningJobHyperparametersLearningRateMultiplier, S.Number.pipe(S.greaterThan(0))),
+      S.Union(FineTuningJobHyperparametersLearningRateMultiplierEnum, S.Number.pipe(S.greaterThan(0))),
       {
         nullable: true,
         default: () => "auto" as const
       }
     ),
     "n_epochs": S.optionalWith(
-      S.Union(FineTuningJobHyperparametersNEpochs, S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))),
+      S.Union(FineTuningJobHyperparametersNEpochsEnum, S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))),
       {
         nullable: true,
         default: () => "auto" as const
@@ -1164,32 +1176,30 @@ export class ListPaginatedFineTuningJobsResponse
   })
 {}
 
-export class CreateFineTuningJobRequestModel
+export class CreateFineTuningJobRequestModelEnum
   extends S.Literal("babbage-002", "davinci-002", "gpt-3.5-turbo", "gpt-4o-mini")
 {}
 
-export class CreateFineTuningJobRequestHyperparametersBatchSize extends S.Literal("auto") {}
+export class CreateFineTuningJobRequestHyperparametersBatchSizeEnum extends S.Literal("auto") {}
 
-export class CreateFineTuningJobRequestHyperparametersLearningRateMultiplier extends S.Literal("auto") {}
+export class CreateFineTuningJobRequestHyperparametersLearningRateMultiplierEnum extends S.Literal("auto") {}
 
-export class CreateFineTuningJobRequestHyperparametersNEpochs extends S.Literal("auto") {}
-
-export class CreateFineTuningJobRequestIntegrationsType extends S.Literal("wandb") {}
+export class CreateFineTuningJobRequestHyperparametersNEpochsEnum extends S.Literal("auto") {}
 
 export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobRequest>("CreateFineTuningJobRequest")({
-  "model": S.Union(S.String, CreateFineTuningJobRequestModel),
+  "model": S.Union(S.String, CreateFineTuningJobRequestModelEnum),
   "training_file": S.String,
   "hyperparameters": S.optionalWith(
     S.Struct({
       "batch_size": S.optionalWith(
         S.Union(
-          CreateFineTuningJobRequestHyperparametersBatchSize,
+          CreateFineTuningJobRequestHyperparametersBatchSizeEnum,
           S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))
         ),
         { nullable: true, default: () => "auto" as const }
       ),
       "learning_rate_multiplier": S.optionalWith(
-        S.Union(CreateFineTuningJobRequestHyperparametersLearningRateMultiplier, S.Number.pipe(S.greaterThan(0))),
+        S.Union(CreateFineTuningJobRequestHyperparametersLearningRateMultiplierEnum, S.Number.pipe(S.greaterThan(0))),
         {
           nullable: true,
           default: () => "auto" as const
@@ -1197,7 +1207,7 @@ export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobReque
       ),
       "n_epochs": S.optionalWith(
         S.Union(
-          CreateFineTuningJobRequestHyperparametersNEpochs,
+          CreateFineTuningJobRequestHyperparametersNEpochsEnum,
           S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))
         ),
         { nullable: true, default: () => "auto" as const }
@@ -1205,11 +1215,11 @@ export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobReque
     }),
     { nullable: true }
   ),
-  "suffix": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(64)), { nullable: true }),
+  "suffix": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(64)), { nullable: true, default: () => null }),
   "validation_file": S.optionalWith(S.String, { nullable: true }),
   "integrations": S.optionalWith(
     S.Array(S.Struct({
-      "type": CreateFineTuningJobRequestIntegrationsType,
+      "type": S.Literal("wandb"),
       "wandb": S.Struct({
         "project": S.String,
         "name": S.optionalWith(S.String, { nullable: true }),
@@ -1286,7 +1296,8 @@ export class ListFineTuningJobEventsResponseObject extends S.Literal("list") {}
 export class ListFineTuningJobEventsResponse
   extends S.Class<ListFineTuningJobEventsResponse>("ListFineTuningJobEventsResponse")({
     "data": S.Array(FineTuningJobEvent),
-    "object": ListFineTuningJobEventsResponseObject
+    "object": ListFineTuningJobEventsResponseObject,
+    "has_more": S.Boolean
   })
 {}
 
@@ -1301,7 +1312,7 @@ export class ImagesResponse extends S.Class<ImagesResponse>("ImagesResponse")({
   "data": S.Array(Image)
 }) {}
 
-export class CreateImageRequestModel extends S.Literal("dall-e-2", "dall-e-3") {}
+export class CreateImageRequestModelEnum extends S.Literal("dall-e-2", "dall-e-3") {}
 
 export class CreateImageRequestQuality extends S.Literal("standard", "hd") {}
 
@@ -1313,7 +1324,7 @@ export class CreateImageRequestStyle extends S.Literal("vivid", "natural") {}
 
 export class CreateImageRequest extends S.Class<CreateImageRequest>("CreateImageRequest")({
   "prompt": S.String,
-  "model": S.optionalWith(S.Union(S.String, CreateImageRequestModel), {
+  "model": S.optionalWith(S.Union(S.String, CreateImageRequestModelEnum), {
     nullable: true,
     default: () => "dall-e-2" as const
   }),
@@ -1353,9 +1364,7 @@ export class DeleteModelResponse extends S.Class<DeleteModelResponse>("DeleteMod
   "object": S.String
 }) {}
 
-export class CreateModerationRequestInputType extends S.Literal("text") {}
-
-export class CreateModerationRequestModel extends S.Literal(
+export class CreateModerationRequestModelEnum extends S.Literal(
   "omni-moderation-latest",
   "omni-moderation-2024-09-26",
   "text-moderation-latest",
@@ -1368,54 +1377,22 @@ export class CreateModerationRequest extends S.Class<CreateModerationRequest>("C
     S.Array(S.String),
     S.Array(S.Union(
       S.Struct({
-        "type": CreateModerationRequestInputType,
+        "type": S.Literal("image_url"),
         "image_url": S.Struct({
           "url": S.String
         })
       }),
       S.Struct({
-        "type": CreateModerationRequestInputType,
+        "type": S.Literal("text"),
         "text": S.String
       })
     ))
   ),
-  "model": S.optionalWith(S.Union(S.String, CreateModerationRequestModel), {
+  "model": S.optionalWith(S.Union(S.String, CreateModerationRequestModelEnum), {
     nullable: true,
     default: () => "omni-moderation-latest" as const
   })
 }) {}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesHate extends S.Literal("text") {}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesHateThreatening extends S.Literal("text") {}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesHarassment extends S.Literal("text") {}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesHarassmentThreatening extends S.Literal("text") {}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesIllicit extends S.Literal("text") {}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesIllicitViolent extends S.Literal("text") {}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesSelfHarm extends S.Literal("text", "image") {}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesSelfHarmIntent
-  extends S.Literal("text", "image")
-{}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesSelfHarmInstructions
-  extends S.Literal("text", "image")
-{}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesSexual extends S.Literal("text", "image") {}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesSexualMinors extends S.Literal("text") {}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesViolence extends S.Literal("text", "image") {}
-
-export class CreateModerationResponseResultsCategoryAppliedInputTypesViolenceGraphic
-  extends S.Literal("text", "image")
-{}
 
 export class CreateModerationResponse extends S.Class<CreateModerationResponse>("CreateModerationResponse")({
   "id": S.String,
@@ -1427,8 +1404,8 @@ export class CreateModerationResponse extends S.Class<CreateModerationResponse>(
       "hate/threatening": S.Boolean,
       "harassment": S.Boolean,
       "harassment/threatening": S.Boolean,
-      "illicit": S.Boolean,
-      "illicit/violent": S.Boolean,
+      "illicit": S.NullOr(S.Boolean),
+      "illicit/violent": S.NullOr(S.Boolean),
       "self-harm": S.Boolean,
       "self-harm/intent": S.Boolean,
       "self-harm/instructions": S.Boolean,
@@ -1453,19 +1430,19 @@ export class CreateModerationResponse extends S.Class<CreateModerationResponse>(
       "violence/graphic": S.Number
     }),
     "category_applied_input_types": S.Struct({
-      "hate": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesHate),
-      "hate/threatening": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesHateThreatening),
-      "harassment": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesHarassment),
-      "harassment/threatening": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesHarassmentThreatening),
-      "illicit": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesIllicit),
-      "illicit/violent": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesIllicitViolent),
-      "self-harm": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesSelfHarm),
-      "self-harm/intent": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesSelfHarmIntent),
-      "self-harm/instructions": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesSelfHarmInstructions),
-      "sexual": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesSexual),
-      "sexual/minors": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesSexualMinors),
-      "violence": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesViolence),
-      "violence/graphic": S.Array(CreateModerationResponseResultsCategoryAppliedInputTypesViolenceGraphic)
+      "hate": S.Array(S.Literal("text")),
+      "hate/threatening": S.Array(S.Literal("text")),
+      "harassment": S.Array(S.Literal("text")),
+      "harassment/threatening": S.Array(S.Literal("text")),
+      "illicit": S.Array(S.Literal("text")),
+      "illicit/violent": S.Array(S.Literal("text")),
+      "self-harm": S.Array(S.Literal("text", "image")),
+      "self-harm/intent": S.Array(S.Literal("text", "image")),
+      "self-harm/instructions": S.Array(S.Literal("text", "image")),
+      "sexual": S.Array(S.Literal("text", "image")),
+      "sexual/minors": S.Array(S.Literal("text")),
+      "violence": S.Array(S.Literal("text", "image")),
+      "violence/graphic": S.Array(S.Literal("text", "image"))
     })
   }))
 }) {}
@@ -1816,14 +1793,12 @@ export class ListAuditLogsResponse extends S.Class<ListAuditLogsResponse>("ListA
 
 export class UsageCostsParamsBucketWidth extends S.Literal("1d") {}
 
-export class UsageCostsParamsGroupBy extends S.Literal("project_id", "line_item") {}
-
 export class UsageCostsParams extends S.Struct({
   "start_time": S.Int,
   "end_time": S.optionalWith(S.Int, { nullable: true }),
   "bucket_width": S.optionalWith(UsageCostsParamsBucketWidth, { nullable: true, default: () => "1d" as const }),
   "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
-  "group_by": S.optionalWith(S.Array(UsageCostsParamsGroupBy), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "line_item")), { nullable: true }),
   "limit": S.optionalWith(S.Int, { nullable: true, default: () => 7 as const }),
   "page": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -1925,7 +1900,7 @@ export class UsageCodeInterpreterSessionsResultObject
 
 export class UsageCodeInterpreterSessionsResult extends S.Struct({
   "object": UsageCodeInterpreterSessionsResultObject,
-  "sessions": S.Int,
+  "num_sessions": S.optionalWith(S.Int, { nullable: true }),
   "project_id": S.optionalWith(S.String, { nullable: true })
 }) {}
 
@@ -1983,8 +1958,6 @@ export class InviteRole extends S.Literal("owner", "reader") {}
 
 export class InviteStatus extends S.Literal("accepted", "expired", "pending") {}
 
-export class InviteProjectsRole extends S.Literal("member", "owner") {}
-
 export class Invite extends S.Struct({
   "object": InviteObject,
   "id": S.String,
@@ -1997,7 +1970,7 @@ export class Invite extends S.Struct({
   "projects": S.optionalWith(
     S.Array(S.Struct({
       "id": S.optionalWith(S.String, { nullable: true }),
-      "role": S.optionalWith(InviteProjectsRole, { nullable: true })
+      "role": S.optionalWith(S.Literal("member", "owner"), { nullable: true })
     })),
     { nullable: true }
   )
@@ -2013,15 +1986,13 @@ export class InviteListResponse extends S.Class<InviteListResponse>("InviteListR
 
 export class InviteRequestRole extends S.Literal("reader", "owner") {}
 
-export class InviteRequestProjectsRole extends S.Literal("member", "owner") {}
-
 export class InviteRequest extends S.Class<InviteRequest>("InviteRequest")({
   "email": S.String,
   "role": InviteRequestRole,
   "projects": S.optionalWith(
     S.Array(S.Struct({
       "id": S.String,
-      "role": InviteRequestProjectsRole
+      "role": S.Literal("member", "owner")
     })),
     { nullable: true }
   )
@@ -2287,8 +2258,6 @@ export class ProjectUserDeleteResponse extends S.Class<ProjectUserDeleteResponse
 
 export class UsageAudioSpeechesParamsBucketWidth extends S.Literal("1m", "1h", "1d") {}
 
-export class UsageAudioSpeechesParamsGroupBy extends S.Literal("project_id", "user_id", "api_key_id", "model") {}
-
 export class UsageAudioSpeechesParams extends S.Struct({
   "start_time": S.Int,
   "end_time": S.optionalWith(S.Int, { nullable: true }),
@@ -2297,14 +2266,12 @@ export class UsageAudioSpeechesParams extends S.Struct({
   "user_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "models": S.optionalWith(S.Array(S.String), { nullable: true }),
-  "group_by": S.optionalWith(S.Array(UsageAudioSpeechesParamsGroupBy), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model")), { nullable: true }),
   "limit": S.optionalWith(S.Int, { nullable: true }),
   "page": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class UsageAudioTranscriptionsParamsBucketWidth extends S.Literal("1m", "1h", "1d") {}
-
-export class UsageAudioTranscriptionsParamsGroupBy extends S.Literal("project_id", "user_id", "api_key_id", "model") {}
 
 export class UsageAudioTranscriptionsParams extends S.Struct({
   "start_time": S.Int,
@@ -2317,14 +2284,12 @@ export class UsageAudioTranscriptionsParams extends S.Struct({
   "user_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "models": S.optionalWith(S.Array(S.String), { nullable: true }),
-  "group_by": S.optionalWith(S.Array(UsageAudioTranscriptionsParamsGroupBy), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model")), { nullable: true }),
   "limit": S.optionalWith(S.Int, { nullable: true }),
   "page": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class UsageCodeInterpreterSessionsParamsBucketWidth extends S.Literal("1m", "1h", "1d") {}
-
-export class UsageCodeInterpreterSessionsParamsGroupBy extends S.Literal("project_id") {}
 
 export class UsageCodeInterpreterSessionsParams extends S.Struct({
   "start_time": S.Int,
@@ -2334,14 +2299,12 @@ export class UsageCodeInterpreterSessionsParams extends S.Struct({
     default: () => "1d" as const
   }),
   "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
-  "group_by": S.optionalWith(S.Array(UsageCodeInterpreterSessionsParamsGroupBy), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id")), { nullable: true }),
   "limit": S.optionalWith(S.Int, { nullable: true }),
   "page": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class UsageCompletionsParamsBucketWidth extends S.Literal("1m", "1h", "1d") {}
-
-export class UsageCompletionsParamsGroupBy extends S.Literal("project_id", "user_id", "api_key_id", "model", "batch") {}
 
 export class UsageCompletionsParams extends S.Struct({
   "start_time": S.Int,
@@ -2352,14 +2315,14 @@ export class UsageCompletionsParams extends S.Struct({
   "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "models": S.optionalWith(S.Array(S.String), { nullable: true }),
   "batch": S.optionalWith(S.Boolean, { nullable: true }),
-  "group_by": S.optionalWith(S.Array(UsageCompletionsParamsGroupBy), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model", "batch")), {
+    nullable: true
+  }),
   "limit": S.optionalWith(S.Int, { nullable: true }),
   "page": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class UsageEmbeddingsParamsBucketWidth extends S.Literal("1m", "1h", "1d") {}
-
-export class UsageEmbeddingsParamsGroupBy extends S.Literal("project_id", "user_id", "api_key_id", "model") {}
 
 export class UsageEmbeddingsParams extends S.Struct({
   "start_time": S.Int,
@@ -2369,39 +2332,35 @@ export class UsageEmbeddingsParams extends S.Struct({
   "user_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "models": S.optionalWith(S.Array(S.String), { nullable: true }),
-  "group_by": S.optionalWith(S.Array(UsageEmbeddingsParamsGroupBy), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model")), { nullable: true }),
   "limit": S.optionalWith(S.Int, { nullable: true }),
   "page": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class UsageImagesParamsBucketWidth extends S.Literal("1m", "1h", "1d") {}
 
-export class UsageImagesParamsSources extends S.Literal("image.generation", "image.edit", "image.variation") {}
-
-export class UsageImagesParamsSizes extends S.Literal("256x256", "512x512", "1024x1024", "1792x1792", "1024x1792") {}
-
-export class UsageImagesParamsGroupBy
-  extends S.Literal("project_id", "user_id", "api_key_id", "model", "size", "source")
-{}
-
 export class UsageImagesParams extends S.Struct({
   "start_time": S.Int,
   "end_time": S.optionalWith(S.Int, { nullable: true }),
   "bucket_width": S.optionalWith(UsageImagesParamsBucketWidth, { nullable: true, default: () => "1d" as const }),
-  "sources": S.optionalWith(S.Array(UsageImagesParamsSources), { nullable: true }),
-  "sizes": S.optionalWith(S.Array(UsageImagesParamsSizes), { nullable: true }),
+  "sources": S.optionalWith(S.Array(S.Literal("image.generation", "image.edit", "image.variation")), {
+    nullable: true
+  }),
+  "sizes": S.optionalWith(S.Array(S.Literal("256x256", "512x512", "1024x1024", "1792x1792", "1024x1792")), {
+    nullable: true
+  }),
   "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "user_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "models": S.optionalWith(S.Array(S.String), { nullable: true }),
-  "group_by": S.optionalWith(S.Array(UsageImagesParamsGroupBy), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model", "size", "source")), {
+    nullable: true
+  }),
   "limit": S.optionalWith(S.Int, { nullable: true }),
   "page": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class UsageModerationsParamsBucketWidth extends S.Literal("1m", "1h", "1d") {}
-
-export class UsageModerationsParamsGroupBy extends S.Literal("project_id", "user_id", "api_key_id", "model") {}
 
 export class UsageModerationsParams extends S.Struct({
   "start_time": S.Int,
@@ -2411,21 +2370,19 @@ export class UsageModerationsParams extends S.Struct({
   "user_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "models": S.optionalWith(S.Array(S.String), { nullable: true }),
-  "group_by": S.optionalWith(S.Array(UsageModerationsParamsGroupBy), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model")), { nullable: true }),
   "limit": S.optionalWith(S.Int, { nullable: true }),
   "page": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class UsageVectorStoresParamsBucketWidth extends S.Literal("1m", "1h", "1d") {}
 
-export class UsageVectorStoresParamsGroupBy extends S.Literal("project_id") {}
-
 export class UsageVectorStoresParams extends S.Struct({
   "start_time": S.Int,
   "end_time": S.optionalWith(S.Int, { nullable: true }),
   "bucket_width": S.optionalWith(UsageVectorStoresParamsBucketWidth, { nullable: true, default: () => "1d" as const }),
   "project_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
-  "group_by": S.optionalWith(S.Array(UsageVectorStoresParamsGroupBy), { nullable: true }),
+  "group_by": S.optionalWith(S.Array(S.Literal("project_id")), { nullable: true }),
   "limit": S.optionalWith(S.Int, { nullable: true }),
   "page": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -2489,9 +2446,7 @@ export class RealtimeSessionCreateRequestInputAudioFormat extends S.Literal("pcm
 
 export class RealtimeSessionCreateRequestOutputAudioFormat extends S.Literal("pcm16", "g711_ulaw", "g711_alaw") {}
 
-export class RealtimeSessionCreateRequestToolsType extends S.Literal("function") {}
-
-export class RealtimeSessionCreateRequestMaxResponseOutputTokens extends S.Literal("inf") {}
+export class RealtimeSessionCreateRequestMaxResponseOutputTokensEnum extends S.Literal("inf") {}
 
 export class RealtimeSessionCreateRequest
   extends S.Class<RealtimeSessionCreateRequest>("RealtimeSessionCreateRequest")({
@@ -2520,7 +2475,7 @@ export class RealtimeSessionCreateRequest
     ),
     "tools": S.optionalWith(
       S.Array(S.Struct({
-        "type": S.optionalWith(RealtimeSessionCreateRequestToolsType, { nullable: true }),
+        "type": S.optionalWith(S.Literal("function"), { nullable: true }),
         "name": S.optionalWith(S.String, { nullable: true }),
         "description": S.optionalWith(S.String, { nullable: true }),
         "parameters": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
@@ -2529,9 +2484,10 @@ export class RealtimeSessionCreateRequest
     ),
     "tool_choice": S.optionalWith(S.String, { nullable: true }),
     "temperature": S.optionalWith(S.Number, { nullable: true }),
-    "max_response_output_tokens": S.optionalWith(S.Union(S.Int, RealtimeSessionCreateRequestMaxResponseOutputTokens), {
-      nullable: true
-    })
+    "max_response_output_tokens": S.optionalWith(
+      S.Union(S.Int, RealtimeSessionCreateRequestMaxResponseOutputTokensEnum),
+      { nullable: true }
+    )
   })
 {}
 
@@ -2539,9 +2495,7 @@ export class RealtimeSessionCreateResponseVoice
   extends S.Literal("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse")
 {}
 
-export class RealtimeSessionCreateResponseToolsType extends S.Literal("function") {}
-
-export class RealtimeSessionCreateResponseMaxResponseOutputTokens extends S.Literal("inf") {}
+export class RealtimeSessionCreateResponseMaxResponseOutputTokensEnum extends S.Literal("inf") {}
 
 export class RealtimeSessionCreateResponse
   extends S.Class<RealtimeSessionCreateResponse>("RealtimeSessionCreateResponse")({
@@ -2570,7 +2524,7 @@ export class RealtimeSessionCreateResponse
     ),
     "tools": S.optionalWith(
       S.Array(S.Struct({
-        "type": S.optionalWith(RealtimeSessionCreateResponseToolsType, { nullable: true }),
+        "type": S.optionalWith(S.Literal("function"), { nullable: true }),
         "name": S.optionalWith(S.String, { nullable: true }),
         "description": S.optionalWith(S.String, { nullable: true }),
         "parameters": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
@@ -2579,9 +2533,10 @@ export class RealtimeSessionCreateResponse
     ),
     "tool_choice": S.optionalWith(S.String, { nullable: true }),
     "temperature": S.optionalWith(S.Number, { nullable: true }),
-    "max_response_output_tokens": S.optionalWith(S.Union(S.Int, RealtimeSessionCreateResponseMaxResponseOutputTokens), {
-      nullable: true
-    })
+    "max_response_output_tokens": S.optionalWith(
+      S.Union(S.Int, RealtimeSessionCreateResponseMaxResponseOutputTokensEnum),
+      { nullable: true }
+    )
   })
 {}
 
@@ -2650,8 +2605,6 @@ export class CreateMessageRequest extends S.Struct({
   "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
-export class CreateThreadRequestToolResourcesFileSearchVectorStoresChunkingStrategyType extends S.Literal("static") {}
-
 export class CreateThreadRequest extends S.Class<CreateThreadRequest>("CreateThreadRequest")({
   "messages": S.optionalWith(S.Array(CreateMessageRequest), { nullable: true }),
   "tool_resources": S.optionalWith(
@@ -2711,7 +2664,7 @@ export class ThreadObject extends S.Class<ThreadObject>("ThreadObject")({
   "metadata": S.NullOr(Metadata)
 }) {}
 
-export class CreateThreadAndRunRequestModel extends S.Literal(
+export class CreateThreadAndRunRequestModelEnum extends S.Literal(
   "gpt-4o",
   "gpt-4o-2024-11-20",
   "gpt-4o-2024-08-06",
@@ -2745,6 +2698,8 @@ export class TruncationObject extends S.Struct({
   "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
 }) {}
 
+export class AssistantsApiToolChoiceOptionEnum extends S.Literal("none", "auto", "required") {}
+
 export class AssistantsNamedToolChoiceType extends S.Literal("function", "code_interpreter", "file_search") {}
 
 export class AssistantsNamedToolChoice extends S.Struct({
@@ -2758,13 +2713,13 @@ export class AssistantsNamedToolChoice extends S.Struct({
 }) {}
 
 export class AssistantsApiToolChoiceOption
-  extends S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice)
+  extends S.Union(AssistantsApiToolChoiceOptionEnum, AssistantsNamedToolChoice)
 {}
 
 export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest>("CreateThreadAndRunRequest")({
   "assistant_id": S.String,
   "thread": S.optionalWith(CreateThreadRequest, { nullable: true }),
-  "model": S.optionalWith(S.Union(S.String, CreateThreadAndRunRequestModel), { nullable: true }),
+  "model": S.optionalWith(S.Union(S.String, CreateThreadAndRunRequestModelEnum), { nullable: true }),
   "instructions": S.optionalWith(S.String, { nullable: true }),
   "tools": S.optionalWith(
     S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(20)),
@@ -3047,42 +3002,16 @@ export class ListRunsResponse extends S.Class<ListRunsResponse>("ListRunsRespons
   "has_more": S.Boolean
 }) {}
 
-export class CreateRunParamsInclude extends S.Literal("step_details.tool_calls[*].file_search.results[*].content") {}
-
 export class CreateRunParams extends S.Struct({
-  "include[]": S.optionalWith(S.Array(CreateRunParamsInclude), { nullable: true })
+  "include[]": S.optionalWith(S.Array(S.Literal("step_details.tool_calls[*].file_search.results[*].content")), {
+    nullable: true
+  })
 }) {}
-
-export class CreateRunRequestModel extends S.Literal(
-  "gpt-4o",
-  "gpt-4o-2024-11-20",
-  "gpt-4o-2024-08-06",
-  "gpt-4o-2024-05-13",
-  "gpt-4o-mini",
-  "gpt-4o-mini-2024-07-18",
-  "gpt-4-turbo",
-  "gpt-4-turbo-2024-04-09",
-  "gpt-4-0125-preview",
-  "gpt-4-turbo-preview",
-  "gpt-4-1106-preview",
-  "gpt-4-vision-preview",
-  "gpt-4",
-  "gpt-4-0314",
-  "gpt-4-0613",
-  "gpt-4-32k",
-  "gpt-4-32k-0314",
-  "gpt-4-32k-0613",
-  "gpt-3.5-turbo",
-  "gpt-3.5-turbo-16k",
-  "gpt-3.5-turbo-0613",
-  "gpt-3.5-turbo-1106",
-  "gpt-3.5-turbo-0125",
-  "gpt-3.5-turbo-16k-0613"
-) {}
 
 export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunRequest")({
   "assistant_id": S.String,
-  "model": S.optionalWith(S.Union(S.String, CreateRunRequestModel), { nullable: true }),
+  "model": S.optionalWith(S.Union(S.String, AssistantSupportedModels), { nullable: true }),
+  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
   "instructions": S.optionalWith(S.String, { nullable: true }),
   "additional_instructions": S.optionalWith(S.String, { nullable: true }),
   "additional_messages": S.optionalWith(S.Array(CreateMessageRequest), { nullable: true }),
@@ -3114,14 +3043,14 @@ export class ModifyRunRequest extends S.Class<ModifyRunRequest>("ModifyRunReques
 
 export class ListRunStepsParamsOrder extends S.Literal("asc", "desc") {}
 
-export class ListRunStepsParamsInclude extends S.Literal("step_details.tool_calls[*].file_search.results[*].content") {}
-
 export class ListRunStepsParams extends S.Struct({
   "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
   "order": S.optionalWith(ListRunStepsParamsOrder, { nullable: true, default: () => "desc" as const }),
   "after": S.optionalWith(S.String, { nullable: true }),
   "before": S.optionalWith(S.String, { nullable: true }),
-  "include[]": S.optionalWith(S.Array(ListRunStepsParamsInclude), { nullable: true })
+  "include[]": S.optionalWith(S.Array(S.Literal("step_details.tool_calls[*].file_search.results[*].content")), {
+    nullable: true
+  })
 }) {}
 
 export class RunStepObjectObject extends S.Literal("thread.run.step") {}
@@ -3177,15 +3106,13 @@ export class RunStepDetailsToolCallsFileSearchRankingOptionsObject extends S.Str
   "score_threshold": S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1))
 }) {}
 
-export class RunStepDetailsToolCallsFileSearchResultObjectContentType extends S.Literal("text") {}
-
 export class RunStepDetailsToolCallsFileSearchResultObject extends S.Struct({
   "file_id": S.String,
   "file_name": S.String,
   "score": S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)),
   "content": S.optionalWith(
     S.Array(S.Struct({
-      "type": S.optionalWith(RunStepDetailsToolCallsFileSearchResultObjectContentType, { nullable: true }),
+      "type": S.optionalWith(S.Literal("text"), { nullable: true }),
       "text": S.optionalWith(S.String, { nullable: true })
     })),
     { nullable: true }
@@ -3262,10 +3189,10 @@ export class ListRunStepsResponse extends S.Class<ListRunStepsResponse>("ListRun
   "has_more": S.Boolean
 }) {}
 
-export class GetRunStepParamsInclude extends S.Literal("step_details.tool_calls[*].file_search.results[*].content") {}
-
 export class GetRunStepParams extends S.Struct({
-  "include[]": S.optionalWith(S.Array(GetRunStepParamsInclude), { nullable: true })
+  "include[]": S.optionalWith(S.Array(S.Literal("step_details.tool_calls[*].file_search.results[*].content")), {
+    nullable: true
+  })
 }) {}
 
 export class SubmitToolOutputsRunRequest extends S.Class<SubmitToolOutputsRunRequest>("SubmitToolOutputsRunRequest")({
