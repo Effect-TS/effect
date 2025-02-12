@@ -68,6 +68,11 @@ export const MemoMapTypeId: Layer.MemoMapTypeId = Symbol.for(
 ) as Layer.MemoMapTypeId
 
 /** @internal */
+export const CurrentMemoMap = Context.Reference<Layer.CurrentMemoMap>()("effect/Layer/CurrentMemoMap", {
+  defaultValue: () => unsafeMakeMemoMap()
+})
+
+/** @internal */
 export type Primitive =
   | ExtendScope
   | Fold
@@ -337,7 +342,7 @@ export const buildWithScope = dual<
 >(2, (self, scope) =>
   core.flatMap(
     makeMemoMap,
-    (memoMap) => core.flatMap(makeBuilder(self, scope), (run) => run(memoMap))
+    (memoMap) => buildWithMemoMap(self, memoMap, scope)
   ))
 
 /** @internal */
@@ -351,7 +356,14 @@ export const buildWithMemoMap = dual<
     memoMap: Layer.MemoMap,
     scope: Scope.Scope
   ) => Effect.Effect<Context.Context<ROut>, E, RIn>
->(3, (self, memoMap, scope) => core.flatMap(makeBuilder(self, scope), (run) => run(memoMap)))
+>(
+  3,
+  (self, memoMap, scope) =>
+    core.flatMap(
+      makeBuilder(self, scope),
+      (run) => effect.provideService(run(memoMap), CurrentMemoMap, memoMap)
+    )
+)
 
 const makeBuilder = <RIn, E, ROut>(
   self: Layer.Layer<ROut, E, RIn>,
