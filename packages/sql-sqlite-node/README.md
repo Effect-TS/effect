@@ -1,5 +1,7 @@
-# Effect SQL - SQLite
+# `@effect/sql-sqlite-node`
 
-An @effect/sql implementation using the `better-sqlite3` library.
+An `@effect/sql` implementation using the `better-sqlite3` library.
 
-See here for more information: https://github.com/Effect-TS/effect/tree/main/packages/sql
+## Documentation
+
+- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/sql-sqlite-node).

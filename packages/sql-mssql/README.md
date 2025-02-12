@@ -1,5 +1,7 @@
-# Effect SQL - Microsoft SQL Server
+# `@effect/sql-mssql`
 
-An @effect/sql implementation using the mssql `tedious` library.
+An `@effect/sql` implementation using the mssql `tedious` library.
 
-See here for more information: https://github.com/Effect-TS/effect/tree/main/packages/sql
+## Documentation
+
+- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/sql-mssql).
