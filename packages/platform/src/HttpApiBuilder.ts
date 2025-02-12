@@ -564,6 +564,50 @@ const makeMiddlewareMap = (
   return map
 }
 
+function isSingleStringType(ast: AST.AST, key?: PropertyKey): boolean {
+  switch (ast._tag) {
+    case "StringKeyword":
+    case "Literal":
+    case "TemplateLiteral":
+      return true
+    case "TypeLiteral": {
+      if (key !== undefined) {
+        const ps = ast.propertySignatures.find((ps) => ps.name === key)
+        return ps !== undefined
+          ? isSingleStringType(ps.type, key)
+          : ast.indexSignatures.some((is) => Schema.is(Schema.make(is.parameter))(key) && isSingleStringType(is.type))
+      }
+      return false
+    }
+    case "Union":
+      return ast.types.some((type) => isSingleStringType(type, key))
+    case "Suspend":
+      return isSingleStringType(ast.f(), key)
+    case "Refinement":
+    case "Transformation":
+      return isSingleStringType(ast.from, key)
+  }
+  return false
+}
+
+/**
+ * Normalizes the url parameters so that if a key is expected to be an array,
+ * a single string value is wrapped in an array.
+ *
+ * @internal
+ */
+export function normalizeUrlParams(
+  params: ReadonlyRecord<string, string | Array<string>>,
+  ast: AST.AST
+): ReadonlyRecord<string, string | Array<string>> {
+  const out: Record<string, string | Array<string>> = {}
+  for (const key in params) {
+    const value = params[key]
+    out[key] = Array.isArray(value) || isSingleStringType(ast, key) ? value : [value]
+  }
+  return out
+}
+
 const handlerToRoute = (
   endpoint_: HttpApiEndpoint.HttpApiEndpoint.Any,
   middleware: MiddlewareMap,
@@ -574,7 +618,6 @@ const handlerToRoute = (
   const decodePath = Option.map(endpoint.pathSchema, Schema.decodeUnknown)
   const decodePayload = Option.map(endpoint.payloadSchema, Schema.decodeUnknown)
   const decodeHeaders = Option.map(endpoint.headersSchema, Schema.decodeUnknown)
-  const decodeUrlParams = Option.map(endpoint.urlParamsSchema, Schema.decodeUnknown)
   const encodeSuccess = Schema.encode(makeSuccessSchema(endpoint.successSchema))
   return HttpRouter.makeRoute(
     endpoint.method,
@@ -600,8 +643,9 @@ const handlerToRoute = (
         if (decodeHeaders._tag === "Some") {
           request.headers = yield* decodeHeaders.value(httpRequest.headers)
         }
-        if (decodeUrlParams._tag === "Some") {
-          request.urlParams = yield* decodeUrlParams.value(urlParams)
+        if (endpoint.urlParamsSchema._tag === "Some") {
+          const schema = endpoint.urlParamsSchema.value
+          request.urlParams = yield* Schema.decodeUnknown(schema)(normalizeUrlParams(urlParams, schema.ast))
         }
         const response = isFullResponse
           ? yield* handler(request)
