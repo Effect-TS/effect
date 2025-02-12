@@ -1116,22 +1116,22 @@ export const provideContext = dual<
 
 /** @internal */
 export const provideService = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    service: Context.Tag.Service<T>
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    service: Types.NoInfer<S>
   ) => <Out, In, R>(
     self: Schedule.Schedule<Out, In, R>
-  ) => Schedule.Schedule<Out, In, Exclude<R, Context.Tag.Identifier<T>>>,
-  <Out, In, R, T extends Context.Tag<any, any>>(
+  ) => Schedule.Schedule<Out, In, Exclude<R, I>>,
+  <Out, In, R, I, S>(
     self: Schedule.Schedule<Out, In, R>,
-    tag: T,
-    service: Context.Tag.Service<T>
-  ) => Schedule.Schedule<Out, In, Exclude<R, Context.Tag.Identifier<T>>>
->(3, <Out, In, R, T extends Context.Tag<any, any>>(
+    tag: Context.Tag<I, S>,
+    service: Types.NoInfer<S>
+  ) => Schedule.Schedule<Out, In, Exclude<R, I>>
+>(3, <Out, In, R, I, S>(
   self: Schedule.Schedule<Out, In, R>,
-  tag: T,
-  service: Context.Tag.Service<T>
-): Schedule.Schedule<Out, In, Exclude<R, Context.Tag.Identifier<T>>> =>
+  tag: Context.Tag<I, S>,
+  service: Types.NoInfer<S>
+): Schedule.Schedule<Out, In, Exclude<R, I>> =>
   makeWithState(self.initial, (now, input, state) =>
     core.contextWithEffect((env) =>
       core.provideContext(

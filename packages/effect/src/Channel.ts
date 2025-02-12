@@ -1815,17 +1815,17 @@ export const provideSomeLayer: {
  * @category context
  */
 export const provideService: {
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    service: Context.Tag.Service<T>
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    service: Types.NoInfer<S>
   ): <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
     self: Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
-  ) => Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, Context.Tag.Identifier<T>>>
-  <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env, T extends Context.Tag<any, any>>(
+  ) => Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, I>>
+  <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env, I, S>(
     self: Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
-    tag: T,
-    service: Context.Tag.Service<T>
-  ): Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, Context.Tag.Identifier<T>>>
+    tag: Context.Tag<I, S>,
+    service: Types.NoInfer<S>
+  ): Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, I>>
 } = channel.provideService
 
 /**
@@ -2159,17 +2159,17 @@ export const unwrapScopedWith: <OutElem, InElem, OutErr, InErr, OutDone, InDone,
  * @category context
  */
 export const updateService: {
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    f: (resource: Context.Tag.Service<T>) => Context.Tag.Service<T>
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    f: (resource: Types.NoInfer<S>) => Types.NoInfer<S>
   ): <OutElem, OutErr, InErr, OutDone, InDone, R>(
     self: Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, R>
-  ) => Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, T | R>
-  <OutElem, OutErr, InErr, OutDone, InDone, R, T extends Context.Tag<any, any>>(
+  ) => Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, I | R>
+  <OutElem, OutErr, InErr, OutDone, InDone, R, I, S>(
     self: Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, R>,
-    tag: T,
-    f: (resource: Context.Tag.Service<T>) => Context.Tag.Service<T>
-  ): Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, R | T>
+    tag: Context.Tag<I, S>,
+    f: (resource: Types.NoInfer<S>) => Types.NoInfer<S>
+  ): Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, I | R>
 } = channel.updateService
 
 /**

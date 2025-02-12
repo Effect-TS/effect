@@ -21,6 +21,7 @@ import * as Queue from "../Queue.js"
 import * as Ref from "../Ref.js"
 import * as Scope from "../Scope.js"
 import type * as Sink from "../Sink.js"
+import type * as Types from "../Types.js"
 import * as channel from "./channel.js"
 import * as mergeDecision from "./channel/mergeDecision.js"
 import * as core from "./core-stream.js"
@@ -1739,27 +1740,27 @@ export const refineOrDieWith = dual<
 )
 
 /** @internal */
-export const service = <T extends Context.Tag<any, any>>(
-  tag: T
-): Sink.Sink<Context.Tag.Service<T>, unknown, never, never, Context.Tag.Identifier<T>> => serviceWith(tag, identity)
+export const service = <I, S>(
+  tag: Context.Tag<I, S>
+): Sink.Sink<S, unknown, never, never, I> => serviceWith(tag, identity)
 
 /** @internal */
-export const serviceWith = <T extends Context.Tag<any, any>, Z>(
-  tag: T,
-  f: (service: Context.Tag.Service<T>) => Z
-): Sink.Sink<Z, unknown, never, never, Context.Tag.Identifier<T>> => fromEffect(Effect.map(tag, f))
+export const serviceWith = <I, S, Z>(
+  tag: Context.Tag<I, S>,
+  f: (service: Types.NoInfer<S>) => Z
+): Sink.Sink<Z, unknown, never, never, I> => fromEffect(Effect.map(tag, f))
 
 /** @internal */
-export const serviceWithEffect = <T extends Context.Tag<any, any>, R, E, Z>(
-  tag: T,
-  f: (service: Context.Tag.Service<T>) => Effect.Effect<Z, E, R>
-): Sink.Sink<Z, unknown, never, E, R | Context.Tag.Identifier<T>> => fromEffect(Effect.flatMap(tag, f))
+export const serviceWithEffect = <I, S, R, E, Z>(
+  tag: Context.Tag<I, S>,
+  f: (service: Types.NoInfer<S>) => Effect.Effect<Z, E, R>
+): Sink.Sink<Z, unknown, never, E, R | I> => fromEffect(Effect.flatMap(tag, f))
 
 /** @internal */
-export const serviceWithSink = <T extends Context.Tag<any, any>, R, E, In, L, Z>(
-  tag: T,
-  f: (service: Context.Tag.Service<T>) => Sink.Sink<Z, In, L, E, R>
-): Sink.Sink<Z, In, L, E, R | Context.Tag.Identifier<T>> =>
+export const serviceWithSink = <I, S, R, E, In, L, Z>(
+  tag: Context.Tag<I, S>,
+  f: (service: Types.NoInfer<S>) => Sink.Sink<Z, In, L, E, R>
+): Sink.Sink<Z, In, L, E, R | I> =>
   new SinkImpl(pipe(Effect.map(tag, (service) => toChannel(f(service))), channel.unwrap))
 
 /** @internal */

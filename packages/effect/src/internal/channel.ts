@@ -23,6 +23,7 @@ import * as Ref from "../Ref.js"
 import * as Scope from "../Scope.js"
 import type * as SingleProducerAsyncInput from "../SingleProducerAsyncInput.js"
 import type * as Tracer from "../Tracer.js"
+import type * as Types from "../Types.js"
 import * as executor from "./channel/channelExecutor.js"
 import type * as ChannelState from "./channel/channelState.js"
 import * as mergeDecision from "./channel/mergeDecision.js"
@@ -1960,22 +1961,22 @@ export const pipeToOrFail = dual<
 
 /** @internal */
 export const provideService = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    service: Context.Tag.Service<T>
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    service: Types.NoInfer<S>
   ) => <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
-  ) => Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, Context.Tag.Identifier<T>>>,
-  <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env, T extends Context.Tag<any, any>>(
+  ) => Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, I>>,
+  <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env, I, S>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
-    tag: T,
-    service: Context.Tag.Service<T>
-  ) => Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, Context.Tag.Identifier<T>>>
->(3, <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env, T extends Context.Tag<any, any>>(
+    tag: Context.Tag<I, S>,
+    service: Types.NoInfer<S>
+  ) => Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, I>>
+>(3, <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env, I, S>(
   self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
-  tag: T,
-  service: Context.Tag.Service<T>
-): Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, Context.Tag.Identifier<T>>> => {
+  tag: Context.Tag<I, S>,
+  service: Types.NoInfer<S>
+): Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, I>> => {
   return core.flatMap(
     context<any>(),
     (context) => core.provideContext(self, Context.add(context, tag, service))
@@ -2089,31 +2090,28 @@ export const scopedWith = <A, E, R>(
   unwrapScoped(Effect.map(Effect.scope, (scope) => core.flatMap(core.fromEffect(f(scope)), core.write)))
 
 /** @internal */
-export const service = <T extends Context.Tag<any, any>>(
-  tag: T
-): Channel.Channel<never, unknown, never, unknown, Context.Tag.Service<T>, unknown, Context.Tag.Identifier<T>> =>
-  core.fromEffect(tag)
+export const service = <I, S>(
+  tag: Context.Tag<I, S>
+): Channel.Channel<never, unknown, never, unknown, S, unknown, I> => core.fromEffect(tag)
 
 /** @internal */
-export const serviceWith = <T extends Context.Tag<any, any>>(tag: T) =>
+export const serviceWith = <I, S>(tag: Context.Tag<I, S>) =>
 <OutDone>(
-  f: (resource: Context.Tag.Service<T>) => OutDone
-): Channel.Channel<never, unknown, never, unknown, OutDone, unknown, Context.Tag.Identifier<T>> => map(service(tag), f)
+  f: (resource: Types.NoInfer<S>) => OutDone
+): Channel.Channel<never, unknown, never, unknown, OutDone, unknown, I> => map(service(tag), f)
 
 /** @internal */
 export const serviceWithChannel =
-  <T extends Context.Tag<any, any>>(tag: T) =>
+  <I, S>(tag: Context.Tag<I, S>) =>
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
-    f: (resource: Context.Tag.Service<T>) => Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
-  ): Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env | Context.Tag.Identifier<T>> =>
-    core.flatMap(service(tag), f)
+    f: (resource: Types.NoInfer<S>) => Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
+  ): Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env | I> => core.flatMap(service(tag), f)
 
 /** @internal */
-export const serviceWithEffect = <T extends Context.Tag<any, any>>(tag: T) =>
+export const serviceWithEffect = <I, S>(tag: Context.Tag<I, S>) =>
 <Env, OutErr, OutDone>(
-  f: (resource: Context.Tag.Service<T>) => Effect.Effect<OutDone, OutErr, Env>
-): Channel.Channel<never, unknown, OutErr, unknown, OutDone, unknown, Env | Context.Tag.Identifier<T>> =>
-  mapEffect(service(tag), f)
+  f: (resource: Types.NoInfer<S>) => Effect.Effect<OutDone, OutErr, Env>
+): Channel.Channel<never, unknown, OutErr, unknown, OutDone, unknown, Env | I> => mapEffect(service(tag), f)
 
 /** @internal */
 export const splitLines = <Err, Done>(): Channel.Channel<
@@ -2334,22 +2332,22 @@ export const unwrapScopedWith = <OutElem, InElem, OutErr, InErr, OutDone, InDone
 
 /** @internal */
 export const updateService = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    f: (resource: Context.Tag.Service<T>) => Context.Tag.Service<T>
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    f: (resource: Types.NoInfer<S>) => Types.NoInfer<S>
   ) => <OutElem, OutErr, InErr, OutDone, InDone, R>(
     self: Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, R>
-  ) => Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, T | R>,
-  <OutElem, OutErr, InErr, OutDone, InDone, R, T extends Context.Tag<any, any>>(
+  ) => Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, I | R>,
+  <OutElem, OutErr, InErr, OutDone, InDone, R, I, S>(
     self: Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, R>,
-    tag: T,
-    f: (resource: Context.Tag.Service<T>) => Context.Tag.Service<T>
-  ) => Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, T | R>
->(3, <OutElem, OutErr, InErr, OutDone, InDone, R, T extends Context.Tag<any, any>>(
+    tag: Context.Tag<I, S>,
+    f: (resource: Types.NoInfer<S>) => Types.NoInfer<S>
+  ) => Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, I | R>
+>(3, <OutElem, OutErr, InErr, OutDone, InDone, R, I, S>(
   self: Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, R>,
-  tag: T,
-  f: (resource: Context.Tag.Service<T>) => Context.Tag.Service<T>
-): Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, R | T> =>
+  tag: Context.Tag<I, S>,
+  f: (resource: Types.NoInfer<S>) => Types.NoInfer<S>
+): Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, R | I> =>
   mapInputContext(self, (context: Context.Context<R>) =>
     Context.merge(
       context,

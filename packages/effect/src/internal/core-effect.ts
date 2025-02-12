@@ -26,7 +26,7 @@ import type * as Random from "../Random.js"
 import * as Ref from "../Ref.js"
 import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
-import type { NoInfer } from "../Types.js"
+import type * as Types from "../Types.js"
 import type { Unify } from "../Unify.js"
 import { internalCall } from "../Utils.js"
 import * as internalCause from "./cause.js"
@@ -175,17 +175,17 @@ export const catchAllDefect = dual<
 /* @internal */
 export const catchSomeCause: {
   <E, A2, E2, R2>(
-    f: (cause: Cause.Cause<NoInfer<E>>) => Option.Option<Effect.Effect<A2, E2, R2>>
+    f: (cause: Cause.Cause<Types.NoInfer<E>>) => Option.Option<Effect.Effect<A2, E2, R2>>
   ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2 | A, E | E2, R2 | R>
   <A, E, R, A2, E2, R2>(
     self: Effect.Effect<A, E, R>,
-    f: (cause: Cause.Cause<NoInfer<E>>) => Option.Option<Effect.Effect<A2, E2, R2>>
+    f: (cause: Cause.Cause<Types.NoInfer<E>>) => Option.Option<Effect.Effect<A2, E2, R2>>
   ): Effect.Effect<A2 | A, E | E2, R2 | R>
 } = dual(
   2,
   <A, E, R, A2, E2, R2>(
     self: Effect.Effect<A, E, R>,
-    f: (cause: Cause.Cause<NoInfer<E>>) => Option.Option<Effect.Effect<A2, E2, R2>>
+    f: (cause: Cause.Cause<Types.NoInfer<E>>) => Option.Option<Effect.Effect<A2, E2, R2>>
   ): Effect.Effect<A2 | A, E | E2, R2 | R> =>
     core.matchCauseEffect(self, {
       onFailure: (cause): Effect.Effect<A2, E | E2, R2> => {
@@ -376,14 +376,14 @@ export const Do: Effect.Effect<{}> = core.succeed({})
 export const bind: {
   <N extends string, A extends object, B, E2, R2>(
     name: Exclude<N, keyof A>,
-    f: (a: NoInfer<A>) => Effect.Effect<B, E2, R2>
+    f: (a: Types.NoInfer<A>) => Effect.Effect<B, E2, R2>
   ): <E1, R1>(
     self: Effect.Effect<A, E1, R1>
   ) => Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E1, R2 | R1>
   <A extends object, N extends string, E1, R1, B, E2, R2>(
     self: Effect.Effect<A, E1, R1>,
     name: Exclude<N, keyof A>,
-    f: (a: NoInfer<A>) => Effect.Effect<B, E2, R2>
+    f: (a: Types.NoInfer<A>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E1 | E2, R1 | R2>
 } = doNotation.bind<Effect.EffectTypeLambda>(core.map, core.flatMap)
 
@@ -397,21 +397,21 @@ export const bindTo: {
 export const let_: {
   <N extends string, A extends object, B>(
     name: Exclude<N, keyof A>,
-    f: (a: NoInfer<A>) => B
+    f: (a: Types.NoInfer<A>) => B
   ): <E, R>(
     self: Effect.Effect<A, E, R>
   ) => Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
   <A extends object, N extends string, E, R, B>(
     self: Effect.Effect<A, E, R>,
     name: Exclude<N, keyof A>,
-    f: (a: NoInfer<A>) => B
+    f: (a: Types.NoInfer<A>) => B
   ): Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = doNotation.let_<Effect.EffectTypeLambda>(core.map)
 
 /* @internal */
 export const dropUntil: {
   <A, E, R>(
-    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): (elements: Iterable<A>) => Effect.Effect<Array<A>, E, R>
   <A, E, R>(
     elements: Iterable<A>,
@@ -447,7 +447,7 @@ export const dropUntil: {
 /* @internal */
 export const dropWhile: {
   <A, E, R>(
-    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): (elements: Iterable<A>) => Effect.Effect<Array<A>, E, R>
   <A, E, R>(
     elements: Iterable<A>,
@@ -506,12 +506,12 @@ export const filterMap = dual<
 /* @internal */
 export const filterOrDie: {
   <A, B extends A>(
-    refinement: Predicate.Refinement<NoInfer<A>, B>,
-    orDieWith: (a: NoInfer<A>) => unknown
+    refinement: Predicate.Refinement<Types.NoInfer<A>, B>,
+    orDieWith: (a: Types.NoInfer<A>) => unknown
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E, R>
   <A>(
-    predicate: Predicate.Predicate<NoInfer<A>>,
-    orDieWith: (a: NoInfer<A>) => unknown
+    predicate: Predicate.Predicate<Types.NoInfer<A>>,
+    orDieWith: (a: Types.NoInfer<A>) => unknown
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <A, E, R, B extends A>(
     self: Effect.Effect<A, E, R>,
@@ -535,11 +535,11 @@ export const filterOrDie: {
 /* @internal */
 export const filterOrDieMessage: {
   <A, B extends A>(
-    refinement: Predicate.Refinement<NoInfer<A>, B>,
+    refinement: Predicate.Refinement<Types.NoInfer<A>, B>,
     message: string
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E, R>
   <A>(
-    predicate: Predicate.Predicate<NoInfer<A>>,
+    predicate: Predicate.Predicate<Types.NoInfer<A>>,
     message: string
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <A, E, R, B extends A>(
@@ -557,12 +557,12 @@ export const filterOrDieMessage: {
 /* @internal */
 export const filterOrElse: {
   <A, B extends A, C, E2, R2>(
-    refinement: Predicate.Refinement<NoInfer<A>, B>,
-    orElse: (a: NoInfer<A>) => Effect.Effect<C, E2, R2>
+    refinement: Predicate.Refinement<Types.NoInfer<A>, B>,
+    orElse: (a: Types.NoInfer<A>) => Effect.Effect<C, E2, R2>
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B | C, E2 | E, R2 | R>
   <A, B, E2, R2>(
-    predicate: Predicate.Predicate<NoInfer<A>>,
-    orElse: (a: NoInfer<A>) => Effect.Effect<B, E2, R2>
+    predicate: Predicate.Predicate<Types.NoInfer<A>>,
+    orElse: (a: Types.NoInfer<A>) => Effect.Effect<B, E2, R2>
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | B, E2 | E, R2 | R>
   <A, E, R, B extends A, C, E2, R2>(
     self: Effect.Effect<A, E, R>,
@@ -588,12 +588,12 @@ export const filterOrElse: {
 export const liftPredicate = dual<
   {
     <A, B extends A, E>(
-      refinement: Predicate.Refinement<NoInfer<A>, B>,
-      orFailWith: (a: NoInfer<A>) => E
+      refinement: Predicate.Refinement<Types.NoInfer<A>, B>,
+      orFailWith: (a: Types.NoInfer<A>) => E
     ): (a: A) => Effect.Effect<B, E>
     <A, E>(
-      predicate: Predicate.Predicate<NoInfer<A>>,
-      orFailWith: (a: NoInfer<A>) => E
+      predicate: Predicate.Predicate<Types.NoInfer<A>>,
+      orFailWith: (a: Types.NoInfer<A>) => E
     ): (a: A) => Effect.Effect<A, E>
   },
   {
@@ -604,34 +604,34 @@ export const liftPredicate = dual<
     ): Effect.Effect<B, E>
     <A, E>(
       self: A,
-      predicate: Predicate.Predicate<NoInfer<A>>,
-      orFailWith: (a: NoInfer<A>) => E
+      predicate: Predicate.Predicate<Types.NoInfer<A>>,
+      orFailWith: (a: Types.NoInfer<A>) => E
     ): Effect.Effect<A, E>
   }
 >(
   3,
   <A, E>(
     self: A,
-    predicate: Predicate.Predicate<NoInfer<A>>,
-    orFailWith: (a: NoInfer<A>) => E
+    predicate: Predicate.Predicate<Types.NoInfer<A>>,
+    orFailWith: (a: Types.NoInfer<A>) => E
   ): Effect.Effect<A, E> => core.suspend(() => predicate(self) ? core.succeed(self) : core.fail(orFailWith(self)))
 )
 
 /* @internal */
 export const filterOrFail: {
   <A, B extends A, E2>(
-    refinement: Predicate.Refinement<NoInfer<A>, B>,
-    orFailWith: (a: NoInfer<A>) => E2
+    refinement: Predicate.Refinement<Types.NoInfer<A>, B>,
+    orFailWith: (a: Types.NoInfer<A>) => E2
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E2 | E, R>
   <A, E2>(
-    predicate: Predicate.Predicate<NoInfer<A>>,
-    orFailWith: (a: NoInfer<A>) => E2
+    predicate: Predicate.Predicate<Types.NoInfer<A>>,
+    orFailWith: (a: Types.NoInfer<A>) => E2
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E2 | E, R>
   <A, B extends A>(
-    refinement: Predicate.Refinement<NoInfer<A>, B>
+    refinement: Predicate.Refinement<Types.NoInfer<A>, B>
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, Cause.NoSuchElementException | E, R>
   <A>(
-    predicate: Predicate.Predicate<NoInfer<A>>
+    predicate: Predicate.Predicate<Types.NoInfer<A>>
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, Cause.NoSuchElementException | E, R>
   <A, E, R, B extends A, E2>(
     self: Effect.Effect<A, E, R>,
@@ -666,17 +666,17 @@ export const filterOrFail: {
 /* @internal */
 export const findFirst: {
   <A, E, R>(
-    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): (elements: Iterable<A>) => Effect.Effect<Option.Option<A>, E, R>
   <A, E, R>(
     elements: Iterable<A>,
-    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Option.Option<A>, E, R>
 } = dual(
   2,
   <A, E, R>(
     elements: Iterable<A>,
-    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Option.Option<A>, E, R> =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
@@ -1195,25 +1195,25 @@ export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): E
 
 /* @internal */
 export const provideService = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    service: Context.Tag.Service<T>
-  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Context.Tag.Identifier<T>>>,
-  <A, E, R, T extends Context.Tag<any, any>>(
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    service: Types.NoInfer<S>
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, I>>,
+  <A, E, R, I, S>(
     self: Effect.Effect<A, E, R>,
-    tag: T,
-    service: Context.Tag.Service<T>
-  ) => Effect.Effect<A, E, Exclude<R, Context.Tag.Identifier<T>>>
+    tag: Context.Tag<I, S>,
+    service: Types.NoInfer<S>
+  ) => Effect.Effect<A, E, Exclude<R, I>>
 >(
   3,
-  <A, E, R, T extends Context.Tag<any, any>>(
+  <A, E, R, I, S>(
     self: Effect.Effect<A, E, R>,
-    tag: T,
-    service: Context.Tag.Service<T>
-  ): Effect.Effect<A, E, Exclude<R, Context.Tag.Identifier<T>>> =>
+    tag: Context.Tag<I, S>,
+    service: Types.NoInfer<S>
+  ): Effect.Effect<A, E, Exclude<R, I>> =>
     core.contextWithEffect((env) =>
       core.provideContext(
-        self as Effect.Effect<A, E, Context.Tag.Identifier<T> | Exclude<R, Context.Tag.Identifier<T>>>,
+        self as Effect.Effect<A, E, I | Exclude<R, I>>,
         Context.add(env, tag, service)
       )
     )
@@ -1221,21 +1221,21 @@ export const provideService = dual<
 
 /* @internal */
 export const provideServiceEffect = dual<
-  <T extends Context.Tag<any, any>, E1, R1>(
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
-  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E1, R1 | Exclude<R, Context.Tag.Identifier<T>>>,
-  <A, E, R, T extends Context.Tag<any, any>, E1, R1>(
+  <I, S, E1, R1>(
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<Types.NoInfer<S>, E1, R1>
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E1, R1 | Exclude<R, I>>,
+  <A, E, R, I, S, E1, R1>(
     self: Effect.Effect<A, E, R>,
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
-  ) => Effect.Effect<A, E | E1, R1 | Exclude<R, Context.Tag.Identifier<T>>>
->(3, <A, E, R, T extends Context.Tag<any, any>, E1, R1>(
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<Types.NoInfer<S>, E1, R1>
+  ) => Effect.Effect<A, E | E1, R1 | Exclude<R, I>>
+>(3, <A, E, R, I, S, E1, R1>(
   self: Effect.Effect<A, E, R>,
-  tag: T,
-  effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
+  tag: Context.Tag<I, S>,
+  effect: Effect.Effect<Types.NoInfer<S>, E1, R1>
 ) =>
-  core.contextWithEffect((env: Context.Context<R1 | Exclude<R, Context.Tag.Identifier<T>>>) =>
+  core.contextWithEffect((env: Context.Context<R1 | Exclude<R, I>>) =>
     core.flatMap(
       effect,
       (service) => core.provideContext(self, pipe(env, Context.add(tag, service)) as Context.Context<R | R1>)
@@ -1426,17 +1426,17 @@ export const labelMetrics = dual<
 /* @internal */
 export const takeUntil: {
   <A, R, E>(
-    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): (elements: Iterable<A>) => Effect.Effect<Array<A>, E, R>
   <A, E, R>(
     elements: Iterable<A>,
-    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Array<A>, E, R>
 } = dual(
   2,
   <A, E, R>(
     elements: Iterable<A>,
-    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Array<A>, E, R> =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
@@ -1462,15 +1462,15 @@ export const takeUntil: {
 /* @internal */
 export const takeWhile = dual<
   <A, E, R>(
-    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ) => (elements: Iterable<A>) => Effect.Effect<Array<A>, E, R>,
   <A, E, R>(
     elements: Iterable<A>,
-    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ) => Effect.Effect<Array<A>, E, R>
 >(
   2,
-  <A, E, R>(elements: Iterable<A>, predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>) =>
+  <A, E, R>(elements: Iterable<A>, predicate: (a: Types.NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>) =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
       const builder: Array<A> = []
@@ -1499,8 +1499,8 @@ export const takeWhile = dual<
 export const tapBoth = dual<
   <E, X, E2, R2, A, X1, E3, R3>(
     options: {
-      readonly onFailure: (e: NoInfer<E>) => Effect.Effect<X, E2, R2>
-      readonly onSuccess: (a: NoInfer<A>) => Effect.Effect<X1, E3, R3>
+      readonly onFailure: (e: Types.NoInfer<E>) => Effect.Effect<X, E2, R2>
+      readonly onSuccess: (a: Types.NoInfer<A>) => Effect.Effect<X1, E3, R3>
     }
   ) => <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2 | E3, R | R2 | R3>,
   <A, E, R, X, E2, R2, X1, E3, R3>(
@@ -1545,7 +1545,7 @@ export const tapDefect = dual<
 /* @internal */
 export const tapError = dual<
   <E, X, E2, R2>(
-    f: (e: NoInfer<E>) => Effect.Effect<X, E2, R2>
+    f: (e: Types.NoInfer<E>) => Effect.Effect<X, E2, R2>
   ) => <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R | R2>,
   <A, E, R, X, E2, R2>(
     self: Effect.Effect<A, E, R>,
@@ -1587,7 +1587,7 @@ export const tapErrorTag = dual<
 /* @internal */
 export const tapErrorCause = dual<
   <E, X, E2, R2>(
-    f: (cause: Cause.Cause<NoInfer<E>>) => Effect.Effect<X, E2, R2>
+    f: (cause: Cause.Cause<Types.NoInfer<E>>) => Effect.Effect<X, E2, R2>
   ) => <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R | R2>,
   <A, E, R, X, E2, R2>(
     self: Effect.Effect<A, E, R>,
@@ -1768,26 +1768,26 @@ export const updateFiberRefs = (
 
 /* @internal */
 export const updateService = dual<
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>
-  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R | Context.Tag.Identifier<T>>,
-  <A, E, R, T extends Context.Tag<any, any>>(
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    f: (service: Types.NoInfer<S>) => Types.NoInfer<S>
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R | I>,
+  <A, E, R, I, S>(
     self: Effect.Effect<A, E, R>,
-    tag: T,
-    f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>
-  ) => Effect.Effect<A, E, R | Context.Tag.Identifier<T>>
->(3, <A, E, R, T extends Context.Tag<any, any>>(
+    tag: Context.Tag<I, S>,
+    f: (service: Types.NoInfer<S>) => Types.NoInfer<S>
+  ) => Effect.Effect<A, E, R | I>
+>(3, <A, E, R, I, S>(
   self: Effect.Effect<A, E, R>,
-  tag: T,
-  f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>
+  tag: Context.Tag<I, S>,
+  f: (service: Types.NoInfer<S>) => Types.NoInfer<S>
 ) =>
   core.mapInputContext(self, (context) =>
     Context.add(
       context,
       tag,
       f(Context.unsafeGet(context, tag))
-    )) as Effect.Effect<A, E, R | Context.Tag.Identifier<T>>)
+    )) as Effect.Effect<A, E, R | I>)
 
 /* @internal */
 export const when = dual<

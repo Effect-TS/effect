@@ -7465,15 +7465,8 @@ export const provide: {
  * @category Context
  */
 export const provideService: {
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    service: Context.Tag.Service<T>
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, Context.Tag.Identifier<T>>>
-  <A, E, R, T extends Context.Tag<any, any>>(
-    self: Effect<A, E, R>,
-    tag: T,
-    service: Context.Tag.Service<T>
-  ): Effect<A, E, Exclude<R, Context.Tag.Identifier<T>>>
+  <I, S>(tag: Context.Tag<I, S>, service: NoInfer<S>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, I>>
+  <A, E, R, I, S>(self: Effect<A, E, R>, tag: Context.Tag<I, S>, service: NoInfer<S>): Effect<A, E, Exclude<R, I>>
 } = effect.provideService
 
 /**
@@ -7495,15 +7488,15 @@ export const provideService: {
  * @category Context
  */
 export const provideServiceEffect: {
-  <T extends Context.Tag<any, any>, E1, R1>(
-    tag: T,
-    effect: Effect<Context.Tag.Service<T>, E1, R1>
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E1 | E, R1 | Exclude<R, Context.Tag.Identifier<T>>>
-  <A, E, R, T extends Context.Tag<any, any>, E1, R1>(
+  <I, S, E1, R1>(
+    tag: Context.Tag<I, S>,
+    effect: Effect<NoInfer<S>, E1, R1>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E1, R1 | Exclude<R, I>>
+  <A, E, R, I, S, E1, R1>(
     self: Effect<A, E, R>,
-    tag: T,
-    effect: Effect<Context.Tag.Service<T>, E1, R1>
-  ): Effect<A, E | E1, R1 | Exclude<R, Context.Tag.Identifier<T>>>
+    tag: Context.Tag<I, S>,
+    effect: Effect<NoInfer<S>, E1, R1>
+  ): Effect<A, E | E1, R1 | Exclude<R, I>>
 } = effect.provideServiceEffect
 
 /**
@@ -7636,15 +7629,15 @@ export const serviceOptional: <I, S>(tag: Context.Tag<I, S>) => Effect<S, Cause.
  * @category Context
  */
 export const updateService: {
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R | Context.Tag.Identifier<T>>
-  <A, E, R, T extends Context.Tag<any, any>>(
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    f: (service: NoInfer<S>) => NoInfer<S>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R | I>
+  <A, E, R, I, S>(
     self: Effect<A, E, R>,
-    tag: T,
-    f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>
-  ): Effect<A, E, R | Context.Tag.Identifier<T>>
+    tag: Context.Tag<I, S>,
+    f: (service: NoInfer<S>) => NoInfer<S>
+  ): Effect<A, E, R | I>
 } = effect.updateService
 
 /**
