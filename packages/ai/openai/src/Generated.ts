@@ -698,7 +698,10 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     nullable: true,
     default: () => 0 as const
   }),
-  "logit_bias": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true, default: () => null }),
+  "logit_bias": S.optionalWith(S.NullOr(S.Record({ key: S.String, value: S.Unknown })), {
+    nullable: true,
+    default: () => null
+  }),
   "logprobs": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
   "top_logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(20)), { nullable: true }),
   "max_tokens": S.optionalWith(S.Int, { nullable: true }),
@@ -728,12 +731,12 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     nullable: true,
     default: () => "auto" as const
   }),
-  "stop": S.optionalWith(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4))), {
+  "stop": S.optionalWith(S.NullOr(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4)))), {
     nullable: true,
     default: () => null
   }),
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
-  "stream_options": S.optionalWith(ChatCompletionStreamOptions, { nullable: true, default: () => null }),
+  "stream_options": S.optionalWith(S.NullOr(ChatCompletionStreamOptions), { nullable: true, default: () => null }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 1 as const
@@ -854,8 +857,11 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
     nullable: true,
     default: () => 0 as const
   }),
-  "logit_bias": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true, default: () => null }),
-  "logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(5)), {
+  "logit_bias": S.optionalWith(S.NullOr(S.Record({ key: S.String, value: S.Unknown })), {
+    nullable: true,
+    default: () => null
+  }),
+  "logprobs": S.optionalWith(S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(5))), {
     nullable: true,
     default: () => null
   }),
@@ -869,13 +875,13 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
     default: () => 0 as const
   }),
   "seed": S.optionalWith(S.Int, { nullable: true }),
-  "stop": S.optionalWith(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4))), {
+  "stop": S.optionalWith(S.NullOr(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4)))), {
     nullable: true,
     default: () => null
   }),
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
-  "stream_options": S.optionalWith(ChatCompletionStreamOptions, { nullable: true, default: () => null }),
-  "suffix": S.optionalWith(S.String, { nullable: true, default: () => null }),
+  "stream_options": S.optionalWith(S.NullOr(ChatCompletionStreamOptions), { nullable: true, default: () => null }),
+  "suffix": S.optionalWith(S.NullOr(S.String), { nullable: true, default: () => null }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 1 as const
@@ -1215,7 +1221,10 @@ export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobReque
     }),
     { nullable: true }
   ),
-  "suffix": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(64)), { nullable: true, default: () => null }),
+  "suffix": S.optionalWith(S.NullOr(S.String.pipe(S.minLength(1), S.maxLength(64))), {
+    nullable: true,
+    default: () => null
+  }),
   "validation_file": S.optionalWith(S.String, { nullable: true }),
   "integrations": S.optionalWith(
     S.Array(S.Struct({
