@@ -70,19 +70,9 @@ export const make = (options: {
     const httpClient = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((request) =>
         request.pipe(
-          HttpClientRequest.prependUrl(
-            options.apiUrl ?? "https://api.anthropic.com"
-          ),
-          options.apiKey
-            ? HttpClientRequest.setHeader(
-              "x-api-key",
-              Redacted.value(options.apiKey)
-            )
-            : identity,
-          HttpClientRequest.setHeader(
-            "anthropic-version",
-            options.anthropicVersion ?? "2023-06-01"
-          ),
+          HttpClientRequest.prependUrl(options.apiUrl ?? "https://api.anthropic.com"),
+          options.apiKey ? HttpClientRequest.setHeader("x-api-key", Redacted.value(options.apiKey)) : identity,
+          HttpClientRequest.setHeader("anthropic-version", options.anthropicVersion ?? "2023-06-01"),
           HttpClientRequest.acceptJson
         )
       ),
@@ -107,17 +97,14 @@ export const make = (options: {
         Stream.map((event) => JSON.parse(event.data) as A)
       )
     const stream = (request: StreamCompletionRequest) =>
-      streamRequest<MessageStreamEvent>(
-        HttpClientRequest.post("/v1/messages", {
-          body: HttpBody.unsafeJson({ ...request, stream: true })
-        })
-      ).pipe(
-        Stream.mapAccumEffect(
-          [
-            { _tag: "Usage" } as Mutable<Partial<UsagePart>>,
-            new Map<number, ContentPart | ToolCallPart>()
-          ] as const,
-          ([usage, acc], chunk) => {
+      Stream.suspend(() => {
+        const usage: Mutable<Partial<UsagePart>> = { _tag: "Usage" }
+        return streamRequest<MessageStreamEvent>(
+          HttpClientRequest.post("/v1/messages", {
+            body: HttpBody.unsafeJson({ ...request, stream: true })
+          })
+        ).pipe(
+          Stream.mapAccumEffect(new Map<number, ContentPart | ToolCallPart>(), (acc, chunk) => {
             const parts: Array<StreamChunkPart> = []
             switch (chunk.type) {
               case "message_start": {
@@ -129,10 +116,10 @@ export const make = (options: {
               case "message_delta": {
                 usage.finishReasons = [chunk.delta.stop_reason]
                 usage.outputTokens = chunk.usage.output_tokens
+                parts.push(usage as UsagePart)
                 break
               }
               case "message_stop": {
-                parts.push(usage as UsagePart)
                 break
               }
               case "content_block_start": {
@@ -198,15 +185,15 @@ export const make = (options: {
               }
             }
             return Effect.succeed([
-              [usage, acc] as const,
+              acc,
               parts.length === 0
                 ? Option.none()
                 : Option.some(new StreamChunk({ parts }))
             ])
-          }
-        ),
-        Stream.filterMap(identity)
-      )
+          }),
+          Stream.filterMap(identity)
+        )
+      })
     return AnthropicClient.of({ client, streamRequest, stream })
   })
 
