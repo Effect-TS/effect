@@ -71,6 +71,7 @@
     "playwright": "^1.46.0",
     "prettier": "^3.3.3",
     "rimraf": "^6.0.1",
+    "tstyche": "^3.5.0",
     "tsx": "^4.17.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.11",

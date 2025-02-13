@@ -142,6 +142,9 @@ importers:
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
+      tstyche:
+        specifier: ^3.5.0
+        version: 3.5.0(typescript@5.7.2)
       tsx:
         specifier: ^4.17.0
         version: 4.17.0
@@ -3211,8 +3214,8 @@ packages:
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
 
-  '@types/node@18.19.76':
-    resolution: {integrity: sha512-yvR7Q9LdPz2vGpmpJX5LolrgRdWvB67MJKDPSgIIzpFbaf9a1j/f5DnLp5VDyHGMR0QZHlTr1afsD87QCXFHKw==}
+  '@types/node@20.12.14':
+    resolution: {integrity: sha512-scnD59RpYD91xngrQQLGkE+6UrHUPzeKZWhhjBSa3HSkwjbQc38+q3RoIVEwxQGRw3M+j5hpNAM+lgV3cVormg==}
 
   '@types/node@20.17.8':
     resolution: {integrity: sha512-ahz2g6/oqbKalW9sPv6L2iRbhLnojxjYWspAqhjvqSWBgGebEJT5GvRmk0QXPj3sbC6rU0GTQjPLQkmR8CObvA==}
@@ -5423,6 +5426,7 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.7:
@@ -6521,6 +6525,11 @@ packages:
     resolution: {integrity: sha512-U9nH88a3fc/ekCF1l0/UP1IosiuIjyTh7hBvXVMHYgVcfGvt897Xguj2UOLDeI5BG2m7/uwyaLVT6fbtCwTyzw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
 
+  rimraf@2.6.3:
+    resolution: {integrity: sha512-mwqeW5XsA2qAejG46gYdENaxXjx9onRNCfn7L0duuP4hCuTIi/QO7PDK07KJfp1d+izWPrzEJDcSqBa0OZQriA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
+    hasBin: true
+
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
     deprecated: Rimraf versions prior to v4 are no longer supported
@@ -7017,6 +7026,16 @@ packages:
     hasBin: true
     peerDependencies:
       typescript: '>=2.3.0-dev || >=2.4.0-dev || >=2.5.0-dev || >=2.6.0-dev || >=2.7.0-dev || >=2.8.0-dev || >=2.9.0-dev || >=3.0.0-dev || >= 3.1.0-dev || >= 3.2.0-dev || >= 4.0.0-dev'
+
+  tstyche@3.5.0:
+    resolution: {integrity: sha512-N4SUp/ZWaMGEcglpVFIzKez0GQEiBdfFDgcnqwv9O1mePZgos8N1cZCzNgGtPGo/w0ym04MjJcDnsw1sorEzgA==}
+    engines: {node: '>=18.19'}
+    hasBin: true
+    peerDependencies:
+      typescript: 4.x || 5.x
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   tsutils@2.29.0:
     resolution: {integrity: sha512-g5JVHCIJwzfISaXpXE1qvNalca5Jwob6FjI4AoPlqMusJ6ftFE7IkkFoMhVLRgK+4Kx3gkzb8UZK5t5yTTvEmA==}
@@ -10646,7 +10665,7 @@ snapshots:
 
   '@types/node@12.20.55': {}
 
-  '@types/node@18.19.76':
+  '@types/node@20.12.14':
     dependencies:
       undici-types: 5.26.5
 
@@ -10678,7 +10697,7 @@ snapshots:
 
   '@types/ssh2@1.15.1':
     dependencies:
-      '@types/node': 18.19.76
+      '@types/node': 22.13.1
 
   '@types/stack-utils@2.0.3': {}
 
@@ -15137,6 +15156,10 @@ snapshots:
       semver: 5.7.2
       tslib: 1.14.1
       tsutils: 2.29.0(typescript@5.7.2)
+      typescript: 5.7.2
+
+  tstyche@3.5.0(typescript@5.7.2):
+    optionalDependencies:
       typescript: 5.7.2
 
   tsutils@2.29.0(typescript@5.7.2):
