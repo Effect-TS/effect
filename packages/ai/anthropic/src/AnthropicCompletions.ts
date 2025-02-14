@@ -26,7 +26,7 @@ import type * as Generated from "./Generated.js"
  * @since 1.0.0
  * @category models
  */
-export type Model = typeof Generated.Model.Encoded
+export type Model = typeof Generated.ModelEnum.Encoded
 
 const make = (options: { readonly model: (string & {}) | Model }) =>
   Effect.gen(function*() {
@@ -259,23 +259,21 @@ const makeResponse = Effect.fnUntraced(function*(
     readonly description: string
   }
 ) {
-  if (response.stop_reason === "tool_use") {
-    const [text, toolUse] = Arr.partition(
-      response.content,
-      (chunk) => chunk.type === "tool_use"
-    )
-    if (structuredTool === undefined || toolUse.length !== 1) {
+  if (structuredTool !== undefined && response.stop_reason === "tool_use") {
+    const [text, toolUse] = Arr.partition(response.content, (chunk) => chunk.type === "tool_use")
+    if (toolUse.length !== 1) {
       return yield* new AiError({
         module: "AnthropicCompletions",
         method,
         description: "Unable to extract structured output tool call information from response"
       })
     }
+    const tool = toolUse[0]
     const textParts = text.map(({ text }) => AiResponse.TextPart.fromContent(text))
     const toolCallPart = AiResponse.ToolCallPart.fromUnknown({
-      id: toolUse[0].id,
-      name: toolUse[0].name,
-      params: toolUse[0].input
+      id: tool.id,
+      name: tool.name,
+      params: tool.input
     })
     return AiResponse.AiResponse.make({
       role: AiRole.model,

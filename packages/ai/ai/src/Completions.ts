@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect"
 import * as HashMap from "effect/HashMap"
 import * as JsonSchema from "effect/JSONSchema"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
@@ -377,7 +378,7 @@ const resolveParts = (
         const handler = HashMap.unsafeGet(options.tools.handlers, part.name)
         const decodeParams = Schema.decodeUnknown(tool as any)
         const encodeSuccess = Schema.encode(tool.success)
-        return decodeParams(part.params).pipe(
+        return decodeParams(injectTag(part.params, part.name)).pipe(
           Effect.mapError((cause) =>
             new AiError({
               module: "Completions",
@@ -409,4 +410,25 @@ const resolveParts = (
     )),
     Effect.as(new WithResolved({ response: options.response, resolved, encoded }))
   )
+}
+
+/**
+ * Certain providers (i.e. Anthropic) do not do a great job returning the
+ * `_tag` enum with the parameters for a tool call. This method ensures that
+ * the `_tag` is injected into the tool call parameters to avoid issues when
+ * decoding.
+ */
+function injectTag(params: unknown, tag: string) {
+  // If for some reason we do not receive an object back for the tool call
+  // input parameters, just return them unchanged
+  if (!Predicate.isObject(params)) {
+    return params
+  }
+  // If the tool's `_tag` is already present in input parameters, return them
+  // unchanged
+  if (Predicate.hasProperty(params, "_tag")) {
+    return params
+  }
+  // Otherwise inject the tool's `_tag` into the input parameters
+  return { ...params, _tag: tag }
 }
