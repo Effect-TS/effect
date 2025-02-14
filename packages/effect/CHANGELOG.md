@@ -1,5 +1,11 @@
 # effect
 
+## 3.13.1
+
+### Patch Changes
+
+- [#4454](https://github.com/Effect-TS/effect/pull/4454) [`b56a211`](https://github.com/Effect-TS/effect/commit/b56a2110569fd0ec0b57ac137743e926d49f51cc) Thanks @FizzyElt! - fix Option filterMap example
+
 ## 3.13.0
 
 ### Minor Changes
