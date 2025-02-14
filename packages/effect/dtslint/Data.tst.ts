@@ -2,15 +2,15 @@ import * as Data from "effect/Data"
 import { describe, expect, it } from "tstyche"
 
 declare const readonlyStruct: { readonly a: string }
-declare const mutableStruct: { a: string }
+declare const struct: { a: string }
 
 declare const readonlyArray: ReadonlyArray<string>
-declare const mutableArray: Array<string>
+declare const array: Array<string>
 
 describe("Data", () => {
   it("struct", () => {
     // Create a readonly struct from a mutable one
-    const struct1 = Data.struct(mutableStruct)
+    const struct1 = Data.struct(struct)
     expect(struct1).type.toBe<{ readonly a: string }>()
 
     // @ts-expect-error: `a` should be readonly
@@ -25,7 +25,7 @@ describe("Data", () => {
   })
 
   it("unsafeStruct", () => {
-    const struct3 = Data.unsafeStruct(mutableStruct)
+    const struct3 = Data.unsafeStruct(struct)
     expect(struct3).type.toBe<{ readonly a: string }>()
 
     // @ts-expect-error: cannot assign to readonly property
@@ -50,7 +50,7 @@ describe("Data", () => {
   })
 
   it("array", () => {
-    const array1 = Data.array(mutableArray)
+    const array1 = Data.array(array)
     expect(array1).type.toBe<ReadonlyArray<string>>()
 
     // @ts-expect-error: cannot assign to readonly array element
@@ -64,7 +64,7 @@ describe("Data", () => {
   })
 
   it("unsafeArray", () => {
-    const array3 = Data.unsafeArray(mutableArray)
+    const array3 = Data.unsafeArray(array)
     expect(array3).type.toBe<ReadonlyArray<string>>()
 
     // @ts-expect-error: cannot assign to readonly array element
