@@ -13742,7 +13742,7 @@ export const fn:
     const errorDef = new Error()
     Error.stackTraceLimit = limit
     if (typeof nameOrBody !== "string") {
-      return function(this: any, ...args: Array<any>) {
+      return defineLength(nameOrBody.length, function(this: any, ...args: Array<any>) {
         const limit = Error.stackTraceLimit
         Error.stackTraceLimit = 2
         const errorCall = new Error()
@@ -13759,12 +13759,12 @@ export const fn:
           errorDef,
           errorCall
         })
-      } as any
+      }) as any
     }
     const name = nameOrBody
     const options = pipeables[0]
-    return (body: Function, ...pipeables: Array<any>) => {
-      return function(this: any, ...args: Array<any>) {
+    return (body: Function, ...pipeables: Array<any>) =>
+      defineLength(body.length, function(this: any, ...args: Array<any>) {
         const limit = Error.stackTraceLimit
         Error.stackTraceLimit = 2
         const errorCall = new Error()
@@ -13779,9 +13779,15 @@ export const fn:
           errorDef,
           errorCall
         })
-      }
-    }
+      })
   }
+
+function defineLength<F extends Function>(length: number, fn: F) {
+  return Object.defineProperty(fn, "length", {
+    value: length,
+    configurable: true
+  })
+}
 
 function fnApply(options: {
   readonly self: any
@@ -13847,14 +13853,17 @@ function fnApply(options: {
  * @category Tracing
  */
 export const fnUntraced: fn.Gen = (body: Function, ...pipeables: Array<any>) =>
-  pipeables.length === 0
-    ? function(this: any, ...args: Array<any>) {
-      return core.fromIterator(() => body.apply(this, args))
-    }
-    : function(this: any, ...args: Array<any>) {
-      let effect = core.fromIterator(() => body.apply(this, args))
-      for (const x of pipeables) {
-        effect = x(effect)
+  defineLength(
+    body.length,
+    pipeables.length === 0
+      ? function(this: any, ...args: Array<any>) {
+        return core.fromIterator(() => body.apply(this, args))
       }
-      return effect
-    }
+      : function(this: any, ...args: Array<any>) {
+        let effect = core.fromIterator(() => body.apply(this, args))
+        for (const x of pipeables) {
+          effect = x(effect)
+        }
+        return effect
+      }
+  )

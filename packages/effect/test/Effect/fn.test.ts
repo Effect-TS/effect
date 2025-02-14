@@ -64,4 +64,30 @@ describe("Effect.fn", () => {
       assertInstanceOf(cause.right.defect, Error)
       strictEqual(cause.right.defect.message, "test2")
     }))
+
+  it("should preserve the function length", () => {
+    const f = function*(n: number) {
+      return n
+    }
+    const fn1 = Effect.fn("fn1")(f)
+    strictEqual(fn1.length, 1)
+    strictEqual(Effect.runSync(fn1(2)), 2)
+    const fn2 = Effect.fn(f)
+    strictEqual(fn2.length, 1)
+    strictEqual(Effect.runSync(fn2(2)), 2)
+  })
+})
+
+describe("Effect.fnUntraced", () => {
+  it("should preserve the function length", () => {
+    const f = function*(n: number) {
+      return n
+    }
+    const fn1 = Effect.fnUntraced(f)
+    strictEqual(fn1.length, 1)
+    strictEqual(Effect.runSync(fn1(2)), 2)
+    const fn2 = Effect.fnUntraced(f, (x) => x)
+    strictEqual(fn2.length, 1)
+    strictEqual(Effect.runSync(fn2(2)), 2)
+  })
 })
