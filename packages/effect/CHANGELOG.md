@@ -1,5 +1,136 @@
 # effect
 
+## 3.13.0
+
+### Minor Changes
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`8baef83`](https://github.com/Effect-TS/effect/commit/8baef83e7ff0b7bc0738b680e1ef013065386cff) Thanks @tim-smart! - add Promise based apis to Fiber{Handle,Set,Map} modules
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`655bfe2`](https://github.com/Effect-TS/effect/commit/655bfe29e44cc3f0fb9b4e53038f50b891c188df) Thanks @gcanti! - Add `Effect.transposeOption`, closes #3142.
+
+  Converts an `Option` of an `Effect` into an `Effect` of an `Option`.
+
+  **Details**
+
+  This function transforms an `Option<Effect<A, E, R>>` into an
+  `Effect<Option<A>, E, R>`. If the `Option` is `None`, the resulting `Effect`
+  will immediately succeed with a `None` value. If the `Option` is `Some`, the
+  inner `Effect` will be executed, and its result wrapped in a `Some`.
+
+  **Example**
+
+  ```ts
+  import { Effect, Option } from "effect"
+
+  //      ┌─── Option<Effect<number, never, never>>
+  //      ▼
+  const maybe = Option.some(Effect.succeed(42))
+
+  //      ┌─── Effect<Option<number>, never, never>
+  //      ▼
+  const result = Effect.transposeOption(maybe)
+
+  console.log(Effect.runSync(result))
+  // Output: { _id: 'Option', _tag: 'Some', value: 42 }
+  ```
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`d90cbc2`](https://github.com/Effect-TS/effect/commit/d90cbc274e2742d18671fe65aa4764c057eb6cba) Thanks @indietyp! - Add `Effect.whenLogLevel`, which conditionally executes an effect if the specified log level is enabled
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`75632bd`](https://github.com/Effect-TS/effect/commit/75632bd44b8025101d652ccbaeef898c7086c91c) Thanks @tim-smart! - add RcMap.touch, for reseting the idle timeout for an item
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`c874a2e`](https://github.com/Effect-TS/effect/commit/c874a2e4b17e9d71904ca8375bb77b020975cb1d) Thanks @LaureRC! - Add HashMap.some
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`bf865e5`](https://github.com/Effect-TS/effect/commit/bf865e5833f77fd8f6c06944ca9d507b54488301) Thanks @tim-smart! - allow accessing args in Effect.fn pipe
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`f98b2b7`](https://github.com/Effect-TS/effect/commit/f98b2b7592cf20f9d85313e7f1e964cb65878138) Thanks @tim-smart! - add RcMap.invalidate api, for removing a resource from an RcMap
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`de8ce92`](https://github.com/Effect-TS/effect/commit/de8ce924923eaa4e1b761a97eb45ec967389f3d5) Thanks @mikearnaldi! - Add Layer.updateService mirroring Effect.updateService
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`db426a5`](https://github.com/Effect-TS/effect/commit/db426a5fb41ab84d18e3c8753a7329b4de544245) Thanks @KhraksMamtsov! - `Differ` implements `Pipeable`
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`6862444`](https://github.com/Effect-TS/effect/commit/6862444094906ad4f2cb077ff3b9cc0b73880c8c) Thanks @thewilkybarkid! - Make it easy to convert a DateTime.Zoned to a DateTime.Utc
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`5fc8a90`](https://github.com/Effect-TS/effect/commit/5fc8a90ba46a5fd9f3b643f0b5aeadc69d717339) Thanks @gcanti! - Add missing `Either.void` constructor.
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`546a492`](https://github.com/Effect-TS/effect/commit/546a492e60eb2b8b048a489a474b934ea0877005) Thanks @vinassefranche! - Add `HashMap.toValues` and `HashSet.toValues` getters
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`65c4796`](https://github.com/Effect-TS/effect/commit/65c47966ce39055f02cf5c808daabb3ea6442b0b) Thanks @tim-smart! - add {FiberHandle,FiberSet,FiberMap}.awaitEmpty apis
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`9760fdc`](https://github.com/Effect-TS/effect/commit/9760fdc37bdaef9da8b150e46b86ddfbe2ad9221) Thanks @gcanti! - Schema: Add `standardSchemaV1` API to Generate a [Standard Schema v1](https://standardschema.dev/).
+
+  **Example**
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Struct({
+    name: Schema.String
+  })
+
+  //      ┌─── StandardSchemaV1<{ readonly name: string; }>
+  //      ▼
+  const standardSchema = Schema.standardSchemaV1(schema)
+  ```
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`5b471e7`](https://github.com/Effect-TS/effect/commit/5b471e7d4317e8ee5d72bbbd3e0c9775160949ab) Thanks @fubhy! - Added `Duration.formatIso` and `Duration.fromIso` for formatting and parsing ISO8601 durations.
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`4f810cc`](https://github.com/Effect-TS/effect/commit/4f810cc2770e9f1f266851d2cb6257112c12af49) Thanks @tim-smart! - add Effect.filterEffect\* apis
+
+  #### Effect.filterEffectOrElse
+
+  Filters an effect with an effectful predicate, falling back to an alternative
+  effect if the predicate fails.
+
+  ```ts
+  import { Effect, pipe } from "effect"
+
+  // Define a user interface
+  interface User {
+    readonly name: string
+  }
+
+  // Simulate an asynchronous authentication function
+  declare const auth: () => Promise<User | null>
+
+  const program = pipe(
+    Effect.promise(() => auth()),
+    // Use filterEffectOrElse with an effectful predicate
+    Effect.filterEffectOrElse({
+      predicate: (user) => Effect.succeed(user !== null),
+      orElse: (user) => Effect.fail(new Error(`Unauthorized user: ${user}`))
+    })
+  )
+  ```
+
+  #### Effect.filterEffectOrFail
+
+  Filters an effect with an effectful predicate, failing with a custom error if the predicate fails.
+
+  ```ts
+  import { Effect, pipe } from "effect"
+
+  // Define a user interface
+  interface User {
+    readonly name: string
+  }
+
+  // Simulate an asynchronous authentication function
+  declare const auth: () => Promise<User | null>
+
+  const program = pipe(
+    Effect.promise(() => auth()),
+    // Use filterEffectOrFail with an effectful predicate
+    Effect.filterEffectOrFail({
+      predicate: (user) => Effect.succeed(user !== null),
+      orFailWith: (user) => Effect.fail(new Error(`Unauthorized user: ${user}`))
+    })
+  )
+  ```
+
+### Patch Changes
+
+- [#4280](https://github.com/Effect-TS/effect/pull/4280) [`cf8b2dd`](https://github.com/Effect-TS/effect/commit/cf8b2dd112f8e092ed99d78fd728db0f91c29050) Thanks @KhraksMamtsov! - `Trie<out A>` type annotations have been aligned. The type parameter was made covariant because the structure is immutable.
+
 ## 3.12.12
 
 ### Patch Changes
