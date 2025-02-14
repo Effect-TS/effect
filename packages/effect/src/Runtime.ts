@@ -94,8 +94,10 @@ export const runFork: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runSyncExit: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E> =
-  internal.unsafeRunSyncExit
+export const runSyncExit: {
+  <A, E, R>(runtime: Runtime<R>, effect: Effect.Effect<A, E, R>): Exit.Exit<A, E>
+  <R>(runtime: Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E>
+} = internal.unsafeRunSyncExit
 
 /**
  * Executes the effect synchronously throwing in case of errors or async boundaries.

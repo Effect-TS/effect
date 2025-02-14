@@ -241,8 +241,11 @@ const fastPath = <A, E, R>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> | un
 }
 
 /** @internal */
-export const unsafeRunSyncExit =
-  <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> => {
+export const unsafeRunSyncExit: {
+  <A, E, R>(runtime: Runtime.Runtime<R>, effect: Effect.Effect<A, E, R>): Exit.Exit<A, E>
+  <R>(runtime: Runtime.Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E>
+} = function() {
+  const body = <A, E, R>(runtime: Runtime.Runtime<R>, effect: Effect.Effect<A, E, R>): any => {
     const op = fastPath(effect)
     if (op) {
       return op
@@ -256,6 +259,14 @@ export const unsafeRunSyncExit =
     }
     return core.exitDie(core.capture(asyncFiberException(fiberRuntime), core.currentSpanFromFiber(fiberRuntime)))
   }
+  const [runtime, effect] = arguments
+  if (arguments.length >= 2) {
+    return body(runtime, effect)
+  }
+  return function(effect: any) {
+    return body(runtime, effect)
+  }
+}
 
 /** @internal */
 export const unsafeRunPromise = <R>(runtime: Runtime.Runtime<R>) =>

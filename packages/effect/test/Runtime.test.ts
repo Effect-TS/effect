@@ -33,6 +33,14 @@ describe("Runtime", () => {
     deepStrictEqual(Runtime.runSync(Runtime.defaultRuntime, Effect.succeed(1)), 1)
   })
 
+  it("runSyncExit", () => {
+    deepStrictEqual(Runtime.runSyncExit(Runtime.defaultRuntime)(Effect.succeed(1)), Exit.succeed(1))
+    deepStrictEqual(Runtime.runSyncExit(Runtime.defaultRuntime, Effect.succeed(1)), Exit.succeed(1))
+
+    deepStrictEqual(Runtime.runSyncExit(Runtime.defaultRuntime)(Effect.fail(1)), Exit.fail(1))
+    deepStrictEqual(Runtime.runSyncExit(Runtime.defaultRuntime, Effect.fail(1)), Exit.fail(1))
+  })
+
   it("runPromiseExit/signal", async () => {
     const aborted = AbortSignal.abort()
     assertTrue(
