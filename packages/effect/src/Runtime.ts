@@ -81,9 +81,16 @@ export interface RunForkOptions {
  * @since 2.0.0
  * @category execution
  */
-export const runFork: <R>(
-  runtime: Runtime<R>
-) => <A, E>(self: Effect.Effect<A, E, R>, options?: RunForkOptions) => Fiber.RuntimeFiber<A, E> = internal.unsafeFork
+export const runFork: {
+  <R>(
+    runtime: Runtime<R>
+  ): <A, E>(effect: Effect.Effect<A, E, R>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<A, E>
+  <R, A, E>(
+    runtime: Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: RunForkOptions | undefined
+  ): Fiber.RuntimeFiber<A, E>
+} = internal.unsafeFork
 
 /**
  * Executes the effect synchronously returning the exit.
@@ -131,10 +138,19 @@ export interface RunCallbackOptions<in A, in E = never> extends RunForkOptions {
  * @since 2.0.0
  * @category execution
  */
-export const runCallback: <R>(
-  runtime: Runtime<R>
-) => <A, E>(effect: Effect.Effect<A, E, R>, options?: RunCallbackOptions<A, E> | undefined) => Cancel<A, E> =
-  internal.unsafeRunCallback
+export const runCallback: {
+  <R>(
+    runtime: Runtime<R>
+  ): <A, E>(
+    effect: Effect.Effect<A, E, R>,
+    options?: RunCallbackOptions<A, E> | undefined
+  ) => (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<A, E> | undefined) => void
+  <R, A, E>(
+    runtime: Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: RunCallbackOptions<A, E> | undefined
+  ): (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<A, E> | undefined) => void
+} = internal.unsafeRunCallback
 
 /**
  * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
