@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Effect, Exit, FiberRef, Layer, pipe, Runtime } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual, strictEqual, throwsAsync } from "effect/test/util"
 
 describe("Runtime", () => {
   it.effect("setFiberRef", () =>
@@ -39,6 +39,33 @@ describe("Runtime", () => {
 
     deepStrictEqual(Runtime.runSyncExit(Runtime.defaultRuntime)(Effect.fail(1)), Exit.fail(1))
     deepStrictEqual(Runtime.runSyncExit(Runtime.defaultRuntime, Effect.fail(1)), Exit.fail(1))
+  })
+
+  it("runPromise", async () => {
+    deepStrictEqual(
+      await Runtime.runPromise(Runtime.defaultRuntime)(Effect.promise(async () => 1)),
+      1
+    )
+    throwsAsync(
+      async () => {
+        await Runtime.runPromise(Runtime.defaultRuntime)(
+          Effect.tryPromise({ try: () => new Promise((_, reject) => reject(1)), catch: () => "error" })
+        )
+      }
+    )
+
+    deepStrictEqual(
+      await Runtime.runPromise(Runtime.defaultRuntime, Effect.promise(async () => 1)),
+      1
+    )
+    throwsAsync(
+      async () => {
+        await Runtime.runPromise(
+          Runtime.defaultRuntime,
+          Effect.tryPromise({ try: () => new Promise((_, reject) => reject(1)), catch: () => "error" })
+        )
+      }
+    )
   })
 
   it("runPromiseExit", async () => {
