@@ -101,7 +101,7 @@ export const makeEffect = <Key, Value, Error = never>(
       const assertAllCleaned = () =>
         Effect.flatMap(createdResources(), (resources) =>
           resourcesCleaned(
-            Chunk.flatten(Chunk.unsafeFromArray(Array.from(HashMap.values(resources))))
+            Chunk.flatten(Chunk.unsafeFromArray(HashMap.toValues(resources)))
           ))
       const assertAllCleanedForKey = (key: Key) =>
         Effect.flatMap(createdResources(), (resources) =>

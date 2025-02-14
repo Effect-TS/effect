@@ -116,6 +116,14 @@ export const isSubset: {
 export const values: <A>(self: HashSet<A>) => IterableIterator<A> = HS.values
 
 /**
+ * Returns an `Array` of the values within the `HashSet`.
+ *
+ * @since 3.13.0
+ * @category getters
+ */
+export const toValues = <A>(self: HashSet<A>): Array<A> => Array.from(values(self))
+
+/**
  * Calculates the number of values in the `HashSet`.
  *
  * @since 2.0.0

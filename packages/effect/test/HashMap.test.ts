@@ -394,6 +394,13 @@ describe("HashMap", () => {
     deepStrictEqual(result, [value("a"), value("b")])
   })
 
+  it("toValues", () => {
+    const map = HM.make([key(0), value("a")], [key(1), value("b")])
+    const result = HM.toValues(map)
+
+    deepStrictEqual(result, [value("a"), value("b")])
+  })
+
   it("entries", () => {
     const map = HM.make([key(0), value("a")], [key(1), value("b")])
     const result = Array.from(HM.entries(map))
