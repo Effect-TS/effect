@@ -1,5 +1,89 @@
 # effect
 
+## 3.12.12
+
+### Patch Changes
+
+- [#4440](https://github.com/Effect-TS/effect/pull/4440) [`4018eae`](https://github.com/Effect-TS/effect/commit/4018eaed2733241676ddb8c52416f463a8c32e35) Thanks @gcanti! - Schema: add missing support for tuple annotations in `TaggedRequest`.
+
+- [#4439](https://github.com/Effect-TS/effect/pull/4439) [`543d36d`](https://github.com/Effect-TS/effect/commit/543d36d1a11452560b01ab966a82529ad5fee8c9) Thanks @gcanti! - Schedule: fix unsafe `tapOutput` signature.
+
+  Previously, `tapOutput` allowed using an output type that wasn't properly inferred, leading to potential runtime errors. Now, TypeScript correctly detects mismatches at compile time, preventing unexpected crashes.
+
+  **Before (Unsafe, Causes Runtime Error)**
+
+  ```ts
+  import { Effect, Schedule, Console } from "effect"
+
+  const schedule = Schedule.once.pipe(
+    Schedule.as<number | string>(1),
+    Schedule.tapOutput((s: string) => Console.log(s.trim())) // ❌ Runtime error
+  )
+
+  Effect.runPromise(Effect.void.pipe(Effect.schedule(schedule)))
+  // throws: TypeError: s.trim is not a function
+  ```
+
+  **After (Safe, Catches Type Error at Compile Time)**
+
+  ```ts
+  import { Console, Schedule } from "effect"
+
+  const schedule = Schedule.once.pipe(
+    Schedule.as<number | string>(1),
+    // ✅ Type Error: Type 'number' is not assignable to type 'string'
+    Schedule.tapOutput((s: string) => Console.log(s.trim()))
+  )
+  ```
+
+- [#4447](https://github.com/Effect-TS/effect/pull/4447) [`f70a65a`](https://github.com/Effect-TS/effect/commit/f70a65ac80c6635d80b12beaf4d32a9cc59fa143) Thanks @gcanti! - Preserve function `length` property in `Effect.fn` / `Effect.fnUntraced`, closes #4435
+
+  Previously, functions created with `Effect.fn` and `Effect.fnUntraced` always had a `.length` of `0`, regardless of their actual number of parameters. This has been fixed so that the `length` property correctly reflects the expected number of arguments.
+
+  **Before**
+
+  ```ts
+  import { Effect } from "effect"
+
+  const fn1 = Effect.fn("fn1")(function* (n: number) {
+    return n
+  })
+
+  console.log(fn1.length)
+  // Output: 0 ❌ (incorrect)
+
+  const fn2 = Effect.fnUntraced(function* (n: number) {
+    return n
+  })
+
+  console.log(fn2.length)
+  // Output: 0 ❌ (incorrect)
+  ```
+
+  **After**
+
+  ```ts
+  import { Effect } from "effect"
+
+  const fn1 = Effect.fn("fn1")(function* (n: number) {
+    return n
+  })
+
+  console.log(fn1.length)
+  // Output: 1 ✅ (correct)
+
+  const fn2 = Effect.fnUntraced(function* (n: number) {
+    return n
+  })
+
+  console.log(fn2.length)
+  // Output: 1 ✅ (correct)
+  ```
+
+- [#4422](https://github.com/Effect-TS/effect/pull/4422) [`ba409f6`](https://github.com/Effect-TS/effect/commit/ba409f69c41aeaa29e475c0630735726eaf4dbac) Thanks @mikearnaldi! - Fix Context.Tag inference using explicit generics
+
+- [#4432](https://github.com/Effect-TS/effect/pull/4432) [`3d2e356`](https://github.com/Effect-TS/effect/commit/3d2e3565e8a43d1bdb5daee8db3b90f56d71d859) Thanks @tim-smart! - use Map for Scope finalizers, to ensure they are always added
+
 ## 3.12.11
 
 ### Patch Changes

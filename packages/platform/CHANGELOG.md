@@ -1,5 +1,76 @@
 # @effect/platform
 
+## 0.76.1
+
+### Patch Changes
+
+- [#4444](https://github.com/Effect-TS/effect/pull/4444) [`c407726`](https://github.com/Effect-TS/effect/commit/c407726f79df4a567a9631cddd8effaa16b3535d) Thanks @gcanti! - HttpApiBuilder: URL parameters are now automatically converted to arrays when needed, closes #4442.
+
+  **Example**
+
+  ```ts
+  import {
+    HttpApi,
+    HttpApiBuilder,
+    HttpApiEndpoint,
+    HttpApiGroup,
+    HttpMiddleware,
+    HttpServer
+  } from "@effect/platform"
+  import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+  import { Effect, Layer, Schema } from "effect"
+  import { createServer } from "node:http"
+
+  const api = HttpApi.make("api").add(
+    HttpApiGroup.make("group").add(
+      HttpApiEndpoint.get("get", "/")
+        .addSuccess(Schema.String)
+        .setUrlParams(
+          Schema.Struct({
+            param: Schema.NonEmptyArray(Schema.String)
+          })
+        )
+    )
+  )
+
+  const usersGroupLive = HttpApiBuilder.group(api, "group", (handlers) =>
+    handlers.handle("get", (req) =>
+      Effect.succeed(req.urlParams.param.join(", "))
+    )
+  )
+
+  const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(usersGroupLive))
+
+  const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
+    Layer.provide(MyApiLive),
+    HttpServer.withLogAddress,
+    Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+  )
+
+  Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
+  ```
+
+  Previously, if a query parameter was defined as a `NonEmptyArray` (an array that requires at least one element), providing a single value would cause a parsing error.
+
+  For example, this worked fine:
+
+  ```sh
+  curl "http://localhost:3000/?param=1&param=2"
+  ```
+
+  But this would fail:
+
+  ```sh
+  curl "http://localhost:3000/?param=1"
+  ```
+
+  Resulting in an error because `"1"` was treated as a string instead of an array.
+
+  With this update, single values are automatically wrapped in an array, so they match the expected schema without requiring manual fixes.
+
+- Updated dependencies [[`4018eae`](https://github.com/Effect-TS/effect/commit/4018eaed2733241676ddb8c52416f463a8c32e35), [`543d36d`](https://github.com/Effect-TS/effect/commit/543d36d1a11452560b01ab966a82529ad5fee8c9), [`f70a65a`](https://github.com/Effect-TS/effect/commit/f70a65ac80c6635d80b12beaf4d32a9cc59fa143), [`ba409f6`](https://github.com/Effect-TS/effect/commit/ba409f69c41aeaa29e475c0630735726eaf4dbac), [`3d2e356`](https://github.com/Effect-TS/effect/commit/3d2e3565e8a43d1bdb5daee8db3b90f56d71d859)]:
+  - effect@3.12.12
+
 ## 0.76.0
 
 ### Minor Changes
