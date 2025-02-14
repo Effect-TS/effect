@@ -1,4 +1,4 @@
-let moduleVersion = "3.12.12"
+let moduleVersion = "3.13.0"
 
 export const getCurrentVersion = () => moduleVersion
 
