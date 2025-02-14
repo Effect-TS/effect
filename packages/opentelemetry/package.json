@@ -1,6 +1,6 @@
 {
   "name": "@effect/opentelemetry",
-  "version": "0.43.1",
+  "version": "0.43.2",
   "type": "module",
   "license": "MIT",
   "description": "OpenTelemetry integration for Effect",
