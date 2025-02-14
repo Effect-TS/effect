@@ -41,10 +41,38 @@ describe("Runtime", () => {
     deepStrictEqual(Runtime.runSyncExit(Runtime.defaultRuntime, Effect.fail(1)), Exit.fail(1))
   })
 
+  it("runPromiseExit", async () => {
+    deepStrictEqual(
+      await Runtime.runPromiseExit(Runtime.defaultRuntime)(Effect.promise(async () => 1)),
+      Exit.succeed(1)
+    )
+    deepStrictEqual(
+      await Runtime.runPromiseExit(Runtime.defaultRuntime)(
+        Effect.tryPromise({ try: () => new Promise((_, reject) => reject(1)), catch: () => "error" })
+      ),
+      Exit.fail("error")
+    )
+
+    deepStrictEqual(
+      await Runtime.runPromiseExit(Runtime.defaultRuntime, Effect.promise(async () => 1)),
+      Exit.succeed(1)
+    )
+    deepStrictEqual(
+      await Runtime.runPromiseExit(
+        Runtime.defaultRuntime,
+        Effect.tryPromise({ try: () => new Promise((_, reject) => reject(1)), catch: () => "error" })
+      ),
+      Exit.fail("error")
+    )
+  })
+
   it("runPromiseExit/signal", async () => {
     const aborted = AbortSignal.abort()
     assertTrue(
       Exit.isInterrupted(await Runtime.runPromiseExit(Runtime.defaultRuntime)(Effect.never, { signal: aborted }))
+    )
+    assertTrue(
+      Exit.isInterrupted(await Runtime.runPromiseExit(Runtime.defaultRuntime, Effect.never, { signal: aborted }))
     )
 
     const controller = new AbortController()
@@ -52,6 +80,11 @@ describe("Runtime", () => {
     assertTrue(
       Exit.isInterrupted(
         await Runtime.runPromiseExit(Runtime.defaultRuntime)(Effect.never, { signal: controller.signal })
+      )
+    )
+    assertTrue(
+      Exit.isInterrupted(
+        await Runtime.runPromiseExit(Runtime.defaultRuntime, Effect.never, { signal: controller.signal })
       )
     )
   })

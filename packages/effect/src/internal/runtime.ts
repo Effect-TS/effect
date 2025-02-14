@@ -276,7 +276,7 @@ export const unsafeRunPromise = <R>(runtime: Runtime.Runtime<R>) =>
     readonly signal?: AbortSignal | undefined
   } | undefined
 ): Promise<A> =>
-  unsafeRunPromiseExit(runtime)(effect, options).then((result) => {
+  unsafeRunPromiseExit(runtime, effect, options).then((result) => {
     switch (result._tag) {
       case OpCodes.OP_SUCCESS: {
         return result.effect_instruction_i0
@@ -288,32 +288,53 @@ export const unsafeRunPromise = <R>(runtime: Runtime.Runtime<R>) =>
   })
 
 /** @internal */
-export const unsafeRunPromiseExit = <R>(runtime: Runtime.Runtime<R>) =>
-<A, E>(
-  effect: Effect.Effect<A, E, R>,
-  options?: {
-    readonly signal?: AbortSignal | undefined
-  } | undefined
-): Promise<Exit.Exit<A, E>> =>
-  new Promise((resolve) => {
-    const op = fastPath(effect)
-    if (op) {
-      resolve(op)
-    }
-    const fiber = unsafeFork(runtime)(effect)
-    fiber.addObserver((exit) => {
-      resolve(exit)
-    })
-    if (options?.signal !== undefined) {
-      if (options.signal.aborted) {
-        fiber.unsafeInterruptAsFork(fiber.id())
-      } else {
-        options.signal.addEventListener("abort", () => {
-          fiber.unsafeInterruptAsFork(fiber.id())
-        }, { once: true })
+export const unsafeRunPromiseExit: {
+  <R>(
+    runtime: Runtime.Runtime<R>
+  ): <A, E>(
+    effect: Effect.Effect<A, E, R>,
+    options?: { readonly signal?: AbortSignal | undefined } | undefined
+  ) => Promise<Exit.Exit<A, E>>
+  <R, A, E>(
+    runtime: Runtime.Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: { readonly signal?: AbortSignal | undefined } | undefined
+  ): Promise<Exit.Exit<A, E>>
+} = function() {
+  const body = <R, A, E>(
+    runtime: Runtime.Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: {
+      readonly signal?: AbortSignal | undefined
+    } | undefined
+  ): any =>
+    new Promise((resolve) => {
+      const op = fastPath(effect)
+      if (op) {
+        resolve(op)
       }
-    }
-  })
+      const fiber = unsafeFork(runtime)(effect)
+      fiber.addObserver((exit) => {
+        resolve(exit)
+      })
+      if (options?.signal !== undefined) {
+        if (options.signal.aborted) {
+          fiber.unsafeInterruptAsFork(fiber.id())
+        } else {
+          options.signal.addEventListener("abort", () => {
+            fiber.unsafeInterruptAsFork(fiber.id())
+          }, { once: true })
+        }
+      }
+    })
+  const [runtime, effect, options] = arguments
+  if (arguments.length >= 2) {
+    return body(runtime, effect, options)
+  }
+  return function(effect: any, options: any) {
+    return body(runtime, effect, options)
+  }
+}
 
 /** @internal */
 export class RuntimeImpl<in R> implements Runtime.Runtime<R> {

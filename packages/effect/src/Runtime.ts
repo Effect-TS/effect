@@ -162,12 +162,19 @@ export const runPromise: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runPromiseExit: <R>(
-  runtime: Runtime<R>
-) => <A, E>(
-  effect: Effect.Effect<A, E, R>,
-  options?: { readonly signal?: AbortSignal } | undefined
-) => Promise<Exit.Exit<A, E>> = internal.unsafeRunPromiseExit
+export const runPromiseExit: {
+  <R>(
+    runtime: Runtime<R>
+  ): <A, E>(
+    effect: Effect.Effect<A, E, R>,
+    options?: { readonly signal?: AbortSignal } | undefined
+  ) => Promise<Exit.Exit<A, E>>
+  <R, A, E>(
+    runtime: Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: { readonly signal?: AbortSignal } | undefined
+  ): Promise<Exit.Exit<A, E>>
+} = internal.unsafeRunPromiseExit
 
 /**
  * @since 2.0.0
