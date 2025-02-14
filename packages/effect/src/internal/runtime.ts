@@ -26,6 +26,19 @@ import * as OpCodes from "./opCodes/effect.js"
 import * as runtimeFlags from "./runtimeFlags.js"
 import * as supervisor_ from "./supervisor.js"
 
+const makeDual = <Args extends Array<any>, Return>(
+  f: (runtime: Runtime.Runtime<never>, effect: Effect.Effect<any, any>, ...args: Args) => Return
+): {
+  <R>(runtime: Runtime.Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>, ...args: Args) => Return
+  <R, A, E>(runtime: Runtime.Runtime<R>, effect: Effect.Effect<A, E, R>, ...args: Args): Return
+} =>
+  function(runtime: Runtime.Runtime<any>) {
+    if (arguments.length === 1) {
+      return (effect: any, ...args: Args) => f(runtime, effect, ...args)
+    }
+    return f.apply(null, arguments as any)
+  } as any
+
 /** @internal */
 export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 <A, E>(
@@ -125,23 +138,13 @@ export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
 export const unsafeRunSync: {
   <A, E, R>(runtime: Runtime.Runtime<R>, effect: Effect.Effect<A, E, R>): A
   <R>(runtime: Runtime.Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => A
-} = function() {
-  const body = (runtime: Runtime.Runtime<any>, effect: Effect.Effect<any, any, any>) => {
-    const result = unsafeRunSyncExit(runtime)(effect)
-    if (result._tag === "Failure") {
-      throw fiberFailure(result.effect_instruction_i0)
-    } else {
-      return result.effect_instruction_i0
-    }
+} = makeDual((runtime, effect) => {
+  const result = unsafeRunSyncExit(runtime)(effect)
+  if (result._tag === "Failure") {
+    throw fiberFailure(result.effect_instruction_i0)
   }
-  const [runtime, effect] = arguments
-  if (arguments.length >= 2) {
-    return body(runtime, effect)
-  }
-  return function(effect: any) {
-    return body(runtime, effect)
-  }
-}
+  return result.effect_instruction_i0
+})
 
 class AsyncFiberExceptionImpl<A, E = never> extends Error implements Runtime.AsyncFiberException<A, E> {
   readonly _tag = "AsyncFiberException"
