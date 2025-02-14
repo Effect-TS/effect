@@ -666,7 +666,10 @@ describe("Array", () => {
     ).type.toBe<[number, ...Array<number>]>()
 
     const nestedReadonlyArray = hole<Effect.Effect<ReadonlyArray<ReadonlyArray<number>>>>()
-    expect(nestedReadonlyArray.pipe(Effect.map((arr) => Array.flatten(arr))))
+    expect(nestedReadonlyArray.pipe(Effect.map((x) => {
+      expect(x).type.toBe<ReadonlyArray<ReadonlyArray<number>>>()
+      return Array.flatten(x)
+    })))
       .type.toBe<
       Effect.Effect<Array<number>, never, never>
     >()
@@ -680,7 +683,10 @@ describe("Array", () => {
       >
     >()
     expect(
-      nestedNonEmptyReadonlyArray.pipe(Effect.map((arr) => Array.flatten(arr)))
+      nestedNonEmptyReadonlyArray.pipe(Effect.map((x) => {
+        expect(x).type.toBe<Array.NonEmptyReadonlyArray<Array.NonEmptyReadonlyArray<number>>>()
+        return Array.flatten(x)
+      }))
     ).type.toBe<Effect.Effect<[number, ...Array<number>], never, never>>()
     expect(
       nestedNonEmptyReadonlyArray.pipe(Effect.map(Array.flatten))
