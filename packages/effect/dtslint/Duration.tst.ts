@@ -43,8 +43,14 @@ describe("Duration", () => {
 
   it("match", () => {
     expect(Duration.match("100 millis", {
-      onMillis: () => "millis",
-      onNanos: () => "nanos"
+      onMillis: (n) => {
+        expect(n).type.toBe<number>()
+        return "millis"
+      },
+      onNanos: (bi) => {
+        expect(bi).type.toBe<bigint>()
+        return "nanos"
+      }
     })).type.toBe<string>()
   })
 
