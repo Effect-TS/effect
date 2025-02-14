@@ -1,12 +1,12 @@
-import { Array, Effect, Either, Equal, Option, Order, Predicate } from "effect"
+import { Array, Effect, Either, Option, Order, Predicate } from "effect"
 import { hole, identity, pipe } from "effect/Function"
 import { describe, expect, it } from "tstyche"
 
-declare const nonEmptyReadonlyNumbers: Array.NonEmptyReadonlyArray<number>
 declare const nonEmptyReadonlyStrings: Array.NonEmptyReadonlyArray<string>
 declare const nonEmptyNumbers: Array.NonEmptyArray<number>
 declare const nonEmptyStrings: Array.NonEmptyArray<string>
 declare const readonlyNumbers: ReadonlyArray<number>
+declare const readonlyStrings: ReadonlyArray<string>
 declare const numbers: Array<number>
 declare const strings: Array<string>
 declare const iterNumbers: Iterable<number>
@@ -14,36 +14,33 @@ declare const iterStrings: Iterable<string>
 declare const numbersOrStrings: Array<number | string>
 
 declare const primitiveNumber: number
-declare const primitiveNumerOrString: string | number
+declare const primitiveNumberOrString: string | number
 declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
 declare const unknownValue: unknown
-declare const stringOrStringArrayOrUnion: string | Array<string> | null
+declare const stringOrStringArrayOrNull: string | Array<string> | null
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")
 const symC = Symbol.for("c")
 
-interface AB {
+interface A {
   readonly a: string
+}
+interface AB extends A {
   readonly b: number
 }
-declare const abs: ReadonlyArray<AB>
-declare const nonEmptyabs: Array.NonEmptyReadonlyArray<AB>
-declare const ordera: Order.Order<{ readonly a: string }>
-
-declare const flattenArray: Effect.Effect<ReadonlyArray<ReadonlyArray<number>>>
-declare const flattenNonEmptyArray: Effect.Effect<
-  Array.NonEmptyReadonlyArray<Array.NonEmptyReadonlyArray<number>>
->
+declare const ABs: ReadonlyArray<AB>
+declare const nonEmptyABs: Array.NonEmptyReadonlyArray<AB>
+declare const orderA: Order.Order<A>
 
 describe("Array", () => {
   it("isArray", () => {
     if (Array.isArray(unknownValue)) {
       expect(unknownValue).type.toBe<Array<unknown>>()
     }
-    if (Array.isArray(stringOrStringArrayOrUnion)) {
-      expect(stringOrStringArrayOrUnion).type.toBe<Array<string>>()
+    if (Array.isArray(stringOrStringArrayOrNull)) {
+      expect(stringOrStringArrayOrNull).type.toBe<Array<string>>()
     }
   })
 
@@ -51,6 +48,7 @@ describe("Array", () => {
     if (Array.isEmptyReadonlyArray(readonlyNumbers)) {
       expect(readonlyNumbers).type.toBe<readonly []>()
     }
+    // should play well with `Option.liftPredicate`
     expect(Option.liftPredicate(Array.isEmptyReadonlyArray)).type.toBe<
       <A>(a: ReadonlyArray<A>) => Option.Option<readonly []>
     >()
@@ -60,6 +58,7 @@ describe("Array", () => {
     if (Array.isEmptyArray(numbers)) {
       expect(numbers).type.toBe<[]>()
     }
+    // should play well with `Option.liftPredicate`
     expect(Option.liftPredicate(Array.isEmptyArray)).type.toBe<
       <A>(a: Array<A>) => Option.Option<[]>
     >()
@@ -69,6 +68,7 @@ describe("Array", () => {
     if (Array.isNonEmptyReadonlyArray(readonlyNumbers)) {
       expect(readonlyNumbers).type.toBe<readonly [number, ...Array<number>]>()
     }
+    // should play well with `Option.liftPredicate`
     expect(Option.liftPredicate(Array.isNonEmptyReadonlyArray)).type.toBe<
       <A>(a: ReadonlyArray<A>) => Option.Option<readonly [A, ...Array<A>]>
     >()
@@ -76,63 +76,130 @@ describe("Array", () => {
 
   it("isNonEmptyArray", () => {
     if (Array.isNonEmptyArray(numbers)) {
-      expect(numbers).type.toBe<[number, ...Array<number>]>()
+      expect(numbers)
+        .type.toBe<[number, ...Array<number>]>()
     }
-    expect(Option.liftPredicate(Array.isNonEmptyArray)).type.toBe<
+    // should play well with `Option.liftPredicate`
+    expect(Option.liftPredicate(Array.isNonEmptyArray))
+      .type.toBe<
       <A>(a: Array<A>) => Option.Option<[A, ...Array<A>]>
     >()
   })
 
   it("map", () => {
-    expect(Array.map(readonlyNumbers, (n) => n + 1)).type.toBe<Array<number>>()
-    expect(pipe(readonlyNumbers, Array.map((n) => n + 1))).type.toBe<Array<number>>()
-    expect(Array.map(numbers, (n) => n + 1)).type.toBe<Array<number>>()
-    expect(pipe(numbers, Array.map((n) => n + 1))).type.toBe<Array<number>>()
-    expect(Array.map(nonEmptyReadonlyNumbers, (n) => n + 1)).type.toBe<
-      [number, ...Array<number>]
-    >()
-    expect(
-      pipe(nonEmptyReadonlyNumbers, Array.map((n) => n + 1))
-    ).type.toBe<[number, ...Array<number>]>()
-    expect(Array.map(nonEmptyNumbers, (n) => n + 1)).type.toBe<
-      [number, ...Array<number>]
-    >()
-    expect(pipe(nonEmptyNumbers, Array.map((n) => n + 1))).type.toBe<
-      [number, ...Array<number>]
-    >()
+    expect(Array.map(readonlyStrings, (s, i) => {
+      expect(s).type.toBe<string>()
+      expect(i).type.toBe<number>()
+      return s + "a"
+    })).type.toBe<Array<string>>()
+    expect(pipe(
+      readonlyStrings,
+      Array.map((s, i) => {
+        expect(s).type.toBe<string>()
+        expect(i).type.toBe<number>()
+        return s + "a"
+      })
+    )).type.toBe<Array<string>>()
+
+    expect(Array.map(strings, (s, i) => {
+      expect(s).type.toBe<string>()
+      expect(i).type.toBe<number>()
+      return s + "a"
+    })).type.toBe<Array<string>>()
+    expect(pipe(
+      strings,
+      Array.map((s, i) => {
+        expect(s).type.toBe<string>()
+        expect(i).type.toBe<number>()
+        return s + "a"
+      })
+    )).type.toBe<Array<string>>()
+
+    expect(Array.map(nonEmptyReadonlyStrings, (s, i) => {
+      expect(s).type.toBe<string>()
+      expect(i).type.toBe<number>()
+      return s + "a"
+    })).type.toBe<[string, ...Array<string>]>()
+    expect(pipe(
+      nonEmptyReadonlyStrings,
+      Array.map((s, i) => {
+        expect(s).type.toBe<string>()
+        expect(i).type.toBe<number>()
+        return s + "a"
+      })
+    )).type.toBe<[string, ...Array<string>]>()
+
+    expect(Array.map(nonEmptyStrings, (s, i) => {
+      expect(s).type.toBe<string>()
+      expect(i).type.toBe<number>()
+      return s + "a"
+    })).type.toBe<[string, ...Array<string>]>()
+    expect(pipe(
+      nonEmptyStrings,
+      Array.map((s, i) => {
+        expect(s).type.toBe<string>()
+        expect(i).type.toBe<number>()
+        return s + "a"
+      })
+    )).type.toBe<[string, ...Array<string>]>()
   })
 
   it("groupBy", () => {
-    expect(Array.groupBy([1, 2, 3], String)).type.toBe<
-      Record<string, [number, ...Array<number>]>
-    >()
+    expect(Array.groupBy([1, 2, 3], (n) => {
+      expect(n).type.toBe<number>()
+      return String(n)
+    })).type.toBe<Record<string, [number, ...Array<number>]>>()
+    expect(pipe(
+      [1, 2, 3],
+      Array.groupBy((n) => {
+        expect(n).type.toBe<number>()
+        return String(n)
+      })
+    )).type.toBe<Record<string, [number, ...Array<number>]>>()
     expect(
       Array.groupBy([1, 2, 3], (n) => n > 0 ? "positive" as const : "negative" as const)
     ).type.toBe<Record<string, [number, ...Array<number>]>>()
-    expect(Array.groupBy(["a", "b"], Symbol.for)).type.toBe<
+    expect(Array.groupBy(["a", "b"], Symbol.for)).type.toBe<Record<symbol, [string, ...Array<string>]>>()
+    expect(Array.groupBy(["a", "b"], (s) => s === "a" ? symA : s === "b" ? symB : symC)).type.toBe<
       Record<symbol, [string, ...Array<string>]>
     >()
-    expect(
-      Array.groupBy(["a", "b"], (s) => s === "a" ? symA : s === "b" ? symB : symC)
-    ).type.toBe<Record<symbol, [string, ...Array<string>]>>()
   })
 
   it("some", () => {
+    expect(Array.some(numbersOrStrings, (item, i) => {
+      expect(item).type.toBe<string | number>()
+      expect(i).type.toBe<number>()
+      return true
+    })).type.toBe<boolean>()
+    expect(pipe(
+      numbersOrStrings,
+      Array.some((item, i) => {
+        expect(item).type.toBe<string | number>()
+        expect(i).type.toBe<number>()
+        return true
+      })
+    )).type.toBe<boolean>()
     if (Array.some(numbersOrStrings, Predicate.isString)) {
       expect(numbersOrStrings).type.toBe<
         Array<string | number> & readonly [string | number, ...Array<string | number>]
       >()
     }
-    pipe(
-      numbersOrStrings,
-      Array.some((item) => {
-        expect(item).type.toBe<string | number>()
-        return true
-      })
-    )
   })
 
   it("every", () => {
+    expect(Array.every(numbersOrStrings, (item, i) => {
+      expect(item).type.toBe<string | number>()
+      expect(i).type.toBe<number>()
+      return true
+    })).type.toBe<boolean>()
+    expect(pipe(
+      numbersOrStrings,
+      Array.every((item, i) => {
+        expect(item).type.toBe<string | number>()
+        expect(i).type.toBe<number>()
+        return true
+      })
+    )).type.toBe<boolean>()
     if (Array.every(numbersOrStrings, Predicate.isString)) {
       expect(numbersOrStrings).type.toBe<
         Array<string | number> & ReadonlyArray<string>
@@ -143,34 +210,13 @@ describe("Array", () => {
         Array<string | number> & ReadonlyArray<string>
       >()
     }
-    Array.every(numbersOrStrings, (item) => {
-      expect(item).type.toBe<string | number>()
-      return true
-    })
-    Array.every(numbersOrStrings, (item, i) => {
-      expect(item).type.toBe<string | number>()
-      expect(i).type.toBe<number>()
-      return true
-    })
-    pipe(
-      numbersOrStrings,
-      Array.every((item) => {
-        expect(item).type.toBe<string | number>()
-        return true
-      })
-    )
-    pipe(
-      numbersOrStrings,
-      Array.every((item, i) => {
-        expect(item).type.toBe<string | number>()
-        expect(i).type.toBe<number>()
-        return true
-      })
-    )
   })
 
   it("append", () => {
     expect(Array.append(numbersOrStrings, true)).type.toBe<
+      [string | number | boolean, ...Array<string | number | boolean>]
+    >()
+    expect(pipe(numbersOrStrings, Array.append(true))).type.toBe<
       [string | number | boolean, ...Array<string | number | boolean>]
     >()
     expect(Array.append(true)(numbersOrStrings)).type.toBe<
@@ -182,18 +228,22 @@ describe("Array", () => {
     expect(Array.prepend(numbersOrStrings, true)).type.toBe<
       [string | number | boolean, ...Array<string | number | boolean>]
     >()
+    expect(pipe(numbersOrStrings, Array.prepend(true))).type.toBe<
+      [string | number | boolean, ...Array<string | number | boolean>]
+    >()
     expect(Array.prepend(true)(numbersOrStrings)).type.toBe<
       [string | number | boolean, ...Array<string | number | boolean>]
     >()
   })
 
   it("sort", () => {
-    expect(Array.sort(abs, ordera)).type.toBe<Array<AB>>()
-    expect(pipe(abs, Array.sort(ordera))).type.toBe<Array<AB>>()
-    expect(Array.sort(ordera)(abs)).type.toBe<Array<AB>>()
-    expect(Array.sort(nonEmptyabs, ordera)).type.toBe<[AB, ...Array<AB>]>()
-    expect(pipe(nonEmptyabs, Array.sort(ordera))).type.toBe<[AB, ...Array<AB>]>()
-    expect(Array.sort(ordera)(nonEmptyabs)).type.toBe<[AB, ...Array<AB>]>()
+    expect(Array.sort(ABs, orderA)).type.toBe<Array<AB>>()
+    expect(pipe(ABs, Array.sort(orderA))).type.toBe<Array<AB>>()
+    expect(Array.sort(orderA)(ABs)).type.toBe<Array<AB>>()
+    expect(Array.sort(nonEmptyABs, orderA)).type.toBe<[AB, ...Array<AB>]>()
+    expect(pipe(nonEmptyABs, Array.sort(orderA))).type.toBe<[AB, ...Array<AB>]>()
+    expect(Array.sort(orderA)(nonEmptyABs)).type.toBe<[AB, ...Array<AB>]>()
+
     // @ts-expect-error
     pipe([1], Array.sort(Order.string))
     // @ts-expect-error
@@ -203,28 +253,94 @@ describe("Array", () => {
   })
 
   it("sortWith", () => {
-    expect(pipe(abs, Array.sortWith(identity, ordera))).type.toBe<Array<AB>>()
-    expect(Array.sortWith(abs, identity, ordera)).type.toBe<Array<AB>>()
-    expect(pipe(nonEmptyabs, Array.sortWith(identity, ordera))).type.toBe<
+    expect(pipe(
+      ABs,
+      Array.sortWith(identity, (a, b) => {
+        expect(a).type.toBe<AB>()
+        expect(b).type.toBe<AB>()
+        return 0
+      })
+    )).type.toBe<Array<AB>>()
+    expect(Array.sortWith(ABs, identity, (a, b) => {
+      expect(a).type.toBe<AB>()
+      expect(b).type.toBe<AB>()
+      return 0
+    })).type.toBe<Array<AB>>()
+    expect(pipe(
+      nonEmptyABs,
+      Array.sortWith(identity, (a, b) => {
+        expect(a).type.toBe<AB>()
+        expect(b).type.toBe<AB>()
+        return 0
+      })
+    )).type.toBe<
       [AB, ...Array<AB>]
     >()
-    expect(Array.sortWith(nonEmptyabs, identity, ordera)).type.toBe<
+    expect(Array.sortWith(nonEmptyABs, identity, (a, b) => {
+      expect(a).type.toBe<AB>()
+      expect(b).type.toBe<AB>()
+      return 0
+    })).type.toBe<
       [AB, ...Array<AB>]
     >()
   })
 
+  it("sortBy", () => {
+    // Array
+    expect(pipe(
+      ABs,
+      Array.sortBy((a, b) => {
+        expect(a).type.toBe<AB>()
+        expect(b).type.toBe<AB>()
+        return 0
+      })
+    )).type.toBe<Array<AB>>()
+    expect(
+      pipe(
+        ABs,
+        Array.sortBy((a, b) => {
+          expect(a).type.toBe<AB>()
+          expect(b).type.toBe<AB>()
+          return 0
+        })
+      )
+    ).type.toBe<Array<AB>>()
+
+    // NonEmptyArray
+    expect(pipe(
+      nonEmptyABs,
+      Array.sortBy((a, b) => {
+        expect(a).type.toBe<AB>()
+        expect(b).type.toBe<AB>()
+        return 0
+      })
+    )).type.toBe<[AB, ...Array<AB>]>()
+    expect(
+      pipe(
+        nonEmptyABs,
+        Array.sortBy((a, b) => {
+          expect(a).type.toBe<AB>()
+          expect(b).type.toBe<AB>()
+          return 0
+        })
+      )
+    ).type.toBe<[AB, ...Array<AB>]>()
+  })
+
   it("partition", () => {
-    Array.partition(numbersOrStrings, (item) => {
+    expect(Array.partition(numbersOrStrings, (item, i) => {
       expect(item).type.toBe<string | number>()
+      expect(i).type.toBe<number>()
       return true
-    })
-    pipe(
+    })).type.toBe<[Array<string | number>, Array<string | number>]>()
+    expect(pipe(
       numbersOrStrings,
-      Array.partition((item) => {
+      Array.partition((item, i) => {
         expect(item).type.toBe<string | number>()
+        expect(i).type.toBe<number>()
         return true
       })
-    )
+    )).type.toBe<[Array<string | number>, Array<string | number>]>()
     expect(Array.partition(numbersOrStrings, predicateNumbersOrStrings)).type.toBe<
       [excluded: Array<string | number>, satisfying: Array<string | number>]
     >()
@@ -240,233 +356,186 @@ describe("Array", () => {
   })
 
   it("filter", () => {
-    Array.filter(numbersOrStrings, (item) => {
+    expect(Array.filter(numbersOrStrings, (item, i) => {
       expect(item).type.toBe<string | number>()
+      expect(i).type.toBe<number>()
       return true
-    })
+    })).type.toBe<Array<string | number>>()
+    expect(pipe(
+      numbersOrStrings,
+      Array.filter((item, i) => {
+        expect(item).type.toBe<string | number>()
+        expect(i).type.toBe<number>()
+        return true
+      })
+    )).type.toBe<Array<string | number>>()
 
     // @ts-expect-error: wrong predicate type
     Array.filter(numbersOrStrings, (_item: string) => true)
 
-    pipe(
-      numbersOrStrings,
-      Array.filter((item) => {
-        expect(item).type.toBe<string | number>()
-        return true
-      })
-    )
-
-    // @ts-expect-error: wrong predicate type in pipe
+    // @ts-expect-error: wrong `_item` type
     pipe(numbersOrStrings, Array.filter((_item: string) => true))
+
+    expect(Array.filter(numbers, predicateNumbersOrStrings)).type.toBe<Array<number>>()
+    expect(pipe(numbers, Array.filter(predicateNumbersOrStrings))).type.toBe<Array<number>>()
 
     expect(Array.filter(numbersOrStrings, predicateNumbersOrStrings)).type.toBe<
       Array<string | number>
     >()
-    expect(Array.filter(numbers, predicateNumbersOrStrings)).type.toBe<Array<number>>()
     expect(pipe(numbersOrStrings, Array.filter(predicateNumbersOrStrings))).type.toBe<
       Array<string | number>
     >()
-    expect(pipe(numbers, Array.filter(predicateNumbersOrStrings))).type.toBe<Array<number>>()
+
     expect(Array.filter(numbersOrStrings, Predicate.isNumber)).type.toBe<Array<number>>()
     expect(pipe(numbersOrStrings, Array.filter(Predicate.isNumber))).type.toBe<Array<number>>()
   })
 
   it("takeWhile", () => {
-    Array.takeWhile(numbersOrStrings, (item) => {
-      expect(item).type.toBe<string | number>()
-      return true
-    })
-    Array.takeWhile(numbersOrStrings, (item, i) => {
+    expect(Array.takeWhile(numbersOrStrings, (item, i) => {
       expect(item).type.toBe<string | number>()
       expect(i).type.toBe<number>()
       return true
-    })
-    pipe(
-      numbersOrStrings,
-      Array.takeWhile((item) => {
-        expect(item).type.toBe<string | number>()
-        return true
-      })
-    )
-    pipe(
+    })).type.toBe<Array<string | number>>()
+    expect(pipe(
       numbersOrStrings,
       Array.takeWhile((item, i) => {
         expect(item).type.toBe<string | number>()
         expect(i).type.toBe<number>()
         return true
       })
-    )
+    )).type.toBe<Array<string | number>>()
+
+    expect(Array.takeWhile(numbers, predicateNumbersOrStrings)).type.toBe<Array<number>>()
+    expect(pipe(numbers, Array.takeWhile(predicateNumbersOrStrings))).type.toBe<Array<number>>()
+
     expect(Array.takeWhile(numbersOrStrings, predicateNumbersOrStrings)).type.toBe<
       Array<string | number>
     >()
-    expect(Array.takeWhile(numbers, predicateNumbersOrStrings)).type.toBe<Array<number>>()
     expect(pipe(numbersOrStrings, Array.takeWhile(predicateNumbersOrStrings))).type.toBe<
       Array<string | number>
     >()
-    expect(pipe(numbers, Array.takeWhile(predicateNumbersOrStrings))).type.toBe<Array<number>>()
+
     expect(Array.takeWhile(numbersOrStrings, Predicate.isNumber)).type.toBe<Array<number>>()
     expect(pipe(numbersOrStrings, Array.takeWhile(Predicate.isNumber))).type.toBe<Array<number>>()
   })
 
   it("findFirst", () => {
-    Array.findFirst(numbersOrStrings, (item) => {
-      expect(item).type.toBe<string | number>()
-      return true
-    })
-    Array.findFirst(numbersOrStrings, (item, i) => {
+    expect(Array.findFirst(numbersOrStrings, (item, i) => {
       expect(item).type.toBe<string | number>()
       expect(i).type.toBe<number>()
       return true
-    })
-    expect(
-      Array.findFirst(numbersOrStrings, (item, _i): item is number => true)
-    ).type.toBe<Option.Option<number>>()
-    expect(
-      Array.findFirst(numbersOrStrings, (_item, _i) => Option.some(true))
-    ).type.toBe<Option.Option<boolean>>()
-    pipe(
-      numbersOrStrings,
-      Array.findFirst((item) => {
-        expect(item).type.toBe<string | number>()
-        return true
-      })
-    )
-    pipe(
+    })).type.toBe<Option.Option<string | number>>()
+    expect(pipe(
       numbersOrStrings,
       Array.findFirst((item, i) => {
         expect(item).type.toBe<string | number>()
         expect(i).type.toBe<number>()
         return true
       })
-    )
-    expect(
-      pipe(
-        numbersOrStrings,
-        Array.findFirst((item, _i): item is number => true)
-      )
-    ).type.toBe<Option.Option<number>>()
-    expect(
-      pipe(
-        numbersOrStrings,
-        Array.findFirst((_item, _i) => Option.some(true))
-      )
-    ).type.toBe<Option.Option<boolean>>()
+    )).type.toBe<Option.Option<string | number>>()
+
+    expect(Array.findFirst(numbersOrStrings, Predicate.isNumber)).type.toBe<Option.Option<number>>()
+    expect(pipe(numbersOrStrings, Array.findFirst(Predicate.isNumber))).type.toBe<Option.Option<number>>()
+
+    expect(Array.findFirst(numbersOrStrings, (item, i) => {
+      expect(item).type.toBe<string | number>()
+      expect(i).type.toBe<number>()
+      return Option.some(true)
+    })).type.toBe<Option.Option<boolean>>()
+    expect(pipe(
+      numbersOrStrings,
+      Array.findFirst((item, i) => {
+        expect(item).type.toBe<string | number>()
+        expect(i).type.toBe<number>()
+        return Option.some(true)
+      })
+    )).type.toBe<
+      Option.Option<boolean>
+    >()
+
     expect(Array.findFirst(numbersOrStrings, predicateNumbersOrStrings)).type.toBe<
       Option.Option<string | number>
     >()
     expect(pipe(numbersOrStrings, Array.findFirst(predicateNumbersOrStrings))).type.toBe<
       Option.Option<string | number>
     >()
-    expect(Array.findFirst(numbersOrStrings, Predicate.isNumber)).type.toBe<
-      Option.Option<number>
-    >()
-    expect(pipe(numbersOrStrings, Array.findFirst(Predicate.isNumber))).type.toBe<
-      Option.Option<number>
-    >()
   })
 
   it("findLast", () => {
-    Array.findLast(numbersOrStrings, (item) => {
-      expect(item).type.toBe<string | number>()
-      return true
-    })
-    Array.findLast(numbersOrStrings, (item, i) => {
+    expect(Array.findLast(numbersOrStrings, (item, i) => {
       expect(item).type.toBe<string | number>()
       expect(i).type.toBe<number>()
       return true
-    })
-    expect(
-      Array.findLast(numbersOrStrings, (item, _i): item is number => true)
-    ).type.toBe<Option.Option<number>>()
-    expect(
-      Array.findLast(numbersOrStrings, (_item, _i) => Option.some(true))
-    ).type.toBe<Option.Option<boolean>>()
-    pipe(
-      numbersOrStrings,
-      Array.findLast((item) => {
-        expect(item).type.toBe<string | number>()
-        return true
-      })
-    )
-    pipe(
+    })).type.toBe<Option.Option<string | number>>()
+    expect(pipe(
       numbersOrStrings,
       Array.findLast((item, i) => {
         expect(item).type.toBe<string | number>()
         expect(i).type.toBe<number>()
         return true
       })
-    )
-    expect(
-      pipe(
-        numbersOrStrings,
-        Array.findLast((item, _i): item is number => true)
-      )
-    ).type.toBe<Option.Option<number>>()
-    expect(
-      pipe(
-        numbersOrStrings,
-        Array.findLast((_item, _i) => Option.some(true))
-      )
-    ).type.toBe<Option.Option<boolean>>()
+    )).type.toBe<Option.Option<string | number>>()
+
+    expect(Array.findLast(numbersOrStrings, Predicate.isNumber)).type.toBe<Option.Option<number>>()
+    expect(pipe(numbersOrStrings, Array.findLast(Predicate.isNumber))).type.toBe<Option.Option<number>>()
+
+    expect(Array.findLast(numbersOrStrings, (item, i) => {
+      expect(item).type.toBe<string | number>()
+      expect(i).type.toBe<number>()
+      return Option.some(true)
+    })).type.toBe<Option.Option<boolean>>()
+    expect(pipe(
+      numbersOrStrings,
+      Array.findLast((item, i) => {
+        expect(item).type.toBe<string | number>()
+        expect(i).type.toBe<number>()
+        return Option.some(true)
+      })
+    )).type.toBe<
+      Option.Option<boolean>
+    >()
+
     expect(Array.findLast(numbersOrStrings, predicateNumbersOrStrings)).type.toBe<
       Option.Option<string | number>
     >()
     expect(pipe(numbersOrStrings, Array.findLast(predicateNumbersOrStrings))).type.toBe<
       Option.Option<string | number>
     >()
-    expect(Array.findLast(numbersOrStrings, Predicate.isNumber)).type.toBe<
-      Option.Option<number>
-    >()
-    expect(pipe(numbersOrStrings, Array.findLast(Predicate.isNumber))).type.toBe<
-      Option.Option<number>
-    >()
   })
 
   it("liftPredicate", () => {
-    expect(pipe(primitiveNumerOrString, Array.liftPredicate(Predicate.isString))).type.toBe<
-      Array<string>
-    >()
-    pipe(
-      primitiveNumerOrString,
+    expect(
+      pipe(
+        primitiveNumber,
+        Array.liftPredicate((n) => {
+          expect(n).type.toBe<number>()
+          return true
+        })
+      )
+    ).type.toBe<Array<number>>()
+    expect(pipe(
+      primitiveNumberOrString,
       Array.liftPredicate((n): n is number => {
         expect(n).type.toBe<string | number>()
         return typeof n === "number"
       })
-    )
-    expect(pipe(primitiveNumerOrString, Array.liftPredicate(predicateNumbersOrStrings))).type.toBe<
+    )).type.toBe<Array<number>>()
+
+    expect(pipe(primitiveNumberOrString, Array.liftPredicate(Predicate.isString))).type.toBe<Array<string>>()
+    expect(pipe(primitiveNumberOrString, Array.liftPredicate(predicateNumbersOrStrings))).type.toBe<
       Array<string | number>
     >()
     expect(pipe(primitiveNumber, Array.liftPredicate(predicateNumbersOrStrings))).type.toBe<
       Array<number>
     >()
-    expect(
-      pipe(
-        primitiveNumber,
-        Array.liftPredicate((_n) => {
-          expect(_n).type.toBe<number>()
-          return true
-        })
-      )
-    ).type.toBe<Array<number>>()
   })
 
   it("span", () => {
-    Array.span(numbersOrStrings, (item) => {
-      expect(item).type.toBe<string | number>()
-      return true
-    })
     Array.span(numbersOrStrings, (item, i) => {
       expect(item).type.toBe<string | number>()
       expect(i).type.toBe<number>()
       return true
     })
-    pipe(
-      numbersOrStrings,
-      Array.span((item) => {
-        expect(item).type.toBe<string | number>()
-        return true
-      })
-    )
     pipe(
       numbersOrStrings,
       Array.span((item, i) => {
@@ -475,18 +544,20 @@ describe("Array", () => {
         return true
       })
     )
-    expect(Array.span(numbersOrStrings, predicateNumbersOrStrings)).type.toBe<
-      [init: Array<string | number>, rest: Array<string | number>]
-    >()
     expect(Array.span(numbers, predicateNumbersOrStrings)).type.toBe<
       [init: Array<number>, rest: Array<number>]
-    >()
-    expect(pipe(numbersOrStrings, Array.span(predicateNumbersOrStrings))).type.toBe<
-      [init: Array<string | number>, rest: Array<string | number>]
     >()
     expect(pipe(numbers, Array.span(predicateNumbersOrStrings))).type.toBe<
       [init: Array<number>, rest: Array<number>]
     >()
+
+    expect(Array.span(numbersOrStrings, predicateNumbersOrStrings)).type.toBe<
+      [init: Array<string | number>, rest: Array<string | number>]
+    >()
+    expect(pipe(numbersOrStrings, Array.span(predicateNumbersOrStrings))).type.toBe<
+      [init: Array<string | number>, rest: Array<string | number>]
+    >()
+
     expect(Array.span(numbersOrStrings, Predicate.isNumber)).type.toBe<
       [init: Array<number>, rest: Array<string>]
     >()
@@ -496,38 +567,87 @@ describe("Array", () => {
   })
 
   it("dropWhile", () => {
+    expect(Array.dropWhile(numbersOrStrings, (item, i) => {
+      expect(item).type.toBe<string | number>()
+      expect(i).type.toBe<number>()
+      return true
+    })).type.toBe<Array<string | number>>()
+    expect(pipe(
+      numbersOrStrings,
+      Array.dropWhile((item, i) => {
+        expect(item).type.toBe<string | number>()
+        expect(i).type.toBe<number>()
+        return true
+      })
+    )).type.toBe<Array<string | number>>()
+
     expect(Array.dropWhile(numbers, predicateNumbersOrStrings)).type.toBe<Array<number>>()
     expect(pipe(numbers, Array.dropWhile(predicateNumbersOrStrings))).type.toBe<Array<number>>()
-    expect(Array.dropWhile(numbersOrStrings, Predicate.isNumber)).type.toBe<
+
+    expect(Array.dropWhile(numbersOrStrings, predicateNumbersOrStrings)).type.toBe<
       Array<string | number>
     >()
-    expect(pipe(numbersOrStrings, Array.dropWhile(Predicate.isNumber))).type.toBe<
+    expect(pipe(numbersOrStrings, Array.dropWhile(predicateNumbersOrStrings))).type.toBe<
       Array<string | number>
     >()
+
+    expect(Array.dropWhile(numbersOrStrings, Predicate.isNumber)).type.toBe<Array<string | number>>()
+    expect(pipe(numbersOrStrings, Array.dropWhile(Predicate.isNumber))).type.toBe<Array<string | number>>()
   })
 
   it("flatMap", () => {
     expect(
-      Array.flatMap(strings, (_s, _i) => Array.empty<number>())
+      Array.flatMap(strings, (item, i) => {
+        expect(item).type.toBe<string>()
+        expect(i).type.toBe<number>()
+        return Array.empty<number>()
+      })
     ).type.toBe<Array<number>>()
     expect(
-      pipe(strings, Array.flatMap((_s, _i) => Array.empty<number>()))
+      pipe(
+        strings,
+        Array.flatMap((item, i) => {
+          expect(item).type.toBe<string>()
+          expect(i).type.toBe<number>()
+          return Array.empty<number>()
+        })
+      )
     ).type.toBe<Array<number>>()
-    expect(Array.flatMap(strings, (s, _i) => Array.of(s.length))).type.toBe<Array<number>>()
+
     expect(
-      pipe(strings, Array.flatMap((s, _i) => Array.of(s.length)))
+      Array.flatMap(nonEmptyReadonlyStrings, (item, i) => {
+        expect(item).type.toBe<string>()
+        expect(i).type.toBe<number>()
+        return Array.empty<number>()
+      })
     ).type.toBe<Array<number>>()
     expect(
-      Array.flatMap(nonEmptyReadonlyStrings, (_s, _i) => Array.empty<number>())
+      pipe(
+        nonEmptyReadonlyStrings,
+        Array.flatMap((item, i) => {
+          expect(item).type.toBe<string>()
+          expect(i).type.toBe<number>()
+          return Array.empty<number>()
+        })
+      )
     ).type.toBe<Array<number>>()
+
     expect(
-      pipe(nonEmptyReadonlyStrings, Array.flatMap((_s, _i) => Array.empty<number>()))
-    ).type.toBe<Array<number>>()
-    expect(
-      Array.flatMap(nonEmptyReadonlyStrings, (s, _i) => Array.of(s.length))
+      Array.flatMap(nonEmptyReadonlyStrings, (item, i) => {
+        expect(item).type.toBe<string>()
+        expect(i).type.toBe<number>()
+        return Array.of(item.length)
+      })
     ).type.toBe<[number, ...Array<number>]>()
     expect(
-      pipe(nonEmptyReadonlyStrings, Array.flatMap((s, _i) => Array.of(s.length)))
+      pipe(
+        nonEmptyReadonlyStrings,
+        Array.flatMap((item, i) => {
+          expect(item).type.toBe<string>()
+          expect(i).type.toBe<number>()
+          return Array.of(item.length)
+        })
+      )
     ).type.toBe<[number, ...Array<number>]>()
   })
 
@@ -544,49 +664,75 @@ describe("Array", () => {
         hole<Array.NonEmptyReadonlyArray<Array.NonEmptyReadonlyArray<number>>>()
       )
     ).type.toBe<[number, ...Array<number>]>()
-    expect(flattenArray.pipe(Effect.map((arr) => Array.flatten(arr)))).type.toBe<
+
+    const nestedReadonlyArray = hole<Effect.Effect<ReadonlyArray<ReadonlyArray<number>>>>()
+    expect(nestedReadonlyArray.pipe(Effect.map((arr) => Array.flatten(arr))))
+      .type.toBe<
       Effect.Effect<Array<number>, never, never>
     >()
-    expect(flattenArray.pipe(Effect.map(Array.flatten))).type.toBe<
+    expect(nestedReadonlyArray.pipe(Effect.map(Array.flatten))).type.toBe<
       Effect.Effect<Array<number>, never, never>
+    >()
+
+    const nestedNonEmptyReadonlyArray = hole<
+      Effect.Effect<
+        Array.NonEmptyReadonlyArray<Array.NonEmptyReadonlyArray<number>>
+      >
     >()
     expect(
-      flattenNonEmptyArray.pipe(Effect.map((arr) => Array.flatten(arr)))
+      nestedNonEmptyReadonlyArray.pipe(Effect.map((arr) => Array.flatten(arr)))
     ).type.toBe<Effect.Effect<[number, ...Array<number>], never, never>>()
     expect(
-      flattenNonEmptyArray.pipe(Effect.map(Array.flatten))
+      nestedNonEmptyReadonlyArray.pipe(Effect.map(Array.flatten))
     ).type.toBe<Effect.Effect<[number, ...Array<number>], never, never>>()
   })
 
   it("prependAll", () => {
+    // Array + Array
     expect(Array.prependAll(strings, numbers)).type.toBe<Array<string | number>>()
     expect(pipe(strings, Array.prependAll(numbers))).type.toBe<Array<string | number>>()
+
+    // NonEmptyArray + Array
     expect(Array.prependAll(nonEmptyStrings, numbers)).type.toBe<
       [string | number, ...Array<string | number>]
     >()
     expect(pipe(nonEmptyStrings, Array.prependAll(numbers))).type.toBe<
       [string | number, ...Array<string | number>]
     >()
+
+    // Array + NonEmptyArray
     expect(Array.prependAll(strings, nonEmptyNumbers)).type.toBe<
       [string | number, ...Array<string | number>]
     >()
     expect(pipe(strings, Array.prependAll(nonEmptyNumbers))).type.toBe<
       [string | number, ...Array<string | number>]
     >()
+
+    // NonEmptyArray + NonEmptyArray
     expect(Array.prependAll(nonEmptyStrings, nonEmptyNumbers)).type.toBe<
       [string | number, ...Array<string | number>]
     >()
     expect(pipe(nonEmptyStrings, Array.prependAll(nonEmptyNumbers))).type.toBe<
       [string | number, ...Array<string | number>]
     >()
+
+    // Iterable + Array
     expect(Array.prependAll(iterStrings, numbers)).type.toBe<Array<string | number>>()
     expect(pipe(iterStrings, Array.prependAll(numbers))).type.toBe<Array<string | number>>()
+
+    // Iterable + NonEmptyArray
     expect(Array.prependAll(iterStrings, nonEmptyNumbers)).type.toBe<
       [string | number, ...Array<string | number>]
     >()
     expect(pipe(iterStrings, Array.prependAll(nonEmptyNumbers))).type.toBe<
       [string | number, ...Array<string | number>]
     >()
+
+    // Array + Iterable
+    expect(Array.prependAll(numbers, iterStrings)).type.toBe<Array<string | number>>()
+    expect(pipe(numbers, Array.prependAll(iterStrings))).type.toBe<Array<string | number>>()
+
+    // NonEmptyArray + Iterable
     expect(Array.prependAll(nonEmptyStrings, iterNumbers)).type.toBe<
       [string | number, ...Array<string | number>]
     >()
@@ -596,24 +742,55 @@ describe("Array", () => {
   })
 
   it("appendAll", () => {
+    // Array + Array
     expect(Array.appendAll(strings, numbers)).type.toBe<Array<string | number>>()
     expect(pipe(strings, Array.appendAll(numbers))).type.toBe<Array<string | number>>()
+
+    // NonEmptyArray + Array
     expect(Array.appendAll(nonEmptyStrings, numbers)).type.toBe<
       [string | number, ...Array<string | number>]
     >()
     expect(pipe(nonEmptyStrings, Array.appendAll(numbers))).type.toBe<
       [string | number, ...Array<string | number>]
     >()
+
+    // Array + NonEmptyArray
     expect(Array.appendAll(strings, nonEmptyNumbers)).type.toBe<
       [string | number, ...Array<string | number>]
     >()
     expect(pipe(strings, Array.appendAll(nonEmptyNumbers))).type.toBe<
       [string | number, ...Array<string | number>]
     >()
+
+    // NonEmptyArray + NonEmptyArray
     expect(Array.appendAll(nonEmptyStrings, nonEmptyNumbers)).type.toBe<
       [string | number, ...Array<string | number>]
     >()
     expect(pipe(nonEmptyStrings, Array.appendAll(nonEmptyNumbers))).type.toBe<
+      [string | number, ...Array<string | number>]
+    >()
+
+    // Iterable + Array
+    expect(Array.appendAll(iterStrings, numbers)).type.toBe<Array<string | number>>()
+    expect(pipe(iterStrings, Array.appendAll(numbers))).type.toBe<Array<string | number>>()
+
+    // Iterable + NonEmptyArray
+    expect(Array.appendAll(iterStrings, nonEmptyNumbers)).type.toBe<
+      [string | number, ...Array<string | number>]
+    >()
+    expect(pipe(iterStrings, Array.appendAll(nonEmptyNumbers))).type.toBe<
+      [string | number, ...Array<string | number>]
+    >()
+
+    // Array + Iterable
+    expect(Array.appendAll(numbers, iterStrings)).type.toBe<Array<string | number>>()
+    expect(pipe(numbers, Array.appendAll(iterStrings))).type.toBe<Array<string | number>>()
+
+    // NonEmptyArray + Iterable
+    expect(Array.appendAll(nonEmptyStrings, iterNumbers)).type.toBe<
+      [string | number, ...Array<string | number>]
+    >()
+    expect(pipe(nonEmptyStrings, Array.appendAll(iterNumbers))).type.toBe<
       [string | number, ...Array<string | number>]
     >()
   })
@@ -622,6 +799,7 @@ describe("Array", () => {
     expect(Array.zip(strings, numbers)).type.toBe<Array<[string, number]>>()
     expect(pipe(strings, Array.zip(numbers))).type.toBe<Array<[string, number]>>()
     expect(Array.zip(numbers)(strings)).type.toBe<Array<[string, number]>>()
+
     expect(Array.zip(nonEmptyStrings, nonEmptyNumbers)).type.toBe<
       [[string, number], ...Array<[string, number]>]
     >()
@@ -635,29 +813,27 @@ describe("Array", () => {
 
   it("intersperse", () => {
     expect(Array.intersperse(strings, "a")).type.toBe<Array<string>>()
-    expect(Array.intersperse(strings, 1)).type.toBe<Array<string | number>>()
     expect(pipe(strings, Array.intersperse("a"))).type.toBe<Array<string>>()
-    expect(pipe(strings, Array.intersperse(1))).type.toBe<Array<string | number>>()
     expect(Array.intersperse("a")(strings)).type.toBe<Array<string>>()
+
+    expect(Array.intersperse(strings, 1)).type.toBe<Array<string | number>>()
+    expect(pipe(strings, Array.intersperse(1))).type.toBe<Array<string | number>>()
     expect(Array.intersperse(1)(strings)).type.toBe<Array<string | number>>()
+
     expect(Array.intersperse(nonEmptyStrings, "a")).type.toBe<[string, ...Array<string>]>()
-    expect(Array.intersperse(nonEmptyStrings, 1)).type.toBe<
-      [string | number, ...Array<string | number>]
-    >()
     expect(pipe(nonEmptyStrings, Array.intersperse("a"))).type.toBe<[string, ...Array<string>]>()
-    expect(pipe(nonEmptyStrings, Array.intersperse(1))).type.toBe<
-      [string | number, ...Array<string | number>]
-    >()
     expect(Array.intersperse("a")(nonEmptyStrings)).type.toBe<[string, ...Array<string>]>()
-    expect(Array.intersperse(1)(nonEmptyStrings)).type.toBe<
-      [string | number, ...Array<string | number>]
-    >()
+
+    expect(Array.intersperse(nonEmptyStrings, 1)).type.toBe<[string | number, ...Array<string | number>]>()
+    expect(pipe(nonEmptyStrings, Array.intersperse(1))).type.toBe<[string | number, ...Array<string | number>]>()
+    expect(Array.intersperse(1)(nonEmptyStrings)).type.toBe<[string | number, ...Array<string | number>]>()
   })
 
   it("rotate", () => {
     expect(Array.rotate(strings, 10)).type.toBe<Array<string>>()
     expect(pipe(strings, Array.rotate(10))).type.toBe<Array<string>>()
     expect(Array.rotate(10)(strings)).type.toBe<Array<string>>()
+
     expect(Array.rotate(nonEmptyStrings, 10)).type.toBe<[string, ...Array<string>]>()
     expect(pipe(nonEmptyStrings, Array.rotate(10))).type.toBe<[string, ...Array<string>]>()
     expect(Array.rotate(10)(nonEmptyStrings)).type.toBe<[string, ...Array<string>]>()
@@ -667,124 +843,95 @@ describe("Array", () => {
     expect(Array.union(strings, numbers)).type.toBe<Array<string | number>>()
     expect(pipe(strings, Array.union(numbers))).type.toBe<Array<string | number>>()
     expect(Array.union(numbers)(strings)).type.toBe<Array<string | number>>()
-    expect(Array.union(nonEmptyStrings, numbers)).type.toBe<
-      [string | number, ...Array<string | number>]
-    >()
-    expect(Array.union(strings, nonEmptyNumbers)).type.toBe<
-      [string | number, ...Array<string | number>]
-    >()
-    expect(Array.union(nonEmptyStrings, nonEmptyNumbers)).type.toBe<
-      [string | number, ...Array<string | number>]
-    >()
-    expect(pipe(nonEmptyStrings, Array.union(numbers))).type.toBe<
-      [string | number, ...Array<string | number>]
-    >()
-    expect(pipe(strings, Array.union(nonEmptyNumbers))).type.toBe<
-      [string | number, ...Array<string | number>]
-    >()
+
+    expect(Array.union(nonEmptyStrings, numbers)).type.toBe<[string | number, ...Array<string | number>]>()
+    expect(pipe(nonEmptyStrings, Array.union(numbers))).type.toBe<[string | number, ...Array<string | number>]>()
+    expect(Array.union(numbers)(nonEmptyStrings)).type.toBe<[string | number, ...Array<string | number>]>()
+
+    expect(Array.union(strings, nonEmptyNumbers)).type.toBe<[string | number, ...Array<string | number>]>()
+    expect(pipe(strings, Array.union(nonEmptyNumbers))).type.toBe<[string | number, ...Array<string | number>]>()
+    expect(Array.union(nonEmptyNumbers)(strings)).type.toBe<[string | number, ...Array<string | number>]>()
+
+    expect(Array.union(nonEmptyStrings, nonEmptyNumbers)).type.toBe<[string | number, ...Array<string | number>]>()
     expect(pipe(nonEmptyStrings, Array.union(nonEmptyNumbers))).type.toBe<
       [string | number, ...Array<string | number>]
     >()
-    expect(Array.union(numbers)(nonEmptyStrings)).type.toBe<
-      [string | number, ...Array<string | number>]
-    >()
-    expect(Array.union(nonEmptyNumbers)(strings)).type.toBe<
-      [string | number, ...Array<string | number>]
-    >()
-    expect(Array.union(nonEmptyNumbers)(nonEmptyStrings)).type.toBe<
-      [string | number, ...Array<string | number>]
-    >()
+
+    expect(Array.union(nonEmptyNumbers)(nonEmptyStrings)).type.toBe<[string | number, ...Array<string | number>]>()
   })
 
   it("unionWith", () => {
+    // Array + Array
     expect(
-      Array.unionWith(strings, numbers, Equal.equivalence<string | number>())
-    ).type.toBe<Array<string | number>>()
-    expect(
-      Array.unionWith(strings, numbers, (_a, _b) => {
-        expect(_a).type.toBe<string>()
-        expect(_b).type.toBe<number>()
+      Array.unionWith(strings, numbers, (a, b) => {
+        expect(a).type.toBe<string>()
+        expect(b).type.toBe<number>()
         return true
       })
-    ).type.toBe<Array<string | number>>()
-    expect(
-      pipe(strings, Array.unionWith(numbers, Equal.equivalence<string | number>()))
     ).type.toBe<Array<string | number>>()
     expect(
       pipe(
         strings,
-        Array.unionWith(numbers, (_a, _b) => {
-          expect(_a).type.toBe<string>()
-          expect(_b).type.toBe<number>()
+        Array.unionWith(numbers, (a, b) => {
+          expect(a).type.toBe<string>()
+          expect(b).type.toBe<number>()
           return true
         })
       )
     ).type.toBe<Array<string | number>>()
+
+    // NonEmptyArray + Array
     expect(
-      Array.unionWith(nonEmptyStrings, numbers, Equal.equivalence<string | number>())
-    ).type.toBe<[string | number, ...Array<string | number>]>()
-    expect(
-      Array.unionWith(nonEmptyStrings, numbers, (_a, _b) => {
-        expect(_a).type.toBe<string>()
-        expect(_b).type.toBe<number>()
+      Array.unionWith(nonEmptyStrings, numbers, (a, b) => {
+        expect(a).type.toBe<string>()
+        expect(b).type.toBe<number>()
         return true
       })
-    ).type.toBe<[string | number, ...Array<string | number>]>()
-    expect(
-      Array.unionWith(strings, nonEmptyNumbers, Equal.equivalence<string | number>())
-    ).type.toBe<[string | number, ...Array<string | number>]>()
-    expect(
-      Array.unionWith(strings, nonEmptyNumbers, (_a, _b) => {
-        expect(_a).type.toBe<string>()
-        expect(_b).type.toBe<number>()
-        return true
-      })
-    ).type.toBe<[string | number, ...Array<string | number>]>()
-    expect(
-      Array.unionWith(nonEmptyStrings, nonEmptyNumbers, Equal.equivalence<string | number>())
-    ).type.toBe<[string | number, ...Array<string | number>]>()
-    expect(
-      Array.unionWith(nonEmptyStrings, nonEmptyNumbers, (_a, _b) => {
-        expect(_a).type.toBe<string>()
-        expect(_b).type.toBe<number>()
-        return true
-      })
-    ).type.toBe<[string | number, ...Array<string | number>]>()
-    expect(
-      pipe(nonEmptyStrings, Array.unionWith(numbers, Equal.equivalence<string | number>()))
     ).type.toBe<[string | number, ...Array<string | number>]>()
     expect(
       pipe(
         nonEmptyStrings,
-        Array.unionWith(numbers, (_a, _b) => {
-          expect(_a).type.toBe<string>()
-          expect(_b).type.toBe<number>()
+        Array.unionWith(numbers, (a, b) => {
+          expect(a).type.toBe<string>()
+          expect(b).type.toBe<number>()
           return true
         })
       )
     ).type.toBe<[string | number, ...Array<string | number>]>()
+
+    // Array + NonEmptyArray
     expect(
-      pipe(strings, Array.unionWith(nonEmptyNumbers, Equal.equivalence<string | number>()))
+      Array.unionWith(strings, nonEmptyNumbers, (a, b) => {
+        expect(a).type.toBe<string>()
+        expect(b).type.toBe<number>()
+        return true
+      })
     ).type.toBe<[string | number, ...Array<string | number>]>()
     expect(
       pipe(
         strings,
-        Array.unionWith(nonEmptyNumbers, (_a, _b) => {
-          expect(_a).type.toBe<string>()
-          expect(_b).type.toBe<number>()
+        Array.unionWith(nonEmptyNumbers, (a, b) => {
+          expect(a).type.toBe<string>()
+          expect(b).type.toBe<number>()
           return true
         })
       )
     ).type.toBe<[string | number, ...Array<string | number>]>()
+
+    // NonEmptyArray + NonEmptyArray
     expect(
-      pipe(nonEmptyStrings, Array.unionWith(nonEmptyNumbers, Equal.equivalence<string | number>()))
+      Array.unionWith(nonEmptyStrings, nonEmptyNumbers, (a, b) => {
+        expect(a).type.toBe<string>()
+        expect(b).type.toBe<number>()
+        return true
+      })
     ).type.toBe<[string | number, ...Array<string | number>]>()
     expect(
       pipe(
         nonEmptyStrings,
-        Array.unionWith(nonEmptyNumbers, (_a, _b) => {
-          expect(_a).type.toBe<string>()
-          expect(_b).type.toBe<number>()
+        Array.unionWith(nonEmptyNumbers, (a, b) => {
+          expect(a).type.toBe<string>()
+          expect(b).type.toBe<number>()
           return true
         })
       )
@@ -792,51 +939,47 @@ describe("Array", () => {
   })
 
   it("dedupe", () => {
+    // Array
     expect(Array.dedupe(strings)).type.toBe<Array<string>>()
     expect(pipe(strings, Array.dedupe)).type.toBe<Array<string>>()
+
+    // NonEmptyArray
     expect(Array.dedupe(nonEmptyStrings)).type.toBe<[string, ...Array<string>]>()
     expect(pipe(nonEmptyStrings, Array.dedupe)).type.toBe<[string, ...Array<string>]>()
   })
 
   it("dedupeWith", () => {
-    expect(Array.dedupeWith(strings, Equal.equivalence())).type.toBe<Array<string>>()
+    // Array
     expect(
-      Array.dedupeWith(strings, (_a, _b) => {
-        expect(_a).type.toBe<string>()
-        expect(_b).type.toBe<string>()
+      Array.dedupeWith(strings, (a, b) => {
+        expect(a).type.toBe<string>()
+        expect(b).type.toBe<string>()
         return true
       })
     ).type.toBe<Array<string>>()
-    expect(pipe(strings, Array.dedupeWith(Equal.equivalence()))).type.toBe<Array<string>>()
+    expect(pipe(
+      strings,
+      Array.dedupeWith((a, b) => {
+        expect(a).type.toBe<string>()
+        expect(b).type.toBe<string>()
+        return true
+      })
+    )).type.toBe<Array<string>>()
+
+    // NonEmptyArray
     expect(
-      pipe(
-        strings,
-        Array.dedupeWith((_a, _b) => {
-          expect(_a).type.toBe<string>()
-          expect(_b).type.toBe<string>()
-          return true
-        })
-      )
-    ).type.toBe<Array<string>>()
-    expect(Array.dedupeWith(nonEmptyStrings, Equal.equivalence())).type.toBe<
-      [string, ...Array<string>]
-    >()
-    expect(
-      Array.dedupeWith(nonEmptyStrings, (_a, _b) => {
-        expect(_a).type.toBe<string>()
-        expect(_b).type.toBe<string>()
+      Array.dedupeWith(nonEmptyStrings, (a, b) => {
+        expect(a).type.toBe<string>()
+        expect(b).type.toBe<string>()
         return true
       })
     ).type.toBe<[string, ...Array<string>]>()
-    expect(pipe(nonEmptyStrings, Array.dedupeWith(Equal.equivalence()))).type.toBe<
-      [string, ...Array<string>]
-    >()
     expect(
       pipe(
         nonEmptyStrings,
-        Array.dedupeWith((_a, _b) => {
-          expect(_a).type.toBe<string>()
-          expect(_b).type.toBe<string>()
+        Array.dedupeWith((a, b) => {
+          expect(a).type.toBe<string>()
+          expect(b).type.toBe<string>()
           return true
         })
       )
@@ -844,6 +987,7 @@ describe("Array", () => {
   })
 
   it("chop", () => {
+    // Array
     expect(
       Array.chop(strings, ([head, ...tail]) => {
         expect(head).type.toBe<string>()
@@ -861,6 +1005,8 @@ describe("Array", () => {
         })
       )
     ).type.toBe<Array<string>>()
+
+    // NonEmptyArray
     expect(
       Array.chop(nonEmptyStrings, ([head, ...tail]) => {
         expect(head).type.toBe<string>()
@@ -881,9 +1027,12 @@ describe("Array", () => {
   })
 
   it("chunksOf", () => {
+    // Array
     expect(Array.chunksOf(strings, 10)).type.toBe<Array<[string, ...Array<string>]>>()
     expect(pipe(strings, Array.chunksOf(10))).type.toBe<Array<[string, ...Array<string>]>>()
     expect(Array.chunksOf(10)(strings)).type.toBe<Array<[string, ...Array<string>]>>()
+
+    // NonEmptyArray
     expect(Array.chunksOf(nonEmptyStrings, 10)).type.toBe<
       [[string, ...Array<string>], ...Array<[string, ...Array<string>]>]
     >()
@@ -896,36 +1045,21 @@ describe("Array", () => {
   })
 
   it("reverse", () => {
+    // Array
     expect(Array.reverse(strings)).type.toBe<Array<string>>()
     expect(pipe(strings, Array.reverse)).type.toBe<Array<string>>()
+
+    // NonEmptyArray
     expect(Array.reverse(nonEmptyStrings)).type.toBe<[string, ...Array<string>]>()
     expect(pipe(nonEmptyStrings, Array.reverse)).type.toBe<[string, ...Array<string>]>()
   })
 
-  it("sortBy", () => {
-    expect(pipe(abs, Array.sortBy(ordera))).type.toBe<Array<AB>>()
-    expect(
-      pipe(
-        abs,
-        Array.sortBy((_a, _b) => 0)
-      )
-    ).type.toBe<Array<AB>>()
-    expect(pipe(nonEmptyabs, Array.sortBy(ordera))).type.toBe<[AB, ...Array<AB>]>()
-    expect(
-      pipe(
-        nonEmptyabs,
-        Array.sortBy((_a, _b) => 0)
-      )
-    ).type.toBe<[AB, ...Array<AB>]>()
-  })
-
   it("unzip", () => {
-    expect(Array.unzip(hole<Iterable<[string, number]>>())).type.toBe<
-      [Array<string>, Array<number>]
-    >()
-    expect(pipe(hole<Iterable<[string, number]>>(), Array.unzip)).type.toBe<
-      [Array<string>, Array<number>]
-    >()
+    // Array
+    expect(Array.unzip(hole<Iterable<[string, number]>>())).type.toBe<[Array<string>, Array<number>]>()
+    expect(pipe(hole<Iterable<[string, number]>>(), Array.unzip)).type.toBe<[Array<string>, Array<number>]>()
+
+    // NonEmptyArray
     expect(
       Array.unzip(hole<Array.NonEmptyReadonlyArray<[string, number]>>())
     ).type.toBe<[[string, ...Array<string>], [number, ...Array<number>]]>()
@@ -935,6 +1069,7 @@ describe("Array", () => {
   })
 
   it("zipWith", () => {
+    // Array + Array
     expect(
       Array.zipWith(strings, numbers, (a, b) => {
         expect(a).type.toBe<string>()
@@ -952,6 +1087,8 @@ describe("Array", () => {
         })
       )
     ).type.toBe<Array<[string, number]>>()
+
+    // NonEmptyArray + NonEmptyArray
     expect(
       Array.zipWith(nonEmptyStrings, nonEmptyNumbers, (a, b) => {
         expect(a).type.toBe<string>()
@@ -981,21 +1118,13 @@ describe("Array", () => {
     expect(Array.separate(hole<Array<Either.Either<number, string>>>())).type.toBe<
       [Array<string>, Array<number>]
     >()
-    expect(
-      Array.separate(hole<Iterable<Either.Either<number, string>>>())
-    ).type.toBe<[Array<string>, Array<number>]>()
-    expect(
-      Array.separate(
-        hole<Iterable<Either.Either<number, string> | Either.Either<boolean, Date>>>()
-      )
-    ).type.toBe<[Array<string | Date>, Array<number | boolean>]>()
-    expect(
-      Array.separate(
-        hole<
-          Iterable<Either.Either<number, string>> | Iterable<Either.Either<boolean, Date>>
-        >()
-      )
-    ).type.toBe<[Array<string | Date>, Array<number | boolean>]>()
+    expect(Array.separate(hole<Iterable<Either.Either<number, string>>>())).type.toBe<[Array<string>, Array<number>]>()
+    expect(Array.separate(
+      hole<Iterable<Either.Either<number, string> | Either.Either<boolean, Date>>>()
+    )).type.toBe<[Array<string | Date>, Array<number | boolean>]>()
+    expect(Array.separate(
+      hole<Iterable<Either.Either<number, string>> | Iterable<Either.Either<boolean, Date>>>()
+    )).type.toBe<[Array<string | Date>, Array<number | boolean>]>()
   })
 
   it("getRights", () => {
@@ -1006,19 +1135,13 @@ describe("Array", () => {
     expect(Array.getRights(hole<Array<Either.Either<number, string>>>())).type.toBe<
       Array<number>
     >()
-    expect(
-      Array.getRights(hole<Iterable<Either.Either<number, string>>>())
-    ).type.toBe<Array<number>>()
-    expect(
-      Array.getRights(
-        hole<Iterable<Either.Either<number, string> | Either.Either<boolean, Date>>>()
-      )
-    ).type.toBe<Array<number | boolean>>()
-    expect(
-      Array.getRights(
-        hole<Iterable<Either.Either<number, string>> | Iterable<Either.Either<boolean, Date>>>()
-      )
-    ).type.toBe<Array<number | boolean>>()
+    expect(Array.getRights(hole<Iterable<Either.Either<number, string>>>())).type.toBe<Array<number>>()
+    expect(Array.getRights(
+      hole<Iterable<Either.Either<number, string> | Either.Either<boolean, Date>>>()
+    )).type.toBe<Array<number | boolean>>()
+    expect(Array.getRights(
+      hole<Iterable<Either.Either<number, string>> | Iterable<Either.Either<boolean, Date>>>()
+    )).type.toBe<Array<number | boolean>>()
   })
 
   it("getLefts", () => {
@@ -1050,39 +1173,34 @@ describe("Array", () => {
     expect(Array.getSomes([Option.some(1)])).type.toBe<Array<number>>()
     expect(Array.getSomes([Option.none(), Option.some(1)])).type.toBe<Array<number>>()
     expect(Array.getSomes(hole<Array<Option.Option<number>>>())).type.toBe<Array<number>>()
-    expect(
-      Array.getSomes(hole<Iterable<Option.Option<number>>>())
-    ).type.toBe<Array<number>>()
-    expect(
-      Array.getSomes(hole<Iterable<Option.Option<number> | Option.Option<string>>>())
-    ).type.toBe<Array<string | number>>()
-    expect(
-      Array.getSomes(
-        hole<Iterable<Option.Option<number>> | Iterable<Option.Option<string>>>()
-      )
-    ).type.toBe<Array<string | number>>()
+    expect(Array.getSomes(hole<Iterable<Option.Option<number>>>())).type.toBe<Array<number>>()
+    expect(Array.getSomes(hole<Iterable<Option.Option<number> | Option.Option<string>>>())).type.toBe<
+      Array<string | number>
+    >()
+    expect(Array.getSomes(hole<Iterable<Option.Option<number>> | Iterable<Option.Option<string>>>())).type.toBe<
+      Array<string | number>
+    >()
   })
 
   it("replace", () => {
-    expect(Array.replace([], 0, "a")).type.toBe<Array<string>>()
-    expect(Array.replace(numbers, 0, "a")).type.toBe<Array<string | number>>()
-    expect(Array.replace(nonEmptyNumbers, 0, "a" as const)).type.toBe<
-      [number | "a", ...Array<number | "a">]
-    >()
-    expect(Array.replace(new Set([1, 2] as const), 0, "a" as const)).type.toBe<
-      Array<"a" | 1 | 2>
-    >()
-    expect(pipe([], Array.replace(0, "a"))).type.toBe<Array<string>>()
-    expect(pipe(numbers, Array.replace(0, "a"))).type.toBe<Array<string | number>>()
-    expect(pipe(nonEmptyNumbers, Array.replace(0, "a" as const))).type.toBe<
-      [number | "a", ...Array<number | "a">]
-    >()
-    expect(pipe(new Set([1, 2] as const), Array.replace(0, "a" as const))).type.toBe<
-      Array<"a" | 1 | 2>
-    >()
-    expect(pipe(Array.of(1), Array.replace(0, "a" as const))).type.toBe<
-      [number | "a", ...Array<number | "a">]
-    >()
+    expect(Array.replace([], 0, "a"))
+      .type.toBe<Array<string>>()
+    expect(Array.replace(numbers, 0, "a"))
+      .type.toBe<Array<string | number>>()
+    expect(Array.replace(nonEmptyNumbers, 0, "a" as const))
+      .type.toBe<[number | "a", ...Array<number | "a">]>()
+    expect(Array.replace(new Set([1, 2] as const), 0, "a" as const))
+      .type.toBe<Array<"a" | 1 | 2>>()
+    expect(pipe([], Array.replace(0, "a")))
+      .type.toBe<Array<string>>()
+    expect(pipe(numbers, Array.replace(0, "a")))
+      .type.toBe<Array<string | number>>()
+    expect(pipe(nonEmptyNumbers, Array.replace(0, "a" as const)))
+      .type.toBe<[number | "a", ...Array<number | "a">]>()
+    expect(pipe(new Set([1, 2] as const), Array.replace(0, "a" as const)))
+      .type.toBe<Array<"a" | 1 | 2>>()
+    expect(pipe(Array.of(1), Array.replace(0, "a" as const)))
+      .type.toBe<[number | "a", ...Array<number | "a">]>()
   })
 
   it("replaceOption", () => {
@@ -1109,63 +1227,148 @@ describe("Array", () => {
   })
 
   it("modify", () => {
-    expect(Array.modify([], 0, (_n) => "a")).type.toBe<Array<string>>()
-    expect(Array.modify(numbers, 0, (_n) => "a")).type.toBe<Array<string | number>>()
-    expect(Array.modify(nonEmptyNumbers, 0, (_n) => "a" as const)).type.toBe<
+    // Empty Array
+    expect(Array.modify([], 0, (n) => {
+      expect(n).type.toBe<never>()
+      return "a"
+    })).type.toBe<Array<string>>()
+    expect(pipe(
+      [],
+      Array.modify(0, (n) => {
+        expect(n).type.toBe<never>()
+        return "a"
+      })
+    )).type.toBe<Array<string>>()
+
+    // Array
+    expect(Array.modify(numbers, 0, (n) => {
+      expect(n).type.toBe<number>()
+      return "a"
+    })).type.toBe<Array<string | number>>()
+    expect(pipe(
+      numbers,
+      Array.modify(0, (n) => {
+        expect(n).type.toBe<number>()
+        return "a"
+      })
+    )).type.toBe<Array<string | number>>()
+
+    // NonEmptyArray
+    expect(Array.modify(nonEmptyNumbers, 0, (n) => {
+      expect(n).type.toBe<number>()
+      return "a" as const
+    })).type.toBe<
       [number | "a", ...Array<number | "a">]
     >()
-    expect(Array.modify(new Set([1, 2] as const), 0, (_n) => "a" as const)).type.toBe<
-      Array<"a" | 1 | 2>
-    >()
-    expect(pipe([], Array.modify(0, (_n) => "a"))).type.toBe<Array<string>>()
-    expect(pipe(numbers, Array.modify(0, (_n) => "a"))).type.toBe<
-      Array<string | number>
-    >()
-    expect(pipe(nonEmptyNumbers, Array.modify(0, (_n) => "a" as const))).type.toBe<
-      [number | "a", ...Array<number | "a">]
-    >()
-    expect(
-      pipe(new Set([1, 2] as const), Array.modify(0, (_n) => "a" as const))
-    ).type.toBe<Array<"a" | 1 | 2>>()
+    expect(pipe(
+      nonEmptyNumbers,
+      Array.modify(0, (n) => {
+        expect(n).type.toBe<number>()
+        return "a" as const
+      })
+    )).type.toBe<[number | "a", ...Array<number | "a">]>()
+
+    // Iterable
+    expect(Array.modify(new Set([1, 2] as const), 0, (n) => {
+      expect(n).type.toBe<1 | 2>()
+      return "a" as const
+    })).type.toBe<Array<"a" | 1 | 2>>()
+    expect(pipe(
+      new Set([1, 2] as const),
+      Array.modify(0, (n) => {
+        expect(n).type.toBe<1 | 2>()
+        return "a" as const
+      })
+    )).type.toBe<Array<"a" | 1 | 2>>()
   })
 
   it("modifyOption", () => {
-    expect(Array.modifyOption([], 0, (_n) => "a")).type.toBe<Option.Option<Array<string>>>()
-    expect(Array.modifyOption(numbers, 0, (_n) => "a")).type.toBe<
-      Option.Option<Array<string | number>>
-    >()
-    expect(
-      Array.modifyOption(nonEmptyNumbers, 0, (_n) => "a" as const)
-    ).type.toBe<Option.Option<[number | "a", ...Array<number | "a">]>>()
-    expect(
-      Array.modifyOption(new Set([1, 2] as const), 0, (_n) => "a" as const)
-    ).type.toBe<Option.Option<Array<"a" | 1 | 2>>>()
-    expect(pipe([], Array.modifyOption(0, (_n) => "a"))).type.toBe<
-      Option.Option<Array<string>>
-    >()
-    expect(pipe(numbers, Array.modifyOption(0, (_n) => "a"))).type.toBe<
-      Option.Option<Array<string | number>>
-    >()
-    expect(
-      pipe(nonEmptyNumbers, Array.modifyOption(0, (_n) => "a" as const))
-    ).type.toBe<Option.Option<[number | "a", ...Array<number | "a">]>>()
-    expect(
-      pipe(new Set([1, 2] as const), Array.modifyOption(0, (_n) => "a" as const))
-    ).type.toBe<Option.Option<Array<"a" | 1 | 2>>>()
+    // Empty Array
+    expect(Array.modifyOption([], 0, (n) => {
+      expect(n).type.toBe<never>()
+      return "a"
+    })).type.toBe<Option.Option<Array<string>>>()
+    expect(pipe(
+      [],
+      Array.modifyOption(0, (n) => {
+        expect(n).type.toBe<never>()
+        return "a"
+      })
+    )).type.toBe<Option.Option<Array<string>>>()
+
+    // Array
+    expect(Array.modifyOption(numbers, 0, (n) => {
+      expect(n).type.toBe<number>()
+      return "a"
+    })).type.toBe<Option.Option<Array<string | number>>>()
+    expect(pipe(
+      numbers,
+      Array.modifyOption(0, (n) => {
+        expect(n).type.toBe<number>()
+        return "a"
+      })
+    )).type.toBe<Option.Option<Array<string | number>>>()
+
+    // NonEmptyArray
+    expect(Array.modifyOption(nonEmptyNumbers, 0, (n) => {
+      expect(n).type.toBe<number>()
+      return "a" as const
+    })).type.toBe<Option.Option<[number | "a", ...Array<number | "a">]>>()
+    expect(pipe(
+      nonEmptyNumbers,
+      Array.modifyOption(0, (n) => {
+        expect(n).type.toBe<number>()
+        return "a" as const
+      })
+    )).type.toBe<Option.Option<[number | "a", ...Array<number | "a">]>>()
+
+    // Iterable
+    expect(Array.modifyOption(new Set([1, 2] as const), 0, (n) => {
+      expect(n).type.toBe<1 | 2>()
+      return "a" as const
+    })).type.toBe<Option.Option<Array<"a" | 1 | 2>>>()
+    expect(pipe(
+      new Set([1, 2] as const),
+      Array.modifyOption(0, (n) => {
+        expect(n).type.toBe<1 | 2>()
+        return "a" as const
+      })
+    )).type.toBe<Option.Option<Array<"a" | 1 | 2>>>()
   })
 
   it("mapAccum", () => {
-    expect(Array.mapAccum(strings, 0, (s, a, i) => [s + i, a])).type.toBe<
-      [state: number, mappedArray: Array<string>]
-    >()
-    expect(
-      Array.mapAccum(nonEmptyReadonlyStrings, 0, (s, a, i) => [s + i, a])
-    ).type.toBe<[state: number, mappedArray: [string, ...Array<string>]]>()
-    expect(
-      pipe(strings, Array.mapAccum(0, (s, a, i) => [s + i, a]))
-    ).type.toBe<[state: number, mappedArray: Array<string>]>()
-    expect(
-      pipe(nonEmptyReadonlyStrings, Array.mapAccum(0, (s, a, i) => [s + i, a]))
-    ).type.toBe<[state: number, mappedArray: [string, ...Array<string>]]>()
+    // Array
+    expect(Array.mapAccum(strings, 0, (s, a, i) => {
+      expect(s).type.toBe<number>()
+      expect(a).type.toBe<string>()
+      expect(i).type.toBe<number>()
+      return [s + i, a]
+    })).type.toBe<[state: number, mappedArray: Array<string>]>()
+    expect(pipe(
+      strings,
+      Array.mapAccum(0, (s, a, i) => {
+        expect(s).type.toBe<number>()
+        expect(a).type.toBe<string>()
+        expect(i).type.toBe<number>()
+        return [s + i, a]
+      })
+    )).type.toBe<[state: number, mappedArray: Array<string>]>()
+
+    // NonEmptyArray
+    expect(Array.mapAccum(nonEmptyReadonlyStrings, 0, (s, a, i) => {
+      expect(s).type.toBe<number>()
+      expect(a).type.toBe<string>()
+      expect(i).type.toBe<number>()
+      return [s + i, a]
+    })).type.toBe<[state: number, mappedArray: [string, ...Array<string>]]>()
+    expect(pipe(
+      nonEmptyReadonlyStrings,
+      Array.mapAccum(0, (s, a, i) => {
+        expect(s).type.toBe<number>()
+        expect(a).type.toBe<string>()
+        expect(i).type.toBe<number>()
+        return [s + i, a]
+      })
+    )).type.toBe<[state: number, mappedArray: [string, ...Array<string>]]>()
   })
 })
