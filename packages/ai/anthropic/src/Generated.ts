@@ -289,13 +289,15 @@ export class ResponseTextBlock extends S.Struct({
   "type": ResponseTextBlockType.pipe(S.propertySignature, S.withConstructorDefault(() => "text" as const)),
   "text": S.String.pipe(S.minLength(0), S.maxLength(5000000)),
   "citations": S.optionalWith(
-    S.Union(
-      S.Array(
-        S.Union(ResponseCharLocationCitation, ResponsePageLocationCitation, ResponseContentBlockLocationCitation)
-      ),
-      S.Null
+    S.NullOr(
+      S.Union(
+        S.Array(
+          S.Union(ResponseCharLocationCitation, ResponsePageLocationCitation, ResponseContentBlockLocationCitation)
+        ),
+        S.Null
+      )
     ),
-    { nullable: true, default: () => null }
+    { default: () => null }
   )
 }) {}
 
@@ -314,12 +316,10 @@ export class MessageStopReasonEnum extends S.Literal("end_turn", "max_tokens", "
 
 export class Usage extends S.Struct({
   "input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "cache_creation_input_tokens": S.optionalWith(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null), {
-    nullable: true,
+  "cache_creation_input_tokens": S.optionalWith(S.NullOr(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null)), {
     default: () => null
   }),
-  "cache_read_input_tokens": S.optionalWith(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null), {
-    nullable: true,
+  "cache_read_input_tokens": S.optionalWith(S.NullOr(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null)), {
     default: () => null
   }),
   "output_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0))
@@ -332,7 +332,7 @@ export class Message extends S.Class<Message>("Message")({
   "content": S.Array(ContentBlock),
   "model": Model,
   "stop_reason": S.Union(MessageStopReasonEnum, S.Null),
-  "stop_sequence": S.optionalWith(S.Union(S.String, S.Null), { nullable: true, default: () => null }),
+  "stop_sequence": S.optionalWith(S.NullOr(S.Union(S.String, S.Null)), { default: () => null }),
   "usage": Usage
 }) {}
 
@@ -891,17 +891,19 @@ export class BetaResponseTextBlock extends S.Struct({
   "type": BetaResponseTextBlockType.pipe(S.propertySignature, S.withConstructorDefault(() => "text" as const)),
   "text": S.String.pipe(S.minLength(0), S.maxLength(5000000)),
   "citations": S.optionalWith(
-    S.Union(
-      S.Array(
-        S.Union(
-          BetaResponseCharLocationCitation,
-          BetaResponsePageLocationCitation,
-          BetaResponseContentBlockLocationCitation
-        )
-      ),
-      S.Null
+    S.NullOr(
+      S.Union(
+        S.Array(
+          S.Union(
+            BetaResponseCharLocationCitation,
+            BetaResponsePageLocationCitation,
+            BetaResponseContentBlockLocationCitation
+          )
+        ),
+        S.Null
+      )
     ),
-    { nullable: true, default: () => null }
+    { default: () => null }
   )
 }) {}
 
@@ -920,12 +922,10 @@ export class BetaMessageStopReasonEnum extends S.Literal("end_turn", "max_tokens
 
 export class BetaUsage extends S.Struct({
   "input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "cache_creation_input_tokens": S.optionalWith(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null), {
-    nullable: true,
+  "cache_creation_input_tokens": S.optionalWith(S.NullOr(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null)), {
     default: () => null
   }),
-  "cache_read_input_tokens": S.optionalWith(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null), {
-    nullable: true,
+  "cache_read_input_tokens": S.optionalWith(S.NullOr(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null)), {
     default: () => null
   }),
   "output_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0))
@@ -938,7 +938,7 @@ export class BetaMessage extends S.Class<BetaMessage>("BetaMessage")({
   "content": S.Array(BetaContentBlock),
   "model": Model,
   "stop_reason": S.Union(BetaMessageStopReasonEnum, S.Null),
-  "stop_sequence": S.optionalWith(S.Union(S.String, S.Null), { nullable: true, default: () => null }),
+  "stop_sequence": S.optionalWith(S.NullOr(S.Union(S.String, S.Null)), { default: () => null }),
   "usage": BetaUsage
 }) {}
 
