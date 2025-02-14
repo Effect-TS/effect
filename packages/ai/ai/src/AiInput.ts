@@ -205,9 +205,12 @@ export class ImagePart extends Schema_.TaggedClass<ImagePart>("@effect/ai/AiInpu
     )
   }
 
+  get asBase64(): string {
+    return Encoding.encodeBase64(this.image.data)
+  }
+
   get asDataUri(): string {
-    const base64 = Encoding.encodeBase64(this.image.data)
-    return `data:${this.image.contentType};base64,${base64}`
+    return `data:${this.image.contentType};base64,${this.asBase64}`
   }
 }
 

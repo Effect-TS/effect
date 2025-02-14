@@ -15,7 +15,7 @@ import { OpenAiClient } from "./OpenAiClient.js"
  * @since 1.0.0
  * @category models
  */
-export type Model = typeof Generated.CreateEmbeddingRequestModel.Encoded
+export type Model = typeof Generated.CreateEmbeddingRequestModelEnum.Encoded
 
 /**
  * @since 1.0.0

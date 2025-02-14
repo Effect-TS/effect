@@ -29,6 +29,7 @@ const config: ViteUserConfig = {
     alias: {
       ...alias("effect"),
       ...alias("ai", path.join("ai", "ai")),
+      ...alias("ai-anthropic", path.join("ai", "anthropic")),
       ...alias("ai-openai", path.join("ai", "openai")),
       ...alias("cli"),
       ...alias("cluster"),
