@@ -971,8 +971,9 @@ export const securityDecode = <Security extends HttpApiSecurity.HttpApiSecurity>
       )
     }
     case "ApiKey": {
+      const key = self.in === "header" ? self.key.toLowerCase() : self.key
       const schema = Schema.Struct({
-        [self.key]: Schema.String
+        [key]: Schema.String
       })
       const decode = unify(
         self.in === "query"
@@ -983,7 +984,7 @@ export const securityDecode = <Security extends HttpApiSecurity.HttpApiSecurity>
       )
       return Effect.match(decode, {
         onFailure: () => Redacted.make("") as any,
-        onSuccess: (match) => Redacted.make(match[self.key])
+        onSuccess: (match) => Redacted.make(match[key])
       })
     }
     case "Basic": {
