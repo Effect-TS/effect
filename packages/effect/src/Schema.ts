@@ -8641,7 +8641,8 @@ const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   return out
 }
 
-type MakeOptions = boolean | {
+/** @internal */
+export type MakeOptions = boolean | {
   readonly disableValidation?: boolean
 }
 
