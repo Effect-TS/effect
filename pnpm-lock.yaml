@@ -23,9 +23,6 @@ patchedDependencies:
   '@changesets/get-github-info@0.6.0':
     hash: 1387c42d40315dc7805094fb3085da092ec802de277560db46fb53567ba583ec
     path: patches/@changesets__get-github-info@0.6.0.patch
-  vitest-websocket-mock:
-    hash: e3e0be4fe2913997607c26e93a84d7379277ca68a7930585fc5290e4a328f640
-    path: patches/vitest-websocket-mock.patch
 
 importers:
 
@@ -384,7 +381,7 @@ importers:
         version: 3.0.13
       vitest-websocket-mock:
         specifier: ^0.4.0
-        version: 0.4.0(patch_hash=e3e0be4fe2913997607c26e93a84d7379277ca68a7930585fc5290e4a328f640)(vitest@3.0.5)
+        version: 0.4.0(vitest@3.0.5)
       ws:
         specifier: ^8.18.0
         version: 8.18.0
@@ -15332,7 +15329,7 @@ snapshots:
       tsx: 4.17.0
       yaml: 2.7.0
 
-  vitest-websocket-mock@0.4.0(patch_hash=e3e0be4fe2913997607c26e93a84d7379277ca68a7930585fc5290e4a328f640)(vitest@3.0.5):
+  vitest-websocket-mock@0.4.0(vitest@3.0.5):
     dependencies:
       '@vitest/utils': 2.1.4
       mock-socket: 9.3.1
