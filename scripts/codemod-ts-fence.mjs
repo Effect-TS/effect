@@ -1,6 +1,6 @@
 // @ts-check
 import * as Glob from "glob"
-import jscodeshift from "jscodeshift/src/Runner.js"
+import * as Jscodeshift from "jscodeshift/src/Runner.js"
 import * as Fs from "node:fs"
 import * as Path from "node:path"
 
@@ -16,7 +16,7 @@ const paths = Glob.globSync(pattern, {
 
 const transformer = Path.resolve("scripts/codemods/ts-fence.ts")
 
-jscodeshift.run(transformer, paths, {
+Jscodeshift.run(transformer, paths, {
   babel: true,
   parser: "ts"
   // dry: true

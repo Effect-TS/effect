@@ -42,10 +42,8 @@
     "coverage": "vitest --coverage"
   },
   "devDependencies": {
-    "@types/jscodeshift": "^0.11.11",
     "ajv": "^8.17.1",
     "ast-types": "^0.14.2",
-    "jscodeshift": "^0.16.1",
     "tinybench": "^2.9.0",
     "zod": "^3.24.1"
   },

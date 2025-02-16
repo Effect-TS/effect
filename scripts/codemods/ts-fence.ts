@@ -1,4 +1,4 @@
-import type cs from "jscodeshift"
+import type * as cs from "jscodeshift"
 
 const EXAMPLE = "* @example\n"
 const EXAMPLE_WITH_FENCE = "* @example\n * ```ts\n"
