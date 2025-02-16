@@ -3,7 +3,7 @@ import * as NodeSocket from "@effect/platform-node/NodeSocket"
 import * as Socket from "@effect/platform/Socket"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Chunk, Effect, Queue, Stream } from "effect"
-import WS from "vitest-websocket-mock"
+import { WS } from "vitest-websocket-mock"
 
 const makeServer = Effect.gen(function*(_) {
   const server = yield* _(SocketServer.make({ port: 0 }))

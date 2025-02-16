@@ -70,8 +70,6 @@ jobs:
       - name: Test
         run: pnpm vitest --shard ${{ matrix.shard }}
         if: matrix.runtime == 'Node'
-        env:
-          NODE_OPTIONS: --max_old_space_size=8192
       - name: Test
         run: bun vitest --shard ${{ matrix.shard }}
         if: matrix.runtime == 'Bun'

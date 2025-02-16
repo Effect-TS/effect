@@ -42,7 +42,7 @@
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
-    "@types/better-sqlite3": "^7.6.11",
+    "@types/better-sqlite3": "^7.6.12",
     "effect": "workspace:^"
   },
   "peerDependencies": {
@@ -53,6 +53,6 @@
   },
   "dependencies": {
     "@opentelemetry/semantic-conventions": "^1.25.1",
-    "better-sqlite3": "^11.1.2"
+    "better-sqlite3": "^11.8.1"
   }
 }
