@@ -23,7 +23,7 @@ import * as Utils from "effect/Utils"
 import * as V from "vitest"
 import type * as Vitest from "./index.js"
 
-const runPromise = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A, E>) =>
+const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function*() {
     const exitFiber = yield* Effect.fork(Effect.exit(effect))
 
@@ -49,7 +49,7 @@ const runPromise = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A,
   }).pipe(Effect.runPromise).then((f) => f())
 
 /** @internal */
-const runTest = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A, E>) => runPromise(ctx)(effect)
+const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => runPromise(ctx)(effect)
 
 /** @internal */
 const TestEnv = TestEnvironment.TestContext.pipe(
