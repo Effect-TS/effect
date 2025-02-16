@@ -1,4 +1,4 @@
-import type cs from "jscodeshift"
+import type * as cs from "jscodeshift"
 
 //
 // this is needed to resolve a bug in jscodeshift that
