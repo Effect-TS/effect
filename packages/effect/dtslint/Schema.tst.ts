@@ -168,17 +168,30 @@ describe("Schema", () => {
     expect(pipe(S.Number, S.finite())).type.toBe<S.filter<S.Schema<number, number, never>>>()
   })
 
-  it("Enums", () => {
+  describe("Enums", () => {
     enum Fruits {
       Apple,
       Banana
     }
-    // TODO: type.toBe doesn't work
-    expect(S.asSchema(S.Enums(Fruits))).type.toBeAssignableTo<S.Schema<Fruits, Fruits, never>>()
-    expect(S.Enums(Fruits)).type.toBe<S.Enums<typeof Fruits>>()
-    expect(S.Enums(Fruits).enums).type.toBe<typeof Fruits>()
-    expect(S.Enums(Fruits).enums.Apple).type.toBe<Fruits.Apple>()
-    expect(S.Enums(Fruits).enums.Banana).type.toBe<Fruits.Banana>()
+
+    const schema = S.Enums(Fruits)
+
+    it("Schema type", () => {
+      expect(S.asSchema(schema))
+        .type.toBeAssignableTo<S.Schema<Fruits>>()
+      expect(schema)
+        .type.toBe<S.Enums<typeof Fruits>>()
+    })
+
+    it("should expose the enums field", () => {
+      const enums = schema.enums
+      expect(enums)
+        .type.toBe<typeof Fruits>()
+      expect(enums.Apple)
+        .type.toBe<Fruits.Apple>()
+      expect(enums.Banana)
+        .type.toBe<Fruits.Banana>()
+    })
   })
 
   it("NullOr", () => {
