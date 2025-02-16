@@ -1,7 +1,7 @@
 {
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@9.10.0+sha512.73a29afa36a0d092ece5271de5177ecbf8318d454ecd701343131b8ebc0c1a91c487da46ab77c8e596d6acf1461e3594ced4becedf8921b074fbd8653ed7051c",
+  "packageManager": "pnpm@10.4.0+sha512.6b849d0787d97f8f4e1f03a9b8ff8f038e79e153d6f11ae539ae7c435ff9e796df6a862c991502695c7f9e8fac8aeafc1ac5a8dab47e36148d183832d886dd52",
   "workspaces": [
     "packages/*",
     "packages/ai/*"
@@ -50,11 +50,11 @@
     "@effect/eslint-plugin": "^0.2.0",
     "@effect/language-service": "^0.1.0",
     "@effect/vitest": "workspace:^",
-    "@eslint/compat": "1.1.1",
-    "@eslint/eslintrc": "3.1.0",
-    "@eslint/js": "9.9.1",
+    "@eslint/compat": "^1.1.1",
+    "@eslint/eslintrc": "^3.1.0",
+    "@eslint/js": "^9.9.1",
     "@types/jscodeshift": "^0.11.11",
-    "@types/node": "^22.9.3",
+    "@types/node": "^22.13.4",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
     "@vitest/browser": "^2.1.4",
@@ -85,6 +85,19 @@
       "@changesets/get-github-info@0.6.0": "patches/@changesets__get-github-info@0.6.0.patch",
       "@changesets/assemble-release-plan@6.0.3": "patches/@changesets__assemble-release-plan@6.0.3.patch",
       "vitest-websocket-mock": "patches/vitest-websocket-mock.patch"
-    }
+    },
+    "ignoredBuiltDependencies": [
+      "cpu-features",
+      "esbuild",
+      "lmdb",
+      "msgpackr-extract",
+      "msw",
+      "protobufjs",
+      "ssh2",
+      "workerd"
+    ],
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   }
 }

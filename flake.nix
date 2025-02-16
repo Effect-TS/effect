@@ -19,7 +19,7 @@
             bun
             corepack
             deno
-            nodejs
+            nodejs-slim_22
             python3
             yq-go
           ];
