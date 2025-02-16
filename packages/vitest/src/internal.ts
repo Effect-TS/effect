@@ -78,7 +78,7 @@ const makeTester = <R>(
   it: V.TestAPI = V.it
 ): Vitest.Vitest.Tester<R> => {
   const run = <A, E, TestArgs extends Array<unknown>>(
-    ctx: V.TaskContext<V.RunnerTestCase<object>> & V.TestContext & object,
+    ctx: V.TestContext & object,
     args: TestArgs,
     self: Vitest.Vitest.TestFunction<A, E, R, TestArgs>
   ) => pipe(Effect.suspend(() => self(...args)), mapEffect, runTest(ctx))
