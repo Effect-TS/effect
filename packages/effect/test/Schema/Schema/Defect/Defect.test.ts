@@ -15,7 +15,7 @@ describe("Defect", () => {
 
     it("an object with a message", () => {
       const err = S.decodeUnknownSync(S.Defect)({ message: "message" })
-      deepStrictEqual(err, new Error("message"))
+      deepStrictEqual(err, new Error("message", { cause: { message: "message" } }))
     })
 
     it("an object with a message and a name", () => {

@@ -45,7 +45,7 @@ describe("Cause", () => {
         _tag: "Die",
         defect: { stack: "fail", message: "error" }
       },
-      Cause.die(new Error("error"))
+      Cause.die(new Error("error", { cause: { stack: "fail", message: "error" } }))
     )
     await Util.assertions.decoding.succeed(
       schema,
