@@ -1,5 +1,5 @@
 import * as Fs from "node:fs"
-import Package from "../packages/effect/package.json" assert { type: "json" }
+import Package from "../packages/effect/package.json" with { type: "json" }
 
 const tpl = Fs.readFileSync("./scripts/version.template.txt").toString("utf8")
 
