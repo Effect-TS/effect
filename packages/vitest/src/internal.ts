@@ -73,6 +73,9 @@ export const addEqualityTesters = () => {
 }
 
 /** @internal */
+const testOptions = (timeout?: number | V.TestOptions) => typeof timeout === "number" ? { timeout } : timeout ?? {}
+
+/** @internal */
 const makeTester = <R>(
   mapEffect: <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, never>,
   it: V.TestAPI = V.it
@@ -83,39 +86,44 @@ const makeTester = <R>(
     self: Vitest.Vitest.TestFunction<A, E, R, TestArgs>
   ) => pipe(Effect.suspend(() => self(...args)), mapEffect, runTest(ctx))
 
-  const f: Vitest.Vitest.Test<R> = (name, self, timeout) => it(name, (ctx) => run(ctx, [ctx], self), timeout)
+  const f: Vitest.Vitest.Test<R> = (name, self, timeout) =>
+    it(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const skip: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
-    it.skip(name, (ctx) => run(ctx, [ctx], self), timeout)
+    it.skip(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+
   const skipIf: Vitest.Vitest.Tester<R>["skipIf"] = (condition) => (name, self, timeout) =>
-    it.skipIf(condition)(name, (ctx) => run(ctx, [ctx], self), timeout)
+    it.skipIf(condition)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+
   const runIf: Vitest.Vitest.Tester<R>["runIf"] = (condition) => (name, self, timeout) =>
-    it.runIf(condition)(name, (ctx) => run(ctx, [ctx], self), timeout)
+    it.runIf(condition)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+
   const only: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
-    it.only(name, (ctx) => run(ctx, [ctx], self), timeout)
+    it.only(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+
   const each: Vitest.Vitest.Tester<R>["each"] = (cases) => (name, self, timeout) =>
     it.for(cases)(
       name,
-      typeof timeout === "number" ? { timeout } : timeout ?? {},
+      testOptions(timeout),
       (args, ctx) => run(ctx, [args], self) as any
     )
 
   const fails: Vitest.Vitest.Tester<R>["fails"] = (name, self, timeout) =>
-    V.it.fails(name, (ctx) => run(ctx, [ctx], self), timeout)
+    V.it.fails(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const prop: Vitest.Vitest.Tester<R>["prop"] = (name, arbitraries, self, timeout) => {
     if (Array.isArray(arbitraries)) {
       const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
       return it(
         name,
+        testOptions(timeout),
         (ctx) =>
           // @ts-ignore
           fc.assert(
             // @ts-ignore
             fc.asyncProperty(...arbs, (...as) => run(ctx, [as as any, ctx], self)),
             isObject(timeout) ? timeout?.fastCheck : {}
-          ),
-        timeout
+          )
       )
     }
 
@@ -128,6 +136,7 @@ const makeTester = <R>(
 
     return it(
       name,
+      testOptions(timeout),
       (ctx) =>
         // @ts-ignore
         fc.assert(
@@ -135,8 +144,7 @@ const makeTester = <R>(
             // @ts-ignore
             run(ctx, [as[0] as any, ctx], self)),
           isObject(timeout) ? timeout?.fastCheck : {}
-        ),
-      timeout
+        )
     )
   }
 
@@ -148,9 +156,9 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, tim
     const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
     return V.it(
       name,
+      testOptions(timeout),
       // @ts-ignore
-      (ctx) => fc.assert(fc.property(...arbs, (...as) => self(as, ctx)), isObject(timeout) ? timeout?.fastCheck : {}),
-      timeout
+      (ctx) => fc.assert(fc.property(...arbs, (...as) => self(as, ctx)), isObject(timeout) ? timeout?.fastCheck : {})
     )
   }
 
@@ -163,9 +171,9 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, tim
 
   return V.it(
     name,
+    testOptions(timeout),
     // @ts-ignore
-    (ctx) => fc.assert(fc.property(arbs, (as) => self(as, ctx)), isObject(timeout) ? timeout?.fastCheck : {}),
-    timeout
+    (ctx) => fc.assert(fc.property(arbs, (as) => self(as, ctx)), isObject(timeout) ? timeout?.fastCheck : {})
   )
 }
 
