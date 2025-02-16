@@ -425,7 +425,7 @@ describe("DateTime", () => {
   describe("toUtc", () => {
     it.effect("with a Utc", () =>
       Effect.gen(function*() {
-        const dt = DateTime.unsafeMake("2024-01-01T01:00:00")
+        const dt = DateTime.unsafeMake("2024-01-01T01:00:00Z")
         strictEqual(dt.toJSON(), "2024-01-01T01:00:00.000Z")
       }))
 
