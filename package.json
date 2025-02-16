@@ -18,7 +18,7 @@
     "dtslint": "pnpm --recursive --parallel run dtslint",
     "dtslint-clean": "dtslint --clean",
     "changeset-version": "changeset version && node scripts/version.mjs",
-    "changeset-publish": "pnpm codemod && pnpm lint-fix && pnpm build && TEST_DIST= pnpm vitest && changeset publish"
+    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish"
   },
   "resolutions": {
     "dependency-tree": "^10.0.9",
