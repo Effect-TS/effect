@@ -857,9 +857,7 @@ export const format = (self: DurationInput): string => {
 /**
  * Formats a Duration into an ISO8601 duration string.
  *
- * The ISO8601 duration format is generally specified as P[n]Y[n]M[n]DT[n]H[n]M[n]S. However, since
- * the `Duration` type does not support years or months, this function will only output the days, hours,
- * minutes and seconds. Thus, the effective format is P[n]DT[n]H[n]M[n]S.
+ * Months are assumed to be 30 days and years are assumed to be 365 days.
  *
  * Milliseconds and nanoseconds are expressed as fractional seconds.
  *
