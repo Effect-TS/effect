@@ -6,16 +6,12 @@ declare const cause1: Cause.Cause<"err-1">
 declare const cause2: Cause.Cause<"err-2">
 
 describe("Cause", () => {
-  describe("andThen", () => {
-    it("data first", () => {
-      expect(Cause.andThen(cause1, cause2)).type.toBe<Cause.Cause<"err-2">>()
-      expect(Cause.andThen(cause1, () => cause2)).type.toBe<Cause.Cause<"err-2">>()
-    })
+  it("andThen", () => {
+    expect(Cause.andThen(cause1, cause2)).type.toBe<Cause.Cause<"err-2">>()
+    expect(Cause.andThen(cause1, () => cause2)).type.toBe<Cause.Cause<"err-2">>()
 
-    it("data last", () => {
-      expect(cause1.pipe(Cause.andThen(cause2))).type.toBe<Cause.Cause<"err-2">>()
-      expect(cause1.pipe(Cause.andThen(() => cause2))).type.toBe<Cause.Cause<"err-2">>()
-    })
+    expect(cause1.pipe(Cause.andThen(cause2))).type.toBe<Cause.Cause<"err-2">>()
+    expect(cause1.pipe(Cause.andThen(() => cause2))).type.toBe<Cause.Cause<"err-2">>()
   })
 
   it("filter", () => {

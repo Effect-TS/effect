@@ -30,21 +30,21 @@ import {
 import { describe, expect, it } from "tstyche"
 
 class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
-declare const anyNever: S.Schema<any, never>
+declare const anyNever: S.Schema<any>
 declare const neverAny: S.Schema<never, any>
-declare const anyNeverPropertySignature: S.PropertySignature<"?:", any, never, "?:", never, false, never>
-declare const neverAnyPropertySignature: S.PropertySignature<"?:", never, never, "?:", any, false, never>
+declare const anyNeverPropertySignature: S.PropertySignature<"?:", any, never, "?:", never, false>
+declare const neverAnyPropertySignature: S.PropertySignature<"?:", never, never, "?:", any, false>
 const ServiceA = Context.GenericTag<"ServiceA", string>("ServiceA")
 declare const aContext: S.Schema<string, string, "a">
 declare const bContext: S.Schema<number, number, "b">
 declare const cContext: S.Schema<boolean, boolean, "c">
 
 describe("Schema", () => {
-  it("SchemaClass", () => {
-    // @ts-expect-error
-    const _instance: S.String = {}
-    // @ts-expect-error
-    new S.String()
+  describe("SchemaClass", () => {
+    it("the constructor should not be callable", () => {
+      // @ts-expect-error
+      new S.String()
+    })
   })
 
   it("Schema.Encoded", () => {
@@ -64,80 +64,80 @@ describe("Schema", () => {
 
   it("annotations", () => {
     // should allow to add custom string annotations to a schema
-    expect(S.String.annotations({ a: 1 })).type.toBe<S.SchemaClass<string, string, never>>()
+    expect(S.String.annotations({ a: 1 })).type.toBe<S.SchemaClass<string, string>>()
     // should allow to add custom symbol annotations to a schema
-    expect(S.String.annotations({ [Symbol.for("a")]: 1 })).type.toBe<S.SchemaClass<string, string, never>>()
+    expect(S.String.annotations({ [Symbol.for("a")]: 1 })).type.toBe<S.SchemaClass<string, string>>()
 
     interface AnnotatedString extends S.Annotable<AnnotatedString, string> {}
     const AnnotatedString = hole<AnnotatedString>()
 
-    expect(hole<S.Schema<string>>().pipe(S.annotations({}))).type.toBe<S.Schema<string, string, never>>()
+    expect(hole<S.Schema<string>>().pipe(S.annotations({}))).type.toBe<S.Schema<string, string>>()
     expect(AnnotatedString.pipe(S.annotations({}))).type.toBe<AnnotatedString>()
 
     expect(S.Number.pipe(S.int(), S.brand("Int"), S.annotations({}))).type.toBe<
-      S.brand<S.filter<S.Schema<number, number, never>>, "Int">
+      S.brand<S.filter<S.Schema<number, number>>, "Int">
     >()
     expect(S.Struct({ a: AnnotatedString }).pipe(S.annotations({}))).type.toBe<
       S.Struct<{ a: AnnotatedString }>
     >()
-    expect(A.pipe(S.annotations({}))).type.toBe<S.SchemaClass<A, { readonly a: string }, never>>()
+    expect(A.pipe(S.annotations({}))).type.toBe<S.SchemaClass<A, { readonly a: string }>>()
     expect(S.Number.pipe(S.int(), S.brand("Int")).make(1)).type.toBe<number & Brand.Brand<"Int">>()
   })
 
   it("Primitives", () => {
-    expect(S.asSchema(S.Void)).type.toBe<S.Schema<void, void, never>>()
+    expect(S.asSchema(S.Void)).type.toBe<S.Schema<void, void>>()
     expect(S.Void).type.toBe<typeof S.Void>()
 
-    expect(S.asSchema(S.Undefined)).type.toBe<S.Schema<undefined, undefined, never>>()
+    expect(S.asSchema(S.Undefined)).type.toBe<S.Schema<undefined, undefined>>()
     expect(S.Undefined).type.toBe<typeof S.Undefined>()
 
-    expect(S.asSchema(S.String)).type.toBe<S.Schema<string, string, never>>()
+    expect(S.asSchema(S.String)).type.toBe<S.Schema<string, string>>()
     expect(S.String).type.toBe<typeof S.String>()
 
-    expect(S.asSchema(S.Number)).type.toBe<S.Schema<number, number, never>>()
+    expect(S.asSchema(S.Number)).type.toBe<S.Schema<number, number>>()
     expect(S.Number).type.toBe<typeof S.Number>()
 
-    expect(S.asSchema(S.Boolean)).type.toBe<S.Schema<boolean, boolean, never>>()
+    expect(S.asSchema(S.Boolean)).type.toBe<S.Schema<boolean, boolean>>()
     expect(S.Boolean).type.toBe<typeof S.Boolean>()
 
-    expect(S.asSchema(S.BigIntFromSelf)).type.toBe<S.Schema<bigint, bigint, never>>()
+    expect(S.asSchema(S.BigIntFromSelf)).type.toBe<S.Schema<bigint, bigint>>()
     expect(S.BigIntFromSelf).type.toBe<typeof S.BigIntFromSelf>()
 
-    expect(S.asSchema(S.BigInt)).type.toBe<S.Schema<bigint, string, never>>()
+    expect(S.asSchema(S.BigInt)).type.toBe<S.Schema<bigint, string>>()
     expect(S.BigInt).type.toBe<typeof S.BigInt>()
 
-    expect(S.asSchema(S.SymbolFromSelf)).type.toBe<S.Schema<symbol, symbol, never>>()
+    expect(S.asSchema(S.SymbolFromSelf)).type.toBe<S.Schema<symbol, symbol>>()
     expect(S.SymbolFromSelf).type.toBe<typeof S.SymbolFromSelf>()
 
-    expect(S.asSchema(S.Symbol)).type.toBe<S.Schema<symbol, string, never>>()
+    expect(S.asSchema(S.Symbol)).type.toBe<S.Schema<symbol, string>>()
     expect(S.Symbol).type.toBe<typeof S.Symbol>()
 
-    expect(S.asSchema(S.Unknown)).type.toBe<S.Schema<unknown, unknown, never>>()
+    expect(S.asSchema(S.Unknown)).type.toBe<S.Schema<unknown, unknown>>()
     expect(S.Unknown).type.toBe<typeof S.Unknown>()
 
-    expect(S.asSchema(S.Any)).type.toBe<S.Schema<any, any, never>>()
+    expect(S.asSchema(S.Any)).type.toBe<S.Schema<any, any>>()
     expect(S.Any).type.toBe<typeof S.Any>()
 
-    expect(S.asSchema(S.Object)).type.toBe<S.Schema<object, object, never>>()
+    expect(S.asSchema(S.Object)).type.toBe<S.Schema<object, object>>()
     expect(S.Object).type.toBe<typeof S.Object>()
   })
 
   it("literals", () => {
-    expect(S.asSchema(S.Null)).type.toBe<S.Schema<null, null, never>>()
+    expect(S.asSchema(S.Null)).type.toBe<S.Schema<null, null>>()
     expect(S.Null).type.toBe<typeof S.Null>()
 
     expect(S.Literal()).type.toBe<S.Never>()
-    expect(S.asSchema(S.Literal("a"))).type.toBe<S.Schema<"a", "a", never>>()
+    expect(S.asSchema(S.Literal("a"))).type.toBe<S.Schema<"a", "a">>()
     expect(S.Literal("a")).type.toBe<S.Literal<["a"]>>()
 
     expect(S.asSchema(S.Literal("a", "b", "c"))).type.toBe<
-      S.Schema<"a" | "b" | "c", "a" | "b" | "c", never>
+      S.Schema<"a" | "b" | "c", "a" | "b" | "c">
     >()
     expect(S.Literal("a", "b", "c")).type.toBe<S.Literal<["a", "b", "c"]>>()
 
     const literals: Array<"a" | "b" | "c"> = ["a", "b", "c"]
     expect(S.Literal(...literals)).type.toBe<
-      S.Schema<"a" | "b" | "c", "a" | "b" | "c", never>
+      S.Schema<"a" | "b" | "c", "a" | "b" | "c">
     >()
 
     expect(S.Literal(1)).type.toBe<S.Literal<[1]>>()
@@ -149,23 +149,23 @@ describe("Schema", () => {
   })
 
   it("String", () => {
-    expect(pipe(S.String, S.maxLength(5))).type.toBe<S.filter<S.Schema<string, string, never>>>()
-    expect(pipe(S.String, S.minLength(5))).type.toBe<S.filter<S.Schema<string, string, never>>>()
-    expect(pipe(S.String, S.length(5))).type.toBe<S.filter<S.Schema<string, string, never>>>()
-    expect(pipe(S.String, S.pattern(/a/))).type.toBe<S.filter<S.Schema<string, string, never>>>()
-    expect(pipe(S.String, S.startsWith("a"))).type.toBe<S.filter<S.Schema<string, string, never>>>()
-    expect(pipe(S.String, S.endsWith("a"))).type.toBe<S.filter<S.Schema<string, string, never>>>()
-    expect(pipe(S.String, S.includes("a"))).type.toBe<S.filter<S.Schema<string, string, never>>>()
+    expect(pipe(S.String, S.maxLength(5))).type.toBe<S.filter<S.Schema<string, string>>>()
+    expect(pipe(S.String, S.minLength(5))).type.toBe<S.filter<S.Schema<string, string>>>()
+    expect(pipe(S.String, S.length(5))).type.toBe<S.filter<S.Schema<string, string>>>()
+    expect(pipe(S.String, S.pattern(/a/))).type.toBe<S.filter<S.Schema<string, string>>>()
+    expect(pipe(S.String, S.startsWith("a"))).type.toBe<S.filter<S.Schema<string, string>>>()
+    expect(pipe(S.String, S.endsWith("a"))).type.toBe<S.filter<S.Schema<string, string>>>()
+    expect(pipe(S.String, S.includes("a"))).type.toBe<S.filter<S.Schema<string, string>>>()
   })
 
   it("Number", () => {
-    expect(pipe(S.Number, S.greaterThan(5))).type.toBe<S.filter<S.Schema<number, number, never>>>()
-    expect(pipe(S.Number, S.greaterThanOrEqualTo(5))).type.toBe<S.filter<S.Schema<number, number, never>>>()
-    expect(pipe(S.Number, S.lessThan(5))).type.toBe<S.filter<S.Schema<number, number, never>>>()
-    expect(pipe(S.Number, S.lessThanOrEqualTo(5))).type.toBe<S.filter<S.Schema<number, number, never>>>()
-    expect(pipe(S.Number, S.int())).type.toBe<S.filter<S.Schema<number, number, never>>>()
-    expect(pipe(S.Number, S.nonNaN())).type.toBe<S.filter<S.Schema<number, number, never>>>()
-    expect(pipe(S.Number, S.finite())).type.toBe<S.filter<S.Schema<number, number, never>>>()
+    expect(pipe(S.Number, S.greaterThan(5))).type.toBe<S.filter<S.Schema<number, number>>>()
+    expect(pipe(S.Number, S.greaterThanOrEqualTo(5))).type.toBe<S.filter<S.Schema<number, number>>>()
+    expect(pipe(S.Number, S.lessThan(5))).type.toBe<S.filter<S.Schema<number, number>>>()
+    expect(pipe(S.Number, S.lessThanOrEqualTo(5))).type.toBe<S.filter<S.Schema<number, number>>>()
+    expect(pipe(S.Number, S.int())).type.toBe<S.filter<S.Schema<number, number>>>()
+    expect(pipe(S.Number, S.nonNaN())).type.toBe<S.filter<S.Schema<number, number>>>()
+    expect(pipe(S.Number, S.finite())).type.toBe<S.filter<S.Schema<number, number>>>()
   })
 
   describe("Enums", () => {
@@ -196,11 +196,11 @@ describe("Schema", () => {
 
   it("NullOr", () => {
     expect(S.asSchema(S.NullOr(S.String))).type.toBe<
-      S.Schema<string | null, string | null, never>
+      S.Schema<string | null, string | null>
     >()
     expect(S.NullOr(S.String)).type.toBe<S.NullOr<typeof S.String>>()
     expect(S.asSchema(S.NullOr(S.NumberFromString))).type.toBe<
-      S.Schema<number | null, string | null, never>
+      S.Schema<number | null, string | null>
     >()
     expect(S.NullOr(S.NumberFromString)).type.toBe<S.NullOr<typeof S.NumberFromString>>()
   })
@@ -211,11 +211,11 @@ describe("Schema", () => {
       S.Union<[typeof S.String, typeof S.Number]>
     >()
     expect(S.asSchema(S.Union(S.String, S.Number))).type.toBe<
-      S.Schema<string | number, string | number, never>
+      S.Schema<string | number, string | number>
     >()
     expect(S.Union(S.String, S.Number)).type.toBe<S.Union<[typeof S.String, typeof S.Number]>>()
     expect(S.asSchema(S.Union(S.Boolean, S.NumberFromString))).type.toBe<
-      S.Schema<number | boolean, string | boolean, never>
+      S.Schema<number | boolean, string | boolean>
     >()
     expect(S.Union(S.Boolean, S.NumberFromString)).type.toBe<
       S.Union<[typeof S.Boolean, typeof S.NumberFromString]>
@@ -227,17 +227,17 @@ describe("Schema", () => {
 
   it("keyof", () => {
     expect(S.keyof(S.Struct({ a: S.String, b: S.NumberFromString }))).type.toBe<
-      S.SchemaClass<"a" | "b", "a" | "b", never>
+      S.SchemaClass<"a" | "b", "a" | "b">
     >()
   })
 
   it("Tuple", () => {
     expect(S.asSchema(S.Tuple(S.String, S.Number))).type.toBe<
-      S.Schema<readonly [string, number], readonly [string, number], never>
+      S.Schema<readonly [string, number], readonly [string, number]>
     >()
     expect(S.Tuple(S.String, S.Number)).type.toBe<S.Tuple<[typeof S.String, typeof S.Number]>>()
     expect(S.asSchema(S.Tuple(S.String, S.NumberFromString))).type.toBe<
-      S.Schema<readonly [string, number], readonly [string, string], never>
+      S.Schema<readonly [string, number], readonly [string, string]>
     >()
     expect(S.Tuple(S.String, S.NumberFromString)).type.toBe<
       S.Tuple<[typeof S.String, typeof S.NumberFromString]>
@@ -248,7 +248,7 @@ describe("Schema", () => {
 
   it("tuple overloading / array overloading", () => {
     expect(S.asSchema(S.Tuple([S.String], S.Number, S.Boolean))).type.toBe<
-      S.Schema<readonly [string, ...Array<number>, boolean], readonly [string, ...Array<number>, boolean], never>
+      S.Schema<readonly [string, ...Array<number>, boolean], readonly [string, ...Array<number>, boolean]>
     >()
     expect(S.Tuple([S.String], S.Number, S.Boolean)).type.toBe<
       S.TupleType<readonly [typeof S.String], [typeof S.Number, typeof S.Boolean]>
@@ -262,7 +262,7 @@ describe("Schema", () => {
 
   it("optionalElement", () => {
     expect(S.asSchema(S.Tuple(S.String, S.Number, S.optionalElement(S.Boolean)))).type.toBe<
-      S.Schema<readonly [string, number, boolean?], readonly [string, number, boolean?], never>
+      S.Schema<readonly [string, number, boolean?], readonly [string, number, boolean?]>
     >()
     expect(S.Tuple(S.String, S.Number, S.optionalElement(S.Boolean))).type.toBe<
       S.Tuple<[typeof S.String, typeof S.Number, S.Element<typeof S.Boolean, "?">]>
@@ -270,7 +270,7 @@ describe("Schema", () => {
     expect(
       S.asSchema(S.Tuple(S.String, S.NumberFromString, S.optionalElement(S.NumberFromString)))
     ).type.toBe<
-      S.Schema<readonly [string, number, number?], readonly [string, string, string?], never>
+      S.Schema<readonly [string, number, number?], readonly [string, string, string?]>
     >()
     expect(
       S.Tuple(S.String, S.NumberFromString, S.optionalElement(S.NumberFromString))
@@ -281,12 +281,12 @@ describe("Schema", () => {
 
   it("Array", () => {
     expect(S.asSchema(S.Array(S.Number))).type.toBe<
-      S.Schema<ReadonlyArray<number>, ReadonlyArray<number>, never>
+      S.Schema<ReadonlyArray<number>, ReadonlyArray<number>>
     >()
     expect(S.Array(S.Number)).type.toBe<S.Array$<typeof S.Number>>()
     expect(pipe(S.Number, S.Array)).type.toBe<S.Array$<typeof S.Number>>()
     expect(S.asSchema(S.Array(S.NumberFromString))).type.toBe<
-      S.Schema<ReadonlyArray<number>, ReadonlyArray<string>, never>
+      S.Schema<ReadonlyArray<number>, ReadonlyArray<string>>
     >()
     expect(S.Array(S.NumberFromString)).type.toBe<S.Array$<typeof S.NumberFromString>>()
     expect(S.Array(S.String).value).type.toBe<typeof S.String>()
@@ -296,12 +296,12 @@ describe("Schema", () => {
 
   it("NonEmptyArray", () => {
     expect(S.asSchema(S.NonEmptyArray(S.Number))).type.toBe<
-      S.Schema<readonly [number, ...Array<number>], readonly [number, ...Array<number>], never>
+      S.Schema<readonly [number, ...Array<number>], readonly [number, ...Array<number>]>
     >()
     expect(S.NonEmptyArray(S.Number)).type.toBe<S.NonEmptyArray<typeof S.Number>>()
     expect(pipe(S.Number, S.NonEmptyArray)).type.toBe<S.NonEmptyArray<typeof S.Number>>()
     expect(S.asSchema(S.NonEmptyArray(S.NumberFromString))).type.toBe<
-      S.Schema<readonly [number, ...Array<number>], readonly [string, ...Array<string>], never>
+      S.Schema<readonly [number, ...Array<number>], readonly [string, ...Array<string>]>
     >()
     expect(S.NonEmptyArray(S.NumberFromString)).type.toBe<S.NonEmptyArray<typeof S.NumberFromString>>()
     expect(S.NonEmptyArray(S.String).value).type.toBe<typeof S.String>()
@@ -318,19 +318,19 @@ describe("Schema", () => {
       { readonly a: typeof S.String; readonly b: typeof S.Number }
     >()
     expect(S.asSchema(S.Struct({ a: S.String, b: S.Number }))).type.toBe<
-      S.Schema<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: number }, never>
+      S.Schema<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: number }>
     >()
     expect(S.Struct({ a: S.String, b: S.Number })).type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
     const MyModel = S.Struct({ a: S.String, b: S.NumberFromString })
     expect(S.asSchema(MyModel)).type.toBe<
-      S.Schema<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: string }, never>
+      S.Schema<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: string }>
     >()
     type MyModelType = S.Schema.Type<typeof MyModel>
     type MyModelEncoded = S.Schema.Encoded<typeof MyModel>
     expect<MyModelType>().type.toBe<{ readonly a: string; readonly b: number }>()
     expect<MyModelEncoded>().type.toBe<{ readonly a: string; readonly b: string }>()
     expect(S.asSchema(S.Struct({ a: S.Never }))).type.toBe<
-      S.Schema<{ readonly a: never }, { readonly a: never }, never>
+      S.Schema<{ readonly a: never }, { readonly a: never }>
     >()
     expect(S.Struct({ a: S.Never })).type.toBe<S.Struct<{ a: typeof S.Never }>>()
     expect(
@@ -361,16 +361,16 @@ describe("Schema", () => {
       >
     >()
     expect(S.asSchema(S.Struct({ a: anyNever }))).type.toBe<
-      S.Schema<{ readonly a: any }, { readonly a: never }, never>
+      S.Schema<{ readonly a: any }, { readonly a: any }>
     >()
     expect(S.asSchema(S.Struct({ a: neverAny }))).type.toBe<
-      S.Schema<{ readonly a: never }, { readonly a: any }, never>
+      S.Schema<{ readonly a: never }, { readonly a: any }>
     >()
     expect(S.asSchema(S.Struct({ a: anyNeverPropertySignature }))).type.toBe<
-      S.Schema<{ readonly a?: any }, { readonly a?: never }, never>
+      S.Schema<{ readonly a?: any }, { readonly a?: never }>
     >()
     expect(S.asSchema(S.Struct({ a: neverAnyPropertySignature }))).type.toBe<
-      S.Schema<{ readonly a?: never }, { readonly a?: any }, never>
+      S.Schema<{ readonly a?: never }, { readonly a?: any }>
     >()
   })
 
@@ -401,7 +401,7 @@ describe("Schema", () => {
       S.Struct<{ a: typeof S.String; b: typeof S.Number; c: S.optional<typeof S.NumberFromString> }>
     >()
     expect(S.asSchema(S.Struct({ a: S.String.pipe(S.optional) }))).type.toBe<
-      S.Schema<{ readonly a?: string | undefined }, { readonly a?: string | undefined }, never>
+      S.Schema<{ readonly a?: string | undefined }, { readonly a?: string | undefined }>
     >()
     expect(S.Struct({ a: S.String.pipe(S.optional) })).type.toBe<S.Struct<{ a: S.optional<typeof S.String> }>>()
   })
@@ -410,7 +410,7 @@ describe("Schema", () => {
     expect(
       S.asSchema(S.Struct({ a: S.optionalWith(S.Never, { exact: true }) }))
     ).type.toBe<
-      S.Schema<{ readonly a?: never }, { readonly a?: never }, never>
+      S.Schema<{ readonly a?: never }, { readonly a?: never }>
     >()
     expect(S.Struct({ a: S.optionalWith(S.Never, { exact: true }) })).type.toBe<
       S.Struct<{ a: S.optionalWith<typeof S.Never, { exact: true }> }>
@@ -561,9 +561,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // optionalWith { default: () => A }
-  // ---------------------------------------------
   it("optionalWith { default: () => A }", () => {
     expect(
       S.asSchema(
@@ -638,9 +635,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // optionalWith { exact: true, nullable: true, default: () => A }
-  // ---------------------------------------------
   it("optionalWith { exact: true, nullable: true, default: () => A }", () => {
     expect(
       S.asSchema(
@@ -663,9 +657,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // optionalWith { nullable: true, default: () => A }
-  // ---------------------------------------------
   it("optionalWith { nullable: true, default: () => A }", () => {
     expect(
       S.asSchema(
@@ -736,9 +727,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // optionalWith { exact: true, as: "Option" }
-  // ---------------------------------------------
   it("optionalWith { exact: true, as: 'Option' }", () => {
     expect(
       S.asSchema(
@@ -803,9 +791,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // optionalWith { as: "Option" }
-  // ---------------------------------------------
   it("optionalWith { as: 'Option' }", () => {
     expect(
       S.asSchema(
@@ -865,9 +850,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // optionalWith { nullable: true, as: "Option" }
-  // ---------------------------------------------
   it("optionalWith { nullable: true, as: 'Option' }", () => {
     expect(
       S.asSchema(
@@ -905,9 +887,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // optionalWith { exact: true, nullable: true, as: "Option" }
-  // ---------------------------------------------
   it("optionalWith { exact: true, nullable: true, as: 'Option' }", () => {
     expect(
       S.asSchema(
@@ -945,21 +924,18 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // pick
-  // ---------------------------------------------
   it("pick", () => {
     // @ts-expect-error
     pipe(S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }), S.pick("a"))
     expect(
       pipe(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }), S.pick("a", "b"))
     ).type.toBe<
-      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: number }, never>
+      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: number }>
     >()
     expect(
       pipe(S.Struct({ a: S.String, b: S.NumberFromString, c: S.Boolean }), S.pick("a", "b"))
     ).type.toBe<
-      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: string }, never>
+      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: string }>
     >()
   })
 
@@ -970,7 +946,7 @@ describe("Schema", () => {
         S.pick("a", "b")
       )
     ).type.toBe<
-      S.SchemaClass<{ readonly a?: string; readonly b: number }, { readonly a?: string; readonly b: number }, never>
+      S.SchemaClass<{ readonly a?: string; readonly b: number }, { readonly a?: string; readonly b: number }>
     >()
     expect(
       pipe(
@@ -978,7 +954,7 @@ describe("Schema", () => {
         S.pick("a", "b")
       )
     ).type.toBe<
-      S.SchemaClass<{ readonly a?: string; readonly b: number }, { readonly a?: string; readonly b: string }, never>
+      S.SchemaClass<{ readonly a?: string; readonly b: number }, { readonly a?: string; readonly b: string }>
     >()
     expect(
       pipe(
@@ -990,13 +966,10 @@ describe("Schema", () => {
         S.pick("a", "b")
       )
     ).type.toBe<
-      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a?: string; readonly b: string }, never>
+      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a?: string; readonly b: string }>
     >()
   })
 
-  // ---------------------------------------------
-  // Struct.pick
-  // ---------------------------------------------
   it("Struct.pick", () => {
     // @ts-expect-error
     S.Struct({ a: S.String }).pick("c")
@@ -1006,21 +979,18 @@ describe("Schema", () => {
       .type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
   })
 
-  // ---------------------------------------------
-  // omit
-  // ---------------------------------------------
   it("omit", () => {
     // @ts-expect-error
     pipe(S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }), S.omit("a"))
     expect(
       pipe(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }), S.omit("c"))
     ).type.toBe<
-      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: number }, never>
+      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: number }>
     >()
     expect(
       pipe(S.Struct({ a: S.String, b: S.NumberFromString, c: S.Boolean }), S.omit("c"))
     ).type.toBe<
-      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: string }, never>
+      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: string }>
     >()
   })
 
@@ -1031,7 +1001,7 @@ describe("Schema", () => {
         S.omit("c")
       )
     ).type.toBe<
-      S.SchemaClass<{ readonly a?: string; readonly b: number }, { readonly a?: string; readonly b: number }, never>
+      S.SchemaClass<{ readonly a?: string; readonly b: number }, { readonly a?: string; readonly b: number }>
     >()
     expect(
       pipe(
@@ -1039,7 +1009,7 @@ describe("Schema", () => {
         S.omit("c")
       )
     ).type.toBe<
-      S.SchemaClass<{ readonly a?: string; readonly b: number }, { readonly a?: string; readonly b: string }, never>
+      S.SchemaClass<{ readonly a?: string; readonly b: number }, { readonly a?: string; readonly b: string }>
     >()
     expect(
       pipe(
@@ -1051,13 +1021,10 @@ describe("Schema", () => {
         S.omit("c")
       )
     ).type.toBe<
-      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a?: string; readonly b: string }, never>
+      S.SchemaClass<{ readonly a: string; readonly b: number }, { readonly a?: string; readonly b: string }>
     >()
   })
 
-  // ---------------------------------------------
-  // Struct.omit
-  // ---------------------------------------------
   it("Struct.omit", () => {
     // @ts-expect-error
     S.Struct({ a: S.String }).omit("c")
@@ -1069,25 +1036,19 @@ describe("Schema", () => {
       .type.toBe<S.Struct<{ a: typeof S.Number }>>()
   })
 
-  // ---------------------------------------------
-  // brand
-  // ---------------------------------------------
   it("brand", () => {
     expect(S.asSchema(pipe(S.Number, S.int(), S.brand("Int"))))
-      .type.toBe<S.Schema<number & Brand.Brand<"Int">, number, never>>()
+      .type.toBe<S.Schema<number & Brand.Brand<"Int">, number>>()
     expect(S.asSchema(pipe(S.Number, S.int(), S.brand("Int"))).annotations({}))
-      .type.toBe<S.Schema<number & Brand.Brand<"Int">, number, never>>()
+      .type.toBe<S.Schema<number & Brand.Brand<"Int">, number>>()
     expect(pipe(S.Number, S.int(), S.brand("Int")))
-      .type.toBe<S.brand<S.filter<S.Schema<number, number, never>>, "Int">>()
+      .type.toBe<S.brand<S.filter<S.Schema<number, number>>, "Int">>()
     expect(S.asSchema(pipe(S.NumberFromString, S.int(), S.brand("Int"))))
-      .type.toBe<S.Schema<number & Brand.Brand<"Int">, string, never>>()
+      .type.toBe<S.Schema<number & Brand.Brand<"Int">, string>>()
     expect(pipe(S.NumberFromString, S.int(), S.brand("Int")))
-      .type.toBe<S.brand<S.filter<S.Schema<number, string, never>>, "Int">>()
+      .type.toBe<S.brand<S.filter<S.Schema<number, string>>, "Int">>()
   })
 
-  // ---------------------------------------------
-  // partial
-  // ---------------------------------------------
   it("partial", () => {
     expect(S.partial(S.Struct({ a: S.String, b: S.Number })))
       .type.toBe<
@@ -1115,9 +1076,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // partialWith
-  // ---------------------------------------------
   it("partialWith", () => {
     expect(S.partialWith(S.Struct({ a: S.String, b: S.Number }), { exact: true }))
       .type.toBe<
@@ -1145,9 +1103,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // Required + optionalWith
-  // ---------------------------------------------
   it("required with optionalWith", () => {
     expect(
       S.required(
@@ -1177,16 +1132,13 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // Records
-  // ---------------------------------------------
   it("Records", () => {
     expect(S.asSchema(S.Record({ key: S.String, value: S.String }).key))
-      .type.toBe<S.Schema<string, string, never>>()
+      .type.toBe<S.Schema<string, string>>()
     expect(S.Record({ key: S.String, value: S.String }).key)
       .type.toBe<typeof S.String>()
     expect(S.asSchema(S.Record({ key: S.String, value: S.String }).value))
-      .type.toBe<S.Schema<string, string, never>>()
+      .type.toBe<S.Schema<string, string>>()
     expect(S.Record({ key: S.String, value: S.String }).value)
       .type.toBe<typeof S.String>()
     expect(S.asSchema(S.Record({ key: S.String, value: S.String })))
@@ -1218,7 +1170,7 @@ describe("Schema", () => {
       >
     >()
     expect(S.Record({ key: pipe(S.String, S.minLength(2)), value: S.String }))
-      .type.toBe<S.Record$<S.filter<S.Schema<string, string, never>>, typeof S.String>>()
+      .type.toBe<S.Record$<S.filter<S.Schema<string, string>>, typeof S.String>>()
     expect(S.asSchema(S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.String })))
       .type.toBe<
       S.Schema<
@@ -1271,9 +1223,6 @@ describe("Schema", () => {
       .type.toBe<S.Record$<S.brand<typeof S.String, symbol>, typeof S.String>>()
   })
 
-  // ---------------------------------------------
-  // extend
-  // ---------------------------------------------
   it("extend", () => {
     expect(
       S.asSchema(
@@ -1353,9 +1302,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // suspend
-  // ---------------------------------------------
   it("suspend", () => {
     interface SuspendIEqualA {
       readonly a: number
@@ -1389,9 +1335,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // rename
-  // ---------------------------------------------
   it("rename", () => {
     expect(S.rename(S.Struct({ a: S.String, b: S.Number }), {}))
       .type.toBe<
@@ -1452,22 +1395,16 @@ describe("Schema", () => {
     S.Struct({ a: S.String, b: S.Number }).pipe(S.rename({ a: "c", d: "e" }))
   })
 
-  // ---------------------------------------------
-  // InstanceOf
-  // ---------------------------------------------
   it("InstanceOf", () => {
     class Test {
       constructor(readonly name: string) {}
     }
     expect(S.asSchema(S.instanceOf(Test)))
-      .type.toBe<S.Schema<Test, Test, never>>()
+      .type.toBe<S.Schema<Test, Test>>()
     expect(S.instanceOf(Test))
       .type.toBe<S.instanceOf<Test>>()
   })
 
-  // ---------------------------------------------
-  // TemplateLiteral
-  // ---------------------------------------------
   it("TemplateLiteral", () => {
     expect(S.TemplateLiteral("a"))
       .type.toBe<S.TemplateLiteral<"a">>()
@@ -1549,9 +1486,6 @@ describe("Schema", () => {
       .type.toBe<S.TemplateLiteral<`a${string}` | `a${number}`>>()
   })
 
-  // ---------------------------------------------
-  // attachPropertySignature
-  // ---------------------------------------------
   it("attachPropertySignature", () => {
     expect(
       pipe(S.Struct({ radius: S.Number }), S.attachPropertySignature("kind", "circle"))
@@ -1620,17 +1554,17 @@ describe("Schema", () => {
       .type.toBe<
       S.refine<
         { readonly a?: string; readonly b?: number } & { readonly b: number },
-        S.Schema<unknown, { readonly a?: string; readonly b?: number }, never>
+        S.Schema<unknown, { readonly a?: string; readonly b?: number }>
       >
     >()
     const LiteralFilter = S.Literal("a", "b")
     const predicateFilter2 = (u: unknown): u is "a" => typeof u === "string" && u === "a"
     expect(pipe(LiteralFilter, S.filter(predicateFilter2)))
-      .type.toBe<S.refine<"a", S.Schema<unknown, "a" | "b", never>>>()
+      .type.toBe<S.refine<"a", S.Schema<unknown, "a" | "b">>>()
     expect(pipe(LiteralFilter, S.filter(S.is(S.Literal("a")))))
-      .type.toBe<S.refine<"a", S.Schema<unknown, "a" | "b", never>>>()
+      .type.toBe<S.refine<"a", S.Schema<unknown, "a" | "b">>>()
     expect(pipe(LiteralFilter, S.filter(S.is(S.Literal("c")))))
-      .type.toBe<S.refine<never, S.Schema<unknown, "a" | "b", never>>>()
+      .type.toBe<S.refine<never, S.Schema<unknown, "a" | "b">>>()
     const UnionFilter = hole<
       S.Schema<
         { readonly a: string } | { readonly b: string },
@@ -1642,11 +1576,11 @@ describe("Schema", () => {
       .type.toBe<
       S.refine<
         ({ readonly a: string } | { readonly b: string }) & { readonly b: string },
-        S.Schema<unknown, { readonly a: string } | { readonly b: string }, never>
+        S.Schema<unknown, { readonly a: string } | { readonly b: string }>
       >
     >()
     expect(pipe(S.Number, S.filter((n): n is number & Brand.Brand<"MyNumber"> => n > 0)))
-      .type.toBe<S.refine<number & Brand.Brand<"MyNumber">, S.Schema<number, number, never>>>()
+      .type.toBe<S.refine<number & Brand.Brand<"MyNumber">, S.Schema<number, number>>>()
     pipe(
       S.String,
       S.filter(
@@ -1668,13 +1602,10 @@ describe("Schema", () => {
     })
   })
 
-  // ---------------------------------------------
-  // filterEffect
-  // ---------------------------------------------
   it("filterEffect", () => {
     expect(
       S.String.pipe(S.filterEffect((_s) => Effect.succeed(undefined)))
-    ).type.toBe<S.filterEffect<typeof S.String, never>>()
+    ).type.toBe<S.filterEffect<typeof S.String>>()
     expect(
       S.String.pipe(
         S.filterEffect((s) =>
@@ -1687,7 +1618,7 @@ describe("Schema", () => {
     ).type.toBe<S.filterEffect<typeof S.String, "ServiceA">>()
     expect(
       S.filterEffect(S.String, (_s) => Effect.succeed(undefined))
-    ).type.toBe<S.filterEffect<typeof S.String, never>>()
+    ).type.toBe<S.filterEffect<typeof S.String>>()
     expect(
       S.filterEffect(S.String, (s) =>
         Effect.gen(function*() {
@@ -1697,77 +1628,68 @@ describe("Schema", () => {
     ).type.toBe<S.filterEffect<typeof S.String, "ServiceA">>()
   })
 
-  // ---------------------------------------------
-  // compose
-  // ---------------------------------------------
   it("compose", () => {
     expect(S.compose(S.split(","), S.Array(S.NumberFromString)))
-      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string, never>>()
+      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string>>()
     expect(S.split(",").pipe(S.compose(S.Array(S.NumberFromString))))
-      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string, never>>()
+      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string>>()
     expect(S.compose(S.split(","), S.Array(S.NumberFromString), { strict: true }))
-      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string, never>>()
+      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string>>()
     expect(S.split(",").pipe(S.compose(S.Array(S.NumberFromString), { strict: true })))
-      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string, never>>()
+      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string>>()
     // @ts-expect-error
     S.compose(S.String, S.Number)
     // @ts-expect-error
     S.String.pipe(S.compose(S.Number))
     expect(S.compose(S.Union(S.Null, S.String), S.NumberFromString))
-      .type.toBe<S.SchemaClass<number, string | null, never>>()
+      .type.toBe<S.SchemaClass<number, string | null>>()
     expect(S.compose(S.Union(S.Null, S.String), S.NumberFromString, { strict: false }))
-      .type.toBe<S.SchemaClass<number, string | null, never>>()
+      .type.toBe<S.SchemaClass<number, string | null>>()
     expect(S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString)))
-      .type.toBe<S.SchemaClass<number, string | null, never>>()
+      .type.toBe<S.SchemaClass<number, string | null>>()
     expect(S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString, { strict: false })))
-      .type.toBe<S.SchemaClass<number, string | null, never>>()
+      .type.toBe<S.SchemaClass<number, string | null>>()
     expect(S.compose(S.NumberFromString, S.Union(S.Null, S.Number)))
-      .type.toBe<S.SchemaClass<number | null, string, never>>()
+      .type.toBe<S.SchemaClass<number | null, string>>()
     expect(S.compose(S.NumberFromString, S.Union(S.Null, S.Number), { strict: false }))
-      .type.toBe<S.SchemaClass<number | null, string, never>>()
+      .type.toBe<S.SchemaClass<number | null, string>>()
     expect(S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number))))
-      .type.toBe<S.SchemaClass<number | null, string, never>>()
+      .type.toBe<S.SchemaClass<number | null, string>>()
     expect(S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number), { strict: false })))
-      .type.toBe<S.SchemaClass<number | null, string, never>>()
+      .type.toBe<S.SchemaClass<number | null, string>>()
     expect(S.compose(S.String, S.Number, { strict: false }))
-      .type.toBe<S.SchemaClass<number, string, never>>()
+      .type.toBe<S.SchemaClass<number, string>>()
     expect(S.String.pipe(S.compose(S.Number, { strict: false })))
-      .type.toBe<S.SchemaClass<number, string, never>>()
+      .type.toBe<S.SchemaClass<number, string>>()
   })
 
-  // ---------------------------------------------
-  // FromBrand
-  // ---------------------------------------------
   it("FromBrand", () => {
     type Eur = number & Brand.Brand<"Eur">
     const Eur = Brand.nominal<Eur>()
     expect(S.Number.pipe(S.fromBrand(Eur)))
-      .type.toBe<S.BrandSchema<number & Brand.Brand<"Eur">, number, never>>()
+      .type.toBe<S.BrandSchema<number & Brand.Brand<"Eur">, number>>()
   })
 
-  // ---------------------------------------------
-  // mutable
-  // ---------------------------------------------
   it("mutable", () => {
     expect(S.asSchema(S.mutable(S.String)))
-      .type.toBe<S.Schema<string, string, never>>()
+      .type.toBe<S.Schema<string, string>>()
     S.mutable(S.String)
     expect(S.asSchema(S.mutable(S.Struct({ a: S.Number }))))
-      .type.toBe<S.Schema<{ a: number }, { a: number }, never>>()
+      .type.toBe<S.Schema<{ a: number }, { a: number }>>()
     S.mutable(S.Struct({ a: S.Number }))
     expect(S.asSchema(S.mutable(S.Record({ key: S.String, value: S.Number }))))
-      .type.toBe<S.Schema<{ [x: string]: number }, { [x: string]: number }, never>>()
+      .type.toBe<S.Schema<{ [x: string]: number }, { [x: string]: number }>>()
     S.mutable(S.Record({ key: S.String, value: S.Number }))
     expect(S.asSchema(S.mutable(S.Array(S.String))))
       .type.toBe<S.Schema<Array<string>>>()
     S.mutable(S.Array(S.String))
     expect(S.asSchema(S.mutable(S.Union(S.Struct({ a: S.Number }), S.Array(S.String)))))
-      .type.toBe<S.Schema<Array<string> | { a: number }, Array<string> | { a: number }, never>>()
+      .type.toBe<S.Schema<Array<string> | { a: number }, Array<string> | { a: number }>>()
     S.mutable(S.Union(S.Struct({ a: S.Number }), S.Array(S.String)))
     expect(S.asSchema(S.mutable(S.Array(S.String).pipe(S.maxItems(2)))))
       .type.toBe<S.Schema<Array<string>>>()
     expect(S.asSchema(S.mutable(S.NonEmptyArray(S.String).pipe(S.maxItems(2)))))
-      .type.toBe<S.Schema<[string, ...Array<string>], [string, ...Array<string>], never>>()
+      .type.toBe<S.Schema<[string, ...Array<string>], [string, ...Array<string>]>>()
     expect(S.asSchema(S.mutable(S.suspend(() => S.Array(S.String)))))
       .type.toBe<S.Schema<Array<string>>>()
     S.mutable(S.suspend(() => S.Array(S.String)))
@@ -1777,15 +1699,15 @@ describe("Schema", () => {
       .type.toBe<S.Schema<Array<string>>>()
     S.mutable(S.transform(S.Array(S.String), S.Array(S.String), { decode: identity, encode: identity }))
     expect(S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.mutable(S.Struct({ b: S.Number })))))
-      .type.toBe<S.Schema<{ a: string } & { b: number }, { a: string } & { b: number }, never>>()
+      .type.toBe<S.Schema<{ a: string } & { b: number }, { a: string } & { b: number }>>()
     expect(S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.Struct({ b: S.Number }))))
-      .type.toBe<S.Schema<{ a: string } & { readonly b: number }, { a: string } & { readonly b: number }, never>>()
+      .type.toBe<S.Schema<{ a: string } & { readonly b: number }, { a: string } & { readonly b: number }>>()
     expect(
       S.asSchema(
         S.extend(S.mutable(S.Struct({ a: S.String })), S.mutable(S.Record({ key: S.String, value: S.String })))
       )
     )
-      .type.toBe<S.Schema<{ a: string } & { [x: string]: string }, { a: string } & { [x: string]: string }, never>>()
+      .type.toBe<S.Schema<{ a: string } & { [x: string]: string }, { a: string } & { [x: string]: string }>>()
     expect(S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.Record({ key: S.String, value: S.String }))))
       .type.toBe<
       S.Schema<
@@ -1796,9 +1718,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // transform
-  // ---------------------------------------------
   it("transform", () => {
     const transform1 = S.String.pipe(
       S.transform(S.Number, { decode: (s) => s.length, encode: (n) => String(n) })
@@ -1807,12 +1726,12 @@ describe("Schema", () => {
     expect(transform1.to).type.toBe<typeof S.Number>()
     transform1.annotations({})
     expect(S.asSchema(transform1))
-      .type.toBe<S.Schema<number, string, never>>()
+      .type.toBe<S.Schema<number, string>>()
     expect(
       S.asSchema(
         S.String.pipe(S.transform(S.Number, { strict: false, decode: (s) => s, encode: (n) => n }))
       )
-    ).type.toBe<S.Schema<number, string, never>>()
+    ).type.toBe<S.Schema<number, string>>()
     S.String.pipe(S.transform(S.Number, { strict: false, decode: (s) => s, encode: (n) => n }))
     // @ts-expect-error
     S.String.pipe(S.transform(S.Number, (s) => s, (n) => String(n)))
@@ -1845,7 +1764,7 @@ describe("Schema", () => {
     expect(transformOrFail1.to).type.toBe<typeof S.Number>()
     transformOrFail1.annotations({})
     expect(S.asSchema(transformOrFail1))
-      .type.toBe<S.Schema<number, string, never>>()
+      .type.toBe<S.Schema<number, string>>()
     expect(
       S.asSchema(
         S.String.pipe(
@@ -1855,7 +1774,7 @@ describe("Schema", () => {
           )
         )
       )
-    ).type.toBe<S.Schema<number, string, never>>()
+    ).type.toBe<S.Schema<number, string>>()
     S.String.pipe(
       S.transformOrFail(
         S.Number,
@@ -1888,23 +1807,20 @@ describe("Schema", () => {
 
   it("transformLiteral", () => {
     expect(S.asSchema(S.transformLiteral(0, "a")))
-      .type.toBe<S.Schema<"a", 0, never>>()
+      .type.toBe<S.Schema<"a", 0>>()
     S.transformLiteral(0, "a")
   })
 
-  // ---------------------------------------------
-  // transformLiterals
-  // ---------------------------------------------
   it("transformLiterals", () => {
     expect(S.asSchema(S.transformLiterals([0, "a"], [1, "b"])))
-      .type.toBe<S.Schema<"a" | "b", 0 | 1, never>>()
+      .type.toBe<S.Schema<"a" | "b", 0 | 1>>()
     expect(S.transformLiterals([0, "a"], [1, "b"]))
       .type.toBe<S.Union<[S.transformLiteral<"a", 0>, S.transformLiteral<"b", 1>]>>()
     expect(S.transformLiterals([0, "a"]))
       .type.toBe<S.transformLiteral<"a", 0>>()
     const pairs: Array<readonly [0 | 1, "a" | "b"]> = [[0, "a"], [1, "b"]]
     expect(S.transformLiterals(...pairs))
-      .type.toBe<S.Schema<"a" | "b", 0 | 1, never>>()
+      .type.toBe<S.Schema<"a" | "b", 0 | 1>>()
   })
 
   it("BigDecimal", () => {
@@ -1939,10 +1855,10 @@ describe("Schema", () => {
 
   it("Redacted", () => {
     expect(S.asSchema(S.Redacted(S.NumberFromString)))
-      .type.toBe<S.Schema<Redacted.Redacted<number>, string, never>>()
+      .type.toBe<S.Schema<Redacted.Redacted<number>, string>>()
     expect(S.Redacted(S.NumberFromString)).type.toBe<S.Redacted<typeof S.NumberFromString>>()
     expect(S.asSchema(S.RedactedFromSelf(S.NumberFromString)))
-      .type.toBe<S.Schema<Redacted.Redacted<number>, Redacted.Redacted<string>, never>>()
+      .type.toBe<S.Schema<Redacted.Redacted<number>, Redacted.Redacted<string>>>()
     expect(S.RedactedFromSelf(S.NumberFromString)).type.toBe<S.RedactedFromSelf<typeof S.NumberFromString>>()
   })
 
@@ -1953,53 +1869,38 @@ describe("Schema", () => {
       .type.toBe<S.propertySignature<typeof S.String>>()
   })
 
-  // ---------------------------------------------
-  // PropertySignature .annotations({}) method
-  // ---------------------------------------------
   it("PropertySignature.annotations", () => {
     expect(S.optional(S.String).annotations({}))
       .type.toBe<S.optional<typeof S.String>>()
   })
 
-  // ---------------------------------------------
-  // pluck
-  // ---------------------------------------------
   it("pluck", () => {
     // @ts-expect-error
     S.pluck(S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }), "a")
     expect(S.pluck(S.Struct({ a: S.String, b: S.Number }), "a"))
-      .type.toBe<S.Schema<string, { readonly a: string }, never>>()
+      .type.toBe<S.Schema<string, { readonly a: string }>>()
     expect(pipe(S.Struct({ a: S.String, b: S.Number }), S.pluck("a")))
-      .type.toBe<S.Schema<string, { readonly a: string }, never>>()
+      .type.toBe<S.Schema<string, { readonly a: string }>>()
     expect(S.pluck(S.Struct({ a: S.optional(S.String), b: S.Number }), "a"))
-      .type.toBe<S.Schema<string | undefined, { readonly a?: string | undefined }, never>>()
+      .type.toBe<S.Schema<string | undefined, { readonly a?: string | undefined }>>()
     expect(pipe(S.Struct({ a: S.optional(S.String), b: S.Number }), S.pluck("a")))
-      .type.toBe<S.Schema<string | undefined, { readonly a?: string | undefined }, never>>()
+      .type.toBe<S.Schema<string | undefined, { readonly a?: string | undefined }>>()
     expect(S.pluck(S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.Number }), "a"))
-      .type.toBe<S.Schema<string | undefined, { readonly a?: string }, never>>()
+      .type.toBe<S.Schema<string | undefined, { readonly a?: string }>>()
     expect(pipe(S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.Number }), S.pluck("a")))
-      .type.toBe<S.Schema<string | undefined, { readonly a?: string }, never>>()
+      .type.toBe<S.Schema<string | undefined, { readonly a?: string }>>()
   })
 
-  // ---------------------------------------------
-  // Head
-  // ---------------------------------------------
   it("Head", () => {
     expect(S.head(S.Array(S.Number)))
-      .type.toBe<S.SchemaClass<Option.Option<number>, ReadonlyArray<number>, never>>()
+      .type.toBe<S.SchemaClass<Option.Option<number>, ReadonlyArray<number>>>()
   })
 
-  // ---------------------------------------------
-  // HeadOrElse
-  // ---------------------------------------------
   it("HeadOrElse", () => {
     expect(S.headOrElse(S.Array(S.Number)))
-      .type.toBe<S.SchemaClass<number, ReadonlyArray<number>, never>>()
+      .type.toBe<S.SchemaClass<number, ReadonlyArray<number>>>()
   })
 
-  // ---------------------------------------------
-  // TaggedClass
-  // ---------------------------------------------
   it("TaggedClass", () => {
     class MyTaggedClass extends S.TaggedClass<MyTaggedClass>()("MyTaggedClass", {
       a: S.String
@@ -2028,9 +1929,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // TaggedError
-  // ---------------------------------------------
   it("TaggedError", () => {
     class MyTaggedError extends S.TaggedError<MyTaggedError>()("MyTaggedError", {
       a: S.String
@@ -2048,9 +1946,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // TaggedRequest
-  // ---------------------------------------------
   it("TaggedRequest", () => {
     class MyTaggedRequest extends S.TaggedRequest<MyTaggedRequest>()("MyTaggedRequest", {
       failure: S.String,
@@ -2216,56 +2111,47 @@ describe("Schema", () => {
 
   it("OptionFromSelf", () => {
     expect(S.asSchema(S.OptionFromSelf(S.Number)))
-      .type.toBe<S.Schema<Option.Option<number>, Option.Option<number>, never>>()
+      .type.toBe<S.Schema<Option.Option<number>, Option.Option<number>>>()
     expect(S.OptionFromSelf(S.Number))
     expect(S.asSchema(S.OptionFromSelf(S.NumberFromString)))
-      .type.toBe<S.Schema<Option.Option<number>, Option.Option<string>, never>>()
+      .type.toBe<S.Schema<Option.Option<number>, Option.Option<string>>>()
     expect(S.OptionFromSelf(S.NumberFromString))
   })
 
   it("Option", () => {
     expect(S.asSchema(S.Option(S.Number)))
-      .type.toBe<S.Schema<Option.Option<number>, S.OptionEncoded<number>, never>>()
+      .type.toBe<S.Schema<Option.Option<number>, S.OptionEncoded<number>>>()
     expect(S.Option(S.Number))
     expect(S.asSchema(S.Option(S.NumberFromString)))
-      .type.toBe<S.Schema<Option.Option<number>, S.OptionEncoded<string>, never>>()
+      .type.toBe<S.Schema<Option.Option<number>, S.OptionEncoded<string>>>()
     expect(S.Option(S.NumberFromString))
   })
 
   it("OptionFromNullOr", () => {
     expect(S.asSchema(S.OptionFromNullOr(S.Number)))
-      .type.toBe<S.Schema<Option.Option<number>, number | null, never>>()
+      .type.toBe<S.Schema<Option.Option<number>, number | null>>()
     expect(S.OptionFromNullOr(S.Number))
     expect(S.asSchema(S.OptionFromNullOr(S.NumberFromString)))
-      .type.toBe<S.Schema<Option.Option<number>, string | null, never>>()
+      .type.toBe<S.Schema<Option.Option<number>, string | null>>()
     expect(S.OptionFromNullOr(S.NumberFromString))
   })
 
-  // ---------------------------------------------
-  // OptionFromUndefinedOr
-  // ---------------------------------------------
   it("OptionFromUndefinedOr", () => {
     expect(S.asSchema(S.OptionFromUndefinedOr(S.NumberFromString)))
-      .type.toBe<S.Schema<Option.Option<number>, string | undefined, never>>()
+      .type.toBe<S.Schema<Option.Option<number>, string | undefined>>()
     expect(S.OptionFromUndefinedOr(S.NumberFromString))
   })
 
-  // ---------------------------------------------
-  // OptionFromNullishOr
-  // ---------------------------------------------
   it("OptionFromNullishOr", () => {
     expect(S.asSchema(S.OptionFromNullishOr(S.NumberFromString, null)))
-      .type.toBe<S.Schema<Option.Option<number>, string | null | undefined, never>>()
+      .type.toBe<S.Schema<Option.Option<number>, string | null | undefined>>()
     expect(S.OptionFromNullishOr(S.NumberFromString, undefined))
   })
 
-  // ---------------------------------------------
-  // EitherFromSelf
-  // ---------------------------------------------
   it("EitherFromSelf", () => {
     expect(
       S.asSchema(S.EitherFromSelf({ right: S.NumberFromString, left: S.String }))
-    ).type.toBe<S.Schema<Either.Either<number, string>, Either.Either<string, string>, never>>()
+    ).type.toBe<S.Schema<Either.Either<number, string>, Either.Either<string, string>>>()
     expect(S.EitherFromSelf({ right: S.NumberFromString, left: S.String }))
     expect(S.EitherFromSelf({ right: S.String, left: S.Never }))
     expect(S.EitherFromSelf({ right: S.Never, left: S.String }))
@@ -2273,7 +2159,7 @@ describe("Schema", () => {
 
   it("Either", () => {
     expect(S.asSchema(S.Either({ right: S.NumberFromString, left: S.String })))
-      .type.toBe<S.Schema<Either.Either<number, string>, S.EitherEncoded<string, string>, never>>()
+      .type.toBe<S.Schema<Either.Either<number, string>, S.EitherEncoded<string, string>>>()
     expect(S.Either({ right: S.NumberFromString, left: S.String }))
     expect(S.Either({ right: S.String, left: S.Never }))
     expect(S.Either({ right: S.Never, left: S.String }))
@@ -2282,7 +2168,7 @@ describe("Schema", () => {
   it("EitherFromUnion", () => {
     expect(
       S.asSchema(S.EitherFromUnion({ right: S.NumberFromString, left: S.Boolean }))
-    ).type.toBe<S.Schema<Either.Either<number, boolean>, string | boolean, never>>()
+    ).type.toBe<S.Schema<Either.Either<number, boolean>, string | boolean>>()
     expect(S.EitherFromUnion({ right: S.NumberFromString, left: S.Boolean }))
     expect(S.EitherFromUnion({ right: S.String, left: S.Never }))
     expect(S.EitherFromUnion({ right: S.Never, left: S.String }))
@@ -2291,14 +2177,14 @@ describe("Schema", () => {
   it("ReadonlyMapFromSelf", () => {
     expect(
       S.asSchema(S.ReadonlyMapFromSelf({ key: S.NumberFromString, value: S.String }))
-    ).type.toBe<S.Schema<ReadonlyMap<number, string>, ReadonlyMap<string, string>, never>>()
+    ).type.toBe<S.Schema<ReadonlyMap<number, string>, ReadonlyMap<string, string>>>()
     expect(S.ReadonlyMapFromSelf({ key: S.NumberFromString, value: S.String }))
   })
 
   it("MapFromSelf", () => {
     expect(
       S.asSchema(S.MapFromSelf({ key: S.NumberFromString, value: S.String }))
-    ).type.toBe<S.Schema<Map<number, string>, ReadonlyMap<string, string>, never>>()
+    ).type.toBe<S.Schema<Map<number, string>, ReadonlyMap<string, string>>>()
     expect(S.MapFromSelf({ key: S.NumberFromString, value: S.String }))
   })
 
@@ -2306,7 +2192,7 @@ describe("Schema", () => {
     expect(
       S.asSchema(S.ReadonlyMap({ key: S.NumberFromString, value: S.String }))
     ).type.toBe<
-      S.Schema<ReadonlyMap<number, string>, ReadonlyArray<readonly [string, string]>, never>
+      S.Schema<ReadonlyMap<number, string>, ReadonlyArray<readonly [string, string]>>
     >()
     expect(S.ReadonlyMap({ key: S.NumberFromString, value: S.String }))
       .type.toBe<S.ReadonlyMap$<typeof S.NumberFromString, typeof S.String>>()
@@ -2316,7 +2202,7 @@ describe("Schema", () => {
     expect(
       S.asSchema(S.Map({ key: S.NumberFromString, value: S.String }))
     ).type.toBe<
-      S.Schema<Map<number, string>, ReadonlyArray<readonly [string, string]>, never>
+      S.Schema<Map<number, string>, ReadonlyArray<readonly [string, string]>>
     >()
     expect(S.Map({ key: S.NumberFromString, value: S.String }))
       .type.toBe<S.Map$<typeof S.NumberFromString, typeof S.String>>()
@@ -2325,7 +2211,7 @@ describe("Schema", () => {
   it("HashMapFromSelf", () => {
     expect(
       S.asSchema(S.HashMapFromSelf({ key: S.NumberFromString, value: S.String }))
-    ).type.toBe<S.Schema<HashMap.HashMap<number, string>, HashMap.HashMap<string, string>, never>>()
+    ).type.toBe<S.Schema<HashMap.HashMap<number, string>, HashMap.HashMap<string, string>>>()
     expect(S.HashMapFromSelf({ key: S.NumberFromString, value: S.String }))
   })
 
@@ -2333,133 +2219,94 @@ describe("Schema", () => {
     expect(
       S.asSchema(S.HashMap({ key: S.NumberFromString, value: S.String }))
     ).type.toBe<
-      S.Schema<HashMap.HashMap<number, string>, ReadonlyArray<readonly [string, string]>, never>
+      S.Schema<HashMap.HashMap<number, string>, ReadonlyArray<readonly [string, string]>>
     >()
     expect(S.HashMap({ key: S.NumberFromString, value: S.String }))
       .type.toBe<S.HashMap<typeof S.NumberFromString, typeof S.String>>()
   })
 
-  // ---------------------------------------------
-  // ReadonlySetFromSelf
-  // ---------------------------------------------
   it("ReadonlySetFromSelf", () => {
     expect(S.asSchema(S.ReadonlySetFromSelf(S.NumberFromString)))
-      .type.toBe<S.Schema<ReadonlySet<number>, ReadonlySet<string>, never>>()
+      .type.toBe<S.Schema<ReadonlySet<number>, ReadonlySet<string>>>()
     expect(S.ReadonlySetFromSelf(S.NumberFromString))
   })
 
-  // ---------------------------------------------
-  // SetFromSelf
-  // ---------------------------------------------
   it("SetFromSelf", () => {
     expect(S.asSchema(S.SetFromSelf(S.NumberFromString)))
-      .type.toBe<S.Schema<Set<number>, ReadonlySet<string>, never>>()
+      .type.toBe<S.Schema<Set<number>, ReadonlySet<string>>>()
     expect(S.SetFromSelf(S.NumberFromString))
   })
 
-  // ---------------------------------------------
-  // ReadonlySet
-  // ---------------------------------------------
   it("ReadonlySet", () => {
     expect(S.asSchema(S.ReadonlySet(S.NumberFromString)))
-      .type.toBe<S.Schema<ReadonlySet<number>, ReadonlyArray<string>, never>>()
+      .type.toBe<S.Schema<ReadonlySet<number>, ReadonlyArray<string>>>()
     expect(S.ReadonlySet(S.NumberFromString))
       .type.toBe<S.ReadonlySet$<typeof S.NumberFromString>>()
   })
 
-  // ---------------------------------------------
-  // Set
-  // ---------------------------------------------
   it("Set", () => {
     expect(S.asSchema(S.Set(S.NumberFromString)))
-      .type.toBe<S.Schema<Set<number>, ReadonlyArray<string>, never>>()
+      .type.toBe<S.Schema<Set<number>, ReadonlyArray<string>>>()
     expect(S.Set(S.NumberFromString))
       .type.toBe<S.Set$<typeof S.NumberFromString>>()
   })
 
-  // ---------------------------------------------
-  // HashSetFromSelf
-  // ---------------------------------------------
   it("HashSetFromSelf", () => {
     expect(S.asSchema(S.HashSetFromSelf(S.NumberFromString)))
-      .type.toBe<S.Schema<HashSet.HashSet<number>, HashSet.HashSet<string>, never>>()
+      .type.toBe<S.Schema<HashSet.HashSet<number>, HashSet.HashSet<string>>>()
     expect(S.HashSetFromSelf(S.NumberFromString))
   })
 
-  // ---------------------------------------------
-  // HashSet
-  // ---------------------------------------------
   it("HashSet", () => {
     expect(S.asSchema(S.HashSet(S.NumberFromString)))
-      .type.toBe<S.Schema<HashSet.HashSet<number>, ReadonlyArray<string>, never>>()
+      .type.toBe<S.Schema<HashSet.HashSet<number>, ReadonlyArray<string>>>()
     expect(S.HashSet(S.NumberFromString))
       .type.toBe<S.HashSet<typeof S.NumberFromString>>()
   })
 
-  // ---------------------------------------------
-  // ChunkFromSelf
-  // ---------------------------------------------
   it("ChunkFromSelf", () => {
     expect(S.asSchema(S.ChunkFromSelf(S.NumberFromString)))
-      .type.toBe<S.Schema<Chunk.Chunk<number>, Chunk.Chunk<string>, never>>()
+      .type.toBe<S.Schema<Chunk.Chunk<number>, Chunk.Chunk<string>>>()
     expect(S.ChunkFromSelf(S.NumberFromString))
   })
 
-  // ---------------------------------------------
-  // Chunk
-  // ---------------------------------------------
   it("Chunk", () => {
     expect(S.asSchema(S.Chunk(S.NumberFromString)))
-      .type.toBe<S.Schema<Chunk.Chunk<number>, ReadonlyArray<string>, never>>()
+      .type.toBe<S.Schema<Chunk.Chunk<number>, ReadonlyArray<string>>>()
     expect(S.Chunk(S.NumberFromString))
       .type.toBe<S.Chunk<typeof S.NumberFromString>>()
   })
 
-  // ---------------------------------------------
-  // NonEmptyChunkFromSelf
-  // ---------------------------------------------
   it("NonEmptyChunkFromSelf", () => {
     expect(S.asSchema(S.NonEmptyChunkFromSelf(S.NumberFromString)))
-      .type.toBe<S.Schema<Chunk.NonEmptyChunk<number>, Chunk.NonEmptyChunk<string>, never>>()
+      .type.toBe<S.Schema<Chunk.NonEmptyChunk<number>, Chunk.NonEmptyChunk<string>>>()
     expect(S.NonEmptyChunkFromSelf(S.NumberFromString))
   })
 
-  // ---------------------------------------------
-  // NonEmptyChunk
-  // ---------------------------------------------
   it("NonEmptyChunk", () => {
     expect(S.asSchema(S.NonEmptyChunk(S.NumberFromString)))
-      .type.toBe<S.Schema<Chunk.NonEmptyChunk<number>, readonly [string, ...Array<string>], never>>()
+      .type.toBe<S.Schema<Chunk.NonEmptyChunk<number>, readonly [string, ...Array<string>]>>()
     expect(S.NonEmptyChunk(S.NumberFromString))
       .type.toBe<S.NonEmptyChunk<typeof S.NumberFromString>>()
   })
 
-  // ---------------------------------------------
-  // ListFromSelf
-  // ---------------------------------------------
   it("ListFromSelf", () => {
     expect(S.asSchema(S.ListFromSelf(S.NumberFromString)))
-      .type.toBe<S.Schema<List.List<number>, List.List<string>, never>>()
+      .type.toBe<S.Schema<List.List<number>, List.List<string>>>()
     expect(S.ListFromSelf(S.NumberFromString))
   })
 
-  // ---------------------------------------------
-  // List
-  // ---------------------------------------------
   it("List", () => {
     expect(S.asSchema(S.List(S.NumberFromString)))
-      .type.toBe<S.Schema<List.List<number>, ReadonlyArray<string>, never>>()
+      .type.toBe<S.Schema<List.List<number>, ReadonlyArray<string>>>()
     expect(S.List(S.NumberFromString))
       .type.toBe<S.List<typeof S.NumberFromString>>()
   })
 
-  // ---------------------------------------------
-  // ExitFromSelf
-  // ---------------------------------------------
   it("ExitFromSelf", () => {
     expect(
       S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String, defect: S.Unknown }))
-    ).type.toBe<S.Schema<Exit.Exit<number, string>, Exit.Exit<number, string>, never>>()
+    ).type.toBe<S.Schema<Exit.Exit<number, string>, Exit.Exit<number, string>>>()
     expect(S.ExitFromSelf({ success: S.Number, failure: S.String, defect: S.Unknown }))
     expect(
       S.asSchema(
@@ -2480,16 +2327,13 @@ describe("Schema", () => {
         })
       )
     ).type.toBe<
-      S.Schema<{ readonly a: Exit.Exit<number, string> }, { readonly a: Exit.Exit<number, string> }, never>
+      S.Schema<{ readonly a: Exit.Exit<number, string> }, { readonly a: Exit.Exit<number, string> }>
     >()
   })
 
-  // ---------------------------------------------
-  // Exit
-  // ---------------------------------------------
   it("Exit", () => {
     expect(S.asSchema(S.Exit({ success: S.Number, failure: S.String, defect: S.Defect })))
-      .type.toBe<S.Schema<Exit.Exit<number, string>, S.ExitEncoded<number, string, unknown>, never>>()
+      .type.toBe<S.Schema<Exit.Exit<number, string>, S.ExitEncoded<number, string, unknown>>>()
     expect(S.Exit({ success: S.Number, failure: S.String, defect: S.Defect }))
     expect(
       S.asSchema(
@@ -2506,16 +2350,13 @@ describe("Schema", () => {
         })
       )
     ).type.toBe<
-      S.Schema<{ readonly a: Exit.Exit<number, string> }, { readonly a: S.ExitEncoded<number, string, unknown> }, never>
+      S.Schema<{ readonly a: Exit.Exit<number, string> }, { readonly a: S.ExitEncoded<number, string, unknown> }>
     >()
   })
 
-  // ---------------------------------------------
-  // CauseFromSelf
-  // ---------------------------------------------
   it("CauseFromSelf", () => {
     expect(S.asSchema(S.CauseFromSelf({ error: S.String, defect: S.Unknown })))
-      .type.toBe<S.Schema<Cause.Cause<string>, Cause.Cause<string>, never>>()
+      .type.toBe<S.Schema<Cause.Cause<string>, Cause.Cause<string>>>()
     expect(S.CauseFromSelf({ error: S.String, defect: S.Unknown }))
     expect(
       S.asSchema(S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
@@ -2525,15 +2366,12 @@ describe("Schema", () => {
       S.asSchema(
         S.Struct({ a: S.CauseFromSelf({ error: S.String, defect: S.Unknown }) })
       )
-    ).type.toBe<S.Schema<{ readonly a: Cause.Cause<string> }, { readonly a: Cause.Cause<string> }, never>>()
+    ).type.toBe<S.Schema<{ readonly a: Cause.Cause<string> }, { readonly a: Cause.Cause<string> }>>()
   })
 
-  // ---------------------------------------------
-  // Cause
-  // ---------------------------------------------
   it("Cause", () => {
     expect(S.asSchema(S.Cause({ error: S.String, defect: S.Defect })))
-      .type.toBe<S.Schema<Cause.Cause<string>, S.CauseEncoded<string, unknown>, never>>()
+      .type.toBe<S.Schema<Cause.Cause<string>, S.CauseEncoded<string, unknown>>>()
     expect(S.Cause({ error: S.String, defect: S.Defect }))
     expect(
       S.asSchema(S.Cause({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
@@ -2544,18 +2382,15 @@ describe("Schema", () => {
         S.Struct({ a: S.Cause({ error: S.String, defect: S.Defect }) })
       )
     ).type.toBe<
-      S.Schema<{ readonly a: Cause.Cause<string> }, { readonly a: S.CauseEncoded<string, unknown> }, never>
+      S.Schema<{ readonly a: Cause.Cause<string> }, { readonly a: S.CauseEncoded<string, unknown> }>
     >()
   })
 
-  // ---------------------------------------------
-  // TypeLiteral
-  // ---------------------------------------------
   it("TypeLiteral", () => {
     expect(S.asSchema(hole<S.TypeLiteral<{ a: typeof S.String }, []>>()))
-      .type.toBe<S.Schema<{ readonly a: string }, { readonly a: string }, never>>()
+      .type.toBe<S.Schema<{ readonly a: string }, { readonly a: string }>>()
     expect(S.asSchema(hole<S.TypeLiteral<{}, [{ key: typeof S.String; value: typeof S.Unknown }]>>()))
-      .type.toBe<S.Schema<{ readonly [x: string]: unknown }, { readonly [x: string]: unknown }, never>>()
+      .type.toBe<S.Schema<{ readonly [x: string]: unknown }, { readonly [x: string]: unknown }>>()
     expect(
       S.asSchema(
         hole<
@@ -2655,9 +2490,9 @@ describe("Schema", () => {
     expect(
       hole<
         S.Struct.Constructor<{
-          a: S.PropertySignature<":", string, never, ":", string, true, never>
+          a: S.PropertySignature<":", string, never, ":", string, true>
           b: typeof S.Number
-          c: S.PropertySignature<":", boolean, never, ":", boolean, true, never>
+          c: S.PropertySignature<":", boolean, never, ":", boolean, true>
         }>
       >()
     ).type.toBe<{ readonly a?: string } & { readonly b: number } & { readonly c?: boolean }>()
@@ -2667,9 +2502,9 @@ describe("Schema", () => {
     // @ts-expect-error
     S.propertySignature(S.String).pipe(S.withConstructorDefault(() => 1))
     expect(S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "a")))
-      .type.toBe<S.PropertySignature<":", string, never, ":", string, true, never>>()
+      .type.toBe<S.PropertySignature<":", string, never, ":", string, true>>()
     expect(S.withConstructorDefault(S.propertySignature(S.String), () => "a"))
-      .type.toBe<S.PropertySignature<":", string, never, ":", string, true, never>>()
+      .type.toBe<S.PropertySignature<":", string, never, ":", string, true>>()
   })
 
   it("Struct.make", () => {
@@ -2703,9 +2538,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // withDecodingDefault
-  // ---------------------------------------------
   it("withDecodingDefault", () => {
     S.Struct({
       a: S.optional(S.String).pipe(
@@ -2723,15 +2555,12 @@ describe("Schema", () => {
     expect(
       S.asSchema(S.Struct({ a: S.optional(S.String).pipe(S.withDecodingDefault(() => "")) }))
     ).type.toBe<
-      S.Schema<{ readonly a: string }, { readonly a?: string | undefined }, never>
+      S.Schema<{ readonly a: string }, { readonly a?: string | undefined }>
     >()
     expect(S.Struct({ a: S.optional(S.String).pipe(S.withDecodingDefault(() => "")) }))
-      .type.toBe<S.Struct<{ a: S.PropertySignature<":", string, never, "?:", string | undefined, false, never> }>>()
+      .type.toBe<S.Struct<{ a: S.PropertySignature<":", string, never, "?:", string | undefined, false> }>>()
   })
 
-  // ---------------------------------------------
-  // withDefaults
-  // ---------------------------------------------
   it("withDefaults", () => {
     S.Struct({
       a: S.optional(S.String).pipe(
@@ -2748,19 +2577,16 @@ describe("Schema", () => {
         S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: () => "", constructor: () => "" })) })
       )
     ).type.toBe<
-      S.Schema<{ readonly a: string }, { readonly a?: string | undefined }, never>
+      S.Schema<{ readonly a: string }, { readonly a?: string | undefined }>
     >()
     expect(
       S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: () => "", constructor: () => "" })) })
-    ).type.toBe<S.Struct<{ a: S.PropertySignature<":", string, never, "?:", string | undefined, true, never> }>>()
+    ).type.toBe<S.Struct<{ a: S.PropertySignature<":", string, never, "?:", string | undefined, true> }>>()
     const make4 =
       S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: () => "", constructor: () => "" })) }).make
     expect(hole<Parameters<typeof make4>[0]>()).type.toBe<void | { readonly a?: string } | undefined>()
   })
 
-  // ---------------------------------------------
-  // Schema.AsSchema
-  // ---------------------------------------------
   it("Schema.AsSchema", () => {
     const MyStruct = <X extends S.Schema.All>(x: X) => S.Struct({ x })
     type MyStructReturnType<X extends S.Schema.All> = S.Schema.Type<ReturnType<typeof MyStruct<X>>>
@@ -2785,9 +2611,6 @@ describe("Schema", () => {
     }
   })
 
-  // ---------------------------------------------
-  // Schema.is
-  // ---------------------------------------------
   it("Schema.is", () => {
     expect(hole<Array<string | number>>().filter(S.is(S.String)))
       .type.toBe<Array<string>>()
@@ -2795,9 +2618,6 @@ describe("Schema", () => {
       .type.toBe<string | undefined>()
   })
 
-  // ---------------------------------------------
-  // TaggedStruct
-  // ---------------------------------------------
   it("TaggedStruct", () => {
     expect(S.tag("A")).type.toBe<S.tag<"A">>()
     const MyTaggedStruct = S.TaggedStruct("Product", {
@@ -2826,9 +2646,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // optionalToOptional
-  // ---------------------------------------------
   it("optionalToOptional", () => {
     expect(
       S.asSchema(S.Struct({ a: S.optionalToOptional(aContext, S.String, { decode: (o) => o, encode: (o) => o }) }))
@@ -2838,9 +2655,6 @@ describe("Schema", () => {
     ).type.toBe<S.Struct<{ a: S.PropertySignature<"?:", string, never, "?:", string, false, "a"> }>>()
   })
 
-  // ---------------------------------------------
-  // optionalToRequired
-  // ---------------------------------------------
   it("optionalToRequired", () => {
     expect(
       S.asSchema(
@@ -2856,9 +2670,6 @@ describe("Schema", () => {
     ).type.toBe<S.Struct<{ a: S.PropertySignature<":", string, never, "?:", string, false, "a"> }>>()
   })
 
-  // ---------------------------------------------
-  // requiredToOptional
-  // ---------------------------------------------
   it("requiredToOptional", () => {
     expect(
       S.asSchema(
@@ -2876,13 +2687,13 @@ describe("Schema", () => {
 
   it("minItems", () => {
     expect(S.asSchema(S.Array(S.String).pipe(S.minItems(2))))
-      .type.toBe<S.Schema<ReadonlyArray<string>, ReadonlyArray<string>, never>>()
+      .type.toBe<S.Schema<ReadonlyArray<string>, ReadonlyArray<string>>>()
     expect(S.Array(S.String).pipe(S.minItems(2)))
       .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
     expect(S.Array(S.String).pipe(S.minItems(2)).from)
       .type.toBe<S.Schema<ReadonlyArray<string>>>()
     expect(S.asSchema(S.Array(S.String).pipe(S.minItems(1), S.maxItems(2))))
-      .type.toBe<S.Schema<ReadonlyArray<string>, ReadonlyArray<string>, never>>()
+      .type.toBe<S.Schema<ReadonlyArray<string>, ReadonlyArray<string>>>()
     expect(S.Array(S.String).pipe(S.minItems(1), S.maxItems(2)))
       .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
   })
@@ -2920,9 +2731,6 @@ describe("Schema", () => {
     >()
   })
 
-  // ---------------------------------------------
-  // itemsCount (Array)
-  // ---------------------------------------------
   it("itemsCount Array", () => {
     expect(S.asSchema(S.Array(S.String).pipe(S.itemsCount(2))))
       .type.toBe<S.Schema<ReadonlyArray<string>>>()
@@ -2943,51 +2751,51 @@ describe("Schema", () => {
 
   it("TemplateLiteralParser", () => {
     expect(S.asSchema(S.TemplateLiteralParser("a")))
-      .type.toBe<S.Schema<readonly ["a"], "a", never>>()
+      .type.toBe<S.Schema<readonly ["a"], "a">>()
     expect(S.asSchema(S.TemplateLiteralParser(S.Literal("a"))))
-      .type.toBe<S.Schema<readonly ["a"], "a", never>>()
+      .type.toBe<S.Schema<readonly ["a"], "a">>()
     expect(S.asSchema(S.TemplateLiteralParser(1)))
-      .type.toBe<S.Schema<readonly [1], "1", never>>()
+      .type.toBe<S.Schema<readonly [1], "1">>()
     expect(S.asSchema(S.TemplateLiteralParser(S.Literal(1))))
-      .type.toBe<S.Schema<readonly [1], "1", never>>()
+      .type.toBe<S.Schema<readonly [1], "1">>()
     expect(S.asSchema(S.TemplateLiteralParser(S.String)))
-      .type.toBe<S.Schema<readonly [string], string, never>>()
+      .type.toBe<S.Schema<readonly [string], string>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.Number)))
-      .type.toBe<S.Schema<readonly [number], `${number}`, never>>()
+      .type.toBe<S.Schema<readonly [number], `${number}`>>()
     expect(S.asSchema(S.TemplateLiteralParser("a", "b")))
-      .type.toBe<S.Schema<readonly ["a", "b"], "ab", never>>()
+      .type.toBe<S.Schema<readonly ["a", "b"], "ab">>()
     expect(S.asSchema(S.TemplateLiteralParser(S.Literal("a"), S.Literal("b"))))
-      .type.toBe<S.Schema<readonly ["a", "b"], "ab", never>>()
+      .type.toBe<S.Schema<readonly ["a", "b"], "ab">>()
     expect(S.asSchema(S.TemplateLiteralParser("a", S.String)))
-      .type.toBe<S.Schema<readonly ["a", string], `a${string}`, never>>()
+      .type.toBe<S.Schema<readonly ["a", string], `a${string}`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.Literal("a"), S.String)))
-      .type.toBe<S.Schema<readonly ["a", string], `a${string}`, never>>()
+      .type.toBe<S.Schema<readonly ["a", string], `a${string}`>>()
     expect(S.asSchema(S.TemplateLiteralParser("a", S.Number)))
-      .type.toBe<S.Schema<readonly ["a", number], `a${number}`, never>>()
+      .type.toBe<S.Schema<readonly ["a", number], `a${number}`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.Literal("a"), S.Number)))
-      .type.toBe<S.Schema<readonly ["a", number], `a${number}`, never>>()
+      .type.toBe<S.Schema<readonly ["a", number], `a${number}`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.String, "a")))
-      .type.toBe<S.Schema<readonly [string, "a"], `${string}a`, never>>()
+      .type.toBe<S.Schema<readonly [string, "a"], `${string}a`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.String, S.Literal("a"))))
-      .type.toBe<S.Schema<readonly [string, "a"], `${string}a`, never>>()
+      .type.toBe<S.Schema<readonly [string, "a"], `${string}a`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.Number, "a")))
-      .type.toBe<S.Schema<readonly [number, "a"], `${number}a`, never>>()
+      .type.toBe<S.Schema<readonly [number, "a"], `${number}a`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.Number, S.Literal("a"))))
-      .type.toBe<S.Schema<readonly [number, "a"], `${number}a`, never>>()
+      .type.toBe<S.Schema<readonly [number, "a"], `${number}a`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.String, 0)))
-      .type.toBe<S.Schema<readonly [string, 0], `${string}0`, never>>()
+      .type.toBe<S.Schema<readonly [string, 0], `${string}0`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.String, true)))
-      .type.toBe<S.Schema<readonly [string, true], `${string}true`, never>>()
+      .type.toBe<S.Schema<readonly [string, true], `${string}true`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.String, null)))
-      .type.toBe<S.Schema<readonly [string, null], `${string}null`, never>>()
+      .type.toBe<S.Schema<readonly [string, null], `${string}null`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.String, 1n)))
-      .type.toBe<S.Schema<readonly [string, 1n], `${string}1`, never>>()
+      .type.toBe<S.Schema<readonly [string, 1n], `${string}1`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.String, S.Literal("a", 0))))
-      .type.toBe<S.Schema<readonly [string, 0 | "a"], `${string}a` | `${string}0`, never>>()
+      .type.toBe<S.Schema<readonly [string, 0 | "a"], `${string}a` | `${string}0`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.String, S.Literal("/"), S.Number)))
-      .type.toBe<S.Schema<readonly [string, "/", number], `${string}/${number}`, never>>()
+      .type.toBe<S.Schema<readonly [string, "/", number], `${string}/${number}`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.String, "/", S.Number)))
-      .type.toBe<S.Schema<readonly [string, "/", number], `${string}/${number}`, never>>()
+      .type.toBe<S.Schema<readonly [string, "/", number], `${string}/${number}`>>()
     const EmailLocaleIDs = S.Literal("welcome_email", "email_heading")
     const FooterLocaleIDs = S.Literal("footer_title", "footer_sendoff")
     expect(S.asSchema(S.TemplateLiteralParser(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.Literal("_id"))))
@@ -3007,55 +2815,43 @@ describe("Schema", () => {
       >
     >()
     expect(S.asSchema(S.TemplateLiteralParser(S.String.pipe(S.brand("MyBrand")))))
-      .type.toBe<S.Schema<readonly [string & Brand.Brand<"MyBrand">], string, never>>()
+      .type.toBe<S.Schema<readonly [string & Brand.Brand<"MyBrand">], string>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.Number.pipe(S.brand("MyBrand")))))
-      .type.toBe<S.Schema<readonly [number & Brand.Brand<"MyBrand">], `${number}`, never>>()
+      .type.toBe<S.Schema<readonly [number & Brand.Brand<"MyBrand">], `${number}`>>()
     expect(S.asSchema(S.TemplateLiteralParser("a", S.String.pipe(S.brand("MyBrand")))))
-      .type.toBe<S.Schema<readonly ["a", string & Brand.Brand<"MyBrand">], `a${string}`, never>>()
+      .type.toBe<S.Schema<readonly ["a", string & Brand.Brand<"MyBrand">], `a${string}`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.Literal("a"), S.String.pipe(S.brand("MyBrand")))))
-      .type.toBe<S.Schema<readonly ["a", string & Brand.Brand<"MyBrand">], `a${string}`, never>>()
+      .type.toBe<S.Schema<readonly ["a", string & Brand.Brand<"MyBrand">], `a${string}`>>()
     expect(
       S.asSchema(
         S.TemplateLiteralParser(S.Literal("a").pipe(S.brand("L")), S.String.pipe(S.brand("MyBrand")))
       )
     ).type.toBe<
-      S.Schema<readonly [("a" & Brand.Brand<"L">), string & Brand.Brand<"MyBrand">], `a${string}`, never>
+      S.Schema<readonly [("a" & Brand.Brand<"L">), string & Brand.Brand<"MyBrand">], `a${string}`>
     >()
     expect(S.asSchema(S.TemplateLiteralParser("a", S.Number.pipe(S.brand("MyBrand")))))
-      .type.toBe<S.Schema<readonly ["a", number & Brand.Brand<"MyBrand">], `a${number}`, never>>()
+      .type.toBe<S.Schema<readonly ["a", number & Brand.Brand<"MyBrand">], `a${number}`>>()
     expect(S.asSchema(S.TemplateLiteralParser(S.Literal("a"), S.Number.pipe(S.brand("MyBrand")))))
-      .type.toBe<S.Schema<readonly ["a", number & Brand.Brand<"MyBrand">], `a${number}`, never>>()
+      .type.toBe<S.Schema<readonly ["a", number & Brand.Brand<"MyBrand">], `a${number}`>>()
     expect(S.asSchema(S.TemplateLiteralParser("a", S.Union(S.Number, S.String))))
       .type.toBe<S.Schema<readonly ["a", string | number], `a${string}` | `a${number}`>>()
   })
 
-  // ---------------------------------------------
-  // UndefinedOr
-  // ---------------------------------------------
   it("UndefinedOr", () => {
     expect(S.UndefinedOr(S.Never))
       .type.toBe<S.UndefinedOr<typeof S.Never>>()
   })
 
-  // ---------------------------------------------
-  // NullOr
-  // ---------------------------------------------
   it("NullOr", () => {
     expect(S.NullOr(S.Never))
       .type.toBe<S.NullOr<typeof S.Never>>()
   })
 
-  // ---------------------------------------------
-  // NullishOr
-  // ---------------------------------------------
   it("NullishOr", () => {
     expect(S.NullishOr(S.Never))
       .type.toBe<S.NullishOr<typeof S.Never>>()
   })
 
-  // ---------------------------------------------
-  // Config
-  // ---------------------------------------------
   it("Config", () => {
     expect(S.Config("A", S.String))
       .type.toBe<Config.Config<string>>()
@@ -3063,6 +2859,8 @@ describe("Schema", () => {
       .type.toBe<Config.Config<boolean>>()
     expect(S.Config("A", S.TemplateLiteral(S.Literal("a"), S.String)))
       .type.toBe<Config.Config<`a${string}`>>()
+
+    // passed schemas must be encodable to string
     // @ts-expect-error
     S.Config("A", S.Boolean)
   })

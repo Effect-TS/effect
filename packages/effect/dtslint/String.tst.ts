@@ -28,15 +28,13 @@ describe("String", () => {
   })
 
   it("trim", () => {
-    expect(Str.trim("   foo   "))
-      .type.toBe("foo")
+    expect(Str.trim("   foo   ")).type.toBe("foo")
     expect(
       Str.trim(`
   \t     foo
   \r\n
 `)
-    )
-      .type.toBe("foo")
+    ).type.toBe("foo")
   })
 
   it("trimEnd", () => {
@@ -44,16 +42,14 @@ describe("String", () => {
       Str.trimEnd(` foo
   \r\n
 `)
-    )
-      .type.toBe(" foo")
+    ).type.toBe(" foo")
   })
 
   it("trimStart", () => {
     expect(
       Str.trimStart(`
    \r\n\t   foo `)
-    )
-      .type.toBe("foo ")
+    ).type.toBe("foo ")
   })
 
   describe("String type helpers", () => {

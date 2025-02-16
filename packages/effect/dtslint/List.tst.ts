@@ -99,21 +99,15 @@ describe("List", () => {
   })
 
   it("append", () => {
-    expect(List.append(numberOrString, true))
-      .type.toBe<List.Cons<string | number | boolean>>()
-    expect(pipe(numberOrString, List.append(true)))
-      .type.toBe<List.Cons<string | number | boolean>>()
-    expect(List.append(true)(numberOrString))
-      .type.toBe<List.Cons<string | number | boolean>>()
+    expect(List.append(numberOrString, true)).type.toBe<List.Cons<string | number | boolean>>()
+    expect(pipe(numberOrString, List.append(true))).type.toBe<List.Cons<string | number | boolean>>()
+    expect(List.append(true)(numberOrString)).type.toBe<List.Cons<string | number | boolean>>()
   })
 
   it("prepend", () => {
-    expect(List.prepend(numberOrString, true))
-      .type.toBe<List.Cons<string | number | boolean>>()
-    expect(pipe(numberOrString, List.prepend(true)))
-      .type.toBe<List.Cons<string | number | boolean>>()
-    expect(List.prepend(true)(numberOrString))
-      .type.toBe<List.Cons<string | number | boolean>>()
+    expect(List.prepend(numberOrString, true)).type.toBe<List.Cons<string | number | boolean>>()
+    expect(pipe(numberOrString, List.prepend(true))).type.toBe<List.Cons<string | number | boolean>>()
+    expect(List.prepend(true)(numberOrString)).type.toBe<List.Cons<string | number | boolean>>()
   })
 
   it("map", () => {
@@ -137,18 +131,12 @@ describe("List", () => {
       })
     )).type.toBe<List.List<number | string>>()
 
-    expect(List.filter(number, predicateNumberOrString))
-      .type.toBe<List.List<number>>()
-
-    expect(pipe(number, List.filter(predicateNumberOrString)))
-      .type.toBe<List.List<number>>()
+    expect(List.filter(number, predicateNumberOrString)).type.toBe<List.List<number>>()
+    expect(pipe(number, List.filter(predicateNumberOrString))).type.toBe<List.List<number>>()
 
     // Refinement
-    expect(List.filter(numberOrString, Predicate.isNumber))
-      .type.toBe<List.List<number>>()
-
-    expect(pipe(numberOrString, List.filter(Predicate.isNumber)))
-      .type.toBe<List.List<number>>()
+    expect(List.filter(numberOrString, Predicate.isNumber)).type.toBe<List.List<number>>()
+    expect(pipe(numberOrString, List.filter(Predicate.isNumber))).type.toBe<List.List<number>>()
   })
 
   it("findFirst", () => {
@@ -156,29 +144,21 @@ describe("List", () => {
     expect(List.findFirst(numberOrString, (value) => {
       expect(value).type.toBe<string | number>()
       return true
-    }))
-      .type.toBe<Option.Option<string | number>>()
+    })).type.toBe<Option.Option<string | number>>()
     expect(pipe(
       numberOrString,
       List.findFirst((value) => {
         expect(value).type.toBe<string | number>()
         return true
       })
-    ))
-      .type.toBe<Option.Option<string | number>>()
+    )).type.toBe<Option.Option<string | number>>()
 
-    expect(List.findFirst(number, predicateNumberOrString))
-      .type.toBe<Option.Option<number>>()
-
-    expect(pipe(number, List.findFirst(predicateNumberOrString)))
-      .type.toBe<Option.Option<number>>()
+    expect(List.findFirst(number, predicateNumberOrString)).type.toBe<Option.Option<number>>()
+    expect(pipe(number, List.findFirst(predicateNumberOrString))).type.toBe<Option.Option<number>>()
 
     // Refinement
-    expect(List.findFirst(numberOrString, Predicate.isNumber))
-      .type.toBe<Option.Option<number>>()
-
-    expect(pipe(numberOrString, List.findFirst(Predicate.isNumber)))
-      .type.toBe<Option.Option<number>>()
+    expect(List.findFirst(numberOrString, Predicate.isNumber)).type.toBe<Option.Option<number>>()
+    expect(pipe(numberOrString, List.findFirst(Predicate.isNumber))).type.toBe<Option.Option<number>>()
   })
 
   it("appendAll", () => {

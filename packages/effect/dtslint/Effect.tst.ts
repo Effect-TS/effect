@@ -424,7 +424,7 @@ describe("Effect", () => {
           }
         )
       )
-    ).type.toBe<Effect.Effect<"a", "a", never>>()
+    ).type.toBe<Effect.Effect<"a", "a">>()
     expect(
       Effect.succeed("a" as const).pipe(
         Effect.filterOrFail(
@@ -435,7 +435,7 @@ describe("Effect", () => {
           tacitStringError
         )
       )
-    ).type.toBe<Effect.Effect<"a", "a", never>>()
+    ).type.toBe<Effect.Effect<"a", "a">>()
   })
 
   it("filterOrDie", () => {
@@ -449,7 +449,7 @@ describe("Effect", () => {
           }
         )
       )
-    ).type.toBe<Effect.Effect<"a", never, never>>()
+    ).type.toBe<Effect.Effect<"a">>()
   })
 
   it("filterOrDieMessage", () => {
@@ -460,7 +460,7 @@ describe("Effect", () => {
           "fail"
         )
       )
-    ).type.toBe<Effect.Effect<"a", never, never>>()
+    ).type.toBe<Effect.Effect<"a">>()
   })
 
   it("filterOrElse", () => {
@@ -474,7 +474,7 @@ describe("Effect", () => {
           }
         )
       )
-    ).type.toBe<Effect.Effect<"a", "a", never>>()
+    ).type.toBe<Effect.Effect<"a", "a">>()
     expect(
       Effect.succeed("a" as const).pipe(
         Effect.filterOrElse(
@@ -485,24 +485,24 @@ describe("Effect", () => {
           tacitStringErrorEffect
         )
       )
-    ).type.toBe<Effect.Effect<"a", "a", never>>()
+    ).type.toBe<Effect.Effect<"a", "a">>()
   })
 
   it("tap", () => {
     expect(
       Effect.succeed("a" as const).pipe(Effect.tap(tacitString))
-    ).type.toBe<Effect.Effect<"a", never, never>>()
+    ).type.toBe<Effect.Effect<"a">>()
 
     expect(
       Effect.succeed("a" as const).pipe(Effect.tap(tacitString, { onlyEffect: true }))
-    ).type.toBe<Effect.Effect<"a", never, never>>()
+    ).type.toBe<Effect.Effect<"a">>()
 
     // @ts-expect-error
     Effect.succeed("a" as const).pipe(Effect.tap(tacitStringError, { onlyEffect: true }))
 
     expect(
       Effect.succeed("a" as const).pipe(Effect.tap(tacitString("a"), { onlyEffect: true }))
-    ).type.toBe<Effect.Effect<"a", never, never>>()
+    ).type.toBe<Effect.Effect<"a">>()
 
     // @ts-expect-error
     Effect.succeed("a" as const).pipe(Effect.tap("a", { onlyEffect: true }))
@@ -511,19 +511,19 @@ describe("Effect", () => {
   it("tapError", () => {
     expect(
       Effect.fail("a" as const).pipe(Effect.tapError(tacitString))
-    ).type.toBe<Effect.Effect<never, "a", never>>()
+    ).type.toBe<Effect.Effect<never, "a">>()
   })
 
   it("tapErrorCause", () => {
     expect(
       Effect.fail("a" as const).pipe(Effect.tapErrorCause(tacitStringCause))
-    ).type.toBe<Effect.Effect<never, "a", never>>()
+    ).type.toBe<Effect.Effect<never, "a">>()
   })
 
   it("tapDefect", () => {
     expect(
       Effect.fail("a" as const).pipe(Effect.tapDefect(tacitStringCause))
-    ).type.toBe<Effect.Effect<never, "a", never>>()
+    ).type.toBe<Effect.Effect<never, "a">>()
   })
 
   it("tapBoth", () => {
@@ -533,18 +533,18 @@ describe("Effect", () => {
         onFailure: tacitString,
         onSuccess: tacitString
       })
-    )).type.toBe<Effect.Effect<"a", "a", never>>()
+    )).type.toBe<Effect.Effect<"a", "a">>()
   })
 
   it("zip", () => {
     expect(Effect.zip(Effect.succeed(1), Effect.succeed("a"))).type.toBe<
-      Effect.Effect<[number, string], never, never>
+      Effect.Effect<[number, string]>
     >()
   })
 
   it("validate", () => {
     expect(Effect.validate(Effect.succeed(1), Effect.succeed("a"))).type.toBe<
-      Effect.Effect<[number, string], never, never>
+      Effect.Effect<[number, string]>
     >()
   })
 
@@ -556,7 +556,7 @@ describe("Effect", () => {
             resolve("Async operation completed successfully!")
           }, 2000)
         })
-    )).type.toBe<Effect.Effect<string, never, never>>()
+    )).type.toBe<Effect.Effect<string>>()
   })
 
   it("tapErrorTag", () => {
@@ -573,7 +573,7 @@ describe("Effect", () => {
         expect(x).type.toBe<TestError1>()
         return Effect.succeed(1)
       })
-    )).type.toBe<Effect.Effect<never, TestError1, never>>()
+    )).type.toBe<Effect.Effect<never, TestError1>>()
 
     expect(pipe(
       Effect.fail(new TestError1()),
@@ -581,7 +581,7 @@ describe("Effect", () => {
         expect(x).type.toBe<TestError1>()
         return Effect.fail(new Error(""))
       })
-    )).type.toBe<Effect.Effect<never, Error | TestError1, never>>()
+    )).type.toBe<Effect.Effect<never, Error | TestError1>>()
 
     expect(pipe(
       Effect.fail<TestError1 | Error>(new TestError1()),
@@ -589,13 +589,13 @@ describe("Effect", () => {
         expect(x).type.toBe<TestError1>()
         return Effect.succeed(1)
       })
-    )).type.toBe<Effect.Effect<never, Error | TestError1, never>>()
+    )).type.toBe<Effect.Effect<never, Error | TestError1>>()
 
     expect(
       hole<Effect.Effect<number, TestError1 | TestError2>>().pipe(
         Effect.tapErrorTag("TestError1", Effect.log)
       )
-    ).type.toBe<Effect.Effect<number, TestError1 | TestError2, never>>()
+    ).type.toBe<Effect.Effect<number, TestError1 | TestError2>>()
   })
 
   it("catchTag", () => {
@@ -618,7 +618,7 @@ describe("Effect", () => {
         expect(e).type.toBe<TestError1>()
         return Effect.succeed(1)
       }
-    )).type.toBe<Effect.Effect<number, Error | TestError2, never>>()
+    )).type.toBe<Effect.Effect<number, Error | TestError2>>()
 
     expect(
       Effect.catchTag(hole<Effect.Effect<number, TestError1>>(), "TestError1", (e) => {
@@ -626,14 +626,14 @@ describe("Effect", () => {
         return Effect.succeed(1)
       })
     ).type.toBe<
-      Effect.Effect<number, never, never>
+      Effect.Effect<number>
     >()
 
     expect(
       hole<Effect.Effect<number, TestError1 | TestError2>>().pipe(
         Effect.catchTag("TestError1", Effect.log)
       )
-    ).type.toBe<Effect.Effect<number | void, TestError2, never>>()
+    ).type.toBe<Effect.Effect<number | void, TestError2>>()
 
     expect(pipe(
       hole<Effect.Effect<number, TestError1>>(),
@@ -641,10 +641,10 @@ describe("Effect", () => {
         expect(e).type.toBe<TestError1>()
         return Effect.succeed(1)
       })
-    )).type.toBe<Effect.Effect<number, never, never>>()
+    )).type.toBe<Effect.Effect<number>>()
 
     expect(Effect.catchTag(hole<Effect.Effect<number, TestError1 | TestError2>>(), "TestError1", Effect.succeed)).type
-      .toBe<Effect.Effect<number | TestError1, TestError2, never>>()
+      .toBe<Effect.Effect<number | TestError1, TestError2>>()
 
     expect(pipe(
       hole<Effect.Effect<number, TestError1 | TestError2>>(),
@@ -652,7 +652,7 @@ describe("Effect", () => {
         expect(e).type.toBe<TestError1>()
         return Effect.succeed(1)
       })
-    )).type.toBe<Effect.Effect<number, TestError2, never>>()
+    )).type.toBe<Effect.Effect<number, TestError2>>()
 
     expect(
       Effect.catchTag(
@@ -663,7 +663,7 @@ describe("Effect", () => {
           return Effect.succeed(1)
         }
       )
-    ).type.toBe<Effect.Effect<number, Error, never>>()
+    ).type.toBe<Effect.Effect<number, Error>>()
 
     expect(pipe(
       hole<Effect.Effect<number, TestError1 | Error>>(),
@@ -671,7 +671,7 @@ describe("Effect", () => {
         expect(e).type.toBe<TestError1>()
         return Effect.succeed(1)
       })
-    )).type.toBe<Effect.Effect<number, Error, never>>()
+    )).type.toBe<Effect.Effect<number, Error>>()
   })
 
   it("catchTags", () => {
@@ -683,7 +683,7 @@ describe("Effect", () => {
           return Effect.succeed(1)
         }
       })
-    )).type.toBe<Effect.Effect<number, Error, never>>()
+    )).type.toBe<Effect.Effect<number, Error>>()
 
     pipe(
       Effect.fail(new TestError1()),
@@ -720,11 +720,11 @@ describe("Effect", () => {
       Effect.catchTags({
         TestError1: () => Effect.succeed(1)
       })
-    )).type.toBe<Effect.Effect<number, unknown, never>>()
+    )).type.toBe<Effect.Effect<number, unknown>>()
 
     expect(Effect.catchTags(Effect.fail(new TestError1() as unknown), {
       TestError1: () => Effect.succeed(1)
-    })).type.toBe<Effect.Effect<number, unknown, never>>()
+    })).type.toBe<Effect.Effect<number, unknown>>()
   })
 
   it("iterate", () => {
@@ -738,7 +738,7 @@ describe("Effect", () => {
         expect(n).type.toBe<number>()
         return Effect.succeed(n - 1)
       }
-    })).type.toBe<Effect.Effect<number, never, never>>()
+    })).type.toBe<Effect.Effect<number>>()
 
     // refinement
     expect(Effect.iterate(100 as null | number, {
@@ -750,7 +750,7 @@ describe("Effect", () => {
         expect(n).type.toBe<number>()
         return Effect.succeed(n - 1)
       }
-    })).type.toBe<Effect.Effect<number | null, never, never>>()
+    })).type.toBe<Effect.Effect<number | null>>()
   })
 
   it("loop", () => {
@@ -768,7 +768,7 @@ describe("Effect", () => {
         expect(n).type.toBe<number>()
         return Effect.succeed(n * 2)
       }
-    })).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    })).type.toBe<Effect.Effect<Array<number>>>()
 
     expect(Effect.loop(0, {
       while: (n) => {
@@ -784,7 +784,7 @@ describe("Effect", () => {
         return Effect.succeed(n * 2)
       },
       discard: true
-    })).type.toBe<Effect.Effect<void, never, never>>()
+    })).type.toBe<Effect.Effect<void>>()
 
     // refinement
     expect(Effect.loop(0 as null | number, {
@@ -800,7 +800,7 @@ describe("Effect", () => {
         expect(n).type.toBe<number>()
         return Effect.succeed(n * 2)
       }
-    })).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    })).type.toBe<Effect.Effect<Array<number>>>()
 
     expect(Effect.loop(0 as null | number, {
       while: (n): n is number => {
@@ -816,14 +816,14 @@ describe("Effect", () => {
         return Effect.succeed(n * 2)
       },
       discard: true
-    })).type.toBe<Effect.Effect<void, never, never>>()
+    })).type.toBe<Effect.Effect<void>>()
   })
 
   it("dropWhile", () => {
     expect(Effect.dropWhile(numbersArray, (n) => {
       expect(n).type.toBe<number>()
       return Effect.succeed(true)
-    })).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    })).type.toBe<Effect.Effect<Array<number>>>()
 
     expect(pipe(
       numbersArray,
@@ -831,7 +831,7 @@ describe("Effect", () => {
         expect(n).type.toBe<number>()
         return Effect.succeed(true)
       })
-    )).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    )).type.toBe<Effect.Effect<Array<number>>>()
 
     expect(pipe(
       numbersArray,
@@ -839,13 +839,13 @@ describe("Effect", () => {
         expect(n).type.toBe<number>()
         return Effect.succeed(true)
       })
-    )).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    )).type.toBe<Effect.Effect<Array<number>>>()
 
     expect(Effect.dropWhile(numbersArray, predicateNumbersOrStringsEffect)).type.toBe<
-      Effect.Effect<Array<number>, never, never>
+      Effect.Effect<Array<number>>
     >()
     expect(pipe(numbersArray, Effect.dropWhile(predicateNumbersOrStringsEffect))).type.toBe<
-      Effect.Effect<Array<number>, never, never>
+      Effect.Effect<Array<number>>
     >()
   })
 
@@ -854,7 +854,7 @@ describe("Effect", () => {
       expect(n).type.toBe<number>()
       return Effect.succeed(true)
     })).type.toBe<
-      Effect.Effect<Array<number>, never, never>
+      Effect.Effect<Array<number>>
     >()
 
     expect(pipe(
@@ -863,7 +863,7 @@ describe("Effect", () => {
         expect(n).type.toBe<number>()
         return Effect.succeed(true)
       })
-    )).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    )).type.toBe<Effect.Effect<Array<number>>>()
 
     expect(pipe(
       numbersArray,
@@ -871,13 +871,13 @@ describe("Effect", () => {
         expect(n).type.toBe<number>()
         return Effect.succeed(true)
       })
-    )).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    )).type.toBe<Effect.Effect<Array<number>>>()
 
     expect(Effect.dropUntil(numbersArray, predicateNumbersOrStringsEffect)).type.toBe<
-      Effect.Effect<Array<number>, never, never>
+      Effect.Effect<Array<number>>
     >()
     expect(pipe(numbersArray, Effect.dropUntil(predicateNumbersOrStringsEffect))).type.toBe<
-      Effect.Effect<Array<number>, never, never>
+      Effect.Effect<Array<number>>
     >()
   })
 
@@ -975,7 +975,7 @@ describe("Effect", () => {
         expect(e).type.toBe<string>()
         return true
       }
-    })).type.toBe<Effect.Effect<never, "err", never>>()
+    })).type.toBe<Effect.Effect<never, "err">>()
     expect(
       Effect.fail("").pipe(Effect.retry({
         until: (e): e is "err" => {
@@ -983,7 +983,7 @@ describe("Effect", () => {
           return true
         }
       }))
-    ).type.toBe<Effect.Effect<never, "err", never>>()
+    ).type.toBe<Effect.Effect<never, "err">>()
 
     expect(Effect.retry(Effect.fail(""), {
       schedule: Schedule.forever,
@@ -991,7 +991,7 @@ describe("Effect", () => {
         expect(e).type.toBe<string>()
         return true
       }
-    })).type.toBe<Effect.Effect<never, string, never>>()
+    })).type.toBe<Effect.Effect<never, string>>()
     expect(
       Effect.fail("").pipe(Effect.retry({
         schedule: Schedule.forever,
@@ -1000,7 +1000,7 @@ describe("Effect", () => {
           return true
         }
       }))
-    ).type.toBe<Effect.Effect<never, string, never>>()
+    ).type.toBe<Effect.Effect<never, string>>()
   })
 
   it("repeat", () => {
@@ -1054,7 +1054,7 @@ describe("Effect", () => {
         expect(e).type.toBe<number>()
         return true
       }
-    })).type.toBe<Effect.Effect<123, never, never>>()
+    })).type.toBe<Effect.Effect<123>>()
     expect(
       Effect.succeed(123).pipe(Effect.repeat({
         until: (e): e is 123 => {
@@ -1062,7 +1062,7 @@ describe("Effect", () => {
           return true
         }
       }))
-    ).type.toBe<Effect.Effect<123, never, never>>()
+    ).type.toBe<Effect.Effect<123>>()
 
     expect(Effect.repeat(Effect.succeed(""), {
       schedule: Schedule.forever,
@@ -1070,7 +1070,7 @@ describe("Effect", () => {
         expect(e).type.toBe<string>()
         return true
       }
-    })).type.toBe<Effect.Effect<number, never, never>>()
+    })).type.toBe<Effect.Effect<number>>()
     expect(
       Effect.succeed("").pipe(Effect.repeat({
         schedule: Schedule.forever,
@@ -1079,27 +1079,27 @@ describe("Effect", () => {
           return true
         }
       }))
-    ).type.toBe<Effect.Effect<number, never, never>>()
+    ).type.toBe<Effect.Effect<number>>()
   })
 
   it("filter", () => {
     expect(Effect.filter(numberArray, (n) => {
       expect(n).type.toBe<number>()
       return Effect.succeed(true)
-    })).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    })).type.toBe<Effect.Effect<Array<number>>>()
     expect(pipe(
       numberArray,
       Effect.filter((n) => {
         expect(n).type.toBe<number>()
         return Effect.succeed(true)
       })
-    )).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    )).type.toBe<Effect.Effect<Array<number>>>()
 
     expect(Effect.filter(numberArray, (_n: unknown) => Effect.succeed(true))).type.toBe<
-      Effect.Effect<Array<number>, never, never>
+      Effect.Effect<Array<number>>
     >()
     expect(pipe(numberArray, Effect.filter((_n: unknown) => Effect.succeed(true)))).type.toBe<
-      Effect.Effect<Array<number>, never, never>
+      Effect.Effect<Array<number>>
     >()
   })
 
@@ -1107,20 +1107,20 @@ describe("Effect", () => {
     expect(Effect.findFirst(numberArray, (n) => {
       expect(n).type.toBe<number>()
       return Effect.succeed(true)
-    })).type.toBe<Effect.Effect<Option.Option<number>, never, never>>()
+    })).type.toBe<Effect.Effect<Option.Option<number>>>()
     expect(pipe(
       numberArray,
       Effect.findFirst((n) => {
         expect(n).type.toBe<number>()
         return Effect.succeed(true)
       })
-    )).type.toBe<Effect.Effect<Option.Option<number>, never, never>>()
+    )).type.toBe<Effect.Effect<Option.Option<number>>>()
 
     expect(Effect.findFirst(numberArray, (_n: unknown) => Effect.succeed(true))).type.toBe<
-      Effect.Effect<Option.Option<number>, never, never>
+      Effect.Effect<Option.Option<number>>
     >()
     expect(pipe(numberArray, Effect.findFirst((_n: unknown) => Effect.succeed(true)))).type.toBe<
-      Effect.Effect<Option.Option<number>, never, never>
+      Effect.Effect<Option.Option<number>>
     >()
   })
 
@@ -1128,40 +1128,40 @@ describe("Effect", () => {
     expect(Effect.reduceEffect(numberEffectIterable, Effect.succeed(0), (n) => {
       expect(n).type.toBe<number>()
       return 0
-    })).type.toBe<Effect.Effect<number, never, never>>()
+    })).type.toBe<Effect.Effect<number>>()
     expect(pipe(
       numberEffectIterable,
       Effect.reduceEffect(Effect.succeed(0), (n) => {
         expect(n).type.toBe<number>()
         return 0
       })
-    )).type.toBe<Effect.Effect<number, never, never>>()
+    )).type.toBe<Effect.Effect<number>>()
 
     expect(Effect.reduceEffect(numberEffectIterable, Effect.succeed(0), (_n: unknown): number | string => 0)).type.toBe<
-      Effect.Effect<string | number, never, never>
+      Effect.Effect<string | number>
     >()
     expect(pipe(numberEffectIterable, Effect.reduceEffect(Effect.succeed(0), (_n: unknown): number | string => 0))).type
-      .toBe<Effect.Effect<string | number, never, never>>()
+      .toBe<Effect.Effect<string | number>>()
   })
 
   it("takeUntil", () => {
     expect(Effect.takeUntil(numberArray, (n) => {
       expect(n).type.toBe<number>()
       return Effect.succeed(true)
-    })).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    })).type.toBe<Effect.Effect<Array<number>>>()
     expect(pipe(
       numberArray,
       Effect.takeUntil((n) => {
         expect(n).type.toBe<number>()
         return Effect.succeed(true)
       })
-    )).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    )).type.toBe<Effect.Effect<Array<number>>>()
 
     expect(Effect.takeUntil(numberArray, (_n: unknown) => Effect.succeed(true))).type.toBe<
-      Effect.Effect<Array<number>, never, never>
+      Effect.Effect<Array<number>>
     >()
     expect(pipe(numberArray, Effect.takeUntil((_n: unknown) => Effect.succeed(true)))).type.toBe<
-      Effect.Effect<Array<number>, never, never>
+      Effect.Effect<Array<number>>
     >()
   })
 
@@ -1169,20 +1169,20 @@ describe("Effect", () => {
     expect(Effect.takeWhile(numberArray, (n) => {
       expect(n).type.toBe<number>()
       return Effect.succeed(true)
-    })).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    })).type.toBe<Effect.Effect<Array<number>>>()
     expect(pipe(
       numberArray,
       Effect.takeWhile((n) => {
         expect(n).type.toBe<number>()
         return Effect.succeed(true)
       })
-    )).type.toBe<Effect.Effect<Array<number>, never, never>>()
+    )).type.toBe<Effect.Effect<Array<number>>>()
 
     expect(Effect.takeWhile(numberArray, (_n: unknown) => Effect.succeed(true))).type.toBe<
-      Effect.Effect<Array<number>, never, never>
+      Effect.Effect<Array<number>>
     >()
     expect(pipe(numberArray, Effect.takeWhile((_n: unknown) => Effect.succeed(true)))).type.toBe<
-      Effect.Effect<Array<number>, never, never>
+      Effect.Effect<Array<number>>
     >()
   })
 
@@ -1243,7 +1243,7 @@ describe("Effect", () => {
         expect(scope).type.toBe<{ a: number; b: string }>()
         return true
       })
-    )).type.toBe<Effect.Effect<{ a: number; b: string; c: boolean }, never, never>>()
+    )).type.toBe<Effect.Effect<{ a: number; b: string; c: boolean }>>()
 
     expect(pipe(
       Effect.succeed(1),
@@ -1256,7 +1256,7 @@ describe("Effect", () => {
         expect(scope).type.toBe<{ a: number; b: string }>()
         return true
       })
-    )).type.toBe<Effect.Effect<{ a: number; b: string; c: boolean }, never, never>>()
+    )).type.toBe<Effect.Effect<{ a: number; b: string; c: boolean }>>()
   })
 
   it("liftPredicate", () => {
@@ -1266,11 +1266,11 @@ describe("Effect", () => {
         expect(sn).type.toBe<string | number>()
         return "b" as const
       })
-    )).type.toBe<Effect.Effect<string, "b", never>>()
+    )).type.toBe<Effect.Effect<string, "b">>()
     expect(Effect.liftPredicate(primitiveNumberOrString, Predicate.isString, (sn) => {
       expect(sn).type.toBe<string | number>()
       return "b" as const
-    })).type.toBe<Effect.Effect<string, "b", never>>()
+    })).type.toBe<Effect.Effect<string, "b">>()
 
     expect(pipe(
       primitiveNumberOrString,
@@ -1284,14 +1284,14 @@ describe("Effect", () => {
           return "b" as const
         }
       )
-    )).type.toBe<Effect.Effect<number, "b", never>>()
+    )).type.toBe<Effect.Effect<number, "b">>()
     expect(Effect.liftPredicate(primitiveNumberOrString, (sn): sn is number => {
       expect(sn).type.toBe<string | number>()
       return typeof sn === "number"
     }, (sn) => {
       expect(sn).type.toBe<string | number>()
       return "b" as const
-    })).type.toBe<Effect.Effect<number, "b", never>>()
+    })).type.toBe<Effect.Effect<number, "b">>()
 
     expect(pipe(
       primitiveNumberOrString,
@@ -1299,11 +1299,11 @@ describe("Effect", () => {
         expect(sn).type.toBe<string | number>()
         return "b" as const
       })
-    )).type.toBe<Effect.Effect<string | number, "b", never>>()
+    )).type.toBe<Effect.Effect<string | number, "b">>()
     expect(Effect.liftPredicate(primitiveNumberOrString, predicateNumbersOrStrings, (sn) => {
       expect(sn).type.toBe<string | number>()
       return "b" as const
-    })).type.toBe<Effect.Effect<string | number, "b", never>>()
+    })).type.toBe<Effect.Effect<string | number, "b">>()
 
     expect(pipe(
       primitiveNumber,
@@ -1311,11 +1311,11 @@ describe("Effect", () => {
         expect(n).type.toBe<number>()
         return "b" as const
       })
-    )).type.toBe<Effect.Effect<number, "b", never>>()
+    )).type.toBe<Effect.Effect<number, "b">>()
     expect(Effect.liftPredicate(primitiveNumber, predicateNumbersOrStrings, (n) => {
       expect(n).type.toBe<number>()
       return "b" as const
-    })).type.toBe<Effect.Effect<number, "b", never>>()
+    })).type.toBe<Effect.Effect<number, "b">>()
 
     expect(pipe(
       primitiveNumber,
@@ -1329,7 +1329,7 @@ describe("Effect", () => {
           return "b" as const
         }
       )
-    )).type.toBe<Effect.Effect<number, "b", never>>()
+    )).type.toBe<Effect.Effect<number, "b">>()
     expect(Effect.liftPredicate(
       primitiveNumber,
       (n) => {
@@ -1340,7 +1340,7 @@ describe("Effect", () => {
         expect(n).type.toBe<number>()
         return "b" as const
       }
-    )).type.toBe<Effect.Effect<number, "b", never>>()
+    )).type.toBe<Effect.Effect<number, "b">>()
   })
 
   it("mapAccum", () => {
@@ -1349,7 +1349,7 @@ describe("Effect", () => {
       expect(a).type.toBe<string>()
       expect(i).type.toBe<number>()
       return Effect.succeed([s + i, a])
-    })).type.toBe<Effect.Effect<[number, Array<string>], never, never>>()
+    })).type.toBe<Effect.Effect<[number, Array<string>]>>()
     expect(pipe(
       strings,
       Effect.mapAccum(0, (s, a, i) => {
@@ -1358,14 +1358,14 @@ describe("Effect", () => {
         expect(i).type.toBe<number>()
         return Effect.succeed([s + i, a])
       })
-    )).type.toBe<Effect.Effect<[number, Array<string>], never, never>>()
+    )).type.toBe<Effect.Effect<[number, Array<string>]>>()
 
     expect(Effect.mapAccum(readonlyNonEmptyStrings, 0, (s, a, i) => {
       expect(s).type.toBe<number>()
       expect(a).type.toBe<string>()
       expect(i).type.toBe<number>()
       return Effect.succeed([s + i, a])
-    })).type.toBe<Effect.Effect<[number, [string, ...Array<string>]], never, never>>()
+    })).type.toBe<Effect.Effect<[number, [string, ...Array<string>]]>>()
     expect(pipe(
       readonlyNonEmptyStrings,
       Effect.mapAccum(0, (s, a, i) => {
@@ -1374,7 +1374,7 @@ describe("Effect", () => {
         expect(i).type.toBe<number>()
         return Effect.succeed([s + i, a])
       })
-    )).type.toBe<Effect.Effect<[number, [string, ...Array<string>]], never, never>>()
+    )).type.toBe<Effect.Effect<[number, [string, ...Array<string>]]>>()
   })
 
   it("Tag.Proxy", () => {
@@ -1394,7 +1394,7 @@ describe("Effect", () => {
   })
 
   it("transposeOption", () => {
-    expect(Effect.transposeOption(Option.none())).type.toBe<Effect.Effect<Option.Option<never>, never, never>>()
+    expect(Effect.transposeOption(Option.none())).type.toBe<Effect.Effect<Option.Option<never>>>()
     expect(Effect.transposeOption(Option.some(string))).type.toBe<
       Effect.Effect<Option.Option<string>, "err-1", "dep-1">
     >()

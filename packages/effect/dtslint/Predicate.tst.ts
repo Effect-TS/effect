@@ -117,9 +117,6 @@ describe("Predicate", () => {
     expect(unknowns.filter(Predicate.isRegExp)).type.toBe<Array<RegExp>>()
   })
 
-  // -------------------------------------------------------------------------------------
-  // compose
-  // -------------------------------------------------------------------------------------
   it("compose", () => {
     interface NonEmptyStringBrand {
       readonly NonEmptyString: unique symbol

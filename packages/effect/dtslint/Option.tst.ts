@@ -53,15 +53,11 @@ describe("Option", () => {
   })
 
   it("filter", () => {
-    expect(Option.filter(number, predicateNumbersOrStrings))
-      .type.toBe<Option.Option<number>>()
-    expect(pipe(number, Option.filter(predicateNumbersOrStrings)))
-      .type.toBe<Option.Option<number>>()
+    expect(Option.filter(number, predicateNumbersOrStrings)).type.toBe<Option.Option<number>>()
+    expect(pipe(number, Option.filter(predicateNumbersOrStrings))).type.toBe<Option.Option<number>>()
 
-    expect(pipe(numberOrString, Option.filter(Predicate.isString)))
-      .type.toBe<Option.Option<string>>()
-    expect(Option.filter(numberOrString, Predicate.isString))
-      .type.toBe<Option.Option<string>>()
+    expect(pipe(numberOrString, Option.filter(Predicate.isString))).type.toBe<Option.Option<string>>()
+    expect(Option.filter(numberOrString, Predicate.isString)).type.toBe<Option.Option<string>>()
 
     expect(
       Option.filter(number, (value) => {
@@ -85,16 +81,14 @@ describe("Option", () => {
       expect(Option.all([])).type.toBe<Option.Option<[]>>()
       expect(Option.all([Option.some(1)])).type.toBe<Option.Option<[number]>>()
       expect(Option.all([Option.some(1), Option.some("b")])).type.toBe<Option.Option<[number, string]>>()
-      expect(pipe([Option.some(1), Option.some("b")] as const, Option.all))
-        .type.toBe<Option.Option<[number, string]>>()
+      expect(pipe([Option.some(1), Option.some("b")] as const, Option.all)).type.toBe<Option.Option<[number, string]>>()
     })
 
     it("struct", () => {
       expect(Option.all({})).type.toBe<Option.Option<{}>>()
       expect(Option.all({ a: Option.some(1) })).type.toBe<Option.Option<{ a: number }>>()
-      expect(Option.all({ a: Option.some(1), b: Option.some("b") })).type.toBe<
-        Option.Option<{ a: number; b: string }>
-      >()
+      expect(Option.all({ a: Option.some(1), b: Option.some("b") }))
+        .type.toBe<Option.Option<{ a: number; b: string }>>()
       expect(pipe({ a: Option.some(1), b: Option.some("b") }, Option.all))
         .type.toBe<Option.Option<{ a: number; b: string }>>()
     })

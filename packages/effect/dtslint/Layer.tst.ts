@@ -24,28 +24,22 @@ describe("Layer", () => {
     // @ts-expect-error
     Layer.merge()
 
-    expect(Layer.merge(layer1, layer2))
-      .type.toBe<Layer.Layer<Out1 | Out2, Err1 | Err2, In1 | In2>>()
-    expect(layer1.pipe(Layer.merge(layer2)))
-      .type.toBe<Layer.Layer<Out1 | Out2, Err1 | Err2, In1 | In2>>()
+    expect(Layer.merge(layer1, layer2)).type.toBe<Layer.Layer<Out1 | Out2, Err1 | Err2, In1 | In2>>()
+    expect(layer1.pipe(Layer.merge(layer2))).type.toBe<Layer.Layer<Out1 | Out2, Err1 | Err2, In1 | In2>>()
   })
 
   it("mergeAll", () => {
     // @ts-expect-error
     Layer.mergeAll()
 
-    expect(Layer.mergeAll(layer1))
-      .type.toBe<Layer.Layer<Out1, Err1, In1>>()
-    expect(Layer.mergeAll(layer1, layer2))
-      .type.toBe<Layer.Layer<Out1 | Out2, Err1 | Err2, In1 | In2>>()
+    expect(Layer.mergeAll(layer1)).type.toBe<Layer.Layer<Out1, Err1, In1>>()
+    expect(Layer.mergeAll(layer1, layer2)).type.toBe<Layer.Layer<Out1 | Out2, Err1 | Err2, In1 | In2>>()
     expect(Layer.mergeAll(layer1, layer2, layer3))
       .type.toBe<Layer.Layer<Out1 | Out2 | Out3, Err1 | Err2 | Err3, In1 | In2 | In3>>()
   })
 
   it("retry", () => {
-    expect(Layer.retry(layer1, Schedule.recurs(1)))
-      .type.toBe<Layer.Layer<Out1, Err1, In1>>()
-    expect(layer1.pipe(Layer.retry(Schedule.recurs(1))))
-      .type.toBe<Layer.Layer<Out1, Err1, In1>>()
+    expect(Layer.retry(layer1, Schedule.recurs(1))).type.toBe<Layer.Layer<Out1, Err1, In1>>()
+    expect(layer1.pipe(Layer.retry(Schedule.recurs(1)))).type.toBe<Layer.Layer<Out1, Err1, In1>>()
   })
 })

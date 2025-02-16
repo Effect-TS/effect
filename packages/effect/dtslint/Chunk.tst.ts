@@ -17,6 +17,7 @@ describe("Chunk", () => {
     if (Chunk.every(Predicate.isString)(numbersOrStrings)) {
       expect(numbersOrStrings).type.toBe<Chunk.Chunk<string>>()
     }
+
     expect(Chunk.every(numbersOrStrings, (item) => {
       expect(item).type.toBe<string | number>()
       return true
@@ -217,19 +218,13 @@ describe("Chunk", () => {
       )
     ).type.toBe<Option.Option<string | number>>()
 
-    expect(
-      Chunk.findFirst(numbersOrStrings, predicateNumbersOrStrings)
-    ).type.toBe<Option.Option<string | number>>()
-    expect(
-      pipe(numbersOrStrings, Chunk.findFirst(predicateNumbersOrStrings))
-    ).type.toBe<Option.Option<string | number>>()
+    expect(Chunk.findFirst(numbersOrStrings, predicateNumbersOrStrings)).type.toBe<Option.Option<string | number>>()
+    expect(pipe(numbersOrStrings, Chunk.findFirst(predicateNumbersOrStrings))).type.toBe<
+      Option.Option<string | number>
+    >()
 
-    expect(
-      Chunk.findFirst(numbersOrStrings, Predicate.isNumber)
-    ).type.toBe<Option.Option<number>>()
-    expect(
-      pipe(numbersOrStrings, Chunk.findFirst(Predicate.isNumber))
-    ).type.toBe<Option.Option<number>>()
+    expect(Chunk.findFirst(numbersOrStrings, Predicate.isNumber)).type.toBe<Option.Option<number>>()
+    expect(pipe(numbersOrStrings, Chunk.findFirst(Predicate.isNumber))).type.toBe<Option.Option<number>>()
   })
 
   it("findLast", () => {
@@ -247,19 +242,13 @@ describe("Chunk", () => {
       )
     ).type.toBe<Option.Option<string | number>>()
 
-    expect(
-      Chunk.findLast(numbersOrStrings, predicateNumbersOrStrings)
-    ).type.toBe<Option.Option<string | number>>()
-    expect(
-      pipe(numbersOrStrings, Chunk.findLast(predicateNumbersOrStrings))
-    ).type.toBe<Option.Option<string | number>>()
+    expect(Chunk.findLast(numbersOrStrings, predicateNumbersOrStrings)).type.toBe<Option.Option<string | number>>()
+    expect(pipe(numbersOrStrings, Chunk.findLast(predicateNumbersOrStrings))).type.toBe<
+      Option.Option<string | number>
+    >()
 
-    expect(
-      Chunk.findLast(numbersOrStrings, Predicate.isNumber)
-    ).type.toBe<Option.Option<number>>()
-    expect(
-      pipe(numbersOrStrings, Chunk.findLast(Predicate.isNumber))
-    ).type.toBe<Option.Option<number>>()
+    expect(Chunk.findLast(numbersOrStrings, Predicate.isNumber)).type.toBe<Option.Option<number>>()
+    expect(pipe(numbersOrStrings, Chunk.findLast(Predicate.isNumber))).type.toBe<Option.Option<number>>()
   })
 
   it("dropWhile", () => {
@@ -277,19 +266,11 @@ describe("Chunk", () => {
       )
     ).type.toBe<Chunk.Chunk<string | number>>()
 
-    expect(Chunk.dropWhile(numbers, predicateNumbersOrStrings)).type.toBe<
-      Chunk.Chunk<number>
-    >()
-    expect(pipe(numbers, Chunk.dropWhile(predicateNumbersOrStrings))).type.toBe<
-      Chunk.Chunk<number>
-    >()
+    expect(Chunk.dropWhile(numbers, predicateNumbersOrStrings)).type.toBe<Chunk.Chunk<number>>()
+    expect(pipe(numbers, Chunk.dropWhile(predicateNumbersOrStrings))).type.toBe<Chunk.Chunk<number>>()
 
-    expect(Chunk.dropWhile(numbersOrStrings, Predicate.isNumber)).type.toBe<
-      Chunk.Chunk<string | number>
-    >()
-    expect(pipe(numbersOrStrings, Chunk.dropWhile(Predicate.isNumber))).type.toBe<
-      Chunk.Chunk<string | number>
-    >()
+    expect(Chunk.dropWhile(numbersOrStrings, Predicate.isNumber)).type.toBe<Chunk.Chunk<string | number>>()
+    expect(pipe(numbersOrStrings, Chunk.dropWhile(Predicate.isNumber))).type.toBe<Chunk.Chunk<string | number>>()
   })
 
   it("splitWhere", () => {
@@ -309,21 +290,15 @@ describe("Chunk", () => {
       [beforeMatch: Chunk.Chunk<string | number>, fromMatch: Chunk.Chunk<string | number>]
     >()
 
-    expect(Chunk.splitWhere(numbers, predicateNumbersOrStrings)).type.toBe<
-      [beforeMatch: Chunk.Chunk<number>, fromMatch: Chunk.Chunk<number>]
-    >()
-    expect(pipe(numbers, Chunk.splitWhere(predicateNumbersOrStrings))).type.toBe<
-      [beforeMatch: Chunk.Chunk<number>, fromMatch: Chunk.Chunk<number>]
-    >()
+    expect(Chunk.splitWhere(numbers, predicateNumbersOrStrings))
+      .type.toBe<[beforeMatch: Chunk.Chunk<number>, fromMatch: Chunk.Chunk<number>]>()
+    expect(pipe(numbers, Chunk.splitWhere(predicateNumbersOrStrings)))
+      .type.toBe<[beforeMatch: Chunk.Chunk<number>, fromMatch: Chunk.Chunk<number>]>()
 
-    expect(Chunk.splitWhere(numbersOrStrings, Predicate.isNumber)).type.toBe<
-      [beforeMatch: Chunk.Chunk<string | number>, fromMatch: Chunk.Chunk<string | number>]
-    >()
-    expect(
-      pipe(numbersOrStrings, Chunk.splitWhere(Predicate.isNumber))
-    ).type.toBe<
-      [beforeMatch: Chunk.Chunk<string | number>, fromMatch: Chunk.Chunk<string | number>]
-    >()
+    expect(Chunk.splitWhere(numbersOrStrings, Predicate.isNumber))
+      .type.toBe<[beforeMatch: Chunk.Chunk<string | number>, fromMatch: Chunk.Chunk<string | number>]>()
+    expect(pipe(numbersOrStrings, Chunk.splitWhere(Predicate.isNumber)))
+      .type.toBe<[beforeMatch: Chunk.Chunk<string | number>, fromMatch: Chunk.Chunk<string | number>]>()
   })
 
   it("prependAll", () => {
@@ -332,28 +307,16 @@ describe("Chunk", () => {
     expect(pipe(strings, Chunk.prependAll(numbers))).type.toBe<Chunk.Chunk<string | number>>()
 
     // NonEmptyChunk + Chunk
-    expect(Chunk.prependAll(nonEmptyStrings, numbers)).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
-    expect(pipe(nonEmptyStrings, Chunk.prependAll(numbers))).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
+    expect(Chunk.prependAll(nonEmptyStrings, numbers)).type.toBe<Chunk.NonEmptyChunk<string | number>>()
+    expect(pipe(nonEmptyStrings, Chunk.prependAll(numbers))).type.toBe<Chunk.NonEmptyChunk<string | number>>()
 
     // Chunk + NonEmptyChunk
-    expect(Chunk.prependAll(strings, nonEmptyNumbers)).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
-    expect(pipe(strings, Chunk.prependAll(nonEmptyNumbers))).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
+    expect(Chunk.prependAll(strings, nonEmptyNumbers)).type.toBe<Chunk.NonEmptyChunk<string | number>>()
+    expect(pipe(strings, Chunk.prependAll(nonEmptyNumbers))).type.toBe<Chunk.NonEmptyChunk<string | number>>()
 
     // NonEmptyChunk + NonEmptyChunk
-    expect(Chunk.prependAll(nonEmptyStrings, nonEmptyNumbers)).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
-    expect(pipe(nonEmptyStrings, Chunk.prependAll(nonEmptyNumbers))).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
+    expect(Chunk.prependAll(nonEmptyStrings, nonEmptyNumbers)).type.toBe<Chunk.NonEmptyChunk<string | number>>()
+    expect(pipe(nonEmptyStrings, Chunk.prependAll(nonEmptyNumbers))).type.toBe<Chunk.NonEmptyChunk<string | number>>()
   })
 
   it("appendAll", () => {
@@ -362,28 +325,16 @@ describe("Chunk", () => {
     expect(pipe(strings, Chunk.appendAll(numbers))).type.toBe<Chunk.Chunk<string | number>>()
 
     // NonEmptyChunk + Chunk
-    expect(Chunk.appendAll(nonEmptyStrings, numbers)).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
-    expect(pipe(nonEmptyStrings, Chunk.appendAll(numbers))).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
+    expect(Chunk.appendAll(nonEmptyStrings, numbers)).type.toBe<Chunk.NonEmptyChunk<string | number>>()
+    expect(pipe(nonEmptyStrings, Chunk.appendAll(numbers))).type.toBe<Chunk.NonEmptyChunk<string | number>>()
 
     // Chunk + NonEmptyChunk
-    expect(Chunk.appendAll(strings, nonEmptyNumbers)).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
-    expect(pipe(strings, Chunk.appendAll(nonEmptyNumbers))).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
+    expect(Chunk.appendAll(strings, nonEmptyNumbers)).type.toBe<Chunk.NonEmptyChunk<string | number>>()
+    expect(pipe(strings, Chunk.appendAll(nonEmptyNumbers))).type.toBe<Chunk.NonEmptyChunk<string | number>>()
 
     // NonEmptyChunk + NonEmptyChunk
-    expect(Chunk.appendAll(nonEmptyStrings, nonEmptyNumbers)).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
-    expect(pipe(nonEmptyStrings, Chunk.appendAll(nonEmptyNumbers))).type.toBe<
-      Chunk.NonEmptyChunk<string | number>
-    >()
+    expect(Chunk.appendAll(nonEmptyStrings, nonEmptyNumbers)).type.toBe<Chunk.NonEmptyChunk<string | number>>()
+    expect(pipe(nonEmptyStrings, Chunk.appendAll(nonEmptyNumbers))).type.toBe<Chunk.NonEmptyChunk<string | number>>()
   })
 
   it("flatMap", () => {
@@ -446,33 +397,19 @@ describe("Chunk", () => {
   })
 
   it("flatten", () => {
-    expect(Chunk.flatten(hole<Chunk.Chunk<Chunk.Chunk<number>>>())).type.toBe<
-      Chunk.Chunk<number>
-    >()
-    expect(pipe(hole<Chunk.Chunk<Chunk.Chunk<number>>>(), Chunk.flatten)).type.toBe<
-      Chunk.Chunk<number>
-    >()
+    expect(Chunk.flatten(hole<Chunk.Chunk<Chunk.Chunk<number>>>())).type.toBe<Chunk.Chunk<number>>()
+    expect(pipe(hole<Chunk.Chunk<Chunk.Chunk<number>>>(), Chunk.flatten)).type.toBe<Chunk.Chunk<number>>()
 
-    expect(Chunk.flatten(hole<Chunk.Chunk<Chunk.NonEmptyChunk<number>>>())).type.toBe<
-      Chunk.Chunk<number>
-    >()
-    expect(pipe(hole<Chunk.Chunk<Chunk.NonEmptyChunk<number>>>(), Chunk.flatten)).type.toBe<
-      Chunk.Chunk<number>
-    >()
+    expect(Chunk.flatten(hole<Chunk.Chunk<Chunk.NonEmptyChunk<number>>>())).type.toBe<Chunk.Chunk<number>>()
+    expect(pipe(hole<Chunk.Chunk<Chunk.NonEmptyChunk<number>>>(), Chunk.flatten)).type.toBe<Chunk.Chunk<number>>()
 
-    expect(Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.Chunk<number>>>())).type.toBe<
-      Chunk.Chunk<number>
-    >()
-    expect(pipe(hole<Chunk.NonEmptyChunk<Chunk.Chunk<number>>>(), Chunk.flatten)).type.toBe<
-      Chunk.Chunk<number>
-    >()
+    expect(Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.Chunk<number>>>())).type.toBe<Chunk.Chunk<number>>()
+    expect(pipe(hole<Chunk.NonEmptyChunk<Chunk.Chunk<number>>>(), Chunk.flatten)).type.toBe<Chunk.Chunk<number>>()
 
-    expect(Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>())).type.toBe<
-      Chunk.NonEmptyChunk<number>
-    >()
-    expect(
-      pipe(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>(), Chunk.flatten)
-    ).type.toBe<Chunk.NonEmptyChunk<number>>()
+    expect(Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>()))
+      .type.toBe<Chunk.NonEmptyChunk<number>>()
+    expect(pipe(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>(), Chunk.flatten))
+      .type.toBe<Chunk.NonEmptyChunk<number>>()
 
     const nestedChunk = hole<Effect.Effect<Chunk.Chunk<Chunk.Chunk<number>>, never, never>>()
     const nestedNonEmptyChunk = hole<Effect.Effect<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>, never, never>>()

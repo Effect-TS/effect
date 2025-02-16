@@ -41,8 +41,7 @@ describe("HashMap", () => {
     ).type.toBe<HashMap.HashMap<string, string | number>>()
 
     // Refinement
-    expect(HashMap.filter(string$numberOrString, Predicate.isNumber))
-      .type.toBe<HashMap.HashMap<string, number>>()
+    expect(HashMap.filter(string$numberOrString, Predicate.isNumber)).type.toBe<HashMap.HashMap<string, number>>()
     expect(
       pipe(string$numberOrString, HashMap.filter(Predicate.isNumber))
     ).type.toBe<HashMap.HashMap<string, number>>()

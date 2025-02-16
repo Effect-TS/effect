@@ -76,14 +76,10 @@ describe("Array", () => {
 
   it("isNonEmptyArray", () => {
     if (Array.isNonEmptyArray(numbers)) {
-      expect(numbers)
-        .type.toBe<[number, ...Array<number>]>()
+      expect(numbers).type.toBe<[number, ...Array<number>]>()
     }
     // should play well with `Option.liftPredicate`
-    expect(Option.liftPredicate(Array.isNonEmptyArray))
-      .type.toBe<
-      <A>(a: Array<A>) => Option.Option<[A, ...Array<A>]>
-    >()
+    expect(Option.liftPredicate(Array.isNonEmptyArray)).type.toBe<<A>(a: Array<A>) => Option.Option<[A, ...Array<A>]>>()
   })
 
   it("map", () => {
