@@ -1,3 +1,5 @@
+import type { TSTypeKind } from "ast-types/gen/kinds"
+import type { Node } from "jscodeshift"
 import type * as cs from "jscodeshift"
 
 //
@@ -36,9 +38,8 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     const comments = path.node.comments ?? []
     j(path).find(j.TSCallSignatureDeclaration).forEach((path) => {
       // Don't override comments if they already exist
-      if (!Array.isArray(path.node.comments)) {
-        path.node.comments = comments
-      }
+      if (hasComments(path.node)) return
+      path.node.comments = comments
     })
   })
 
@@ -61,12 +62,19 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     j(path).find(j.CallExpression).forEach((path) => {
       path.node.typeParameters?.params.forEach((param) => {
         // Don't override comments if they already exist
-        if (!Array.isArray(param.comments)) {
-          param.comments = comments
-        }
+        if (hasLeadingCommentRanges(param) || hasComments(param)) return
+        param.comments = comments
       })
     })
   })
 
   return root.toSource()
+}
+
+function hasComments(node: Node) {
+  return Array.isArray(node.comments)
+}
+
+function hasLeadingCommentRanges(node: TSTypeKind) {
+  return "leadingComments" in node && Array.isArray(node.leadingComments) && node.leadingComments.length > 0
 }
