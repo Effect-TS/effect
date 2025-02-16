@@ -1,10 +1,10 @@
-import * as Equal from "../../../Equal.js"
-import * as Exit from "../../../Exit.js"
-import { pipe } from "../../../Function.js"
-import * as Hash from "../../../Hash.js"
-import { hasProperty } from "../../../Predicate.js"
-import * as OpCodes from "../opCodes/stmState.js"
-import * as TExitOpCodes from "../opCodes/tExit.js"
+import * as Equal from "../../Equal.js"
+import * as Exit from "../../Exit.js"
+import { pipe } from "../../Function.js"
+import * as Hash from "../../Hash.js"
+import { hasProperty } from "../../Predicate.js"
+import * as OpCodes from "./opCodes/stmState.js"
+import * as TExitOpCodes from "./opCodes/tExit.js"
 import type * as TExit from "./tExit.js"
 
 /** @internal */
