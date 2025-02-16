@@ -1,5 +1,4 @@
 import type { TSTypeKind } from "ast-types/gen/kinds"
-import type { Node } from "jscodeshift"
 import type * as cs from "jscodeshift"
 
 //
@@ -71,7 +70,7 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
   return root.toSource()
 }
 
-function hasComments(node: Node) {
+function hasComments(node: cs.Node) {
   return Array.isArray(node.comments)
 }
 

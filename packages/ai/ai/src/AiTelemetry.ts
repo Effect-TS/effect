@@ -268,7 +268,10 @@ export type GenAITelemetryAttributeOptions = GenAI.BaseAttributes & {
  * @since 1.0.0
  * @since utilities
  */
-export const addGenAIAnnotations = dual<
+export const addGenAIAnnotations: {
+  (options: GenAITelemetryAttributeOptions): (span: Span) => void
+  (span: Span, options: GenAITelemetryAttributeOptions): void
+} = dual<
   (options: GenAITelemetryAttributeOptions) => (span: Span) => void,
   (span: Span, options: GenAITelemetryAttributeOptions) => void
 >(2, (span, options) => {
