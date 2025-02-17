@@ -88,7 +88,7 @@ git checkout -b my-branch
 Ensure all required dependencies are installed by running:
 
 ```bash
-pnpm install  # Requires pnpm version 9.0.4
+pnpm install  # Requires pnpm version 10.4.0
 ```
 
 ## Making Changes
@@ -107,7 +107,7 @@ Run the following commands to ensure your changes do not introduce any issues:
 - `pnpm circular`: Check for any circular dependencies in imports.
 - `pnpm lint`: Ensure the code adheres to our coding standards.
   - If you encounter style issues, use `pnpm lint-fix` to automatically correct some of these.
-- `pnpm dtslint`: Run type-level tests.
+- `pnpm dtslint`: Run type-level tests. Tests are written using [tstyche](https://tstyche.org/).
 - `pnpm docgen`: Ensure the documentation generates correctly and reflects any changes made.
 
 ### Document Your Changes
