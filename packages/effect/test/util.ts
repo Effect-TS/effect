@@ -93,6 +93,25 @@ export function throws(thunk: () => void, error?: Error | ((u: unknown) => undef
   }
 }
 
+export async function throwsAsync(
+  thunk: () => Promise<void>,
+  error?: Error | ((u: unknown) => undefined),
+  ..._: Array<never>
+) {
+  try {
+    await thunk()
+    fail("Expected to throw an error")
+  } catch (e) {
+    if (error !== undefined) {
+      if (Predicate.isFunction(error)) {
+        error(e)
+      } else {
+        deepStrictEqual(e, error)
+      }
+    }
+  }
+}
+
 // ----------------------------
 // Option
 // ----------------------------
