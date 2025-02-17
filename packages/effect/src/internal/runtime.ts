@@ -26,9 +26,33 @@ import * as OpCodes from "./opCodes/effect.js"
 import * as runtimeFlags from "./runtimeFlags.js"
 import * as supervisor_ from "./supervisor.js"
 
+const makeDual = <Args extends Array<any>, Return>(
+  f: (runtime: Runtime.Runtime<never>, effect: Effect.Effect<any, any>, ...args: Args) => Return
+): {
+  <R>(runtime: Runtime.Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>, ...args: Args) => Return
+  <R, A, E>(runtime: Runtime.Runtime<R>, effect: Effect.Effect<A, E, R>, ...args: Args): Return
+} =>
+  function(this: any) {
+    if (arguments.length === 1) {
+      const runtime = arguments[0]
+      return (effect: any, ...args: Args) => f(runtime, effect, ...args)
+    }
+    return f.apply(this, arguments as any)
+  } as any
+
 /** @internal */
-export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
-<A, E>(
+export const unsafeFork: {
+  <R>(runtime: Runtime.Runtime<R>): <A, E>(
+    effect: Effect.Effect<A, E, R>,
+    options?: Runtime.RunForkOptions | undefined
+  ) => Fiber.RuntimeFiber<A, E>
+  <R, A, E>(
+    runtime: Runtime.Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: Runtime.RunForkOptions | undefined
+  ): Fiber.RuntimeFiber<A, E>
+} = makeDual(<R, A, E>(
+  runtime: Runtime.Runtime<R>,
   self: Effect.Effect<A, E, R>,
   options?: Runtime.RunForkOptions
 ): Fiber.RuntimeFiber<A, E> => {
@@ -93,15 +117,25 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
   }
 
   return fiberRuntime
-}
+})
 
 /** @internal */
-export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
-<A, E>(
-  effect: Effect.Effect<A, E, R>,
-  options: Runtime.RunCallbackOptions<A, E> = {}
-): (fiberId?: FiberId.FiberId, options?: Runtime.RunCallbackOptions<A, E> | undefined) => void => {
-  const fiberRuntime = unsafeFork(runtime)(effect, options)
+export const unsafeRunCallback: {
+  <R>(runtime: Runtime.Runtime<R>): <A, E>(
+    effect: Effect.Effect<A, E, R>,
+    options?: Runtime.RunCallbackOptions<A, E> | undefined
+  ) => (fiberId?: FiberId.FiberId, options?: Runtime.RunCallbackOptions<A, E> | undefined) => void
+  <R, A, E>(
+    runtime: Runtime.Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: Runtime.RunCallbackOptions<A, E> | undefined
+  ): (fiberId?: FiberId.FiberId, options?: Runtime.RunCallbackOptions<A, E> | undefined) => void
+} = makeDual((
+  runtime,
+  effect,
+  options: Runtime.RunCallbackOptions<any, any> = {}
+): (fiberId?: FiberId.FiberId, options?: Runtime.RunCallbackOptions<any, any> | undefined) => void => {
+  const fiberRuntime = unsafeFork(runtime, effect, options)
 
   if (options.onExit) {
     fiberRuntime.addObserver((exit) => {
@@ -119,17 +153,19 @@ export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
           : undefined
       }
     )
-}
+})
 
 /** @internal */
-export const unsafeRunSync = <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>): A => {
+export const unsafeRunSync: {
+  <A, E, R>(runtime: Runtime.Runtime<R>, effect: Effect.Effect<A, E, R>): A
+  <R>(runtime: Runtime.Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => A
+} = makeDual((runtime, effect) => {
   const result = unsafeRunSyncExit(runtime)(effect)
   if (result._tag === "Failure") {
     throw fiberFailure(result.effect_instruction_i0)
-  } else {
-    return result.effect_instruction_i0
   }
-}
+  return result.effect_instruction_i0
+})
 
 class AsyncFiberExceptionImpl<A, E = never> extends Error implements Runtime.AsyncFiberException<A, E> {
   readonly _tag = "AsyncFiberException"
@@ -229,31 +265,47 @@ const fastPath = <A, E, R>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> | un
 }
 
 /** @internal */
-export const unsafeRunSyncExit =
-  <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> => {
-    const op = fastPath(effect)
-    if (op) {
-      return op
-    }
-    const scheduler = new scheduler_.SyncScheduler()
-    const fiberRuntime = unsafeFork(runtime)(effect, { scheduler })
-    scheduler.flush()
-    const result = fiberRuntime.unsafePoll()
-    if (result) {
-      return result
-    }
-    return core.exitDie(core.capture(asyncFiberException(fiberRuntime), core.currentSpanFromFiber(fiberRuntime)))
+export const unsafeRunSyncExit: {
+  <A, E, R>(runtime: Runtime.Runtime<R>, effect: Effect.Effect<A, E, R>): Exit.Exit<A, E>
+  <R>(runtime: Runtime.Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E>
+} = makeDual((runtime, effect) => {
+  const op = fastPath(effect)
+  if (op) {
+    return op
   }
+  const scheduler = new scheduler_.SyncScheduler()
+  const fiberRuntime = unsafeFork(runtime)(effect, { scheduler })
+  scheduler.flush()
+  const result = fiberRuntime.unsafePoll()
+  if (result) {
+    return result
+  }
+  return core.exitDie(core.capture(asyncFiberException(fiberRuntime), core.currentSpanFromFiber(fiberRuntime)))
+})
 
 /** @internal */
-export const unsafeRunPromise = <R>(runtime: Runtime.Runtime<R>) =>
-<A, E>(
-  effect: Effect.Effect<A, E, R>,
+export const unsafeRunPromise: {
+  <R>(runtime: Runtime.Runtime<R>): <A, E>(
+    effect: Effect.Effect<A, E, R>,
+    options?: {
+      readonly signal?: AbortSignal | undefined
+    } | undefined
+  ) => Promise<A>
+  <R, A, E>(
+    runtime: Runtime.Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: {
+      readonly signal?: AbortSignal | undefined
+    } | undefined
+  ): Promise<A>
+} = makeDual((
+  runtime,
+  effect,
   options?: {
     readonly signal?: AbortSignal | undefined
   } | undefined
-): Promise<A> =>
-  unsafeRunPromiseExit(runtime)(effect, options).then((result) => {
+) =>
+  unsafeRunPromiseExit(runtime, effect, options).then((result) => {
     switch (result._tag) {
       case OpCodes.OP_SUCCESS: {
         return result.effect_instruction_i0
@@ -263,16 +315,29 @@ export const unsafeRunPromise = <R>(runtime: Runtime.Runtime<R>) =>
       }
     }
   })
+)
 
 /** @internal */
-export const unsafeRunPromiseExit = <R>(runtime: Runtime.Runtime<R>) =>
-<A, E>(
-  effect: Effect.Effect<A, E, R>,
+export const unsafeRunPromiseExit: {
+  <R>(
+    runtime: Runtime.Runtime<R>
+  ): <A, E>(
+    effect: Effect.Effect<A, E, R>,
+    options?: { readonly signal?: AbortSignal | undefined } | undefined
+  ) => Promise<Exit.Exit<A, E>>
+  <R, A, E>(
+    runtime: Runtime.Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: { readonly signal?: AbortSignal | undefined } | undefined
+  ): Promise<Exit.Exit<A, E>>
+} = makeDual((
+  runtime,
+  effect,
   options?: {
     readonly signal?: AbortSignal | undefined
   } | undefined
-): Promise<Exit.Exit<A, E>> =>
-  new Promise((resolve) => {
+) =>
+  new Promise<Exit.Exit<any, any>>((resolve) => {
     const op = fastPath(effect)
     if (op) {
       resolve(op)
@@ -291,6 +356,7 @@ export const unsafeRunPromiseExit = <R>(runtime: Runtime.Runtime<R>) =>
       }
     }
   })
+)
 
 /** @internal */
 export class RuntimeImpl<in R> implements Runtime.Runtime<R> {
