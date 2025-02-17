@@ -18,10 +18,10 @@ overrides:
 
 patchedDependencies:
   '@changesets/assemble-release-plan@6.0.3':
-    hash: y22bysylkwhu5afnwgbq3z5xjy
+    hash: 38b732f13722132f3daab6408b8a55cacb47eb7d2cf6c11bd81dcf76761d8417
     path: patches/@changesets__assemble-release-plan@6.0.3.patch
   '@changesets/get-github-info@0.6.0':
-    hash: 4nwpuevfciovsbhi25hd4g5r7y
+    hash: 1387c42d40315dc7805094fb3085da092ec802de277560db46fb53567ba583ec
     path: patches/@changesets__get-github-info@0.6.0.patch
 
 importers:
@@ -90,13 +90,13 @@ importers:
         version: 3.0.5(@types/node@22.13.4)(playwright@1.46.0)(typescript@5.7.2)(vite@6.1.0(@types/node@22.13.4)(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0))(vitest@3.0.5)
       '@vitest/coverage-v8':
         specifier: ^3.0.3
-        version: 3.0.5(@vitest/browser@3.0.5(@types/node@22.13.4)(playwright@1.46.0)(typescript@5.7.2)(vite@6.1.0(@types/node@22.13.4)(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0))(vitest@3.0.5))(vitest@3.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.13.4)(@vitest/browser@3.0.5)(happy-dom@17.1.0)(msw@2.7.0(@types/node@22.13.4)(typescript@5.7.2))(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0))
+        version: 3.0.5(@vitest/browser@3.0.5)(vitest@3.0.5)
       '@vitest/expect':
         specifier: ^3.0.3
         version: 3.0.5
       '@vitest/web-worker':
         specifier: ^3.0.3
-        version: 3.0.5(vitest@3.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.13.4)(@vitest/browser@3.0.5)(happy-dom@17.1.0)(msw@2.7.0(@types/node@22.13.4)(typescript@5.7.2))(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0))
+        version: 3.0.5(vitest@3.0.5)
       ast-types:
         specifier: ^0.14.2
         version: 0.14.2
@@ -381,7 +381,7 @@ importers:
         version: 3.0.13
       vitest-websocket-mock:
         specifier: ^0.4.0
-        version: 0.4.0(vitest@3.0.5(@edge-runtime/vm@5.0.0)(@types/node@22.13.4)(@vitest/browser@3.0.5)(happy-dom@17.1.0)(msw@2.7.0(@types/node@22.13.4)(typescript@5.7.3))(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0))
+        version: 0.4.0(vitest@3.0.5)
       ws:
         specifier: ^8.18.0
         version: 8.18.0
@@ -5397,7 +5397,6 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.7:
@@ -9196,7 +9195,7 @@ snapshots:
       resolve-from: 5.0.0
       semver: 7.6.3
 
-  '@changesets/assemble-release-plan@6.0.3(patch_hash=y22bysylkwhu5afnwgbq3z5xjy)':
+  '@changesets/assemble-release-plan@6.0.3(patch_hash=38b732f13722132f3daab6408b8a55cacb47eb7d2cf6c11bd81dcf76761d8417)':
     dependencies:
       '@babel/runtime': 7.26.9
       '@changesets/errors': 0.2.0
@@ -9212,7 +9211,7 @@ snapshots:
 
   '@changesets/changelog-github@0.5.0':
     dependencies:
-      '@changesets/get-github-info': 0.6.0(patch_hash=4nwpuevfciovsbhi25hd4g5r7y)
+      '@changesets/get-github-info': 0.6.0(patch_hash=1387c42d40315dc7805094fb3085da092ec802de277560db46fb53567ba583ec)
       '@changesets/types': 6.0.0
       dotenv: 8.6.0
     transitivePeerDependencies:
@@ -9222,7 +9221,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.24.8
       '@changesets/apply-release-plan': 7.0.4
-      '@changesets/assemble-release-plan': 6.0.3(patch_hash=y22bysylkwhu5afnwgbq3z5xjy)
+      '@changesets/assemble-release-plan': 6.0.3(patch_hash=38b732f13722132f3daab6408b8a55cacb47eb7d2cf6c11bd81dcf76761d8417)
       '@changesets/changelog-git': 0.2.0
       '@changesets/config': 3.0.2
       '@changesets/errors': 0.2.0
@@ -9275,7 +9274,7 @@ snapshots:
       fs-extra: 7.0.1
       semver: 7.6.3
 
-  '@changesets/get-github-info@0.6.0(patch_hash=4nwpuevfciovsbhi25hd4g5r7y)':
+  '@changesets/get-github-info@0.6.0(patch_hash=1387c42d40315dc7805094fb3085da092ec802de277560db46fb53567ba583ec)':
     dependencies:
       dataloader: 1.4.0
       node-fetch: 2.7.0
@@ -9285,7 +9284,7 @@ snapshots:
   '@changesets/get-release-plan@4.0.3':
     dependencies:
       '@babel/runtime': 7.26.9
-      '@changesets/assemble-release-plan': 6.0.3(patch_hash=y22bysylkwhu5afnwgbq3z5xjy)
+      '@changesets/assemble-release-plan': 6.0.3(patch_hash=38b732f13722132f3daab6408b8a55cacb47eb7d2cf6c11bd81dcf76761d8417)
       '@changesets/config': 3.0.2
       '@changesets/pre': 2.0.0
       '@changesets/read': 0.6.0
@@ -10630,7 +10629,7 @@ snapshots:
 
   '@types/ssh2@1.15.1':
     dependencies:
-      '@types/node': 22.13.4
+      '@types/node': 18.19.76
 
   '@types/stack-utils@2.0.3': {}
 
@@ -10809,7 +10808,7 @@ snapshots:
       - vite
     optional: true
 
-  '@vitest/coverage-v8@3.0.5(@vitest/browser@3.0.5(@types/node@22.13.4)(playwright@1.46.0)(typescript@5.7.2)(vite@6.1.0(@types/node@22.13.4)(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0))(vitest@3.0.5))(vitest@3.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.13.4)(@vitest/browser@3.0.5)(happy-dom@17.1.0)(msw@2.7.0(@types/node@22.13.4)(typescript@5.7.2))(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0))':
+  '@vitest/coverage-v8@3.0.5(@vitest/browser@3.0.5)(vitest@3.0.5)':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 1.0.2
@@ -10889,7 +10888,7 @@ snapshots:
       loupe: 3.1.3
       tinyrainbow: 2.0.0
 
-  '@vitest/web-worker@3.0.5(vitest@3.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.13.4)(@vitest/browser@3.0.5)(happy-dom@17.1.0)(msw@2.7.0(@types/node@22.13.4)(typescript@5.7.2))(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0))':
+  '@vitest/web-worker@3.0.5(vitest@3.0.5)':
     dependencies:
       debug: 4.4.0
       vitest: 3.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.13.4)(@vitest/browser@3.0.5)(happy-dom@17.1.0)(msw@2.7.0(@types/node@22.13.4)(typescript@5.7.2))(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0)
@@ -12015,7 +12014,7 @@ snapshots:
       debug: 4.3.6
       enhanced-resolve: 5.17.1
       eslint: 9.9.1
-      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-plugin-import@2.30.0)(eslint@9.9.1))(eslint@9.9.1)
+      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.9.1)
       fast-glob: 3.3.2
       get-tsconfig: 4.8.0
       is-bun-module: 1.1.0
@@ -12028,7 +12027,7 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-module-utils@2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-plugin-import@2.30.0)(eslint@9.9.1))(eslint@9.9.1):
+  eslint-module-utils@2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.9.1):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -12078,7 +12077,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.9.1
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-plugin-import@2.30.0)(eslint@9.9.1))(eslint@9.9.1)
+      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.9.1)
       hasown: 2.0.2
       is-core-module: 2.15.1
       is-glob: 4.0.3
@@ -15241,7 +15240,7 @@ snapshots:
       tsx: 4.17.0
       yaml: 2.7.0
 
-  vitest-websocket-mock@0.4.0(vitest@3.0.5(@edge-runtime/vm@5.0.0)(@types/node@22.13.4)(@vitest/browser@3.0.5)(happy-dom@17.1.0)(msw@2.7.0(@types/node@22.13.4)(typescript@5.7.3))(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0)):
+  vitest-websocket-mock@0.4.0(vitest@3.0.5):
     dependencies:
       '@vitest/utils': 2.1.4
       mock-socket: 9.3.1
