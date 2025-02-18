@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.77.2
+
+### Patch Changes
+
+- [#4456](https://github.com/Effect-TS/effect/pull/4456) [`3e7ce97`](https://github.com/Effect-TS/effect/commit/3e7ce97f8a41756a039cf635d0b3d9a75d781097) Thanks @tim-smart! - ensure key for header security is lower case
+
+- [#4472](https://github.com/Effect-TS/effect/pull/4472) [`31be72a`](https://github.com/Effect-TS/effect/commit/31be72ada118cb84a942e67b1663263f8db74a9f) Thanks @gcanti! - Add support for `Schema.Enums` in `HttpApiBuilder.isSingleStringType`, closes #4471.
+
+- Updated dependencies [[`31be72a`](https://github.com/Effect-TS/effect/commit/31be72ada118cb84a942e67b1663263f8db74a9f)]:
+  - effect@3.13.2
+
 ## 0.77.1
 
 ### Patch Changes
