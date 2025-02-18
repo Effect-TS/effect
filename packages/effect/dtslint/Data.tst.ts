@@ -125,7 +125,7 @@ describe("Data", () => {
     >()
     expect<Parameters<typeof NotFound>[0]>().type.toBe<{ readonly status: 404; readonly message: string; }>()
     expect<ReturnType<typeof NotFound>>().type.toBe<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string; }>()
-    const notFound = NotFound({ status: 404, message: "mesage" })
+    const notFound = NotFound({ status: 404, message: "Message" })
 
     // @ts-expect-error: cannot assign to readonly property
     notFound.message = "a"
