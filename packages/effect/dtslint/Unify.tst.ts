@@ -1,4 +1,5 @@
 import type {
+  Context,
   Deferred,
   Effect,
   Exit,
@@ -23,6 +24,11 @@ import { describe, expect, it } from "tstyche"
 
 describe("Unify", () => {
   describe("Unify", () => {
+    it("should unify Context types", () => {
+      expect<Unify.Unify<Context.Tag<0, 1> | Context.Tag<"a", "b">>>()
+        .type.toBe<Context.Tag<0, 1> | Context.Tag<"a", "b">>()
+    })
+
     it("should unify Option types", () => {
       expect<Unify.Unify<Option.Option<number> | Option.Option<string>>>()
         .type.toBe<Option.Option<string | number>>()
@@ -190,6 +196,8 @@ describe("Unify", () => {
     it("should unify a huge union", () => {
       expect<
         Unify.Unify<
+          | Context.Tag<0, 1>
+          | Context.Tag<"a", "b">
           | Either.Either<1, 0>
           | Either.Either<"a", "b">
           | Option.Option<number>
@@ -232,6 +240,8 @@ describe("Unify", () => {
         >
       >()
         .type.toBe<
+        | Context.Tag<0, 1>
+        | Context.Tag<"a", "b">
         | 0
         | Option.Option<string | number>
         | STM.STM<0 | "a", "b" | 1, "c" | 2>
