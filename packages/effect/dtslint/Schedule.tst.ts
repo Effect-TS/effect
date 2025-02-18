@@ -26,8 +26,10 @@ describe("Schedule", () => {
 
     Schedule.once.pipe(
       Schedule.as<number | string>(1),
-      // @ts-expect-error
-      Schedule.tapOutput((s: string) => Console.log(s.trim()))
+      Schedule.tapOutput(
+        // @ts-expect-error: Type 'number' is not assignable to type 'string'
+        (s: string) => Console.log(s.trim())
+      )
     )
   })
 })

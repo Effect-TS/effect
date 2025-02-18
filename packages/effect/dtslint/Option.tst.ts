@@ -5,22 +5,22 @@ declare const number: Option.Option<number>
 declare const string: Option.Option<string>
 declare const numberOrString: Option.Option<string | number>
 
-declare const pimitiveNumber: number
-declare const pimitiveNumerOrString: string | number
+declare const primitiveNumber: number
+declare const primitiveNumerOrString: string | number
 declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
 describe("Option", () => {
   it("liftPredicate", () => {
     expect(
-      Option.liftPredicate(pimitiveNumerOrString, Predicate.isString)
+      Option.liftPredicate(primitiveNumerOrString, Predicate.isString)
     ).type.toBe<Option.Option<string>>()
     expect(
-      pipe(pimitiveNumerOrString, Option.liftPredicate(Predicate.isString))
+      pipe(primitiveNumerOrString, Option.liftPredicate(Predicate.isString))
     ).type.toBe<Option.Option<string>>()
 
     expect(
       Option.liftPredicate(
-        pimitiveNumerOrString,
+        primitiveNumerOrString,
         (n): n is number => {
           expect(n).type.toBe<string | number>()
           return typeof n === "number"
@@ -29,7 +29,7 @@ describe("Option", () => {
     ).type.toBe<Option.Option<number>>()
     expect(
       pipe(
-        pimitiveNumerOrString,
+        primitiveNumerOrString,
         Option.liftPredicate(
           (n): n is number => {
             expect(n).type.toBe<string | number>()
@@ -40,10 +40,10 @@ describe("Option", () => {
     ).type.toBe<Option.Option<number>>()
 
     expect(
-      Option.liftPredicate(pimitiveNumber, predicateNumbersOrStrings)
+      Option.liftPredicate(primitiveNumber, predicateNumbersOrStrings)
     ).type.toBe<Option.Option<number>>()
     expect(
-      pipe(pimitiveNumber, Option.liftPredicate(predicateNumbersOrStrings))
+      pipe(primitiveNumber, Option.liftPredicate(predicateNumbersOrStrings))
     ).type.toBe<Option.Option<number>>()
   })
 
@@ -184,10 +184,15 @@ describe("Option", () => {
 
   describe("firstSomeOf", () => {
     it("should error for invalid type parameter", () => {
-      // @ts-expect-error
-      Option.firstSomeOf<number>([number, string])
-      // @ts-expect-error
-      pipe([number, string], Option.firstSomeOf<number>)
+      Option.firstSomeOf<number>(
+        // @ts-expect-error: Type 'string' is not assignable to type 'number'
+        [number, string]
+      )
+      pipe(
+        // @ts-expect-error: Type 'string' is not assignable to type 'number'
+        [number, string],
+        Option.firstSomeOf<number>
+      )
     })
 
     it("should work for heterogeneous usage", () => {

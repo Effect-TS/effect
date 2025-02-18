@@ -174,13 +174,13 @@ describe("Either", () => {
       )
     ).type.toBe<Either.Either<readonly [string, ...Array<string>], "b" | Error>>()
 
-    // TODO
-    // expect(
-    //   Either.filterOrLeft(literal$error, Predicate.isString, (a) => {
-    //     expect(a).type.toBe<"a">()
-    //     return "b" as const
-    //   })
-    // ).type.toBe<Either.Either<"a", "b" | Error>>()
+    // TODO: this doesn't work but it should
+    expect.fail(
+      Either.filterOrLeft(literal$Error, Predicate.isString, (a) => {
+        expect(a).type.toBe<"a">()
+        return "b" as const
+      })
+    ).type.toBe<Either.Either<"a", "b" | Error>>()
     expect(
       pipe(
         literal$Error,
@@ -191,10 +191,10 @@ describe("Either", () => {
       )
     ).type.toBe<Either.Either<"a", "b" | Error>>()
 
-    // TODO
-    // expect(
-    //   Either.filterOrLeft(literal$error, Predicate.isString, (_s: string) => "b" as const)
-    // ).type.toBe<Either.Either<"a", "b" | Error>>()
+    // TODO: this doesn't work but it should
+    expect.fail(
+      Either.filterOrLeft(literal$Error, Predicate.isString, (_s: string) => "b" as const)
+    ).type.toBe<Either.Either<"a", "b" | Error>>()
     expect(
       pipe(
         literal$Error,

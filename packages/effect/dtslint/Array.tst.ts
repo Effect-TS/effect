@@ -233,11 +233,11 @@ describe("Array", () => {
     expect(pipe(nonEmptyABs, Array.sort(orderA))).type.toBe<[AB, ...Array<AB>]>()
     expect(Array.sort(orderA)(nonEmptyABs)).type.toBe<[AB, ...Array<AB>]>()
 
-    // @ts-expect-error
+    // @ts-expect-error: wrong `Order` type
     pipe([1], Array.sort(Order.string))
-    // @ts-expect-error
+    // @ts-expect-error: wrong `Order` type
     Array.sort([1], Order.string)
-    // @ts-expect-error
+    // @ts-expect-error: wrong `Order` type
     Array.sort(Order.string)([1])
   })
 
@@ -355,9 +355,8 @@ describe("Array", () => {
       })
     )).type.toBe<Array<string | number>>()
 
-    // @ts-expect-error: wrong predicate type
+    // @ts-expect-error: wrong `_item` type
     Array.filter(numbersOrStrings, (_item: string) => true)
-
     // @ts-expect-error: wrong `_item` type
     pipe(numbersOrStrings, Array.filter((_item: string) => true))
 

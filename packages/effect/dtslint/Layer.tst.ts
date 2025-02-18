@@ -21,7 +21,7 @@ declare const layer3: Layer.Layer<Out3, Err3, In3>
 
 describe("Layer", () => {
   it("merge", () => {
-    // @ts-expect-error
+    // @ts-expect-error: Expected 1-2 arguments, but got 0
     Layer.merge()
 
     expect(Layer.merge(layer1, layer2)).type.toBe<Layer.Layer<Out1 | Out2, Err1 | Err2, In1 | In2>>()
@@ -29,7 +29,7 @@ describe("Layer", () => {
   })
 
   it("mergeAll", () => {
-    // @ts-expect-error
+    // @ts-expect-error: Expected at least 1 arguments, but got 0
     Layer.mergeAll()
 
     expect(Layer.mergeAll(layer1)).type.toBe<Layer.Layer<Out1, Err1, In1>>()

@@ -36,8 +36,9 @@ describe("Match", () => {
     expect(
       Match.type<{ a: number } | { b: string }>().pipe(
         Match.withReturnType<string>(),
-        // @ts-expect-error
-        Match.when({ a: Match.number }, (_) => _.a),
+        Match.when({ a: Match.number }, (_) =>
+          // @ts-expect-error: Type 'number' is not assignable to type 'string'
+          _.a),
         Match.when({ b: Match.string }, (_) => _.b),
         Match.exhaustive
       )
@@ -348,7 +349,7 @@ describe("Match", () => {
       Match.valueTags({
         A: (_A) => _A.a,
         B: () => "B",
-        // @ts-expect-error
+        // @ts-expect-error: Type '() => boolean' is not assignable to type 'never'
         C: () => false
       })
     )
@@ -371,7 +372,7 @@ describe("Match", () => {
     Match.typeTags<Value>()({
       A: (_) => _.a,
       B: () => "B",
-      // @ts-expect-error
+      // @ts-expect-error: Type '() => boolean' is not assignable to type 'never'
       C: () => false
     })(value)
   })
@@ -399,7 +400,7 @@ describe("Match", () => {
       Match.discriminators("_tag")({
         A: (_) => _.a,
         B: () => "B",
-        // @ts-expect-error
+        // @ts-expect-error: Type '() => boolean' is not assignable to type 'never'
         C: () => false
       }),
       Match.exhaustive
@@ -428,7 +429,7 @@ describe("Match", () => {
       Match.discriminatorsExhaustive("_tag")({
         A: (_) => _.a,
         B: () => "B",
-        // @ts-expect-error
+        // @ts-expect-error: Type '() => boolean' is not assignable to type 'never'
         C: () => false
       })
     )(value)
@@ -457,7 +458,7 @@ describe("Match", () => {
       Match.tags({
         A: (_) => _.a,
         B: () => "B",
-        // @ts-expect-error
+        // @ts-expect-error: Type '() => boolean' is not assignable to type 'never'
         C: () => false
       }),
       Match.exhaustive
@@ -486,7 +487,7 @@ describe("Match", () => {
       Match.tagsExhaustive({
         A: (_) => _.a,
         B: () => "B",
-        // @ts-expect-error
+        // @ts-expect-error: Type '() => boolean' is not assignable to type 'never'
         C: () => false
       })
     )(value)

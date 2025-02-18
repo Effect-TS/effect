@@ -7,21 +7,21 @@ describe("Function", () => {
       const _x = (): number =>
         pipe(
           1,
-          // @ts-expect-error
+          // @ts-expect-error: Cannot find name 'add'
           add(1),
           identity
         )
 
       const _y = (): (n: number) => number =>
         flow(
-          // @ts-expect-error
+          // @ts-expect-error: Cannot find name 'add'
           add(1),
           identity
         )
 
       const _z = (): number =>
         Option.some(1).pipe(
-          // @ts-expect-error
+          // @ts-expect-error: Cannot find name 'add'
           add(1),
           identity
         )

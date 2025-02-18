@@ -59,18 +59,41 @@ describe("Struct", () => {
     })
 
     it("errors", () => {
-      // @ts-expect-error
-      Struct.evolve({ a: "a", b: 1 }, { a: (n: number) => n })
-      // @ts-expect-error
-      Struct.evolve(hole<{ a: "a"; b: 1 }>(), hole<Record<string, string>>())
-      // @ts-expect-error
-      Struct.evolve(hole<{ a: "a"; b: 1 }>(), hole<Record<string, (s: string) => null>>())
-      // @ts-expect-error
-      pipe({ a: "a", b: 1 }, Struct.evolve({ a: (n: number) => n }))
-      // @ts-expect-error
-      pipe(hole<{ a: "a"; b: 1 }>(), Struct.evolve(hole<Record<string, string>>()))
-      // @ts-expect-error
-      pipe(hole<{ a: "a"; b: 1 }>(), Struct.evolve(hole<Record<string, (s: string) => null>>()))
+      Struct.evolve({ a: "a", b: 1 }, {
+        // @ts-expect-error: Type 'string' is not assignable to type 'number'
+        a: (n: number) => n
+      })
+      Struct.evolve(
+        hole<{ a: "a"; b: 1 }>(),
+        // @ts-expect-error: Type 'string' is not assignable to type '(a: 1 | "a") => unknown'
+        hole<Record<string, string>>()
+      )
+      Struct.evolve(
+        hole<{ a: "a"; b: 1 }>(),
+        // @ts-expect-error: Type 'number' is not assignable to type 'string'
+        hole<Record<string, (s: string) => null>>()
+      )
+      pipe(
+        { a: "a", b: 1 },
+        Struct.evolve({
+          // @ts-expect-error: Type 'string' is not assignable to type 'number'
+          a: (n: number) => n
+        })
+      )
+      pipe(
+        hole<{ a: "a"; b: 1 }>(),
+        Struct.evolve(
+          // @ts-expect-error: Type 'string' is not assignable to type '(a: "a" | 1) => unknown'
+          hole<Record<string, string>>()
+        )
+      )
+      pipe(
+        hole<{ a: "a"; b: 1 }>(),
+        Struct.evolve(
+          // @ts-expect-error: Type 'number' is not assignable to type 'string'
+          hole<Record<string, (s: string) => null>>()
+        )
+      )
     })
   })
 
@@ -129,27 +152,45 @@ describe("Struct", () => {
     it("struct + record", () => {
       expect(pipe(hole<Record<string, number> & { a: boolean }>(), Struct.get("a")))
         .type.toBe<boolean>()
-      // @ts-expect-error: property "b" does not exist
-      pipe(hole<Record<string, number> & { a: boolean }>(), Struct.get("b"))
+      pipe(
+        hole<Record<string, number> & { a: boolean }>(),
+        // @ts-expect-error: Type 'Record<string, number> & { a: boolean; }' has no properties in common with type '{ b?: any; }'
+        Struct.get("b")
+      )
     })
   })
 
   describe("pick", () => {
     it("errors when picking a non-existent key", () => {
-      // @ts-expect-error
-      pipe(stringStruct, Struct.pick("d"))
-      // @ts-expect-error
-      Struct.pick("d")(stringStruct)
+      pipe(
+        stringStruct,
+        // @ts-expect-error: Type '{ a: string; b: number; c: boolean; }' has no properties in common with type '{ d?: any; }'
+        Struct.pick("d")
+      )
+      Struct.pick("d")(
+        // @ts-expect-error: Type '{ a: string; b: number; c: boolean; }' has no properties in common with type '{ d?: any; }'
+        stringStruct
+      )
 
-      // @ts-expect-error
-      pipe(symbolStruct, Struct.pick(dsym))
-      // @ts-expect-error
-      Struct.pick(dsym)(symbolStruct)
+      pipe(
+        symbolStruct,
+        // @ts-expect-error: Type '{ [asym]: string; [bsym]: number; [csym]: boolean; }' has no properties in common with type '{ [dsym]?: any; }'
+        Struct.pick(dsym)
+      )
+      Struct.pick(dsym)(
+        // @ts-expect-error: Type '{ [asym]: string; [bsym]: number; [csym]: boolean; }' has no properties in common with type '{ [dsym]?: any; }'
+        symbolStruct
+      )
 
-      // @ts-expect-error
-      pipe(numberStruct, Struct.pick(4))
-      // @ts-expect-error
-      Struct.pick(4)(numberStruct)
+      pipe(
+        numberStruct,
+        // @ts-expect-error: Type '{ 1: string; 2: number; 3: boolean; }' has no properties in common with type '{ 4?: any; }'
+        Struct.pick(4)
+      )
+      Struct.pick(4)(
+        // @ts-expect-error: Type '{ 1: string; 2: number; 3: boolean; }' has no properties in common with type '{ 4?: any; }'
+        numberStruct
+      )
     })
 
     it("returns a string record with unknown values when picking a dynamic string key", () => {
@@ -220,11 +261,14 @@ describe("Struct", () => {
       expect(pipe(sr, Struct.pick("a")))
         .type.toBe<{ a: boolean }>()
 
-      // TODO
+      // TODO: this doesn't work but it should
       // // @ts-expect-error
       // Struct.pick(sr, "b")
-      // @ts-expect-error
-      pipe(sr, Struct.pick("b"))
+      pipe(
+        sr,
+        // @ts-expect-error: Type 'Record<string, number> & { a: boolean; }' has no properties in common with type '{ b?: any; }'
+        Struct.pick("b")
+      )
     })
 
     it("struct with optional properties", () => {
@@ -237,20 +281,35 @@ describe("Struct", () => {
 
   describe("omit", () => {
     it("errors when omitting a non-existent key", () => {
-      // @ts-expect-error
-      pipe(stringStruct, Struct.omit("d"))
-      // @ts-expect-error
-      Struct.omit("d")(stringStruct)
+      pipe(
+        stringStruct,
+        // @ts-expect-error:  Type '{ a: string; b: number; c: boolean; }' has no properties in common with type '{ d?: any; }'
+        Struct.omit("d")
+      )
+      Struct.omit("d")(
+        // @ts-expect-error: Type '{ a: string; b: number; c: boolean; }' has no properties in common with type '{ d?: any; }'
+        stringStruct
+      )
 
-      // @ts-expect-error
-      pipe(symbolStruct, Struct.omit(dsym))
-      // @ts-expect-error
-      Struct.omit(dsym)(symbolStruct)
+      pipe(
+        symbolStruct,
+        // @ts-expect-error: Type '{ [asym]: string; [bsym]: number; [csym]: boolean; }' has no properties in common with type '{ [dsym]?: any; }'
+        Struct.omit(dsym)
+      )
+      Struct.omit(dsym)(
+        // @ts-expect-error: Type '{ [asym]: string; [bsym]: number; [csym]: boolean; }' has no properties in common with type '{ [dsym]?: any; }'
+        symbolStruct
+      )
 
-      // @ts-expect-error
-      pipe(numberStruct, Struct.omit(4))
-      // @ts-expect-error
-      Struct.omit(4)(numberStruct)
+      pipe(
+        numberStruct,
+        // @ts-expect-error: Type '{ 1: string; 2: number; 3: boolean; }' has no properties in common with type '{ 4?: any; }'
+        Struct.omit(4)
+      )
+      Struct.omit(4)(
+        // @ts-expect-error: Type '{ 1: string; 2: number; 3: boolean; }' has no properties in common with type '{ 4?: any; }'
+        numberStruct
+      )
     })
 
     it("struct", () => {

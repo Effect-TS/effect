@@ -21,7 +21,7 @@ describe("Duration", () => {
     expect(Duration.decode("1 day")).type.toBe<Duration.Duration>()
     expect(Duration.decode("10 days")).type.toBe<Duration.Duration>()
 
-    // @ts-expect-error: Invalid duration unit
+    // @ts-expect-error: invalid duration input
     Duration.decode("10 unknown")
   })
 

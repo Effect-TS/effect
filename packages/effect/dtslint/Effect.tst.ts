@@ -489,23 +489,18 @@ describe("Effect", () => {
   })
 
   it("tap", () => {
-    expect(
-      Effect.succeed("a" as const).pipe(Effect.tap(tacitString))
-    ).type.toBe<Effect.Effect<"a">>()
-
-    expect(
-      Effect.succeed("a" as const).pipe(Effect.tap(tacitString, { onlyEffect: true }))
-    ).type.toBe<Effect.Effect<"a">>()
-
-    // @ts-expect-error
+    // @ts-expect-error: No overload matches this call
     Effect.succeed("a" as const).pipe(Effect.tap(tacitStringError, { onlyEffect: true }))
-
-    expect(
-      Effect.succeed("a" as const).pipe(Effect.tap(tacitString("a"), { onlyEffect: true }))
-    ).type.toBe<Effect.Effect<"a">>()
-
-    // @ts-expect-error
+    // @ts-expect-error: No overload matches this call
     Effect.succeed("a" as const).pipe(Effect.tap("a", { onlyEffect: true }))
+
+    expect(Effect.succeed("a" as const).pipe(Effect.tap(tacitString))).type.toBe<Effect.Effect<"a">>()
+
+    expect(Effect.succeed("a" as const).pipe(Effect.tap(tacitString, { onlyEffect: true })))
+      .type.toBe<Effect.Effect<"a">>()
+
+    expect(Effect.succeed("a" as const).pipe(Effect.tap(tacitString("a"), { onlyEffect: true })))
+      .type.toBe<Effect.Effect<"a">>()
   })
 
   it("tapError", () => {
@@ -599,16 +594,14 @@ describe("Effect", () => {
   })
 
   it("catchTag", () => {
-    // @ts-expect-error
+    // @ts-expect-error: Argument of type '"wrong"' is not assignable to parameter of type '"TestError1"'
     Effect.catchTag(hole<Effect.Effect<number, TestError1>>(), "wrong", () => Effect.succeed(1))
-
-    // @ts-expect-error
+    // @ts-expect-error: Argument of type '"wrong"' is not assignable to parameter of type '"TestError1"'
     pipe(hole<Effect.Effect<number, TestError1>>(), Effect.catchTag("wrong", () => Effect.succeed(1)))
 
-    // @ts-expect-error
+    // @ts-expect-error: Argument of type '"wrong"' is not assignable to parameter of type '"TestError1"'
     Effect.catchTag(hole<Effect.Effect<number, Error | TestError1>>(), "wrong", () => Effect.succeed(1))
-
-    // @ts-expect-error
+    // @ts-expect-error: Argument of type '"wrong"' is not assignable to parameter of type '"TestError1"'
     pipe(hole<Effect.Effect<number, Error | TestError1>>(), Effect.catchTag("wrong", () => Effect.succeed(1)))
 
     expect(Effect.catchTag(
@@ -689,14 +682,14 @@ describe("Effect", () => {
       Effect.fail(new TestError1()),
       Effect.catchTags({
         TestError1: () => Effect.succeed(1),
-        // @ts-expect-error
+        // @ts-expect-error: Type '() => Effect.Effect<number, never, never>' is not assignable to type 'never'
         Other: () => Effect.succeed(1)
       })
     )
 
     Effect.catchTags(Effect.fail(new TestError1()), {
       TestError1: () => Effect.succeed(1),
-      // @ts-expect-error
+      // @ts-expect-error: Type '() => Effect.Effect<number, never, never>' is not assignable to type 'never'
       Other: () => Effect.succeed(1)
     })
 
@@ -704,14 +697,14 @@ describe("Effect", () => {
       Effect.fail(new TestError1() as TestError1 | string),
       Effect.catchTags({
         TestError1: () => Effect.succeed(1),
-        // @ts-expect-error
+        // @ts-expect-error: Type '() => Effect.Effect<number, never, never>' is not assignable to type 'never'
         Other: () => Effect.succeed(1)
       })
     )
 
     Effect.catchTags(Effect.fail(new TestError1() as TestError1 | string), {
       TestError1: () => Effect.succeed(1),
-      // @ts-expect-error
+      // @ts-expect-error: Type '() => Effect.Effect<number, never, never>' is not assignable to type 'never'
       Other: () => Effect.succeed(1)
     })
 
