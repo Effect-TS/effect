@@ -112,7 +112,7 @@ describe("Data", () => {
     expect<Extract<HttpError, { _tag: "NotFound" }>>().type.toBe<{ readonly _tag: "NotFound"; readonly status: 404; readonly b: number; }>()
 
     // @ts-expect-error: Incorrect tagged enum definition
-    export type Err = Data.TaggedEnum<{
+    type _Err = Data.TaggedEnum<{
       A: { readonly _tag: "A" }
       B: { readonly tag: "B" }
     }>
