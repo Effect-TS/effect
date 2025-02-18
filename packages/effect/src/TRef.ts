@@ -2,10 +2,10 @@
  * @since 2.0.0
  */
 
-import type * as Journal from "./internal/stm/stm/journal.js"
-import type * as TxnId from "./internal/stm/stm/txnId.js"
-import type * as Versioned from "./internal/stm/stm/versioned.js"
+import type * as Journal from "./internal/stm/journal.js"
 import * as internal from "./internal/stm/tRef.js"
+import type * as TxnId from "./internal/stm/txnId.js"
+import type * as Versioned from "./internal/stm/versioned.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as STM from "./STM.js"

@@ -1,10 +1,10 @@
-import * as Equal from "../../../Equal.js"
-import type * as FiberId from "../../../FiberId.js"
-import { pipe } from "../../../Function.js"
-import * as Hash from "../../../Hash.js"
-import { hasProperty } from "../../../Predicate.js"
-import type * as Types from "../../../Types.js"
-import * as OpCodes from "../opCodes/tExit.js"
+import * as Equal from "../../Equal.js"
+import type * as FiberId from "../../FiberId.js"
+import { pipe } from "../../Function.js"
+import * as Hash from "../../Hash.js"
+import { hasProperty } from "../../Predicate.js"
+import type * as Types from "../../Types.js"
+import * as OpCodes from "./opCodes/tExit.js"
 
 /** @internal */
 const TExitSymbolKey = "effect/TExit"

@@ -1,4 +1,4 @@
-import type * as TRef from "../../../TRef.js"
+import type * as TRef from "../../TRef.js"
 import * as Versioned from "./versioned.js"
 
 /** @internal */

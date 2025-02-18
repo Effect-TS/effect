@@ -16,8 +16,8 @@ import type * as Types from "../../Types.js"
 import { yieldWrapGet } from "../../Utils.js"
 import * as effectCore from "../core.js"
 import * as core from "./core.js"
-import * as Journal from "./stm/journal.js"
-import * as STMState from "./stm/stmState.js"
+import * as Journal from "./journal.js"
+import * as STMState from "./stmState.js"
 
 /** @internal */
 export const acquireUseRelease = dual<
