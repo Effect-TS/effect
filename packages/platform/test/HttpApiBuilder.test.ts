@@ -15,6 +15,29 @@ const assertNormalizedUrlParams = <UrlParams extends Schema.Schema.Any>(
 describe("HttpApiBuilder", () => {
   describe("normalizeUrlParams", () => {
     describe("Property Signatures", () => {
+      it("Enums", () => {
+        enum Fruits {
+          A = "a",
+          B = "b"
+        }
+
+        const schema = Schema.Struct({
+          a: Schema.Enums(Fruits)
+        })
+        assertNormalizedUrlParams(schema, { a: "a" }, { a: "a" })
+        assertNormalizedUrlParams(schema, { a: "b" }, { a: "b" })
+        assertNormalizedUrlParams(schema, { a: ["a"] }, { a: ["a"] })
+        assertNormalizedUrlParams(schema, { a: ["b"] }, { a: ["b"] })
+      })
+
+      it("TemplateLiteral", () => {
+        const schema = Schema.Struct({
+          a: Schema.TemplateLiteral("a", Schema.String)
+        })
+        assertNormalizedUrlParams(schema, { a: "a" }, { a: "a" })
+        assertNormalizedUrlParams(schema, { a: ["a"] }, { a: ["a"] })
+      })
+
       it("String", () => {
         const schema = Schema.Struct({ a: Schema.String })
         assertNormalizedUrlParams(schema, { a: "a" }, { a: "a" })
@@ -102,6 +125,28 @@ describe("HttpApiBuilder", () => {
     })
 
     describe("Index Signatures", () => {
+      it("Enums", () => {
+        enum Fruits {
+          A = "a",
+          B = "b"
+        }
+
+        const schema = Schema.Record({
+          key: Schema.String,
+          value: Schema.Enums(Fruits)
+        })
+        assertNormalizedUrlParams(schema, { a: "a" }, { a: "a" })
+        assertNormalizedUrlParams(schema, { a: "b" }, { a: "b" })
+      })
+
+      it("TemplateLiteral", () => {
+        const schema = Schema.Record({
+          key: Schema.String,
+          value: Schema.TemplateLiteral("a", Schema.String)
+        })
+        assertNormalizedUrlParams(schema, { a: "a" }, { a: "a" })
+      })
+
       it("String", () => {
         const schema = Schema.Record({
           key: Schema.String,

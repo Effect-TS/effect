@@ -1067,7 +1067,7 @@ export class Enums implements Annotated {
   toString() {
     return Option.getOrElse(
       getExpected(this),
-      () => `<enum ${this.enums.length} value(s): ${this.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
+      () => `<enum ${this.enums.length} value(s): ${this.enums.map(([_, value]) => JSON.stringify(value)).join(" | ")}>`
     )
   }
   /**

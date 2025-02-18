@@ -569,6 +569,7 @@ function isSingleStringType(ast: AST.AST, key?: PropertyKey): boolean {
     case "StringKeyword":
     case "Literal":
     case "TemplateLiteral":
+    case "Enums":
       return true
     case "TypeLiteral": {
       if (key !== undefined) {
