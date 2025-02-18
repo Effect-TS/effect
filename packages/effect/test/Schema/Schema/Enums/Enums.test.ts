@@ -58,7 +58,7 @@ describe("Enums", () => {
       await Util.assertions.decoding.fail(
         schema,
         "Cantaloupe",
-        `Expected <enum 3 value(s): 0 | 1 | 2>, actual "Cantaloupe"`
+        `Expected <enum 3 value(s): "apple" | "banana" | 0>, actual "Cantaloupe"`
       )
     })
 
@@ -85,7 +85,7 @@ describe("Enums", () => {
       await Util.assertions.decoding.fail(
         schema,
         "Cantaloupe",
-        `Expected <enum 3 value(s): 0 | 1 | 2>, actual "Cantaloupe"`
+        `Expected <enum 3 value(s): "apple" | "banana" | 3>, actual "Cantaloupe"`
       )
     })
 
