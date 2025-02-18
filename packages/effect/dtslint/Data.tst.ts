@@ -97,7 +97,7 @@ describe("Data", () => {
     }
     const taggedPerson = Data.tagged<TaggedPerson>("Person")
 
-    expect<Parameters<typeof taggedPerson>[0]>().type.toBe<{ readonly name: string; readonly optional?: string; }>()
+    expect(taggedPerson).type.toBe<(args: { readonly name: string; readonly optional?: string }) => TaggedPerson>()
 
     // @ts-expect-error: cannot assign to readonly property
     taggedPerson.name = "a"
