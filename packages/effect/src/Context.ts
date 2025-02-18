@@ -112,7 +112,7 @@ export interface ReferenceClass<Self, Id extends string, Type> extends Reference
  * @since 2.0.0
  */
 export interface TagUnify<A extends { [Unify.typeSymbol]?: any }> {
-  Tag?: () => A[Unify.typeSymbol] extends Tag<infer I0, infer S0> | infer _ ? Tag<I0, S0> : never
+  Tag?: () => Extract<A[Unify.typeSymbol], Tag<any, any>>
 }
 
 /**

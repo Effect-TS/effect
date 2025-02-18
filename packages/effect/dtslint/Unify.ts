@@ -1,3 +1,4 @@
+import type * as Context from "effect/Context"
 import type * as Deferred from "effect/Deferred"
 import type * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -46,6 +47,12 @@ Unify.unify(Math.random() > 0 ? Either.right(10) : Either.left("ok"))
 hole<
   Unify.Unify<
     Stream.Stream<0, 1, 2> | Stream.Stream<"a", "b", "c">
+  >
+>()
+// $ExpectType Tag<0, 1> | Tag<"a", "b">
+hole<
+  Unify.Unify<
+    Context.Tag<0, 1> | Context.Tag<"a", "b">
   >
 >()
 
@@ -190,9 +197,11 @@ hole<
   >
 >()
 
-// $ExpectType 0 | Option<string | number> | STM<0 | "a", "b" | 1, "c" | 2> | Ref<1> | Ref<"a"> | SynchronizedRef<1> | SynchronizedRef<"a"> | SubscriptionRef<1> | SubscriptionRef<"a"> | Deferred<"a", "b"> | FiberRef<1> | FiberRef<"a"> | ManagedRuntime<"a", "b"> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | Pool<1, 2> | Pool<"a", "b" | "c"> | ScopedRef<1> | ScopedRef<"a"> | Resource<"a", "b"> | Deferred<1, 0> | Resource<1, 0> | Latch | ManagedRuntime<1, 0> | RcRef<"a" | 1, 0 | "b"> | Fiber<"a" | 1, 0 | "b"> | RuntimeFiber<"a" | 1, 0 | "b"> | Either<"a" | 1, 0 | "b"> | Effect<"a" | 1, 0 | "b", "R" | "R1">
+// $ExpectType 0 | Option<string | number> | Tag<0, 1> | Tag<"a", "b"> | STM<0 | "a", "b" | 1, "c" | 2> | Ref<1> | Ref<"a"> | SynchronizedRef<1> | SynchronizedRef<"a"> | SubscriptionRef<1> | SubscriptionRef<"a"> | Deferred<"a", "b"> | FiberRef<1> | FiberRef<"a"> | ManagedRuntime<"a", "b"> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | Pool<1, 2> | Pool<"a", "b" | "c"> | ScopedRef<1> | ScopedRef<"a"> | Resource<"a", "b"> | Deferred<1, 0> | Resource<1, 0> | Latch | ManagedRuntime<1, 0> | RcRef<"a" | 1, 0 | "b"> | Fiber<"a" | 1, 0 | "b"> | RuntimeFiber<"a" | 1, 0 | "b"> | Either<"a" | 1, 0 | "b"> | Effect<"a" | 1, 0 | "b", "R" | "R1">
 hole<
   Unify.Unify<
+    | Context.Tag<0, 1>
+    | Context.Tag<"a", "b">
     | Either.Either<1, 0>
     | Either.Either<"a", "b">
     | Option.Option<number>
