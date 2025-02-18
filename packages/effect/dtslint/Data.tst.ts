@@ -83,7 +83,7 @@ describe("Data", () => {
     }
     const person = Data.case<Person>()
 
-    expect<Parameters<typeof person>[0]>().type.toBe<{ readonly name: string; }>()
+    expect(person).type.toBe<(args: { readonly name: string }) => Person>()
 
     // @ts-expect-error: property `name` is readonly
     person({ name: "" }).name = "a"
