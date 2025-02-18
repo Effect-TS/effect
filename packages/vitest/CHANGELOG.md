@@ -1,5 +1,16 @@
 # @effect/vitest
 
+## 0.19.0
+
+### Minor Changes
+
+- [#4376](https://github.com/Effect-TS/effect/pull/4376) [`aa39549`](https://github.com/Effect-TS/effect/commit/aa39549a09fde55122c78b31a4298472b6028eaa) Thanks @FedericoBiccheddu! - updated `vitest` to `3.0`
+
+### Patch Changes
+
+- Updated dependencies [[`31be72a`](https://github.com/Effect-TS/effect/commit/31be72ada118cb84a942e67b1663263f8db74a9f)]:
+  - effect@3.13.2
+
 ## 0.18.1
 
 ### Patch Changes
