@@ -438,6 +438,30 @@ describe("Array", () => {
       assertNone(pipe(new Set([1, 2, 3]), Arr.modifyOption(10, double)))
     })
 
+    it("modifyFirst", () => {
+      deepStrictEqual(pipe([1, 2, 3], Arr.modifyFirst((n) => n > 1, double)), [1, 4, 3])
+      // no predicate match
+      deepStrictEqual(pipe([], Arr.modifyFirst((n) => n > 1, double)), [])
+      deepStrictEqual(pipe([1, 2, 3], Arr.modifyFirst((n) => n > 4, double)), [1, 2, 3])
+
+      deepStrictEqual(Arr.modifyFirst([1, 2, 3], (n) => n > 1, double), [1, 4, 3])
+      // no predicate match
+      deepStrictEqual(Arr.modifyFirst([], (n) => n > 1, double), [])
+      deepStrictEqual(Arr.modifyFirst([1, 2, 3], (n) => n > 4, double), [1, 2, 3])
+    })
+
+    it("modifyFirstOption", () => {
+      assertSome(pipe([1, 2, 3], Arr.modifyFirstOption((n) => n > 1, double)), [1, 4, 3])
+      // no predicate match
+      assertNone(pipe([], Arr.modifyFirstOption((n) => n > 1, double)))
+      assertNone(pipe([1, 2, 3], Arr.modifyFirstOption((n) => n > 4, double)))
+
+      assertSome(Arr.modifyFirstOption([1, 2, 3], (n) => n > 1, double), [1, 4, 3])
+      // no predicate match
+      assertNone(Arr.modifyFirstOption([], (n) => n > 1, double))
+      assertNone(Arr.modifyFirstOption([1, 2, 3], (n) => n > 4, double))
+    })
+
     it("remove", () => {
       deepStrictEqual(pipe([1, 2, 3], Arr.remove(0)), [2, 3])
       // out of bound

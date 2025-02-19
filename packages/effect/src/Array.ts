@@ -1266,6 +1266,93 @@ export const modifyOption: {
 })
 
 /**
+ * Apply a function to the first element matching the given predicate, creating a new `Array`,
+ * or return a copy of the input if the predicate does not match any element.
+ *
+ * @example
+ * ```ts
+ * import { Array } from "effect"
+ *
+ * const numbers = [1, 2, 3, 4]
+ * const result = Array.modifyFirst(numbers, n => n > 2, (n) => n * 2)
+ * assert.deepStrictEqual(result, [1, 2, 6, 4])
+ *
+ * const outOfBoundsResult = Array.modifyFirst(numbers, n => n > 5, (n) => n * 2)
+ * assert.deepStrictEqual(outOfBoundsResult, [1, 2, 3, 4])
+ * ```
+ *
+ * @since 3.14.0
+ */
+
+export const modifyFirst: {
+  <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
+    refinement: (a: ReadonlyArray.Infer<S>, i: number) => a is A2,
+    f: (a: A2) => B
+  ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    predicate: (a: ReadonlyArray.Infer<S>, i: number) => boolean,
+    f: (a: ReadonlyArray.Infer<S>) => B
+  ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+  <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
+    self: S,
+    refinement: (a: ReadonlyArray.Infer<S>, i: number) => a is A2,
+    f: (a: A2) => B
+  ): ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    self: S,
+    predicate: (a: ReadonlyArray.Infer<S>, i: number) => boolean,
+    f: (a: ReadonlyArray.Infer<S>) => B
+  ): ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+} = dual(
+  3,
+  <A, B>(self: Iterable<A>, predicate: (a: NoInfer<A>, i: number) => boolean, f: (a: A) => B): Array<A | B> =>
+    O.getOrElse(modifyFirstOption(self, predicate, f), () => Array.from(self))
+)
+
+/**
+ * Apply a function to the first element matching the given predicate, creating a new `Array`,
+ * or return `None` if the predicate does not match any element.
+ *
+ * @example
+ * ```ts
+ * import { Array, Option } from "effect"
+ *
+ * const numbers = [1, 2, 3, 4]
+ * const result = Array.modifyFirstOption(numbers, n => n > 2, (n) => n * 2)
+ * assert.deepStrictEqual(result, Option.some([1, 2, 6, 4]))
+ *
+ * const outOfBoundsResult = Array.modifyFirstOption(numbers, n => n > 5, (n) => n * 2)
+ * assert.deepStrictEqual(outOfBoundsResult, Option.none())
+ * ```
+ *
+ * @since 3.14.0
+ */
+export const modifyFirstOption: {
+  <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
+    refinement: (a: ReadonlyArray.Infer<S>, i: number) => a is A2,
+    f: (a: A2) => B
+  ): (self: S) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    predicate: (a: ReadonlyArray.Infer<S>, i: number) => boolean,
+    f: (a: ReadonlyArray.Infer<S>) => B
+  ): (self: S) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+  <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
+    self: S,
+    refinement: (a: ReadonlyArray.Infer<S>, i: number) => a is A2,
+    f: (a: A2) => B
+  ): Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    self: S,
+    predicate: (a: ReadonlyArray.Infer<S>, i: number) => boolean,
+    f: (a: ReadonlyArray.Infer<S>) => B
+  ): Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+} = dual(
+  3,
+  <A, B>(self: Iterable<A>, predicate: (a: A, i: number) => boolean, f: (a: A) => B): Option<Array<A | B>> =>
+    O.flatMap(findFirstIndex(self, predicate), (index) => modifyOption(self, index, f))
+)
+
+/**
  * Delete the element at the specified index, creating a new `Array`,
  * or return a copy of the input if the index is out of bounds.
  *
