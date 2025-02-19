@@ -1578,21 +1578,9 @@ export const partitionMap: {
   return either.isLeft(e) ? [some(e.left), none()] : [none(), some(e.right)]
 })
 
+// TODO(4.0): remove?
 /**
- * Maps over the value of an `Option` with a function that may return `None`,
- * effectively filtering and transforming the value.
- *
- * **Details**
- *
- * This function allows you to both transform the value of a `Some` and filter
- * it at the same time. The mapping function `f` can either return a new
- * `Option` (to transform the value) or return `None` to filter it out. If the
- * input `Option` is `None`, the function is not applied, and the result remains
- * `None`.
- *
- * This utility is particularly useful when you want to apply a transformation
- * to the value of an `Option` while conditionally removing invalid or unwanted
- * results.
+ * Alias of {@link flatMap}.
  *
  * @example
  * ```ts
@@ -1618,10 +1606,7 @@ export const partitionMap: {
 export const filterMap: {
   <A, B>(f: (a: A) => Option<B>): (self: Option<A>) => Option<B>
   <A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B>
-} = dual(
-  2,
-  <A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B> => isNone(self) ? none() : f(self.value)
-)
+} = flatMap
 
 /**
  * Filters an `Option` using a predicate. If the predicate is not satisfied or the `Option` is `None` returns `None`.

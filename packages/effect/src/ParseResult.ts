@@ -1853,9 +1853,7 @@ const getMessage = (issue: ParseIssue): Effect.Effect<string | undefined> =>
 const getParseIssueTitleAnnotation = (issue: ParseIssue): string | undefined =>
   getAnnotated(issue).pipe(
     Option.flatMap(AST.getParseIssueTitleAnnotation),
-    Option.filterMap(
-      (annotation) => Option.fromNullable(annotation(issue))
-    ),
+    Option.flatMapNullable((annotation) => annotation(issue)),
     Option.getOrUndefined
   )
 
