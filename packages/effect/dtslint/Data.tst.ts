@@ -58,10 +58,7 @@ describe("Data", () => {
     const person = makePerson({ name: "Mike" })
 
     // fields should be readonly
-    expect<{ [K in keyof typeof person]: typeof person[K] }>()
-      .type.toBe<{
-      readonly name: string
-    }>()
+    expect(person).type.toBe<{ readonly name: string }>()
   })
 
   it("tagged", () => {
