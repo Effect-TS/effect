@@ -942,6 +942,18 @@ describe("Array", () => {
       .type.toBe<[[string, ...Array<string>], ...Array<[string, ...Array<string>]>]>()
   })
 
+  it("window", () => {
+    // Array
+    expect(Array.window(strings, 2)).type.toBe<Array<Array<string>>>()
+    expect(pipe(strings, Array.window(2))).type.toBe<Array<Array<string>>>()
+    expect(Array.window(2)(strings)).type.toBe<Array<Array<string>>>()
+
+    // NonEmptyArray
+    expect(Array.window(nonEmptyStrings, 2)).type.toBe<Array<Array<string>>>()
+    expect(pipe(nonEmptyStrings, Array.window(2))).type.toBe<Array<Array<string>>>()
+    expect(Array.window(2)(nonEmptyStrings)).type.toBe<Array<Array<string>>>()
+  })
+
   it("reverse", () => {
     // Array
     expect(Array.reverse(strings)).type.toBe<Array<string>>()
