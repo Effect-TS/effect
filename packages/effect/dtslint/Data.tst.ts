@@ -131,12 +131,9 @@ describe("Data", () => {
     const err = new Err({ message: "Oh no!", a: 1 })
 
     // fields should be readonly
-    expect<Pick<typeof err, "message" | "a" | "optional">>()
-      .type.toBe<{
-      readonly message: string
-      readonly a: number
-      readonly optional?: string
-    }>()
+    expect(pick(err, "message", "a", "optional")).type.toBe<
+      { readonly message: string; readonly a: number; readonly optional?: string }
+    >()
 
     class Void extends Data.Error {}
     // void constructor
