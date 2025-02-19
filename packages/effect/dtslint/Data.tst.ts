@@ -108,11 +108,7 @@ describe("Data", () => {
     class Person extends Data.Class<{ name: string; age?: number }> {}
     const person = new Person({ name: "Mike" })
     // fields should be readonly
-    expect<{ [K in keyof typeof person]: typeof person[K] }>()
-      .type.toBe<{
-      readonly name: string
-      readonly age?: number
-    }>()
+    expect(person).type.toBe<{ readonly name: string; readonly age?: number }>()
 
     class Void extends Data.Class {}
     // void constructor
