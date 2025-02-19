@@ -17,7 +17,8 @@
     "docgen": "pnpm --recursive --parallel exec docgen && node scripts/docs.mjs",
     "dtslint": "pnpm --recursive --parallel run dtslint",
     "changeset-version": "changeset version && node scripts/version.mjs",
-    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish"
+    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish",
+    "tstyche": "tstyche --target '>=5.4'"
   },
   "resolutions": {
     "dependency-tree": "^10.0.9",
