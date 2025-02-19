@@ -1,5 +1,5 @@
 import * as Data from "effect/Data"
-import { describe, expect, it } from "tstyche"
+import { describe, expect, it, pick } from "tstyche"
 
 declare const readonlyStruct: { readonly a: string }
 declare const struct: { a: string }
