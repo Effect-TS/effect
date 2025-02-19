@@ -16,9 +16,9 @@
     "lint-fix": "pnpm lint --fix",
     "docgen": "pnpm --recursive --parallel exec docgen && node scripts/docs.mjs",
     "dtslint": "pnpm --recursive --parallel run dtslint",
-    "dtslint-clean": "dtslint --clean",
     "changeset-version": "changeset version && node scripts/version.mjs",
-    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish"
+    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish",
+    "tstyche": "tstyche --target '>=5.4'"
   },
   "resolutions": {
     "dependency-tree": "^10.0.9",
@@ -42,7 +42,6 @@
     "@edge-runtime/vm": "^4.0.0",
     "@effect/build-utils": "^0.7.7",
     "@effect/docgen": "^0.5.2",
-    "@effect/dtslint": "^0.1.2",
     "@effect/eslint-plugin": "^0.2.0",
     "@effect/language-service": "^0.1.0",
     "@effect/vitest": "workspace:^",
@@ -71,6 +70,7 @@
     "playwright": "^1.46.0",
     "prettier": "^3.3.3",
     "rimraf": "^6.0.1",
+    "tstyche": "^3.5.0",
     "tsx": "^4.17.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.11",
