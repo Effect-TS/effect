@@ -119,12 +119,7 @@ describe("Data", () => {
     class Person extends Data.TaggedClass("Person")<{ name: string; age?: number }> {}
     const person = new Person({ name: "Mike" })
     // fields should be readonly
-    expect<{ [K in keyof typeof person]: typeof person[K] }>()
-      .type.toBe<{
-      readonly name: string
-      readonly age?: number
-      readonly _tag: "Person"
-    }>()
+    expect(person).type.toBe<{ readonly name: string; readonly age?: number; readonly _tag: "Person" }>()
 
     class Void extends Data.TaggedClass("Void") {}
     // void constructor
