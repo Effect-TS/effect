@@ -97,7 +97,7 @@ describe("Data", () => {
       | { readonly _tag: "NotFound"; readonly status: 404; readonly message: string }
     >()
 
-    expect<typeof NotFound>().type.toBe<
+    expect(NotFound).type.toBe<
       (
         args: { readonly status: 404; readonly message: string }
       ) => { readonly _tag: "NotFound"; readonly status: 404; readonly message: string }
