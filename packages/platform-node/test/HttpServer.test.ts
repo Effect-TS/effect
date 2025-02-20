@@ -66,7 +66,7 @@ describe("HttpServer", () => {
             const file = part[0]
             assert(typeof file !== "string")
             expect(file.path.endsWith("/test.txt")).toEqual(true)
-            expect(file.contentType).toEqual("text/plain")
+            expect(file.contentType).toEqual("text/plain;charset=utf-8")
             return yield* HttpServerResponse.json({ ok: "file" in formData })
           })
         ),
@@ -247,7 +247,7 @@ describe("HttpServer", () => {
       const client = yield* HttpClient.HttpClient
       const res = yield* client.get("/").pipe(Effect.scoped)
       expect(res.status).toEqual(200)
-      expect(res.headers["content-type"]).toEqual("text/plain")
+      expect(res.headers["content-type"]).toEqual("text/plain;charset=utf-8")
       expect(res.headers["content-length"]).toEqual("27")
       expect(res.headers.etag).toEqual("\"etag\"")
       const text = yield* res.text
@@ -278,7 +278,7 @@ describe("HttpServer", () => {
       const client = yield* HttpClient.HttpClient
       const res = yield* client.get("/").pipe(Effect.scoped)
       expect(res.status).toEqual(200)
-      expect(res.headers["content-type"]).toEqual("text/plain")
+      expect(res.headers["content-type"]).toEqual("text/plain;charset=utf-8")
       expect(res.headers["content-length"]).toEqual("4")
       expect(res.headers["last-modified"]).toEqual(now.toUTCString())
       expect(res.headers.etag).toEqual("W/\"etag\"")
