@@ -2179,7 +2179,7 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
 ): Effect.Effect<void, E, R> =>
   core.uninterruptibleMask((restore) =>
     core.transplant((graft) =>
-      core.withFiberRuntime((parent) => {
+      core.withFiberRuntime<void, E, R>((parent) => {
         let todos = Array.from(self).reverse()
         let target = todos.length
         if (target === 0) {
@@ -2298,13 +2298,14 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
                       () => core.exitVoid
                     )))
                   } else if (residual.length + results.length === target) {
+                    const exits = collectExits()
                     const requests = residual.map((blocked) => blocked.effect_instruction_i0).reduce(RequestBlock_.par)
                     resume(core.succeed(core.blocked(
                       requests,
                       forEachConcurrentDiscard(
                         [
                           Option.getOrElse(
-                            core.exitCollectAll(collectExits(), { parallel: true }),
+                            core.exitCollectAll(exits, { parallel: true }),
                             () => core.exitVoid
                           ),
                           ...residual.map((blocked) => blocked.effect_instruction_i1)
@@ -2330,7 +2331,7 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
           core.onExit(
             core.flatten(restore(internalFiber.join(processingFiber))),
             core.exitMatch({
-              onFailure: () => {
+              onFailure: (cause) => {
                 onInterruptSignal()
                 const target = residual.length + 1
                 const concurrency = Math.min(typeof n === "number" ? n : residual.length, residual.length)
@@ -2343,7 +2344,7 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
                     exits[index] = exit
                     count++
                     if (count === target) {
-                      cb(Option.getOrThrow(core.exitCollectAll(exits, { parallel: true })))
+                      cb(core.exitSucceed(core.exitFailCause(cause)))
                     }
                     if (toPop.length > 0 && hitNext) {
                       next()
