@@ -4154,11 +4154,11 @@ export type MaxLengthSchemaId = typeof MaxLengthSchemaId
  * @category string filters
  * @since 3.10.0
  */
-export const maxLength = <A extends string, I, R, S extends Schema.Any = Schema<A, I, R>>(
+export const maxLength = <S extends Schema.Any>(
   maxLength: number,
   annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-(self: S & Schema<A, I, R>): filter<S> =>
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter(
       (a) => a.length <= maxLength,
