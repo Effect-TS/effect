@@ -1,6 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { Exit } from "effect"
-import * as S from "effect/Schema"
+import { Cause, Exit, Schema as S } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
 
 describe("Exit", () => {
@@ -42,7 +41,25 @@ describe("Exit", () => {
     )
   })
 
-  it("encoding", async () => {
+  describe("encoding", async () => {
+    it("should raise an error when a non-encodable Cause is passed", async () => {
+      const schema = S.Exit({ failure: S.String, success: S.Number, defect: Util.Defect })
+      await Util.assertions.encoding.fail(
+        schema,
+        Exit.failCause(Cause.die(null)),
+        `(ExitEncoded<number, string, (string <-> object)> <-> Exit<number, string>)
+└─ Type side transformation failure
+   └─ Exit<number, string>
+      └─ Cause<string>
+         └─ CauseEncoded<string>
+            └─ { readonly _tag: "Die"; readonly defect: object }
+               └─ ["defect"]
+                  └─ Expected object, actual null`
+      )
+    })
+  })
+
+  it("using the built-in Defect schema as defect argument", async () => {
     const schema = S.Exit({ failure: S.String, success: S.Number, defect: S.Defect })
     await Util.assertions.encoding.succeed(schema, Exit.fail("error"), {
       _tag: "Failure",

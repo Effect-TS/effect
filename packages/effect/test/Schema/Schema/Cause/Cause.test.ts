@@ -113,13 +113,12 @@ describe("Cause", () => {
         schema,
         Cause.die(null),
         `(CauseEncoded<string> <-> Cause<string>)
-└─ Encoded side transformation failure
-   └─ CauseEncoded<string>
-      └─ { readonly _tag: "Die"; readonly defect: (string <-> object) }
-         └─ ["defect"]
-            └─ (string <-> object)
-               └─ Type side transformation failure
-                  └─ Expected object, actual null`
+└─ Type side transformation failure
+   └─ Cause<string>
+      └─ CauseEncoded<string>
+         └─ { readonly _tag: "Die"; readonly defect: object }
+            └─ ["defect"]
+               └─ Expected object, actual null`
       )
     })
 
