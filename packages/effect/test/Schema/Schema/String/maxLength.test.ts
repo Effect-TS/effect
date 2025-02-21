@@ -6,18 +6,18 @@ import { assertFalse, assertTrue } from "effect/test/util"
 
 describe("maxLength", () => {
   it("test roundtrip consistency", () => {
-    Util.assertions.testRoundtripConsistency(S.maxLength(0)(S.String))
+    Util.assertions.testRoundtripConsistency(S.String.pipe(S.maxLength(1)))
   })
 
   it("is", () => {
-    const is = P.is(S.maxLength(1)(S.String))
+    const is = P.is(S.String.pipe(S.maxLength(1)))
     assertTrue(is(""))
     assertTrue(is("a"))
     assertFalse(is("aa"))
   })
 
   it("decoding", async () => {
-    const schema = S.maxLength(1)(S.String)
+    const schema = S.String.pipe(S.maxLength(1))
     await Util.assertions.decoding.succeed(schema, "")
     await Util.assertions.decoding.succeed(schema, "a")
     await Util.assertions.decoding.fail(
@@ -30,7 +30,7 @@ describe("maxLength", () => {
   })
 
   it("pretty", () => {
-    const schema = S.maxLength(0)(S.String)
+    const schema = S.String.pipe(S.maxLength(1))
     Util.assertions.pretty(schema, "a", `"a"`)
   })
 })

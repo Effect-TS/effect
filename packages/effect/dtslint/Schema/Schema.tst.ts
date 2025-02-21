@@ -2539,34 +2539,62 @@ describe("Schema", () => {
       })
     })
 
-    it("String Filters", () => {
-      expect(pipe(S.String, S.maxLength(5))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.maxLength(5))
+    describe("String Filters", () => {
+      it("maxLength", () => {
+        // @ts-expect-error: Argument of type 'typeof Null' is not assignable to parameter of type 'never'
+        pipe(S.Null, S.maxLength(5))
+        // should allow generic context
+        const _f = <A extends string>(schema: S.Schema<A>) => schema.pipe(S.maxLength(5))
+        // should allow string subtypes
+        pipe(
+          S.TemplateLiteral("a", S.String),
+          S.maxLength(5, {
+            pretty: () => (s) => {
+              expect(s).type.toBe<`a${string}`>()
+              return "-"
+            }
+          })
+        )
 
-      expect(pipe(S.String, S.minLength(5))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.minLength(5))
+        const schema = pipe(
+          S.String,
+          S.maxLength(5, {
+            pretty: () => (s) => {
+              expect(s).type.toBe<string>()
+              return "-"
+            }
+          })
+        )
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
 
-      expect(pipe(S.String, S.length(5))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.length(5))
+      it("TODO", () => {
+        expect(pipe(S.String, S.minLength(5))).type.toBe<S.filter<S.Schema<string>>>()
+        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+        pipe(S.Null, S.minLength(5))
 
-      expect(pipe(S.String, S.pattern(/a/))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.pattern(/a/))
+        expect(pipe(S.String, S.length(5))).type.toBe<S.filter<S.Schema<string>>>()
+        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+        pipe(S.Null, S.length(5))
 
-      expect(pipe(S.String, S.startsWith("a"))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.startsWith("a"))
+        expect(pipe(S.String, S.pattern(/a/))).type.toBe<S.filter<S.Schema<string>>>()
+        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+        pipe(S.Null, S.pattern(/a/))
 
-      expect(pipe(S.String, S.endsWith("a"))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.endsWith("a"))
+        expect(pipe(S.String, S.startsWith("a"))).type.toBe<S.filter<S.Schema<string>>>()
+        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+        pipe(S.Null, S.startsWith("a"))
 
-      expect(pipe(S.String, S.includes("a"))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.includes("a"))
+        expect(pipe(S.String, S.endsWith("a"))).type.toBe<S.filter<S.Schema<string>>>()
+        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+        pipe(S.Null, S.endsWith("a"))
+
+        expect(pipe(S.String, S.includes("a"))).type.toBe<S.filter<S.Schema<string>>>()
+        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+        pipe(S.Null, S.includes("a"))
+      })
     })
 
     it("Number Filters", () => {
