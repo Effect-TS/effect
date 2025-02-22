@@ -18,6 +18,11 @@ describe("Literal", () => {
     deepStrictEqual(schema.literals, ["a", "b"])
   })
 
+  it("should return Never when no literals are provided", () => {
+    deepStrictEqual(S.Literal(), S.Never)
+    deepStrictEqual(S.Literal(...[]), S.Never)
+  })
+
   it("should return an unwrapped AST with exactly one literal", () => {
     deepStrictEqual(S.Literal(1).ast, new AST.Literal(1))
   })
