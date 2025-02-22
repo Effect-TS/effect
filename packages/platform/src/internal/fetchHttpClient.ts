@@ -2,6 +2,7 @@ import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import * as Stream from "effect/Stream"
 import type * as Client from "../HttpClient.js"
+import * as Headers from "../Headers.js";
 import * as Error from "../HttpClientError.js"
 import * as client from "./httpClient.js"
 import * as internalResponse from "./httpClientResponse.js"
@@ -15,7 +16,7 @@ const fetch: Client.HttpClient = client.make((request, url, signal, fiber) => {
   const context = fiber.getFiberRef(FiberRef.currentContext)
   const fetch: typeof globalThis.fetch = context.unsafeMap.get(fetchTagKey) ?? globalThis.fetch
   const options: RequestInit = context.unsafeMap.get(requestInitTagKey) ?? {}
-  const headers = new globalThis.Headers(request.headers)
+  const headers = Headers.merge(request.headers, Headers.fromInput(options.headers))
   const send = (body: BodyInit | undefined) =>
     Effect.map(
       Effect.tryPromise({
