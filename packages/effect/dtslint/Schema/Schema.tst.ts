@@ -2500,6 +2500,7 @@ describe("Schema", () => {
             }
           })
         )
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2510,6 +2511,7 @@ describe("Schema", () => {
         pipe(S.Null, S.minLength(5))
 
         const schema = pipe(S.String, S.minLength(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2520,6 +2522,7 @@ describe("Schema", () => {
         pipe(S.Null, S.length(5))
 
         const schema = pipe(S.String, S.length(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2530,6 +2533,7 @@ describe("Schema", () => {
         pipe(S.Null, S.pattern(/a/))
 
         const schema = pipe(S.String, S.pattern(/a/))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2540,6 +2544,7 @@ describe("Schema", () => {
         pipe(S.Null, S.startsWith("a"))
 
         const schema = pipe(S.String, S.startsWith("a"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2550,6 +2555,7 @@ describe("Schema", () => {
         pipe(S.Null, S.endsWith("a"))
 
         const schema = pipe(S.String, S.endsWith("a"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2560,6 +2566,7 @@ describe("Schema", () => {
         pipe(S.Null, S.includes("a"))
 
         const schema = pipe(S.String, S.includes("a"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2570,6 +2577,7 @@ describe("Schema", () => {
         pipe(S.Null, S.lowercased())
 
         const schema = pipe(S.String, S.lowercased())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2580,6 +2588,7 @@ describe("Schema", () => {
         pipe(S.Null, S.uppercased())
 
         const schema = pipe(S.String, S.uppercased())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2590,6 +2599,7 @@ describe("Schema", () => {
         pipe(S.Null, S.capitalized())
 
         const schema = pipe(S.String, S.capitalized())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2600,6 +2610,7 @@ describe("Schema", () => {
         pipe(S.Null, S.uncapitalized())
 
         const schema = pipe(S.String, S.uncapitalized())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2610,6 +2621,7 @@ describe("Schema", () => {
         pipe(S.Null, S.nonEmptyString())
 
         const schema = pipe(S.String, S.nonEmptyString())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2620,6 +2632,7 @@ describe("Schema", () => {
         pipe(S.Null, S.trimmed())
 
         const schema = pipe(S.String, S.trimmed())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
         expect(schema).type.toBe<S.filter<typeof S.String>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
         expect(schema.from).type.toBe<typeof S.String>()
@@ -2632,6 +2645,7 @@ describe("Schema", () => {
         pipe(S.Null, S.finite())
 
         const schema = pipe(S.Number, S.finite())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2642,6 +2656,7 @@ describe("Schema", () => {
         pipe(S.Null, S.greaterThan(5))
 
         const schema = pipe(S.Number, S.greaterThan(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2652,6 +2667,7 @@ describe("Schema", () => {
         pipe(S.Null, S.greaterThanOrEqualTo(5))
 
         const schema = pipe(S.Number, S.greaterThanOrEqualTo(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2662,6 +2678,7 @@ describe("Schema", () => {
         pipe(S.Null, S.lessThan(5))
 
         const schema = pipe(S.Number, S.lessThan(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2672,6 +2689,7 @@ describe("Schema", () => {
         pipe(S.Null, S.lessThanOrEqualTo(5))
 
         const schema = pipe(S.Number, S.lessThanOrEqualTo(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2682,6 +2700,7 @@ describe("Schema", () => {
         pipe(S.Null, S.int())
 
         const schema = pipe(S.Number, S.int())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2692,6 +2711,7 @@ describe("Schema", () => {
         pipe(S.Null, S.multipleOf(5))
 
         const schema = pipe(S.Number, S.multipleOf(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2702,6 +2722,7 @@ describe("Schema", () => {
         pipe(S.Null, S.between(1, 5))
 
         const schema = pipe(S.Number, S.between(1, 5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2712,6 +2733,7 @@ describe("Schema", () => {
         pipe(S.Null, S.nonNaN())
 
         const schema = pipe(S.Number, S.nonNaN())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2722,6 +2744,7 @@ describe("Schema", () => {
         pipe(S.Null, S.positive())
 
         const schema = pipe(S.Number, S.positive())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2732,6 +2755,7 @@ describe("Schema", () => {
         pipe(S.Null, S.negative())
 
         const schema = pipe(S.Number, S.negative())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2742,6 +2766,7 @@ describe("Schema", () => {
         pipe(S.Null, S.nonPositive())
 
         const schema = pipe(S.Number, S.nonPositive())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2752,6 +2777,7 @@ describe("Schema", () => {
         pipe(S.Null, S.nonNegative())
 
         const schema = pipe(S.Number, S.nonNegative())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
         expect(schema).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
         expect(schema.from).type.toBe<typeof S.Number>()
@@ -2764,6 +2790,7 @@ describe("Schema", () => {
         pipe(S.Null, S.greaterThanBigInt(5n))
 
         const schema = pipe(S.BigIntFromSelf, S.greaterThanBigInt(5n))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
         expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
@@ -2774,6 +2801,7 @@ describe("Schema", () => {
         pipe(S.Null, S.greaterThanOrEqualToBigInt(5n))
 
         const schema = pipe(S.BigIntFromSelf, S.greaterThanOrEqualToBigInt(5n))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
         expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
@@ -2784,6 +2812,7 @@ describe("Schema", () => {
         pipe(S.Null, S.lessThanBigInt(5n))
 
         const schema = pipe(S.BigIntFromSelf, S.lessThanBigInt(5n))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
         expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
@@ -2794,6 +2823,7 @@ describe("Schema", () => {
         pipe(S.Null, S.lessThanOrEqualToBigInt(5n))
 
         const schema = pipe(S.BigIntFromSelf, S.lessThanOrEqualToBigInt(5n))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
         expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
@@ -2804,6 +2834,7 @@ describe("Schema", () => {
         pipe(S.Null, S.betweenBigInt(1n, 5n))
 
         const schema = pipe(S.BigIntFromSelf, S.betweenBigInt(1n, 5n))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
         expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
@@ -2814,6 +2845,7 @@ describe("Schema", () => {
         pipe(S.Null, S.positiveBigInt())
 
         const schema = pipe(S.BigIntFromSelf, S.positiveBigInt())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
         expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
@@ -2824,6 +2856,7 @@ describe("Schema", () => {
         pipe(S.Null, S.negativeBigInt())
 
         const schema = pipe(S.BigIntFromSelf, S.negativeBigInt())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
         expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
@@ -2834,6 +2867,7 @@ describe("Schema", () => {
         pipe(S.Null, S.nonNegativeBigInt())
 
         const schema = pipe(S.BigIntFromSelf, S.nonNegativeBigInt())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
         expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
@@ -2844,6 +2878,7 @@ describe("Schema", () => {
         pipe(S.Null, S.negativeBigInt())
 
         const schema = pipe(S.BigIntFromSelf, S.nonPositiveBigInt())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
         expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
         expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
@@ -2856,6 +2891,7 @@ describe("Schema", () => {
         pipe(S.Null, S.lessThanDuration("10 millis"))
 
         const schema = pipe(S.DurationFromSelf, S.lessThanDuration("10 millis"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
         expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
@@ -2866,6 +2902,7 @@ describe("Schema", () => {
         pipe(S.Null, S.lessThanOrEqualToDuration("10 millis"))
 
         const schema = pipe(S.DurationFromSelf, S.lessThanOrEqualToDuration("10 millis"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
         expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
@@ -2876,6 +2913,7 @@ describe("Schema", () => {
         pipe(S.Null, S.greaterThanDuration("10 millis"))
 
         const schema = pipe(S.DurationFromSelf, S.greaterThanDuration("10 millis"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
         expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
@@ -2886,6 +2924,7 @@ describe("Schema", () => {
         pipe(S.Null, S.greaterThanOrEqualToDuration("10 millis"))
 
         const schema = pipe(S.DurationFromSelf, S.greaterThanOrEqualToDuration("10 millis"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
         expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
@@ -2896,6 +2935,7 @@ describe("Schema", () => {
         pipe(S.Null, S.betweenDuration("10 millis", "50 millis"))
 
         const schema = pipe(S.DurationFromSelf, S.betweenDuration("10 millis", "50 millis"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
         expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
