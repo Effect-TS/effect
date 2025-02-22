@@ -3004,6 +3004,74 @@ describe("Schema", () => {
         })
       })
     })
+
+    describe("Data Filters", () => {
+      it("validDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.validDate())
+
+        const schema = pipe(S.DateFromSelf, S.validDate())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+
+      it("lessThanDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanDate(new Date()))
+
+        const schema = pipe(S.DateFromSelf, S.lessThanDate(new Date()))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+
+      it("lessThanOrEqualToDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanOrEqualToDate(new Date()))
+
+        const schema = pipe(S.DateFromSelf, S.lessThanOrEqualToDate(new Date()))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+
+      it("greaterThanDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanDate(new Date()))
+
+        const schema = pipe(S.DateFromSelf, S.greaterThanDate(new Date()))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+
+      it("greaterThanOrEqualToDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanOrEqualToDate(new Date()))
+
+        const schema = pipe(S.DateFromSelf, S.greaterThanOrEqualToDate(new Date()))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+
+      it("betweenDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.betweenDate(new Date(0), new Date(100)))
+
+        const schema = pipe(S.DateFromSelf, S.betweenDate(new Date(0), new Date(100)))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+    })
   })
 
   describe("Data Types", () => {

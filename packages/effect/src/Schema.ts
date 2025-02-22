@@ -6421,7 +6421,8 @@ export const ValidDateSchemaId: unique symbol = Symbol.for("effect/SchemaId/Vali
  * @since 3.10.0
  */
 export const validDate =
-  (annotations?: Annotations.Filter<Date>) => <I, R>(self: Schema<Date, I, R>): filter<Schema<Date, I, R>> =>
+  <S extends Schema.Any>(annotations?: Annotations.Filter<Schema.Type<S>>) =>
+  <A extends Date>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
     self.pipe(
       filter((a) => !Number.isNaN(a.getTime()), {
         schemaId: ValidDateSchemaId,
@@ -6442,13 +6443,13 @@ export const LessThanDateSchemaId: unique symbol = Symbol.for("effect/SchemaId/L
  * @category Date filters
  * @since 3.10.0
  */
-export const lessThanDate = <A extends Date>(
+export const lessThanDate = <S extends Schema.Any>(
   max: Date,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends Date>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
-    filter((a) => a < max, {
+    filter((a: Date) => a < max, {
       schemaId: LessThanDateSchemaId,
       [LessThanDateSchemaId]: { max },
       title: `lessThanDate(${util_.formatDate(max)})`,
@@ -6469,13 +6470,13 @@ export const LessThanOrEqualToDateSchemaId: unique symbol = Symbol.for(
  * @category Date filters
  * @since 3.10.0
  */
-export const lessThanOrEqualToDate = <A extends Date>(
+export const lessThanOrEqualToDate = <S extends Schema.Any>(
   max: Date,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends Date>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
-    filter((a) => a <= max, {
+    filter((a: Date) => a <= max, {
       schemaId: LessThanDateSchemaId,
       [LessThanDateSchemaId]: { max },
       title: `lessThanOrEqualToDate(${util_.formatDate(max)})`,
@@ -6494,13 +6495,13 @@ export const GreaterThanDateSchemaId: unique symbol = Symbol.for("effect/SchemaI
  * @category Date filters
  * @since 3.10.0
  */
-export const greaterThanDate = <A extends Date>(
+export const greaterThanDate = <S extends Schema.Any>(
   min: Date,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends Date>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
-    filter((a) => a > min, {
+    filter((a: Date) => a > min, {
       schemaId: GreaterThanDateSchemaId,
       [GreaterThanDateSchemaId]: { min },
       title: `greaterThanDate(${util_.formatDate(min)})`,
@@ -6521,13 +6522,13 @@ export const GreaterThanOrEqualToDateSchemaId: unique symbol = Symbol.for(
  * @category Date filters
  * @since 3.10.0
  */
-export const greaterThanOrEqualToDate = <A extends Date>(
+export const greaterThanOrEqualToDate = <S extends Schema.Any>(
   min: Date,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends Date>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
-    filter((a) => a >= min, {
+    filter((a: Date) => a >= min, {
       schemaId: GreaterThanOrEqualToDateSchemaId,
       [GreaterThanOrEqualToDateSchemaId]: { min },
       title: `greaterThanOrEqualToDate(${util_.formatDate(min)})`,
@@ -6546,14 +6547,14 @@ export const BetweenDateSchemaId: unique symbol = Symbol.for("effect/SchemaId/Be
  * @category Date filters
  * @since 3.10.0
  */
-export const betweenDate = <A extends Date>(
+export const betweenDate = <S extends Schema.Any>(
   min: Date,
   max: Date,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends Date>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
-    filter((a) => a <= max && a >= min, {
+    filter((a: Date) => a <= max && a >= min, {
       schemaId: BetweenDateSchemaId,
       [BetweenDateSchemaId]: { max, min },
       title: `betweenDate(${util_.formatDate(min)}, ${util_.formatDate(max)})`,

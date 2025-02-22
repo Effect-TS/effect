@@ -89,3 +89,12 @@ Array filters:
 - `minItems`
 - `maxItems`
 - `itemsCount`
+
+Date filters:
+
+- `validDate`
+- `lessThanDate`
+- `lessThanOrEqualToDate`
+- `greaterThanDate`
+- `greaterThanOrEqualToDate`
+- `betweenDate`
