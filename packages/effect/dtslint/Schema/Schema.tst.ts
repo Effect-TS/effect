@@ -288,7 +288,7 @@ describe("Schema", () => {
     expect(AnnotatedString.pipe(S.annotations({}))).type.toBe<AnnotatedString>()
 
     expect(S.Number.pipe(S.int(), S.brand("Int"), S.annotations({})))
-      .type.toBe<S.brand<S.filter<S.Schema<number>>, "Int">>()
+      .type.toBe<S.brand<S.filter<typeof S.Number>, "Int">>()
     expect(S.Struct({ a: AnnotatedString }).pipe(S.annotations({}))).type.toBe<S.Struct<{ a: AnnotatedString }>>()
     expect(A.pipe(S.annotations({}))).type.toBe<S.SchemaClass<A, { readonly a: string }>>()
     expect(S.Number.pipe(S.int(), S.brand("Int")).make(1)).type.toBe<number & Brand.Brand<"Int">>()
@@ -1224,11 +1224,11 @@ describe("Schema", () => {
     expect(S.asSchema(pipe(S.Number, S.int(), S.brand("Int"))).annotations({}))
       .type.toBe<S.Schema<number & Brand.Brand<"Int">, number>>()
     expect(pipe(S.Number, S.int(), S.brand("Int")))
-      .type.toBe<S.brand<S.filter<S.Schema<number>>, "Int">>()
+      .type.toBe<S.brand<S.filter<typeof S.Number>, "Int">>()
     expect(S.asSchema(pipe(S.NumberFromString, S.int(), S.brand("Int"))))
       .type.toBe<S.Schema<number & Brand.Brand<"Int">, string>>()
     expect(pipe(S.NumberFromString, S.int(), S.brand("Int")))
-      .type.toBe<S.brand<S.filter<S.Schema<number, string>>, "Int">>()
+      .type.toBe<S.brand<S.filter<typeof S.NumberFromString>, "Int">>()
   })
 
   it("partial", () => {
@@ -1347,7 +1347,7 @@ describe("Schema", () => {
       >
     >()
     expect(S.Record({ key: pipe(S.String, S.minLength(2)), value: S.String }))
-      .type.toBe<S.Record$<S.filter<S.Schema<string>>, typeof S.String>>()
+      .type.toBe<S.Record$<S.filter<typeof S.String>, typeof S.String>>()
     expect(S.asSchema(S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.String })))
       .type.toBe<
       S.Schema<
@@ -2282,76 +2282,6 @@ describe("Schema", () => {
     })
   })
 
-  describe("Array Filters", () => {
-    describe("Array", () => {
-      it("minItems", () => {
-        expect(S.asSchema(S.Array(S.String).pipe(S.minItems(2))))
-          .type.toBe<S.Schema<ReadonlyArray<string>, ReadonlyArray<string>>>()
-        expect(S.Array(S.String).pipe(S.minItems(2)))
-          .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
-        expect(S.Array(S.String).pipe(S.minItems(2)).from)
-          .type.toBe<S.Schema<ReadonlyArray<string>>>()
-        expect(S.asSchema(S.Array(S.String).pipe(S.minItems(1), S.maxItems(2))))
-          .type.toBe<S.Schema<ReadonlyArray<string>, ReadonlyArray<string>>>()
-        expect(S.Array(S.String).pipe(S.minItems(1), S.maxItems(2)))
-          .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
-      })
-
-      it("maxItems", () => {
-        expect(S.asSchema(S.Array(S.String).pipe(S.maxItems(2))))
-          .type.toBe<S.Schema<ReadonlyArray<string>>>()
-        expect(S.Array(S.String).pipe(S.maxItems(2)))
-          .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
-        expect(S.Array(S.String).pipe(S.maxItems(2)).from)
-          .type.toBe<S.Schema<ReadonlyArray<string>>>()
-        expect(S.asSchema(S.Array(S.String).pipe(S.maxItems(2), S.minItems(1))))
-          .type.toBe<S.Schema<ReadonlyArray<string>>>()
-        expect(S.Array(S.String).pipe(S.maxItems(2), S.minItems(1)))
-          .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
-      })
-
-      it("itemsCount", () => {
-        expect(S.asSchema(S.Array(S.String).pipe(S.itemsCount(2))))
-          .type.toBe<S.Schema<ReadonlyArray<string>>>()
-        expect(S.Array(S.String).pipe(S.itemsCount(2)))
-          .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
-        expect(S.Array(S.String).pipe(S.itemsCount(2)).from).type.toBe<S.Schema<ReadonlyArray<string>>>()
-      })
-    })
-
-    describe("NonEmptyArray", () => {
-      it("minItems", () => {
-        expect(S.asSchema(S.NonEmptyArray(S.String).pipe(S.minItems(2))))
-          .type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
-        expect(S.NonEmptyArray(S.String).pipe(S.minItems(2)))
-          .type.toBe<S.filter<S.Schema<readonly [string, ...Array<string>]>>>()
-        expect(S.NonEmptyArray(S.String).pipe(S.minItems(2)).from)
-          .type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
-      })
-
-      it("maxItems", () => {
-        expect(S.asSchema(S.NonEmptyArray(S.String).pipe(S.maxItems(2))))
-          .type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
-        expect(S.NonEmptyArray(S.String).pipe(S.maxItems(2))).type.toBe<
-          S.filter<S.Schema<readonly [string, ...Array<string>]>>
-        >()
-        expect(S.NonEmptyArray(S.String).pipe(S.maxItems(2)).from).type.toBe<
-          S.Schema<readonly [string, ...Array<string>]>
-        >()
-      })
-
-      it("itemsCount", () => {
-        expect(S.asSchema(S.NonEmptyArray(S.String).pipe(S.itemsCount(2))))
-          .type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
-        expect(S.NonEmptyArray(S.String).pipe(S.itemsCount(2)))
-          .type.toBe<S.filter<S.Schema<readonly [string, ...Array<string>]>>>()
-        expect(S.NonEmptyArray(S.String).pipe(S.itemsCount(2)).from).type.toBe<
-          S.Schema<readonly [string, ...Array<string>]>
-        >()
-      })
-    })
-  })
-
   it("TemplateLiteralParser", () => {
     expect(S.asSchema(S.TemplateLiteralParser("a")))
       .type.toBe<S.Schema<readonly ["a"], "a">>()
@@ -2539,64 +2469,711 @@ describe("Schema", () => {
       })
     })
 
-    it("String Filters", () => {
-      expect(pipe(S.String, S.maxLength(5))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.maxLength(5))
+    describe("String Filters", () => {
+      it("maxLength", () => {
+        // @ts-expect-error: The intersection 'typeof Null & Schema<string, null, never>' was reduced to 'never' because property 'Type' has conflicting types in some constituents
+        pipe(S.Null, S.maxLength(5))
+        // should allow generic context
+        const _f1 = <A extends string>(schema: S.Schema<A>) => schema.pipe(S.maxLength(5))
+        const _f2 = <A extends string>(schema: S.Schema<A>) =>
+          schema.pipe(
+            // @ts-expect-error: Type 'string' is not assignable to type 'number'
+            S.greaterThan(5)
+          )
+        // should allow string subtypes
+        pipe(
+          S.TemplateLiteral("a", S.String),
+          S.maxLength(5, {
+            pretty: () => (s) => {
+              expect(s).type.toBe<`a${string}`>()
+              return "-"
+            }
+          })
+        )
 
-      expect(pipe(S.String, S.minLength(5))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.minLength(5))
+        const schema = pipe(
+          S.String,
+          S.maxLength(5, {
+            pretty: () => (s) => {
+              expect(s).type.toBe<string>()
+              return "-"
+            }
+          })
+        )
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
 
-      expect(pipe(S.String, S.length(5))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.length(5))
+      it("minLength", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.minLength(5))
 
-      expect(pipe(S.String, S.pattern(/a/))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.pattern(/a/))
+        const schema = pipe(S.String, S.minLength(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
 
-      expect(pipe(S.String, S.startsWith("a"))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.startsWith("a"))
+      it("length", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.length(5))
 
-      expect(pipe(S.String, S.endsWith("a"))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.endsWith("a"))
+        const schema = pipe(S.String, S.length(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
 
-      expect(pipe(S.String, S.includes("a"))).type.toBe<S.filter<S.Schema<string>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      pipe(S.Null, S.includes("a"))
+      it("pattern", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.pattern(/a/))
+
+        const schema = pipe(S.String, S.pattern(/a/))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("startsWith", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.startsWith("a"))
+
+        const schema = pipe(S.String, S.startsWith("a"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("endsWith", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.endsWith("a"))
+
+        const schema = pipe(S.String, S.endsWith("a"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("includes", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.includes("a"))
+
+        const schema = pipe(S.String, S.includes("a"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("lowercased", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lowercased())
+
+        const schema = pipe(S.String, S.lowercased())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("uppercased", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.uppercased())
+
+        const schema = pipe(S.String, S.uppercased())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("capitalized", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.capitalized())
+
+        const schema = pipe(S.String, S.capitalized())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("uncapitalized", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.uncapitalized())
+
+        const schema = pipe(S.String, S.uncapitalized())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("nonEmptyString", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonEmptyString())
+
+        const schema = pipe(S.String, S.nonEmptyString())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("trimmed", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.trimmed())
+
+        const schema = pipe(S.String, S.trimmed())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
     })
 
-    it("Number Filters", () => {
-      expect(pipe(S.Number, S.greaterThan(5))).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.greaterThan(5))
+    describe("Number Filters", () => {
+      it("finite", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.finite())
 
-      expect(pipe(S.Number, S.greaterThanOrEqualTo(5))).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.greaterThanOrEqualTo(5))
+        const schema = pipe(S.Number, S.finite())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
 
-      expect(pipe(S.Number, S.lessThan(5))).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.lessThan(5))
+      it("greaterThan", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThan(5))
 
-      expect(pipe(S.Number, S.lessThanOrEqualTo(5))).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.lessThanOrEqualTo(5))
+        const schema = pipe(S.Number, S.greaterThan(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
 
-      expect(pipe(S.Number, S.int())).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.int())
+      it("greaterThanOrEqualTo", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanOrEqualTo(5))
 
-      expect(pipe(S.Number, S.nonNaN())).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.nonNaN())
+        const schema = pipe(S.Number, S.greaterThanOrEqualTo(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
 
-      expect(pipe(S.Number, S.finite())).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.finite())
+      it("lessThan", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThan(5))
+
+        const schema = pipe(S.Number, S.lessThan(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("lessThanOrEqualTo", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanOrEqualTo(5))
+
+        const schema = pipe(S.Number, S.lessThanOrEqualTo(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("int", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.int())
+
+        const schema = pipe(S.Number, S.int())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("multipleOf", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.multipleOf(5))
+
+        const schema = pipe(S.Number, S.multipleOf(5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("between", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.between(1, 5))
+
+        const schema = pipe(S.Number, S.between(1, 5))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("nonNaN", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonNaN())
+
+        const schema = pipe(S.Number, S.nonNaN())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("positive", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.positive())
+
+        const schema = pipe(S.Number, S.positive())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("negative", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.negative())
+
+        const schema = pipe(S.Number, S.negative())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("nonPositive", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonPositive())
+
+        const schema = pipe(S.Number, S.nonPositive())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("nonNegative", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonNegative())
+
+        const schema = pipe(S.Number, S.nonNegative())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+    })
+
+    describe("BigInt Filters", () => {
+      it("greaterThanBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanBigInt(5n))
+
+        const schema = pipe(S.BigIntFromSelf, S.greaterThanBigInt(5n))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("greaterThanOrEqualToBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanOrEqualToBigInt(5n))
+
+        const schema = pipe(S.BigIntFromSelf, S.greaterThanOrEqualToBigInt(5n))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("lessThanBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanBigInt(5n))
+
+        const schema = pipe(S.BigIntFromSelf, S.lessThanBigInt(5n))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("lessThanOrEqualToBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanOrEqualToBigInt(5n))
+
+        const schema = pipe(S.BigIntFromSelf, S.lessThanOrEqualToBigInt(5n))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("betweenBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.betweenBigInt(1n, 5n))
+
+        const schema = pipe(S.BigIntFromSelf, S.betweenBigInt(1n, 5n))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("positiveBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.positiveBigInt())
+
+        const schema = pipe(S.BigIntFromSelf, S.positiveBigInt())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("negativeBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.negativeBigInt())
+
+        const schema = pipe(S.BigIntFromSelf, S.negativeBigInt())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("nonNegativeBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonNegativeBigInt())
+
+        const schema = pipe(S.BigIntFromSelf, S.nonNegativeBigInt())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("nonPositiveBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.negativeBigInt())
+
+        const schema = pipe(S.BigIntFromSelf, S.nonPositiveBigInt())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+    })
+
+    describe("Duration filters", () => {
+      it("lessThanDuration", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanDuration("10 millis"))
+
+        const schema = pipe(S.DurationFromSelf, S.lessThanDuration("10 millis"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
+        expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      })
+
+      it("lessThanOrEqualToDuration", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanOrEqualToDuration("10 millis"))
+
+        const schema = pipe(S.DurationFromSelf, S.lessThanOrEqualToDuration("10 millis"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
+        expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      })
+
+      it("greaterThanDuration", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanDuration("10 millis"))
+
+        const schema = pipe(S.DurationFromSelf, S.greaterThanDuration("10 millis"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
+        expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      })
+
+      it("greaterThanOrEqualToDuration", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanOrEqualToDuration("10 millis"))
+
+        const schema = pipe(S.DurationFromSelf, S.greaterThanOrEqualToDuration("10 millis"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
+        expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      })
+
+      it("betweenDuration", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.betweenDuration("10 millis", "50 millis"))
+
+        const schema = pipe(S.DurationFromSelf, S.betweenDuration("10 millis", "50 millis"))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
+        expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      })
+    })
+
+    describe("Array Filters", () => {
+      describe("Array", () => {
+        it("minItems", () => {
+          // @ts-expect-error
+          pipe(S.Null, S.minItems(2))
+
+          const schema = S.Array(S.String).pipe(S.minItems(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyArray<string>>>()
+          expect(schema).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.Array$<typeof S.String>>()
+        })
+
+        it("maxItems", () => {
+          // @ts-expect-error
+          pipe(S.Null, S.maxItems(2))
+
+          const schema = S.Array(S.String).pipe(S.maxItems(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyArray<string>>>()
+          expect(schema).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.Array$<typeof S.String>>()
+        })
+
+        it("itemsCount", () => {
+          // @ts-expect-error
+          pipe(S.Null, S.itemsCount(2))
+
+          const schema = S.Array(S.String).pipe(S.itemsCount(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyArray<string>>>()
+          expect(schema).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.Array$<typeof S.String>>()
+        })
+      })
+
+      describe("NonEmptyArray", () => {
+        it("minItems", () => {
+          const schema = S.NonEmptyArray(S.String).pipe(S.minItems(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
+          expect(schema).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.NonEmptyArray<typeof S.String>>()
+        })
+
+        it("maxItems", () => {
+          const schema = S.NonEmptyArray(S.String).pipe(S.maxItems(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
+          expect(schema).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.NonEmptyArray<typeof S.String>>()
+        })
+
+        it("itemsCount", () => {
+          const schema = S.NonEmptyArray(S.String).pipe(S.itemsCount(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
+          expect(schema).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.NonEmptyArray<typeof S.String>>()
+        })
+      })
+    })
+
+    describe("Date Filters", () => {
+      it("validDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.validDate())
+
+        const schema = pipe(S.DateFromSelf, S.validDate())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+
+      it("lessThanDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanDate(new Date()))
+
+        const schema = pipe(S.DateFromSelf, S.lessThanDate(new Date()))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+
+      it("lessThanOrEqualToDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanOrEqualToDate(new Date()))
+
+        const schema = pipe(S.DateFromSelf, S.lessThanOrEqualToDate(new Date()))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+
+      it("greaterThanDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanDate(new Date()))
+
+        const schema = pipe(S.DateFromSelf, S.greaterThanDate(new Date()))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+
+      it("greaterThanOrEqualToDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanOrEqualToDate(new Date()))
+
+        const schema = pipe(S.DateFromSelf, S.greaterThanOrEqualToDate(new Date()))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+
+      it("betweenDate", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.betweenDate(new Date(0), new Date(100)))
+
+        const schema = pipe(S.DateFromSelf, S.betweenDate(new Date(0), new Date(100)))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+        expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+    })
+
+    describe("BigDecimal Filters", () => {
+      const bd = hole<BigDecimal.BigDecimal>()
+
+      it("greaterThanBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanBigDecimal(bd))
+
+        const schema = pipe(S.BigDecimalFromSelf, S.greaterThanBigDecimal(bd))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("greaterThanOrEqualToBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanOrEqualToBigDecimal(bd))
+
+        const schema = pipe(S.BigDecimalFromSelf, S.greaterThanOrEqualToBigDecimal(bd))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("lessThanBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanBigDecimal(bd))
+
+        const schema = pipe(S.BigDecimalFromSelf, S.lessThanBigDecimal(bd))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("lessThanOrEqualToBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanOrEqualToBigDecimal(bd))
+
+        const schema = pipe(S.BigDecimalFromSelf, S.lessThanOrEqualToBigDecimal(bd))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("positiveBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.positiveBigDecimal())
+
+        const schema = pipe(S.BigDecimalFromSelf, S.positiveBigDecimal())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("nonNegativeBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonNegativeBigDecimal())
+
+        const schema = pipe(S.BigDecimalFromSelf, S.nonNegativeBigDecimal())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("negativeBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.negativeBigDecimal())
+
+        const schema = pipe(S.BigDecimalFromSelf, S.negativeBigDecimal())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("nonPositiveBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonPositiveBigDecimal())
+
+        const schema = pipe(S.BigDecimalFromSelf, S.nonPositiveBigDecimal())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("betweenBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.betweenBigDecimal(bd, bd))
+
+        const schema = pipe(S.BigDecimalFromSelf, S.betweenBigDecimal(bd, bd))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
     })
   })
 

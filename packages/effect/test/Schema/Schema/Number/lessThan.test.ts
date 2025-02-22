@@ -6,18 +6,18 @@ import { assertFalse, assertTrue } from "effect/test/util"
 
 describe("lessThan", () => {
   it("test roundtrip consistency", () => {
-    Util.assertions.testRoundtripConsistency(S.lessThan(0)(S.Number))
+    Util.assertions.testRoundtripConsistency(S.Number.pipe(S.lessThan(0)))
   })
 
   it("is", () => {
-    const is = P.is(S.lessThan(0)(S.Number))
+    const is = P.is(S.Number.pipe(S.lessThan(0)))
     assertFalse(is(0))
     assertFalse(is(1))
     assertTrue(is(-1))
   })
 
   it("decoding", async () => {
-    const schema = S.lessThan(0)(S.Number)
+    const schema = S.Number.pipe(S.lessThan(0))
     await Util.assertions.decoding.succeed(schema, -1)
     await Util.assertions.decoding.fail(
       schema,
@@ -36,7 +36,7 @@ describe("lessThan", () => {
   })
 
   it("pretty", () => {
-    const schema = S.lessThan(0)(S.Number)
+    const schema = S.Number.pipe(S.lessThan(0))
     Util.assertions.pretty(schema, 1, "1")
   })
 })

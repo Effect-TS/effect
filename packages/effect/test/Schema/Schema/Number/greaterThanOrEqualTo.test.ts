@@ -5,7 +5,7 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { assertFalse, assertTrue } from "effect/test/util"
 
 describe("greaterThanOrEqualTo", () => {
-  const schema = S.greaterThanOrEqualTo(0)(S.Number)
+  const schema = S.Number.pipe(S.greaterThanOrEqualTo(0))
 
   it("test roundtrip consistency", () => {
     Util.assertions.testRoundtripConsistency(schema)

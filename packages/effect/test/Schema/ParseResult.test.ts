@@ -233,14 +233,14 @@ describe("ParseIssue.actual", () => {
   })
 
   it("compose decode", () => {
-    const result = S.decodeEither(S.compose(S.NumberFromString, S.negative()(S.Number)))("1")
+    const result = S.decodeEither(S.compose(S.NumberFromString, S.Number.pipe(S.negative())))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
     strictEqual(result.left.issue.actual, "1")
     strictEqual((result.left.issue as ParseResult.Transformation).issue.actual, 1)
   })
 
   it("compose encode", () => {
-    const result = S.encodeEither(S.compose(S.length(5)(S.String), S.NumberFromString))(1)
+    const result = S.encodeEither(S.compose(S.String.pipe(S.length(5)), S.NumberFromString))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
     strictEqual(result.left.issue.actual, 1)
     strictEqual((result.left.issue as ParseResult.Transformation).issue.actual, "1")
