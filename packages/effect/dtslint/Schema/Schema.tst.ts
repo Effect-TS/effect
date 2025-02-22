@@ -2541,10 +2541,15 @@ describe("Schema", () => {
 
     describe("String Filters", () => {
       it("maxLength", () => {
-        // @ts-expect-error: Argument of type 'typeof Null' is not assignable to parameter of type 'never'
+        // @ts-expect-error: The intersection 'typeof Null & Schema<string, null, never>' was reduced to 'never' because property 'Type' has conflicting types in some constituents
         pipe(S.Null, S.maxLength(5))
         // should allow generic context
-        const _f = <A extends string>(schema: S.Schema<A>) => schema.pipe(S.maxLength(5))
+        const _f1 = <A extends string>(schema: S.Schema<A>) => schema.pipe(S.maxLength(5))
+        const _f2 = <A extends string>(schema: S.Schema<A>) =>
+          schema.pipe(
+            // @ts-expect-error: Type 'string' is not assignable to type 'number'
+            S.greaterThan(5)
+          )
         // should allow string subtypes
         pipe(
           S.TemplateLiteral("a", S.String),
