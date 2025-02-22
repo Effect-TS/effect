@@ -5,7 +5,7 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { assertFalse, assertTrue } from "effect/test/util"
 
 describe("includes", () => {
-  const schema = S.includes("a")(S.String)
+  const schema = S.String.pipe(S.includes("a"))
 
   it("test roundtrip consistency", () => {
     Util.assertions.testRoundtripConsistency(schema)

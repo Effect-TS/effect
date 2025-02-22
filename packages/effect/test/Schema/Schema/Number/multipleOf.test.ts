@@ -6,7 +6,7 @@ import { assertFalse, assertTrue } from "effect/test/util"
 
 describe("multipleOf", () => {
   it("test roundtrip consistency", () => {
-    Util.assertions.testRoundtripConsistency(S.multipleOf(2)(S.Number))
+    Util.assertions.testRoundtripConsistency(S.Number.pipe(S.multipleOf(2)))
   })
 
   it("is", () => {
