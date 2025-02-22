@@ -2827,6 +2827,98 @@ describe("Schema", () => {
         expect(schema.from).type.toBe<typeof S.Number>()
       })
     })
+
+    describe("BigInt Filters", () => {
+      it("greaterThanBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanBigInt(5n))
+
+        const schema = pipe(S.BigIntFromSelf, S.greaterThanBigInt(5n))
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("greaterThanOrEqualToBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanOrEqualToBigInt(5n))
+
+        const schema = pipe(S.BigIntFromSelf, S.greaterThanOrEqualToBigInt(5n))
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("lessThanBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanBigInt(5n))
+
+        const schema = pipe(S.BigIntFromSelf, S.lessThanBigInt(5n))
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("lessThanOrEqualToBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanOrEqualToBigInt(5n))
+
+        const schema = pipe(S.BigIntFromSelf, S.lessThanOrEqualToBigInt(5n))
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("betweenBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.betweenBigInt(1n, 5n))
+
+        const schema = pipe(S.BigIntFromSelf, S.betweenBigInt(1n, 5n))
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("positiveBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.positiveBigInt())
+
+        const schema = pipe(S.BigIntFromSelf, S.positiveBigInt())
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("negativeBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.negativeBigInt())
+
+        const schema = pipe(S.BigIntFromSelf, S.negativeBigInt())
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("nonNegativeBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonNegativeBigInt())
+
+        const schema = pipe(S.BigIntFromSelf, S.nonNegativeBigInt())
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+
+      it("nonPositiveBigInt", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.negativeBigInt())
+
+        const schema = pipe(S.BigIntFromSelf, S.nonPositiveBigInt())
+        expect(schema).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigIntFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      })
+    })
   })
 
   describe("Data Types", () => {

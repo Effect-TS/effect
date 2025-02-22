@@ -5324,11 +5324,11 @@ export type GreaterThanBigIntSchemaId = typeof GreaterThanBigIntSchemaId
  * @category bigint filters
  * @since 3.10.0
  */
-export const greaterThanBigInt = <A extends bigint>(
+export const greaterThanBigInt = <S extends Schema.Any>(
   min: bigint,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends bigint>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter((a) => a > min, {
       schemaId: GreaterThanBigIntSchemaId,
@@ -5355,11 +5355,11 @@ export type GreaterThanOrEqualToBigIntSchemaId = typeof GreaterThanOrEqualToBigI
  * @category bigint filters
  * @since 3.10.0
  */
-export const greaterThanOrEqualToBigInt = <A extends bigint>(
+export const greaterThanOrEqualToBigInt = <S extends Schema.Any>(
   min: bigint,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends bigint>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter((a) => a >= min, {
       schemaId: GreaterThanOrEqualToBigIntSchemaId,
@@ -5388,11 +5388,11 @@ export type LessThanBigIntSchemaId = typeof LessThanBigIntSchemaId
  * @category bigint filters
  * @since 3.10.0
  */
-export const lessThanBigInt = <A extends bigint>(
+export const lessThanBigInt = <S extends Schema.Any>(
   max: bigint,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends bigint>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter((a) => a < max, {
       schemaId: LessThanBigIntSchemaId,
@@ -5419,11 +5419,11 @@ export type LessThanOrEqualToBigIntSchemaId = typeof LessThanOrEqualToBigIntSche
  * @category bigint filters
  * @since 3.10.0
  */
-export const lessThanOrEqualToBigInt = <A extends bigint>(
+export const lessThanOrEqualToBigInt = <S extends Schema.Any>(
   max: bigint,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends bigint>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter((a) => a <= max, {
       schemaId: LessThanOrEqualToBigIntSchemaId,
@@ -5450,12 +5450,12 @@ export type BetweenBigIntSchemaId = typeof BetweenBigIntSchemaId
  * @category bigint filters
  * @since 3.10.0
  */
-export const betweenBigInt = <A extends bigint>(
+export const betweenBigInt = <S extends Schema.Any>(
   min: bigint,
   max: bigint,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends bigint>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter((a) => a >= min && a <= max, {
       schemaId: BetweenBigIntSchemaId,
@@ -5470,36 +5470,36 @@ export const betweenBigInt = <A extends bigint>(
  * @category bigint filters
  * @since 3.10.0
  */
-export const positiveBigInt = <A extends bigint>(
-  annotations?: Annotations.Filter<A>
-): <I, R>(self: Schema<A, I, R>) => filter<Schema<A, I, R>> =>
+export const positiveBigInt = <S extends Schema.Any>(
+  annotations?: Annotations.Filter<Schema.Type<S>>
+): <A extends bigint>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>) => filter<S> =>
   greaterThanBigInt(0n, { title: "positiveBigInt", ...annotations })
 
 /**
  * @category bigint filters
  * @since 3.10.0
  */
-export const negativeBigInt = <A extends bigint>(
-  annotations?: Annotations.Filter<A>
-): <I, R>(self: Schema<A, I, R>) => filter<Schema<A, I, R>> =>
+export const negativeBigInt = <S extends Schema.Any>(
+  annotations?: Annotations.Filter<Schema.Type<S>>
+): <A extends bigint>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>) => filter<S> =>
   lessThanBigInt(0n, { title: "negativeBigInt", ...annotations })
 
 /**
  * @category bigint filters
  * @since 3.10.0
  */
-export const nonNegativeBigInt = <A extends bigint>(
-  annotations?: Annotations.Filter<A>
-): <I, R>(self: Schema<A, I, R>) => filter<Schema<A, I, R>> =>
+export const nonNegativeBigInt = <S extends Schema.Any>(
+  annotations?: Annotations.Filter<Schema.Type<S>>
+): <A extends bigint>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>) => filter<S> =>
   greaterThanOrEqualToBigInt(0n, { title: "nonNegativeBigInt", ...annotations })
 
 /**
  * @category bigint filters
  * @since 3.10.0
  */
-export const nonPositiveBigInt = <A extends bigint>(
-  annotations?: Annotations.Filter<A>
-): <I, R>(self: Schema<A, I, R>) => filter<Schema<A, I, R>> =>
+export const nonPositiveBigInt = <S extends Schema.Any>(
+  annotations?: Annotations.Filter<Schema.Type<S>>
+): <A extends bigint>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>) => filter<S> =>
   lessThanOrEqualToBigInt(0n, { title: "nonPositiveBigInt", ...annotations })
 
 /**

@@ -63,3 +63,15 @@ Number filters:
 - `negative`
 - `nonPositive`
 - `nonNegative`
+
+BigInt filters:
+
+- `greaterThanBigInt`
+- `greaterThanOrEqualToBigInt`
+- `lessThanBigInt`
+- `lessThanOrEqualToBigInt`
+- `betweenBigInt`
+- `positiveBigInt`
+- `negativeBigInt`
+- `nonNegativeBigInt`
+- `nonPositiveBigInt`
