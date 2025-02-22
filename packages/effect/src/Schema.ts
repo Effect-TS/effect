@@ -7730,22 +7730,20 @@ export const GreaterThanBigDecimalSchemaId: unique symbol = Symbol.for("effect/S
  * @category BigDecimal filters
  * @since 3.10.0
  */
-export const greaterThanBigDecimal = <A extends bigDecimal_.BigDecimal>(
-  min: bigDecimal_.BigDecimal,
-  annotations?: Annotations.Filter<A>
-) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
-  const formatted = bigDecimal_.format(min)
-  return self.pipe(
-    filter((a) => bigDecimal_.greaterThan(a, min), {
-      schemaId: GreaterThanBigDecimalSchemaId,
-      [GreaterThanBigDecimalSchemaId]: { min },
-      title: `greaterThanBigDecimal(${formatted})`,
-      description: `a BigDecimal greater than ${formatted}`,
-      ...annotations
-    })
-  )
-}
+export const greaterThanBigDecimal =
+  <S extends Schema.Any>(min: bigDecimal_.BigDecimal, annotations?: Annotations.Filter<Schema.Type<S>>) =>
+  <A extends bigDecimal_.BigDecimal>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
+    const formatted = bigDecimal_.format(min)
+    return self.pipe(
+      filter((a) => bigDecimal_.greaterThan(a, min), {
+        schemaId: GreaterThanBigDecimalSchemaId,
+        [GreaterThanBigDecimalSchemaId]: { min },
+        title: `greaterThanBigDecimal(${formatted})`,
+        description: `a BigDecimal greater than ${formatted}`,
+        ...annotations
+      })
+    )
+  }
 
 /**
  * @category schema id
@@ -7759,22 +7757,20 @@ export const GreaterThanOrEqualToBigDecimalSchemaId: unique symbol = Symbol.for(
  * @category BigDecimal filters
  * @since 3.10.0
  */
-export const greaterThanOrEqualToBigDecimal = <A extends bigDecimal_.BigDecimal>(
-  min: bigDecimal_.BigDecimal,
-  annotations?: Annotations.Filter<A>
-) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
-  const formatted = bigDecimal_.format(min)
-  return self.pipe(
-    filter((a) => bigDecimal_.greaterThanOrEqualTo(a, min), {
-      schemaId: GreaterThanOrEqualToBigDecimalSchemaId,
-      [GreaterThanOrEqualToBigDecimalSchemaId]: { min },
-      title: `greaterThanOrEqualToBigDecimal(${formatted})`,
-      description: `a BigDecimal greater than or equal to ${formatted}`,
-      ...annotations
-    })
-  )
-}
+export const greaterThanOrEqualToBigDecimal =
+  <S extends Schema.Any>(min: bigDecimal_.BigDecimal, annotations?: Annotations.Filter<Schema.Type<S>>) =>
+  <A extends bigDecimal_.BigDecimal>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
+    const formatted = bigDecimal_.format(min)
+    return self.pipe(
+      filter((a) => bigDecimal_.greaterThanOrEqualTo(a, min), {
+        schemaId: GreaterThanOrEqualToBigDecimalSchemaId,
+        [GreaterThanOrEqualToBigDecimalSchemaId]: { min },
+        title: `greaterThanOrEqualToBigDecimal(${formatted})`,
+        description: `a BigDecimal greater than or equal to ${formatted}`,
+        ...annotations
+      })
+    )
+  }
 
 /**
  * @category schema id
@@ -7786,22 +7782,20 @@ export const LessThanBigDecimalSchemaId: unique symbol = Symbol.for("effect/Sche
  * @category BigDecimal filters
  * @since 3.10.0
  */
-export const lessThanBigDecimal = <A extends bigDecimal_.BigDecimal>(
-  max: bigDecimal_.BigDecimal,
-  annotations?: Annotations.Filter<A>
-) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
-  const formatted = bigDecimal_.format(max)
-  return self.pipe(
-    filter((a) => bigDecimal_.lessThan(a, max), {
-      schemaId: LessThanBigDecimalSchemaId,
-      [LessThanBigDecimalSchemaId]: { max },
-      title: `lessThanBigDecimal(${formatted})`,
-      description: `a BigDecimal less than ${formatted}`,
-      ...annotations
-    })
-  )
-}
+export const lessThanBigDecimal =
+  <S extends Schema.Any>(max: bigDecimal_.BigDecimal, annotations?: Annotations.Filter<Schema.Type<S>>) =>
+  <A extends bigDecimal_.BigDecimal>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
+    const formatted = bigDecimal_.format(max)
+    return self.pipe(
+      filter((a) => bigDecimal_.lessThan(a, max), {
+        schemaId: LessThanBigDecimalSchemaId,
+        [LessThanBigDecimalSchemaId]: { max },
+        title: `lessThanBigDecimal(${formatted})`,
+        description: `a BigDecimal less than ${formatted}`,
+        ...annotations
+      })
+    )
+  }
 
 /**
  * @category schema id
@@ -7815,22 +7809,20 @@ export const LessThanOrEqualToBigDecimalSchemaId: unique symbol = Symbol.for(
  * @category BigDecimal filters
  * @since 3.10.0
  */
-export const lessThanOrEqualToBigDecimal = <A extends bigDecimal_.BigDecimal>(
-  max: bigDecimal_.BigDecimal,
-  annotations?: Annotations.Filter<A>
-) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
-  const formatted = bigDecimal_.format(max)
-  return self.pipe(
-    filter((a) => bigDecimal_.lessThanOrEqualTo(a, max), {
-      schemaId: LessThanOrEqualToBigDecimalSchemaId,
-      [LessThanOrEqualToBigDecimalSchemaId]: { max },
-      title: `lessThanOrEqualToBigDecimal(${formatted})`,
-      description: `a BigDecimal less than or equal to ${formatted}`,
-      ...annotations
-    })
-  )
-}
+export const lessThanOrEqualToBigDecimal =
+  <S extends Schema.Any>(max: bigDecimal_.BigDecimal, annotations?: Annotations.Filter<Schema.Type<S>>) =>
+  <A extends bigDecimal_.BigDecimal>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
+    const formatted = bigDecimal_.format(max)
+    return self.pipe(
+      filter((a) => bigDecimal_.lessThanOrEqualTo(a, max), {
+        schemaId: LessThanOrEqualToBigDecimalSchemaId,
+        [LessThanOrEqualToBigDecimalSchemaId]: { max },
+        title: `lessThanOrEqualToBigDecimal(${formatted})`,
+        description: `a BigDecimal less than or equal to ${formatted}`,
+        ...annotations
+      })
+    )
+  }
 
 /**
  * @category schema id
@@ -7844,18 +7836,17 @@ export const PositiveBigDecimalSchemaId: unique symbol = Symbol.for(
  * @category BigDecimal filters
  * @since 3.10.0
  */
-export const positiveBigDecimal = <A extends bigDecimal_.BigDecimal>(
-  annotations?: Annotations.Filter<A>
-) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
-  self.pipe(
-    filter((a) => bigDecimal_.isPositive(a), {
-      schemaId: PositiveBigDecimalSchemaId,
-      title: "positiveBigDecimal",
-      description: `a positive BigDecimal`,
-      ...annotations
-    })
-  )
+export const positiveBigDecimal =
+  <S extends Schema.Any>(annotations?: Annotations.Filter<Schema.Type<S>>) =>
+  <A extends bigDecimal_.BigDecimal>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
+    self.pipe(
+      filter((a) => bigDecimal_.isPositive(a), {
+        schemaId: PositiveBigDecimalSchemaId,
+        title: "positiveBigDecimal",
+        description: `a positive BigDecimal`,
+        ...annotations
+      })
+    )
 
 /**
  * @category BigDecimal constructors
@@ -7877,18 +7868,17 @@ export const NonNegativeBigDecimalSchemaId: unique symbol = Symbol.for(
  * @category BigDecimal filters
  * @since 3.10.0
  */
-export const nonNegativeBigDecimal = <A extends bigDecimal_.BigDecimal>(
-  annotations?: Annotations.Filter<A>
-) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
-  self.pipe(
-    filter((a) => a.value >= 0n, {
-      schemaId: NonNegativeBigDecimalSchemaId,
-      title: "nonNegativeBigDecimal",
-      description: `a non-negative BigDecimal`,
-      ...annotations
-    })
-  )
+export const nonNegativeBigDecimal =
+  <S extends Schema.Any>(annotations?: Annotations.Filter<Schema.Type<S>>) =>
+  <A extends bigDecimal_.BigDecimal>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
+    self.pipe(
+      filter((a) => a.value >= 0n, {
+        schemaId: NonNegativeBigDecimalSchemaId,
+        title: "nonNegativeBigDecimal",
+        description: `a non-negative BigDecimal`,
+        ...annotations
+      })
+    )
 
 /**
  * @category BigDecimal constructors
@@ -7910,18 +7900,17 @@ export const NegativeBigDecimalSchemaId: unique symbol = Symbol.for(
  * @category BigDecimal filters
  * @since 3.10.0
  */
-export const negativeBigDecimal = <A extends bigDecimal_.BigDecimal>(
-  annotations?: Annotations.Filter<A>
-) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
-  self.pipe(
-    filter((a) => bigDecimal_.isNegative(a), {
-      schemaId: NegativeBigDecimalSchemaId,
-      title: "negativeBigDecimal",
-      description: `a negative BigDecimal`,
-      ...annotations
-    })
-  )
+export const negativeBigDecimal =
+  <S extends Schema.Any>(annotations?: Annotations.Filter<Schema.Type<S>>) =>
+  <A extends bigDecimal_.BigDecimal>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
+    self.pipe(
+      filter((a) => bigDecimal_.isNegative(a), {
+        schemaId: NegativeBigDecimalSchemaId,
+        title: "negativeBigDecimal",
+        description: `a negative BigDecimal`,
+        ...annotations
+      })
+    )
 
 /**
  * @category BigDecimal constructors
@@ -7943,18 +7932,17 @@ export const NonPositiveBigDecimalSchemaId: unique symbol = Symbol.for(
  * @category BigDecimal filters
  * @since 3.10.0
  */
-export const nonPositiveBigDecimal = <A extends bigDecimal_.BigDecimal>(
-  annotations?: Annotations.Filter<A>
-) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
-  self.pipe(
-    filter((a) => a.value <= 0n, {
-      schemaId: NonPositiveBigDecimalSchemaId,
-      title: "nonPositiveBigDecimal",
-      description: `a non-positive BigDecimal`,
-      ...annotations
-    })
-  )
+export const nonPositiveBigDecimal =
+  <S extends Schema.Any>(annotations?: Annotations.Filter<Schema.Type<S>>) =>
+  <A extends bigDecimal_.BigDecimal>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
+    self.pipe(
+      filter((a) => a.value <= 0n, {
+        schemaId: NonPositiveBigDecimalSchemaId,
+        title: "nonPositiveBigDecimal",
+        description: `a non-positive BigDecimal`,
+        ...annotations
+      })
+    )
 
 /**
  * @category BigDecimal constructors
@@ -7974,12 +7962,12 @@ export const BetweenBigDecimalSchemaId: unique symbol = Symbol.for("effect/Schem
  * @category BigDecimal filters
  * @since 3.10.0
  */
-export const betweenBigDecimal = <A extends bigDecimal_.BigDecimal>(
+export const betweenBigDecimal = <S extends Schema.Any>(
   minimum: bigDecimal_.BigDecimal,
   maximum: bigDecimal_.BigDecimal,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
+<A extends bigDecimal_.BigDecimal>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
   const formattedMinimum = bigDecimal_.format(minimum)
   const formattedMaximum = bigDecimal_.format(maximum)
   return self.pipe(

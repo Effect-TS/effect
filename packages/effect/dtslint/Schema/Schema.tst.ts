@@ -3005,7 +3005,7 @@ describe("Schema", () => {
       })
     })
 
-    describe("Data Filters", () => {
+    describe("Date Filters", () => {
       it("validDate", () => {
         // @ts-expect-error
         pipe(S.Null, S.validDate())
@@ -3070,6 +3070,109 @@ describe("Schema", () => {
         expect(schema).type.toBe<S.filter<typeof S.DateFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.DateFromSelf>>()
         expect(schema.from).type.toBe<typeof S.DateFromSelf>()
+      })
+    })
+
+    describe("BigDecimal Filters", () => {
+      const bd = hole<BigDecimal.BigDecimal>()
+
+      it("greaterThanBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanBigDecimal(bd))
+
+        const schema = pipe(S.BigDecimalFromSelf, S.greaterThanBigDecimal(bd))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("greaterThanOrEqualToBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanOrEqualToBigDecimal(bd))
+
+        const schema = pipe(S.BigDecimalFromSelf, S.greaterThanOrEqualToBigDecimal(bd))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("lessThanBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanBigDecimal(bd))
+
+        const schema = pipe(S.BigDecimalFromSelf, S.lessThanBigDecimal(bd))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("lessThanOrEqualToBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanOrEqualToBigDecimal(bd))
+
+        const schema = pipe(S.BigDecimalFromSelf, S.lessThanOrEqualToBigDecimal(bd))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("positiveBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.positiveBigDecimal())
+
+        const schema = pipe(S.BigDecimalFromSelf, S.positiveBigDecimal())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("nonNegativeBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonNegativeBigDecimal())
+
+        const schema = pipe(S.BigDecimalFromSelf, S.nonNegativeBigDecimal())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("negativeBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.negativeBigDecimal())
+
+        const schema = pipe(S.BigDecimalFromSelf, S.negativeBigDecimal())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("nonPositiveBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonPositiveBigDecimal())
+
+        const schema = pipe(S.BigDecimalFromSelf, S.nonPositiveBigDecimal())
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      })
+
+      it("betweenBigDecimal", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.betweenBigDecimal(bd, bd))
+
+        const schema = pipe(S.BigDecimalFromSelf, S.betweenBigDecimal(bd, bd))
+        expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+        expect(schema).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.BigDecimalFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
       })
     })
   })

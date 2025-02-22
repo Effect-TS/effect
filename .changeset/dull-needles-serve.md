@@ -98,3 +98,15 @@ Date filters:
 - `greaterThanDate`
 - `greaterThanOrEqualToDate`
 - `betweenDate`
+
+BigDecimal filters:
+
+- `greaterThanBigDecimal`
+- `greaterThanOrEqualToBigDecimal`
+- `lessThanBigDecimal`
+- `lessThanOrEqualToBigDecimal`
+- `positiveBigDecimal`
+- `nonNegativeBigDecimal`
+- `negativeBigDecimal`
+- `nonPositiveBigDecimal`
+- `betweenBigDecimal`
