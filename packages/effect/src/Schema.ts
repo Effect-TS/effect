@@ -5891,11 +5891,11 @@ export const LessThanDurationSchemaId: unique symbol = Symbol.for("effect/Schema
  * @category Duration filters
  * @since 3.10.0
  */
-export const lessThanDuration = <A extends duration_.Duration>(
+export const lessThanDuration = <S extends Schema.Any>(
   max: duration_.DurationInput,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends duration_.Duration>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter((a) => duration_.lessThan(a, max), {
       schemaId: LessThanDurationSchemaId,
@@ -5918,11 +5918,11 @@ export const LessThanOrEqualToDurationSchemaId: unique symbol = Symbol.for(
  * @category Duration filters
  * @since 3.10.0
  */
-export const lessThanOrEqualToDuration = <A extends duration_.Duration>(
+export const lessThanOrEqualToDuration = <S extends Schema.Any>(
   max: duration_.DurationInput,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends duration_.Duration>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter((a) => duration_.lessThanOrEqualTo(a, max), {
       schemaId: LessThanDurationSchemaId,
@@ -5943,11 +5943,11 @@ export const GreaterThanDurationSchemaId: unique symbol = Symbol.for("effect/Sch
  * @category Duration filters
  * @since 3.10.0
  */
-export const greaterThanDuration = <A extends duration_.Duration>(
+export const greaterThanDuration = <S extends Schema.Any>(
   min: duration_.DurationInput,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends duration_.Duration>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter((a) => duration_.greaterThan(a, min), {
       schemaId: GreaterThanDurationSchemaId,
@@ -5970,11 +5970,11 @@ export const GreaterThanOrEqualToDurationSchemaId: unique symbol = Symbol.for(
  * @category Duration filters
  * @since 3.10.0
  */
-export const greaterThanOrEqualToDuration = <A extends duration_.Duration>(
+export const greaterThanOrEqualToDuration = <S extends Schema.Any>(
   min: duration_.DurationInput,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends duration_.Duration>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter((a) => duration_.greaterThanOrEqualTo(a, min), {
       schemaId: GreaterThanOrEqualToDurationSchemaId,
@@ -5995,12 +5995,12 @@ export const BetweenDurationSchemaId: unique symbol = Symbol.for("effect/SchemaI
  * @category Duration filters
  * @since 3.10.0
  */
-export const betweenDuration = <A extends duration_.Duration>(
+export const betweenDuration = <S extends Schema.Any>(
   minimum: duration_.DurationInput,
   maximum: duration_.DurationInput,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends duration_.Duration>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter((a) => duration_.between(a, { minimum, maximum }), {
       schemaId: BetweenDurationSchemaId,

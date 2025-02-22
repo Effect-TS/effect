@@ -2919,6 +2919,58 @@ describe("Schema", () => {
         expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
       })
     })
+
+    describe("Duration filters", () => {
+      it("lessThanDuration", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanDuration("10 millis"))
+
+        const schema = pipe(S.DurationFromSelf, S.lessThanDuration("10 millis"))
+        expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      })
+
+      it("lessThanOrEqualToDuration", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanOrEqualToDuration("10 millis"))
+
+        const schema = pipe(S.DurationFromSelf, S.lessThanOrEqualToDuration("10 millis"))
+        expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      })
+
+      it("greaterThanDuration", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanDuration("10 millis"))
+
+        const schema = pipe(S.DurationFromSelf, S.greaterThanDuration("10 millis"))
+        expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      })
+
+      it("greaterThanOrEqualToDuration", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanOrEqualToDuration("10 millis"))
+
+        const schema = pipe(S.DurationFromSelf, S.greaterThanOrEqualToDuration("10 millis"))
+        expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      })
+
+      it("betweenDuration", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.betweenDuration("10 millis", "50 millis"))
+
+        const schema = pipe(S.DurationFromSelf, S.betweenDuration("10 millis", "50 millis"))
+        expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
+        expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      })
+    })
   })
 
   describe("Data Types", () => {

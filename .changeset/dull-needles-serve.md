@@ -75,3 +75,11 @@ BigInt filters:
 - `negativeBigInt`
 - `nonNegativeBigInt`
 - `nonPositiveBigInt`
+
+Duration filters:
+
+- `lessThanDuration`
+- `lessThanOrEqualToDuration`
+- `greaterThanDuration`
+- `greaterThanOrEqualToDuration`
+- `betweenDuration`
