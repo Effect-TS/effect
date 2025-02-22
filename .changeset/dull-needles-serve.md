@@ -4,20 +4,6 @@
 
 Schema: more precise return types when filters are involved.
 
-- `maxLength`
-- `minLength`
-- `length`
-- `pattern`
-- `startsWith`
-- `endsWith`
-- `includes`
-- `lowercased`
-- `capitalized`
-- `uncapitalized`
-- `uppercased`
-- `nonEmptyString`
-- `trimmed`
-
 **Example** (with `Schema.maxLength`)
 
 Before
@@ -45,3 +31,35 @@ const schema = Schema.String.pipe(Schema.maxLength(10))
 // typeof Schema.String
 schema.from
 ```
+
+String filters:
+
+- `maxLength`
+- `minLength`
+- `length`
+- `pattern`
+- `startsWith`
+- `endsWith`
+- `includes`
+- `lowercased`
+- `capitalized`
+- `uncapitalized`
+- `uppercased`
+- `nonEmptyString`
+- `trimmed`
+
+Number filters:
+
+- `finite`
+- `greaterThan`
+- `greaterThanOrEqualTo`
+- `lessThan`
+- `lessThanOrEqualTo`
+- `int`
+- `multipleOf`
+- `between`
+- `nonNaN`
+- `positive`
+- `negative`
+- `nonPositive`
+- `nonNegative`

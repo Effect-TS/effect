@@ -288,7 +288,7 @@ describe("Schema", () => {
     expect(AnnotatedString.pipe(S.annotations({}))).type.toBe<AnnotatedString>()
 
     expect(S.Number.pipe(S.int(), S.brand("Int"), S.annotations({})))
-      .type.toBe<S.brand<S.filter<S.Schema<number>>, "Int">>()
+      .type.toBe<S.brand<S.filter<typeof S.Number>, "Int">>()
     expect(S.Struct({ a: AnnotatedString }).pipe(S.annotations({}))).type.toBe<S.Struct<{ a: AnnotatedString }>>()
     expect(A.pipe(S.annotations({}))).type.toBe<S.SchemaClass<A, { readonly a: string }>>()
     expect(S.Number.pipe(S.int(), S.brand("Int")).make(1)).type.toBe<number & Brand.Brand<"Int">>()
@@ -1224,11 +1224,11 @@ describe("Schema", () => {
     expect(S.asSchema(pipe(S.Number, S.int(), S.brand("Int"))).annotations({}))
       .type.toBe<S.Schema<number & Brand.Brand<"Int">, number>>()
     expect(pipe(S.Number, S.int(), S.brand("Int")))
-      .type.toBe<S.brand<S.filter<S.Schema<number>>, "Int">>()
+      .type.toBe<S.brand<S.filter<typeof S.Number>, "Int">>()
     expect(S.asSchema(pipe(S.NumberFromString, S.int(), S.brand("Int"))))
       .type.toBe<S.Schema<number & Brand.Brand<"Int">, string>>()
     expect(pipe(S.NumberFromString, S.int(), S.brand("Int")))
-      .type.toBe<S.brand<S.filter<S.Schema<number, string>>, "Int">>()
+      .type.toBe<S.brand<S.filter<typeof S.NumberFromString>, "Int">>()
   })
 
   it("partial", () => {
@@ -2696,34 +2696,136 @@ describe("Schema", () => {
       })
     })
 
-    it("Number Filters", () => {
-      expect(pipe(S.Number, S.greaterThan(5))).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.greaterThan(5))
+    describe("Number Filters", () => {
+      it("finite", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.finite())
 
-      expect(pipe(S.Number, S.greaterThanOrEqualTo(5))).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.greaterThanOrEqualTo(5))
+        const schema = pipe(S.Number, S.finite())
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
 
-      expect(pipe(S.Number, S.lessThan(5))).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.lessThan(5))
+      it("greaterThan", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThan(5))
 
-      expect(pipe(S.Number, S.lessThanOrEqualTo(5))).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.lessThanOrEqualTo(5))
+        const schema = pipe(S.Number, S.greaterThan(5))
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
 
-      expect(pipe(S.Number, S.int())).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.int())
+      it("greaterThanOrEqualTo", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.greaterThanOrEqualTo(5))
 
-      expect(pipe(S.Number, S.nonNaN())).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.nonNaN())
+        const schema = pipe(S.Number, S.greaterThanOrEqualTo(5))
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
 
-      expect(pipe(S.Number, S.finite())).type.toBe<S.filter<S.Schema<number>>>()
-      // @ts-expect-error: Type 'null' is not assignable to type 'number'
-      pipe(S.Null, S.finite())
+      it("lessThan", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThan(5))
+
+        const schema = pipe(S.Number, S.lessThan(5))
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("lessThanOrEqualTo", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lessThanOrEqualTo(5))
+
+        const schema = pipe(S.Number, S.lessThanOrEqualTo(5))
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("int", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.int())
+
+        const schema = pipe(S.Number, S.int())
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("multipleOf", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.multipleOf(5))
+
+        const schema = pipe(S.Number, S.multipleOf(5))
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("between", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.between(1, 5))
+
+        const schema = pipe(S.Number, S.between(1, 5))
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("nonNaN", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonNaN())
+
+        const schema = pipe(S.Number, S.nonNaN())
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("positive", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.positive())
+
+        const schema = pipe(S.Number, S.positive())
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("negative", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.negative())
+
+        const schema = pipe(S.Number, S.negative())
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("nonPositive", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonPositive())
+
+        const schema = pipe(S.Number, S.nonPositive())
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
+
+      it("nonNegative", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonNegative())
+
+        const schema = pipe(S.Number, S.nonNegative())
+        expect(schema).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.Number>>()
+        expect(schema.from).type.toBe<typeof S.Number>()
+      })
     })
   })
 
