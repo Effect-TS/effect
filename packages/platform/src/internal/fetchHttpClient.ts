@@ -1,8 +1,8 @@
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import * as Stream from "effect/Stream"
+import * as Headers from "../Headers.js"
 import type * as Client from "../HttpClient.js"
-import * as Headers from "../Headers.js";
 import * as Error from "../HttpClientError.js"
 import * as client from "./httpClient.js"
 import * as internalResponse from "./httpClientResponse.js"
