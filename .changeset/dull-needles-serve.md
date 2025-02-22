@@ -83,3 +83,9 @@ Duration filters:
 - `greaterThanDuration`
 - `greaterThanOrEqualToDuration`
 - `betweenDuration`
+
+Array filters:
+
+- `minItems`
+- `maxItems`
+- `itemsCount`

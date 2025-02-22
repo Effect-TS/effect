@@ -6225,11 +6225,11 @@ export type MinItemsSchemaId = typeof MinItemsSchemaId
  * @category ReadonlyArray filters
  * @since 3.10.0
  */
-export const minItems = <A extends ReadonlyArray<any>>(
+export const minItems = <S extends Schema.Any>(
   n: number,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
+<A extends ReadonlyArray<any>>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
   const minItems = Math.floor(n)
   if (minItems < 1) {
     throw new Error(
@@ -6267,11 +6267,11 @@ export type MaxItemsSchemaId = typeof MaxItemsSchemaId
  * @category ReadonlyArray filters
  * @since 3.10.0
  */
-export const maxItems = <A extends ReadonlyArray<any>>(
+export const maxItems = <S extends Schema.Any>(
   n: number,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
+<A extends ReadonlyArray<any>>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
   const maxItems = Math.floor(n)
   if (maxItems < 1) {
     throw new Error(
@@ -6306,11 +6306,11 @@ export type ItemsCountSchemaId = typeof ItemsCountSchemaId
  * @category ReadonlyArray filters
  * @since 3.10.0
  */
-export const itemsCount = <A extends ReadonlyArray<any>>(
+export const itemsCount = <S extends Schema.Any>(
   n: number,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
+<A extends ReadonlyArray<any>>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
   const itemsCount = Math.floor(n)
   if (itemsCount < 0) {
     throw new Error(

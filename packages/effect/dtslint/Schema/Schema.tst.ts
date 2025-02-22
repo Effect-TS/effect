@@ -2282,76 +2282,6 @@ describe("Schema", () => {
     })
   })
 
-  describe("Array Filters", () => {
-    describe("Array", () => {
-      it("minItems", () => {
-        expect(S.asSchema(S.Array(S.String).pipe(S.minItems(2))))
-          .type.toBe<S.Schema<ReadonlyArray<string>, ReadonlyArray<string>>>()
-        expect(S.Array(S.String).pipe(S.minItems(2)))
-          .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
-        expect(S.Array(S.String).pipe(S.minItems(2)).from)
-          .type.toBe<S.Schema<ReadonlyArray<string>>>()
-        expect(S.asSchema(S.Array(S.String).pipe(S.minItems(1), S.maxItems(2))))
-          .type.toBe<S.Schema<ReadonlyArray<string>, ReadonlyArray<string>>>()
-        expect(S.Array(S.String).pipe(S.minItems(1), S.maxItems(2)))
-          .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
-      })
-
-      it("maxItems", () => {
-        expect(S.asSchema(S.Array(S.String).pipe(S.maxItems(2))))
-          .type.toBe<S.Schema<ReadonlyArray<string>>>()
-        expect(S.Array(S.String).pipe(S.maxItems(2)))
-          .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
-        expect(S.Array(S.String).pipe(S.maxItems(2)).from)
-          .type.toBe<S.Schema<ReadonlyArray<string>>>()
-        expect(S.asSchema(S.Array(S.String).pipe(S.maxItems(2), S.minItems(1))))
-          .type.toBe<S.Schema<ReadonlyArray<string>>>()
-        expect(S.Array(S.String).pipe(S.maxItems(2), S.minItems(1)))
-          .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
-      })
-
-      it("itemsCount", () => {
-        expect(S.asSchema(S.Array(S.String).pipe(S.itemsCount(2))))
-          .type.toBe<S.Schema<ReadonlyArray<string>>>()
-        expect(S.Array(S.String).pipe(S.itemsCount(2)))
-          .type.toBe<S.filter<S.Schema<ReadonlyArray<string>>>>()
-        expect(S.Array(S.String).pipe(S.itemsCount(2)).from).type.toBe<S.Schema<ReadonlyArray<string>>>()
-      })
-    })
-
-    describe("NonEmptyArray", () => {
-      it("minItems", () => {
-        expect(S.asSchema(S.NonEmptyArray(S.String).pipe(S.minItems(2))))
-          .type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
-        expect(S.NonEmptyArray(S.String).pipe(S.minItems(2)))
-          .type.toBe<S.filter<S.Schema<readonly [string, ...Array<string>]>>>()
-        expect(S.NonEmptyArray(S.String).pipe(S.minItems(2)).from)
-          .type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
-      })
-
-      it("maxItems", () => {
-        expect(S.asSchema(S.NonEmptyArray(S.String).pipe(S.maxItems(2))))
-          .type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
-        expect(S.NonEmptyArray(S.String).pipe(S.maxItems(2))).type.toBe<
-          S.filter<S.Schema<readonly [string, ...Array<string>]>>
-        >()
-        expect(S.NonEmptyArray(S.String).pipe(S.maxItems(2)).from).type.toBe<
-          S.Schema<readonly [string, ...Array<string>]>
-        >()
-      })
-
-      it("itemsCount", () => {
-        expect(S.asSchema(S.NonEmptyArray(S.String).pipe(S.itemsCount(2))))
-          .type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
-        expect(S.NonEmptyArray(S.String).pipe(S.itemsCount(2)))
-          .type.toBe<S.filter<S.Schema<readonly [string, ...Array<string>]>>>()
-        expect(S.NonEmptyArray(S.String).pipe(S.itemsCount(2)).from).type.toBe<
-          S.Schema<readonly [string, ...Array<string>]>
-        >()
-      })
-    })
-  })
-
   it("TemplateLiteralParser", () => {
     expect(S.asSchema(S.TemplateLiteralParser("a")))
       .type.toBe<S.Schema<readonly ["a"], "a">>()
@@ -2969,6 +2899,69 @@ describe("Schema", () => {
         expect(schema).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.annotations({})).type.toBe<S.filter<typeof S.DurationFromSelf>>()
         expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      })
+    })
+
+    describe("Array Filters", () => {
+      describe("Array", () => {
+        it("minItems", () => {
+          // @ts-expect-error
+          pipe(S.Null, S.minItems(2))
+
+          const schema = S.Array(S.String).pipe(S.minItems(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyArray<string>>>()
+          expect(schema).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.Array$<typeof S.String>>()
+        })
+
+        it("maxItems", () => {
+          // @ts-expect-error
+          pipe(S.Null, S.maxItems(2))
+
+          const schema = S.Array(S.String).pipe(S.maxItems(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyArray<string>>>()
+          expect(schema).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.Array$<typeof S.String>>()
+        })
+
+        it("itemsCount", () => {
+          // @ts-expect-error
+          pipe(S.Null, S.itemsCount(2))
+
+          const schema = S.Array(S.String).pipe(S.itemsCount(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyArray<string>>>()
+          expect(schema).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.Array$<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.Array$<typeof S.String>>()
+        })
+      })
+
+      describe("NonEmptyArray", () => {
+        it("minItems", () => {
+          const schema = S.NonEmptyArray(S.String).pipe(S.minItems(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
+          expect(schema).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.NonEmptyArray<typeof S.String>>()
+        })
+
+        it("maxItems", () => {
+          const schema = S.NonEmptyArray(S.String).pipe(S.maxItems(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
+          expect(schema).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.NonEmptyArray<typeof S.String>>()
+        })
+
+        it("itemsCount", () => {
+          const schema = S.NonEmptyArray(S.String).pipe(S.itemsCount(2))
+          expect(S.asSchema(schema)).type.toBe<S.Schema<readonly [string, ...Array<string>]>>()
+          expect(schema).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.annotations({})).type.toBe<S.filter<S.NonEmptyArray<typeof S.String>>>()
+          expect(schema.from).type.toBe<S.NonEmptyArray<typeof S.String>>()
+        })
       })
     })
   })
