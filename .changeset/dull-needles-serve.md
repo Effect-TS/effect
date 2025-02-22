@@ -5,6 +5,18 @@
 Schema: more precise return types when filters are involved.
 
 - `maxLength`
+- `minLength`
+- `length`
+- `pattern`
+- `startsWith`
+- `endsWith`
+- `includes`
+- `lowercased`
+- `capitalized`
+- `uncapitalized`
+- `uppercased`
+- `nonEmptyString`
+- `trimmed`
 
 **Example** (with `Schema.maxLength`)
 

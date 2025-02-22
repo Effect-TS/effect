@@ -1347,7 +1347,7 @@ describe("Schema", () => {
       >
     >()
     expect(S.Record({ key: pipe(S.String, S.minLength(2)), value: S.String }))
-      .type.toBe<S.Record$<S.filter<S.Schema<string>>, typeof S.String>>()
+      .type.toBe<S.Record$<S.filter<typeof S.String>, typeof S.String>>()
     expect(S.asSchema(S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.String })))
       .type.toBe<
       S.Schema<
@@ -2575,30 +2575,124 @@ describe("Schema", () => {
         expect(schema.from).type.toBe<typeof S.String>()
       })
 
-      it("TODO", () => {
-        expect(pipe(S.String, S.minLength(5))).type.toBe<S.filter<S.Schema<string>>>()
-        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+      it("minLength", () => {
+        // @ts-expect-error
         pipe(S.Null, S.minLength(5))
 
-        expect(pipe(S.String, S.length(5))).type.toBe<S.filter<S.Schema<string>>>()
-        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+        const schema = pipe(S.String, S.minLength(5))
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("length", () => {
+        // @ts-expect-error
         pipe(S.Null, S.length(5))
 
-        expect(pipe(S.String, S.pattern(/a/))).type.toBe<S.filter<S.Schema<string>>>()
-        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+        const schema = pipe(S.String, S.length(5))
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("pattern", () => {
+        // @ts-expect-error
         pipe(S.Null, S.pattern(/a/))
 
-        expect(pipe(S.String, S.startsWith("a"))).type.toBe<S.filter<S.Schema<string>>>()
-        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+        const schema = pipe(S.String, S.pattern(/a/))
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("startsWith", () => {
+        // @ts-expect-error
         pipe(S.Null, S.startsWith("a"))
 
-        expect(pipe(S.String, S.endsWith("a"))).type.toBe<S.filter<S.Schema<string>>>()
-        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+        const schema = pipe(S.String, S.startsWith("a"))
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("endsWith", () => {
+        // @ts-expect-error
         pipe(S.Null, S.endsWith("a"))
 
-        expect(pipe(S.String, S.includes("a"))).type.toBe<S.filter<S.Schema<string>>>()
-        // @ts-expect-error: Type 'null' is not assignable to type 'string'
+        const schema = pipe(S.String, S.endsWith("a"))
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("includes", () => {
+        // @ts-expect-error
         pipe(S.Null, S.includes("a"))
+
+        const schema = pipe(S.String, S.includes("a"))
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("lowercased", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.lowercased())
+
+        const schema = pipe(S.String, S.lowercased())
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("uppercased", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.uppercased())
+
+        const schema = pipe(S.String, S.uppercased())
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("capitalized", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.capitalized())
+
+        const schema = pipe(S.String, S.capitalized())
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("uncapitalized", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.uncapitalized())
+
+        const schema = pipe(S.String, S.uncapitalized())
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("nonEmptyString", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.nonEmptyString())
+
+        const schema = pipe(S.String, S.nonEmptyString())
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
+      })
+
+      it("trimmed", () => {
+        // @ts-expect-error
+        pipe(S.Null, S.trimmed())
+
+        const schema = pipe(S.String, S.trimmed())
+        expect(schema).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.annotations({})).type.toBe<S.filter<typeof S.String>>()
+        expect(schema.from).type.toBe<typeof S.String>()
       })
     })
 

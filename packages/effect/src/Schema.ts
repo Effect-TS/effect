@@ -4126,17 +4126,19 @@ export const TrimmedSchemaId: unique symbol = Symbol.for("effect/SchemaId/Trimme
  * @category string filters
  * @since 3.10.0
  */
-export const trimmed =
-  <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
-    self.pipe(
-      filter((a) => a === a.trim(), {
-        schemaId: TrimmedSchemaId,
-        title: "trimmed",
-        description: "a string with no leading or trailing whitespace",
-        jsonSchema: { pattern: "^\\S[\\s\\S]*\\S$|^\\S$|^$" },
-        ...annotations
-      })
-    )
+export const trimmed = <S extends Schema.Any>(
+  annotations?: Annotations.Filter<Schema.Type<S>>
+) =>
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
+  self.pipe(
+    filter((a) => a === a.trim(), {
+      schemaId: TrimmedSchemaId,
+      title: "trimmed",
+      description: "a string with no leading or trailing whitespace",
+      jsonSchema: { pattern: "^\\S[\\s\\S]*\\S$|^\\S$|^$" },
+      ...annotations
+    })
+  )
 
 /**
  * @category schema id
@@ -4188,11 +4190,11 @@ export type MinLengthSchemaId = typeof MinLengthSchemaId
  * @category string filters
  * @since 3.10.0
  */
-export const minLength = <A extends string>(
+export const minLength = <S extends Schema.Any>(
   minLength: number,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter(
       (a) => a.length >= minLength,
@@ -4210,21 +4212,66 @@ export const minLength = <A extends string>(
  * @category schema id
  * @since 3.10.0
  */
+export const LengthSchemaId: unique symbol = schemaId_.LengthSchemaId
+
+/**
+ * @category schema id
+ * @since 3.10.0
+ */
+export type LengthSchemaId = typeof LengthSchemaId
+
+/**
+ * @category string filters
+ * @since 3.10.0
+ */
+export const length = <S extends Schema.Any>(
+  length: number | { readonly min: number; readonly max: number },
+  annotations?: Annotations.Filter<Schema.Type<S>>
+) =>
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
+  const minLength = Predicate.isObject(length) ? Math.max(0, Math.floor(length.min)) : Math.max(0, Math.floor(length))
+  const maxLength = Predicate.isObject(length) ? Math.max(minLength, Math.floor(length.max)) : minLength
+  if (minLength !== maxLength) {
+    return self.pipe(
+      filter((a) => a.length >= minLength && a.length <= maxLength, {
+        schemaId: LengthSchemaId,
+        title: `length({ min: ${minLength}, max: ${maxLength})`,
+        description: `a string at least ${minLength} character(s) and at most ${maxLength} character(s) long`,
+        jsonSchema: { minLength, maxLength },
+        ...annotations
+      })
+    )
+  }
+  return self.pipe(
+    filter((a) => a.length === minLength, {
+      schemaId: LengthSchemaId,
+      title: `length(${minLength})`,
+      description: minLength === 1 ? `a single character` : `a string ${minLength} character(s) long`,
+      jsonSchema: { minLength, maxLength: minLength },
+      ...annotations
+    })
+  )
+}
+
+/**
+ * @category schema id
+ * @since 3.10.0
+ */
 export const PatternSchemaId: unique symbol = Symbol.for("effect/SchemaId/Pattern")
 
 /**
  * @category string filters
  * @since 3.10.0
  */
-export const pattern = <A extends string>(
+export const pattern = <S extends Schema.Any>(
   regex: RegExp,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
   const source = regex.source
   return self.pipe(
     filter(
-      (a): a is A => {
+      (a) => {
         // The following line ensures that `lastIndex` is reset to `0` in case the user has specified the `g` flag
         regex.lastIndex = 0
         return regex.test(a)
@@ -4251,11 +4298,11 @@ export const StartsWithSchemaId: unique symbol = Symbol.for("effect/SchemaId/Sta
  * @category string filters
  * @since 3.10.0
  */
-export const startsWith = <A extends string>(
+export const startsWith = <S extends Schema.Any>(
   startsWith: string,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
   const formatted = JSON.stringify(startsWith)
   return self.pipe(
     filter(
@@ -4282,11 +4329,11 @@ export const EndsWithSchemaId: unique symbol = Symbol.for("effect/SchemaId/EndsW
  * @category string filters
  * @since 3.10.0
  */
-export const endsWith = <A extends string>(
+export const endsWith = <S extends Schema.Any>(
   endsWith: string,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
   const formatted = JSON.stringify(endsWith)
   return self.pipe(
     filter(
@@ -4313,11 +4360,11 @@ export const IncludesSchemaId: unique symbol = Symbol.for("effect/SchemaId/Inclu
  * @category string filters
  * @since 3.10.0
  */
-export const includes = <A extends string>(
+export const includes = <S extends Schema.Any>(
   searchString: string,
-  annotations?: Annotations.Filter<A>
+  annotations?: Annotations.Filter<Schema.Type<S>>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> => {
   const formatted = JSON.stringify(searchString)
   return self.pipe(
     filter(
@@ -4346,17 +4393,19 @@ export const LowercasedSchemaId: unique symbol = Symbol.for("effect/SchemaId/Low
  * @category string filters
  * @since 3.10.0
  */
-export const lowercased =
-  <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
-    self.pipe(
-      filter((a) => a === a.toLowerCase(), {
-        schemaId: LowercasedSchemaId,
-        title: "lowercased",
-        description: "a lowercase string",
-        jsonSchema: { pattern: "^[^A-Z]*$" },
-        ...annotations
-      })
-    )
+export const lowercased = <S extends Schema.Any>(
+  annotations?: Annotations.Filter<Schema.Type<S>>
+) =>
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
+  self.pipe(
+    filter((a) => a === a.toLowerCase(), {
+      schemaId: LowercasedSchemaId,
+      title: "lowercased",
+      description: "a lowercase string",
+      jsonSchema: { pattern: "^[^A-Z]*$" },
+      ...annotations
+    })
+  )
 
 /**
  * @category string constructors
@@ -4364,6 +4413,40 @@ export const lowercased =
  */
 export class Lowercased extends String$.pipe(
   lowercased({ identifier: "Lowercased" })
+) {}
+
+/**
+ * @category schema id
+ * @since 3.10.0
+ */
+export const UppercasedSchemaId: unique symbol = Symbol.for("effect/SchemaId/Uppercased")
+
+/**
+ * Verifies that a string is uppercased.
+ *
+ * @category string filters
+ * @since 3.10.0
+ */
+export const uppercased = <S extends Schema.Any>(
+  annotations?: Annotations.Filter<Schema.Type<S>>
+) =>
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
+  self.pipe(
+    filter((a) => a === a.toUpperCase(), {
+      schemaId: UppercasedSchemaId,
+      title: "uppercased",
+      description: "an uppercase string",
+      jsonSchema: { pattern: "^[^a-z]*$" },
+      ...annotations
+    })
+  )
+
+/**
+ * @category string constructors
+ * @since 3.10.0
+ */
+export class Uppercased extends String$.pipe(
+  uppercased({ identifier: "Uppercased" })
 ) {}
 
 /**
@@ -4378,17 +4461,19 @@ export const CapitalizedSchemaId: unique symbol = Symbol.for("effect/SchemaId/Ca
  * @category string filters
  * @since 3.10.0
  */
-export const capitalized =
-  <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
-    self.pipe(
-      filter((a) => a[0]?.toUpperCase() === a[0], {
-        schemaId: CapitalizedSchemaId,
-        title: "capitalized",
-        description: "a capitalized string",
-        jsonSchema: { pattern: "^[^a-z]?.*$" },
-        ...annotations
-      })
-    )
+export const capitalized = <S extends Schema.Any>(
+  annotations?: Annotations.Filter<Schema.Type<S>>
+) =>
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
+  self.pipe(
+    filter((a) => a[0]?.toUpperCase() === a[0], {
+      schemaId: CapitalizedSchemaId,
+      title: "capitalized",
+      description: "a capitalized string",
+      jsonSchema: { pattern: "^[^a-z]?.*$" },
+      ...annotations
+    })
+  )
 
 /**
  * @category string constructors
@@ -4410,17 +4495,19 @@ export const UncapitalizedSchemaId: unique symbol = Symbol.for("effect/SchemaId/
  * @category string filters
  * @since 3.10.0
  */
-export const uncapitalized =
-  <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
-    self.pipe(
-      filter((a) => a[0]?.toLowerCase() === a[0], {
-        schemaId: UncapitalizedSchemaId,
-        title: "uncapitalized",
-        description: "a uncapitalized string",
-        jsonSchema: { pattern: "^[^A-Z]?.*$" },
-        ...annotations
-      })
-    )
+export const uncapitalized = <S extends Schema.Any>(
+  annotations?: Annotations.Filter<Schema.Type<S>>
+) =>
+<A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
+  self.pipe(
+    filter((a) => a[0]?.toLowerCase() === a[0], {
+      schemaId: UncapitalizedSchemaId,
+      title: "uncapitalized",
+      description: "a uncapitalized string",
+      jsonSchema: { pattern: "^[^A-Z]?.*$" },
+      ...annotations
+    })
+  )
 
 /**
  * @category string constructors
@@ -4429,83 +4516,6 @@ export const uncapitalized =
 export class Uncapitalized extends String$.pipe(
   uncapitalized({ identifier: "Uncapitalized" })
 ) {}
-
-/**
- * @category schema id
- * @since 3.10.0
- */
-export const UppercasedSchemaId: unique symbol = Symbol.for("effect/SchemaId/Uppercased")
-
-/**
- * Verifies that a string is uppercased.
- *
- * @category string filters
- * @since 3.10.0
- */
-export const uppercased =
-  <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
-    self.pipe(
-      filter((a) => a === a.toUpperCase(), {
-        schemaId: UppercasedSchemaId,
-        title: "uppercased",
-        description: "an uppercase string",
-        jsonSchema: { pattern: "^[^a-z]*$" },
-        ...annotations
-      })
-    )
-
-/**
- * @category string constructors
- * @since 3.10.0
- */
-export class Uppercased extends String$.pipe(
-  uppercased({ identifier: "Uppercased" })
-) {}
-
-/**
- * @category schema id
- * @since 3.10.0
- */
-export const LengthSchemaId: unique symbol = schemaId_.LengthSchemaId
-
-/**
- * @category schema id
- * @since 3.10.0
- */
-export type LengthSchemaId = typeof LengthSchemaId
-
-/**
- * @category string filters
- * @since 3.10.0
- */
-export const length = <A extends string>(
-  length: number | { readonly min: number; readonly max: number },
-  annotations?: Annotations.Filter<A>
-) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
-  const minLength = Predicate.isObject(length) ? Math.max(0, Math.floor(length.min)) : Math.max(0, Math.floor(length))
-  const maxLength = Predicate.isObject(length) ? Math.max(minLength, Math.floor(length.max)) : minLength
-  if (minLength !== maxLength) {
-    return self.pipe(
-      filter((a) => a.length >= minLength && a.length <= maxLength, {
-        schemaId: LengthSchemaId,
-        title: `length({ min: ${minLength}, max: ${maxLength})`,
-        description: `a string at least ${minLength} character(s) and at most ${maxLength} character(s) long`,
-        jsonSchema: { minLength, maxLength },
-        ...annotations
-      })
-    )
-  }
-  return self.pipe(
-    filter((a) => a.length === minLength, {
-      schemaId: LengthSchemaId,
-      title: `length(${minLength})`,
-      description: minLength === 1 ? `a single character` : `a string ${minLength} character(s) long`,
-      jsonSchema: { minLength, maxLength: minLength },
-      ...annotations
-    })
-  )
-}
 
 /**
  * A schema representing a single character.
@@ -4519,9 +4529,9 @@ export class Char extends String$.pipe(length(1, { identifier: "Char" })) {}
  * @category string filters
  * @since 3.10.0
  */
-export const nonEmptyString = <A extends string>(
-  annotations?: Annotations.Filter<A>
-): <I, R>(self: Schema<A, I, R>) => filter<Schema<A, I, R>> =>
+export const nonEmptyString = <S extends Schema.Any>(
+  annotations?: Annotations.Filter<Schema.Type<S>>
+): <A extends string>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>) => filter<S> =>
   minLength(1, {
     title: "nonEmptyString",
     description: "a non empty string",
