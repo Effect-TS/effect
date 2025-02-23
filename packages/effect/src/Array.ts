@@ -1295,7 +1295,7 @@ export const remove: {
  * @category elements
  * @since 2.0.0
  */
-export const reverse = <S extends Iterable<any> | NonEmptyReadonlyArray<any>>(
+export const reverse = <S extends Iterable<any>>(
   self: S
 ): S extends NonEmptyReadonlyArray<infer A> ? NonEmptyArray<A> : S extends Iterable<infer A> ? Array<A> : never =>
   Array.from(self).reverse() as any
@@ -1310,7 +1310,7 @@ export const reverse = <S extends Iterable<any> | NonEmptyReadonlyArray<any>>(
 export const sort: {
   <B>(
     O: Order.Order<B>
-  ): <A extends B, S extends ReadonlyArray<A> | Iterable<A>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
+  ): <A extends B, S extends Iterable<A>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A extends B, B>(self: NonEmptyReadonlyArray<A>, O: Order.Order<B>): NonEmptyArray<A>
   <A extends B, B>(self: Iterable<A>, O: Order.Order<B>): Array<A>
 } = dual(2, <A extends B, B>(self: Iterable<A>, O: Order.Order<B>): Array<A> => {
@@ -1342,7 +1342,7 @@ export const sort: {
  * @category elements
  */
 export const sortWith: {
-  <S extends Iterable<any> | NonEmptyReadonlyArray<any>, B>(
+  <S extends Iterable<any>, B>(
     f: (a: ReadonlyArray.Infer<S>) => B,
     order: Order.Order<B>
   ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
@@ -1388,7 +1388,7 @@ export const sortWith: {
  * @category sorting
  * @since 2.0.0
  */
-export const sortBy = <S extends Iterable<any> | NonEmptyReadonlyArray<any>>(
+export const sortBy = <S extends Iterable<any>>(
   ...orders: ReadonlyArray<Order.Order<ReadonlyArray.Infer<S>>>
 ) => {
   const sortByAll = sort(Order.combineAll(orders))
@@ -1480,7 +1480,7 @@ export const zipWith: {
  *
  * @since 2.0.0
  */
-export const unzip: <S extends Iterable<readonly [any, any]> | NonEmptyReadonlyArray<readonly [any, any]>>(
+export const unzip: <S extends Iterable<readonly [any, any]>>(
   self: S
 ) => S extends NonEmptyReadonlyArray<readonly [infer A, infer B]> ? [NonEmptyArray<A>, NonEmptyArray<B>]
   : S extends Iterable<readonly [infer A, infer B]> ? [Array<A>, Array<B>]
@@ -3007,7 +3007,7 @@ export const dedupeWith: {
  *
  * @since 2.0.0
  */
-export const dedupe = <S extends Iterable<any> | NonEmptyReadonlyArray<any>>(
+export const dedupe = <S extends Iterable<any>>(
   self: S
 ): S extends NonEmptyReadonlyArray<infer A> ? NonEmptyArray<A> : S extends Iterable<infer A> ? Array<A> : never =>
   dedupeWith(self, Equal.equivalence()) as any
