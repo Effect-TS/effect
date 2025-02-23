@@ -294,6 +294,11 @@ describe("Schema", () => {
     expect(S.Number.pipe(S.int(), S.brand("Int")).make(1)).type.toBe<number & Brand.Brand<"Int">>()
   })
 
+  it("Never", () => {
+    expect(S.Never).type.toBeAssignableTo<S.Schema<never>>()
+    expect(S.Never).type.toBeAssignableTo<S.SchemaClass<never>>()
+  })
+
   it("Primitives", () => {
     expect(S.asSchema(S.Void)).type.toBe<S.Schema<void, void>>()
     expect(S.Void).type.toBe<typeof S.Void>()
@@ -337,14 +342,14 @@ describe("Schema", () => {
     expect(S.Null).type.toBe<typeof S.Null>()
 
     expect(S.Literal()).type.toBe<S.Never>()
-    expect(S.asSchema(S.Literal("a"))).type.toBe<S.Schema<"a", "a">>()
+    expect(S.Literal(...[])).type.toBe<S.Never>()
+    expect(S.Literal(...([] as Array<"a" | "b">))).type.toBe<S.SchemaClass<"a" | "b">>()
+    expect(S.Literal(...([] as Array<never>))).type.toBe<S.SchemaClass<never>>()
+    expect(S.asSchema(S.Literal("a"))).type.toBe<S.Schema<"a">>()
     expect(S.Literal("a")).type.toBe<S.Literal<["a"]>>()
 
-    expect(S.asSchema(S.Literal("a", "b", "c"))).type.toBe<S.Schema<"a" | "b" | "c", "a" | "b" | "c">>()
+    expect(S.asSchema(S.Literal("a", "b", "c"))).type.toBe<S.Schema<"a" | "b" | "c">>()
     expect(S.Literal("a", "b", "c")).type.toBe<S.Literal<["a", "b", "c"]>>()
-
-    const literals = hole<Array<"a" | "b" | "c">>()
-    expect(S.Literal(...literals)).type.toBe<S.Schema<"a" | "b" | "c", "a" | "b" | "c">>()
 
     expect(S.Literal(1)).type.toBe<S.Literal<[1]>>()
     expect(S.Literal(2n)).type.toBe<S.Literal<[2n]>>()

@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Literal", () => {
   it("annotations()", () => {
@@ -16,6 +16,11 @@ describe("Literal", () => {
   it("should expose the literals", () => {
     const schema = S.Literal("a", "b")
     deepStrictEqual(schema.literals, ["a", "b"])
+  })
+
+  it("should return Never when no literals are provided", () => {
+    strictEqual(S.Literal(), S.Never)
+    strictEqual(S.Literal(...[]), S.Never)
   })
 
   it("should return an unwrapped AST with exactly one literal", () => {

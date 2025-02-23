@@ -670,22 +670,25 @@ export interface Literal<Literals extends array_.NonEmptyReadonlyArray<AST.Liter
   readonly literals: Readonly<Literals>
 }
 
-const getDefaultLiteralAST = <Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
+function getDefaultLiteralAST<Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
   literals: Literals
-) =>
-  AST.isMembers(literals)
+): AST.AST {
+  return AST.isMembers(literals)
     ? AST.Union.make(AST.mapMembers(literals, (literal) => new AST.Literal(literal)))
     : new AST.Literal(literals[0])
+}
 
-const makeLiteralClass = <Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
+function makeLiteralClass<Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
   literals: Literals,
   ast: AST.AST = getDefaultLiteralAST(literals)
-): Literal<Literals> => (class LiteralClass extends make<Literals[number]>(ast) {
-  static override annotations(annotations: Annotations.Schema<Literals[number]>): Literal<Literals> {
-    return makeLiteralClass(this.literals, mergeSchemaAnnotations(this.ast, annotations))
+): Literal<Literals> {
+  return class LiteralClass extends make<Literals[number]>(ast) {
+    static override annotations(annotations: Annotations.Schema<Literals[number]>): Literal<Literals> {
+      return makeLiteralClass(this.literals, mergeSchemaAnnotations(this.ast, annotations))
+    }
+    static literals = [...literals] as Literals
   }
-  static literals = [...literals] as Literals
-})
+}
 
 /**
  * @category constructors
@@ -697,10 +700,10 @@ export function Literal<Literals extends array_.NonEmptyReadonlyArray<AST.Litera
 export function Literal(): Never
 export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
-): Schema<Literals[number]>
+): SchemaClass<Literals[number]>
 export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
-): Schema<Literals[number]> | Never {
+): SchemaClass<Literals[number]> | Never {
   return array_.isNonEmptyReadonlyArray(literals) ? makeLiteralClass(literals) : Never
 }
 
