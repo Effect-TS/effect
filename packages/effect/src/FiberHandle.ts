@@ -111,13 +111,17 @@ export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberHandle<A, E
   Effect.acquireRelease(
     Effect.map(Deferred.make<void, E>(), (deferred) => unsafeMake<A, E>(deferred)),
     (handle) =>
-      Effect.zipRight(
-        clear(handle),
-        Effect.suspend(() => {
-          handle.state = { _tag: "Closed" }
-          return Deferred.done(handle.deferred, Exit.void)
-        })
-      )
+      Effect.withFiberRuntime((parent) => {
+        const state = handle.state
+        if (state._tag === "Closed") return Effect.void
+        handle.state = { _tag: "Closed" }
+        return state.fiber ?
+          Effect.intoDeferred(
+            Effect.asVoid(Fiber.interruptAs(state.fiber, FiberId.combine(parent.id(), internalFiberId))),
+            handle.deferred
+          ) :
+          Deferred.done(handle.deferred, Exit.void)
+      })
   )
 
 /**
