@@ -125,13 +125,17 @@ export const make = <K, A = unknown, E = unknown>(): Effect.Effect<FiberMap<K, A
         deferred
       )),
     (map) =>
-      Effect.zipRight(
-        clear(map),
-        Effect.suspend(() => {
-          map.state = { _tag: "Closed" }
-          return Deferred.done(map.deferred, Exit.void)
-        })
-      )
+      Effect.withFiberRuntime((parent) => {
+        const state = map.state
+        if (state._tag === "Closed") return Effect.void
+        map.state = { _tag: "Closed" }
+        return Fiber.interruptAllAs(
+          Iterable.map(state.backing, ([, fiber]) => fiber),
+          FiberId.combine(parent.id(), internalFiberId)
+        ).pipe(
+          Effect.intoDeferred(map.deferred)
+        )
+      })
   )
 
 /**

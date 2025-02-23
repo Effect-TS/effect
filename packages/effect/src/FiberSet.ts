@@ -118,13 +118,15 @@ export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberSet<A, E>, 
   Effect.acquireRelease(
     Effect.map(Deferred.make<void, unknown>(), (deferred) => unsafeMake(new Set(), deferred)),
     (set) =>
-      Effect.zipRight(
-        clear(set),
-        Effect.suspend(() => {
-          set.state = { _tag: "Closed" }
-          return Deferred.done(set.deferred, Exit.void)
-        })
-      )
+      Effect.withFiberRuntime((parent) => {
+        const state = set.state
+        if (state._tag === "Closed") return Effect.void
+        set.state = { _tag: "Closed" }
+        const fibers = state.backing
+        return Fiber.interruptAllAs(fibers, FiberId.combine(parent.id(), internalFiberId)).pipe(
+          Effect.intoDeferred(set.deferred)
+        )
+      })
   )
 
 /**
