@@ -8227,12 +8227,10 @@ export interface DataFromSelf<Value extends Schema.Any> extends
  * @since 3.10.0
  */
 export const DataFromSelf = <
+  S extends Schema.Any,
   A extends Readonly<Record<string, any>> | ReadonlyArray<any>,
-  I extends Readonly<Record<string, any>> | ReadonlyArray<any>,
-  R
->(
-  value: Schema<A, I, R>
-): DataFromSelf<Schema<A, I, R>> => {
+  I extends Readonly<Record<string, any>> | ReadonlyArray<any>
+>(value: S & Schema<A & Schema.Type<S>, I & Schema.Encoded<S>, Schema.Context<S>>): DataFromSelf<S> => {
   return declare(
     [value],
     {
@@ -8251,7 +8249,9 @@ export const DataFromSelf = <
  * @category api interface
  * @since 3.13.3
  */
-export interface Data<Value extends Schema.Any> extends transform<Value, DataFromSelf<Schema<Schema.Type<Value>>>> {}
+export interface Data<Value extends Schema.Any>
+  extends transform<Value, DataFromSelf<SchemaClass<Schema.Type<Value>>>>
+{}
 
 /**
  * Type and Encoded must extend `Readonly<Record<string, any>> |
@@ -8261,12 +8261,10 @@ export interface Data<Value extends Schema.Any> extends transform<Value, DataFro
  * @since 3.10.0
  */
 export const Data = <
+  S extends Schema.Any,
   A extends Readonly<Record<string, any>> | ReadonlyArray<any>,
-  I extends Readonly<Record<string, any>> | ReadonlyArray<any>,
-  R
->(
-  value: Schema<A, I, R>
-): Data<Schema<A, I, R>> => {
+  I extends Readonly<Record<string, any>> | ReadonlyArray<any>
+>(value: S & Schema<A & Schema.Type<S>, I & Schema.Encoded<S>, Schema.Context<S>>): Data<S> => {
   return transform(
     value,
     DataFromSelf(typeSchema(value)),
