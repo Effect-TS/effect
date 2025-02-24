@@ -5,8 +5,6 @@ import type { HttpClient } from "@effect/platform/HttpClient"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
-import type { Simplify } from "effect/Types"
-import type * as Generated from "./Generated.js"
 
 /**
  * @since 1.0.0
@@ -34,16 +32,7 @@ export declare namespace AnthropicConfig {
    * @since 1.0.0
    * @category models
    */
-  export interface Service extends
-    Simplify<
-      Partial<
-        Omit<
-          typeof Generated.CreateMessageParams.Encoded,
-          "messages" | "tools" | "tool_choice" | "stream"
-        >
-      >
-    >
-  {
+  export interface Service {
     readonly transformClient?: (client: HttpClient) => HttpClient
   }
 }

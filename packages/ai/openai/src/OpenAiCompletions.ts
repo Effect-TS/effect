@@ -3,21 +3,23 @@
  */
 import { AiError } from "@effect/ai/AiError"
 import type * as AiInput from "@effect/ai/AiInput"
+import * as AiModel from "@effect/ai/AiModel"
 import * as AiResponse from "@effect/ai/AiResponse"
 import * as AiRole from "@effect/ai/AiRole"
 import * as Completions from "@effect/ai/Completions"
 import type * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
+import type { Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
 import type { StreamChunk } from "./OpenAiClient.js"
 import { OpenAiClient } from "./OpenAiClient.js"
-import { OpenAiConfig } from "./OpenAiConfig.js"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.js"
 import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
 
@@ -27,12 +29,74 @@ import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
  */
 export type Model = typeof Generated.CreateChatCompletionRequestModelEnum.Encoded
 
+// =============================================================================
+// Configuration
+// =============================================================================
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export class Config extends Context.Tag("@effect/ai-openai/Completions/Config")<
+  Config,
+  Config.Service
+>() {
+  /**
+   * @since 1.0.0
+   */
+  static readonly getOrUndefined: Effect.Effect<typeof Config.Service | undefined> = Effect.map(
+    Effect.context<never>(),
+    (context) => context.unsafeMap.get(Config.key)
+  )
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export declare namespace Config {
+  /**
+   * @since 1.0.
+   * @category models
+   */
+  export interface Service extends
+    Simplify<
+      Partial<
+        Omit<
+          typeof Generated.CreateChatCompletionRequest.Encoded,
+          "messages" | "tools" | "tool_choice" | "stream" | "stream_options" | "functions"
+        >
+      >
+    > { }
+}
+
+// =============================================================================
+// OpenAi Completions
+// =============================================================================
+
+/**
+ * @since 1.0.0
+ * @category ai models
+ */
+export const model = (model: (string & {}) | Model, config?: Config.Service): AiModel.AiModel<
+  Completions.Completions,
+  OpenAiClient
+> =>
+  AiModel.make({
+    model,
+    requires: OpenAiClient,
+    provides: make({ model }).pipe(
+      Effect.map((completions) => Context.make(Completions.Completions, completions)),
+      Effect.provideService(Config, { ...config, model })
+    )
+  })
+
 const make = (options: {
   readonly model: (string & {}) | Model
 }) =>
   Effect.gen(function*() {
     const client = yield* OpenAiClient
-    const config = yield* OpenAiConfig.getOrUndefined
+    const config = yield* Config.getOrUndefined
 
     const makeRequest = ({ input, required, system, tools }: Completions.CompletionOptions) => {
       const useStructured = tools.length === 1 && tools[0].structured
@@ -41,7 +105,7 @@ const make = (options: {
         (context): typeof Generated.CreateChatCompletionRequest.Encoded => ({
           model: options.model,
           ...config,
-          ...context.unsafeMap.get(OpenAiConfig.key),
+          ...context.unsafeMap.get(Config.key),
           messages: makeMessages(input, system),
           response_format: useStructured ?
             {

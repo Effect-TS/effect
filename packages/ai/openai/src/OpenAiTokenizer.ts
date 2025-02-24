@@ -9,13 +9,12 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as GptTokenizer from "gpt-tokenizer"
-import { OpenAiConfig } from "./OpenAiConfig.js"
 
 const make = (options: { readonly model: string }) =>
   Tokenizer.make({
     tokenize(content) {
-      return Effect.tryMap(OpenAiConfig.getOrUndefined, {
-        try: (localConfig) =>
+      return Effect.try({
+        try: () =>
           GptTokenizer.encodeChat(
             content.pipe(
               Chunk.toReadonlyArray,
@@ -38,7 +37,7 @@ const make = (options: { readonly model: string }) =>
                 )
               )
             ),
-            localConfig?.model ?? options.model as any
+            options.model as any
           ),
         catch: (cause) =>
           new AiError({

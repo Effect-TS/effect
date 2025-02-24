@@ -3,6 +3,7 @@
  */
 import { AiError } from "@effect/ai/AiError"
 import type * as AiInput from "@effect/ai/AiInput"
+import * as AiModel from "@effect/ai/AiModel"
 import * as AiResponse from "@effect/ai/AiResponse"
 import * as AiRole from "@effect/ai/AiRole"
 import { addGenAIAnnotations } from "@effect/ai/AiTelemetry"
@@ -10,15 +11,16 @@ import * as Completions from "@effect/ai/Completions"
 import type * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
 import * as Chunk from "effect/Chunk"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
+import type { Simplify } from "effect/Types"
 import type { StreamChunk } from "./AnthropicClient.js"
 import { AnthropicClient } from "./AnthropicClient.js"
-import { AnthropicConfig } from "./AnthropicConfig.js"
 import * as AnthropicTokenizer from "./AnthropicTokenizer.js"
 import type * as Generated from "./Generated.js"
 
@@ -28,10 +30,73 @@ import type * as Generated from "./Generated.js"
  */
 export type Model = typeof Generated.ModelEnum.Encoded
 
+// =============================================================================
+// Configuration
+// =============================================================================
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export class Config extends Context.Tag("@effect/ai-anthropic/Completions/Config")<
+  Config,
+  Config.Service
+>() {
+  /**
+   * @since 1.0.0
+   */
+  static readonly getOrUndefined: Effect.Effect<typeof Config.Service | undefined> = Effect.map(
+    Effect.context<never>(),
+    (context) => context.unsafeMap.get(Config.key)
+  )
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export declare namespace Config {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Service extends
+    Simplify<
+      Partial<
+        Omit<
+          typeof Generated.CreateMessageParams.Encoded,
+          "messages" | "tools" | "tool_choice" | "stream"
+        >
+      >
+    >
+  {}
+}
+
+// =============================================================================
+// Anthropic Completions
+// =============================================================================
+
+/**
+ * @since 1.0.0
+ * @category ai models
+ */
+export const model = (model: (string & {}) | Model, config?: Config.Service): AiModel.AiModel<
+  Completions.Completions,
+  AnthropicClient
+> =>
+  AiModel.make({
+    model,
+    requires: AnthropicClient,
+    provides: make({ model }).pipe(
+      Effect.map((completions) => Context.make(Completions.Completions, completions)),
+      Effect.provideService(Config, { ...config, model })
+    )
+  })
+
 const make = (options: { readonly model: (string & {}) | Model }) =>
   Effect.gen(function*() {
     const client = yield* AnthropicClient
-    const config = yield* AnthropicConfig.getOrUndefined
+    const config = yield* Config.getOrUndefined
 
     const makeRequest = ({
       input,
@@ -47,7 +112,7 @@ const make = (options: { readonly model: (string & {}) | Model }) =>
           // TODO: re-evaluate a better way to do this
           max_tokens: 4096,
           ...config,
-          ...context.unsafeMap.get(AnthropicConfig.key),
+          ...context.unsafeMap.get(Config.key),
           system: Option.getOrUndefined(system),
           messages: makeMessages(input),
           tools: tools.length === 0 ? undefined : tools.map((tool) => ({
