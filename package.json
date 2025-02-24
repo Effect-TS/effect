@@ -15,10 +15,9 @@
     "lint": "eslint \"**/{src,test,examples,scripts,dtslint}/**/*.{ts,mjs}\"",
     "lint-fix": "pnpm lint --fix",
     "docgen": "pnpm --recursive --parallel exec docgen && node scripts/docs.mjs",
-    "dtslint": "pnpm --recursive --parallel run dtslint",
+    "test-types": "tstyche",
     "changeset-version": "changeset version && node scripts/version.mjs",
-    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish",
-    "tstyche": "tstyche --target '>=5.4'"
+    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish"
   },
   "resolutions": {
     "dependency-tree": "^10.0.9",
