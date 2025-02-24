@@ -3340,23 +3340,67 @@ describe("Schema", () => {
     })
 
     it("DataFromSelf", () => {
+      // @ts-expect-error
+      S.DataFromSelf(hole<S.Schema<string>>())
+      // @ts-expect-error
+      S.DataFromSelf(hole<S.Schema<{}, number>>())
+
       const schema = S.DataFromSelf(S.Struct({ a: S.NumberFromString }))
       expect(schema)
-        .type.toBe<S.DataFromSelf<S.Schema<{ readonly a: number }, { readonly a: string }>>>()
+        .type.toBe<
+        S.DataFromSelf<
+          S.Struct<{
+            a: typeof S.NumberFromString
+          }>
+        >
+      >()
       expect(schema.annotations({}))
-        .type.toBe<S.DataFromSelf<S.Schema<{ readonly a: number }, { readonly a: string }>>>()
+        .type.toBe<
+        S.DataFromSelf<
+          S.Struct<{
+            a: typeof S.NumberFromString
+          }>
+        >
+      >()
       // should expose the type parameters
-      expect(schema.typeParameters).type.toBe<readonly [S.Schema<{ readonly a: number }, { readonly a: string }>]>()
+      expect(schema.typeParameters).type.toBe<
+        readonly [
+          S.Struct<{
+            a: typeof S.NumberFromString
+          }>
+        ]
+      >()
     })
 
     it("Data", () => {
+      // @ts-expect-error
+      S.Data(hole<S.Schema<string>>())
+      // @ts-expect-error
+      S.Data(hole<S.Schema<{}, number>>())
+
       const schema = S.Data(S.Struct({ a: S.NumberFromString }))
       expect(schema)
-        .type.toBe<S.Data<S.Schema<{ readonly a: number }, { readonly a: string }>>>()
+        .type.toBe<
+        S.Data<
+          S.Struct<{
+            a: typeof S.NumberFromString
+          }>
+        >
+      >()
       expect(schema.annotations({}))
-        .type.toBe<S.Data<S.Schema<{ readonly a: number }, { readonly a: string }>>>()
-      expect(schema.from).type.toBe<S.Schema<{ readonly a: number }, { readonly a: string }>>()
-      expect(schema.to).type.toBe<S.DataFromSelf<S.Schema<{ readonly a: number }>>>()
+        .type.toBe<
+        S.Data<
+          S.Struct<{
+            a: typeof S.NumberFromString
+          }>
+        >
+      >()
+      expect(schema.from).type.toBe<
+        S.Struct<{
+          a: typeof S.NumberFromString
+        }>
+      >()
+      expect(schema.to).type.toBe<S.DataFromSelf<S.SchemaClass<{ readonly a: number }>>>()
     })
 
     it("RedactedFromSelf", () => {
