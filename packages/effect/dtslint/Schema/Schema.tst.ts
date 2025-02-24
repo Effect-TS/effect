@@ -396,14 +396,33 @@ describe("Schema", () => {
     expect(S.NullOr(S.NumberFromString)).type.toBe<S.NullOr<typeof S.NumberFromString>>()
   })
 
-  it("Union", () => {
-    expect(S.Union(S.String, S.Never)).type.toBe<S.Union<[typeof S.String, typeof S.Never]>>()
-    expect(S.Union(S.String, S.Number).annotations({})).type.toBe<S.Union<[typeof S.String, typeof S.Number]>>()
-    expect(S.asSchema(S.Union(S.String, S.Number))).type.toBe<S.Schema<string | number, string | number>>()
-    expect(S.Union(S.String, S.Number)).type.toBe<S.Union<[typeof S.String, typeof S.Number]>>()
-    expect(S.asSchema(S.Union(S.Boolean, S.NumberFromString))).type.toBe<S.Schema<number | boolean, string | boolean>>()
-    expect(S.Union(S.Boolean, S.NumberFromString)).type.toBe<S.Union<[typeof S.Boolean, typeof S.NumberFromString]>>()
-    expect(S.Union(S.String, S.Number).members).type.toBe<readonly [typeof S.String, typeof S.Number]>()
+  describe("Union", () => {
+    it("should allow Never members", () => {
+      const schema = S.Union(S.String, S.Never)
+      expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+      expect(schema).type.toBe<S.Union<[typeof S.String, typeof S.Never]>>()
+    })
+
+    it("union of primitives", () => {
+      const schema = S.Union(S.String, S.Number)
+      expect(S.asSchema(schema)).type.toBe<S.Schema<string | number, string | number>>()
+      expect(schema).type.toBe<S.Union<[typeof S.String, typeof S.Number]>>()
+      expect(schema.annotations({})).type.toBe<S.Union<[typeof S.String, typeof S.Number]>>()
+      // should expose the members
+      expect(schema.members).type.toBe<readonly [typeof S.String, typeof S.Number]>()
+    })
+
+    it("primitive + transformation", () => {
+      const schema = S.Union(S.Boolean, S.NumberFromString)
+      expect(S.asSchema(schema)).type.toBe<S.Schema<number | boolean, string | boolean>>()
+      expect(schema).type.toBe<S.Union<[typeof S.Boolean, typeof S.NumberFromString]>>()
+      expect(schema.annotations({
+        pretty: () => (a) => {
+          expect(a).type.toBe<number | boolean>()
+          return "-"
+        }
+      })).type.toBe<S.Union<[typeof S.Boolean, typeof S.NumberFromString]>>()
+    })
   })
 
   it("keyof", () => {

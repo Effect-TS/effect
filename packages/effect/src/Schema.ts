@@ -1214,7 +1214,6 @@ export interface Union<Members extends ReadonlyArray<Schema.All>> extends
   >
 {
   readonly members: Readonly<Members>
-  annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>): Union<Members>
 }
 
 const getDefaultUnionAST = <Members extends AST.Members<Schema.All>>(members: Members): AST.AST =>
