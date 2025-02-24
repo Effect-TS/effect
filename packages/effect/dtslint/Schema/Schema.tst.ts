@@ -4,10 +4,12 @@ import type {
   Cause,
   Chunk,
   Config,
+  DateTime,
   Duration,
   Either,
   Equivalence,
   Exit,
+  FiberId,
   HashMap,
   HashSet,
   List,
@@ -1597,12 +1599,18 @@ describe("Schema", () => {
     S.Struct({ a: S.String, b: S.Number }).pipe(S.rename({ a: "c", d: "e" }))
   })
 
-  it("instanceOf", () => {
-    class Test {
-      constructor(readonly name: string) {}
-    }
-    expect(S.asSchema(S.instanceOf(Test))).type.toBe<S.Schema<Test, Test>>()
-    expect(S.instanceOf(Test)).type.toBe<S.instanceOf<Test>>()
+  describe("declare", () => {
+    it("instanceOf", () => {
+      class Test {
+        constructor(readonly name: string) {}
+      }
+      const schema = S.instanceOf(Test)
+      expect(S.asSchema(schema)).type.toBe<S.Schema<Test, Test>>()
+      expect(schema).type.toBe<S.instanceOf<Test>>()
+      expect(schema.annotations({})).type.toBe<S.instanceOf<Test>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly []>()
+    })
   })
 
   it("TemplateLiteral", () => {
@@ -3202,13 +3210,65 @@ describe("Schema", () => {
   })
 
   describe("Data Types", () => {
-    it("Duration", () => {
-      expect(S.asSchema(S.Duration))
-        .type.toBe<S.Schema<Duration.Duration, S.DurationEncoded | readonly [seconds: number, nanos: number]>>()
+    it("Uint8ArrayFromSelf", () => {
+      const schema = S.Uint8ArrayFromSelf
+      expect(S.asSchema(schema)).type.toBe<S.Schema<Uint8Array>>()
+      expect(schema).type.toBe<typeof S.Uint8ArrayFromSelf>()
+      // TODO: should be typeof S.Uint8ArrayFromSelf
+      expect(schema.annotations({})).type.toBe<S.declare<Uint8Array>>()
+    })
+
+    it("DateFromSelf", () => {
+      const schema = S.DateFromSelf
+      expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
+      expect(schema).type.toBe<typeof S.DateFromSelf>()
+      // TODO: should be typeof S.DateFromSelf
+      expect(schema.annotations({})).type.toBe<S.declare<Date>>()
+    })
+
+    it("DateTimeUtcFromSelf", () => {
+      const schema = S.DateTimeUtcFromSelf
+      expect(S.asSchema(schema)).type.toBe<S.Schema<DateTime.Utc>>()
+      expect(schema).type.toBe<typeof S.DateTimeUtcFromSelf>()
+      // TODO: should be typeof S.DateTimeUtcFromSelf
+      expect(schema.annotations({})).type.toBe<S.declare<DateTime.Utc>>()
+    })
+
+    it("TimeZoneOffsetFromSelf", () => {
+      const schema = S.TimeZoneOffsetFromSelf
+      expect(S.asSchema(schema)).type.toBe<S.Schema<DateTime.TimeZone.Offset>>()
+      expect(schema).type.toBe<typeof S.TimeZoneOffsetFromSelf>()
+      // TODO: should be typeof S.TimeZoneOffsetFromSelf
+      expect(schema.annotations({})).type.toBe<S.declare<DateTime.TimeZone.Offset>>()
+    })
+
+    it("TimeZoneNamedFromSelf", () => {
+      const schema = S.TimeZoneNamedFromSelf
+      expect(S.asSchema(schema)).type.toBe<S.Schema<DateTime.TimeZone.Named>>()
+      expect(schema).type.toBe<typeof S.TimeZoneNamedFromSelf>()
+      // TODO: should be typeof S.TimeZoneNamedFromSelf
+      expect(schema.annotations({})).type.toBe<S.declare<DateTime.TimeZone.Named>>()
+    })
+
+    it("DateTimeZonedFromSelf", () => {
+      const schema = S.DateTimeZonedFromSelf
+      expect(S.asSchema(schema)).type.toBe<S.Schema<DateTime.Zoned>>()
+      expect(schema).type.toBe<typeof S.DateTimeZonedFromSelf>()
+      // TODO: should be typeof S.DateTimeZonedFromSelf
+      expect(schema.annotations({})).type.toBe<S.declare<DateTime.Zoned>>()
     })
 
     it("DurationFromSelf", () => {
-      expect(S.asSchema(S.DurationFromSelf)).type.toBe<S.Schema<Duration.Duration>>()
+      const schema = S.DurationFromSelf
+      expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
+      expect(schema).type.toBe<typeof S.DurationFromSelf>()
+      // TODO: should be typeof S.DurationFromSelf
+      expect(schema.annotations({})).type.toBe<S.declare<Duration.Duration>>()
+    })
+
+    it("Duration", () => {
+      expect(S.asSchema(S.Duration))
+        .type.toBe<S.Schema<Duration.Duration, S.DurationEncoded | readonly [seconds: number, nanos: number]>>()
     })
 
     it("DurationFromMillis", () => {
@@ -3219,12 +3279,24 @@ describe("Schema", () => {
       expect(S.asSchema(S.DurationFromNanos)).type.toBe<S.Schema<Duration.Duration, bigint>>()
     })
 
-    it("BigDecimal", () => {
-      expect(S.asSchema(S.BigDecimal)).type.toBe<S.Schema<BigDecimal.BigDecimal, string>>()
+    it("BigDecimalFromSelf", () => {
+      const schema = S.BigDecimalFromSelf
+      expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+      expect(schema).type.toBe<typeof S.BigDecimalFromSelf>()
+      // TODO: should be typeof S.BigDecimalFromSelf
+      expect(schema.annotations({})).type.toBe<S.declare<BigDecimal.BigDecimal>>()
     })
 
-    it("BigDecimalFromSelf", () => {
-      expect(S.asSchema(S.BigDecimalFromSelf)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+    it("FiberIdFromSelf", () => {
+      const schema = S.FiberIdFromSelf
+      expect(S.asSchema(schema)).type.toBe<S.Schema<FiberId.FiberId>>()
+      expect(schema).type.toBe<typeof S.FiberIdFromSelf>()
+      // TODO: should be typeof S.FiberIdFromSelf
+      expect(schema.annotations({})).type.toBe<S.declare<FiberId.FiberId>>()
+    })
+
+    it("BigDecimal", () => {
+      expect(S.asSchema(S.BigDecimal)).type.toBe<S.Schema<BigDecimal.BigDecimal, string>>()
     })
 
     it("BigDecimalFromNumber", () => {
@@ -3236,6 +3308,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<Chunk.Chunk<number>, Chunk.Chunk<string>>>()
       expect(schema).type.toBe<S.ChunkFromSelf<typeof S.NumberFromString>>()
       expect(schema.annotations({})).type.toBe<S.ChunkFromSelf<typeof S.NumberFromString>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString]>()
     })
 
     it("Chunk", () => {
@@ -3252,6 +3326,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<Chunk.NonEmptyChunk<number>, Chunk.NonEmptyChunk<string>>>()
       expect(schema).type.toBe<S.NonEmptyChunkFromSelf<typeof S.NumberFromString>>()
       expect(schema.annotations({})).type.toBe<S.NonEmptyChunkFromSelf<typeof S.NumberFromString>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString]>()
     })
 
     it("NonEmptyChunk", () => {
@@ -3269,6 +3345,8 @@ describe("Schema", () => {
         .type.toBe<S.DataFromSelf<S.Schema<{ readonly a: number }, { readonly a: string }>>>()
       expect(schema.annotations({}))
         .type.toBe<S.DataFromSelf<S.Schema<{ readonly a: number }, { readonly a: string }>>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [S.Schema<{ readonly a: number }, { readonly a: string }>]>()
     })
 
     it("Data", () => {
@@ -3278,7 +3356,7 @@ describe("Schema", () => {
       expect(schema.annotations({}))
         .type.toBe<S.Data<S.Schema<{ readonly a: number }, { readonly a: string }>>>()
       expect(schema.from).type.toBe<S.Schema<{ readonly a: number }, { readonly a: string }>>()
-      expect(schema.to).type.toBe<S.SchemaClass<{ readonly a: number }>>()
+      expect(schema.to).type.toBe<S.DataFromSelf<S.Schema<{ readonly a: number }>>>()
     })
 
     it("RedactedFromSelf", () => {
@@ -3286,6 +3364,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<Redacted.Redacted<number>, Redacted.Redacted<string>>>()
       expect(schema).type.toBe<S.RedactedFromSelf<typeof S.NumberFromString>>()
       expect(schema.annotations({})).type.toBe<S.RedactedFromSelf<typeof S.NumberFromString>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString]>()
     })
 
     it("Redacted", () => {
@@ -3302,6 +3382,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<Option.Option<number>, Option.Option<string>>>()
       expect(schema).type.toBe<S.OptionFromSelf<typeof S.NumberFromString>>()
       expect(schema.annotations({})).type.toBe<S.OptionFromSelf<typeof S.NumberFromString>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString]>()
     })
 
     it("Option", () => {
@@ -3352,6 +3434,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<Either.Either<number, string>, Either.Either<string, string>>>()
       expect(schema).type.toBe<S.EitherFromSelf<typeof S.NumberFromString, typeof S.String>>()
       expect(schema.annotations({})).type.toBe<S.EitherFromSelf<typeof S.NumberFromString, typeof S.String>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString, typeof S.String]>()
 
       // should allow never as right
       expect(S.EitherFromSelf({ right: S.Never, left: S.String }))
@@ -3424,6 +3508,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyMap<number, string>, ReadonlyMap<string, string>>>()
       expect(schema).type.toBe<S.ReadonlyMapFromSelf<typeof S.NumberFromString, typeof S.String>>()
       expect(schema.annotations({})).type.toBe<S.ReadonlyMapFromSelf<typeof S.NumberFromString, typeof S.String>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString, typeof S.String]>()
     })
 
     it("ReadonlyMap", () => {
@@ -3441,6 +3527,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<Map<number, string>, ReadonlyMap<string, string>>>()
       expect(schema).type.toBe<S.MapFromSelf<typeof S.NumberFromString, typeof S.String>>()
       expect(schema.annotations({})).type.toBe<S.MapFromSelf<typeof S.NumberFromString, typeof S.String>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString, typeof S.String]>()
     })
 
     it("Map", () => {
@@ -3457,6 +3545,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<HashMap.HashMap<number, string>, HashMap.HashMap<string, string>>>()
       expect(schema).type.toBe<S.HashMapFromSelf<typeof S.NumberFromString, typeof S.String>>()
       expect(schema.annotations({})).type.toBe<S.HashMapFromSelf<typeof S.NumberFromString, typeof S.String>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString, typeof S.String]>()
     })
 
     it("HashMap", () => {
@@ -3474,6 +3564,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlySet<number>, ReadonlySet<string>>>()
       expect(schema).type.toBe<S.ReadonlySetFromSelf<typeof S.NumberFromString>>()
       expect(schema.annotations({})).type.toBe<S.ReadonlySetFromSelf<typeof S.NumberFromString>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString]>()
     })
 
     it("ReadonlySet", () => {
@@ -3490,6 +3582,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<Set<number>, ReadonlySet<string>>>()
       expect(schema).type.toBe<S.SetFromSelf<typeof S.NumberFromString>>()
       expect(schema.annotations({})).type.toBe<S.SetFromSelf<typeof S.NumberFromString>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString]>()
     })
 
     it("Set", () => {
@@ -3506,6 +3600,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<HashSet.HashSet<number>, HashSet.HashSet<string>>>()
       expect(schema).type.toBe<S.HashSetFromSelf<typeof S.NumberFromString>>()
       expect(schema.annotations({})).type.toBe<S.HashSetFromSelf<typeof S.NumberFromString>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString]>()
     })
 
     it("HashSet", () => {
@@ -3522,6 +3618,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<List.List<number>, List.List<string>>>()
       expect(schema).type.toBe<S.ListFromSelf<typeof S.NumberFromString>>()
       expect(schema.annotations({})).type.toBe<S.ListFromSelf<typeof S.NumberFromString>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString]>()
     })
 
     it("List", () => {
@@ -3538,6 +3636,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<Cause.Cause<string>, Cause.Cause<string>>>()
       expect(schema).type.toBe<S.CauseFromSelf<typeof S.String, typeof S.Unknown>>()
       expect(schema.annotations({})).type.toBe<S.CauseFromSelf<typeof S.String, typeof S.Unknown>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.String, typeof S.Unknown]>()
 
       const defectWithR = S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
       expect(S.asSchema(defectWithR)).type.toBe<S.Schema<Cause.Cause<string>, Cause.Cause<string>, "a">>()
@@ -3564,6 +3664,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<Exit.Exit<number, string>, Exit.Exit<number, string>>>()
       expect(schema).type.toBe<S.ExitFromSelf<typeof S.Number, typeof S.String, typeof S.Unknown>>()
       expect(schema.annotations({})).type.toBe<S.ExitFromSelf<typeof S.Number, typeof S.String, typeof S.Unknown>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.Number, typeof S.String, typeof S.Unknown]>()
 
       const defectWithR = S.ExitFromSelf({
         success: S.Number,
@@ -3611,6 +3713,8 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<SortedSet.SortedSet<number>, SortedSet.SortedSet<string>>>()
       expect(schema).type.toBe<S.SortedSetFromSelf<typeof S.NumberFromString>>()
       expect(schema.annotations({})).type.toBe<S.SortedSetFromSelf<typeof S.NumberFromString>>()
+      // should expose the type parameters
+      expect(schema.typeParameters).type.toBe<readonly [typeof S.NumberFromString]>()
     })
 
     it("SortedSet", () => {

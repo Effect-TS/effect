@@ -991,7 +991,8 @@ const declareConstructor = <
   },
   annotations?: Annotations.Schema<A, TypeParameters>
 ): SchemaClass<A, I, Schema.Context<TypeParameters[number]>> =>
-  make(
+  makeDeclareClass(
+    typeParameters,
     new AST.Declaration(
       typeParameters.map((tp) => tp.ast),
       (...typeParameters) => options.decode(...typeParameters.map(make) as any),
@@ -1007,7 +1008,46 @@ const declarePrimitive = <A>(
   const decodeUnknown = () => (input: unknown, _: ParseOptions, ast: AST.Declaration) =>
     is(input) ? ParseResult.succeed(input) : ParseResult.fail(new ParseResult.Type(ast, input))
   const encodeUnknown = decodeUnknown
-  return make(new AST.Declaration([], decodeUnknown, encodeUnknown, toASTAnnotations(annotations)))
+  return makeDeclareClass([], new AST.Declaration([], decodeUnknown, encodeUnknown, toASTAnnotations(annotations)))
+}
+
+/**
+ * @category api interface
+ * @since 3.13.3
+ */
+export interface declare<
+  A,
+  I = A,
+  P extends ReadonlyArray<Schema.All> = readonly [],
+  R = Schema.Context<P[number]>
+> extends AnnotableClass<declare<A, I, P, R>, A, I, R> {
+  readonly typeParameters: Readonly<P>
+}
+
+/**
+ * @category api interface
+ * @since 3.13.3
+ */
+export interface AnnotableDeclare<
+  Self extends declare<A, I, P, R>,
+  A,
+  I = A,
+  P extends ReadonlyArray<Schema.All> = readonly [],
+  R = Schema.Context<P[number]>
+> extends declare<A, I, P, R> {
+  annotations(annotations: Annotations.Schema<A>): Self
+}
+
+function makeDeclareClass<P extends ReadonlyArray<Schema.All>, A, I, R>(
+  typeParameters: P,
+  ast: AST.AST
+): declare<A, I, P, R> {
+  return class DeclareClass extends make<A, I, R>(ast) {
+    static override annotations(annotations: Annotations.Schema<A>): declare<A, I, P, R> {
+      return makeDeclareClass(this.typeParameters, mergeSchemaAnnotations(this.ast, annotations))
+    }
+    static typeParameters = [...typeParameters] as any as P
+  }
 }
 
 /**
@@ -1021,8 +1061,8 @@ export const declare: {
   <A>(
     is: (input: unknown) => input is A,
     annotations?: Annotations.Schema<A>
-  ): SchemaClass<A>
-  <const P extends ReadonlyArray<Schema.All>, I, A>(
+  ): declare<A>
+  <A, I, const P extends ReadonlyArray<Schema.All>>(
     typeParameters: P,
     options: {
       readonly decode: (
@@ -1041,7 +1081,7 @@ export const declare: {
       ) => Effect.Effect<I, ParseResult.ParseIssue, never>
     },
     annotations?: Annotations.Schema<A, { readonly [K in keyof P]: Schema.Type<P[K]> }>
-  ): SchemaClass<A, I, Schema.Context<P[number]>>
+  ): declare<A, I, P>
 } = function() {
   if (Array.isArray(arguments[0])) {
     const typeParameters = arguments[0]
@@ -1096,7 +1136,7 @@ export const InstanceOfSchemaId: unique symbol = Symbol.for("effect/SchemaId/Ins
  * @category api interface
  * @since 3.10.0
  */
-export interface instanceOf<A> extends AnnotableClass<instanceOf<A>, A> {}
+export interface instanceOf<A> extends AnnotableDeclare<instanceOf<A>, A> {}
 
 /**
  * @category constructors
@@ -1219,20 +1259,22 @@ export interface Union<Members extends ReadonlyArray<Schema.All>> extends
 const getDefaultUnionAST = <Members extends AST.Members<Schema.All>>(members: Members): AST.AST =>
   AST.Union.make(members.map((m) => m.ast))
 
-const makeUnionClass = <Members extends AST.Members<Schema.All>>(
+function makeUnionClass<Members extends AST.Members<Schema.All>>(
   members: Members,
   ast: AST.AST = getDefaultUnionAST(members)
-): Union<
-  Members
-> => (class UnionClass
-  extends make<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>>(ast)
-{
-  static override annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>): Union<Members> {
-    return makeUnionClass(this.members, mergeSchemaAnnotations(this.ast, annotations))
-  }
+): Union<Members> {
+  return class UnionClass extends make<
+    Schema.Type<Members[number]>,
+    Schema.Encoded<Members[number]>,
+    Schema.Context<Members[number]>
+  >(ast) {
+    static override annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>): Union<Members> {
+      return makeUnionClass(this.members, mergeSchemaAnnotations(this.ast, annotations))
+    }
 
-  static members = [...members]
-})
+    static members = [...members]
+  }
+}
 
 /**
  * @category combinators
@@ -5663,11 +5705,11 @@ const redactedParse = <A, R>(
  * @since 3.10.0
  */
 export interface RedactedFromSelf<Value extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     RedactedFromSelf<Value>,
     redacted_.Redacted<Schema.Type<Value>>,
     redacted_.Redacted<Schema.Encoded<Value>>,
-    Schema.Context<Value>
+    [Value]
   >
 {}
 
@@ -6017,7 +6059,7 @@ export const betweenDuration = <S extends Schema.Any>(
  * @category Uint8Array constructors
  * @since 3.10.0
  */
-export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
+export class Uint8ArrayFromSelf extends declare(
   Predicate.isUint8Array,
   {
     identifier: "Uint8ArrayFromSelf",
@@ -6025,18 +6067,18 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
     arbitrary: (): LazyArbitrary<Uint8Array> => (fc) => fc.uint8Array(),
     equivalence: (): Equivalence.Equivalence<Uint8Array> => array_.getEquivalence(Equal.equals) as any
   }
-)
+) {}
 
 /**
  * @category number constructors
  * @since 3.11.10
  */
-export const Uint8 = Number$.pipe(
+export class Uint8 extends Number$.pipe(
   between(0, 255, {
     identifier: "Uint8",
     description: "a 8-bit unsigned integer"
   })
-)
+) {}
 
 /** @ignore */
 class Uint8Array$ extends transform(
@@ -6946,11 +6988,11 @@ const optionParse =
  * @since 3.10.0
  */
 export interface OptionFromSelf<Value extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     OptionFromSelf<Value>,
     option_.Option<Schema.Type<Value>>,
     option_.Option<Schema.Encoded<Value>>,
-    Schema.Context<Value>
+    [Value]
   >
 {}
 
@@ -6958,9 +7000,7 @@ export interface OptionFromSelf<Value extends Schema.Any> extends
  * @category Option transformations
  * @since 3.10.0
  */
-export const OptionFromSelf = <Value extends Schema.Any>(
-  value: Value
-): OptionFromSelf<Value> => {
+export const OptionFromSelf = <Value extends Schema.Any>(value: Value): OptionFromSelf<Value> => {
   return declare(
     [value],
     {
@@ -7200,11 +7240,11 @@ const eitherParse = <RR, R, LR, L>(
  * @since 3.10.0
  */
 export interface EitherFromSelf<R extends Schema.All, L extends Schema.All> extends
-  AnnotableClass<
+  AnnotableDeclare<
     EitherFromSelf<R, L>,
     either_.Either<Schema.Type<R>, Schema.Type<L>>,
     either_.Either<Schema.Encoded<R>, Schema.Encoded<L>>,
-    Schema.Context<R> | Schema.Context<L>
+    [R, L]
   >
 {}
 
@@ -7383,11 +7423,11 @@ const readonlyMapParse = <R, K, V>(
  * @since 3.10.0
  */
 export interface ReadonlyMapFromSelf<K extends Schema.Any, V extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     ReadonlyMapFromSelf<K, V>,
     ReadonlyMap<Schema.Type<K>, Schema.Type<V>>,
     ReadonlyMap<Schema.Encoded<K>, Schema.Encoded<V>>,
-    Schema.Context<K> | Schema.Context<V>
+    [K, V]
   >
 {}
 
@@ -7424,11 +7464,11 @@ export const ReadonlyMapFromSelf = <K extends Schema.Any, V extends Schema.Any>(
  * @since 3.10.0
  */
 export interface MapFromSelf<K extends Schema.Any, V extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     MapFromSelf<K, V>,
     Map<Schema.Type<K>, Schema.Type<V>>,
     ReadonlyMap<Schema.Encoded<K>, Schema.Encoded<V>>,
-    Schema.Context<K> | Schema.Context<V>
+    [K, V]
   >
 {}
 
@@ -7567,11 +7607,11 @@ const readonlySetParse = <A, R>(
  * @since 3.10.0
  */
 export interface ReadonlySetFromSelf<Value extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     ReadonlySetFromSelf<Value>,
     ReadonlySet<Schema.Type<Value>>,
     ReadonlySet<Schema.Encoded<Value>>,
-    Schema.Context<Value>
+    [Value]
   >
 {}
 
@@ -7602,11 +7642,11 @@ export const ReadonlySetFromSelf = <Value extends Schema.Any>(value: Value): Rea
  * @since 3.10.0
  */
 export interface SetFromSelf<Value extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     SetFromSelf<Value>,
     Set<Schema.Type<Value>>,
     ReadonlySet<Schema.Encoded<Value>>,
-    Schema.Context<Value>
+    [Value]
   >
 {}
 
@@ -8022,11 +8062,11 @@ const chunkParse = <A, R>(
  * @since 3.10.0
  */
 export interface ChunkFromSelf<Value extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     ChunkFromSelf<Value>,
     chunk_.Chunk<Schema.Type<Value>>,
     chunk_.Chunk<Schema.Encoded<Value>>,
-    Schema.Context<Value>
+    [Value]
   >
 {}
 
@@ -8081,11 +8121,11 @@ export const Chunk = <Value extends Schema.Any>(value: Value): Chunk<Value> => {
  * @since 3.10.0
  */
 export interface NonEmptyChunkFromSelf<Value extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     NonEmptyChunkFromSelf<Value>,
     chunk_.NonEmptyChunk<Schema.Type<Value>>,
     chunk_.NonEmptyChunk<Schema.Encoded<Value>>,
-    Schema.Context<Value>
+    [Value]
   >
 {}
 
@@ -8171,11 +8211,11 @@ const dataParse = <R, A extends Readonly<Record<string, any>> | ReadonlyArray<an
  * @since 3.13.3
  */
 export interface DataFromSelf<Value extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     DataFromSelf<Value>,
     Schema.Type<Value>,
     Schema.Encoded<Value>,
-    Schema.Context<Value>
+    [Value]
   >
 {}
 
@@ -8211,9 +8251,7 @@ export const DataFromSelf = <
  * @category api interface
  * @since 3.13.3
  */
-export interface Data<Value extends Schema.Any>
-  extends transform<Value, DataFromSelf<SchemaClass<Schema.Type<Value>>>>
-{}
+export interface Data<Value extends Schema.Any> extends transform<Value, DataFromSelf<Schema<Schema.Type<Value>>>> {}
 
 /**
  * Type and Encoded must extend `Readonly<Record<string, any>> |
@@ -9129,11 +9167,11 @@ const causeParse = <A, D, R>(
  * @since 3.10.0
  */
 export interface CauseFromSelf<E extends Schema.All, D extends Schema.All> extends
-  AnnotableClass<
+  AnnotableDeclare<
     CauseFromSelf<E, D>,
     cause_.Cause<Schema.Type<E>>,
     cause_.Cause<Schema.Encoded<E>>,
-    Schema.Context<E> | Schema.Context<D>
+    [E, D]
   >
 {}
 
@@ -9362,13 +9400,14 @@ const exitParse = <A, R, E, ER>(
  * @category api interface
  * @since 3.10.0
  */
-export interface ExitFromSelf<A extends Schema.All, E extends Schema.All, D extends Schema.All> extends
-  AnnotableClass<
-    ExitFromSelf<A, E, D>,
-    exit_.Exit<Schema.Type<A>, Schema.Type<E>>,
-    exit_.Exit<Schema.Encoded<A>, Schema.Encoded<E>>,
-    Schema.Context<A> | Schema.Context<E> | Schema.Context<D>
-  >
+export interface ExitFromSelf<A extends Schema.All, E extends Schema.All, D extends Schema.All>
+  extends
+    AnnotableDeclare<
+      ExitFromSelf<A, E, D>,
+      exit_.Exit<Schema.Type<A>, Schema.Type<E>>,
+      exit_.Exit<Schema.Encoded<A>, Schema.Encoded<E>>,
+      [A, E, D]
+    >
 {}
 
 /**
@@ -9487,11 +9526,11 @@ const hashSetParse = <A, R>(
  * @since 3.10.0
  */
 export interface HashSetFromSelf<Value extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     HashSetFromSelf<Value>,
     hashSet_.HashSet<Schema.Type<Value>>,
     hashSet_.HashSet<Schema.Encoded<Value>>,
-    Schema.Context<Value>
+    [Value]
   >
 {}
 
@@ -9583,11 +9622,11 @@ const hashMapParse = <R, K, V>(
  * @since 3.10.0
  */
 export interface HashMapFromSelf<K extends Schema.Any, V extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     HashMapFromSelf<K, V>,
     hashMap_.HashMap<Schema.Type<K>, Schema.Type<V>>,
     hashMap_.HashMap<Schema.Encoded<K>, Schema.Encoded<V>>,
-    Schema.Context<K> | Schema.Context<V>
+    [K, V]
   >
 {}
 
@@ -9669,11 +9708,11 @@ const listParse = <A, R>(
  * @since 3.10.0
  */
 export interface ListFromSelf<Value extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     ListFromSelf<Value>,
     list_.List<Schema.Type<Value>>,
     list_.List<Schema.Encoded<Value>>,
-    Schema.Context<Value>
+    [Value]
   >
 {}
 
@@ -9755,11 +9794,11 @@ const sortedSetParse = <A, R>(
  * @since 3.10.0
  */
 export interface SortedSetFromSelf<Value extends Schema.Any> extends
-  AnnotableClass<
+  AnnotableDeclare<
     SortedSetFromSelf<Value>,
     sortedSet_.SortedSet<Schema.Type<Value>>,
     sortedSet_.SortedSet<Schema.Encoded<Value>>,
-    Schema.Context<Value>
+    [Value]
   >
 {}
 

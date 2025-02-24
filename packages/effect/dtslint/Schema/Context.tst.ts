@@ -22,25 +22,26 @@ declare const myRequest: MyRequest
 
 describe("Schema Context", () => {
   it("declare: simple predicate", () => {
-    expect(S.declare((u): u is string => typeof u === "string"))
-      .type.toBe<S.SchemaClass<string, string, never>>()
+    const schema = S.declare((u): u is string => typeof u === "string")
+    expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
+    expect(schema).type.toBe<S.declare<string>>()
   })
 
   it("declare: with contexts and options", () => {
-    expect(
-      S.declare(
-        [aContext, bContext],
-        {
-          decode: (_a, _b) => () => ParseResult.succeed("a"),
-          encode: (_a, _b) => () => ParseResult.succeed(1)
-        },
-        {
-          arbitrary: (_a, _b) => (fc) => fc.string(),
-          pretty: (_a, _b) => (s) => s,
-          equivalence: () => (_a, _b) => true
-        }
-      )
-    ).type.toBe<S.SchemaClass<string, number, "aContext" | "bContext">>()
+    const schema = S.declare(
+      [aContext, bContext],
+      {
+        decode: (_a, _b) => () => ParseResult.succeed("a"),
+        encode: (_a, _b) => () => ParseResult.succeed(1)
+      },
+      {
+        arbitrary: (_a, _b) => (fc) => fc.string(),
+        pretty: (_a, _b) => (s) => s,
+        equivalence: () => (_a, _b) => true
+      }
+    )
+    expect(S.asSchema(schema)).type.toBe<S.Schema<string, number, "aContext" | "bContext">>()
+    expect(schema).type.toBe<S.declare<string, number, readonly [aContext, bContext]>>()
   })
 
   it("declare errors", () => {
