@@ -67,7 +67,8 @@ export declare namespace Config {
           "messages" | "tools" | "tool_choice" | "stream" | "stream_options" | "functions"
         >
       >
-    > { }
+    >
+  {}
 }
 
 // =============================================================================
@@ -85,111 +86,109 @@ export const model = (model: (string & {}) | Model, config?: Config.Service): Ai
   AiModel.make({
     model,
     requires: OpenAiClient,
-    provides: make({ model }).pipe(
-      Effect.map((completions) => Context.make(Completions.Completions, completions)),
-      Effect.provideService(Config, { ...config, model })
-    )
+    context: Context.make(Config, { ...config, model }),
+    provides: makeContext as Effect.Effect<Context.Context<Completions.Completions>, never, OpenAiClient>
   })
 
-const make = (options: {
-  readonly model: (string & {}) | Model
-}) =>
-  Effect.gen(function*() {
-    const client = yield* OpenAiClient
-    const config = yield* Config.getOrUndefined
+const make = Effect.gen(function*() {
+  const client = yield* OpenAiClient
+  const config = yield* Config
 
-    const makeRequest = ({ input, required, system, tools }: Completions.CompletionOptions) => {
-      const useStructured = tools.length === 1 && tools[0].structured
-      return Effect.map(
-        Effect.context<never>(),
-        (context): typeof Generated.CreateChatCompletionRequest.Encoded => ({
-          model: options.model,
-          ...config,
-          ...context.unsafeMap.get(Config.key),
-          messages: makeMessages(input, system),
-          response_format: useStructured ?
-            {
-              type: "json_schema",
-              json_schema: {
-                strict: true,
-                name: tools[0].name,
-                description: tools[0].description,
-                schema: tools[0].parameters
-              }
-            } :
-            undefined,
-          tools: !useStructured && tools.length > 0 ?
-            tools.map((tool) => ({
-              type: "function",
-              function: {
-                name: tool.name,
-                description: tool.description,
-                parameters: tool.parameters as any,
-                strict: true
-              }
-            })) :
-            undefined,
-          tool_choice: !useStructured && tools.length > 0 ?
-            typeof required === "boolean" ? (required ? "required" : "auto") : {
-              type: "function",
-              function: { name: required }
-            } :
-            undefined
-        })
+  const makeRequest = ({ input, required, system, tools }: Completions.CompletionOptions) => {
+    const useStructured = tools.length === 1 && tools[0].structured
+    return Effect.map(
+      Effect.context<never>(),
+      (context): typeof Generated.CreateChatCompletionRequest.Encoded => ({
+        ...config,
+        ...context.unsafeMap.get(Config.key),
+        messages: makeMessages(input, system),
+        response_format: useStructured ?
+          {
+            type: "json_schema",
+            json_schema: {
+              strict: true,
+              name: tools[0].name,
+              description: tools[0].description,
+              schema: tools[0].parameters
+            }
+          } :
+          undefined,
+        tools: !useStructured && tools.length > 0 ?
+          tools.map((tool) => ({
+            type: "function",
+            function: {
+              name: tool.name,
+              description: tool.description,
+              parameters: tool.parameters as any,
+              strict: true
+            }
+          })) :
+          undefined,
+        tool_choice: !useStructured && tools.length > 0 ?
+          typeof required === "boolean" ? (required ? "required" : "auto") : {
+            type: "function",
+            function: { name: required }
+          } :
+          undefined
+      })
+    )
+  }
+
+  return yield* Completions.make({
+    create({ span, ...options }) {
+      return makeRequest(options).pipe(
+        Effect.tap((request) => annotateRequest(span, request)),
+        Effect.flatMap(client.client.createChatCompletion),
+        Effect.tap((response) => annotateChatResponse(span, response)),
+        Effect.flatMap((response) =>
+          makeResponse(
+            response,
+            "create",
+            options.tools.length === 1 && options.tools[0].structured
+              ? options.tools[0]
+              : undefined
+          )
+        ),
+        Effect.catchAll((cause) =>
+          Effect.fail(
+            new AiError({
+              module: "OpenAiCompletions",
+              method: "create",
+              description: "An error occurred",
+              cause
+            })
+          )
+        )
+      )
+    },
+    stream({ span, ...options }) {
+      return makeRequest(options).pipe(
+        Effect.tap((request) => annotateRequest(span, request)),
+        Effect.map(client.stream),
+        Stream.unwrap,
+        Stream.tap((response) => {
+          annotateStreamResponse(span, response)
+          return Effect.void
+        }),
+        Stream.map((response) => response.asAiResponse),
+        Stream.catchAll((cause) =>
+          Effect.fail(
+            new AiError({
+              module: "OpenAiCompletions",
+              method: "stream",
+              description: "An error occurred",
+              cause
+            })
+          )
+        )
       )
     }
-
-    return yield* Completions.make({
-      create({ span, ...options }) {
-        return makeRequest(options).pipe(
-          Effect.tap((request) => annotateRequest(span, request)),
-          Effect.flatMap(client.client.createChatCompletion),
-          Effect.tap((response) => annotateChatResponse(span, response)),
-          Effect.flatMap((response) =>
-            makeResponse(
-              response,
-              "create",
-              options.tools.length === 1 && options.tools[0].structured
-                ? options.tools[0]
-                : undefined
-            )
-          ),
-          Effect.catchAll((cause) =>
-            Effect.fail(
-              new AiError({
-                module: "OpenAiCompletions",
-                method: "create",
-                description: "An error occurred",
-                cause
-              })
-            )
-          )
-        )
-      },
-      stream({ span, ...options }) {
-        return makeRequest(options).pipe(
-          Effect.tap((request) => annotateRequest(span, request)),
-          Effect.map(client.stream),
-          Stream.unwrap,
-          Stream.tap((response) => {
-            annotateStreamResponse(span, response)
-            return Effect.void
-          }),
-          Stream.map((response) => response.asAiResponse),
-          Stream.catchAll((cause) =>
-            Effect.fail(
-              new AiError({
-                module: "OpenAiCompletions",
-                method: "stream",
-                description: "An error occurred",
-                cause
-              })
-            )
-          )
-        )
-      }
-    })
   })
+})
+
+const makeContext = make.pipe(
+  Effect.map((completions) => Context.make(Completions.Completions, completions))
+)
 
 /**
  * @since 1.0.0
@@ -197,7 +196,10 @@ const make = (options: {
  */
 export const layerCompletions = (options: {
   readonly model: (string & {}) | Model
-}): Layer.Layer<Completions.Completions, never, OpenAiClient> => Layer.effect(Completions.Completions, make(options))
+}): Layer.Layer<Completions.Completions, never, OpenAiClient> =>
+  Layer.effect(Completions.Completions, make).pipe(
+    Layer.provide(Layer.succeed(Config, { model: options.model }))
+  )
 
 /**
  * @since 1.0.0

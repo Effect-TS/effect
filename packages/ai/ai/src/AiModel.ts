@@ -32,7 +32,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category type ids
  */
-export const PlanTypeId: unique symbol = Symbol.for("@effect/ai/AiModel/Plan")
+export const PlanTypeId: unique symbol = Symbol.for("@effect/ai/Plan")
 
 /**
  * @since 1.0.0
@@ -44,10 +44,12 @@ export type PlanTypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface AiModel<Provides, Requires> extends AiModel.Proto, AiModel.Plan<unknown, Provides, Requires> {
+export interface AiModel<Provides, Requires> extends Plan<unknown, Provides, Requires>, Pipeable {
+  readonly [TypeId]: TypeId
   readonly model: string
-  readonly requires: AiModel.Requirements<Requires>
+  readonly requires: Context.Tag<Requires, any>
   readonly provides: AiModel.ContextBuilder<Provides, Requires>
+  readonly context: Context.Context<never>
 }
 
 /**
@@ -58,73 +60,58 @@ export declare namespace AiModel {
    * @since 1.0.0
    * @category models
    */
-  export interface Proto extends Pipeable {
-    readonly [TypeId]: TypeId
-  }
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type Requirements<Requires> = Context.Tag<Requires, any>
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
   export type ContextBuilder<Provides, Requires> = Effect.Effect<
     Context.Context<Provides>,
     never,
     Requires | Scope.Scope
   >
+}
 
+/**
+ * @since 1.0.0
+ * @category Plan
+ */
+export interface Plan<in Error, in out Provides, out Requires> extends
+  Pipeable,
+  Effect.Effect<
+    <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>,
+    never,
+    Requires | AiModels
+  >
+{
+  readonly [PlanTypeId]: PlanTypeId
+  readonly steps: NonEmptyReadonlyArray<Plan.Step<Error, Provides, Requires>>
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: Plan.Unify<this>
+  readonly [Unify.ignoreSymbol]?: Plan.UnifyIgnore
+}
+
+/**
+ * @since 1.0.0
+ * @category Plan
+ */
+export declare namespace Plan {
   /**
    * @since 1.0.0
-   * @category models
+   * @category Plan
    */
-  export interface Plan<Error, Provides, Requires> extends
-    PlanProto,
-    Effect.Effect<
-      <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>,
-      never,
-      Requires | AiModels
-    >
-  {
-    readonly steps: NonEmptyReadonlyArray<PlanStep<Error, Provides, Requires>>
-    readonly [Unify.typeSymbol]?: unknown
-    readonly [Unify.unifySymbol]?: PlanUnify<this>
-    readonly [Unify.ignoreSymbol]?: PlanUnifyIgnore
+  export interface Unify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+    AiModelPlan?: () => Extract<A[Unify.typeSymbol], Plan<any, any, any>>
   }
 
   /**
    * @since 1.0.0
-   * @category models
+   * @category Plan
    */
-  export interface PlanUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
-    AiModelPlan?: () => Extract<A[Unify.typeSymbol], AiModel.Plan<any, any, any>>
-  }
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface PlanUnifyIgnore extends Effect.EffectUnifyIgnore {
+  export interface UnifyIgnore extends Effect.EffectUnifyIgnore {
     Effect?: true
   }
 
   /**
    * @since 1.0.0
-   * @category models
+   * @category Plan
    */
-  export interface PlanProto extends Pipeable {
-    readonly [PlanTypeId]: PlanTypeId
-  }
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface PlanStep<Error, Provides, Requires> {
+  export interface Step<Error, Provides, Requires> {
     readonly model: AiModel<Provides, Requires>
     readonly check: (error: Error) => boolean | Effect.Effect<boolean>
     readonly schedule: Option.Option<Schedule.Schedule<any, Error, Requires>>
@@ -145,12 +132,14 @@ const AiModelProto = {
  */
 export const make = <Provides, Requires>(options: {
   readonly model: string
-  readonly requires: AiModel.Requirements<Requires>
+  readonly requires: Context.Tag<Requires, any>
   readonly provides: AiModel.ContextBuilder<Provides, Requires>
+  readonly context: Context.Context<never>
 }): AiModel<Provides, Requires> => {
   const self = Object.create(AiModelProto)
   self.model = options.model
   self.provides = options.provides
+  self.context = options.context
   self.requires = options.requires
   self.steps = [{
     model: self,
@@ -159,10 +148,10 @@ export const make = <Provides, Requires>(options: {
   return self
 }
 
-const AiModelPlanProto = {
+const PlanProto = {
   ...CommitPrototype,
   [PlanTypeId]: PlanTypeId,
-  commit(this: AiModel.Plan<any, any, any>) {
+  commit(this: Plan<any, any, any>) {
     return buildPlan(this)
   },
   pipe() {
@@ -170,14 +159,10 @@ const AiModelPlanProto = {
   }
 }
 
-/**
- * @since 1.0.0
- * @category constructors
- */
 const makePlan = <
-  Steps extends ReadonlyArray<AiModel.PlanStep<any, any, any>>
->(steps: Steps): AiModel.Plan<any, any, any> => {
-  const self = Object.create(AiModelPlanProto)
+  Steps extends ReadonlyArray<Plan.Step<any, any, any>>
+>(steps: Steps): Plan<any, any, any> => {
+  const self = Object.create(PlanProto)
   self.steps = steps
   return self
 }
@@ -187,40 +172,44 @@ const makePlan = <
  * @category error handling
  */
 export const retry: {
-  <E, R = never>(options: {
-    readonly attempts: number
-    readonly while?: (error: E) => boolean | Effect.Effect<boolean, never, R>
+  <E, Out, ES, RW = never, RS = never>(options: {
+    readonly attempts?: number | undefined
+    readonly while?: ((error: E) => boolean | Effect.Effect<boolean, never, RW>) | undefined
+    readonly schedule?: Schedule.Schedule<Out, ES, RS> | undefined
   }): <Provides, Requires>(
     self: AiModel<Provides, Requires>
-  ) => AiModel.Plan<E, Provides, R | Requires>
-  <Provides, Requires, E, R = never>(
-    self: AiModel<Provides, Requires>,
-    options: {
-      readonly attempts: number
-      readonly while?: (error: E) => boolean | Effect.Effect<boolean, never, R>
-    }
-  ): AiModel.Plan<E, Provides, R | Requires>
+  ) => Plan<E & ES, Provides, RW | RS | Requires>
+  <Provides, Requires, E, Out, ES, R = never, R2 = never>(self: AiModel<Provides, Requires>, options: {
+    readonly attempts?: number | undefined
+    readonly while?:
+      | ((error: E) => boolean | Effect.Effect<boolean, never, R>)
+      | undefined
+    readonly schedule?: Schedule.Schedule<Out, ES, R2> | undefined
+  }): Plan<E & ES, Provides, R | R2 | Requires>
 } = dual<
-  <E, R = never>(options: {
-    readonly attempts: number
-    readonly while?: (error: E) => boolean | Effect.Effect<boolean, never, R>
+  <E, Out, ES, RW = never, RS = never>(options: {
+    readonly attempts?: number | undefined
+    readonly while?: ((error: E) => boolean | Effect.Effect<boolean, never, RW>) | undefined
+    readonly schedule?: Schedule.Schedule<Out, ES, RS> | undefined
   }) => <Provides, Requires>(
     self: AiModel<Provides, Requires>
-  ) => AiModel.Plan<E, Provides, R | Requires>,
-  <Provides, Requires, E, R = never>(
+  ) => Plan<E & ES, Provides, RW | RS | Requires>,
+  <Provides, Requires, E, Out, ES, R = never, R2 = never>(
     self: AiModel<Provides, Requires>,
     options: {
-      readonly attempts: number
-      readonly while?: (error: E) => boolean | Effect.Effect<boolean, never, R>
+      readonly attempts?: number | undefined
+      readonly while?:
+        | ((error: E) => boolean | Effect.Effect<boolean, never, R>)
+        | undefined
+      readonly schedule?: Schedule.Schedule<Out, ES, R2> | undefined
     }
-  ) => AiModel.Plan<E, Provides, R | Requires>
->(2, (self, options) => {
-  return makePlan([{
+  ) => Plan<E & ES, Provides, R | R2 | Requires>
+>(2, (self, options) =>
+  makePlan([{
     model: self,
     check: (options.while ?? constTrue) as any,
-    schedule: options.attempts ? Option.some(Schedule.recurs(options.attempts)) : Option.none()
-  }])
-})
+    schedule: resolveSchedule(options)
+  }]))
 
 /**
  * @since 1.0.0
@@ -232,99 +221,66 @@ export const withFallback: {
     Provides2 extends Provides,
     Requires2,
     Out,
-    E2 = never,
-    WR = never,
-    SR = never
+    EW,
+    ES,
+    RW = never,
+    RS = never
   >(options: {
     readonly model: AiModel<Provides2, Requires2>
-    readonly attempts?: number
-    readonly while?: (error: E2) => boolean | Effect.Effect<boolean, never, WR>
-    readonly schedule?: Schedule.Schedule<Out, E2, SR>
+    readonly attempts?: number | undefined
+    readonly while?: ((error: EW) => boolean | Effect.Effect<boolean, never, RW>) | undefined
+    readonly schedule?: Schedule.Schedule<Out, ES, RS> | undefined
   }): <E, Requires>(
-    self: AiModel<Provides, Requires> | AiModel.Plan<E, Provides, Requires>
-  ) => AiModel.Plan<E | E2, Provides, Requires | Requires2 | WR | SR>
+    self: Plan<E, Provides, Requires>
+  ) => Plan<E & EW & ES, Provides & Provides2, Requires | Requires2 | RW | RS>
   <
+    E,
     Provides,
     Requires,
-    E,
     Provides2 extends Provides,
     Requires2,
     Out,
-    E2 = never,
-    WR = never,
-    SR = never
+    EW,
+    ES,
+    RW = never,
+    RS = never
   >(
-    self: AiModel<Provides, Requires> | AiModel.Plan<E, Provides, Requires>,
+    self: Plan<E, Provides, Requires>,
     options: {
       readonly model: AiModel<Provides2, Requires2>
-      readonly attempts?: number
-      readonly while?: (error: E2) => boolean | Effect.Effect<boolean, never, WR>
-      readonly schedule?: Schedule.Schedule<Out, E2, SR>
+      readonly attempts?: number | undefined
+      readonly while?: ((error: EW) => boolean | Effect.Effect<boolean, never, RW>) | undefined
+      readonly schedule?: Schedule.Schedule<Out, ES, RS> | undefined
     }
-  ): AiModel.Plan<E | E2, Provides, Requires | Requires2 | WR | SR>
-} = dual<
-  <
-    Provides,
-    Provides2 extends Provides,
-    Requires2,
-    Out,
-    E2 = never,
-    WR = never,
-    SR = never
-  >(options: {
-    readonly model: AiModel<Provides2, Requires2>
-    readonly attempts?: number
-    readonly while?: (error: E2) => boolean | Effect.Effect<boolean, never, WR>
-    readonly schedule?: Schedule.Schedule<Out, E2, SR>
-  }) => <E, Requires>(
-    self: AiModel<Provides, Requires> | AiModel.Plan<E, Provides, Requires>
-  ) => AiModel.Plan<E | E2, Provides, Requires | Requires2 | WR | SR>,
-  <
-    Provides,
-    Requires,
-    E,
-    Provides2 extends Provides,
-    Requires2,
-    Out,
-    E2 = never,
-    WR = never,
-    SR = never
-  >(
-    self: AiModel<Provides, Requires> | AiModel.Plan<E, Provides, Requires>,
-    options: {
-      readonly model: AiModel<Provides2, Requires2>
-      readonly attempts?: number
-      readonly while?: (error: E2) => boolean | Effect.Effect<boolean, never, WR>
-      readonly schedule?: Schedule.Schedule<Out, E2, SR>
-    }
-  ) => AiModel.Plan<E | E2, Provides, Requires | Requires2 | WR | SR>
->(2, <
+  ): Plan<E & EW & ES, Provides & Provides2, Requires | Requires2 | RW | RS>
+} = dual(2, <
+  E,
   Provides,
   Requires,
-  E,
   Provides2 extends Provides,
   Requires2,
-  E2,
   Out,
-  WR = never,
-  SR = never
+  EW,
+  ES,
+  RW = never,
+  RS = never
 >(
-  self: AiModel<Provides, Requires> | AiModel.Plan<E, Provides, Requires>,
+  self: Plan<E, Provides, Requires>,
   options: {
     readonly model: AiModel<Provides2, Requires2>
-    readonly attempts?: number
-    readonly while?: (error: E2) => boolean | Effect.Effect<boolean, never, WR>
-    readonly schedule?: Schedule.Schedule<Out, E2, SR>
+    readonly attempts?: number | undefined
+    readonly while?: ((error: EW) => boolean | Effect.Effect<boolean, never, RW>) | undefined
+    readonly schedule?: Schedule.Schedule<Out, ES, RS> | undefined
   }
-): AiModel.Plan<E | E2, Provides, Requires | Requires2 | WR | SR> => {
-  const steps = TypeId in self ? [{ model: self, schedule: Option.none() }] : self.steps.slice()
-  steps.push({
-    model: options.model,
-    check: options.while ?? constTrue,
-    schedule: resolveSchedule(options)
-  } as any)
-  return makePlan(steps as any)
-})
+): Plan<E & EW & ES, Provides & Provides2, Requires | Requires2 | RW | RS> =>
+  makePlan([
+    ...self.steps,
+    {
+      model: options.model,
+      check: options.while as any ?? constTrue,
+      schedule: resolveSchedule(options)
+    }
+  ]))
 
 const resolveSchedule = <E, R, Out, R2>(options: {
   readonly attempts?: number
@@ -334,7 +290,7 @@ const resolveSchedule = <E, R, Out, R2>(options: {
     Predicate.isUndefined(options.attempts) &&
     Predicate.isUndefined(options.schedule)
   ) return Option.none()
-  let schedule = (options.schedule ?? Schedule.once) as Schedule.Schedule<any, E, R | R2>
+  let schedule = (options.schedule ?? Schedule.forever) as Schedule.Schedule<any, E, R | R2>
   if (Predicate.isNotUndefined(options.attempts)) {
     schedule = Schedule.intersect(schedule, Schedule.recurs(options.attempts))
   }
@@ -343,10 +299,10 @@ const resolveSchedule = <E, R, Out, R2>(options: {
 
 /**
  * @since 1.0.0
- * @category planning
+ * @category Plan
  */
 export const buildPlan = <Error, Provides, Requires>(
-  plan: AiModel.Plan<Error, Provides, Requires>
+  plan: Plan<Error, Provides, Requires>
 ): Effect.Effect<
   <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>,
   never,
@@ -364,15 +320,16 @@ export const buildPlan = <Error, Provides, Requires>(
         }
         const retryPolicy = Option.getOrUndefined(step.schedule) as Schedule.Schedule<any, unknown, never>
         exit = yield* Effect.scopedWith((scope) =>
-          Scope.extend(models.build(step.model, context), scope).pipe(
+          models.build(step.model, context).pipe(
+            Scope.extend(scope),
             Effect.flatMap((context) =>
-              Effect.provide(
+              effect.pipe(
                 // @ts-expect-error
-                Effect.retry(effect, {
+                Effect.retry({
                   schedule: retryPolicy,
                   while: step.check
                 }),
-                context
+                Effect.provide(context)
               )
             ),
             Effect.exit

@@ -52,6 +52,7 @@ class AiModelsKey {
 
 const make = Effect.gen(function*() {
   const services = yield* RcMap.make({
+    idleTimeToLive: "1 minute",
     lookup: (key: AiModelsKey) => Effect.provideService(key.build, key.tag, key.service)
   })
 
@@ -59,13 +60,16 @@ const make = Effect.gen(function*() {
     model: AiModel<Provides, Requires>,
     context: Context.Context<Requires>
   ): Effect.Effect<Context.Context<Provides>, never, Scope.Scope> =>
-    RcMap.get(
-      services,
-      new AiModelsKey(
-        model.provides as any,
-        model.requires,
-        Context.get(context, model.requires as any)
-      )
+    Effect.map(
+      RcMap.get(
+        services,
+        new AiModelsKey(
+          model.provides as any,
+          model.requires,
+          Context.get(context, model.requires as any)
+        )
+      ),
+      (context) => Context.merge(context, model.context)
     ) as any
 
   return { build } as const
@@ -75,4 +79,4 @@ const make = Effect.gen(function*() {
  * @since 1.0.0
  * @category layers
  */
-export const layer = Layer.scoped(AiModels, make)
+export const layer: Layer.Layer<AiModels> = Layer.scoped(AiModels, make)
