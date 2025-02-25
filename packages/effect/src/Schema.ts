@@ -8185,20 +8185,20 @@ export const NonEmptyChunk = <Value extends Schema.Any>(value: Value): NonEmptyC
   return out as any
 }
 
-const decodeData = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(a: A): A =>
+const decodeData = <A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>>(a: A): A =>
   Array.isArray(a) ? data_.array(a) : data_.struct(a)
 
-const dataArbitrary = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
+const dataArbitrary = <A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>>(
   item: LazyArbitrary<A>
 ): LazyArbitrary<A> =>
 (fc) => item(fc).map(decodeData)
 
-const dataPretty = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
+const dataPretty = <A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>>(
   item: pretty_.Pretty<A>
 ): pretty_.Pretty<A> =>
 (d) => `Data(${item(d)})`
 
-const dataParse = <R, A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
+const dataParse = <R, A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>>(
   decodeUnknown: ParseResult.DecodeUnknown<A, R>
 ): ParseResult.DeclarationDecodeUnknown<A, R> =>
 (u, options, ast) =>
@@ -8228,8 +8228,8 @@ export interface DataFromSelf<Value extends Schema.Any> extends
  */
 export const DataFromSelf = <
   S extends Schema.Any,
-  A extends Readonly<Record<string, any>> | ReadonlyArray<any>,
-  I extends Readonly<Record<string, any>> | ReadonlyArray<any>
+  A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>,
+  I extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>
 >(value: S & Schema<A & Schema.Type<S>, I & Schema.Encoded<S>, Schema.Context<S>>): DataFromSelf<S> => {
   return declare(
     [value],
@@ -8262,8 +8262,8 @@ export interface Data<Value extends Schema.Any>
  */
 export const Data = <
   S extends Schema.Any,
-  A extends Readonly<Record<string, any>> | ReadonlyArray<any>,
-  I extends Readonly<Record<string, any>> | ReadonlyArray<any>
+  A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>,
+  I extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>
 >(value: S & Schema<A & Schema.Type<S>, I & Schema.Encoded<S>, Schema.Context<S>>): Data<S> => {
   return transform(
     value,
