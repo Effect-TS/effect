@@ -3433,39 +3433,43 @@ export const extend: {
  * @since 3.10.0
  */
 export const compose: {
-  <D, C extends B, R2, B>(
-    to: Schema<D, C, R2>
-  ): <A, R1>(from: Schema<B, A, R1>) => SchemaClass<D, A, R1 | R2>
-  <D, C, R2>(
-    to: Schema<D, C, R2>
-  ): <B extends C, A, R1>(from: Schema<B, A, R1>) => SchemaClass<D, A, R1 | R2>
-  <C, B, R2>(
-    to: Schema<C, B, R2>,
+  <To extends Schema.Any, From extends Schema.Any, C extends Schema.Type<From>>(
+    to: To & Schema<Schema.Type<To>, C, Schema.Context<To>>
+  ): (from: From) => transform<From, To>
+  <To extends Schema.Any>(
+    to: To
+  ): <From extends Schema.Any, B extends Schema.Encoded<To>>(
+    from: From & Schema<B, Schema.Encoded<From>, Schema.Context<From>>
+  ) => transform<From, To>
+  <To extends Schema.Any>(
+    to: To,
     options?: { readonly strict: true }
-  ): <A, R1>(from: Schema<B, A, R1>) => SchemaClass<C, A, R1 | R2>
-  <D, C, R2>(
-    to: Schema<D, C, R2>,
+  ): <From extends Schema.Any>(
+    from: From & Schema<Schema.Encoded<To>, Schema.Encoded<From>, Schema.Context<From>>
+  ) => transform<From, To>
+  <To extends Schema.Any>(
+    to: To,
     options: { readonly strict: false }
-  ): <B, A, R1>(from: Schema<B, A, R1>) => SchemaClass<D, A, R1 | R2>
+  ): <From extends Schema.Any>(from: From) => transform<From, To>
 
-  <B, A, R1, D, C extends B, R2>(
-    from: Schema<B, A, R1>,
-    to: Schema<D, C, R2>
-  ): SchemaClass<D, A, R1 | R2>
-  <B extends C, A, R1, D, C, R2>(
-    from: Schema<B, A, R1>,
-    to: Schema<D, C, R2>
-  ): SchemaClass<D, A, R1 | R2>
-  <B, A, R1, C, R2>(
-    from: Schema<B, A, R1>,
-    to: Schema<C, B, R2>,
+  <From extends Schema.Any, To extends Schema.Any, C extends Schema.Type<From>>(
+    from: From,
+    to: To & Schema<Schema.Type<To>, C, Schema.Context<To>>
+  ): transform<From, To>
+  <From extends Schema.Any, B extends Schema.Encoded<To>, To extends Schema.Any>(
+    from: From & Schema<B, Schema.Encoded<From>, Schema.Context<From>>,
+    to: To
+  ): transform<From, To>
+  <From extends Schema.Any, To extends Schema.Any>(
+    from: From & Schema<Schema.Encoded<To>, Schema.Encoded<From>, Schema.Context<From>>,
+    to: To,
     options?: { readonly strict: true }
-  ): SchemaClass<C, A, R1 | R2>
-  <B, A, R1, D, C, R2>(
-    from: Schema<B, A, R1>,
-    to: Schema<D, C, R2>,
+  ): transform<From, To>
+  <From extends Schema.Any, To extends Schema.Any>(
+    from: From,
+    to: To,
     options: { readonly strict: false }
-  ): SchemaClass<D, A, R1 | R2>
+  ): transform<From, To>
 } = dual(
   (args) => isSchema(args[1]),
   <B, A, R1, D, C, R2>(from: Schema<B, A, R1>, to: Schema<D, C, R2>): SchemaClass<D, A, R1 | R2> =>
