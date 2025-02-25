@@ -3808,4 +3808,24 @@ describe("Schema", () => {
       expect(schema).type.toBe<typeof S.Defect>()
     })
   })
+
+  describe("parseJson", () => {
+    it("no arguments", () => {
+      const schema = S.parseJson()
+      expect(S.asSchema(schema)).type.toBe<S.Schema<unknown, string>>()
+      expect(schema).type.toBe<S.SchemaClass<unknown, string>>()
+      expect(schema.annotations({})).type.toBe<S.SchemaClass<unknown, string>>()
+    })
+
+    it("single argument", () => {
+      const schema = S.parseJson(S.Struct({ a: S.Number }))
+      expect(S.asSchema(schema)).type.toBe<S.Schema<{ readonly a: number }, string>>()
+      expect(schema).type.toBe<S.transform<S.SchemaClass<unknown, string>, S.Struct<{ a: typeof S.Number }>>>()
+      expect(schema.annotations({})).type.toBe<
+        S.transform<S.SchemaClass<unknown, string>, S.Struct<{ a: typeof S.Number }>>
+      >()
+      expect(schema.from).type.toBe<S.SchemaClass<unknown, string>>()
+      expect(schema.to).type.toBe<S.Struct<{ a: typeof S.Number }>>()
+    })
+  })
 })

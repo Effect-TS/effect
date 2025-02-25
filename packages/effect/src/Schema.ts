@@ -3478,7 +3478,7 @@ export const compose: {
 } = dual(
   (args) => isSchema(args[1]),
   <B, A, R1, D, C, R2>(from: Schema<B, A, R1>, to: Schema<D, C, R2>): SchemaClass<D, A, R1 | R2> =>
-    make(AST.compose(from.ast, to.ast))
+    makeTransformationClass(from, to, AST.compose(from.ast, to.ast))
 )
 
 /**
@@ -4688,7 +4688,7 @@ export type ParseJsonOptions = {
 
 const getErrorMessage = (e: unknown): string => e instanceof Error ? e.message : String(e)
 
-const getParseJsonTransformation = (options?: ParseJsonOptions) =>
+const getParseJsonTransformation = (options?: ParseJsonOptions): SchemaClass<unknown, string> =>
   transformOrFail(
     String$.annotations({ description: "a string to be decoded into JSON" }),
     Unknown,
@@ -4730,7 +4730,7 @@ const getParseJsonTransformation = (options?: ParseJsonOptions) =>
  * @since 3.10.0
  */
 export const parseJson: {
-  <A, I, R>(schema: Schema<A, I, R>, options?: ParseJsonOptions): SchemaClass<A, string, R>
+  <S extends Schema.Any>(schema: S, options?: ParseJsonOptions): transform<SchemaClass<unknown, string>, S>
   (options?: ParseJsonOptions): SchemaClass<unknown, string>
 } = <A, I, R>(schemaOrOptions?: Schema<A, I, R> | ParseJsonOptions, o?: ParseJsonOptions) =>
   isSchema(schemaOrOptions)
