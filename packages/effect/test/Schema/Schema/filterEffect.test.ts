@@ -6,7 +6,7 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { strictEqual } from "effect/test/util"
 
 describe("filterEffect", () => {
-  it("shoudl expose the original schema as `from`", async () => {
+  it("should expose the original schema as `from`", () => {
     const schema = S.filterEffect(S.String, () => Effect.succeed(true))
     strictEqual(schema.from, S.String)
     strictEqual(schema.to.ast, S.String.ast)

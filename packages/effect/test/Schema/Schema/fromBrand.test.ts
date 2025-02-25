@@ -2,6 +2,7 @@ import { describe, it } from "@effect/vitest"
 import * as Brand from "effect/Brand"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
+import { strictEqual } from "effect/test/util"
 
 type Int = number & Brand.Brand<"Int">
 const Int = Brand.refined<Int>(
@@ -32,6 +33,12 @@ describe("fromBrand", () => {
 └─ Predicate refinement failure
    └─ Expected -1 to be positive`
     )
+  })
+
+  it("[internal] should expose the original schema as `from`", () => {
+    // the from property is not exposed in the public API
+    const schema: any = S.Number.pipe(S.fromBrand(PositiveInt))
+    strictEqual(schema.from, S.Number)
   })
 
   it("test roundtrip consistency", () => {

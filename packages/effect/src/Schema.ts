@@ -1108,8 +1108,9 @@ export const fromBrand = <C extends Brand<string | symbol>, A extends Brand.Unbr
   constructor: Brand.Constructor<C>,
   annotations?: Annotations.Filter<C, A>
 ) =>
-<I, R>(self: Schema<A, I, R>): BrandSchema<A & C, I, R> =>
-  makeBrandClass<Schema<A & C, I, R>, string | symbol>(
+<I, R>(self: Schema<A, I, R>): BrandSchema<A & C, I, R> => {
+  const out = makeBrandClass(
+    self,
     new AST.Refinement(
       self.ast,
       function predicate(a: A, _: ParseOptions, ast: AST.AST): option_.Option<ParseResult.ParseIssue> {
@@ -1125,6 +1126,8 @@ export const fromBrand = <C extends Brand<string | symbol>, A extends Brand.Unbr
       })
     )
   )
+  return out as any
+}
 
 /**
  * @category schema id
@@ -3076,20 +3079,26 @@ export interface BrandSchema<A extends Brand<any>, I = A, R = never>
 export interface brand<S extends Schema.Any, B extends string | symbol>
   extends BrandSchema<Schema.Type<S> & Brand<B>, Schema.Encoded<S>, Schema.Context<S>>
 {
+  readonly from: S
   annotations(annotations: Annotations.Schema<Schema.Type<S> & Brand<B>>): brand<S, B>
 }
 
-const makeBrandClass = <S extends Schema.Any, B extends string | symbol>(
+function makeBrandClass<S extends Schema.Any, B extends string | symbol>(
+  from: S,
   ast: AST.AST
-): brand<S, B> => (class BrandClass extends make<Schema.Type<S> & Brand<B>, Schema.Encoded<S>, Schema.Context<S>>(ast) {
-  static override annotations(annotations: Annotations.Schema<Schema.Type<S> & Brand<B>>): brand<S, B> {
-    return makeBrandClass(mergeSchemaAnnotations(this.ast, annotations))
-  }
+): brand<S, B> {
+  return class BrandClass extends make<Schema.Type<S> & Brand<B>, Schema.Encoded<S>, Schema.Context<S>>(ast) {
+    static override annotations(annotations: Annotations.Schema<Schema.Type<S> & Brand<B>>): brand<S, B> {
+      return makeBrandClass(this.from, mergeSchemaAnnotations(this.ast, annotations))
+    }
 
-  static make = (a: Brand.Unbranded<Schema.Type<S> & Brand<B>>, options?: MakeOptions): Schema.Type<S> & Brand<B> => {
-    return getDisableValidationMakeOption(options) ? a : ParseResult.validateSync(this)(a)
+    static make = (a: Brand.Unbranded<Schema.Type<S> & Brand<B>>, options?: MakeOptions): Schema.Type<S> & Brand<B> => {
+      return getDisableValidationMakeOption(options) ? a : ParseResult.validateSync(this)(a)
+    }
+
+    static from = from
   }
-})
+}
 
 /**
  * Returns a nominal branded schema by applying a brand to a given schema.
@@ -3128,7 +3137,7 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
       ...annotations
     })
   )
-  return makeBrandClass(ast)
+  return makeBrandClass(self, ast)
 }
 
 /**
