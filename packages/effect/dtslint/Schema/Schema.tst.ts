@@ -3345,6 +3345,25 @@ describe("Schema", () => {
       // @ts-expect-error
       S.DataFromSelf(hole<S.Schema<{}, number>>())
 
+      // should allow generic context
+      const _f1 = <A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>>(schema: S.Schema<A>) =>
+        S.DataFromSelf(schema)
+      const _f2 = <
+        A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>,
+        I extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>
+      >(schema: S.Schema<A, I>) => S.DataFromSelf(schema)
+      const _f3 = <A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>, I extends number>(
+        schema: S.Schema<A, I>
+      ) =>
+        // @ts-expect-error: Type 'number' is not assignable to type 'Readonly<Record<string, unknown>>'
+        S.DataFromSelf(schema)
+      const _f4 = <A extends string>(schema: S.Schema<A>) =>
+        // @ts-expect-error: Type 'string' is not assignable to type 'Readonly<Record<string, unknown>>'
+        S.DataFromSelf(schema)
+
+      // should allow mutable arguments
+      S.DataFromSelf(S.mutable(S.Struct({ a: S.NumberFromString })))
+
       const schema = S.DataFromSelf(S.Struct({ a: S.NumberFromString }))
       expect(schema)
         .type.toBe<
