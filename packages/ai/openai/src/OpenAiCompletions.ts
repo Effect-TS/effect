@@ -67,7 +67,8 @@ export declare namespace Config {
           "messages" | "tools" | "tool_choice" | "stream" | "stream_options" | "functions"
         >
       >
-    > { }
+    >
+  {}
 }
 
 // =============================================================================
