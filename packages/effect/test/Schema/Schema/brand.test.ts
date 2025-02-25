@@ -9,6 +9,11 @@ describe("brand", () => {
     strictEqual(String(S.String.pipe(S.brand("my-brand"))), `string & Brand<"my-brand">`)
   })
 
+  it("should expose the original schema as `from`", () => {
+    const schema = S.String.pipe(S.brand("my-brand"))
+    strictEqual(schema.from, S.String)
+  })
+
   it("the constructor should validate the input by default", () => {
     const schema = S.NonEmptyString.pipe(S.brand("A"))
     Util.assertions.make.succeed(schema, "a")

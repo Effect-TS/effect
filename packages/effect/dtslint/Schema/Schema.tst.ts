@@ -1245,16 +1245,15 @@ describe("Schema", () => {
   })
 
   it("brand", () => {
-    expect(S.asSchema(pipe(S.Number, S.int(), S.brand("Int"))))
-      .type.toBe<S.Schema<number & Brand.Brand<"Int">, number>>()
-    expect(S.asSchema(pipe(S.Number, S.int(), S.brand("Int"))).annotations({}))
-      .type.toBe<S.Schema<number & Brand.Brand<"Int">, number>>()
-    expect(pipe(S.Number, S.int(), S.brand("Int")))
-      .type.toBe<S.brand<S.filter<typeof S.Number>, "Int">>()
-    expect(S.asSchema(pipe(S.NumberFromString, S.int(), S.brand("Int"))))
-      .type.toBe<S.Schema<number & Brand.Brand<"Int">, string>>()
-    expect(pipe(S.NumberFromString, S.int(), S.brand("Int")))
-      .type.toBe<S.brand<S.filter<typeof S.NumberFromString>, "Int">>()
+    const schema = pipe(S.Number, S.int(), S.brand("Int"))
+    expect(S.asSchema(schema)).type.toBe<S.Schema<number & Brand.Brand<"Int">, number>>()
+    expect(schema).type.toBe<S.brand<S.filter<typeof S.Number>, "Int">>()
+    expect(schema.annotations({})).type.toBe<S.brand<S.filter<typeof S.Number>, "Int">>()
+    expect(schema.from).type.toBe<S.filter<typeof S.Number>>()
+
+    const schema2 = pipe(S.NumberFromString, S.int(), S.brand("Int"))
+    expect(S.asSchema(schema2)).type.toBe<S.Schema<number & Brand.Brand<"Int">, string>>()
+    expect(schema2).type.toBe<S.brand<S.filter<typeof S.NumberFromString>, "Int">>()
   })
 
   it("partial", () => {
