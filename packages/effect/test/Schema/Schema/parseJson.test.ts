@@ -79,18 +79,18 @@ describe("parseJson", () => {
 
   describe("parseJson(schema)", () => {
     it("decoding", async () => {
-      const schema = S.parseJson(S.Struct({ a: S.Number }))
-      await Util.assertions.decoding.succeed(schema, `{"a":1}`, { a: 1 })
+      const schema = S.parseJson(S.Struct({ a: S.NumberFromString }))
+      await Util.assertions.decoding.succeed(schema, `{"a":"1"}`, { a: 1 })
       await Util.assertions.decoding.fail(
         schema,
         `{"a"}`,
         isBun
-          ? `(parseJson <-> { readonly a: number })
+          ? `(parseJson <-> { readonly a: NumberFromString })
 └─ Encoded side transformation failure
     └─ parseJson
       └─ Transformation process failure
           └─ JSON Parse error: Expected ':' before value in object property definition`
-          : `(parseJson <-> { readonly a: number })
+          : `(parseJson <-> { readonly a: NumberFromString })
 └─ Encoded side transformation failure
    └─ parseJson
       └─ Transformation process failure
@@ -99,17 +99,22 @@ describe("parseJson", () => {
       await Util.assertions.decoding.fail(
         schema,
         `{"a":"b"}`,
-        `(parseJson <-> { readonly a: number })
+        `(parseJson <-> { readonly a: NumberFromString })
 └─ Type side transformation failure
-   └─ { readonly a: number }
+   └─ { readonly a: NumberFromString }
       └─ ["a"]
-         └─ Expected number, actual "b"`
+         └─ NumberFromString
+            └─ Transformation process failure
+               └─ Unable to decode "b" into a number`
       )
+
+      await Util.assertions.decoding.succeed(schema.from, `{"a":"1"}`, { a: "1" })
+      await Util.assertions.decoding.succeed(schema.to, { a: "1" }, { a: 1 })
     })
 
     it("encoding", async () => {
-      const schema = S.parseJson(S.Struct({ a: S.Number }))
-      await Util.assertions.encoding.succeed(schema, { a: 1 }, `{"a":1}`)
+      const schema = S.parseJson(S.Struct({ a: S.NumberFromString }))
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, `{"a":"1"}`)
     })
 
     describe("roundtrip", () => {
