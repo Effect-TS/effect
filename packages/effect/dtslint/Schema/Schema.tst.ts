@@ -1776,39 +1776,145 @@ describe("Schema", () => {
     ).type.toBe<S.filterEffect<typeof S.String, "ServiceA">>()
   })
 
-  it("compose", () => {
-    expect(S.compose(S.split(","), S.Array(S.NumberFromString)))
-      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string>>()
-    expect(S.split(",").pipe(S.compose(S.Array(S.NumberFromString))))
-      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string>>()
-    expect(S.compose(S.split(","), S.Array(S.NumberFromString), { strict: true }))
-      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string>>()
-    expect(S.split(",").pipe(S.compose(S.Array(S.NumberFromString), { strict: true })))
-      .type.toBe<S.SchemaClass<ReadonlyArray<number>, string>>()
-    // @ts-expect-error
-    S.compose(S.String, S.Number)
-    // @ts-expect-error
-    S.String.pipe(S.compose(S.Number))
-    expect(S.compose(S.Union(S.Null, S.String), S.NumberFromString))
-      .type.toBe<S.SchemaClass<number, string | null>>()
-    expect(S.compose(S.Union(S.Null, S.String), S.NumberFromString, { strict: false }))
-      .type.toBe<S.SchemaClass<number, string | null>>()
-    expect(S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString)))
-      .type.toBe<S.SchemaClass<number, string | null>>()
-    expect(S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString, { strict: false })))
-      .type.toBe<S.SchemaClass<number, string | null>>()
-    expect(S.compose(S.NumberFromString, S.Union(S.Null, S.Number)))
-      .type.toBe<S.SchemaClass<number | null, string>>()
-    expect(S.compose(S.NumberFromString, S.Union(S.Null, S.Number), { strict: false }))
-      .type.toBe<S.SchemaClass<number | null, string>>()
-    expect(S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number))))
-      .type.toBe<S.SchemaClass<number | null, string>>()
-    expect(S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number), { strict: false })))
-      .type.toBe<S.SchemaClass<number | null, string>>()
-    expect(S.compose(S.String, S.Number, { strict: false }))
-      .type.toBe<S.SchemaClass<number, string>>()
-    expect(S.String.pipe(S.compose(S.Number, { strict: false })))
-      .type.toBe<S.SchemaClass<number, string>>()
+  describe("compose", () => {
+    it("{ strict: true } should not allow incompatible types", () => {
+      S.compose(
+        // @ts-expect-error: Type 'string' is not assignable to type 'number'
+        S.String,
+        S.Number
+      )
+      // @ts-expect-error: Type 'true' is not assignable to type 'false'
+      S.compose(
+        S.String,
+        S.Number,
+        { strict: true }
+      )
+      S.String.pipe(
+        // @ts-expect-error: Type 'string' is not assignable to type 'number'
+        S.compose(S.Number, { strict: true })
+      )
+    })
+
+    it("{ strict: false } should allow incompatible types", () => {
+      S.compose(S.String, S.Number, { strict: false })
+      S.String.pipe(S.compose(S.Number, { strict: false }))
+    })
+
+    it("data last", () => {
+      // first overload
+      const schema1_1 = S.split(",").pipe(S.compose(S.Array(S.NumberFromString)))
+      expect(S.asSchema(schema1_1)).type.toBe<S.Schema<ReadonlyArray<number>, string>>()
+      expect(schema1_1)
+        .type.toBe<
+        S.transform<
+          S.transform<S.SchemaClass<string, string, never>, S.Array$<typeof S.String>>,
+          S.Array$<typeof S.NumberFromString>
+        >
+      >()
+      expect(schema1_1.annotations({}))
+        .type.toBe<
+        S.transform<
+          S.transform<S.SchemaClass<string, string, never>, S.Array$<typeof S.String>>,
+          S.Array$<typeof S.NumberFromString>
+        >
+      >()
+      const schema1_2 = S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString))
+      expect(S.asSchema(schema1_2)).type.toBe<S.Schema<number, string | null>>()
+      expect(schema1_2)
+        .type.toBe<S.transform<S.Union<[typeof S.Null, typeof S.String]>, typeof S.NumberFromString>>()
+      expect(schema1_2.annotations({}))
+        .type.toBe<S.transform<S.Union<[typeof S.Null, typeof S.String]>, typeof S.NumberFromString>>()
+      expect(schema1_2.to).type.toBe<typeof S.NumberFromString>()
+
+      // second overload
+      const schema2 = S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number)))
+      expect(schema2)
+        .type.toBe<S.transform<typeof S.NumberFromString, S.Union<[typeof S.Null, typeof S.Number]>>>()
+      expect(schema2.annotations({}))
+        .type.toBe<S.transform<typeof S.NumberFromString, S.Union<[typeof S.Null, typeof S.Number]>>>()
+
+      // third overload
+      const schema3 = S.split(",").pipe(S.compose(S.Array(S.NumberFromString), { strict: true }))
+      expect(S.asSchema(schema3)).type.toBe<S.Schema<ReadonlyArray<number>, string>>()
+      expect(schema3).type.toBe<
+        S.transform<
+          S.transform<S.SchemaClass<string, string, never>, S.Array$<typeof S.String>>,
+          S.Array$<typeof S.NumberFromString>
+        >
+      >()
+      expect(schema3.annotations({})).type.toBe<
+        S.transform<
+          S.transform<S.SchemaClass<string, string, never>, S.Array$<typeof S.String>>,
+          S.Array$<typeof S.NumberFromString>
+        >
+      >()
+
+      // fourth overload
+      const schema4 = S.String.pipe(S.compose(S.Number, { strict: false }))
+      expect(S.asSchema(schema4)).type.toBe<S.Schema<number, string>>()
+      expect(schema4).type.toBe<S.transform<typeof S.String, typeof S.Number>>()
+      expect(schema4.annotations({})).type.toBe<S.transform<typeof S.String, typeof S.Number>>()
+      expect(schema4.from).type.toBe<typeof S.String>()
+      expect(schema4.to).type.toBe<typeof S.Number>()
+    })
+
+    it("data first", () => {
+      // first overload
+      const schema1_1 = S.compose(S.split(","), S.Array(S.NumberFromString))
+      expect(S.asSchema(schema1_1)).type.toBe<S.Schema<ReadonlyArray<number>, string>>()
+      expect(schema1_1)
+        .type.toBe<
+        S.transform<
+          S.transform<S.SchemaClass<string, string, never>, S.Array$<typeof S.String>>,
+          S.Array$<typeof S.NumberFromString>
+        >
+      >()
+      expect(schema1_1.annotations({}))
+        .type.toBe<
+        S.transform<
+          S.transform<S.SchemaClass<string, string, never>, S.Array$<typeof S.String>>,
+          S.Array$<typeof S.NumberFromString>
+        >
+      >()
+      const schema1_2 = S.compose(S.Union(S.Null, S.String), S.NumberFromString)
+      expect(S.asSchema(schema1_2)).type.toBe<S.Schema<number, string | null>>()
+      expect(schema1_2)
+        .type.toBe<S.transform<S.Union<[typeof S.Null, typeof S.String]>, typeof S.NumberFromString>>()
+      expect(schema1_2.annotations({}))
+        .type.toBe<S.transform<S.Union<[typeof S.Null, typeof S.String]>, typeof S.NumberFromString>>()
+      expect(schema1_2.to).type.toBe<typeof S.NumberFromString>()
+
+      // second overload
+      const schema2 = S.compose(S.NumberFromString, S.Union(S.Null, S.Number))
+      expect(schema2)
+        .type.toBe<S.transform<typeof S.NumberFromString, S.Union<[typeof S.Null, typeof S.Number]>>>()
+      expect(schema2.annotations({}))
+        .type.toBe<S.transform<typeof S.NumberFromString, S.Union<[typeof S.Null, typeof S.Number]>>>()
+
+      // third overload
+      const schema3 = S.compose(S.split(","), S.Array(S.NumberFromString), { strict: true })
+      expect(S.asSchema(schema3)).type.toBe<S.Schema<ReadonlyArray<number>, string>>()
+      expect(schema3).type.toBe<
+        S.transform<
+          S.transform<S.SchemaClass<string, string, never>, S.Array$<typeof S.String>>,
+          S.Array$<typeof S.NumberFromString>
+        >
+      >()
+      expect(schema3.annotations({})).type.toBe<
+        S.transform<
+          S.transform<S.SchemaClass<string, string, never>, S.Array$<typeof S.String>>,
+          S.Array$<typeof S.NumberFromString>
+        >
+      >()
+
+      // fourth overload
+      const schema4 = S.compose(S.String, S.Number, { strict: false })
+      expect(S.asSchema(schema4)).type.toBe<S.Schema<number, string>>()
+      expect(schema4).type.toBe<S.transform<typeof S.String, typeof S.Number>>()
+      expect(schema4.annotations({})).type.toBe<S.transform<typeof S.String, typeof S.Number>>()
+      expect(schema4.from).type.toBe<typeof S.String>()
+      expect(schema4.to).type.toBe<typeof S.Number>()
+    })
   })
 
   it("fromBrand", () => {

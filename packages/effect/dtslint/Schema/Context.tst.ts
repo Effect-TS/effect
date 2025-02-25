@@ -255,8 +255,8 @@ describe("Schema Context", () => {
   })
 
   it("compose", () => {
-    expect(aContext.pipe(S.compose(bContext, { strict: false })))
-      .type.toBe<S.SchemaClass<number, string, "aContext" | "bContext">>()
+    expect(S.asSchema(aContext.pipe(S.compose(bContext, { strict: false }))))
+      .type.toBe<S.Schema<number, string, "aContext" | "bContext">>()
   })
 
   it("suspend", () => {
