@@ -7,7 +7,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { CommitPrototype } from "effect/Effectable"
 import * as Exit from "effect/Exit"
-import { constTrue, dual } from "effect/Function"
+import { dual, identity } from "effect/Function"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
@@ -44,13 +44,13 @@ export type PlanTypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface AiModel<Provides, Requires> extends Plan<unknown, Provides, Requires>, Pipeable {
+export interface AiModel<in out Provides, in out Requires> extends Plan<unknown, Provides, Requires>, Pipeable {
   readonly [TypeId]: TypeId
   readonly model: string
   readonly cacheKey: symbol
   readonly requires: Context.Tag<Requires, any>
   readonly provides: AiModel.ContextBuilder<Provides, Requires>
-  readonly context: Context.Context<never>
+  readonly updateContext: (context: Context.Context<Provides>) => Context.Context<Provides>
 }
 
 /**
@@ -72,7 +72,7 @@ export declare namespace AiModel {
  * @since 1.0.0
  * @category Plan
  */
-export interface Plan<in Error, in out Provides, out Requires> extends
+export interface Plan<in Error, in out Provides, in out Requires> extends
   Pipeable,
   Effect.Effect<
     <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>,
@@ -114,7 +114,7 @@ export declare namespace Plan {
    */
   export interface Step<Error, Provides, Requires> {
     readonly model: AiModel<Provides, Requires>
-    readonly check: (error: Error) => boolean | Effect.Effect<boolean>
+    readonly check: Option.Option<(error: Error) => boolean | Effect.Effect<boolean>>
     readonly schedule: Option.Option<Schedule.Schedule<any, Error, Requires>>
   }
 }
@@ -144,14 +144,14 @@ export const make = <Provides, Requires>(options: {
   readonly cacheKey: symbol
   readonly requires: Context.Tag<Requires, any>
   readonly provides: AiModel.ContextBuilder<Provides, Requires>
-  readonly context: Context.Context<never>
+  readonly updateContext: (context: Context.Context<Provides>) => Context.Context<Provides>
 }): AiModel<Provides, Requires> => {
   const self = Object.create(AiModelProto)
   self.cacheKey = options.cacheKey
   self.model = options.model
   self.provides = options.provides
   self.requires = options.requires
-  self.context = options.context
+  self.updateContext = options.updateContext
   self.steps = [{
     model: self,
     schedule: Option.none()
@@ -210,7 +210,7 @@ export const retry: {
 >(2, (self, options) =>
   makePlan([{
     model: self,
-    check: (options.while ?? constTrue) as any,
+    check: Option.fromNullable(options.while) as any,
     schedule: resolveSchedule(options)
   }]))
 
@@ -280,7 +280,7 @@ export const withFallback: {
     ...self.steps,
     {
       model: options.model,
-      check: options.while as any ?? constTrue,
+      check: Option.fromNullable(options.while) as any,
       schedule: resolveSchedule(options)
     }
   ]))
@@ -316,22 +316,20 @@ export const buildPlan = <Error, Provides, Requires>(
     return Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
       let exit: Exit.Exit<A, E> | undefined = undefined
       for (const step of plan.steps) {
-        if (exit !== undefined && Exit.isFailure(exit)) {
-          const check = step.check(Cause.squash(exit.cause) as Error)
+        if (exit !== undefined && Exit.isFailure(exit) && Option.isSome(step.check)) {
+          const check = step.check.value(Cause.squash(exit.cause) as Error)
           const isFatalError = !(Effect.isEffect(check) ? yield* check : check)
           if (isFatalError) break
         }
-        const retryPolicy = Option.getOrUndefined(step.schedule) as Schedule.Schedule<any, unknown, never>
+        const retryOptions = getRetryOptions(step)
         exit = yield* Effect.scopedWith((scope) =>
           models.build(step.model, context).pipe(
             Scope.extend(scope),
             Effect.flatMap((context) =>
               effect.pipe(
-                // @ts-expect-error
-                Effect.retry({
-                  schedule: retryPolicy,
-                  while: step.check
-                }),
+                Option.isSome(retryOptions)
+                  ? Effect.retry(retryOptions.value)
+                  : identity,
                 Effect.provide(context)
               )
             ),
@@ -343,3 +341,15 @@ export const buildPlan = <Error, Provides, Requires>(
       return yield* exit!
     })
   })
+
+function getRetryOptions<Error, Provides, Requires>(
+  step: Plan.Step<Error, Provides, Requires>
+): Option.Option<Effect.Retry.Options<any>> {
+  if (Option.isNone(step.schedule) && Option.isNone(step.schedule)) {
+    return Option.none()
+  }
+  return Option.some({
+    schedule: Option.getOrUndefined(step.schedule),
+    while: Option.getOrUndefined(step.check)
+  })
+}

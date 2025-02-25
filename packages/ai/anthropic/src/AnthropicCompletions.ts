@@ -98,7 +98,10 @@ export const model = (
         )
       )
     ),
-    context: Context.make(Config, { ...config, model })
+    updateContext: (context) => {
+      const config = context.unsafeMap.get(Config.key) as Config.Service | undefined
+      return Context.merge(context, Context.make(Config, { model, ...config }))
+    }
   })
 
 const make = Effect.fnUntraced(function*(options: {

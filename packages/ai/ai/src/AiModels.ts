@@ -52,10 +52,7 @@ class AiModelsKey {
 const make = Effect.gen(function*() {
   const services = yield* RcMap.make({
     idleTimeToLive: "1 minute",
-    lookup: (key: AiModelsKey) => {
-      console.log("BUILDING SERVICE FOR: ", key.model.cacheKey)
-      return Effect.provideService(key.model.provides, key.model.requires, key.service)
-    }
+    lookup: (key: AiModelsKey) => Effect.provideService(key.model.provides, key.model.requires, key.service)
   })
 
   const build = <Provides, Requires>(
@@ -67,7 +64,7 @@ const make = Effect.gen(function*() {
         services,
         new AiModelsKey(model, Context.get(context, model.requires as any))
       ),
-      (context) => Context.merge(context, model.context)
+      (context) => model.updateContext(context)
     )
 
   return { build } as const

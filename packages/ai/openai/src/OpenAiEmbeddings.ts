@@ -36,7 +36,7 @@ export class Config extends Context.Tag("@effect/ai-openai/OpenAiEmbeddings/Conf
   /**
    * @since 1.0.0
    */
-  static readonly getOrUndefined: Effect.Effect<typeof Config.Service | undefined> = Effect.map(
+  static readonly getOrUndefined: Effect.Effect<Config.Service | undefined> = Effect.map(
     Effect.context<never>(),
     (context) => context.unsafeMap.get(Config.key)
   )
@@ -106,17 +106,20 @@ export const model = (
     model,
     cacheKey: modelCacheKey,
     requires: OpenAiClient,
-    provides: (config.mode === "batched"
-      ? makeBatched({ model, config })
-      : makeDataLoader({ model, config })).pipe(
-        Effect.map((embeddings) =>
-          Context.merge(
-            Context.make(Embeddings.Embeddings, embeddings),
-            Context.make(Tokenizer.Tokenizer, OpenAiTokenizer.make({ model }))
-          )
-        )
-      ),
-    context: Context.make(Config, { ...config, model })
+    provides: Effect.map(
+      config.mode === "batched"
+        ? makeBatched({ model, config })
+        : makeDataLoader({ model, config }),
+      (embeddings) => Context.make(Embeddings.Embeddings, embeddings)
+    ) as Effect.Effect<Context.Context<Embeddings.Embeddings | Tokenizer.Tokenizer>>,
+    updateContext: (context) => {
+      const config = context.unsafeMap.get(Config.key) as Config.Service | undefined
+      return Context.mergeAll(
+        context,
+        Context.make(Config, { model, ...config }),
+        Context.make(Tokenizer.Tokenizer, OpenAiTokenizer.make({ model: config?.model ?? model }))
+      )
+    }
   })
 
 const makeRequest = (
