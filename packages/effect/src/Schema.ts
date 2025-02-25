@@ -3033,11 +3033,11 @@ export const omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...key
 export const pluck: {
   <A, I, K extends keyof A & keyof I>(
     key: K
-  ): <R>(schema: Schema<A, I, R>) => Schema<A[K], Simplify<Pick<I, K>>, R>
+  ): <R>(schema: Schema<A, I, R>) => SchemaClass<A[K], Simplify<Pick<I, K>>, R>
   <A, I, R, K extends keyof A & keyof I>(
     schema: Schema<A, I, R>,
     key: K
-  ): Schema<A[K], Simplify<Pick<I, K>>, R>
+  ): SchemaClass<A[K], Simplify<Pick<I, K>>, R>
 } = dual(
   2,
   <A, I, R, K extends keyof A & keyof I>(
@@ -3046,7 +3046,7 @@ export const pluck: {
   ): Schema<A[K], Pick<I, K>, R> => {
     const ps = AST.getPropertyKeyIndexedAccess(AST.typeAST(schema.ast), key)
     const value = make<A[K], A[K], R>(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
-    return transform(
+    const out = transform(
       schema.pipe(pick(key)),
       value,
       {
@@ -3055,6 +3055,7 @@ export const pluck: {
         encode: (ak) => ps.isOptional && ak === undefined ? {} : { [key]: ak } as any
       }
     )
+    return out
   }
 )
 
@@ -3900,7 +3901,11 @@ export const transform: {
  * @category api interface
  * @since 3.10.0
  */
-export interface transformLiteral<Type, Encoded> extends Annotable<transformLiteral<Type, Encoded>, Type, Encoded> {}
+export interface transformLiteral<Type extends AST.LiteralValue, Encoded extends AST.LiteralValue>
+  extends transform<Literal<[Encoded]>, Literal<[Type]>>
+{
+  annotations(annotations: Annotations.Schema<Type>): transformLiteral<Type, Encoded>
+}
 
 /**
  * Creates a new `Schema` which transforms literal values.
@@ -3917,11 +3922,12 @@ export interface transformLiteral<Type, Encoded> extends Annotable<transformLite
  * @category constructors
  * @since 3.10.0
  */
-export const transformLiteral = <Encoded extends AST.LiteralValue, Type extends AST.LiteralValue>(
+export function transformLiteral<Encoded extends AST.LiteralValue, Type extends AST.LiteralValue>(
   from: Encoded,
   to: Type
-): transformLiteral<Type, Encoded> =>
-  transform(Literal(from), Literal(to), { strict: true, decode: () => to, encode: () => from })
+): transformLiteral<Type, Encoded> {
+  return transform(Literal(from), Literal(to), { strict: true, decode: () => to, encode: () => from })
+}
 
 /**
  * Creates a new `Schema` which maps between corresponding literal values.
@@ -5159,14 +5165,16 @@ export const nonNegative = <S extends Schema.Any>(
  * @category number transformations
  * @since 3.10.0
  */
-export const clamp =
-  (minimum: number, maximum: number) =>
-  <A extends number, I, R>(self: Schema<A, I, R>): transform<Schema<A, I, R>, filter<Schema<A>>> =>
-    transform(
-      self,
-      self.pipe(typeSchema, between(minimum, maximum)),
-      { strict: false, decode: (self) => number_.clamp(self, { minimum, maximum }), encode: identity }
-    )
+export const clamp = (minimum: number, maximum: number) =>
+<S extends Schema.Any, A extends number>(
+  self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>
+): transform<S, filter<SchemaClass<A>>> => {
+  return transform(
+    self,
+    typeSchema(self).pipe(between(minimum, maximum)),
+    { strict: false, decode: (self) => number_.clamp(self, { minimum, maximum }), encode: identity }
+  )
+}
 
 /**
  * Transforms a `string` into a `number` by parsing the string using the `parse`
@@ -5542,14 +5550,15 @@ export const nonPositiveBigInt = <S extends Schema.Any>(
  * @category bigint transformations
  * @since 3.10.0
  */
-export const clampBigInt =
-  (minimum: bigint, maximum: bigint) =>
-  <A extends bigint, I, R>(self: Schema<A, I, R>): transform<Schema<A, I, R>, filter<Schema<A>>> =>
-    transform(
-      self,
-      self.pipe(typeSchema, betweenBigInt(minimum, maximum)),
-      { strict: false, decode: (self) => bigInt_.clamp(self, { minimum, maximum }), encode: identity }
-    )
+export const clampBigInt = (minimum: bigint, maximum: bigint) =>
+<S extends Schema.Any, A extends bigint>(
+  self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>
+): transform<S, filter<SchemaClass<A>>> =>
+  transform(
+    self,
+    self.pipe(typeSchema, betweenBigInt(minimum, maximum)),
+    { strict: false, decode: (self) => bigInt_.clamp(self, { minimum, maximum }), encode: identity }
+  )
 
 /** @ignore */
 class BigInt$ extends transformOrFail(
@@ -5908,7 +5917,9 @@ export class Duration extends transform(
  */
 export const clampDuration =
   (minimum: duration_.DurationInput, maximum: duration_.DurationInput) =>
-  <A extends duration_.Duration, I, R>(self: Schema<A, I, R>): transform<Schema<A, I, R>, filter<Schema<A>>> =>
+  <S extends Schema.Any, A extends duration_.Duration>(
+    self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>
+  ): transform<S, filter<SchemaClass<A>>> =>
     transform(
       self,
       self.pipe(typeSchema, betweenDuration(minimum, maximum)),
@@ -6377,14 +6388,19 @@ export const getNumberIndexedAccess = <A extends ReadonlyArray<any>, I extends R
  * @category ReadonlyArray transformations
  * @since 3.10.0
  */
-export const head = <A, I, R>(
-  self: Schema<ReadonlyArray<A>, I, R>
-): transform<Schema<ReadonlyArray<A>, I, R>, OptionFromSelf<SchemaClass<A>>> =>
-  transform(
+export function head<S extends Schema.Any, A extends ReadonlyArray<unknown>>(
+  self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>
+): transform<S, OptionFromSelf<SchemaClass<A[number]>>> {
+  return transform(
     self,
     OptionFromSelf(getNumberIndexedAccess(typeSchema(self))),
-    { strict: true, decode: array_.head, encode: option_.match({ onNone: () => [], onSome: array_.of }) }
+    {
+      strict: false,
+      decode: array_.head,
+      encode: option_.match({ onNone: () => [], onSome: array_.of })
+    }
   )
+}
 
 /**
  * Get the first element of a `NonEmptyReadonlyArray`.
@@ -6392,14 +6408,19 @@ export const head = <A, I, R>(
  * @category NonEmptyReadonlyArray transformations
  * @since 3.12.0
  */
-export const headNonEmpty = <A, I, R>(
-  self: Schema<array_.NonEmptyReadonlyArray<A>, I, R>
-): transform<Schema<readonly [A, ...Array<A>], I, R>, SchemaClass<A>> =>
-  transform(
+export function headNonEmpty<S extends Schema.Any, A extends array_.NonEmptyReadonlyArray<unknown>>(
+  self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>
+): transform<S, SchemaClass<A[number]>> {
+  return transform(
     self,
     getNumberIndexedAccess(typeSchema(self)),
-    { strict: true, decode: array_.headNonEmpty, encode: array_.of }
+    {
+      strict: false,
+      decode: array_.headNonEmpty,
+      encode: (x: A[number]) => array_.of(x)
+    }
   )
+}
 
 /**
  * Retrieves the first element of a `ReadonlyArray`.
@@ -6410,13 +6431,15 @@ export const headNonEmpty = <A, I, R>(
  * @since 3.10.0
  */
 export const headOrElse: {
-  <A>(
-    fallback?: LazyArg<A>
-  ): <I, R>(self: Schema<ReadonlyArray<A>, I, R>) => transform<Schema<ReadonlyArray<A>, I, R>, SchemaClass<A>>
-  <A, I, R>(
-    self: Schema<ReadonlyArray<A>, I, R>,
-    fallback?: LazyArg<A>
-  ): transform<Schema<ReadonlyArray<A>, I, R>, SchemaClass<A>>
+  <S extends Schema.Any, A extends ReadonlyArray<unknown>>(
+    fallback?: LazyArg<A[number]>
+  ): (
+    self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>
+  ) => transform<S, SchemaClass<A[number]>>
+  <S extends Schema.Any, A extends ReadonlyArray<unknown>>(
+    self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>,
+    fallback?: LazyArg<A[number]>
+  ): transform<S, SchemaClass<A[number]>>
 } = dual(
   (args) => isSchema(args[0]),
   <A, I, R>(
@@ -7535,7 +7558,7 @@ export {
 export const ReadonlyMapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
   key: Schema<KA, string, KR>
   value: Schema<VA, VI, VR>
-}): Schema<ReadonlyMap<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
+}): SchemaClass<ReadonlyMap<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
   transform(
     Record({ key: encodedBoundSchema(key), value }).annotations({
       description: "a record to be decoded into a ReadonlyMap"
@@ -7555,7 +7578,7 @@ export const ReadonlyMapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
 export const MapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
   key: Schema<KA, string, KR>
   value: Schema<VA, VI, VR>
-}): Schema<Map<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
+}): SchemaClass<Map<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
   transform(
     Record({ key: encodedBoundSchema(key), value }).annotations({
       description: "a record to be decoded into a Map"
@@ -8021,7 +8044,9 @@ export const betweenBigDecimal = <S extends Schema.Any>(
  */
 export const clampBigDecimal =
   (minimum: bigDecimal_.BigDecimal, maximum: bigDecimal_.BigDecimal) =>
-  <A extends bigDecimal_.BigDecimal, I, R>(self: Schema<A, I, R>): transform<Schema<A, I, R>, filter<Schema<A>>> =>
+  <S extends Schema.Any, A extends bigDecimal_.BigDecimal>(
+    self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>
+  ): transform<S, filter<SchemaClass<A>>> =>
     transform(
       self,
       self.pipe(typeSchema, betweenBigDecimal(minimum, maximum)),
