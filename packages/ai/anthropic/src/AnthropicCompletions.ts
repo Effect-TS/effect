@@ -99,8 +99,8 @@ export const model = (
       )
     ),
     updateContext: (context) => {
-      const config = context.unsafeMap.get(Config.key) as Config.Service | undefined
-      return Context.merge(context, Context.make(Config, { model, ...config }))
+      const innerConfig = context.unsafeMap.get(Config.key) as Config.Service | undefined
+      return Context.merge(context, Context.make(Config, { model, ...config, ...innerConfig }))
     }
   })
 

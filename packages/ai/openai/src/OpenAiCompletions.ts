@@ -94,11 +94,11 @@ export const model = (
       (completions) => Context.make(Completions.Completions, completions)
     ) as Effect.Effect<Context.Context<Completions.Completions | Tokenizer.Tokenizer>>,
     updateContext: (context) => {
-      const config = context.unsafeMap.get(Config.key) as Config.Service | undefined
+      const innerConfig = context.unsafeMap.get(Config.key) as Config.Service | undefined
       return Context.mergeAll(
         context,
-        Context.make(Config, { model, ...config }),
-        Context.make(Tokenizer.Tokenizer, OpenAiTokenizer.make({ model: config?.model ?? model }))
+        Context.make(Config, { model, ...config, ...innerConfig }),
+        Context.make(Tokenizer.Tokenizer, OpenAiTokenizer.make({ model: innerConfig?.model ?? model }))
       )
     }
   })

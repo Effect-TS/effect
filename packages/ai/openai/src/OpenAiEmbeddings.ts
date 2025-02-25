@@ -10,6 +10,7 @@ import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Struct from "effect/Struct"
 import type { Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
 import { OpenAiClient } from "./OpenAiClient.js"
@@ -87,7 +88,8 @@ export declare namespace Config {
 // OpenAi Embeddings
 // =============================================================================
 
-const modelCacheKey = Symbol.for("@effect/ai-openai/OpenAiEmbeddings/AiModel")
+const batchedModelCacheKey = Symbol.for("@effect/ai-openai/OpenAiEmbeddings/Batched/AiModel")
+const dataLoaderModelCacheKey = Symbol.for("@effect/ai-openai/OpenAiEmbeddings/DataLoader/AiModel")
 
 /**
  * @since 1.0.0
@@ -104,7 +106,7 @@ export const model = (
 ): AiModel.AiModel<Embeddings.Embeddings | Tokenizer.Tokenizer, OpenAiClient> =>
   AiModel.make({
     model,
-    cacheKey: modelCacheKey,
+    cacheKey: config.mode === "batched" ? batchedModelCacheKey : dataLoaderModelCacheKey,
     requires: OpenAiClient,
     provides: Effect.map(
       config.mode === "batched"
@@ -113,11 +115,14 @@ export const model = (
       (embeddings) => Context.make(Embeddings.Embeddings, embeddings)
     ) as Effect.Effect<Context.Context<Embeddings.Embeddings | Tokenizer.Tokenizer>>,
     updateContext: (context) => {
-      const config = context.unsafeMap.get(Config.key) as Config.Service | undefined
+      const outerConfig = config.mode === "batched"
+        ? Struct.omit("mode", "maxBatchSize", "cache")(config)
+        : Struct.omit("mode", "maxBatchSize", "window")(config)
+      const innerConfig = context.unsafeMap.get(Config.key) as Config.Service | undefined
       return Context.mergeAll(
         context,
-        Context.make(Config, { model, ...config }),
-        Context.make(Tokenizer.Tokenizer, OpenAiTokenizer.make({ model: config?.model ?? model }))
+        Context.make(Config, { model, ...outerConfig, ...innerConfig }),
+        Context.make(Tokenizer.Tokenizer, OpenAiTokenizer.make({ model: innerConfig?.model ?? model }))
       )
     }
   })
