@@ -37,23 +37,25 @@ export declare namespace AiModels {
 
 class AiModelsKey {
   constructor(
-    readonly build: Effect.Effect<Context.Context<never>>,
-    readonly tag: Context.Tag<any, any>,
+    readonly model: AiModel<any, any>,
     readonly service: unknown
   ) {}
 
   [Equal.symbol](that: AiModelsKey): boolean {
-    return this.service === that.service && this.build === that.build
+    return this.service === that.service && this.model.cacheKey === that.model.cacheKey
   }
   [Hash.symbol](): number {
-    return Hash.combine(Hash.hash(this.service))(Hash.hash(this.build))
+    return Hash.combine(Hash.hash(this.service))(Hash.hash(this.model.cacheKey))
   }
 }
 
 const make = Effect.gen(function*() {
   const services = yield* RcMap.make({
     idleTimeToLive: "1 minute",
-    lookup: (key: AiModelsKey) => Effect.provideService(key.build, key.tag, key.service)
+    lookup: (key: AiModelsKey) => {
+      console.log("BUILDING SERVICE FOR: ", key.model.cacheKey)
+      return Effect.provideService(key.model.provides, key.model.requires, key.service)
+    }
   })
 
   const build = <Provides, Requires>(
@@ -63,14 +65,10 @@ const make = Effect.gen(function*() {
     Effect.map(
       RcMap.get(
         services,
-        new AiModelsKey(
-          model.provides as any,
-          model.requires,
-          Context.get(context, model.requires as any)
-        )
+        new AiModelsKey(model, Context.get(context, model.requires as any))
       ),
       (context) => Context.merge(context, model.context)
-    ) as any
+    )
 
   return { build } as const
 })

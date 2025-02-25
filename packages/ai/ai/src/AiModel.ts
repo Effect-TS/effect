@@ -47,6 +47,7 @@ export type PlanTypeId = typeof TypeId
 export interface AiModel<Provides, Requires> extends Plan<unknown, Provides, Requires>, Pipeable {
   readonly [TypeId]: TypeId
   readonly model: string
+  readonly cacheKey: symbol
   readonly requires: Context.Tag<Requires, any>
   readonly provides: AiModel.ContextBuilder<Provides, Requires>
   readonly context: Context.Context<never>
@@ -118,36 +119,6 @@ export declare namespace Plan {
   }
 }
 
-const AiModelProto = {
-  [TypeId]: TypeId,
-  [PlanTypeId]: PlanTypeId,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const make = <Provides, Requires>(options: {
-  readonly model: string
-  readonly requires: Context.Tag<Requires, any>
-  readonly provides: AiModel.ContextBuilder<Provides, Requires>
-  readonly context: Context.Context<never>
-}): AiModel<Provides, Requires> => {
-  const self = Object.create(AiModelProto)
-  self.model = options.model
-  self.provides = options.provides
-  self.context = options.context
-  self.requires = options.requires
-  self.steps = [{
-    model: self,
-    schedule: Option.none()
-  }]
-  return self
-}
-
 const PlanProto = {
   ...CommitPrototype,
   [PlanTypeId]: PlanTypeId,
@@ -157,6 +128,35 @@ const PlanProto = {
   pipe() {
     return pipeArguments(this, arguments)
   }
+}
+
+const AiModelProto = {
+  ...PlanProto,
+  [TypeId]: TypeId
+}
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const make = <Provides, Requires>(options: {
+  readonly model: string
+  readonly cacheKey: symbol
+  readonly requires: Context.Tag<Requires, any>
+  readonly provides: AiModel.ContextBuilder<Provides, Requires>
+  readonly context: Context.Context<never>
+}): AiModel<Provides, Requires> => {
+  const self = Object.create(AiModelProto)
+  self.cacheKey = options.cacheKey
+  self.model = options.model
+  self.provides = options.provides
+  self.requires = options.requires
+  self.context = options.context
+  self.steps = [{
+    model: self,
+    schedule: Option.none()
+  }]
+  return self
 }
 
 const makePlan = <
@@ -179,13 +179,16 @@ export const retry: {
   }): <Provides, Requires>(
     self: AiModel<Provides, Requires>
   ) => Plan<E & ES, Provides, RW | RS | Requires>
-  <Provides, Requires, E, Out, ES, R = never, R2 = never>(self: AiModel<Provides, Requires>, options: {
-    readonly attempts?: number | undefined
-    readonly while?:
-      | ((error: E) => boolean | Effect.Effect<boolean, never, R>)
-      | undefined
-    readonly schedule?: Schedule.Schedule<Out, ES, R2> | undefined
-  }): Plan<E & ES, Provides, R | R2 | Requires>
+  <Provides, Requires, E, Out, ES, R = never, R2 = never>(
+    self: AiModel<Provides, Requires>,
+    options: {
+      readonly attempts?: number | undefined
+      readonly while?:
+        | ((error: E) => boolean | Effect.Effect<boolean, never, R>)
+        | undefined
+      readonly schedule?: Schedule.Schedule<Out, ES, R2> | undefined
+    }
+  ): Plan<E & ES, Provides, R | R2 | Requires>
 } = dual<
   <E, Out, ES, RW = never, RS = never>(options: {
     readonly attempts?: number | undefined

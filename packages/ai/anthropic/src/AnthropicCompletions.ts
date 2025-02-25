@@ -8,11 +8,12 @@ import * as AiResponse from "@effect/ai/AiResponse"
 import * as AiRole from "@effect/ai/AiRole"
 import { addGenAIAnnotations } from "@effect/ai/AiTelemetry"
 import * as Completions from "@effect/ai/Completions"
-import type * as Tokenizer from "@effect/ai/Tokenizer"
+import * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -38,7 +39,7 @@ export type Model = typeof Generated.ModelEnum.Encoded
  * @since 1.0.0
  * @category tags
  */
-export class Config extends Context.Tag("@effect/ai-anthropic/Completions/Config")<
+export class Config extends Context.Tag("@effect/ai-anthropic/AnthropicCompletions/Config")<
   Config,
   Config.Service
 >() {
@@ -53,12 +54,11 @@ export class Config extends Context.Tag("@effect/ai-anthropic/Completions/Config
 
 /**
  * @since 1.0.0
- * @category models
  */
 export declare namespace Config {
   /**
    * @since 1.0.0
-   * @category models
+   * @category configuration
    */
   export interface Service extends
     Simplify<
@@ -76,114 +76,118 @@ export declare namespace Config {
 // Anthropic Completions
 // =============================================================================
 
+const modelCacheKey = Symbol.for("@effect/ai-anthropic/AnthropicCompletions/AiModel")
+
 /**
  * @since 1.0.0
  * @category ai models
  */
-export const model = (model: (string & {}) | Model, config?: Config.Service): AiModel.AiModel<
-  Completions.Completions,
-  AnthropicClient
-> =>
+export const model = (
+  model: (string & {}) | Model,
+  config?: Omit<Config.Service, "model">
+): AiModel.AiModel<Completions.Completions | Tokenizer.Tokenizer, AnthropicClient> =>
   AiModel.make({
     model,
+    cacheKey: modelCacheKey,
     requires: AnthropicClient,
-    provides: make({ model }).pipe(
-      Effect.map((completions) => Context.make(Completions.Completions, completions)),
-      Effect.provideService(Config, { ...config, model })
-    )
+    provides: make({ model, config }).pipe(
+      Effect.map((completions) =>
+        Context.merge(
+          Context.make(Completions.Completions, completions),
+          Context.make(Tokenizer.Tokenizer, AnthropicTokenizer.make)
+        )
+      )
+    ),
+    context: Context.make(Config, { ...config, model })
   })
 
-const make = (options: { readonly model: (string & {}) | Model }) =>
-  Effect.gen(function*() {
-    const client = yield* AnthropicClient
-    const config = yield* Config.getOrUndefined
+const make = Effect.fnUntraced(function*(options: {
+  readonly model: (string & {}) | Model
+  readonly config?: Omit<Config.Service, "model">
+}) {
+  const client = yield* AnthropicClient
 
-    const makeRequest = ({
-      input,
-      required,
-      system,
-      tools
-    }: Completions.CompletionOptions) => {
-      const useStructured = tools.length === 1 && tools[0].structured
-      return Effect.map(
-        Effect.context<never>(),
-        (context): typeof Generated.CreateMessageParams.Encoded => ({
-          model: options.model,
-          // TODO: re-evaluate a better way to do this
-          max_tokens: 4096,
-          ...config,
-          ...context.unsafeMap.get(Config.key),
-          system: Option.getOrUndefined(system),
-          messages: makeMessages(input),
-          tools: tools.length === 0 ? undefined : tools.map((tool) => ({
-            name: tool.name,
-            description: tool.description,
-            input_schema: tool.parameters as any
-          })),
-          tool_choice: !useStructured && tools.length > 0
-            // For non-structured outputs, ensure tools are used if required
-            ? typeof required === "boolean"
-              ? required ? { type: "any" } : { type: "auto" }
-              : { type: "tool", name: required }
-            // For structured outputs, ensure the json output tool is used
-            : useStructured
-            ? { type: "tool", name: tools[0].name }
-            : undefined
-        })
+  const makeRequest = ({ input, required, system, tools }: Completions.CompletionOptions) => {
+    const useStructured = tools.length === 1 && tools[0].structured
+    return Effect.map(
+      Effect.context<never>(),
+      (context): typeof Generated.CreateMessageParams.Encoded => ({
+        model: options.model,
+        // TODO: re-evaluate a better way to do this
+        max_tokens: 4096,
+        ...options.config,
+        ...context.unsafeMap.get(Config.key),
+        system: Option.getOrUndefined(system),
+        messages: makeMessages(input),
+        tools: tools.length === 0 ? undefined : tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          input_schema: tool.parameters as any
+        })),
+        tool_choice: !useStructured && tools.length > 0
+          // For non-structured outputs, ensure tools are used if required
+          ? typeof required === "boolean"
+            ? required ? { type: "any" } : { type: "auto" }
+            : { type: "tool", name: required }
+          // For structured outputs, ensure the json output tool is used
+          : useStructured
+          ? { type: "tool", name: tools[0].name }
+          : undefined
+      })
+    )
+  }
+
+  return yield* Completions.make({
+    create({ span, ...options }) {
+      return makeRequest(options).pipe(
+        Effect.tap((request) => annotateRequest(span, request)),
+        Effect.flatMap((payload) => client.client.messagesPost({ params: {}, payload })),
+        Effect.tap((response) => annotateChatResponse(span, response)),
+        Effect.flatMap((response) =>
+          makeResponse(
+            response,
+            "create",
+            options.tools.length === 1 && options.tools[0].structured
+              ? options.tools[0]
+              : undefined
+          )
+        ),
+        Effect.catchAll((cause) =>
+          Effect.fail(
+            new AiError({
+              module: "AnthropicCompletions",
+              method: "create",
+              description: "An error occurred",
+              cause
+            })
+          )
+        )
+      )
+    },
+    stream({ span, ...options }) {
+      return makeRequest(options).pipe(
+        Effect.tap((request) => annotateRequest(span, request)),
+        Effect.map(client.stream),
+        Stream.unwrap,
+        Stream.tap((response) => {
+          annotateStreamResponse(span, response)
+          return Effect.void
+        }),
+        Stream.map((response) => response.asAiResponse),
+        Stream.catchAll((cause) =>
+          Effect.fail(
+            new AiError({
+              module: "AnthropicCompletions",
+              method: "stream",
+              description: "An error occurred",
+              cause
+            })
+          )
+        )
       )
     }
-
-    return yield* Completions.make({
-      create({ span, ...options }) {
-        return makeRequest(options).pipe(
-          Effect.tap((request) => annotateRequest(span, request)),
-          Effect.flatMap((payload) => client.client.messagesPost({ params: {}, payload })),
-          Effect.tap((response) => annotateChatResponse(span, response)),
-          Effect.flatMap((response) =>
-            makeResponse(
-              response,
-              "create",
-              options.tools.length === 1 && options.tools[0].structured
-                ? options.tools[0]
-                : undefined
-            )
-          ),
-          Effect.catchAll((cause) =>
-            Effect.fail(
-              new AiError({
-                module: "AnthropicCompletions",
-                method: "create",
-                description: "An error occurred",
-                cause
-              })
-            )
-          )
-        )
-      },
-      stream({ span, ...options }) {
-        return makeRequest(options).pipe(
-          Effect.tap((request) => annotateRequest(span, request)),
-          Effect.map(client.stream),
-          Stream.unwrap,
-          Stream.tap((response) => {
-            annotateStreamResponse(span, response)
-            return Effect.void
-          }),
-          Stream.map((response) => response.asAiResponse),
-          Stream.catchAll((cause) =>
-            Effect.fail(
-              new AiError({
-                module: "AnthropicCompletions",
-                method: "stream",
-                description: "An error occurred",
-                cause
-              })
-            )
-          )
-        )
-      }
-    })
   })
+})
 
 /**
  * @since 1.0.0
@@ -191,7 +195,12 @@ const make = (options: { readonly model: (string & {}) | Model }) =>
  */
 export const layerCompletions = (options: {
   readonly model: (string & {}) | Model
-}): Layer.Layer<Completions.Completions, never, AnthropicClient> => Layer.effect(Completions.Completions, make(options))
+  readonly config?: Omit<Config.Service, "model">
+}): Layer.Layer<Completions.Completions, never, AnthropicClient> =>
+  Layer.effect(
+    Completions.Completions,
+    make({ model: options.model, config: options.config })
+  )
 
 /**
  * @since 1.0.0
@@ -199,11 +208,25 @@ export const layerCompletions = (options: {
  */
 export const layer = (options: {
   readonly model: (string & {}) | Model
-}): Layer.Layer<
-  Completions.Completions | Tokenizer.Tokenizer,
-  never,
-  AnthropicClient
-> => Layer.merge(layerCompletions(options), AnthropicTokenizer.layer)
+  readonly config?: Omit<Config.Service, "model">
+}): Layer.Layer<Completions.Completions | Tokenizer.Tokenizer, never, AnthropicClient> =>
+  Layer.merge(layerCompletions(options), AnthropicTokenizer.layer)
+
+/**
+ * @since 1.0.0
+ * @category configuration
+ */
+export const withConfigOverride: {
+  (config: Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(self: Effect.Effect<A, E, R>, config: Config.Service): Effect.Effect<A, E, R>
+} = dual<
+  (config: Config.Service) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(self: Effect.Effect<A, E, R>, config: Config.Service) => Effect.Effect<A, E, R>
+>(2, (self, overrides) =>
+  Effect.flatMap(
+    Config.getOrUndefined,
+    (config) => Effect.provideService(self, Config, { ...config, ...overrides })
+  ))
 
 const makeMessages = (
   aiInput: AiInput.AiInput

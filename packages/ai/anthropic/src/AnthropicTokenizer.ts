@@ -10,7 +10,11 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 
-const make = Tokenizer.make({
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const make = Tokenizer.make({
   tokenize(content) {
     return Effect.try({
       try: () => {

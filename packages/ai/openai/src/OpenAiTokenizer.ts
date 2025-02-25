@@ -10,7 +10,11 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as GptTokenizer from "gpt-tokenizer"
 
-const make = (options: { readonly model: string }) =>
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const make = (options: { readonly model: string }) =>
   Tokenizer.make({
     tokenize(content) {
       return Effect.try({
