@@ -1976,14 +1976,20 @@ describe("Schema", () => {
   })
 
   it("transformLiteral", () => {
-    expect(S.asSchema(S.transformLiteral(0, "a"))).type.toBe<S.Schema<"a", 0>>()
-    expect(S.transformLiteral(0, "a")).type.toBe<S.transformLiteral<"a", 0>>()
+    const schema = S.transformLiteral(0, "a")
+    expect(S.asSchema(schema)).type.toBe<S.Schema<"a", 0>>()
+    expect(schema).type.toBe<S.transformLiteral<"a", 0>>()
+    expect(schema.annotations({})).type.toBe<S.transformLiteral<"a", 0>>()
+    expect(schema.from).type.toBe<S.Literal<[0]>>()
+    expect(schema.to).type.toBe<S.Literal<["a"]>>()
   })
 
   it("transformLiterals", () => {
-    expect(S.asSchema(S.transformLiterals([0, "a"], [1, "b"]))).type.toBe<S.Schema<"a" | "b", 0 | 1>>()
-    expect(S.transformLiterals([0, "a"], [1, "b"]))
-      .type.toBe<S.Union<[S.transformLiteral<"a", 0>, S.transformLiteral<"b", 1>]>>()
+    const schema = S.transformLiterals([0, "a"], [1, "b"])
+    expect(S.asSchema(schema)).type.toBe<S.Schema<"a" | "b", 0 | 1>>()
+    expect(schema).type.toBe<S.Union<[S.transformLiteral<"a", 0>, S.transformLiteral<"b", 1>]>>()
+    expect(schema.annotations({})).type.toBe<S.Union<[S.transformLiteral<"a", 0>, S.transformLiteral<"b", 1>]>>()
+
     expect(S.transformLiterals([0, "a"])).type.toBe<S.transformLiteral<"a", 0>>()
     const pairs = hole<Array<readonly [0 | 1, "a" | "b"]>>()
     expect(S.transformLiterals(...pairs)).type.toBe<S.Schema<"a" | "b", 0 | 1>>()
@@ -1996,67 +2002,6 @@ describe("Schema", () => {
 
   it("PropertySignature.annotations", () => {
     expect(S.optional(S.String).annotations({})).type.toBe<S.optional<typeof S.String>>()
-  })
-
-  it("pluck", () => {
-    // @ts-expect-error
-    S.pluck(S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }), "a")
-    expect(S.pluck(S.Struct({ a: S.String, b: S.Number }), "a"))
-      .type.toBe<S.Schema<string, { readonly a: string }>>()
-    expect(pipe(S.Struct({ a: S.String, b: S.Number }), S.pluck("a")))
-      .type.toBe<S.Schema<string, { readonly a: string }>>()
-    expect(S.pluck(S.Struct({ a: S.optional(S.String), b: S.Number }), "a"))
-      .type.toBe<S.Schema<string | undefined, { readonly a?: string | undefined }>>()
-    expect(pipe(S.Struct({ a: S.optional(S.String), b: S.Number }), S.pluck("a")))
-      .type.toBe<S.Schema<string | undefined, { readonly a?: string | undefined }>>()
-    expect(S.pluck(S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.Number }), "a"))
-      .type.toBe<S.Schema<string | undefined, { readonly a?: string }>>()
-    expect(pipe(S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.Number }), S.pluck("a")))
-      .type.toBe<S.Schema<string | undefined, { readonly a?: string }>>()
-  })
-
-  it("head", () => {
-    const schema = S.head(S.Array(S.Number))
-    expect(schema).type.toBe<
-      S.transform<
-        S.Schema<ReadonlyArray<number>>,
-        S.OptionFromSelf<S.SchemaClass<number>>
-      >
-    >()
-    expect(schema.annotations({})).type.toBe<
-      S.transform<
-        S.Schema<ReadonlyArray<number>>,
-        S.OptionFromSelf<S.SchemaClass<number>>
-      >
-    >()
-    expect(schema.from).type.toBe<S.Schema<ReadonlyArray<number>>>()
-    expect(schema.to).type.toBe<S.OptionFromSelf<S.SchemaClass<number>>>()
-  })
-
-  it("headNonEmpty", () => {
-    const schema = S.headNonEmpty(S.NonEmptyArray(S.Number))
-    expect(schema).type.toBe<
-      S.transform<
-        S.Schema<readonly [number, ...Array<number>]>,
-        S.SchemaClass<number>
-      >
-    >()
-    expect(schema.annotations({})).type.toBe<
-      S.transform<
-        S.Schema<readonly [number, ...Array<number>]>,
-        S.SchemaClass<number>
-      >
-    >()
-    expect(schema.from).type.toBe<S.Schema<readonly [number, ...Array<number>]>>()
-    expect(schema.to).type.toBe<S.SchemaClass<number>>()
-  })
-
-  it("headOrElse", () => {
-    const schema = S.headOrElse(S.Array(S.Number))
-    expect(schema).type.toBe<S.transform<S.Schema<ReadonlyArray<number>>, S.SchemaClass<number>>>()
-    expect(schema.annotations({})).type.toBe<S.transform<S.Schema<ReadonlyArray<number>>, S.SchemaClass<number>>>()
-    expect(schema.from).type.toBe<S.Schema<ReadonlyArray<number>>>()
-    expect(schema.to).type.toBe<S.SchemaClass<number>>()
   })
 
   it("TaggedClass", () => {
@@ -3847,5 +3792,155 @@ describe("Schema", () => {
     expect(schema.annotations({})).type.toBe<S.NonEmptyArrayEnsure<typeof S.NumberFromString>>()
     expect(schema.from).type.toBe<S.Union<[typeof S.NumberFromString, S.NonEmptyArray<typeof S.NumberFromString>]>>()
     expect(schema.to).type.toBe<S.SchemaClass<readonly [number, ...Array<number>]>>()
+  })
+
+  it("ReadonlyMapFromRecord", () => {
+    const schema = S.ReadonlyMapFromRecord({ key: S.NumberFromString, value: S.NumberFromString })
+    expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyMap<number, number>, { readonly [x: string]: string }>>()
+    expect(schema).type.toBe<S.SchemaClass<ReadonlyMap<number, number>, { readonly [x: string]: string }>>()
+    expect(schema.annotations({})).type.toBe<
+      S.SchemaClass<ReadonlyMap<number, number>, { readonly [x: string]: string }>
+    >()
+  })
+
+  it("MapFromRecord", () => {
+    const schema = S.MapFromRecord({ key: S.NumberFromString, value: S.NumberFromString })
+    expect(S.asSchema(schema)).type.toBe<S.Schema<Map<number, number>, { readonly [x: string]: string }>>()
+    expect(schema).type.toBe<S.SchemaClass<Map<number, number>, { readonly [x: string]: string }>>()
+    expect(schema.annotations({})).type.toBe<S.SchemaClass<Map<number, number>, { readonly [x: string]: string }>>()
+  })
+
+  describe("Transformations", () => {
+    it("clamp", () => {
+      // @ts-expect-error: Type 'string' is not assignable to type 'number'
+      S.String.pipe(S.clamp(-1, 1))
+
+      const schema = S.Number.pipe(S.clamp(-1, 1))
+      expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
+      expect(schema).type.toBe<S.transform<typeof S.Number, S.filter<S.SchemaClass<number>>>>()
+      expect(schema.annotations({})).type.toBe<S.transform<typeof S.Number, S.filter<S.SchemaClass<number>>>>()
+      expect(schema.from).type.toBe<typeof S.Number>()
+      expect(schema.to).type.toBe<S.filter<S.SchemaClass<number>>>()
+    })
+
+    it("clampBigInt", () => {
+      // @ts-expect-error: Type 'string' is not assignable to type 'bigint'
+      S.String.pipe(S.clampBigInt(-1, 1))
+
+      const schema = S.BigIntFromSelf.pipe(S.clampBigInt(-1n, 1n))
+      expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
+      expect(schema).type.toBe<S.transform<typeof S.BigIntFromSelf, S.filter<S.SchemaClass<bigint>>>>()
+      expect(schema.annotations({})).type.toBe<
+        S.transform<typeof S.BigIntFromSelf, S.filter<S.SchemaClass<bigint>>>
+      >()
+      expect(schema.from).type.toBe<typeof S.BigIntFromSelf>()
+      expect(schema.to).type.toBe<S.filter<S.SchemaClass<bigint>>>()
+    })
+
+    it("clampDuration", () => {
+      // @ts-expect-error: Type 'string' is not assignable to type 'Duration'
+      S.String.pipe(S.clampDuration(-1, 1))
+
+      const schema = S.DurationFromSelf.pipe(S.clampDuration(-1, 1))
+      expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
+      expect(schema).type.toBe<S.transform<typeof S.DurationFromSelf, S.filter<S.SchemaClass<Duration.Duration>>>>()
+      expect(schema.annotations({})).type.toBe<
+        S.transform<typeof S.DurationFromSelf, S.filter<S.SchemaClass<Duration.Duration>>>
+      >()
+      expect(schema.from).type.toBe<typeof S.DurationFromSelf>()
+      expect(schema.to).type.toBe<S.filter<S.SchemaClass<Duration.Duration>>>()
+    })
+
+    it("clampBigDecimal", () => {
+      // @ts-expect-error: Type 'string' is not assignable to type 'BigDecimal'
+      S.String.pipe(S.clampBigDecimal(-1, 1))
+
+      const schema = S.BigDecimalFromSelf.pipe(
+        S.clampBigDecimal(hole<BigDecimal.BigDecimal>(), hole<BigDecimal.BigDecimal>())
+      )
+      expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
+      expect(schema).type.toBe<
+        S.transform<typeof S.BigDecimalFromSelf, S.filter<S.SchemaClass<BigDecimal.BigDecimal>>>
+      >()
+      expect(schema.annotations({})).type.toBe<
+        S.transform<typeof S.BigDecimalFromSelf, S.filter<S.SchemaClass<BigDecimal.BigDecimal>>>
+      >()
+      expect(schema.from).type.toBe<typeof S.BigDecimalFromSelf>()
+      expect(schema.to).type.toBe<S.filter<S.SchemaClass<BigDecimal.BigDecimal>>>()
+    })
+
+    it("head", () => {
+      // @ts-expect-error: Type 'string' is not assignable to type 'readonly unknown[]'
+      S.String.pipe(S.head)
+
+      const schema = S.head(S.Array(S.NumberFromString))
+
+      expect(S.asSchema(schema)).type.toBe<S.Schema<Option.Option<number>, ReadonlyArray<string>, never>>()
+      expect(schema)
+        .type.toBe<S.transform<S.Array$<typeof S.NumberFromString>, S.OptionFromSelf<S.SchemaClass<number>>>>()
+      expect(schema.annotations({}))
+        .type.toBe<S.transform<S.Array$<typeof S.NumberFromString>, S.OptionFromSelf<S.SchemaClass<number>>>>()
+      expect(schema.from).type.toBe<S.Array$<typeof S.NumberFromString>>()
+      expect(schema.to).type.toBe<S.OptionFromSelf<S.SchemaClass<number>>>()
+    })
+
+    it("headNonEmpty", () => {
+      // @ts-expect-error: Type 'string' is not assignable to type 'readonly [unknown, ...unknown[]]'
+      S.String.pipe(S.headNonEmpty)
+
+      const schema = S.headNonEmpty(S.NonEmptyArray(S.Number))
+      expect(S.asSchema(schema)).type.toBe<S.Schema<number, readonly [number, ...Array<number>]>>()
+      expect(schema)
+        .type.toBe<S.transform<S.NonEmptyArray<typeof S.Number>, S.SchemaClass<number>>>()
+      expect(schema.annotations({}))
+        .type.toBe<S.transform<S.NonEmptyArray<typeof S.Number>, S.SchemaClass<number>>>()
+      expect(schema.from).type.toBe<S.NonEmptyArray<typeof S.Number>>()
+      expect(schema.to).type.toBe<S.SchemaClass<number>>()
+    })
+
+    it("headOrElse", () => {
+      // @ts-expect-error: Type 'string' is not assignable to type 'readonly unknown[]'
+      S.String.pipe(S.headOrElse())
+      S.headOrElse(
+        S.Array(S.Number),
+        // @ts-expect-error: Type 'string' is not assignable to type 'number'
+        () => "a"
+      )
+      S.Array(S.Number).pipe(S.headOrElse(
+        // @ts-expect-error: Type 'number' is not assignable to type 'string'
+        () => "a"
+      ))
+
+      const schema = S.headOrElse(S.Array(S.Number))
+      expect(S.asSchema(schema)).type.toBe<S.Schema<number, ReadonlyArray<number>>>()
+      expect(schema).type.toBe<S.transform<S.Array$<typeof S.Number>, S.SchemaClass<number>>>()
+      expect(schema.annotations({})).type.toBe<S.transform<S.Array$<typeof S.Number>, S.SchemaClass<number>>>()
+      expect(schema.from).type.toBe<S.Array$<typeof S.Number>>()
+      expect(schema.to).type.toBe<S.SchemaClass<number>>()
+    })
+
+    it("pluck", () => {
+      S.pluck(
+        S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }),
+        // @ts-expect-error: Argument of type '"a"' is not assignable to parameter of type 'never'
+        "a"
+      )
+
+      expect(pipe(S.Struct({ a: S.String, b: S.Number }), S.pluck("a")))
+        .type.toBe<S.SchemaClass<string, { readonly a: string }>>()
+      const schema = S.pluck(S.Struct({ a: S.String, b: S.Number }), "a")
+      expect(schema).type.toBe<S.SchemaClass<string, { readonly a: string }>>()
+      expect(schema.annotations({})).type.toBe<S.SchemaClass<string, { readonly a: string }>>()
+
+      // should support optional fields
+      expect(S.pluck(S.Struct({ a: S.optional(S.String), b: S.Number }), "a"))
+        .type.toBe<S.SchemaClass<string | undefined, { readonly a?: string | undefined }>>()
+      expect(pipe(S.Struct({ a: S.optional(S.String), b: S.Number }), S.pluck("a")))
+        .type.toBe<S.SchemaClass<string | undefined, { readonly a?: string | undefined }>>()
+      expect(S.pluck(S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.Number }), "a"))
+        .type.toBe<S.SchemaClass<string | undefined, { readonly a?: string }>>()
+      expect(pipe(S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.Number }), S.pluck("a")))
+        .type.toBe<S.SchemaClass<string | undefined, { readonly a?: string }>>()
+    })
   })
 })
