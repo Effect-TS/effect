@@ -3828,4 +3828,24 @@ describe("Schema", () => {
       expect(schema.to).type.toBe<S.Struct<{ a: typeof S.Number }>>()
     })
   })
+
+  it("ArrayEnsure", () => {
+    const schema = S.ArrayEnsure(S.NumberFromString)
+    expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyArray<number>, string | ReadonlyArray<string>>>()
+    expect(schema).type.toBe<S.ArrayEnsure<typeof S.NumberFromString>>()
+    expect(schema.annotations({})).type.toBe<S.ArrayEnsure<typeof S.NumberFromString>>()
+    expect(schema.from).type.toBe<S.Union<[typeof S.NumberFromString, S.Array$<typeof S.NumberFromString>]>>()
+    expect(schema.to).type.toBe<S.SchemaClass<ReadonlyArray<number>>>()
+  })
+
+  it("NonEmptyArrayEnsure", () => {
+    const schema = S.NonEmptyArrayEnsure(S.NumberFromString)
+    expect(S.asSchema(schema)).type.toBe<
+      S.Schema<readonly [number, ...Array<number>], string | readonly [string, ...Array<string>]>
+    >()
+    expect(schema).type.toBe<S.NonEmptyArrayEnsure<typeof S.NumberFromString>>()
+    expect(schema.annotations({})).type.toBe<S.NonEmptyArrayEnsure<typeof S.NumberFromString>>()
+    expect(schema.from).type.toBe<S.Union<[typeof S.NumberFromString, S.NonEmptyArray<typeof S.NumberFromString>]>>()
+    expect(schema.to).type.toBe<S.SchemaClass<readonly [number, ...Array<number>]>>()
+  })
 })

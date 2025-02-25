@@ -1595,13 +1595,8 @@ export const NonEmptyArray = <Value extends Schema.Any>(value: Value): NonEmptyA
  * @category api interface
  * @since 3.10.0
  */
-export interface ArrayEnsure<Value extends Schema.Any> extends
-  AnnotableClass<
-    ArrayEnsure<Value>,
-    ReadonlyArray<Schema.Type<Value>>,
-    Schema.Encoded<Value> | ReadonlyArray<Schema.Encoded<Value>>,
-    Schema.Context<Value>
-  >
+export interface ArrayEnsure<Value extends Schema.Any>
+  extends transform<Union<[Value, Array$<Value>]>, SchemaClass<ReadonlyArray<Schema.Type<Value>>>>
 {}
 
 /**
@@ -1610,24 +1605,20 @@ export interface ArrayEnsure<Value extends Schema.Any> extends
  */
 export const ArrayEnsure = <Value extends Schema.Any>(value: Value): ArrayEnsure<Value> => {
   const value_ = asSchema(value)
-  return class ArrayEnsureClass extends transform(Union(value_, Array$(value_)), Array$(typeSchema(value_)), {
+  const out = transform(Union(value_, Array$(value_)), Array$(typeSchema(value_)), {
     strict: true,
     decode: array_.ensure,
     encode: (arr) => arr.length === 1 ? arr[0] : arr
-  }) {}
+  })
+  return out as any
 }
 
 /**
  * @category api interface
  * @since 3.10.0
  */
-export interface NonEmptyArrayEnsure<Value extends Schema.Any> extends
-  AnnotableClass<
-    NonEmptyArrayEnsure<Value>,
-    array_.NonEmptyReadonlyArray<Schema.Type<Value>>,
-    Schema.Encoded<Value> | array_.NonEmptyReadonlyArray<Schema.Encoded<Value>>,
-    Schema.Context<Value>
-  >
+export interface NonEmptyArrayEnsure<Value extends Schema.Any>
+  extends transform<Union<[Value, NonEmptyArray<Value>]>, SchemaClass<array_.NonEmptyReadonlyArray<Schema.Type<Value>>>>
 {}
 
 /**
@@ -1636,13 +1627,12 @@ export interface NonEmptyArrayEnsure<Value extends Schema.Any> extends
  */
 export const NonEmptyArrayEnsure = <Value extends Schema.Any>(value: Value): NonEmptyArrayEnsure<Value> => {
   const value_ = asSchema(value)
-  return class NonEmptyArrayEnsureClass
-    extends transform(Union(value_, NonEmptyArray(value_)), NonEmptyArray(typeSchema(value_)), {
-      strict: true,
-      decode: array_.ensure as any,
-      encode: (arr) => arr.length === 1 ? arr[0] : arr
-    })
-  {}
+  const out = transform(Union(value_, NonEmptyArray(value_)), NonEmptyArray(typeSchema(value_)), {
+    strict: true,
+    decode: array_.ensure as any,
+    encode: (arr) => arr.length === 1 ? arr[0] : arr
+  })
+  return out as any
 }
 
 /**
