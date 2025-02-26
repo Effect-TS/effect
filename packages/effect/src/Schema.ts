@@ -298,9 +298,11 @@ export declare namespace Annotable {
 /**
  * @since 3.10.0
  */
-export const asSchema = <S extends Schema.All>(
+export function asSchema<S extends Schema.All>(
   schema: S
-): Schema<Schema.Type<S>, Schema.Encoded<S>, Schema.Context<S>> => schema as any
+): Schema<Schema.Type<S>, Schema.Encoded<S>, Schema.Context<S>> {
+  return schema as any
+}
 
 /**
  * @category formatting
@@ -1574,18 +1576,18 @@ export interface NonEmptyArray<Value extends Schema.Any> extends TupleType<[Valu
   annotations(annotations: Annotations.Schema<TupleType.Type<[Value], [Value]>>): NonEmptyArray<Value>
 }
 
-const makeNonEmptyArrayClass = <Value extends Schema.Any>(
+function makeNonEmptyArrayClass<Value extends Schema.Any>(
   value: Value,
   ast?: AST.AST
-): NonEmptyArray<
-  Value
-> => (class NonEmptyArrayClass extends makeTupleTypeClass<[Value], [Value]>([value], [value], ast) {
-  static override annotations(annotations: Annotations.Schema<TupleType.Type<[Value], [Value]>>) {
-    return makeNonEmptyArrayClass(this.value, mergeSchemaAnnotations(this.ast, annotations))
-  }
+): NonEmptyArray<Value> {
+  return class NonEmptyArrayClass extends makeTupleTypeClass<[Value], [Value]>([value], [value], ast) {
+    static override annotations(annotations: Annotations.Schema<TupleType.Type<[Value], [Value]>>) {
+      return makeNonEmptyArrayClass(this.value, mergeSchemaAnnotations(this.ast, annotations))
+    }
 
-  static value = value
-})
+    static value = value
+  }
+}
 
 /**
  * @category constructors
@@ -1599,21 +1601,19 @@ export const NonEmptyArray = <Value extends Schema.Any>(value: Value): NonEmptyA
  * @since 3.10.0
  */
 export interface ArrayEnsure<Value extends Schema.Any>
-  extends transform<Union<[Value, Array$<Value>]>, SchemaClass<ReadonlyArray<Schema.Type<Value>>>>
+  extends transform<Union<[Value, Array$<Value>]>, Array$<SchemaClass<Schema.Type<Value>>>>
 {}
 
 /**
  * @category constructors
  * @since 3.10.0
  */
-export const ArrayEnsure = <Value extends Schema.Any>(value: Value): ArrayEnsure<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(Union(value_, Array$(value_)), Array$(typeSchema(value_)), {
+export function ArrayEnsure<Value extends Schema.Any>(value: Value): ArrayEnsure<Value> {
+  return transform(Union(value, Array$(value)), Array$(typeSchema(asSchema(value))), {
     strict: true,
-    decode: array_.ensure,
-    encode: (arr) => arr.length === 1 ? arr[0] : arr
+    decode: (i) => array_.ensure(i),
+    encode: (a) => a.length === 1 ? a[0] : a
   })
-  return out as any
 }
 
 /**
@@ -1621,21 +1621,19 @@ export const ArrayEnsure = <Value extends Schema.Any>(value: Value): ArrayEnsure
  * @since 3.10.0
  */
 export interface NonEmptyArrayEnsure<Value extends Schema.Any>
-  extends transform<Union<[Value, NonEmptyArray<Value>]>, SchemaClass<array_.NonEmptyReadonlyArray<Schema.Type<Value>>>>
+  extends transform<Union<[Value, NonEmptyArray<Value>]>, NonEmptyArray<SchemaClass<Schema.Type<Value>>>>
 {}
 
 /**
  * @category constructors
  * @since 3.10.0
  */
-export const NonEmptyArrayEnsure = <Value extends Schema.Any>(value: Value): NonEmptyArrayEnsure<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(Union(value_, NonEmptyArray(value_)), NonEmptyArray(typeSchema(value_)), {
+export function NonEmptyArrayEnsure<Value extends Schema.Any>(value: Value): NonEmptyArrayEnsure<Value> {
+  return transform(Union(value, NonEmptyArray(value)), NonEmptyArray(typeSchema(value)), {
     strict: true,
-    decode: array_.ensure as any,
-    encode: (arr) => arr.length === 1 ? arr[0] : arr
+    decode: (i) => array_.isNonEmptyReadonlyArray(i) ? i : array_.of(i),
+    encode: (a) => a.length === 1 ? a[0] : a
   })
-  return out as any
 }
 
 /**
@@ -5759,14 +5757,16 @@ export interface Redacted<Value extends Schema.Any>
  * @category Redacted transformations
  * @since 3.10.0
  */
-export const Redacted = <Value extends Schema.Any>(value: Value): Redacted<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(
-    value_,
-    RedactedFromSelf(typeSchema(value_)),
-    { strict: true, decode: redacted_.make, encode: redacted_.value }
+export function Redacted<Value extends Schema.Any>(value: Value): Redacted<Value> {
+  return transform(
+    value,
+    RedactedFromSelf(typeSchema(asSchema(value))),
+    {
+      strict: true,
+      decode: (i) => redacted_.make(i),
+      encode: (a) => redacted_.value(a)
+    }
   )
-  return out as any
 }
 
 /**
