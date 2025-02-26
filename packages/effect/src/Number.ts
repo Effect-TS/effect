@@ -537,6 +537,7 @@ export const parse = (s: string): Option<number> => {
 
 /**
  * Tries to parse a string into a integer using Number.parseInt.
+ * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/parseInt
  * 
  * @param string - A string to convert into a number.
  * 
