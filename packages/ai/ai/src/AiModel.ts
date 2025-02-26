@@ -73,7 +73,7 @@ export const make = <Provides, Requires>(options: {
   readonly model: string
   readonly cacheKey: symbol
   readonly requires: Context.Tag<Requires, any>
-  readonly provides: AiPlan.AiPlan.Builder<Provides, Requires>
+  readonly provides: AiModel.ContextBuilder<Provides, Requires>
   readonly updateContext: (context: Context.Context<Provides>) => Context.Context<Provides>
 }): AiModel<Provides, Requires> => {
   const self = Object.create(AiModelProto)
