@@ -3608,18 +3608,19 @@ describe("Schema", () => {
             typeof S.NumberFromString,
             S.Struct<{
               _tag: S.Literal<["Right"]>
-              right: typeof S.NumberFromString
+              right: S.SchemaClass<number>
             }>
           >,
           S.transform<
             typeof S.Boolean,
             S.Struct<{
               _tag: S.Literal<["Left"]>
-              right: typeof S.Boolean
+              right: S.SchemaClass<boolean>
             }>
           >
         ]>
       >()
+      expect(schema.from.members[0].to.fields.right).type.toBe<S.SchemaClass<number>>()
       expect(schema.to).type.toBe<S.EitherFromSelf<S.SchemaClass<number>, S.SchemaClass<boolean>>>()
 
       // should allow never as right

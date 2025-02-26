@@ -2557,10 +2557,6 @@ export declare namespace Struct {
       | PropertySignature.All
   }
 
-  type Key<F extends Fields, K extends keyof F> = [K] extends [never] ? never :
-    F[K] extends PropertySignature.All<infer Key> ? [Key] extends [never] ? K : Key :
-    K
-
   type OptionalEncodedPropertySignature =
     | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", any, boolean, unknown>
     | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", never, boolean, unknown>
@@ -2591,6 +2587,10 @@ export declare namespace Struct {
         { readonly [h in K]: Schema.Type<F[h]> }
     }[keyof F]
   > extends infer Q ? Q : never
+
+  type Key<F extends Fields, K extends keyof F> = [K] extends [never] ? never :
+    F[K] extends PropertySignature.All<infer Key> ? [Key] extends [never] ? K : Key :
+    K
 
   /**
    * @since 3.10.0
@@ -7087,18 +7087,19 @@ const makeSomeEncoded = <A>(value: A) => ({
  * @category Option transformations
  * @since 3.10.0
  */
-export const Option = <Value extends Schema.Any>(value: Value): Option<Value> => {
+export function Option<Value extends Schema.Any>(value: Value): Option<Value> {
   const value_ = asSchema(value)
   const out = transform(
     optionEncoded(value_),
     OptionFromSelf(typeSchema(value_)),
     {
       strict: true,
-      decode: optionDecode,
-      encode: option_.match({
-        onNone: () => makeNoneEncoded,
-        onSome: makeSomeEncoded
-      })
+      decode: (i) => optionDecode(i),
+      encode: (a) =>
+        option_.match(a, {
+          onNone: () => makeNoneEncoded,
+          onSome: makeSomeEncoded
+        })
     }
   )
   return out as any
@@ -7116,14 +7117,12 @@ export interface OptionFromNullOr<Value extends Schema.Any>
  * @category Option transformations
  * @since 3.10.0
  */
-export const OptionFromNullOr = <Value extends Schema.Any>(value: Value): OptionFromNullOr<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(NullOr(value_), OptionFromSelf(typeSchema(value_)), {
+export function OptionFromNullOr<Value extends Schema.Any>(value: Value): OptionFromNullOr<Value> {
+  return transform(NullOr(value), OptionFromSelf(typeSchema(asSchema(value))), {
     strict: true,
-    decode: option_.fromNullable,
-    encode: option_.getOrNull
+    decode: (i) => option_.fromNullable(i),
+    encode: (a) => option_.getOrNull(a)
   })
-  return out as any
 }
 
 /**
@@ -7138,21 +7137,19 @@ export interface OptionFromNullishOr<Value extends Schema.Any>
  * @category Option transformations
  * @since 3.10.0
  */
-export const OptionFromNullishOr = <Value extends Schema.Any>(
+export function OptionFromNullishOr<Value extends Schema.Any>(
   value: Value,
   onNoneEncoding: null | undefined
-): OptionFromNullishOr<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(
-    NullishOr(value_),
-    OptionFromSelf(typeSchema(value_)),
+): OptionFromNullishOr<Value> {
+  return transform(
+    NullishOr(value),
+    OptionFromSelf(typeSchema(asSchema(value))),
     {
       strict: true,
       decode: option_.fromNullable,
       encode: onNoneEncoding === null ? option_.getOrNull : option_.getOrUndefined
     }
   )
-  return out as any
 }
 
 /**
@@ -7167,16 +7164,12 @@ export interface OptionFromUndefinedOr<Value extends Schema.Any>
  * @category Option transformations
  * @since 3.10.0
  */
-export const OptionFromUndefinedOr = <Value extends Schema.Any>(
-  value: Value
-): OptionFromUndefinedOr<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(UndefinedOr(value_), OptionFromSelf(typeSchema(value_)), {
+export function OptionFromUndefinedOr<Value extends Schema.Any>(value: Value): OptionFromUndefinedOr<Value> {
+  return transform(UndefinedOr(value), OptionFromSelf(typeSchema(asSchema(value))), {
     strict: true,
     decode: option_.fromNullable,
     encode: option_.getOrUndefined
   })
-  return out as any
 }
 
 /**
@@ -7360,8 +7353,12 @@ export const Either = <R extends Schema.All, L extends Schema.All>({ left, right
     EitherFromSelf({ left: typeSchema(left_), right: typeSchema(right_) }),
     {
       strict: true,
-      decode: eitherDecode,
-      encode: either_.match({ onLeft: makeLeftEncoded, onRight: makeRightEncoded })
+      decode: (i) => eitherDecode(i),
+      encode: (a) =>
+        either_.match(a, {
+          onLeft: makeLeftEncoded,
+          onRight: makeRightEncoded
+        })
     }
   )
   return out as any
@@ -7374,8 +7371,8 @@ export const Either = <R extends Schema.All, L extends Schema.All>({ left, right
 export interface EitherFromUnion<Right extends Schema.All, Left extends Schema.All> extends
   transform<
     Union<[
-      transform<Right, Struct<{ _tag: Literal<["Right"]>; right: Right }>>,
-      transform<Left, Struct<{ _tag: Literal<["Left"]>; right: Left }>>
+      transform<Right, Struct<{ _tag: Literal<["Right"]>; right: SchemaClass<Schema.Type<Right>> }>>,
+      transform<Left, Struct<{ _tag: Literal<["Left"]>; right: SchemaClass<Schema.Type<Left>> }>>
     ]>,
     EitherFromSelf<SchemaClass<Schema.Type<Right>>, SchemaClass<Schema.Type<Left>>>
   >
@@ -7403,21 +7400,25 @@ export const EitherFromUnion = <Right extends Schema.All, Left extends Schema.Al
   const toleft = typeSchema(left_)
   const fromRight = transform(right_, rightEncoded(toright), {
     strict: true,
-    decode: makeRightEncoded,
-    encode: (r) => r.right
+    decode: (i) => makeRightEncoded(i),
+    encode: (a) => a.right
   })
   const fromLeft = transform(left_, leftEncoded(toleft), {
     strict: true,
-    decode: makeLeftEncoded,
-    encode: (l) => l.left
+    decode: (i) => makeLeftEncoded(i),
+    encode: (a) => a.left
   })
   const out = transform(
     Union(fromRight, fromLeft),
     EitherFromSelf({ left: toleft, right: toright }),
     {
       strict: true,
-      decode: (from) => from._tag === "Left" ? either_.left(from.left) : either_.right(from.right),
-      encode: either_.match({ onLeft: makeLeftEncoded, onRight: makeRightEncoded })
+      decode: (i) => i._tag === "Left" ? either_.left(i.left) : either_.right(i.right),
+      encode: (a) =>
+        either_.match(a, {
+          onLeft: makeLeftEncoded,
+          onRight: makeRightEncoded
+        })
     }
   )
   return out as any
