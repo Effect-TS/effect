@@ -435,10 +435,10 @@ describe("Schema", () => {
     it("required elements", () => {
       expect(S.asSchema(S.Tuple(S.String, S.Number)))
         .type.toBe<S.Schema<readonly [string, number], readonly [string, number]>>()
-      expect(S.Tuple(S.String, S.Number)).type.toBe<S.Tuple<[typeof S.String, typeof S.Number]>>()
+      expect(S.Tuple(S.String, S.Number)).type.toBe<S.Tuple2<typeof S.String, typeof S.Number>>()
       expect(S.asSchema(S.Tuple(S.String, S.NumberFromString)))
         .type.toBe<S.Schema<readonly [string, number], readonly [string, string]>>()
-      expect(S.Tuple(S.String, S.NumberFromString)).type.toBe<S.Tuple<[typeof S.String, typeof S.NumberFromString]>>()
+      expect(S.Tuple(S.String, S.NumberFromString)).type.toBe<S.Tuple2<typeof S.String, typeof S.NumberFromString>>()
       expect(S.Tuple(S.String, S.Number).elements).type.toBe<readonly [typeof S.String, typeof S.Number]>()
       expect(S.Tuple(S.String, S.Number).rest).type.toBe<readonly []>()
     })
@@ -3646,7 +3646,7 @@ describe("Schema", () => {
         .type.toBe<S.Schema<ReadonlyMap<number, string>, ReadonlyArray<readonly [string, string]>>>()
       expect(schema).type.toBe<S.ReadonlyMap$<typeof S.NumberFromString, typeof S.String>>()
       expect(schema.annotations({})).type.toBe<S.ReadonlyMap$<typeof S.NumberFromString, typeof S.String>>()
-      expect(schema.from).type.toBe<S.Array$<S.Tuple<[typeof S.NumberFromString, typeof S.String]>>>()
+      expect(schema.from).type.toBe<S.Array$<S.Tuple2<typeof S.NumberFromString, typeof S.String>>>()
       expect(schema.to).type.toBe<S.ReadonlyMapFromSelf<S.SchemaClass<number>, S.SchemaClass<string>>>()
     })
 
@@ -3664,7 +3664,7 @@ describe("Schema", () => {
       expect(S.asSchema(schema)).type.toBe<S.Schema<Map<number, string>, ReadonlyArray<readonly [string, string]>>>()
       expect(schema).type.toBe<S.Map$<typeof S.NumberFromString, typeof S.String>>()
       expect(schema.annotations({})).type.toBe<S.Map$<typeof S.NumberFromString, typeof S.String>>()
-      expect(schema.from).type.toBe<S.Array$<S.Tuple<[typeof S.NumberFromString, typeof S.String]>>>()
+      expect(schema.from).type.toBe<S.Array$<S.Tuple2<typeof S.NumberFromString, typeof S.String>>>()
       expect(schema.to).type.toBe<S.MapFromSelf<S.SchemaClass<number>, S.SchemaClass<string>>>()
     })
 
@@ -3683,7 +3683,7 @@ describe("Schema", () => {
         .type.toBe<S.Schema<HashMap.HashMap<number, string>, ReadonlyArray<readonly [string, string]>>>()
       expect(schema).type.toBe<S.HashMap<typeof S.NumberFromString, typeof S.String>>()
       expect(schema.annotations({})).type.toBe<S.HashMap<typeof S.NumberFromString, typeof S.String>>()
-      expect(schema.from).type.toBe<S.Array$<S.Tuple<[typeof S.NumberFromString, typeof S.String]>>>()
+      expect(schema.from).type.toBe<S.Array$<S.Tuple2<typeof S.NumberFromString, typeof S.String>>>()
       expect(schema.to).type.toBe<S.HashMapFromSelf<S.SchemaClass<number>, S.SchemaClass<string>>>()
     })
 
