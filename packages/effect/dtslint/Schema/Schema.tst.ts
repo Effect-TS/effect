@@ -4062,5 +4062,17 @@ describe("Schema", () => {
       expect(pipe(S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.Number }), S.pluck("a")))
         .type.toBe<S.SchemaClass<string | undefined, { readonly a?: string }>>()
     })
+
+    it("parseNumber", () => {
+      // @ts-expect-error: Type 'null' is not assignable to type 'string'
+      S.parseNumber(S.Null)
+
+      const schema = S.parseNumber(S.String)
+      expect(S.asSchema(schema)).type.toBe<S.Schema<number, string>>()
+      expect(schema).type.toBe<S.transformOrFail<typeof S.String, typeof S.Number>>()
+      expect(schema.annotations({})).type.toBe<S.transformOrFail<typeof S.String, typeof S.Number>>()
+      expect(schema.from).type.toBe<typeof S.String>()
+      expect(schema.to).type.toBe<typeof S.Number>()
+    })
   })
 })

@@ -5262,21 +5262,23 @@ export const clamp = (minimum: number, maximum: number) =>
  * @category number transformations
  * @since 3.10.0
  */
-export const parseNumber = <A extends string, I, R>(
-  self: Schema<A, I, R>
-): transformOrFail<Schema<A, I, R>, typeof Number$> =>
-  transformOrFail(
+export function parseNumber<S extends Schema.Any, A extends string>(
+  self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>
+): transformOrFail<S, typeof Number$> {
+  return transformOrFail(
     self,
     Number$,
     {
       strict: false,
       decode: (i, _, ast) =>
-        ParseResult.fromOption(number_.parse(i), () =>
-          new ParseResult.Type(ast, i, `Unable to decode ${JSON.stringify(i)} into a number`)),
-      encode: (a) =>
-        ParseResult.succeed(String(a))
+        ParseResult.fromOption(
+          number_.parse(i),
+          () => new ParseResult.Type(ast, i, `Unable to decode ${JSON.stringify(i)} into a number`)
+        ),
+      encode: (a) => ParseResult.succeed(String(a))
     }
   )
+}
 
 /**
  * This schema transforms a `string` into a `number` by parsing the string using the `parse` function of the `effect/Number` module.
