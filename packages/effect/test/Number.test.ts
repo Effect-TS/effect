@@ -134,6 +134,14 @@ describe("Number", () => {
     assertNone(Number.parse("a"))
   })
 
+  it("parseInteger", () => {
+    assertSome(Number.parseInteger("42"), 42)
+    assertSome(Number.parseInteger("ff", 16), 255)
+    assertSome(Number.parseInteger(" 123 "), 123)
+    assertNone(Number.parseInteger("abc"))
+    assertNone(Number.parseInteger(""))
+  })
+
   it("round", () => {
     strictEqual(Number.round(1.1234, 2), 1.12)
     strictEqual(Number.round(2)(1.1234), 1.12)
