@@ -61,11 +61,15 @@ export declare namespace AiPlan {
    * @since 1.0.0
    * @category AiPlan
    */
-  export type Builder<Provides, Requires> = Effect.Effect<
-    <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>,
-    never,
-    AiModels | Requires
-  >
+  export type Builder<Provides, Requires> = Effect.Effect<Provider<Provides>, never, AiModels | Requires>
+
+  /**
+   * @since 1.0.0
+   * @category AiPlan
+   */
+  export interface Provider<Provides> {
+    readonly provide: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>
+  }
 
   /**
    * @since 1.0.0
