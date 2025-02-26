@@ -136,6 +136,7 @@ describe("Number", () => {
 
   it("parseInteger", () => {
     assertSome(Number.parseInteger("42"), 42)
+    assertSome(Number.parseInteger("4.2"), 4)
     assertSome(Number.parseInteger("ff", 16), 255)
     assertSome(Number.parseInteger(" 123 "), 123)
     assertNone(Number.parseInteger("abc"))
