@@ -486,7 +486,12 @@ describe("Schema", () => {
     expect(S.asSchema(schema))
       .type.toBe<S.Schema<readonly [number, ...Array<number>], readonly [string, ...Array<string>]>>()
     expect(schema).type.toBe<S.NonEmptyArray<typeof S.NumberFromString>>()
-    expect(schema.annotations({})).type.toBe<S.NonEmptyArray<typeof S.NumberFromString>>()
+    expect(schema.annotations({
+      pretty: () => (nea) => {
+        expect(nea).type.toBe<readonly [number, ...Array<number>]>()
+        return "-"
+      }
+    })).type.toBe<S.NonEmptyArray<typeof S.NumberFromString>>()
 
     // should support pipe
     expect(pipe(S.NumberFromString, S.NonEmptyArray)).type.toBe<S.NonEmptyArray<typeof S.NumberFromString>>()

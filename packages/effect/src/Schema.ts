@@ -1494,25 +1494,27 @@ const getDefaultTupleTypeAST = <Elements extends TupleType.Elements, Rest extend
     true
   )
 
-const makeTupleTypeClass = <Elements extends TupleType.Elements, Rest extends TupleType.Rest>(
+function makeTupleTypeClass<Elements extends TupleType.Elements, Rest extends TupleType.Rest>(
   elements: Elements,
   rest: Rest,
   ast: AST.AST = getDefaultTupleTypeAST(elements, rest)
-) => (class TupleTypeClass extends make<
-  TupleType.Type<Elements, Rest>,
-  TupleType.Encoded<Elements, Rest>,
-  Schema.Context<Elements[number]> | Schema.Context<Rest[number]>
->(ast) {
-  static override annotations(
-    annotations: Annotations.Schema<TupleType.Type<Elements, Rest>>
-  ): TupleType<Elements, Rest> {
-    return makeTupleTypeClass(this.elements, this.rest, mergeSchemaAnnotations(this.ast, annotations))
+) {
+  return class TupleTypeClass extends make<
+    TupleType.Type<Elements, Rest>,
+    TupleType.Encoded<Elements, Rest>,
+    Schema.Context<Elements[number]> | Schema.Context<Rest[number]>
+  >(ast) {
+    static override annotations(
+      annotations: Annotations.Schema<TupleType.Type<Elements, Rest>>
+    ): TupleType<Elements, Rest> {
+      return makeTupleTypeClass(this.elements, this.rest, mergeSchemaAnnotations(this.ast, annotations))
+    }
+
+    static elements = [...elements] as any as Elements
+
+    static rest = [...rest] as any as Rest
   }
-
-  static elements = [...elements] as any as Elements
-
-  static rest = [...rest] as any as Rest
-})
+}
 
 /**
  * @category api interface
@@ -1546,16 +1548,18 @@ export interface Array$<Value extends Schema.Any> extends TupleType<[], [Value]>
   annotations(annotations: Annotations.Schema<TupleType.Type<[], [Value]>>): Array$<Value>
 }
 
-const makeArrayClass = <Value extends Schema.Any>(
+function makeArrayClass<Value extends Schema.Any>(
   value: Value,
   ast?: AST.AST
-): Array$<Value> => (class ArrayClass extends makeTupleTypeClass<[], [Value]>([], [value], ast) {
-  static override annotations(annotations: Annotations.Schema<TupleType.Type<[], [Value]>>) {
-    return makeArrayClass(this.value, mergeSchemaAnnotations(this.ast, annotations))
-  }
+): Array$<Value> {
+  return class ArrayClass extends makeTupleTypeClass<[], [Value]>([], [value], ast) {
+    static override annotations(annotations: Annotations.Schema<TupleType.Type<[], [Value]>>) {
+      return makeArrayClass(this.value, mergeSchemaAnnotations(this.ast, annotations))
+    }
 
-  static value = value
-})
+    static value = value
+  }
+}
 
 const Array$ = <Value extends Schema.Any>(value: Value): Array$<Value> => makeArrayClass(value)
 
@@ -1571,15 +1575,23 @@ export {
  * @category api interface
  * @since 3.10.0
  */
-export interface NonEmptyArray<Value extends Schema.Any> extends TupleType<[Value], [Value]> {
+export interface NonEmptyArray<Value extends Schema.Any> extends
+  AnnotableClass<
+    NonEmptyArray<Value>,
+    array_.NonEmptyReadonlyArray<Schema.Type<Value>>,
+    array_.NonEmptyReadonlyArray<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{
+  readonly elements: readonly [Value]
+  readonly rest: readonly [Value]
   readonly value: Value
-  annotations(annotations: Annotations.Schema<TupleType.Type<[Value], [Value]>>): NonEmptyArray<Value>
 }
 
 function makeNonEmptyArrayClass<Value extends Schema.Any>(
   value: Value,
   ast?: AST.AST
-): NonEmptyArray<Value> {
+) {
   return class NonEmptyArrayClass extends makeTupleTypeClass<[Value], [Value]>([value], [value], ast) {
     static override annotations(annotations: Annotations.Schema<TupleType.Type<[Value], [Value]>>) {
       return makeNonEmptyArrayClass(this.value, mergeSchemaAnnotations(this.ast, annotations))
@@ -1594,7 +1606,7 @@ function makeNonEmptyArrayClass<Value extends Schema.Any>(
  * @since 3.10.0
  */
 export const NonEmptyArray = <Value extends Schema.Any>(value: Value): NonEmptyArray<Value> =>
-  makeNonEmptyArrayClass(value)
+  makeNonEmptyArrayClass(value) as any
 
 /**
  * @category api interface
@@ -1629,7 +1641,7 @@ export interface NonEmptyArrayEnsure<Value extends Schema.Any>
  * @since 3.10.0
  */
 export function NonEmptyArrayEnsure<Value extends Schema.Any>(value: Value): NonEmptyArrayEnsure<Value> {
-  return transform(Union(value, NonEmptyArray(value)), NonEmptyArray(typeSchema(value)), {
+  return transform(Union(value, NonEmptyArray(value)), NonEmptyArray(typeSchema(asSchema(value))), {
     strict: true,
     decode: (i) => array_.isNonEmptyReadonlyArray(i) ? i : array_.of(i),
     encode: (a) => a.length === 1 ? a[0] : a
