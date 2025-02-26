@@ -42,7 +42,6 @@ import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 import type * as pretty_ from "./Pretty.js"
-import * as record_ from "./Record.js"
 import * as redacted_ from "./Redacted.js"
 import * as Request from "./Request.js"
 import * as scheduler_ from "./Scheduler.js"
@@ -945,11 +944,11 @@ export const TemplateLiteralParser = <Params extends array_.NonEmptyReadonlyArra
   }
   return class TemplateLiteralParserClass extends transformOrFail(from, to, {
     strict: false,
-    decode: (s, _, ast) => {
-      const match = re.exec(s)
+    decode: (i, _, ast) => {
+      const match = re.exec(i)
       return match
         ? ParseResult.succeed(match.slice(1, params.length + 1))
-        : ParseResult.fail(new ParseResult.Type(ast, s, `${re.source}: no match for ${JSON.stringify(s)}`))
+        : ParseResult.fail(new ParseResult.Type(ast, i, `${re.source}: no match for ${JSON.stringify(i)}`))
     },
     encode: (tuple) => ParseResult.succeed(tuple.join(""))
   }) {
@@ -3066,8 +3065,8 @@ export const pluck: {
       value,
       {
         strict: true,
-        decode: (a: any) => a[key],
-        encode: (ak) => ps.isOptional && ak === undefined ? {} : { [key]: ak } as any
+        decode: (i) => i[key],
+        encode: (a) => ps.isOptional && a === undefined ? {} : { [key]: a } as any
       }
     )
     return out
@@ -3708,16 +3707,16 @@ export const filterEffect: {
     typeSchema(self),
     {
       strict: true,
-      decode: (a, options, ast) =>
+      decode: (i, options, ast) =>
         ParseResult.flatMap(
-          f(a, options, ast),
+          f(i, options, ast),
           (filterReturnType) =>
-            option_.match(toFilterParseIssue(filterReturnType, ast, a), {
-              onNone: () => ParseResult.succeed(a),
+            option_.match(toFilterParseIssue(filterReturnType, ast, i), {
+              onNone: () => ParseResult.succeed(i),
               onSome: ParseResult.fail
             })
         ),
-      encode: ParseResult.succeed
+      encode: (a) => ParseResult.succeed(a)
     }
   ))
 
@@ -3951,7 +3950,11 @@ export function transformLiteral<Encoded extends AST.LiteralValue, Type extends 
   from: Encoded,
   to: Type
 ): transformLiteral<Type, Encoded> {
-  return transform(Literal(from), Literal(to), { strict: true, decode: () => to, encode: () => from })
+  return transform(Literal(from), Literal(to), {
+    strict: true,
+    decode: () => to,
+    encode: () => from
+  })
 }
 
 /**
@@ -4606,7 +4609,11 @@ export const nonEmptyString = <S extends Schema.Any>(
 export class Lowercase extends transform(
   String$.annotations({ description: "a string that will be converted to lowercase" }),
   Lowercased,
-  { strict: true, decode: (s) => s.toLowerCase(), encode: identity }
+  {
+    strict: true,
+    decode: (i) => i.toLowerCase(),
+    encode: identity
+  }
 ).annotations({ identifier: "Lowercase" }) {}
 
 /**
@@ -4618,7 +4625,11 @@ export class Lowercase extends transform(
 export class Uppercase extends transform(
   String$.annotations({ description: "a string that will be converted to uppercase" }),
   Uppercased,
-  { strict: true, decode: (s) => s.toUpperCase(), encode: identity }
+  {
+    strict: true,
+    decode: (i) => i.toUpperCase(),
+    encode: identity
+  }
 ).annotations({ identifier: "Uppercase" }) {}
 
 /**
@@ -4630,7 +4641,11 @@ export class Uppercase extends transform(
 export class Capitalize extends transform(
   String$.annotations({ description: "a string that will be converted to a capitalized format" }),
   Capitalized,
-  { strict: true, decode: (s) => string_.capitalize(s), encode: identity }
+  {
+    strict: true,
+    decode: (i) => string_.capitalize(i),
+    encode: identity
+  }
 ).annotations({ identifier: "Capitalize" }) {}
 
 /**
@@ -4642,7 +4657,11 @@ export class Capitalize extends transform(
 export class Uncapitalize extends transform(
   String$.annotations({ description: "a string that will be converted to an uncapitalized format" }),
   Uncapitalized,
-  { strict: true, decode: (s) => string_.uncapitalize(s), encode: identity }
+  {
+    strict: true,
+    decode: (i) => string_.uncapitalize(i),
+    encode: identity
+  }
 ).annotations({ identifier: "Uncapitalize" }) {}
 
 /**
@@ -4682,7 +4701,11 @@ export class NonEmptyTrimmedString extends Trimmed.pipe(
 export class Trim extends transform(
   String$.annotations({ description: "a string that will be trimmed" }),
   Trimmed,
-  { strict: true, decode: (s) => s.trim(), encode: identity }
+  {
+    strict: true,
+    decode: (i) => i.trim(),
+    encode: identity
+  }
 ).annotations({ identifier: "Trim" }) {}
 
 /**
@@ -4719,15 +4742,15 @@ const getParseJsonTransformation = (options?: ParseJsonOptions): SchemaClass<unk
     Unknown,
     {
       strict: true,
-      decode: (s, _, ast) =>
+      decode: (i, _, ast) =>
         ParseResult.try({
-          try: () => JSON.parse(s, options?.reviver),
-          catch: (e) => new ParseResult.Type(ast, s, getErrorMessage(e))
+          try: () => JSON.parse(i, options?.reviver),
+          catch: (e) => new ParseResult.Type(ast, i, getErrorMessage(e))
         }),
-      encode: (u, _, ast) =>
+      encode: (a, _, ast) =>
         ParseResult.try({
-          try: () => JSON.stringify(u, options?.replacer, options?.space),
-          catch: (e) => new ParseResult.Type(ast, u, getErrorMessage(e))
+          try: () => JSON.stringify(a, options?.replacer, options?.space),
+          catch: (e) => new ParseResult.Type(ast, a, getErrorMessage(e))
         })
     }
   ).annotations({
@@ -4843,17 +4866,17 @@ class URL$ extends transformOrFail(
   URLFromSelf,
   {
     strict: true,
-    decode: (s, _, ast) =>
+    decode: (i, _, ast) =>
       ParseResult.try({
-        try: () => new URL(s),
+        try: () => new URL(i),
         catch: (e) =>
           new ParseResult.Type(
             ast,
-            s,
-            `Unable to decode ${JSON.stringify(s)} into a URL. ${getErrorMessage(e)}`
+            i,
+            `Unable to decode ${JSON.stringify(i)} into a URL. ${getErrorMessage(e)}`
           )
       }),
-    encode: (url) => ParseResult.succeed(url.toString())
+    encode: (a) => ParseResult.succeed(a.toString())
   }
 ).annotations({
   identifier: "URL",
@@ -5201,7 +5224,11 @@ export const clamp = (minimum: number, maximum: number) =>
   return transform(
     self,
     typeSchema(self).pipe(between(minimum, maximum)),
-    { strict: false, decode: (self) => number_.clamp(self, { minimum, maximum }), encode: identity }
+    {
+      strict: false,
+      decode: (i) => number_.clamp(i, { minimum, maximum }),
+      encode: identity
+    }
   )
 }
 
@@ -5226,11 +5253,11 @@ export const parseNumber = <A extends string, I, R>(
     Number$,
     {
       strict: false,
-      decode: (s, _, ast) =>
-        ParseResult.fromOption(number_.parse(s), () =>
-          new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a number`)),
-      encode: (n) =>
-        ParseResult.succeed(String(n))
+      decode: (i, _, ast) =>
+        ParseResult.fromOption(number_.parse(i), () =>
+          new ParseResult.Type(ast, i, `Unable to decode ${JSON.stringify(i)} into a number`)),
+      encode: (a) =>
+        ParseResult.succeed(String(a))
     }
   )
 
@@ -5343,11 +5370,11 @@ export class JsonNumber extends Number$.pipe(
  */
 export class Not extends transform(Boolean$.annotations({ description: "a boolean that will be negated" }), Boolean$, {
   strict: true,
-  decode: boolean_.not,
-  encode: boolean_.not
+  decode: (i) => boolean_.not(i),
+  encode: (a) => boolean_.not(a)
 }) {}
 
-const encodeSymbol = (sym: symbol, _: AST.ParseOptions, ast: AST.AST) => {
+const encodeSymbol = (sym: symbol, ast: AST.AST) => {
   const key = Symbol.keyFor(sym)
   return key === undefined
     ? ParseResult.fail(
@@ -5364,8 +5391,8 @@ class Symbol$ extends transformOrFail(
   SymbolFromSelf,
   {
     strict: false,
-    decode: decodeSymbol,
-    encode: encodeSymbol
+    decode: (i) => decodeSymbol(i),
+    encode: (a, _, ast) => encodeSymbol(a, ast)
   }
 ).annotations({ identifier: "Symbol" }) {}
 
@@ -5586,7 +5613,11 @@ export const clampBigInt = (minimum: bigint, maximum: bigint) =>
   transform(
     self,
     self.pipe(typeSchema, betweenBigInt(minimum, maximum)),
-    { strict: false, decode: (self) => bigInt_.clamp(self, { minimum, maximum }), encode: identity }
+    {
+      strict: false,
+      decode: (i) => bigInt_.clamp(i, { minimum, maximum }),
+      encode: identity
+    }
   )
 
 /** @ignore */
@@ -5595,12 +5626,12 @@ class BigInt$ extends transformOrFail(
   BigIntFromSelf,
   {
     strict: true,
-    decode: (s, _, ast) =>
+    decode: (i, _, ast) =>
       ParseResult.fromOption(
-        bigInt_.fromString(s),
-        () => new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a bigint`)
+        bigInt_.fromString(i),
+        () => new ParseResult.Type(ast, i, `Unable to decode ${JSON.stringify(i)} into a bigint`)
       ),
-    encode: (n) => ParseResult.succeed(String(n))
+    encode: (a) => ParseResult.succeed(String(a))
   }
 ).annotations({ identifier: "BigInt" }) {}
 
@@ -5693,15 +5724,15 @@ export class BigIntFromNumber extends transformOrFail(
   BigIntFromSelf.pipe(betweenBigInt(BigInt(Number.MIN_SAFE_INTEGER), BigInt(Number.MAX_SAFE_INTEGER))),
   {
     strict: true,
-    decode: (n, _, ast) =>
+    decode: (i, _, ast) =>
       ParseResult.fromOption(
-        bigInt_.fromNumber(n),
-        () => new ParseResult.Type(ast, n, `Unable to decode ${n} into a bigint`)
+        bigInt_.fromNumber(i),
+        () => new ParseResult.Type(ast, i, `Unable to decode ${i} into a bigint`)
       ),
-    encode: (b, _, ast) =>
+    encode: (a, _, ast) =>
       ParseResult.fromOption(
-        bigInt_.toNumber(b),
-        () => new ParseResult.Type(ast, b, `Unable to encode ${b}n into a number`)
+        bigInt_.toNumber(a),
+        () => new ParseResult.Type(ast, a, `Unable to encode ${a}n into a number`)
       )
   }
 ).annotations({ identifier: "BigIntFromNumber" }) {}
@@ -5818,11 +5849,10 @@ export class DurationFromNanos extends transformOrFail(
   DurationFromSelf.pipe(filter((duration) => duration_.isFinite(duration), { description: "a finite duration" })),
   {
     strict: true,
-    decode: (nanos) => ParseResult.succeed(duration_.nanos(nanos)),
-    encode: (duration, _, ast) =>
-      option_.match(duration_.toNanos(duration), {
-        onNone: () =>
-          ParseResult.fail(new ParseResult.Type(ast, duration, `Unable to encode ${duration} into a bigint`)),
+    decode: (i) => ParseResult.succeed(duration_.nanos(i)),
+    encode: (a, _, ast) =>
+      option_.match(duration_.toNanos(a), {
+        onNone: () => ParseResult.fail(new ParseResult.Type(ast, a, `Unable to encode ${a} into a bigint`)),
         onSome: (nanos) => ParseResult.succeed(nanos)
       })
   }
@@ -5850,8 +5880,8 @@ export class DurationFromMillis extends transform(
   DurationFromSelf,
   {
     strict: true,
-    decode: (ms) => duration_.millis(ms),
-    encode: (duration) => duration_.toMillis(duration)
+    decode: (i) => duration_.millis(i),
+    encode: (a) => duration_.toMillis(a)
   }
 ).annotations({ identifier: "DurationFromMillis" }) {}
 
@@ -5913,26 +5943,26 @@ export class Duration extends transform(
   DurationFromSelf,
   {
     strict: true,
-    decode: (input) => {
-      if (isDurationValue(input)) {
-        switch (input._tag) {
+    decode: (i) => {
+      if (isDurationValue(i)) {
+        switch (i._tag) {
           case "Millis":
-            return duration_.millis(input.millis)
+            return duration_.millis(i.millis)
           case "Nanos":
-            return duration_.nanos(input.nanos)
+            return duration_.nanos(i.nanos)
           case "Infinity":
             return duration_.infinity
         }
       }
-      const [seconds, nanos] = input
+      const [seconds, nanos] = i
       return seconds === -1 ? duration_.infinity : duration_.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos))
     },
-    encode: (duration) => {
-      switch (duration.value._tag) {
+    encode: (a) => {
+      switch (a.value._tag) {
         case "Millis":
-          return DurationValueMillis.make({ millis: duration.value.millis })
+          return DurationValueMillis.make({ millis: a.value.millis })
         case "Nanos":
-          return DurationValueNanos.make({ nanos: duration.value.nanos })
+          return DurationValueNanos.make({ nanos: a.value.nanos })
         case "Infinity":
           return durationValueInfinity
       }
@@ -5954,7 +5984,11 @@ export const clampDuration =
     transform(
       self,
       self.pipe(typeSchema, betweenDuration(minimum, maximum)),
-      { strict: false, decode: (self) => duration_.clamp(self, { minimum, maximum }), encode: identity }
+      {
+        strict: false,
+        decode: (i) => duration_.clamp(i, { minimum, maximum }),
+        encode: identity
+      }
     )
 
 /**
@@ -6118,7 +6152,11 @@ class Uint8Array$ extends transform(
     description: "an array of 8-bit unsigned integers to be decoded into a Uint8Array"
   }),
   Uint8ArrayFromSelf,
-  { strict: true, decode: (numbers) => Uint8Array.from(numbers), encode: (uint8Array) => Array.from(uint8Array) }
+  {
+    strict: true,
+    decode: (i) => Uint8Array.from(i),
+    encode: (a) => Array.from(a)
+  }
 ).annotations({ identifier: "Uint8Array" }) {}
 
 export {
@@ -6141,12 +6179,12 @@ const makeUint8ArrayTransformation = (
     Uint8ArrayFromSelf,
     {
       strict: true,
-      decode: (s, _, ast) =>
+      decode: (i, _, ast) =>
         either_.mapLeft(
-          decode(s),
-          (decodeException) => new ParseResult.Type(ast, s, decodeException.message)
+          decode(i),
+          (decodeException) => new ParseResult.Type(ast, i, decodeException.message)
         ),
-      encode: (u) => ParseResult.succeed(encode(u))
+      encode: (a) => ParseResult.succeed(encode(a))
     }
   ).annotations({ identifier: id })
 
@@ -6198,12 +6236,12 @@ const makeEncodingTransformation = (
     String$,
     {
       strict: true,
-      decode: (s, _, ast) =>
+      decode: (i, _, ast) =>
         either_.mapLeft(
-          decode(s),
-          (decodeException) => new ParseResult.Type(ast, s, decodeException.message)
+          decode(i),
+          (decodeException) => new ParseResult.Type(ast, i, decodeException.message)
         ),
-      encode: (u) => ParseResult.succeed(encode(u))
+      encode: (a) => ParseResult.succeed(encode(a))
     }
   ).annotations({ identifier: `StringFrom${id}` })
 
@@ -6272,15 +6310,15 @@ export const StringFromUriComponent = transformOrFail(
   String$,
   {
     strict: true,
-    decode: (s, _, ast) =>
+    decode: (i, _, ast) =>
       either_.mapLeft(
-        Encoding.decodeUriComponent(s),
-        (decodeException) => new ParseResult.Type(ast, s, decodeException.message)
+        Encoding.decodeUriComponent(i),
+        (decodeException) => new ParseResult.Type(ast, i, decodeException.message)
       ),
-    encode: (u, _, ast) =>
+    encode: (a, _, ast) =>
       either_.mapLeft(
-        Encoding.encodeUriComponent(u),
-        (encodeException) => new ParseResult.Type(ast, u, encodeException.message)
+        Encoding.encodeUriComponent(a),
+        (encodeException) => new ParseResult.Type(ast, a, encodeException.message)
       )
   }
 ).annotations({ identifier: `StringFromUriComponent` })
@@ -6427,8 +6465,12 @@ export function head<S extends Schema.Any, A extends ReadonlyArray<unknown>>(
     OptionFromSelf(getNumberIndexedAccess(typeSchema(self))),
     {
       strict: false,
-      decode: array_.head,
-      encode: option_.match({ onNone: () => [], onSome: array_.of })
+      decode: (i) => array_.head(i),
+      encode: (a) =>
+        option_.match(a, {
+          onNone: () => [],
+          onSome: array_.of
+        })
     }
   )
 }
@@ -6447,8 +6489,8 @@ export function headNonEmpty<S extends Schema.Any, A extends array_.NonEmptyRead
     getNumberIndexedAccess(typeSchema(self)),
     {
       strict: false,
-      decode: array_.headNonEmpty,
-      encode: (x: A[number]) => array_.of(x)
+      decode: (i) => array_.headNonEmpty(i),
+      encode: (a) => array_.of(a)
     }
   )
 }
@@ -6482,12 +6524,12 @@ export const headOrElse: {
       getNumberIndexedAccess(typeSchema(self)),
       {
         strict: true,
-        decode: (as, _, ast) =>
-          as.length > 0
-            ? ParseResult.succeed(as[0])
+        decode: (i, _, ast) =>
+          i.length > 0
+            ? ParseResult.succeed(i[0])
             : fallback
             ? ParseResult.succeed(fallback())
-            : ParseResult.fail(new ParseResult.Type(ast, as, "Unable to retrieve the first element of an empty array")),
+            : ParseResult.fail(new ParseResult.Type(ast, i, "Unable to retrieve the first element of an empty array")),
         encode: (a) => ParseResult.succeed(array_.of(a))
       }
     )
@@ -6712,7 +6754,11 @@ export class ValidDateFromSelf extends DateFromSelf.pipe(
 export class DateFromString extends transform(
   String$.annotations({ description: "a string to be decoded into a Date" }),
   DateFromSelf,
-  { strict: true, decode: (s) => new Date(s), encode: (d) => util_.formatDate(d) }
+  {
+    strict: true,
+    decode: (i) => new Date(i),
+    encode: (a) => util_.formatDate(a)
+  }
 ).annotations({ identifier: "DateFromString" }) {}
 
 /** @ignore */
@@ -6746,7 +6792,11 @@ export {
 export class DateFromNumber extends transform(
   Number$.annotations({ description: "a number to be decoded into a Date" }),
   DateFromSelf,
-  { strict: true, decode: (n) => new Date(n), encode: (d) => d.getTime() }
+  {
+    strict: true,
+    decode: (i) => new Date(i),
+    encode: (a) => a.getTime()
+  }
 ).annotations({ identifier: "DateFromNumber" }) {}
 
 /**
@@ -6767,7 +6817,7 @@ export class DateTimeUtcFromSelf extends declare(
   }
 ) {}
 
-const decodeDateTimeUtc = <A extends dateTime.DateTime.Input>(input: A, _: ParseOptions, ast: AST.AST) =>
+const decodeDateTimeUtc = <A extends dateTime.DateTime.Input>(input: A, ast: AST.AST) =>
   ParseResult.try({
     try: () => dateTime.unsafeMake(input),
     catch: () => new ParseResult.Type(ast, input, `Unable to decode ${util_.formatUnknown(input)} into a DateTime.Utc`)
@@ -6784,8 +6834,8 @@ export class DateTimeUtcFromNumber extends transformOrFail(
   DateTimeUtcFromSelf,
   {
     strict: true,
-    decode: decodeDateTimeUtc,
-    encode: (dt) => ParseResult.succeed(dateTime.toEpochMillis(dt))
+    decode: (i, _, ast) => decodeDateTimeUtc(i, ast),
+    encode: (a) => ParseResult.succeed(dateTime.toEpochMillis(a))
   }
 ).annotations({ identifier: "DateTimeUtcFromNumber" }) {}
 
@@ -6800,8 +6850,8 @@ export class DateTimeUtcFromDate extends transformOrFail(
   DateTimeUtcFromSelf,
   {
     strict: true,
-    decode: decodeDateTimeUtc,
-    encode: (dt) => ParseResult.succeed(dateTime.toDateUtc(dt))
+    decode: (i, _, ast) => decodeDateTimeUtc(i, ast),
+    encode: (a) => ParseResult.succeed(dateTime.toDateUtc(a))
   }
 ).annotations({ identifier: "DateTimeUtcFromDate" }) {}
 
@@ -6816,8 +6866,8 @@ export class DateTimeUtc extends transformOrFail(
   DateTimeUtcFromSelf,
   {
     strict: true,
-    decode: decodeDateTimeUtc,
-    encode: (dt) => ParseResult.succeed(dateTime.formatIso(dt))
+    decode: (i, _, ast) => decodeDateTimeUtc(i, ast),
+    encode: (a) => ParseResult.succeed(dateTime.formatIso(a))
   }
 ).annotations({ identifier: "DateTimeUtc" }) {}
 
@@ -6849,7 +6899,11 @@ export class TimeZoneOffsetFromSelf extends declare(
 export class TimeZoneOffset extends transform(
   Number$.annotations({ description: "a number to be decoded into a TimeZone.Offset" }),
   TimeZoneOffsetFromSelf,
-  { strict: true, decode: dateTime.zoneMakeOffset, encode: (tz) => tz.offset }
+  {
+    strict: true,
+    decode: (i) => dateTime.zoneMakeOffset(i),
+    encode: (a) => a.offset
+  }
 ).annotations({ identifier: "TimeZoneOffset" }) {}
 
 const timeZoneNamedArbitrary = (): LazyArbitrary<dateTime.TimeZone.Named> => (fc) =>
@@ -6882,12 +6936,12 @@ export class TimeZoneNamed extends transformOrFail(
   TimeZoneNamedFromSelf,
   {
     strict: true,
-    decode: (s, _, ast) =>
+    decode: (i, _, ast) =>
       ParseResult.try({
-        try: () => dateTime.zoneUnsafeMakeNamed(s),
-        catch: () => new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a TimeZone.Named`)
+        try: () => dateTime.zoneUnsafeMakeNamed(i),
+        catch: () => new ParseResult.Type(ast, i, `Unable to decode ${JSON.stringify(i)} into a TimeZone.Named`)
       }),
-    encode: (tz) => ParseResult.succeed(tz.id)
+    encode: (a) => ParseResult.succeed(a.id)
   }
 ).annotations({ identifier: "TimeZoneNamed" }) {}
 
@@ -6908,13 +6962,13 @@ export class TimeZone extends transformOrFail(
   TimeZoneFromSelf,
   {
     strict: true,
-    decode: (s, _, ast) =>
-      option_.match(dateTime.zoneFromString(s), {
+    decode: (i, _, ast) =>
+      option_.match(dateTime.zoneFromString(i), {
         onNone: () =>
-          ParseResult.fail(new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a TimeZone`)),
+          ParseResult.fail(new ParseResult.Type(ast, i, `Unable to decode ${JSON.stringify(i)} into a TimeZone`)),
         onSome: ParseResult.succeed
       }),
-    encode: (tz) => ParseResult.succeed(dateTime.zoneToString(tz))
+    encode: (a) => ParseResult.succeed(dateTime.zoneToString(a))
   }
 ).annotations({ identifier: "TimeZone" }) {}
 
@@ -6960,13 +7014,13 @@ export class DateTimeZoned extends transformOrFail(
   DateTimeZonedFromSelf,
   {
     strict: true,
-    decode: (s, _, ast) =>
-      option_.match(dateTime.makeZonedFromString(s), {
+    decode: (i, _, ast) =>
+      option_.match(dateTime.makeZonedFromString(i), {
         onNone: () =>
-          ParseResult.fail(new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a DateTime.Zoned`)),
+          ParseResult.fail(new ParseResult.Type(ast, i, `Unable to decode ${JSON.stringify(i)} into a DateTime.Zoned`)),
         onSome: ParseResult.succeed
       }),
-    encode: (dt) => ParseResult.succeed(dateTime.formatIsoZoned(dt))
+    encode: (a) => ParseResult.succeed(dateTime.formatIsoZoned(a))
   }
 ).annotations({ identifier: "DateTimeZoned" }) {}
 
@@ -7146,8 +7200,10 @@ export function OptionFromNullishOr<Value extends Schema.Any>(
     OptionFromSelf(typeSchema(asSchema(value))),
     {
       strict: true,
-      decode: option_.fromNullable,
-      encode: onNoneEncoding === null ? option_.getOrNull : option_.getOrUndefined
+      decode: (i) => option_.fromNullable(i),
+      encode: onNoneEncoding === null ?
+        (a) => option_.getOrNull(a) :
+        (a) => option_.getOrUndefined(a)
     }
   )
 }
@@ -7167,8 +7223,8 @@ export interface OptionFromUndefinedOr<Value extends Schema.Any>
 export function OptionFromUndefinedOr<Value extends Schema.Any>(value: Value): OptionFromUndefinedOr<Value> {
   return transform(UndefinedOr(value), OptionFromSelf(typeSchema(asSchema(value))), {
     strict: true,
-    decode: option_.fromNullable,
-    encode: option_.getOrUndefined
+    decode: (i) => option_.fromNullable(i),
+    encode: (a) => option_.getOrUndefined(a)
   })
 }
 
@@ -7191,8 +7247,8 @@ export function OptionFromUndefinedOr<Value extends Schema.Any>(value: Value): O
  */
 export class OptionFromNonEmptyTrimmedString extends transform(String$, OptionFromSelf(NonEmptyTrimmedString), {
   strict: true,
-  decode: (s) => option_.filter(option_.some(s.trim()), string_.isNonEmpty),
-  encode: option_.getOrElse(() => "")
+  decode: (i) => option_.filter(option_.some(i.trim()), string_.isNonEmpty),
+  encode: (a) => option_.getOrElse(a, () => "")
 }) {}
 
 /**
@@ -7549,7 +7605,11 @@ export const ReadonlyMap = <K extends Schema.Any, V extends Schema.Any>({ key, v
   const out = transform(
     Array$(Tuple(key_, value_)),
     ReadonlyMapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
-    { strict: true, decode: (as) => new Map(as), encode: (map) => Array.from(map.entries()) }
+    {
+      strict: true,
+      decode: (i) => new Map(i),
+      encode: (a) => Array.from(a.entries())
+    }
   )
   return out as any
 }
@@ -7571,7 +7631,11 @@ const map = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
   const out = transform(
     Array$(Tuple(key_, value_)),
     MapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
-    { strict: true, decode: (as) => new Map(as), encode: (map) => Array.from(map.entries()) }
+    {
+      strict: true,
+      decode: (i) => new Map(i),
+      encode: (a) => Array.from(a.entries())
+    }
   )
   return out as any
 }
@@ -7599,8 +7663,8 @@ export const ReadonlyMapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
     ReadonlyMapFromSelf({ key, value: typeSchema(value) }),
     {
       strict: true,
-      decode: (record) => new Map(Object.entries(record)),
-      encode: Object.fromEntries
+      decode: (i) => new Map(Object.entries(i)),
+      encode: (a) => Object.fromEntries(a)
     }
   )
 
@@ -7619,8 +7683,8 @@ export const MapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
     MapFromSelf({ key, value: typeSchema(value) }),
     {
       strict: true,
-      decode: (record) => new Map(Object.entries(record)),
-      encode: record_.fromEntries
+      decode: (i) => new Map(Object.entries(i)),
+      encode: (a) => Object.fromEntries(a)
     }
   )
 
@@ -7720,7 +7784,11 @@ export const ReadonlySet = <Value extends Schema.Any>(value: Value): ReadonlySet
   const out = transform(
     Array$(value_),
     ReadonlySetFromSelf(typeSchema(value_)),
-    { strict: true, decode: (as) => new Set(as), encode: (set) => Array.from(set) }
+    {
+      strict: true,
+      decode: (i) => new Set(i),
+      encode: (a) => Array.from(a)
+    }
   )
   return out as any
 }
@@ -7738,7 +7806,11 @@ const set = <Value extends Schema.Any>(value: Value): Set$<Value> => {
   const out = transform(
     Array$(value_),
     SetFromSelf(typeSchema(value_)),
-    { strict: true, decode: (as) => new Set(as), encode: (set) => Array.from(set) }
+    {
+      strict: true,
+      decode: (i) => new Set(i),
+      encode: (a) => Array.from(a)
+    }
   )
   return out as any
 }
@@ -7781,13 +7853,13 @@ export class BigDecimal extends transformOrFail(
   BigDecimalFromSelf,
   {
     strict: true,
-    decode: (s, _, ast) =>
-      bigDecimal_.fromString(s).pipe(option_.match({
+    decode: (i, _, ast) =>
+      bigDecimal_.fromString(i).pipe(option_.match({
         onNone: () =>
-          ParseResult.fail(new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a BigDecimal`)),
+          ParseResult.fail(new ParseResult.Type(ast, i, `Unable to decode ${JSON.stringify(i)} into a BigDecimal`)),
         onSome: (val) => ParseResult.succeed(bigDecimal_.normalize(val))
       })),
-    encode: (val) => ParseResult.succeed(bigDecimal_.format(bigDecimal_.normalize(val)))
+    encode: (a) => ParseResult.succeed(bigDecimal_.format(bigDecimal_.normalize(a)))
   }
 ).annotations({ identifier: "BigDecimal" }) {}
 
@@ -7803,8 +7875,8 @@ export class BigDecimalFromNumber extends transform(
   BigDecimalFromSelf,
   {
     strict: true,
-    decode: bigDecimal_.unsafeFromNumber,
-    encode: bigDecimal_.unsafeToNumber
+    decode: (i) => bigDecimal_.unsafeFromNumber(i),
+    encode: (a) => bigDecimal_.unsafeToNumber(a)
   }
 ).annotations({ identifier: "BigDecimalFromNumber" }) {}
 
@@ -8083,7 +8155,11 @@ export const clampBigDecimal =
     transform(
       self,
       self.pipe(typeSchema, betweenBigDecimal(minimum, maximum)),
-      { strict: false, decode: (self) => bigDecimal_.clamp(self, { minimum, maximum }), encode: identity }
+      {
+        strict: false,
+        decode: (i) => bigDecimal_.clamp(i, { minimum, maximum }),
+        encode: identity
+      }
     )
 
 const chunkArbitrary =
@@ -8157,8 +8233,8 @@ export const Chunk = <Value extends Schema.Any>(value: Value): Chunk<Value> => {
     ChunkFromSelf(typeSchema(value_)),
     {
       strict: true,
-      decode: (as) => as.length === 0 ? chunk_.empty() : chunk_.fromIterable(as),
-      encode: chunk_.toReadonlyArray
+      decode: (i) => i.length === 0 ? chunk_.empty() : chunk_.fromIterable(i),
+      encode: (a) => chunk_.toReadonlyArray(a)
     }
   )
   return out as any
@@ -8228,7 +8304,11 @@ export const NonEmptyChunk = <Value extends Schema.Any>(value: Value): NonEmptyC
   const out = transform(
     NonEmptyArray(value_),
     NonEmptyChunkFromSelf(typeSchema(value_)),
-    { strict: true, decode: chunk_.unsafeFromNonEmptyArray, encode: chunk_.toReadonlyArray }
+    {
+      strict: true,
+      decode: (i) => chunk_.unsafeFromNonEmptyArray(i),
+      encode: (a) => chunk_.toReadonlyArray(a)
+    }
   )
   return out as any
 }
@@ -8316,7 +8396,11 @@ export const Data = <
   return transform(
     value,
     DataFromSelf(typeSchema(value)),
-    { strict: false, decode: decodeData, encode: (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a) }
+    {
+      strict: false,
+      decode: (i) => decodeData(i),
+      encode: (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a)
+    }
   )
 }
 
@@ -8843,7 +8927,11 @@ const makeClass = <Fields extends Struct.Fields>(
       out = transform(
         encodedSide,
         declaration,
-        { strict: true, decode: (input) => new this(input, true), encode: identity }
+        {
+          strict: true,
+          decode: (i) => new this(i, true),
+          encode: identity
+        }
       ).annotations({
         [AST.SurrogateAnnotationId]: transformationSurrogate.ast,
         ...transformationAnnotations
@@ -9069,7 +9157,11 @@ const fiberIdEncode = (input: fiberId_.FiberId): FiberIdEncoded => {
 export class FiberId extends transform(
   FiberIdEncoded,
   FiberIdFromSelf,
-  { strict: true, decode: fiberIdDecode, encode: fiberIdEncode }
+  {
+    strict: true,
+    decode: (i) => fiberIdDecode(i),
+    encode: (a) => fiberIdEncode(a)
+  }
 ).annotations({ identifier: "FiberId" }) {}
 
 /**
@@ -9313,7 +9405,11 @@ export const Cause = <E extends Schema.All, D extends Schema.All>({ defect, erro
   const out = transform(
     causeEncoded(error_, defect_),
     CauseFromSelf({ error: typeSchema(error_), defect: typeSchema(defect_) }),
-    { strict: false, decode: causeDecode, encode: causeEncode }
+    {
+      strict: false,
+      decode: (i) => causeDecode(i),
+      encode: (a) => causeEncode(a)
+    }
   )
   return out as any
 }
@@ -9336,26 +9432,26 @@ export class Defect extends transform(
   Unknown,
   {
     strict: true,
-    decode: (u) => {
-      if (Predicate.isObject(u) && "message" in u && typeof u.message === "string") {
-        const err = new Error(u.message, { cause: u })
-        if ("name" in u && typeof u.name === "string") {
-          err.name = u.name
+    decode: (i) => {
+      if (Predicate.isObject(i) && "message" in i && typeof i.message === "string") {
+        const err = new Error(i.message, { cause: i })
+        if ("name" in i && typeof i.name === "string") {
+          err.name = i.name
         }
-        err.stack = "stack" in u && typeof u.stack === "string" ? u.stack : ""
+        err.stack = "stack" in i && typeof i.stack === "string" ? i.stack : ""
         return err
       }
-      return String(u)
+      return String(i)
     },
-    encode: (defect) => {
-      if (defect instanceof Error) {
+    encode: (a) => {
+      if (a instanceof Error) {
         return {
-          name: defect.name,
-          message: defect.message
+          name: a.name,
+          message: a.message
           // no stack because of security reasons
         }
       }
-      return internalCause_.prettyErrorMessage(defect)
+      return internalCause_.prettyErrorMessage(a)
     }
   }
 ).annotations({ identifier: "Defect" }) {}
@@ -9531,11 +9627,11 @@ export const Exit = <A extends Schema.All, E extends Schema.All, D extends Schem
     ExitFromSelf({ failure: typeSchema(failure_), success: typeSchema(success_), defect: typeSchema(defect_) }),
     {
       strict: false,
-      decode: exitDecode,
-      encode: (exit) =>
-        exit._tag === "Failure"
-          ? { _tag: "Failure", cause: exit.cause } as const
-          : { _tag: "Success", value: exit.value } as const
+      decode: (i) => exitDecode(i),
+      encode: (a) =>
+        a._tag === "Failure"
+          ? { _tag: "Failure", cause: a.cause } as const
+          : { _tag: "Success", value: a.value } as const
     }
   )
   return out as any
@@ -9619,7 +9715,11 @@ export const HashSet = <Value extends Schema.Any>(value: Value): HashSet<Value> 
   const out = transform(
     Array$(value_),
     HashSetFromSelf(typeSchema(value_)),
-    { strict: true, decode: (as) => hashSet_.fromIterable(as), encode: (set) => Array.from(set) }
+    {
+      strict: true,
+      decode: (i) => hashSet_.fromIterable(i),
+      encode: (a) => Array.from(a)
+    }
   )
   return out as any
 }
@@ -9720,7 +9820,11 @@ export const HashMap = <K extends Schema.Any, V extends Schema.Any>({ key, value
   const out = transform(
     Array$(Tuple(key_, value_)),
     HashMapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
-    { strict: true, decode: (as) => hashMap_.fromIterable(as), encode: (map) => Array.from(map) }
+    {
+      strict: true,
+      decode: (i) => hashMap_.fromIterable(i),
+      encode: (a) => Array.from(a)
+    }
   )
   return out as any
 }
@@ -9801,7 +9905,11 @@ export const List = <Value extends Schema.Any>(value: Value): List<Value> => {
   const out = transform(
     Array$(value_),
     ListFromSelf(typeSchema(value_)),
-    { strict: true, decode: (as) => list_.fromIterable(as), encode: (set) => Array.from(set) }
+    {
+      strict: true,
+      decode: (i) => list_.fromIterable(i),
+      encode: (a) => Array.from(a)
+    }
   )
   return out as any
 }
@@ -9895,8 +10003,8 @@ export const SortedSet = <Value extends Schema.Any>(
     SortedSetFromSelf<typeof to>(to, ordA, ordA),
     {
       strict: true,
-      decode: (as) => sortedSet_.fromIterable(as, ordA),
-      encode: (set) => Array.from(sortedSet_.values(set))
+      decode: (i) => sortedSet_.fromIterable(i, ordA),
+      encode: (a) => Array.from(sortedSet_.values(a))
     }
   )
   return out as any
@@ -9913,7 +10021,11 @@ export const SortedSet = <Value extends Schema.Any>(
 export class BooleanFromUnknown extends transform(
   Unknown,
   Boolean$,
-  { strict: true, decode: Predicate.isTruthy, encode: identity }
+  {
+    strict: true,
+    decode: (i) => Predicate.isTruthy(i),
+    encode: identity
+  }
 ).annotations({ identifier: "BooleanFromUnknown" }) {}
 
 /**
@@ -9926,7 +10038,11 @@ export class BooleanFromUnknown extends transform(
 export class BooleanFromString extends transform(
   Literal("true", "false").annotations({ description: "a string to be decoded into a boolean" }),
   Boolean$,
-  { strict: true, decode: (value) => value === "true", encode: (value) => value ? "true" : "false" }
+  {
+    strict: true,
+    decode: (i) => i === "true",
+    encode: (a) => a ? "true" : "false"
+  }
 ).annotations({ identifier: "BooleanFromString" }) {}
 
 /**
@@ -10654,8 +10770,8 @@ const SymbolFromStruct = transformOrFail(
   SymbolFromSelf,
   {
     strict: true,
-    decode: ({ key }) => decodeSymbol(key),
-    encode: (sym, _, ast) => ParseResult.map(encodeSymbol(sym, _, ast), (key) => SymbolStruct.make({ key }))
+    decode: (i) => decodeSymbol(i.key),
+    encode: (a, _, ast) => ParseResult.map(encodeSymbol(a, ast), (key) => SymbolStruct.make({ key }))
   }
 )
 
