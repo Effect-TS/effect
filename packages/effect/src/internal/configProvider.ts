@@ -647,7 +647,7 @@ const parseQuotedIndex = (str: string): Option.Option<number> => {
       matchedIndex !== undefined && matchedIndex.length > 0 ?
         Option.some(matchedIndex) :
         Option.none(),
-      Option.flatMap(parseInteger)
+      Option.flatMap(number.parseInteger)
     )
   }
   return Option.none()
@@ -686,18 +686,11 @@ const splitIndexFrom = (key: string): Option.Option<[string, number]> => {
       matchedIndex !== undefined && matchedIndex.length > 0 ?
         Option.some(matchedIndex) :
         Option.none(),
-      Option.flatMap(parseInteger)
+      Option.flatMap(number.parseInteger)
     )
     return Option.all([optionalString, optionalIndex])
   }
   return Option.none()
-}
-
-const parseInteger = (str: string): Option.Option<number> => {
-  const parsedIndex = Number.parseInt(str)
-  return Number.isNaN(parsedIndex) ?
-    Option.none() :
-    Option.some(parsedIndex)
 }
 
 const keyName = (name: string): KeyComponent => ({
