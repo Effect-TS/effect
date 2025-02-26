@@ -503,14 +503,22 @@ describe("Schema", () => {
   })
 
   it("Struct", () => {
-    expect(S.Struct({ a: S.String, b: S.Number }).fields)
-      .type.toBe<{ readonly a: typeof S.String; readonly b: typeof S.Number }>()
-    expect(S.Struct({ a: S.String, b: S.Number }).records).type.toBe<readonly []>()
-    expect(S.Struct({ a: S.String, b: S.Number }).annotations({}).fields)
-      .type.toBe<{ readonly a: typeof S.String; readonly b: typeof S.Number }>()
-    expect(S.asSchema(S.Struct({ a: S.String, b: S.Number })))
+    const schema = S.Struct({ a: S.String, b: S.Number })
+    expect(S.asSchema(schema))
       .type.toBe<S.Schema<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: number }>>()
-    expect(S.Struct({ a: S.String, b: S.Number })).type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
+    expect(schema).type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
+    expect(schema.annotations({
+      pretty: () => (a) => {
+        expect(a).type.toBe<{
+          readonly a: string
+          readonly b: number
+        }>()
+        return "-"
+      }
+    })).type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
+    expect(schema.fields).type.toBe<{ readonly a: typeof S.String; readonly b: typeof S.Number }>()
+    expect(schema.records).type.toBe<readonly []>()
+
     const MyModel = S.Struct({ a: S.String, b: S.NumberFromString })
     expect(S.asSchema(MyModel))
       .type.toBe<S.Schema<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: string }>>()
