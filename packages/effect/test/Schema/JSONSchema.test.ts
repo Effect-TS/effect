@@ -1961,10 +1961,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "type": "string"
           }
         },
-        "patternProperties": {
-          "": {
-            "type": "string"
-          }
+        "additionalProperties": {
+          "type": "string"
         }
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
@@ -2073,10 +2071,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "type": "object",
         "properties": {},
         "required": [],
-        "patternProperties": {
-          "": {
-            "type": "number"
-          }
+        "additionalProperties": {
+          "type": "number"
         }
       })
     })

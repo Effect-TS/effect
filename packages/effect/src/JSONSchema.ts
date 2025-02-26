@@ -635,13 +635,19 @@ const go = (
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
         return { ...constEmpty, ...getJsonSchemaAnnotations(ast) }
       }
+      const output: JsonSchema7Object = {
+        type: "object",
+        required: [],
+        properties: {},
+        additionalProperties: false
+      }
       let patternProperties: JsonSchema7 | undefined = undefined
       let propertyNames: JsonSchema7 | undefined = undefined
       for (const is of ast.indexSignatures) {
         const parameter = is.parameter
         switch (parameter._tag) {
           case "StringKeyword": {
-            patternProperties = go(is.type, $defs, true, path, options)
+            output.additionalProperties = go(is.type, $defs, true, path, options)
             break
           }
           case "TemplateLiteral": {
@@ -660,12 +666,6 @@ const go = (
           case "SymbolKeyword":
             throw new Error(errors_.getJSONSchemaUnsupportedParameterErrorMessage(path, parameter))
         }
-      }
-      const output: JsonSchema7Object = {
-        type: "object",
-        required: [],
-        properties: {},
-        additionalProperties: false
       }
       // ---------------------------------------------
       // handle property signatures
