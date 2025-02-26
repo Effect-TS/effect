@@ -482,18 +482,24 @@ describe("Schema", () => {
   })
 
   it("NonEmptyArray", () => {
-    expect(S.asSchema(S.NonEmptyArray(S.Number))).type.toBe<
-      S.Schema<readonly [number, ...Array<number>], readonly [number, ...Array<number>]>
-    >()
-    expect(S.NonEmptyArray(S.Number)).type.toBe<S.NonEmptyArray<typeof S.Number>>()
-    expect(pipe(S.Number, S.NonEmptyArray)).type.toBe<S.NonEmptyArray<typeof S.Number>>()
-    expect(S.asSchema(S.NonEmptyArray(S.NumberFromString))).type.toBe<
-      S.Schema<readonly [number, ...Array<number>], readonly [string, ...Array<string>]>
-    >()
-    expect(S.NonEmptyArray(S.NumberFromString)).type.toBe<S.NonEmptyArray<typeof S.NumberFromString>>()
-    expect(S.NonEmptyArray(S.String).value).type.toBe<typeof S.String>()
-    expect(S.NonEmptyArray(S.String).elements).type.toBe<readonly [typeof S.String]>()
-    expect(S.NonEmptyArray(S.String).rest).type.toBe<readonly [typeof S.String]>()
+    const schema = S.NonEmptyArray(S.NumberFromString)
+    expect(S.asSchema(schema))
+      .type.toBe<S.Schema<readonly [number, ...Array<number>], readonly [string, ...Array<string>]>>()
+    expect(schema).type.toBe<S.NonEmptyArray<typeof S.NumberFromString>>()
+    expect(schema.annotations({
+      pretty: () => (nea) => {
+        expect(nea).type.toBe<readonly [number, ...Array<number>]>()
+        return "-"
+      }
+    })).type.toBe<S.NonEmptyArray<typeof S.NumberFromString>>()
+
+    // should support pipe
+    expect(pipe(S.NumberFromString, S.NonEmptyArray)).type.toBe<S.NonEmptyArray<typeof S.NumberFromString>>()
+
+    // should expose the value, elements and rest fields
+    expect(schema.value).type.toBe<typeof S.NumberFromString>()
+    expect(schema.elements).type.toBe<readonly [typeof S.NumberFromString]>()
+    expect(schema.rest).type.toBe<readonly [typeof S.NumberFromString]>()
   })
 
   it("Struct", () => {
@@ -3885,7 +3891,7 @@ describe("Schema", () => {
     expect(schema).type.toBe<S.ArrayEnsure<typeof S.NumberFromString>>()
     expect(schema.annotations({})).type.toBe<S.ArrayEnsure<typeof S.NumberFromString>>()
     expect(schema.from).type.toBe<S.Union<[typeof S.NumberFromString, S.Array$<typeof S.NumberFromString>]>>()
-    expect(schema.to).type.toBe<S.SchemaClass<ReadonlyArray<number>>>()
+    expect(schema.to).type.toBe<S.Array$<S.SchemaClass<number>>>()
   })
 
   it("NonEmptyArrayEnsure", () => {
@@ -3896,7 +3902,7 @@ describe("Schema", () => {
     expect(schema).type.toBe<S.NonEmptyArrayEnsure<typeof S.NumberFromString>>()
     expect(schema.annotations({})).type.toBe<S.NonEmptyArrayEnsure<typeof S.NumberFromString>>()
     expect(schema.from).type.toBe<S.Union<[typeof S.NumberFromString, S.NonEmptyArray<typeof S.NumberFromString>]>>()
-    expect(schema.to).type.toBe<S.SchemaClass<readonly [number, ...Array<number>]>>()
+    expect(schema.to).type.toBe<S.NonEmptyArray<S.SchemaClass<number>>>()
   })
 
   it("ReadonlyMapFromRecord", () => {
