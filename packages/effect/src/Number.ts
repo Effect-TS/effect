@@ -551,6 +551,7 @@ export const parse = (s: string): Option<number> => {
  * import { parseInteger } from "effect/Number"
  * 
  * assert.deepStrictEqual(parseInteger("42"), option.some(42))
+ * assert.deepStrictEqual(parseInteger("4.2"), option.some(4))
  * assert.deepStrictEqual(parseInteger("abc"), option.none)
  * assert.deepStrictEqual(parseInteger("101", 2), option.some(5))
  *
