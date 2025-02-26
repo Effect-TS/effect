@@ -37,7 +37,7 @@ describe("Schema.TaggedRequest", () => {
       undefined,
       {
         pretty: () => (x) => {
-          expect(x).type.toBe<{ readonly _tag: "A" } & { readonly id: number }>()
+          expect(x).type.toBe<{ readonly _tag: "A"; readonly id: number }>()
           return ""
         }
       }

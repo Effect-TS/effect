@@ -2561,31 +2561,33 @@ export declare namespace Struct {
     F[K] extends PropertySignature.All<infer Key> ? [Key] extends [never] ? K : Key :
     K
 
-  type EncodedTokenKeys<Fields extends Struct.Fields> = {
-    [K in keyof Fields]: Fields[K] extends
-      | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", any, boolean, unknown>
-      | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", never, boolean, unknown>
-      | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", any, boolean, unknown>
-      | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", never, boolean, unknown> ? K
+  type OptionalEncodedPropertySignature =
+    | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", any, boolean, unknown>
+    | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", never, boolean, unknown>
+    | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", any, boolean, unknown>
+    | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", never, boolean, unknown>
+
+  type EncodedOptionalKeys<Fields extends Struct.Fields> = {
+    [K in keyof Fields]: Fields[K] extends OptionalEncodedPropertySignature ? K
       : never
   }[keyof Fields]
 
-  type TypeTokenKeys<Fields extends Struct.Fields> = {
-    [K in keyof Fields]: Fields[K] extends OptionalPropertySignature ? K : never
-  }[keyof Fields]
-
-  type OptionalPropertySignature =
+  type OptionalTypePropertySignature =
     | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, any, boolean, unknown>
     | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, never, boolean, unknown>
     | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, any, boolean, unknown>
     | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, never, boolean, unknown>
+
+  // type TypeOptionalKeys<Fields extends Struct.Fields> = {
+  //   [K in keyof Fields]: Fields[K] extends OptionalTypePropertySignature ? K : never
+  // }[keyof Fields]
 
   /**
    * @since 3.10.0
    */
   export type Type<F extends Fields> = Types.UnionToIntersection<
     {
-      [K in keyof F]: F[K] extends OptionalPropertySignature ? { readonly [H in K]?: Schema.Type<F[H]> } :
+      [K in keyof F]: F[K] extends OptionalTypePropertySignature ? { readonly [H in K]?: Schema.Type<F[H]> } :
         { readonly [h in K]: Schema.Type<F[h]> }
     }[keyof F]
   > extends infer Q ? Q : never
@@ -2594,8 +2596,8 @@ export declare namespace Struct {
    * @since 3.10.0
    */
   export type Encoded<F extends Fields> =
-    & { readonly [K in Exclude<keyof F, EncodedTokenKeys<F>> as Key<F, K>]: Schema.Encoded<F[K]> }
-    & { readonly [K in EncodedTokenKeys<F> as Key<F, K>]?: Schema.Encoded<F[K]> }
+    & { readonly [K in Exclude<keyof F, EncodedOptionalKeys<F>> as Key<F, K>]: Schema.Encoded<F[K]> }
+    & { readonly [K in EncodedOptionalKeys<F> as Key<F, K>]?: Schema.Encoded<F[K]> }
 
   /**
    * @since 3.10.0
@@ -2613,7 +2615,7 @@ export declare namespace Struct {
    */
   export type Constructor<F extends Fields> = Types.UnionToIntersection<
     {
-      [K in keyof F]: F[K] extends OptionalPropertySignature ? { readonly [H in K]?: Schema.Type<F[H]> } :
+      [K in keyof F]: F[K] extends OptionalTypePropertySignature ? { readonly [H in K]?: Schema.Type<F[H]> } :
         F[K] extends PropertySignatureWithDefault ? { readonly [H in K]?: Schema.Type<F[H]> } :
         { readonly [h in K]: Schema.Type<F[h]> }
     }[keyof F]
@@ -4693,7 +4695,11 @@ export const split = (separator: string): transform<SchemaClass<string>, Array$<
   transform(
     String$.annotations({ description: "a string that will be split" }),
     Array$(String$),
-    { strict: true, decode: string_.split(separator), encode: array_.join(separator) }
+    {
+      strict: true,
+      decode: (i) => i.split(separator),
+      encode: (a) => a.join(separator)
+    }
   )
 
 /**
@@ -7054,14 +7060,6 @@ export const OptionFromSelf = <Value extends Schema.Any>(value: Value): OptionFr
   )
 }
 
-const makeNoneEncoded = {
-  _tag: "None"
-} as const
-const makeSomeEncoded = <A>(value: A) => ({
-  _tag: "Some",
-  value
-} as const)
-
 /**
  * @category api interface
  * @since 3.10.0
@@ -7075,6 +7073,15 @@ export interface Option<Value extends Schema.Any> extends
     OptionFromSelf<SchemaClass<Schema.Type<Value>>>
   >
 {}
+
+const makeNoneEncoded = {
+  _tag: "None"
+} as const
+
+const makeSomeEncoded = <A>(value: A) => ({
+  _tag: "Some",
+  value
+} as const)
 
 /**
  * @category Option transformations
@@ -8374,7 +8381,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
    */
   extend<Extended = never>(identifier: string): <NewFields extends Struct.Fields>(
     fields: NewFields | HasFields<NewFields>,
-    annotations?: ClassAnnotations<Extended, Struct.Type<Fields & NewFields>>
+    annotations?: ClassAnnotations<Extended, Simplify<Struct.Type<Fields & NewFields>>>
   ) => [Extended] extends [never] ? MissingSelfGeneric<"Base.extend">
     : Class<
       Extended,
@@ -8433,7 +8440,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
         ast: AST.Transformation
       ) => Effect.Effect<Struct.Type<Fields>, ParseResult.ParseIssue, R3>
     },
-    annotations?: ClassAnnotations<Transformed, Struct.Type<Fields & NewFields>>
+    annotations?: ClassAnnotations<Transformed, Simplify<Struct.Type<Fields & NewFields>>>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformOrFail">
     : Class<
       Transformed,
@@ -8492,7 +8499,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
         ast: AST.Transformation
       ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
     },
-    annotations?: ClassAnnotations<Transformed, Struct.Type<Fields & NewFields>>
+    annotations?: ClassAnnotations<Transformed, Simplify<Struct.Type<Fields & NewFields>>>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformOrFailFrom">
     : Class<
       Transformed,
@@ -8543,7 +8550,7 @@ const getFieldsFromFieldsOr = <Fields extends Struct.Fields>(fieldsOr: Fields | 
 export const Class = <Self = never>(identifier: string) =>
 <Fields extends Struct.Fields>(
   fieldsOr: Fields | HasFields<Fields>,
-  annotations?: ClassAnnotations<Self, Struct.Type<Fields>>
+  annotations?: ClassAnnotations<Self, Simplify<Struct.Type<Fields>>>
 ): [Self] extends [never] ? MissingSelfGeneric<"Class">
   : Class<
     Self,
@@ -8602,7 +8609,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
 <Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
   fieldsOr: Fields | HasFields<Fields>,
-  annotations?: ClassAnnotations<Self, Struct.Type<{ readonly _tag: tag<Tag> } & Fields>>
+  annotations?: ClassAnnotations<Self, Simplify<Struct.Type<{ readonly _tag: tag<Tag> } & Fields>>>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : TaggedClass<Self, Tag, { readonly _tag: tag<Tag> } & Fields> =>
 {
@@ -8665,7 +8672,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 <Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
   fieldsOr: Fields | HasFields<Fields>,
-  annotations?: ClassAnnotations<Self, Struct.Type<{ readonly _tag: tag<Tag> } & Fields>>
+  annotations?: ClassAnnotations<Self, Simplify<Struct.Type<{ readonly _tag: tag<Tag> } & Fields>>>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : TaggedErrorClass<
     Self,
@@ -8873,7 +8880,7 @@ const makeClass = <Fields extends Struct.Fields>(
     static extend<Extended, NewFields extends Struct.Fields>(identifier: string) {
       return (
         newFieldsOr: NewFields | HasFields<NewFields>,
-        annotations?: ClassAnnotations<Extended, Struct.Type<Fields & NewFields>>
+        annotations?: ClassAnnotations<Extended, Simplify<Struct.Type<Fields & NewFields>>>
       ) => {
         const newFields = getFieldsFromFieldsOr(newFieldsOr)
         const newSchema = getSchemaFromFieldsOr(newFieldsOr)
@@ -8893,7 +8900,7 @@ const makeClass = <Fields extends Struct.Fields>(
       return (
         newFieldsOr: NewFields,
         options: any,
-        annotations?: ClassAnnotations<Transformed, Struct.Type<Fields & NewFields>>
+        annotations?: ClassAnnotations<Transformed, Simplify<Struct.Type<Fields & NewFields>>>
       ) => {
         const transformedFields: Struct.Fields = extendFields(fields, newFieldsOr)
         return makeClass({
@@ -8915,7 +8922,7 @@ const makeClass = <Fields extends Struct.Fields>(
       return (
         newFields: NewFields,
         options: any,
-        annotations?: ClassAnnotations<Transformed, Struct.Type<Fields & NewFields>>
+        annotations?: ClassAnnotations<Transformed, Simplify<Struct.Type<Fields & NewFields>>>
       ) => {
         const transformedFields: Struct.Fields = extendFields(fields, newFields)
         return makeClass({
@@ -10415,7 +10422,7 @@ export const TaggedRequest =
       success: Success
       payload: Payload
     },
-    annotations?: ClassAnnotations<Self, Struct.Type<{ readonly _tag: tag<Tag> } & Payload>>
+    annotations?: ClassAnnotations<Self, Simplify<Struct.Type<{ readonly _tag: tag<Tag> } & Payload>>>
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
     : TaggedRequestClass<
       Self,
