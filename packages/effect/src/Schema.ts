@@ -1524,6 +1524,22 @@ export interface Tuple<Elements extends TupleType.Elements> extends TupleType<El
 }
 
 /**
+ * @category api interface
+ * @since 3.13.3
+ */
+export interface Tuple2<Fst extends Schema.Any, Snd extends Schema.Any> extends
+  AnnotableClass<
+    Tuple2<Fst, Snd>,
+    readonly [Schema.Type<Fst>, Schema.Type<Snd>],
+    readonly [Schema.Encoded<Fst>, Schema.Encoded<Snd>],
+    Schema.Context<Fst> | Schema.Context<Snd>
+  >
+{
+  readonly elements: readonly [Fst, Snd]
+  readonly rest: readonly []
+}
+
+/**
  * @category constructors
  * @since 3.10.0
  */
@@ -1531,6 +1547,7 @@ export function Tuple<
   const Elements extends TupleType.Elements,
   Rest extends array_.NonEmptyReadonlyArray<TupleType.Rest[number]>
 >(elements: Elements, ...rest: Rest): TupleType<Elements, Rest>
+export function Tuple<Fst extends Schema.Any, Snd extends Schema.Any>(fst: Fst, snd: Snd): Tuple2<Fst, Snd>
 export function Tuple<Elements extends TupleType.Elements>(...elements: Elements): Tuple<Elements>
 export function Tuple(...args: ReadonlyArray<any>): any {
   return Array.isArray(args[0])
@@ -7588,30 +7605,26 @@ export const MapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ key, v
  * @since 3.10.0
  */
 export interface ReadonlyMap$<K extends Schema.Any, V extends Schema.Any>
-  extends
-    transform<Array$<Tuple<[K, V]>>, ReadonlyMapFromSelf<SchemaClass<Schema.Type<K>>, SchemaClass<Schema.Type<V>>>>
+  extends transform<Array$<Tuple2<K, V>>, ReadonlyMapFromSelf<SchemaClass<Schema.Type<K>>, SchemaClass<Schema.Type<V>>>>
 {}
 
 /**
  * @category ReadonlyMap transformations
  * @since 3.10.0
  */
-export const ReadonlyMap = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+export function ReadonlyMap<K extends Schema.Any, V extends Schema.Any>({ key, value }: {
   readonly key: K
   readonly value: V
-}): ReadonlyMap$<K, V> => {
-  const key_ = asSchema(key)
-  const value_ = asSchema(value)
-  const out = transform(
-    Array$(Tuple(key_, value_)),
-    ReadonlyMapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
+}): ReadonlyMap$<K, V> {
+  return transform(
+    Array$(Tuple(key, value)),
+    ReadonlyMapFromSelf({ key: typeSchema(asSchema(key)), value: typeSchema(asSchema(value)) }),
     {
       strict: true,
       decode: (i) => new Map(i),
       encode: (a) => Array.from(a.entries())
     }
   )
-  return out as any
 }
 
 /**
@@ -7619,25 +7632,23 @@ export const ReadonlyMap = <K extends Schema.Any, V extends Schema.Any>({ key, v
  * @since 3.10.0
  */
 export interface Map$<K extends Schema.Any, V extends Schema.Any>
-  extends transform<Array$<Tuple<[K, V]>>, MapFromSelf<SchemaClass<Schema.Type<K>>, SchemaClass<Schema.Type<V>>>>
+  extends transform<Array$<Tuple2<K, V>>, MapFromSelf<SchemaClass<Schema.Type<K>>, SchemaClass<Schema.Type<V>>>>
 {}
 
-const map = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+/** @ignore */
+function map<K extends Schema.Any, V extends Schema.Any>({ key, value }: {
   readonly key: K
   readonly value: V
-}): Map$<K, V> => {
-  const key_ = asSchema(key)
-  const value_ = asSchema(value)
-  const out = transform(
-    Array$(Tuple(key_, value_)),
-    MapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
+}): Map$<K, V> {
+  return transform(
+    Array$(Tuple(key, value)),
+    MapFromSelf({ key: typeSchema(asSchema(key)), value: typeSchema(asSchema(value)) }),
     {
       strict: true,
       decode: (i) => new Map(i),
       encode: (a) => Array.from(a.entries())
     }
   )
-  return out as any
 }
 
 export {
@@ -7779,18 +7790,16 @@ export interface ReadonlySet$<Value extends Schema.Any>
  * @category ReadonlySet transformations
  * @since 3.10.0
  */
-export const ReadonlySet = <Value extends Schema.Any>(value: Value): ReadonlySet$<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(
-    Array$(value_),
-    ReadonlySetFromSelf(typeSchema(value_)),
+export function ReadonlySet<Value extends Schema.Any>(value: Value): ReadonlySet$<Value> {
+  return transform(
+    Array$(value),
+    ReadonlySetFromSelf(typeSchema(asSchema(value))),
     {
       strict: true,
       decode: (i) => new Set(i),
       encode: (a) => Array.from(a)
     }
   )
-  return out as any
 }
 
 /**
@@ -7801,18 +7810,17 @@ export interface Set$<Value extends Schema.Any>
   extends transform<Array$<Value>, SetFromSelf<SchemaClass<Schema.Type<Value>>>>
 {}
 
-const set = <Value extends Schema.Any>(value: Value): Set$<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(
-    Array$(value_),
-    SetFromSelf(typeSchema(value_)),
+/** @ignore */
+function set<Value extends Schema.Any>(value: Value): Set$<Value> {
+  return transform(
+    Array$(value),
+    SetFromSelf(typeSchema(asSchema(value))),
     {
       strict: true,
       decode: (i) => new Set(i),
       encode: (a) => Array.from(a)
     }
   )
-  return out as any
 }
 
 export {
@@ -8226,18 +8234,16 @@ export interface Chunk<Value extends Schema.Any>
  * @category Chunk transformations
  * @since 3.10.0
  */
-export const Chunk = <Value extends Schema.Any>(value: Value): Chunk<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(
-    Array$(value_),
-    ChunkFromSelf(typeSchema(value_)),
+export function Chunk<Value extends Schema.Any>(value: Value): Chunk<Value> {
+  return transform(
+    Array$(value),
+    ChunkFromSelf(typeSchema(asSchema(value))),
     {
       strict: true,
       decode: (i) => i.length === 0 ? chunk_.empty() : chunk_.fromIterable(i),
       encode: (a) => chunk_.toReadonlyArray(a)
     }
   )
-  return out as any
 }
 
 /**
@@ -8299,18 +8305,16 @@ export interface NonEmptyChunk<Value extends Schema.Any>
  * @category Chunk transformations
  * @since 3.10.0
  */
-export const NonEmptyChunk = <Value extends Schema.Any>(value: Value): NonEmptyChunk<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(
-    NonEmptyArray(value_),
-    NonEmptyChunkFromSelf(typeSchema(value_)),
+export function NonEmptyChunk<Value extends Schema.Any>(value: Value): NonEmptyChunk<Value> {
+  return transform(
+    NonEmptyArray(value),
+    NonEmptyChunkFromSelf(typeSchema(asSchema(value))),
     {
       strict: true,
       decode: (i) => chunk_.unsafeFromNonEmptyArray(i),
       encode: (a) => chunk_.toReadonlyArray(a)
     }
   )
-  return out as any
 }
 
 const decodeData = <A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>>(a: A): A =>
@@ -9710,18 +9714,16 @@ export interface HashSet<Value extends Schema.Any>
  * @category HashSet transformations
  * @since 3.10.0
  */
-export const HashSet = <Value extends Schema.Any>(value: Value): HashSet<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(
-    Array$(value_),
-    HashSetFromSelf(typeSchema(value_)),
+export function HashSet<Value extends Schema.Any>(value: Value): HashSet<Value> {
+  return transform(
+    Array$(value),
+    HashSetFromSelf(typeSchema(asSchema(value))),
     {
       strict: true,
       decode: (i) => hashSet_.fromIterable(i),
       encode: (a) => Array.from(a)
     }
   )
-  return out as any
 }
 
 const hashMapArbitrary = <K, V>(
@@ -9804,7 +9806,7 @@ export const HashMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ ke
  * @since 3.10.0
  */
 export interface HashMap<K extends Schema.Any, V extends Schema.Any>
-  extends transform<Array$<Tuple<[K, V]>>, HashMapFromSelf<SchemaClass<Schema.Type<K>>, SchemaClass<Schema.Type<V>>>>
+  extends transform<Array$<Tuple2<K, V>>, HashMapFromSelf<SchemaClass<Schema.Type<K>>, SchemaClass<Schema.Type<V>>>>
 {}
 
 /**
@@ -9815,18 +9817,15 @@ export const HashMap = <K extends Schema.Any, V extends Schema.Any>({ key, value
   readonly key: K
   readonly value: V
 }): HashMap<K, V> => {
-  const key_ = asSchema(key)
-  const value_ = asSchema(value)
-  const out = transform(
-    Array$(Tuple(key_, value_)),
-    HashMapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
+  return transform(
+    Array$(Tuple(key, value)),
+    HashMapFromSelf({ key: typeSchema(asSchema(key)), value: typeSchema(asSchema(value)) }),
     {
       strict: true,
       decode: (i) => hashMap_.fromIterable(i),
       encode: (a) => Array.from(a)
     }
   )
-  return out as any
 }
 
 const listArbitrary =
@@ -9900,18 +9899,16 @@ export interface List<Value extends Schema.Any>
  * @category List transformations
  * @since 3.10.0
  */
-export const List = <Value extends Schema.Any>(value: Value): List<Value> => {
-  const value_ = asSchema(value)
-  const out = transform(
-    Array$(value_),
-    ListFromSelf(typeSchema(value_)),
+export function List<Value extends Schema.Any>(value: Value): List<Value> {
+  return transform(
+    Array$(value),
+    ListFromSelf(typeSchema(asSchema(value))),
     {
       strict: true,
       decode: (i) => list_.fromIterable(i),
       encode: (a) => Array.from(a)
     }
   )
-  return out as any
 }
 
 const sortedSetArbitrary = <A>(
@@ -9992,14 +9989,13 @@ export interface SortedSet<Value extends Schema.Any>
  * @category SortedSet transformations
  * @since 3.10.0
  */
-export const SortedSet = <Value extends Schema.Any>(
+export function SortedSet<Value extends Schema.Any>(
   value: Value,
   ordA: Order.Order<Schema.Type<Value>>
-): SortedSet<Value> => {
-  const value_ = asSchema(value)
-  const to = typeSchema(value_)
-  const out = transform(
-    Array$(value_),
+): SortedSet<Value> {
+  const to = typeSchema(asSchema(value))
+  return transform(
+    Array$(value),
     SortedSetFromSelf<typeof to>(to, ordA, ordA),
     {
       strict: true,
@@ -10007,7 +10003,6 @@ export const SortedSet = <Value extends Schema.Any>(
       encode: (a) => Array.from(sortedSet_.values(a))
     }
   )
-  return out as any
 }
 
 /**

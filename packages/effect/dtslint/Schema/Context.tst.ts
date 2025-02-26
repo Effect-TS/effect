@@ -107,11 +107,11 @@ describe("Schema Context", () => {
       .type.toBe<S.Union<[aContext, bContext]>>()
   })
 
-  it("Tuple", () => {
-    expect(S.asSchema(S.Tuple(aContext, bContext)))
+  it("Tuple2", () => {
+    const schema = S.Tuple(aContext, bContext)
+    expect(S.asSchema(schema))
       .type.toBe<S.Schema<readonly [string, number], readonly [string, number], "aContext" | "bContext">>()
-    expect(S.Tuple(aContext, bContext))
-      .type.toBe<S.Tuple<[aContext, bContext]>>()
+    expect(schema).type.toBe<S.Tuple2<aContext, bContext>>()
   })
 
   it("TupleType", () => {
