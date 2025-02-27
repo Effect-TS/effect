@@ -30,42 +30,42 @@ describe("HttpTraceContext", () => {
         traceparent: "01-99e04eb3282f5adee84c335ca51626da-886b16145ac0f399-01"
       }))
 
-      expect(Option.isNone(non00Version)).toBe(true)
+      assertNone(non00Version)
       // x included in trace
       const resultTraceNonHex = TraceContext.w3c(Headers.fromInput({
         traceparent: "00-x9e04eb3282f5adee84c335ca51626da-886b16145ac0f399-01"
       }))
-      expect(Option.isNone(resultTraceNonHex)).toBe(true)
+      assertNone(resultTraceNonHex)
 
       // 33 character trace
       const traceLarge = TraceContext.w3c(Headers.fromInput({
         traceparent: "00-99e04eb3282f5adee84c335ca51626daa-886b16145ac0f399-01"
       }))
-      expect(Option.isNone(traceLarge)).toBe(true)
+      assertNone(traceLarge)
 
       // 31 character trace
       const traceSmall = TraceContext.w3c(Headers.fromInput({
         traceparent: "00-99e04eb3282f5adee84c335ca51626d-886b16145ac0f399-01"
       }))
-      expect(Option.isNone(traceSmall)).toBe(true)
+      assertNone(traceSmall)
 
       // x included span
       const resultSpanNonHex = TraceContext.w3c(Headers.fromInput({
         traceparent: "00-a9e04eb3282f5adee84c335ca51626da-x86b16145ac0f399-01"
       }))
-      expect(Option.isNone(resultSpanNonHex)).toBe(true)
+      assertNone(resultSpanNonHex)
 
       // 15 characters span
       const spanSmall = TraceContext.w3c(Headers.fromInput({
         traceparent: "00-9e04eb3282f5adee84c335ca51626da-86b16145ac0f399-01"
       }))
-      expect(Option.isNone(spanSmall)).toBe(true)
+      assertNone(spanSmall)
 
       // 17 characters span
       const spanLarge = TraceContext.w3c(Headers.fromInput({
         traceparent: "00-9e04eb3282f5adee84c335ca51626daaa-86b16145ac0f399-01"
       }))
-      expect(Option.isNone(spanLarge)).toBe(true)
+      assertNone(spanLarge)
     })
   })
 })
