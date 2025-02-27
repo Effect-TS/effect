@@ -3,21 +3,24 @@
  */
 import { AiError } from "@effect/ai/AiError"
 import type * as AiInput from "@effect/ai/AiInput"
+import * as AiModel from "@effect/ai/AiModel"
 import * as AiResponse from "@effect/ai/AiResponse"
 import * as AiRole from "@effect/ai/AiRole"
 import * as Completions from "@effect/ai/Completions"
-import type * as Tokenizer from "@effect/ai/Tokenizer"
+import * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
+import type { Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
 import type { StreamChunk } from "./OpenAiClient.js"
 import { OpenAiClient } from "./OpenAiClient.js"
-import { OpenAiConfig } from "./OpenAiConfig.js"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.js"
 import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
 
@@ -27,105 +30,177 @@ import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
  */
 export type Model = typeof Generated.CreateChatCompletionRequestModelEnum.Encoded
 
-const make = (options: {
-  readonly model: (string & {}) | Model
-}) =>
-  Effect.gen(function*() {
-    const client = yield* OpenAiClient
-    const config = yield* OpenAiConfig.getOrUndefined
+// =============================================================================
+// Configuration
+// =============================================================================
 
-    const makeRequest = ({ input, required, system, tools }: Completions.CompletionOptions) => {
-      const useStructured = tools.length === 1 && tools[0].structured
-      return Effect.map(
-        Effect.context<never>(),
-        (context): typeof Generated.CreateChatCompletionRequest.Encoded => ({
-          model: options.model,
-          ...config,
-          ...context.unsafeMap.get(OpenAiConfig.key),
-          messages: makeMessages(input, system),
-          response_format: useStructured ?
-            {
-              type: "json_schema",
-              json_schema: {
-                strict: true,
-                name: tools[0].name,
-                description: tools[0].description,
-                schema: tools[0].parameters
-              }
-            } :
-            undefined,
-          tools: !useStructured && tools.length > 0 ?
-            tools.map((tool) => ({
-              type: "function",
-              function: {
-                name: tool.name,
-                description: tool.description,
-                parameters: tool.parameters as any,
-                strict: true
-              }
-            })) :
-            undefined,
-          tool_choice: !useStructured && tools.length > 0 ?
-            typeof required === "boolean" ? (required ? "required" : "auto") : {
-              type: "function",
-              function: { name: required }
-            } :
-            undefined
-        })
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export class Config extends Context.Tag("@effect/ai-openai/OpenAiCompletions/Config")<
+  Config,
+  Config.Service
+>() {
+  /**
+   * @since 1.0.0
+   */
+  static readonly getOrUndefined: Effect.Effect<Config.Service | undefined> = Effect.map(
+    Effect.context<never>(),
+    (context) => context.unsafeMap.get(Config.key)
+  )
+}
+
+/**
+ * @since 1.0.0
+ */
+export declare namespace Config {
+  /**
+   * @since 1.0.0
+   * @category configuration
+   */
+  export interface Service extends
+    Simplify<
+      Partial<
+        Omit<
+          typeof Generated.CreateChatCompletionRequest.Encoded,
+          "messages" | "tools" | "tool_choice" | "stream" | "stream_options" | "functions"
+        >
+      >
+    >
+  {}
+}
+
+// =============================================================================
+// OpenAi Completions
+// =============================================================================
+
+const modelCacheKey = Symbol.for("@effect/ai-openai/OpenAiCompletions/AiModel")
+
+/**
+ * @since 1.0.0
+ * @category ai models
+ */
+export const model = (
+  model: (string & {}) | Model,
+  config?: Omit<Config.Service, "model">
+): AiModel.AiModel<Completions.Completions | Tokenizer.Tokenizer, OpenAiClient> =>
+  AiModel.make({
+    model,
+    cacheKey: modelCacheKey,
+    requires: OpenAiClient,
+    provides: Effect.map(
+      make({ model, config }),
+      (completions) => Context.make(Completions.Completions, completions)
+    ) as Effect.Effect<Context.Context<Completions.Completions | Tokenizer.Tokenizer>>,
+    updateContext: (context) => {
+      const innerConfig = context.unsafeMap.get(Config.key) as Config.Service | undefined
+      return Context.mergeAll(
+        context,
+        Context.make(Config, { model, ...config, ...innerConfig }),
+        Context.make(Tokenizer.Tokenizer, OpenAiTokenizer.make({ model: innerConfig?.model ?? model }))
       )
     }
-
-    return yield* Completions.make({
-      create({ span, ...options }) {
-        return makeRequest(options).pipe(
-          Effect.tap((request) => annotateRequest(span, request)),
-          Effect.flatMap(client.client.createChatCompletion),
-          Effect.tap((response) => annotateChatResponse(span, response)),
-          Effect.flatMap((response) =>
-            makeResponse(
-              response,
-              "create",
-              options.tools.length === 1 && options.tools[0].structured
-                ? options.tools[0]
-                : undefined
-            )
-          ),
-          Effect.catchAll((cause) =>
-            Effect.fail(
-              new AiError({
-                module: "OpenAiCompletions",
-                method: "create",
-                description: "An error occurred",
-                cause
-              })
-            )
-          )
-        )
-      },
-      stream({ span, ...options }) {
-        return makeRequest(options).pipe(
-          Effect.tap((request) => annotateRequest(span, request)),
-          Effect.map(client.stream),
-          Stream.unwrap,
-          Stream.tap((response) => {
-            annotateStreamResponse(span, response)
-            return Effect.void
-          }),
-          Stream.map((response) => response.asAiResponse),
-          Stream.catchAll((cause) =>
-            Effect.fail(
-              new AiError({
-                module: "OpenAiCompletions",
-                method: "stream",
-                description: "An error occurred",
-                cause
-              })
-            )
-          )
-        )
-      }
-    })
   })
+
+const make = Effect.fnUntraced(function*(options: {
+  readonly model: (string & {}) | Model
+  readonly config?: Omit<Config.Service, "model">
+}) {
+  const client = yield* OpenAiClient
+
+  const makeRequest = ({ input, required, system, tools }: Completions.CompletionOptions) => {
+    const useStructured = tools.length === 1 && tools[0].structured
+    return Effect.map(
+      Effect.context<never>(),
+      (context): typeof Generated.CreateChatCompletionRequest.Encoded => ({
+        model: options.model,
+        ...options.config,
+        ...context.unsafeMap.get(Config.key),
+        messages: makeMessages(input, system),
+        response_format: useStructured ?
+          {
+            type: "json_schema",
+            json_schema: {
+              strict: true,
+              name: tools[0].name,
+              description: tools[0].description,
+              schema: tools[0].parameters as any
+            }
+          } :
+          undefined,
+        tools: !useStructured && tools.length > 0 ?
+          tools.map((tool) => ({
+            type: "function",
+            function: {
+              name: tool.name,
+              description: tool.description,
+              parameters: tool.parameters as any,
+              strict: true
+            }
+          })) :
+          undefined,
+        tool_choice: !useStructured && tools.length > 0 ?
+          typeof required === "boolean" ? (required ? "required" : "auto") : {
+            type: "function",
+            function: { name: required }
+          } :
+          undefined
+      })
+    )
+  }
+
+  return yield* Completions.make({
+    create({ span, ...options }) {
+      return makeRequest(options).pipe(
+        Effect.tap((request) => annotateRequest(span, request)),
+        Effect.flatMap(client.client.createChatCompletion),
+        Effect.tap((response) => annotateChatResponse(span, response)),
+        Effect.flatMap((response) =>
+          makeResponse(
+            response,
+            "create",
+            options.tools.length === 1 && options.tools[0].structured
+              ? options.tools[0]
+              : undefined
+          )
+        ),
+        Effect.catchAll((cause) =>
+          Effect.fail(
+            new AiError({
+              module: "OpenAiCompletions",
+              method: "create",
+              description: "An error occurred",
+              cause
+            })
+          )
+        )
+      )
+    },
+    stream({ span, ...options }) {
+      return makeRequest(options).pipe(
+        Effect.tap((request) => annotateRequest(span, request)),
+        Effect.map(client.stream),
+        Stream.unwrap,
+        Stream.tap((response) => {
+          annotateStreamResponse(span, response)
+          return Effect.void
+        }),
+        Stream.map((response) => response.asAiResponse),
+        Stream.catchAll((cause) =>
+          Effect.fail(
+            new AiError({
+              module: "OpenAiCompletions",
+              method: "stream",
+              description: "An error occurred",
+              cause
+            })
+          )
+        )
+      )
+    }
+  })
+})
 
 /**
  * @since 1.0.0
@@ -133,7 +208,12 @@ const make = (options: {
  */
 export const layerCompletions = (options: {
   readonly model: (string & {}) | Model
-}): Layer.Layer<Completions.Completions, never, OpenAiClient> => Layer.effect(Completions.Completions, make(options))
+  readonly config?: Omit<Config.Service, "model">
+}): Layer.Layer<Completions.Completions, never, OpenAiClient> =>
+  Layer.effect(
+    Completions.Completions,
+    make({ model: options.model, config: options.config })
+  )
 
 /**
  * @since 1.0.0
@@ -141,8 +221,25 @@ export const layerCompletions = (options: {
  */
 export const layer = (options: {
   readonly model: (string & {}) | Model
+  readonly config?: Omit<Config.Service, "model">
 }): Layer.Layer<Completions.Completions | Tokenizer.Tokenizer, never, OpenAiClient> =>
   Layer.merge(layerCompletions(options), OpenAiTokenizer.layer(options))
+
+/**
+ * @since 1.0.0
+ * @category configuration
+ */
+export const withConfigOverride: {
+  (overrides: Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: Config.Service): Effect.Effect<A, E, R>
+} = dual<
+  (overrides: Config.Service) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(self: Effect.Effect<A, E, R>, overrides: Config.Service) => Effect.Effect<A, E, R>
+>(2, (self, overrides) =>
+  Effect.flatMap(
+    Config.getOrUndefined,
+    (config) => Effect.provideService(self, Config, { ...config, ...overrides })
+  ))
 
 const makeMessages = (
   input: AiInput.AiInput,

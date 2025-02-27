@@ -5,8 +5,6 @@ import type { HttpClient } from "@effect/platform/HttpClient"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
-import type { Simplify } from "effect/Types"
-import type * as Generated from "./Generated.js"
 
 /**
  * @since 1.0.0
@@ -31,19 +29,10 @@ export class OpenAiConfig extends Context.Tag("@effect/ai-openai/OpenAiConfig")<
  */
 export declare namespace OpenAiConfig {
   /**
-   * @since 1.0.0
+   * @since 1.0.
    * @category models
    */
-  export interface Service extends
-    Simplify<
-      Partial<
-        Omit<
-          typeof Generated.CreateChatCompletionRequest.Encoded,
-          "messages" | "tools" | "tool_choice" | "stream" | "stream_options" | "functions"
-        >
-      >
-    >
-  {
+  export interface Service {
     readonly transformClient?: (client: HttpClient) => HttpClient
   }
 }
