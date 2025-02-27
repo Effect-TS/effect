@@ -75,8 +75,8 @@ export const xb3: FromHeaders = (headers) => {
   }))
 }
 
-const w3cTraceId = /^[0-9a-f]{32}$/gi
-const w3cSpanId = /^[0-9a-f]{16}$/gi
+const w3cTraceId = /^[0-9a-f]{32}$/i
+const w3cSpanId = /^[0-9a-f]{16}$/i
 
 /**
  * @since 1.0.0
