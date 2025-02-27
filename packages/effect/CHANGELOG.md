@@ -1,5 +1,465 @@
 # effect
 
+## 3.13.3
+
+### Patch Changes
+
+- [#4502](https://github.com/Effect-TS/effect/pull/4502) [`cc5588d`](https://github.com/Effect-TS/effect/commit/cc5588df07f9103513547cb429ce041b9436a8bd) Thanks @gcanti! - Schema: More Accurate Return Types for `DataFromSelf` and `Data`.
+
+  This update refines the return types of `DataFromSelf` and `Data`, making them clearer and more specific, especially when working with structured schemas.
+
+  **Before**
+
+  The return types were more generic, making it harder to see the underlying structure:
+
+  ```ts
+  import { Schema } from "effect"
+
+  const struct = Schema.Struct({ a: Schema.NumberFromString })
+
+  //       ┌─── Schema.DataFromSelf<Schema<{ readonly a: number; }, { readonly a: string; }>>
+  //       ▼
+  const schema1 = Schema.DataFromSelf(struct)
+
+  //       ┌─── Schema.Data<Schema<{ readonly a: number; }, { readonly a: string; }>>
+  //       ▼
+  const schema2 = Schema.Data(struct)
+  ```
+
+  **After**
+
+  Now, the return types clearly reflect the original schema structure:
+
+  ```ts
+  import { Schema } from "effect"
+
+  const struct = Schema.Struct({ a: Schema.NumberFromString })
+
+  //       ┌─── Schema.DataFromSelf<Schema.Struct<{ a: typeof Schema.NumberFromString; }>>
+  //       ▼
+  const schema1 = Schema.DataFromSelf(struct)
+
+  //       ┌─── Schema.Data<Schema.Struct<{ a: typeof Schema.NumberFromString; }>>
+  //       ▼
+  const schema2 = Schema.Data(struct)
+  ```
+
+- [#4510](https://github.com/Effect-TS/effect/pull/4510) [`623c8cd`](https://github.com/Effect-TS/effect/commit/623c8cd053ed6ee3d353aaa8778d484670fca2bb) Thanks @gcanti! - Schema: More Accurate Return Type for `compose`.
+
+  **Before**
+
+  ```ts
+  import { Schema } from "effect"
+
+  //      ┌─── SchemaClass<number | null, string>
+  //      ▼
+  const schema = Schema.compose(
+    Schema.NumberFromString,
+    Schema.NullOr(Schema.Number)
+  )
+
+  // @ts-expect-error: Property 'from' does not exist
+  schema.from
+
+  // @ts-expect-error: Property 'to' does not exist
+  schema.to
+  ```
+
+  **After**
+
+  ```ts
+  import { Schema } from "effect"
+
+  //      ┌─── transform<typeof Schema.NumberFromString, Schema.NullOr<typeof Schema.Number>>
+  //      ▼
+  const schema = Schema.compose(
+    Schema.NumberFromString,
+    Schema.NullOr(Schema.Number)
+  )
+
+  //      ┌─── typeof Schema.NumberFromString
+  //      ▼
+  schema.from
+
+  //      ┌─── Schema.NullOr<typeof Schema.Number>
+  //      ▼
+  schema.to
+  ```
+
+- [#4488](https://github.com/Effect-TS/effect/pull/4488) [`00b4eb1`](https://github.com/Effect-TS/effect/commit/00b4eb1ece12a16e222e6220965bb4024d6752ac) Thanks @gcanti! - Schema: more precise return types when filters are involved.
+
+  **Example** (with `Schema.maxLength`)
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  //      ┌─── Schema.filter<Schema.Schema<string, string, never>>
+  //      ▼
+  const schema = Schema.String.pipe(Schema.maxLength(10))
+
+  // Schema<string, string, never>
+  schema.from
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  //      ┌─── Schema.filter<typeof Schema.String>
+  //      ▼
+  const schema = Schema.String.pipe(Schema.maxLength(10))
+
+  // typeof Schema.String
+  schema.from
+  ```
+
+  String filters:
+
+  - `maxLength`
+  - `minLength`
+  - `length`
+  - `pattern`
+  - `startsWith`
+  - `endsWith`
+  - `includes`
+  - `lowercased`
+  - `capitalized`
+  - `uncapitalized`
+  - `uppercased`
+  - `nonEmptyString`
+  - `trimmed`
+
+  Number filters:
+
+  - `finite`
+  - `greaterThan`
+  - `greaterThanOrEqualTo`
+  - `lessThan`
+  - `lessThanOrEqualTo`
+  - `int`
+  - `multipleOf`
+  - `between`
+  - `nonNaN`
+  - `positive`
+  - `negative`
+  - `nonPositive`
+  - `nonNegative`
+
+  BigInt filters:
+
+  - `greaterThanBigInt`
+  - `greaterThanOrEqualToBigInt`
+  - `lessThanBigInt`
+  - `lessThanOrEqualToBigInt`
+  - `betweenBigInt`
+  - `positiveBigInt`
+  - `negativeBigInt`
+  - `nonNegativeBigInt`
+  - `nonPositiveBigInt`
+
+  Duration filters:
+
+  - `lessThanDuration`
+  - `lessThanOrEqualToDuration`
+  - `greaterThanDuration`
+  - `greaterThanOrEqualToDuration`
+  - `betweenDuration`
+
+  Array filters:
+
+  - `minItems`
+  - `maxItems`
+  - `itemsCount`
+
+  Date filters:
+
+  - `validDate`
+  - `lessThanDate`
+  - `lessThanOrEqualToDate`
+  - `greaterThanDate`
+  - `greaterThanOrEqualToDate`
+  - `betweenDate`
+
+  BigDecimal filters:
+
+  - `greaterThanBigDecimal`
+  - `greaterThanOrEqualToBigDecimal`
+  - `lessThanBigDecimal`
+  - `lessThanOrEqualToBigDecimal`
+  - `positiveBigDecimal`
+  - `nonNegativeBigDecimal`
+  - `negativeBigDecimal`
+  - `nonPositiveBigDecimal`
+  - `betweenBigDecimal`
+
+- [#4508](https://github.com/Effect-TS/effect/pull/4508) [`f2aee98`](https://github.com/Effect-TS/effect/commit/f2aee989b0a600900ce83e7f460d02908620c80f) Thanks @gcanti! - Schema: More Accurate Return Types for `ArrayEnsure` and `NonEmptyArrayEnsure`.
+
+  **Before**
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema1 = Schema.ArrayEnsure(Schema.String)
+
+  // @ts-expect-error: Property 'from' does not exist
+  schema1.from
+
+  const schema2 = Schema.NonEmptyArrayEnsure(Schema.String)
+
+  // @ts-expect-error: Property 'from' does not exist
+  schema2.from
+  ```
+
+  **After**
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema1 = Schema.ArrayEnsure(Schema.String)
+
+  //        ┌─── Schema.Union<[typeof Schema.String, Schema.Array$<typeof Schema.String>]>
+  //        ▼
+  schema1.from
+
+  const schema2 = Schema.NonEmptyArrayEnsure(Schema.String)
+
+  //        ┌─── Schema.Union<[typeof Schema.String, Schema.NonEmptyArray<typeof Schema.String>]>
+  //        ▼
+  schema2.from
+  ```
+
+- [#4509](https://github.com/Effect-TS/effect/pull/4509) [`fb798eb`](https://github.com/Effect-TS/effect/commit/fb798eb9061f1191badc017d1aa649360254da20) Thanks @gcanti! - Schema: More Accurate Return Types for:
+
+  - `transformLiteral`
+  - `clamp`
+  - `clampBigInt`
+  - `clampDuration`
+  - `clampBigDecimal`
+  - `head`
+  - `headNonEmpty`
+  - `headOrElse`
+
+- [#4524](https://github.com/Effect-TS/effect/pull/4524) [`2251b15`](https://github.com/Effect-TS/effect/commit/2251b1528810bb695b37ce388b653cec0c5bf80c) Thanks @gcanti! - Schema: More Accurate Return Type for `parseNumber`.
+
+  **Before**
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.parseNumber(Schema.String)
+
+  //      ┌─── Schema<string>
+  //      ▼
+  schema.from
+  ```
+
+  **After**
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.parseNumber(Schema.String)
+
+  //      ┌─── typeof Schema.String
+  //      ▼
+  schema.from
+  ```
+
+- [#4483](https://github.com/Effect-TS/effect/pull/4483) [`2e15c1e`](https://github.com/Effect-TS/effect/commit/2e15c1e33648add0b29fe274fbcb7294b7515085) Thanks @mikearnaldi! - Fix nested batching
+
+- [#4514](https://github.com/Effect-TS/effect/pull/4514) [`a4979db`](https://github.com/Effect-TS/effect/commit/a4979db021aef16e731be64df196b72088fc4376) Thanks @gcanti! - Schema: add missing `from` property to `brand` interface.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.String.pipe(Schema.brand("my-brand"))
+
+  // @ts-expect-error: Property 'from' does not exist
+  schema.from
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.String.pipe(Schema.brand("my-brand"))
+
+  //      ┌─── typeof Schema.String
+  //      ▼
+  schema.from
+  ```
+
+- [#4496](https://github.com/Effect-TS/effect/pull/4496) [`b74255a`](https://github.com/Effect-TS/effect/commit/b74255a304ad49d60bedb1a260fd697f370af27a) Thanks @tim-smart! - ensure fibers can't be added to Fiber{Handle,Set,Map} during closing
+
+- [#4419](https://github.com/Effect-TS/effect/pull/4419) [`d7f6a5c`](https://github.com/Effect-TS/effect/commit/d7f6a5c7d26c1963dcd864ca62360d20d08c7b49) Thanks @KhraksMamtsov! - Fix Context.Tag unification
+
+- [#4495](https://github.com/Effect-TS/effect/pull/4495) [`9dd8979`](https://github.com/Effect-TS/effect/commit/9dd8979e940915b1cc1b1f264f3d019c77a65a02) Thanks @KhraksMamtsov! - Simplify `sortWith`, `sort`, `reverse`, `sortBy`, `unzip`, `dedupe` signatures in Array module
+
+- [#4507](https://github.com/Effect-TS/effect/pull/4507) [`477b488`](https://github.com/Effect-TS/effect/commit/477b488284f47c5469d7fba3e4065fb7e3b6556e) Thanks @gcanti! - Schema: More Accurate Return Type for `parseJson(schema)`.
+
+  **Before**
+
+  ```ts
+  import { Schema } from "effect"
+
+  //      ┌─── Schema.SchemaClass<{ readonly a: number; }, string>
+  //      ▼
+  const schema = Schema.parseJson(
+    Schema.Struct({
+      a: Schema.NumberFromString
+    })
+  )
+
+  // @ts-expect-error: Property 'to' does not exist
+  schema.to
+  ```
+
+  **After**
+
+  ```ts
+  import { Schema } from "effect"
+
+  //      ┌─── Schema.transform<Schema.SchemaClass<unknown, string, never>, Schema.Struct<{ a: typeof Schema.NumberFromString; }>>
+  //      ▼
+  const schema = Schema.parseJson(
+    Schema.Struct({
+      a: Schema.NumberFromString
+    })
+  )
+
+  //      ┌─── Schema.Struct<{ a: typeof Schema.NumberFromString; }>
+  //      ▼
+  schema.to
+  ```
+
+- [#4519](https://github.com/Effect-TS/effect/pull/4519) [`10932cb`](https://github.com/Effect-TS/effect/commit/10932cbf58fc721ada631cebec42f773ce96d3cc) Thanks @gcanti! - Refactor `JSONSchema` to use `additionalProperties` instead of `patternProperties` for simple records, closes #4518.
+
+  This update improves how records are represented in JSON Schema by replacing `patternProperties` with `additionalProperties`, resolving issues in OpenAPI schema generation.
+
+  **Why the change?**
+
+  - **Fixes OpenAPI issues** – Previously, records were represented using `patternProperties`, which caused problems with OpenAPI tools.
+  - **Better schema compatibility** – Some tools, like `openapi-ts`, struggled with `patternProperties`, generating `Record<string, never>` instead of the correct type.
+  - **Fixes missing example values** – When using `patternProperties`, OpenAPI failed to generate proper response examples, displaying only `{}`.
+  - **Simplifies schema modification** – Users previously had to manually fix schemas with `OpenApi.Transform`, which was messy and lacked type safety.
+
+  **Before**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Record({ key: Schema.String, value: Schema.Number })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [],
+    "properties": {},
+    "patternProperties": {
+      "": { // ❌ Empty string pattern
+        "type": "number"
+      }
+    }
+  }
+  */
+  ```
+
+  **After**
+
+  Now, `additionalProperties` is used instead, which properly represents an open-ended record:
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Record({ key: Schema.String, value: Schema.Number })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [],
+    "properties": {},
+    "additionalProperties": { // ✅ Represents unrestricted record keys
+      "type": "number"
+    }
+  }
+  */
+  ```
+
+- [#4501](https://github.com/Effect-TS/effect/pull/4501) [`9f6c784`](https://github.com/Effect-TS/effect/commit/9f6c78468b3b5e9ebfc38ffdfb70702901ee977b) Thanks @gcanti! - Schema: Add Missing `declare` API Interface to Expose Type Parameters.
+
+  **Example**
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.OptionFromSelf(Schema.String)
+
+  //       ┌─── readonly [typeof Schema.String]
+  //       ▼
+  schema.typeParameters
+  ```
+
+- [#4487](https://github.com/Effect-TS/effect/pull/4487) [`2c639ec`](https://github.com/Effect-TS/effect/commit/2c639ecee332de4266e36022c989c35ae4e02105) Thanks @gcanti! - Schema: more precise return types when transformations are involved.
+
+  - `Chunk`
+  - `NonEmptyChunk`
+  - `Redacted`
+  - `Option`
+  - `OptionFromNullOr`
+  - `OptionFromUndefinedOr`
+  - `OptionFromNullishOr`
+  - `Either`
+  - `EitherFromUnion`
+  - `ReadonlyMap`
+  - `Map`
+  - `HashMap`
+  - `ReadonlySet`
+  - `Set`
+  - `HashSet`
+  - `List`
+  - `Cause`
+  - `Exit`
+  - `SortedSet`
+  - `head`
+  - `headNonEmpty`
+  - `headOrElse`
+
+  **Example** (with `Schema.Chunk`)
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Chunk(Schema.Number)
+
+  // Property 'from' does not exist on type 'Chunk<typeof Number$>'
+  schema.from
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Chunk(Schema.Number)
+
+  // Schema.Array$<typeof Schema.Number>
+  schema.from
+  ```
+
+- [#4492](https://github.com/Effect-TS/effect/pull/4492) [`886aaa8`](https://github.com/Effect-TS/effect/commit/886aaa81e06dfd3cd9391e8ea987d8cd5ada1124) Thanks @gcanti! - Schema: Improve `Literal` return type — now returns `SchemaClass` instead of `Schema`
+
 ## 3.13.2
 
 ### Patch Changes
