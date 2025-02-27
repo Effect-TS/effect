@@ -1,0 +1,32 @@
+name: TypeScript's nightly
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 * * *"
+
+permissions: {}
+
+jobs:
+  types:
+    name: Types
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Run type tests
+        run: pnpm test-types --target next
+      - name: Notify on failed run
+        uses: actions/github-script@v7
+        if: failure()
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "Failed TypeScript's nightly type test run",
+              body: `The following type test run against TypeScript's nightly build failed: [#${context.runNumber}](https://github.com/Effect-TS/effect/actions/runs/${context.runId}).`
+            })
