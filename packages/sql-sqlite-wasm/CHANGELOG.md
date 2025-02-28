@@ -1,5 +1,14 @@
 # @effect/sql-sqlite-wasm
 
+## 0.31.4
+
+### Patch Changes
+
+- Updated dependencies [[`17d9e89`](https://github.com/Effect-TS/effect/commit/17d9e89f9851663bdbb6c1e685601d97806114a4)]:
+  - effect@3.13.4
+  - @effect/experimental@0.41.4
+  - @effect/sql@0.30.4
+
 ## 0.31.3
 
 ### Patch Changes
