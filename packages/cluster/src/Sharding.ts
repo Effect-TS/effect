@@ -172,7 +172,7 @@ export const make = Effect.gen(function*() {
     Option.isSome(config.podAddress) && Equal.equals(address, config.podAddress.value)
 
   function getShardId(entityId: EntityId): ShardId {
-    return ShardId.make(Math.abs(hashString(entityId) % config.numberOfShards))
+    return ShardId.make((Math.abs(hashString(entityId) % config.numberOfShards)) + 1)
   }
 
   function isEntityOnLocalShards(address: EntityAddress): boolean {
