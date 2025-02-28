@@ -511,15 +511,15 @@ export const whenAnd: <
  */
 export const discriminator: <D extends string>(
   field: D
-) => <R, P extends Types.Tags<D, R> & string, Ret, B extends Ret>(
-  ...pattern: [first: P, ...values: Array<P>, f: (_: Extract<R, Record<D, P>>) => B]
+) => <R, P extends Types.Tags<D, R> & string, Ret, Fn extends (_: Extract<R, Record<D, P>>) => Ret>(
+  ...pattern: [first: P, ...values: Array<P>, f: Fn]
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<D, P>>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, P>>>>,
-  B | A,
+  A | ReturnType<Fn>,
   Pr,
   Ret
 > = internal.discriminator
@@ -560,19 +560,19 @@ export const discriminator: <D extends string>(
  */
 export const discriminatorStartsWith: <D extends string>(
   field: D
-) => <R, P extends string, Ret, B extends Ret>(
+) => <R, P extends string, Ret, Fn extends (_: Extract<R, Record<D, `${P}${string}`>>) => Ret>(
   pattern: P,
-  f: (_: Extract<R, Record<D, `${P}${string}`>>) => B
+  f: Fn
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<D, `${P}${string}`>>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, `${P}${string}`>>>>,
-  B | A,
+  A | ReturnType<Fn>,
   Pr,
   Ret
-> = internal.discriminatorStartsWith as any
+> = internal.discriminatorStartsWith
 
 /**
  * Matches values based on a field that serves as a discriminator, mapping each
@@ -716,15 +716,20 @@ export const discriminatorsExhaustive: <D extends string>(
  * @category Defining patterns
  * @since 1.0.0
  */
-export const tag: <R, P extends Types.Tags<"_tag", R> & string, Ret, B extends Ret>(
-  ...pattern: [first: P, ...values: Array<P>, f: (_: Extract<T.NoInfer<R>, Record<"_tag", P>>) => B]
+export const tag: <
+  R,
+  P extends Types.Tags<"_tag", R> & string,
+  Ret,
+  Fn extends (_: Extract<R, Record<"_tag", P>>) => Ret
+>(
+  ...pattern: [first: P, ...values: Array<P>, f: Fn]
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<"_tag", P>>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", P>>>>,
-  B | A,
+  ReturnType<Fn> | A,
   Pr,
   Ret
 > = internal.tag
@@ -758,16 +763,21 @@ export const tag: <R, P extends Types.Tags<"_tag", R> & string, Ret, B extends R
  * @category Defining patterns
  * @since 1.0.0
  */
-export const tagStartsWith: <R, P extends string, Ret, B extends Ret>(
+export const tagStartsWith: <
+  R,
+  P extends string,
+  Ret,
+  Fn extends (_: Extract<R, Record<"_tag", `${P}${string}`>>) => Ret
+>(
   pattern: P,
-  f: (_: Extract<T.NoInfer<R>, Record<"_tag", `${P}${string}`>>) => B
+  f: Fn
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<"_tag", `${P}${string}`>>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", `${P}${string}`>>>>,
-  B | A,
+  ReturnType<Fn> | A,
   Pr,
   Ret
 > = internal.tagStartsWith
