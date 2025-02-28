@@ -321,38 +321,47 @@ export const whenAnd = <
 }
 
 /** @internal */
-export const discriminator =
-  <D extends string>(field: D) =>
-  <R, P extends Types.Tags<D, R> & string, Ret, B extends Ret>(
-    ...pattern: [
-      first: P,
-      ...values: Array<P>,
-      f: (_: Extract<R, Record<D, P>>) => B
-    ]
-  ) => {
-    const f = pattern[pattern.length - 1]
-    const values: Array<P> = pattern.slice(0, -1) as any
-    const pred = values.length === 1
-      ? (_: any) => _[field] === values[0]
-      : (_: any) => values.includes(_[field])
+export const discriminator = <D extends string>(field: D) =>
+<
+  R,
+  P extends Types.Tags<D, R> & string,
+  Ret,
+  Fn extends (_: Extract<R, Record<D, P>>) => Ret
+>(
+  ...pattern: [
+    first: P,
+    ...values: Array<P>,
+    f: Fn
+  ]
+) => {
+  const f = pattern[pattern.length - 1]
+  const values: Array<P> = pattern.slice(0, -1) as any
+  const pred = values.length === 1
+    ? (_: any) => _[field] === values[0]
+    : (_: any) => values.includes(_[field])
 
-    return <I, F, A, Pr>(
-      self: Matcher<I, F, R, A, Pr, Ret>
-    ): Matcher<
-      I,
-      Types.AddWithout<F, Extract<R, Record<D, P>>>,
-      Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, P>>>>,
-      A | B,
-      Pr,
-      Ret
-    > => (self as any).add(makeWhen(pred, f as any)) as any
-  }
+  return <I, F, A, Pr>(
+    self: Matcher<I, F, R, A, Pr, Ret>
+  ): Matcher<
+    I,
+    Types.AddWithout<F, Extract<R, Record<D, P>>>,
+    Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, P>>>>,
+    A | ReturnType<Fn>,
+    Pr,
+    Ret
+  > => (self as any).add(makeWhen(pred, f as any)) as any
+}
 
 /** @internal */
 export const discriminatorStartsWith = <D extends string>(field: D) =>
-<R, P extends string, Ret, B extends Ret>(
+<
+  R,
+  P extends string,
+  Ret,
+  Fn extends (_: Extract<R, Record<D, `${P}${string}`>>) => Ret
+>(
   pattern: P,
-  f: (_: Extract<R, Record<D, `${P}${string}`>>) => B
+  f: Fn
 ) => {
   const pred = (_: any) => typeof _[field] === "string" && _[field].startsWith(pattern)
 
@@ -365,7 +374,7 @@ export const discriminatorStartsWith = <D extends string>(field: D) =>
       I,
       Types.AddWithout<F, Extract<R, Record<D, `${P}${string}`>>>
     >,
-    A | B,
+    A | ReturnType<Fn>,
     Pr,
     Ret
   > => (self as any).add(makeWhen(pred, f as any)) as any
@@ -427,11 +436,16 @@ export const discriminatorsExhaustive: <D extends string>(
   }
 
 /** @internal */
-export const tag: <R, P extends Types.Tags<"_tag", R> & string, Ret, B extends Ret>(
+export const tag: <
+  R,
+  P extends Types.Tags<"_tag", R> & string,
+  Ret,
+  Fn extends (_: Extract<R, Record<"_tag", P>>) => Ret
+>(
   ...pattern: [
     first: P,
     ...values: Array<P>,
-    f: (_: Extract<R, Record<"_tag", P>>) => B
+    f: Fn
   ]
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
@@ -439,7 +453,7 @@ export const tag: <R, P extends Types.Tags<"_tag", R> & string, Ret, B extends R
   I,
   Types.AddWithout<F, Extract<R, Record<"_tag", P>>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", P>>>>,
-  B | A,
+  ReturnType<Fn> | A,
   Pr,
   Ret
 > = discriminator("_tag")

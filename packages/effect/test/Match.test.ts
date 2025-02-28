@@ -845,4 +845,15 @@ describe("Match", () => {
     )
     strictEqual(result, "default")
   })
+
+  it("tag + withReturnType doesn't need as const for string literals", () => {
+    type Value = { _tag: "A"; a: number } | { _tag: "B"; b: number }
+    const result = M.value<Value>({ _tag: "A", a: 1 }).pipe(
+      M.withReturnType<"a" | "b">(),
+      M.tag("A", () => "a"),
+      M.tag("B", () => "b"),
+      M.exhaustive
+    )
+    strictEqual(result, "a")
+  })
 })
