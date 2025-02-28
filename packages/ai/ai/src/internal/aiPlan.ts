@@ -1,8 +1,7 @@
-import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { CommitPrototype } from "effect/Effectable"
-import * as Exit from "effect/Exit"
+import * as Either from "effect/Either"
 import { dual, identity } from "effect/Function"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
@@ -46,15 +45,15 @@ const buildPlan = <Error, Provides, Requires>(
   Effect.map(Effect.context<AiModels | Requires>(), (context) => {
     const models = Context.get(context, AiModels)
     return Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
-      let exit: Exit.Exit<A, E> | undefined = undefined
+      let result: Either.Either<A, E> | undefined = undefined
       for (const step of plan.steps) {
-        if (exit !== undefined && Exit.isFailure(exit) && Option.isSome(step.check)) {
-          const check = step.check.value(Cause.squash(exit.cause) as Error)
+        if (result !== undefined && Either.isLeft(result) && Option.isSome(step.check)) {
+          const check = step.check.value(result.left as any)
           const isFatalError = !(Effect.isEffect(check) ? yield* check : check)
           if (isFatalError) break
         }
         const retryOptions = getRetryOptions(step)
-        exit = yield* Effect.scopedWith((scope) =>
+        result = yield* Effect.scopedWith((scope) =>
           models.build(step.model, context).pipe(
             Scope.extend(scope),
             Effect.flatMap((context) =>
@@ -65,12 +64,12 @@ const buildPlan = <Error, Provides, Requires>(
                 Effect.provide(context)
               )
             ),
-            Effect.exit
+            Effect.either
           )
         )
-        if (Exit.isSuccess(exit)) break
+        if (Either.isRight(result)) break
       }
-      return yield* exit!
+      return yield* result!
     })
   })
 
