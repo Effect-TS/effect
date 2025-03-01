@@ -315,7 +315,7 @@ const convertTool = <A, I, R>(
 ) => ({
   name,
   description: getDescription(schema.ast),
-  parameters: makeJsonSchema(schema.ast),
+  parameters: makeJsonSchema(AST.omit(schema.ast, ["_tag"])),
   structured
 })
 
