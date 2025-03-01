@@ -1,4 +1,4 @@
-import type * as Types from "effect/Types"
+import type { Brand, Types } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("Types", () => {
@@ -140,20 +140,47 @@ describe("Types", () => {
       >().type.toBe<[string, number, boolean, bigint, symbol, never, null, "a", 1, true]>()
     })
 
-    describe("record", () => {
-      it("should convert a readonly record to a mutable record", () => {
+    describe("Branded", () => {
+      it("should leave a string brand unchanged", () => {
+        type T = string & Brand.Brand<"mybrand">
+        expect<Types.DeepMutable<T>>().type.toBe<T>()
+      })
+
+      it("should leave a number brand unchanged", () => {
+        type T = number & Brand.Brand<"mybrand">
+        expect<Types.DeepMutable<T>>().type.toBe<T>()
+      })
+
+      it("should leave a boolean brand unchanged", () => {
+        type T = boolean & Brand.Brand<"mybrand">
+        expect<Types.DeepMutable<T>>().type.toBe<T>()
+      })
+
+      it("should leave a bigint brand unchanged", () => {
+        type T = bigint & Brand.Brand<"mybrand">
+        expect<Types.DeepMutable<T>>().type.toBe<T>()
+      })
+
+      it("should leave a symbol brand unchanged", () => {
+        type T = symbol & Brand.Brand<"mybrand">
+        expect<Types.DeepMutable<T>>().type.toBe<T>()
+      })
+    })
+
+    describe("Index Signature", () => {
+      it("should convert an readonly Index Signature to a mutable Index Signature", () => {
         expect<Types.DeepMutable<{ readonly [x: string]: number }>>()
           .type.toBe<{ [x: string]: number }>()
       })
 
-      it("should leave a mutable record unchanged", () => {
+      it("should leave an Index Signature unchanged", () => {
         expect<Types.DeepMutable<{ [_: string]: number }>>()
           .type.toBe<{ [x: string]: number }>()
       })
     })
 
-    describe("struct", () => {
-      it("should convert an empty object", () => {
+    describe("Struct", () => {
+      it("should support an empty object", () => {
         expect<Types.DeepMutable<{}>>()
           .type.toBe<{}>()
       })
@@ -175,7 +202,7 @@ describe("Types", () => {
       })
     })
 
-    describe("array", () => {
+    describe("Array", () => {
       it("should convert a readonly empty array to a mutable empty array", () => {
         expect<Types.DeepMutable<readonly []>>()
           .type.toBe<[]>()
@@ -197,7 +224,7 @@ describe("Types", () => {
       })
     })
 
-    describe("tuple", () => {
+    describe("Tuple", () => {
       it("should convert a readonly tuple", () => {
         expect<Types.DeepMutable<readonly [string, number, boolean]>>()
           .type.toBe<[string, number, boolean]>()
@@ -209,7 +236,7 @@ describe("Types", () => {
       })
     })
 
-    describe("Set", () => {
+    describe("ReadonlySet", () => {
       it("should convert a ReadonlySet to a mutable Set", () => {
         expect<Types.DeepMutable<ReadonlySet<{ readonly value: TaggedValues<number> }>>>()
           .type.toBe<Set<{ value: { _tag: string; value: Array<number> } }>>()
@@ -221,7 +248,7 @@ describe("Types", () => {
       })
     })
 
-    describe("Map", () => {
+    describe("ReadonlyMap", () => {
       it("should convert a ReadonlyMap to a mutable Map", () => {
         expect<Types.DeepMutable<ReadonlyMap<TaggedValues<string>, ReadonlySet<TaggedValues<number>>>>>()
           .type.toBe<Map<{ _tag: string; value: Array<string> }, Set<{ _tag: string; value: Array<number> }>>>()
@@ -230,6 +257,30 @@ describe("Types", () => {
       it("should leave a mutable Map unchanged", () => {
         expect<Types.DeepMutable<Map<TaggedValues<string>, ReadonlySet<TaggedValues<number>>>>>()
           .type.toBe<Map<{ _tag: string; value: Array<string> }, Set<{ _tag: string; value: Array<number> }>>>()
+      })
+    })
+
+    describe("Union", () => {
+      it("should convert a readonly union to a mutable union", () => {
+        type T =
+          | ReadonlySet<{ readonly value: TaggedValues<number> }>
+          | ReadonlyMap<TaggedValues<string>, ReadonlySet<TaggedValues<number>>>
+        expect<Types.DeepMutable<T>>()
+          .type.toBe<
+          | Set<{ value: { _tag: string; value: Array<number> } }>
+          | Map<{ _tag: string; value: Array<string> }, Set<{ _tag: string; value: Array<number> }>>
+        >()
+      })
+
+      it("should leave a mutable union unchanged", () => {
+        type T =
+          | ReadonlySet<{ readonly value: TaggedValues<number> }>
+          | ReadonlyMap<TaggedValues<string>, ReadonlySet<TaggedValues<number>>>
+        expect<Types.DeepMutable<T>>()
+          .type.toBe<
+          | Set<{ value: { _tag: string; value: Array<number> } }>
+          | Map<{ _tag: string; value: Array<string> }, Set<{ _tag: string; value: Array<number> }>>
+        >()
       })
     })
   })
