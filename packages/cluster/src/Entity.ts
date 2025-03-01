@@ -23,8 +23,8 @@ import type { AlreadyProcessingMessage, MailboxFull, PersistenceError } from "./
 import type { EntityAddress } from "./EntityAddress.js"
 import { EntityType } from "./EntityType.js"
 import type * as Envelope from "./Envelope.js"
-import type { PodAddress } from "./PodAddress.js"
 import type * as Reply from "./Reply.js"
+import type { RunnerAddress } from "./RunnerAddress.js"
 import type { Sharding } from "./Sharding.js"
 
 /**
@@ -93,7 +93,7 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
   ): Layer.Layer<
     never,
     never,
-    | Exclude<RX, Scope | CurrentAddress | CurrentPodAddress>
+    | Exclude<RX, Scope | CurrentAddress | CurrentRunnerAddress>
     | RpcGroup.HandlersContext<Rpcs, Handlers>
     | Rpc.Context<Rpcs>
     | Rpc.Middleware<Rpcs>
@@ -342,14 +342,14 @@ export class CurrentAddress extends Context.Tag("@effect/cluster/Entity/EntityAd
 >() {}
 
 /**
- * A Context.Tag to access the current pod address.
+ * A Context.Tag to access the current Runner address.
  *
  * @since 1.0.0
  * @category context
  */
-export class CurrentPodAddress extends Context.Tag("@effect/cluster/Entity/PodAddress")<
-  CurrentPodAddress,
-  PodAddress
+export class CurrentRunnerAddress extends Context.Tag("@effect/cluster/Entity/RunnerAddress")<
+  CurrentRunnerAddress,
+  RunnerAddress
 >() {}
 
 /**

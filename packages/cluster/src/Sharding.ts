@@ -27,7 +27,7 @@ import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type { AlreadyProcessingMessage, MailboxFull, PersistenceError } from "./ClusterError.js"
-import { EntityNotManagedByPod, PodUnavailable } from "./ClusterError.js"
+import { EntityNotManagedByRunner, RunnerUnavailable } from "./ClusterError.js"
 import { Persisted } from "./ClusterSchema.js"
 import type { CurrentAddress, Entity, HandlersFrom } from "./Entity.js"
 import { EntityAddress } from "./EntityAddress.js"
@@ -41,9 +41,9 @@ import { internalInterruptors } from "./internal/interruptors.js"
 import { ResourceMap } from "./internal/resourceMap.js"
 import * as Message from "./Message.js"
 import * as MessageStorage from "./MessageStorage.js"
-import type { PodAddress } from "./PodAddress.js"
-import { Pods } from "./Pods.js"
 import * as Reply from "./Reply.js"
+import type { RunnerAddress } from "./RunnerAddress.js"
+import { Runners } from "./Runners.js"
 import { ShardId } from "./ShardId.js"
 import { ShardingConfig } from "./ShardingConfig.js"
 import { EntityRegistered, type ShardingRegistrationEvent, SingletonRegistered } from "./ShardingRegistrationEvent.js"
@@ -58,7 +58,7 @@ import * as Snowflake from "./Snowflake.js"
  */
 export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, {
   /**
-   * Returns a stream of events that occur when the pod registers entities or
+   * Returns a stream of events that occur when the runner registers entities or
    * singletons.
    */
   readonly getRegistrationEvents: Stream.Stream<ShardingRegistrationEvent>
@@ -92,7 +92,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   >
 
   /**
-   * Registers a new entity with the pod.
+   * Registers a new entity with the runner.
    */
   readonly registerEntity: <Rpcs extends Rpc.Any, Handlers extends HandlersFrom<Rpcs>, RX>(
     entity: Entity<Rpcs>,
@@ -105,7 +105,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   ) => Effect.Effect<void, never, Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | Exclude<RX, Scope.Scope | CurrentAddress>>
 
   /**
-   * Registers a new singleton with the pod.
+   * Registers a new singleton with the runner.
    */
   readonly registerSingleton: <E, R>(
     name: string,
@@ -117,7 +117,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
    */
   readonly send: (message: Message.Incoming<any>) => Effect.Effect<
     void,
-    EntityNotManagedByPod | MailboxFull | AlreadyProcessingMessage
+    EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage
   >
 
   /**
@@ -125,7 +125,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
    */
   readonly notify: (message: Message.Incoming<any>) => Effect.Effect<
     void,
-    EntityNotManagedByPod
+    EntityNotManagedByRunner
   >
 }>() {}
 
@@ -146,7 +146,7 @@ interface EntityManagerState {
 export const make = Effect.gen(function*() {
   const config = yield* ShardingConfig
 
-  const pods = yield* Pods
+  const runners = yield* Runners
   const shardManager = yield* ShardManagerClient
   const snowflakeGen = yield* Snowflake.Generator
   const shardingScope = yield* Effect.scope
@@ -158,7 +158,7 @@ export const make = Effect.gen(function*() {
 
   const entityManagers = new Map<EntityType, EntityManagerState>()
 
-  const shardAssignments = MutableHashMap.empty<ShardId, PodAddress>()
+  const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = new Set<ShardId>()
 
   // the active shards are the ones that we have acquired the lock for
@@ -168,8 +168,8 @@ export const make = Effect.gen(function*() {
   const events = yield* PubSub.unbounded<ShardingRegistrationEvent>()
   const getRegistrationEvents: Stream.Stream<ShardingRegistrationEvent> = Stream.fromPubSub(events)
 
-  const isLocalPod = (address: PodAddress) =>
-    Option.isSome(config.podAddress) && Equal.equals(address, config.podAddress.value)
+  const isLocalRunner = (address: RunnerAddress) =>
+    Option.isSome(config.runnerAddress) && Equal.equals(address, config.runnerAddress.value)
 
   function getShardId(entityId: EntityId): ShardId {
     return ShardId.make((Math.abs(hashString(entityId) % config.numberOfShards)) + 1)
@@ -181,8 +181,8 @@ export const make = Effect.gen(function*() {
 
   // --- Shard acquisition ---
 
-  if (Option.isSome(config.podAddress)) {
-    const selfAddress = config.podAddress.value
+  if (Option.isSome(config.runnerAddress)) {
+    const selfAddress = config.runnerAddress.value
     yield* Scope.addFinalizerExit(shardingScope, () => {
       // the locks expire over time, so if this fails we ignore it
       return Effect.ignore(shardStorage.releaseAll(selfAddress))
@@ -193,13 +193,13 @@ export const make = Effect.gen(function*() {
       while (true) {
         yield* activeShardsLatch.await
 
-        // if a shard is no longer assigned to this pod, we release it
+        // if a shard is no longer assigned to this runner, we release it
         for (const shardId of acquiredShards) {
           if (selfShards.has(shardId)) continue
           acquiredShards.delete(shardId)
           releasingShards.add(shardId)
         }
-        // if a shard has been assigned to this pod, we acquire it
+        // if a shard has been assigned to this runner, we acquire it
         const unacquiredShards = new Set<ShardId>()
         for (const shardId of selfShards) {
           if (acquiredShards.has(shardId) || releasingShards.has(shardId)) continue
@@ -233,7 +233,7 @@ export const make = Effect.gen(function*() {
         package: "@effect/cluster",
         module: "Sharding",
         fiber: "Shard acquisition loop",
-        pod: selfAddress
+        runner: selfAddress
       }),
       Effect.interruptible,
       Effect.forkIn(shardingScope)
@@ -288,7 +288,7 @@ export const make = Effect.gen(function*() {
             ).pipe(
               Effect.andThen(shardStorage.release(selfAddress, shardId)),
               Effect.annotateLogs({
-                pod: selfAddress
+                runner: selfAddress
               }),
               Effect.andThen(() => {
                 releasingShards.delete(shardId)
@@ -376,8 +376,8 @@ export const make = Effect.gen(function*() {
   const storageReadLock = Effect.unsafeMakeSemaphore(1)
   const withStorageReadLock = storageReadLock.withPermits(1)
 
-  if (storageEnabled && Option.isSome(config.podAddress)) {
-    const selfAddress = config.podAddress.value
+  if (storageEnabled && Option.isSome(config.runnerAddress)) {
+    const selfAddress = config.runnerAddress.value
 
     yield* Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
@@ -489,7 +489,7 @@ export const make = Effect.gen(function*() {
         package: "@effect/cluster",
         module: "Sharding",
         fiber: "Storage read loop",
-        pod: selfAddress
+        runner: selfAddress
       }),
       Effect.interruptible,
       Effect.forkIn(shardingScope)
@@ -533,7 +533,7 @@ export const make = Effect.gen(function*() {
         let done = false
 
         while (!done) {
-          // if the shard is no longer assigned to this pod, we stop
+          // if the shard is no longer assigned to this runner, we stop
           if (!acquiredShards.has(address.shardId)) {
             return
           }
@@ -557,11 +557,11 @@ export const make = Effect.gen(function*() {
 
           const sendWithRetry: Effect.Effect<
             void,
-            EntityNotManagedByPod
+            EntityNotManagedByRunner
           > = Effect.catchTags(
             Effect.suspend(() => {
               if (!acquiredShards.has(address.shardId)) {
-                return Effect.fail(new EntityNotManagedByPod({ address }))
+                return Effect.fail(new EntityNotManagedByRunner({ address }))
               }
 
               const message = messages[index]
@@ -611,7 +611,7 @@ export const make = Effect.gen(function*() {
           package: "@effect/cluster",
           module: "Sharding",
           fiber: "Resuming unprocessed messages",
-          pod: selfAddress,
+          runner: selfAddress,
           entity: address
         }),
       (effect, address) =>
@@ -630,21 +630,21 @@ export const make = Effect.gen(function*() {
     message: Message.Outgoing<any> | Message.Incoming<any>
   ): Effect.Effect<
     void,
-    EntityNotManagedByPod | MailboxFull | AlreadyProcessingMessage
+    EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage
   > =>
     Effect.suspend(() => {
       const address = message.envelope.address
       if (!isEntityOnLocalShards(address)) {
-        return Effect.fail(new EntityNotManagedByPod({ address }))
+        return Effect.fail(new EntityNotManagedByRunner({ address }))
       }
       const state = entityManagers.get(address.entityType)
       if (!state) {
-        return Effect.fail(new EntityNotManagedByPod({ address }))
+        return Effect.fail(new EntityNotManagedByRunner({ address }))
       }
 
       return message._tag === "IncomingRequest" || message._tag === "IncomingEnvelope" ?
         state.manager.send(message) :
-        pods.sendLocal({
+        runners.sendLocal({
           message,
           send: state.manager.sendLocal,
           simulateRemoteSerialization: config.simulateRemoteSerialization
@@ -655,7 +655,7 @@ export const make = Effect.gen(function*() {
     Effect.suspend(() => {
       const address = message.envelope.address
       if (!isEntityOnLocalShards(address)) {
-        return Effect.fail(new EntityNotManagedByPod({ address }))
+        return Effect.fail(new EntityNotManagedByRunner({ address }))
       }
 
       const notify = storageEnabled
@@ -664,10 +664,10 @@ export const make = Effect.gen(function*() {
 
       return message._tag === "IncomingRequest" || message._tag === "IncomingEnvelope"
         ? notify()
-        : pods.notifyLocal({ message, notify, discard })
+        : runners.notifyLocal({ message, notify, discard })
     })
 
-  const isTransientError = Predicate.or(PodUnavailable.is, EntityNotManagedByPod.is)
+  const isTransientError = Predicate.or(RunnerUnavailable.is, EntityNotManagedByRunner.is)
   function sendOutgoing(
     message: Message.Outgoing<any>,
     discard: boolean,
@@ -676,20 +676,20 @@ export const make = Effect.gen(function*() {
     return Effect.catchIf(
       Effect.suspend(() => {
         const address = message.envelope.address
-        const maybePod = MutableHashMap.get(shardAssignments, address.shardId)
-        if (Option.isNone(maybePod)) {
-          return Effect.fail(new EntityNotManagedByPod({ address }))
+        const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
+        if (Option.isNone(maybeRunner)) {
+          return Effect.fail(new EntityNotManagedByRunner({ address }))
         }
-        const pod = maybePod.value
+        const runner = maybeRunner.value
         const rpc = message.rpc as any as Rpc.AnyWithProps
         if (storageEnabled && Context.get(rpc.annotations, Persisted)) {
-          return isLocalPod(pod)
+          return isLocalRunner(runner)
             ? notifyLocal(message, discard)
-            : pods.notify({ address: pod, message, discard })
+            : runners.notify({ address: runner, message, discard })
         }
-        return isLocalPod(pod)
+        return isLocalRunner(runner)
           ? sendLocal(message)
-          : pods.send({ address: pod, message })
+          : runners.send({ address: runner, message })
       }),
       isTransientError,
       (error) => {
@@ -716,12 +716,12 @@ export const make = Effect.gen(function*() {
   )
   const stopShardManagerTimeout = FiberHandle.clear(shardManagerTimeoutFiber)
 
-  // Every time the link to the shard manager is lost, we re-register the pod
+  // Every time the link to the shard manager is lost, we re-register the runner
   // and re-subscribe to sharding events
   yield* Effect.gen(function*() {
     yield* Effect.logDebug("Registering with shard manager")
-    if (Option.isSome(config.podAddress)) {
-      yield* shardManager.register(config.podAddress.value)
+    if (Option.isSome(config.runnerAddress)) {
+      yield* shardManager.register(config.runnerAddress.value)
     }
 
     yield* stopShardManagerTimeout
@@ -745,7 +745,7 @@ export const make = Effect.gen(function*() {
               for (const shard of event.shards) {
                 MutableHashMap.set(shardAssignments, shard, event.address)
               }
-              if (!MutableRef.get(isShutdown) && isLocalPod(event.address)) {
+              if (!MutableRef.get(isShutdown) && isLocalRunner(event.address)) {
                 for (const shardId of event.shards) {
                   if (selfShards.has(shardId)) continue
                   selfShards.add(shardId)
@@ -758,7 +758,7 @@ export const make = Effect.gen(function*() {
               for (const shard of event.shards) {
                 MutableHashMap.remove(shardAssignments, shard)
               }
-              if (isLocalPod(event.address)) {
+              if (isLocalRunner(event.address)) {
                 for (const shard of event.shards) {
                   selfShards.delete(shard)
                 }
@@ -795,7 +795,7 @@ export const make = Effect.gen(function*() {
       package: "@effect/cluster",
       module: "Sharding",
       fiber: "ShardManager sync",
-      pod: config.podAddress
+      runner: config.runnerAddress
     }),
     Effect.interruptible,
     Effect.forkIn(shardingScope)
@@ -805,16 +805,16 @@ export const make = Effect.gen(function*() {
     const assignments = yield* shardManager.getAssignments
     yield* Effect.logDebug("Received shard assignments", assignments)
 
-    for (const [shardId, pod] of assignments) {
-      if (Option.isNone(pod)) {
+    for (const [shardId, runner] of assignments) {
+      if (Option.isNone(runner)) {
         MutableHashMap.remove(shardAssignments, shardId)
         selfShards.delete(shardId)
         continue
       }
 
-      MutableHashMap.set(shardAssignments, shardId, pod.value)
+      MutableHashMap.set(shardAssignments, shardId, runner.value)
 
-      if (!isLocalPod(pod.value)) {
+      if (!isLocalRunner(runner.value)) {
         selfShards.delete(shardId)
         continue
       }
@@ -1009,7 +1009,7 @@ export const make = Effect.gen(function*() {
       const manager = yield* EntityManager.make(entity, build, {
         ...options,
         storage,
-        podAddress: Option.getOrThrow(config.podAddress),
+        runnerAddress: Option.getOrThrow(config.runnerAddress),
         sharding
       }).pipe(
         Effect.provide(context.pipe(
@@ -1045,13 +1045,13 @@ export const make = Effect.gen(function*() {
 
   // --- Finalization ---
 
-  if (Option.isSome(config.podAddress)) {
-    const selfAddress = config.podAddress.value
-    // Unregister pod from shard manager when scope is closed
+  if (Option.isSome(config.runnerAddress)) {
+    const selfAddress = config.runnerAddress.value
+    // Unregister runner from shard manager when scope is closed
     yield* Scope.addFinalizer(
       shardingScope,
       Effect.gen(function*() {
-        yield* Effect.logDebug("Unregistering pod from shard manager", selfAddress)
+        yield* Effect.logDebug("Unregistering runner from shard manager", selfAddress)
         yield* shardManager.unregister(selfAddress).pipe(
           Effect.catchAllCause((cause) => Effect.logError("Error calling unregister with shard manager", cause))
         )
@@ -1091,7 +1091,7 @@ export const make = Effect.gen(function*() {
 export const layer: Layer.Layer<
   Sharding,
   never,
-  ShardingConfig | Pods | ShardManagerClient | MessageStorage.MessageStorage | ShardStorage
+  ShardingConfig | Runners | ShardManagerClient | MessageStorage.MessageStorage | ShardStorage
 > = Layer.scoped(Sharding, make).pipe(
   Layer.provide([Snowflake.layerGenerator, EntityReaper.Default])
 )

@@ -14,8 +14,8 @@ import * as Layer from "effect/Layer"
 import type { Scope } from "effect/Scope"
 import { layerClientProtocolHttp, layerClientProtocolWebsocket } from "./HttpCommon.js"
 import * as MessageStorage from "./MessageStorage.js"
-import * as Pods from "./Pods.js"
-import * as PodsHealth from "./PodsHealth.js"
+import * as RunnerHealth from "./RunnerHealth.js"
+import * as Runners from "./Runners.js"
 import type { ShardingConfig } from "./ShardingConfig.js"
 import * as ShardManager from "./ShardManager.js"
 import type { ShardStorage } from "./ShardStorage.js"
@@ -30,7 +30,7 @@ export const toHttpApp: Effect.Effect<
   Scope | RpcSerialization.RpcSerialization | ShardManager.ShardManager
 > = Effect.gen(function*() {
   const handlers = yield* Layer.build(ShardManager.layerServerHandlers)
-  return yield* RpcServer.toHttpApp(ShardManager.ShardManagerRpcs).pipe(
+  return yield* RpcServer.toHttpApp(ShardManager.Rpcs).pipe(
     Effect.provide(handlers)
   )
 })
@@ -45,7 +45,7 @@ export const toHttpAppWebsocket: Effect.Effect<
   Scope | RpcSerialization.RpcSerialization | ShardManager.ShardManager
 > = Effect.gen(function*() {
   const handlers = yield* Layer.build(ShardManager.layerServerHandlers)
-  return yield* RpcServer.toHttpAppWebsocket(ShardManager.ShardManagerRpcs).pipe(
+  return yield* RpcServer.toHttpAppWebsocket(ShardManager.Rpcs).pipe(
     Effect.provide(handlers)
   )
 })
@@ -53,7 +53,7 @@ export const toHttpAppWebsocket: Effect.Effect<
 /**
  * A layer for the `ShardManager` service, that does not run a server.
  *
- * It only provides the `Pods` rpc client.
+ * It only provides the `Runners` rpc client.
  *
  * You can use this with the `toHttpApp` and `toHttpAppWebsocket` apis
  * to run a complete `ShardManager` server.
@@ -63,25 +63,25 @@ export const toHttpAppWebsocket: Effect.Effect<
  */
 export const layerNoServerHttp = (
   options: {
-    readonly podsPath: string
-    readonly podsHttps?: boolean | undefined
+    readonly runnerPath: string
+    readonly runnerHttps?: boolean | undefined
   }
 ): Layer.Layer<
   ShardManager.ShardManager,
   never,
   | RpcSerialization.RpcSerialization
   | ShardStorage
-  | PodsHealth.PodsHealth
+  | RunnerHealth.RunnerHealth
   | HttpClient.HttpClient
   | ShardManager.Config
   | ShardingConfig
 > =>
   ShardManager.layer.pipe(
-    Layer.provide(Pods.layerRpc.pipe(
+    Layer.provide(Runners.layerRpc.pipe(
       Layer.provide([
         layerClientProtocolHttp({
-          path: options.podsPath,
-          https: options.podsHttps
+          path: options.runnerPath,
+          https: options.runnerHttps
         }),
         MessageStorage.layerNoop
       ])
@@ -91,7 +91,7 @@ export const layerNoServerHttp = (
 /**
  * A layer for the `ShardManager` service, that does not run a server.
  *
- * It only provides the `Pods` rpc client.
+ * It only provides the `Runners` rpc client.
  *
  * You can use this with the `toHttpApp` and `toHttpAppWebsocket` apis
  * to run a complete `ShardManager` server.
@@ -101,25 +101,25 @@ export const layerNoServerHttp = (
  */
 export const layerNoServerWebsocket = (
   options: {
-    readonly podsPath: string
-    readonly podsHttps?: boolean | undefined
+    readonly runnerPath: string
+    readonly runnerHttps?: boolean | undefined
   }
 ): Layer.Layer<
   ShardManager.ShardManager,
   never,
   | RpcSerialization.RpcSerialization
   | ShardStorage
-  | PodsHealth.PodsHealth
+  | RunnerHealth.RunnerHealth
   | Socket.WebSocketConstructor
   | ShardManager.Config
   | ShardingConfig
 > =>
   ShardManager.layer.pipe(
-    Layer.provide(Pods.layerRpc.pipe(
+    Layer.provide(Runners.layerRpc.pipe(
       Layer.provide([
         layerClientProtocolWebsocket({
-          path: options.podsPath,
-          https: options.podsHttps
+          path: options.runnerPath,
+          https: options.runnerHttps
         }),
         MessageStorage.layerNoop
       ])
@@ -139,8 +139,8 @@ export const layerHttpOptions = <I = HttpRouter.Default>(
   options: {
     readonly path: HttpRouter.PathInput
     readonly routerTag?: HttpRouter.HttpRouter.TagClass<I, string, any, any>
-    readonly podsPath: string
-    readonly podsHttps?: boolean | undefined
+    readonly runnerPath: string
+    readonly runnerHttps?: boolean | undefined
     readonly logAddress?: boolean | undefined
   }
 ): Layer.Layer<
@@ -148,7 +148,7 @@ export const layerHttpOptions = <I = HttpRouter.Default>(
   never,
   | RpcSerialization.RpcSerialization
   | ShardStorage
-  | PodsHealth.PodsHealth
+  | RunnerHealth.RunnerHealth
   | HttpClient.HttpClient
   | HttpServer.HttpServer
   | ShardManager.Config
@@ -176,8 +176,8 @@ export const layerWebsocketOptions = <I = HttpRouter.Default>(
   options: {
     readonly path: HttpRouter.PathInput
     readonly routerTag?: HttpRouter.HttpRouter.TagClass<I, string, any, any>
-    readonly podsPath: string
-    readonly podsHttps?: boolean | undefined
+    readonly runnerPath: string
+    readonly runnerHttps?: boolean | undefined
     readonly logAddress?: boolean | undefined
   }
 ): Layer.Layer<
@@ -185,7 +185,7 @@ export const layerWebsocketOptions = <I = HttpRouter.Default>(
   never,
   | RpcSerialization.RpcSerialization
   | ShardStorage
-  | PodsHealth.PodsHealth
+  | RunnerHealth.RunnerHealth
   | HttpServer.HttpServer
   | Socket.WebSocketConstructor
   | ShardManager.Config
@@ -224,12 +224,12 @@ export const layerHttp: Layer.Layer<
   never,
   | RpcSerialization.RpcSerialization
   | ShardStorage
-  | PodsHealth.PodsHealth
+  | RunnerHealth.RunnerHealth
   | HttpClient.HttpClient
   | HttpServer.HttpServer
   | ShardManager.Config
   | ShardingConfig
-> = layerHttpOptions({ path: "/", podsPath: "/" })
+> = layerHttpOptions({ path: "/", runnerPath: "/" })
 
 /**
  * A Websocket layer for the `ShardManager` server, that adds a route to the provided
@@ -245,29 +245,29 @@ export const layerWebsocket: Layer.Layer<
   never,
   | RpcSerialization.RpcSerialization
   | ShardStorage
-  | PodsHealth.PodsHealth
+  | RunnerHealth.RunnerHealth
   | Socket.WebSocketConstructor
   | HttpServer.HttpServer
   | ShardManager.Config
   | ShardingConfig
-> = layerWebsocketOptions({ path: "/", podsPath: "/" })
+> = layerWebsocketOptions({ path: "/", runnerPath: "/" })
 
 /**
  * @since 1.0.0
  * @category Layers
  */
-export const layerPodsHealthHttp: Layer.Layer<
-  PodsHealth.PodsHealth,
+export const layerRunnerHealthHttp: Layer.Layer<
+  RunnerHealth.RunnerHealth,
   never,
   RpcSerialization.RpcSerialization | HttpClient.HttpClient | ShardingConfig
-> = Layer.provide(PodsHealth.layerRpc, layerClientProtocolHttp({ path: "/" }))
+> = Layer.provide(RunnerHealth.layerRpc, layerClientProtocolHttp({ path: "/" }))
 
 /**
  * @since 1.0.0
  * @category Layers
  */
-export const layerPodsHealthWebsocket: Layer.Layer<
-  PodsHealth.PodsHealth,
+export const layerRunnerHealthWebsocket: Layer.Layer<
+  RunnerHealth.RunnerHealth,
   never,
   RpcSerialization.RpcSerialization | Socket.WebSocketConstructor | ShardingConfig
-> = Layer.provide(PodsHealth.layerRpc, layerClientProtocolWebsocket({ path: "/" }))
+> = Layer.provide(RunnerHealth.layerRpc, layerClientProtocolWebsocket({ path: "/" }))

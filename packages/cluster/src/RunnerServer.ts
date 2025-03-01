@@ -9,8 +9,8 @@ import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import * as Message from "./Message.js"
 import type * as MessageStorage from "./MessageStorage.js"
-import * as Pods from "./Pods.js"
 import * as Reply from "./Reply.js"
+import * as Runners from "./Runners.js"
 import * as Sharding from "./Sharding.js"
 import { ShardingConfig } from "./ShardingConfig.js"
 import * as ShardManager from "./ShardManager.js"
@@ -23,7 +23,7 @@ const constVoid = constant(Effect.void)
  * @since 1.0.0
  * @category Layers
  */
-export const layerHandlers = Pods.PodsRpcs.toLayer(Effect.gen(function*() {
+export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
   const sharding = yield* Sharding.Sharding
 
   return {
@@ -91,7 +91,7 @@ export const layerHandlers = Pods.PodsRpcs.toLayer(Effect.gen(function*() {
 }))
 
 /**
- * The `PodsServer` recieves messages from other pods and forwards them to the
+ * The `RunnerServer` recieves messages from other Runners and forwards them to the
  * `Sharding` layer.
  *
  * It also responds to `Ping` requests.
@@ -103,34 +103,34 @@ export const layer: Layer.Layer<
   never,
   never,
   RpcServer.Protocol | Sharding.Sharding | MessageStorage.MessageStorage
-> = RpcServer.layer(Pods.PodsRpcs, {
-  spanPrefix: "PodsServer",
+> = RpcServer.layer(Runners.Rpcs, {
+  spanPrefix: "RunnerServer",
   disableSpanPropagation: true
 }).pipe(Layer.provide(layerHandlers))
 
 /**
- * A `PodsServer` layer that includes the `Pods` & `Sharding` clients.
+ * A `RunnerServer` layer that includes the `Runners` & `Sharding` clients.
  *
  * @since 1.0.0
  * @category Layers
  */
 export const layerWithClients: Layer.Layer<
-  Sharding.Sharding | Pods.Pods,
+  Sharding.Sharding | Runners.Runners,
   never,
   | RpcServer.Protocol
   | ShardingConfig
-  | Pods.RpcClientProtocol
+  | Runners.RpcClientProtocol
   | MessageStorage.MessageStorage
   | ShardStorage.ShardStorage
 > = layer.pipe(
   Layer.provideMerge(Sharding.layer),
-  Layer.provideMerge(Pods.layerRpc),
+  Layer.provideMerge(Runners.layerRpc),
   Layer.provideMerge(SynchronizedClock.layer),
   Layer.provide(ShardManager.layerClientRpc)
 )
 
 /**
- * A `Pods` layer that is client only.
+ * A `Runners` layer that is client only.
  *
  * It will not register with the ShardManager and recieve shard assignments,
  * so this layer can be used to embed a cluster client inside another effect
@@ -140,17 +140,17 @@ export const layerWithClients: Layer.Layer<
  * @category Layers
  */
 export const layerClientOnly: Layer.Layer<
-  Sharding.Sharding | Pods.Pods,
+  Sharding.Sharding | Runners.Runners,
   never,
   | ShardingConfig
-  | Pods.RpcClientProtocol
+  | Runners.RpcClientProtocol
   | MessageStorage.MessageStorage
 > = Sharding.layer.pipe(
-  Layer.provideMerge(Pods.layerRpc),
+  Layer.provideMerge(Runners.layerRpc),
   Layer.provide(ShardManager.layerClientRpc),
   Layer.provide(ShardStorage.layerNoop),
   Layer.updateService(ShardingConfig, (config) => ({
     ...config,
-    podAddress: Option.none()
+    runnerAddress: Option.none()
   }))
 )

@@ -20,38 +20,38 @@ export const make = Effect.fnUntraced(function*(options?: {
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
 
-  const podsTable = table("pods")
-  const podsTableSql = sql(podsTable)
+  const runnersTable = table("runners")
+  const runnersTableSql = sql(runnersTable)
 
   yield* sql.onDialectOrElse({
     mssql: () =>
       sql`
-        IF OBJECT_ID(N'${podsTableSql}', N'U') IS NULL
-        CREATE TABLE ${podsTableSql} (
+        IF OBJECT_ID(N'${runnersTableSql}', N'U') IS NULL
+        CREATE TABLE ${runnersTableSql} (
           address VARCHAR(255) PRIMARY KEY,
-          pod TEXT NOT NULL
+          runner TEXT NOT NULL
         )
       `,
     mysql: () =>
       sql`
-        CREATE TABLE IF NOT EXISTS ${podsTableSql} (
+        CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
           address VARCHAR(255) PRIMARY KEY,
-          pod TEXT NOT NULL
+          runner TEXT NOT NULL
         )
       `,
     pg: () =>
       sql`
-        CREATE TABLE IF NOT EXISTS ${podsTableSql} (
+        CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
           address VARCHAR(255) PRIMARY KEY,
-          pod TEXT NOT NULL
+          runner TEXT NOT NULL
         )
       `,
     orElse: () =>
       // sqlite
       sql`
-        CREATE TABLE IF NOT EXISTS ${podsTableSql} (
+        CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
           address TEXT PRIMARY KEY,
-          pod TEXT NOT NULL
+          runner TEXT NOT NULL
         )
       `
   })
@@ -222,18 +222,18 @@ export const make = Effect.fnUntraced(function*(options?: {
       )
     },
 
-    getPods: sql`SELECT address, pod FROM ${podsTableSql}`.values.pipe(
+    getRunners: sql`SELECT address, runner FROM ${runnersTableSql}`.values.pipe(
       PersistenceError.refail,
-      Effect.map(Arr.map(([address, pod]) => [String(address), String(pod)] as const))
+      Effect.map(Arr.map(([address, runner]) => [String(address), String(runner)] as const))
     ),
 
-    savePods: (pods) => {
-      const remove = sql`DELETE FROM ${podsTableSql}`
-      if (pods.length === 0) {
+    saveRunners: (runners) => {
+      const remove = sql`DELETE FROM ${runnersTableSql}`
+      if (runners.length === 0) {
         return PersistenceError.refail(remove)
       }
-      const values = pods.map(([address, pod]) => sql`(${address}, ${pod})`)
-      const insert = sql`INSERT INTO ${podsTableSql} (address, pod) VALUES ${sql.csv(values)}`.unprepared
+      const values = runners.map(([address, runner]) => sql`(${address}, ${runner})`)
+      const insert = sql`INSERT INTO ${runnersTableSql} (address, runner) VALUES ${sql.csv(values)}`.unprepared
       return remove.pipe(
         Effect.andThen(insert),
         sql.withTransaction,

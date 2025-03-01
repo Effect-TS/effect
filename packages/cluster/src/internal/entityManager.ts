@@ -15,18 +15,18 @@ import * as Metric from "effect/Metric"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
-import { AlreadyProcessingMessage, EntityNotManagedByPod, MailboxFull, MalformedMessage } from "../ClusterError.js"
+import { AlreadyProcessingMessage, EntityNotManagedByRunner, MailboxFull, MalformedMessage } from "../ClusterError.js"
 import * as ClusterMetrics from "../ClusterMetrics.js"
 import { Persisted } from "../ClusterSchema.js"
 import type { Entity, HandlersFrom } from "../Entity.js"
-import { CurrentAddress, CurrentPodAddress, Request } from "../Entity.js"
+import { CurrentAddress, CurrentRunnerAddress, Request } from "../Entity.js"
 import type { EntityAddress } from "../EntityAddress.js"
 import type { EntityId } from "../EntityId.js"
 import * as Envelope from "../Envelope.js"
 import * as Message from "../Message.js"
 import * as MessageStorage from "../MessageStorage.js"
-import type { PodAddress } from "../PodAddress.js"
 import * as Reply from "../Reply.js"
+import type { RunnerAddress } from "../RunnerAddress.js"
 import type { ShardId } from "../ShardId.js"
 import type { Sharding } from "../Sharding.js"
 import { ShardingConfig } from "../ShardingConfig.js"
@@ -39,11 +39,11 @@ import { ResourceMap } from "./resourceMap.js"
 export interface EntityManager {
   readonly sendLocal: <R extends Rpc.Any>(
     message: Message.IncomingLocal<R>
-  ) => Effect.Effect<void, EntityNotManagedByPod | MailboxFull | AlreadyProcessingMessage>
+  ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
 
   readonly send: (
     message: Message.Incoming<any>
-  ) => Effect.Effect<void, EntityNotManagedByPod | MailboxFull | AlreadyProcessingMessage>
+  ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
 
   readonly isProcessingFor: (message: Message.Incoming<any>) => boolean
 
@@ -76,7 +76,7 @@ export const make = Effect.fnUntraced(function*<
   options: {
     readonly sharding: Sharding["Type"]
     readonly storage: MessageStorage.MessageStorage["Type"]
-    readonly podAddress: PodAddress
+    readonly runnerAddress: RunnerAddress
     readonly maxIdleTime?: DurationInput | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly mailboxCapacity?: number | "unbounded" | undefined
@@ -95,10 +95,10 @@ export const make = Effect.fnUntraced(function*<
   const entities: ResourceMap<
     EntityAddress,
     EntityState,
-    EntityNotManagedByPod
+    EntityNotManagedByRunner
   > = yield* ResourceMap.make(Effect.fnUntraced(function*(address) {
     if (yield* options.sharding.isShutdown || !options.sharding.hasShard(address.shardId)) {
-      return yield* new EntityNotManagedByPod({ address })
+      return yield* new EntityNotManagedByRunner({ address })
     }
 
     const scope = yield* Effect.scope
@@ -109,7 +109,7 @@ export const make = Effect.fnUntraced(function*<
     const handlers = yield* (entity.protocol.toHandlersContext(buildHandlers).pipe(
       Effect.provide(context.pipe(
         Context.add(CurrentAddress, address),
-        Context.add(CurrentPodAddress, options.podAddress),
+        Context.add(CurrentRunnerAddress, options.runnerAddress),
         Context.add(Scope.Scope, scope)
       ))
     ) as Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>)
@@ -208,7 +208,7 @@ export const make = Effect.fnUntraced(function*<
               Effect.andThen(Effect.annotateLogs(Effect.logError("Defect in entity", Cause.die(response.defect)), {
                 module: "EntityManager",
                 address,
-                pod: options.podAddress
+                runner: options.runnerAddress
               }))
             )
           }
@@ -284,10 +284,10 @@ export const make = Effect.fnUntraced(function*<
 
   function sendLocal<R extends Rpc.Any>(
     message: Message.IncomingLocal<R>
-  ): Effect.Effect<void, EntityNotManagedByPod | MailboxFull | AlreadyProcessingMessage> {
+  ): Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage> {
     return Effect.flatMap(
       entities.get(message.envelope.address),
-      (server): Effect.Effect<void, EntityNotManagedByPod | MailboxFull | AlreadyProcessingMessage> => {
+      (server): Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage> => {
         switch (message._tag) {
           case "IncomingRequestLocal": {
             // If the request is already running, then we might have more than
@@ -329,7 +329,7 @@ export const make = Effect.fnUntraced(function*<
           case "IncomingEnvelope": {
             const entry = server.activeRequests.get(message.envelope.requestId)
             if (!entry) {
-              return Effect.fail(new EntityNotManagedByPod({ address: message.envelope.address }))
+              return Effect.fail(new EntityNotManagedByRunner({ address: message.envelope.address }))
             } else if (
               message.envelope._tag === "AckChunk" &&
               Option.isSome(entry.lastSentChunk) &&

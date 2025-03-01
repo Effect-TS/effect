@@ -13,8 +13,8 @@ import * as Layer from "effect/Layer"
 import type { Scope } from "effect/Scope"
 import { layerClientProtocolHttp, layerClientProtocolWebsocket } from "./HttpCommon.js"
 import type { MessageStorage } from "./MessageStorage.js"
-import * as Pods from "./Pods.js"
-import * as PodsServer from "./PodsServer.js"
+import * as Runners from "./Runners.js"
+import * as RunnerServer from "./RunnerServer.js"
 import * as Sharding from "./Sharding.js"
 import type * as ShardingConfig from "./ShardingConfig.js"
 import * as ShardManager from "./ShardManager.js"
@@ -30,9 +30,9 @@ export const toHttpApp: Effect.Effect<
   never,
   Scope | Sharding.Sharding | RpcSerialization.RpcSerialization | MessageStorage
 > = Effect.gen(function*() {
-  const handlers = yield* Layer.build(PodsServer.layerHandlers)
-  return yield* RpcServer.toHttpApp(Pods.PodsRpcs, {
-    spanPrefix: "PodsServer",
+  const handlers = yield* Layer.build(RunnerServer.layerHandlers)
+  return yield* RpcServer.toHttpApp(Runners.Rpcs, {
+    spanPrefix: "RunnerServer",
     disableSpanPropagation: true
   }).pipe(Effect.provide(handlers))
 })
@@ -46,9 +46,9 @@ export const toHttpAppWebsocket: Effect.Effect<
   never,
   Scope | Sharding.Sharding | RpcSerialization.RpcSerialization | MessageStorage
 > = Effect.gen(function*() {
-  const handlers = yield* Layer.build(PodsServer.layerHandlers)
-  return yield* RpcServer.toHttpAppWebsocket(Pods.PodsRpcs, {
-    spanPrefix: "PodsServer",
+  const handlers = yield* Layer.build(RunnerServer.layerHandlers)
+  return yield* RpcServer.toHttpAppWebsocket(Runners.Rpcs, {
+    spanPrefix: "RunnerServer",
     disableSpanPropagation: true
   }).pipe(
     Effect.provide(handlers)
@@ -60,17 +60,17 @@ export const toHttpAppWebsocket: Effect.Effect<
  * @category Layers
  */
 export const layerClient: Layer.Layer<
-  Sharding.Sharding | Pods.Pods,
+  Sharding.Sharding | Runners.Runners,
   never,
-  ShardingConfig.ShardingConfig | Pods.RpcClientProtocol | MessageStorage | ShardStorage
+  ShardingConfig.ShardingConfig | Runners.RpcClientProtocol | MessageStorage | ShardStorage
 > = Sharding.layer.pipe(
-  Layer.provideMerge(Pods.layerRpc),
+  Layer.provideMerge(Runners.layerRpc),
   Layer.provideMerge(SynchronizedClock.layer),
   Layer.provide(ShardManager.layerClientRpc)
 )
 
 /**
- * A HTTP layer for the `Pods` services, that adds a route to the provided
+ * A HTTP layer for the `Runners` services, that adds a route to the provided
  * `HttpRouter.Tag`.
  *
  * By default, it uses the `HttpRouter.Default` tag.
@@ -83,16 +83,16 @@ export const layer = <I = HttpRouter.Default>(options: {
   readonly routerTag?: HttpRouter.HttpRouter.TagClass<I, string, any, any>
   readonly logAddress?: boolean | undefined
 }): Layer.Layer<
-  Sharding.Sharding | Pods.Pods,
+  Sharding.Sharding | Runners.Runners,
   never,
   | RpcSerialization.RpcSerialization
   | ShardingConfig.ShardingConfig
-  | Pods.RpcClientProtocol
+  | Runners.RpcClientProtocol
   | HttpServer.HttpServer
   | MessageStorage
   | ShardStorage
 > => {
-  const layer = PodsServer.layerWithClients.pipe(
+  const layer = RunnerServer.layerWithClients.pipe(
     Layer.provide(RpcServer.layerProtocolHttp(options))
   )
   return options.logAddress ? withLogAddress(layer) : layer
@@ -107,16 +107,16 @@ export const layerWebsocketOptions = <I = HttpRouter.Default>(options: {
   readonly routerTag?: HttpRouter.HttpRouter.TagClass<I, string, any, any>
   readonly logAddress?: boolean | undefined
 }): Layer.Layer<
-  Sharding.Sharding | Pods.Pods,
+  Sharding.Sharding | Runners.Runners,
   never,
   | RpcSerialization.RpcSerialization
   | ShardingConfig.ShardingConfig
-  | Pods.RpcClientProtocol
+  | Runners.RpcClientProtocol
   | HttpServer.HttpServer
   | MessageStorage
   | ShardStorage
 > => {
-  const layer = PodsServer.layerWithClients.pipe(
+  const layer = RunnerServer.layerWithClients.pipe(
     Layer.provide(RpcServer.layerProtocolWebsocket(options))
   )
   return options.logAddress ? withLogAddress(layer) : layer
@@ -127,7 +127,7 @@ const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>): Layer.Layer<A, E,
     HttpServer.addressFormattedWith((address) =>
       Effect.annotateLogs(Effect.logInfo(`Listening on: ${address}`), {
         package: "@effect/cluster",
-        service: "Pods"
+        service: "Runner"
       })
     )
   ).pipe(Layer.provideMerge(layer))
@@ -137,7 +137,7 @@ const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>): Layer.Layer<A, E,
  * @category Layers
  */
 export const layerHttp: Layer.Layer<
-  Sharding.Sharding | Pods.Pods,
+  Sharding.Sharding | Runners.Runners,
   never,
   | RpcSerialization.RpcSerialization
   | ShardingConfig.ShardingConfig
@@ -155,13 +155,13 @@ export const layerHttp: Layer.Layer<
  * @category Layers
  */
 export const layerHttpClientOnly: Layer.Layer<
-  Sharding.Sharding | Pods.Pods,
+  Sharding.Sharding | Runners.Runners,
   never,
   | RpcSerialization.RpcSerialization
   | ShardingConfig.ShardingConfig
   | HttpClient.HttpClient
   | MessageStorage
-> = PodsServer.layerClientOnly.pipe(
+> = RunnerServer.layerClientOnly.pipe(
   Layer.provide(layerClientProtocolHttp({ path: "/" }))
 )
 
@@ -170,7 +170,7 @@ export const layerHttpClientOnly: Layer.Layer<
  * @category Layers
  */
 export const layerWebsocket: Layer.Layer<
-  Sharding.Sharding | Pods.Pods,
+  Sharding.Sharding | Runners.Runners,
   never,
   | RpcSerialization.RpcSerialization
   | ShardingConfig.ShardingConfig
@@ -188,9 +188,9 @@ export const layerWebsocket: Layer.Layer<
  * @category Layers
  */
 export const layerWebsocketClientOnly: Layer.Layer<
-  Sharding.Sharding | Pods.Pods,
+  Sharding.Sharding | Runners.Runners,
   never,
   ShardingConfig.ShardingConfig | MessageStorage | RpcSerialization.RpcSerialization | Socket.WebSocketConstructor
-> = PodsServer.layerClientOnly.pipe(
+> = RunnerServer.layerClientOnly.pipe(
   Layer.provide(layerClientProtocolWebsocket({ path: "/" }))
 )

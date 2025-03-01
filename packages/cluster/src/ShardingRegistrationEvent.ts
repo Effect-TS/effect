@@ -6,7 +6,7 @@ import type { Entity } from "./Entity.js"
 import type { SingletonAddress } from "./SingletonAddress.js"
 
 /**
- * Represents events that can occur when a pod registers entities or singletons.
+ * Represents events that can occur when a runner registers entities or singletons.
  *
  * @since 1.0.0
  * @category models
@@ -16,7 +16,7 @@ export type ShardingRegistrationEvent =
   | SingletonRegistered
 
 /**
- * Represents an event that occurs when a new entity is registered with a pod.
+ * Represents an event that occurs when a new entity is registered with a runner.
  *
  * @since 1.0.0
  * @category models
@@ -28,7 +28,7 @@ export interface EntityRegistered {
 
 /**
  * Represents an event that occurs when a new singleton is registered with a
- * pod.
+ * runner.
  *
  * @since 1.0.0
  * @category models

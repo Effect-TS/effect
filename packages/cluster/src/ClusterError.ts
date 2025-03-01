@@ -6,7 +6,7 @@ import * as Effect from "effect/Effect"
 import { hasProperty, isTagged } from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import { EntityAddress } from "./EntityAddress.js"
-import { PodAddress } from "./PodAddress.js"
+import { RunnerAddress } from "./RunnerAddress.js"
 import { SnowflakeFromString } from "./Snowflake.js"
 
 /**
@@ -22,14 +22,14 @@ export const TypeId: unique symbol = Symbol.for("@effect/cluster/ClusterError")
 export type TypeId = typeof TypeId
 
 /**
- * Represents an error that occurs when a pod receives a message for an entity
+ * Represents an error that occurs when a Runner receives a message for an entity
  * that it is not responsible for managing.
  *
  * @since 1.0.0
  * @category errors
  */
-export class EntityNotManagedByPod extends Schema.TaggedError<EntityNotManagedByPod>()(
-  "EntityNotManagedByPod",
+export class EntityNotManagedByRunner extends Schema.TaggedError<EntityNotManagedByRunner>()(
+  "EntityNotManagedByRunner",
   { address: EntityAddress }
 ) {
   /**
@@ -40,8 +40,8 @@ export class EntityNotManagedByPod extends Schema.TaggedError<EntityNotManagedBy
   /**
    * @since 1.0.0
    */
-  static is(u: unknown): u is EntityNotManagedByPod {
-    return hasProperty(u, TypeId) && isTagged(u, "EntityNotManagedByPod")
+  static is(u: unknown): u is EntityNotManagedByRunner {
+    return hasProperty(u, TypeId) && isTagged(u, "EntityNotManagedByRunner")
   }
 }
 
@@ -103,15 +103,15 @@ export class PersistenceError extends Schema.TaggedError<PersistenceError>()(
 }
 
 /**
- * Represents an error that occurs when a pod is not registered with the shard
+ * Represents an error that occurs when a Runner is not registered with the shard
  * manager.
  *
  * @since 1.0.0
  * @category errors
  */
-export class PodNotRegistered extends Schema.TaggedError<PodNotRegistered>()(
-  "PodNotRegistered",
-  { address: PodAddress }
+export class RunnerNotRegistered extends Schema.TaggedError<RunnerNotRegistered>()(
+  "RunnerNotRegistered",
+  { address: RunnerAddress }
 ) {
   /**
    * @since 1.0.0
@@ -120,14 +120,14 @@ export class PodNotRegistered extends Schema.TaggedError<PodNotRegistered>()(
 }
 
 /**
- * Represents an error that occurs when a pod is unresponsive.
+ * Represents an error that occurs when a Runner is unresponsive.
  *
  * @since 1.0.0
  * @category errors
  */
-export class PodUnavailable extends Schema.TaggedError<PodUnavailable>()(
-  "PodUnavailable",
-  { address: PodAddress }
+export class RunnerUnavailable extends Schema.TaggedError<RunnerUnavailable>()(
+  "RunnerUnavailable",
+  { address: RunnerAddress }
 ) {
   /**
    * @since 1.0.0
@@ -137,8 +137,8 @@ export class PodUnavailable extends Schema.TaggedError<PodUnavailable>()(
   /**
    * @since 1.0.0
    */
-  static is(u: unknown): u is PodUnavailable {
-    return hasProperty(u, TypeId) && isTagged(u, "PodUnavailable")
+  static is(u: unknown): u is RunnerUnavailable {
+    return hasProperty(u, TypeId) && isTagged(u, "RunnerUnavailable")
   }
 }
 

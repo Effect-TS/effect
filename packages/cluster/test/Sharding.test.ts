@@ -1,7 +1,7 @@
 import {
   MessageStorage,
-  PodAddress,
-  Pods,
+  RunnerAddress,
+  Runners,
   Sharding,
   ShardingConfig,
   ShardManager,
@@ -82,25 +82,25 @@ describe.concurrent("Sharding", () => {
         const fiber = yield* client.NeverVolatile().pipe(Effect.fork)
         yield* TestClock.adjust(1)
         const config = yield* ShardingConfig.ShardingConfig
-        ;(config as any).podAddress = Option.some(PodAddress.make("localhost", 1234))
+        ;(config as any).runnerAddress = Option.some(RunnerAddress.make("localhost", 1234))
         setTimeout(() => {
           fiber.unsafeInterruptAsFork(FiberId.none)
           Effect.runFork(testClock.adjust(30000))
         }, 0)
       }).pipe(
-        Effect.provide(TestShardingWithoutPods.pipe(
+        Effect.provide(TestShardingWithoutRunners.pipe(
           Layer.provide(Layer.effect(
-            Pods.Pods,
+            Runners.Runners,
             Effect.gen(function*() {
-              const pods = yield* Pods.makeNoop
+              const runners = yield* Runners.makeNoop
               return {
-                ...pods,
+                ...runners,
                 send(options) {
                   if (options.message.envelope._tag === "Interrupt") {
                     interrupted = true
                     return Effect.void
                   }
-                  return pods.send(options)
+                  return runners.send(options)
                 }
               }
             })
@@ -326,7 +326,7 @@ describe.concurrent("Sharding", () => {
   it.scoped("durable messages are retried on restart", () =>
     Effect.gen(function*() {
       const EnvLayer = TestShardingWithoutState.pipe(
-        Layer.provide(Pods.layerNoop),
+        Layer.provide(Runners.layerNoop),
         Layer.provide(TestShardingConfig)
       )
       const driver = yield* MessageStorage.MemoryDriver
@@ -387,7 +387,7 @@ describe.concurrent("Sharding", () => {
   it.scoped("durable streams are resumed on restart", () =>
     Effect.gen(function*() {
       const EnvLayer = TestShardingWithoutState.pipe(
-        Layer.provide(Pods.layerNoop),
+        Layer.provide(Runners.layerNoop),
         Layer.provide(TestShardingConfig)
       )
       const driver = yield* MessageStorage.MemoryDriver
@@ -489,12 +489,12 @@ const TestShardingWithoutState = TestEntityNoState.pipe(
   // Layer.provideMerge(Logger.pretty)
 )
 
-const TestShardingWithoutPods = TestShardingWithoutState.pipe(
+const TestShardingWithoutRunners = TestShardingWithoutState.pipe(
   Layer.provideMerge(TestEntityState.Default)
 )
 
-const TestShardingWithoutStorage = TestShardingWithoutPods.pipe(
-  Layer.provide(Pods.layerNoop),
+const TestShardingWithoutStorage = TestShardingWithoutRunners.pipe(
+  Layer.provide(Runners.layerNoop),
   Layer.provide(TestShardingConfig)
 )
 

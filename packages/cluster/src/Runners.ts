@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as Rpc from "@effect/rpc/Rpc"
-import * as RpcClient from "@effect/rpc/RpcClient"
+import * as RpcClient_ from "@effect/rpc/RpcClient"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as RpcSchema from "@effect/rpc/RpcSchema"
 import * as Cause from "effect/Cause"
@@ -16,17 +16,17 @@ import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import {
   AlreadyProcessingMessage,
-  EntityNotManagedByPod,
+  EntityNotManagedByRunner,
   MailboxFull,
   PersistenceError,
-  PodUnavailable
+  RunnerUnavailable
 } from "./ClusterError.js"
 import { Persisted } from "./ClusterSchema.js"
 import * as Envelope from "./Envelope.js"
 import * as Message from "./Message.js"
 import * as MessageStorage from "./MessageStorage.js"
-import type { PodAddress } from "./PodAddress.js"
 import * as Reply from "./Reply.js"
+import type { RunnerAddress } from "./RunnerAddress.js"
 import { ShardingConfig } from "./ShardingConfig.js"
 import * as Snowflake from "./Snowflake.js"
 
@@ -34,11 +34,11 @@ import * as Snowflake from "./Snowflake.js"
  * @since 1.0.0
  * @category context
  */
-export class Pods extends Context.Tag("@effect/cluster/Pods")<Pods, {
+export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
   /**
-   * Checks if a pod is responsive.
+   * Checks if a Runner is responsive.
    */
-  readonly ping: (address: PodAddress) => Effect.Effect<void, PodUnavailable>
+  readonly ping: (address: RunnerAddress) => Effect.Effect<void, RunnerUnavailable>
 
   /**
    * Send a message locally.
@@ -51,37 +51,37 @@ export class Pods extends Context.Tag("@effect/cluster/Pods")<Pods, {
       readonly message: Message.Outgoing<R>
       readonly send: <Rpc extends Rpc.Any>(
         message: Message.IncomingLocal<Rpc>
-      ) => Effect.Effect<void, EntityNotManagedByPod | MailboxFull | AlreadyProcessingMessage>
+      ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
       readonly simulateRemoteSerialization: boolean
     }
-  ) => Effect.Effect<void, EntityNotManagedByPod | MailboxFull | AlreadyProcessingMessage>
+  ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
 
   /**
-   * Send a message to a pod.
+   * Send a message to a Runner.
    */
   readonly send: <R extends Rpc.Any>(
     options: {
-      readonly address: PodAddress
+      readonly address: RunnerAddress
       readonly message: Message.Outgoing<R>
     }
   ) => Effect.Effect<
     void,
-    EntityNotManagedByPod | PodUnavailable | MailboxFull | AlreadyProcessingMessage | PersistenceError
+    EntityNotManagedByRunner | RunnerUnavailable | MailboxFull | AlreadyProcessingMessage | PersistenceError
   >
 
   /**
-   * Notify a pod that a message is available, then read replies from storage.
+   * Notify a Runner that a message is available, then read replies from storage.
    */
   readonly notify: <R extends Rpc.Any>(
     options: {
-      readonly address: PodAddress
+      readonly address: RunnerAddress
       readonly message: Message.Outgoing<R>
       readonly discard: boolean
     }
   ) => Effect.Effect<void>
 
   /**
-   * Notify the current pod that a message is available, then read replies from
+   * Notify the current Runner that a message is available, then read replies from
    * storage.
    *
    * This ensures that the message hits storage before being sent to the local
@@ -90,7 +90,7 @@ export class Pods extends Context.Tag("@effect/cluster/Pods")<Pods, {
   readonly notifyLocal: <R extends Rpc.Any>(
     options: {
       readonly message: Message.Outgoing<R>
-      readonly notify: (options: Message.IncomingLocal<any>) => Effect.Effect<void, EntityNotManagedByPod>
+      readonly notify: (options: Message.IncomingLocal<any>) => Effect.Effect<void, EntityNotManagedByRunner>
       readonly discard: boolean
     }
   ) => Effect.Effect<void>
@@ -100,11 +100,11 @@ export class Pods extends Context.Tag("@effect/cluster/Pods")<Pods, {
  * @since 1.0.0
  * @category Constructors
  */
-export const make: (options: Omit<Pods["Type"], "sendLocal" | "notifyLocal">) => Effect.Effect<
-  Pods["Type"],
+export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">) => Effect.Effect<
+  Runners["Type"],
   never,
   MessageStorage.MessageStorage | Snowflake.Generator | ShardingConfig | Scope
-> = Effect.fnUntraced(function*(options: Omit<Pods["Type"], "sendLocal" | "notifyLocal">) {
+> = Effect.fnUntraced(function*(options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">) {
   const storage = yield* MessageStorage.MessageStorage
   const snowflakeGen = yield* Snowflake.Generator
   const config = yield* ShardingConfig
@@ -118,7 +118,7 @@ export const make: (options: Omit<Pods["Type"], "sendLocal" | "notifyLocal">) =>
     const rpc = message.rpc as any as Rpc.AnyWithProps
     const persisted = Context.get(rpc.annotations, Persisted)
     if (!persisted) {
-      return Effect.dieMessage("Pods.notify only supports persisted messages")
+      return Effect.dieMessage("Runners.notify only supports persisted messages")
     }
 
     if (message._tag === "OutgoingEnvelope") {
@@ -229,7 +229,7 @@ export const make: (options: Omit<Pods["Type"], "sendLocal" | "notifyLocal">) =>
             Effect.as(
               Effect.annotateLogs(Effect.logDebug(cause), {
                 package: "@effect/cluster",
-                module: "Pods",
+                module: "Runners",
                 fiber: "Read replies loop"
               }),
               []
@@ -270,7 +270,7 @@ export const make: (options: Omit<Pods["Type"], "sendLocal" | "notifyLocal">) =>
     )
   }
 
-  return Pods.of({
+  return Runners.of({
     ...options,
     sendLocal(options) {
       const message = options.message
@@ -329,11 +329,11 @@ export const make: (options: Omit<Pods["Type"], "sendLocal" | "notifyLocal">) =>
  * @category No-op
  */
 export const makeNoop: Effect.Effect<
-  Pods["Type"],
+  Runners["Type"],
   never,
   MessageStorage.MessageStorage | Snowflake.Generator | ShardingConfig | Scope
 > = make({
-  send: ({ message }) => Effect.fail(new EntityNotManagedByPod({ address: message.envelope.address })),
+  send: ({ message }) => Effect.fail(new EntityNotManagedByRunner({ address: message.envelope.address })),
   notify: () => Effect.void,
   ping: () => Effect.void
 })
@@ -343,30 +343,30 @@ export const makeNoop: Effect.Effect<
  * @category Layers
  */
 export const layerNoop: Layer.Layer<
-  Pods,
+  Runners,
   never,
   ShardingConfig | MessageStorage.MessageStorage
-> = Layer.scoped(Pods, makeNoop).pipe(Layer.provide([Snowflake.layerGenerator]))
+> = Layer.scoped(Runners, makeNoop).pipe(Layer.provide([Snowflake.layerGenerator]))
 
 const rpcErrors: Schema.Union<[
-  typeof EntityNotManagedByPod,
+  typeof EntityNotManagedByRunner,
   typeof MailboxFull,
   typeof AlreadyProcessingMessage,
   typeof PersistenceError
-]> = Schema.Union(EntityNotManagedByPod, MailboxFull, AlreadyProcessingMessage, PersistenceError)
+]> = Schema.Union(EntityNotManagedByRunner, MailboxFull, AlreadyProcessingMessage, PersistenceError)
 
 /**
  * @since 1.0.0
  * @category Rpcs
  */
-export class PodsRpcs extends RpcGroup.make(
+export class Rpcs extends RpcGroup.make(
   Rpc.make("Ping"),
   Rpc.make("Notify", {
     payload: {
       envelope: Envelope.PartialEncoded
     },
     success: Schema.Void,
-    error: EntityNotManagedByPod
+    error: EntityNotManagedByRunner
   }),
   Rpc.make("Effect", {
     payload: {
@@ -393,24 +393,24 @@ export class PodsRpcs extends RpcGroup.make(
  * @since 1.0.0
  * @category Rpcs
  */
-export interface PodsRpcClient extends RpcClient.FromGroup<typeof PodsRpcs> {}
+export interface RpcClient extends RpcClient_.FromGroup<typeof Rpcs> {}
 
 /**
  * @since 1.0.0
  * @category Rpcs
  */
 export const makeRpcClient: Effect.Effect<
-  PodsRpcClient,
+  RpcClient,
   never,
-  RpcClient.Protocol | Scope
-> = RpcClient.make(PodsRpcs, { spanPrefix: "Pods", disableTracing: true })
+  RpcClient_.Protocol | Scope
+> = RpcClient_.make(Rpcs, { spanPrefix: "Runners", disableTracing: true })
 
 /**
  * @since 1.0.0
  * @category constructors
  */
 export const makeRpc: Effect.Effect<
-  Pods["Type"],
+  Runners["Type"],
   never,
   Scope | RpcClientProtocol | MessageStorage.MessageStorage | Snowflake.Generator | ShardingConfig
 > = Effect.gen(function*() {
@@ -418,10 +418,10 @@ export const makeRpc: Effect.Effect<
   const snowflakeGen = yield* Snowflake.Generator
 
   const clients = yield* RcMap.make({
-    lookup: (address: PodAddress) =>
+    lookup: (address: RunnerAddress) =>
       Effect.flatMap(
         makeClientProtocol(address),
-        (protocol) => Effect.provideService(makeRpcClient, RpcClient.Protocol, protocol)
+        (protocol) => Effect.provideService(makeRpcClient, RpcClient_.Protocol, protocol)
       ),
     idleTimeToLive: "1 minute"
   })
@@ -430,7 +430,7 @@ export const makeRpc: Effect.Effect<
     ping(address) {
       return RcMap.get(clients, address).pipe(
         Effect.flatMap((client) => client.Ping()),
-        Effect.catchAllCause(() => Effect.fail(new PodUnavailable({ address }))),
+        Effect.catchAllCause(() => Effect.fail(new RunnerUnavailable({ address }))),
         Effect.scoped
       )
     },
@@ -439,7 +439,7 @@ export const makeRpc: Effect.Effect<
         return RcMap.get(clients, address).pipe(
           Effect.flatMap((client) => client.Envelope({ envelope: message.envelope })),
           Effect.scoped,
-          Effect.catchAllDefect(() => Effect.fail(new PodUnavailable({ address })))
+          Effect.catchAllDefect(() => Effect.fail(new RunnerUnavailable({ address })))
         )
       }
       const rpc = message.rpc as any as Rpc.AnyWithProps
@@ -457,7 +457,7 @@ export const makeRpc: Effect.Effect<
               ),
               Effect.flatMap(message.respond),
               Effect.scoped,
-              Effect.catchAllDefect(() => Effect.fail(new PodUnavailable({ address })))
+              Effect.catchAllDefect(() => Effect.fail(new RunnerUnavailable({ address })))
             ),
           onFailure: (error) =>
             message.respond(
@@ -481,7 +481,7 @@ export const makeRpc: Effect.Effect<
                 Effect.forever,
                 Effect.locally(FiberRef.currentContext, message.context),
                 Effect.catchIf(Cause.isNoSuchElementException, () => Effect.void),
-                Effect.catchAllDefect(() => Effect.fail(new PodUnavailable({ address })))
+                Effect.catchAllDefect(() => Effect.fail(new RunnerUnavailable({ address })))
               )
             }),
             Effect.scoped
@@ -512,10 +512,10 @@ export const makeRpc: Effect.Effect<
  * @category Layers
  */
 export const layerRpc: Layer.Layer<
-  Pods,
+  Runners,
   never,
   MessageStorage.MessageStorage | RpcClientProtocol | ShardingConfig
-> = Layer.scoped(Pods, makeRpc).pipe(
+> = Layer.scoped(Runners, makeRpc).pipe(
   Layer.provide(Snowflake.layerGenerator)
 )
 
@@ -523,7 +523,7 @@ export const layerRpc: Layer.Layer<
  * @since 1.0.0
  * @category Client
  */
-export class RpcClientProtocol extends Context.Tag("@effect/cluster/Pods/RpcClientProtocol")<
+export class RpcClientProtocol extends Context.Tag("@effect/cluster/Runners/RpcClientProtocol")<
   RpcClientProtocol,
-  (address: PodAddress) => Effect.Effect<RpcClient.Protocol["Type"], never, Scope>
+  (address: RunnerAddress) => Effect.Effect<RpcClient_.Protocol["Type"], never, Scope>
 >() {}

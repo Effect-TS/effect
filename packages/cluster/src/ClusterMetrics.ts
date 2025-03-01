@@ -35,7 +35,7 @@ export const singletons = Metric.gauge("effect_cluster_singletons")
  * @since 1.0.0
  * @category metrics
  */
-export const pods = Metric.gauge("effect_cluster_pods")
+export const runners = Metric.gauge("effect_cluster_runners")
 
 /**
  * @since 1.0.0
@@ -59,4 +59,4 @@ export const rebalances = Metric.counter("effect_cluster_rebalances")
  * @since 1.0.0
  * @category metrics
  */
-export const podHealthChecked = Metric.counter("effect_cluster_pod_health_checked")
+export const runnerHealthChecked = Metric.counter("effect_cluster_runner_health_checked")

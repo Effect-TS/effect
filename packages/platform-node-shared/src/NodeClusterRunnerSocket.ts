@@ -2,11 +2,11 @@
  * @since 1.0.0
  */
 import * as MessageStorage from "@effect/cluster/MessageStorage"
-import type * as Pods from "@effect/cluster/Pods"
+import type * as Runners from "@effect/cluster/Runners"
 import type { Sharding } from "@effect/cluster/Sharding"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
 import * as ShardStorage from "@effect/cluster/ShardStorage"
-import * as SocketPods from "@effect/cluster/SocketPods"
+import * as SocketRunner from "@effect/cluster/SocketRunner"
 import * as SqlMessageStorage from "@effect/cluster/SqlMessageStorage"
 import * as SqlShardStorage from "@effect/cluster/SqlShardStorage"
 import type * as SocketServer from "@effect/platform/SocketServer"
@@ -30,10 +30,10 @@ export const layerSocketServer: Layer.Layer<
   ShardingConfig.ShardingConfig
 > = Effect.gen(function*() {
   const config = yield* ShardingConfig.ShardingConfig
-  if (Option.isNone(config.podAddress)) {
-    return yield* Effect.dieMessage("layerSocketServer: ShardingConfig.podAddress is None")
+  if (Option.isNone(config.runnerAddress)) {
+    return yield* Effect.dieMessage("layerSocketServer: ShardingConfig.runnerAddress is None")
   }
-  return NodeSocketServer.layer(config.podAddress.value)
+  return NodeSocketServer.layer(config.runnerAddress.value)
 }).pipe(Layer.unwrapEffect)
 
 /**
@@ -48,21 +48,21 @@ export const layer = <const ClientOnly extends boolean = false, const Storage ex
     readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
   }
 ): ClientOnly extends true ? Layer.Layer<
-    Sharding | Pods.Pods,
+    Sharding | Runners.Runners,
     ConfigError,
     Storage extends "sql" ? SqlClient : never
   > :
   Layer.Layer<
-    Sharding | Pods.Pods,
+    Sharding | Runners.Runners,
     SocketServer.SocketServerError | ConfigError | (Storage extends "sql" ? SqlError : never),
     Storage extends "sql" ? SqlClient : never
   > =>
 {
   const layer: Layer.Layer<any, any, any> = options?.clientOnly
     // client only
-    ? Layer.provide(SocketPods.layerClientOnly, layerClientProtocol)
+    ? Layer.provide(SocketRunner.layerClientOnly, layerClientProtocol)
     // with server
-    : Layer.provide(SocketPods.layer, [layerSocketServer, layerClientProtocol])
+    : Layer.provide(SocketRunner.layer, [layerSocketServer, layerClientProtocol])
 
   return layer.pipe(
     Layer.provide(

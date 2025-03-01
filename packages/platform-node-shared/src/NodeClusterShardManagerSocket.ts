@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as PodsHealth from "@effect/cluster/PodsHealth"
+import * as RunnerHealth from "@effect/cluster/RunnerHealth"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
 import * as ShardManager from "@effect/cluster/ShardManager"
 import * as ShardStorage from "@effect/cluster/ShardStorage"
@@ -44,7 +44,7 @@ export const layer = <const Storage extends "sql" | "noop" = "noop">(options?: {
   Storage extends "sql" ? SqlClient : never
 > =>
   SocketShardManager.layer.pipe(
-    Layer.provide([PodsHealth.layerRpc, layerSocketServer, ShardManager.layerConfigFromEnv]),
+    Layer.provide([RunnerHealth.layerRpc, layerSocketServer, ShardManager.layerConfigFromEnv]),
     Layer.provide(layerClientProtocol),
     Layer.provide(options?.storage === "sql" ? SqlShardStorage.layer : ShardStorage.layerNoop),
     Layer.provide([

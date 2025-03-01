@@ -146,9 +146,9 @@ export const makeGenerator: Effect.Effect<
   ShardingConfig
 > = Effect.gen(function*() {
   const config = yield* ShardingConfig
-  const machineId = Option.match(config.podAddress, {
+  const machineId = Option.match(config.runnerAddress, {
     onNone: () => Math.floor(Math.random() * 4096),
-    onSome: (podAddress) => Math.abs(hashString(`${podAddress.host}:${podAddress.port}`)) % 4096
+    onSome: (runnerAddress) => Math.abs(hashString(`${runnerAddress.host}:${runnerAddress.port}`)) % 4096
   })
   const clock = yield* Effect.clock
 

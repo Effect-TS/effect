@@ -1,4 +1,4 @@
-import { Pod, PodAddress, ShardId, ShardStorage, SqlShardStorage } from "@effect/cluster"
+import { Runner, RunnerAddress, ShardId, ShardStorage, SqlShardStorage } from "@effect/cluster"
 import { FileSystem } from "@effect/platform"
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
@@ -18,21 +18,21 @@ describe("SqlMessageStorage", () => {
     it.layer(StorageLive.pipe(Layer.provideMerge(layer)), {
       timeout: 30000
     })(label, (it) => {
-      it.effect("savePods", () =>
+      it.effect("saveRunners", () =>
         Effect.gen(function*() {
           const storage = yield* ShardStorage.ShardStorage
 
-          yield* storage.savePods([[
-            podAddress1,
-            Pod.make({
-              address: podAddress1,
+          yield* storage.saveRunners([[
+            runnerAddress1,
+            Runner.make({
+              address: runnerAddress1,
               version: 1
             })
           ]])
-          expect(yield* storage.getPods).toEqual([[
-            podAddress1,
-            Pod.make({
-              address: podAddress1,
+          expect(yield* storage.getRunners).toEqual([[
+            runnerAddress1,
+            Runner.make({
+              address: runnerAddress1,
               version: 1
             })
           ]])
@@ -43,12 +43,12 @@ describe("SqlMessageStorage", () => {
           const storage = yield* ShardStorage.ShardStorage
 
           yield* storage.saveAssignments([
-            [ShardId.make(1), Option.some(podAddress1)],
+            [ShardId.make(1), Option.some(runnerAddress1)],
             [ShardId.make(2), Option.none()]
           ])
           expect(yield* storage.getAssignments).toEqual(
             new Map([
-              [ShardId.make(1), Option.some(podAddress1)],
+              [ShardId.make(1), Option.some(runnerAddress1)],
               [ShardId.make(2), Option.none()]
             ])
           )
@@ -58,23 +58,23 @@ describe("SqlMessageStorage", () => {
         Effect.gen(function*() {
           const storage = yield* ShardStorage.ShardStorage
 
-          let acquired = yield* storage.acquire(podAddress1, [1, 2, 3] as any)
+          let acquired = yield* storage.acquire(runnerAddress1, [1, 2, 3] as any)
           expect(acquired).toEqual([1, 2, 3])
-          acquired = yield* storage.acquire(podAddress1, [1, 2, 3] as any)
+          acquired = yield* storage.acquire(runnerAddress1, [1, 2, 3] as any)
           expect(acquired).toEqual([1, 2, 3])
 
-          const refreshed = yield* storage.refresh(podAddress1, [1, 2, 3] as any)
+          const refreshed = yield* storage.refresh(runnerAddress1, [1, 2, 3] as any)
           expect(refreshed).toEqual([1, 2, 3])
 
-          acquired = yield* storage.acquire(podAddress2, [1, 2, 3] as any)
+          acquired = yield* storage.acquire(runnerAddress2, [1, 2, 3] as any)
           expect(acquired).toEqual([])
         }))
     })
   })
 })
 
-const podAddress1 = PodAddress.make("localhost", 1234)
-const podAddress2 = PodAddress.make("localhost", 1235)
+const runnerAddress1 = RunnerAddress.make("localhost", 1234)
+const runnerAddress2 = RunnerAddress.make("localhost", 1235)
 
 const SqliteLayer = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem

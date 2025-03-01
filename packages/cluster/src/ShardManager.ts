@@ -30,18 +30,18 @@ import * as Queue from "effect/Queue"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
-import { PodNotRegistered } from "./ClusterError.js"
+import { RunnerNotRegistered } from "./ClusterError.js"
 import * as ClusterMetrics from "./ClusterMetrics.js"
 import {
   decideAssignmentsForUnassignedShards,
   decideAssignmentsForUnbalancedShards,
-  PodWithMetadata,
+  RunnerWithMetadata,
   State
 } from "./internal/shardManager.js"
-import { Pod } from "./Pod.js"
-import { PodAddress } from "./PodAddress.js"
-import { Pods, RpcClientProtocol } from "./Pods.js"
-import { PodsHealth } from "./PodsHealth.js"
+import { Runner } from "./Runner.js"
+import { RunnerAddress } from "./RunnerAddress.js"
+import { RunnerHealth } from "./RunnerHealth.js"
+import { RpcClientProtocol, Runners } from "./Runners.js"
 import { ShardId } from "./ShardId.js"
 import { ShardingConfig } from "./ShardingConfig.js"
 import { ShardStorage } from "./ShardStorage.js"
@@ -55,32 +55,32 @@ export class ShardManager extends Context.Tag("@effect/cluster/ShardManager")<Sh
    * Get all shard assignments.
    */
   readonly getAssignments: Effect.Effect<
-    ReadonlyMap<ShardId, Option.Option<PodAddress>>
+    ReadonlyMap<ShardId, Option.Option<RunnerAddress>>
   >
   /**
    * Get a stream of sharding events emit by the shard manager.
    */
   readonly shardingEvents: Effect.Effect<Queue.Dequeue<ShardingEvent>, never, Scope>
   /**
-   * Register a new pod with the cluster.
+   * Register a new runner with the cluster.
    */
-  readonly register: (pod: Pod) => Effect.Effect<void>
+  readonly register: (runner: Runner) => Effect.Effect<void>
   /**
-   * Unregister a pod from the cluster.
+   * Unregister a runner from the cluster.
    */
-  readonly unregister: (address: PodAddress) => Effect.Effect<void>
+  readonly unregister: (address: RunnerAddress) => Effect.Effect<void>
   /**
-   * Rebalance shards assigned to pods within the cluster.
+   * Rebalance shards assigned to runners within the cluster.
    */
   readonly rebalance: (immediate: boolean) => Effect.Effect<void>
   /**
-   * Notify the cluster of an unhealthy pod.
+   * Notify the cluster of an unhealthy runner.
    */
-  readonly notifyUnhealthyPod: (address: PodAddress) => Effect.Effect<void>
+  readonly notifyUnhealthyRunner: (address: RunnerAddress) => Effect.Effect<void>
   /**
-   * Check and repot on the health of all pods in the cluster.
+   * Check and repot on the health of all runners in the cluster.
    */
-  readonly checkPodHealth: Effect.Effect<void>
+  readonly checkRunnerHealth: Effect.Effect<void>
 }>() {}
 
 /**
@@ -108,21 +108,21 @@ export class Config extends Context.Tag("@effect/cluster/ShardManager/Config")<C
    */
   readonly rebalanceRate: number
   /**
-   * The interval on which persistence of pods will be retried if it fails.
+   * The interval on which persistence of Runners will be retried if it fails.
    */
   readonly persistRetryInterval: Duration.DurationInput
   /**
-   * The number of times persistence of pods will be retried if it fails.
+   * The number of times persistence of Runners will be retried if it fails.
    */
   readonly persistRetryCount: number
   /**
-   * The interval on which pod health will be checked.
+   * The interval on which Runner health will be checked.
    */
-  readonly podHealthCheckInterval: Duration.DurationInput
+  readonly runnerHealthCheckInterval: Duration.DurationInput
   /**
-   * The length of time to wait for a pod to respond to a ping.
+   * The length of time to wait for a Runner to respond to a ping.
    */
-  readonly podPingTimeout: Duration.DurationInput
+  readonly runnerPingTimeout: Duration.DurationInput
 }>() {
   /**
    * @since 1.0.0
@@ -134,8 +134,8 @@ export class Config extends Context.Tag("@effect/cluster/ShardManager/Config")<C
     rebalanceRate: 2 / 100,
     persistRetryCount: 100,
     persistRetryInterval: Duration.seconds(3),
-    podHealthCheckInterval: Duration.minutes(1),
-    podPingTimeout: Duration.seconds(3)
+    runnerHealthCheckInterval: Duration.minutes(1),
+    runnerPingTimeout: Duration.seconds(3)
   }
 }
 
@@ -164,19 +164,19 @@ export const configConfig: Config_.Config<Config["Type"]> = Config_.all({
   ),
   persistRetryCount: Config_.integer("persistRetryCount").pipe(
     Config_.withDefault(Config.defaults.persistRetryCount),
-    Config_.withDescription("The number of times persistence of pods will be retried if it fails.")
+    Config_.withDescription("The number of times persistence of runners will be retried if it fails.")
   ),
   persistRetryInterval: Config_.duration("persistRetryInterval").pipe(
     Config_.withDefault(Config.defaults.persistRetryInterval),
-    Config_.withDescription("The interval on which persistence of pods will be retried if it fails.")
+    Config_.withDescription("The interval on which persistence of runners will be retried if it fails.")
   ),
-  podHealthCheckInterval: Config_.duration("podHealthCheckInterval").pipe(
-    Config_.withDefault(Config.defaults.podHealthCheckInterval),
-    Config_.withDescription("The interval on which pod health will be checked.")
+  runnerHealthCheckInterval: Config_.duration("runnerHealthCheckInterval").pipe(
+    Config_.withDefault(Config.defaults.runnerHealthCheckInterval),
+    Config_.withDescription("The interval on which runner health will be checked.")
   ),
-  podPingTimeout: Config_.duration("podPingTimeout").pipe(
-    Config_.withDefault(Config.defaults.podPingTimeout),
-    Config_.withDescription("The length of time to wait for a pod to respond to a ping.")
+  runnerPingTimeout: Config_.duration("runnerPingTimeout").pipe(
+    Config_.withDefault(Config.defaults.runnerPingTimeout),
+    Config_.withDescription("The length of time to wait for a runner to respond to a ping.")
   )
 })
 
@@ -218,22 +218,22 @@ export const layerConfigFromEnv: Layer.Layer<Config, ConfigError> = Layer.effect
 export class ShardManagerClient
   extends Context.Tag("@effect/cluster/ShardManager/ShardManagerClient")<ShardManagerClient, {
     /**
-     * Register a new pod with the cluster.
+     * Register a new runner with the cluster.
      */
-    readonly register: (address: PodAddress) => Effect.Effect<void>
+    readonly register: (address: RunnerAddress) => Effect.Effect<void>
     /**
-     * Unregister a pod from the cluster.
+     * Unregister a runner from the cluster.
      */
-    readonly unregister: (address: PodAddress) => Effect.Effect<void>
+    readonly unregister: (address: RunnerAddress) => Effect.Effect<void>
     /**
-     * Notify the cluster of an unhealthy pod.
+     * Notify the cluster of an unhealthy runner.
      */
-    readonly notifyUnhealthyPod: (address: PodAddress) => Effect.Effect<void>
+    readonly notifyUnhealthyRunner: (address: RunnerAddress) => Effect.Effect<void>
     /**
      * Get all shard assignments.
      */
     readonly getAssignments: Effect.Effect<
-      ReadonlyMap<ShardId, Option.Option<PodAddress>>
+      ReadonlyMap<ShardId, Option.Option<RunnerAddress>>
     >
     /**
      * Get a stream of sharding events emit by the shard manager.
@@ -253,18 +253,18 @@ export class ShardManagerClient
 export const ShardingEventSchema = Schema.Union(
   Schema.TaggedStruct("StreamStarted", {}),
   Schema.TaggedStruct("ShardsAssigned", {
-    address: PodAddress,
+    address: RunnerAddress,
     shards: Schema.Array(ShardId)
   }),
   Schema.TaggedStruct("ShardsUnassigned", {
-    address: PodAddress,
+    address: RunnerAddress,
     shards: Schema.Array(ShardId)
   }),
-  Schema.TaggedStruct("PodRegistered", {
-    address: PodAddress
+  Schema.TaggedStruct("RunnerRegistered", {
+    address: RunnerAddress
   }),
-  Schema.TaggedStruct("PodUnregistered", {
-    address: PodAddress
+  Schema.TaggedStruct("RunnerUnregistered", {
+    address: RunnerAddress
   })
 ) satisfies Schema.Schema<ShardingEvent, any>
 
@@ -274,18 +274,18 @@ export const ShardingEventSchema = Schema.Union(
  * @since 1.0.0
  * @category Rpcs
  */
-export class ShardManagerRpcs extends RpcGroup.make(
+export class Rpcs extends RpcGroup.make(
   Rpc.make("Register", {
-    payload: { pod: Pod }
+    payload: { runner: Runner }
   }),
   Rpc.make("Unregister", {
-    payload: { address: PodAddress }
+    payload: { address: RunnerAddress }
   }),
-  Rpc.make("NotifyUnhealthyPod", {
-    payload: { address: PodAddress }
+  Rpc.make("NotifyUnhealthyRunner", {
+    payload: { address: RunnerAddress }
   }),
   Rpc.make("GetAssignments", {
-    success: Schema.ReadonlyMap({ key: ShardId, value: Schema.Option(PodAddress) })
+    success: Schema.ReadonlyMap({ key: ShardId, value: Schema.Option(RunnerAddress) })
   }),
   Rpc.make("ShardingEvents", {
     success: ShardingEventSchema,
@@ -303,15 +303,15 @@ export class ShardManagerRpcs extends RpcGroup.make(
 export type ShardingEvent = Data.TaggedEnum<{
   StreamStarted: {}
   ShardsAssigned: {
-    address: PodAddress
+    address: RunnerAddress
     shards: ReadonlyArray<ShardId>
   }
   ShardsUnassigned: {
-    address: PodAddress
+    address: RunnerAddress
     shards: ReadonlyArray<ShardId>
   }
-  PodRegistered: { address: PodAddress }
-  PodUnregistered: { address: PodAddress }
+  RunnerRegistered: { address: RunnerAddress }
+  RunnerUnregistered: { address: RunnerAddress }
 }>
 
 /**
@@ -325,18 +325,18 @@ export const ShardingEvent = Data.taggedEnum<ShardingEvent>()
  * @category Client
  */
 export const makeClientLocal = Effect.gen(function*() {
-  const config = yield* ShardingConfig
+  const runnerAddress = yield* ShardingConfig
   const clock = yield* Effect.clock
 
-  const shards = new Map<ShardId, Option.Option<PodAddress>>()
-  for (let n = 1; n <= config.numberOfShards; n++) {
-    shards.set(ShardId.make(n), config.podAddress)
+  const shards = new Map<ShardId, Option.Option<RunnerAddress>>()
+  for (let n = 1; n <= runnerAddress.numberOfShards; n++) {
+    shards.set(ShardId.make(n), runnerAddress.runnerAddress)
   }
 
   return ShardManagerClient.of({
     register: () => Effect.void,
     unregister: () => Effect.void,
-    notifyUnhealthyPod: () => Effect.void,
+    notifyUnhealthyRunner: () => Effect.void,
     getAssignments: Effect.succeed(shards),
     shardingEvents: Effect.gen(function*() {
       const mailbox = yield* Mailbox.make<ShardingEvent>()
@@ -357,15 +357,15 @@ export const makeClientRpc: Effect.Effect<
   ShardingConfig | RpcClient.Protocol | Scope
 > = Effect.gen(function*() {
   const config = yield* ShardingConfig
-  const client = yield* RpcClient.make(ShardManagerRpcs, {
+  const client = yield* RpcClient.make(Rpcs, {
     spanPrefix: "ShardManagerClient",
     disableTracing: true
   })
 
   return ShardManagerClient.of({
-    register: (address) => client.Register({ pod: Pod.make({ address, version: config.serverVersion }) }),
+    register: (address) => client.Register({ runner: Runner.make({ address, version: config.serverVersion }) }),
     unregister: (address) => client.Unregister({ address }),
-    notifyUnhealthyPod: (address) => client.NotifyUnhealthyPod({ address }),
+    notifyUnhealthyRunner: (address) => client.NotifyUnhealthyRunner({ address }),
     getAssignments: client.GetAssignments(),
     shardingEvents: client.ShardingEvents({}, { asMailbox: true }),
     getTime: client.GetTime()
@@ -407,8 +407,8 @@ export const layerClientRpc: Layer.Layer<
  */
 export const make = Effect.gen(function*() {
   const storage = yield* ShardStorage
-  const podsApi = yield* Pods
-  const podsHealthApi = yield* PodsHealth
+  const runnersApi = yield* Runners
+  const runnerHealthApi = yield* RunnerHealth
   const clock = yield* Effect.clock
   const config = yield* Config
   const shardingConfig = yield* ShardingConfig
@@ -417,7 +417,7 @@ export const make = Effect.gen(function*() {
   const scope = yield* Effect.scope
   const events = yield* PubSub.unbounded<ShardingEvent>()
 
-  yield* Metric.incrementBy(ClusterMetrics.pods, MutableHashMap.size(state.pods))
+  yield* Metric.incrementBy(ClusterMetrics.runners, MutableHashMap.size(state.runners))
 
   for (const address of state.shards.values()) {
     const metric = Option.isSome(address) ?
@@ -436,10 +436,10 @@ export const make = Effect.gen(function*() {
     )
   }
 
-  const persistPods = Effect.unsafeMakeSemaphore(1).withPermits(1)(withRetry(
+  const persistRunners = Effect.unsafeMakeSemaphore(1).withPermits(1)(withRetry(
     Effect.suspend(() =>
-      storage.savePods(
-        Iterable.map(state.pods, ([address, pod]) => [address, pod.pod])
+      storage.saveRunners(
+        Iterable.map(state.runners, ([address, runner]) => [address, runner.runner])
       )
     )
   ))
@@ -448,26 +448,26 @@ export const make = Effect.gen(function*() {
     Effect.suspend(() => storage.saveAssignments(state.shards))
   ))
 
-  const notifyUnhealthyPod = Effect.fnUntraced(function*(address: PodAddress) {
-    if (!MutableHashMap.has(state.pods, address)) return
+  const notifyUnhealthyRunner = Effect.fnUntraced(function*(address: RunnerAddress) {
+    if (!MutableHashMap.has(state.runners, address)) return
 
     yield* Metric.increment(
-      Metric.tagged(ClusterMetrics.podHealthChecked, "pod_address", address.toString())
+      Metric.tagged(ClusterMetrics.runnerHealthChecked, "runner_address", address.toString())
     )
 
-    if (!(yield* podsHealthApi.isAlive(address))) {
-      yield* Effect.logWarning(`Pod at address '${address.toString()}' is not alive`)
+    if (!(yield* runnerHealthApi.isAlive(address))) {
+      yield* Effect.logWarning(`Runner at address '${address.toString()}' is not alive`)
       yield* unregister(address)
     }
   })
 
   function updateShardsState(
     shards: Iterable<ShardId>,
-    address: Option.Option<PodAddress>
-  ): Effect.Effect<void, PodNotRegistered> {
+    address: Option.Option<RunnerAddress>
+  ): Effect.Effect<void, RunnerNotRegistered> {
     return Effect.suspend(() => {
-      if (Option.isSome(address) && !MutableHashMap.has(state.pods, address.value)) {
-        return Effect.fail(new PodNotRegistered({ address: address.value }))
+      if (Option.isSome(address) && !MutableHashMap.has(state.runners, address.value)) {
+        return Effect.fail(new RunnerNotRegistered({ address: address.value }))
       }
       for (const shardId of shards) {
         if (!state.shards.has(shardId)) continue
@@ -479,43 +479,43 @@ export const make = Effect.gen(function*() {
 
   const getAssignments = Effect.sync(() => state.shards)
 
-  const register = Effect.fnUntraced(function*(pod: Pod) {
-    yield* Effect.logInfo(`Registering pod ${Pod.pretty(pod)}`)
+  const register = Effect.fnUntraced(function*(runner: Runner) {
+    yield* Effect.logInfo(`Registering runner ${Runner.pretty(runner)}`)
     const now = clock.unsafeCurrentTimeMillis()
-    MutableHashMap.set(state.pods, pod.address, PodWithMetadata({ pod, registeredAt: now }))
+    MutableHashMap.set(state.runners, runner.address, RunnerWithMetadata({ runner, registeredAt: now }))
 
-    yield* Metric.increment(ClusterMetrics.pods)
-    yield* PubSub.publish(events, ShardingEvent.PodRegistered({ address: pod.address }))
+    yield* Metric.increment(ClusterMetrics.runners)
+    yield* PubSub.publish(events, ShardingEvent.RunnerRegistered({ address: runner.address }))
     if (state.unassignedShards.length > 0) {
       yield* rebalance(false)
     }
-    yield* Effect.forkIn(persistPods, scope)
+    yield* Effect.forkIn(persistRunners, scope)
   })
 
-  const unregister = Effect.fnUntraced(function*(address: PodAddress) {
-    if (!MutableHashMap.has(state.pods, address)) return
+  const unregister = Effect.fnUntraced(function*(address: RunnerAddress) {
+    if (!MutableHashMap.has(state.runners, address)) return
 
-    yield* Effect.logInfo("Unregistering pod at address:", address)
+    yield* Effect.logInfo("Unregistering runner at address:", address)
     const unassignments = Arr.empty<ShardId>()
-    for (const [shard, pod] of state.shards) {
-      if (Option.isSome(pod) && Equal.equals(pod.value, address)) {
+    for (const [shard, runner] of state.shards) {
+      if (Option.isSome(runner) && Equal.equals(runner.value, address)) {
         unassignments.push(shard)
         state.shards.set(shard, Option.none())
       }
     }
 
-    MutableHashMap.remove(state.pods, address)
-    yield* Metric.incrementBy(ClusterMetrics.pods, -1)
+    MutableHashMap.remove(state.runners, address)
+    yield* Metric.incrementBy(ClusterMetrics.runners, -1)
 
     if (unassignments.length > 0) {
       yield* Metric.incrementBy(
-        Metric.tagged(ClusterMetrics.unassignedShards, "pod_address", address.toString()),
+        Metric.tagged(ClusterMetrics.unassignedShards, "runner_address", address.toString()),
         unassignments.length
       )
-      yield* PubSub.publish(events, ShardingEvent.PodUnregistered({ address }))
+      yield* PubSub.publish(events, ShardingEvent.RunnerUnregistered({ address }))
     }
 
-    yield* Effect.forkIn(persistPods, scope)
+    yield* Effect.forkIn(persistRunners, scope)
     yield* Effect.forkIn(rebalance(true), scope)
   })
 
@@ -575,15 +575,15 @@ export const make = Effect.gen(function*() {
 
     yield* Metric.increment(ClusterMetrics.rebalances)
 
-    // Ping pods first and remove unhealthy ones
-    const failedPods = MutableHashSet.empty<PodAddress>()
+    // Ping runners first and remove unhealthy ones
+    const failedRunners = MutableHashSet.empty<RunnerAddress>()
     for (const address of changes) {
       yield* FiberSet.run(
         rebalanceFibers,
-        podsApi.ping(address).pipe(
-          Effect.timeout(config.podPingTimeout),
+        runnersApi.ping(address).pipe(
+          Effect.timeout(config.runnerPingTimeout),
           Effect.catchAll(() => {
-            MutableHashSet.add(failedPods, address)
+            MutableHashSet.add(failedRunners, address)
             MutableHashMap.remove(assignments, address)
             MutableHashMap.remove(unassignments, address)
             return Effect.void
@@ -600,18 +600,18 @@ export const make = Effect.gen(function*() {
         updateShardsState(shards, Option.none()).pipe(
           Effect.matchEffect({
             onFailure: () => {
-              MutableHashSet.add(failedPods, address)
+              MutableHashSet.add(failedRunners, address)
               for (const shard of shards) {
                 failedUnassignments.add(shard)
               }
-              // Remove failed pods from the assignments
+              // Remove failed runners from the assignments
               MutableHashMap.remove(assignments, address)
               return Effect.void
             },
             onSuccess: () => {
               const shardCount = shards.size
               return Metric.incrementBy(
-                Metric.tagged(ClusterMetrics.assignedShards, "pod_address", address.toString()),
+                Metric.tagged(ClusterMetrics.assignedShards, "runner_address", address.toString()),
                 -shardCount
               ).pipe(
                 Effect.zipRight(Metric.incrementBy(ClusterMetrics.unassignedShards, shardCount)),
@@ -643,13 +643,13 @@ export const make = Effect.gen(function*() {
         updateShardsState(shards, Option.some(address)).pipe(
           Effect.matchEffect({
             onFailure: () => {
-              MutableHashSet.add(failedPods, address)
+              MutableHashSet.add(failedRunners, address)
               return Effect.void
             },
             onSuccess: () => {
               const shardCount = shards.size
               return Metric.incrementBy(
-                Metric.tagged(ClusterMetrics.assignedShards, "pod_address", address.toString()),
+                Metric.tagged(ClusterMetrics.assignedShards, "runner_address", address.toString()),
                 -shardCount
               ).pipe(
                 Effect.zipRight(Metric.incrementBy(ClusterMetrics.unassignedShards, -shardCount)),
@@ -664,13 +664,13 @@ export const make = Effect.gen(function*() {
     }
     yield* FiberSet.awaitEmpty(rebalanceFibers)
 
-    const wereFailures = MutableHashSet.size(failedPods) > 0
+    const wereFailures = MutableHashSet.size(failedRunners) > 0
     if (wereFailures) {
-      // Check if the failing pods are still reachable
-      yield* Effect.forEach(failedPods, notifyUnhealthyPod, { discard: true }).pipe(
+      // Check if the failing runners are still reachable
+      yield* Effect.forEach(failedRunners, notifyUnhealthyRunner, { discard: true }).pipe(
         Effect.forkIn(scope)
       )
-      yield* Effect.logWarning("Failed to rebalance pods: ", failedPods)
+      yield* Effect.logWarning("Failed to rebalance runners: ", failedRunners)
     }
 
     if (wereFailures && immediate) {
@@ -684,8 +684,8 @@ export const make = Effect.gen(function*() {
     yield* persistAssignments
   })
 
-  const checkPodHealth: Effect.Effect<void> = Effect.suspend(() =>
-    Effect.forEach(MutableHashMap.keys(state.pods), notifyUnhealthyPod, {
+  const checkRunnerHealth: Effect.Effect<void> = Effect.suspend(() =>
+    Effect.forEach(MutableHashMap.keys(state.runners), notifyUnhealthyRunner, {
       concurrency: "inherit",
       discard: true
     })
@@ -697,13 +697,13 @@ export const make = Effect.gen(function*() {
   yield* Effect.addFinalizer(() =>
     persistAssignments.pipe(
       Effect.catchAllCause((cause) => Effect.logWarning("Failed to persist assignments on shutdown", cause)),
-      Effect.zipRight(persistPods.pipe(
-        Effect.catchAllCause((cause) => Effect.logWarning("Failed to persist pods on shutdown", cause))
+      Effect.zipRight(persistRunners.pipe(
+        Effect.catchAllCause((cause) => Effect.logWarning("Failed to persist runners on shutdown", cause))
       ))
     )
   )
 
-  yield* Effect.forkIn(persistPods, scope)
+  yield* Effect.forkIn(persistRunners, scope)
 
   // Rebalance immediately if there are unassigned shards
   yield* Effect.forkIn(
@@ -718,8 +718,8 @@ export const make = Effect.gen(function*() {
     Effect.forkIn(scope)
   )
 
-  yield* checkPodHealth.pipe(
-    Effect.andThen(Effect.sleep(config.podHealthCheckInterval)),
+  yield* checkRunnerHealth.pipe(
+    Effect.andThen(Effect.sleep(config.runnerHealthCheckInterval)),
     Effect.forever,
     Effect.forkIn(scope)
   )
@@ -739,8 +739,8 @@ export const make = Effect.gen(function*() {
     register,
     unregister,
     rebalance,
-    notifyUnhealthyPod,
-    checkPodHealth
+    notifyUnhealthyRunner,
+    checkRunnerHealth
   })
 })
 
@@ -751,20 +751,20 @@ export const make = Effect.gen(function*() {
 export const layer: Layer.Layer<
   ShardManager,
   never,
-  ShardStorage | PodsHealth | Pods | Config | ShardingConfig
+  ShardStorage | RunnerHealth | Runners | Config | ShardingConfig
 > = Layer.scoped(ShardManager, make)
 
 /**
  * @since 1.0.0
  * @category Server
  */
-export const layerServerHandlers = ShardManagerRpcs.toLayer(Effect.gen(function*() {
+export const layerServerHandlers = Rpcs.toLayer(Effect.gen(function*() {
   const shardManager = yield* ShardManager
   const clock = yield* Effect.clock
   return {
-    Register: ({ pod }) => shardManager.register(pod),
+    Register: ({ runner }) => shardManager.register(runner),
     Unregister: ({ address }) => shardManager.unregister(address),
-    NotifyUnhealthyPod: ({ address }) => shardManager.notifyUnhealthyPod(address),
+    NotifyUnhealthyRunner: ({ address }) => shardManager.notifyUnhealthyRunner(address),
     GetAssignments: () => shardManager.getAssignments,
     ShardingEvents: Effect.fnUntraced(function*() {
       const queue = yield* shardManager.shardingEvents
@@ -792,7 +792,7 @@ export const layerServer: Layer.Layer<
   never,
   never,
   ShardManager | RpcServer.Protocol
-> = RpcServer.layer(ShardManagerRpcs, {
+> = RpcServer.layer(Rpcs, {
   spanPrefix: "ShardManager",
   disableSpanPropagation: true
 }).pipe(Layer.provide(layerServerHandlers))

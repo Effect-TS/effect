@@ -10,36 +10,36 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import { PodAddress } from "./PodAddress.js"
+import { RunnerAddress } from "./RunnerAddress.js"
 
 /**
- * Represents the configuration for the `Sharding` service on a given pod.
+ * Represents the configuration for the `Sharding` service on a given runner.
  *
  * @since 1.0.0
  * @category models
  */
 export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig")<ShardingConfig, {
   /**
-   * The address for the current pod.
+   * The address for the current runner.
    *
-   * If `None`, the pod is not part of the cluster and will be in a client-only
+   * If `None`, the runner is not part of the cluster and will be in a client-only
    * mode.
    */
-  readonly podAddress: Option.Option<PodAddress>
+  readonly runnerAddress: Option.Option<RunnerAddress>
   /**
-   * The version of the current pod.
+   * The version of the current runner.
    */
   readonly serverVersion: number
   /**
-   * The number of shards to allocate to a pod.
+   * The number of shards to allocate to a runner.
    *
-   * **Note**: this value should be consistent across all pods.
+   * **Note**: this value should be consistent across all runners.
    */
   readonly numberOfShards: number
   /**
    * The address of the shard manager.
    */
-  readonly shardManagerAddress: PodAddress
+  readonly shardManagerAddress: RunnerAddress
   /**
    * If the shard is unavilable for this duration, all the shard assignments
    * will be reset.
@@ -70,28 +70,28 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
   readonly entityReplyPollInterval: DurationInput
   readonly refreshAssignmentsInterval: DurationInput
   /**
-   * The interval to retry a send if EntityNotManagedByPod is returned.
+   * The interval to retry a send if EntityNotManagedByRunner is returned.
    */
   readonly sendRetryInterval: DurationInput
-  // readonly unhealthyPodReportInterval: Duration.Duration
+  // readonly unhealthyRunnerReportInterval: Duration.Duration
   /**
-   * Simulate serialization and deserialization to remote pods for local
+   * Simulate serialization and deserialization to remote runners for local
    * entities.
    */
   readonly simulateRemoteSerialization: boolean
 }>() {}
 
-const defaultPodAddress = PodAddress.make({ host: "localhost", port: 34431 })
+const defaultRunnerAddress = RunnerAddress.make({ host: "localhost", port: 34431 })
 
 /**
  * @since 1.0.0
  * @category defaults
  */
 export const defaults: ShardingConfig["Type"] = {
-  podAddress: Option.some(defaultPodAddress),
+  runnerAddress: Option.some(defaultRunnerAddress),
   serverVersion: 1,
   numberOfShards: 300,
-  shardManagerAddress: PodAddress.make({ host: "localhost", port: 8080 }),
+  shardManagerAddress: RunnerAddress.make({ host: "localhost", port: 8080 }),
   shardManagerUnavailableTimeout: Duration.minutes(5),
   entityMailboxCapacity: 4096,
   entityMaxIdleTime: Duration.minutes(1),
@@ -121,23 +121,23 @@ export const layerDefaults: Layer.Layer<ShardingConfig> = layer()
  * @category Config
  */
 export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
-  podAddress: Config.all({
+  runnerAddress: Config.all({
     host: Config.string("host").pipe(
-      Config.withDefault(defaultPodAddress.host),
-      Config.withDescription("The hostname or IP address of the pod.")
+      Config.withDefault(defaultRunnerAddress.host),
+      Config.withDescription("The hostname or IP address of the runner.")
     ),
     port: Config.integer("port").pipe(
-      Config.withDefault(defaultPodAddress.port),
-      Config.withDescription("The port used for inter-pod communication.")
+      Config.withDefault(defaultRunnerAddress.port),
+      Config.withDescription("The port used for inter-runner communication.")
     )
-  }).pipe(Config.map((options) => PodAddress.make(options)), Config.option),
+  }).pipe(Config.map((options) => RunnerAddress.make(options)), Config.option),
   serverVersion: Config.integer("serverVersion").pipe(
     Config.withDefault(defaults.serverVersion),
-    Config.withDescription("The version of the current pod.")
+    Config.withDescription("The version of the current runner.")
   ),
   numberOfShards: Config.integer("numberOfShards").pipe(
     Config.withDefault(defaults.numberOfShards),
-    Config.withDescription("The number of shards to allocate to a pod.")
+    Config.withDescription("The number of shards to allocate to a runner.")
   ),
   shardManagerAddress: Config.all({
     host: Config.string("shardManagerHost").pipe(
@@ -148,7 +148,7 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
       Config.withDefault(defaults.shardManagerAddress.port),
       Config.withDescription("The port of the shard manager.")
     )
-  }).pipe(Config.map((options) => PodAddress.make(options))),
+  }).pipe(Config.map((options) => RunnerAddress.make(options))),
   shardManagerUnavailableTimeout: Config.duration("shardManagerUnavailableTimeout").pipe(
     Config.withDefault(defaults.shardManagerUnavailableTimeout),
     Config.withDescription(
@@ -179,7 +179,7 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
   ),
   sendRetryInterval: Config.duration("sendRetryInterval").pipe(
     Config.withDefault(defaults.sendRetryInterval),
-    Config.withDescription("The interval to retry a send if EntityNotManagedByPod is returned.")
+    Config.withDescription("The interval to retry a send if EntityNotManagedByRunner is returned.")
   ),
   refreshAssignmentsInterval: Config.duration("refreshAssignmentsInterval").pipe(
     Config.withDefault(defaults.refreshAssignmentsInterval),
@@ -187,7 +187,7 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
   ),
   simulateRemoteSerialization: Config.boolean("simulateRemoteSerialization").pipe(
     Config.withDefault(defaults.simulateRemoteSerialization),
-    Config.withDescription("Simulate serialization and deserialization to remote pods for local entities.")
+    Config.withDescription("Simulate serialization and deserialization to remote runners for local entities.")
   )
 })
 

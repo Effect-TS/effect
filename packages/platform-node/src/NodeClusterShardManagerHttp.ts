@@ -54,11 +54,11 @@ export const layer = <const Storage extends "sql" | "noop" = "noop">(options: {
 > => {
   const layer: Layer.Layer<any, any, any> = options.protocol === "http" ?
     HttpShardManager.layerHttp.pipe(
-      Layer.provide([HttpShardManager.layerPodsHealthHttp, layerHttpServer]),
+      Layer.provide([HttpShardManager.layerRunnerHealthHttp, layerHttpServer]),
       Layer.provide(NodeHttpClient.layerUndici)
     ) :
     HttpShardManager.layerWebsocket.pipe(
-      Layer.provide([HttpShardManager.layerPodsHealthWebsocket, layerHttpServer]),
+      Layer.provide([HttpShardManager.layerRunnerHealthWebsocket, layerHttpServer]),
       Layer.provide(NodeSocket.layerWebSocketConstructor)
     )
   return layer.pipe(

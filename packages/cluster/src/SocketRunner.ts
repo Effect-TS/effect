@@ -7,8 +7,8 @@ import * as RpcServer from "@effect/rpc/RpcServer"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type { MessageStorage } from "./MessageStorage.js"
-import * as Pods from "./Pods.js"
-import * as PodsServer from "./PodsServer.js"
+import * as Runners from "./Runners.js"
+import * as RunnerServer from "./RunnerServer.js"
 import * as Sharding from "./Sharding.js"
 import type { ShardingConfig } from "./ShardingConfig.js"
 import * as ShardManager from "./ShardManager.js"
@@ -22,7 +22,7 @@ const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>): Layer.Layer<A, E,
       : `${server.address.hostname}:${server.address.port}`
     yield* Effect.annotateLogs(Effect.logInfo(`Listening on: ${address}`), {
       package: "@effect/cluster",
-      service: "Pods"
+      service: "Runner"
     })
   })).pipe(Layer.provideMerge(layer))
 
@@ -31,15 +31,15 @@ const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>): Layer.Layer<A, E,
  * @category Layers
  */
 export const layer: Layer.Layer<
-  Sharding.Sharding | Pods.Pods,
+  Sharding.Sharding | Runners.Runners,
   never,
-  | Pods.RpcClientProtocol
+  | Runners.RpcClientProtocol
   | ShardingConfig
   | RpcSerialization.RpcSerialization
   | SocketServer
   | MessageStorage
   | ShardStorage.ShardStorage
-> = PodsServer.layerWithClients.pipe(
+> = RunnerServer.layerWithClients.pipe(
   withLogAddress,
   Layer.provide(RpcServer.layerProtocolSocketServer)
 )
@@ -49,11 +49,11 @@ export const layer: Layer.Layer<
  * @category Layers
  */
 export const layerClientOnly: Layer.Layer<
-  Sharding.Sharding | Pods.Pods,
+  Sharding.Sharding | Runners.Runners,
   never,
-  Pods.RpcClientProtocol | ShardingConfig | MessageStorage
+  Runners.RpcClientProtocol | ShardingConfig | MessageStorage
 > = Sharding.layer.pipe(
-  Layer.provideMerge(Pods.layerRpc),
+  Layer.provideMerge(Runners.layerRpc),
   Layer.provide(ShardManager.layerClientRpc),
   Layer.provide(ShardStorage.layerNoop)
 )

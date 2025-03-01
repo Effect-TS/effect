@@ -7,8 +7,8 @@ import * as RpcServer from "@effect/rpc/RpcServer"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as MessageStorage from "./MessageStorage.js"
-import * as Pods from "./Pods.js"
-import type { PodsHealth } from "./PodsHealth.js"
+import type { RunnerHealth } from "./RunnerHealth.js"
+import * as Runners from "./Runners.js"
 import type { ShardingConfig } from "./ShardingConfig.js"
 import * as ShardManager from "./ShardManager.js"
 import type { ShardStorage } from "./ShardStorage.js"
@@ -34,15 +34,15 @@ export const layer: Layer.Layer<
   never,
   | ShardStorage
   | SocketServer
-  | Pods.RpcClientProtocol
+  | Runners.RpcClientProtocol
   | RpcSerialization
-  | PodsHealth
+  | RunnerHealth
   | ShardManager.Config
   | ShardingConfig
 > = ShardManager.layerServer.pipe(
   withLogAddress,
   Layer.provide(RpcServer.layerProtocolSocketServer),
   Layer.provideMerge(ShardManager.layer),
-  Layer.provide(Pods.layerRpc),
+  Layer.provide(Runners.layerRpc),
   Layer.provide(MessageStorage.layerNoop)
 )

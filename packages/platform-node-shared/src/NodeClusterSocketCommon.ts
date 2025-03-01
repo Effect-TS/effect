@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as Pods from "@effect/cluster/Pods"
+import * as Runners from "@effect/cluster/Runners"
 import { Socket } from "@effect/platform/Socket"
 import * as RpcClient from "@effect/rpc/RpcClient"
 import * as RpcSerialization from "@effect/rpc/RpcSerialization"
@@ -14,11 +14,11 @@ import * as NodeSocket from "./NodeSocket.js"
  * @category Layers
  */
 export const layerClientProtocol: Layer.Layer<
-  Pods.RpcClientProtocol,
+  Runners.RpcClientProtocol,
   never,
   RpcSerialization.RpcSerialization
 > = Layer.effect(
-  Pods.RpcClientProtocol,
+  Runners.RpcClientProtocol,
   Effect.gen(function*() {
     const serialization = yield* RpcSerialization.RpcSerialization
     return Effect.fnUntraced(function*(address) {

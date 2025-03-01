@@ -5,7 +5,7 @@ import * as Hash from "effect/Hash"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as Schema from "effect/Schema"
 
-const SymbolKey = "@effect/cluster/PodAddress"
+const SymbolKey = "@effect/cluster/RunnerAddress"
 
 /**
  * @since 1.0.0
@@ -23,7 +23,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export class PodAddress extends Schema.Class<PodAddress>(SymbolKey)({
+export class RunnerAddress extends Schema.Class<RunnerAddress>(SymbolKey)({
   host: Schema.NonEmptyString,
   port: Schema.Int
 }) {
@@ -43,7 +43,7 @@ export class PodAddress extends Schema.Class<PodAddress>(SymbolKey)({
    * @since 1.0.0
    */
   toString(): string {
-    return `PodAddress(${this.host}:${this.port})`
+    return `RunnerAddress(${this.host}:${this.port})`
   }
 
   /**
@@ -58,4 +58,4 @@ export class PodAddress extends Schema.Class<PodAddress>(SymbolKey)({
  * @since 1.0.0
  * @category constructors
  */
-export const make = (host: string, port: number): PodAddress => new PodAddress({ host, port })
+export const make = (host: string, port: number): RunnerAddress => new RunnerAddress({ host, port })

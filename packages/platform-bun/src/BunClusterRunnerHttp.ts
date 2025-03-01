@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as HttpPods from "@effect/cluster/HttpPods"
+import * as HttpRunner from "@effect/cluster/HttpRunner"
 import * as MessageStorage from "@effect/cluster/MessageStorage"
-import type * as Pods from "@effect/cluster/Pods"
+import type * as Runners from "@effect/cluster/Runners"
 import type { Sharding } from "@effect/cluster/Sharding"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
 import * as ShardStorage from "@effect/cluster/ShardStorage"
@@ -38,10 +38,10 @@ export const layerHttpServer: Layer.Layer<
   ShardingConfig.ShardingConfig
 > = Effect.gen(function*() {
   const config = yield* ShardingConfig.ShardingConfig
-  if (Option.isNone(config.podAddress)) {
-    return yield* Effect.dieMessage("BunClusterHttpPods.layerHttpServer: ShardingConfig.podAddress is None")
+  if (Option.isNone(config.runnerAddress)) {
+    return yield* Effect.dieMessage("BunClusterHttpRunners.layerHttpServer: ShardingConfig.runnerAddress is None")
   }
-  return BunHttpServer.layer(config.podAddress.value)
+  return BunHttpServer.layer(config.runnerAddress.value)
 }).pipe(Layer.unwrapEffect)
 
 /**
@@ -58,12 +58,12 @@ export const layer = <
   readonly storage?: Storage | undefined
   readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
 }): ClientOnly extends true ? Layer.Layer<
-    Sharding | Pods.Pods,
+    Sharding | Runners.Runners,
     ConfigError | (Storage extends "sql" ? SqlError : never),
     Storage extends "sql" ? SqlClient : never
   > :
   Layer.Layer<
-    Sharding | Pods.Pods,
+    Sharding | Runners.Runners,
     ServeError | ConfigError | (Storage extends "sql" ? SqlError : never),
     Storage extends "sql" ? SqlClient : never
   > =>
@@ -71,12 +71,12 @@ export const layer = <
   const layer: Layer.Layer<any, any, any> = options.clientOnly
     // client only
     ? options.transport === "http"
-      ? Layer.provide(HttpPods.layerHttpClientOnly, FetchHttpClient.layer)
-      : Layer.provide(HttpPods.layerWebsocketClientOnly, BunSocket.layerWebSocketConstructor)
+      ? Layer.provide(HttpRunner.layerHttpClientOnly, FetchHttpClient.layer)
+      : Layer.provide(HttpRunner.layerWebsocketClientOnly, BunSocket.layerWebSocketConstructor)
     // with server
     : options.transport === "http"
-    ? Layer.provide(HttpPods.layerHttp, [layerHttpServer, FetchHttpClient.layer])
-    : Layer.provide(HttpPods.layerWebsocket, [layerHttpServer, BunSocket.layerWebSocketConstructor])
+    ? Layer.provide(HttpRunner.layerHttp, [layerHttpServer, FetchHttpClient.layer])
+    : Layer.provide(HttpRunner.layerWebsocket, [layerHttpServer, BunSocket.layerWebSocketConstructor])
 
   return layer.pipe(
     Layer.provide(

@@ -6,9 +6,9 @@ import * as MutableHashMap from "effect/MutableHashMap"
 import * as MutableHashSet from "effect/MutableHashSet"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
-import type { Pod } from "../Pod.js"
-import type { PodAddress } from "../PodAddress.js"
-import { PodsHealth } from "../PodsHealth.js"
+import type { Runner } from "../Runner.js"
+import type { RunnerAddress } from "../RunnerAddress.js"
+import { RunnerHealth } from "../RunnerHealth.js"
 import { ShardId } from "../ShardId.js"
 import { ShardStorage } from "../ShardStorage.js"
 
@@ -16,32 +16,32 @@ import { ShardStorage } from "../ShardStorage.js"
 export class State {
   static fromStorage = Effect.fnUntraced(function*(numberOfShards: number) {
     const storage = yield* ShardStorage
-    const podsHealth = yield* PodsHealth
+    const runnerHealth = yield* RunnerHealth
 
-    // Fetch registered pods and shard assignments from cluster storage
-    const storedPods = yield* storage.getPods
+    // Fetch registered runners and shard assignments from cluster storage
+    const storedRunners = yield* storage.getRunners
     const storedAssignments = yield* storage.getAssignments
 
-    // Determine which pods are still alive
-    const deadPods = Arr.empty<Pod>()
-    const alivePods = MutableHashMap.empty<PodAddress, Pod>()
-    yield* Effect.forEach(storedPods, ([address, pod]) =>
-      Effect.map(podsHealth.isAlive(address), (isAlive) => {
+    // Determine which runners are still alive
+    const deadRunners = Arr.empty<Runner>()
+    const aliveRunners = MutableHashMap.empty<RunnerAddress, Runner>()
+    yield* Effect.forEach(storedRunners, ([address, runner]) =>
+      Effect.map(runnerHealth.isAlive(address), (isAlive) => {
         if (isAlive) {
-          MutableHashMap.set(alivePods, address, pod)
+          MutableHashMap.set(aliveRunners, address, runner)
         } else {
-          deadPods.push(pod)
+          deadRunners.push(runner)
         }
       }), { concurrency: "unbounded", discard: true })
-    if (deadPods.length > 0) {
-      yield* Effect.logWarning("Ignoring pods that are no longer considered alive:", deadPods)
+    if (deadRunners.length > 0) {
+      yield* Effect.logWarning("Ignoring runners that are no longer considered alive:", deadRunners)
     }
 
-    // Determine which shards remain unassigned to a pod
-    const assignedShards = new Map<ShardId, PodAddress>()
-    const invalidAssignments = Arr.empty<[ShardId, PodAddress]>()
+    // Determine which shards remain unassigned to a runner
+    const assignedShards = new Map<ShardId, RunnerAddress>()
+    const invalidAssignments = Arr.empty<[ShardId, RunnerAddress]>()
     for (const [shard, address] of storedAssignments) {
-      if (Option.isSome(address) && MutableHashMap.has(alivePods, address.value)) {
+      if (Option.isSome(address) && MutableHashMap.has(aliveRunners, address.value)) {
         assignedShards.set(shard, address.value)
       } else if (Option.isSome(address)) {
         invalidAssignments.push([shard, address.value])
@@ -49,55 +49,55 @@ export class State {
     }
     if (invalidAssignments.length > 0) {
       yield* Effect.logWarning(
-        "Ignoring shard assignments for pods that are no longer considered alive: ",
+        "Ignoring shard assignments for runners that are no longer considered alive: ",
         invalidAssignments
       )
     }
 
     // Construct the initial state
     const now = yield* Clock.currentTimeMillis
-    const podState = MutableHashMap.empty<PodAddress, PodWithMetadata>()
-    for (const [address, pod] of alivePods) {
-      MutableHashMap.set(podState, address, PodWithMetadata({ pod, registeredAt: now }))
+    const runnerState = MutableHashMap.empty<RunnerAddress, RunnerWithMetadata>()
+    for (const [address, runner] of aliveRunners) {
+      MutableHashMap.set(runnerState, address, RunnerWithMetadata({ runner, registeredAt: now }))
     }
 
-    const shardState = new Map<ShardId, Option.Option<PodAddress>>()
+    const shardState = new Map<ShardId, Option.Option<RunnerAddress>>()
     for (let n = 1; n <= numberOfShards; n++) {
       const shardId = ShardId.make(n)
       shardState.set(shardId, Option.fromNullable(assignedShards.get(shardId)))
     }
 
-    return new State(podState, shardState)
+    return new State(runnerState, shardState)
   })
 
   constructor(
-    readonly pods: MutableHashMap.MutableHashMap<PodAddress, PodWithMetadata>,
-    readonly shards: Map<ShardId, Option.Option<PodAddress>>
+    readonly runners: MutableHashMap.MutableHashMap<RunnerAddress, RunnerWithMetadata>,
+    readonly shards: Map<ShardId, Option.Option<RunnerAddress>>
   ) {}
 
   get maxVersion(): Option.Option<number> {
-    if (MutableHashMap.size(this.pods) === 0) return Option.none()
+    if (MutableHashMap.size(this.runners) === 0) return Option.none()
     let version: number | undefined = undefined
-    for (const [, meta] of this.pods) {
-      if (version === undefined || meta.pod.version > version) {
-        version = meta.pod.version
+    for (const [, meta] of this.runners) {
+      if (version === undefined || meta.runner.version > version) {
+        version = meta.runner.version
       }
     }
     return Option.some(version!)
   }
 
-  allPodsHaveVersion(version: Option.Option<number>): boolean {
+  allRunnersHaveVersion(version: Option.Option<number>): boolean {
     return version.pipe(
-      Option.map((max) => Arr.every(this.podVersions, (version) => version === max)),
+      Option.map((max) => Arr.every(this.runnerVersions, (version) => version === max)),
       Option.getOrElse(constFalse)
     )
   }
 
-  get shardsPerPod(): MutableHashMap.MutableHashMap<PodAddress, Set<ShardId>> {
-    const shards = MutableHashMap.empty<PodAddress, Set<ShardId>>()
+  get shardsPerRunner(): MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>> {
+    const shards = MutableHashMap.empty<RunnerAddress, Set<ShardId>>()
 
-    if (MutableHashMap.isEmpty(this.pods)) return shards
-    MutableHashMap.forEach(this.pods, (_, address) => {
+    if (MutableHashMap.isEmpty(this.runners)) return shards
+    MutableHashMap.forEach(this.runners, (_, address) => {
       MutableHashMap.set(shards, address, new Set())
     })
 
@@ -110,9 +110,9 @@ export class State {
     return shards
   }
 
-  get averageShardsPerPod(): number {
-    const podCount = MutableHashMap.size(this.pods)
-    return podCount > 0 ? this.shards.size / podCount : 0
+  get averageShardsPerRunner(): number {
+    const runnerCount = MutableHashMap.size(this.runners)
+    return runnerCount > 0 ? this.shards.size / runnerCount : 0
   }
 
   get unassignedShards(): Array<ShardId> {
@@ -125,30 +125,30 @@ export class State {
     return shardIds
   }
 
-  private get podVersions(): Array<number> {
-    const podVersions: Array<number> = []
-    for (const [, meta] of this.pods) {
-      podVersions.push(meta.pod.version)
+  private get runnerVersions(): Array<number> {
+    const runnerVersions: Array<number> = []
+    for (const [, meta] of this.runners) {
+      runnerVersions.push(meta.runner.version)
     }
-    return podVersions
+    return runnerVersions
   }
 }
 
 /** @internal */
-export interface PodWithMetadata {
-  readonly pod: Pod
+export interface RunnerWithMetadata {
+  readonly runner: Runner
   readonly registeredAt: number
 }
 /** @internal */
-export const PodWithMetadata = (pod: PodWithMetadata): PodWithMetadata => pod
+export const RunnerWithMetadata = (runner: RunnerWithMetadata): RunnerWithMetadata => runner
 
 /** @internal */
 export function decideAssignmentsForUnassignedShards(state: State): readonly [
-  assignments: MutableHashMap.MutableHashMap<PodAddress, Set<ShardId>>,
-  unassignments: MutableHashMap.MutableHashMap<PodAddress, Set<ShardId>>,
-  changes: MutableHashSet.MutableHashSet<PodAddress>
+  assignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  unassignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  changes: MutableHashSet.MutableHashSet<RunnerAddress>
 ] {
-  return pickNewPods(state.unassignedShards, state, true, 1)
+  return pickNewRunners(state.unassignedShards, state, true, 1)
 }
 
 const allocationOrder: Order.Order<[ShardId, number, number]> = Order.combine(
@@ -158,19 +158,19 @@ const allocationOrder: Order.Order<[ShardId, number, number]> = Order.combine(
 
 /** @internal */
 export function decideAssignmentsForUnbalancedShards(state: State, rate: number): readonly [
-  assignments: MutableHashMap.MutableHashMap<PodAddress, Set<ShardId>>,
-  unassignments: MutableHashMap.MutableHashMap<PodAddress, Set<ShardId>>,
-  changes: MutableHashSet.MutableHashSet<PodAddress>
+  assignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  unassignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  changes: MutableHashSet.MutableHashSet<RunnerAddress>
 ] {
-  const shardsPerPod = state.shardsPerPod
+  const shardsPerRunner = state.shardsPerRunner
   const maxVersion = state.maxVersion
   const extraShardsToAllocate = Arr.empty<[ShardId, shardsInverse: number, registeredAt: number]>()
 
-  if (state.allPodsHaveVersion(maxVersion)) {
-    const averageShardsPerPod = state.averageShardsPerPod
-    MutableHashMap.forEach(shardsPerPod, (shards) => {
+  if (state.allRunnersHaveVersion(maxVersion)) {
+    const averageShardsPerRunner = state.averageShardsPerRunner
+    MutableHashMap.forEach(shardsPerRunner, (shards) => {
       // Count how many extra shards there are compared to the average
-      const extraShards = Math.max(0, shards.size - averageShardsPerPod)
+      const extraShards = Math.max(0, shards.size - averageShardsPerRunner)
       for (const shard of takeRandom(shards, extraShards)) {
         const maybeAddress = state.shards.get(shard) ?? Option.none()
         if (Option.isNone(maybeAddress)) {
@@ -180,11 +180,11 @@ export function decideAssignmentsForUnbalancedShards(state: State, rate: number)
         const address = maybeAddress.value
         extraShardsToAllocate.push([
           shard,
-          Option.match(MutableHashMap.get(shardsPerPod, address), {
+          Option.match(MutableHashMap.get(shardsPerRunner, address), {
             onNone: () => Number.MIN_SAFE_INTEGER,
             onSome: (shards) => -shards.size
           }),
-          Option.match(MutableHashMap.get(state.pods, address), {
+          Option.match(MutableHashMap.get(state.runners, address), {
             onNone: () => Number.MIN_SAFE_INTEGER,
             onSome: (meta) => meta.registeredAt
           })
@@ -195,24 +195,24 @@ export function decideAssignmentsForUnbalancedShards(state: State, rate: number)
 
   const sortedShardsToRebalance = extraShardsToAllocate.sort(allocationOrder).map(([shard]) => shard)
 
-  return pickNewPods(sortedShardsToRebalance, state, false, rate, shardsPerPod, maxVersion)
+  return pickNewRunners(sortedShardsToRebalance, state, false, rate, shardsPerRunner, maxVersion)
 }
 
-function pickNewPods(
+function pickNewRunners(
   shardsToRebalance: ReadonlyArray<ShardId>,
   state: State,
   immediate: boolean,
   rate: number,
-  shardsPerPod = state.shardsPerPod,
+  shardsPerRunner = state.shardsPerRunner,
   maybeMaxVersion = state.maxVersion
 ): readonly [
-  assignments: MutableHashMap.MutableHashMap<PodAddress, Set<ShardId>>,
-  unassignments: MutableHashMap.MutableHashMap<PodAddress, Set<ShardId>>,
-  changes: MutableHashSet.MutableHashSet<PodAddress>
+  assignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  unassignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  changes: MutableHashSet.MutableHashSet<RunnerAddress>
 ] {
-  const addressAssignments = MutableHashMap.empty<PodAddress, Set<ShardId>>()
-  const unassignments = MutableHashMap.empty<PodAddress, Set<ShardId>>()
-  const changes = MutableHashSet.empty<PodAddress>()
+  const addressAssignments = MutableHashMap.empty<RunnerAddress, Set<ShardId>>()
+  const unassignments = MutableHashMap.empty<RunnerAddress, Set<ShardId>>()
+  const changes = MutableHashSet.empty<RunnerAddress>()
 
   if (Option.isNone(maybeMaxVersion)) {
     return [addressAssignments, unassignments, changes]
@@ -220,21 +220,21 @@ function pickNewPods(
   const maxVersion = maybeMaxVersion.value
 
   for (const shardId of shardsToRebalance) {
-    // Find the pod with the fewest assigned shards
-    let candidate: PodAddress | undefined
+    // Find the runner with the fewest assigned shards
+    let candidate: RunnerAddress | undefined
     let candidateShards: Set<ShardId> | undefined
 
-    for (const [address, shards] of shardsPerPod) {
-      // Keep only pods with the maximum version
-      const maybePodMeta = MutableHashMap.get(state.pods, address)
-      if (Option.isNone(maybePodMeta)) continue
-      const podMeta = maybePodMeta.value
-      if (podMeta.pod.version !== maxVersion) continue
+    for (const [address, shards] of shardsPerRunner) {
+      // Keep only runners with the maximum version
+      const maybeRunnerMeta = MutableHashMap.get(state.runners, address)
+      if (Option.isNone(maybeRunnerMeta)) continue
+      const runnerMeta = maybeRunnerMeta.value
+      if (runnerMeta.runner.version !== maxVersion) continue
 
-      // Do not assign to a pod that has unassignments in the same rebalance
+      // Do not assign to a runner that has unassignments in the same rebalance
       if (MutableHashMap.has(unassignments, address)) continue
 
-      // Do not assign too many shards to each pod unless rebalancing must
+      // Do not assign too many shards to each runner unless rebalancing must
       // occur immediately
       if (!immediate) {
         const assignmentCount = Option.getOrUndefined(MutableHashMap.get(addressAssignments, address))?.size ?? 0
@@ -248,15 +248,15 @@ function pickNewPods(
     }
     if (!candidate || !candidateShards) break
 
-    // If the old pod is the same as the new pod, do nothing
-    const oldPod = Option.getOrUndefined(state.shards.get(shardId) ?? Option.none())
-    if (oldPod && oldPod.toString() === candidate.toString()) {
+    // If the old runner is the same as the new runner, do nothing
+    const oldRunner = Option.getOrUndefined(state.shards.get(shardId) ?? Option.none())
+    if (oldRunner && oldRunner.toString() === candidate.toString()) {
       continue
     }
-    const oldShards = oldPod && Option.getOrUndefined(MutableHashMap.get(shardsPerPod, oldPod))
+    const oldShards = oldRunner && Option.getOrUndefined(MutableHashMap.get(shardsPerRunner, oldRunner))
 
-    // If the new pod has one less, as many, or more shards than the
-    // old pod, do not change anything
+    // If the new runner has one less, as many, or more shards than the
+    // old runner, do not change anything
     if (oldShards && candidateShards.size + 1 >= oldShards.size) continue
 
     // Otherwise create a new assignment
@@ -271,10 +271,10 @@ function pickNewPods(
         }
       })
     )
-    if (oldPod) {
+    if (oldRunner) {
       MutableHashMap.modifyAt(
         unassignments,
-        oldPod,
+        oldRunner,
         Option.match({
           onNone: () => Option.some(new Set([shardId])),
           onSome: (shards) => {
@@ -285,7 +285,7 @@ function pickNewPods(
       )
     }
 
-    // Move the shard to the new pod
+    // Move the shard to the new runner
     candidateShards.add(shardId)
     if (oldShards) {
       oldShards.delete(shardId)
@@ -293,7 +293,7 @@ function pickNewPods(
 
     // Track changes
     MutableHashSet.add(changes, candidate)
-    if (oldPod) MutableHashSet.add(changes, oldPod)
+    if (oldRunner) MutableHashSet.add(changes, oldRunner)
   }
 
   return [addressAssignments, unassignments, changes]

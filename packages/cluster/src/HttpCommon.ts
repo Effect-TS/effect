@@ -8,7 +8,7 @@ import * as RpcClient from "@effect/rpc/RpcClient"
 import * as RpcSerialization from "@effect/rpc/RpcSerialization"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { RpcClientProtocol } from "./Pods.js"
+import { RpcClientProtocol } from "./Runners.js"
 
 /**
  * @since 1.0.0
