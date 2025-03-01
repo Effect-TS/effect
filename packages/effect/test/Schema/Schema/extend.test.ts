@@ -6,112 +6,141 @@ import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
 import { assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
 
+const assertExtend = (A: Schema.Schema.Any, B: Schema.Schema.Any, expected: readonly [string, string], options?: {
+  readonly skipFastCheck?: boolean | undefined
+}) => {
+  const AB = Schema.extend(A, B)
+  const BA = Schema.extend(B, A)
+  strictEqual(String(AB), expected[0], "AB")
+  strictEqual(String(BA), expected[1], "BA")
+  const arbAB = Arbitrary.make(AB)
+  const arbBA = Arbitrary.make(BA)
+  const isAB = Schema.is(AB)
+  const isBA = Schema.is(BA)
+  if (options?.skipFastCheck) {
+    return
+  }
+  FastCheck.assert(
+    FastCheck.property(arbAB, (ab) => isBA(ab)),
+    { numRuns: 10 }
+  )
+  FastCheck.assert(
+    FastCheck.property(arbBA, (ba) => isAB(ba)),
+    { numRuns: 10 }
+  )
+}
+
 describe("extend", () => {
   describe("String", () => {
-    it("String and String", () => {
+    it("String & String", () => {
       const schema = Schema.extend(Schema.String, Schema.String)
       deepStrictEqual(schema.ast, Schema.String.ast)
     })
 
-    it("String and Literal", () => {
+    it("String & Literal", () => {
       const literal = Schema.Literal("a")
       const schema = Schema.extend(Schema.String, literal)
       deepStrictEqual(schema.ast, literal.ast)
     })
 
-    it("Literal and String", () => {
+    it("Literal & String", () => {
       const literal = Schema.Literal("a")
       const schema = Schema.extend(literal, Schema.String)
       deepStrictEqual(schema.ast, literal.ast)
     })
 
-    it("(String and annotations) and String", () => {
+    it("(String with annotations) & String", () => {
       const A = Schema.String.annotations({ identifier: "A" })
       const schema = Schema.extend(A, Schema.String)
       assertTrue(schema.ast === A.ast)
     })
 
-    it("String and Refinement", () => {
+    it("String & Refinement", () => {
       const schema = Schema.extend(
         Schema.String,
         Schema.String.pipe(Schema.startsWith("start:"))
       )
-      strictEqual(schema.ast._tag, "Refinement")
-      assertTrue((schema.ast as AST.Refinement).from === AST.stringKeyword)
+      strictEqual(String(schema), `startsWith("start:")`)
+      assertTrue(AST.isRefinement(schema.ast))
+      assertTrue(schema.ast.from === AST.stringKeyword)
     })
 
-    it("should support two refined brands", () => {
+    it("String Branded Refinement & String Branded Refinement", () => {
       const startsWith = Schema.String.pipe(Schema.startsWith("start:"), Schema.brand("start:"))
       const endsWith = Schema.String.pipe(Schema.endsWith(":end"), Schema.brand(":end"))
       const schema = Schema.extend(startsWith, endsWith)
-      strictEqual(String(schema.ast), `startsWith("start:") & Brand<"start:"> & endsWith(":end") & Brand<":end">`)
+      strictEqual(String(schema), `startsWith("start:") & Brand<"start:"> & endsWith(":end") & Brand<":end">`)
       deepStrictEqual(schema.ast.annotations[AST.BrandAnnotationId], [":end"])
-      const from = (schema.ast as AST.Refinement).from
+      assertTrue(AST.isRefinement(schema.ast))
+      const from = schema.ast.from
       deepStrictEqual(from.annotations[AST.BrandAnnotationId], ["start:"])
-      const fromfrom = (from as AST.Refinement).from
+      assertTrue(AST.isRefinement(from))
+      const fromfrom = from.from
       assertTrue(fromfrom === AST.stringKeyword)
     })
   })
 
   describe("Number", () => {
-    it("Number and Number", () => {
+    it("Number & Number", () => {
       const schema = Schema.extend(Schema.Number, Schema.Number)
       deepStrictEqual(schema.ast, Schema.Number.ast)
     })
 
-    it("Number and Literal", () => {
+    it("Number & Literal", () => {
       const literal = Schema.Literal(1)
       const schema = Schema.extend(Schema.Number, literal)
       deepStrictEqual(schema.ast, literal.ast)
     })
 
-    it("Literal and Number", () => {
+    it("Literal & Number", () => {
       const literal = Schema.Literal(1)
       const schema = Schema.extend(literal, Schema.Number)
       deepStrictEqual(schema.ast, literal.ast)
     })
 
-    it("(Number and annotations) and Number", () => {
+    it("(Number with annotations) & Number", () => {
       const A = Schema.Number.annotations({ identifier: "A" })
       const schema = Schema.extend(A, Schema.Number)
       assertTrue(schema.ast === A.ast)
     })
 
-    it("Number and Refinement", () => {
+    it("Number & Refinement", () => {
       const schema = Schema.extend(
         Schema.Number,
         Schema.Number.pipe(Schema.greaterThan(0))
       )
-      strictEqual(schema.ast._tag, "Refinement")
-      assertTrue((schema.ast as AST.Refinement).from === AST.numberKeyword)
+      assertTrue(AST.isRefinement(schema.ast))
+      assertTrue(schema.ast.from === AST.numberKeyword)
     })
 
-    it("should support two refined brands", () => {
+    it("Number Branded Refinement & Number Branded Refinement", () => {
       const gt0 = Schema.Number.pipe(Schema.greaterThan(0), Schema.brand("> 0"))
       const lt2 = Schema.Number.pipe(Schema.lessThan(2), Schema.brand("< 2"))
       const schema = Schema.extend(gt0, lt2)
       strictEqual(String(schema.ast), `greaterThan(0) & Brand<"> 0"> & lessThan(2) & Brand<"< 2">`)
       deepStrictEqual(schema.ast.annotations[AST.BrandAnnotationId], ["< 2"])
-      const from = (schema.ast as AST.Refinement).from
+      assertTrue(AST.isRefinement(schema.ast))
+      const from = schema.ast.from
       deepStrictEqual(from.annotations[AST.BrandAnnotationId], ["> 0"])
-      const fromfrom = (from as AST.Refinement).from
+      assertTrue(AST.isRefinement(from))
+      const fromfrom = from.from
       assertTrue(fromfrom === AST.numberKeyword)
     })
   })
 
   describe("Boolean", () => {
-    it("Boolean and Boolean", () => {
+    it("Boolean & Boolean", () => {
       const schema = Schema.extend(Schema.Boolean, Schema.Boolean)
       deepStrictEqual(schema.ast, Schema.Boolean.ast)
     })
 
-    it("Boolean and Literal", () => {
+    it("Boolean & Literal", () => {
       const literal = Schema.Literal(true)
       const schema = Schema.extend(Schema.Boolean, literal)
       deepStrictEqual(schema.ast, literal.ast)
     })
 
-    it("Literal and Boolean", () => {
+    it("Literal & Boolean", () => {
       const literal = Schema.Literal(true)
       const schema = Schema.extend(literal, Schema.Boolean)
       deepStrictEqual(schema.ast, literal.ast)
@@ -119,83 +148,94 @@ describe("extend", () => {
   })
 
   describe("Struct", () => {
-    it("extend struct", async () => {
-      const schema = Schema.extend(Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.Number }))
-      strictEqual(String(schema), "{ readonly a: string; readonly b: number }")
+    it("Struct & Struct", async () => {
+      const A = Schema.Struct({ a: Schema.String })
+      const B = Schema.Struct({ b: Schema.Number })
+      assertExtend(A, B, [
+        "{ readonly a: string; readonly b: number }",
+        "{ readonly b: number; readonly a: string }"
+      ])
     })
 
-    it("extend TypeLiteralTransformation", async () => {
-      const schema = Schema.Struct({ a: Schema.Number }).pipe(
-        Schema.extend(
-          Schema.Struct({ b: Schema.String, c: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }) })
-        )
-      )
-      strictEqual(
-        String(schema),
-        "({ readonly a: number; readonly b: string; readonly c?: string } <-> { readonly a: number; readonly b: string; readonly c: string })"
-      )
+    it("Struct $ TypeLiteralTransformation", async () => {
+      const A = Schema.Struct({ a: Schema.Number })
+      const B = Schema.Struct({
+        b: Schema.String,
+        c: Schema.optionalWith(Schema.String, { exact: true, default: () => "" })
+      })
+      assertExtend(A, B, [
+        "({ readonly a: number; readonly b: string; readonly c?: string } <-> { readonly a: number; readonly b: string; readonly c: string })",
+        "({ readonly b: string; readonly c?: string; readonly a: number } <-> { readonly b: string; readonly c: string; readonly a: number })"
+      ])
     })
 
-    it("extend Union", () => {
-      const schema = Schema.Struct({ b: Schema.Boolean }).pipe(
-        Schema.extend(Schema.Union(
-          Schema.Struct({ a: Schema.Literal("a") }),
-          Schema.Struct({ a: Schema.Literal("b") })
-        ))
+    it("Struct & Union", () => {
+      const A = Schema.Struct({ b: Schema.Boolean })
+      const B = Schema.Union(
+        Schema.Struct({ a: Schema.Literal("a") }),
+        Schema.Struct({ a: Schema.Literal("b") })
       )
-      strictEqual(String(schema), `{ readonly b: boolean; readonly a: "a" } | { readonly b: boolean; readonly a: "b" }`)
+      assertExtend(A, B, [
+        `{ readonly b: boolean; readonly a: "a" } | { readonly b: boolean; readonly a: "b" }`,
+        `{ readonly a: "a"; readonly b: boolean } | { readonly a: "b"; readonly b: boolean }`
+      ])
     })
 
-    it("extend Record(string, string)", async () => {
-      const schema = Schema.Struct({ a: Schema.String }).pipe(
-        Schema.extend(Schema.Record({ key: Schema.String, value: Schema.String }))
-      )
-      strictEqual(String(schema), `{ readonly a: string; readonly [x: string]: string }`)
+    it("Struct & Record(string, string)", async () => {
+      const A = Schema.Struct({ a: Schema.String })
+      const B = Schema.Record({ key: Schema.String, value: Schema.String })
+      assertExtend(A, B, [
+        `{ readonly a: string; readonly [x: string]: string }`,
+        `{ readonly a: string; readonly [x: string]: string }`
+      ])
     })
 
-    it("extend Record(templateLiteral, string)", async () => {
-      const schema = Schema.Struct({ a: Schema.String }).pipe(
-        Schema.extend(Schema.Record(
-          {
-            key: Schema.TemplateLiteral(
-              Schema.String,
-              Schema.Literal("-"),
-              Schema.Number
-            ),
-            value: Schema.String
-          }
-        ))
+    it("Struct & Record(templateLiteral, string)", async () => {
+      const A = Schema.Struct({ a: Schema.String })
+      const B = Schema.Record(
+        {
+          key: Schema.TemplateLiteral(
+            Schema.String,
+            Schema.Literal("-"),
+            Schema.Number
+          ),
+          value: Schema.String
+        }
       )
-      // type A = {
-      //   [x: `${string}-${number}`]: string
-      //   readonly a: string
-      // }
-      // const a: A = { a: "a" } // OK
-      strictEqual(String(schema), "{ readonly a: string; readonly [x: `${string}-${number}`]: string }")
+      assertExtend(A, B, [
+        "{ readonly a: string; readonly [x: `${string}-${number}`]: string }",
+        "{ readonly a: string; readonly [x: `${string}-${number}`]: string }"
+      ])
     })
 
-    it("extend Record(string, NumberFromChar)", async () => {
-      const schema = Schema.Struct({ a: Schema.Number }).pipe(
-        Schema.extend(Schema.Record({ key: Schema.String, value: Util.NumberFromChar }))
-      )
-      strictEqual(String(schema), `{ readonly a: number; readonly [x: string]: NumberFromChar }`)
+    it("Struct & Record(string, NumberFromChar)", async () => {
+      const A = Schema.Struct({ a: Schema.Number })
+      const B = Schema.Record({ key: Schema.String, value: Util.NumberFromChar })
+      assertExtend(A, B, [
+        `{ readonly a: number; readonly [x: string]: NumberFromChar }`,
+        `{ readonly a: number; readonly [x: string]: NumberFromChar }`
+      ])
     })
 
-    it("extend Record(symbol, NumberFromChar)", async () => {
-      const schema = Schema.Struct({ a: Schema.Number }).pipe(
-        Schema.extend(Schema.Record({ key: Schema.SymbolFromSelf, value: Util.NumberFromChar }))
-      )
-      strictEqual(String(schema), `{ readonly a: number; readonly [x: symbol]: NumberFromChar }`)
+    it("Struct & Record(symbol, NumberFromChar)", async () => {
+      const A = Schema.Struct({ a: Schema.Number })
+      const B = Schema.Record({ key: Schema.SymbolFromSelf, value: Util.NumberFromChar })
+      assertExtend(A, B, [
+        `{ readonly a: number; readonly [x: symbol]: NumberFromChar }`,
+        `{ readonly a: number; readonly [x: symbol]: NumberFromChar }`
+      ])
     })
 
-    it("nested extend nested Struct", async () => {
+    it("Nested Struct & Nested Struct", async () => {
       const A = Schema.Struct({ a: Schema.Struct({ b: Schema.String }) })
       const B = Schema.Struct({ a: Schema.Struct({ c: Schema.Number }) })
-      const schema = Schema.extend(A, B)
-      strictEqual(String(schema), `{ readonly a: { readonly b: string; readonly c: number } }`)
+      assertExtend(A, B, [
+        `{ readonly a: { readonly b: string; readonly c: number } }`,
+        `{ readonly a: { readonly c: number; readonly b: string } }`
+      ])
     })
 
-    it("nested with refinements extend nested struct with refinements", async () => {
+    it("Nested Struct with refinements & Nested struct with refinements", async () => {
       const A = Schema.Struct({
         nested: Schema.Struct({
           same: Schema.String.pipe(Schema.startsWith("start:")),
@@ -208,11 +248,11 @@ describe("extend", () => {
           different2: Schema.String
         })
       })
+      assertExtend(A, B, [
+        `{ readonly nested: { readonly same: startsWith("start:") & endsWith(":end"); readonly different1: string; readonly different2: string } }`,
+        `{ readonly nested: { readonly same: endsWith(":end") & startsWith("start:"); readonly different2: string; readonly different1: string } }`
+      ], { skipFastCheck: true })
       const schema = Schema.extend(A, B)
-      strictEqual(
-        String(schema),
-        `{ readonly nested: { readonly same: startsWith("start:") & endsWith(":end"); readonly different1: string; readonly different2: string } }`
-      )
       await Util.assertions.decoding.succeed(
         schema,
         {
@@ -263,47 +303,44 @@ describe("extend", () => {
   })
 
   describe("TypeLiteralTransformation", () => {
-    it("extend Struct", async () => {
-      const schema = Schema.Struct({
+    it("TypeLiteralTransformation & Struct", async () => {
+      const A = Schema.Struct({
         a: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }),
         b: Schema.String
-      }).pipe(Schema.extend(Schema.Struct({ c: Schema.Number })))
-      strictEqual(
-        String(schema),
-        "({ readonly a?: string; readonly b: string; readonly c: number } <-> { readonly a: string; readonly b: string; readonly c: number })"
-      )
+      })
+      const B = Schema.Struct({ c: Schema.Number })
+      assertExtend(A, B, [
+        "({ readonly a?: string; readonly b: string; readonly c: number } <-> { readonly a: string; readonly b: string; readonly c: number })",
+        "({ readonly c: number; readonly a?: string; readonly b: string } <-> { readonly c: number; readonly a: string; readonly b: string })"
+      ])
     })
 
-    it("extend Union", async () => {
-      const schema = Schema.extend(
-        Schema.Struct({
-          a: Schema.optionalWith(Schema.String, { default: () => "default" })
-        }),
-        Schema.Union(
-          Schema.Struct({ b: Schema.String }),
-          Schema.Struct({ c: Schema.String })
-        )
+    it("TypeLiteralTransformation & Union", async () => {
+      const A = Schema.Struct({
+        a: Schema.optionalWith(Schema.String, { default: () => "default" })
+      })
+      const B = Schema.Union(
+        Schema.Struct({ b: Schema.String }),
+        Schema.Struct({ c: Schema.String })
       )
-      strictEqual(
-        String(schema),
-        "({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | ({ readonly a?: string | undefined; readonly c: string } <-> { readonly a: string; readonly c: string })"
-      )
+      assertExtend(A, B, [
+        "({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | ({ readonly a?: string | undefined; readonly c: string } <-> { readonly a: string; readonly c: string })",
+        "({ readonly b: string; readonly a?: string | undefined } <-> { readonly b: string; readonly a: string }) | ({ readonly c: string; readonly a?: string | undefined } <-> { readonly c: string; readonly a: string })"
+      ])
     })
 
-    it("extend refinement", async () => {
-      const schema = Schema.extend(
-        Schema.Struct({
-          a: Schema.optionalWith(Schema.String, { default: () => "default" })
-        }),
-        Schema.Struct({ b: Schema.String }).pipe(Schema.filter(() => true))
-      )
-      strictEqual(
-        String(schema),
-        "{ ({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | filter }"
-      )
+    it("TypeLiteralTransformation & Refinement", async () => {
+      const A = Schema.Struct({
+        a: Schema.optionalWith(Schema.String, { default: () => "default" })
+      })
+      const B = Schema.Struct({ b: Schema.String }).pipe(Schema.filter(() => true))
+      assertExtend(A, B, [
+        "{ ({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | filter }",
+        "{ ({ readonly b: string; readonly a?: string | undefined } <-> { readonly b: string; readonly a: string }) | filter }"
+      ])
     })
 
-    it("extend Suspend", async () => {
+    it("TypeLiteralTransformation & Suspend", async () => {
       const suspend = Schema.suspend(() => Schema.Struct({ b: Schema.String }))
       const schema = Schema.extend(
         Schema.Struct({
@@ -317,36 +354,37 @@ describe("extend", () => {
       )
     })
 
-    it("extend TypeLiteralTransformation", async () => {
-      const schema = Schema.Struct({
+    it("TypeLiteralTransformation & TypeLiteralTransformation", async () => {
+      const A = Schema.Struct({
         a: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }),
         b: Schema.String
-      }).pipe(
-        Schema.extend(
-          Schema.Struct({
-            c: Schema.optionalWith(Schema.Number, { exact: true, default: () => 0 }),
-            d: Schema.Boolean
-          })
-        )
-      )
-      strictEqual(
-        String(schema),
-        "({ readonly a?: string; readonly b: string; readonly c?: number; readonly d: boolean } <-> { readonly a: string; readonly b: string; readonly c: number; readonly d: boolean })"
-      )
+      })
+      const B = Schema.Struct({
+        c: Schema.optionalWith(Schema.Number, { exact: true, default: () => 0 }),
+        d: Schema.Boolean
+      })
+      assertExtend(A, B, [
+        "({ readonly a?: string; readonly b: string; readonly c?: number; readonly d: boolean } <-> { readonly a: string; readonly b: string; readonly c: number; readonly d: boolean })",
+        "({ readonly c?: number; readonly d: boolean; readonly a?: string; readonly b: string } <-> { readonly c: number; readonly d: boolean; readonly a: string; readonly b: string })"
+      ])
     })
   })
 
   describe("Union", () => {
-    it("extend Struct", () => {
-      const schema = Schema.Union(
+    it("Union & Struct", () => {
+      const A = Schema.Union(
         Schema.Struct({ a: Schema.Literal("a") }),
         Schema.Struct({ b: Schema.Literal("b") })
-      ).pipe(Schema.extend(Schema.Struct({ c: Schema.Boolean })))
-      strictEqual(String(schema), `{ readonly a: "a"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`)
+      )
+      const B = Schema.Struct({ c: Schema.Boolean })
+      assertExtend(A, B, [
+        `{ readonly a: "a"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`,
+        `{ readonly c: boolean; readonly a: "a" } | { readonly c: boolean; readonly b: "b" }`
+      ])
     })
 
-    it("with defaults extend Union with defaults", async () => {
-      const schema = Schema.Union(
+    it("Union of structs with defaults & Union of structs with defaults", async () => {
+      const A = Schema.Union(
         Schema.Struct({
           a: Schema.optionalWith(Schema.String, { exact: true, default: () => "a" }),
           b: Schema.String
@@ -355,69 +393,65 @@ describe("extend", () => {
           c: Schema.optionalWith(Schema.String, { exact: true, default: () => "c" }),
           d: Schema.String
         })
-      ).pipe(
-        Schema.extend(
-          Schema.Union(
-            Schema.Struct({
-              e: Schema.optionalWith(Schema.String, { exact: true, default: () => "e" }),
-              f: Schema.String
-            }),
-            Schema.Struct({
-              g: Schema.optionalWith(Schema.String, { exact: true, default: () => "g" }),
-              h: Schema.String
-            })
-          )
-        )
       )
-      strictEqual(
-        String(schema),
-        "({ readonly a?: string; readonly b: string; readonly e?: string; readonly f: string } <-> { readonly a: string; readonly b: string; readonly e: string; readonly f: string }) | ({ readonly a?: string; readonly b: string; readonly g?: string; readonly h: string } <-> { readonly a: string; readonly b: string; readonly g: string; readonly h: string }) | ({ readonly c?: string; readonly d: string; readonly e?: string; readonly f: string } <-> { readonly c: string; readonly d: string; readonly e: string; readonly f: string }) | ({ readonly c?: string; readonly d: string; readonly g?: string; readonly h: string } <-> { readonly c: string; readonly d: string; readonly g: string; readonly h: string })"
+      const B = Schema.Union(
+        Schema.Struct({
+          e: Schema.optionalWith(Schema.String, { exact: true, default: () => "e" }),
+          f: Schema.String
+        }),
+        Schema.Struct({
+          g: Schema.optionalWith(Schema.String, { exact: true, default: () => "g" }),
+          h: Schema.String
+        })
       )
+      assertExtend(A, B, [
+        "({ readonly a?: string; readonly b: string; readonly e?: string; readonly f: string } <-> { readonly a: string; readonly b: string; readonly e: string; readonly f: string }) | ({ readonly a?: string; readonly b: string; readonly g?: string; readonly h: string } <-> { readonly a: string; readonly b: string; readonly g: string; readonly h: string }) | ({ readonly c?: string; readonly d: string; readonly e?: string; readonly f: string } <-> { readonly c: string; readonly d: string; readonly e: string; readonly f: string }) | ({ readonly c?: string; readonly d: string; readonly g?: string; readonly h: string } <-> { readonly c: string; readonly d: string; readonly g: string; readonly h: string })",
+        "({ readonly e?: string; readonly f: string; readonly a?: string; readonly b: string } <-> { readonly e: string; readonly f: string; readonly a: string; readonly b: string }) | ({ readonly e?: string; readonly f: string; readonly c?: string; readonly d: string } <-> { readonly e: string; readonly f: string; readonly c: string; readonly d: string }) | ({ readonly g?: string; readonly h: string; readonly a?: string; readonly b: string } <-> { readonly g: string; readonly h: string; readonly a: string; readonly b: string }) | ({ readonly g?: string; readonly h: string; readonly c?: string; readonly d: string } <-> { readonly g: string; readonly h: string; readonly c: string; readonly d: string })"
+      ])
     })
 
-    it("extend Union", () => {
-      const schema = Schema.Union(
+    it("Union & Union", () => {
+      const A = Schema.Union(
         Schema.Struct({ a: Schema.Literal("a") }),
         Schema.Struct({ a: Schema.Literal("b") })
-      ).pipe(
-        Schema.extend(
-          Schema.Union(
-            Schema.Struct({ c: Schema.Boolean }),
-            Schema.Struct({ d: Schema.Number })
-          )
-        )
       )
-      strictEqual(
-        String(schema),
-        `{ readonly a: "a"; readonly c: boolean } | { readonly a: "a"; readonly d: number } | { readonly a: "b"; readonly c: boolean } | { readonly a: "b"; readonly d: number }`
+      const B = Schema.Union(
+        Schema.Struct({ c: Schema.Boolean }),
+        Schema.Struct({ d: Schema.Number })
       )
+      assertExtend(A, B, [
+        `{ readonly a: "a"; readonly c: boolean } | { readonly a: "a"; readonly d: number } | { readonly a: "b"; readonly c: boolean } | { readonly a: "b"; readonly d: number }`,
+        `{ readonly c: boolean; readonly a: "a" } | { readonly c: boolean; readonly a: "b" } | { readonly d: number; readonly a: "a" } | { readonly d: number; readonly a: "b" }`
+      ])
     })
 
-    it("nested extends Struct", () => {
-      const schema = Schema.Union(
+    it("Nested Union & Struct", () => {
+      const A = Schema.Union(
         Schema.Union(
           Schema.Struct({ a: Schema.Literal("a") }),
           Schema.Struct({ a: Schema.Literal("b") })
         ),
         Schema.Struct({ b: Schema.Literal("b") })
-      ).pipe(
-        Schema.extend(Schema.Struct({ c: Schema.Boolean }))
       )
-      strictEqual(
-        String(schema),
-        `{ readonly a: "a"; readonly c: boolean } | { readonly a: "b"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`
-      )
+      const B = Schema.Struct({ c: Schema.Boolean })
+      assertExtend(A, B, [
+        `{ readonly a: "a"; readonly c: boolean } | { readonly a: "b"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`,
+        `{ readonly c: boolean; readonly a: "a" } | { readonly c: boolean; readonly a: "b" } | { readonly c: boolean; readonly b: "b" }`
+      ])
     })
   })
 
-  describe("refinements", () => {
-    it("S extends R", async () => {
-      const S = Schema.Struct({ a: Schema.String })
-      const R = Schema.Struct({ b: Schema.Number }).pipe(
+  describe("Refinements", () => {
+    it("Struct & Refinement", async () => {
+      const A = Schema.Struct({ a: Schema.String })
+      const B = Schema.Struct({ b: Schema.Number }).pipe(
         Schema.filter((input) => input.b > 0, { message: () => "R filter" })
       )
-      const schema = Schema.extend(S, R)
-      strictEqual(String(schema), `{ { readonly a: string; readonly b: number } | filter }`)
+      assertExtend(A, B, [
+        `{ { readonly a: string; readonly b: number } | filter }`,
+        `{ { readonly b: number; readonly a: string } | filter }`
+      ])
+      const schema = Schema.extend(A, B)
       await Util.assertions.decoding.fail(
         schema,
         { a: "a", b: -1 },
@@ -425,14 +459,17 @@ describe("extend", () => {
       )
     })
 
-    it("S extends RR (two filters)", async () => {
-      const S = Schema.Struct({ a: Schema.String })
-      const RR = Schema.Struct({ b: Schema.Number }).pipe(
+    it("Struct & Refinement (two filters)", async () => {
+      const A = Schema.Struct({ a: Schema.String })
+      const B = Schema.Struct({ b: Schema.Number }).pipe(
         Schema.filter((input) => input.b > 0, { message: () => "filter1" }),
         Schema.filter((input) => input.b < 10, { message: () => "filter2" })
       )
-      const schema = Schema.extend(S, RR)
-      strictEqual(String(schema), `{ { { readonly a: string; readonly b: number } | filter } | filter }`)
+      assertExtend(A, B, [
+        `{ { { readonly a: string; readonly b: number } | filter } | filter }`,
+        `{ { { readonly b: number; readonly a: string } | filter } | filter }`
+      ])
+      const schema = Schema.extend(A, B)
       await Util.assertions.decoding.fail(
         schema,
         { a: "a", b: -1 },
@@ -445,15 +482,18 @@ describe("extend", () => {
       )
     })
 
-    it("R1 extends R2", async () => {
-      const R1 = Schema.Struct({ a: Schema.String }).pipe(
+    it("Refinement & Refinement", async () => {
+      const A = Schema.Struct({ a: Schema.String }).pipe(
         Schema.filter((input) => input.a.length > 0, { message: () => "R1 filter" })
       )
-      const R2 = Schema.Struct({ b: Schema.Number }).pipe(
+      const B = Schema.Struct({ b: Schema.Number }).pipe(
         Schema.filter((input) => input.b > 0, { message: () => "R2 filter" })
       )
-      const schema = Schema.extend(R1, R2)
-      strictEqual(String(schema), `{ { { readonly a: string; readonly b: number } | filter } | filter }`)
+      assertExtend(A, B, [
+        `{ { { readonly a: string; readonly b: number } | filter } | filter }`,
+        `{ { { readonly b: number; readonly a: string } | filter } | filter }`
+      ])
+      const schema = Schema.extend(A, B)
       await Util.assertions.decoding.fail(
         schema,
         { a: "", b: 1 },
@@ -466,17 +506,19 @@ describe("extend", () => {
       )
     })
 
-    it("(S1 | S2) extends R2", async () => {
+    it("Union of structs & Refinement", async () => {
       const S1 = Schema.Struct({ a: Schema.String })
       const S2 = Schema.Struct({ b: Schema.Number })
-      const R = Schema.Struct({ c: Schema.Boolean }).pipe(
+      const B = Schema.Struct({ c: Schema.Boolean }).pipe(
         Schema.filter((input) => input.c === true, { message: () => "R filter" })
       )
-      const schema = Schema.extend(Schema.Union(S1, S2), R)
-      strictEqual(
-        String(schema),
-        `{ { readonly a: string; readonly c: boolean } | filter } | { { readonly b: number; readonly c: boolean } | filter }`
-      )
+      const A = Schema.Union(S1, S2)
+      assertExtend(A, B, [
+        `{ { readonly a: string; readonly c: boolean } | filter } | { { readonly b: number; readonly c: boolean } | filter }`,
+        `{ { readonly c: boolean; readonly a: string } | filter } | { { readonly c: boolean; readonly b: number } | filter }`
+      ])
+
+      const schema = Schema.extend(A, B)
       await Util.assertions.decoding.fail(
         schema,
         { a: "a", c: false },
@@ -501,21 +543,22 @@ describe("extend", () => {
       )
     })
 
-    it("(R1 | R2) extends R3", async () => {
+    it("Union of refinements & Refinement", async () => {
       const R1 = Schema.Struct({ a: Schema.String }).pipe(
         Schema.filter((input) => input.a.length > 0, { message: () => "R1 filter" })
       )
       const R2 = Schema.Struct({ b: Schema.Number }).pipe(
         Schema.filter((input) => input.b > 0, { message: () => "R2 filter" })
       )
-      const R3 = Schema.Struct({ c: Schema.Boolean }).pipe(
+      const B = Schema.Struct({ c: Schema.Boolean }).pipe(
         Schema.filter((input) => input.c === true, { message: () => "R3 filter" })
       )
-      const schema = Schema.extend(Schema.Union(R1, R2), R3)
-      strictEqual(
-        String(schema),
-        `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }`
-      )
+      const A = Schema.Union(R1, R2)
+      assertExtend(A, B, [
+        `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }`,
+        `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }`
+      ])
+      const schema = Schema.extend(A, B)
       await Util.assertions.decoding.fail(
         schema,
         { a: "", c: true },
@@ -572,7 +615,7 @@ describe("extend", () => {
   })
 
   describe("Suspend", () => {
-    it("List", async () => {
+    it("List as union", async () => {
       type List = {
         readonly type: "nil"
       } | {
@@ -612,7 +655,7 @@ describe("extend", () => {
     })
   })
 
-  it("errors", () => {
+  it("Errors", () => {
     throws(
       () => Schema.String.pipe(Schema.extend(Schema.Number)),
       new Error(`Unsupported schema or overlapping types
