@@ -175,6 +175,8 @@ function processAnnotation<Services, S, I>(
   }
 }
 
+type AdditionalPropertiesStrategy = "allow" | "strict"
+
 /**
  * Converts an `HttpApi` instance into an OpenAPI Specification object.
  *
@@ -191,6 +193,12 @@ function processAnnotation<Services, S, I>(
  * integrates annotations like descriptions, summaries, external documentation,
  * and overrides. Cached results are used for better performance when the same
  * `HttpApi` instance is processed multiple times.
+ *
+ * **Options**
+ *
+ * - `additionalPropertiesStrategy`: Controls the handling of additional properties. Possible values are:
+ *   - `"strict"`: Disallow additional properties (default behavior).
+ *   - `"allow"`: Allow additional properties.
  *
  * @example
  * ```ts
@@ -214,7 +222,10 @@ function processAnnotation<Services, S, I>(
  * @since 1.0.0
  */
 export const fromApi = <Id extends string, Groups extends HttpApiGroup.Any, E, R>(
-  api: HttpApi.HttpApi<Id, Groups, E, R>
+  api: HttpApi.HttpApi<Id, Groups, E, R>,
+  options?: {
+    readonly additionalPropertiesStrategy?: AdditionalPropertiesStrategy | undefined
+  } | undefined
 ): OpenAPISpec => {
   const cached = apiCache.get(api)
   if (cached !== undefined) {
@@ -238,7 +249,8 @@ export const fromApi = <Id extends string, Groups extends HttpApiGroup.Any, E, R
 
   function processAST(ast: AST.AST): JsonSchema.JsonSchema {
     return JsonSchema.fromAST(ast, {
-      defs: jsonSchemaDefs
+      defs: jsonSchemaDefs,
+      additionalPropertiesStrategy: options?.additionalPropertiesStrategy
     })
   }
 

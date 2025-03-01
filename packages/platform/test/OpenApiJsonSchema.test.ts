@@ -53,4 +53,24 @@ describe("OpenApiJsonSchema", () => {
       }
     })
   })
+
+  it(`additionalPropertiesStrategy: "allow"`, () => {
+    const schema = Schema.Struct({ a: Schema.String })
+    const defs: Record<string, OpenApiJsonSchema.JsonSchema> = {}
+    const jsonSchema = OpenApiJsonSchema.makeWithDefs(schema, {
+      defs,
+      additionalPropertiesStrategy: "allow"
+    })
+    deepStrictEqual(jsonSchema, {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "string"
+        }
+      },
+      "required": ["a"],
+      "additionalProperties": true
+    })
+    deepStrictEqual(defs, {})
+  })
 })

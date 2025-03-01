@@ -255,35 +255,47 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Root => {
   return out
 }
 
+type TopLevelReferenceStrategy = "skip" | "keep"
+
+type AdditionalPropertiesStrategy = "allow" | "strict"
+
 /**
  * Creates a schema with additional options and definitions.
+ *
+ * **Options**
  *
  * - `defs`: A record of definitions that are included in the schema.
  * - `defsPath`: The path to the definitions within the schema (defaults to "#/$defs/").
  * - `topLevelReferenceStrategy`: Controls the handling of the top-level reference. Possible values are:
  *   - `"keep"`: Keep the top-level reference (default behavior).
  *   - `"skip"`: Skip the top-level reference.
+ * - `additionalPropertiesStrategy`: Controls the handling of additional properties. Possible values are:
+ *   - `"strict"`: Disallow additional properties (default behavior).
+ *   - `"allow"`: Allow additional properties.
  *
  * @category encoding
  * @since 1.0.0
  */
 export const makeWithDefs = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
   readonly defs: Record<string, any>
-  readonly defsPath?: string
-  readonly topLevelReferenceStrategy?: "skip" | "keep"
+  readonly defsPath?: string | undefined
+  readonly topLevelReferenceStrategy?: TopLevelReferenceStrategy | undefined
+  readonly additionalPropertiesStrategy?: AdditionalPropertiesStrategy | undefined
 }): JsonSchema => fromAST(schema.ast, options)
 
 /** @internal */
 export const fromAST = (ast: AST.AST, options: {
   readonly defs: Record<string, any>
-  readonly defsPath?: string
-  readonly topLevelReferenceStrategy?: "skip" | "keep"
+  readonly defsPath?: string | undefined
+  readonly topLevelReferenceStrategy?: TopLevelReferenceStrategy | undefined
+  readonly additionalPropertiesStrategy?: AdditionalPropertiesStrategy | undefined
 }): JsonSchema => {
   const jsonSchema = JSONSchema.fromAST(ast, {
     definitions: options.defs,
     definitionPath: options.defsPath ?? "#/components/schemas/",
     target: "openApi3.1",
-    topLevelReferenceStrategy: options.topLevelReferenceStrategy ?? "keep"
+    topLevelReferenceStrategy: options.topLevelReferenceStrategy,
+    additionalPropertiesStrategy: options.additionalPropertiesStrategy
   })
   return jsonSchema as JsonSchema
 }
