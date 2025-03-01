@@ -511,9 +511,7 @@ export const make = <
   readonly stream?: Stream
 }): Rpc<
   Tag,
-  Payload extends Schema.Struct<infer _> ? Payload
-    : Payload extends Schema.Struct.Fields ? Schema.Struct<Payload>
-    : never,
+  Payload extends Schema.Struct.Fields ? Schema.Struct<Payload> : Payload,
   Stream extends true ? RpcSchema.Stream<Success, Error> : Success,
   Stream extends true ? typeof Schema.Never : Error
 > => {

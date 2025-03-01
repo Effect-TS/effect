@@ -31,23 +31,21 @@ class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware
   requiredForClient: true
 }) {}
 
-export const UserRpcs = RpcGroup
-  .make(
-    Rpc.make("GetUser", {
-      success: User,
-      payload: { id: Schema.String }
-    }),
-    Rpc.fromTaggedRequest(StreamUsers),
-    Rpc.make("GetInterrupts", {
-      success: Schema.Number
-    }),
-    Rpc.make("GetEmits", {
-      success: Schema.Number
-    }),
-    Rpc.make("ProduceDefect"),
-    Rpc.make("Never")
-  )
-  .middleware(AuthMiddleware)
+export const UserRpcs = RpcGroup.make(
+  Rpc.make("GetUser", {
+    success: User,
+    payload: { id: Schema.String }
+  }),
+  Rpc.fromTaggedRequest(StreamUsers),
+  Rpc.make("GetInterrupts", {
+    success: Schema.Number
+  }),
+  Rpc.make("GetEmits", {
+    success: Schema.Number
+  }),
+  Rpc.make("ProduceDefect"),
+  Rpc.make("Never")
+).middleware(AuthMiddleware)
 
 const AuthLive = Layer.succeed(
   AuthMiddleware,
