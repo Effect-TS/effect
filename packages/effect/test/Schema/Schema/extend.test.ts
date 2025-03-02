@@ -164,7 +164,7 @@ describe("extend", () => {
         c: Schema.optionalWith(Schema.String, { exact: true, default: () => "" })
       })
       assertExtend(A, B, [
-        "({ readonly a: number; readonly b: string; readonly c?: string } <-> { readonly a: number; readonly b: string; readonly c: string })",
+        "({ readonly b: string; readonly c?: string; readonly a: number } <-> { readonly b: string; readonly c: string; readonly a: number })",
         "({ readonly b: string; readonly c?: string; readonly a: number } <-> { readonly b: string; readonly c: string; readonly a: number })"
       ])
     })
@@ -311,7 +311,7 @@ describe("extend", () => {
       const B = Schema.Struct({ c: Schema.Number })
       assertExtend(A, B, [
         "({ readonly a?: string; readonly b: string; readonly c: number } <-> { readonly a: string; readonly b: string; readonly c: number })",
-        "({ readonly c: number; readonly a?: string; readonly b: string } <-> { readonly c: number; readonly a: string; readonly b: string })"
+        "({ readonly a?: string; readonly b: string; readonly c: number } <-> { readonly a: string; readonly b: string; readonly c: number })"
       ])
     })
 
@@ -325,7 +325,7 @@ describe("extend", () => {
       )
       assertExtend(A, B, [
         "({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | ({ readonly a?: string | undefined; readonly c: string } <-> { readonly a: string; readonly c: string })",
-        "({ readonly b: string; readonly a?: string | undefined } <-> { readonly b: string; readonly a: string }) | ({ readonly c: string; readonly a?: string | undefined } <-> { readonly c: string; readonly a: string })"
+        "({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | ({ readonly a?: string | undefined; readonly c: string } <-> { readonly a: string; readonly c: string })"
       ])
     })
 
@@ -336,7 +336,7 @@ describe("extend", () => {
       const B = Schema.Struct({ b: Schema.String }).pipe(Schema.filter(() => true))
       assertExtend(A, B, [
         "{ ({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | filter }",
-        "{ ({ readonly b: string; readonly a?: string | undefined } <-> { readonly b: string; readonly a: string }) | filter }"
+        "{ ({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | filter }"
       ])
     })
 
@@ -367,6 +367,74 @@ describe("extend", () => {
         "({ readonly a?: string; readonly b: string; readonly c?: number; readonly d: boolean } <-> { readonly a: string; readonly b: string; readonly c: number; readonly d: boolean })",
         "({ readonly c?: number; readonly d: boolean; readonly a?: string; readonly b: string } <-> { readonly c: number; readonly d: boolean; readonly a: string; readonly b: string })"
       ])
+    })
+  })
+
+  describe("FinalTransformation", () => {
+    it("FinalTransformation & Struct", async () => {
+      const A = Schema.Struct({
+        a: Schema.String
+      })
+
+      const B = Schema.Struct({
+        b: Schema.String
+      })
+
+      const C = Schema.Struct({
+        c: Schema.String
+      })
+
+      const AB = Schema.transform(A, B, {
+        strict: true,
+        decode: (a) => ({ b: a.a }),
+        encode: (b) => ({ a: b.b })
+      })
+
+      assertExtend(AB, C, [
+        "({ readonly a: string; readonly c: string } <-> { readonly b: string; readonly c: string })",
+        "({ readonly a: string; readonly c: string } <-> { readonly b: string; readonly c: string })"
+      ])
+    })
+  })
+
+  describe("ComposeTransformation", () => {
+    it("ComposeTransformation & Struct", async () => {
+      const A = Schema.Struct({
+        a: Schema.NumberFromString
+      })
+
+      const B = Schema.Struct({
+        a: Schema.Number
+      })
+
+      const AB = Schema.compose(A, B)
+
+      const C = Schema.Struct({
+        c: Schema.String
+      })
+
+      assertExtend(AB, C, [
+        "({ readonly a: NumberFromString; readonly c: string } <-> { readonly a: number; readonly c: string })",
+        "({ readonly a: NumberFromString; readonly c: string } <-> { readonly a: number; readonly c: string })"
+      ])
+
+      const schema = Schema.extend(AB, C)
+      await Util.assertions.decoding.succeed(
+        schema,
+        { a: "1", c: "c" },
+        { a: 1, c: "c" }
+      )
+      await Util.assertions.decoding.fail(
+        schema,
+        { a: "a", c: "c" },
+        `({ readonly a: NumberFromString; readonly c: string } <-> { readonly a: number; readonly c: string })
+└─ Encoded side transformation failure
+   └─ { readonly a: NumberFromString; readonly c: string }
+      └─ ["a"]
+         └─ NumberFromString
+            └─ Transformation process failure
+               └─ Unable to decode "a" into a number`
+      )
     })
   })
 
