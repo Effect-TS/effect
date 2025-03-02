@@ -112,7 +112,7 @@ console.log(rendered)
 If we narrow the page width to only `20` characters, the same document renders vertically aligned:
 
 ```ts
-const rendered = Doc.render(doc, { style: 'pretty' }, options: { lineWidth: 20 })
+const rendered = Doc.render(doc, { style: 'pretty', options: { lineWidth: 20 } })
 console.log(rendered)
 // example :: Int
 //         -> Bool
