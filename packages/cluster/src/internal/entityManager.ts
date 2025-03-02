@@ -113,6 +113,7 @@ export const make = Effect.fnUntraced(function*<
     )
 
     const activeRequests: EntityState["activeRequests"] = new Map()
+    let defectRequestIds: Array<bigint> = []
 
     // the server is stored in a ref, so if there is a defect, we can
     // swap the server without losing the active requests
@@ -197,6 +198,7 @@ export const make = Effect.fnUntraced(function*<
               }
               case "Defect": {
                 const effect = writeRef.unsafeRebuild()
+                defectRequestIds = Array.from(activeRequests.keys())
                 return Effect.logError("Defect in entity, restarting", Cause.die(response.defect)).pipe(
                   Effect.andThen(effect.pipe(
                     Effect.tapErrorCause(Effect.logError),
@@ -226,7 +228,8 @@ export const make = Effect.fnUntraced(function*<
           })
         )
 
-        for (const { lastSentChunk, message } of activeRequests.values()) {
+        for (const id of defectRequestIds) {
+          const { lastSentChunk, message } = activeRequests.get(id)!
           yield* server.write(0, {
             ...message.envelope,
             id: RequestId(message.envelope.requestId),
@@ -237,6 +240,7 @@ export const make = Effect.fnUntraced(function*<
             } as any) as any
           })
         }
+        defectRequestIds = []
 
         return server.write
       })

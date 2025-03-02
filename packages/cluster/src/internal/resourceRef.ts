@@ -16,7 +16,7 @@ export type State<A> = {
   readonly value: A
 }
 
-export class ResourceRef<A, E> {
+export class ResourceRef<A, E = never> {
   static from = Effect.fnUntraced(function*<A, E>(
     parentScope: Scope.Scope,
     acquire: (scope: Scope.Scope) => Effect.Effect<A, E>
