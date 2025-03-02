@@ -3255,18 +3255,13 @@ const intersectTypeLiterals = (
   throw new Error(errors_.getSchemaExtendErrorMessage(x, y, path))
 }
 
-const preserveRefinementAnnotations = AST.blackListAnnotations([
-  AST.IdentifierAnnotationId
-])
+const preserveRefinementAnnotations = AST.blackListAnnotations([AST.IdentifierAnnotationId])
 
 const addRefinementToMembers = (refinement: AST.Refinement, asts: ReadonlyArray<AST.AST>): Array<AST.Refinement> =>
   asts.map((ast) => new AST.Refinement(ast, refinement.filter, preserveRefinementAnnotations(refinement)))
 
-const extendAST = (
-  x: AST.AST,
-  y: AST.AST,
-  path: ReadonlyArray<PropertyKey>
-): AST.AST => AST.Union.make(intersectUnionMembers([x], [y], path))
+const extendAST = (x: AST.AST, y: AST.AST, path: ReadonlyArray<PropertyKey>): AST.AST =>
+  AST.Union.make(intersectUnionMembers([x], [y], path))
 
 const getTypes = (ast: AST.AST): ReadonlyArray<AST.AST> => AST.isUnion(ast) ? ast.types : [ast]
 
@@ -3341,59 +3336,63 @@ const intersectUnionMembers = (
             case "TypeLiteral":
               return [intersectTypeLiterals(x, y, path)]
             case "Transformation": {
-              if (AST.isTypeLiteralTransformation(x.transformation)) {
-                return [
-                  new AST.Transformation(
-                    intersectTypeLiterals(x.from, y, path),
-                    intersectTypeLiterals(x.to, AST.typeAST(y), path),
-                    new AST.TypeLiteralTransformation(
-                      x.transformation.propertySignatureTransformations
+              const transformation = x.transformation
+              const from = intersectTypeLiterals(x.from, y, path)
+              const to = intersectTypeLiterals(x.to, AST.typeAST(y), path)
+              switch (transformation._tag) {
+                case "TypeLiteralTransformation":
+                  return [
+                    new AST.Transformation(
+                      from,
+                      to,
+                      new AST.TypeLiteralTransformation(transformation.propertySignatureTransformations)
                     )
-                  )
-                ]
+                  ]
+                case "ComposeTransformation":
+                  return [new AST.Transformation(from, to, AST.composeTransformation)]
+                case "FinalTransformation":
+                  return [
+                    new AST.Transformation(
+                      from,
+                      to,
+                      new AST.FinalTransformation(
+                        (fromA, options, ast, fromI) =>
+                          ParseResult.map(
+                            transformation.decode(fromA, options, ast, fromI),
+                            (partial) => ({ ...fromA, ...partial })
+                          ),
+                        (toI, options, ast, toA) =>
+                          ParseResult.map(
+                            transformation.encode(toI, options, ast, toA),
+                            (partial) => ({ ...toI, ...partial })
+                          )
+                      )
+                    )
+                  ]
               }
-              break
             }
           }
           break
         }
         case "Transformation": {
-          if (AST.isTypeLiteralTransformation(y.transformation)) {
-            switch (x._tag) {
-              case "Union":
-                return intersectUnionMembers(x.types, [y], path)
-              case "Suspend":
-                return [new AST.Suspend(() => extendAST(x.f(), y, path))]
-              case "Refinement":
-                return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), [y], path))
-              case "TypeLiteral":
-                return [
-                  new AST.Transformation(
-                    intersectTypeLiterals(x, y.from, path),
-                    intersectTypeLiterals(AST.typeAST(x), y.to, path),
-                    new AST.TypeLiteralTransformation(
-                      y.transformation.propertySignatureTransformations
+          if (AST.isTransformation(x)) {
+            if (
+              AST.isTypeLiteralTransformation(y.transformation) && AST.isTypeLiteralTransformation(x.transformation)
+            ) {
+              return [
+                new AST.Transformation(
+                  intersectTypeLiterals(x.from, y.from, path),
+                  intersectTypeLiterals(x.to, y.to, path),
+                  new AST.TypeLiteralTransformation(
+                    y.transformation.propertySignatureTransformations.concat(
+                      x.transformation.propertySignatureTransformations
                     )
                   )
-                ]
-              case "Transformation":
-                {
-                  if (AST.isTypeLiteralTransformation(x.transformation)) {
-                    return [
-                      new AST.Transformation(
-                        intersectTypeLiterals(x.from, y.from, path),
-                        intersectTypeLiterals(x.to, y.to, path),
-                        new AST.TypeLiteralTransformation(
-                          y.transformation.propertySignatureTransformations.concat(
-                            x.transformation.propertySignatureTransformations
-                          )
-                        )
-                      )
-                    ]
-                  }
-                }
-                break
+                )
+              ]
             }
+          } else {
+            return intersectUnionMembers([y], [x], path)
           }
           break
         }
