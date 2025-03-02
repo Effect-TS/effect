@@ -44,6 +44,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         IF OBJECT_ID(N'${messagesTableSql}', N'U') IS NULL
         CREATE TABLE ${messagesTableSql} (
           id BIGINT PRIMARY KEY,
+          rowid BIGINT IDENTITY(1,1),
           message_id VARCHAR(255),
           shard_id INT NOT NULL,
           entity_type VARCHAR(255) NOT NULL,
@@ -61,14 +62,15 @@ export const make = Effect.fnUntraced(function*(options?: {
           last_reply_id BIGINT,
           last_read DATETIME,
           deliver_at BIGINT,
-          CONSTRAINT ${sql(messagesTable + "_id")} UNIQUE (message_id),
+          UNIQUE (message_id),
           FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
         )
       `,
     mysql: () =>
       sql`
         CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
-          id BIGINT PRIMARY KEY,
+          id BIGINT NOT NULL,
+          rowid BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
           message_id VARCHAR(255),
           shard_id INT NOT NULL,
           entity_type VARCHAR(255) NOT NULL,
@@ -86,7 +88,8 @@ export const make = Effect.fnUntraced(function*(options?: {
           last_reply_id BIGINT,
           last_read DATETIME,
           deliver_at BIGINT,
-          CONSTRAINT ${sql(messagesTable + "_id")} UNIQUE (message_id),
+          UNIQUE (id),
+          UNIQUE (message_id),
           FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
         )
       `,
@@ -94,6 +97,7 @@ export const make = Effect.fnUntraced(function*(options?: {
       sql`
         CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
           id BIGINT PRIMARY KEY,
+          rowid BIGSERIAL,
           message_id VARCHAR(255),
           shard_id INT NOT NULL,
           entity_type VARCHAR(255) NOT NULL,
@@ -111,7 +115,7 @@ export const make = Effect.fnUntraced(function*(options?: {
           last_reply_id BIGINT,
           last_read TIMESTAMP,
           deliver_at BIGINT,
-          CONSTRAINT ${sql(messagesTable + "_id")} UNIQUE (message_id),
+          UNIQUE (message_id),
           FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
         )
       `.pipe(Effect.ignore),
@@ -203,6 +207,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         IF OBJECT_ID(N'${repliesTableSql}', N'U') IS NULL
         CREATE TABLE ${repliesTableSql} (
           id BIGINT PRIMARY KEY,
+          rowid BIGINT IDENTITY(1,1),
           kind INT,
           request_id BIGINT NOT NULL,
           payload TEXT NOT NULL,
@@ -216,14 +221,16 @@ export const make = Effect.fnUntraced(function*(options?: {
     mysql: () =>
       sql`
         CREATE TABLE IF NOT EXISTS ${repliesTableSql} (
-          id BIGINT PRIMARY KEY,
+          id BIGINT NOT NULL,
+          rowid BIGINT AUTO_INCREMENT PRIMARY KEY,
           kind INT,
           request_id BIGINT NOT NULL,
           payload TEXT NOT NULL,
           sequence INT,
           acked BOOLEAN NOT NULL DEFAULT FALSE,
-          CONSTRAINT ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind),
-          CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence),
+          UNIQUE (id),
+          UNIQUE (request_id, kind),
+          UNIQUE (request_id, sequence),
           FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
         )
       `,
@@ -231,13 +238,14 @@ export const make = Effect.fnUntraced(function*(options?: {
       sql`
         CREATE TABLE IF NOT EXISTS ${repliesTableSql} (
           id BIGINT PRIMARY KEY,
+          rowid BIGSERIAL,
           kind INT,
           request_id BIGINT NOT NULL,
           payload TEXT NOT NULL,
           sequence INT,
           acked BOOLEAN NOT NULL DEFAULT FALSE,
-          CONSTRAINT ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind),
-          CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence),
+          UNIQUE (request_id, kind),
+          UNIQUE (request_id, sequence),
           FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
         )
       `,
@@ -456,7 +464,6 @@ export const make = Effect.fnUntraced(function*(options?: {
           LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
           WHERE m.message_id = ${message_id}
           AND NOT EXISTS (SELECT 1 FROM inserted)
-          ORDER BY r.id DESC
         )
         SELECT * FROM existing
       `,
@@ -465,8 +472,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         FROM ${messagesTableSql} m
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-        WHERE m.message_id = ${message_id}
-        ORDER BY r.id DESC;
+        WHERE m.message_id = ${message_id};
         INSERT INTO ${messagesTableSql} ${sql.insert(row)}
         ON DUPLICATE KEY UPDATE id = id;
       `.unprepared.pipe(
@@ -487,29 +493,28 @@ export const make = Effect.fnUntraced(function*(options?: {
           inserted.id,
           CASE
             WHEN inserted.id IS NULL THEN (
-              SELECT TOP 1 r.id, r.kind, r.payload
+              SELECT r.id, r.kind, r.payload
               FROM ${repliesTableSql} r
               WHERE r.id = target.last_reply_id
-              ORDER BY r.id DESC
             )
           END as reply_id,
           CASE
             WHEN inserted.id IS NULL THEN (
-              SELECT TOP 1 r.kind
+              SELECT r.kind
               FROM ${repliesTableSql} r
               WHERE r.id = target.last_reply_id
             )
           END as reply_kind,
           CASE
             WHEN inserted.id IS NULL THEN (
-              SELECT TOP 1 r.payload
+              SELECT r.payload
               FROM ${repliesTableSql} r
               WHERE r.id = target.last_reply_id
             )
           END as reply_payload,
           CASE
             WHEN inserted.id IS NULL THEN (
-              SELECT TOP 1 r.sequence
+              SELECT r.sequence
               FROM ${repliesTableSql} r
               WHERE r.id = target.last_reply_id
             )
@@ -559,7 +564,7 @@ export const make = Effect.fnUntraced(function*(options?: {
           AND m.processed = ${sqlFalse}
           AND (m.last_read IS NULL OR m.last_read < ${fiveMinutesAgo})
           AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
-          ORDER BY m.id ASC
+          ORDER BY m.rowid ASC
           FOR UPDATE
         ) AS ids
         LEFT JOIN ${repliesTableSql} r ON r.id = ids.last_reply_id
@@ -580,7 +585,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         AND processed = ${sqlFalse}
         AND (m.last_read IS NULL OR m.last_read < ${fiveMinutesAgo})
         AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
-        ORDER BY m.id ASC
+        ORDER BY m.rowid ASC
       `.unprepared.pipe(
         Effect.tap((rows) => {
           if (rows.length === 0) {
@@ -672,7 +677,7 @@ export const make = Effect.fnUntraced(function*(options?: {
             AND acked = ${sqlFalse}
           )
         )
-        ORDER BY id ASC
+        ORDER BY rowid ASC
       `.unprepared.pipe(
         Effect.provideService(SqlClient.SafeIntegers, true),
         Effect.map(Arr.map((row): Reply.ReplyEncoded<any> =>
@@ -729,7 +734,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         )
         AND m.processed = ${sqlFalse}
         AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
-        ORDER BY m.id ASC
+        ORDER BY m.rowid ASC
       `.unprepared.pipe(
         Effect.map(Arr.map(messageFromRow)),
         Effect.provideService(SqlClient.SafeIntegers, true),
