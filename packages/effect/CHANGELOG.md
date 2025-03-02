@@ -1,5 +1,123 @@
 # effect
 
+## 3.13.5
+
+### Patch Changes
+
+- [#4530](https://github.com/Effect-TS/effect/pull/4530) [`367bb35`](https://github.com/Effect-TS/effect/commit/367bb35f4c2a254e1fb211d96db2474a7aed9020) Thanks @tim-smart! - Match.tag + Match.withReturnType can use literals without as const
+
+- [#4543](https://github.com/Effect-TS/effect/pull/4543) [`6cf11c3`](https://github.com/Effect-TS/effect/commit/6cf11c3a75773ceec2877c85ddc760f381f0866d) Thanks @gcanti! - Preserve branded primitive types in `DeepMutable` transformation, closes #4542.
+
+  Previously, applying `DeepMutable` to branded primitive types (e.g., `string & Brand.Brand<"mybrand">`) caused unexpected behavior, where `String` prototype methods were incorrectly inherited.
+
+  This fix ensures that branded types remain unchanged during transformation, preventing type inconsistencies.
+
+  **Example**
+
+  Before
+
+  ```ts
+  import type { Brand, Types } from "effect"
+
+  type T = string & Brand.Brand<"mybrand">
+
+  /*
+  type Result = {
+      [x: number]: string;
+      toString: () => string;
+      charAt: (pos: number) => string;
+      charCodeAt: (index: number) => number;
+      concat: (...strings: string[]) => string;
+      indexOf: (searchString: string, position?: number) => number;
+      ... 47 more ...;
+      [BrandTypeId]: {
+          ...;
+      };
+  }
+  */
+  type Result = Types.DeepMutable<T>
+  ```
+
+  After
+
+  ```ts
+  import type { Brand, Types } from "effect"
+
+  type T = string & Brand.Brand<"mybrand">
+
+  // type Result = string & Brand.Brand<"mybrand">
+  type Result = Types.DeepMutable<T>
+  ```
+
+- [#4546](https://github.com/Effect-TS/effect/pull/4546) [`a0acec8`](https://github.com/Effect-TS/effect/commit/a0acec851f72e19466363d24b9cc218acd00006a) Thanks @gcanti! - Schema.extend: add support for Transformation + Struct, closes #4536.
+
+  **Example**
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const A = Schema.Struct({
+    a: Schema.String
+  })
+
+  const B = Schema.Struct({
+    b: Schema.String
+  })
+
+  const C = Schema.Struct({
+    c: Schema.String
+  })
+
+  const AB = Schema.transform(A, B, {
+    strict: true,
+    decode: (a) => ({ b: a.a }),
+    encode: (b) => ({ a: b.b })
+  })
+
+  // Transformation + Struct
+  const schema = Schema.extend(AB, C)
+  /*
+  throws:
+  Error: Unsupported schema or overlapping types
+  details: cannot extend ({ readonly a: string } <-> { readonly b: string }) with { readonly c: string }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  const A = Schema.Struct({
+    a: Schema.String
+  })
+
+  const B = Schema.Struct({
+    b: Schema.String
+  })
+
+  const C = Schema.Struct({
+    c: Schema.String
+  })
+
+  const AB = Schema.transform(A, B, {
+    strict: true,
+    decode: (a) => ({ b: a.a }),
+    encode: (b) => ({ a: b.b })
+  })
+
+  // Transformation + Struct
+  const schema = Schema.extend(AB, C)
+
+  console.log(Schema.decodeUnknownSync(schema)({ a: "a", c: "c" }))
+  // Output: { b: 'a', c: 'c' }
+
+  console.log(Schema.encodeSync(schema)({ b: "b", c: "c" }))
+  // Output: { a: 'b', c: 'c' }
+  ```
+
 ## 3.13.4
 
 ### Patch Changes
