@@ -12,7 +12,7 @@ import type * as Predicate from "effect/Predicate"
 import type { Ref } from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
-import type { NoInfer } from "effect/Types"
+import type { NoExcessProperties, NoInfer } from "effect/Types"
 import type { Cookies } from "./Cookies.js"
 import type * as Error from "./HttpClientError.js"
 import type * as ClientRequest from "./HttpClientRequest.js"
@@ -478,7 +478,7 @@ export declare namespace Retry {
    * @since 1.0.0
    * @category error handling
    */
-  export type Return<R, E, O extends Effect.Retry.Options<E>> = HttpClient.With<
+  export type Return<R, E, O extends NoExcessProperties<Effect.Retry.Options<E>, O>> = HttpClient.With<
     | (O extends { schedule: Schedule.Schedule<infer _O, infer _I, infer _R> } ? E
       : O extends { until: Predicate.Refinement<E, infer E2> } ? E2
       : E)
@@ -498,12 +498,20 @@ export declare namespace Retry {
  * @category error handling
  */
 export const retry: {
-  <E, O extends Effect.Retry.Options<E>>(options: O): <R>(self: HttpClient.With<E, R>) => Retry.Return<R, E, O>
+  <E, O extends NoExcessProperties<Effect.Retry.Options<E>, O>>(
+    options: O
+  ): <R>(self: HttpClient.With<E, R>) => Retry.Return<R, E, O>
   <B, E, R1>(
     policy: Schedule.Schedule<B, NoInfer<E>, R1>
   ): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R1 | R>
-  <E, R, O extends Effect.Retry.Options<E>>(self: HttpClient.With<E, R>, options: O): Retry.Return<R, E, O>
-  <E, R, B, R1>(self: HttpClient.With<E, R>, policy: Schedule.Schedule<B, E, R1>): HttpClient.With<E, R1 | R>
+  <E, R, O extends NoExcessProperties<Effect.Retry.Options<E>, O>>(
+    self: HttpClient.With<E, R>,
+    options: O
+  ): Retry.Return<R, E, O>
+  <E, R, B, R1>(
+    self: HttpClient.With<E, R>,
+    policy: Schedule.Schedule<B, E, R1>
+  ): HttpClient.With<E, R1 | R>
 } = internal.retry
 
 /**

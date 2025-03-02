@@ -12,7 +12,7 @@ import * as Predicate from "effect/Predicate"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
-import type { NoInfer } from "effect/Types"
+import type { NoExcessProperties, NoInfer } from "effect/Types"
 import * as Cookies from "../Cookies.js"
 import * as Headers from "../Headers.js"
 import type * as Client from "../HttpClient.js"
@@ -541,13 +541,13 @@ export const mapRequestInputEffect = dual<
 
 /** @internal */
 export const retry: {
-  <E, O extends Effect.Retry.Options<E>>(
+  <E, O extends NoExcessProperties<Effect.Retry.Options<E>, O>>(
     options: O
   ): <R>(self: Client.HttpClient.With<E, R>) => Client.Retry.Return<R, E, O>
   <B, E, R1>(
     policy: Schedule.Schedule<B, NoInfer<E>, R1>
   ): <R>(self: Client.HttpClient.With<E, R>) => Client.HttpClient.With<E, R1 | R>
-  <E, R, O extends Effect.Retry.Options<E>>(
+  <E, R, O extends NoExcessProperties<Effect.Retry.Options<E>, O>>(
     self: Client.HttpClient.With<E, R>,
     options: O
   ): Client.Retry.Return<R, E, O>

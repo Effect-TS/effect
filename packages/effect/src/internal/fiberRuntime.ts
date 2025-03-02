@@ -43,7 +43,7 @@ import { currentScheduler, type Scheduler } from "../Scheduler.js"
 import type * as Scope from "../Scope.js"
 import type * as Supervisor from "../Supervisor.js"
 import type * as Tracer from "../Tracer.js"
-import type { Concurrency, NoInfer } from "../Types.js"
+import type { Concurrency, NoExcessProperties, NoInfer } from "../Types.js"
 import { internalCall, yieldWrapGet } from "../Utils.js"
 import * as RequestBlock_ from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
@@ -1945,13 +1945,13 @@ const allEither = (
 /* @internal */
 export const all = <
   const Arg extends Iterable<Effect.Effect<any, any, any>> | Record<string, Effect.Effect<any, any, any>>,
-  O extends {
+  O extends NoExcessProperties<{
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly discard?: boolean | undefined
     readonly mode?: "default" | "validate" | "either" | undefined
     readonly concurrentFinalizers?: boolean | undefined
-  }
+  }, O>
 >(
   arg: Arg,
   options?: O
@@ -1974,13 +1974,13 @@ export const all = <
 
 /* @internal */
 export const allWith = <
-  O extends {
+  O extends NoExcessProperties<{
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly discard?: boolean | undefined
     readonly mode?: "default" | "validate" | "either" | undefined
     readonly concurrentFinalizers?: boolean | undefined
-  }
+  }, O>
 >(options?: O) =>
 <const Arg extends Iterable<Effect.Effect<any, any, any>> | Record<string, Effect.Effect<any, any, any>>>(
   arg: Arg

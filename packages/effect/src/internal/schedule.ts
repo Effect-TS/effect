@@ -1810,14 +1810,14 @@ export const repeat_Effect = dual<
 
 /** @internal */
 export const repeat_combined = dual<{
-  <O extends Effect.Repeat.Options<A>, A>(
+  <O extends Types.NoExcessProperties<Effect.Repeat.Options<A>, O>, A>(
     options: O
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Repeat.Return<R, E, A, O>
   <B, A, R1>(
     schedule: Schedule.Schedule<B, A, R1>
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E, R | R1>
 }, {
-  <A, E, R, O extends Effect.Repeat.Options<A>>(
+  <A, E, R, O extends Types.NoExcessProperties<Effect.Repeat.Options<A>, O>>(
     self: Effect.Effect<A, E, R>,
     options: O
   ): Effect.Repeat.Return<R, E, A, O>
@@ -1907,7 +1907,7 @@ export const retry_Effect = dual<
 
 /** @internal */
 export const retry_combined: {
-  <E, O extends Effect.Retry.Options<E>>(
+  <E, O extends Types.NoExcessProperties<Effect.Retry.Options<E>, O>>(
     options: O
   ): <A, R>(
     self: Effect.Effect<A, E, R>
@@ -1915,7 +1915,7 @@ export const retry_combined: {
   <B, E, R1>(
     policy: Schedule.Schedule<B, Types.NoInfer<E>, R1>
   ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R1 | R>
-  <A, E, R, O extends Effect.Retry.Options<E>>(
+  <A, E, R, O extends Types.NoExcessProperties<Effect.Retry.Options<E>, O>>(
     self: Effect.Effect<A, E, R>,
     options: O
   ): Effect.Retry.Return<R, E, A, O>

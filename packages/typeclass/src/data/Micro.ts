@@ -30,7 +30,6 @@ const imap = covariant.imap<Micro.MicroTypeLambda>(map)
  */
 export type ConcurrencyOptions = {
   readonly concurrency?: Concurrency | undefined
-  readonly batching?: boolean | "inherit" | undefined
 }
 
 const product = (options?: ConcurrencyOptions): product_.Product<Micro.MicroTypeLambda>["product"] => (self, that) =>

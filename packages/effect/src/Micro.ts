@@ -28,7 +28,7 @@ import type { Predicate, Refinement } from "./Predicate.js"
 import { hasProperty, isIterable, isTagged } from "./Predicate.js"
 import type { Sink } from "./Sink.js"
 import type { Stream } from "./Stream.js"
-import type { Concurrency, Covariant, Equals, NotFunction, Simplify } from "./Types.js"
+import type { Concurrency, Covariant, Equals, NoExcessProperties, NotFunction, Simplify } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import { SingleShotGen, YieldWrap, yieldWrapGet } from "./Utils.js"
 
@@ -3778,10 +3778,10 @@ export declare namespace All {
    */
   export type Return<
     Arg extends Iterable<MicroAny> | Record<string, MicroAny>,
-    O extends {
+    O extends NoExcessProperties<{
       readonly concurrency?: Concurrency | undefined
       readonly discard?: boolean | undefined
-    }
+    }, O>
   > = [Arg] extends [ReadonlyArray<MicroAny>] ? ReturnTuple<Arg, IsDiscard<O>>
     : [Arg] extends [Iterable<MicroAny>] ? ReturnIterable<Arg, IsDiscard<O>>
     : [Arg] extends [Record<string, MicroAny>] ? ReturnObject<Arg, IsDiscard<O>>
@@ -3799,10 +3799,10 @@ export declare namespace All {
  */
 export const all = <
   const Arg extends Iterable<Micro<any, any, any>> | Record<string, Micro<any, any, any>>,
-  O extends {
+  O extends NoExcessProperties<{
     readonly concurrency?: Concurrency | undefined
     readonly discard?: boolean | undefined
-  }
+  }, O>
 >(arg: Arg, options?: O): All.Return<Arg, O> => {
   if (Array.isArray(arg) || isIterable(arg)) {
     return (forEach as any)(arg, identity, options)
