@@ -13,6 +13,7 @@ import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Metric from "effect/Metric"
 import * as Option from "effect/Option"
+import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import { AlreadyProcessingMessage, EntityNotManagedByRunner, MailboxFull, MalformedMessage } from "../ClusterError.js"
@@ -126,7 +127,8 @@ export const make = Effect.fnUntraced(function*<
             Context.add(CurrentAddress, address),
             Context.add(CurrentRunnerAddress, options.runnerAddress),
             Context.add(Scope.Scope, scope)
-          ))
+          )),
+          Effect.locally(FiberRef.currentLogAnnotations, HashMap.empty())
         ) as Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>)
 
         const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
@@ -195,14 +197,17 @@ export const make = Effect.fnUntraced(function*<
               }
               case "Defect": {
                 const effect = writeRef.unsafeRebuild()
-                return Effect.annotateLogs(
-                  Effect.logError("Defect in entity, restarting", Cause.die(response.defect)),
-                  {
+                return Effect.logError("Defect in entity, restarting", Cause.die(response.defect)).pipe(
+                  Effect.andThen(effect.pipe(
+                    Effect.tapErrorCause(Effect.logError),
+                    Effect.retry(Schedule.spaced(500))
+                  )),
+                  Effect.annotateLogs({
                     module: "EntityManager",
                     address,
                     runner: options.runnerAddress
-                  }
-                ).pipe(Effect.andThen(effect))
+                  })
+                )
               }
               case "ClientEnd": {
                 return endLatch.open
