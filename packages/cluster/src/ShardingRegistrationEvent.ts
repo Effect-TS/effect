@@ -1,62 +1,61 @@
 /**
  * @since 1.0.0
  */
-import type * as Message from "./Message.js"
-import type * as RecipientType from "./RecipientType.js"
-
-interface EntityRegistered<Msg extends Message.Message.Any> {
-  _tag: "EntityRegistered"
-  entityType: RecipientType.EntityType<Msg>
-}
+import * as Data from "effect/Data"
+import type { Entity } from "./Entity.js"
+import type { SingletonAddress } from "./SingletonAddress.js"
 
 /**
- * Constructs and event that occurs when a new EntityType gets registered.
+ * Represents events that can occur when a runner registers entities or singletons.
  *
- * @since 1.0.0
- * @category constructors
- */
-export function EntityRegistered<Msg extends Message.Message.Any>(
-  entityType: RecipientType.EntityType<Msg>
-): ShardingRegistrationEvent {
-  return ({ _tag: "EntityRegistered", entityType })
-}
-
-interface SingletonRegistered {
-  _tag: "SingletonRegistered"
-  name: string
-}
-
-/**
- * Constructs a new event that occurs when a new Singleton is registered.
- *
- * @since 1.0.0
- * @category constructors
- */
-export function SingletonRegistered(name: string): ShardingRegistrationEvent {
-  return ({ _tag: "SingletonRegistered", name })
-}
-
-interface TopicRegistered<Msg extends Message.Message.Any> {
-  _tag: "TopicRegistered"
-  topicType: RecipientType.TopicType<Msg>
-}
-
-/**
- * Constructs a new event that occurs when a topic is Registered.
- * @since 1.0.0
- * @category constructors
- */
-export function TopicRegistered<Msg extends Message.Message.Any>(
-  topicType: RecipientType.TopicType<Msg>
-): ShardingRegistrationEvent {
-  return ({ _tag: "TopicRegistered", topicType })
-}
-
-/**
  * @since 1.0.0
  * @category models
  */
 export type ShardingRegistrationEvent =
-  | EntityRegistered<any>
+  | EntityRegistered
   | SingletonRegistered
-  | TopicRegistered<any>
+
+/**
+ * Represents an event that occurs when a new entity is registered with a runner.
+ *
+ * @since 1.0.0
+ * @category models
+ */
+export interface EntityRegistered {
+  readonly _tag: "EntityRegistered"
+  readonly entity: Entity<any>
+}
+
+/**
+ * Represents an event that occurs when a new singleton is registered with a
+ * runner.
+ *
+ * @since 1.0.0
+ * @category models
+ */
+export interface SingletonRegistered {
+  readonly _tag: "SingletonRegistered"
+  readonly address: SingletonAddress
+}
+
+/**
+ * @since 1.0.0
+ * @category pattern matching
+ */
+export const {
+  /**
+   * @since 1.0.0
+   * @category pattern matching
+   */
+  $match: match,
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  EntityRegistered,
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  SingletonRegistered
+} = Data.taggedEnum<ShardingRegistrationEvent>()

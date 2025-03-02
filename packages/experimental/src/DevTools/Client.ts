@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Ndjson from "@effect/platform/Ndjson"
 import * as Socket from "@effect/platform/Socket"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
@@ -16,7 +17,6 @@ import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
-import * as Ndjson from "../Ndjson.js"
 import * as Domain from "./Domain.js"
 
 /**
