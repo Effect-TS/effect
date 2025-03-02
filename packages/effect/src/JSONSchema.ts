@@ -271,6 +271,8 @@ type Target = "jsonSchema7" | "jsonSchema2019-09" | "openApi3.1"
 
 type TopLevelReferenceStrategy = "skip" | "keep"
 
+type AdditionalPropertiesStrategy = "allow" | "strict"
+
 /**
  * Returns a JSON Schema with additional options and definitions.
  *
@@ -278,7 +280,7 @@ type TopLevelReferenceStrategy = "skip" | "keep"
  *
  * This function is experimental and subject to change.
  *
- * **Details**
+ * **Options**
  *
  * - `definitions`: A record of definitions that are included in the schema.
  * - `definitionPath`: The path to the definitions within the schema (defaults
@@ -291,6 +293,9 @@ type TopLevelReferenceStrategy = "skip" | "keep"
  *   reference. Possible values are:
  *   - `"keep"`: Keep the top-level reference (default behavior).
  *   - `"skip"`: Skip the top-level reference.
+ * - `additionalPropertiesStrategy`: Controls the handling of additional properties. Possible values are:
+ *   - `"strict"`: Disallow additional properties (default behavior).
+ *   - `"allow"`: Allow additional properties.
  *
  * @category encoding
  * @since 3.11.5
@@ -298,17 +303,20 @@ type TopLevelReferenceStrategy = "skip" | "keep"
  */
 export const fromAST = (ast: AST.AST, options: {
   readonly definitions: Record<string, JsonSchema7>
-  readonly definitionPath?: string
-  readonly target?: Target
-  readonly topLevelReferenceStrategy?: TopLevelReferenceStrategy
+  readonly definitionPath?: string | undefined
+  readonly target?: Target | undefined
+  readonly topLevelReferenceStrategy?: TopLevelReferenceStrategy | undefined
+  readonly additionalPropertiesStrategy?: AdditionalPropertiesStrategy | undefined
 }): JsonSchema7 => {
   const definitionPath = options.definitionPath ?? "#/$defs/"
   const getRef = (id: string) => definitionPath + id
-  const target: Target = options.target ?? "jsonSchema7"
+  const target = options.target ?? "jsonSchema7"
   const handleIdentifier = options.topLevelReferenceStrategy !== "skip"
+  const additionalPropertiesStrategy = options.additionalPropertiesStrategy ?? "strict"
   return go(ast, options.definitions, handleIdentifier, [], {
     getRef,
-    target
+    target,
+    additionalPropertiesStrategy
   })
 }
 
@@ -450,19 +458,51 @@ const mergeRefinements = (from: any, jsonSchema: any, annotations: any): any => 
   return out
 }
 
-type Options = {
+type GoOptions = {
   readonly getRef: (id: string) => string
   readonly target: Target
+  readonly additionalPropertiesStrategy: AdditionalPropertiesStrategy
 }
 
-type Path = ReadonlyArray<PropertyKey>
+function isContentSchemaSupported(options: GoOptions): boolean {
+  switch (options.target) {
+    case "jsonSchema7":
+      return false
+    case "jsonSchema2019-09":
+    case "openApi3.1":
+      return true
+  }
+}
 
-const isContentSchemaSupported = (options: Options) => options.target !== "jsonSchema7"
-
-const isNullTypeKeywordSupported = (options: Options) => options.target !== "openApi3.1"
+function isNullTypeKeywordSupported(options: GoOptions): boolean {
+  switch (options.target) {
+    case "jsonSchema7":
+    case "jsonSchema2019-09":
+      return true
+    case "openApi3.1":
+      return false
+  }
+}
 
 // https://swagger.io/docs/specification/v3_0/data-models/data-types/#null
-const isNullableKeywordSupported = (options: Options) => options.target === "openApi3.1"
+function isNullableKeywordSupported(options: GoOptions): boolean {
+  switch (options.target) {
+    case "jsonSchema7":
+    case "jsonSchema2019-09":
+      return false
+    case "openApi3.1":
+      return true
+  }
+}
+
+function getAdditionalProperties(options: GoOptions): boolean {
+  switch (options.additionalPropertiesStrategy) {
+    case "allow":
+      return true
+    case "strict":
+      return false
+  }
+}
 
 const isNeverJSONSchema = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Never =>
   "$id" in jsonSchema && jsonSchema.$id === "/schemas/never"
@@ -496,8 +536,8 @@ const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
   handleIdentifier: boolean,
-  path: Path,
-  options: Options
+  path: ReadonlyArray<PropertyKey>,
+  options: GoOptions
 ): JsonSchema7 => {
   if (handleIdentifier) {
     const identifier = AST.getJSONIdentifier(ast)
@@ -639,7 +679,7 @@ const go = (
         type: "object",
         required: [],
         properties: {},
-        additionalProperties: false
+        additionalProperties: getAdditionalProperties(options)
       }
       let patternProperties: JsonSchema7 | undefined = undefined
       let propertyNames: JsonSchema7 | undefined = undefined
