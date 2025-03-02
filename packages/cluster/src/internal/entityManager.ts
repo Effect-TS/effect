@@ -7,6 +7,7 @@ import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as ExecutionStrategy from "effect/ExecutionStrategy"
 import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
@@ -55,7 +56,6 @@ export interface EntityManager {
 export type EntityState = {
   readonly address: EntityAddress
   readonly mailboxGauge: Metric.Metric.Gauge<bigint>
-  readonly write: RpcServer.RpcServer<any>["write"]
   readonly activeRequests: Map<bigint, {
     readonly rpc: Rpc.AnyWithProps
     readonly message: Message.IncomingRequestLocal<any>
@@ -63,6 +63,10 @@ export type EntityState = {
     sequence: number
   }>
   lastActiveCheck: number
+  write: RpcServer.RpcServer<any>["write"]
+  restarting: boolean
+  restartLatch: Effect.Latch
+  scope: Scope.CloseableScope | undefined
 }
 
 /** @internal */
@@ -103,16 +107,6 @@ export const make = Effect.fnUntraced(function*<
 
     const scope = yield* Effect.scope
     const endLatch = yield* Effect.makeLatch()
-    let isShuttingDown = false
-
-    // Initiate the behavior for the entity
-    const handlers = yield* (entity.protocol.toHandlersContext(buildHandlers).pipe(
-      Effect.provide(context.pipe(
-        Context.add(CurrentAddress, address),
-        Context.add(CurrentRunnerAddress, options.runnerAddress),
-        Context.add(Scope.Scope, scope)
-      ))
-    ) as Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>)
 
     // on shutdown, reset the storage for the entity
     yield* Scope.addFinalizer(
@@ -120,8 +114,81 @@ export const make = Effect.fnUntraced(function*<
       Effect.ignore(options.storage.resetAddress(address))
     )
 
+    const state: EntityState = {
+      address,
+      mailboxGauge: ClusterMetrics.mailboxSize.pipe(
+        Metric.tagged("type", entity.type),
+        Metric.tagged("entityId", address.entityId)
+      ),
+      write: undefined as any, // will be set by the first build
+      activeRequests: new Map(),
+      lastActiveCheck: clock.unsafeCurrentTimeMillis(),
+      restarting: false,
+      restartLatch: Effect.unsafeMakeLatch(true),
+      scope: undefined
+    }
+
+    yield* buildServer(scope, state, endLatch)
+
+    // During shutdown, signal that no more messages will be processed
+    // and wait for the fiber to complete.
+    //
+    // If the termination timeout is reached, let the server clean itself up
+    yield* Scope.addFinalizer(
+      scope,
+      Effect.withFiberRuntime((fiber) => {
+        activeServers.delete(address.entityId)
+        internalInterruptors.add(fiber.id())
+        return state.restartLatch.await.pipe(
+          Effect.flatMap(() => state.write!(0, { _tag: "Eof" })),
+          Effect.andThen(Effect.interruptible(endLatch.await)),
+          Effect.timeoutOption(config.entityTerminationTimeout)
+        )
+      })
+    )
+    activeServers.set(address.entityId, state)
+
+    return state
+  }, Effect.locally(FiberRef.currentLogAnnotations, HashMap.empty())))
+
+  const buildServer = Effect.fnUntraced(function*(
+    parentScope: Scope.Scope,
+    state: EntityState,
+    endLatch: Effect.Latch
+  ) {
+    state.scope = yield* Scope.fork(parentScope, ExecutionStrategy.sequential)
+    let isShuttingDown = false
+
+    // Initiate the behavior for the entity
+    const handlers = yield* (entity.protocol.toHandlersContext(buildHandlers).pipe(
+      Effect.provide(context.pipe(
+        Context.add(CurrentAddress, state.address),
+        Context.add(CurrentRunnerAddress, options.runnerAddress),
+        Context.add(Scope.Scope, state.scope)
+      ))
+    ) as Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>)
+
+    const restart = (): Effect.Effect<void> => {
+      state.restarting = true
+      state.restartLatch.unsafeClose()
+      return Effect.fiberIdWith((fiberId) => {
+        internalInterruptors.add(fiberId)
+        return Scope.close(state.scope!, Exit.void)
+      }).pipe(
+        Effect.forkIn(managerScope),
+        Effect.andThen(buildServer(parentScope, state, endLatch)),
+        Effect.onExit((exit) => {
+          if (Exit.isSuccess(exit)) {
+            state.restarting = false
+            return state.restartLatch.open
+          }
+          return Effect.flatMap(Scope.close(state.scope!, exit), restart)
+        })
+      )
+    }
+
     const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
-      spanPrefix: `${entity.type}(${address.entityId})`,
+      spanPrefix: `${entity.type}(${state.address.entityId})`,
       concurrency: options.concurrency ?? 1,
       onFromServer(response): Effect.Effect<void> {
         switch (response._tag) {
@@ -185,31 +252,12 @@ export const make = Effect.fnUntraced(function*<
             ))
           }
           case "Defect": {
-            isShuttingDown = true
-
-            const exit = Exit.die(response.defect)
-            const requests = Array.from(state.activeRequests.values())
-            state.activeRequests.clear()
-            return Effect.forEach(
-              requests,
-              (entry) =>
-                Effect.ignore(entry.message.respond(
-                  new Reply.WithExit({
-                    id: snowflakeGen.unsafeNext(),
-                    requestId: Snowflake.Snowflake(entry.message.envelope.requestId),
-                    exit
-                  })
-                )),
-              { discard: true }
-            ).pipe(
-              Effect.ensuring(Effect.ignore(options.storage.resetAddress(address))),
-              Effect.ensuring(entities.remove(address)),
-              Effect.forkIn(managerScope),
-              Effect.andThen(Effect.annotateLogs(Effect.logError("Defect in entity", Cause.die(response.defect)), {
-                module: "EntityManager",
-                address,
-                runner: options.runnerAddress
-              }))
+            return Effect.annotateLogs(Effect.logError("Defect in entity, restarting", Cause.die(response.defect)), {
+              module: "EntityManager",
+              address: state.address,
+              runner: options.runnerAddress
+            }).pipe(
+              Effect.flatMap(restart)
             )
           }
           case "ClientEnd": {
@@ -217,47 +265,31 @@ export const make = Effect.fnUntraced(function*<
           }
         }
       }
-    }).pipe(Effect.provide(handlers))
+    }).pipe(
+      Scope.extend(state.scope),
+      Effect.provide(handlers)
+    )
 
-    // During shutdown, signal that no more messages will be processed
-    // and wait for the fiber to complete.
-    //
-    // If the termination timeout is reached, let the server clean itself up
-    if (Duration.toMillis(config.entityTerminationTimeout) > 0) {
-      yield* Scope.addFinalizer(
-        scope,
-        server.write(0, { _tag: "Eof" }).pipe(
-          Effect.andThen(Effect.interruptible(endLatch.await)),
-          Effect.timeoutOption(config.entityTerminationTimeout)
-        )
-      )
-    }
+    state.write = server.write
 
-    const state: EntityState = {
-      address,
-      mailboxGauge: ClusterMetrics.mailboxSize.pipe(
-        Metric.tagged("type", entity.type),
-        Metric.tagged("entityId", address.entityId)
-      ),
-      write: server.write,
-      activeRequests: new Map(),
-      lastActiveCheck: clock.unsafeCurrentTimeMillis()
-    }
-
-    // add servers to map for expiration check
     yield* Scope.addFinalizer(
-      scope,
-      Effect.withFiberRuntime((fiber) => {
+      state.scope,
+      Effect.sync(() => {
         isShuttingDown = true
-        activeServers.delete(address.entityId)
-        internalInterruptors.add(fiber.id())
-        return Effect.void
       })
     )
-    activeServers.set(address.entityId, state)
 
-    return state
-  }, Effect.locally(FiberRef.currentLogAnnotations, HashMap.empty())))
+    for (const { lastSentChunk, message } of state.activeRequests.values()) {
+      yield* server.write(0, {
+        ...message.envelope,
+        id: RequestId(message.envelope.requestId),
+        payload: new Request({
+          ...message.envelope,
+          lastSentChunk
+        } as any)
+      } as any)
+    }
+  })
 
   const reaper = yield* EntityReaper
   const maxIdleTime = Duration.toMillis(options.maxIdleTime ?? config.entityMaxIdleTime)
@@ -287,7 +319,11 @@ export const make = Effect.fnUntraced(function*<
   ): Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage> {
     return Effect.flatMap(
       entities.get(message.envelope.address),
-      (server): Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage> => {
+      function loop(server): Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage> {
+        if (server.restarting) {
+          return Effect.flatMap(server.restartLatch.await, () => loop(server))
+        }
+
         switch (message._tag) {
           case "IncomingRequestLocal": {
             // If the request is already running, then we might have more than
