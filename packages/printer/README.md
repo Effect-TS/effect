@@ -29,6 +29,12 @@ pnpm install @effect/printer
 ```bash
 yarn add @effect/printer
 ```
+```bash
+deno add npm:@effect/printer
+```
+```bash
+bun add @effect/printer
+```
 
 ## Overview
 
@@ -50,7 +56,6 @@ First, let's setup the imports we need:
 
 ```ts
 import * as Doc from "@effect/printer/Doc"
-import * as Render from "@effect/printer/Render"
 import * as Array from "effect/Array"
 import { pipe } from "effect/Function"
 ```
@@ -99,7 +104,7 @@ This document can now be printed! And as a bonus, it automatically adapts to ava
 If the page is wide enough (`80` characters in this case), the definitions are space-separated.
 
 ```ts
-const rendered = Render.prettyDefault(doc)
+const rendered = Doc.render(doc, { style: 'pretty' })
 console.log(rendered)
 // example :: Int -> Bool -> Char -> IO ()
 ```
@@ -107,7 +112,7 @@ console.log(rendered)
 If we narrow the page width to only `20` characters, the same document renders vertically aligned:
 
 ```ts
-const rendered = Render.pretty(doc, { lineWidth: 20 })
+const rendered = Doc.render(doc, { style: 'pretty', options: { lineWidth: 20 } })
 console.log(rendered)
 // example :: Int
 //         -> Bool
