@@ -8907,7 +8907,7 @@ const makeClass = <Fields extends Struct.Fields>(
       }
 
       const declaration: Schema.Any = declare(
-        [typeSide],
+        [schema],
         {
           decode: () => (input, _, ast) =>
             input instanceof this || fallbackInstanceOf(input)

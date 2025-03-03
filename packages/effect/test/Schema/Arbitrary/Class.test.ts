@@ -1,8 +1,16 @@
 import { describe, it } from "@effect/vitest"
-import * as S from "effect/Schema"
+import { Arbitrary, FastCheck, Schema as S } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
 
 describe("Class", () => {
+  it("baseline", () => {
+    class Class extends S.Class<Class>("Class")({
+      a: S.String,
+      b: S.NumberFromString
+    }) {}
+    Util.assertions.arbitrary.validateGeneratedValues(Class)
+  })
+
   it("required property signature", () => {
     class Class extends S.Class<Class>("Class")({
       a: S.Number
@@ -31,11 +39,13 @@ describe("Class", () => {
     Util.assertions.arbitrary.validateGeneratedValues(Class)
   })
 
-  it("baseline", () => {
+  it("transformation property signature with annotation (#4550)", () => {
     class Class extends S.Class<Class>("Class")({
-      a: S.String,
-      b: S.NumberFromString
+      a: S.NumberFromString.annotations({
+        arbitrary: () => (fc) => fc.constant(1)
+      })
     }) {}
-    Util.assertions.arbitrary.validateGeneratedValues(Class)
+    const arb = Arbitrary.make(Class)
+    FastCheck.assert(FastCheck.property(arb, (a) => a.a === 1))
   })
 })
