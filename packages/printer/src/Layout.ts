@@ -93,6 +93,7 @@ export const wadlerLeijen: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -162,6 +163,7 @@ export const pretty: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import type * as DocStream from "@effect/printer/DocStream"
  * import * as Layout from "@effect/printer/Layout"

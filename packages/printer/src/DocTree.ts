@@ -297,6 +297,7 @@ export const foldMap: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as DocTree from "@effect/printer/DocTree"
  * import * as Layout from "@effect/printer/Layout"

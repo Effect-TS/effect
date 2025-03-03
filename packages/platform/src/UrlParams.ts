@@ -272,6 +272,7 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: Pa
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, Schema } from "effect"
  * import { UrlParams } from "@effect/platform"
  *

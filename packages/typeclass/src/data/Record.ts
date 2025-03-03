@@ -215,6 +215,7 @@ export const TraversableFilterable = getTraversableFilterable()
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as NumberInstances from "@effect/typeclass/data/Number"
  * import { getSemigroupUnion } from "@effect/typeclass/data/Record"
  *
@@ -239,6 +240,7 @@ export const getSemigroupUnion: <A>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as NumberInstances from "@effect/typeclass/data/Number"
  * import { getMonoidUnion } from "@effect/typeclass/data/Record"
  *
@@ -264,6 +266,7 @@ export const getMonoidUnion: <A>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as NumberInstances from "@effect/typeclass/data/Number"
  * import { getSemigroupIntersection } from "@effect/typeclass/data/Record"
  *
