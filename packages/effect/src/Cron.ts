@@ -320,8 +320,6 @@ export const unsafeParse = (cron: string, tz?: DateTime.TimeZone | string): Cron
 /**
  * Checks if a given `Date` falls within an active `Cron` time window.
  *
- * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -331,6 +329,8 @@ export const unsafeParse = (cron: string, tz?: DateTime.TimeZone | string): Cron
  * assert.deepStrictEqual(Cron.match(cron, new Date("2021-01-08 04:00:00")), true)
  * assert.deepStrictEqual(Cron.match(cron, new Date("2021-01-08 05:00:00")), false)
  * ```
+ *
+ * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
  *
  * @since 2.0.0
  */
@@ -378,9 +378,6 @@ const daysInMonth = (date: Date): number =>
  *
  * Uses the current time as a starting point if no value is provided for `now`.
  *
- * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
- * @throws `Error` if the next run date cannot be found within 10,000 iterations.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -390,6 +387,9 @@ const daysInMonth = (date: Date): number =>
  * const cron = Either.getOrThrow(Cron.parse("0 4 8-14 * *"))
  * assert.deepStrictEqual(Cron.next(cron, after), new Date("2021-01-08 04:00:00"))
  * ```
+ *
+ * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
+ * @throws `Error` if the next run date cannot be found within 10,000 iterations.
  *
  * @since 2.0.0
  */
