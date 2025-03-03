@@ -45,6 +45,7 @@ export const makeNet = (
           resume(Effect.succeed(conn))
         })
         conn.on("error", (cause) => {
+          conn.removeAllListeners()
           resume(Effect.fail(new Socket.SocketGenericError({ reason: "Open", cause })))
         })
         return Effect.sync(() => {

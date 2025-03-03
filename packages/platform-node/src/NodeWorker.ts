@@ -24,4 +24,12 @@ export const layerWorker: Layer.Layer<Worker.PlatformWorker> = internal.layerWor
  */
 export const layer: (
   spawn: (id: number) => WorkerThreads.Worker
-) => Layer.Layer<Worker.WorkerManager | Worker.Spawner, never, never> = internal.layer
+) => Layer.Layer<Worker.WorkerManager | Worker.Spawner> = internal.layer
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerPlatform: (
+  spawn: (id: number) => WorkerThreads.Worker
+) => Layer.Layer<Worker.PlatformWorker | Worker.Spawner> = internal.layerPlatform
