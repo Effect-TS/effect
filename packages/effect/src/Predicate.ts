@@ -765,7 +765,7 @@ export const productMany = <A>(
 /**
  * Similar to `Promise.all` but operates on `Predicate`s.
  *
- * ```
+ * ```ts skip-type-checking
  * [Refinement<A, B>, Refinement<C, D>, ...] -> Refinement<[A, C, ...], [B, D, ...]>
  * [Predicate<A>, Predicate<B>, ...] -> Predicate<[A, B, ...]>
  * [Refinement<A, B>, Predicate<C>, ...] -> Refinement<[A, C, ...], [B, C, ...]>
@@ -784,7 +784,7 @@ export const tuple: {
 } = (...elements: ReadonlyArray<Predicate.Any>) => all(elements) as any
 
 /**
- * ```
+ * ```ts skip-type-checking
  * { ab: Refinement<A, B>; cd: Refinement<C, D>, ... } -> Refinement<{ ab: A; cd: C; ... }, { ab: B; cd: D; ... }>
  * { a: Predicate<A, B>; b: Predicate<B>, ... } -> Predicate<{ a: A; b: B; ... }>
  * { ab: Refinement<A, B>; c: Predicate<C>, ... } -> Refinement<{ ab: A; c: C; ... }, { ab: B; c: С; ... }>

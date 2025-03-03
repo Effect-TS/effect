@@ -145,7 +145,7 @@ export const make: <A, E, R>(
  *
  * By default, the `timeToLiveStrategy` is set to "usage".
  *
- * ```ts
+ * ```ts skip-type-checking
  * import { createConnection } from "mysql2";
  * import { Duration, Effect, Pool } from "effect"
  *

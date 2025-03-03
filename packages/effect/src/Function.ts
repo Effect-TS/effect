@@ -442,13 +442,13 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * This is useful in combination with data-last functions as a simulation of
  * methods:
  *
- * ```ts
+ * ```ts skip-type-checking
  * as.map(f).filter(g)
  * ```
  *
  * becomes:
  *
- * ```ts
+ * ```ts skip-type-checking
  * import { pipe, Array } from "effect"
  *
  * pipe(as, Array.map(f), Array.filter(g))
@@ -461,7 +461,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * passes it as the input to the next function in the pipeline. This enables us
  * to build complex transformations by chaining multiple functions together.
  *
- * ```ts
+ * ```ts skip-type-checking
  * import { pipe } from "effect"
  *
  * const result = pipe(input, func1, func2, ..., funcN)
