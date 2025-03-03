@@ -8,26 +8,12 @@
     "moduleResolution": "Bundler",
     "module": "ES2022",
     "target": "ES2022",
-    "lib": ["ES2022", "DOM"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "paths": {
       "effect": ["../../../effect/src/index.js"],
       "effect/*": ["../../../effect/src/*.js"],
-      "@effect/platform": ["../../../platform/src/index.js"],
-      "@effect/platform/*": ["../../../platform/src/*.js"],
-      "@effect/platform-node": ["../../../platform-node/src/index.js"],
-      "@effect/platform-node/*": ["../../../platform-node/src/*.js"],
-      "@effect/platform-node-shared": [
-        "../../../platform-node-shared/src/index.js"
-      ],
-      "@effect/platform-node-shared/*": [
-        "../../../platform-node-shared/src/*.js"
-      ],
-      "@effect/printer": ["../../../printer/src/index.js"],
-      "@effect/printer/*": ["../../../printer/src/*.js"],
-      "@effect/printer-ansi": ["../../../printer-ansi/src/index.js"],
-      "@effect/printer-ansi/*": ["../../../printer-ansi/src/*.js"],
-      "@effect/typeclass": ["../../../typeclass/src/index.js"],
-      "@effect/typeclass/*": ["../../../typeclass/src/*.js"]
+      "@effect/cli": ["../../../cli/src/index.js"],
+      "@effect/cli/*": ["../../../cli/src/*.js"]
     }
   }
 }

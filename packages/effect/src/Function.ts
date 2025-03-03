@@ -437,23 +437,6 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
 /**
  * Pipes the value of an expression into a pipeline of functions.
  *
- * **When to Use**
- *
- * This is useful in combination with data-last functions as a simulation of
- * methods:
- *
- * ```ts skip-type-checking
- * as.map(f).filter(g)
- * ```
- *
- * becomes:
- *
- * ```ts skip-type-checking
- * import { pipe, Array } from "effect"
- *
- * pipe(as, Array.map(f), Array.filter(g))
- * ```
- *
  * **Details**
  *
  * The `pipe` function is a utility that allows us to compose functions in a
@@ -474,7 +457,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  *
  * Here's an illustration of how `pipe` works:
  *
- * ```text
+ * ```
  * ┌───────┐    ┌───────┐    ┌───────┐    ┌───────┐    ┌───────┐    ┌────────┐
  * │ input │───►│ func1 │───►│ func2 │───►│  ...  │───►│ funcN │───►│ result │
  * └───────┘    └───────┘    └───────┘    └───────┘    └───────┘    └────────┘
@@ -483,9 +466,26 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * It's important to note that functions passed to `pipe` must have a **single
  * argument** because they are only called with a single argument.
  *
- * @example
+ * **When to Use**
+ *
+ * This is useful in combination with data-last functions as a simulation of
+ * methods:
+ *
+ * ```ts skip-type-checking
+ * as.map(f).filter(g)
+ * ```
+ *
+ * becomes:
+ *
+ * ```ts skip-type-checking
+ * import { pipe, Array } from "effect"
+ *
+ * pipe(as, Array.map(f), Array.filter(g))
+ * ```
+ *
+ * **Example** (Chaining Arithmetic Operations)
+ *
  * ```ts
- * // Example: Chaining Arithmetic Operations
  * import { pipe } from "effect"
  *
  * // Define simple arithmetic operations
