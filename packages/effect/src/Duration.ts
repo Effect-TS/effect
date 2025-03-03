@@ -861,8 +861,6 @@ export const format = (self: DurationInput): string => {
  *
  * Milliseconds and nanoseconds are expressed as fractional seconds.
  *
- * @throws `RangeError` If the duration is not finite.
- *
  * @example
  * ```ts
  * import { Duration } from "effect"
@@ -871,6 +869,8 @@ export const format = (self: DurationInput): string => {
  * Duration.unsafeFormatIso(Duration.minutes(90)) // => "PT1H30M"
  * Duration.unsafeFormatIso(Duration.millis(1500)) // => "PT1.5S"
  * ```
+ *
+ * @throws `RangeError` If the duration is not finite.
  *
  * @since 3.13.0
  * @category conversions

@@ -611,8 +611,6 @@ export const getOrThrowWith: {
  *
  * The thrown error is a default error. To configure the error thrown, see  {@link getOrThrowWith}.
  *
- * @throws `Error("getOrThrow called on a Left")`
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -621,6 +619,8 @@ export const getOrThrowWith: {
  * assert.deepStrictEqual(Either.getOrThrow(Either.right(1)), 1)
  * assert.throws(() => Either.getOrThrow(Either.left("error")))
  * ```
+ *
+ * @throws `Error("getOrThrow called on a Left")`
  *
  * @category getters
  * @since 2.0.0
