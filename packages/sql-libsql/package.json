@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-libsql",
-  "version": "0.20.5",
+  "version": "0.20.6",
   "type": "module",
   "license": "MIT",
   "description": "A libSQL toolkit for Effect",
