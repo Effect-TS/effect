@@ -38,39 +38,41 @@ const makePlan = <
 const buildPlan = <Error, Provides, Requires>(
   plan: AiPlan.AiPlan<Error, Provides, Requires>
 ): Effect.Effect<
-  <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>,
+  AiPlan.AiPlan.Provider<Provides>,
   never,
   Requires | AiModels
 > =>
   Effect.map(Effect.context<AiModels | Requires>(), (context) => {
     const models = Context.get(context, AiModels)
-    return Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
-      let result: Either.Either<A, E> | undefined = undefined
-      for (const step of plan.steps) {
-        if (result !== undefined && Either.isLeft(result) && Option.isSome(step.check)) {
-          const check = step.check.value(result.left as any)
-          const isFatalError = !(Effect.isEffect(check) ? yield* check : check)
-          if (isFatalError) break
-        }
-        const retryOptions = getRetryOptions(step)
-        result = yield* Effect.scopedWith((scope) =>
-          models.build(step.model, context).pipe(
-            Scope.extend(scope),
-            Effect.flatMap((context) =>
-              effect.pipe(
-                Option.isSome(retryOptions)
-                  ? Effect.retry(retryOptions.value)
-                  : identity,
-                Effect.provide(context)
-              )
-            ),
-            Effect.either
+    return {
+      provide: Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
+        let result: Either.Either<A, E> | undefined = undefined
+        for (const step of plan.steps) {
+          if (result !== undefined && Either.isLeft(result) && Option.isSome(step.check)) {
+            const check = step.check.value(result.left as any)
+            const isFatalError = !(Effect.isEffect(check) ? yield* check : check)
+            if (isFatalError) break
+          }
+          const retryOptions = getRetryOptions(step)
+          result = yield* Effect.scopedWith((scope) =>
+            models.build(step.model, context).pipe(
+              Scope.extend(scope),
+              Effect.flatMap((context) =>
+                effect.pipe(
+                  Option.isSome(retryOptions)
+                    ? Effect.retry(retryOptions.value)
+                    : identity,
+                  Effect.provide(context)
+                )
+              ),
+              Effect.either
+            )
           )
-        )
-        if (Either.isRight(result)) break
-      }
-      return yield* result!
-    })
+          if (Either.isRight(result)) break
+        }
+        return yield* result!
+      })
+    }
   })
 
 const getRetryOptions = <Error, Provides, Requires>(
