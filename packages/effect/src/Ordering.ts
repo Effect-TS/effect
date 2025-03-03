@@ -13,8 +13,6 @@ export type Ordering = -1 | 0 | 1
 /**
  * Inverts the ordering of the input `Ordering`.
  *
- * @param o - The input `Ordering`.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -31,11 +29,6 @@ export const reverse = (o: Ordering): Ordering => (o === -1 ? 1 : o === 1 ? -1 :
 
 /**
  * Depending on the `Ordering` parameter given to it, returns a value produced by one of the 3 functions provided as parameters.
- *
- * @param self - The `Ordering` parameter to match against.
- * @param onLessThan - A function that will be called if the `Ordering` parameter is `-1`.
- * @param onEqual - A function that will be called if the `Ordering` parameter is `0`.
- * @param onGreaterThan - A function that will be called if the `Ordering` parameter is `1`.
  *
  * @example
  * ```ts

@@ -160,8 +160,8 @@ export const mapInput: {
  * Represents a Counter metric that tracks cumulative numerical values over time.
  * Counters can be incremented and decremented and provide a running total of changes.
  *
- * @param name - The name of the counter metric.
- * @param options - An optional configuration for the counter:
+ * **Options**
+ *
  * - description - A description of the counter.
  * - bigint - Indicates if the counter uses 'bigint' data type.
  * - incremental - Set to 'true' for a counter that only increases. With this configuration, Effect ensures that non-incremental updates have no impact on the counter, making it exclusively suitable for counting upwards.
@@ -205,9 +205,6 @@ export const counter: {
 /**
  * Creates a Frequency metric to count occurrences of events.
  * Frequency metrics are used to count the number of times specific events or incidents occur.
- *
- * @param name - The name of the Frequency metric.
- * @param description - An optional description of the Frequency metric.
  *
  * @example
  * ```ts
@@ -254,8 +251,8 @@ export const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>
  * Represents a Gauge metric that tracks and reports a single numerical value at a specific moment.
  * Gauges are suitable for metrics that represent instantaneous values, such as memory usage or CPU load.
  *
- * @param name - The name of the gauge metric.
- * @param options - An optional configuration for the gauge:
+ * **Options**
+ *
  * - description - A description of the gauge metric.
  * - bigint - Indicates if the counter uses 'bigint' data type.
  *
@@ -290,10 +287,6 @@ export const gauge: {
 /**
  * Represents a Histogram metric that records observations in specified value boundaries.
  * Histogram metrics are useful for measuring the distribution of values within a range.
- *
- * @param name - The name of the histogram metric.
- * @param boundaries - The boundaries for defining the histogram's value ranges.
- * @param description - A description of the histogram metric.
  *
  * @example
  * ```ts
@@ -407,7 +400,8 @@ export const sync: <Out>(evaluate: LazyArg<Out>) => Metric<void, unknown, Out> =
  * Creates a Summary metric that records observations and calculates quantiles.
  * Summary metrics provide statistical information about a set of values, including quantiles.
  *
- * @param options - An object with configuration options for the Summary metric:
+ * **Options**
+ *
  * - name - The name of the Summary metric.
  * - maxAge - The maximum age of observations to retain.
  * - maxSize - The maximum number of observations to keep.

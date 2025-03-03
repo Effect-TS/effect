@@ -16,8 +16,6 @@ import * as predicate from "./Predicate.js"
 /**
  * Tests if a value is a `number`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -34,9 +32,6 @@ export const isNumber: (input: unknown) => input is number = predicate.isNumber
 
 /**
  * Provides an addition operation on `number`s.
- *
- * @param self - The first operand.
- * @param that - The second operand.
  *
  * @example
  * ```ts
@@ -57,9 +52,6 @@ export const sum: {
 /**
  * Provides a multiplication operation on `number`s.
  *
- * @param self - The first operand.
- * @param that - The second operand.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -79,9 +71,6 @@ export const multiply: {
 /**
  * Provides a subtraction operation on `number`s.
  *
- * @param self - The first operand.
- * @param that - The second operand.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -100,9 +89,6 @@ export const subtract: {
 
 /**
  * Provides a division operation on `number`s.
- *
- * @param self - The dividend operand.
- * @param that - The divisor operand.
  *
  * @example
  * ```ts
@@ -129,9 +115,6 @@ export const divide: {
  *
  * Throws a `RangeError` if the divisor is `0`.
  *
- * @param self - The dividend operand.
- * @param that - The divisor operand.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -151,8 +134,6 @@ export const unsafeDivide: {
 /**
  * Returns the result of adding `1` to a given number.
  *
- * @param n - A `number` to be incremented.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -168,8 +149,6 @@ export const increment = (n: number): number => n + 1
 
 /**
  * Decrements a number by `1`.
- *
- * @param n - A `number` to be decremented.
  *
  * @example
  * ```ts
@@ -199,9 +178,6 @@ export const Order: order.Order<number> = order.number
 /**
  * Returns `true` if the first argument is less than the second, otherwise `false`.
  *
- * @param self - The first argument.
- * @param that - The second argument.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -222,9 +198,6 @@ export const lessThan: {
 
 /**
  * Returns a function that checks if a given `number` is less than or equal to the provided one.
- *
- * @param self - The first `number` to compare with.
- * @param that - The second `number` to compare with.
  *
  * @example
  * ```ts
@@ -247,9 +220,6 @@ export const lessThanOrEqualTo: {
 /**
  * Returns `true` if the first argument is greater than the second, otherwise `false`.
  *
- * @param self - The first argument.
- * @param that - The second argument.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -271,9 +241,6 @@ export const greaterThan: {
 /**
  * Returns a function that checks if a given `number` is greater than or equal to the provided one.
  *
- * @param self - The first `number` to compare with.
- * @param that - The second `number` to compare with.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -294,10 +261,6 @@ export const greaterThanOrEqualTo: {
 
 /**
  * Checks if a `number` is between a `minimum` and `maximum` value (inclusive).
- *
- * @param self - The `number` to check.
- * @param minimum - The `minimum` value to check.
- * @param maximum - The `maximum` value to check.
  *
  * @example
  * ```ts
@@ -332,10 +295,6 @@ export const between: {
  * - If the `number` is greater than the `maximum` value, the function returns the `maximum` value.
  * - Otherwise, it returns the original `number`.
  *
- * @param self - The `number` to be clamped.
- * @param minimum - The lower end of the range.
- * @param maximum - The upper end of the range.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -364,9 +323,6 @@ export const clamp: {
 /**
  * Returns the minimum between two `number`s.
  *
- * @param self - The first `number`.
- * @param that - The second `number`.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -384,9 +340,6 @@ export const min: {
 
 /**
  * Returns the maximum between two `number`s.
- *
- * @param self - The first `number`.
- * @param that - The second `number`.
  *
  * @example
  * ```ts
@@ -406,8 +359,6 @@ export const max: {
 /**
  * Determines the sign of a given `number`.
  *
- * @param n - The `number` to determine the sign of.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -425,8 +376,6 @@ export const sign = (n: number): Ordering => Order(n, 0)
 
 /**
  * Takes an `Iterable` of `number`s and returns their sum as a single `number`.
- *
- * @param collection - The collection of `number`s to sum.
  *
  * @example
  * ```ts
@@ -449,8 +398,6 @@ export const sumAll = (collection: Iterable<number>): number => {
 
 /**
  * Takes an `Iterable` of `number`s and returns their multiplication as a single `number`.
- *
- * @param collection - The collection of `number`s to multiply.
  *
  * @example
  * ```ts
@@ -478,9 +425,6 @@ export const multiplyAll = (collection: Iterable<number>): number => {
  * Returns the remainder left over when one operand is divided by a second operand.
  *
  * It always takes the sign of the dividend.
- *
- * @param self - The dividend.
- * @param divisor - The divisor.
  *
  * @example
  * ```ts
@@ -510,8 +454,6 @@ export const remainder: {
 
 /**
  * Returns the next power of 2 from the given number.
- *
- * @param self - The number to find the next power of 2 from.
  *
  * @example
  * ```ts
@@ -558,9 +500,6 @@ export const parse = (s: string): Option<number> => {
 
 /**
  * Returns the number rounded with the given precision.
- *
- * @param self - The number to round
- * @param precision - The precision
  *
  * @example
  * ```ts

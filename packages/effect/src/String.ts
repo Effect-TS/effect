@@ -20,8 +20,6 @@ import * as predicate from "./Predicate.js"
 /**
  * Tests if a value is a `string`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"

@@ -20,8 +20,6 @@ export interface TupleTypeLambda extends TypeLambda {
 /**
  * Constructs a new tuple from the provided values.
  *
- * @param elements - The list of elements to create the tuple from.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -37,8 +35,6 @@ export const make = <A extends ReadonlyArray<any>>(...elements: A): A => element
 
 /**
  * Return the first element of a tuple.
- *
- * @param self - A tuple of length `2`.
  *
  * @example
  * ```ts
@@ -56,8 +52,6 @@ export const getFirst = <L, R>(self: readonly [L, R]): L => self[0]
 /**
  * Return the second element of a tuple.
  *
- * @param self - A tuple of length `2`.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -73,9 +67,6 @@ export const getSecond = <L, R>(self: readonly [L, R]): R => self[1]
 
 /**
  * Transforms each element of tuple using the given function, treating tuple homomorphically
- *
- * @param self - A tuple.
- * @param f - The function to transform elements of the tuple.
  *
  * @example
  * ```ts
@@ -110,10 +101,6 @@ export const map: {
 
 /**
  * Transforms both elements of a tuple using the given functions.
- *
- * @param self - A tuple of length `2`.
- * @param f - The function to transform the first element of the tuple.
- * @param g - The function to transform the second element of the tuple.
  *
  * @example
  * ```ts
@@ -152,9 +139,6 @@ export const mapBoth: {
 /**
  * Transforms the first component of a tuple using a given function.
  *
- * @param self - A tuple of length `2`.
- * @param f - The function to transform the first element of the tuple.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -177,9 +161,6 @@ export const mapFirst: {
 /**
  * Transforms the second component of a tuple using a given function.
  *
- * @param self - A tuple of length `2`.
- * @param f - The function to transform the second element of the tuple.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -201,8 +182,6 @@ export const mapSecond: {
 
 /**
  * Swaps the two elements of a tuple.
- *
- * @param self - A tuple of length `2`.
  *
  * @example
  * ```ts
@@ -256,9 +235,6 @@ export const appendElement: {
 /**
  * Retrieves the element at a specified index from a tuple.
  *
- * @param self - A tuple from which to retrieve the element.
- * @param index - The index of the element to retrieve.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -280,9 +256,6 @@ export {
    * Determine if an `Array` is a tuple with exactly `N` elements, narrowing down the type to `TupleOf`.
    *
    * An `Array` is considered to be a `TupleOf` if its length is exactly `N`.
-   *
-   * @param self - The `Array` to check.
-   * @param n - The exact number of elements that the `Array` should have to be considered a `TupleOf`.
    *
    * @example
    * ```ts
@@ -308,9 +281,6 @@ export {
    * Determine if an `Array` is a tuple with at least `N` elements, narrowing down the type to `TupleOfAtLeast`.
    *
    * An `Array` is considered to be a `TupleOfAtLeast` if its length is at least `N`.
-   *
-   * @param self - The `Array` to check.
-   * @param n - The minimum number of elements that the `Array` should have to be considered a `TupleOfAtLeast`.
    *
    * @example
    * ```ts

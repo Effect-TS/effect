@@ -30,10 +30,6 @@ export const getSemigroup =
 /**
  * Zips two `F` values together using a provided function, returning a new `F` of the result.
  *
- * @param self - The left-hand side of the zip operation
- * @param that - The right-hand side of the zip operation
- * @param f - The function used to combine the values of the two `Option`s
- *
  * @since 0.24.0
  */
 export const zipWith = <F extends TypeLambda>(F: SemiApplicative<F>): {
@@ -111,8 +107,6 @@ export const zipRight = <F extends TypeLambda>(F: SemiApplicative<F>): {
 
 /**
  * Lifts a binary function into `F`.
- *
- * @param f - The function to lift.
  *
  * @category lifting
  * @since 0.24.0

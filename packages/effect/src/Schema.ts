@@ -3137,9 +3137,6 @@ function makeBrandClass<S extends Schema.Any, B extends string | symbol>(
  * Schema<A> + B -> Schema<A & Brand<B>>
  * ```
  *
- * @param self - The input schema to be combined with the brand.
- * @param brand - The brand to apply.
- *
  * @example
  * ```ts
  * import * as Schema from "effect/Schema"
@@ -3219,8 +3216,6 @@ export interface mutable<S extends Schema.Any> extends
 
 /**
  * Creates a new schema with shallow mutability applied to its properties.
- *
- * @param schema - The original schema to make properties mutable (shallowly).
  *
  * @category combinators
  * @since 3.10.0
@@ -4015,10 +4010,6 @@ export function transformLiterals<
  * Attaches a property signature with the specified key and value to the schema.
  * This API is useful when you want to add a property to your schema which doesn't describe the shape of the input,
  * but rather maps to another schema, for example when you want to add a discriminant to a simple union.
- *
- * @param self - The input schema.
- * @param key - The name of the property to add to the schema.
- * @param value - The value of the property to add to the schema.
  *
  * @example
  * ```ts

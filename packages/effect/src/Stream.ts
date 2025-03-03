@@ -247,10 +247,8 @@ export const aggregate: {
 } = internal.aggregate
 
 /**
- * Like `aggregateWithinEither`, but only returns the `Right` results.
+ * Like {@link aggregateWithinEither}, but only returns the `Right` results.
  *
- * @param sink A `Sink` used to perform the aggregation.
- * @param schedule A `Schedule` used to signal when to stop the aggregation.
  * @since 2.0.0
  * @category utils
  */
@@ -278,8 +276,6 @@ export const aggregateWithin: {
  * Aggregated elements will be fed into the schedule to determine the delays
  * between pulls.
  *
- * @param sink A `Sink` used to perform the aggregation.
- * @param schedule A `Schedule` used to signal when to stop the aggregation.
  * @since 2.0.0
  * @category utils
  */
@@ -1954,7 +1950,10 @@ export const fromChunk: <A>(chunk: Chunk.Chunk<A>) => Stream<A> = internal.fromC
 /**
  * Creates a stream from a subscription to a `PubSub`.
  *
- * @param shutdown If `true`, the `PubSub` will be shutdown after the stream is evaluated (defaults to `false`)
+ * **Options**
+ *
+ * - `shutdown`: If `true`, the `PubSub` will be shutdown after the stream is evaluated (defaults to `false`)
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -1972,7 +1971,10 @@ export const fromChunkPubSub: {
 /**
  * Creates a stream from a `Queue` of values.
  *
- * @param shutdown If `true`, the queue will be shutdown after the stream is evaluated (defaults to `false`)
+ * **Options**
+ *
+ * - `shutdown`: If `true`, the queue will be shutdown after the stream is evaluated (defaults to `false`)
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -2034,7 +2036,10 @@ export const fromEffectOption: <A, E, R>(effect: Effect.Effect<A, Option.Option<
 /**
  * Creates a stream from a subscription to a `PubSub`.
  *
- * @param shutdown If `true`, the `PubSub` will be shutdown after the stream is evaluated (defaults to `false`)
+ * **Options**
+ *
+ * - `shutdown`: If `true`, the `PubSub` will be shutdown after the stream is evaluated (defaults to `false`)
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -2137,8 +2142,11 @@ export const fromPull: <R, R2, E, A>(
 /**
  * Creates a stream from a queue of values
  *
- * @param maxChunkSize The maximum number of queued elements to put in one chunk in the stream
- * @param shutdown If `true`, the queue will be shutdown after the stream is evaluated (defaults to `false`)
+ * **Options**
+ *
+ * - `maxChunkSize`: The maximum number of queued elements to put in one chunk in the stream
+ * - `shutdown`: If `true`, the queue will be shutdown after the stream is evaluated (defaults to `false`)
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -2182,7 +2190,6 @@ export const fromReadableStream: {
  *
  * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamBYOBReader.
  *
- * @param allocSize Controls the size of the underlying `ArrayBuffer` (defaults to `4096`).
  * @since 2.0.0
  * @category constructors
  */
@@ -2198,6 +2205,7 @@ export const fromReadableStreamByob: {
   <E>(
     evaluate: LazyArg<ReadableStream<Uint8Array>>,
     onError: (error: unknown) => E,
+    /** Controls the size of the underlying `ArrayBuffer` (defaults to `4096`) */
     allocSize?: number
   ): Stream<Uint8Array, E>
 } = internal.fromReadableStreamByob
@@ -4059,7 +4067,6 @@ export const repeatWith: {
  * The schedule is reset as soon as the first element passes through the
  * stream again.
  *
- * @param schedule A `Schedule` receiving as input the errors of the stream.
  * @since 2.0.0
  * @category utils
  */

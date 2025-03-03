@@ -454,9 +454,6 @@ export const findFirst: {
 /**
  * Checks if any entry in a hashmap meets a specific condition.
  *
- * @param self - The hashmap to check.
- * @param predicate - The condition to test entries (value, key).
- *
  * @since 3.13.0
  * @category elements
  */

@@ -71,9 +71,6 @@ export declare namespace Refinement {
 /**
  * Given a `Predicate<A>` returns a `Predicate<B>`
  *
- * @param self - the `Predicate<A>` to be transformed to `Predicate<B>`.
- * @param f - a function to transform `B` to `A`.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -99,9 +96,6 @@ export const mapInput: {
  * Determine if an `Array` is a tuple with exactly `N` elements, narrowing down the type to `TupleOf`.
  *
  * An `Array` is considered to be a `TupleOf` if its length is exactly `N`.
- *
- * @param self - The `Array` to check.
- * @param n - The exact number of elements that the `Array` should have to be considered a `TupleOf`.
  *
  * @example
  * ```ts
@@ -132,9 +126,6 @@ export const isTupleOf: {
  *
  * An `Array` is considered to be a `TupleOfAtLeast` if its length is at least `N`.
  *
- * @param self - The `Array` to check.
- * @param n - The minimum number of elements that the `Array` should have to be considered a `TupleOfAtLeast`.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -162,8 +153,6 @@ export const isTupleOfAtLeast: {
 /**
  * Tests if a value is `truthy`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -181,8 +170,6 @@ export const isTruthy = (input: unknown) => !!input
 
 /**
  * Tests if a value is a `Set`.
- *
- * @param input - The value to test.
  *
  * @example
  * ```ts
@@ -204,8 +191,6 @@ export const isSet = (input: unknown): input is Set<unknown> => input instanceof
 /**
  * Tests if a value is a `Map`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -225,8 +210,6 @@ export const isMap = (input: unknown): input is Map<unknown, unknown> => input i
 /**
  * Tests if a value is a `string`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -244,8 +227,6 @@ export const isString = (input: unknown): input is string => typeof input === "s
 
 /**
  * Tests if a value is a `number`.
- *
- * @param input - The value to test.
  *
  * @example
  * ```ts
@@ -265,8 +246,6 @@ export const isNumber = (input: unknown): input is number => typeof input === "n
 /**
  * Tests if a value is a `boolean`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -284,8 +263,6 @@ export const isBoolean = (input: unknown): input is boolean => typeof input === 
 
 /**
  * Tests if a value is a `bigint`.
- *
- * @param input - The value to test.
  *
  * @example
  * ```ts
@@ -305,8 +282,6 @@ export const isBigInt = (input: unknown): input is bigint => typeof input === "b
 /**
  * Tests if a value is a `symbol`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -325,8 +300,6 @@ export const isSymbol = (input: unknown): input is symbol => typeof input === "s
 /**
  * Tests if a value is a `function`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -344,8 +317,6 @@ export const isFunction: (input: unknown) => input is Function = isFunction_
 
 /**
  * Tests if a value is `undefined`.
- *
- * @param input - The value to test.
  *
  * @example
  * ```ts
@@ -366,8 +337,6 @@ export const isUndefined = (input: unknown): input is undefined => input === und
 /**
  * Tests if a value is not `undefined`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -386,8 +355,6 @@ export const isNotUndefined = <A>(input: A): input is Exclude<A, undefined> => i
 
 /**
  * Tests if a value is `null`.
- *
- * @param input - The value to test.
  *
  * @example
  * ```ts
@@ -408,8 +375,6 @@ export const isNull = (input: unknown): input is null => input === null
 /**
  * Tests if a value is not `null`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -429,8 +394,6 @@ export const isNotNull = <A>(input: A): input is Exclude<A, null> => input !== n
 /**
  * A guard that always fails.
  *
- * @param _ - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -449,8 +412,6 @@ export const isNever: (input: unknown) => input is never = (_: unknown): _ is ne
 
 /**
  * A guard that always succeeds.
- *
- * @param _ - The value to test.
  *
  * @example
  * ```ts
@@ -476,8 +437,6 @@ export const isRecordOrArray = (input: unknown): input is { [x: PropertyKey]: un
 /**
  * Tests if a value is an `object`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -498,9 +457,6 @@ export const isObject = (input: unknown): input is object => isRecordOrArray(inp
 /**
  * Checks whether a value is an `object` containing a specified property key.
  *
- * @param property - The field to check within the object.
- * @param self - The value to examine.
- *
  * @category guards
  * @since 2.0.0
  */
@@ -515,9 +471,6 @@ export const hasProperty: {
 
 /**
  * Tests if a value is an `object` with a property `_tag` that matches the given tag.
- *
- * @param input - The value to test.
- * @param tag - The tag to test for.
  *
  * @example
  * ```ts
@@ -546,8 +499,6 @@ export const isTagged: {
 /**
  * A guard that succeeds when the input is `null` or `undefined`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -567,8 +518,6 @@ export const isNullable = <A>(input: A): input is Extract<A, null | undefined> =
 
 /**
  * A guard that succeeds when the input is not `null` or `undefined`.
- *
- * @param input - The value to test.
  *
  * @example
  * ```ts
@@ -590,8 +539,6 @@ export const isNotNullable = <A>(input: A): input is NonNullable<A> => input !==
 /**
  * A guard that succeeds when the input is an `Error`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -610,8 +557,6 @@ export const isError = (input: unknown): input is Error => input instanceof Erro
 
 /**
  * A guard that succeeds when the input is a `Uint8Array`.
- *
- * @param input - The value to test.
  *
  * @example
  * ```ts
@@ -632,8 +577,6 @@ export const isUint8Array = (input: unknown): input is Uint8Array => input insta
 /**
  * A guard that succeeds when the input is a `Date`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -652,8 +595,6 @@ export const isDate = (input: unknown): input is Date => input instanceof Date
 
 /**
  * A guard that succeeds when the input is an `Iterable`.
- *
- * @param input - The value to test.
  *
  * @example
  * ```ts
@@ -674,8 +615,6 @@ export const isIterable = (input: unknown): input is Iterable<unknown> => hasPro
 
 /**
  * A guard that succeeds when the input is a record.
- *
- * @param input - The value to test.
  *
  * @example
  * ```ts
@@ -701,8 +640,6 @@ export const isRecord = (input: unknown): input is { [x: string | symbol]: unkno
 /**
  * A guard that succeeds when the input is a readonly record.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -726,8 +663,6 @@ export const isReadonlyRecord: (
 
 /**
  * A guard that succeeds when the input is a Promise.
- *
- * @param input - The value to test.
  *
  * @example
  * ```ts
@@ -756,8 +691,6 @@ export const isPromiseLike = (
 
 /**
  * Tests if a value is a `RegExp`.
- *
- * @param input - The value to test.
  *
  * @example
  * ```ts
@@ -883,8 +816,6 @@ export const struct: {
 /**
  * Negates the result of a given predicate.
  *
- * @param self - A predicate.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -904,9 +835,6 @@ export const not = <A>(self: Predicate<A>): Predicate<A> => (a) => !self(a)
 
 /**
  * Combines two predicates into a new predicate that returns `true` if at least one of the predicates returns `true`.
- *
- * @param self - A predicate.
- * @param that - A predicate.
  *
  * @example
  * ```ts
@@ -932,9 +860,6 @@ export const or: {
 
 /**
  * Combines two predicates into a new predicate that returns `true` if both of the predicates returns `true`.
- *
- * @param self - A predicate.
- * @param that - A predicate.
  *
  * @example
  * ```ts

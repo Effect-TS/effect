@@ -142,8 +142,6 @@ export declare namespace Tag {
 /**
  * Creates a new `Tag` instance with an optional key parameter.
  *
- * @param key - A key that will be used to compare tags.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -192,8 +190,6 @@ export const unsafeMake: <Services>(unsafeMap: Map<string, any>) => Context<Serv
 /**
  * Checks if the provided argument is a `Context`.
  *
- * @param input - The value to be checked if it is a `Context`.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -209,8 +205,6 @@ export const isContext: (input: unknown) => input is Context<never> = internal.i
 
 /**
  * Checks if the provided argument is a `Tag`.
- *
- * @param input - The value to be checked if it is a `Tag`.
  *
  * @example
  * ```ts
@@ -228,7 +222,6 @@ export const isTag: (input: unknown) => input is Tag<any, any> = internal.isTag
 /**
  * Checks if the provided argument is a `Reference`.
  *
- * @param input - The value to be checked if it is a `Reference`.
  * @since 3.11.0
  * @category guards
  * @experimental
@@ -311,9 +304,6 @@ export const add: {
 /**
  * Get a service from the context that corresponds to the given tag.
  *
- * @param self - The `Context` to search for the service.
- * @param tag - The `Tag` of the service to retrieve.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -358,9 +348,6 @@ export const getOrElse: {
  *
  * For a safer version see {@link getOption}.
  *
- * @param self - The `Context` to search for the service.
- * @param tag - The `Tag` of the service to retrieve.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -387,9 +374,6 @@ export const unsafeGet: {
  * Get the value associated with the specified tag from the context wrapped in an `Option` object. If the tag is not
  * found, the `Option` object will be `None`.
  *
- * @param self - The `Context` to search for the service.
- * @param tag - The `Tag` of the service to retrieve.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -414,9 +398,6 @@ export const getOption: {
 
 /**
  * Merges two `Context`s, returning a new `Context` containing the services of both.
- *
- * @param self - The first `Context` to merge.
- * @param that - The second `Context` to merge.
  *
  * @example
  * ```ts
@@ -444,8 +425,6 @@ export const merge: {
 
 /**
  * Merges any number of `Context`s, returning a new `Context` containing the services of all.
- *
- * @param ctxs - The `Context`s to merge.
  *
  * @example
  * ```ts
@@ -475,9 +454,6 @@ export const mergeAll: <T extends Array<unknown>>(
 
 /**
  * Returns a new `Context` that contains only the specified services.
- *
- * @param self - The `Context` to prune services from.
- * @param tags - The list of `Tag`s to be included in the new `Context`.
  *
  * @example
  * ```ts

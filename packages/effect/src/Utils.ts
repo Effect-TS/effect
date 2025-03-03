@@ -519,7 +519,7 @@ export class PCGRandom {
   /**
    * Creates an instance of PCGRandom.
    *
-   * @param seed - The low 32 bits of the seed (0 is used for high 32 bits).
+   * - `seed` - The low 32 bits of the seed (0 is used for high 32 bits).
    *
    * @memberOf PCGRandom
    */
@@ -527,9 +527,9 @@ export class PCGRandom {
   /**
    * Creates an instance of PCGRandom.
    *
-   * @param seedHi - The high 32 bits of the seed.
-   * @param seedLo - The low 32 bits of the seed.
-   * @param inc - The low 32 bits of the incrementer (0 is used for high 32 bits).
+   * - `seedHi` - The high 32 bits of the seed.
+   * - `seedLo` - The low 32 bits of the seed.
+   * - `inc` - The low 32 bits of the incrementer (0 is used for high 32 bits).
    *
    * @memberOf PCGRandom
    */
@@ -537,10 +537,10 @@ export class PCGRandom {
   /**
    * Creates an instance of PCGRandom.
    *
-   * @param seedHi - The high 32 bits of the seed.
-   * @param seedLo - The low 32 bits of the seed.
-   * @param incHi - The high 32 bits of the incrementer.
-   * @param incLo - The low 32 bits of the incrementer.
+   * - `seedHi` - The high 32 bits of the seed.
+   * - `seedLo` - The low 32 bits of the seed.
+   * - `incHi` - The high 32 bits of the incrementer.
+   * - `incLo` - The low 32 bits of the incrementer.
    *
    * @memberOf PCGRandom
    */

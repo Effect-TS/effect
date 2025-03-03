@@ -66,8 +66,6 @@ export const empty = <K extends string | symbol = never, V = never>(): Record<
 /**
  * Determine if a record is empty.
  *
- * @param self - record to test for emptiness.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -85,8 +83,6 @@ export const isEmptyRecord = <K extends string, A>(self: Record<K, A>): self is 
 
 /**
  * Determine if a record is empty.
- *
- * @param self - record to test for emptiness.
  *
  * @example
  * ```ts
@@ -107,9 +103,6 @@ export const isEmptyReadonlyRecord: <K extends string, A>(
 /**
  * Takes an iterable and a projection function and returns a record.
  * The projection function maps each value of the iterable to a tuple of a key and a value, which is then added to the resulting record.
- *
- * @param self - An iterable of values to be mapped to a record.
- * @param f - A projection function that maps values of the iterable to a tuple of a key and a value.
  *
  * @example
  * ```ts
@@ -153,9 +146,6 @@ export const fromIterableWith: {
 /**
  * Creates a new record from an iterable, utilizing the provided function to determine the key for each element.
  *
- * @param items - An iterable containing elements.
- * @param f - A function that extracts the key for each element.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -189,8 +179,6 @@ export const fromIterableBy = <A, K extends string | symbol>(
  * If there are conflicting keys when using `fromEntries`, the last occurrence of the key/value pair will overwrite the
  * previous ones. So the resulting record will only have the value of the last occurrence of each key.
  *
- * @param self - The iterable of key-value pairs.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -210,9 +198,6 @@ export const fromEntries: <Entry extends readonly [string | symbol, any]>(
 
 /**
  * Transforms the values of a record into an `Array` with a custom mapping function.
- *
- * @param self - The record to transform.
- * @param f - The custom mapping function to apply to each key/value of the record.
  *
  * @example
  * ```ts
@@ -243,8 +228,6 @@ export const collect: {
 /**
  * Takes a record and returns an array of tuples containing its keys and values.
  *
- * @param self - The record to transform.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -265,8 +248,6 @@ export const toEntries: <K extends string, A>(self: ReadonlyRecord<K, A>) => Arr
 /**
  * Returns the number of key/value pairs in a record.
  *
- * @param self - A record to calculate the number of key/value pairs in.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -281,9 +262,6 @@ export const size = <K extends string, A>(self: ReadonlyRecord<K, A>): number =>
 
 /**
  * Check if a given `key` exists in a record.
- *
- * @param self - the record to look in.
- * @param key - the key to look for in the record.
  *
  * @example
  * ```ts
@@ -315,9 +293,6 @@ export const has: {
 /**
  * Retrieve a value at a particular key from a record, returning it wrapped in an `Option`.
  *
- * @param self - The record to retrieve value from.
- * @param key - Key to retrieve from record.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -343,10 +318,6 @@ export const get: {
 /**
  * Apply a function to the element at the specified key, creating a new record.
  * If the key does not exist, the record is returned unchanged.
- *
- * @param self - The record to be updated.
- * @param key - The key of the element to modify.
- * @param f - The function to apply to the element.
  *
  * @example
  * ```ts
@@ -386,10 +357,6 @@ export const modify: {
 /**
  * Apply a function to the element at the specified key, creating a new record,
  * or return `None` if the key doesn't exist.
- *
- * @param self - The record to be updated.
- * @param key - The key of the element to modify.
- * @param f - The function to apply to the element.
  *
  * @example
  * ```ts
@@ -437,10 +404,6 @@ export const modifyOption: {
 /**
  * Replaces a value in the record with the new value passed as parameter.
  *
- * @param self - The record to be updated.
- * @param key - The key to search for in the record.
- * @param b - The new value to replace the existing value with.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -478,9 +441,6 @@ export const replaceOption: {
  * If the given key exists in the record, returns a new record with the key removed,
  * otherwise returns a copy of the original record.
  *
- * @param self - the record to remove the key from.
- * @param key - the key to remove from the record.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -511,9 +471,6 @@ export const remove: {
  * of a tuple with the value and the record with the removed property.
  * If the key is not present, returns `O.none`.
  *
- * @param self - The input record.
- * @param key - The key of the property to retrieve.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -542,9 +499,6 @@ export const pop: {
 
 /**
  * Maps a record into another record by applying a transformation function to each of its values.
- *
- * @param self - The record to be mapped.
- * @param f - A transformation function that will be applied to each of the values in the record.
  *
  * @example
  * ```ts
@@ -655,9 +609,6 @@ export const mapEntries: {
  * Transforms a record into a record by applying the function `f` to each key and value in the original record.
  * If the function returns `Some`, the key-value pair is included in the output record.
  *
- * @param self - The input record.
- * @param f - The transformation function.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -697,9 +648,6 @@ export const filterMap: {
 
 /**
  * Selects properties from a record whose values match the given predicate.
- *
- * @param self - The record to filter.
- * @param predicate - A function that returns a `boolean` value to determine if the entry should be included in the new record.
  *
  * @example
  * ```ts
@@ -746,8 +694,6 @@ export const filter: {
 
 /**
  * Given a record with `Option` values, returns a new record containing only the `Some` values, preserving the original keys.
- *
- * @param self - A record with `Option` values.
  *
  * @example
  * ```ts
@@ -834,9 +780,6 @@ export const getRights = <K extends string, R, L>(
 /**
  * Partitions the elements of a record into two groups: those that match a predicate, and those that don't.
  *
- * @param self - The record to partition.
- * @param f - The predicate function to apply to each element.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -884,8 +827,6 @@ export const partitionMap: {
  * Partitions a record of `Either` values into two separate records,
  * one with the `Left` values and one with the `Right` values.
  *
- * @param self - the record to partition.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -906,9 +847,6 @@ export const separate: <K extends string, A, B>(
 
 /**
  * Partitions a record into two separate records based on the result of a predicate function.
- *
- * @param self - The input record to partition.
- * @param predicate - The partitioning function to determine the partitioning of each value of the record.
  *
  * @example
  * ```ts
@@ -969,8 +907,6 @@ export const partition: {
 /**
  * Retrieve the keys of a given record as an array.
  *
- * @param self - The object for which you want to get the keys.
- *
  * @since 2.0.0
  */
 export const keys = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): Array<K & string> =>
@@ -979,18 +915,12 @@ export const keys = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): 
 /**
  * Retrieve the values of a given record as an array.
  *
- * @param self - The object for which you want to get the values.
- *
  * @since 2.0.0
  */
 export const values = <K extends string, A>(self: ReadonlyRecord<K, A>): Array<A> => collect(self, (_, a) => a)
 
 /**
  * Add a new key-value pair or update an existing key's value in a record.
- *
- * @param self - The record to which you want to add or update a key-value pair.
- * @param key - The key you want to add or update.
- * @param values - The value you want to associate with the key.
  *
  * @example
  * ```ts
@@ -1028,10 +958,6 @@ export const set: {
  * Replace a key's value in a record and return the updated record.
  * If the key does not exist in the record, a copy of the original record is returned.
  *
- * @param self - The original record.
- * @param key - The key to replace.
- * @param value - The new value to associate with the key.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -1059,10 +985,6 @@ export const replace: {
 /**
  * Check if all the keys and values in one record are also found in another record.
  *
- * @param self - The first record to check.
- * @param that - The second record to compare against.
- * @param equivalence - A function to compare values.
- *
  * @since 2.0.0
  */
 export const isSubrecordBy = <A>(equivalence: Equivalence<A>): {
@@ -1082,9 +1004,6 @@ export const isSubrecordBy = <A>(equivalence: Equivalence<A>): {
  * Check if one record is a subrecord of another, meaning it contains all the keys and values found in the second record.
  * This comparison uses default equality checks (`Equal.equivalence()`).
  *
- * @param self - The first record to check.
- * @param that - The second record to compare against.
- *
  * @since 2.0.0
  */
 export const isSubrecord: {
@@ -1094,10 +1013,6 @@ export const isSubrecord: {
 
 /**
  * Reduce a record to a single value by combining its entries with a specified function.
- *
- * @param self - The record to reduce.
- * @param zero - The initial value of the accumulator.
- * @param f - The function to combine entries (accumulator, value, key).
  *
  * @category folding
  * @since 2.0.0
@@ -1125,9 +1040,6 @@ export const reduce: {
 
 /**
  * Check if all entries in a record meet a specific condition.
- *
- * @param self - The record to check.
- * @param predicate - The condition to test entries (value, key).
  *
  * @since 2.0.0
  */
@@ -1159,9 +1071,6 @@ export const every: {
 /**
  * Check if any entry in a record meets a specific condition.
  *
- * @param self - The record to check.
- * @param predicate - The condition to test entries (value, key).
- *
  * @since 2.0.0
  */
 export const some: {
@@ -1181,10 +1090,6 @@ export const some: {
 
 /**
  * Merge two records, preserving entries that exist in either of the records.
- *
- * @param self - The first record.
- * @param that - The second record to combine with the first.
- * @param combine - A function to specify how to merge entries with the same key.
  *
  * @since 2.0.0
  */
@@ -1231,10 +1136,6 @@ export const union: {
 /**
  * Merge two records, retaining only the entries that exist in both records.
  *
- * @param self - The first record.
- * @param that - The second record to merge with the first.
- * @param combine - A function to specify how to merge entries with the same key.
- *
  * @since 2.0.0
  */
 export const intersection: {
@@ -1269,9 +1170,6 @@ export const intersection: {
 
 /**
  * Merge two records, preserving only the entries that are unique to each record.
- *
- * @param self - The first record.
- * @param that - The second record to compare with the first.
  *
  * @since 2.0.0
  */
@@ -1310,8 +1208,6 @@ export const difference: {
 /**
  * Create an `Equivalence` for records using the provided `Equivalence` for values.
  *
- * @param equivalence - An `Equivalence` for the values contained in the records.
- *
  * @category instances
  * @since 2.0.0
  */
@@ -1324,9 +1220,6 @@ export const getEquivalence = <K extends string, A>(
 
 /**
  * Create a non-empty record from a single element.
- *
- * @param key - The key for the element.
- * @param value - The value associated with the key.
  *
  * @category constructors
  * @since 2.0.0

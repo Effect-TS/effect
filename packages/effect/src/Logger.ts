@@ -194,8 +194,6 @@ export const map: {
  * Creates a batched logger that groups log messages together and processes them
  * in intervals.
  *
- * @param window - The time window in which to batch log messages.
- *
  * @example
  * ```ts
  * import { Console, Effect, Logger } from "effect"

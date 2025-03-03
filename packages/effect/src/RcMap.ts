@@ -52,10 +52,13 @@ export declare namespace RcMap {
  *
  * Complex keys can extend `Equal` and `Hash` to allow lookups by value.
  *
+ * **Options**
+ *
+ * - `capacity`: The maximum number of resources that can be held in the map.
+ * - `idleTimeToLive`: When the reference count reaches zero, the resource will be released after this duration.
+ *
  * @since 3.5.0
  * @category models
- * @param capacity The maximum number of resources that can be held in the map.
- * @param idleTimeToLive When the reference count reaches zero, the resource will be released after this duration.
  * @example
  * ```ts
  * import { Effect, RcMap } from "effect"

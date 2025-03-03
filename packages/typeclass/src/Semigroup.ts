@@ -27,7 +27,9 @@ export interface SemigroupTypeLambda extends TypeLambda {
 }
 
 /**
- * @param combineMany - Useful when `combineMany` can be optimised
+ * The `combineMany` parameter is optional and defaults to a standard
+ * implementation. You can provide a custom implementation when performance
+ * optimizations are possible.
  *
  * @category constructors
  * @since 0.24.0
@@ -87,9 +89,6 @@ export const reverse = <A>(S: Semigroup<A>): Semigroup<A> =>
  *
  * It is interesting to note that there is no equivalent API in the `Monoid` module. This is because the value `empty`,
  * which is required for the `Monoid` interface, cannot exist.
- *
- * @param S - The `Semigroup` instance.
- * @param separator - The separator value.
  *
  * @since 0.24.0
  */

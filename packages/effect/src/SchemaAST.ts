@@ -2513,8 +2513,6 @@ export const required = (ast: AST): AST => {
 /**
  * Creates a new AST with shallow mutability applied to its properties.
  *
- * @param ast - The original AST to make properties mutable (shallowly).
- *
  * @since 3.10.0
  */
 export const mutable = (ast: AST): AST => {

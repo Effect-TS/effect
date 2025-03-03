@@ -14,8 +14,6 @@ import * as predicate from "./Predicate.js"
 /**
  * Tests if a value is a `boolean`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -33,10 +31,6 @@ export const isBoolean: (input: unknown) => input is boolean = predicate.isBoole
 /**
  * This function returns the result of either of the given functions depending on the value of the boolean parameter.
  * It is useful when you have to run one of two functions depending on the boolean value.
- *
- * @param value - the boolean value that decides which function will be executed.
- * @param onFalse - a lazy evaluation function that will be executed when the `value` is `false`.
- * @param onTrue - a lazy evaluation function that will be executed when the `value` is `true`.
  *
  * @example
  * ```ts
@@ -249,8 +243,6 @@ export const implies: {
 /**
  * This utility function is used to check if all the elements in a collection of boolean values are `true`.
  *
- * @param collection - An iterable collection of booleans.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -273,8 +265,6 @@ export const every = (collection: Iterable<boolean>): boolean => {
 
 /**
  * This utility function is used to check if at least one of the elements in a collection of boolean values is `true`.
- *
- * @param collection - An iterable collection of booleans.
  *
  * @example
  * ```ts

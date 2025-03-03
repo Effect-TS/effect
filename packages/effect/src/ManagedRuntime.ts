@@ -25,8 +25,6 @@ export type TypeId = typeof TypeId
 /**
  * Checks if the provided argument is a `ManagedRuntime`.
  *
- * @param input - The value to be checked if it is a `ManagedRuntime`.
-
  * @since 3.9.0
  * @category guards
  */

@@ -222,8 +222,6 @@ export {
 /**
  * Tests if a value is a `Either`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -242,8 +240,6 @@ export const isEither: (input: unknown) => input is Either<unknown, unknown> = e
 /**
  * Determine if a `Either` is a `Left`.
  *
- * @param self - The `Either` to check.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -260,8 +256,6 @@ export const isLeft: <R, L>(self: Either<R, L>) => self is Left<L, R> = either.i
 
 /**
  * Determine if a `Either` is a `Right`.
- *
- * @param self - The `Either` to check.
  *
  * @example
  * ```ts
@@ -349,9 +343,6 @@ export const mapBoth: {
 /**
  * Maps the `Left` side of an `Either` value to a new `Either` value.
  *
- * @param self - The input `Either` value to map.
- * @param f - A transformation function to apply to the `Left` value of the input `Either`.
- *
  * @category mapping
  * @since 2.0.0
  */
@@ -366,9 +357,6 @@ export const mapLeft: {
 
 /**
  * Maps the `Right` side of an `Either` value to a new `Either` value.
- *
- * @param self - An `Either` to map
- * @param f - The function to map over the value of the `Either`
  *
  * @category mapping
  * @since 2.0.0
@@ -425,8 +413,6 @@ export const match: {
 /**
  * Transforms a `Predicate` function into a `Right` of the input value if the predicate returns `true`
  * or `Left` of the result of the provided function if the predicate returns false
- *
- * @param predicate - A `Predicate` function that takes in a value of type `A` and returns a boolean.
  *
  * @example
  * ```ts
@@ -594,9 +580,6 @@ export const getOrUndefined: <R, L>(self: Either<R, L>) => R | undefined = getOr
  *
  * If a default error is sufficient for your use case and you don't need to configure the thrown error, see {@link getOrThrow}.
  *
- * @param self - The `Either` to extract the value from.
- * @param onLeft - A function that will be called if the `Either` is `Left`. It returns the error to be thrown.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -628,7 +611,6 @@ export const getOrThrowWith: {
  *
  * The thrown error is a default error. To configure the error thrown, see  {@link getOrThrowWith}.
  *
- * @param self - The `Either` to extract the value from.
  * @throws `Error("getOrThrow called on a Left")`
  *
  * @example
@@ -649,9 +631,6 @@ export const getOrThrow: <R, L>(self: Either<R, L>) => R = getOrThrowWith(() =>
 
 /**
  * Returns `self` if it is a `Right` or `that` otherwise.
- *
- * @param self - The input `Either` value to check and potentially return.
- * @param that - A function that takes the error value from `self` (if it's a `Left`) and returns a new `Either` value.
  *
  * @category error handling
  * @since 2.0.0
@@ -741,8 +720,6 @@ export const ap: {
  * - If a tuple is supplied, then the returned `Either` will contain a tuple with the same length.
  * - If a struct is supplied, then the returned `Either` will contain a struct with the same keys.
  * - If an iterable is supplied, then the returned `Either` will contain an array.
- *
- * @param fields - the struct of `Either`s to be sequenced.
  *
  * @example
  * ```ts
