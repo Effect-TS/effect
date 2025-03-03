@@ -1841,12 +1841,6 @@ export const flattenEffect: {
 /**
  * Unwraps `Exit` values that also signify end-of-stream by failing with `None`.
  *
- * For `Exit` values that do not signal end-of-stream, prefer:
- *
- * ```ts
- * stream.mapZIO(ZIO.done(_))
- * ```
- *
  * @since 2.0.0
  * @category sequencing
  */
@@ -2314,9 +2308,7 @@ export const groupBy: {
  * stream of words:
  *
  * ```ts
- * import * as GroupBy from "./GroupBy"
- * import * as Stream from "./Stream"
- * import { pipe } from "./Function"
+ * import { pipe, GroupBy, Stream } from "effect"
  *
  * pipe(
  *   Stream.fromIterable(["hello", "world", "hi", "holla"]),
@@ -4618,8 +4610,7 @@ export const scopedWith: <A, E, R>(f: (scope: Scope.Scope) => Effect.Effect<A, E
  * Emits a sliding window of `n` elements.
  *
  * ```ts
- * import * as Stream from "./Stream"
- * import { pipe } from "./Function"
+ * import { pipe, Stream } from "effect"
  *
  * pipe(
  *   Stream.make(1, 2, 3, 4),
@@ -4682,8 +4673,7 @@ export const someOrFail: {
  * Splits elements based on a predicate or refinement.
  *
  * ```ts
- * import * as Stream from "./Stream"
- * import { pipe } from "./Function"
+ * import { pipe, Stream } from "effect"
  *
  * pipe(
  *   Stream.range(1, 10),

@@ -1166,7 +1166,7 @@ export const isSuccess: <A, E, R>(self: STM<A, E, R>) => STM<boolean, never, R> 
  * Iterates with the specified transactional function. The moral equivalent
  * of:
  *
- * ```ts
+ * ```ts skip-type-checking
  * const s = initial
  *
  * while (cont(s)) {
@@ -1191,7 +1191,7 @@ export const iterate: <Z, E, R>(
  * Loops with the specified transactional function, collecting the results
  * into a list. The moral equivalent of:
  *
- * ```ts
+ * ```ts skip-type-checking
  * const as = []
  * let s  = initial
  *

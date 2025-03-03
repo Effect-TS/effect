@@ -591,7 +591,7 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  *
  * For instance, if the input is a tuple:
  *
- * ```ts
+ * ```ts skip-type-checking
  * //         ┌─── a tuple of effects
  * //         ▼
  * Effect.all([effect1, effect2, ...])
@@ -5029,7 +5029,7 @@ export const flipWith: {
  *
  * **Syntax**
  *
- * ```ts
+ * ```ts skip-type-checking
  * const mappedEffect = pipe(myEffect, Effect.map(transformation))
  * // or
  * const mappedEffect = Effect.map(myEffect, transformation)
@@ -8603,7 +8603,8 @@ export const whenRef: {
  * operations that depend on previous results.
  *
  * **Syntax**
- * ```ts
+ *
+ * ```ts skip-type-checking
  * const flatMappedEffect = pipe(myEffect, Effect.flatMap(transformation))
  * // or
  * const flatMappedEffect = Effect.flatMap(myEffect, transformation)
@@ -8668,7 +8669,8 @@ export const flatMap: {
  * first.
  *
  * **Syntax**
- * ```ts
+ *
+ * ```ts skip-type-checking
  * const transformedEffect = pipe(myEffect, Effect.andThen(anotherEffect))
  * // or
  * const transformedEffect = Effect.andThen(myEffect, anotherEffect)
@@ -9058,13 +9060,13 @@ export const raceAll: <Eff extends Effect<any, any, any>>(
  *
  * If you want a quicker return, you can disconnect the interrupt signal for both effects. Instead of calling:
  *
- * ```ts
+ * ```ts skip-type-checking
  * Effect.raceFirst(task1, task2)
  * ```
  *
  * You can use:
  *
- * ```ts
+ * ```ts skip-type-checking
  * Effect.raceFirst(Effect.disconnect(task1), Effect.disconnect(task2))
  * ```
  *
@@ -9689,7 +9691,7 @@ export const forever: <A, E, R>(self: Effect<A, E, R>) => Effect<never, E, R> = 
  * This function provides a way to implement effectful loops, similar to a
  * `while` loop in JavaScript.
  *
- * ```ts
+ * ```ts skip-type-checking
  * let result = initial
  *
  * while (options.while(result)) {
@@ -9764,7 +9766,7 @@ export const iterate: {
  * iterating as long as the `while` condition evaluates to `true`, similar to a
  * `while` loop in JavaScript.
  *
- * ```ts
+ * ```ts skip-type-checking
  * let state = initial
  * const result = []
  *

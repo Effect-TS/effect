@@ -48,11 +48,11 @@ export type ScheduleDriverTypeId = typeof ScheduleDriverTypeId
  *
  * The `Schedule` type is structured as follows:
  *
- * ```text
- *           ┌─── The type of output produced by the schedule
- *           │   ┌─── The type of input consumed by the schedule
- *           │   │     ┌─── Additional requirements for the schedule
- *           ▼   ▼     ▼
+ * ```ts skip-type-checking
+ * //        ┌─── The type of output produced by the schedule
+ * //        │   ┌─── The type of input consumed by the schedule
+ * //        │   │     ┌─── Additional requirements for the schedule
+ * //        ▼   ▼     ▼
  * Schedule<Out, In, Requirements>
  * ```
  *
@@ -1034,7 +1034,7 @@ export const fibonacci: (one: Duration.DurationInput) => Schedule<Duration.Durat
  * "pile-ups," ensuring that the schedule remains consistent without overlapping
  * executions.
  *
- * ```
+ * ```text
  * |-----interval-----|-----interval-----|-----interval-----|
  * |---------action--------||action|-----|action|-----------|
  * ```
@@ -2124,7 +2124,7 @@ export const whileOutputEffect: {
  * For example, `windowed(Duration.seconds(10))` would produce a schedule as
  * follows:
  *
- * ```
+ * ```text
  *      10s        10s        10s       10s
  * |----------|----------|----------|----------|
  * |action------|sleep---|act|-sleep|action----|
