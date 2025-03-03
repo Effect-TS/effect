@@ -20,8 +20,6 @@ const bigint2 = BigInt(2)
 /**
  * Tests if a value is a `bigint`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -38,9 +36,6 @@ export const isBigInt: (u: unknown) => u is bigint = predicate.isBigInt
 
 /**
  * Provides an addition operation on `bigint`s.
- *
- * @param self - The first operand.
- * @param that - The second operand.
  *
  * @example
  * ```ts
@@ -61,9 +56,6 @@ export const sum: {
 /**
  * Provides a multiplication operation on `bigint`s.
  *
- * @param self - The first operand.
- * @param that - The second operand.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -82,9 +74,6 @@ export const multiply: {
 
 /**
  * Provides a subtraction operation on `bigint`s.
- *
- * @param self - The first operand.
- * @param that - The second operand.
  *
  * @example
  * ```ts
@@ -109,9 +98,6 @@ export const subtract: {
  * which represents the integer division rounded down to the nearest integer.
  *
  * Returns `None` if the divisor is `0n`.
- *
- * @param self - The dividend operand.
- * @param that - The divisor operand.
  *
  * @example
  * ```ts
@@ -141,9 +127,6 @@ export const divide: {
  *
  * Throws a `RangeError` if the divisor is `0n`.
  *
- * @param self - The dividend operand.
- * @param that - The divisor operand.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -164,8 +147,6 @@ export const unsafeDivide: {
 /**
  * Returns the result of adding `1n` to a given number.
  *
- * @param n - A `bigint` to be incremented.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -181,8 +162,6 @@ export const increment = (n: bigint): bigint => n + bigint1
 
 /**
  * Decrements a number by `1n`.
- *
- * @param n - A `bigint` to be decremented.
  *
  * @example
  * ```ts
@@ -212,9 +191,6 @@ export const Order: order.Order<bigint> = order.bigint
 /**
  * Returns `true` if the first argument is less than the second, otherwise `false`.
  *
- * @param self - The first argument.
- * @param that - The second argument.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -235,9 +211,6 @@ export const lessThan: {
 
 /**
  * Returns a function that checks if a given `bigint` is less than or equal to the provided one.
- *
- * @param self - The first `bigint` to compare with.
- * @param that - The second `bigint` to compare with.
  *
  * @example
  * ```ts
@@ -260,9 +233,6 @@ export const lessThanOrEqualTo: {
 /**
  * Returns `true` if the first argument is greater than the second, otherwise `false`.
  *
- * @param self - The first argument.
- * @param that - The second argument.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -284,9 +254,6 @@ export const greaterThan: {
 /**
  * Returns a function that checks if a given `bigint` is greater than or equal to the provided one.
  *
- * @param self - The first `bigint` to compare with.
- * @param that - The second `bigint` to compare with.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -307,10 +274,6 @@ export const greaterThanOrEqualTo: {
 
 /**
  * Checks if a `bigint` is between a `minimum` and `maximum` value (inclusive).
- *
- * @param self - The `number` to check.
- * @param minimum - The `minimum` value to check.
- * @param maximum - The `maximum` value to check.
  *
  * @example
  * ```ts
@@ -345,10 +308,6 @@ export const between: {
  * - If the `bigint` is greater than the `maximum` value, the function returns the `maximum` value.
  * - Otherwise, it returns the original `bigint`.
  *
- * @param self - The `bigint` to be clamped.
- * @param minimum - The lower end of the range.
- * @param maximum - The upper end of the range.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -377,9 +336,6 @@ export const clamp: {
 /**
  * Returns the minimum between two `bigint`s.
  *
- * @param self - The first `bigint`.
- * @param that - The second `bigint`.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -397,9 +353,6 @@ export const min: {
 
 /**
  * Returns the maximum between two `bigint`s.
- *
- * @param self - The first `bigint`.
- * @param that - The second `bigint`.
  *
  * @example
  * ```ts
@@ -419,8 +372,6 @@ export const max: {
 /**
  * Determines the sign of a given `bigint`.
  *
- * @param n - The `bigint` to determine the sign of.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -439,8 +390,6 @@ export const sign = (n: bigint): Ordering => Order(n, bigint0)
 /**
  * Determines the absolute value of a given `bigint`.
  *
- * @param n - The `bigint` to determine the absolute value of.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -458,9 +407,6 @@ export const abs = (n: bigint): bigint => (n < bigint0 ? -n : n)
 
 /**
  * Determines the greatest common divisor of two `bigint`s.
- *
- * @param a - The first `bigint`.
- * @param b - The second `bigint`.
  *
  * @example
  * ```ts
@@ -490,9 +436,6 @@ export const gcd: {
 /**
  * Determines the least common multiple of two `bigint`s.
  *
- * @param a - The first `bigint`.
- * @param b - The second `bigint`.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -513,8 +456,6 @@ export const lcm: {
 
 /**
  * Determines the square root of a given `bigint` unsafely. Throws if the given `bigint` is negative.
- *
- * @param n - The `bigint` to determine the square root of.
  *
  * @example
  * ```ts
@@ -546,8 +487,6 @@ export const unsafeSqrt = (n: bigint): bigint => {
 /**
  * Determines the square root of a given `bigint` safely. Returns `none` if the given `bigint` is negative.
  *
- * @param n - The `bigint` to determine the square root of.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -567,8 +506,6 @@ export const sqrt = (n: bigint): Option.Option<bigint> =>
 
 /**
  * Takes an `Iterable` of `bigint`s and returns their sum as a single `bigint
- *
- * @param collection - The collection of `bigint`s to sum.
  *
  * @example
  * ```ts
@@ -591,8 +528,6 @@ export const sumAll = (collection: Iterable<bigint>): bigint => {
 
 /**
  * Takes an `Iterable` of `bigint`s and returns their multiplication as a single `number`.
- *
- * @param collection - The collection of `bigint`s to multiply.
  *
  * @example
  * ```ts
@@ -623,8 +558,6 @@ export const multiplyAll = (collection: Iterable<bigint>): bigint => {
  * and `Number.MIN_SAFE_INTEGER`), it returns `Option.none()`. Otherwise, it converts the `bigint`
  * to a number and returns `Option.some(number)`.
  *
- * @param b - The `bigint` to be converted to a `number`.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -650,8 +583,6 @@ export const toNumber = (b: bigint): Option.Option<number> => {
  *
  * If the string is empty or contains characters that cannot be converted into a `bigint`,
  * it returns `Option.none()`, otherwise, it returns `Option.some(bigint)`.
- *
- * @param s - The string to be converted to a `bigint`.
  *
  * @example
  * ```ts
@@ -682,8 +613,6 @@ export const fromString = (s: string): Option.Option<bigint> => {
  * If the number is outside the safe integer range for JavaScript (`Number.MAX_SAFE_INTEGER`
  * and `Number.MIN_SAFE_INTEGER`), it returns `Option.none()`. Otherwise, it attempts to
  * convert the number to a `bigint` and returns `Option.some(bigint)`.
- *
- * @param n - The number to be converted to a `bigint`.
  *
  * @example
  * ```ts

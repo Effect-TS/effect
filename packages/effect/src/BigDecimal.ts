@@ -86,8 +86,6 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
 /**
  * Checks if a given value is a `BigDecimal`.
  *
- * @param u - The value to check.
- *
  * @since 2.0.0
  * @category guards
  */
@@ -95,9 +93,6 @@ export const isBigDecimal = (u: unknown): u is BigDecimal => hasProperty(u, Type
 
 /**
  * Creates a `BigDecimal` from a `bigint` value and a scale.
- *
- * @param value - The `bigint` value to create a `BigDecimal` from.
- * @param scale - The scale of the `BigDecimal`.
  *
  * @since 2.0.0
  * @category constructors
@@ -131,8 +126,6 @@ const zero = unsafeMakeNormalized(bigint0, 0)
 
 /**
  * Normalizes a given `BigDecimal` by removing trailing zeros.
- *
- * @param self - The `BigDecimal` to normalize.
  *
  * @example
  * ```ts
@@ -181,9 +174,6 @@ export const normalize = (self: BigDecimal): BigDecimal => {
  * If the given scale is smaller than the current scale, the value will be rounded down to
  * the nearest integer.
  *
- * @param self - The `BigDecimal` to scale.
- * @param scale - The scale to scale to.
- *
  * @since 2.0.0
  * @category scaling
  */
@@ -204,9 +194,6 @@ export const scale: {
 
 /**
  * Provides an addition operation on `BigDecimal`s.
- *
- * @param self - The first operand.
- * @param that - The second operand.
  *
  * @example
  * ```ts
@@ -245,9 +232,6 @@ export const sum: {
 /**
  * Provides a multiplication operation on `BigDecimal`s.
  *
- * @param self - The first operand.
- * @param that - The second operand.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -272,9 +256,6 @@ export const multiply: {
 
 /**
  * Provides a subtraction operation on `BigDecimal`s.
- *
- * @param self - The first operand.
- * @param that - The second operand.
  *
  * @example
  * ```ts
@@ -386,9 +367,6 @@ export const roundTerminal = (n: bigint): bigint => {
  *
  * If the divisor is `0`, the result will be `None`.
  *
- * @param self - The dividend operand.
- * @param that - The divisor operand.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -429,9 +407,6 @@ export const divide: {
  * which represents the integer division rounded down to the nearest integer.
  *
  * Throws a `RangeError` if the divisor is `0`.
- *
- * @param self - The dividend operand.
- * @param that - The divisor operand.as
  *
  * @example
  * ```ts
@@ -488,9 +463,6 @@ export const Order: order.Order<BigDecimal> = order.make((self, that) => {
 /**
  * Returns `true` if the first argument is less than the second, otherwise `false`.
  *
- * @param self - The first argument.
- * @param that - The second argument.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -511,9 +483,6 @@ export const lessThan: {
 
 /**
  * Checks if a given `BigDecimal` is less than or equal to the provided one.
- *
- * @param self - The first `BigDecimal` to compare with.
- * @param that - The second `BigDecimal` to compare with.
  *
  * @example
  * ```ts
@@ -536,9 +505,6 @@ export const lessThanOrEqualTo: {
 /**
  * Returns `true` if the first argument is greater than the second, otherwise `false`.
  *
- * @param self - The first argument.
- * @param that - The second argument.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -560,9 +526,6 @@ export const greaterThan: {
 /**
  * Checks if a given `BigDecimal` is greater than or equal to the provided one.
  *
- * @param self - The first `BigDecimal` to compare with.
- * @param that - The second `BigDecimal` to compare with.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -583,10 +546,6 @@ export const greaterThanOrEqualTo: {
 
 /**
  * Checks if a `BigDecimal` is between a `minimum` and `maximum` value (inclusive).
- *
- * @param self - The `number` to check.
- * @param minimum - The `minimum` value to check.
- * @param maximum - The `maximum` value to check.
  *
  * @example
  * ```ts
@@ -624,10 +583,6 @@ export const between: {
  * - If the `BigDecimal` is greater than the `maximum` value, the function returns the `maximum` value.
  * - Otherwise, it returns the original `BigDecimal`.
  *
- * @param self - The `BigDecimal` to be clamped.
- * @param minimum - The lower end of the range.
- * @param maximum - The upper end of the range.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -660,9 +615,6 @@ export const clamp: {
 /**
  * Returns the minimum between two `BigDecimal`s.
  *
- * @param self - The first `BigDecimal`.
- * @param that - The second `BigDecimal`.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -681,9 +633,6 @@ export const min: {
 
 /**
  * Returns the maximum between two `BigDecimal`s.
- *
- * @param self - The first `BigDecimal`.
- * @param that - The second `BigDecimal`.
  *
  * @example
  * ```ts
@@ -704,8 +653,6 @@ export const max: {
 /**
  * Determines the sign of a given `BigDecimal`.
  *
- * @param n - The `BigDecimal` to determine the sign of.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -723,8 +670,6 @@ export const sign = (n: BigDecimal): Ordering => n.value === bigint0 ? 0 : n.val
 
 /**
  * Determines the absolute value of a given `BigDecimal`.
- *
- * @param n - The `BigDecimal` to determine the absolute value of.
  *
  * @example
  * ```ts
@@ -744,8 +689,6 @@ export const abs = (n: BigDecimal): BigDecimal => n.value < bigint0 ? make(-n.va
 /**
  * Provides a negate operation on `BigDecimal`s.
  *
- * @param n - The `BigDecimal` to negate.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -764,9 +707,6 @@ export const negate = (n: BigDecimal): BigDecimal => make(-n.value, n.scale)
  * Returns the remainder left over when one operand is divided by a second operand.
  *
  * If the divisor is `0`, the result will be `None`.
- *
- * @param self - The dividend.
- * @param divisor - The divisor.
  *
  * @example
  * ```ts
@@ -797,9 +737,6 @@ export const remainder: {
  * Returns the remainder left over when one operand is divided by a second operand.
  *
  * Throws a `RangeError` if the divisor is `0`.
- *
- * @param self - The dividend.
- * @param divisor - The divisor.
  *
  * @example
  * ```ts
@@ -856,8 +793,6 @@ export const equals: {
 /**
  * Creates a `BigDecimal` from a `bigint` value.
  *
- * @param value - The `bigint` value to create a `BigDecimal` from.
- *
  * @since 2.0.0
  * @category constructors
  */
@@ -870,8 +805,6 @@ export const fromBigInt = (n: bigint): BigDecimal => make(n, 0)
  * as the floating point representation may be unexpected.
  *
  * Throws a `RangeError` if the number is not finite (`NaN`, `+Infinity` or `-Infinity`).
- *
- * @param value - The `number` value to create a `BigDecimal` from.
  *
  * @example
  * ```ts
@@ -896,8 +829,6 @@ export const unsafeFromNumber = (n: number): BigDecimal =>
  *
  * Throws a `RangeError` if the number is not finite (`NaN`, `+Infinity` or `-Infinity`).
  *
- * @param value - The `number` value to create a `BigDecimal` from.
- *
  * @since 2.0.0
  * @category constructors
  * @deprecated Use {@link unsafeFromNumber} instead.
@@ -912,8 +843,6 @@ export const fromNumber: (n: number) => BigDecimal = unsafeFromNumber
  * as the floating point representation may be unexpected.
  *
  * Returns `None` if the number is not finite (`NaN`, `+Infinity` or `-Infinity`).
- *
- * @param n - The `number` value to create a `BigDecimal` from.
  *
  * @example
  * ```ts
@@ -944,8 +873,6 @@ export const safeFromNumber = (n: number): Option.Option<BigDecimal> => {
 
 /**
  * Parses a numerical `string` into a `BigDecimal`.
- *
- * @param s - The `string` to parse.
  *
  * @example
  * ```ts
@@ -1008,8 +935,6 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
 /**
  * Parses a numerical `string` into a `BigDecimal`.
  *
- * @param s - The `string` to parse.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -1031,8 +956,6 @@ export const unsafeFromString = (s: string): BigDecimal =>
  *
  * If the scale of the `BigDecimal` is greater than or equal to 16, the `BigDecimal` will
  * be formatted in scientific notation.
- *
- * @param n - The `BigDecimal` to format.
  *
  * @example
  * ```ts
@@ -1081,8 +1004,6 @@ export const format = (n: BigDecimal): string => {
 /**
  * Formats a given `BigDecimal` as a `string` in scientific notation.
  *
- * @param n - The `BigDecimal` to format.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -1118,8 +1039,6 @@ export const toExponential = (n: BigDecimal): string => {
  *
  * This function will produce incorrect results if the `BigDecimal` exceeds the 64-bit range of a `number`.
  *
- * @param n - The `BigDecimal` to convert.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -1135,8 +1054,6 @@ export const unsafeToNumber = (n: BigDecimal): number => Number(format(n))
 
 /**
  * Checks if a given `BigDecimal` is an integer.
- *
- * @param n - The `BigDecimal` to check.
  *
  * @example
  * ```ts
@@ -1156,8 +1073,6 @@ export const isInteger = (n: BigDecimal): boolean => normalize(n).scale <= 0
 /**
  * Checks if a given `BigDecimal` is `0`.
  *
- * @param n - The `BigDecimal` to check.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -1174,8 +1089,6 @@ export const isZero = (n: BigDecimal): boolean => n.value === bigint0
 
 /**
  * Checks if a given `BigDecimal` is negative.
- *
- * @param n - The `BigDecimal` to check.
  *
  * @example
  * ```ts
@@ -1194,8 +1107,6 @@ export const isNegative = (n: BigDecimal): boolean => n.value < bigint0
 
 /**
  * Checks if a given `BigDecimal` is positive.
- *
- * @param n - The `BigDecimal` to check.
  *
  * @example
  * ```ts

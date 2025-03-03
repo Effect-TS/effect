@@ -14,8 +14,6 @@ export interface FunctionTypeLambda extends TypeLambda {
 /**
  * Tests if a value is a `function`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -43,10 +41,9 @@ export const isFunction = (input: unknown): input is Function => typeof input ==
  * takes an optional argument, you can use a predicate to determine if the
  * function is being used in a data-first or data-last style.
  *
- * @param arity - Either the arity of the uncurried function or a predicate
- *                which determines if the function is being used in a data-first
- *                or data-last style.
- * @param body - The definition of the uncurried function.
+ * You can pass either the arity of the uncurried function or a predicate
+ * which determines if the function is being used in a data-first or
+ * data-last style.
  *
  * @example
  * ```ts
@@ -155,9 +152,6 @@ export const dual: {
 /**
  * Apply a function to a given value.
  *
- * @param a - The value that the function will be applied to.
- * @param self - The function to be applied to a value.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -206,8 +200,6 @@ export interface FunctionN<A extends ReadonlyArray<unknown>, B> {
 /**
  * The identity function, i.e. A function that returns its input argument.
  *
- * @param a - The input argument.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -245,8 +237,6 @@ export const satisfies = <A>() => <B extends A>(b: B) => b
 /**
  * Casts the result to the specified type.
  *
- * @param a - The value to be casted to the target type.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -264,8 +254,6 @@ export const unsafeCoerce: <A, B>(a: A) => B = identity as any
  *
  * This is useful when you want to pass a value to a higher-order function (a function that takes another function as its argument)
  * and want that inner function to always use the same value, no matter how many times it is called.
- *
- * @param value - The constant value to be returned.
  *
  * @example
  * ```ts
@@ -360,8 +348,6 @@ export const constVoid: LazyArg<void> = constUndefined
 /**
  * Reverses the order of arguments for a curried function.
  *
- * @param f - A curried function that takes multiple arguments.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -383,9 +369,6 @@ export const flip = <A extends Array<unknown>, B extends Array<unknown>, C>(
 /**
  * Composes two functions, `ab` and `bc` into a single function that takes in an argument `a` of type `A` and returns a result of type `C`.
  * The result is obtained by first applying the `ab` function to `a` and then applying the `bc` function to the result of `ab`.
- *
- * @param ab - A function that maps from `A` to `B`.
- * @param bc - A function that maps from `B` to `C`.
  *
  * @example
  * ```ts
@@ -1204,9 +1187,6 @@ export const hole: <T>() => T = unsafeCoerce(absurd)
  * lambda calculus and the SKI combinator calculus.
  *
  * This function is useful for discarding the first argument passed to it and returning the second argument.
- *
- * @param _ - The first argument to be discarded.
- * @param b - The second argument to be returned.
  *
  * @example
  * ```ts

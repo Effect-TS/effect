@@ -995,7 +995,9 @@ export const fromEffect: <A, E, R>(effect: Effect.Effect<A, E, R>) => Sink<A, un
 /**
  * Create a sink which publishes each element to the specified `PubSub`.
  *
- * @param shutdown If `true`, the `PubSub` will be shutdown after the sink is evaluated (defaults to `false`)
+ * If the `shutdown` parameter is `true`, the `PubSub` will be shutdown after
+ * the sink is evaluated (defaults to `false`).
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -1023,7 +1025,9 @@ export const fromPush: <In, L0, R0, L, R>(
 /**
  * Create a sink which enqueues each element into the specified queue.
  *
- * @param shutdown If `true`, the queue will be shutdown after the sink is evaluated (defaults to `false`)
+ * If the `shutdown` parameter is `true`, the queue will be shutdown after the
+ * sink is evaluated (defaults to `false`).
+ *
  * @since 2.0.0
  * @category constructors
  */

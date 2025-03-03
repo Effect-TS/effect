@@ -187,8 +187,6 @@ export const ensure = <A>(self: ReadonlyArray<A> | A): Array<A> => Array.isArray
 /**
  * Takes a record and returns an array of tuples containing its keys and values.
  *
- * @param self - The record to transform.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -508,8 +506,6 @@ export const scanRight: {
 /**
  * Determine if `unknown` is an Array.
  *
- * @param self - The value to check.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -530,8 +526,6 @@ export const isArray: {
 /**
  * Determine if an `Array` is empty narrowing down the type to `[]`.
  *
- * @param self - The `Array` to check.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -548,8 +542,6 @@ export const isEmptyArray = <A>(self: Array<A>): self is [] => self.length === 0
 
 /**
  * Determine if a `ReadonlyArray` is empty narrowing down the type to `readonly []`.
- *
- * @param self - The `ReadonlyArray` to check.
  *
  * @example
  * ```ts
@@ -570,8 +562,6 @@ export const isEmptyReadonlyArray: <A>(self: ReadonlyArray<A>) => self is readon
  *
  * An `Array` is considered to be a `NonEmptyArray` if it contains at least one element.
  *
- * @param self - The `Array` to check.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -590,8 +580,6 @@ export const isNonEmptyArray: <A>(self: Array<A>) => self is NonEmptyArray<A> = 
  * Determine if a `ReadonlyArray` is non empty narrowing down the type to `NonEmptyReadonlyArray`.
  *
  * A `ReadonlyArray` is considered to be a `NonEmptyReadonlyArray` if it contains at least one element.
- *
- * @param self - The `ReadonlyArray` to check.
  *
  * @example
  * ```ts

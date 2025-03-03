@@ -102,8 +102,6 @@ export const replicate: {
 /**
  * Takes a record and returns an Iterable of tuples containing its keys and values.
  *
- * @param self - The record to transform.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
