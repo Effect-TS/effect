@@ -1,6 +1,26 @@
 /**
  * @since 1.0.0
  */
+export * as BunClusterRunnerHttp from "./BunClusterRunnerHttp.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as BunClusterRunnerSocket from "./BunClusterRunnerSocket.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as BunClusterShardManagerHttp from "./BunClusterShardManagerHttp.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as BunClusterShardManagerSocket from "./BunClusterShardManagerSocket.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as BunCommandExecutor from "./BunCommandExecutor.js"
 
 /**
@@ -57,6 +77,11 @@ export * as BunSink from "./BunSink.js"
  * @since 1.0.0
  */
 export * as BunSocket from "./BunSocket.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as BunSocketServer from "./BunSocketServer.js"
 
 /**
  * @since 1.0.0
