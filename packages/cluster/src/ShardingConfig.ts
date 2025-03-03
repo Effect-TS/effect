@@ -41,8 +41,8 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    */
   readonly shardManagerAddress: RunnerAddress
   /**
-   * If the shard is unavilable for this duration, all the shard assignments
-   * will be reset.
+   * If the shard manager is unavailable for this duration, all the shard
+   * assignments will be reset.
    */
   readonly shardManagerUnavailableTimeout: DurationInput
   /**
@@ -92,7 +92,7 @@ export const defaults: ShardingConfig["Type"] = {
   serverVersion: 1,
   numberOfShards: 300,
   shardManagerAddress: RunnerAddress.make({ host: "localhost", port: 8080 }),
-  shardManagerUnavailableTimeout: Duration.minutes(5),
+  shardManagerUnavailableTimeout: Duration.minutes(10),
   entityMailboxCapacity: 4096,
   entityMaxIdleTime: Duration.minutes(1),
   entityTerminationTimeout: Duration.seconds(15),
