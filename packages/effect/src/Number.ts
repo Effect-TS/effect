@@ -548,12 +548,13 @@ export const parse = (s: string): Option<number> => {
  * @returns An `Option<number>` containing the parsed integer if successful.
  *
  * @example
+ * import { Option } from "effect"
  * import { parseInteger } from "effect/Number"
  *
- * assert.deepStrictEqual(parseInteger("42"), option.some(42))
- * assert.deepStrictEqual(parseInteger("4.2"), option.some(4))
- * assert.deepStrictEqual(parseInteger("abc"), option.none)
- * assert.deepStrictEqual(parseInteger("101", 2), option.some(5))
+ * assert.deepStrictEqual(parseInteger("42"), Option.some(42))
+ * assert.deepStrictEqual(parseInteger("4.2"), Option.some(4))
+ * assert.deepStrictEqual(parseInteger("abc"), Option.none)
+ * assert.deepStrictEqual(parseInteger("101", 2), Option.some(5))
  *
  * @category constructors
  * @since 3.14.0
