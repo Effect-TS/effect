@@ -9,6 +9,7 @@ import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as doNotation from "./internal/doNotation.js"
 import * as either from "./internal/either.js"
+import * as option_ from "./internal/option.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
@@ -965,4 +966,39 @@ export {
    * @since 2.0.0
    */
   let_ as let
+}
+
+/**
+ * Converts an `Option` of an `Either` into an `Either` of an `Option`.
+ *
+ * **Details**
+ *
+ * This function transforms an `Option<Either<A, E>>` into an
+ * `Either<Option<A>, E>`. If the `Option` is `None`, the resulting `Either`
+ * will be a `Right` with a `None` value. If the `Option` is `Some`, the
+ * inner `Either` will be executed, and its result wrapped in a `Some`.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Either, Option } from "effect"
+ *
+ * //      ┌─── Option<Either<number, never>>
+ * //      ▼
+ * const maybe = Option.some(Either.right(42))
+ *
+ * //      ┌─── Either<Option<number>, never, never>
+ * //      ▼
+ * const result = Either.transposeOption(maybe)
+ *
+ * console.log(Effect.runSync(result))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 42 }
+ * ```
+ *
+ * @since 3.14.0
+ * @category Optional Wrapping & Unwrapping
+ */
+export const transposeOption = <A = never, E = never>(
+  self: Option<Either<A, E>>
+): Either<Option<A>, E> => {
+  return option_.isNone(self) ? right(option_.none) : map(self.value, option_.some)
 }
