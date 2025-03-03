@@ -536,6 +536,35 @@ export const parse = (s: string): Option<number> => {
 }
 
 /**
+ * Tries to parse a string into a integer using Number.parseInt.
+ * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/parseInt
+ *
+ * @param string - A string to convert into a number.
+ *
+ * @param radix - A value between 2 and 36 that specifies the base of the number in string.
+ * If this argument is not supplied, strings with a prefix of '0x' are considered hexadecimal.
+ * All other strings are considered decimal.
+ *
+ * @returns An `Option<number>` containing the parsed integer if successful.
+ *
+ * @example
+ * import { Option } from "effect"
+ * import { parseInteger } from "effect/Number"
+ *
+ * assert.deepStrictEqual(parseInteger("42"), Option.some(42))
+ * assert.deepStrictEqual(parseInteger("4.2"), Option.some(4))
+ * assert.deepStrictEqual(parseInteger("abc"), Option.none())
+ * assert.deepStrictEqual(parseInteger("101", 2), Option.some(5))
+ *
+ * @category constructors
+ * @since 3.14.0
+ */
+export const parseInteger = (string: string, radix?: number): Option<number> => {
+  const num = Number.parseInt(string, radix)
+  return Number.isNaN(num) ? option.none : option.some(num)
+}
+
+/**
  * Returns the number rounded with the given precision.
  *
  * @param self - The number to round
