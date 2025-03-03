@@ -1,5 +1,11 @@
 # effect
 
+## 3.13.7
+
+### Patch Changes
+
+- [#4541](https://github.com/Effect-TS/effect/pull/4541) [`9bf8a74`](https://github.com/Effect-TS/effect/commit/9bf8a74b967f18d931743dd5196af326c9118e9c) Thanks @fubhy! - Disallowed excess properties for various function options
+
 ## 3.13.6
 
 ### Patch Changes

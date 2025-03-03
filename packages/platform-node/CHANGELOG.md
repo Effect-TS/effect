@@ -1,5 +1,16 @@
 # @effect/platform-node
 
+## 0.73.7
+
+### Patch Changes
+
+- [#4539](https://github.com/Effect-TS/effect/pull/4539) [`99fcbf7`](https://github.com/Effect-TS/effect/commit/99fcbf712d40a90ac5c8843237d26914146d7312) Thanks @schickling! - Fixed interruption of timeout in worker shutdown
+
+- Updated dependencies [[`9bf8a74`](https://github.com/Effect-TS/effect/commit/9bf8a74b967f18d931743dd5196af326c9118e9c), [`0d01480`](https://github.com/Effect-TS/effect/commit/0d014803e4f688f74386a80abd65485e1a319244)]:
+  - @effect/platform@0.77.7
+  - effect@3.13.7
+  - @effect/platform-node-shared@0.27.7
+
 ## 0.73.6
 
 ### Patch Changes
