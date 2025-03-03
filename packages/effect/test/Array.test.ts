@@ -956,6 +956,18 @@ describe("Array", () => {
     assertSingleChunk(Arr.make(1, 2), 3)
   })
 
+  it("window", () => {
+    deepStrictEqual(Arr.window(2)([]), [])
+
+    deepStrictEqual(Arr.window(2)([1, 2, 3, 4, 5]), [[1, 2], [2, 3], [3, 4], [4, 5]])
+    deepStrictEqual(Arr.window(3)([1, 2, 3, 4, 5]), [[1, 2, 3], [2, 3, 4], [3, 4, 5]])
+
+    // n out of bounds
+    deepStrictEqual(Arr.window([1, 2, 3, 4, 5], 6), [])
+    deepStrictEqual(Arr.window([1, 2, 3, 4, 5], 0), [])
+    deepStrictEqual(Arr.window([1, 2, 3, 4, 5], -1), [])
+  })
+
   it("min", () => {
     deepStrictEqual(Arr.min(Num.Order)([2, 1, 3]), 1)
     deepStrictEqual(Arr.min(Num.Order)([3]), 3)
