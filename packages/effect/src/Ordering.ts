@@ -17,6 +17,7 @@ export type Ordering = -1 | 0 | 1
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { reverse } from "effect/Ordering"
  *
  * assert.deepStrictEqual(reverse(1), -1)
@@ -38,6 +39,7 @@ export const reverse = (o: Ordering): Ordering => (o === -1 ? 1 : o === 1 ? -1 :
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Ordering } from "effect"
  * import { constant } from "effect/Function"
  *

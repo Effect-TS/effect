@@ -18,6 +18,7 @@ export interface FunctionTypeLambda extends TypeLambda {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isFunction } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isFunction(isFunction), true)
@@ -49,6 +50,7 @@ export const isFunction = (input: unknown): input is Function => typeof input ==
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { dual, pipe } from "effect/Function"
  *
  * // Exampe using arity to determine data-first or data-last style
@@ -158,6 +160,7 @@ export const dual: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, apply } from "effect/Function"
  * import { length } from "effect/String"
  *
@@ -173,6 +176,7 @@ export const apply = <A>(a: A) => <B>(self: (a: A) => B): B => self(a)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { LazyArg, constant } from "effect/Function"
  *
  * const constNull: LazyArg<null> = constant(null)
@@ -187,6 +191,7 @@ export interface LazyArg<A> {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { FunctionN } from "effect/Function"
  *
  * const sum: FunctionN<[number, number], number> = (a, b) => a + b
@@ -205,6 +210,7 @@ export interface FunctionN<A extends ReadonlyArray<unknown>, B> {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { identity } from "effect/Function"
  *
  * assert.deepStrictEqual(identity(5), 5)
@@ -220,6 +226,7 @@ export const identity = <A>(a: A): A => a
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { satisfies } from "effect/Function"
  *
  * const test1 = satisfies<number>()(5 as const)
@@ -242,6 +249,7 @@ export const satisfies = <A>() => <B extends A>(b: B) => b
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { unsafeCoerce, identity } from "effect/Function"
  *
  * assert.deepStrictEqual(unsafeCoerce, identity)
@@ -261,6 +269,7 @@ export const unsafeCoerce: <A, B>(a: A) => B = identity as any
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { constant } from "effect/Function"
  *
  * const constNull = constant(null)
@@ -278,6 +287,7 @@ export const constant = <A>(value: A): LazyArg<A> => () => value
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { constTrue } from "effect/Function"
  *
  * assert.deepStrictEqual(constTrue(), true)
@@ -292,6 +302,7 @@ export const constTrue: LazyArg<boolean> = constant(true)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { constFalse } from "effect/Function"
  *
  * assert.deepStrictEqual(constFalse(), false)
@@ -306,6 +317,7 @@ export const constFalse: LazyArg<boolean> = constant(false)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { constNull } from "effect/Function"
  *
  * assert.deepStrictEqual(constNull(), null)
@@ -320,6 +332,7 @@ export const constNull: LazyArg<null> = constant(null)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { constUndefined } from "effect/Function"
  *
  * assert.deepStrictEqual(constUndefined(), undefined)
@@ -334,6 +347,7 @@ export const constUndefined: LazyArg<undefined> = constant(undefined)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { constVoid } from "effect/Function"
  *
  * assert.deepStrictEqual(constVoid(), undefined)
@@ -350,6 +364,7 @@ export const constVoid: LazyArg<void> = constUndefined
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { flip } from "effect/Function"
  *
  * const f = (a: number) => (b: string) => a - b.length
@@ -374,6 +389,7 @@ export const flip = <A extends Array<unknown>, B extends Array<unknown>, C>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { compose } from "effect/Function"
  *
  * const increment = (n: number) => n + 1;
@@ -402,10 +418,11 @@ export const absurd = <A>(_: never): A => {
 }
 
 /**
- * Creates a tupled version of this function: instead of `n` arguments, it accepts a single tuple argument.
+ * Creates a   version of this function: instead of `n` arguments, it accepts a single tuple argument.
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { tupled } from "effect/Function"
  *
  * const sumTupled = tupled((x: number, y: number): number => x + y)
@@ -422,6 +439,7 @@ export const tupled = <A extends ReadonlyArray<unknown>, B>(f: (...a: A) => B): 
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { untupled } from "effect/Function"
  *
  * const getFirst = untupled(<A, B>(tuple: [A, B]): A => tuple[0])
@@ -996,6 +1014,7 @@ export function pipe(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { flow } from "effect/Function"
  *
  * const len = (s: string): number => s.length
@@ -1191,6 +1210,7 @@ export const hole: <T>() => T = unsafeCoerce(absurd)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SK } from "effect/Function";
  *
  * assert.deepStrictEqual(SK(0, "hello"), "hello")

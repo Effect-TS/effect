@@ -76,6 +76,7 @@ export declare namespace Refinement {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Predicate, Number } from "effect"
  *
  * const minLength3 = Predicate.mapInput(Number.greaterThan(2), (s: string) => s.length)
@@ -104,6 +105,7 @@ export const mapInput: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isTupleOf } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isTupleOf([1, 2, 3], 3), true);
@@ -135,6 +137,7 @@ export const isTupleOf: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isTupleOfAtLeast } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isTupleOfAtLeast([1, 2, 3], 3), true);
@@ -163,6 +166,7 @@ export const isTupleOfAtLeast: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isTruthy } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isTruthy(1), true)
@@ -182,6 +186,7 @@ export const isTruthy = (input: unknown) => !!input
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isSet } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isSet(new Set([1, 2])), true)
@@ -203,6 +208,7 @@ export const isSet = (input: unknown): input is Set<unknown> => input instanceof
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isMap } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isMap(new Map()), true)
@@ -223,6 +229,7 @@ export const isMap = (input: unknown): input is Map<unknown, unknown> => input i
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isString } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isString("a"), true)
@@ -242,6 +249,7 @@ export const isString = (input: unknown): input is string => typeof input === "s
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isNumber } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNumber(2), true)
@@ -261,6 +269,7 @@ export const isNumber = (input: unknown): input is number => typeof input === "n
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isBoolean } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isBoolean(true), true)
@@ -280,6 +289,7 @@ export const isBoolean = (input: unknown): input is boolean => typeof input === 
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isBigInt } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isBigInt(1n), true)
@@ -299,6 +309,7 @@ export const isBigInt = (input: unknown): input is bigint => typeof input === "b
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isSymbol } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isSymbol(Symbol.for("a")), true)
@@ -318,6 +329,7 @@ export const isSymbol = (input: unknown): input is symbol => typeof input === "s
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isFunction } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isFunction(isFunction), true)
@@ -337,6 +349,7 @@ export const isFunction: (input: unknown) => input is Function = isFunction_
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isUndefined } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isUndefined(undefined), true)
@@ -357,6 +370,7 @@ export const isUndefined = (input: unknown): input is undefined => input === und
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isNotUndefined } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNotUndefined(null), true)
@@ -377,6 +391,7 @@ export const isNotUndefined = <A>(input: A): input is Exclude<A, undefined> => i
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isNull } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNull(null), true)
@@ -397,6 +412,7 @@ export const isNull = (input: unknown): input is null => input === null
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isNotNull } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNotNull(undefined), true)
@@ -417,6 +433,7 @@ export const isNotNull = <A>(input: A): input is Exclude<A, null> => input !== n
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isNever } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNever(null), false)
@@ -437,6 +454,7 @@ export const isNever: (input: unknown) => input is never = (_: unknown): _ is ne
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isUnknown } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isUnknown(null), true)
@@ -462,6 +480,7 @@ export const isRecordOrArray = (input: unknown): input is { [x: PropertyKey]: un
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isObject } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isObject({}), true)
@@ -502,6 +521,7 @@ export const hasProperty: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isTagged } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isTagged(1, "a"), false)
@@ -530,6 +550,7 @@ export const isTagged: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isNullable } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNullable(null), true)
@@ -551,6 +572,7 @@ export const isNullable = <A>(input: A): input is Extract<A, null | undefined> =
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isNotNullable } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isNotNullable({}), true)
@@ -572,6 +594,7 @@ export const isNotNullable = <A>(input: A): input is NonNullable<A> => input !==
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isError } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isError(new Error()), true)
@@ -592,6 +615,7 @@ export const isError = (input: unknown): input is Error => input instanceof Erro
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isUint8Array } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isUint8Array(new Uint8Array()), true)
@@ -612,6 +636,7 @@ export const isUint8Array = (input: unknown): input is Uint8Array => input insta
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isDate } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isDate(new Date()), true)
@@ -632,6 +657,7 @@ export const isDate = (input: unknown): input is Date => input instanceof Date
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isIterable } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isIterable([]), true)
@@ -653,6 +679,7 @@ export const isIterable = (input: unknown): input is Iterable<unknown> => hasPro
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isRecord } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isRecord({}), true)
@@ -678,6 +705,7 @@ export const isRecord = (input: unknown): input is { [x: string | symbol]: unkno
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isReadonlyRecord } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isReadonlyRecord({}), true)
@@ -703,6 +731,7 @@ export const isReadonlyRecord: (
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isPromise } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isPromise({}), false)
@@ -732,6 +761,7 @@ export const isPromiseLike = (
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Predicate } from "effect"
  *
  * assert.deepStrictEqual(Predicate.isRegExp(/a/), true)
@@ -857,6 +887,7 @@ export const struct: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Predicate, Number } from "effect"
  *
  * const isPositive = Predicate.not(Number.lessThan(0))
@@ -879,6 +910,7 @@ export const not = <A>(self: Predicate<A>): Predicate<A> => (a) => !self(a)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Predicate, Number } from "effect"
  *
  * const nonZero = Predicate.or(Number.lessThan(0), Number.greaterThan(0))
@@ -906,6 +938,7 @@ export const or: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Predicate } from "effect"
  *
  * const minLength = (n: number) => (s: string) => s.length >= n
@@ -969,6 +1002,7 @@ export const eqv: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Predicate } from "effect"
  *
  * type Triple = {

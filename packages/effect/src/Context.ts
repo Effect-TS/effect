@@ -146,6 +146,7 @@ export declare namespace Tag {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.GenericTag("PORT").key === Context.GenericTag("PORT").key, true)
@@ -195,6 +196,7 @@ export const unsafeMake: <Services>(unsafeMap: Map<string, any>) => Context<Serv
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.isContext(Context.empty()), true)
@@ -212,6 +214,7 @@ export const isContext: (input: unknown) => input is Context<never> = internal.i
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.isTag(Context.GenericTag("Tag")), true)
@@ -237,6 +240,7 @@ export const isReference: (u: unknown) => u is Reference<any, any> = internal.is
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.isContext(Context.empty()), true)
@@ -252,6 +256,7 @@ export const empty: () => Context<never> = internal.empty
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -272,6 +277,7 @@ export const make: <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>) =>
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context, pipe } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -310,6 +316,7 @@ export const add: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -356,6 +363,7 @@ export const getOrElse: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -384,6 +392,7 @@ export const unsafeGet: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context, Option } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -411,6 +420,7 @@ export const getOption: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -439,6 +449,7 @@ export const merge: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -470,6 +481,7 @@ export const mergeAll: <T extends Array<unknown>>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Context, Option } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -503,6 +515,7 @@ export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context, Layer } from "effect"
  *
  * class MyTag extends Context.Tag("MyTag")<
@@ -531,6 +544,7 @@ export const Tag: <const Id extends string>(id: Id) => <Self, Shape>() => TagCla
  * @example
  * ```ts
  * // Title: Declaring a Tag with a default value
+ * import * as assert from "node:assert"
  * import { Context, Effect } from "effect"
  *
  * class SpecialNumber extends Context.Reference<SpecialNumber>()(

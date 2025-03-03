@@ -136,6 +136,7 @@ const zero = unsafeMakeNormalized(bigint0, 0)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { normalize, make, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(normalize(unsafeFromString("123.00000")), normalize(make(123n, 0)))
@@ -209,6 +210,7 @@ export const scale: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { sum, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(sum(unsafeFromString("2"), unsafeFromString("3")), unsafeFromString("5"))
@@ -248,6 +250,7 @@ export const sum: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { multiply, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(multiply(unsafeFromString("2"), unsafeFromString("3")), unsafeFromString("6"))
@@ -275,6 +278,7 @@ export const multiply: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { subtract, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(subtract(unsafeFromString("2"), unsafeFromString("3")), unsafeFromString("-1"))
@@ -387,6 +391,7 @@ export const roundTerminal = (n: bigint): bigint => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigDecimal, Option } from "effect"
  *
  * assert.deepStrictEqual(BigDecimal.divide(BigDecimal.unsafeFromString("6"), BigDecimal.unsafeFromString("3")), Option.some(BigDecimal.unsafeFromString("2")))
@@ -430,6 +435,7 @@ export const divide: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { unsafeDivide, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(unsafeDivide(unsafeFromString("6"), unsafeFromString("3")), unsafeFromString("2"))
@@ -487,6 +493,7 @@ export const Order: order.Order<BigDecimal> = order.make((self, that) => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { lessThan, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(lessThan(unsafeFromString("2"), unsafeFromString("3")), true)
@@ -510,6 +517,7 @@ export const lessThan: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { lessThanOrEqualTo, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(lessThanOrEqualTo(unsafeFromString("2"), unsafeFromString("3")), true)
@@ -533,6 +541,7 @@ export const lessThanOrEqualTo: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { greaterThan, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(greaterThan(unsafeFromString("2"), unsafeFromString("3")), false)
@@ -556,6 +565,7 @@ export const greaterThan: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { greaterThanOrEqualTo, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(greaterThanOrEqualTo(unsafeFromString("2"), unsafeFromString("3")), false)
@@ -580,6 +590,7 @@ export const greaterThanOrEqualTo: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigDecimal } from "effect"
  *
  * const between = BigDecimal.between({
@@ -619,6 +630,7 @@ export const between: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigDecimal } from "effect"
  *
  * const clamp = BigDecimal.clamp({
@@ -653,6 +665,7 @@ export const clamp: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { min, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(min(unsafeFromString("2"), unsafeFromString("3")), unsafeFromString("2"))
@@ -674,6 +687,7 @@ export const min: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { max, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(max(unsafeFromString("2"), unsafeFromString("3")), unsafeFromString("3"))
@@ -694,6 +708,7 @@ export const max: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { sign, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(sign(unsafeFromString("-5")), -1)
@@ -713,6 +728,7 @@ export const sign = (n: BigDecimal): Ordering => n.value === bigint0 ? 0 : n.val
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { abs, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(abs(unsafeFromString("-5")), unsafeFromString("5"))
@@ -732,6 +748,7 @@ export const abs = (n: BigDecimal): BigDecimal => n.value < bigint0 ? make(-n.va
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { negate, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(negate(unsafeFromString("3")), unsafeFromString("-3"))
@@ -753,6 +770,7 @@ export const negate = (n: BigDecimal): BigDecimal => make(-n.value, n.scale)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigDecimal, Option } from "effect"
  *
  * assert.deepStrictEqual(BigDecimal.remainder(BigDecimal.unsafeFromString("2"), BigDecimal.unsafeFromString("2")), Option.some(BigDecimal.unsafeFromString("0")))
@@ -785,6 +803,7 @@ export const remainder: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { unsafeRemainder, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(unsafeRemainder(unsafeFromString("2"), unsafeFromString("2")), unsafeFromString("0"))
@@ -856,6 +875,7 @@ export const fromBigInt = (n: bigint): BigDecimal => make(n, 0)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { unsafeFromNumber, make } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(unsafeFromNumber(123), make(123n, 0))
@@ -897,6 +917,7 @@ export const fromNumber: (n: number) => BigDecimal = unsafeFromNumber
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigDecimal, Option } from "effect"
  *
  * assert.deepStrictEqual(BigDecimal.safeFromNumber(123), Option.some(BigDecimal.make(123n, 0)))
@@ -928,6 +949,7 @@ export const safeFromNumber = (n: number): Option.Option<BigDecimal> => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigDecimal, Option } from "effect"
  *
  * assert.deepStrictEqual(BigDecimal.fromString("123"), Option.some(BigDecimal.make(123n, 0)))
@@ -990,6 +1012,7 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { unsafeFromString, make } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(unsafeFromString("123"), make(123n, 0))
@@ -1013,6 +1036,7 @@ export const unsafeFromString = (s: string): BigDecimal =>
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { format, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(format(unsafeFromString("-5")), "-5")
@@ -1061,6 +1085,7 @@ export const format = (n: BigDecimal): string => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { toExponential, make } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(toExponential(make(123456n, -5)), "1.23456e+10")
@@ -1097,6 +1122,7 @@ export const toExponential = (n: BigDecimal): string => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { unsafeToNumber, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(unsafeToNumber(unsafeFromString("123.456")), 123.456)
@@ -1114,6 +1140,7 @@ export const unsafeToNumber = (n: BigDecimal): number => Number(format(n))
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isInteger, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(isInteger(unsafeFromString("0")), true)
@@ -1133,6 +1160,7 @@ export const isInteger = (n: BigDecimal): boolean => normalize(n).scale <= 0
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isZero, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(isZero(unsafeFromString("0")), true)
@@ -1151,6 +1179,7 @@ export const isZero = (n: BigDecimal): boolean => n.value === bigint0
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isNegative, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(isNegative(unsafeFromString("-1")), true)
@@ -1170,6 +1199,7 @@ export const isNegative = (n: BigDecimal): boolean => n.value < bigint0
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isPositive, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(isPositive(unsafeFromString("-1")), false)

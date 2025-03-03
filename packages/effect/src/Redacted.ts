@@ -80,6 +80,7 @@ export const make: <A>(value: A) => Redacted<A> = redacted_.make
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Redacted } from "effect"
  *
  * const API_KEY = Redacted.make("1234567890")
@@ -99,6 +100,7 @@ export const value: <A>(self: Redacted<A>) => A = redacted_.value
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Redacted } from "effect"
  *
  * const API_KEY = Redacted.make("1234567890")
@@ -122,6 +124,7 @@ export const unsafeWipe: <A>(self: Redacted<A>) => boolean = redacted_.unsafeWip
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Redacted, Equivalence } from "effect"
  *
  * const API_KEY1 = Redacted.make("1234567890")

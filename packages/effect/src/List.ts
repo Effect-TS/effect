@@ -326,6 +326,7 @@ export const append: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { List } from "effect"
  *
  * assert.deepStrictEqual(
@@ -361,6 +362,7 @@ export const prepend: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { List } from "effect"
  *
  * assert.deepStrictEqual(

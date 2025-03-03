@@ -7657,6 +7657,7 @@ export const updateService: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, pipe } from "effect"
  *
  * const result = pipe(
@@ -7689,6 +7690,7 @@ export const Do: Effect<{}> = effect.Do
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, pipe } from "effect"
  *
  * const result = pipe(
@@ -7722,6 +7724,7 @@ export const bind: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, Either, pipe } from "effect"
  *
  * const result = pipe(
@@ -7805,6 +7808,7 @@ export const bindAll: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, pipe } from "effect"
  *
  * const result = pipe(

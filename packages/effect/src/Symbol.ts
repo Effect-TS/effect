@@ -12,6 +12,7 @@ import * as predicate from "./Predicate.js"
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Predicate } from "effect"
  *
  * assert.deepStrictEqual(Predicate.isSymbol(Symbol.for("a")), true)

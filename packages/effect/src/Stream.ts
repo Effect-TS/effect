@@ -6168,6 +6168,7 @@ export const zipWithIndex: <A, E, R>(self: Stream<A, E, R>) => Stream<[A, number
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Chunk, Effect, pipe, Stream } from "effect"
  *
  * const result = pipe(
@@ -6201,6 +6202,7 @@ export const Do: Stream<{}> = internal.Do
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Chunk, Effect, pipe, Stream } from "effect"
  *
  * const result = pipe(
@@ -6275,6 +6277,7 @@ export const bindEffect: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Chunk, Effect, pipe, Stream } from "effect"
  *
  * const result = pipe(
@@ -6324,6 +6327,7 @@ export {
    *
    * @example
    * ```ts
+   * import * as assert from "node:assert"
    * import { Chunk, Effect, pipe, Stream } from "effect"
    *
    * const result = pipe(

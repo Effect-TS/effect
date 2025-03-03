@@ -48,6 +48,7 @@ export type NonEmptyArray<A> = [A, ...Array<A>]
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.make(1, 2, 3)
@@ -66,6 +67,7 @@ export const make = <Elements extends NonEmptyArray<any>>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.allocate<number>(3)
@@ -84,6 +86,7 @@ export const allocate = <A = never>(n: number): Array<A | undefined> => new Arra
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { makeBy } from "effect/Array"
  *
  * assert.deepStrictEqual(makeBy(5, n => n * 2), [0, 2, 4, 6, 8])
@@ -109,6 +112,7 @@ export const makeBy: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { range } from "effect/Array"
  *
  * assert.deepStrictEqual(range(1, 3), [1, 2, 3])
@@ -127,6 +131,7 @@ export const range = (start: number, end: number): NonEmptyArray<number> =>
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * assert.deepStrictEqual(Array.replicate("a", 3), ["a", "a", "a"])
@@ -147,6 +152,7 @@ export const replicate: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const set = new Set([1, 2, 3])
@@ -165,6 +171,7 @@ export const fromIterable = <A>(collection: Iterable<A>): Array<A> =>
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * assert.deepStrictEqual(Array.ensure("a"), ["a"])
@@ -184,6 +191,7 @@ export const ensure = <A>(self: ReadonlyArray<A> | A): Array<A> => Array.isArray
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const x = { a: 1, b: 2, c: 3 }
@@ -200,6 +208,7 @@ export const fromRecord: <K extends string, A>(self: Readonly<Record<K, A>>) => 
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect"
  *
  * assert.deepStrictEqual(Array.fromOption(Option.some(1)), [1])
@@ -216,6 +225,7 @@ export const fromOption: <A>(self: Option<A>) => Array<A> = O.toArray
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const match = Array.match({
@@ -256,6 +266,7 @@ export const match: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const matchLeft = Array.matchLeft({
@@ -296,6 +307,7 @@ export const matchLeft: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const matchRight = Array.matchRight({
@@ -339,6 +351,7 @@ export const matchRight: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const original = [2, 3, 4];
@@ -360,6 +373,7 @@ export const prepend: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const prefix = [0, 1];
@@ -388,6 +402,7 @@ export const prependAll: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const original = [1, 2, 3];
@@ -429,6 +444,7 @@ export const appendAll: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect";
  *
  * const numbers = [1, 2, 3, 4]
@@ -465,6 +481,7 @@ export const scan: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect";
  *
  * const numbers = [1, 2, 3, 4]
@@ -495,6 +512,7 @@ export const scanRight: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isArray } from "effect/Array"
  *
  * assert.deepStrictEqual(isArray(null), false);
@@ -516,6 +534,7 @@ export const isArray: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isEmptyArray } from "effect/Array"
  *
  * assert.deepStrictEqual(isEmptyArray([]), true);
@@ -534,6 +553,7 @@ export const isEmptyArray = <A>(self: Array<A>): self is [] => self.length === 0
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isEmptyReadonlyArray } from "effect/Array"
  *
  * assert.deepStrictEqual(isEmptyReadonlyArray([]), true);
@@ -554,6 +574,7 @@ export const isEmptyReadonlyArray: <A>(self: ReadonlyArray<A>) => self is readon
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isNonEmptyArray } from "effect/Array"
  *
  * assert.deepStrictEqual(isNonEmptyArray([]), false);
@@ -574,6 +595,7 @@ export const isNonEmptyArray: <A>(self: Array<A>) => self is NonEmptyArray<A> = 
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isNonEmptyReadonlyArray } from "effect/Array"
  *
  * assert.deepStrictEqual(isNonEmptyReadonlyArray([]), false);
@@ -634,6 +656,7 @@ export const unsafeGet: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect";
  *
  * const result = Array.unprepend([1, 2, 3, 4])
@@ -652,6 +675,7 @@ export const unprepend = <A>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect";
  *
  * const result = Array.unappend([1, 2, 3, 4])
@@ -678,6 +702,7 @@ export const head: <A>(self: ReadonlyArray<A>) => Option<A> = get(0)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.headNonEmpty([1, 2, 3, 4])
@@ -703,6 +728,7 @@ export const last = <A>(self: ReadonlyArray<A>): Option<A> =>
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.lastNonEmpty([1, 2, 3, 4])
@@ -730,6 +756,7 @@ export const tail = <A>(self: Iterable<A>): Option<Array<A>> => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.tailNonEmpty([1, 2, 3, 4])
@@ -757,6 +784,7 @@ export const init = <A>(self: Iterable<A>): Option<Array<A>> => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.initNonEmpty([1, 2, 3, 4])
@@ -775,6 +803,7 @@ export const initNonEmpty = <A>(self: NonEmptyReadonlyArray<A>): Array<A> => sel
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -800,6 +829,7 @@ export const take: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -824,6 +854,7 @@ export const takeRight: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 3, 2, 4, 1, 2]
@@ -901,6 +932,7 @@ export const span: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -926,6 +958,7 @@ export const drop: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -949,6 +982,7 @@ export const dropRight: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -973,6 +1007,7 @@ export const dropWhile: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect"
  *
  * const numbers = [5, 3, 8, 9]
@@ -1002,6 +1037,7 @@ export const findFirstIndex: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect"
  *
  * const numbers = [1, 3, 8, 9]
@@ -1031,6 +1067,7 @@ export const findLastIndex: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -1056,6 +1093,7 @@ export const findFirst: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -1100,6 +1138,7 @@ export const findLast: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect"
  *
  * const letters = ['a', 'b', 'c', 'e']
@@ -1128,6 +1167,7 @@ export const insertAt: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const letters = ['a', 'b', 'c', 'd']
@@ -1156,6 +1196,7 @@ export const replace: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -1186,6 +1227,7 @@ export const replaceOption: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4]
@@ -1217,6 +1259,7 @@ export const modify: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect"
  *
  * const numbers = [1, 2, 3, 4]
@@ -1256,6 +1299,7 @@ export const modifyOption: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4]
@@ -1285,6 +1329,7 @@ export const remove: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4]
@@ -1326,6 +1371,7 @@ export const sort: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Order } from "effect"
  *
  * const strings = ["aaa", "b", "cc"]
@@ -1361,6 +1407,7 @@ export const sortWith: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Order } from "effect"
  *
  * const users = [
@@ -1410,6 +1457,7 @@ export const sortBy = <S extends Iterable<any>>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const array1 = [1, 2, 3]
@@ -1437,6 +1485,7 @@ export const zip: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const array1 = [1, 2, 3]
@@ -1472,6 +1521,7 @@ export const zipWith: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.unzip([[1, "a"], [2, "b"], [3, "c"]])
@@ -1504,6 +1554,7 @@ export const unzip: <S extends Iterable<readonly [any, any]>>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -1540,6 +1591,7 @@ export const intersperse: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.modifyNonEmptyHead([1, 2, 3], n => n * 10)
@@ -1564,6 +1616,7 @@ export const modifyNonEmptyHead: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.setNonEmptyHead([1, 2, 3], 10)
@@ -1585,6 +1638,7 @@ export const setNonEmptyHead: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.modifyNonEmptyLast([1, 2, 3], n => n * 2)
@@ -1607,6 +1661,7 @@ export const modifyNonEmptyLast: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.setNonEmptyLast([1, 2, 3], 4)
@@ -1629,6 +1684,7 @@ export const setNonEmptyLast: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const letters = ['a', 'b', 'c', 'd']
@@ -1665,6 +1721,7 @@ export const rotate: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4]
@@ -1697,6 +1754,7 @@ const _equivalence = Equal.equivalence()
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const letters = ['a', 'b', 'c', 'd']
@@ -1719,6 +1777,7 @@ export const contains: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -1770,6 +1829,7 @@ export const chop: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -1801,6 +1861,7 @@ export const splitAt: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.splitNonEmptyAt(["a", "b", "c", "d", "e"], 3)
@@ -1825,6 +1886,7 @@ export const splitNonEmptyAt: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -1849,6 +1911,7 @@ export const split: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -1875,6 +1938,7 @@ export const splitWhere: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -1897,6 +1961,7 @@ export const copy: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const arr = [1, 2, 3]
@@ -1937,6 +2002,7 @@ export const pad: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -1974,6 +2040,7 @@ export const chunksOf: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.groupWith(["a", "a", "b", "b", "b", "c", "a"], (x, y) => x === y)
@@ -2010,6 +2077,7 @@ export const groupWith: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const result = Array.group([1, 1, 2, 2, 2, 3, 1])
@@ -2029,6 +2097,7 @@ export const group: <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<NonEmpt
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const people = [
@@ -2075,6 +2144,7 @@ export const groupBy: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const array1 = [1, 2]
@@ -2119,6 +2189,7 @@ export const unionWith: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const array1 = [1, 2]
@@ -2146,6 +2217,7 @@ export const union: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const array1 = [{ id: 1 }, { id: 2 }, { id: 3 }]
@@ -2174,6 +2246,7 @@ export const intersectionWith = <A>(isEquivalent: (self: A, that: A) => boolean)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const array1 = [1, 2, 3]
@@ -2195,6 +2268,7 @@ export const intersection: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const array1 = [1, 2, 3]
@@ -2222,6 +2296,7 @@ export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): 
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const array1 = [1, 2, 3]
@@ -2346,6 +2421,7 @@ export const flatMap: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect";
  *
  * const nestedArrays = [[1, 2], [], [3, 4], [], [5, 6]]
@@ -2367,6 +2443,7 @@ export const flatten: <S extends ReadonlyArray<ReadonlyArray<any>>>(self: S) => 
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect";
  *
  * const data = [1, 2, 3, 4, 5];
@@ -2404,6 +2481,7 @@ export const filterMap: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect";
  *
  * const data = [2, 4, 5];
@@ -2442,6 +2520,7 @@ export const filterMapWhile: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Either } from "effect";
  *
  * const data = [1, 2, 3, 4, 5]
@@ -2485,6 +2564,7 @@ export const partitionMap: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect"
  *
  * assert.deepStrictEqual(
@@ -2506,6 +2586,7 @@ export const getSomes: <T extends Iterable<Option<X>>, X = any>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Either } from "effect"
  *
  * assert.deepStrictEqual(
@@ -2533,6 +2614,7 @@ export const getLefts = <T extends Iterable<Either<any, any>>>(self: T): Array<E
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Either } from "effect"
  *
  * assert.deepStrictEqual(
@@ -2585,6 +2667,7 @@ export const filter: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4]
@@ -2643,6 +2726,7 @@ export const separate: <T extends Iterable<Either<any, any>>>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -2667,6 +2751,7 @@ export const reduce: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -2691,6 +2776,7 @@ export const reduceRight: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const isEven = (n: number) => n % 2 === 0
@@ -2736,6 +2822,7 @@ export const liftNullable = <A extends Array<unknown>, B>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -2767,6 +2854,7 @@ export const flatMapNullable: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Either } from "effect"
  *
  * const parseNumber = (s: string): Either.Either<number, Error> =>
@@ -2838,6 +2926,7 @@ export const some: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -2866,6 +2955,7 @@ export const extend: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Order } from "effect"
  *
  * const min = Array.min([3, 1, 2], Order.number)
@@ -2884,6 +2974,7 @@ export const min: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Order } from "effect"
  *
  * const max = Array.max([3, 1, 2], Order.number)
@@ -2929,6 +3020,7 @@ export const getOrder: <A>(O: Order.Order<A>) => Order.Order<ReadonlyArray<A>> =
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers1 = [1, 2, 3]
@@ -2968,6 +3060,7 @@ export const forEach: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 2, 3, 3, 3]
@@ -3017,6 +3110,7 @@ export const dedupe = <S extends Iterable<any>>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 1, 2, 2, 3, 3]
@@ -3046,6 +3140,7 @@ export const dedupeAdjacentWith: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 1, 2, 2, 3, 3]
@@ -3062,6 +3157,7 @@ export const dedupeAdjacent: <A>(self: Iterable<A>) => Array<A> = dedupeAdjacent
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const strings = ["a", "b", "c"]
@@ -3082,6 +3178,7 @@ export const join: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -3123,6 +3220,7 @@ export const mapAccum: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const array1 = [1, 2]
@@ -3148,6 +3246,7 @@ export const cartesianWith: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const array1 = [1, 2]
@@ -3191,6 +3290,7 @@ export const cartesian: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array as Arr, pipe } from "effect"
  * const doResult = pipe(
  *   Arr.Do,
@@ -3238,6 +3338,7 @@ export const Do: ReadonlyArray<{}> = of({})
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array as Arr, pipe } from "effect"
  * const doResult = pipe(
  *   Arr.Do,
@@ -3297,6 +3398,7 @@ export const bind: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array as Arr, pipe } from "effect"
  * const doResult = pipe(
  *   Arr.Do,
@@ -3360,6 +3462,7 @@ export {
    *
    * @example
    * ```ts
+   * import * as assert from "node:assert"
    * import { Array as Arr, pipe } from "effect"
    * const doResult = pipe(
    *   Arr.Do,

@@ -217,6 +217,7 @@ const baseUrl = (): string | undefined => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { UrlParams } from "@effect/platform"
  *
  * const urlParams = UrlParams.fromInput({ a: 1, b: true, c: "string", e: [1, 2, 3] })

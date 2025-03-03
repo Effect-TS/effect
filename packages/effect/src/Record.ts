@@ -70,6 +70,7 @@ export const empty = <K extends string | symbol = never, V = never>(): Record<
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isEmptyRecord } from "effect/Record"
  *
  * assert.deepStrictEqual(isEmptyRecord({}), true);
@@ -89,6 +90,7 @@ export const isEmptyRecord = <K extends string, A>(self: Record<K, A>): self is 
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isEmptyReadonlyRecord } from "effect/Record"
  *
  * assert.deepStrictEqual(isEmptyReadonlyRecord({}), true);
@@ -111,6 +113,7 @@ export const isEmptyReadonlyRecord: <K extends string, A>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { fromIterableWith } from "effect/Record"
  *
  * const input = [1, 2, 3, 4]
@@ -155,6 +158,7 @@ export const fromIterableWith: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { fromIterableBy } from "effect/Record"
  *
  * const users = [
@@ -189,6 +193,7 @@ export const fromIterableBy = <A, K extends string | symbol>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { fromEntries } from "effect/Record"
  *
  * const input: Array<[string, number]> = [["a", 1], ["b", 2]]
@@ -211,6 +216,7 @@ export const fromEntries: <Entry extends readonly [string | symbol, any]>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { collect } from "effect/Record"
  *
  * const x = { a: 1, b: 2, c: 3 }
@@ -241,6 +247,7 @@ export const collect: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { toEntries } from "effect/Record"
  *
  * const x = { a: 1, b: 2, c: 3 }
@@ -262,6 +269,7 @@ export const toEntries: <K extends string, A>(self: ReadonlyRecord<K, A>) => Arr
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { size } from "effect/Record";
  *
  * assert.deepStrictEqual(size({ a: "a", b: 1, c: true }), 3);
@@ -279,6 +287,7 @@ export const size = <K extends string, A>(self: ReadonlyRecord<K, A>): number =>
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { empty, has } from "effect/Record"
  *
  * assert.deepStrictEqual(has({ a: 1, b: 2 }, "a"), true);
@@ -311,6 +320,7 @@ export const has: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record as R, Option } from "effect"
  *
  * const person: Record<string, unknown> = { name: "John Doe", age: 35 }
@@ -340,6 +350,7 @@ export const get: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record as R } from "effect"
  *
  * const f = (x: number) => x * 2
@@ -382,6 +393,7 @@ export const modify: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record as R, Option } from "effect"
  *
  * const f = (x: number) => x * 2
@@ -431,6 +443,7 @@ export const modifyOption: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record, Option } from "effect"
  *
  * assert.deepStrictEqual(
@@ -470,6 +483,7 @@ export const replaceOption: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { remove } from "effect/Record"
  *
  * assert.deepStrictEqual(remove({ a: 1, b: 2 }, "a"), { b: 2 })
@@ -502,6 +516,7 @@ export const remove: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record as R, Option } from "effect"
  *
  * assert.deepStrictEqual(R.pop({ a: 1, b: 2 }, "a"), Option.some([1, { b: 2 }]))
@@ -533,6 +548,7 @@ export const pop: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { map } from "effect/Record"
  *
  * const f = (n: number) => `-${n}`
@@ -566,6 +582,7 @@ export const map: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { mapKeys } from "effect/Record"
  *
  * assert.deepStrictEqual(mapKeys({ a: 3, b: 5 }, (key) => key.toUpperCase()), { A: 3, B: 5 })
@@ -602,6 +619,7 @@ export const mapKeys: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { mapEntries } from "effect/Record"
  *
  * assert.deepStrictEqual(mapEntries({ a: 3, b: 5 }, (a, key) => [key.toUpperCase(), a + 1]), { A: 4, B: 6 })
@@ -642,6 +660,7 @@ export const mapEntries: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record, Option } from "effect"
  *
  * const x = { a: 1, b: 2, c: 3 }
@@ -684,6 +703,7 @@ export const filterMap: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { filter } from "effect/Record"
  *
  * const x = { a: 1, b: 2, c: 3, d: 4 }
@@ -731,6 +751,7 @@ export const filter: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record, Option } from "effect"
  *
  * assert.deepStrictEqual(
@@ -753,6 +774,7 @@ export const getSomes: <K extends string, A>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record, Either } from "effect"
  *
  * assert.deepStrictEqual(
@@ -783,6 +805,7 @@ export const getLefts = <K extends string, R, L>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record, Either } from "effect"
  *
  * assert.deepStrictEqual(
@@ -816,6 +839,7 @@ export const getRights = <K extends string, R, L>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record, Either } from "effect"
  *
  * const x = { a: 1, b: 2, c: 3 }
@@ -864,6 +888,7 @@ export const partitionMap: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record, Either } from "effect"
  *
  * assert.deepStrictEqual(
@@ -887,6 +912,7 @@ export const separate: <K extends string, A, B>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { partition } from "effect/Record"
  *
  * assert.deepStrictEqual(
@@ -968,6 +994,7 @@ export const values = <K extends string, A>(self: ReadonlyRecord<K, A>): Array<A
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { set } from "effect/Record"
  *
  * assert.deepStrictEqual(set("a", 5)({ a: 1, b: 2 }), { a: 5, b: 2 });
@@ -1007,6 +1034,7 @@ export const set: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Record } from "effect"
  *
  * assert.deepStrictEqual(Record.replace("a", 3)({ a: 1, b: 2 }), { a: 3, b: 2 });

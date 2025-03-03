@@ -28,6 +28,7 @@ export declare namespace Case {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Data, Equal } from "effect"
  *
  * const alice = Data.struct({ name: "Alice", age: 30 })
@@ -56,6 +57,7 @@ export const unsafeStruct = <A extends Record<string, any>>(as: A): { readonly [
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Data, Equal } from "effect"
  *
  * const alice = Data.tuple("Alice", 30)
@@ -77,6 +79,7 @@ export const tuple = <As extends ReadonlyArray<any>>(...as: As): Readonly<As> =>
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Data, Equal } from "effect"
  *
  * const alice = Data.struct({ name: "Alice", age: 30 })
@@ -117,6 +120,7 @@ export {
    *
    * @example
    * ```ts
+   * import * as assert from "node:assert"
    * import { Data, Equal } from "effect"
    *
    * interface Person {
@@ -147,6 +151,7 @@ export {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Data } from "effect"
  *
  * interface Person {
@@ -178,6 +183,7 @@ export const tagged = <A extends { readonly _tag: string }>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Data, Equal } from "effect"
  *
  * class Person extends Data.Class<{ readonly name: string }> {}
@@ -205,6 +211,7 @@ export const Class: new<A extends Record<string, any> = {}>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Data, Equal } from "effect"
  *
  * class Person extends Data.TaggedClass("Person")<{ readonly name: string }> {}
@@ -249,6 +256,7 @@ export const Structural: new<A>(
  * Create a tagged enum data type, which is a union of `Data` structs.
  *
  * ```ts
+ * import * as assert from "node:assert"
  * import { Data } from "effect"
  *
  * type HttpError = Data.TaggedEnum<{

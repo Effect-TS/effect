@@ -12,6 +12,7 @@ import * as predicate from "./Predicate.js"
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { RegExp } from "effect"
  *
  * assert.deepStrictEqual(RegExp.isRegExp(/a/), true)
@@ -28,6 +29,7 @@ export const isRegExp: (input: unknown) => input is RegExp = predicate.isRegExp
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { RegExp } from "effect"
  *
  * assert.deepStrictEqual(RegExp.escape("a*b"), "a\\*b")

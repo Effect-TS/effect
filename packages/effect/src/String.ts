@@ -24,6 +24,7 @@ import * as predicate from "./Predicate.js"
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { String } from "effect"
  *
  * assert.deepStrictEqual(String.isString("a"), true)
@@ -74,6 +75,7 @@ export const concat: {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe('a', String.toUpperCase), 'A')
@@ -86,6 +88,7 @@ export const toUpperCase = <S extends string>(self: S): Uppercase<S> => self.toU
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe('A', String.toLowerCase), 'a')
@@ -98,6 +101,7 @@ export const toLowerCase = <T extends string>(self: T): Lowercase<T> => self.toL
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe('abc', String.capitalize), 'Abc')
@@ -114,6 +118,7 @@ export const capitalize = <T extends string>(self: T): Capitalize<T> => {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe('ABC', String.uncapitalize), 'aBC')
@@ -130,6 +135,7 @@ export const uncapitalize = <T extends string>(self: T): Uncapitalize<T> => {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe('abc', String.replace('b', 'd')), 'adc')
@@ -148,6 +154,7 @@ export type Trim<A extends string> = TrimEnd<TrimStart<A>>
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { String } from "effect"
  *
  * assert.deepStrictEqual(String.trim(' a '), 'a')
@@ -165,6 +172,7 @@ export type TrimStart<A extends string> = A extends `${" " | "\n" | "\t" | "\r"}
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { String } from "effect"
  *
  * assert.deepStrictEqual(String.trimStart(' a '), 'a ')
@@ -182,6 +190,7 @@ export type TrimEnd<A extends string> = A extends `${infer B}${" " | "\n" | "\t"
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { String } from "effect"
  *
  * assert.deepStrictEqual(String.trimEnd(' a '), ' a')
@@ -194,6 +203,7 @@ export const trimEnd = <A extends string>(self: A): TrimEnd<A> => self.trimEnd()
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe('abcd', String.slice(1, 3)), 'bc')
@@ -208,6 +218,7 @@ export const slice = (start?: number, end?: number) => (self: string): string =>
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { String } from "effect"
  *
  * assert.deepStrictEqual(String.isEmpty(''), true)
@@ -230,6 +241,7 @@ export const isNonEmpty = (self: string): boolean => self.length > 0
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { String } from "effect"
  *
  * assert.deepStrictEqual(String.length('abc'), 3)
@@ -242,6 +254,7 @@ export const length = (self: string): number => self.length
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe('abc', String.split('')), ['a', 'b', 'c'])
@@ -282,6 +295,7 @@ export const endsWith = (searchString: string, position?: number) => (self: stri
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String, Option } from "effect"
  *
  * assert.deepStrictEqual(pipe("abc", String.charCodeAt(1)), Option.some(98))
@@ -302,6 +316,7 @@ export const charCodeAt: {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String, Option } from "effect"
  *
  * assert.deepStrictEqual(pipe("abcd", String.substring(1)), "bcd")
@@ -315,6 +330,7 @@ export const substring = (start: number, end?: number) => (self: string): string
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String, Option } from "effect"
  *
  * assert.deepStrictEqual(pipe("abc", String.at(1)), Option.some("b"))
@@ -331,6 +347,7 @@ export const at: {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String, Option } from "effect"
  *
  * assert.deepStrictEqual(pipe("abc", String.charAt(1)), Option.some("b"))
@@ -350,6 +367,7 @@ export const charAt: {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String, Option } from "effect"
  *
  * assert.deepStrictEqual(pipe("abc", String.codePointAt(1)), Option.some(98))
@@ -365,6 +383,7 @@ export const codePointAt: {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String, Option } from "effect"
  *
  * assert.deepStrictEqual(pipe("abbbc", String.indexOf("b")), Option.some(1))
@@ -378,6 +397,7 @@ export const indexOf = (searchString: string) => (self: string): Option.Option<n
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String, Option } from "effect"
  *
  * assert.deepStrictEqual(pipe("abbbc", String.lastIndexOf("b")), Option.some(3))
@@ -392,6 +412,7 @@ export const lastIndexOf = (searchString: string) => (self: string): Option.Opti
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe("a", String.localeCompare("b")), -1)
@@ -423,6 +444,7 @@ export const matchAll = (regexp: RegExp) => (self: string): IterableIterator<Reg
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * const str = "\u1E9B\u0323";
@@ -440,6 +462,7 @@ export const normalize = (form?: "NFC" | "NFD" | "NFKC" | "NFKD") => (self: stri
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe("a", String.padEnd(5)), "a    ")
@@ -454,6 +477,7 @@ export const padEnd = (maxLength: number, fillString?: string) => (self: string)
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe("a", String.padStart(5)), "    a")
@@ -468,6 +492,7 @@ export const padStart = (maxLength: number, fillString?: string) => (self: strin
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe("a", String.repeat(5)), "aaaaa")
@@ -480,6 +505,7 @@ export const repeat = (count: number) => (self: string): string => self.repeat(c
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * assert.deepStrictEqual(pipe("ababb", String.replaceAll("b", "c")), "acacc")
@@ -494,6 +520,7 @@ export const replaceAll = (searchValue: string | RegExp, replaceValue: string) =
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String, Option } from "effect"
  *
  * assert.deepStrictEqual(pipe("ababb", String.search("b")), Option.some(1))
@@ -515,6 +542,7 @@ export const search: {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * const str = "\u0130"
@@ -529,6 +557,7 @@ export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: str
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, String } from "effect"
  *
  * const str = "i\u0307"
@@ -552,6 +581,7 @@ export const toLocaleUpperCase = (locale?: string | Array<string>) => (self: str
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { String } from "effect"
  *
  * assert.deepStrictEqual(String.takeLeft("Hello World", 5), "Hello")
@@ -576,6 +606,7 @@ export const takeLeft: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { String } from "effect"
  *
  * assert.deepStrictEqual(String.takeRight("Hello World", 5), "World")

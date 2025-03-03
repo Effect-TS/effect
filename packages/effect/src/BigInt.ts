@@ -24,6 +24,7 @@ const bigint2 = BigInt(2)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isBigInt } from "effect/BigInt"
  *
  * assert.deepStrictEqual(isBigInt(1n), true)
@@ -43,6 +44,7 @@ export const isBigInt: (u: unknown) => u is bigint = predicate.isBigInt
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { sum } from "effect/BigInt"
  *
  * assert.deepStrictEqual(sum(2n, 3n), 5n)
@@ -64,6 +66,7 @@ export const sum: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { multiply } from "effect/BigInt"
  *
  * assert.deepStrictEqual(multiply(2n, 3n), 6n)
@@ -85,6 +88,7 @@ export const multiply: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { subtract } from "effect/BigInt"
  *
  * assert.deepStrictEqual(subtract(2n, 3n), -1n)
@@ -111,6 +115,7 @@ export const subtract: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigInt, Option } from "effect"
  *
  * assert.deepStrictEqual(BigInt.divide(6n, 3n), Option.some(2n))
@@ -141,6 +146,7 @@ export const divide: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { unsafeDivide } from "effect/BigInt"
  *
  * assert.deepStrictEqual(unsafeDivide(6n, 3n), 2n)
@@ -162,6 +168,7 @@ export const unsafeDivide: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { increment } from "effect/BigInt"
  *
  * assert.deepStrictEqual(increment(2n), 3n)
@@ -179,6 +186,7 @@ export const increment = (n: bigint): bigint => n + bigint1
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { decrement } from "effect/BigInt"
  *
  * assert.deepStrictEqual(decrement(3n), 2n)
@@ -209,6 +217,7 @@ export const Order: order.Order<bigint> = order.bigint
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { lessThan } from "effect/BigInt"
  *
  * assert.deepStrictEqual(lessThan(2n, 3n), true)
@@ -232,6 +241,7 @@ export const lessThan: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { lessThanOrEqualTo } from "effect/BigInt"
  *
  * assert.deepStrictEqual(lessThanOrEqualTo(2n, 3n), true)
@@ -255,6 +265,7 @@ export const lessThanOrEqualTo: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { greaterThan } from "effect/BigInt"
  *
  * assert.deepStrictEqual(greaterThan(2n, 3n), false)
@@ -278,6 +289,7 @@ export const greaterThan: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { greaterThanOrEqualTo } from "effect/BigInt"
  *
  * assert.deepStrictEqual(greaterThanOrEqualTo(2n, 3n), false)
@@ -302,6 +314,7 @@ export const greaterThanOrEqualTo: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigInt } from "effect"
  *
  * const between = BigInt.between({ minimum: 0n, maximum: 5n })
@@ -338,6 +351,7 @@ export const between: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigInt } from "effect"
  *
  * const clamp = BigInt.clamp({ minimum: 1n, maximum: 5n })
@@ -368,6 +382,7 @@ export const clamp: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { min } from "effect/BigInt"
  *
  * assert.deepStrictEqual(min(2n, 3n), 2n)
@@ -388,6 +403,7 @@ export const min: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { max } from "effect/BigInt"
  *
  * assert.deepStrictEqual(max(2n, 3n), 3n)
@@ -407,6 +423,7 @@ export const max: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { sign } from "effect/BigInt"
  *
  * assert.deepStrictEqual(sign(-5n), -1)
@@ -426,6 +443,7 @@ export const sign = (n: bigint): Ordering => Order(n, bigint0)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { abs } from "effect/BigInt"
  *
  * assert.deepStrictEqual(abs(-5n), 5n)
@@ -446,6 +464,7 @@ export const abs = (n: bigint): bigint => (n < bigint0 ? -n : n)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { gcd } from "effect/BigInt"
  *
  * assert.deepStrictEqual(gcd(2n, 3n), 1n)
@@ -476,6 +495,7 @@ export const gcd: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { lcm } from "effect/BigInt"
  *
  * assert.deepStrictEqual(lcm(2n, 3n), 6n)
@@ -498,6 +518,7 @@ export const lcm: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { unsafeSqrt } from "effect/BigInt"
  *
  * assert.deepStrictEqual(unsafeSqrt(4n), 2n)
@@ -529,6 +550,7 @@ export const unsafeSqrt = (n: bigint): bigint => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigInt, Option } from "effect"
  *
  * assert.deepStrictEqual(BigInt.sqrt(4n), Option.some(2n))
@@ -550,6 +572,7 @@ export const sqrt = (n: bigint): Option.Option<bigint> =>
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { sumAll } from "effect/BigInt"
  *
  * assert.deepStrictEqual(sumAll([2n, 3n, 4n]), 9n)
@@ -573,6 +596,7 @@ export const sumAll = (collection: Iterable<bigint>): bigint => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { multiplyAll } from "effect/BigInt"
  *
  * assert.deepStrictEqual(multiplyAll([2n, 3n, 4n]), 24n)
@@ -603,6 +627,7 @@ export const multiplyAll = (collection: Iterable<bigint>): bigint => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigInt as BI, Option } from "effect"
  *
  * assert.deepStrictEqual(BI.toNumber(BigInt(42)), Option.some(42))
@@ -630,6 +655,7 @@ export const toNumber = (b: bigint): Option.Option<number> => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigInt as BI, Option } from "effect"
  *
  * assert.deepStrictEqual(BI.fromString("42"), Option.some(BigInt(42)))
@@ -661,6 +687,7 @@ export const fromString = (s: string): Option.Option<bigint> => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { BigInt as BI, Option } from "effect"
  *
  * assert.deepStrictEqual(BI.fromNumber(42), Option.some(BigInt(42)))
