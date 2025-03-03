@@ -45,6 +45,7 @@ export interface Trie<out Value> extends Iterable<[string, Value]>, Equal, Pipea
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.empty<string>()
@@ -63,6 +64,7 @@ export const empty: <V = never>() => Trie<V> = TR.empty
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Equal } from "effect"
  *
  * const iterable: Array<readonly [string, number]> = [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]]
@@ -83,6 +85,7 @@ export const fromIterable: <V>(entries: Iterable<readonly [string, V]>) => Trie<
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.make(["ca", 0], ["me", 1])
@@ -103,6 +106,7 @@ export const make: <Entries extends Array<readonly [string, any]>>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie1 = Trie.empty<number>().pipe(
@@ -133,6 +137,7 @@ export const insert: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -157,6 +162,7 @@ export const keys: <V>(self: Trie<V>) => IterableIterator<string> = TR.keys
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -181,6 +187,7 @@ export const values: <V>(self: Trie<V>) => IterableIterator<V> = TR.values
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -204,6 +211,7 @@ export const entries: <V>(self: Trie<V>) => IterableIterator<[string, V]> = TR.e
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -226,6 +234,7 @@ export const toEntries = <V>(self: Trie<V>): Array<[string, V]> => Array.from(en
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -253,6 +262,7 @@ export const keysWithPrefix: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -282,6 +292,7 @@ export const valuesWithPrefix: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -309,6 +320,7 @@ export const entriesWithPrefix: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -336,6 +348,7 @@ export const toEntriesWithPrefix: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Option } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -363,6 +376,7 @@ export const longestPrefixOf: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -383,6 +397,7 @@ export const size: <V>(self: Trie<V>) => number = TR.size
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Option } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -415,6 +430,7 @@ export const get: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -447,6 +463,7 @@ export const has: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>()
@@ -469,6 +486,7 @@ export const isEmpty: <V>(self: Trie<V>) => boolean = TR.isEmpty
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -492,6 +510,7 @@ export const unsafeGet: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Option } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -522,6 +541,7 @@ export const remove: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -563,6 +583,7 @@ export const reduce: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -600,6 +621,7 @@ export const map: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -637,6 +659,7 @@ export const filter: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Equal, Option } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -674,6 +697,7 @@ export const filterMap: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Equal, Option } from "effect"
  *
  * const trie = Trie.empty<Option.Option<number>>().pipe(
@@ -700,6 +724,7 @@ export const compact: <A>(self: Trie<Option<A>>) => Trie<A> = TR.compact
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie } from "effect"
  *
  * let value = 0
@@ -729,6 +754,7 @@ export const forEach: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Equal, Option } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -755,6 +781,7 @@ export const modify: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
@@ -782,6 +809,7 @@ export const removeMany: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(

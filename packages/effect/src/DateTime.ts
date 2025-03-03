@@ -905,6 +905,7 @@ export const toPartsUtc: (self: DateTime) => DateTime.PartsWithWeekday = Interna
  * @category parts
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { DateTime } from "effect"
  *
  * const now = DateTime.unsafeMake({ year: 2024 })
@@ -926,6 +927,7 @@ export const getPartUtc: {
  * @category parts
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { DateTime } from "effect"
  *
  * const now = DateTime.unsafeMakeZoned({ year: 2024 }, { timeZone: "Europe/London" })

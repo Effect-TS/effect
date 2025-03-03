@@ -230,6 +230,7 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Cron, Either } from "effect"
  *
  * // At 04:00 on every day-of-month from 8 through 14.
@@ -334,6 +335,7 @@ export const unsafeParse = (cron: string, tz?: DateTime.TimeZone | string): Cron
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Cron, Either } from "effect"
  *
  * const cron = Either.getOrThrow(Cron.parse("0 4 8-14 * *"))
@@ -392,6 +394,7 @@ const daysInMonth = (date: Date): number =>
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Cron, Either } from "effect"
  *
  * const after = new Date("2021-01-01 00:00:00")

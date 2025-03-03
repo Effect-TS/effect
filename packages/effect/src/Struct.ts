@@ -15,6 +15,7 @@ import type { MatchRecord, Simplify } from "./Types.js"
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Struct } from "effect"
  *
  * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, Struct.pick("a", "b")), { a: "a", b: 1 })
@@ -51,6 +52,7 @@ export const pick: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Struct } from "effect"
  *
  * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, Struct.omit("c")), { a: "a", b: 1 })
@@ -86,6 +88,7 @@ export const omit: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Struct, String, Number } from "effect"
  *
  * const PersonEquivalence = Struct.getEquivalence({
@@ -139,6 +142,7 @@ type PartialTransform<O, T> = {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Struct } from "effect"
  *
  * assert.deepStrictEqual(
@@ -177,6 +181,7 @@ export const evolve: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Struct } from "effect"
  *
  * const value = pipe({ a: 1, b: 2 }, Struct.get("a"))
@@ -195,6 +200,7 @@ export const get =
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Struct } from "effect"
  *
  * const symbol: unique symbol = Symbol()

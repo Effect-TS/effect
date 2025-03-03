@@ -25,6 +25,7 @@ import type { NoInfer } from "./Types.js"
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { makeBy } from "effect/Iterable"
  *
  * assert.deepStrictEqual(Array.from(makeBy(n => n * 2, { length: 5 })), [0, 2, 4, 6, 8])
@@ -59,6 +60,7 @@ export const makeBy = <A>(f: (i: number) => A, options?: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { range } from "effect/Iterable"
  *
  * assert.deepStrictEqual(Array.from(range(1, 3)), [1, 2, 3])
@@ -83,6 +85,7 @@ export const range = (start: number, end?: number): Iterable<number> => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { replicate } from "effect/Iterable"
  *
  * assert.deepStrictEqual(Array.from(replicate("a", 3)), ["a", "a", "a"])
@@ -103,6 +106,7 @@ export const replicate: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { fromRecord } from "effect/Iterable"
  *
  * const x = { a: 1, b: 2, c: 3 }
@@ -138,6 +142,7 @@ export const prepend: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Iterable } from "effect"
  *
  * assert.deepStrictEqual(
@@ -236,6 +241,7 @@ export const scan: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isEmpty } from "effect/Iterable"
  *
  * assert.deepStrictEqual(isEmpty([]), true);
@@ -832,6 +838,7 @@ export const filterMapWhile: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Iterable, Option } from "effect"
  *
  * assert.deepStrictEqual(
@@ -850,6 +857,7 @@ export const getSomes: <A>(self: Iterable<Option<A>>) => Iterable<A> = filterMap
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Iterable, Either } from "effect"
  *
  * assert.deepStrictEqual(
@@ -868,6 +876,7 @@ export const getLefts = <R, L>(self: Iterable<Either<R, L>>): Iterable<L> => fil
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Iterable, Either } from "effect"
  *
  * assert.deepStrictEqual(

@@ -10,6 +10,7 @@ import * as semigroup from "../Semigroup.js"
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Semigroup } from "@effect/typeclass/data/Ordering"
  *
  * assert.deepStrictEqual(Semigroup.combine(0, -1), -1)
@@ -43,6 +44,7 @@ export const Semigroup: semigroup.Semigroup<Ordering> = semigroup.make(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Monoid } from "@effect/typeclass/data/Ordering"
  *
  * assert.deepStrictEqual(Monoid.combine(Monoid.empty, -1), -1)

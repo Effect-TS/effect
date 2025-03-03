@@ -350,6 +350,7 @@ const reverseChunk = <A>(self: Chunk<A>): Chunk<A> => {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Chunk } from "effect"
  *
  * const numbers = Chunk.make(1, 2, 3)
@@ -579,6 +580,7 @@ export const dropWhile: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(
@@ -605,6 +607,7 @@ export const prependAll: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(
@@ -917,6 +920,7 @@ export declare namespace Chunk {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(

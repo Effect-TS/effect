@@ -142,6 +142,7 @@ export const left: <L>(left: L) => Either<never, L> = either.left
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.fromNullable(1, () => 'fallback'), Either.right(1))
@@ -163,6 +164,7 @@ export const fromNullable: {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, Option } from "effect"
  *
  * assert.deepStrictEqual(Either.fromOption(Option.some(1), () => 'error'), Either.right(1))
@@ -224,6 +226,7 @@ export {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.isEither(Either.right(1)), true)
@@ -243,6 +246,7 @@ export const isEither: (input: unknown) => input is Either<unknown, unknown> = e
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.isLeft(Either.right(1)), false)
@@ -261,6 +265,7 @@ export const isLeft: <R, L>(self: Either<R, L>) => self is Left<L, R> = either.i
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.isRight(Either.right(1)), true)
@@ -277,6 +282,7 @@ export const isRight: <R, L>(self: Either<R, L>) => self is Right<L, R> = either
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, Option } from "effect"
  *
  * assert.deepStrictEqual(Either.getRight(Either.right('ok')), Option.some('ok'))
@@ -293,6 +299,7 @@ export const getRight: <R, L>(self: Either<R, L>) => Option<R> = either.getRight
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, Option } from "effect"
  *
  * assert.deepStrictEqual(Either.getLeft(Either.right('ok')), Option.none())
@@ -381,6 +388,7 @@ export const map: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Either } from "effect"
  *
  * const onLeft  = (strings: ReadonlyArray<string>): string => `strings: ${strings.join(', ')}`
@@ -422,6 +430,7 @@ export const match: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Either } from "effect"
  *
  * const isPositive = (n: number): boolean => n > 0
@@ -473,6 +482,7 @@ export const liftPredicate: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Either } from "effect"
  *
  * const isPositive = (n: number): boolean => n > 0
@@ -531,6 +541,7 @@ export const merge: <R, L>(self: Either<R, L>) => L | R = match({
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrElse(Either.right(1), (error) => error + "!"), 1)
@@ -551,6 +562,7 @@ export const getOrElse: {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrNull(Either.right(1)), 1)
@@ -565,6 +577,7 @@ export const getOrNull: <R, L>(self: Either<R, L>) => R | null = getOrElse(const
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrUndefined(Either.right(1)), 1)
@@ -586,6 +599,7 @@ export const getOrUndefined: <R, L>(self: Either<R, L>) => R | undefined = getOr
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(
@@ -619,6 +633,7 @@ export const getOrThrowWith: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrThrow(Either.right(1)), 1)
@@ -731,6 +746,7 @@ export const ap: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.all([Either.right(1), Either.right(2)]), Either.right([1, 2]))
@@ -828,6 +844,7 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (..
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, pipe } from "effect"
  *
  * const result = pipe(
@@ -860,6 +877,7 @@ export const Do: Either<{}> = right({})
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, pipe } from "effect"
  *
  * const result = pipe(
@@ -902,6 +920,7 @@ export const bind: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, pipe } from "effect"
  *
  * const result = pipe(
@@ -950,6 +969,7 @@ export {
    *
    * @example
    * ```ts
+   * import * as assert from "node:assert"
    * import { Either, pipe } from "effect"
    *
    * const result = pipe(

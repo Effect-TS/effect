@@ -11,6 +11,7 @@ import * as semigroup from "../Semigroup.js"
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SemigroupSum } from "@effect/typeclass/data/BigInt"
  *
  * assert.deepStrictEqual(SemigroupSum.combine(2n, 3n), 5n)
@@ -51,6 +52,7 @@ export const SemigroupMultiply: semigroup.Semigroup<bigint> = semigroup.make(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SemigroupMin } from "@effect/typeclass/data/BigInt"
  *
  * assert.deepStrictEqual(SemigroupMin.combine(2n, 3n), 2n)
@@ -66,6 +68,7 @@ export const SemigroupMin: semigroup.Semigroup<bigint> = semigroup.min(Order)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SemigroupMax } from "@effect/typeclass/data/BigInt"
  *
  * assert.deepStrictEqual(SemigroupMax.combine(2n, 3n), 3n)
@@ -83,6 +86,7 @@ export const SemigroupMax: semigroup.Semigroup<bigint> = semigroup.max(Order)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { MonoidSum } from "@effect/typeclass/data/BigInt"
  *
  * assert.deepStrictEqual(MonoidSum.combine(2n, 3n), 5n)
@@ -104,6 +108,7 @@ export const MonoidSum: monoid.Monoid<bigint> = monoid.fromSemigroup(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { MonoidMultiply } from "@effect/typeclass/data/BigInt"
  *
  * assert.deepStrictEqual(MonoidMultiply.combine(2n, 3n), 6n)

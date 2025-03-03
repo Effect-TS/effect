@@ -319,6 +319,7 @@ export const max = <A>(O: Order<A>): {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Order, Number } from "effect"
  *
  * const clamp = Order.clamp(Number.Order)({ minimum: 1, maximum: 5 })

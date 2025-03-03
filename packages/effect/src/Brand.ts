@@ -197,6 +197,7 @@ export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors 
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Brand } from "effect"
  *
  * type Int = number & Brand.Brand<"Int">
@@ -250,6 +251,7 @@ export function refined<A extends Brand<any>>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Brand } from "effect"
  *
  * type UserId = number & Brand.Brand<"UserId">
@@ -280,6 +282,7 @@ export const nominal = <A extends Brand<any>>(): Brand.Constructor<
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Brand } from "effect"
  *
  * type Int = number & Brand.Brand<"Int">

@@ -158,6 +158,7 @@ export const Random: Context.Tag<Random, Random> = internal.randomTag
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, Random } from "effect"
  *
  * const random1 = Random.make("myseed")

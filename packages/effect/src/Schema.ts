@@ -713,8 +713,8 @@ export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
  *
  * @example
  * ```ts
- * import * as Schema from "effect/Schema"
- * import { Either } from "effect"
+ * import * as assert from "node:assert"
+ * import { Either, Schema } from "effect"
  *
  * const schema = Schema.Literal("a", "b", "c").pipe(Schema.pickLiteral("a", "b"))
  *
@@ -2928,6 +2928,7 @@ export interface tag<Tag extends AST.LiteralValue> extends PropertySignature<":"
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Schema } from "effect"
  *
  * const User = Schema.Struct({
@@ -2959,6 +2960,7 @@ export type TaggedStruct<Tag extends AST.LiteralValue, Fields extends Struct.Fie
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Schema } from "effect"
  *
  * const User = Schema.TaggedStruct("User", {
@@ -3952,6 +3954,7 @@ export interface transformLiteral<Type extends AST.LiteralValue, Encoded extends
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as S from "effect/Schema"
  *
  * const schema = S.transformLiteral(0, "a")
@@ -3978,6 +3981,7 @@ export function transformLiteral<Encoded extends AST.LiteralValue, Type extends 
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as S from "effect/Schema"
  *
  * const Animal = S.transformLiterals(
@@ -4018,6 +4022,7 @@ export function transformLiterals<
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as S from "effect/Schema"
  * import { pipe } from "effect/Function"
  *
@@ -4784,6 +4789,7 @@ const getParseJsonTransformation = (options?: ParseJsonOptions): SchemaClass<unk
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Schema from "effect/Schema"
  *
  * assert.deepStrictEqual(Schema.decodeUnknownSync(Schema.parseJson())(`{"a":"1"}`), { a: "1" })
@@ -5362,6 +5368,7 @@ export type JsonNumberSchemaId = typeof JsonNumberSchemaId
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Schema from "effect/Schema"
  *
  * const is = Schema.is(S.JsonNumber)

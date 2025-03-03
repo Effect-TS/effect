@@ -179,6 +179,7 @@ export interface ReadonlyMailbox<out A, out E = never>
  * @category constructors
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, Mailbox } from "effect"
  *
  * Effect.gen(function*() {

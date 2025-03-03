@@ -836,6 +836,7 @@ export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Option } from "effect"
  *
  * assert.deepStrictEqual(
@@ -873,6 +874,7 @@ export const getOrThrowWith: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Option } from "effect"
  *
  * assert.deepStrictEqual(Option.getOrThrow(Option.some(1)), 1)
@@ -1956,6 +1958,7 @@ export const exists: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Option, pipe } from "effect"
  *
  * const result = pipe(
@@ -2006,6 +2009,7 @@ export {
    *
    * @example
    * ```ts
+   * import * as assert from "node:assert"
    * import { Option, pipe } from "effect"
    *
    * const result = pipe(
@@ -2041,6 +2045,7 @@ export {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Option, pipe } from "effect"
  *
  * const result = pipe(
@@ -2085,6 +2090,7 @@ export const bind: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Option, pipe } from "effect"
  *
  * const result = pipe(
