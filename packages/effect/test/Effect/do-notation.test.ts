@@ -4,6 +4,7 @@ import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Util from "effect/test/util"
+import type { NoExcessProperties } from "effect/Types"
 
 const expectRight = <R, L>(e: Effect.Effect<R, L>, expected: R) => {
   Util.deepStrictEqual(Effect.runSync(Effect.either(e)), Either.right(expected))
@@ -48,7 +49,7 @@ describe("do notation", () => {
 
   describe("bindAll", () => {
     it("succeed", () => {
-      const getTest = <O extends { mode: "default" | "either" | "validate" }>(options: O) =>
+      const getTest = <O extends NoExcessProperties<{ mode: "default" | "either" | "validate" }, O>>(options: O) =>
         Effect.Do.pipe(
           Effect.bind("x", () => Effect.succeed(2)),
           Effect.bindAll(({ x }) => ({
@@ -77,7 +78,7 @@ describe("do notation", () => {
     })
 
     it("with failure", () => {
-      const getTest = <O extends { mode: "default" | "either" | "validate" }>(options: O) =>
+      const getTest = <O extends NoExcessProperties<{ mode: "default" | "either" | "validate" }, O>>(options: O) =>
         Effect.Do.pipe(
           Effect.bind("x", () => Effect.succeed(2)),
           Effect.bindAll(({ x }) => ({
