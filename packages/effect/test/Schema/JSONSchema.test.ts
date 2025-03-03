@@ -103,7 +103,7 @@ const expectError = <A, I>(schema: Schema.Schema<A, I>, message: string) => {
 // Using this instead of Schema.JsonNumber to avoid cluttering the output with unnecessary description and title
 const JsonNumber = Schema.Number.pipe(Schema.filter((n) => Number.isFinite(n), { jsonSchema: {} }))
 
-describe("makeWithOptions", () => {
+describe("fromAST", () => {
   it("definitionsPath", () => {
     const schema = Schema.String.annotations({ identifier: "08368672-2c02-4d6d-92b0-dd0019b33a7b" })
     const definitions = {}
@@ -597,6 +597,28 @@ describe("makeWithOptions", () => {
       })
       deepStrictEqual(jsonSchema, {
         "type": "string"
+      })
+      deepStrictEqual(definitions, {})
+    })
+  })
+
+  describe("additionalPropertiesStrategy", () => {
+    it(`"allow"`, () => {
+      const schema = Schema.Struct({ a: Schema.String })
+      const definitions = {}
+      const jsonSchema = JSONSchema.fromAST(schema.ast, {
+        definitions,
+        additionalPropertiesStrategy: "allow"
+      })
+      deepStrictEqual(jsonSchema, {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "string"
+          }
+        },
+        "required": ["a"],
+        "additionalProperties": true
       })
       deepStrictEqual(definitions, {})
     })
