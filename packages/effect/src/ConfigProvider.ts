@@ -170,13 +170,17 @@ export const makeFlat: (options: {
 }) => ConfigProvider.Flat = internal.makeFlat
 
 /**
- * A config provider that loads configuration from context variables,
- * using the default System service.
+ * A config provider that loads configuration from context variables
+ *
+ * **Options**:
+ *
+ * - `pathDelim`: The delimiter for the path segments (default: `"_"`).
+ * - `seqDelim`: The delimiter for the sequence of values (default: `","`).
  *
  * @since 2.0.0
  * @category constructors
  */
-export const fromEnv: (config?: ConfigProvider.FromEnvConfig) => ConfigProvider = internal.fromEnv
+export const fromEnv: (options?: Partial<ConfigProvider.FromEnvConfig>) => ConfigProvider = internal.fromEnv
 
 /**
  * Constructs a new `ConfigProvider` from a key/value (flat) provider, where
