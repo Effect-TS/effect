@@ -102,9 +102,9 @@ export const fromFlat = (flat: ConfigProvider.ConfigProvider.Flat): ConfigProvid
 
 /** @internal */
 export const fromEnv = (
-  config?: Partial<ConfigProvider.ConfigProvider.FromEnvConfig>
+  options?: Partial<ConfigProvider.ConfigProvider.FromEnvConfig>
 ): ConfigProvider.ConfigProvider => {
-  const { pathDelim, seqDelim } = Object.assign({}, { pathDelim: "_", seqDelim: "," }, config)
+  const { pathDelim, seqDelim } = Object.assign({}, { pathDelim: "_", seqDelim: "," }, options)
   const makePathString = (path: ReadonlyArray<string>): string => pipe(path, Arr.join(pathDelim))
   const unmakePathString = (pathString: string): ReadonlyArray<string> => pathString.split(pathDelim)
 
