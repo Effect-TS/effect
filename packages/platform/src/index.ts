@@ -1,6 +1,11 @@
 /**
  * @since 1.0.0
  */
+export * as ChannelSchema from "./ChannelSchema.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Command from "./Command.js"
 
 /**
@@ -197,7 +202,17 @@ export * as KeyValueStore from "./KeyValueStore.js"
 /**
  * @since 1.0.0
  */
+export * as MsgPack from "./MsgPack.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Multipart from "./Multipart.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Ndjson from "./Ndjson.js"
 
 /**
  * @since 1.0.0
@@ -233,6 +248,11 @@ export * as Runtime from "./Runtime.js"
  * @since 1.0.0
  */
 export * as Socket from "./Socket.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as SocketServer from "./SocketServer.js"
 
 /**
  * @since 1.0.0

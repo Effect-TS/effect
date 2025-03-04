@@ -55,19 +55,6 @@
       "@effect/cluster": ["./packages/cluster/src/index.js"],
       "@effect/cluster/*": ["./packages/cluster/src/*.js"],
       "@effect/cluster/test/*": ["./packages/cluster/test/*.js"],
-      "@effect/cluster-browser": ["./packages/cluster-browser/src/index.js"],
-      "@effect/cluster-browser/*": ["./packages/cluster-browser/src/*.js"],
-      "@effect/cluster-browser/test/*": [
-        "./packages/cluster-browser/test/*.js"
-      ],
-      "@effect/cluster-node": ["./packages/cluster-node/src/index.js"],
-      "@effect/cluster-node/*": ["./packages/cluster-node/src/*.js"],
-      "@effect/cluster-node/test/*": ["./packages/cluster-node/test/*.js"],
-      "@effect/cluster-workflow": ["./packages/cluster-workflow/src/index.js"],
-      "@effect/cluster-workflow/*": ["./packages/cluster-workflow/src/*.js"],
-      "@effect/cluster-workflow/test/*": [
-        "./packages/cluster-workflow/test/*.js"
-      ],
       "@effect/experimental": ["./packages/experimental/src/index.js"],
       "@effect/experimental/*": ["./packages/experimental/src/*.js"],
       "@effect/experimental/test/*": ["./packages/experimental/test/*.js"],
@@ -106,9 +93,6 @@
       "@effect/rpc": ["./packages/rpc/src/index.js"],
       "@effect/rpc/*": ["./packages/rpc/src/*.js"],
       "@effect/rpc/test/*": ["./packages/rpc/test/*.js"],
-      "@effect/rpc-http": ["./packages/rpc-http/src/index.js"],
-      "@effect/rpc-http/*": ["./packages/rpc-http/src/*.js"],
-      "@effect/rpc-http/test/*": ["./packages/rpc-http/test/*.js"],
       "@effect/sql": ["./packages/sql/src/index.js"],
       "@effect/sql/*": ["./packages/sql/src/*.js"],
       "@effect/sql/test/*": ["./packages/sql/test/*.js"],
