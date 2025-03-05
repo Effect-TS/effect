@@ -24,7 +24,7 @@ const HttpApiDecodeError = {
   }
 }
 
-type Options = {
+type Parts = {
   readonly paths: OpenApi.OpenAPISpec["paths"]
   readonly tags?: OpenApi.OpenAPISpec["tags"] | undefined
   readonly securitySchemes?: Record<string, OpenApi.OpenAPISecurityScheme> | undefined
@@ -32,12 +32,19 @@ type Options = {
   readonly security?: Array<OpenApi.OpenAPISecurityRequirement> | undefined
 }
 
-const getSpec = (options: Options): OpenApi.OpenAPISpec => {
+type AdditionalPropertiesStrategy = "allow" | "strict"
+
+type Options = {
+  readonly additionalPropertiesStrategy?: AdditionalPropertiesStrategy | undefined
+}
+
+const getSpec = (parts: Parts, options?: Options): OpenApi.OpenAPISpec => {
+  const additionalPropertiesStrategy = (options?.additionalPropertiesStrategy ?? "strict") === "allow"
   return {
     "openapi": "3.1.0",
     "info": { "title": "Api", "version": "0.0.1" },
-    "paths": options.paths,
-    "tags": options.tags ?? [{ "name": "group" }],
+    "paths": parts.paths,
+    "tags": parts.tags ?? [{ "name": "group" }],
     "components": {
       "schemas": {
         "HttpApiDecodeError": {
@@ -58,7 +65,7 @@ const getSpec = (options: Options): OpenApi.OpenAPISpec => {
               ]
             }
           },
-          "additionalProperties": false,
+          "additionalProperties": additionalPropertiesStrategy,
           "description": "The request did not match the expected schema"
         },
         "Issue": {
@@ -92,14 +99,14 @@ const getSpec = (options: Options): OpenApi.OpenAPISpec => {
               "description": "A descriptive message explaining the issue"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": additionalPropertiesStrategy
         },
         "PropertyKey": {
           "anyOf": [
             { "type": "string" },
             { "type": "number" },
             {
-              "additionalProperties": false,
+              "additionalProperties": additionalPropertiesStrategy,
               "description": "an object to be decoded into a globally shared symbol",
               "properties": {
                 "_tag": {
@@ -115,33 +122,35 @@ const getSpec = (options: Options): OpenApi.OpenAPISpec => {
             }
           ]
         },
-        ...options.schemas
+        ...parts.schemas
       },
-      "securitySchemes": options.securitySchemes ?? {}
+      "securitySchemes": parts.securitySchemes ?? {}
     },
-    "security": options.security ?? []
+    "security": parts.security ?? []
   }
 }
 
-const expectOptions = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
+const expectParts = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
   api: HttpApi.HttpApi<Id, Groups, E, R>,
-  options: Options
+  parts: Parts
 ) => {
-  expectSpec(api, getSpec(options))
+  expectSpec(api, getSpec(parts))
 }
 
 const expectSpecPaths = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
   api: HttpApi.HttpApi<Id, Groups, E, R>,
-  paths: OpenApi.OpenAPISpec["paths"]
+  paths: OpenApi.OpenAPISpec["paths"],
+  options?: Options
 ) => {
-  expectSpec(api, getSpec({ paths }))
+  expectSpec(api, getSpec({ paths }, options), options)
 }
 
 const expectSpec = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
   api: HttpApi.HttpApi<Id, Groups, E, R>,
-  expected: OpenApi.OpenAPISpec
+  expected: OpenApi.OpenAPISpec,
+  options?: Options
 ) => {
-  const spec = OpenApi.fromApi(api)
+  const spec = OpenApi.fromApi(api, options)
   // console.log(JSON.stringify(spec.paths, null, 2))
   // console.log(JSON.stringify(spec, null, 2))
   deepStrictEqual(spec, expected)
@@ -158,6 +167,45 @@ const expectPaths = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup
 describe("OpenApi", () => {
   describe("fromApi", () => {
     describe("HttpApi", () => {
+      it(`additionalPropertiesStrategy: "allow"`, () => {
+        const api = HttpApi.make("api").add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.get("get", "/")
+              .addSuccess(Schema.Struct({ a: Schema.String }))
+          )
+        )
+        expectSpecPaths(api, {
+          "/": {
+            "get": {
+              "tags": ["group"],
+              "operationId": "group.get",
+              "parameters": [],
+              "security": [],
+              "responses": {
+                "200": {
+                  "description": "Success",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "a": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["a"],
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                },
+                "400": HttpApiDecodeError
+              }
+            }
+          }
+        }, { additionalPropertiesStrategy: "allow" })
+      })
+
       it("addHttpApi", () => {
         const anotherApi = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
@@ -810,7 +858,7 @@ describe("OpenApi", () => {
                 .addSuccess(User)
             )
           )
-          expectOptions(api, {
+          expectParts(api, {
             schemas: {
               "User": {
                 "additionalProperties": false,
@@ -1534,7 +1582,7 @@ describe("OpenApi", () => {
         )
           // Or apply the middleware to the entire API
           .middleware(Authorization)
-        expectOptions(api, {
+        expectParts(api, {
           security: [{
             "myBearer": []
           }, {
@@ -1745,7 +1793,7 @@ describe("OpenApi", () => {
               )
           )
         )
-        expectOptions(api, {
+        expectParts(api, {
           schemas: {
             "PersistedFile": {
               "type": "string",
@@ -2081,7 +2129,7 @@ describe("OpenApi", () => {
                 .addError(err).addError(err)
             ).addError(err).addError(err)
         ).addError(err).addError(err)
-      expectOptions(api, {
+      expectParts(api, {
         tags: [{ name: "group1" }, { name: "group2" }],
         schemas: {
           "err": {
