@@ -1,5 +1,16 @@
 # @effect/ai
 
+## 0.10.7
+
+### Patch Changes
+
+- [#4545](https://github.com/Effect-TS/effect/pull/4545) [`a95108a`](https://github.com/Effect-TS/effect/commit/a95108acac7f25fc5e1c0dcdf16bcc638dca5c00) Thanks @IMax153! - Avoid inclusion of `_tag` in tool call JSONSchema
+
+- Updated dependencies [[`840cc73`](https://github.com/Effect-TS/effect/commit/840cc7329908db7ca693ef47b07d4f845c29cadd), [`9bf8a74`](https://github.com/Effect-TS/effect/commit/9bf8a74b967f18d931743dd5196af326c9118e9c), [`87ba23c`](https://github.com/Effect-TS/effect/commit/87ba23c41c193503ed0c612b0d32d0b253794c64), [`f910880`](https://github.com/Effect-TS/effect/commit/f91088069057f3b4529753f5bc5532b028d726df), [`0d01480`](https://github.com/Effect-TS/effect/commit/0d014803e4f688f74386a80abd65485e1a319244)]:
+  - @effect/platform@0.77.7
+  - effect@3.13.7
+  - @effect/experimental@0.41.7
+
 ## 0.10.6
 
 ### Patch Changes
