@@ -5,11 +5,11 @@ import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import type { LazyArg } from "effect/Function"
-import { dual } from "effect/Function"
+import { constVoid, dual } from "effect/Function"
 import * as Mailbox from "effect/Mailbox"
 import * as Runtime from "effect/Runtime"
-import * as Scope from "effect/Scope"
 import type * as AsyncInput from "effect/SingleProducerAsyncInput"
 import * as Stream from "effect/Stream"
 import type { Duplex, Writable } from "node:stream"
@@ -317,55 +317,48 @@ const readChunkChannel = <A>(
   })
 
 class StreamAdapter<E, R> extends Readable {
-  private readonly scope: Scope.CloseableScope
-  private readonly pull: (
-    cb: (err: Error | null, data: ReadonlyArray<Uint8Array | string> | null) => void
-  ) => void
+  private readonly readLatch: Effect.Latch
+  private fiber: Fiber.RuntimeFiber<void, E> | undefined = undefined
 
   constructor(
-    private readonly runtime: Runtime.Runtime<R>,
-    private readonly stream: Stream.Stream<Uint8Array | string, E, R>
+    runtime: Runtime.Runtime<R>,
+    stream: Stream.Stream<Uint8Array | string, E, R>
   ) {
     super({})
-    this.scope = Effect.runSync(Scope.make())
-    const pull = Stream.toPull(this.stream).pipe(
-      Scope.extend(this.scope),
-      Runtime.runSync(this.runtime),
-      Effect.map(Chunk.toReadonlyArray),
-      Effect.catchAll((error) => error._tag === "None" ? Effect.succeed(null) : Effect.fail(error.value))
+    this.readLatch = Effect.unsafeMakeLatch(false)
+    this.fiber = Runtime.runFork(runtime)(
+      Stream.runForEachChunk(stream, (chunk) =>
+        this.readLatch.whenOpen(Effect.sync(() => {
+          this.readLatch.unsafeClose()
+          for (const item of chunk) {
+            if (typeof item === "string") {
+              this.push(item, "utf8")
+            } else {
+              this.push(item)
+            }
+          }
+        })))
     )
-    const runFork = Runtime.runFork(this.runtime)
-    this.pull = function(done) {
-      runFork(pull).addObserver((exit) => {
-        done(
-          exit._tag === "Failure" ? new Error("failure in StreamAdapter", { cause: Cause.squash(exit.cause) }) : null,
-          exit._tag === "Success" ? exit.value : null
-        )
-      })
-    }
-  }
-
-  _read(_size: number): void {
-    this.pull((error, data) => {
-      if (error !== null) {
-        this._destroy(error, () => {})
-      } else if (data === null) {
+    this.fiber.addObserver((exit) => {
+      this.fiber = undefined
+      if (Exit.isSuccess(exit)) {
         this.push(null)
       } else {
-        for (let i = 0; i < data.length; i++) {
-          const chunk = data[i]
-          if (typeof chunk === "string") {
-            this.push(chunk, "utf8")
-          } else {
-            this.push(chunk)
-          }
-        }
+        this._destroy(Cause.squash(exit.cause) as any, constVoid)
       }
     })
   }
 
+  _read(_size: number): void {
+    // TODO: refactor to use unsafeOpen when added to Effect
+    Effect.runSync(this.readLatch.open)
+  }
+
   _destroy(_error: Error | null, callback: (error?: Error | null | undefined) => void): void {
-    Runtime.runFork(this.runtime)(Scope.close(this.scope, Exit.void)).addObserver((exit) => {
+    if (!this.fiber) {
+      return callback(null)
+    }
+    Effect.runFork(Fiber.interrupt(this.fiber)).addObserver((exit) => {
       callback(exit._tag === "Failure" ? Cause.squash(exit.cause) as any : null)
     })
   }
