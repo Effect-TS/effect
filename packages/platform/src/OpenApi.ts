@@ -175,7 +175,11 @@ function processAnnotation<Services, S, I>(
   }
 }
 
-type AdditionalPropertiesStrategy = "allow" | "strict"
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type AdditionalPropertiesStrategy = "allow" | "strict"
 
 /**
  * Converts an `HttpApi` instance into an OpenAPI Specification object.

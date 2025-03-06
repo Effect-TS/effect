@@ -937,12 +937,15 @@ export const middlewareCors = (
 export const middlewareOpenApi = (
   options?: {
     readonly path?: HttpApiEndpoint.PathSegment | undefined
+    readonly additionalPropertiesStrategy?: OpenApi.AdditionalPropertiesStrategy | undefined
   } | undefined
 ): Layer.Layer<never, never, HttpApi.Api> =>
   Router.use((router) =>
     Effect.gen(function*() {
       const { api } = yield* HttpApi.Api
-      const spec = OpenApi.fromApi(api)
+      const spec = OpenApi.fromApi(api, {
+        additionalPropertiesStrategy: options?.additionalPropertiesStrategy
+      })
       const response = yield* HttpServerResponse.json(spec).pipe(
         Effect.orDie
       )
