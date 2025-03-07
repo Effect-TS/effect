@@ -83,7 +83,7 @@ export declare namespace Client {
       request: Simplify<HttpApiEndpoint.ClientRequest<_Path, _UrlParams, _Payload, _Headers, WithResponse>>
     ) => Effect.Effect<
       WithResponse extends true ? [_Success, HttpClientResponse.HttpClientResponse] : _Success,
-      _Error | GroupError | ApiError | HttpClientError.HttpClientError
+      _Error | GroupError | ApiError | HttpClientError.HttpClientError | ParseResult.ParseError
     > :
     never
 
@@ -224,7 +224,6 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
             return request?.withResponse === true ? [value, response] : value
           }).pipe(
             Effect.scoped,
-            Effect.catchIf(ParseResult.isParseError, Effect.die),
             Effect.mapInputContext((input) => Context.merge(context, input))
           )
 
