@@ -2,6 +2,7 @@ import type { HttpApiError, HttpClient, HttpClientError } from "@effect/platform
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware } from "@effect/platform"
 import type { Schema } from "effect"
 import { Effect } from "effect"
+import type { ParseError } from "effect/ParseResult"
 import { describe, expect, it } from "tstyche"
 
 declare const ApiError: Schema.Schema<"ApiError", "ApiErrorEncoded", "ApiErrorR">
@@ -106,6 +107,7 @@ describe("HttpApiClient", () => {
           | "ApiSecurityError"
           | HttpApiError.HttpApiDecodeError
           | HttpClientError.HttpClientError
+          | ParseError
         >
       >()
     })
@@ -144,6 +146,7 @@ describe("HttpApiClient", () => {
           | "ApiSecurityError"
           | HttpApiError.HttpApiDecodeError
           | HttpClientError.HttpClientError
+          | ParseError
         >
       >()
     })
@@ -185,6 +188,7 @@ describe("HttpApiClient", () => {
           | "ApiSecurityError"
           | HttpApiError.HttpApiDecodeError
           | HttpClientError.HttpClientError
+          | ParseError
         >
       >()
     })
