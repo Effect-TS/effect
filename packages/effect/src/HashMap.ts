@@ -464,3 +464,17 @@ export const some: {
   <K, A>(predicate: (a: NoInfer<A>, k: K) => boolean): (self: HashMap<K, A>) => boolean
   <K, A>(self: HashMap<K, A>, predicate: (a: A, k: K) => boolean): boolean
 } = HM.some
+
+/**
+ * Checks if all entries in a hashmap meets a specific condition.
+ *
+ * @param self - The hashmap to check.
+ * @param predicate - The condition to test entries (value, key).
+ *
+ * @since 3.14.0
+ * @category elements
+ */
+export const every: {
+  <K, A>(predicate: (a: NoInfer<A>, k: K) => boolean): (self: HashMap<K, A>) => boolean
+  <K, A>(self: HashMap<K, A>, predicate: (a: A, k: K) => boolean): boolean
+} = HM.every
