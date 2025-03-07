@@ -146,6 +146,7 @@ describe("HttpApiClient", () => {
           | "ApiSecurityError"
           | HttpApiError.HttpApiDecodeError
           | HttpClientError.HttpClientError
+          | ParseError
         >
       >()
     })
