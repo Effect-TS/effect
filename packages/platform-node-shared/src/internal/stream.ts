@@ -329,6 +329,7 @@ class StreamAdapter<E, R> extends Readable {
     this.fiber = Runtime.runFork(runtime)(
       Stream.runForEachChunk(stream, (chunk) =>
         this.readLatch.whenOpen(Effect.sync(() => {
+          if (chunk.length === 0) return
           this.readLatch.unsafeClose()
           for (const item of chunk) {
             if (typeof item === "string") {
