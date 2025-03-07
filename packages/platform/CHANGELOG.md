@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.78.0
+
+### Minor Changes
+
+- [#4562](https://github.com/Effect-TS/effect/pull/4562) [`c5bcf53`](https://github.com/Effect-TS/effect/commit/c5bcf53b7cb49dacffdd2a6cd8eb48cc452b417e) Thanks @tim-smart! - expose ParseError in HttpApiClient
+
 ## 0.77.7
 
 ### Patch Changes
