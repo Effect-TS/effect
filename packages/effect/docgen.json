@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/@effect/docgen/schema.json",
   "exclude": ["src/internal/**/*.ts"],
-  "srcLink": "https://github.com/Effect-TS/effect/blob/main/packages/effect/src/",
+  "srcLink": "https://github.com/Effect-TS/effect/tree/next-docgen/packages/effect/src/",
   "examplesCompilerOptions": {
     "noEmit": true,
     "strict": true,
