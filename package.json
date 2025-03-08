@@ -40,7 +40,7 @@
     "@changesets/cli": "^2.27.7",
     "@edge-runtime/vm": "^4.0.0",
     "@effect/build-utils": "^0.7.7",
-    "@effect/docgen": "https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3e08a6c",
+    "@effect/docgen": "https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3a451b7",
     "@effect/eslint-plugin": "^0.2.0",
     "@effect/language-service": "^0.1.0",
     "@effect/vitest": "workspace:^",
