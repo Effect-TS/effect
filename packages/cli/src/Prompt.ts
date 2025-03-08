@@ -516,7 +516,8 @@ export declare namespace All {
  * Supports either a tuple / iterable of prompts or a record / struct of prompts
  * as an argument.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import * as Prompt from "@effect/cli/Prompt"
  * import * as NodeContext from "@effect/platform-node/NodeContext"

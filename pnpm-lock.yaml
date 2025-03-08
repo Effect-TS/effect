@@ -53,8 +53,8 @@ importers:
         specifier: ^0.7.7
         version: 0.7.7
       '@effect/docgen':
-        specifier: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3e08a6c
-        version: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3e08a6c(tsx@4.17.0)(typescript@5.7.2)
+        specifier: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3a451b7
+        version: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3a451b7(tsx@4.17.0)(typescript@5.7.2)
       '@effect/eslint-plugin':
         specifier: ^0.2.0
         version: 0.2.0
@@ -1969,14 +1969,14 @@ packages:
     engines: {node: '>=16.17.1'}
     hasBin: true
 
-  '@effect/docgen@https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3e08a6c':
-    resolution: {tarball: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3e08a6c}
+  '@effect/docgen@https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3a451b7':
+    resolution: {tarball: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3a451b7}
     version: 0.5.2
     engines: {node: '>=18.0.0'}
     hasBin: true
     peerDependencies:
-      tsx: ^4.1.0
-      typescript: ^5.2.2
+      tsx: ^4.19.3
+      typescript: ^5.8.2
 
   '@effect/eslint-plugin@0.2.0':
     resolution: {integrity: sha512-PC/hEDGctYGYIjZyhM6kbD4FyHxLgoYNoQNjGkCXcFEzi71vQc3PJKe2JnCgzcUDvr/Nc2qgTVU4ONYwjHzQGA==}
@@ -6225,8 +6225,8 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
 
-  prettier@3.5.2:
-    resolution: {integrity: sha512-lc6npv5PH7hVqozBR7lkBNOGXV9vMwROAPlumdBkX0wTbbzPu/U1hk5yL8p2pt4Xoc+2mkT8t/sow2YrV/M5qg==}
+  prettier@3.5.3:
+    resolution: {integrity: sha512-QQtaxnoDJeAkDvDKWCLiwIXkTgRhwYDEQCghU9Z6q03iyek/rxRh/2lC3HB7P8sWT2xC/y5JDctPLBIGzHKbhw==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -9419,12 +9419,13 @@ snapshots:
 
   '@effect/build-utils@0.7.7': {}
 
-  '@effect/docgen@https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3e08a6c(tsx@4.17.0)(typescript@5.7.2)':
+  '@effect/docgen@https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@3a451b7(tsx@4.17.0)(typescript@5.7.2)':
     dependencies:
+      '@babel/code-frame': 7.26.2
       '@effect/markdown-toc': 0.1.0
       doctrine: 3.0.0
       glob: 11.0.1
-      prettier: 3.5.2
+      prettier: 3.5.3
       tsx: 4.17.0
       typescript: 5.7.2
 
@@ -14177,7 +14178,7 @@ snapshots:
 
   prettier@3.3.3: {}
 
-  prettier@3.5.2: {}
+  prettier@3.5.3: {}
 
   pretty-format@26.6.2:
     dependencies:
