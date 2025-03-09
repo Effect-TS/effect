@@ -14,7 +14,9 @@
       "effect": ["../../../effect/src/index.js"],
       "effect/*": ["../../../effect/src/*.js"],
       "@effect/printer": ["../../../printer/src/index.js"],
-      "@effect/printer/*": ["../../../printer/src/*.js"]
+      "@effect/printer/*": ["../../../printer/src/*.js"],
+      "@effect/typeclass": ["../../../typeclass/src/index.js"],
+      "@effect/typeclass/*": ["../../../typeclass/src/*.js"]
     }
   }
 }
