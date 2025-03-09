@@ -520,8 +520,6 @@ export declare namespace All {
  *
  * ```ts
  * import * as Prompt from "@effect/cli/Prompt"
- * import * as NodeContext from "@effect/platform-node/NodeContext"
- * import * as Runtime from "@effect/platform-node/NodeRuntime"
  * import * as Effect from "effect/Effect"
  *
  * const username = Prompt.text({
