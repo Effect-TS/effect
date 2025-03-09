@@ -1,6 +1,7 @@
 {
   "$schema": "../../../node_modules/@effect/docgen/schema.json",
   "exclude": ["src/internal/**/*.ts"],
+  "srcLink": "https://github.com/Effect-TS/effect/tree/main/packages/ai/ai/src/",
   "examplesCompilerOptions": {
     "noEmit": true,
     "strict": true,

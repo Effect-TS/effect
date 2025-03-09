@@ -1,6 +1,7 @@
 {
   "$schema": "../../../node_modules/@effect/docgen/schema.json",
   "exclude": ["src/Generated.ts", "src/internal/**/*.ts"],
+  "srcLink": "https://github.com/Effect-TS/effect/tree/main/packages/ai/anthropic/src/",
   "examplesCompilerOptions": {
     "noEmit": true,
     "strict": true,
