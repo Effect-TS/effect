@@ -252,7 +252,7 @@ describe("standardSchemaV1", () => {
       a: Schema.NonEmptyString,
       b: Schema.NonEmptyString
     })
-    const standardSchema = Schema.standardSchemaV1(schema, { errors: "all" })
+    const standardSchema = Schema.standardSchemaV1(schema)
     expectSyncSuccess(standardSchema, {
       a: "a",
       b: "b"
@@ -283,6 +283,59 @@ describe("standardSchemaV1", () => {
       {
         message: `Expected a non empty string, actual ""`,
         path: ["b"]
+      }
+    ])
+    expectSyncFailure(standardSchema, {
+      a: "a",
+      b: ""
+    }, [
+      {
+        message: `Expected a non empty string, actual ""`,
+        path: ["b"]
+      }
+    ])
+    expectSyncFailure(standardSchema, {
+      a: "",
+      b: "b"
+    }, [
+      {
+        message: `Expected a non empty string, actual ""`,
+        path: ["a"]
+      }
+    ])
+  })
+  it("sync decoding + sync first issue formatting", () => {
+    const schema = Schema.Struct({
+      a: Schema.NonEmptyString,
+      b: Schema.NonEmptyString
+    })
+    const standardSchema = Schema.standardSchemaV1(schema, { errors: "first" })
+    expectSyncSuccess(standardSchema, {
+      a: "a",
+      b: "b"
+    }, {
+      a: "a",
+      b: "b"
+    })
+    expectSyncFailure(standardSchema, null, [
+      {
+        message: "Expected { readonly a: NonEmptyString; readonly b: NonEmptyString }, actual null",
+        path: []
+      }
+    ])
+    expectSyncFailure(standardSchema, "", [
+      {
+        message: `Expected { readonly a: NonEmptyString; readonly b: NonEmptyString }, actual ""`,
+        path: []
+      }
+    ])
+    expectSyncFailure(standardSchema, {
+      a: "",
+      b: ""
+    }, [
+      {
+        message: `Expected a non empty string, actual ""`,
+        path: ["a"]
       }
     ])
     expectSyncFailure(standardSchema, {

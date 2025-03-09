@@ -194,9 +194,9 @@ const makeStandardFailureFromParseIssue = (
  */
 export const standardSchemaV1 = <A, I>(
   schema: Schema<A, I, never>,
-  options?: AST.ParseOptions
+  overrideOptions?: AST.ParseOptions
 ): StandardSchemaV1<I, A> => {
-  const decodeUnknown = ParseResult.decodeUnknown(schema, options)
+  const decodeUnknown = ParseResult.decodeUnknown(schema, { errors: "all" })
   return {
     "~standard": {
       version: 1,
@@ -204,7 +204,7 @@ export const standardSchemaV1 = <A, I>(
       validate(value) {
         const scheduler = new scheduler_.SyncScheduler()
         const fiber = Effect.runFork(
-          Effect.matchEffect(decodeUnknown(value), {
+          Effect.matchEffect(decodeUnknown(value, overrideOptions), {
             onFailure: makeStandardFailureFromParseIssue,
             onSuccess: (value) => Effect.succeed({ value })
           }),
