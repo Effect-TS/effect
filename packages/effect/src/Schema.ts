@@ -192,8 +192,11 @@ const makeStandardFailureFromParseIssue = (
  * @category Standard Schema
  * @since 3.13.0
  */
-export const standardSchemaV1 = <A, I>(schema: Schema<A, I, never>): StandardSchemaV1<I, A> => {
-  const decodeUnknown = ParseResult.decodeUnknown(schema)
+export const standardSchemaV1 = <A, I>(
+  schema: Schema<A, I, never>,
+  overrideOptions?: AST.ParseOptions
+): StandardSchemaV1<I, A> => {
+  const decodeUnknown = ParseResult.decodeUnknown(schema, { errors: "all" })
   return {
     "~standard": {
       version: 1,
@@ -201,7 +204,7 @@ export const standardSchemaV1 = <A, I>(schema: Schema<A, I, never>): StandardSch
       validate(value) {
         const scheduler = new scheduler_.SyncScheduler()
         const fiber = Effect.runFork(
-          Effect.matchEffect(decodeUnknown(value), {
+          Effect.matchEffect(decodeUnknown(value, overrideOptions), {
             onFailure: makeStandardFailureFromParseIssue,
             onSuccess: (value) => Effect.succeed({ value })
           }),
