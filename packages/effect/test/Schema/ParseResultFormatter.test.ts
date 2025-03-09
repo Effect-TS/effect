@@ -579,7 +579,7 @@ describe("Formatters output", () => {
           S.String,
           {
             strict: true,
-            decode: (s, _, ast) => ParseResult.fail(new ParseResult.Type(ast, s, "message field")),
+            decode: (s, _, ast) => ParseResult.fail(new ParseResult.Type(ast, s, "transformation failure")),
             encode: ParseResult.succeed
           }
         )
@@ -589,12 +589,12 @@ describe("Formatters output", () => {
           input,
           `(string <-> string)
 └─ Transformation process failure
-   └─ message field`
+   └─ transformation failure`
         )
         expectSyncIssues(schema, input, [{
-          _tag: "Type",
+          _tag: "Transformation",
           path: [],
-          message: "message field"
+          message: "transformation failure"
         }])
       })
 
@@ -713,7 +713,7 @@ describe("Formatters output", () => {
          └─ Expected a non empty string, actual ""`
         )
         expectSyncIssues(schema, input, [{
-          _tag: "Type",
+          _tag: "Refinement",
           path: [],
           message: `Expected a non empty string, actual ""`
         }])
@@ -881,7 +881,7 @@ describe("Formatters output", () => {
    └─ Expected a string at least 1 character(s) long, actual ""`
         )
         expectSyncIssues(schema, input, [{
-          _tag: "Type",
+          _tag: "Refinement",
           path: [],
           message: `Expected a string at least 1 character(s) long, actual ""`
         }])
@@ -898,7 +898,7 @@ describe("Formatters output", () => {
    └─ Expected a string at least 1 character(s) long, actual ""`
         )
         expectSyncIssues(schema, input, [{
-          _tag: "Type",
+          _tag: "Refinement",
           path: [],
           message: `Expected a string at least 1 character(s) long, actual ""`
         }])

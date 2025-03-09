@@ -1977,7 +1977,7 @@ const makeArrayFormatterIssue = (
  * @since 3.10.0
  */
 export const ArrayFormatter: ParseResultFormatter<Array<ArrayFormatterIssue>> = {
-  formatIssue: (issue) => getArrayFormatterIssues(issue),
+  formatIssue: (issue) => getArrayFormatterIssues(issue, undefined, []),
   formatIssueSync: (issue) => {
     const e = ArrayFormatter.formatIssue(issue)
     return isEither(e) ? Either.getOrThrow(e) : Effect.runSync(e)
@@ -1988,12 +1988,13 @@ export const ArrayFormatter: ParseResultFormatter<Array<ArrayFormatterIssue>> = 
 
 const getArrayFormatterIssues = (
   issue: ParseIssue,
-  path: ReadonlyArray<PropertyKey> = []
+  parentTag: ArrayFormatterIssue["_tag"] | undefined,
+  path: ReadonlyArray<PropertyKey>
 ): Effect.Effect<Array<ArrayFormatterIssue>> => {
   const _tag = issue._tag
   switch (_tag) {
     case "Type":
-      return map(formatTypeMessage(issue), (message) => [makeArrayFormatterIssue(_tag, path, message)])
+      return map(formatTypeMessage(issue), (message) => [makeArrayFormatterIssue(parentTag ?? _tag, path, message)])
     case "Forbidden":
       return Either.right([makeArrayFormatterIssue(_tag, path, formatForbiddenMessage(issue))])
     case "Unexpected":
@@ -2001,23 +2002,29 @@ const getArrayFormatterIssues = (
     case "Missing":
       return map(formatMissingMessage(issue), (message) => [makeArrayFormatterIssue(_tag, path, message)])
     case "Pointer":
-      return getArrayFormatterIssues(issue.issue, path.concat(issue.path))
+      return getArrayFormatterIssues(issue.issue, undefined, path.concat(issue.path))
     case "Composite":
       return flatMap(getMessage(issue), (message) => {
         if (message !== undefined) {
-          return Either.right([makeArrayFormatterIssue(issue._tag, path, message)])
+          return Either.right([makeArrayFormatterIssue(_tag, path, message)])
         }
         return util_.isNonEmpty(issue.issues)
-          ? map(Effect.forEach(issue.issues, (issue) => getArrayFormatterIssues(issue, path)), Arr.flatten)
-          : getArrayFormatterIssues(issue.issues, path)
+          ? map(Effect.forEach(issue.issues, (issue) => getArrayFormatterIssues(issue, undefined, path)), Arr.flatten)
+          : getArrayFormatterIssues(issue.issues, undefined, path)
       })
     case "Refinement":
+      return flatMap(getMessage(issue), (message) => {
+        if (message !== undefined) {
+          return Either.right([makeArrayFormatterIssue(_tag, path, message)])
+        }
+        return getArrayFormatterIssues(issue.issue, issue.kind === "Predicate" ? _tag : undefined, path)
+      })
     case "Transformation":
       return flatMap(getMessage(issue), (message) => {
         if (message !== undefined) {
-          return Either.right([makeArrayFormatterIssue(issue._tag, path, message)])
+          return Either.right([makeArrayFormatterIssue(_tag, path, message)])
         }
-        return getArrayFormatterIssues(issue.issue, path)
+        return getArrayFormatterIssues(issue.issue, issue.kind === "Transformation" ? _tag : undefined, path)
       })
   }
 }
