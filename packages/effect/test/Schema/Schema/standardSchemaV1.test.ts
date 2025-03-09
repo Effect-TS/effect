@@ -2,6 +2,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec"
 import { Context, Effect, ParseResult, Predicate, Schema } from "effect"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
+import { b } from "vitest/dist/chunks/suite.BJU7kdY9.js"
 import { AsyncString } from "../TestUtils.js"
 
 function validate<I, A>(
@@ -245,5 +246,63 @@ describe("standardSchemaV1", () => {
         assertTrue(issues[0].message.includes("Service not found: Min"))
       })
     })
+  })
+
+  it("sync decoding + sync all issues formatting", () => {
+    const schema = Schema.Struct({
+      a: Schema.NonEmptyString,
+      b: Schema.NonEmptyString
+    })
+    const standardSchema = Schema.standardSchemaV1(schema, { errors: "all" })
+    expectSyncSuccess(standardSchema, {
+      a: "a",
+      b: "b"
+    }, {
+      a: "a",
+      b: "b"
+    })
+    expectSyncFailure(standardSchema, null, [
+      {
+        message: "Expected { readonly a: NonEmptyString; readonly b: NonEmptyString }, actual null",
+        path: []
+      }
+    ])
+    expectSyncFailure(standardSchema, "", [
+      {
+        message: `Expected { readonly a: NonEmptyString; readonly b: NonEmptyString }, actual ""`,
+        path: []
+      }
+    ])
+    expectSyncFailure(standardSchema, {
+      a: "",
+      b: ""
+    }, [
+      {
+        message: `Expected a non empty string, actual ""`,
+        path: ["a"]
+      },
+      {
+        message: `Expected a non empty string, actual ""`,
+        path: ["b"]
+      }
+    ])
+    expectSyncFailure(standardSchema, {
+      a: "a",
+      b: ""
+    }, [
+      {
+        message: `Expected a non empty string, actual ""`,
+        path: ["b"]
+      }
+    ])
+    expectSyncFailure(standardSchema, {
+      a: "",
+      b: "b"
+    }, [
+      {
+        message: `Expected a non empty string, actual ""`,
+        path: ["a"]
+      }
+    ])
   })
 })

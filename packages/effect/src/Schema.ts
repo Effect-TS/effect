@@ -192,8 +192,11 @@ const makeStandardFailureFromParseIssue = (
  * @category Standard Schema
  * @since 3.13.0
  */
-export const standardSchemaV1 = <A, I>(schema: Schema<A, I, never>): StandardSchemaV1<I, A> => {
-  const decodeUnknown = ParseResult.decodeUnknown(schema)
+export const standardSchemaV1 = <A, I>(
+  schema: Schema<A, I, never>,
+  options?: AST.ParseOptions
+): StandardSchemaV1<I, A> => {
+  const decodeUnknown = ParseResult.decodeUnknown(schema, options)
   return {
     "~standard": {
       version: 1,
