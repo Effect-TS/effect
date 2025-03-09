@@ -2,7 +2,6 @@ import type { StandardSchemaV1 } from "@standard-schema/spec"
 import { Context, Effect, ParseResult, Predicate, Schema } from "effect"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
-import { b } from "vitest/dist/chunks/suite.BJU7kdY9.js"
 import { AsyncString } from "../TestUtils.js"
 
 function validate<I, A>(
