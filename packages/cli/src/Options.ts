@@ -153,7 +153,8 @@ export const boolean: (name: string, options?: Options.BooleanOptionsConfig) => 
  * Constructs command-line `Options` that represent a choice between several
  * inputs. The input will be mapped to it's associated value during parsing.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import * as Options from "@effect/cli/Options"
  *
@@ -175,7 +176,8 @@ export const choice: <A extends string, C extends ReadonlyArray<A>>(
  * Constructs command-line `Options` that represent a choice between several
  * inputs. The input will be mapped to it's associated value during parsing.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import * as Options from "@effect/cli/Options"
  * import * as Data from "effect/Data"

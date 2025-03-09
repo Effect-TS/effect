@@ -14,10 +14,9 @@ import * as predicate from "./Predicate.js"
 /**
  * Tests if a value is a `boolean`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isBoolean } from "effect/Boolean"
  *
  * assert.deepStrictEqual(isBoolean(true), true)
@@ -33,12 +32,9 @@ export const isBoolean: (input: unknown) => input is boolean = predicate.isBoole
  * This function returns the result of either of the given functions depending on the value of the boolean parameter.
  * It is useful when you have to run one of two functions depending on the boolean value.
  *
- * @param value - the boolean value that decides which function will be executed.
- * @param onFalse - a lazy evaluation function that will be executed when the `value` is `false`.
- * @param onTrue - a lazy evaluation function that will be executed when the `value` is `true`.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Boolean } from "effect"
  *
  * assert.deepStrictEqual(Boolean.match(true, { onFalse: () => "It's false!", onTrue: () => "It's true!" }), "It's true!")
@@ -78,6 +74,7 @@ export const Order: order.Order<boolean> = order.boolean
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { not } from "effect/Boolean"
  *
  * assert.deepStrictEqual(not(true), false)
@@ -94,6 +91,7 @@ export const not = (self: boolean): boolean => !self
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { and } from "effect/Boolean"
  *
  * assert.deepStrictEqual(and(true, true), true)
@@ -115,6 +113,7 @@ export const and: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { nand } from "effect/Boolean"
  *
  * assert.deepStrictEqual(nand(true, true), false)
@@ -136,6 +135,7 @@ export const nand: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { or } from "effect/Boolean"
  *
  * assert.deepStrictEqual(or(true, true), true)
@@ -157,6 +157,7 @@ export const or: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { nor } from "effect/Boolean"
  *
  * assert.deepStrictEqual(nor(true, true), false)
@@ -178,6 +179,7 @@ export const nor: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { xor } from "effect/Boolean"
  *
  * assert.deepStrictEqual(xor(true, true), false)
@@ -199,6 +201,7 @@ export const xor: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { eqv } from "effect/Boolean"
  *
  * assert.deepStrictEqual(eqv(true, true), true)
@@ -220,6 +223,7 @@ export const eqv: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { implies } from "effect/Boolean"
  *
  * assert.deepStrictEqual(implies(true, true), true)
@@ -239,10 +243,9 @@ export const implies: {
 /**
  * This utility function is used to check if all the elements in a collection of boolean values are `true`.
  *
- * @param collection - An iterable collection of booleans.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { every } from "effect/Boolean"
  *
  * assert.deepStrictEqual(every([true, true, true]), true)
@@ -263,10 +266,9 @@ export const every = (collection: Iterable<boolean>): boolean => {
 /**
  * This utility function is used to check if at least one of the elements in a collection of boolean values is `true`.
  *
- * @param collection - An iterable collection of booleans.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { some } from "effect/Boolean"
  *
  * assert.deepStrictEqual(some([true, false, true]), true)

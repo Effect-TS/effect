@@ -20,9 +20,6 @@ export interface Applicative<F extends TypeLambda> extends SemiApplicative<F>, P
  * - `combine` is provided by {@link semiApplicative.getSemigroup}.
  * - `empty` is `F.of(M.empty)`
  *
- * @param F - The `Applicative` instance for `F`.
- * @param M - The `Monoid` instance for `A`.
- *
  * @since 0.24.0
  */
 export const getMonoid =

@@ -591,7 +591,7 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  *
  * For instance, if the input is a tuple:
  *
- * ```ts
+ * ```ts skip-type-checking
  * //         ┌─── a tuple of effects
  * //         ▼
  * Effect.all([effect1, effect2, ...])
@@ -5029,7 +5029,7 @@ export const flipWith: {
  *
  * **Syntax**
  *
- * ```ts
+ * ```ts skip-type-checking
  * const mappedEffect = pipe(myEffect, Effect.map(transformation))
  * // or
  * const mappedEffect = Effect.map(myEffect, transformation)
@@ -7657,6 +7657,7 @@ export const updateService: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, pipe } from "effect"
  *
  * const result = pipe(
@@ -7689,6 +7690,7 @@ export const Do: Effect<{}> = effect.Do
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, pipe } from "effect"
  *
  * const result = pipe(
@@ -7722,6 +7724,7 @@ export const bind: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, Either, pipe } from "effect"
  *
  * const result = pipe(
@@ -7805,6 +7808,7 @@ export const bindAll: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, pipe } from "effect"
  *
  * const result = pipe(
@@ -8599,7 +8603,8 @@ export const whenRef: {
  * operations that depend on previous results.
  *
  * **Syntax**
- * ```ts
+ *
+ * ```ts skip-type-checking
  * const flatMappedEffect = pipe(myEffect, Effect.flatMap(transformation))
  * // or
  * const flatMappedEffect = Effect.flatMap(myEffect, transformation)
@@ -8664,7 +8669,8 @@ export const flatMap: {
  * first.
  *
  * **Syntax**
- * ```ts
+ *
+ * ```ts skip-type-checking
  * const transformedEffect = pipe(myEffect, Effect.andThen(anotherEffect))
  * // or
  * const transformedEffect = Effect.andThen(myEffect, anotherEffect)
@@ -9054,13 +9060,13 @@ export const raceAll: <Eff extends Effect<any, any, any>>(
  *
  * If you want a quicker return, you can disconnect the interrupt signal for both effects. Instead of calling:
  *
- * ```ts
+ * ```ts skip-type-checking
  * Effect.raceFirst(task1, task2)
  * ```
  *
  * You can use:
  *
- * ```ts
+ * ```ts skip-type-checking
  * Effect.raceFirst(Effect.disconnect(task1), Effect.disconnect(task2))
  * ```
  *
@@ -9685,7 +9691,7 @@ export const forever: <A, E, R>(self: Effect<A, E, R>) => Effect<never, E, R> = 
  * This function provides a way to implement effectful loops, similar to a
  * `while` loop in JavaScript.
  *
- * ```ts
+ * ```ts skip-type-checking
  * let result = initial
  *
  * while (options.while(result)) {
@@ -9760,7 +9766,7 @@ export const iterate: {
  * iterating as long as the `while` condition evaluates to `true`, similar to a
  * `while` loop in JavaScript.
  *
- * ```ts
+ * ```ts skip-type-checking
  * let state = initial
  * const result = []
  *
@@ -13844,76 +13850,139 @@ export namespace fn {
 }
 
 /**
- * Creates a function that returns an Effect, which includes a stack trace
- * with relevant location information if an error occurs and is automatically
- * traced with a span pointing to the call site.
+ * The `Effect.fn` function allows you to create traced functions that return an
+ * effect. It provides two key features:
  *
- * The name passed as the first argument is used as a span.
+ * - **Stack traces with location details** if an error occurs.
+ * - **Automatic span creation** for tracing when a span name is provided.
  *
- * The name is optional; if not provided, the span won't be added, but the stack trace will still be present.
+ * If a span name is passed as the first argument, the function's execution is
+ * tracked using that name. If no name is provided, stack tracing still works,
+ * but spans are not created.
  *
- * The function can be created using either a generator function that can yield
- * effects or a normal function that returns an effect.
+ * A function can be defined using either:
  *
- * `Effect.fn` also acts as a `pipe` function, allowing you to create a pipeline
+ * - A generator function, allowing the use of `yield*` for effect composition.
+ * - A regular function that returns an `Effect`.
+ *
+ * **Example** (Creating a Traced Function with a Span Name)
+ *
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * const myfunc = Effect.fn("myspan")(function* <N extends number>(n: N) {
+ *   yield* Effect.annotateCurrentSpan("n", n) // Attach metadata to the span
+ *   console.log(`got: ${n}`)
+ *   yield* Effect.fail(new Error("Boom!")) // Simulate failure
+ * })
+ *
+ * Effect.runFork(myfunc(100).pipe(Effect.catchAllCause(Effect.logError)))
+ * // Output:
+ * // got: 100
+ * // timestamp=... level=ERROR fiber=#0 cause="Error: Boom!
+ * //     at <anonymous> (/.../index.ts:6:22) <= Raise location
+ * //     at myspan (/.../index.ts:3:23)  <= Definition location
+ * //     at myspan (/.../index.ts:9:16)" <= Call location
+ * ```
+ *
+ * `Effect.fn` automatically creates spans. The spans capture information about
+ * the function execution, including metadata and error details.
+ *
+ * **Example** (Exporting Spans to the Console)
+ *
+ * ```ts skip-type-checking
+ * import { Effect } from "effect"
+ * import { NodeSdk } from "@effect/opentelemetry"
+ * import {
+ *   ConsoleSpanExporter,
+ *   BatchSpanProcessor
+ * } from "@opentelemetry/sdk-trace-base"
+ *
+ * const myfunc = Effect.fn("myspan")(function* <N extends number>(n: N) {
+ *   yield* Effect.annotateCurrentSpan("n", n)
+ *   console.log(`got: ${n}`)
+ *   yield* Effect.fail(new Error("Boom!"))
+ * })
+ *
+ * const program = myfunc(100)
+ *
+ * const NodeSdkLive = NodeSdk.layer(() => ({
+ *   resource: { serviceName: "example" },
+ *   // Export span data to the console
+ *   spanProcessor: new BatchSpanProcessor(new ConsoleSpanExporter())
+ * }))
+ *
+ * Effect.runFork(program.pipe(Effect.provide(NodeSdkLive)))
+ * // Output:
+ * // got: 100
+ * // {
+ * //   resource: {
+ * //     attributes: {
+ * //       'service.name': 'example',
+ * //       'telemetry.sdk.language': 'nodejs',
+ * //       'telemetry.sdk.name': '@effect/opentelemetry',
+ * //       'telemetry.sdk.version': '1.30.1'
+ * //     }
+ * //   },
+ * //   instrumentationScope: { name: 'example', version: undefined, schemaUrl: undefined },
+ * //   traceId: '22801570119e57a6e2aacda3dec9665b',
+ * //   parentId: undefined,
+ * //   traceState: undefined,
+ * //   name: 'myspan',
+ * //   id: '7af530c1e01bc0cb',
+ * //   kind: 0,
+ * //   timestamp: 1741182277518402.2,
+ * //   duration: 4300.416,
+ * //   attributes: {
+ * //     n: 100,
+ * //     'code.stacktrace': 'at <anonymous> (/.../index.ts:8:23)\n' +
+ * //       'at <anonymous> (/.../index.ts:14:17)'
+ * //   },
+ * //   status: { code: 2, message: 'Boom!' },
+ * //   events: [
+ * //     {
+ * //       name: 'exception',
+ * //       attributes: {
+ * //         'exception.type': 'Error',
+ * //         'exception.message': 'Boom!',
+ * //         'exception.stacktrace': 'Error: Boom!\n' +
+ * //           '    at <anonymous> (/.../index.ts:11:22)\n' +
+ * //           '    at myspan (/.../index.ts:8:23)\n' +
+ * //           '    at myspan (/.../index.ts:14:17)'
+ * //       },
+ * //       time: [ 1741182277, 522702583 ],
+ * //       droppedAttributesCount: 0
+ * //     }
+ * //   ],
+ * //   links: []
+ * // }
+ * ```
+ *
+ * `Effect.fn` also acts as a pipe function, allowing you to create a pipeline
  * after the function definition using the effect returned by the generator
  * function as the starting value of the pipeline.
  *
- * @see {@link fnUntraced} for a version of this function that doesn't add a span.
+ * **Example** (Creating a Traced Function with a Delay)
  *
- * @example
  * ```ts
- * // Title: Creating a traced function with a generator function
  * import { Effect } from "effect"
  *
- * const logExample = Effect.fn("logExample")( // Definition location: 4
- *   function*<N extends number>(n: N) {
- *     yield* Effect.annotateCurrentSpan("n", n)
+ * const myfunc = Effect.fn(
+ *   function* (n: number) {
  *     console.log(`got: ${n}`)
- *     yield* Effect.fail(new Error()) // Raise location: 8
- *   }
+ *     yield* Effect.fail(new Error("Boom!"))
+ *   },
+ *   // You can access both the created effect and the original arguments
+ *   (effect, n) => Effect.delay(effect, `${n / 100} seconds`)
  * )
  *
- * // Effect.runFork(
- * //   logExample(100).pipe( // Call location: 13
- * //     Effect.catchAllCause(Effect.logError)
- * //   )
- * // )
+ * Effect.runFork(myfunc(100).pipe(Effect.catchAllCause(Effect.logError)))
  * // Output:
  * // got: 100
- * // timestamp=... level=ERROR fiber=#0 cause="Error: An error has occurred
- * //     at <anonymous> (/.../index.ts:8:24) <= Raise location
- * //     at logExample (/.../index.ts:4:27)  <= Definition location
- * //     at logExample (/.../index.ts:13:3)" <= Call location
+ * // timestamp=... level=ERROR fiber=#0 cause="Error: Boom! (<= after 1 second)
  * ```
  *
- * @example
- * ```ts
- * // Title: Creating a traced function with a function
- * import { Effect } from "effect"
- *
- * const logExample = Effect.fn("logExample")(
- *   function(n: number) {
- *     console.log(`got: ${n}`)
- *     return Effect.fail(new Error(`An error has occurred`))
- *   }
- * )
- * ```
- *
- * @example
- * ```ts
- * // Title: Creating a traced function and a pipeline
- * import { Effect } from "effect"
- *
- * const logExample = Effect.fn("logExample")(
- *   function(n: number) {
- *     console.log(`got: ${n}`)
- *     return Effect.fail(new Error(`An error has occurred`))
- *   },
- *   // Add a delay to the effect
- *   Effect.delay("1 second")
- * )
- * ```
+ * @see {@link fnUntraced} for a version of this function that doesn't add a span.
  *
  * @since 3.11.0
  * @category Tracing

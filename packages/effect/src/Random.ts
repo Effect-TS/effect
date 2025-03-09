@@ -154,10 +154,9 @@ export const Random: Context.Tag<Random, Random> = internal.randomTag
  * - Generating random UI data for visual tests.
  * - Creating data that needs to change daily but remain the same throughout a single day, such as using a date as the seed.
  *
- * @param seed - The seed value used to initialize the generator.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Effect, Random } from "effect"
  *
  * const random1 = Random.make("myseed")

@@ -106,8 +106,6 @@ const CronProto = {
 /**
  * Checks if a given value is a `Cron` instance.
  *
- * @param u - The value to check.
- *
  * @since 2.0.0
  * @category guards
  */
@@ -115,8 +113,6 @@ export const isCron = (u: unknown): u is Cron => hasProperty(u, TypeId)
 
 /**
  * Creates a `Cron` instance.
- *
- * @param constraints - The cron constraints.
  *
  * @since 2.0.0
  * @category constructors
@@ -216,8 +212,6 @@ export class ParseError extends Data.TaggedError("CronParseError")<{
 /**
  * Returns `true` if the specified value is an `ParseError`, `false` otherwise.
  *
- * @param u - The value to check.
- *
  * @since 2.0.0
  * @category guards
  */
@@ -226,10 +220,9 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
 /**
  * Parses a cron expression into a `Cron` instance.
  *
- * @param cron - The cron expression to parse.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Cron, Either } from "effect"
  *
  * // At 04:00 on every day-of-month from 8 through 14.
@@ -327,19 +320,17 @@ export const unsafeParse = (cron: string, tz?: DateTime.TimeZone | string): Cron
 /**
  * Checks if a given `Date` falls within an active `Cron` time window.
  *
- * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
- *
- * @param cron - The `Cron` instance.
- * @param date - The `Date` to check against.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Cron, Either } from "effect"
  *
  * const cron = Either.getOrThrow(Cron.parse("0 4 8-14 * *"))
  * assert.deepStrictEqual(Cron.match(cron, new Date("2021-01-08 04:00:00")), true)
  * assert.deepStrictEqual(Cron.match(cron, new Date("2021-01-08 05:00:00")), false)
  * ```
+ *
+ * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
  *
  * @since 2.0.0
  */
@@ -387,11 +378,9 @@ const daysInMonth = (date: Date): number =>
  *
  * Uses the current time as a starting point if no value is provided for `now`.
  *
- * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
- * @throws `Error` if the next run date cannot be found within 10,000 iterations.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Cron, Either } from "effect"
  *
  * const after = new Date("2021-01-01 00:00:00")
@@ -399,14 +388,14 @@ const daysInMonth = (date: Date): number =>
  * assert.deepStrictEqual(Cron.next(cron, after), new Date("2021-01-08 04:00:00"))
  * ```
  *
- * @param cron - The `Cron` instance.
- * @param now - The `Date` to start searching from.
+ * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
+ * @throws `Error` if the next run date cannot be found within 10,000 iterations.
  *
  * @since 2.0.0
  */
-export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
+export const next = (cron: Cron, startFrom?: DateTime.DateTime.Input): Date => {
   const tz = Option.getOrUndefined(cron.tz)
-  const zoned = dateTime.unsafeMakeZoned(now ?? new Date(), {
+  const zoned = dateTime.unsafeMakeZoned(startFrom ?? new Date(), {
     timeZone: tz
   })
 
@@ -529,14 +518,11 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
 /**
  * Returns an `IterableIterator` which yields the sequence of `Date`s that match the `Cron` instance.
  *
- * @param cron - The `Cron` instance.
- * @param now - The `Date` to start searching from.
- *
  * @since 2.0.0
  */
-export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): IterableIterator<Date> {
+export const sequence = function*(cron: Cron, startFrom?: DateTime.DateTime.Input): IterableIterator<Date> {
   while (true) {
-    yield now = next(cron, now)
+    yield startFrom = next(cron, startFrom)
   }
 }
 

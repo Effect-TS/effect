@@ -16,10 +16,9 @@ import * as predicate from "./Predicate.js"
 /**
  * Tests if a value is a `number`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { isNumber } from "effect/Number"
  *
  * assert.deepStrictEqual(isNumber(2), true)
@@ -34,11 +33,9 @@ export const isNumber: (input: unknown) => input is number = predicate.isNumber
 /**
  * Provides an addition operation on `number`s.
  *
- * @param self - The first operand.
- * @param that - The second operand.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { sum } from "effect/Number"
  *
  * assert.deepStrictEqual(sum(2, 3), 5)
@@ -55,11 +52,9 @@ export const sum: {
 /**
  * Provides a multiplication operation on `number`s.
  *
- * @param self - The first operand.
- * @param that - The second operand.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { multiply } from "effect/Number"
  *
  * assert.deepStrictEqual(multiply(2, 3), 6)
@@ -76,11 +71,9 @@ export const multiply: {
 /**
  * Provides a subtraction operation on `number`s.
  *
- * @param self - The first operand.
- * @param that - The second operand.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { subtract } from "effect/Number"
  *
  * assert.deepStrictEqual(subtract(2, 3), -1)
@@ -97,11 +90,9 @@ export const subtract: {
 /**
  * Provides a division operation on `number`s.
  *
- * @param self - The dividend operand.
- * @param that - The divisor operand.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Number, Option } from "effect"
  *
  * assert.deepStrictEqual(Number.divide(6, 3), Option.some(2))
@@ -124,11 +115,9 @@ export const divide: {
  *
  * Throws a `RangeError` if the divisor is `0`.
  *
- * @param self - The dividend operand.
- * @param that - The divisor operand.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { unsafeDivide } from "effect/Number"
  *
  * assert.deepStrictEqual(unsafeDivide(6, 3), 2)
@@ -145,10 +134,9 @@ export const unsafeDivide: {
 /**
  * Returns the result of adding `1` to a given number.
  *
- * @param n - A `number` to be incremented.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { increment } from "effect/Number"
  *
  * assert.deepStrictEqual(increment(2), 3)
@@ -162,10 +150,9 @@ export const increment = (n: number): number => n + 1
 /**
  * Decrements a number by `1`.
  *
- * @param n - A `number` to be decremented.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { decrement } from "effect/Number"
  *
  * assert.deepStrictEqual(decrement(3), 2)
@@ -191,11 +178,9 @@ export const Order: order.Order<number> = order.number
 /**
  * Returns `true` if the first argument is less than the second, otherwise `false`.
  *
- * @param self - The first argument.
- * @param that - The second argument.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { lessThan } from "effect/Number"
  *
  * assert.deepStrictEqual(lessThan(2, 3), true)
@@ -214,11 +199,9 @@ export const lessThan: {
 /**
  * Returns a function that checks if a given `number` is less than or equal to the provided one.
  *
- * @param self - The first `number` to compare with.
- * @param that - The second `number` to compare with.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { lessThanOrEqualTo } from "effect/Number"
  *
  * assert.deepStrictEqual(lessThanOrEqualTo(2, 3), true)
@@ -237,11 +220,9 @@ export const lessThanOrEqualTo: {
 /**
  * Returns `true` if the first argument is greater than the second, otherwise `false`.
  *
- * @param self - The first argument.
- * @param that - The second argument.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { greaterThan } from "effect/Number"
  *
  * assert.deepStrictEqual(greaterThan(2, 3), false)
@@ -260,11 +241,9 @@ export const greaterThan: {
 /**
  * Returns a function that checks if a given `number` is greater than or equal to the provided one.
  *
- * @param self - The first `number` to compare with.
- * @param that - The second `number` to compare with.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { greaterThanOrEqualTo } from "effect/Number"
  *
  * assert.deepStrictEqual(greaterThanOrEqualTo(2, 3), false)
@@ -283,12 +262,9 @@ export const greaterThanOrEqualTo: {
 /**
  * Checks if a `number` is between a `minimum` and `maximum` value (inclusive).
  *
- * @param self - The `number` to check.
- * @param minimum - The `minimum` value to check.
- * @param maximum - The `maximum` value to check.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Number } from "effect"
  *
  * const between = Number.between({ minimum: 0, maximum: 5 })
@@ -319,12 +295,9 @@ export const between: {
  * - If the `number` is greater than the `maximum` value, the function returns the `maximum` value.
  * - Otherwise, it returns the original `number`.
  *
- * @param self - The `number` to be clamped.
- * @param minimum - The lower end of the range.
- * @param maximum - The upper end of the range.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Number } from "effect"
  *
  * const clamp = Number.clamp({ minimum: 1, maximum: 5 })
@@ -350,11 +323,9 @@ export const clamp: {
 /**
  * Returns the minimum between two `number`s.
  *
- * @param self - The first `number`.
- * @param that - The second `number`.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { min } from "effect/Number"
  *
  * assert.deepStrictEqual(min(2, 3), 2)
@@ -370,11 +341,9 @@ export const min: {
 /**
  * Returns the maximum between two `number`s.
  *
- * @param self - The first `number`.
- * @param that - The second `number`.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { max } from "effect/Number"
  *
  * assert.deepStrictEqual(max(2, 3), 3)
@@ -390,10 +359,9 @@ export const max: {
 /**
  * Determines the sign of a given `number`.
  *
- * @param n - The `number` to determine the sign of.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { sign } from "effect/Number"
  *
  * assert.deepStrictEqual(sign(-5), -1)
@@ -409,10 +377,9 @@ export const sign = (n: number): Ordering => Order(n, 0)
 /**
  * Takes an `Iterable` of `number`s and returns their sum as a single `number`.
  *
- * @param collection - The collection of `number`s to sum.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { sumAll } from "effect/Number"
  *
  * assert.deepStrictEqual(sumAll([2, 3, 4]), 9)
@@ -432,10 +399,9 @@ export const sumAll = (collection: Iterable<number>): number => {
 /**
  * Takes an `Iterable` of `number`s and returns their multiplication as a single `number`.
  *
- * @param collection - The collection of `number`s to multiply.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { multiplyAll } from "effect/Number"
  *
  * assert.deepStrictEqual(multiplyAll([2, 3, 4]), 24)
@@ -460,11 +426,9 @@ export const multiplyAll = (collection: Iterable<number>): number => {
  *
  * It always takes the sign of the dividend.
  *
- * @param self - The dividend.
- * @param divisor - The divisor.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { remainder } from "effect/Number"
  *
  * assert.deepStrictEqual(remainder(2, 2), 0)
@@ -491,10 +455,9 @@ export const remainder: {
 /**
  * Returns the next power of 2 from the given number.
  *
- * @param self - The number to find the next power of 2 from.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { nextPow2 } from "effect/Number"
  *
  * assert.deepStrictEqual(nextPow2(5), 8)
@@ -538,11 +501,9 @@ export const parse = (s: string): Option<number> => {
 /**
  * Returns the number rounded with the given precision.
  *
- * @param self - The number to round
- * @param precision - The precision
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { round } from "effect/Number"
  *
  * assert.deepStrictEqual(round(1.1234, 2), 1.12)

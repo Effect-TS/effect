@@ -473,6 +473,7 @@ export const string: (str: string) => Doc<never> = internal.string
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -516,6 +517,7 @@ export const fail: Doc<never> = internal.fail
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -549,6 +551,7 @@ export const line: Doc<never> = internal.line
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -582,6 +585,7 @@ export const lineBreak: Doc<never> = internal.lineBreak
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -626,6 +630,7 @@ export const softLine: Doc<never> = internal.softLine
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -669,6 +674,7 @@ export const softLineBreak: Doc<never> = internal.softLineBreak
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -871,6 +877,7 @@ export const cat: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -910,6 +917,7 @@ export const cats: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.cats
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -942,6 +950,7 @@ export const catWithLine: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -979,6 +988,7 @@ export const catWithLineBreak: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1019,6 +1029,7 @@ export const catWithSoftLine: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1059,6 +1070,7 @@ export const catWithSoftLineBreak: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  *
@@ -1087,6 +1099,7 @@ export const catWithSpace: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  *
@@ -1118,6 +1131,7 @@ export const concatWith: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1144,6 +1158,7 @@ export const vcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.vcat
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1187,6 +1202,7 @@ export const fillCat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillCat
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  *
  * const doc: Doc.Doc<never> = Doc.hsep(Doc.words("lorem ipsum dolor sit amet"))
@@ -1226,6 +1242,7 @@ export const hsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.hsep
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1290,6 +1307,7 @@ export const fillSep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillSep
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1339,6 +1357,7 @@ export const seps: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.seps
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1435,6 +1454,7 @@ export const group: <A>(self: Doc<A>) => Doc<A> = internal.group
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1477,6 +1497,7 @@ export const column: <A>(react: (position: number) => Doc<A>) => Doc<A> = intern
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1508,6 +1529,7 @@ export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = internal
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1552,6 +1574,7 @@ export const width: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1612,6 +1635,7 @@ export const pageWidth: <A>(react: (pageWidth: PageWidth) => Doc<A>) => Doc<A> =
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1648,6 +1672,7 @@ export const nest: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -1700,6 +1725,7 @@ export const align: <A>(self: Doc<A>) => Doc<A> = internal.align
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1736,6 +1762,7 @@ export const hang: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1778,6 +1805,7 @@ export const indent: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1833,6 +1861,7 @@ export const encloseSep: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  *
  * const doc = Doc.list(
@@ -1858,6 +1887,7 @@ export const list: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.list
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  *
  * const doc = Doc.tupled(
@@ -1889,6 +1919,7 @@ export const tupled: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.tupled
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -1939,6 +1970,7 @@ export const fill: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
@@ -2200,6 +2232,7 @@ export const Invariant: invariant.Invariant<Doc.TypeLambda> = internal.Invariant
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  *
@@ -2276,6 +2309,7 @@ export const curlyBraced: <A>(self: Doc<A>) => Doc<A> = internal.curlyBraced
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  *
  * const doc = Doc.squareBracketed(Doc.doubleQuoted(Doc.spaces(5)))
@@ -2303,6 +2337,7 @@ export const textSpaces: (n: number) => string = internal.textSpaces
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  *
  * const doc = Doc.tupled(Doc.words("lorem ipsum dolor"))
@@ -2326,6 +2361,7 @@ export const words: (s: string, char?: string) => ReadonlyArray<Doc<never>> = in
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import * as String from "effect/String"
  *
@@ -2362,6 +2398,7 @@ export const reflow: (s: string, char?: string) => Doc<never> = internal.reflow
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Doc from "@effect/printer/Doc"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"

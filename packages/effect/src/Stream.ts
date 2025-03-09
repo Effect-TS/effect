@@ -247,10 +247,8 @@ export const aggregate: {
 } = internal.aggregate
 
 /**
- * Like `aggregateWithinEither`, but only returns the `Right` results.
+ * Like {@link aggregateWithinEither}, but only returns the `Right` results.
  *
- * @param sink A `Sink` used to perform the aggregation.
- * @param schedule A `Schedule` used to signal when to stop the aggregation.
  * @since 2.0.0
  * @category utils
  */
@@ -278,8 +276,6 @@ export const aggregateWithin: {
  * Aggregated elements will be fed into the schedule to determine the delays
  * between pulls.
  *
- * @param sink A `Sink` used to perform the aggregation.
- * @param schedule A `Schedule` used to signal when to stop the aggregation.
  * @since 2.0.0
  * @category utils
  */
@@ -1845,12 +1841,6 @@ export const flattenEffect: {
 /**
  * Unwraps `Exit` values that also signify end-of-stream by failing with `None`.
  *
- * For `Exit` values that do not signal end-of-stream, prefer:
- *
- * ```ts
- * stream.mapZIO(ZIO.done(_))
- * ```
- *
  * @since 2.0.0
  * @category sequencing
  */
@@ -1954,7 +1944,10 @@ export const fromChunk: <A>(chunk: Chunk.Chunk<A>) => Stream<A> = internal.fromC
 /**
  * Creates a stream from a subscription to a `PubSub`.
  *
- * @param shutdown If `true`, the `PubSub` will be shutdown after the stream is evaluated (defaults to `false`)
+ * **Options**
+ *
+ * - `shutdown`: If `true`, the `PubSub` will be shutdown after the stream is evaluated (defaults to `false`)
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -1972,7 +1965,10 @@ export const fromChunkPubSub: {
 /**
  * Creates a stream from a `Queue` of values.
  *
- * @param shutdown If `true`, the queue will be shutdown after the stream is evaluated (defaults to `false`)
+ * **Options**
+ *
+ * - `shutdown`: If `true`, the queue will be shutdown after the stream is evaluated (defaults to `false`)
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -2034,7 +2030,10 @@ export const fromEffectOption: <A, E, R>(effect: Effect.Effect<A, Option.Option<
 /**
  * Creates a stream from a subscription to a `PubSub`.
  *
- * @param shutdown If `true`, the `PubSub` will be shutdown after the stream is evaluated (defaults to `false`)
+ * **Options**
+ *
+ * - `shutdown`: If `true`, the `PubSub` will be shutdown after the stream is evaluated (defaults to `false`)
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -2137,8 +2136,11 @@ export const fromPull: <R, R2, E, A>(
 /**
  * Creates a stream from a queue of values
  *
- * @param maxChunkSize The maximum number of queued elements to put in one chunk in the stream
- * @param shutdown If `true`, the queue will be shutdown after the stream is evaluated (defaults to `false`)
+ * **Options**
+ *
+ * - `maxChunkSize`: The maximum number of queued elements to put in one chunk in the stream
+ * - `shutdown`: If `true`, the queue will be shutdown after the stream is evaluated (defaults to `false`)
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -2182,7 +2184,6 @@ export const fromReadableStream: {
  *
  * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamBYOBReader.
  *
- * @param allocSize Controls the size of the underlying `ArrayBuffer` (defaults to `4096`).
  * @since 2.0.0
  * @category constructors
  */
@@ -2198,6 +2199,7 @@ export const fromReadableStreamByob: {
   <E>(
     evaluate: LazyArg<ReadableStream<Uint8Array>>,
     onError: (error: unknown) => E,
+    /** Controls the size of the underlying `ArrayBuffer` (defaults to `4096`) */
     allocSize?: number
   ): Stream<Uint8Array, E>
 } = internal.fromReadableStreamByob
@@ -2306,9 +2308,7 @@ export const groupBy: {
  * stream of words:
  *
  * ```ts
- * import * as GroupBy from "./GroupBy"
- * import * as Stream from "./Stream"
- * import { pipe } from "./Function"
+ * import { pipe, GroupBy, Stream } from "effect"
  *
  * pipe(
  *   Stream.fromIterable(["hello", "world", "hi", "holla"]),
@@ -4059,7 +4059,6 @@ export const repeatWith: {
  * The schedule is reset as soon as the first element passes through the
  * stream again.
  *
- * @param schedule A `Schedule` receiving as input the errors of the stream.
  * @since 2.0.0
  * @category utils
  */
@@ -4611,8 +4610,7 @@ export const scopedWith: <A, E, R>(f: (scope: Scope.Scope) => Effect.Effect<A, E
  * Emits a sliding window of `n` elements.
  *
  * ```ts
- * import * as Stream from "./Stream"
- * import { pipe } from "./Function"
+ * import { pipe, Stream } from "effect"
  *
  * pipe(
  *   Stream.make(1, 2, 3, 4),
@@ -4675,8 +4673,7 @@ export const someOrFail: {
  * Splits elements based on a predicate or refinement.
  *
  * ```ts
- * import * as Stream from "./Stream"
- * import { pipe } from "./Function"
+ * import { pipe, Stream } from "effect"
  *
  * pipe(
  *   Stream.range(1, 10),
@@ -6168,6 +6165,7 @@ export const zipWithIndex: <A, E, R>(self: Stream<A, E, R>) => Stream<[A, number
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Chunk, Effect, pipe, Stream } from "effect"
  *
  * const result = pipe(
@@ -6201,6 +6199,7 @@ export const Do: Stream<{}> = internal.Do
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Chunk, Effect, pipe, Stream } from "effect"
  *
  * const result = pipe(
@@ -6275,6 +6274,7 @@ export const bindEffect: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Chunk, Effect, pipe, Stream } from "effect"
  *
  * const result = pipe(
@@ -6324,6 +6324,7 @@ export {
    *
    * @example
    * ```ts
+   * import * as assert from "node:assert"
    * import { Chunk, Effect, pipe, Stream } from "effect"
    *
    * const result = pipe(

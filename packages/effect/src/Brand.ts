@@ -192,11 +192,9 @@ export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors 
  * If you don't want to perform any validation but only distinguish between two values of the same type but with different meanings,
  * see {@link nominal}.
  *
- * @param refinement - The refinement predicate to apply to the unbranded value.
- * @param onFailure - Takes the unbranded value that did not pass the `refinement` predicate and returns a `BrandErrors`.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Brand } from "effect"
  *
  * type Int = number & Brand.Brand<"Int">
@@ -250,6 +248,7 @@ export function refined<A extends Brand<any>>(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Brand } from "effect"
  *
  * type UserId = number & Brand.Brand<"UserId">
@@ -280,6 +279,7 @@ export const nominal = <A extends Brand<any>>(): Brand.Constructor<
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Brand } from "effect"
  *
  * type Int = number & Brand.Brand<"Int">

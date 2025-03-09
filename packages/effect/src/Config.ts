@@ -218,11 +218,6 @@ export const duration: (name?: string) => Config<Duration.Duration> = internal.d
  * use `isConfig` to check the type of a value before using it as an
  * argument to a function that expects an `Config` value.
  *
- * @param u - The value to check for being a `Config` value.
- *
- * @returns `true` if the specified value is a `Config` value, `false`
- * otherwise.
- *
  * @since 2.0.0
  * @category refinements
  */

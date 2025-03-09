@@ -8,10 +8,9 @@ import * as predicate from "./Predicate.js"
 /**
  * Tests if a value is a `symbol`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Predicate } from "effect"
  *
  * assert.deepStrictEqual(Predicate.isSymbol(Symbol.for("a")), true)

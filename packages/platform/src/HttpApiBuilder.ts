@@ -1021,7 +1021,7 @@ export const securityDecode = <Security extends HttpApiSecurity.HttpApiSecurity>
  *
  * You can use this api before returning a response from an endpoint handler.
  *
- * ```ts
+ * ```ts skip-type-checking
  * handlers.handle(
  *   "authenticate",
  *   (_) => HttpApiBuilder.securitySetCookie(security, "secret123")

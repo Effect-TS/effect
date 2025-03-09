@@ -716,8 +716,8 @@ export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
  *
  * @example
  * ```ts
- * import * as Schema from "effect/Schema"
- * import { Either } from "effect"
+ * import * as assert from "node:assert"
+ * import { Either, Schema } from "effect"
  *
  * const schema = Schema.Literal("a", "b", "c").pipe(Schema.pickLiteral("a", "b"))
  *
@@ -2931,6 +2931,7 @@ export interface tag<Tag extends AST.LiteralValue> extends PropertySignature<":"
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Schema } from "effect"
  *
  * const User = Schema.Struct({
@@ -2962,6 +2963,7 @@ export type TaggedStruct<Tag extends AST.LiteralValue, Fields extends Struct.Fie
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Schema } from "effect"
  *
  * const User = Schema.TaggedStruct("User", {
@@ -3138,9 +3140,6 @@ function makeBrandClass<S extends Schema.Any, B extends string | symbol>(
  * Schema<A> + B -> Schema<A & Brand<B>>
  * ```
  *
- * @param self - The input schema to be combined with the brand.
- * @param brand - The brand to apply.
- *
  * @example
  * ```ts
  * import * as Schema from "effect/Schema"
@@ -3220,8 +3219,6 @@ export interface mutable<S extends Schema.Any> extends
 
 /**
  * Creates a new schema with shallow mutability applied to its properties.
- *
- * @param schema - The original schema to make properties mutable (shallowly).
  *
  * @category combinators
  * @since 3.10.0
@@ -3419,17 +3416,21 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
 /**
  * Extends a schema with another schema.
  *
- * Not all extensions are supported, and their support depends on the nature of the involved schemas.
+ * Not all extensions are supported, and their support depends on the nature of
+ * the involved schemas.
  *
  * Possible extensions include:
  * - `Schema.String` with another `Schema.String` refinement or a string literal
  * - `Schema.Number` with another `Schema.Number` refinement or a number literal
- * - `Schema.Boolean` with another `Schema.Boolean` refinement or a boolean literal
+ * - `Schema.Boolean` with another `Schema.Boolean` refinement or a boolean
+ *   literal
  * - A struct with another struct where overlapping fields support extension
  * - A struct with in index signature
  * - A struct with a union of supported schemas
  * - A refinement of a struct with a supported schema
  * - A suspend of a struct with a supported schema
+ * - A transformation between structs where the “from” and “to” sides have no
+ *   overlapping fields with the target struct
  *
  * @example
  * ```ts
@@ -3955,6 +3956,7 @@ export interface transformLiteral<Type extends AST.LiteralValue, Encoded extends
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as S from "effect/Schema"
  *
  * const schema = S.transformLiteral(0, "a")
@@ -3981,6 +3983,7 @@ export function transformLiteral<Encoded extends AST.LiteralValue, Type extends 
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as S from "effect/Schema"
  *
  * const Animal = S.transformLiterals(
@@ -4015,12 +4018,9 @@ export function transformLiterals<
  * This API is useful when you want to add a property to your schema which doesn't describe the shape of the input,
  * but rather maps to another schema, for example when you want to add a discriminant to a simple union.
  *
- * @param self - The input schema.
- * @param key - The name of the property to add to the schema.
- * @param value - The value of the property to add to the schema.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as S from "effect/Schema"
  * import { pipe } from "effect/Function"
  *
@@ -4787,6 +4787,7 @@ const getParseJsonTransformation = (options?: ParseJsonOptions): SchemaClass<unk
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Schema from "effect/Schema"
  *
  * assert.deepStrictEqual(Schema.decodeUnknownSync(Schema.parseJson())(`{"a":"1"}`), { a: "1" })
@@ -5365,6 +5366,7 @@ export type JsonNumberSchemaId = typeof JsonNumberSchemaId
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import * as Schema from "effect/Schema"
  *
  * const is = Schema.is(S.JsonNumber)

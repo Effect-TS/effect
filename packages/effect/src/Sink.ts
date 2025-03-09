@@ -784,14 +784,14 @@ export const foldUntilEffect: <S, In, E, R>(
 ) => Sink<S, In, In, E, R> = internal.foldUntilEffect
 
 /**
- * Creates a sink that folds elements of type `In` into a structure of type
- * `S`, until `max` worth of elements (determined by the `costFn`) have been
- * folded.
+ * Creates a sink that folds elements of type `In` into a structure of type `S`,
+ * until `max` worth of elements (determined by the `costFn`) have been folded.
  *
- * @note
- *   Elements that have an individual cost larger than `max` will force the
- *   sink to cross the `max` cost. See `Sink.foldWeightedDecompose` for a
- *   variant that can handle these cases.
+ * **Note**
+ *
+ * Elements that have an individual cost larger than `max` will force the sink
+ * to cross the `max` cost. See `Sink.foldWeightedDecompose` for a variant
+ * that can handle these cases.
  *
  * @since 2.0.0
  * @category constructors
@@ -813,7 +813,7 @@ export const foldWeighted: <S, In>(
  * The `decompose` function will be used for decomposing elements that cause
  * an `S` aggregate to cross `max` into smaller elements. For example:
  *
- * ```ts
+ * ```ts skip-type-checking
  * pipe(
  *   Stream.make(1, 5, 1),
  *   Stream.transduce(
@@ -995,7 +995,9 @@ export const fromEffect: <A, E, R>(effect: Effect.Effect<A, E, R>) => Sink<A, un
 /**
  * Create a sink which publishes each element to the specified `PubSub`.
  *
- * @param shutdown If `true`, the `PubSub` will be shutdown after the sink is evaluated (defaults to `false`)
+ * If the `shutdown` parameter is `true`, the `PubSub` will be shutdown after
+ * the sink is evaluated (defaults to `false`).
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -1023,7 +1025,9 @@ export const fromPush: <In, L0, R0, L, R>(
 /**
  * Create a sink which enqueues each element into the specified queue.
  *
- * @param shutdown If `true`, the queue will be shutdown after the sink is evaluated (defaults to `false`)
+ * If the `shutdown` parameter is `true`, the queue will be shutdown after the
+ * sink is evaluated (defaults to `false`).
+ *
  * @since 2.0.0
  * @category constructors
  */

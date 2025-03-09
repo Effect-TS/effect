@@ -177,7 +177,7 @@ export const productMany = <A>(
 /**
  * Similar to `Promise.all` but operates on `Equivalence`s.
  *
- * ```
+ * ```ts skip-type-checking
  * [Equivalence<A>, Equivalence<B>, ...] -> Equivalence<[A, B, ...]>
  * ```
  *

@@ -1436,8 +1436,6 @@ export const mergeAllWith: (
  * happens if there are more than the given maximum number of channels gets
  * created. See `Channel.mergeAll`.
  *
- * @param n The maximum number of channels to merge.
- * @param f The function that creates a new channel from each emitted element.
  * @since 2.0.0
  * @category mapping
  */

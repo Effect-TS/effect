@@ -142,10 +142,9 @@ export declare namespace Tag {
 /**
  * Creates a new `Tag` instance with an optional key parameter.
  *
- * @param key - A key that will be used to compare tags.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.GenericTag("PORT").key === Context.GenericTag("PORT").key, true)
@@ -191,10 +190,9 @@ export const unsafeMake: <Services>(unsafeMap: Map<string, any>) => Context<Serv
 /**
  * Checks if the provided argument is a `Context`.
  *
- * @param input - The value to be checked if it is a `Context`.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.isContext(Context.empty()), true)
@@ -208,10 +206,9 @@ export const isContext: (input: unknown) => input is Context<never> = internal.i
 /**
  * Checks if the provided argument is a `Tag`.
  *
- * @param input - The value to be checked if it is a `Tag`.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.isTag(Context.GenericTag("Tag")), true)
@@ -225,7 +222,6 @@ export const isTag: (input: unknown) => input is Tag<any, any> = internal.isTag
 /**
  * Checks if the provided argument is a `Reference`.
  *
- * @param input - The value to be checked if it is a `Reference`.
  * @since 3.11.0
  * @category guards
  * @experimental
@@ -237,6 +233,7 @@ export const isReference: (u: unknown) => u is Reference<any, any> = internal.is
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.isContext(Context.empty()), true)
@@ -252,6 +249,7 @@ export const empty: () => Context<never> = internal.empty
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -272,6 +270,7 @@ export const make: <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>) =>
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context, pipe } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -305,11 +304,9 @@ export const add: {
 /**
  * Get a service from the context that corresponds to the given tag.
  *
- * @param self - The `Context` to search for the service.
- * @param tag - The `Tag` of the service to retrieve.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -351,11 +348,9 @@ export const getOrElse: {
  *
  * For a safer version see {@link getOption}.
  *
- * @param self - The `Context` to search for the service.
- * @param tag - The `Tag` of the service to retrieve.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -379,11 +374,9 @@ export const unsafeGet: {
  * Get the value associated with the specified tag from the context wrapped in an `Option` object. If the tag is not
  * found, the `Option` object will be `None`.
  *
- * @param self - The `Context` to search for the service.
- * @param tag - The `Tag` of the service to retrieve.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context, Option } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -406,11 +399,9 @@ export const getOption: {
 /**
  * Merges two `Context`s, returning a new `Context` containing the services of both.
  *
- * @param self - The first `Context` to merge.
- * @param that - The second `Context` to merge.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -435,10 +426,9 @@ export const merge: {
 /**
  * Merges any number of `Context`s, returning a new `Context` containing the services of all.
  *
- * @param ctxs - The `Context`s to merge.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -465,11 +455,9 @@ export const mergeAll: <T extends Array<unknown>>(
 /**
  * Returns a new `Context` that contains only the specified services.
  *
- * @param self - The `Context` to prune services from.
- * @param tags - The list of `Tag`s to be included in the new `Context`.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Context, Option } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -503,6 +491,7 @@ export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Context, Layer } from "effect"
  *
  * class MyTag extends Context.Tag("MyTag")<
@@ -531,6 +520,7 @@ export const Tag: <const Id extends string>(id: Id) => <Self, Shape>() => TagCla
  * @example
  * ```ts
  * // Title: Declaring a Tag with a default value
+ * import * as assert from "node:assert"
  * import { Context, Effect } from "effect"
  *
  * class SpecialNumber extends Context.Reference<SpecialNumber>()(

@@ -1,8 +1,7 @@
 {
   "$schema": "../../node_modules/@effect/docgen/schema.json",
-  "exclude": [
-    "src/internal/**/*.ts"
-  ],
+  "srcLink": "https://github.com/Effect-TS/effect/tree/main/packages/printer/src/",
+  "exclude": ["src/internal/**/*.ts"],
   "examplesCompilerOptions": {
     "noEmit": true,
     "strict": true,
@@ -10,23 +9,14 @@
     "moduleResolution": "Bundler",
     "module": "ES2022",
     "target": "ES2022",
-    "lib": [
-      "ES2022",
-      "DOM"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "paths": {
-      "effect": [
-        "../../../effect/src/index.js"
-      ],
-      "effect/*": [
-        "../../../effect/src/*.js"
-      ],
-      "@effect/typeclass": [
-        "../../../typeclass/src/index.js"
-      ],
-      "@effect/typeclass/*": [
-        "../../../typeclass/src/*.js"
-      ]
+      "effect": ["../../../effect/src/index.js"],
+      "effect/*": ["../../../effect/src/*.js"],
+      "@effect/printer": ["../../../printer/src/index.js"],
+      "@effect/printer/*": ["../../../printer/src/*.js"],
+      "@effect/typeclass": ["../../../typeclass/src/index.js"],
+      "@effect/typeclass/*": ["../../../typeclass/src/*.js"]
     }
   }
 }

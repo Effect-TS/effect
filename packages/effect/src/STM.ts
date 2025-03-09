@@ -1166,7 +1166,7 @@ export const isSuccess: <A, E, R>(self: STM<A, E, R>) => STM<boolean, never, R> 
  * Iterates with the specified transactional function. The moral equivalent
  * of:
  *
- * ```ts
+ * ```ts skip-type-checking
  * const s = initial
  *
  * while (cont(s)) {
@@ -1191,7 +1191,7 @@ export const iterate: <Z, E, R>(
  * Loops with the specified transactional function, collecting the results
  * into a list. The moral equivalent of:
  *
- * ```ts
+ * ```ts skip-type-checking
  * const as = []
  * let s  = initial
  *
@@ -1973,9 +1973,7 @@ export const zipWith: {
  * iterable will be executed in sequence, and the first one that succeeds
  * will determine the outcome of the resulting `STM` value.
  *
- * @param effects - The iterable of `STM` values to evaluate.
- *
- * @returns A new `STM` value that represents the first successful
+ * Returns a new `STM` value that represents the first successful
  * `STM` value in the iterable, or a failed `STM` value if all of the
  * `STM` values in the iterable fail.
  *

@@ -9,6 +9,7 @@ import * as semigroup from "../Semigroup.js"
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SemigroupEvery } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupEvery.combine(true, true), true)
@@ -40,6 +41,7 @@ export const SemigroupEvery: semigroup.Semigroup<boolean> = semigroup.make(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SemigroupSome } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupSome.combine(true, true), true)
@@ -71,6 +73,7 @@ export const SemigroupSome: semigroup.Semigroup<boolean> = semigroup.make(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SemigroupXor } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupXor.combine(true, true), false)
@@ -89,6 +92,7 @@ export const SemigroupXor: semigroup.Semigroup<boolean> = semigroup.make((self, 
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SemigroupEqv } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupEqv.combine(true, true), true)

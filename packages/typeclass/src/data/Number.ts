@@ -21,6 +21,7 @@ export const Bounded: bounded.Bounded<number> = {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SemigroupSum } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(SemigroupSum.combine(2, 3), 5)
@@ -36,6 +37,7 @@ export const SemigroupSum: semigroup.Semigroup<number> = semigroup.make((self, t
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SemigroupMultiply } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(SemigroupMultiply.combine(2, 3), 6)
@@ -66,6 +68,7 @@ export const SemigroupMultiply: semigroup.Semigroup<number> = semigroup.make(
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SemigroupMin } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(SemigroupMin.combine(2, 3), 2)
@@ -81,6 +84,7 @@ export const SemigroupMin: semigroup.Semigroup<number> = semigroup.min(Number.Or
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { SemigroupMax } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(SemigroupMax.combine(2, 3), 3)
@@ -98,6 +102,7 @@ export const SemigroupMax: semigroup.Semigroup<number> = semigroup.max(Number.Or
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { MonoidSum } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(MonoidSum.combine(2, 3), 5)
@@ -116,6 +121,7 @@ export const MonoidSum: monoid.Monoid<number> = monoid.fromSemigroup(SemigroupSu
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { MonoidMultiply } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(MonoidMultiply.combine(2, 3), 6)
@@ -134,6 +140,7 @@ export const MonoidMultiply: monoid.Monoid<number> = monoid.fromSemigroup(Semigr
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { MonoidMin } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(MonoidMin.combine(2, 3), 2)
@@ -152,6 +159,7 @@ export const MonoidMin: monoid.Monoid<number> = bounded.min(Bounded)
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { MonoidMax } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(MonoidMax.combine(2, 3), 3)

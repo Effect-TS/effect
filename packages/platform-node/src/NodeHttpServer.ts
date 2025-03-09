@@ -92,6 +92,7 @@ export const layerConfig: (
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { HttpClient, HttpRouter, HttpServer } from "@effect/platform"
  * import { NodeHttpServer } from "@effect/platform-node"
  * import { Effect } from "effect"

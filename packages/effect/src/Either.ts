@@ -142,6 +142,7 @@ export const left: <L>(left: L) => Either<never, L> = either.left
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.fromNullable(1, () => 'fallback'), Either.right(1))
@@ -163,6 +164,7 @@ export const fromNullable: {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, Option } from "effect"
  *
  * assert.deepStrictEqual(Either.fromOption(Option.some(1), () => 'error'), Either.right(1))
@@ -220,10 +222,9 @@ export {
 /**
  * Tests if a value is a `Either`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.isEither(Either.right(1)), true)
@@ -239,10 +240,9 @@ export const isEither: (input: unknown) => input is Either<unknown, unknown> = e
 /**
  * Determine if a `Either` is a `Left`.
  *
- * @param self - The `Either` to check.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.isLeft(Either.right(1)), false)
@@ -257,10 +257,9 @@ export const isLeft: <R, L>(self: Either<R, L>) => self is Left<L, R> = either.i
 /**
  * Determine if a `Either` is a `Right`.
  *
- * @param self - The `Either` to check.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.isRight(Either.right(1)), true)
@@ -277,6 +276,7 @@ export const isRight: <R, L>(self: Either<R, L>) => self is Right<L, R> = either
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, Option } from "effect"
  *
  * assert.deepStrictEqual(Either.getRight(Either.right('ok')), Option.some('ok'))
@@ -293,6 +293,7 @@ export const getRight: <R, L>(self: Either<R, L>) => Option<R> = either.getRight
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, Option } from "effect"
  *
  * assert.deepStrictEqual(Either.getLeft(Either.right('ok')), Option.none())
@@ -342,9 +343,6 @@ export const mapBoth: {
 /**
  * Maps the `Left` side of an `Either` value to a new `Either` value.
  *
- * @param self - The input `Either` value to map.
- * @param f - A transformation function to apply to the `Left` value of the input `Either`.
- *
  * @category mapping
  * @since 2.0.0
  */
@@ -359,9 +357,6 @@ export const mapLeft: {
 
 /**
  * Maps the `Right` side of an `Either` value to a new `Either` value.
- *
- * @param self - An `Either` to map
- * @param f - The function to map over the value of the `Either`
  *
  * @category mapping
  * @since 2.0.0
@@ -381,6 +376,7 @@ export const map: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Either } from "effect"
  *
  * const onLeft  = (strings: ReadonlyArray<string>): string => `strings: ${strings.join(', ')}`
@@ -418,10 +414,9 @@ export const match: {
  * Transforms a `Predicate` function into a `Right` of the input value if the predicate returns `true`
  * or `Left` of the result of the provided function if the predicate returns false
  *
- * @param predicate - A `Predicate` function that takes in a value of type `A` and returns a boolean.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Either } from "effect"
  *
  * const isPositive = (n: number): boolean => n > 0
@@ -473,6 +468,7 @@ export const liftPredicate: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { pipe, Either } from "effect"
  *
  * const isPositive = (n: number): boolean => n > 0
@@ -531,6 +527,7 @@ export const merge: <R, L>(self: Either<R, L>) => L | R = match({
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrElse(Either.right(1), (error) => error + "!"), 1)
@@ -551,6 +548,7 @@ export const getOrElse: {
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrNull(Either.right(1)), 1)
@@ -565,6 +563,7 @@ export const getOrNull: <R, L>(self: Either<R, L>) => R | null = getOrElse(const
 /**
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrUndefined(Either.right(1)), 1)
@@ -581,11 +580,9 @@ export const getOrUndefined: <R, L>(self: Either<R, L>) => R | undefined = getOr
  *
  * If a default error is sufficient for your use case and you don't need to configure the thrown error, see {@link getOrThrow}.
  *
- * @param self - The `Either` to extract the value from.
- * @param onLeft - A function that will be called if the `Either` is `Left`. It returns the error to be thrown.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(
@@ -614,16 +611,16 @@ export const getOrThrowWith: {
  *
  * The thrown error is a default error. To configure the error thrown, see  {@link getOrThrowWith}.
  *
- * @param self - The `Either` to extract the value from.
- * @throws `Error("getOrThrow called on a Left")`
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrThrow(Either.right(1)), 1)
  * assert.throws(() => Either.getOrThrow(Either.left("error")))
  * ```
+ *
+ * @throws `Error("getOrThrow called on a Left")`
  *
  * @category getters
  * @since 2.0.0
@@ -634,9 +631,6 @@ export const getOrThrow: <R, L>(self: Either<R, L>) => R = getOrThrowWith(() =>
 
 /**
  * Returns `self` if it is a `Right` or `that` otherwise.
- *
- * @param self - The input `Either` value to check and potentially return.
- * @param that - A function that takes the error value from `self` (if it's a `Left`) and returns a new `Either` value.
  *
  * @category error handling
  * @since 2.0.0
@@ -727,10 +721,9 @@ export const ap: {
  * - If a struct is supplied, then the returned `Either` will contain a struct with the same keys.
  * - If an iterable is supplied, then the returned `Either` will contain an array.
  *
- * @param fields - the struct of `Either`s to be sequenced.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.all([Either.right(1), Either.right(2)]), Either.right([1, 2]))
@@ -828,6 +821,7 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (..
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, pipe } from "effect"
  *
  * const result = pipe(
@@ -860,6 +854,7 @@ export const Do: Either<{}> = right({})
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, pipe } from "effect"
  *
  * const result = pipe(
@@ -902,6 +897,7 @@ export const bind: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Either, pipe } from "effect"
  *
  * const result = pipe(
@@ -950,6 +946,7 @@ export {
    *
    * @example
    * ```ts
+   * import * as assert from "node:assert"
    * import { Either, pipe } from "effect"
    *
    * const result = pipe(

@@ -42,10 +42,9 @@ export const all: ReadonlySet<HttpMethod> = new Set(["GET", "POST", "PUT", "DELE
 /**
  * Tests if a value is a `HttpMethod`.
  *
- * @param input - The value to test.
- *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { HttpMethod } from "@effect/platform"
  *
  * assert.deepStrictEqual(HttpMethod.isHttpMethod("GET"), true)
