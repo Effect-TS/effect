@@ -187,7 +187,7 @@ export interface EncodeException {
 export const EncodeException: (input: string, message?: string) => EncodeException = Common.EncodeException
 
 /**
- * Returns `true` if the specified value is an `Exception`, `false` otherwise.
+ * Returns `true` if the specified value is an `EncodeException`, `false` otherwise.
  *
  * @since 3.12.0
  * @category refinements
