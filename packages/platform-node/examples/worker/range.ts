@@ -8,4 +8,4 @@ const WorkerLive = Effect.gen(function*() {
   yield* Effect.addFinalizer(() => Effect.log("worker closed"))
 }).pipe(Layer.scopedDiscard, Layer.provide(NodeWorkerRunner.layer))
 
-NodeRuntime.runMain(WorkerRunner.launch(WorkerLive))
+NodeRuntime.runMain(NodeWorkerRunner.launch(WorkerLive))
