@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as MsgPack from "@effect/platform/MsgPack"
 import * as Socket from "@effect/platform/Socket"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -16,7 +17,6 @@ import { RemoteEntry, RemoteId } from "./EventJournal.js"
 import type { Identity } from "./EventLog.js"
 import { EventLog } from "./EventLog.js"
 import { EncryptedEntry, EncryptedRemoteEntry, EventLogEncryption, layerSubtle } from "./EventLogEncryption.js"
-import * as MsgPack from "./MsgPack.js"
 
 /**
  * @since 1.0.0
