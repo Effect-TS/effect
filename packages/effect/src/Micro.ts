@@ -1038,7 +1038,7 @@ export {
    * import { Micro } from "effect"
    *
    * Micro.try({
-   *   try: () => throw new Error("boom"),
+   *   try: () => { throw new Error("boom") },
    *   catch: (cause) => new Error("caught", { cause })
    * })
    * ```

@@ -99,6 +99,7 @@ export {
   /**
    * @example
    * ```ts
+   * import * as assert from "node:assert"
    * import * as covariant from "@effect/typeclass/Covariant"
    * import type { HKT } from "effect"
    * import { dual, pipe } from "effect/Function"
