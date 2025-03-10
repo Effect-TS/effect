@@ -2001,6 +2001,7 @@ export const chunksOf: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
