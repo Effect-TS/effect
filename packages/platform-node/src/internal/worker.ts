@@ -20,8 +20,8 @@ const platformWorkerImpl = Worker.makePlatform<WorkerThreads.Worker>()({
             worker.postMessage([1])
             return Deferred.await(exitDeferred)
           }).pipe(
-            Effect.timeout(5000),
             Effect.interruptible,
+            Effect.timeout(5000),
             Effect.catchAllCause(() => Effect.sync(() => worker.terminate()))
           )
         ),

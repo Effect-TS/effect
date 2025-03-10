@@ -39,10 +39,21 @@ export const make = Effect.fnUntraced(function*<I, E, R, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
   options?: WorkerRunner.Runner.Options<I, O, E>
 ) {
+  const fiber = yield* Effect.withFiberRuntime<Fiber.RuntimeFiber<void>>(Effect.succeed as any)
   const platform = yield* PlatformRunner
   const closeLatch = yield* CloseLatch
   const backing = yield* platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E>>(closeLatch)
   const fiberMap = new Map<number, Fiber.Fiber<unknown, unknown>>()
+
+  yield* Deferred.await(closeLatch).pipe(
+    Effect.onExit(() => {
+      fiber.currentScheduler.scheduleTask(() => {
+        fiber.unsafeInterruptAsFork(fiber.id())
+      }, 0)
+      return Effect.void
+    }),
+    Effect.forkScoped
+  )
 
   yield* backing.run((portId, [id, kind, data, span]): Effect.Effect<void, WorkerError, R> => {
     if (kind === 1) {
@@ -211,9 +222,7 @@ export const layerSerialized = <
 /** @internal */
 export const launch = <A, E, R>(layer: Layer.Layer<A, E, R>): Effect.Effect<void, E | WorkerError, R> =>
   Effect.scopedWith(Effect.fnUntraced(function*(scope) {
-    const context = yield* Layer.buildWithScope(Layer.merge(layer, layerCloseLatch), scope)
+    const context = yield* Layer.buildWithScope(Layer.provideMerge(layer, layerCloseLatch), scope)
     const closeLatch = Context.get(context, CloseLatch)
-    return yield* Effect.never.pipe(
-      Effect.raceFirst(Deferred.await(closeLatch))
-    )
+    return yield* Deferred.await(closeLatch)
   }))
