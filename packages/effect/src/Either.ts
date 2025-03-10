@@ -750,7 +750,7 @@ export const all: <const I extends Iterable<Either<any, any>> | Record<string, E
   ): Either<any, any> => {
     if (Symbol.iterator in input) {
       const out: Array<Either<any, any>> = []
-      for (const e of (input as Iterable<Either<any, any>>)) {
+      for (const e of input) {
         if (isLeft(e)) {
           return e
         }
