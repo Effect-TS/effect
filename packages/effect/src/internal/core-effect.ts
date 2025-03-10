@@ -1951,7 +1951,7 @@ export const annotateCurrentSpan: {
 }
 
 /* @internal */
-export const linkToCurrentSpan: {
+export const linkSpanCurrent: {
   (span: Tracer.AnySpan, attributes?: Readonly<Record<string, unknown>> | undefined): Effect.Effect<void>
   (links: ReadonlyArray<Tracer.SpanLink>): Effect.Effect<void>
 } = function(): Effect.Effect<void> {
