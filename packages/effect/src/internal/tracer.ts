@@ -44,12 +44,13 @@ export class NativeSpan implements Tracer.Span {
   status: Tracer.SpanStatus
   attributes: Map<string, unknown>
   events: Array<[name: string, startTime: bigint, attributes: Record<string, unknown>]> = []
+  links: Array<Tracer.SpanLink>
 
   constructor(
     readonly name: string,
     readonly parent: Option.Option<Tracer.AnySpan>,
     readonly context: Context.Context<never>,
-    readonly links: ReadonlyArray<Tracer.SpanLink>,
+    links: Iterable<Tracer.SpanLink>,
     readonly startTime: bigint,
     readonly kind: Tracer.SpanKind
   ) {
@@ -60,6 +61,7 @@ export class NativeSpan implements Tracer.Span {
     this.attributes = new Map()
     this.traceId = parent._tag === "Some" ? parent.value.traceId : randomHexString(32)
     this.spanId = randomHexString(16)
+    this.links = Array.from(links)
   }
 
   end(endTime: bigint, exit: Exit.Exit<unknown, unknown>): void {
@@ -77,6 +79,11 @@ export class NativeSpan implements Tracer.Span {
 
   event(name: string, startTime: bigint, attributes?: Record<string, unknown>): void {
     this.events.push([name, startTime, attributes ?? {}])
+  }
+
+  addLinks(links: ReadonlyArray<Tracer.SpanLink>): void {
+    // eslint-disable-next-line no-restricted-syntax
+    this.links.push(...links)
   }
 }
 

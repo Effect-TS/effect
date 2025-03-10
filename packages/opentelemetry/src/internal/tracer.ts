@@ -39,7 +39,7 @@ export class OtelSpan implements EffectTracer.Span {
     readonly name: string,
     readonly parent: Option.Option<EffectTracer.AnySpan>,
     readonly context: Context.Context<never>,
-    readonly links: ReadonlyArray<EffectTracer.SpanLink>,
+    readonly links: Array<EffectTracer.SpanLink>,
     startTime: bigint,
     readonly kind: EffectTracer.SpanKind
   ) {
@@ -74,6 +74,15 @@ export class OtelSpan implements EffectTracer.Span {
   attribute(key: string, value: unknown) {
     this.span.setAttribute(key, unknownToAttributeValue(value))
     this.attributes.set(key, value)
+  }
+
+  addLinks(links: ReadonlyArray<EffectTracer.SpanLink>): void {
+    // eslint-disable-next-line no-restricted-syntax
+    this.links.push(...links)
+    this.span.addLinks(links.map((link) => ({
+      context: makeSpanContext(link.span),
+      attributes: recordToAttributes(link.attributes)
+    })))
   }
 
   end(endTime: bigint, exit: Exit<unknown, unknown>) {
@@ -141,7 +150,7 @@ export const make = Effect.map(Tracer, (tracer) =>
         name,
         parent,
         context,
-        links,
+        links.slice(),
         startTime,
         kind
       )
