@@ -7857,6 +7857,7 @@ export {
    *
    * @example
    * ```ts
+   * import * as assert from "node:assert"
    * import { Effect, pipe } from "effect"
    *
    * const result = pipe(
