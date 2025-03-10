@@ -442,7 +442,7 @@ export const makePlatform = <W>() =>
                 port,
                 scope,
                 emit(data) {
-                  FiberSet.unsafeAdd(runFork(handler(data)))
+                  FiberSet.unsafeAdd(fiberSet, runFork(handler(data)))
                 },
                 deferred: fiberSet.deferred as any
               })
