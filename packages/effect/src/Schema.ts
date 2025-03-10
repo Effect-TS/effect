@@ -9058,7 +9058,8 @@ const makeClass = <Fields extends Struct.Fields>(
             .join(", ")
         } })`
       },
-      configurable: true
+      configurable: true,
+      writable: true
     })
   }
   return klass
