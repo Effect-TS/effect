@@ -47,13 +47,13 @@
     "coverage": "vitest --coverage"
   },
   "peerDependencies": {
-    "@opentelemetry/api": "^1.6",
-    "@opentelemetry/resources": "^1.22",
-    "@opentelemetry/sdk-metrics": "^1.22",
-    "@opentelemetry/sdk-trace-base": "^1.22",
-    "@opentelemetry/sdk-trace-node": "^1.22",
-    "@opentelemetry/sdk-trace-web": "^1.22",
-    "@opentelemetry/semantic-conventions": "^1.24.1",
+    "@opentelemetry/api": "^1.9",
+    "@opentelemetry/resources": "^1.25",
+    "@opentelemetry/sdk-metrics": "^1.25",
+    "@opentelemetry/sdk-trace-base": "^1.25",
+    "@opentelemetry/sdk-trace-node": "^1.25",
+    "@opentelemetry/sdk-trace-web": "^1.25",
+    "@opentelemetry/semantic-conventions": "^1.25",
     "effect": "workspace:^"
   },
   "peerDependenciesMeta": {
