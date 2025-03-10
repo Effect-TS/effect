@@ -5,7 +5,6 @@ import type * as Effect from "effect/Effect"
 import type * as ParseResult from "effect/ParseResult"
 import type * as Schema from "effect/Schema"
 import type { ParseOptions } from "effect/SchemaAST"
-import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type { Unify } from "effect/Unify"
 import type * as Cookies from "./Cookies.js"
@@ -103,7 +102,7 @@ export const schemaNoBody: <
  */
 export const stream: <E, R>(
   effect: Effect.Effect<HttpClientResponse, E, R>
-) => Stream.Stream<Uint8Array, Error.ResponseError | E, Exclude<R, Scope.Scope>> = internal.stream
+) => Stream.Stream<Uint8Array, Error.ResponseError | E, R> = internal.stream
 
 /**
  * @since 1.0.0

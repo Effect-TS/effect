@@ -27,8 +27,7 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
     HttpClientRequest.post("/todos").pipe(
       HttpClientRequest.schemaBodyJson(TodoWithoutId)(todo),
       Effect.flatMap(client.execute),
-      Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
-      Effect.scoped
+      Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
     )
   return {
     client,
@@ -53,8 +52,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
       Effect.gen(function*(_) {
         const response = yield* _(
           HttpClient.get("https://www.google.com/"),
-          Effect.flatMap((_) => _.text),
-          Effect.scoped
+          Effect.flatMap((_) => _.text)
         )
         expect(response).toContain("Google")
       }).pipe(Effect.provide(layer)))
@@ -65,8 +63,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
           HttpClient.followRedirects()
         )
         const response = yield* client.get("http://google.com/").pipe(
-          Effect.flatMap((_) => _.text),
-          Effect.scoped
+          Effect.flatMap((_) => _.text)
         )
         expect(response).toContain("Google")
       }).pipe(Effect.provide(layer)))
@@ -86,8 +83,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
       Effect.gen(function*() {
         const jp = yield* JsonPlaceholder
         const response = yield* jp.client.get("/todos/1").pipe(
-          Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
-          Effect.scoped
+          Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
         )
         expect(response.id).toBe(1)
       }).pipe(Effect.provide(JsonPlaceholderLive.pipe(
@@ -113,8 +109,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
         const response = yield* client.head("https://jsonplaceholder.typicode.com/todos").pipe(
           Effect.flatMap(
             HttpClientResponse.schemaJson(Schema.Struct({ status: Schema.Literal(200) }))
-          ),
-          Effect.scoped
+          )
         )
         expect(response).toEqual({ status: 200 })
       }).pipe(Effect.provide(layer)))
@@ -124,7 +119,6 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
         const client = yield* HttpClient.HttpClient
         const response = yield* client.get("https://www.google.com/").pipe(
           Effect.flatMap((_) => _.text),
-          Effect.scoped,
           Effect.timeout(1),
           Effect.asSome,
           Effect.catchTag("TimeoutException", () => Effect.succeedNone)
@@ -133,11 +127,8 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
       }).pipe(Effect.provide(layer)))
 
     it.effect("close early", () =>
-      Effect.gen(function*(_) {
-        const response = yield* _(
-          HttpClient.get("https://www.google.com/"),
-          Effect.scoped
-        )
+      Effect.gen(function*() {
+        const response = yield* HttpClient.get("https://www.google.com/")
         expect(response.status).toBe(200)
       }).pipe(Effect.provide(layer)))
   })

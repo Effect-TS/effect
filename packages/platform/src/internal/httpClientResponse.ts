@@ -196,7 +196,7 @@ export const schemaNoBody = <
 
 /** @internal */
 export const stream = <E, R>(effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R>) =>
-  Stream.unwrapScoped(Effect.map(effect, (_) => _.stream))
+  Stream.unwrap(Effect.map(effect, (_) => _.stream))
 
 /** @internal */
 export const matchStatus = dual<

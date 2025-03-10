@@ -47,8 +47,7 @@ describe("HttpServer", () => {
         HttpServer.serveEffect()
       )
       const todo = yield* HttpClient.get("/todos/1").pipe(
-        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
-        Effect.scoped
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
       )
       expect(todo).toEqual({ id: 1, title: "test" })
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
@@ -76,8 +75,7 @@ describe("HttpServer", () => {
       const formData = new FormData()
       formData.append("file", new Blob(["test"], { type: "text/plain" }), "test.txt")
       const result = yield* client.post("/upload", { body: HttpBody.formData(formData) }).pipe(
-        Effect.flatMap((r) => r.json),
-        Effect.scoped
+        Effect.flatMap((r) => r.json)
       )
       expect(result).toEqual({ ok: true })
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
@@ -104,9 +102,7 @@ describe("HttpServer", () => {
       const formData = new FormData()
       formData.append("file", new Blob(["test"], { type: "text/plain" }), "test.txt")
       formData.append("test", "test")
-      const response = yield* client.post("/upload", { body: HttpBody.formData(formData) }).pipe(
-        Effect.scoped
-      )
+      const response = yield* client.post("/upload", { body: HttpBody.formData(formData) })
       expect(response.status).toEqual(204)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -132,9 +128,7 @@ describe("HttpServer", () => {
       const formData = new FormData()
       const data = new Uint8Array(1000)
       formData.append("file", new Blob([data], { type: "text/plain" }), "test.txt")
-      const response = yield* client.post("/upload", { body: HttpBody.formData(formData) }).pipe(
-        Effect.scoped
-      )
+      const response = yield* client.post("/upload", { body: HttpBody.formData(formData) })
       expect(response.status).toEqual(413)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -160,9 +154,7 @@ describe("HttpServer", () => {
       const formData = new FormData()
       const data = new Uint8Array(1000).fill(1)
       formData.append("file", new TextDecoder().decode(data))
-      const response = yield* client.post("/upload", { body: HttpBody.formData(formData) }).pipe(
-        Effect.scoped
-      )
+      const response = yield* client.post("/upload", { body: HttpBody.formData(formData) })
       expect(response.status).toEqual(413)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -177,9 +169,9 @@ describe("HttpServer", () => {
         HttpServer.serveEffect()
       )
       const client = yield* HttpClient.HttpClient
-      const todo = yield* client.get("/child/1").pipe(Effect.flatMap((_) => _.text), Effect.scoped)
+      const todo = yield* client.get("/child/1").pipe(Effect.flatMap((_) => _.text))
       expect(todo).toEqual("/1")
-      const root = yield* client.get("/child").pipe(Effect.flatMap((_) => _.text), Effect.scoped)
+      const root = yield* client.get("/child").pipe(Effect.flatMap((_) => _.text))
       expect(root).toEqual("/")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -194,9 +186,9 @@ describe("HttpServer", () => {
         HttpServer.serveEffect()
       )
       const client = yield* HttpClient.HttpClient
-      const todo = yield* client.get("/child/1").pipe(Effect.flatMap((_) => _.text), Effect.scoped)
+      const todo = yield* client.get("/child/1").pipe(Effect.flatMap((_) => _.text))
       expect(todo).toEqual("/1")
-      const root = yield* client.get("/child").pipe(Effect.flatMap((_) => _.text), Effect.scoped)
+      const root = yield* client.get("/child").pipe(Effect.flatMap((_) => _.text))
       expect(root).toEqual("/")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -217,9 +209,9 @@ describe("HttpServer", () => {
         HttpServer.serveEffect()
       )
       const client = yield* HttpClient.HttpClient
-      const todo = yield* client.get("/child/1").pipe(Effect.flatMap((_) => _.text), Effect.scoped)
+      const todo = yield* client.get("/child/1").pipe(Effect.flatMap((_) => _.text))
       expect(todo).toEqual("/child/1")
-      const root = yield* client.get("/child").pipe(Effect.flatMap((_) => _.text), Effect.scoped)
+      const root = yield* client.get("/child").pipe(Effect.flatMap((_) => _.text))
       expect(root).toEqual("/child")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -245,7 +237,7 @@ describe("HttpServer", () => {
         HttpServer.serveEffect()
       )
       const client = yield* HttpClient.HttpClient
-      const res = yield* client.get("/").pipe(Effect.scoped)
+      const res = yield* client.get("/")
       expect(res.status).toEqual(200)
       expect(res.headers["content-type"]).toEqual("text/plain")
       expect(res.headers["content-length"]).toEqual("27")
@@ -276,7 +268,7 @@ describe("HttpServer", () => {
         HttpServer.serveEffect()
       )
       const client = yield* HttpClient.HttpClient
-      const res = yield* client.get("/").pipe(Effect.scoped)
+      const res = yield* client.get("/")
       expect(res.status).toEqual(200)
       expect(res.headers["content-type"]).toEqual("text/plain")
       expect(res.headers["content-length"]).toEqual("4")
@@ -304,8 +296,7 @@ describe("HttpServer", () => {
       const todo = yield* HttpClientRequest.post("/todos").pipe(
         HttpClientRequest.bodyUrlParams({ id: "1", title: "test" }),
         HttpClient.execute,
-        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
-        Effect.scoped
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
       )
       expect(todo).toEqual({ id: 1, title: "test" })
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
@@ -327,7 +318,7 @@ describe("HttpServer", () => {
         HttpServer.serveEffect()
       )
       const client = yield* HttpClient.HttpClient
-      const response = yield* client.get("/todos").pipe(Effect.scoped)
+      const response = yield* client.get("/todos")
       expect(response.status).toEqual(400)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -350,7 +341,7 @@ describe("HttpServer", () => {
       const client = yield* HttpClient.HttpClient
       const formData = new FormData()
       formData.append("json", JSON.stringify({ test: "content" }))
-      const response = yield* client.post("/upload", { body: HttpBody.formData(formData) }).pipe(Effect.scoped)
+      const response = yield* client.post("/upload", { body: HttpBody.formData(formData) })
       expect(response.status).toEqual(204)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -378,7 +369,7 @@ describe("HttpServer", () => {
         new Blob([JSON.stringify({ test: "content" })], { type: "application/json" }),
         "test.json"
       )
-      const response = yield* client.post("/upload", { body: HttpBody.formData(formData) }).pipe(Effect.scoped)
+      const response = yield* client.post("/upload", { body: HttpBody.formData(formData) })
       expect(response.status).toEqual(204)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -403,7 +394,7 @@ describe("HttpServer", () => {
         body: HttpBody.urlParams(UrlParams.fromInput({
           json: JSON.stringify({ test: "content" })
         }))
-      }).pipe(Effect.scoped)
+      })
       expect(response.status).toEqual(204)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -423,7 +414,6 @@ describe("HttpServer", () => {
       const requestSpan = yield* Effect.makeSpan("client request")
       const body = yield* client.get("/").pipe(
         Effect.flatMap((r) => r.json),
-        Effect.scoped,
         Effect.withTracer(Tracer.make({
           span(name, parent, _, __, ___, kind) {
             assert.strictEqual(name, "http.client GET")
@@ -451,7 +441,7 @@ describe("HttpServer", () => {
         HttpServer.serveEffect((app) => Effect.onExit(app, (exit) => Deferred.complete(latch, exit)))
       )
       const client = yield* HttpClient.HttpClient
-      const fiber = yield* client.get("/").pipe(Effect.scoped, Effect.fork)
+      const fiber = yield* client.get("/").pipe(Effect.fork)
       yield* Effect.sleep(100)
       yield* Fiber.interrupt(fiber)
       const cause = yield* Deferred.await(latch).pipe(Effect.sandbox, Effect.flip)
@@ -474,8 +464,7 @@ describe("HttpServer", () => {
             HttpClientRequest.setHeader("host", "a.example.com")
           )
         ).pipe(
-          Effect.flatMap((r) => r.text),
-          Effect.scoped
+          Effect.flatMap((r) => r.text)
         )
       ).toEqual("A")
       expect(
@@ -484,8 +473,7 @@ describe("HttpServer", () => {
             HttpClientRequest.setHeader("host", "b.example.com")
           )
         ).pipe(
-          Effect.flatMap((r) => r.text),
-          Effect.scoped
+          Effect.flatMap((r) => r.text)
         )
       ).toEqual("B")
       expect(
@@ -494,8 +482,7 @@ describe("HttpServer", () => {
             HttpClientRequest.setHeader("host", "b.org")
           )
         ).pipe(
-          Effect.flatMap((r) => r.text),
-          Effect.scoped
+          Effect.flatMap((r) => r.text)
         )
       ).toEqual("B")
       expect(
@@ -504,8 +491,7 @@ describe("HttpServer", () => {
             HttpClientRequest.setHeader("host", "c.example.com")
           )
         ).pipe(
-          Effect.flatMap((r) => r.text),
-          Effect.scoped
+          Effect.flatMap((r) => r.text)
         )
       ).toEqual("C")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
@@ -525,11 +511,11 @@ describe("HttpServer", () => {
         HttpServer.serveEffect()
       )
       const client = yield* HttpClient.HttpClient
-      const home = yield* client.get("/home").pipe(Effect.flatMap((r) => r.text), Effect.scoped)
+      const home = yield* client.get("/home").pipe(Effect.flatMap((r) => r.text))
       expect(home).toEqual("<html />")
-      const about = yield* client.get("/about").pipe(Effect.flatMap((r) => r.text), Effect.scoped)
+      const about = yield* client.get("/about").pipe(Effect.flatMap((r) => r.text))
       expect(about).toEqual("<html><body /></html>")
-      const stream = yield* client.get("/stream").pipe(Effect.flatMap((r) => r.text), Effect.scoped)
+      const stream = yield* client.get("/stream").pipe(Effect.flatMap((r) => r.text))
       expect(stream).toEqual("<html><body />123hello</html>")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -555,7 +541,7 @@ describe("HttpServer", () => {
         HttpServer.serveEffect()
       )
       const client = yield* HttpClient.HttpClient
-      const res = yield* client.get("/home").pipe(Effect.scoped)
+      const res = yield* client.get("/home")
       assert.deepStrictEqual(
         res.cookies.toJSON(),
         Cookies.fromReadonlyRecord({
@@ -589,7 +575,7 @@ describe("HttpServer", () => {
         HttpServer.serveEffect()
       )
       const client = yield* HttpClient.HttpClient
-      const res = yield* client.get("/home").pipe(Effect.scoped)
+      const res = yield* client.get("/home")
       assert.strictEqual(res.status, 204)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -598,7 +584,7 @@ describe("HttpServer", () => {
       Effect.gen(function*() {
         yield* HttpRouter.empty.pipe(HttpServer.serveEffect())
         const client = yield* HttpClient.HttpClient
-        const res = yield* client.get("/").pipe(Effect.scoped)
+        const res = yield* client.get("/")
         assert.strictEqual(res.status, 404)
       }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -637,8 +623,7 @@ describe("HttpServer", () => {
         )
         const client = yield* HttpClient.HttpClient
         const res = yield* client.get("/user").pipe(
-          Effect.flatMap(HttpClientResponse.schemaBodyJson(User)),
-          Effect.scoped
+          Effect.flatMap(HttpClientResponse.schemaBodyJson(User))
         )
         assert.deepStrictEqual(res, new User({ name: "test" }))
       }).pipe(Effect.provide(NodeHttpServer.layerTest)))
@@ -701,9 +686,9 @@ describe("HttpServer", () => {
         HttpRouter.get("/:param", HttpServerResponse.empty()),
         HttpServer.serveEffect()
       )
-      let res = yield* HttpClient.get("/123456").pipe(Effect.scoped)
+      let res = yield* HttpClient.get("/123456")
       assert.strictEqual(res.status, 404)
-      res = yield* HttpClient.get("/12345").pipe(Effect.scoped)
+      res = yield* HttpClient.get("/12345")
       assert.strictEqual(res.status, 204)
     }).pipe(
       Effect.provide(NodeHttpServer.layerTest),
