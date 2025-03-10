@@ -45,7 +45,7 @@ export const make = (self: MessagePort | Window) =>
             const fiberSet = yield* FiberSet.make<any, WorkerError | E>()
             const runFork = Runtime.runFork(runtime)
             function onExit(exit: Exit.Exit<any, E>) {
-              if (exit._tag === "Failure") {
+              if (exit._tag === "Failure" && !Cause.isInterruptedOnly(exit.cause)) {
                 Deferred.unsafeDone(closeLatch, Exit.die(Cause.squash(exit.cause)))
               }
             }
