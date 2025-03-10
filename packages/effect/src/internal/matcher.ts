@@ -396,7 +396,7 @@ export const discriminators = <D extends string>(field: D) =>
   fields: P
 ) => {
   const predicate = makeWhen(
-    (_: any) => _[field] in fields,
+    (arg: any) => arg != null && arg[field] in fields,
     (data: any) => (fields as any)[data[field]](data)
   )
 
