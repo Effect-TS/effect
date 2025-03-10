@@ -11,7 +11,6 @@ import type { Pipeable } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
 import type { Ref } from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
-import type * as Scope from "effect/Scope"
 import type { NoExcessProperties, NoInfer } from "effect/Types"
 import type { Cookies } from "./Cookies.js"
 import type * as Error from "./HttpClientError.js"
@@ -35,7 +34,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface HttpClient extends HttpClient.With<Error.HttpClientError, Scope.Scope> {}
+export interface HttpClient extends HttpClient.With<Error.HttpClientError> {}
 
 /**
  * @since 1.0.0
@@ -45,7 +44,7 @@ export declare namespace HttpClient {
    * @since 1.0.0
    * @category models
    */
-  export interface With<E, R> extends Pipeable, Inspectable {
+  export interface With<E, R = never> extends Pipeable, Inspectable {
     readonly [TypeId]: TypeId
     readonly execute: (
       request: ClientRequest.HttpClientRequest
@@ -110,8 +109,7 @@ export const HttpClient: Context.Tag<HttpClient, HttpClient> = internal.tag
  */
 export const execute: (
   request: ClientRequest.HttpClientRequest
-) => Effect.Effect<ClientResponse.HttpClientResponse, Error.HttpClientError, Scope.Scope | HttpClient> =
-  internal.execute
+) => Effect.Effect<ClientResponse.HttpClientResponse, Error.HttpClientError, HttpClient> = internal.execute
 
 /**
  * @since 1.0.0
@@ -123,7 +121,7 @@ export const get: (
 ) => Effect.Effect<
   ClientResponse.HttpClientResponse,
   Error.HttpClientError,
-  Scope.Scope | HttpClient
+  HttpClient
 > = internal.get
 
 /**
@@ -136,7 +134,7 @@ export const head: (
 ) => Effect.Effect<
   ClientResponse.HttpClientResponse,
   Error.HttpClientError,
-  Scope.Scope | HttpClient
+  HttpClient
 > = internal.head
 
 /**
@@ -149,7 +147,7 @@ export const post: (
 ) => Effect.Effect<
   ClientResponse.HttpClientResponse,
   Error.HttpClientError,
-  Scope.Scope | HttpClient
+  HttpClient
 > = internal.post
 
 /**
@@ -162,7 +160,7 @@ export const patch: (
 ) => Effect.Effect<
   ClientResponse.HttpClientResponse,
   Error.HttpClientError,
-  Scope.Scope | HttpClient
+  HttpClient
 > = internal.patch
 
 /**
@@ -175,7 +173,7 @@ export const put: (
 ) => Effect.Effect<
   ClientResponse.HttpClientResponse,
   Error.HttpClientError,
-  Scope.Scope | HttpClient
+  HttpClient
 > = internal.put
 
 /**
@@ -188,7 +186,7 @@ export const del: (
 ) => Effect.Effect<
   ClientResponse.HttpClientResponse,
   Error.HttpClientError,
-  Scope.Scope | HttpClient
+  HttpClient
 > = internal.del
 
 /**
@@ -201,7 +199,7 @@ export const options: (
 ) => Effect.Effect<
   ClientResponse.HttpClientResponse,
   Error.HttpClientError,
-  Scope.Scope | HttpClient
+  HttpClient
 > = internal.options
 
 /**
@@ -364,7 +362,7 @@ export const make: (
     url: URL,
     signal: AbortSignal,
     fiber: RuntimeFiber<ClientResponse.HttpClientResponse, Error.HttpClientError>
-  ) => Effect.Effect<ClientResponse.HttpClientResponse, Error.HttpClientError, Scope.Scope>
+  ) => Effect.Effect<ClientResponse.HttpClientResponse, Error.HttpClientError>
 ) => HttpClient = internal.make
 
 /**

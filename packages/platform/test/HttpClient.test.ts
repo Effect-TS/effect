@@ -48,8 +48,7 @@ const makeJsonPlaceholder = Effect.gen(function*() {
     HttpClientRequest.post("/todos").pipe(
       HttpClientRequest.schemaBodyJson(TodoWithoutId)(todo),
       Effect.flatMap(client.execute),
-      Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
-      Effect.scoped
+      Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
     )
   return {
     client,
@@ -66,8 +65,7 @@ describe("HttpClient", () => {
     Effect.gen(function*() {
       const response = yield* pipe(
         HttpClient.get("https://www.google.com/"),
-        Effect.flatMap((_) => _.text),
-        Effect.scoped
+        Effect.flatMap((_) => _.text)
       )
       assertInclude(response, "Google")
     }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
@@ -80,8 +78,7 @@ describe("HttpClient", () => {
       )
       yield* pipe(
         HttpClientRequest.get("https://www.google.com/"),
-        client.execute,
-        Effect.scoped
+        client.execute
       )
       const cookieHeader = yield* pipe(Ref.get(ref), Effect.map(Cookies.toCookieHeader))
       yield* pipe(
@@ -92,8 +89,7 @@ describe("HttpClient", () => {
               strictEqual(req.headers.cookie, cookieHeader)
             })
           )
-        ).execute,
-        Effect.scoped
+        ).execute
       )
     }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
 
@@ -112,8 +108,7 @@ describe("HttpClient", () => {
     Effect.gen(function*() {
       const jp = yield* JsonPlaceholder
       const response = yield* jp.client.get("/todos/1").pipe(
-        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
-        Effect.scoped
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
       )
       strictEqual(response.id, 1)
     }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
@@ -133,8 +128,7 @@ describe("HttpClient", () => {
     Effect.gen(function*() {
       const jp = yield* JsonPlaceholder
       const response = yield* jp.client.get("/todos/1").pipe(
-        Effect.flatMap(HttpClientResponse.schemaJson(OkTodo)),
-        Effect.scoped
+        Effect.flatMap(HttpClientResponse.schemaJson(OkTodo))
       )
       strictEqual(response.body.id, 1)
     }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
@@ -147,8 +141,7 @@ describe("HttpClient", () => {
         HttpClient.mapRequest(HttpClientRequest.prependUrl("https://"))
       )
       const response = yield* client.get("/todos/1").pipe(
-        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
-        Effect.scoped
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
       )
       strictEqual(response.id, 1)
     }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
@@ -168,8 +161,7 @@ describe("HttpClient", () => {
       yield* HttpClientRequest.post("https://jsonplaceholder.typicode.com").pipe(
         HttpClientRequest.bodyStream(requestStream),
         defaultClient.execute,
-        Effect.provide(Logger.replace(Logger.defaultLogger, logger)),
-        Effect.scoped
+        Effect.provide(Logger.replace(Logger.defaultLogger, logger))
       )
 
       deepStrictEqual(logs, [["hello"], ["world"]])
@@ -196,8 +188,7 @@ describe("HttpClient", () => {
             404: () => Effect.fail("not found"),
             orElse: () => Effect.fail("boom")
           })
-        ),
-        Effect.scoped
+        )
       )
       deepStrictEqual(response, { id: 1, userId: 1, title: "delectus aut autem", completed: false })
     }).pipe(Effect.provide(JsonPlaceholderLive)))
@@ -237,8 +228,7 @@ describe("HttpClient", () => {
       const client = defaultClient.pipe(HttpClient.followRedirects())
 
       const response = yield* pipe(
-        client.get("https://google.com/"),
-        Effect.scoped
+        client.get("https://google.com/")
       )
       strictEqual(response.request.url, "https://www.google.com/")
     }).pipe(

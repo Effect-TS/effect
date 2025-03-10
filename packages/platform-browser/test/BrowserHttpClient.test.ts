@@ -16,8 +16,7 @@ describe("BrowserHttpClient", () => {
   it.effect("json", () =>
     Effect.gen(function*() {
       const body = yield* HttpClient.get("http://localhost:8080/my/url").pipe(
-        Effect.flatMap((_) => _.json),
-        Effect.scoped
+        Effect.flatMap((_) => _.json)
       )
       assert.deepStrictEqual(body, { message: "Success!" })
     }).pipe(Effect.provide(layer({
@@ -50,8 +49,7 @@ describe("BrowserHttpClient", () => {
   it.effect("cookies", () =>
     Effect.gen(function*() {
       const cookies = yield* HttpClient.get("http://localhost:8080/my/url").pipe(
-        Effect.map((res) => res.cookies),
-        Effect.scoped
+        Effect.map((res) => res.cookies)
       )
       assert.deepStrictEqual(Cookies.toRecord(cookies), {
         foo: "bar"
@@ -69,7 +67,6 @@ describe("BrowserHttpClient", () => {
     Effect.gen(function*() {
       const body = yield* HttpClient.get("http://localhost:8080/my/url").pipe(
         Effect.flatMap((_) => _.arrayBuffer),
-        Effect.scoped,
         BrowserHttpClient.withXHRArrayBuffer
       )
       assert.strictEqual(new TextDecoder().decode(body), "{ \"message\": \"Success!\" }")

@@ -10,7 +10,6 @@ import * as ParseResult from "effect/ParseResult"
 import type * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
-import type { Scope } from "effect/Scope"
 import type { Simplify } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
 import type { HttpApiEndpoint } from "./HttpApiEndpoint.js"
@@ -130,7 +129,7 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
     }) => void
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
     readonly transformResponse?:
-      | ((effect: Effect.Effect<unknown, unknown, Scope>) => Effect.Effect<unknown, unknown, Scope>)
+      | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
     readonly baseUrl?: string | undefined
   }
@@ -223,7 +222,6 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
               : options.transformResponse(decodeResponse(response)))
             return request?.withResponse === true ? [value, response] : value
           }).pipe(
-            Effect.scoped,
             Effect.mapInputContext((input) => Context.merge(context, input))
           )
 
@@ -244,7 +242,7 @@ export const make = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiE
   options?: {
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
     readonly transformResponse?:
-      | ((effect: Effect.Effect<unknown, unknown, Scope>) => Effect.Effect<unknown, unknown, Scope>)
+      | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
     readonly baseUrl?: string | undefined
   }
@@ -282,7 +280,7 @@ export const group = <
   options?: {
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
     readonly transformResponse?:
-      | ((effect: Effect.Effect<unknown, unknown, Scope>) => Effect.Effect<unknown, unknown, Scope>)
+      | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
     readonly baseUrl?: string | undefined
   }
@@ -324,7 +322,7 @@ export const endpoint = <
   options?: {
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
     readonly transformResponse?:
-      | ((effect: Effect.Effect<unknown, unknown, Scope>) => Effect.Effect<unknown, unknown, Scope>)
+      | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
     readonly baseUrl?: string | undefined
   }

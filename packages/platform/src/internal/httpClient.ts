@@ -1,6 +1,7 @@
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
 import { constFalse, dual } from "effect/Function"
@@ -11,7 +12,7 @@ import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
-import * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
 import type { NoExcessProperties, NoInfer } from "effect/Types"
 import * as Cookies from "../Cookies.js"
 import * as Headers from "../Headers.js"
@@ -19,6 +20,7 @@ import type * as Client from "../HttpClient.js"
 import * as Error from "../HttpClientError.js"
 import type * as ClientRequest from "../HttpClientRequest.js"
 import type * as ClientResponse from "../HttpClientResponse.js"
+import * as IncomingMessage from "../HttpIncomingMessage.js"
 import * as TraceContext from "../HttpTraceContext.js"
 import * as UrlParams from "../UrlParams.js"
 import * as internalRequest from "./httpClientRequest.js"
@@ -123,6 +125,38 @@ export const makeWith = <E2, R2, E, R>(
   return self
 }
 
+const responseRegistry = globalValue(
+  "@effect/platform/HttpClient/responseRegistry",
+  () => {
+    if ("FinalizationRegistry" in globalThis && globalThis.FinalizationRegistry) {
+      const registry = new FinalizationRegistry((controller: AbortController) => {
+        controller.abort()
+      })
+      return {
+        register(response: ClientResponse.HttpClientResponse, controller: AbortController) {
+          registry.register(response, controller, response)
+        },
+        unregister(response: ClientResponse.HttpClientResponse) {
+          registry.unregister(response)
+        }
+      }
+    }
+
+    const timers = new Map<ClientResponse.HttpClientResponse, any>()
+    return {
+      register(response: ClientResponse.HttpClientResponse, controller: AbortController) {
+        timers.set(response, setTimeout(() => controller.abort(), 5000))
+      },
+      unregister(response: ClientResponse.HttpClientResponse) {
+        const timer = timers.get(response)
+        if (timer === undefined) return
+        clearTimeout(timer)
+        timers.delete(response)
+      }
+    }
+  }
+)
+
 /** @internal */
 export const make = (
   f: (
@@ -130,14 +164,12 @@ export const make = (
     url: URL,
     signal: AbortSignal,
     fiber: Fiber.RuntimeFiber<ClientResponse.HttpClientResponse, Error.HttpClientError>
-  ) => Effect.Effect<ClientResponse.HttpClientResponse, Error.HttpClientError, Scope.Scope>
+  ) => Effect.Effect<ClientResponse.HttpClientResponse, Error.HttpClientError>
 ): Client.HttpClient =>
   makeWith((effect) =>
     Effect.flatMap(effect, (request) =>
       Effect.withFiberRuntime((fiber) => {
-        const scope = Context.unsafeGet(fiber.getFiberRef(FiberRef.currentContext), Scope.Scope)
         const controller = new AbortController()
-        const addAbort = Scope.addFinalizer(scope, Effect.sync(() => controller.abort()))
         const urlResult = UrlParams.makeUrl(request.url, request.urlParams, request.hash)
         if (urlResult._tag === "Left") {
           return Effect.fail(new Error.RequestError({ request, reason: "InvalidUrl", cause: urlResult.left }))
@@ -146,59 +178,151 @@ export const make = (
         const tracerDisabled = !fiber.getFiberRef(FiberRef.currentTracerEnabled) ||
           fiber.getFiberRef(currentTracerDisabledWhen)(request)
         if (tracerDisabled) {
-          return Effect.zipRight(
-            addAbort,
-            f(request, url, controller.signal, fiber)
+          return Effect.uninterruptibleMask((restore) =>
+            Effect.matchCauseEffect(restore(f(request, url, controller.signal, fiber)), {
+              onSuccess(response) {
+                responseRegistry.register(response, controller)
+                return Effect.succeed(new InterruptibleResponse(response, controller))
+              },
+              onFailure(cause) {
+                if (Cause.isInterrupted(cause)) {
+                  controller.abort()
+                }
+                return Effect.failCause(cause)
+              }
+            })
           )
         }
-        return Effect.zipRight(
-          addAbort,
-          Effect.useSpan(
-            `http.client ${request.method}`,
-            { kind: "client", captureStackTrace: false },
-            (span) => {
-              span.attribute("http.request.method", request.method)
-              span.attribute("server.address", url.origin)
-              if (url.port !== "") {
-                span.attribute("server.port", +url.port)
-              }
-              span.attribute("url.full", url.toString())
-              span.attribute("url.path", url.pathname)
-              span.attribute("url.scheme", url.protocol.slice(0, -1))
-              const query = url.search.slice(1)
-              if (query !== "") {
-                span.attribute("url.query", query)
-              }
-              const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
-              const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
-              for (const name in redactedHeaders) {
-                span.attribute(`http.request.header.${name}`, String(redactedHeaders[name]))
-              }
-              request = fiber.getFiberRef(currentTracerPropagation)
-                ? internalRequest.setHeaders(request, TraceContext.toHeaders(span))
-                : request
-              return Effect.tap(
-                Effect.withParentSpan(
-                  f(
-                    request,
-                    url,
-                    controller.signal,
-                    fiber
-                  ),
-                  span
-                ),
-                (response) => {
-                  span.attribute("http.response.status_code", response.status)
-                  const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
-                  for (const name in redactedHeaders) {
-                    span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
-                  }
-                }
-              )
+        return Effect.useSpan(
+          `http.client ${request.method}`,
+          { kind: "client", captureStackTrace: false },
+          (span) => {
+            span.attribute("http.request.method", request.method)
+            span.attribute("server.address", url.origin)
+            if (url.port !== "") {
+              span.attribute("server.port", +url.port)
             }
-          )
+            span.attribute("url.full", url.toString())
+            span.attribute("url.path", url.pathname)
+            span.attribute("url.scheme", url.protocol.slice(0, -1))
+            const query = url.search.slice(1)
+            if (query !== "") {
+              span.attribute("url.query", query)
+            }
+            const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
+            const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
+            for (const name in redactedHeaders) {
+              span.attribute(`http.request.header.${name}`, String(redactedHeaders[name]))
+            }
+            request = fiber.getFiberRef(currentTracerPropagation)
+              ? internalRequest.setHeaders(request, TraceContext.toHeaders(span))
+              : request
+            return Effect.uninterruptibleMask((restore) =>
+              restore(f(request, url, controller.signal, fiber)).pipe(
+                Effect.withParentSpan(span),
+                Effect.matchCauseEffect({
+                  onSuccess: (response) => {
+                    span.attribute("http.response.status_code", response.status)
+                    const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
+                    for (const name in redactedHeaders) {
+                      span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
+                    }
+
+                    responseRegistry.register(response, controller)
+                    return Effect.succeed(new InterruptibleResponse(response, controller))
+                  },
+                  onFailure(cause) {
+                    if (Cause.isInterrupted(cause)) {
+                      controller.abort()
+                    }
+                    return Effect.failCause(cause)
+                  }
+                })
+              )
+            )
+          }
         )
       })), Effect.succeed as Client.HttpClient.Preprocess<never, never>)
+
+class InterruptibleResponse implements ClientResponse.HttpClientResponse {
+  constructor(
+    readonly original: ClientResponse.HttpClientResponse,
+    readonly controller: AbortController
+  ) {}
+
+  readonly [internalResponse.TypeId]: ClientResponse.TypeId = internalResponse.TypeId
+  readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId = IncomingMessage.TypeId
+
+  private applyInterrupt<A, E, R>(effect: Effect.Effect<A, E, R>) {
+    return Effect.suspend(() => {
+      responseRegistry.unregister(this.original)
+      return Effect.onInterrupt(effect, () =>
+        Effect.sync(() => {
+          this.controller.abort()
+        }))
+    })
+  }
+
+  get request() {
+    return this.original.request
+  }
+
+  get status() {
+    return this.original.status
+  }
+
+  get headers() {
+    return this.original.headers
+  }
+
+  get cookies() {
+    return this.original.cookies
+  }
+
+  get remoteAddress() {
+    return this.original.remoteAddress
+  }
+
+  get formData() {
+    return this.applyInterrupt(this.original.formData)
+  }
+
+  get text() {
+    return this.applyInterrupt(this.original.text)
+  }
+
+  get json() {
+    return this.applyInterrupt(this.original.json)
+  }
+
+  get urlParamsBody() {
+    return this.applyInterrupt(this.original.urlParamsBody)
+  }
+
+  get arrayBuffer() {
+    return this.applyInterrupt(this.original.arrayBuffer)
+  }
+
+  get stream() {
+    return Stream.suspend(() => {
+      responseRegistry.unregister(this.original)
+      return Stream.ensuringWith(this.original.stream, (exit) => {
+        if (Exit.isInterrupted(exit)) {
+          this.controller.abort()
+        }
+        return Effect.void
+      })
+    })
+  }
+
+  toJSON() {
+    return this.original.toJSON()
+  }
+
+  [Inspectable.NodeInspectSymbol]() {
+    return this.original[Inspectable.NodeInspectSymbol]()
+  }
+}
 
 export const {
   /** @internal */
@@ -733,6 +857,6 @@ export const layerMergedContext = <E, R>(
       Effect.map(effect, (client) =>
         transformResponse(
           client,
-          Effect.mapInputContext((input: Context.Context<Scope.Scope>) => Context.merge(context, input))
+          Effect.mapInputContext((input: Context.Context<never>) => Context.merge(context, input))
         )))
   )
