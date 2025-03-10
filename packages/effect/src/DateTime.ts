@@ -426,6 +426,22 @@ export const makeZonedFromString: (input: string) => Option.Option<Zoned> = Inte
 export const now: Effect.Effect<Utc> = Internal.now
 
 /**
+ * Get the current time using the `Clock` service.
+ *
+ * @since 3.14.0
+ * @category constructors
+ * @example
+ * ```ts
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const now = yield* DateTime.nowAsDate
+ * })
+ * ```
+ */
+export const nowAsDate: Effect.Effect<Date> = Effect.map(Internal.now, (dateTime) => toDate(dateTime))
+
+/**
  * Get the current time using `Date.now`.
  *
  * @since 3.6.0
