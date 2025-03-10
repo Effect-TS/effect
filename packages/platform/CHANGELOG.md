@@ -1,5 +1,44 @@
 # @effect/platform
 
+## 0.79.0
+
+### Minor Changes
+
+- [#4573](https://github.com/Effect-TS/effect/pull/4573) [`88fe129`](https://github.com/Effect-TS/effect/commit/88fe12923740765c0335a6e6203fdcc6a463edca) Thanks @tim-smart! - remove Scope from HttpClient requirements
+
+  Before:
+
+  ```ts
+  import { HttpClient } from "@effect/platform"
+  import { Effect } from "effect"
+
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+    const response = yield* client.get("https://api.github.com/users/octocat")
+    return yield* response.json
+  }).pipe(Effect.scoped)
+  ```
+
+  After:
+
+  ```ts
+  import { HttpClient } from "@effect/platform"
+  import { Effect } from "effect"
+
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+    const response = yield* client.get("https://api.github.com/users/octocat")
+    return yield* response.json
+  }) // no need to add Effect.scoped
+  ```
+
+### Patch Changes
+
+- [#4583](https://github.com/Effect-TS/effect/pull/4583) [`d630249`](https://github.com/Effect-TS/effect/commit/d630249426113088abe8b382db4f14d80f2160c2) Thanks @tim-smart! - support Layer.launch when using WorkerRunner
+
+- Updated dependencies [[`2976e52`](https://github.com/Effect-TS/effect/commit/2976e52538d9dc9ffdcbc84d4ac748cff9305971)]:
+  - effect@3.13.9
+
 ## 0.78.1
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # effect
 
+## 3.13.9
+
+### Patch Changes
+
+- [#4579](https://github.com/Effect-TS/effect/pull/4579) [`2976e52`](https://github.com/Effect-TS/effect/commit/2976e52538d9dc9ffdcbc84d4ac748cff9305971) Thanks @giuliobracci! - Fix `Match.tags` throwing exception on `undefined` input value
+
 ## 3.13.8
 
 ### Patch Changes
