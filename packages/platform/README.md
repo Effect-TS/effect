@@ -2349,8 +2349,6 @@ const program = Effect.gen(function* () {
 
   console.log(json)
 }).pipe(
-  // Ensure request is aborted if the program is interrupted
-  Effect.scoped,
   // Provide the HttpClient
   Effect.provide(FetchHttpClient.layer)
 )
@@ -2387,7 +2385,6 @@ const program = HttpClient.get(
   "https://jsonplaceholder.typicode.com/posts/1"
 ).pipe(
   Effect.andThen((response) => response.json),
-  Effect.scoped,
   Effect.provide(FetchHttpClient.layer)
 )
 
@@ -2436,8 +2433,6 @@ const program = Effect.gen(function* () {
 
   console.log(json)
 }).pipe(
-  // Ensure request is aborted if the program is interrupted
-  Effect.scoped,
   // Provide the HttpClient
   Effect.provide(FetchHttpClient.layer)
 )
@@ -2456,30 +2451,6 @@ Output:
 }
 */
 ```
-
-## Understanding Scope
-
-When working with a request, note that there is a `Scope` requirement:
-
-```ts
-import { FetchHttpClient, HttpClient } from "@effect/platform"
-import { Effect } from "effect"
-
-// const program: Effect<void, HttpClientError, Scope>
-const program = Effect.gen(function* () {
-  const client = yield* HttpClient.HttpClient
-  const response = yield* client.get(
-    "https://jsonplaceholder.typicode.com/posts/1"
-  )
-  const json = yield* response.json
-  console.log(json)
-}).pipe(
-  // Provide the HttpClient implementation without scoping
-  Effect.provide(FetchHttpClient.layer)
-)
-```
-
-A `Scope` is required because there is an open connection between the HTTP response and the body processing. For instance, if you have a streaming body, you receive the response before processing the body. This connection is managed within a scope, and using `Effect.scoped` controls when it is closed.
 
 ## Customize a HttpClient
 
@@ -2504,7 +2475,7 @@ const program = Effect.gen(function* () {
   const json = yield* response.json
 
   console.log(json)
-}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+}).pipe(Effect.provide(FetchHttpClient.layer))
 
 Effect.runPromise(program)
 /*
@@ -2585,7 +2556,7 @@ const program = Effect.gen(function* () {
   const json = yield* response.json
 
   console.log(json)
-}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+}).pipe(Effect.provide(FetchHttpClient.layer))
 
 Effect.runPromise(program)
 /*
@@ -2627,7 +2598,7 @@ const program = Effect.gen(function* () {
 
   // Log the keys of the cookies stored in the reference
   console.log(Object.keys((yield* ref).cookies))
-}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+}).pipe(Effect.provide(FetchHttpClient.layer))
 
 Effect.runPromise(program)
 // Output: [ 'SOCS', 'AEC', '__Secure-ENID' ]
@@ -2658,7 +2629,7 @@ const program = Effect.gen(function* () {
   )
   const json = yield* response.json
   console.log(json)
-}).pipe(Effect.scoped, Effect.provide(CustomFetchLive))
+}).pipe(Effect.provide(CustomFetchLive))
 ```
 
 ## Create a Custom HttpClient
@@ -2694,7 +2665,6 @@ const program = Effect.gen(function* () {
   const json = yield* response.json
   console.log(json)
 }).pipe(
-  Effect.scoped,
   // Provide the HttpClient
   Effect.provide(Layer.succeed(HttpClient.HttpClient, myClient))
 )
@@ -2849,7 +2819,7 @@ const getPostAsJson = Effect.gen(function* () {
     "https://jsonplaceholder.typicode.com/posts/1"
   )
   return yield* response.json
-}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+}).pipe(Effect.provide(FetchHttpClient.layer))
 
 getPostAsJson.pipe(
   Effect.andThen((post) => Console.log(typeof post, post)),
@@ -2882,7 +2852,7 @@ const getPostAsText = Effect.gen(function* () {
     "https://jsonplaceholder.typicode.com/posts/1"
   )
   return yield* response.text
-}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+}).pipe(Effect.provide(FetchHttpClient.layer))
 
 getPostAsText.pipe(
   Effect.andThen((post) => Console.log(typeof post, post)),
@@ -2937,7 +2907,7 @@ const getPostAndValidate = Effect.gen(function* () {
     "https://jsonplaceholder.typicode.com/posts/1"
   )
   return yield* HttpClientResponse.schemaBodyJson(Post)(response)
-}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+}).pipe(Effect.provide(FetchHttpClient.layer))
 
 getPostAndValidate.pipe(Effect.andThen(Console.log), NodeRuntime.runMain)
 /*
@@ -2950,8 +2920,6 @@ Output:
 ```
 
 In this example, we define a schema for a post object with properties `id` and `title`. Then, we fetch the data and validate it against this schema using `HttpClientResponse.schemaBodyJson`. Finally, we log the validated post object.
-
-Note that we use `Effect.scoped` after consuming the response. This ensures that any resources associated with the HTTP request are properly cleaned up once we're done processing the response.
 
 ### Filtering And Error Handling
 
@@ -2972,7 +2940,7 @@ const getText = Effect.gen(function* () {
     "https://jsonplaceholder.typicode.com/non-existing-page"
   )
   return yield* response.text
-}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+}).pipe(Effect.provide(FetchHttpClient.layer))
 
 getText.pipe(Effect.andThen(Console.log), NodeRuntime.runMain)
 /*
@@ -2994,7 +2962,7 @@ const getText = Effect.gen(function* () {
     "https://jsonplaceholder.typicode.com/non-existing-page"
   )
   return yield* response.text
-}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+}).pipe(Effect.provide(FetchHttpClient.layer))
 
 getText.pipe(Effect.andThen(Console.log), NodeRuntime.runMain)
 /*
@@ -3029,8 +2997,7 @@ const addPost = Effect.gen(function* () {
       userId: 1
     }),
     Effect.flatMap(client.execute),
-    Effect.flatMap((res) => res.json),
-    Effect.scoped
+    Effect.flatMap((res) => res.json)
   )
 }).pipe(Effect.provide(FetchHttpClient.layer))
 
@@ -3068,8 +3035,7 @@ const addPost = Effect.gen(function* () {
       "application/json; charset=UTF-8"
     ),
     client.execute,
-    Effect.flatMap((res) => res.json),
-    Effect.scoped
+    Effect.flatMap((res) => res.json)
   )
 }).pipe(Effect.provide(FetchHttpClient.layer))
 
@@ -3113,8 +3079,7 @@ const addPost = Effect.gen(function* () {
       "application/json; charset=UTF-8"
     ),
     client.execute,
-    Effect.flatMap(HttpClientResponse.schemaBodyJson(Post)),
-    Effect.scoped
+    Effect.flatMap(HttpClientResponse.schemaBodyJson(Post))
   )
 }).pipe(Effect.provide(FetchHttpClient.layer))
 
@@ -3146,10 +3111,9 @@ const TestLayer = FetchHttpClient.layer.pipe(Layer.provide(FetchTest))
 const program = Effect.gen(function* () {
   const client = yield* HttpClient.HttpClient
 
-  return yield* client.get("https://www.google.com/").pipe(
-    Effect.flatMap((res) => res.text),
-    Effect.scoped
-  )
+  return yield* client
+    .get("https://www.google.com/")
+    .pipe(Effect.flatMap((res) => res.text))
 })
 
 // Test
