@@ -12773,6 +12773,17 @@ export const linkSpans: {
 } = effect.linkSpans
 
 /**
+ * Add span links to the current span.
+ *
+ * @since 3.14.0
+ * @category Tracing
+ */
+export const linkSpanCurrent: {
+  (span: Tracer.AnySpan, attributes?: Readonly<Record<string, unknown>> | undefined): Effect<void>
+  (links: ReadonlyArray<Tracer.SpanLink>): Effect<void>
+} = effect.linkSpanCurrent
+
+/**
  * Create a new span for tracing.
  *
  * @since 2.0.0
