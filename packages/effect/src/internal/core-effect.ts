@@ -1951,6 +1951,21 @@ export const annotateCurrentSpan: {
 }
 
 /* @internal */
+export const linkSpanCurrent: {
+  (span: Tracer.AnySpan, attributes?: Readonly<Record<string, unknown>> | undefined): Effect.Effect<void>
+  (links: ReadonlyArray<Tracer.SpanLink>): Effect.Effect<void>
+} = function(): Effect.Effect<void> {
+  const args = arguments
+  const links: ReadonlyArray<Tracer.SpanLink> = Array.isArray(args[0])
+    ? args[0]
+    : [{ _tag: "SpanLink", span: args[0], attributes: args[1] ?? {} }]
+  return ignore(core.flatMap(
+    currentSpan,
+    (span) => core.sync(() => span.addLinks(links))
+  ))
+}
+
+/* @internal */
 export const annotateSpans = dual<
   {
     (key: string, value: unknown): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
