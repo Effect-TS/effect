@@ -142,7 +142,7 @@ const responseRegistry = globalValue(
       }
     }
 
-    const timers = new Map<ClientResponse.HttpClientResponse, number>()
+    const timers = new Map<ClientResponse.HttpClientResponse, any>()
     return {
       register(response: ClientResponse.HttpClientResponse, controller: AbortController) {
         timers.set(response, setTimeout(() => controller.abort(), 5000))
