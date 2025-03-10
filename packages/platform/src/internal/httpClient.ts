@@ -178,7 +178,20 @@ export const make = (
         const tracerDisabled = !fiber.getFiberRef(FiberRef.currentTracerEnabled) ||
           fiber.getFiberRef(currentTracerDisabledWhen)(request)
         if (tracerDisabled) {
-          return f(request, url, controller.signal, fiber)
+          return Effect.uninterruptibleMask((restore) =>
+            Effect.matchCauseEffect(restore(f(request, url, controller.signal, fiber)), {
+              onSuccess(response) {
+                responseRegistry.register(response, controller)
+                return Effect.succeed(new InterruptibleResponse(response, controller))
+              },
+              onFailure(cause) {
+                if (Cause.isInterrupted(cause)) {
+                  controller.abort()
+                }
+                return Effect.failCause(cause)
+              }
+            })
+          )
         }
         return Effect.useSpan(
           `http.client ${request.method}`,
