@@ -296,6 +296,19 @@ describe("HashMap", () => {
     deepStrictEqual(HM.some(mapWith3LettersMax, (value, key) => value.length > 1 && key === 1), true)
   })
 
+  it("every", () => {
+    const mapWith3LettersMax = HM.make([0, "a"], [1, "bb"], [3, "ccc"])
+
+    deepStrictEqual(HM.every(mapWith3LettersMax, (value) => value.length > 2), false)
+    deepStrictEqual(pipe(mapWith3LettersMax, HM.every((value) => value.length > 2)), false)
+
+    deepStrictEqual(HM.every(mapWith3LettersMax, (value) => value.length >= 1), true)
+
+    deepStrictEqual(HM.every(mapWith3LettersMax, (value, key) => value.length >= 1 && key === 0), false)
+
+    deepStrictEqual(HM.every(mapWith3LettersMax, (value, key) => value.length >= 1 && key >= 0), true)
+  })
+
   it("reduce", () => {
     const map1 = HM.make([key(0), value("a")], [key(1), value("b")])
     const result1 = pipe(map1, HM.reduce("", (acc, { s }) => acc.length > 0 ? `${acc},${s}` : s))
