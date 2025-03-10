@@ -22,37 +22,37 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       const send = (_portId: number, message: O, transfers?: ReadonlyArray<unknown>) =>
         Effect.sync(() => port.postMessage([1, message], transfers as any))
 
-      const run = Effect.fnUntraced(
-        function*<A, E, R>(handler: (portId: number, message: I) => Effect.Effect<A, E, R>) {
-          const runtime = (yield* Effect.interruptible(Effect.runtime<R | Scope.Scope>())).pipe(
-            Runtime.updateContext(Context.omit(Scope.Scope))
-          ) as Runtime.Runtime<R>
-          const fiberSet = yield* FiberSet.make<any, WorkerError | E>()
-          const runFork = Runtime.runFork(runtime)
-          const onExit = (exit: Exit.Exit<any, E>) => {
-            if (exit._tag === "Failure" && !Cause.isInterruptedOnly(exit.cause)) {
-              Deferred.unsafeDone(closeLatch, Exit.die(Cause.squash(exit.cause)))
-            }
+      const run = Effect.fnUntraced(function*<A, E, R>(
+        handler: (portId: number, message: I) => Effect.Effect<A, E, R>
+      ) {
+        const runtime = (yield* Effect.interruptible(Effect.runtime<R | Scope.Scope>())).pipe(
+          Runtime.updateContext(Context.omit(Scope.Scope))
+        ) as Runtime.Runtime<R>
+        const fiberSet = yield* FiberSet.make<any, WorkerError | E>()
+        const runFork = Runtime.runFork(runtime)
+        const onExit = (exit: Exit.Exit<any, E>) => {
+          if (exit._tag === "Failure" && !Cause.isInterruptedOnly(exit.cause)) {
+            Deferred.unsafeDone(closeLatch, Exit.die(Cause.squash(exit.cause)))
           }
-          port.on("message", (message: Runner.BackingRunner.Message<I>) => {
-            if (message[0] === 0) {
-              const fiber = runFork(handler(0, message[1]))
-              fiber.addObserver(onExit)
-              FiberSet.unsafeAdd(fiberSet, fiber)
-            } else {
-              port.close()
-              Deferred.unsafeDone(closeLatch, Exit.void)
-            }
-          })
-          port.on("messageerror", (cause) => {
-            Deferred.unsafeDone(closeLatch, new WorkerError({ reason: "decode", cause }))
-          })
-          port.on("error", (cause) => {
-            Deferred.unsafeDone(closeLatch, new WorkerError({ reason: "unknown", cause }))
-          })
-          port.postMessage([0])
         }
-      )
+        port.on("message", (message: Runner.BackingRunner.Message<I>) => {
+          if (message[0] === 0) {
+            const fiber = runFork(handler(0, message[1]))
+            fiber.addObserver(onExit)
+            FiberSet.unsafeAdd(fiberSet, fiber)
+          } else {
+            port.close()
+            Deferred.unsafeDone(closeLatch, Exit.void)
+          }
+        })
+        port.on("messageerror", (cause) => {
+          Deferred.unsafeDone(closeLatch, new WorkerError({ reason: "decode", cause }))
+        })
+        port.on("error", (cause) => {
+          Deferred.unsafeDone(closeLatch, new WorkerError({ reason: "unknown", cause }))
+        })
+        port.postMessage([0])
+      })
 
       return { run, send }
     })
