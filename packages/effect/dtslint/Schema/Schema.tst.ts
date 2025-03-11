@@ -502,64 +502,377 @@ describe("Schema", () => {
     expect(schema.rest).type.toBe<readonly [typeof S.NumberFromString]>()
   })
 
-  it("Struct", () => {
-    const schema = S.Struct({ a: S.String, b: S.Number })
-    expect(S.asSchema(schema))
-      .type.toBe<S.Schema<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: number }>>()
-    expect(schema).type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
-    expect(schema.annotations({
-      pretty: () => (a) => {
-        expect(a).type.toBe<{
-          readonly a: string
-          readonly b: number
-        }>()
-        return "-"
-      }
-    })).type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
-    expect(schema.fields).type.toBe<{ readonly a: typeof S.String; readonly b: typeof S.Number }>()
-    expect(schema.records).type.toBe<readonly []>()
+  describe("Struct", () => {
+    it("baseline", () => {
+      const schema = S.Struct({ a: S.String, b: S.NumberFromString })
+      expect(S.asSchema(schema))
+        .type.toBe<S.Schema<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: string }>>()
+      expect(schema).type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.NumberFromString }>>()
+      expect(schema.annotations({
+        pretty: () => (a) => {
+          expect(a).type.toBe<{
+            readonly a: string
+            readonly b: number
+          }>()
+          return "-"
+        }
+      })).type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.NumberFromString }>>()
 
-    const MyModel = S.Struct({ a: S.String, b: S.NumberFromString })
-    expect(S.asSchema(MyModel))
-      .type.toBe<S.Schema<{ readonly a: string; readonly b: number }, { readonly a: string; readonly b: string }>>()
-    type MyModelType = S.Schema.Type<typeof MyModel>
-    type MyModelEncoded = S.Schema.Encoded<typeof MyModel>
-    expect<MyModelType>().type.toBe<{ readonly a: string; readonly b: number }>()
-    expect<MyModelEncoded>().type.toBe<{ readonly a: string; readonly b: string }>()
-    expect(S.asSchema(S.Struct({ a: S.Never }))).type.toBe<S.Schema<{ readonly a: never }, { readonly a: never }>>()
-    expect(S.Struct({ a: S.Never })).type.toBe<S.Struct<{ a: typeof S.Never }>>()
-    expect(
-      S.asSchema(S.Struct({ a: S.NumberFromString }, { key: S.String, value: S.NumberFromString }))
-    ).type.toBe<
-      S.Schema<
-        { readonly [x: string]: number; readonly a: number },
-        { readonly [x: string]: string; readonly a: string },
-        never
-      >
-    >()
-    expect(S.Struct({ a: S.NumberFromString }, { key: S.String, value: S.NumberFromString })).type.toBe<
-      S.TypeLiteral<
-        { a: typeof S.NumberFromString },
+      // exposed fields
+      expect(schema.fields).type.toBe<{ readonly a: typeof S.String; readonly b: typeof S.NumberFromString }>()
+      expect(schema.records).type.toBe<readonly []>()
+    })
+
+    it("should accept Never as a field", () => {
+      const schema = S.Struct({ a: S.Never, b: S.NumberFromString })
+      expect(S.asSchema(schema))
+        .type.toBe<S.Schema<{ readonly a: never; readonly b: number }, { readonly a: never; readonly b: string }>>()
+      expect(schema).type.toBe<S.Struct<{ a: typeof S.Never; b: typeof S.NumberFromString }>>()
+      expect(schema.annotations({
+        pretty: () => (a) => {
+          expect(a).type.toBe<{
+            readonly a: never
+            readonly b: number
+          }>()
+          return "-"
+        }
+      })).type.toBe<S.Struct<{ a: typeof S.Never; b: typeof S.NumberFromString }>>()
+
+      expect(S.asSchema(S.Struct({ a: anyNever }))).type.toBe<S.Schema<{ readonly a: any }, { readonly a: any }>>()
+      expect(S.asSchema(S.Struct({ a: neverAny }))).type.toBe<S.Schema<{ readonly a: never }, { readonly a: any }>>()
+      expect(S.asSchema(S.Struct({ a: anyNeverPropertySignature })))
+        .type.toBe<S.Schema<{ readonly a?: any }, { readonly a?: never }>>()
+      expect(S.asSchema(S.Struct({ a: neverAnyPropertySignature })))
+        .type.toBe<S.Schema<{ readonly a?: never }, { readonly a?: any }>>()
+    })
+
+    describe("make", () => {
+      it("baseline", () => {
+        const schema = S.Struct({ a: S.String, b: S.NumberFromString })
+        expect(schema.make).type.toBe<
+          (
+            props: { readonly a: string; readonly b: number },
+            options?: S.MakeOptions | undefined
+          ) => { readonly a: string; readonly b: number }
+        >()
+        expect(schema.annotations({}).make).type.toBe<
+          (
+            props: { readonly a: string; readonly b: number },
+            options?: S.MakeOptions | undefined
+          ) => { readonly a: string; readonly b: number }
+        >()
+      })
+
+      it("withConstructorDefault", () => {
+        const schema = S.Struct({
+          a: S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "")),
+          b: S.Number,
+          c: S.propertySignature(S.Boolean).pipe(S.withConstructorDefault(() => true))
+        })
+        expect(schema.make).type.toBe<
+          (
+            props: { readonly a?: string; readonly b: number; readonly c?: boolean },
+            options?: S.MakeOptions | undefined
+          ) => { readonly a: string; readonly b: number; readonly c: boolean }
+        >()
+        expect(schema.annotations({}).make).type.toBe<
+          (
+            props: { readonly a?: string; readonly b: number; readonly c?: boolean },
+            options?: S.MakeOptions | undefined
+          ) => { readonly a: string; readonly b: number; readonly c: boolean }
+        >()
+      })
+    })
+
+    it("pick", () => {
+      // @ts-expect-error
+      S.Struct({ a: S.String }).pick("c")
+      S.Struct({ a: S.propertySignature(S.String).pipe(S.fromKey("c")) })
+        // @ts-expect-error
+        .pick("c")
+
+      expect(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pick("a", "b"))
+        .type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
+
+      const f = <Fields extends S.Struct.Fields, A extends { readonly a: string }>(
+        schema: S.Struct<Fields> & S.Schema<A, S.Struct.Encoded<Fields>, S.Struct.Context<Fields>>
+      ) => {
+        expect(schema.fields).type.toBe<Readonly<Fields>>()
+        const picked = schema.pick("a") // existing field
+        expect(picked).type.toBe<S.Struct<{ a: Fields["a"] }>>()
+
+        const e = S.encodeUnknown(schema)(null)
+        expect(e).type.toBe<
+          Effect.Effect<S.Struct.Encoded<Fields>, ParseResult.ParseError, S.Schema.Context<Fields[keyof Fields]>>
+        >()
+
+        return picked
+      }
+
+      // @ts-expect-error
+      f(S.Struct({ b: S.String }))
+
+      // @ts-expect-error
+      f(S.Struct({ a: S.Number }))
+    })
+
+    it("omit", () => {
+      // @ts-expect-error
+      S.Struct({ a: S.String }).omit("c")
+      S.Struct({ a: S.propertySignature(S.String).pipe(S.fromKey("c")) })
+        // @ts-expect-error
+        .omit("c")
+
+      expect(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).omit("c"))
+        .type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
+      expect(S.Struct({ a: S.Number, b: S.Number.pipe(S.propertySignature, S.fromKey("c")) }).omit("b"))
+        .type.toBe<S.Struct<{ a: typeof S.Number }>>()
+
+      const f = <Fields extends S.Struct.Fields, A extends { readonly a: string }>(
+        schema: S.Struct<Fields> & S.Schema<A, S.Struct.Encoded<Fields>, S.Struct.Context<Fields>>
+      ) => {
+        expect(schema.fields).type.toBe<Readonly<Fields>>()
+        const omitted = schema.omit("a") // existing field
+        expect(omitted).type.toBe<S.Struct<{ [K in keyof Omit<Fields, "a">]: Omit<Fields, "a">[K] }>>()
+
+        const e = S.encodeUnknown(schema)(null)
+        expect(e).type.toBe<
+          Effect.Effect<S.Struct.Encoded<Fields>, ParseResult.ParseError, S.Schema.Context<Fields[keyof Fields]>>
+        >()
+
+        return omitted
+      }
+
+      // @ts-expect-error
+      f(S.Struct({ b: S.String }))
+
+      // @ts-expect-error
+      f(S.Struct({ a: S.Number }))
+    })
+  })
+
+  describe("Record", () => {
+    it("baseline", () => {
+      const schema = S.Record({ key: S.String, value: S.NumberFromString })
+      expect(S.asSchema(schema)).type.toBe<
+        S.Schema<{ readonly [x: string]: number }, { readonly [x: string]: string }>
+      >()
+      expect(schema).type.toBe<S.Record$<typeof S.String, typeof S.NumberFromString>>()
+      expect(schema.annotations({
+        pretty: () => (s) => {
+          expect(s).type.toBe<{ readonly [x: string]: number }>()
+          return "-"
+        }
+      })).type.toBe<S.Record$<typeof S.String, typeof S.NumberFromString>>()
+
+      // exposed fields
+      expect(schema.fields).type.toBe<{}>()
+      expect(schema.records).type.toBe<
         readonly [{ readonly key: typeof S.String; readonly value: typeof S.NumberFromString }]
-      >
-    >()
-    expect(S.Struct({ a: S.Number }, { key: S.String, value: S.Number }).records)
-      .type.toBe<readonly [{ readonly key: typeof S.String; readonly value: typeof S.Number }]>()
-    expect(
-      S.asSchema(S.Struct({ a: S.Number }, { key: S.String, value: S.Number }, { key: S.Symbol, value: S.Number }))
-    ).type.toBe<
-      S.Schema<
-        { readonly [x: string]: number; readonly [x: symbol]: number; readonly a: number },
-        { readonly [x: string]: number; readonly a: number },
-        never
-      >
-    >()
-    expect(S.asSchema(S.Struct({ a: anyNever }))).type.toBe<S.Schema<{ readonly a: any }, { readonly a: any }>>()
-    expect(S.asSchema(S.Struct({ a: neverAny }))).type.toBe<S.Schema<{ readonly a: never }, { readonly a: any }>>()
-    expect(S.asSchema(S.Struct({ a: anyNeverPropertySignature })))
-      .type.toBe<S.Schema<{ readonly a?: any }, { readonly a?: never }>>()
-    expect(S.asSchema(S.Struct({ a: neverAnyPropertySignature })))
-      .type.toBe<S.Schema<{ readonly a?: never }, { readonly a?: any }>>()
+      >()
+      expect(schema.key).type.toBe<typeof S.String>()
+      expect(schema.value).type.toBe<typeof S.NumberFromString>()
+    })
+
+    it("make", () => {
+      const schema = S.Record({ key: S.String, value: S.NumberFromString })
+      const make = schema.make
+      expect(make).type.toBe<
+        (
+          props: void | { readonly [x: string]: number },
+          options?: S.MakeOptions | undefined
+        ) => { readonly [x: string]: number }
+      >()
+    })
+
+    it("keys as union of literals", () => {
+      const schema = S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.NumberFromString })
+      expect(S.asSchema(schema)).type.toBe<
+        S.Schema<
+          { readonly a: number; readonly b: number },
+          { readonly a: string; readonly b: string }
+        >
+      >()
+      expect(schema).type.toBe<S.Record$<S.Union<[S.Literal<["a"]>, S.Literal<["b"]>]>, typeof S.NumberFromString>>()
+      expect(schema.annotations({
+        pretty: () => (s) => {
+          expect(s).type.toBe<{
+            readonly a: number
+            readonly b: number
+          }>()
+          return "-"
+        }
+      })).type.toBe<S.Record$<S.Union<[S.Literal<["a"]>, S.Literal<["b"]>]>, typeof S.NumberFromString>>()
+    })
+
+    it("keys as symbols", () => {
+      const schema = S.Record({ key: S.SymbolFromSelf, value: S.NumberFromString })
+      expect(S.asSchema(schema)).type.toBe<
+        S.Schema<
+          { readonly [x: symbol]: number },
+          { readonly [x: symbol]: string }
+        >
+      >()
+      expect(schema).type.toBe<S.Record$<typeof S.SymbolFromSelf, typeof S.NumberFromString>>()
+      expect(schema.annotations({
+        pretty: () => (s) => {
+          expect(s).type.toBe<{ readonly [x: symbol]: number }>()
+          return "-"
+        }
+      })).type.toBe<S.Record$<typeof S.SymbolFromSelf, typeof S.NumberFromString>>()
+    })
+
+    it("keys as template literals", () => {
+      const schema = S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.NumberFromString })
+      expect(S.asSchema(schema)).type.toBe<
+        S.Schema<{ readonly [x: `a${string}`]: number }, { readonly [x: `a${string}`]: string }>
+      >()
+      expect(schema).type.toBe<S.Record$<S.TemplateLiteral<`a${string}`>, typeof S.NumberFromString>>()
+      expect(schema.annotations({
+        pretty: () => (s) => {
+          expect(s).type.toBe<{ readonly [x: `a${string}`]: number }>()
+          return "-"
+        }
+      })).type.toBe<S.Record$<S.TemplateLiteral<`a${string}`>, typeof S.NumberFromString>>()
+    })
+
+    it("keys as branded types (string)", () => {
+      const schema = S.Record({ key: S.String.pipe(S.brand("UserId")), value: S.NumberFromString })
+      expect(S.asSchema(schema)).type.toBe<
+        S.Schema<{ readonly [x: string & Brand.Brand<"UserId">]: number }, { readonly [x: string]: string }>
+      >()
+      expect(schema).type.toBe<S.Record$<S.brand<typeof S.String, "UserId">, typeof S.NumberFromString>>()
+      expect(schema.annotations({
+        pretty: () => (s) => {
+          expect(s).type.toBe<{ readonly [x: string & Brand.Brand<"UserId">]: number }>()
+          return "-"
+        }
+      })).type.toBe<S.Record$<S.brand<typeof S.String, "UserId">, typeof S.NumberFromString>>()
+    })
+
+    it("keys as branded types (symbol)", () => {
+      const schema = S.Record({ key: S.String.pipe(S.brand(Symbol.for("UserId"))), value: S.NumberFromString })
+      expect(S.asSchema(schema)).type.toBe<
+        S.Schema<{ readonly [x: string & Brand.Brand<symbol>]: number }, { readonly [x: string]: string }>
+      >()
+      expect(schema).type.toBe<S.Record$<S.brand<typeof S.String, symbol>, typeof S.NumberFromString>>()
+      expect(schema.annotations({
+        pretty: () => (s) => {
+          expect(s).type.toBe<{ readonly [x: string & Brand.Brand<symbol>]: number }>()
+          return "-"
+        }
+      })).type.toBe<S.Record$<S.brand<typeof S.String, symbol>, typeof S.NumberFromString>>()
+    })
+  })
+
+  describe("TypeLiteral", () => {
+    it("1 index signature", () => {
+      const schema = S.Struct({ a: S.NumberFromString }, { key: S.String, value: S.NumberFromString })
+      expect(S.asSchema(schema)).type.toBe<
+        S.Schema<
+          { readonly [x: string]: number; readonly a: number },
+          { readonly [x: string]: string; readonly a: string }
+        >
+      >()
+      expect(schema).type.toBe<
+        S.TypeLiteral<
+          { a: typeof S.NumberFromString },
+          [{ readonly key: typeof S.String; readonly value: typeof S.NumberFromString }]
+        >
+      >()
+      expect(schema.annotations({
+        pretty: () => (s) => {
+          expect(s).type.toBe<{ readonly [x: string]: number; readonly a: number }>()
+          return "-"
+        }
+      })).type.toBe<
+        S.TypeLiteral<
+          { a: typeof S.NumberFromString },
+          [{ readonly key: typeof S.String; readonly value: typeof S.NumberFromString }]
+        >
+      >()
+
+      // exposed fields
+      expect(schema.fields).type.toBe<{ readonly a: typeof S.NumberFromString }>()
+      expect(schema.records).type.toBe<
+        readonly [{ readonly key: typeof S.String; readonly value: typeof S.NumberFromString }]
+      >()
+    })
+
+    it("make", () => {
+      const schema = S.Struct({ a: S.NumberFromString }, { key: S.String, value: S.NumberFromString })
+      expect(schema.make).type.toBe<
+        (
+          props: void | { readonly [x: string]: number; readonly a: number },
+          options?: S.MakeOptions | undefined
+        ) => { readonly [x: string]: number; readonly a: number }
+      >()
+      expect(schema.annotations({}).make).type.toBe<
+        (
+          props: void | { readonly [x: string]: number; readonly a: number },
+          options?: S.MakeOptions | undefined
+        ) => { readonly [x: string]: number; readonly a: number }
+      >()
+    })
+
+    it("2 index signatures", () => {
+      const schema = S.Struct(
+        { a: S.NumberFromString },
+        { key: S.String, value: S.NumberFromString },
+        { key: S.Symbol, value: S.NumberFromString }
+      )
+      expect(S.asSchema(schema)).type.toBe<
+        S.Schema<
+          { readonly [x: string]: number; readonly [x: symbol]: number; readonly a: number },
+          { readonly [x: string]: string; readonly a: string }
+        >
+      >()
+      expect(schema).type.toBe<
+        S.TypeLiteral<
+          { a: typeof S.NumberFromString },
+          [
+            { readonly key: typeof S.String; readonly value: typeof S.NumberFromString },
+            { readonly key: typeof S.Symbol; readonly value: typeof S.NumberFromString }
+          ]
+        >
+      >()
+      expect(schema.annotations({
+        pretty: () => (s) => {
+          expect(s).type.toBe<{ readonly [x: string]: number; readonly [x: symbol]: number; readonly a: number }>()
+          return "-"
+        }
+      })).type.toBe<
+        S.TypeLiteral<
+          { a: typeof S.NumberFromString },
+          [
+            { readonly key: typeof S.String; readonly value: typeof S.NumberFromString },
+            { readonly key: typeof S.Symbol; readonly value: typeof S.NumberFromString }
+          ]
+        >
+      >()
+
+      // exposed fields
+      expect(schema.fields).type.toBe<{ readonly a: typeof S.NumberFromString }>()
+      expect(schema.records).type.toBe<
+        readonly [
+          { readonly key: typeof S.String; readonly value: typeof S.NumberFromString },
+          { readonly key: typeof S.Symbol; readonly value: typeof S.NumberFromString }
+        ]
+      >()
+
+      expect(schema.make).type.toBe<
+        (
+          props: void | { readonly [x: string]: number; readonly [x: symbol]: number; readonly a: number },
+          options?: S.MakeOptions | undefined
+        ) => { readonly [x: string]: number; readonly [x: symbol]: number; readonly a: number }
+      >()
+      expect(schema.annotations({}).make).type.toBe<
+        (
+          props: void | { readonly [x: string]: number; readonly [x: symbol]: number; readonly a: number },
+          options?: S.MakeOptions | undefined
+        ) => { readonly [x: string]: number; readonly [x: symbol]: number; readonly a: number }
+      >()
+    })
   })
 
   it("optional", () => {
@@ -1203,61 +1516,6 @@ describe("Schema", () => {
     })
   })
 
-  describe("Struct Static Methods", () => {
-    it("make", () => {
-      const make1 = S.Struct({
-        a: S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "")),
-        b: S.Number,
-        c: S.propertySignature(S.Boolean).pipe(S.withConstructorDefault(() => true))
-      }).make
-      expect(hole<Parameters<typeof make1>[0]>()).type.toBe<
-        { readonly a?: string; readonly b: number; readonly c?: boolean }
-      >()
-      const make2 = S.Struct({
-        a: S.withConstructorDefault(S.propertySignature(S.String), () => ""),
-        b: S.Number,
-        c: S.withConstructorDefault(S.propertySignature(S.Boolean), () => true)
-      }).make
-      expect(hole<Parameters<typeof make2>[0]>()).type.toBe<
-        { readonly a?: string; readonly b: number; readonly c?: boolean }
-      >()
-      const make3 = S.Struct({
-        a: S.withConstructorDefault(S.propertySignature(S.String), () => "")
-      }).make
-      expect(hole<Parameters<typeof make3>[0]>()).type.toBe<void | { readonly a?: string } | undefined>()
-      class AA extends S.Class<AA>("AA")({
-        a: S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "")),
-        b: S.Number,
-        c: S.propertySignature(S.Boolean).pipe(S.withConstructorDefault(() => true))
-      }) {}
-      expect(hole<ConstructorParameters<typeof AA>>()).type.toBe<
-        [props: { readonly a?: string; readonly b: number; readonly c?: boolean }, options?: S.MakeOptions | undefined]
-      >()
-    })
-
-    it("pick", () => {
-      // @ts-expect-error
-      S.Struct({ a: S.String }).pick("c")
-      // @ts-expect-error
-      S.Struct({ a: S.propertySignature(S.String).pipe(S.fromKey("c")) }).pick("c")
-
-      expect(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pick("a", "b"))
-        .type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
-    })
-
-    it("omit", () => {
-      // @ts-expect-error
-      S.Struct({ a: S.String }).omit("c")
-      // @ts-expect-error
-      S.Struct({ a: S.propertySignature(S.String).pipe(S.fromKey("c")) }).omit("c")
-
-      expect(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).omit("c"))
-        .type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
-      expect(S.Struct({ a: S.Number, b: S.Number.pipe(S.propertySignature, S.fromKey("c")) }).omit("b"))
-        .type.toBe<S.Struct<{ a: typeof S.Number }>>()
-    })
-  })
-
   it("brand", () => {
     const schema = pipe(S.Number, S.int(), S.brand("Int"))
     expect(S.asSchema(schema)).type.toBe<S.Schema<number & Brand.Brand<"Int">, number>>()
@@ -1351,92 +1609,6 @@ describe("Schema", () => {
         never
       >
     >()
-  })
-
-  it("Record", () => {
-    expect(S.asSchema(S.Record({ key: S.String, value: S.String }).key)).type.toBe<S.Schema<string>>()
-    expect(S.Record({ key: S.String, value: S.String }).key).type.toBe<typeof S.String>()
-    expect(S.asSchema(S.Record({ key: S.String, value: S.String }).value)).type.toBe<S.Schema<string>>()
-    expect(S.Record({ key: S.String, value: S.String }).value).type.toBe<typeof S.String>()
-    expect(S.asSchema(S.Record({ key: S.String, value: S.String })))
-      .type.toBe<
-      S.Schema<
-        { readonly [x: string]: string },
-        { readonly [x: string]: string },
-        never
-      >
-    >()
-    expect(S.Record({ key: S.String, value: S.String })).type.toBe<S.Record$<typeof S.String, typeof S.String>>()
-    expect(S.asSchema(S.Record({ key: S.String, value: S.NumberFromString })))
-      .type.toBe<
-      S.Schema<
-        { readonly [x: string]: number },
-        { readonly [x: string]: string },
-        never
-      >
-    >()
-    expect(S.Record({ key: S.String, value: S.NumberFromString }))
-      .type.toBe<S.Record$<typeof S.String, typeof S.NumberFromString>>()
-    expect(S.asSchema(S.Record({ key: pipe(S.String, S.minLength(2)), value: S.String })))
-      .type.toBe<
-      S.Schema<
-        { readonly [x: string]: string },
-        { readonly [x: string]: string },
-        never
-      >
-    >()
-    expect(S.Record({ key: pipe(S.String, S.minLength(2)), value: S.String }))
-      .type.toBe<S.Record$<S.filter<typeof S.String>, typeof S.String>>()
-    expect(S.asSchema(S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.String })))
-      .type.toBe<
-      S.Schema<
-        { readonly a: string; readonly b: string },
-        { readonly a: string; readonly b: string },
-        never
-      >
-    >()
-    expect(S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.String }))
-      .type.toBe<S.Record$<S.Union<[S.Literal<["a"]>, S.Literal<["b"]>]>, typeof S.String>>()
-    expect(S.asSchema(S.Record({ key: S.SymbolFromSelf, value: S.String })))
-      .type.toBe<
-      S.Schema<
-        { readonly [x: symbol]: string },
-        { readonly [x: symbol]: string },
-        never
-      >
-    >()
-    expect(S.Record({ key: S.SymbolFromSelf, value: S.String }))
-      .type.toBe<S.Record$<typeof S.SymbolFromSelf, typeof S.String>>()
-    expect(S.asSchema(S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.String })))
-      .type.toBe<
-      S.Schema<
-        { readonly [x: `a${string}`]: string },
-        { readonly [x: `a${string}`]: string },
-        never
-      >
-    >()
-    expect(S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.String }))
-      .type.toBe<S.Record$<S.TemplateLiteral<`a${string}`>, typeof S.String>>()
-    expect(S.asSchema(S.Record({ key: S.String.pipe(S.brand("UserId")), value: S.String })))
-      .type.toBe<
-      S.Schema<
-        { readonly [x: string & Brand.Brand<"UserId">]: string },
-        { readonly [x: string]: string },
-        never
-      >
-    >()
-    expect(S.Record({ key: S.String.pipe(S.brand("UserId")), value: S.String }))
-      .type.toBe<S.Record$<S.brand<typeof S.String, "UserId">, typeof S.String>>()
-    expect(S.asSchema(S.Record({ key: S.String.pipe(S.brand(Symbol.for("UserId"))), value: S.String })))
-      .type.toBe<
-      S.Schema<
-        { readonly [x: string & Brand.Brand<symbol>]: string },
-        { readonly [x: string]: string },
-        never
-      >
-    >()
-    expect(S.Record({ key: S.String.pipe(S.brand(Symbol.for("UserId"))), value: S.String }))
-      .type.toBe<S.Record$<S.brand<typeof S.String, symbol>, typeof S.String>>()
   })
 
   it("extend", () => {
