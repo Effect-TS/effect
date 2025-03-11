@@ -137,6 +137,38 @@ describe("Either", () => {
     ).type.toBe<Either.Either<number, "b">>()
   })
 
+  it("fromNullable", () => {
+    const nullableString = hole<string | null>()
+    const nullableObject = hole<{ a: string } | undefined>()
+
+    expect(
+      Either.fromNullable(
+        nullableString,
+        () => new Error()
+      )
+    ).type.toBe<Either.Either<string, Error>>()
+
+    expect(
+      pipe(
+        nullableString,
+        Either.fromNullable(() => new Error())
+      )
+    ).type.toBe<Either.Either<string, Error>>()
+
+    expect(
+      Either.fromNullable(nullableObject, () => new Error())
+    ).type.toBe<Either.Either<{ a: string }, Error>>()
+
+    expect(
+      pipe(
+        nullableObject,
+        Either.fromNullable(() => new Error())
+      )
+    ).type.toBe<
+      Either.Either<{ a: string }, Error>
+    >()
+  })
+
   it("filterOrLeft", () => {
     const predicateUnknown = hole<Predicate.Predicate<unknown>>()
 
