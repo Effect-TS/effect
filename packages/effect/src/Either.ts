@@ -158,7 +158,7 @@ export const fromNullable: {
 } = dual(
   2,
   <R, L>(self: R, onNullable: (right: R) => L): Either<NonNullable<R>, L> =>
-    self == null ? left(onNullable(self)) : right(self as NonNullable<R>)
+    self == null ? left(onNullable(self)) : right(self)
 )
 
 /**
