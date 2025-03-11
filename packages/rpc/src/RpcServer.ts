@@ -296,7 +296,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       effect = concurrencySemaphore.withPermits(1)(effect)
     }
     const runtime = Runtime.make({
-      context: Context.merge(requestFiber.currentContext, entry.context),
+      context: Context.merge(entry.context, requestFiber.currentContext),
       fiberRefs: requestFiber.getFiberRefs(),
       runtimeFlags: Runtime.defaultRuntime.runtimeFlags
     })
