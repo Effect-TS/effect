@@ -438,4 +438,12 @@ describe("DateTime", () => {
         strictEqual(dt.toJSON(), "2023-12-31T12:00:00.000Z")
       }))
   })
+  describe("nowAsDate", () => {
+    it.effect("should mutate the date", () =>
+      Effect.gen(function*() {
+        yield* setTo2024NZ
+        const now = yield* DateTime.nowAsDate
+        deepStrictEqual(now, new Date("2023-12-31T11:00:00.000Z"))
+      }))
+  })
 })

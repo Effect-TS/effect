@@ -439,7 +439,7 @@ export const now: Effect.Effect<Utc> = Internal.now
  * })
  * ```
  */
-export const nowAsDate: Effect.Effect<Date> = Effect.map(Internal.now, (dateTime) => toDate(dateTime))
+export const nowAsDate: Effect.Effect<Date> = Internal.nowAsDate
 
 /**
  * Get the current time using `Date.now`.
