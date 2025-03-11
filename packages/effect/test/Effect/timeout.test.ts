@@ -21,7 +21,7 @@ describe("Effect", () => {
       const result = yield* Fiber.join(fiber)
       assertTrue(
         result.toString().includes(
-          "TimeoutException: Operation timed after '1s 500ms'"
+          "TimeoutException: Operation timed out after '1s 500ms'"
         )
       )
     }))

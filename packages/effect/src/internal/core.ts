@@ -2349,6 +2349,7 @@ export const TimeoutExceptionTypeId: Cause.TimeoutExceptionTypeId = Symbol.for(
 export const TimeoutException = makeException<Cause.TimeoutException>({
   [TimeoutExceptionTypeId]: TimeoutExceptionTypeId
 }, "TimeoutException")
+
 /** @internal */
 export const timeoutExceptionFromDuration = (duration: Duration.DurationInput): Cause.TimeoutException =>
   new TimeoutException(`Operation timed out after '${Duration.format(duration)}'`)
