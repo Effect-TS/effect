@@ -2667,7 +2667,7 @@ export declare namespace IndexSignature {
   /**
    * @since 3.10.0
    */
-  type Type<Records extends IndexSignature.Records> = MergeTuple<
+  export type Type<Records extends IndexSignature.Records> = MergeTuple<
     {
       readonly [K in keyof Records]: {
         readonly [P in Schema.Type<Records[K]["key"]>]: Schema.Type<Records[K]["value"]>
