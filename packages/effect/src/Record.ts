@@ -1239,7 +1239,7 @@ export const singleton = <K extends string | symbol, A>(key: K, value: A): Recor
  *
  * const record = { a: 1, b: 2, c: 3 }
  * const result = Record.findFirstEntry(record, (value, key) => value > 1 && key !== "b")
- * assert.deepStrictEqual(result, Option.some(["c", 3]))
+ * console.log(result) // Option.Some(["c", 3])
  * ```
  *
  * @category elements
