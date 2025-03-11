@@ -1,5 +1,13 @@
 # effect
 
+## 3.13.10
+
+### Patch Changes
+
+- [#4578](https://github.com/Effect-TS/effect/pull/4578) [`527c964`](https://github.com/Effect-TS/effect/commit/527c9645229f5be9714a7e60a38a9e753c4bbfb1) Thanks @gcanti! - Allow `toString` Method to Be Overridden in Schema Classes, closes #4577.
+
+  Previously, attempting to override the `toString` method in schema classes caused a `TypeError` in the browser because the property was set as **read-only** (`writable: false`). This fix makes `toString` **writable**, allowing developers to override it when needed.
+
 ## 3.13.9
 
 ### Patch Changes
