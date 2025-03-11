@@ -2351,7 +2351,7 @@ export const TimeoutException = makeException<Cause.TimeoutException>({
 }, "TimeoutException")
 /** @internal */
 export const timeoutExceptionFromDuration = (duration: Duration.DurationInput): Cause.TimeoutException =>
-  new TimeoutException(`Operation timed out before the specified duration of '${Duration.format(duration)}' elapsed`)
+  new TimeoutException(`Operation timed out after '${Duration.format(duration)}'`)
 
 /** @internal */
 export const isTimeoutException = (u: unknown): u is Cause.TimeoutException => hasProperty(u, TimeoutExceptionTypeId)
