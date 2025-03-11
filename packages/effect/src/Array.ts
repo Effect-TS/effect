@@ -1275,10 +1275,10 @@ export const modifyOption: {
  *
  * const numbers = [1, 2, 3, 4]
  * const result = Array.modifyFirst(numbers, n => n > 2, (n) => n * 2)
- * assert.deepStrictEqual(result, [1, 2, 6, 4])
+ * console.log(result) // [1, 2, 6, 4]
  *
  * const outOfBoundsResult = Array.modifyFirst(numbers, n => n > 5, (n) => n * 2)
- * assert.deepStrictEqual(outOfBoundsResult, [1, 2, 3, 4])
+ * console.log(outOfBoundsResult) // [1, 2, 3, 4]
  * ```
  *
  * @since 3.14.0
@@ -1319,10 +1319,10 @@ export const modifyFirst: {
  *
  * const numbers = [1, 2, 3, 4]
  * const result = Array.modifyFirstOption(numbers, n => n > 2, (n) => n * 2)
- * assert.deepStrictEqual(result, Option.some([1, 2, 6, 4]))
+ * console.log(result) // Option.some([1, 2, 6, 4])
  *
  * const outOfBoundsResult = Array.modifyFirstOption(numbers, n => n > 5, (n) => n * 2)
- * assert.deepStrictEqual(outOfBoundsResult, Option.none())
+ * console.log(outOfBoundsResult) // Option.none()
  * ```
  *
  * @since 3.14.0
@@ -2092,8 +2092,8 @@ export const chunksOf: {
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
- * assert.deepStrictEqual(Array.window(numbers, 3), [[1, 2, 3], [2, 3, 4], [3, 4, 5]])
- * assert.deepStrictEqual(Array.window(numbers, 6), [])
+ * console.log(Array.window(numbers, 3)) // [[1, 2, 3], [2, 3, 4], [3, 4, 5]]
+ * console.log(Array.window(numbers, 6)) // []
  * ```
  *
  * @category splitting
