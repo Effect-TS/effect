@@ -2660,30 +2660,30 @@ export declare namespace IndexSignature {
    */
   export type NonEmptyRecords = array_.NonEmptyReadonlyArray<Record>
 
+  type MergeTuple<T extends ReadonlyArray<unknown>> = T extends readonly [infer Head, ...infer Tail] ?
+    Head & MergeTuple<Tail>
+    : {}
+
   /**
    * @since 3.10.0
    */
-  export type Type<
-    Records extends IndexSignature.Records
-  > = Types.UnionToIntersection<
+  type Type<Records extends IndexSignature.Records> = MergeTuple<
     {
-      [K in keyof Records]: {
+      readonly [K in keyof Records]: {
         readonly [P in Schema.Type<Records[K]["key"]>]: Schema.Type<Records[K]["value"]>
       }
-    }[number]
+    }
   >
 
   /**
    * @since 3.10.0
    */
-  export type Encoded<
-    Records extends IndexSignature.Records
-  > = Types.UnionToIntersection<
+  export type Encoded<Records extends IndexSignature.Records> = MergeTuple<
     {
-      [K in keyof Records]: {
+      readonly [K in keyof Records]: {
         readonly [P in Schema.Encoded<Records[K]["key"]>]: Schema.Encoded<Records[K]["value"]>
       }
-    }[number]
+    }
   >
 
   /**
@@ -2736,7 +2736,7 @@ export interface TypeLiteral<
     | IndexSignature.Context<Records>
   >
 {
-  readonly fields: { readonly [K in keyof Fields]: Fields[K] }
+  readonly fields: Readonly<Fields>
   readonly records: Readonly<Records>
   annotations(
     annotations: Annotations.Schema<Simplify<TypeLiteral.Type<Fields, Records>>>
@@ -2846,14 +2846,11 @@ const lazilyMergeDefaults = (
   return out
 }
 
-const makeTypeLiteralClass = <
-  Fields extends Struct.Fields,
-  const Records extends IndexSignature.Records
->(
+function makeTypeLiteralClass<Fields extends Struct.Fields, const Records extends IndexSignature.Records>(
   fields: Fields,
   records: Records,
   ast: AST.AST = getDefaultTypeLiteralAST(fields, records)
-): TypeLiteral<Fields, Records> => {
+): TypeLiteral<Fields, Records> {
   return class TypeLiteralClass extends make<
     Simplify<TypeLiteral.Type<Fields, Records>>,
     Simplify<TypeLiteral.Encoded<Fields, Records>>,
@@ -2894,7 +2891,22 @@ const makeTypeLiteralClass = <
  * @category api interface
  * @since 3.10.0
  */
-export interface Struct<Fields extends Struct.Fields> extends TypeLiteral<Fields, []> {
+export interface Struct<Fields extends Struct.Fields> extends
+  AnnotableClass<
+    Struct<Fields>,
+    Simplify<Struct.Type<Fields>>,
+    Simplify<Struct.Encoded<Fields>>,
+    Struct.Context<Fields>
+  >
+{
+  readonly fields: Readonly<Fields>
+  readonly records: readonly []
+  make(
+    props: RequiredKeys<Struct.Constructor<Fields>> extends never ? void | Simplify<Struct.Constructor<Fields>>
+      : Simplify<Struct.Constructor<Fields>>,
+    options?: MakeOptions
+  ): Simplify<Struct.Type<Fields>>
+
   annotations(annotations: Annotations.Schema<Simplify<Struct.Type<Fields>>>): Struct<Fields>
   pick<Keys extends ReadonlyArray<keyof Fields>>(...keys: Keys): Struct<Simplify<Pick<Fields, Keys[number]>>>
   omit<Keys extends ReadonlyArray<keyof Fields>>(...keys: Keys): Struct<Simplify<Omit<Fields, Keys[number]>>>
@@ -2986,29 +2998,43 @@ export const TaggedStruct = <Tag extends AST.LiteralValue, Fields extends Struct
  * @category api interface
  * @since 3.10.0
  */
-export interface Record$<K extends Schema.All, V extends Schema.All> extends TypeLiteral<{}, [{ key: K; value: V }]> {
+export interface Record$<K extends Schema.All, V extends Schema.All> extends
+  AnnotableClass<
+    Record$<K, V>,
+    { readonly [P in Schema.Type<K>]: Schema.Type<V> },
+    { readonly [P in Schema.Encoded<K>]: Schema.Encoded<V> },
+    | Schema.Context<K>
+    | Schema.Context<V>
+  >
+{
+  readonly fields: {}
+  readonly records: readonly [{ readonly key: K; readonly value: V }]
   readonly key: K
   readonly value: V
-  annotations(
-    annotations: Annotations.Schema<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
-  ): Record$<K, V>
+  make(
+    props: void | { readonly [P in Schema.Type<K>]: Schema.Type<V> },
+    options?: MakeOptions
+  ): { readonly [P in Schema.Type<K>]: Schema.Type<V> }
+  annotations(annotations: Annotations.Schema<{ readonly [P in Schema.Type<K>]: Schema.Type<V> }>): Record$<K, V>
 }
 
-const makeRecordClass = <K extends Schema.All, V extends Schema.All>(
+function makeRecordClass<K extends Schema.All, V extends Schema.All>(
   key: K,
   value: V,
   ast?: AST.AST
-): Record$<K, V> => (class RecordClass extends makeTypeLiteralClass({}, [{ key, value }], ast) {
-  static override annotations(
-    annotations: Annotations.Schema<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
-  ) {
-    return makeRecordClass(key, value, mergeSchemaAnnotations(this.ast, annotations))
+): Record$<K, V> {
+  return class RecordClass extends makeTypeLiteralClass({}, [{ key, value }], ast) {
+    static override annotations(
+      annotations: Annotations.Schema<{ readonly [P in Schema.Type<K>]: Schema.Type<V> }>
+    ): Record$<K, V> {
+      return makeRecordClass(key, value, mergeSchemaAnnotations(this.ast, annotations))
+    }
+
+    static key = key
+
+    static value = value
   }
-
-  static key = key
-
-  static value = value
-})
+}
 
 /**
  * @category constructors
