@@ -1210,40 +1210,52 @@ describe("Array", () => {
 
   it("modifyFirst", () => {
     // Empty Array
-    expect(Array.modifyFirst([], (n) => {
-      expect(n).type.toBe<never>()
-      return true
-    }, (n) => {
-      expect(n).type.toBe<never>()
-      return "a"
+    expect(Array.modifyFirst([], {
+      condition: (n) => {
+        expect(n).type.toBe<never>()
+        return true
+      },
+      updateFunction: (n) => {
+        expect(n).type.toBe<never>()
+        return "a"
+      }
     })).type.toBe<Array<string>>()
     expect(pipe(
       [],
-      Array.modifyFirst((n) => {
-        expect(n).type.toBe<never>()
-        return true
-      }, (n) => {
-        expect(n).type.toBe<never>()
-        return "a"
+      Array.modifyFirst({
+        condition: (n) => {
+          expect(n).type.toBe<never>()
+          return true
+        },
+        updateFunction: (n) => {
+          expect(n).type.toBe<never>()
+          return "a"
+        }
       })
     )).type.toBe<Array<string>>()
 
     // Array
-    expect(Array.modifyFirst(numbers, (n) => {
-      expect(n).type.toBe<number>()
-      return true
-    }, (n) => {
-      expect(n).type.toBe<number>()
-      return "a"
+    expect(Array.modifyFirst(numbers, {
+      condition: (n) => {
+        expect(n).type.toBe<number>()
+        return true
+      },
+      updateFunction: (n) => {
+        expect(n).type.toBe<number>()
+        return "a"
+      }
     })).type.toBe<Array<string | number>>()
     expect(pipe(
       numbers,
-      Array.modifyFirst((n) => {
-        expect(n).type.toBe<number>()
-        return true
-      }, (n) => {
-        expect(n).type.toBe<number>()
-        return "a"
+      Array.modifyFirst({
+        condition: (n) => {
+          expect(n).type.toBe<number>()
+          return true
+        },
+        updateFunction: (n) => {
+          expect(n).type.toBe<number>()
+          return "a"
+        }
       })
     )).type.toBe<Array<string | number>>()
 
@@ -1251,99 +1263,127 @@ describe("Array", () => {
     expect(
       Array.modifyFirst(
         arrayOfNumberArrays,
-        Array.isNonEmptyArray,
-        (n): Array<number> => {
-          expect(n).type.toBe<Array.NonEmptyArray<number>>()
-          return n
+        {
+          condition: (n) => Array.isNonEmptyArray(n),
+          updateFunction: (n): Array<number> => {
+            expect(n).type.toBe<Array.NonEmptyArray<number>>()
+            return n
+          }
         }
       )
     ).type.toBe<Array<Array<number>>>()
     expect(pipe(
       arrayOfNumberArrays,
       Array.modifyFirst(
-        Array.isNonEmptyArray,
-        (n): Array<number> => {
-          expect(n).type.toBe<Array.NonEmptyArray<number>>()
-          return n
+        {
+          condition: (n) => Array.isNonEmptyArray(n),
+          updateFunction: (n): Array<number> => {
+            expect(n).type.toBe<Array.NonEmptyArray<number>>()
+            return n
+          }
         }
       )
     )).type.toBe<Array<Array<number>>>()
 
     // NonEmptyArray
-    expect(Array.modifyFirst(nonEmptyNumbers, (n) => {
-      expect(n).type.toBe<number>()
-      return true
-    }, (n) => {
-      expect(n).type.toBe<number>()
-      return "a" as const
+    expect(Array.modifyFirst(nonEmptyNumbers, {
+      condition: (n) => {
+        expect(n).type.toBe<number>()
+        return true
+      },
+      updateFunction: (n) => {
+        expect(n).type.toBe<number>()
+        return "a" as const
+      }
     })).type.toBe<[number | "a", ...Array<number | "a">]>()
     expect(pipe(
       nonEmptyNumbers,
-      Array.modifyFirst((n) => {
-        expect(n).type.toBe<number>()
-        return true
-      }, (n) => {
-        expect(n).type.toBe<number>()
-        return "a" as const
+      Array.modifyFirst({
+        condition: (n) => {
+          expect(n).type.toBe<number>()
+          return true
+        },
+        updateFunction: (n) => {
+          expect(n).type.toBe<number>()
+          return "a" as const
+        }
       })
     )).type.toBe<[number | "a", ...Array<number | "a">]>()
 
     // Iterable
-    expect(Array.modifyFirst(new Set([1, 2] as const), (n) => {
-      expect(n).type.toBe<1 | 2>()
-      return true
-    }, (n) => {
-      expect(n).type.toBe<1 | 2>()
-      return "a" as const
+    expect(Array.modifyFirst(new Set([1, 2] as const), {
+      condition: (n) => {
+        expect(n).type.toBe<1 | 2>()
+        return true
+      },
+      updateFunction: (n) => {
+        expect(n).type.toBe<1 | 2>()
+        return "a" as const
+      }
     })).type.toBe<Array<"a" | 1 | 2>>()
     expect(pipe(
       new Set([1, 2] as const),
-      Array.modifyFirst((n) => {
-        expect(n).type.toBe<1 | 2>()
-        return true
-      }, (n) => {
-        expect(n).type.toBe<1 | 2>()
-        return "a" as const
+      Array.modifyFirst({
+        condition: (n) => {
+          expect(n).type.toBe<1 | 2>()
+          return true
+        },
+        updateFunction: (n) => {
+          expect(n).type.toBe<1 | 2>()
+          return "a" as const
+        }
       })
     )).type.toBe<Array<"a" | 1 | 2>>()
   })
 
   it("modifyFirstOption", () => {
     // Empty Array
-    expect(Array.modifyFirstOption([], (n) => {
-      expect(n).type.toBe<never>()
-      return true
-    }, (n) => {
-      expect(n).type.toBe<never>()
-      return "a"
+    expect(Array.modifyFirstOption([], {
+      condition: (n) => {
+        expect(n).type.toBe<never>()
+        return true
+      },
+      updateFunction: (n) => {
+        expect(n).type.toBe<never>()
+        return "a"
+      }
     })).type.toBe<Option.Option<Array<string>>>()
     expect(pipe(
       [],
-      Array.modifyFirstOption((n) => {
-        expect(n).type.toBe<never>()
-        return true
-      }, (n) => {
-        expect(n).type.toBe<never>()
-        return "a"
+      Array.modifyFirstOption({
+        condition: (n) => {
+          expect(n).type.toBe<never>()
+          return true
+        },
+        updateFunction: (n) => {
+          expect(n).type.toBe<never>()
+          return "a"
+        }
       })
     )).type.toBe<Option.Option<Array<string>>>()
 
     // Array
-    expect(Array.modifyFirstOption(numbers, (n) => {
-      expect(n).type.toBe<number>()
-      return true
-    }, (n) => {
-      expect(n).type.toBe<number>()
-      return "a"
+    expect(Array.modifyFirstOption(numbers, {
+      condition: (n) => {
+        expect(n).type.toBe<number>()
+        return true
+      },
+      updateFunction: (n) => {
+        expect(n).type.toBe<number>()
+        return "a"
+      }
     })).type.toBe<Option.Option<Array<string | number>>>()
     expect(pipe(
       numbers,
-      Array.modifyFirstOption((n) => {
-        expect(n).type.toBe<number>()
-        return true
-      }, (n) => {
-        expect(n).type.toBe<number>()
-        return "a"
+      Array.modifyFirstOption({
+        condition: (n) => {
+          expect(n).type.toBe<number>()
+          return true
+        },
+        updateFunction: (n) => {
+          expect(n).type.toBe<number>()
+          return "a"
+        }
       })
     )).type.toBe<Option.Option<Array<string | number>>>()
 
@@ -1351,59 +1391,75 @@ describe("Array", () => {
     expect(
       Array.modifyFirstOption(
         arrayOfNumberArrays,
-        Array.isNonEmptyArray,
-        (n): Array<number> => {
-          expect(n).type.toBe<Array.NonEmptyArray<number>>()
-          return n
+        {
+          condition: (n) => Array.isNonEmptyArray(n),
+          updateFunction: (n): Array<number> => {
+            expect(n).type.toBe<Array.NonEmptyArray<number>>()
+            return n
+          }
         }
       )
     ).type.toBe<Option.Option<Array<Array<number>>>>()
     expect(pipe(
       arrayOfNumberArrays,
       Array.modifyFirstOption(
-        Array.isNonEmptyArray,
-        (n): Array<number> => {
-          expect(n).type.toBe<Array.NonEmptyArray<number>>()
-          return n
+        {
+          condition: (n) => Array.isNonEmptyArray(n),
+          updateFunction: (n): Array<number> => {
+            expect(n).type.toBe<Array.NonEmptyArray<number>>()
+            return n
+          }
         }
       )
     )).type.toBe<Option.Option<Array<Array<number>>>>()
 
     // NonEmptyArray
-    expect(Array.modifyFirstOption(nonEmptyNumbers, (n) => {
-      expect(n).type.toBe<number>()
-      return true
-    }, (n) => {
-      expect(n).type.toBe<number>()
-      return "a" as const
+    expect(Array.modifyFirstOption(nonEmptyNumbers, {
+      condition: (n) => {
+        expect(n).type.toBe<number>()
+        return true
+      },
+      updateFunction: (n) => {
+        expect(n).type.toBe<number>()
+        return "a" as const
+      }
     })).type.toBe<Option.Option<[number | "a", ...Array<number | "a">]>>()
     expect(pipe(
       nonEmptyNumbers,
-      Array.modifyFirstOption((n) => {
-        expect(n).type.toBe<number>()
-        return true
-      }, (n) => {
-        expect(n).type.toBe<number>()
-        return "a" as const
+      Array.modifyFirstOption({
+        condition: (n) => {
+          expect(n).type.toBe<number>()
+          return true
+        },
+        updateFunction: (n) => {
+          expect(n).type.toBe<number>()
+          return "a" as const
+        }
       })
     )).type.toBe<Option.Option<[number | "a", ...Array<number | "a">]>>()
 
     // Iterable
-    expect(Array.modifyFirstOption(new Set([1, 2] as const), (n) => {
-      expect(n).type.toBe<1 | 2>()
-      return true
-    }, (n) => {
-      expect(n).type.toBe<1 | 2>()
-      return "a" as const
+    expect(Array.modifyFirstOption(new Set([1, 2] as const), {
+      condition: (n) => {
+        expect(n).type.toBe<1 | 2>()
+        return true
+      },
+      updateFunction: (n) => {
+        expect(n).type.toBe<1 | 2>()
+        return "a" as const
+      }
     })).type.toBe<Option.Option<Array<"a" | 1 | 2>>>()
     expect(pipe(
       new Set([1, 2] as const),
-      Array.modifyFirstOption((n) => {
-        expect(n).type.toBe<1 | 2>()
-        return true
-      }, (n) => {
-        expect(n).type.toBe<1 | 2>()
-        return "a" as const
+      Array.modifyFirstOption({
+        condition: (n) => {
+          expect(n).type.toBe<1 | 2>()
+          return true
+        },
+        updateFunction: (n) => {
+          expect(n).type.toBe<1 | 2>()
+          return "a" as const
+        }
       })
     )).type.toBe<Option.Option<Array<"a" | 1 | 2>>>()
   })

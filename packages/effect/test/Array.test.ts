@@ -439,27 +439,27 @@ describe("Array", () => {
     })
 
     it("modifyFirst", () => {
-      deepStrictEqual(pipe([1, 2, 3], Arr.modifyFirst((n) => n > 1, double)), [1, 4, 3])
+      deepStrictEqual(pipe([1, 2, 3], Arr.modifyFirst({ condition: (n) => n > 1, updateFunction: double })), [1, 4, 3])
       // no predicate match
-      deepStrictEqual(pipe([], Arr.modifyFirst((n) => n > 1, double)), [])
-      deepStrictEqual(pipe([1, 2, 3], Arr.modifyFirst((n) => n > 4, double)), [1, 2, 3])
+      deepStrictEqual(pipe([], Arr.modifyFirst({ condition: (n) => n > 1, updateFunction: double })), [])
+      deepStrictEqual(pipe([1, 2, 3], Arr.modifyFirst({ condition: (n) => n > 4, updateFunction: double })), [1, 2, 3])
 
-      deepStrictEqual(Arr.modifyFirst([1, 2, 3], (n) => n > 1, double), [1, 4, 3])
+      deepStrictEqual(Arr.modifyFirst([1, 2, 3], { condition: (n) => n > 1, updateFunction: double }), [1, 4, 3])
       // no predicate match
-      deepStrictEqual(Arr.modifyFirst([], (n) => n > 1, double), [])
-      deepStrictEqual(Arr.modifyFirst([1, 2, 3], (n) => n > 4, double), [1, 2, 3])
+      deepStrictEqual(Arr.modifyFirst([], { condition: (n) => n > 1, updateFunction: double }), [])
+      deepStrictEqual(Arr.modifyFirst([1, 2, 3], { condition: (n) => n > 4, updateFunction: double }), [1, 2, 3])
     })
 
     it("modifyFirstOption", () => {
-      assertSome(pipe([1, 2, 3], Arr.modifyFirstOption((n) => n > 1, double)), [1, 4, 3])
+      assertSome(pipe([1, 2, 3], Arr.modifyFirstOption({ condition: (n) => n > 1, updateFunction: double })), [1, 4, 3])
       // no predicate match
-      assertNone(pipe([], Arr.modifyFirstOption((n) => n > 1, double)))
-      assertNone(pipe([1, 2, 3], Arr.modifyFirstOption((n) => n > 4, double)))
+      assertNone(pipe([], Arr.modifyFirstOption({ condition: (n) => n > 1, updateFunction: double })))
+      assertNone(pipe([1, 2, 3], Arr.modifyFirstOption({ condition: (n) => n > 4, updateFunction: double })))
 
-      assertSome(Arr.modifyFirstOption([1, 2, 3], (n) => n > 1, double), [1, 4, 3])
+      assertSome(Arr.modifyFirstOption([1, 2, 3], { condition: (n) => n > 1, updateFunction: double }), [1, 4, 3])
       // no predicate match
-      assertNone(Arr.modifyFirstOption([], (n) => n > 1, double))
-      assertNone(Arr.modifyFirstOption([1, 2, 3], (n) => n > 4, double))
+      assertNone(Arr.modifyFirstOption([], { condition: (n) => n > 1, updateFunction: double }))
+      assertNone(Arr.modifyFirstOption([1, 2, 3], { condition: (n) => n > 4, updateFunction: double }))
     })
 
     it("remove", () => {

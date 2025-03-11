@@ -1274,10 +1274,10 @@ export const modifyOption: {
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4]
- * const result = Array.modifyFirst(numbers, n => n > 2, (n) => n * 2)
+ * const result = Array.modifyFirst(numbers, { condition: n => n > 2, updateFunction: (n) => n * 2 })
  * console.log(result) // [1, 2, 6, 4]
  *
- * const outOfBoundsResult = Array.modifyFirst(numbers, n => n > 5, (n) => n * 2)
+ * const outOfBoundsResult = Array.modifyFirst(numbers, {condition: n => n > 5, updateFunction: (n) => n * 2 })
  * console.log(outOfBoundsResult) // [1, 2, 3, 4]
  * ```
  *
@@ -1286,27 +1286,31 @@ export const modifyOption: {
 
 export const modifyFirst: {
   <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
-    refinement: (a: ReadonlyArray.Infer<S>, i: number) => a is A2,
-    f: (a: A2) => B
+    options: { condition: (a: ReadonlyArray.Infer<S>, i: number) => a is A2; updateFunction: (a: A2) => B }
   ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
   <A, B, S extends Iterable<A> = Iterable<A>>(
-    predicate: (a: ReadonlyArray.Infer<S>, i: number) => boolean,
-    f: (a: ReadonlyArray.Infer<S>) => B
+    options: {
+      condition: (a: ReadonlyArray.Infer<S>, i: number) => boolean
+      updateFunction: (a: ReadonlyArray.Infer<S>) => B
+    }
   ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
   <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
     self: S,
-    refinement: (a: ReadonlyArray.Infer<S>, i: number) => a is A2,
-    f: (a: A2) => B
+    options: { condition: (a: ReadonlyArray.Infer<S>, i: number) => a is A2; updateFunction: (a: A2) => B }
   ): ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
   <A, B, S extends Iterable<A> = Iterable<A>>(
     self: S,
-    predicate: (a: ReadonlyArray.Infer<S>, i: number) => boolean,
-    f: (a: ReadonlyArray.Infer<S>) => B
+    options: {
+      condition: (a: ReadonlyArray.Infer<S>, i: number) => boolean
+      updateFunction: (a: ReadonlyArray.Infer<S>) => B
+    }
   ): ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
 } = dual(
-  3,
-  <A, B>(self: Iterable<A>, predicate: (a: NoInfer<A>, i: number) => boolean, f: (a: A) => B): Array<A | B> =>
-    O.getOrElse(modifyFirstOption(self, predicate, f), () => Array.from(self))
+  2,
+  <A, B>(
+    self: Iterable<A>,
+    options: { condition: (a: NoInfer<A>, i: number) => boolean; updateFunction: (a: A) => B }
+  ): Array<A | B> => O.getOrElse(modifyFirstOption(self, options), () => Array.from(self))
 )
 
 /**
@@ -1318,10 +1322,10 @@ export const modifyFirst: {
  * import { Array, Option } from "effect"
  *
  * const numbers = [1, 2, 3, 4]
- * const result = Array.modifyFirstOption(numbers, n => n > 2, (n) => n * 2)
+ * const result = Array.modifyFirstOption(numbers, { condition: n => n > 2, updateFunction: (n) => n * 2 })
  * console.log(result) // Option.some([1, 2, 6, 4])
  *
- * const outOfBoundsResult = Array.modifyFirstOption(numbers, n => n > 5, (n) => n * 2)
+ * const outOfBoundsResult = Array.modifyFirstOption(numbers, { condition: n => n > 5, updateFunction: (n) => n * 2 })
  * console.log(outOfBoundsResult) // Option.none()
  * ```
  *
@@ -1329,27 +1333,35 @@ export const modifyFirst: {
  */
 export const modifyFirstOption: {
   <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
-    refinement: (a: ReadonlyArray.Infer<S>, i: number) => a is A2,
-    f: (a: A2) => B
+    options: { condition: (a: ReadonlyArray.Infer<S>, i: number) => a is A2; updateFunction: (a: A2) => B }
   ): (self: S) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
   <A, B, S extends Iterable<A> = Iterable<A>>(
-    predicate: (a: ReadonlyArray.Infer<S>, i: number) => boolean,
-    f: (a: ReadonlyArray.Infer<S>) => B
+    options: {
+      condition: (a: ReadonlyArray.Infer<S>, i: number) => boolean
+      updateFunction: (a: ReadonlyArray.Infer<S>) => B
+    }
   ): (self: S) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
   <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
     self: S,
-    refinement: (a: ReadonlyArray.Infer<S>, i: number) => a is A2,
-    f: (a: A2) => B
+    options: { condition: (a: ReadonlyArray.Infer<S>, i: number) => a is A2; updateFunction: (a: A2) => B }
   ): Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
   <A, B, S extends Iterable<A> = Iterable<A>>(
     self: S,
-    predicate: (a: ReadonlyArray.Infer<S>, i: number) => boolean,
-    f: (a: ReadonlyArray.Infer<S>) => B
+    options: {
+      condition: (a: ReadonlyArray.Infer<S>, i: number) => boolean
+      updateFunction: (a: ReadonlyArray.Infer<S>) => B
+    }
   ): Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
 } = dual(
-  3,
-  <A, B>(self: Iterable<A>, predicate: (a: A, i: number) => boolean, f: (a: A) => B): Option<Array<A | B>> =>
-    O.flatMap(findFirstIndex(self, predicate), (index) => modifyOption(self, index, f))
+  2,
+  <A, B>(
+    self: Iterable<A>,
+    options: { condition: (a: A, i: number) => boolean; updateFunction: (a: A) => B }
+  ): Option<Array<A | B>> =>
+    O.flatMap(
+      findFirstIndex(self, options.condition),
+      (index) => modifyOption(self, index, options.updateFunction)
+    )
 )
 
 /**
