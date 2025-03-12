@@ -129,7 +129,7 @@ This part explains how to serve the API using the defined router.
 // server.ts
 import { HttpRouter, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { toHttpApp } from "@effect/rpc-http/HttpRouter"
+import { toHttpApp } from "@effect/rpc-http/HttpRpcRouter";
 import { Layer } from "effect"
 import { createServer } from "http"
 import { appRouter } from "./router.js"
@@ -248,7 +248,7 @@ The server code configures an HTTP server to handle requests, using our appRoute
 // server.ts
 import { HttpRouter, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { toHttpApp } from "@effect/rpc-http/HttpRouter"
+import { toHttpApp } from "@effect/rpc-http/HttpRpcRouter";
 import { Layer } from "effect"
 import { createServer } from "http"
 import { appRouter } from "./router.js"
