@@ -62,3 +62,7 @@ export const layer = (spawn: (id: number) => globalThis.Worker) =>
     layerManager,
     Worker.layerSpawner(spawn)
   )
+
+/** @internal */
+export const layerPlatform = (spawn: (id: number) => globalThis.Worker) =>
+  Layer.merge(layerWorker, Worker.layerSpawner(spawn))

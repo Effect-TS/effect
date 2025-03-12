@@ -20,7 +20,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
     }
     const port = self
     const run = Effect.fnUntraced(function*<A, E, R>(
-      handler: (portId: number, message: any) => Effect.Effect<A, E, R>
+      handler: (portId: number, message: any) => Effect.Effect<A, E, R> | void
     ) {
       const scope = yield* Effect.scope
       const runtime = (yield* Effect.runtime<R | Scope.Scope>().pipe(
@@ -39,9 +39,12 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       function onMessage(event: MessageEvent) {
         const message = (event as MessageEvent).data as Runner.BackingRunner.Message<any>
         if (message[0] === 0) {
-          const fiber = runFork(handler(0, message[1]))
-          fiber.addObserver(onExit)
-          FiberSet.unsafeAdd(fiberSet, fiber)
+          const result = handler(0, message[1])
+          if (Effect.isEffect(result)) {
+            const fiber = runFork(result)
+            fiber.addObserver(onExit)
+            FiberSet.unsafeAdd(fiberSet, fiber)
+          }
         } else {
           port.close()
           Deferred.unsafeDone(closeLatch, Exit.void)

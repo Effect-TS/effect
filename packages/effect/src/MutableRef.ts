@@ -21,8 +21,6 @@ export type TypeId = typeof TypeId
  */
 export interface MutableRef<out T> extends Pipeable, Inspectable {
   readonly [TypeId]: TypeId
-
-  /** @internal */
   current: T
 }
 
