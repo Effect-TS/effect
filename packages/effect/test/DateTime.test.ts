@@ -439,7 +439,7 @@ describe("DateTime", () => {
       }))
   })
   describe("nowAsDate", () => {
-    it.effect("should mutate the date", () =>
+    it.effect("should return the current Date", () =>
       Effect.gen(function*() {
         yield* setTo2024NZ
         const now = yield* DateTime.nowAsDate
