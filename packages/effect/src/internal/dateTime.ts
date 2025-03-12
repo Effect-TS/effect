@@ -300,6 +300,9 @@ export const makeZonedFromString = (input: string): Option.Option<DateTime.Zoned
 export const now: Effect.Effect<DateTime.Utc> = core.map(Clock.currentTimeMillis, makeUtc)
 
 /** @internal */
+export const nowAsDate: Effect.Effect<Date> = core.map(Clock.currentTimeMillis, (millis) => new Date(millis))
+
+/** @internal */
 export const unsafeNow: LazyArg<DateTime.Utc> = () => makeUtc(Date.now())
 
 // =============================================================================
