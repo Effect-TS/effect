@@ -2568,13 +2568,31 @@ export const optionalWith: {
  */
 export declare namespace Struct {
   /**
+   * Useful for creating a type that can be used to add custom constraints to the fields of a struct.
+   *
+   * ```ts
+   * import { Schema } from "effect"
+   *
+   * const f = <Fields extends Record<"a" | "b", Schema.Struct.Field>>(
+   *   schema: Schema.Struct<Fields>
+   * ) => {
+   *   return schema.omit("a")
+   * }
+   *
+   * //      ┌─── Schema.Struct<{ b: typeof Schema.Number; }>
+   * //      ▼
+   * const result = f(Schema.Struct({ a: Schema.String, b: Schema.Number }))
+   * ```
+   * @since 3.13.11
+   */
+  export type Field =
+    | Schema.All
+    | PropertySignature.All
+
+  /**
    * @since 3.10.0
    */
-  export type Fields = {
-    readonly [x: PropertyKey]:
-      | Schema.All
-      | PropertySignature.All
-  }
+  export type Fields = { readonly [x: PropertyKey]: Field }
 
   type OptionalEncodedPropertySignature =
     | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", any, boolean, unknown>
