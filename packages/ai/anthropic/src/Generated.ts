@@ -13,20 +13,21 @@ export class MessagesPostParams extends S.Struct({
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class ModelEnum extends S.Literal(
-  "claude-3-7-sonnet-latest",
-  "claude-3-7-sonnet-20250219",
-  "claude-3-5-sonnet-latest",
-  "claude-3-5-sonnet-20241022",
-  "claude-3-5-sonnet-20240620",
-  "claude-3-5-haiku-latest",
-  "claude-3-5-haiku-20241022",
-  "claude-3-5-haiku-20240307",
-  "claude-3-opus-latest",
-  "claude-3-opus-20240229"
+export class Model extends S.Union(
+  S.Literal("claude-3-7-sonnet-latest"),
+  S.Literal("claude-3-7-sonnet-20250219"),
+  S.Literal("claude-3-5-haiku-latest"),
+  S.Literal("claude-3-5-haiku-20241022"),
+  S.Literal("claude-3-5-sonnet-latest"),
+  S.Literal("claude-3-5-sonnet-20241022"),
+  S.Literal("claude-3-5-sonnet-20240620"),
+  S.Literal("claude-3-opus-latest"),
+  S.Literal("claude-3-opus-20240229"),
+  S.Literal("claude-3-sonnet-20240229"),
+  S.Literal("claude-3-haiku-20240307"),
+  S.Literal("claude-2.1"),
+  S.Literal("claude-2.0")
 ) {}
-
-export class Model extends S.Union(S.String, ModelEnum) {}
 
 export class InputMessageRole extends S.Literal("user", "assistant") {}
 
@@ -96,10 +97,17 @@ export class Base64ImageSource extends S.Struct({
   "data": S.String
 }) {}
 
+export class URLImageSourceType extends S.Literal("url") {}
+
+export class URLImageSource extends S.Struct({
+  "type": URLImageSourceType,
+  "url": S.String
+}) {}
+
 export class RequestImageBlock extends S.Struct({
   "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
   "type": RequestImageBlockType,
-  "source": Base64ImageSource
+  "source": S.Union(Base64ImageSource, URLImageSource)
 }) {}
 
 export class RequestToolUseBlockType extends S.Literal("tool_use") {}
@@ -153,6 +161,13 @@ export class ContentBlockSource extends S.Struct({
   "content": S.Union(S.String, S.Array(S.Union(RequestTextBlock, RequestImageBlock)))
 }) {}
 
+export class URLPDFSourceType extends S.Literal("url") {}
+
+export class URLPDFSource extends S.Struct({
+  "type": URLPDFSourceType,
+  "url": S.String
+}) {}
+
 export class RequestCitationsConfig extends S.Struct({
   "enabled": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
@@ -160,10 +175,25 @@ export class RequestCitationsConfig extends S.Struct({
 export class RequestDocumentBlock extends S.Struct({
   "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
   "type": RequestDocumentBlockType,
-  "source": S.Union(Base64PDFSource, PlainTextSource, ContentBlockSource),
-  "title": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null), { nullable: true }),
+  "source": S.Union(Base64PDFSource, PlainTextSource, ContentBlockSource, URLPDFSource),
+  "title": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(500)), S.Null), { nullable: true }),
   "context": S.optionalWith(S.Union(S.String.pipe(S.minLength(1)), S.Null), { nullable: true }),
   "citations": S.optionalWith(RequestCitationsConfig, { nullable: true })
+}) {}
+
+export class RequestThinkingBlockType extends S.Literal("thinking") {}
+
+export class RequestThinkingBlock extends S.Struct({
+  "type": RequestThinkingBlockType,
+  "thinking": S.String,
+  "signature": S.String
+}) {}
+
+export class RequestRedactedThinkingBlockType extends S.Literal("redacted_thinking") {}
+
+export class RequestRedactedThinkingBlock extends S.Struct({
+  "type": RequestRedactedThinkingBlockType,
+  "data": S.String
 }) {}
 
 export class InputContentBlock extends S.Union(
@@ -171,7 +201,9 @@ export class InputContentBlock extends S.Union(
   RequestImageBlock,
   RequestToolUseBlock,
   RequestToolResultBlock,
-  RequestDocumentBlock
+  RequestDocumentBlock,
+  RequestThinkingBlock,
+  RequestRedactedThinkingBlock
 ) {}
 
 export class InputMessage extends S.Struct({
@@ -182,6 +214,21 @@ export class InputMessage extends S.Struct({
 export class Metadata extends S.Struct({
   "user_id": S.optionalWith(S.Union(S.String.pipe(S.maxLength(256)), S.Null), { nullable: true })
 }) {}
+
+export class ThinkingConfigEnabledType extends S.Literal("enabled") {}
+
+export class ThinkingConfigEnabled extends S.Struct({
+  "type": ThinkingConfigEnabledType,
+  "budget_tokens": S.Int.pipe(S.greaterThanOrEqualTo(1024))
+}) {}
+
+export class ThinkingConfigDisabledType extends S.Literal("disabled") {}
+
+export class ThinkingConfigDisabled extends S.Struct({
+  "type": ThinkingConfigDisabledType
+}) {}
+
+export class ThinkingConfigParam extends S.Union(ThinkingConfigEnabled, ThinkingConfigDisabled) {}
 
 export class ToolChoiceAutoType extends S.Literal("auto") {}
 
@@ -205,7 +252,13 @@ export class ToolChoiceTool extends S.Struct({
   "disable_parallel_tool_use": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
-export class ToolChoice extends S.Union(ToolChoiceAuto, ToolChoiceAny, ToolChoiceTool) {}
+export class ToolChoiceNoneType extends S.Literal("none") {}
+
+export class ToolChoiceNone extends S.Struct({
+  "type": ToolChoiceNoneType
+}) {}
+
+export class ToolChoice extends S.Union(ToolChoiceAuto, ToolChoiceAny, ToolChoiceTool, ToolChoiceNone) {}
 
 export class InputSchemaType extends S.Literal("object") {}
 
@@ -221,6 +274,26 @@ export class Tool extends S.Struct({
   "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true })
 }) {}
 
+export class BashTool20250124Type extends S.Literal("bash_20250124") {}
+
+export class BashTool20250124Name extends S.Literal("bash") {}
+
+export class BashTool20250124 extends S.Struct({
+  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
+  "type": BashTool20250124Type,
+  "name": BashTool20250124Name
+}) {}
+
+export class TextEditor20250124Type extends S.Literal("text_editor_20250124") {}
+
+export class TextEditor20250124Name extends S.Literal("str_replace_editor") {}
+
+export class TextEditor20250124 extends S.Struct({
+  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
+  "type": TextEditor20250124Type,
+  "name": TextEditor20250124Name
+}) {}
+
 export class CreateMessageParams extends S.Class<CreateMessageParams>("CreateMessageParams")({
   "model": Model,
   "messages": S.Array(InputMessage),
@@ -230,8 +303,9 @@ export class CreateMessageParams extends S.Class<CreateMessageParams>("CreateMes
   "stream": S.optionalWith(S.Boolean, { nullable: true }),
   "system": S.optionalWith(S.Union(S.String, S.Array(RequestTextBlock)), { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
+  "thinking": S.optionalWith(ThinkingConfigParam, { nullable: true }),
   "tool_choice": S.optionalWith(ToolChoice, { nullable: true }),
-  "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
+  "tools": S.optionalWith(S.Array(S.Union(Tool, BashTool20250124, TextEditor20250124)), { nullable: true }),
   "top_k": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
   "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true })
 }) {}
@@ -309,7 +383,27 @@ export class ResponseToolUseBlock extends S.Struct({
   "input": S.Record({ key: S.String, value: S.Unknown })
 }) {}
 
-export class ContentBlock extends S.Union(ResponseTextBlock, ResponseToolUseBlock) {}
+export class ResponseThinkingBlockType extends S.Literal("thinking") {}
+
+export class ResponseThinkingBlock extends S.Struct({
+  "type": ResponseThinkingBlockType.pipe(S.propertySignature, S.withConstructorDefault(() => "thinking" as const)),
+  "thinking": S.String,
+  "signature": S.String
+}) {}
+
+export class ResponseRedactedThinkingBlockType extends S.Literal("redacted_thinking") {}
+
+export class ResponseRedactedThinkingBlock extends S.Struct({
+  "type": ResponseRedactedThinkingBlockType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "redacted_thinking" as const)
+  ),
+  "data": S.String
+}) {}
+
+export class ContentBlock
+  extends S.Union(ResponseTextBlock, ResponseToolUseBlock, ResponseThinkingBlock, ResponseRedactedThinkingBlock)
+{}
 
 export class MessageStopReasonEnum extends S.Literal("end_turn", "max_tokens", "stop_sequence", "tool_use") {}
 
@@ -570,9 +664,10 @@ export class MessagesCountTokensPostParams extends S.Struct({
 
 export class CountMessageTokensParams extends S.Class<CountMessageTokensParams>("CountMessageTokensParams")({
   "tool_choice": S.optionalWith(ToolChoice, { nullable: true }),
-  "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
+  "tools": S.optionalWith(S.Array(S.Union(Tool, BashTool20250124, TextEditor20250124)), { nullable: true }),
   "messages": S.Array(InputMessage),
   "system": S.optionalWith(S.Union(S.String, S.Array(RequestTextBlock)), { nullable: true }),
+  "thinking": S.optionalWith(ThinkingConfigParam, { nullable: true }),
   "model": Model
 }) {}
 
@@ -659,10 +754,17 @@ export class BetaBase64ImageSource extends S.Struct({
   "data": S.String
 }) {}
 
+export class BetaURLImageSourceType extends S.Literal("url") {}
+
+export class BetaURLImageSource extends S.Struct({
+  "type": BetaURLImageSourceType,
+  "url": S.String
+}) {}
+
 export class BetaRequestImageBlock extends S.Struct({
   "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
   "type": BetaRequestImageBlockType,
-  "source": BetaBase64ImageSource
+  "source": S.Union(BetaBase64ImageSource, BetaURLImageSource)
 }) {}
 
 export class BetaRequestToolUseBlockType extends S.Literal("tool_use") {}
@@ -716,6 +818,13 @@ export class BetaContentBlockSource extends S.Struct({
   "content": S.Union(S.String, S.Array(S.Union(BetaRequestTextBlock, BetaRequestImageBlock)))
 }) {}
 
+export class BetaURLPDFSourceType extends S.Literal("url") {}
+
+export class BetaURLPDFSource extends S.Struct({
+  "type": BetaURLPDFSourceType,
+  "url": S.String
+}) {}
+
 export class BetaRequestCitationsConfig extends S.Struct({
   "enabled": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
@@ -723,10 +832,25 @@ export class BetaRequestCitationsConfig extends S.Struct({
 export class BetaRequestDocumentBlock extends S.Struct({
   "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
   "type": BetaRequestDocumentBlockType,
-  "source": S.Union(BetaBase64PDFSource, BetaPlainTextSource, BetaContentBlockSource),
-  "title": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null), { nullable: true }),
+  "source": S.Union(BetaBase64PDFSource, BetaPlainTextSource, BetaContentBlockSource, BetaURLPDFSource),
+  "title": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(500)), S.Null), { nullable: true }),
   "context": S.optionalWith(S.Union(S.String.pipe(S.minLength(1)), S.Null), { nullable: true }),
   "citations": S.optionalWith(BetaRequestCitationsConfig, { nullable: true })
+}) {}
+
+export class BetaRequestThinkingBlockType extends S.Literal("thinking") {}
+
+export class BetaRequestThinkingBlock extends S.Struct({
+  "type": BetaRequestThinkingBlockType,
+  "thinking": S.String,
+  "signature": S.String
+}) {}
+
+export class BetaRequestRedactedThinkingBlockType extends S.Literal("redacted_thinking") {}
+
+export class BetaRequestRedactedThinkingBlock extends S.Struct({
+  "type": BetaRequestRedactedThinkingBlockType,
+  "data": S.String
 }) {}
 
 export class BetaInputContentBlock extends S.Union(
@@ -734,7 +858,9 @@ export class BetaInputContentBlock extends S.Union(
   BetaRequestImageBlock,
   BetaRequestToolUseBlock,
   BetaRequestToolResultBlock,
-  BetaRequestDocumentBlock
+  BetaRequestDocumentBlock,
+  BetaRequestThinkingBlock,
+  BetaRequestRedactedThinkingBlock
 ) {}
 
 export class BetaInputMessage extends S.Struct({
@@ -745,6 +871,21 @@ export class BetaInputMessage extends S.Struct({
 export class BetaMetadata extends S.Struct({
   "user_id": S.optionalWith(S.Union(S.String.pipe(S.maxLength(256)), S.Null), { nullable: true })
 }) {}
+
+export class BetaThinkingConfigEnabledType extends S.Literal("enabled") {}
+
+export class BetaThinkingConfigEnabled extends S.Struct({
+  "type": BetaThinkingConfigEnabledType,
+  "budget_tokens": S.Int.pipe(S.greaterThanOrEqualTo(1024))
+}) {}
+
+export class BetaThinkingConfigDisabledType extends S.Literal("disabled") {}
+
+export class BetaThinkingConfigDisabled extends S.Struct({
+  "type": BetaThinkingConfigDisabledType
+}) {}
+
+export class BetaThinkingConfigParam extends S.Union(BetaThinkingConfigEnabled, BetaThinkingConfigDisabled) {}
 
 export class BetaToolChoiceAutoType extends S.Literal("auto") {}
 
@@ -768,7 +909,15 @@ export class BetaToolChoiceTool extends S.Struct({
   "disable_parallel_tool_use": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
-export class BetaToolChoice extends S.Union(BetaToolChoiceAuto, BetaToolChoiceAny, BetaToolChoiceTool) {}
+export class BetaToolChoiceNoneType extends S.Literal("none") {}
+
+export class BetaToolChoiceNone extends S.Struct({
+  "type": BetaToolChoiceNoneType
+}) {}
+
+export class BetaToolChoice
+  extends S.Union(BetaToolChoiceAuto, BetaToolChoiceAny, BetaToolChoiceTool, BetaToolChoiceNone)
+{}
 
 export class BetaToolTypeEnum extends S.Literal("custom") {}
 
@@ -820,6 +969,39 @@ export class BetaTextEditor20241022 extends S.Struct({
   "name": BetaTextEditor20241022Name
 }) {}
 
+export class BetaComputerUseTool20250124Type extends S.Literal("computer_20250124") {}
+
+export class BetaComputerUseTool20250124Name extends S.Literal("computer") {}
+
+export class BetaComputerUseTool20250124 extends S.Struct({
+  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
+  "type": BetaComputerUseTool20250124Type,
+  "name": BetaComputerUseTool20250124Name,
+  "display_height_px": S.Int.pipe(S.greaterThanOrEqualTo(1)),
+  "display_width_px": S.Int.pipe(S.greaterThanOrEqualTo(1)),
+  "display_number": S.optionalWith(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null), { nullable: true })
+}) {}
+
+export class BetaBashTool20250124Type extends S.Literal("bash_20250124") {}
+
+export class BetaBashTool20250124Name extends S.Literal("bash") {}
+
+export class BetaBashTool20250124 extends S.Struct({
+  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
+  "type": BetaBashTool20250124Type,
+  "name": BetaBashTool20250124Name
+}) {}
+
+export class BetaTextEditor20250124Type extends S.Literal("text_editor_20250124") {}
+
+export class BetaTextEditor20250124Name extends S.Literal("str_replace_editor") {}
+
+export class BetaTextEditor20250124 extends S.Struct({
+  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
+  "type": BetaTextEditor20250124Type,
+  "name": BetaTextEditor20250124Name
+}) {}
+
 export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("BetaCreateMessageParams")({
   "model": Model,
   "messages": S.Array(BetaInputMessage),
@@ -829,9 +1011,20 @@ export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("B
   "stream": S.optionalWith(S.Boolean, { nullable: true }),
   "system": S.optionalWith(S.Union(S.String, S.Array(BetaRequestTextBlock)), { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
+  "thinking": S.optionalWith(BetaThinkingConfigParam, { nullable: true }),
   "tool_choice": S.optionalWith(BetaToolChoice, { nullable: true }),
   "tools": S.optionalWith(
-    S.Array(S.Union(BetaTool, BetaComputerUseTool20241022, BetaBashTool20241022, BetaTextEditor20241022)),
+    S.Array(
+      S.Union(
+        BetaTool,
+        BetaComputerUseTool20241022,
+        BetaBashTool20241022,
+        BetaTextEditor20241022,
+        BetaComputerUseTool20250124,
+        BetaBashTool20250124,
+        BetaTextEditor20250124
+      )
+    ),
     { nullable: true }
   ),
   "top_k": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
@@ -915,7 +1108,30 @@ export class BetaResponseToolUseBlock extends S.Struct({
   "input": S.Record({ key: S.String, value: S.Unknown })
 }) {}
 
-export class BetaContentBlock extends S.Union(BetaResponseTextBlock, BetaResponseToolUseBlock) {}
+export class BetaResponseThinkingBlockType extends S.Literal("thinking") {}
+
+export class BetaResponseThinkingBlock extends S.Struct({
+  "type": BetaResponseThinkingBlockType.pipe(S.propertySignature, S.withConstructorDefault(() => "thinking" as const)),
+  "thinking": S.String,
+  "signature": S.String
+}) {}
+
+export class BetaResponseRedactedThinkingBlockType extends S.Literal("redacted_thinking") {}
+
+export class BetaResponseRedactedThinkingBlock extends S.Struct({
+  "type": BetaResponseRedactedThinkingBlockType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "redacted_thinking" as const)
+  ),
+  "data": S.String
+}) {}
+
+export class BetaContentBlock extends S.Union(
+  BetaResponseTextBlock,
+  BetaResponseToolUseBlock,
+  BetaResponseThinkingBlock,
+  BetaResponseRedactedThinkingBlock
+) {}
 
 export class BetaMessageStopReasonEnum extends S.Literal("end_turn", "max_tokens", "stop_sequence", "tool_use") {}
 
@@ -1174,11 +1390,22 @@ export class BetaCountMessageTokensParams
   extends S.Class<BetaCountMessageTokensParams>("BetaCountMessageTokensParams")({
     "tool_choice": S.optionalWith(BetaToolChoice, { nullable: true }),
     "tools": S.optionalWith(
-      S.Array(S.Union(BetaTool, BetaComputerUseTool20241022, BetaBashTool20241022, BetaTextEditor20241022)),
+      S.Array(
+        S.Union(
+          BetaTool,
+          BetaComputerUseTool20241022,
+          BetaBashTool20241022,
+          BetaTextEditor20241022,
+          BetaComputerUseTool20250124,
+          BetaBashTool20250124,
+          BetaTextEditor20250124
+        )
+      ),
       { nullable: true }
     ),
     "messages": S.Array(BetaInputMessage),
     "system": S.optionalWith(S.Union(S.String, S.Array(BetaRequestTextBlock)), { nullable: true }),
+    "thinking": S.optionalWith(BetaThinkingConfigParam, { nullable: true }),
     "model": Model
   })
 {}
@@ -1226,12 +1453,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(Message)(r),
-                "NaN": (r) => decodeError(r, ErrorResponse),
+                "4xx": (r) => decodeError(r, ErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "completePost": (options) =>
       HttpClientRequest.make("POST")(`/v1/complete`).pipe(
@@ -1243,12 +1469,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(CompletionResponse)(r),
-                "NaN": (r) => decodeError(r, ErrorResponse),
+                "4xx": (r) => decodeError(r, ErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "modelsList": (options) =>
       HttpClientRequest.make("GET")(`/v1/models`).pipe(
@@ -1268,12 +1493,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(ListResponseModelInfo)(r),
-                "NaN": (r) => decodeError(r, ErrorResponse),
+                "4xx": (r) => decodeError(r, ErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "modelsGet": (modelId, options) =>
       HttpClientRequest.make("GET")(`/v1/models/${modelId}`).pipe(
@@ -1288,12 +1512,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(ModelInfo)(r),
-                "NaN": (r) => decodeError(r, ErrorResponse),
+                "4xx": (r) => decodeError(r, ErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "messageBatchesList": (options) =>
       HttpClientRequest.make("GET")(`/v1/messages/batches`).pipe(
@@ -1313,12 +1536,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(ListResponseMessageBatch)(r),
-                "NaN": (r) => decodeError(r, ErrorResponse),
+                "4xx": (r) => decodeError(r, ErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "messageBatchesPost": (options) =>
       HttpClientRequest.make("POST")(`/v1/messages/batches`).pipe(
@@ -1330,12 +1552,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(MessageBatch)(r),
-                "NaN": (r) => decodeError(r, ErrorResponse),
+                "4xx": (r) => decodeError(r, ErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "messageBatchesRetrieve": (messageBatchId, options) =>
       HttpClientRequest.make("GET")(`/v1/messages/batches/${messageBatchId}`).pipe(
@@ -1352,13 +1573,12 @@ export const make = (
                 httpClient.execute(request),
                 HttpClientResponse.matchStatus({
                   "200": (r) => HttpClientResponse.schemaBodyJson(MessageBatch)(r),
-                  "NaN": (r) => decodeError(r, ErrorResponse),
+                  "4xx": (r) => decodeError(r, ErrorResponse),
                   orElse: (response) => unexpectedStatus(request, response)
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "messageBatchesDelete": (messageBatchId, options) =>
       HttpClientRequest.make("DELETE")(`/v1/messages/batches/${messageBatchId}`).pipe(
@@ -1375,13 +1595,12 @@ export const make = (
                 httpClient.execute(request),
                 HttpClientResponse.matchStatus({
                   "200": (r) => HttpClientResponse.schemaBodyJson(DeleteMessageBatchResponse)(r),
-                  "NaN": (r) => decodeError(r, ErrorResponse),
+                  "4xx": (r) => decodeError(r, ErrorResponse),
                   orElse: (response) => unexpectedStatus(request, response)
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "messageBatchesCancel": (messageBatchId, options) =>
       HttpClientRequest.make("POST")(`/v1/messages/batches/${messageBatchId}/cancel`).pipe(
@@ -1395,13 +1614,12 @@ export const make = (
                 httpClient.execute(request),
                 HttpClientResponse.matchStatus({
                   "200": (r) => HttpClientResponse.schemaBodyJson(MessageBatch)(r),
-                  "NaN": (r) => decodeError(r, ErrorResponse),
+                  "4xx": (r) => decodeError(r, ErrorResponse),
                   orElse: (response) => unexpectedStatus(request, response)
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "messageBatchesResults": (messageBatchId, options) =>
       HttpClientRequest.make("GET")(`/v1/messages/batches/${messageBatchId}/results`).pipe(
@@ -1417,13 +1635,12 @@ export const make = (
               Effect.flatMap(
                 httpClient.execute(request),
                 HttpClientResponse.matchStatus({
-                  "NaN": (r) => decodeError(r, ErrorResponse),
+                  "4xx": (r) => decodeError(r, ErrorResponse),
                   orElse: (response) => unexpectedStatus(request, response)
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "messagesCountTokensPost": (options) =>
       HttpClientRequest.make("POST")(`/v1/messages/count_tokens`).pipe(
@@ -1435,12 +1652,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(CountMessageTokensResponse)(r),
-                "NaN": (r) => decodeError(r, ErrorResponse),
+                "4xx": (r) => decodeError(r, ErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "betaMessagesPost": (options) =>
       HttpClientRequest.make("POST")(`/v1/messages?beta=true`).pipe(
@@ -1455,12 +1671,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(BetaMessage)(r),
-                "NaN": (r) => decodeError(r, BetaErrorResponse),
+                "4xx": (r) => decodeError(r, BetaErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "betaModelsList": (options) =>
       HttpClientRequest.make("GET")(`/v1/models?beta=true`).pipe(
@@ -1480,12 +1695,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(BetaListResponseModelInfo)(r),
-                "NaN": (r) => decodeError(r, BetaErrorResponse),
+                "4xx": (r) => decodeError(r, BetaErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "betaModelsGet": (modelId, options) =>
       HttpClientRequest.make("GET")(`/v1/models/${modelId}?beta=true`).pipe(
@@ -1500,12 +1714,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(BetaModelInfo)(r),
-                "NaN": (r) => decodeError(r, BetaErrorResponse),
+                "4xx": (r) => decodeError(r, BetaErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "betaMessageBatchesList": (options) =>
       HttpClientRequest.make("GET")(`/v1/messages/batches?beta=true`).pipe(
@@ -1526,12 +1739,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(BetaListResponseMessageBatch)(r),
-                "NaN": (r) => decodeError(r, BetaErrorResponse),
+                "4xx": (r) => decodeError(r, BetaErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "betaMessageBatchesPost": (options) =>
       HttpClientRequest.make("POST")(`/v1/messages/batches?beta=true`).pipe(
@@ -1546,12 +1758,11 @@ export const make = (
               httpClient.execute(request),
               HttpClientResponse.matchStatus({
                 "200": (r) => HttpClientResponse.schemaBodyJson(BetaMessageBatch)(r),
-                "NaN": (r) => decodeError(r, BetaErrorResponse),
+                "4xx": (r) => decodeError(r, BetaErrorResponse),
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "betaMessageBatchesRetrieve": (messageBatchId, options) =>
       HttpClientRequest.make("GET")(`/v1/messages/batches/${messageBatchId}?beta=true`).pipe(
@@ -1569,13 +1780,12 @@ export const make = (
                 httpClient.execute(request),
                 HttpClientResponse.matchStatus({
                   "200": (r) => HttpClientResponse.schemaBodyJson(BetaMessageBatch)(r),
-                  "NaN": (r) => decodeError(r, BetaErrorResponse),
+                  "4xx": (r) => decodeError(r, BetaErrorResponse),
                   orElse: (response) => unexpectedStatus(request, response)
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "betaMessageBatchesDelete": (messageBatchId, options) =>
       HttpClientRequest.make("DELETE")(`/v1/messages/batches/${messageBatchId}?beta=true`).pipe(
@@ -1593,13 +1803,12 @@ export const make = (
                 httpClient.execute(request),
                 HttpClientResponse.matchStatus({
                   "200": (r) => HttpClientResponse.schemaBodyJson(BetaDeleteMessageBatchResponse)(r),
-                  "NaN": (r) => decodeError(r, BetaErrorResponse),
+                  "4xx": (r) => decodeError(r, BetaErrorResponse),
                   orElse: (response) => unexpectedStatus(request, response)
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "betaMessageBatchesCancel": (messageBatchId, options) =>
       HttpClientRequest.make("POST")(`/v1/messages/batches/${messageBatchId}/cancel?beta=true`).pipe(
@@ -1616,13 +1825,12 @@ export const make = (
                 httpClient.execute(request),
                 HttpClientResponse.matchStatus({
                   "200": (r) => HttpClientResponse.schemaBodyJson(BetaMessageBatch)(r),
-                  "NaN": (r) => decodeError(r, BetaErrorResponse),
+                  "4xx": (r) => decodeError(r, BetaErrorResponse),
                   orElse: (response) => unexpectedStatus(request, response)
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "betaMessageBatchesResults": (messageBatchId, options) =>
       HttpClientRequest.make("GET")(`/v1/messages/batches/${messageBatchId}/results?beta=true`).pipe(
@@ -1639,13 +1847,12 @@ export const make = (
               Effect.flatMap(
                 httpClient.execute(request),
                 HttpClientResponse.matchStatus({
-                  "NaN": (r) => decodeError(r, BetaErrorResponse),
+                  "4xx": (r) => decodeError(r, BetaErrorResponse),
                   orElse: (response) => unexpectedStatus(request, response)
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "betaMessagesCountTokensPost": (options) =>
       HttpClientRequest.make("POST")(`/v1/messages/count_tokens?beta=true`).pipe(
@@ -1662,13 +1869,12 @@ export const make = (
                 httpClient.execute(request),
                 HttpClientResponse.matchStatus({
                   "200": (r) => HttpClientResponse.schemaBodyJson(BetaCountMessageTokensResponse)(r),
-                  "NaN": (r) => decodeError(r, BetaErrorResponse),
+                  "4xx": (r) => decodeError(r, BetaErrorResponse),
                   orElse: (response) => unexpectedStatus(request, response)
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       )
   }
 }
