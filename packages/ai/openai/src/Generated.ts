@@ -5,6 +5,7 @@ import type * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
+import type * as UrlParams from "@effect/platform/UrlParams"
 import * as Effect from "effect/Effect"
 import type { ParseError } from "effect/ParseResult"
 import * as S from "effect/Schema"
@@ -575,69 +576,6 @@ export class ChatCompletionList extends S.Class<ChatCompletionList>("ChatComplet
   "has_more": S.Boolean
 }) {}
 
-export class ModelResponsePropertiesModelEnum extends S.Literal(
-  "o3-mini",
-  "o3-mini-2025-01-31",
-  "o1",
-  "o1-2024-12-17",
-  "o1-preview",
-  "o1-preview-2024-09-12",
-  "o1-mini",
-  "o1-mini-2024-09-12",
-  "computer-use-preview",
-  "computer-use-preview-2025-02-04",
-  "computer-use-preview-2025-03-11",
-  "gpt-4.5-preview",
-  "gpt-4.5-preview-2025-02-27",
-  "gpt-4o",
-  "gpt-4o-2024-11-20",
-  "gpt-4o-2024-08-06",
-  "gpt-4o-2024-05-13",
-  "gpt-4o-audio-preview",
-  "gpt-4o-audio-preview-2024-10-01",
-  "gpt-4o-audio-preview-2024-12-17",
-  "gpt-4o-mini-audio-preview",
-  "gpt-4o-mini-audio-preview-2024-12-17",
-  "chatgpt-4o-latest",
-  "gpt-4o-mini",
-  "gpt-4o-mini-2024-07-18",
-  "gpt-4-turbo",
-  "gpt-4-turbo-2024-04-09",
-  "gpt-4-0125-preview",
-  "gpt-4-turbo-preview",
-  "gpt-4-1106-preview",
-  "gpt-4-vision-preview",
-  "gpt-4",
-  "gpt-4-0314",
-  "gpt-4-0613",
-  "gpt-4-32k",
-  "gpt-4-32k-0314",
-  "gpt-4-32k-0613",
-  "gpt-3.5-turbo",
-  "gpt-3.5-turbo-16k",
-  "gpt-3.5-turbo-0301",
-  "gpt-3.5-turbo-0613",
-  "gpt-3.5-turbo-1106",
-  "gpt-3.5-turbo-0125",
-  "gpt-3.5-turbo-16k-0613"
-) {}
-
-export class ModelResponseProperties extends S.Struct({
-  "model": S.optionalWith(S.Union(S.String, ModelResponsePropertiesModelEnum), { nullable: true }),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
-  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "user": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-export class CreateModelResponseProperties extends ModelResponseProperties {}
-
 export class ChatCompletionRequestMessageContentPartTextType extends S.Literal("text") {}
 
 export class ChatCompletionRequestMessageContentPartText extends S.Struct({
@@ -781,7 +719,7 @@ export class ChatCompletionRequestMessage extends S.Union(
 
 export class ResponseModalities extends S.Array(S.Literal("text", "audio")) {}
 
-export class CreateChatCompletionRequestEnumWebSearchOptionsUserLocationType extends S.Literal("approximate") {}
+export class CreateChatCompletionRequestWebSearchOptionsUserLocationType extends S.Literal("approximate") {}
 
 export class WebSearchLocation extends S.Struct({
   "country": S.optionalWith(S.String, { nullable: true }),
@@ -792,13 +730,13 @@ export class WebSearchLocation extends S.Struct({
 
 export class WebSearchContextSize extends S.Literal("low", "medium", "high") {}
 
-export class CreateChatCompletionRequestEnumServiceTier extends S.Literal("auto", "default") {}
+export class CreateChatCompletionRequestServiceTier extends S.Literal("auto", "default") {}
 
-export class CreateChatCompletionRequestEnumAudioVoice
+export class CreateChatCompletionRequestAudioVoice
   extends S.Literal("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse")
 {}
 
-export class CreateChatCompletionRequestEnumAudioFormat extends S.Literal("wav", "mp3", "flac", "opus", "pcm16") {}
+export class CreateChatCompletionRequestAudioFormat extends S.Literal("wav", "mp3", "flac", "opus", "pcm16") {}
 
 export class StopConfiguration extends S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4))) {}
 
@@ -837,7 +775,7 @@ export class ChatCompletionToolChoiceOption
 
 export class ParallelToolCalls extends S.Boolean {}
 
-export class CreateChatCompletionRequestEnumFunctionCallEnum extends S.Literal("none", "auto") {}
+export class CreateChatCompletionRequestFunctionCallEnum extends S.Literal("none", "auto") {}
 
 export class ChatCompletionFunctionCallOption extends S.Struct({
   "name": S.String
@@ -848,6 +786,53 @@ export class ChatCompletionFunctions extends S.Struct({
   "name": S.String,
   "parameters": S.optionalWith(FunctionParameters, { nullable: true })
 }) {}
+
+export class CreateChatCompletionRequestModelEnum extends S.Literal(
+  "o3-mini",
+  "o3-mini-2025-01-31",
+  "o1",
+  "o1-2024-12-17",
+  "o1-preview",
+  "o1-preview-2024-09-12",
+  "o1-mini",
+  "o1-mini-2024-09-12",
+  "computer-use-preview",
+  "computer-use-preview-2025-02-04",
+  "computer-use-preview-2025-03-11",
+  "gpt-4.5-preview",
+  "gpt-4.5-preview-2025-02-27",
+  "gpt-4o",
+  "gpt-4o-2024-11-20",
+  "gpt-4o-2024-08-06",
+  "gpt-4o-2024-05-13",
+  "gpt-4o-audio-preview",
+  "gpt-4o-audio-preview-2024-10-01",
+  "gpt-4o-audio-preview-2024-12-17",
+  "gpt-4o-mini-audio-preview",
+  "gpt-4o-mini-audio-preview-2024-12-17",
+  "chatgpt-4o-latest",
+  "gpt-4o-mini",
+  "gpt-4o-mini-2024-07-18",
+  "gpt-4-turbo",
+  "gpt-4-turbo-2024-04-09",
+  "gpt-4-0125-preview",
+  "gpt-4-turbo-preview",
+  "gpt-4-1106-preview",
+  "gpt-4-vision-preview",
+  "gpt-4",
+  "gpt-4-0314",
+  "gpt-4-0613",
+  "gpt-4-32k",
+  "gpt-4-32k-0314",
+  "gpt-4-32k-0613",
+  "gpt-3.5-turbo",
+  "gpt-3.5-turbo-16k",
+  "gpt-3.5-turbo-0301",
+  "gpt-3.5-turbo-0613",
+  "gpt-3.5-turbo-1106",
+  "gpt-3.5-turbo-0125",
+  "gpt-3.5-turbo-16k-0613"
+) {}
 
 export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionRequest>("CreateChatCompletionRequest")({
   "messages": S.NonEmptyArray(ChatCompletionRequestMessage),
@@ -866,7 +851,7 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     S.Struct({
       "user_location": S.optionalWith(
         S.Struct({
-          "type": CreateChatCompletionRequestEnumWebSearchOptionsUserLocationType,
+          "type": CreateChatCompletionRequestWebSearchOptionsUserLocationType,
           "approximate": WebSearchLocation
         }),
         { nullable: true }
@@ -879,14 +864,14 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   "response_format": S.optionalWith(S.Union(ResponseFormatText, ResponseFormatJsonSchema, ResponseFormatJsonObject), {
     nullable: true
   }),
-  "service_tier": S.optionalWith(CreateChatCompletionRequestEnumServiceTier, {
+  "service_tier": S.optionalWith(CreateChatCompletionRequestServiceTier, {
     nullable: true,
     default: () => "auto" as const
   }),
   "audio": S.optionalWith(
     S.Struct({
-      "voice": CreateChatCompletionRequestEnumAudioVoice,
-      "format": CreateChatCompletionRequestEnumAudioFormat
+      "voice": CreateChatCompletionRequestAudioVoice,
+      "format": CreateChatCompletionRequestAudioFormat
     }),
     { nullable: true }
   ),
@@ -910,61 +895,13 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   "tool_choice": S.optionalWith(ChatCompletionToolChoiceOption, { nullable: true }),
   "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
   "function_call": S.optionalWith(
-    S.Union(CreateChatCompletionRequestEnumFunctionCallEnum, ChatCompletionFunctionCallOption),
+    S.Union(CreateChatCompletionRequestFunctionCallEnum, ChatCompletionFunctionCallOption),
     { nullable: true }
   ),
   "functions": S.optionalWith(S.Array(ChatCompletionFunctions).pipe(S.minItems(1), S.maxItems(128)), {
     nullable: true
   }),
-  "model": S.Union(
-    S.String,
-    S.Literal(
-      "o3-mini",
-      "o3-mini-2025-01-31",
-      "o1",
-      "o1-2024-12-17",
-      "o1-preview",
-      "o1-preview-2024-09-12",
-      "o1-mini",
-      "o1-mini-2024-09-12",
-      "computer-use-preview",
-      "computer-use-preview-2025-02-04",
-      "computer-use-preview-2025-03-11",
-      "gpt-4.5-preview",
-      "gpt-4.5-preview-2025-02-27",
-      "gpt-4o",
-      "gpt-4o-2024-11-20",
-      "gpt-4o-2024-08-06",
-      "gpt-4o-2024-05-13",
-      "gpt-4o-audio-preview",
-      "gpt-4o-audio-preview-2024-10-01",
-      "gpt-4o-audio-preview-2024-12-17",
-      "gpt-4o-mini-audio-preview",
-      "gpt-4o-mini-audio-preview-2024-12-17",
-      "chatgpt-4o-latest",
-      "gpt-4o-mini",
-      "gpt-4o-mini-2024-07-18",
-      "gpt-4-turbo",
-      "gpt-4-turbo-2024-04-09",
-      "gpt-4-0125-preview",
-      "gpt-4-turbo-preview",
-      "gpt-4-1106-preview",
-      "gpt-4-vision-preview",
-      "gpt-4",
-      "gpt-4-0314",
-      "gpt-4-0613",
-      "gpt-4-32k",
-      "gpt-4-32k-0314",
-      "gpt-4-32k-0613",
-      "gpt-3.5-turbo",
-      "gpt-3.5-turbo-16k",
-      "gpt-3.5-turbo-0301",
-      "gpt-3.5-turbo-0613",
-      "gpt-3.5-turbo-1106",
-      "gpt-3.5-turbo-0125",
-      "gpt-3.5-turbo-16k-0613"
-    )
-  ),
+  "model": S.Union(S.String, CreateChatCompletionRequestModelEnum),
   "metadata": S.optionalWith(Metadata, { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
@@ -2746,140 +2683,6 @@ export class RealtimeSessionCreateResponse
   })
 {}
 
-export class ReasoningGenerateSummary extends S.Literal("concise", "detailed") {}
-
-export class Reasoning extends S.Struct({
-  "effort": S.NullOr(ReasoningEffort).pipe(S.propertySignature, S.withConstructorDefault(() => "medium" as const)),
-  "generate_summary": S.optionalWith(ReasoningGenerateSummary, { nullable: true })
-}) {}
-
-export class TextResponseFormatJsonSchemaType extends S.Literal("json_schema") {}
-
-export class TextResponseFormatJsonSchema extends S.Struct({
-  "type": TextResponseFormatJsonSchemaType,
-  "description": S.optionalWith(S.String, { nullable: true }),
-  "name": S.optionalWith(S.String, { nullable: true }),
-  "schema": ResponseFormatJsonSchemaSchema,
-  "strict": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
-}) {}
-
-export class TextResponseFormatConfiguration
-  extends S.Union(ResponseFormatText, TextResponseFormatJsonSchema, ResponseFormatJsonObject)
-{}
-
-export class FileSearchToolType extends S.Literal("file_search") {}
-
-export class ComparisonFilterType extends S.Literal("eq", "ne", "gt", "gte", "lt", "lte") {}
-
-export class ComparisonFilter extends S.Struct({
-  "type": ComparisonFilterType.pipe(S.propertySignature, S.withConstructorDefault(() => "eq" as const)),
-  "key": S.String,
-  "value": S.Union(S.String, S.Number, S.Boolean)
-}) {}
-
-export class CompoundFilterType extends S.Literal("and", "or") {}
-
-export class CompoundFilter extends S.Struct({
-  "type": CompoundFilterType,
-  "filters": S.Array(ComparisonFilter)
-}) {}
-
-export class FileSearchToolRankingOptionsRanker extends S.Literal("auto", "default-2024-11-15") {}
-
-export class FileSearchTool extends S.Struct({
-  "type": FileSearchToolType,
-  "vector_store_ids": S.Array(S.String),
-  "max_num_results": S.optionalWith(S.Int, { nullable: true }),
-  "filters": S.optionalWith(S.Union(ComparisonFilter, CompoundFilter), { nullable: true }),
-  "ranking_options": S.optionalWith(
-    S.Struct({
-      "ranker": S.optionalWith(FileSearchToolRankingOptionsRanker, { nullable: true, default: () => "auto" as const }),
-      "score_threshold": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-        nullable: true,
-        default: () => 0 as const
-      })
-    }),
-    { nullable: true }
-  )
-}) {}
-
-export class FunctionToolType extends S.Literal("function") {}
-
-export class FunctionTool extends S.Struct({
-  "type": FunctionToolType,
-  "name": S.String,
-  "description": S.optionalWith(S.String, { nullable: true }),
-  "parameters": S.Record({ key: S.String, value: S.Unknown }),
-  "strict": S.Boolean
-}) {}
-
-export class ComputerToolType extends S.Literal("computer-preview") {}
-
-export class ComputerToolEnvironment extends S.Literal("mac", "windows", "ubuntu", "browser") {}
-
-export class ComputerTool extends S.Struct({
-  "type": ComputerToolType,
-  "display_width": S.Number,
-  "display_height": S.Number,
-  "environment": ComputerToolEnvironment
-}) {}
-
-export class WebSearchToolType extends S.Literal("web_search_preview", "web_search_preview_2025_03_11") {}
-
-export class WebSearchToolUserLocationEnumType extends S.Literal("approximate") {}
-
-export class WebSearchTool extends S.Struct({
-  "type": WebSearchToolType,
-  "user_location": S.optionalWith(
-    S.Struct({
-      "type": WebSearchToolUserLocationEnumType,
-      "country": S.optionalWith(S.String, { nullable: true }),
-      "region": S.optionalWith(S.String, { nullable: true }),
-      "city": S.optionalWith(S.String, { nullable: true }),
-      "timezone": S.optionalWith(S.String, { nullable: true })
-    }),
-    { nullable: true }
-  ),
-  "search_context_size": S.optionalWith(WebSearchContextSize, { nullable: true, default: () => "medium" as const })
-}) {}
-
-export class Tool extends S.Union(FileSearchTool, FunctionTool, ComputerTool, WebSearchTool) {}
-
-export class ToolChoiceOptions extends S.Literal("none", "auto", "required") {}
-
-export class ToolChoiceTypesType
-  extends S.Literal("file_search", "web_search_preview", "computer_use_preview", "web_search_preview_2025_03_11")
-{}
-
-export class ToolChoiceTypes extends S.Struct({
-  "type": ToolChoiceTypesType
-}) {}
-
-export class ToolChoiceFunctionType extends S.Literal("function") {}
-
-export class ToolChoiceFunction extends S.Struct({
-  "type": ToolChoiceFunctionType,
-  "name": S.String
-}) {}
-
-export class ResponsePropertiesTruncation extends S.Literal("auto", "disabled") {}
-
-export class ResponseProperties extends S.Struct({
-  "previous_response_id": S.optionalWith(S.String, { nullable: true }),
-  "reasoning": S.optionalWith(Reasoning, { nullable: true }),
-  "max_output_tokens": S.optionalWith(S.Int, { nullable: true }),
-  "instructions": S.optionalWith(S.String, { nullable: true }),
-  "text": S.optionalWith(
-    S.Struct({
-      "format": S.optionalWith(TextResponseFormatConfiguration, { nullable: true })
-    }),
-    { nullable: true }
-  ),
-  "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
-  "tool_choice": S.optionalWith(S.Union(ToolChoiceOptions, ToolChoiceTypes, ToolChoiceFunction), { nullable: true }),
-  "truncation": S.optionalWith(ResponsePropertiesTruncation, { nullable: true, default: () => "disabled" as const })
-}) {}
-
 export class EasyInputMessageRole extends S.Literal("user", "assistant", "system", "developer") {}
 
 export class InputTextType extends S.Literal("input_text") {}
@@ -3209,6 +3012,170 @@ export class Includable extends S.Literal(
   "computer_call_output.output.image_url"
 ) {}
 
+export class ReasoningGenerateSummary extends S.Literal("concise", "detailed") {}
+
+export class Reasoning extends S.Struct({
+  "effort": S.NullOr(ReasoningEffort).pipe(S.propertySignature, S.withConstructorDefault(() => "medium" as const)),
+  "generate_summary": S.optionalWith(ReasoningGenerateSummary, { nullable: true })
+}) {}
+
+export class TextResponseFormatJsonSchemaType extends S.Literal("json_schema") {}
+
+export class TextResponseFormatJsonSchema extends S.Struct({
+  "type": TextResponseFormatJsonSchemaType,
+  "description": S.optionalWith(S.String, { nullable: true }),
+  "name": S.optionalWith(S.String, { nullable: true }),
+  "schema": ResponseFormatJsonSchemaSchema,
+  "strict": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
+}) {}
+
+export class TextResponseFormatConfiguration
+  extends S.Union(ResponseFormatText, TextResponseFormatJsonSchema, ResponseFormatJsonObject)
+{}
+
+export class FileSearchToolType extends S.Literal("file_search") {}
+
+export class ComparisonFilterType extends S.Literal("eq", "ne", "gt", "gte", "lt", "lte") {}
+
+export class ComparisonFilter extends S.Struct({
+  "type": ComparisonFilterType.pipe(S.propertySignature, S.withConstructorDefault(() => "eq" as const)),
+  "key": S.String,
+  "value": S.Union(S.String, S.Number, S.Boolean)
+}) {}
+
+export class CompoundFilterType extends S.Literal("and", "or") {}
+
+export class CompoundFilter extends S.Struct({
+  "type": CompoundFilterType,
+  "filters": S.Array(ComparisonFilter)
+}) {}
+
+export class FileSearchToolRankingOptionsRanker extends S.Literal("auto", "default-2024-11-15") {}
+
+export class FileSearchTool extends S.Struct({
+  "type": FileSearchToolType,
+  "vector_store_ids": S.Array(S.String),
+  "max_num_results": S.optionalWith(S.Int, { nullable: true }),
+  "filters": S.optionalWith(S.Union(ComparisonFilter, CompoundFilter), { nullable: true }),
+  "ranking_options": S.optionalWith(
+    S.Struct({
+      "ranker": S.optionalWith(FileSearchToolRankingOptionsRanker, { nullable: true, default: () => "auto" as const }),
+      "score_threshold": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
+        nullable: true,
+        default: () => 0 as const
+      })
+    }),
+    { nullable: true }
+  )
+}) {}
+
+export class FunctionToolType extends S.Literal("function") {}
+
+export class FunctionTool extends S.Struct({
+  "type": FunctionToolType,
+  "name": S.String,
+  "description": S.optionalWith(S.String, { nullable: true }),
+  "parameters": S.Record({ key: S.String, value: S.Unknown }),
+  "strict": S.Boolean
+}) {}
+
+export class ComputerToolType extends S.Literal("computer-preview") {}
+
+export class ComputerToolEnvironment extends S.Literal("mac", "windows", "ubuntu", "browser") {}
+
+export class ComputerTool extends S.Struct({
+  "type": ComputerToolType,
+  "display_width": S.Number,
+  "display_height": S.Number,
+  "environment": ComputerToolEnvironment
+}) {}
+
+export class WebSearchToolType extends S.Literal("web_search_preview", "web_search_preview_2025_03_11") {}
+
+export class WebSearchToolUserLocationEnumType extends S.Literal("approximate") {}
+
+export class WebSearchToolUserLocation extends S.Struct({
+  "type": S.Literal("approximate"),
+  "country": S.optionalWith(S.String, { nullable: true }),
+  "region": S.optionalWith(S.String, { nullable: true }),
+  "city": S.optionalWith(S.String, { nullable: true }),
+  "timezone": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class WebSearchTool extends S.Struct({
+  "type": WebSearchToolType,
+  "user_location": S.optionalWith(WebSearchToolUserLocation, { nullable: true }),
+  "search_context_size": S.optionalWith(WebSearchContextSize, { nullable: true, default: () => "medium" as const })
+}) {}
+
+export class Tool extends S.Union(FileSearchTool, FunctionTool, ComputerTool, WebSearchTool) {}
+
+export class ToolChoiceOptions extends S.Literal("none", "auto", "required") {}
+
+export class ToolChoiceTypesType
+  extends S.Literal("file_search", "web_search_preview", "computer_use_preview", "web_search_preview_2025_03_11")
+{}
+
+export class ToolChoiceTypes extends S.Struct({
+  "type": ToolChoiceTypesType
+}) {}
+
+export class ToolChoiceFunctionType extends S.Literal("function") {}
+
+export class ToolChoiceFunction extends S.Struct({
+  "type": ToolChoiceFunctionType,
+  "name": S.String
+}) {}
+
+export class CreateResponseTruncation extends S.Literal("auto", "disabled") {}
+
+export class CreateResponseModelEnum extends S.Literal(
+  "o3-mini",
+  "o3-mini-2025-01-31",
+  "o1",
+  "o1-2024-12-17",
+  "o1-preview",
+  "o1-preview-2024-09-12",
+  "o1-mini",
+  "o1-mini-2024-09-12",
+  "computer-use-preview",
+  "computer-use-preview-2025-02-04",
+  "computer-use-preview-2025-03-11",
+  "gpt-4.5-preview",
+  "gpt-4.5-preview-2025-02-27",
+  "gpt-4o",
+  "gpt-4o-2024-11-20",
+  "gpt-4o-2024-08-06",
+  "gpt-4o-2024-05-13",
+  "gpt-4o-audio-preview",
+  "gpt-4o-audio-preview-2024-10-01",
+  "gpt-4o-audio-preview-2024-12-17",
+  "gpt-4o-mini-audio-preview",
+  "gpt-4o-mini-audio-preview-2024-12-17",
+  "chatgpt-4o-latest",
+  "gpt-4o-mini",
+  "gpt-4o-mini-2024-07-18",
+  "gpt-4-turbo",
+  "gpt-4-turbo-2024-04-09",
+  "gpt-4-0125-preview",
+  "gpt-4-turbo-preview",
+  "gpt-4-1106-preview",
+  "gpt-4-vision-preview",
+  "gpt-4",
+  "gpt-4-0314",
+  "gpt-4-0613",
+  "gpt-4-32k",
+  "gpt-4-32k-0314",
+  "gpt-4-32k-0613",
+  "gpt-3.5-turbo",
+  "gpt-3.5-turbo-16k",
+  "gpt-3.5-turbo-0301",
+  "gpt-3.5-turbo-0613",
+  "gpt-3.5-turbo-1106",
+  "gpt-3.5-turbo-0125",
+  "gpt-3.5-turbo-16k-0613"
+) {}
+
 export class CreateResponse extends S.Class<CreateResponse>("CreateResponse")({
   "input": S.Union(S.String, S.Array(InputItem)),
   "include": S.optionalWith(S.Array(Includable), { nullable: true }),
@@ -3227,56 +3194,8 @@ export class CreateResponse extends S.Class<CreateResponse>("CreateResponse")({
   ),
   "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
   "tool_choice": S.optionalWith(S.Union(ToolChoiceOptions, ToolChoiceTypes, ToolChoiceFunction), { nullable: true }),
-  "truncation": S.optionalWith(S.Literal("auto", "disabled"), { nullable: true, default: () => "disabled" as const }),
-  "model": S.Union(
-    S.String,
-    S.Literal(
-      "o3-mini",
-      "o3-mini-2025-01-31",
-      "o1",
-      "o1-2024-12-17",
-      "o1-preview",
-      "o1-preview-2024-09-12",
-      "o1-mini",
-      "o1-mini-2024-09-12",
-      "computer-use-preview",
-      "computer-use-preview-2025-02-04",
-      "computer-use-preview-2025-03-11",
-      "gpt-4.5-preview",
-      "gpt-4.5-preview-2025-02-27",
-      "gpt-4o",
-      "gpt-4o-2024-11-20",
-      "gpt-4o-2024-08-06",
-      "gpt-4o-2024-05-13",
-      "gpt-4o-audio-preview",
-      "gpt-4o-audio-preview-2024-10-01",
-      "gpt-4o-audio-preview-2024-12-17",
-      "gpt-4o-mini-audio-preview",
-      "gpt-4o-mini-audio-preview-2024-12-17",
-      "chatgpt-4o-latest",
-      "gpt-4o-mini",
-      "gpt-4o-mini-2024-07-18",
-      "gpt-4-turbo",
-      "gpt-4-turbo-2024-04-09",
-      "gpt-4-0125-preview",
-      "gpt-4-turbo-preview",
-      "gpt-4-1106-preview",
-      "gpt-4-vision-preview",
-      "gpt-4",
-      "gpt-4-0314",
-      "gpt-4-0613",
-      "gpt-4-32k",
-      "gpt-4-32k-0314",
-      "gpt-4-32k-0613",
-      "gpt-3.5-turbo",
-      "gpt-3.5-turbo-16k",
-      "gpt-3.5-turbo-0301",
-      "gpt-3.5-turbo-0613",
-      "gpt-3.5-turbo-1106",
-      "gpt-3.5-turbo-0125",
-      "gpt-3.5-turbo-16k-0613"
-    )
-  ),
+  "truncation": S.optionalWith(CreateResponseTruncation, { nullable: true, default: () => "disabled" as const }),
+  "model": S.Union(S.String, CreateResponseModelEnum),
   "metadata": S.optionalWith(Metadata, { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
@@ -3289,9 +3208,9 @@ export class CreateResponse extends S.Class<CreateResponse>("CreateResponse")({
   "user": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class ResponseEnumObject extends S.Literal("response") {}
+export class ResponseObject extends S.Literal("response") {}
 
-export class ResponseEnumStatus extends S.Literal("completed", "failed", "in_progress", "incomplete") {}
+export class ResponseStatus extends S.Literal("completed", "failed", "in_progress", "incomplete") {}
 
 export class ResponseErrorCode extends S.Literal(
   "server_error",
@@ -3319,7 +3238,7 @@ export class ResponseError extends S.Struct({
   "message": S.String
 }) {}
 
-export class ResponseEnumIncompleteDetailsReason extends S.Literal("max_output_tokens", "content_filter") {}
+export class ResponseIncompleteDetailsReason extends S.Literal("max_output_tokens", "content_filter") {}
 
 export class OutputItem extends S.Union(
   OutputMessage,
@@ -3339,14 +3258,63 @@ export class ResponseUsage extends S.Struct({
   "total_tokens": S.Int
 }) {}
 
+export class ResponseTruncation extends S.Literal("auto", "disabled") {}
+
+export class ResponseModelEnum extends S.Literal(
+  "o3-mini",
+  "o3-mini-2025-01-31",
+  "o1",
+  "o1-2024-12-17",
+  "o1-preview",
+  "o1-preview-2024-09-12",
+  "o1-mini",
+  "o1-mini-2024-09-12",
+  "computer-use-preview",
+  "computer-use-preview-2025-02-04",
+  "computer-use-preview-2025-03-11",
+  "gpt-4.5-preview",
+  "gpt-4.5-preview-2025-02-27",
+  "gpt-4o",
+  "gpt-4o-2024-11-20",
+  "gpt-4o-2024-08-06",
+  "gpt-4o-2024-05-13",
+  "gpt-4o-audio-preview",
+  "gpt-4o-audio-preview-2024-10-01",
+  "gpt-4o-audio-preview-2024-12-17",
+  "gpt-4o-mini-audio-preview",
+  "gpt-4o-mini-audio-preview-2024-12-17",
+  "chatgpt-4o-latest",
+  "gpt-4o-mini",
+  "gpt-4o-mini-2024-07-18",
+  "gpt-4-turbo",
+  "gpt-4-turbo-2024-04-09",
+  "gpt-4-0125-preview",
+  "gpt-4-turbo-preview",
+  "gpt-4-1106-preview",
+  "gpt-4-vision-preview",
+  "gpt-4",
+  "gpt-4-0314",
+  "gpt-4-0613",
+  "gpt-4-32k",
+  "gpt-4-32k-0314",
+  "gpt-4-32k-0613",
+  "gpt-3.5-turbo",
+  "gpt-3.5-turbo-16k",
+  "gpt-3.5-turbo-0301",
+  "gpt-3.5-turbo-0613",
+  "gpt-3.5-turbo-1106",
+  "gpt-3.5-turbo-0125",
+  "gpt-3.5-turbo-16k-0613"
+) {}
+
 export class Response extends S.Class<Response>("Response")({
   "id": S.String,
-  "object": ResponseEnumObject,
-  "status": S.optionalWith(ResponseEnumStatus, { nullable: true }),
+  "object": ResponseObject,
+  "status": S.optionalWith(ResponseStatus, { nullable: true }),
   "created_at": S.Number,
   "error": S.NullOr(ResponseError),
   "incomplete_details": S.NullOr(S.Struct({
-    "reason": S.optionalWith(ResponseEnumIncompleteDetailsReason, { nullable: true })
+    "reason": S.optionalWith(ResponseIncompleteDetailsReason, { nullable: true })
   })),
   "output": S.Array(OutputItem),
   "output_text": S.optionalWith(S.String, { nullable: true }),
@@ -3364,56 +3332,8 @@ export class Response extends S.Class<Response>("Response")({
   ),
   "tools": S.Array(Tool),
   "tool_choice": S.Union(ToolChoiceOptions, ToolChoiceTypes, ToolChoiceFunction),
-  "truncation": S.optionalWith(S.Literal("auto", "disabled"), { nullable: true, default: () => "disabled" as const }),
-  "model": S.Union(
-    S.String,
-    S.Literal(
-      "o3-mini",
-      "o3-mini-2025-01-31",
-      "o1",
-      "o1-2024-12-17",
-      "o1-preview",
-      "o1-preview-2024-09-12",
-      "o1-mini",
-      "o1-mini-2024-09-12",
-      "computer-use-preview",
-      "computer-use-preview-2025-02-04",
-      "computer-use-preview-2025-03-11",
-      "gpt-4.5-preview",
-      "gpt-4.5-preview-2025-02-27",
-      "gpt-4o",
-      "gpt-4o-2024-11-20",
-      "gpt-4o-2024-08-06",
-      "gpt-4o-2024-05-13",
-      "gpt-4o-audio-preview",
-      "gpt-4o-audio-preview-2024-10-01",
-      "gpt-4o-audio-preview-2024-12-17",
-      "gpt-4o-mini-audio-preview",
-      "gpt-4o-mini-audio-preview-2024-12-17",
-      "chatgpt-4o-latest",
-      "gpt-4o-mini",
-      "gpt-4o-mini-2024-07-18",
-      "gpt-4-turbo",
-      "gpt-4-turbo-2024-04-09",
-      "gpt-4-0125-preview",
-      "gpt-4-turbo-preview",
-      "gpt-4-1106-preview",
-      "gpt-4-vision-preview",
-      "gpt-4",
-      "gpt-4-0314",
-      "gpt-4-0613",
-      "gpt-4-32k",
-      "gpt-4-32k-0314",
-      "gpt-4-32k-0613",
-      "gpt-3.5-turbo",
-      "gpt-3.5-turbo-16k",
-      "gpt-3.5-turbo-0301",
-      "gpt-3.5-turbo-0613",
-      "gpt-3.5-turbo-1106",
-      "gpt-3.5-turbo-0125",
-      "gpt-3.5-turbo-16k-0613"
-    )
-  ),
+  "truncation": S.optionalWith(ResponseTruncation, { nullable: true, default: () => "disabled" as const }),
+  "model": S.Union(S.String, ResponseModelEnum),
   "metadata": S.NullOr(Metadata),
   "temperature": S.NullOr(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2))).pipe(
     S.propertySignature,
@@ -3441,32 +3361,46 @@ export class ListInputItemsParams extends S.Struct({
 
 export class ResponseItemListObject extends S.Literal("list") {}
 
+export class InputMessageResourceType extends S.Literal("message") {}
+
+export class InputMessageResourceRole extends S.Literal("user", "system", "developer") {}
+
+export class InputMessageResourceStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
 export class InputMessageResource extends S.Struct({
   "id": S.String,
-  "type": S.optionalWith(S.Literal("message"), { nullable: true }),
-  "role": S.Literal("user", "system", "developer"),
-  "status": S.optionalWith(S.Literal("in_progress", "completed", "incomplete"), { nullable: true }),
+  "type": S.optionalWith(InputMessageResourceType, { nullable: true }),
+  "role": InputMessageResourceRole,
+  "status": S.optionalWith(InputMessageResourceStatus, { nullable: true }),
   "content": InputMessageContentList
 }) {}
 
+export class ComputerToolCallOutputResourceType extends S.Literal("computer_call_output") {}
+
+export class ComputerToolCallOutputResourceStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
 export class ComputerToolCallOutputResource extends S.Struct({
   "id": S.String,
-  "type": S.Literal("computer_call_output").pipe(
+  "type": ComputerToolCallOutputResourceType.pipe(
     S.propertySignature,
     S.withConstructorDefault(() => "computer_call_output" as const)
   ),
   "call_id": S.String,
   "acknowledged_safety_checks": S.optionalWith(S.Array(ComputerToolCallSafetyCheck), { nullable: true }),
   "output": ComputerScreenshotImage,
-  "status": S.optionalWith(S.Literal("in_progress", "completed", "incomplete"), { nullable: true })
+  "status": S.optionalWith(ComputerToolCallOutputResourceStatus, { nullable: true })
 }) {}
+
+export class FunctionToolCallOutputResourceType extends S.Literal("function_call_output") {}
+
+export class FunctionToolCallOutputResourceStatus extends S.Literal("in_progress", "completed", "incomplete") {}
 
 export class FunctionToolCallOutputResource extends S.Struct({
   "id": S.String,
-  "type": S.Literal("function_call_output"),
+  "type": FunctionToolCallOutputResourceType,
   "call_id": S.String,
   "output": S.String,
-  "status": S.optionalWith(S.Literal("in_progress", "completed", "incomplete"), { nullable: true })
+  "status": S.optionalWith(FunctionToolCallOutputResourceStatus, { nullable: true })
 }) {}
 
 export class ItemResource extends S.Union(
@@ -3641,14 +3575,14 @@ export class CreateThreadAndRunRequestModelEnum extends S.Literal(
   "gpt-3.5-turbo-16k-0613"
 ) {}
 
-export class TruncationObjectType extends S.Literal("auto", "last_messages") {}
+export class CreateThreadAndRunRequestTruncationStrategyEnumType extends S.Literal("auto", "last_messages") {}
 
-export class TruncationObject extends S.Struct({
-  "type": TruncationObjectType,
+export class CreateThreadAndRunRequestTruncationStrategy extends S.Struct({
+  "type": S.Literal("auto", "last_messages"),
   "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
 }) {}
 
-export class AssistantsApiToolChoiceOptionEnum extends S.Literal("none", "auto", "required") {}
+export class CreateThreadAndRunRequestToolChoiceEnumEnum extends S.Literal("none", "auto", "required") {}
 
 export class AssistantsNamedToolChoiceType extends S.Literal("function", "code_interpreter", "file_search") {}
 
@@ -3662,8 +3596,8 @@ export class AssistantsNamedToolChoice extends S.Struct({
   )
 }) {}
 
-export class AssistantsApiToolChoiceOption
-  extends S.Union(AssistantsApiToolChoiceOptionEnum, AssistantsNamedToolChoice)
+export class CreateThreadAndRunRequestToolChoice
+  extends S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice)
 {}
 
 export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest>("CreateThreadAndRunRequest")({
@@ -3707,16 +3641,8 @@ export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest
   "stream": S.optionalWith(S.Boolean, { nullable: true }),
   "max_prompt_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
   "max_completion_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
-  "truncation_strategy": S.optionalWith(
-    S.Struct({
-      "type": S.Literal("auto", "last_messages"),
-      "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
-    }),
-    { nullable: true }
-  ),
-  "tool_choice": S.optionalWith(S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice), {
-    nullable: true
-  }),
+  "truncation_strategy": S.optionalWith(CreateThreadAndRunRequestTruncationStrategy, { nullable: true }),
+  "tool_choice": S.optionalWith(CreateThreadAndRunRequestToolChoice, { nullable: true }),
   "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
   "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
 }) {}
@@ -3758,6 +3684,17 @@ export class RunCompletionUsage extends S.Struct({
   "total_tokens": S.Int
 }) {}
 
+export class RunObjectTruncationStrategyEnumType extends S.Literal("auto", "last_messages") {}
+
+export class RunObjectTruncationStrategy extends S.Struct({
+  "type": S.Literal("auto", "last_messages"),
+  "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
+}) {}
+
+export class RunObjectToolChoiceEnumEnum extends S.Literal("none", "auto", "required") {}
+
+export class RunObjectToolChoice extends S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice) {}
+
 export class RunObject extends S.Class<RunObject>("RunObject")({
   "id": S.String,
   "object": RunObjectObject,
@@ -3793,11 +3730,8 @@ export class RunObject extends S.Class<RunObject>("RunObject")({
   "top_p": S.optionalWith(S.Number, { nullable: true }),
   "max_prompt_tokens": S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(256))),
   "max_completion_tokens": S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(256))),
-  "truncation_strategy": S.Struct({
-    "type": S.Literal("auto", "last_messages"),
-    "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
-  }),
-  "tool_choice": S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice),
+  "truncation_strategy": RunObjectTruncationStrategy,
+  "tool_choice": RunObjectToolChoice,
   "parallel_tool_calls": ParallelToolCalls.pipe(S.propertySignature, S.withConstructorDefault(() => true as const)),
   "response_format": AssistantsApiResponseFormatOption
 }) {}
@@ -3969,6 +3903,19 @@ export class CreateRunParams extends S.Struct({
   })
 }) {}
 
+export class CreateRunRequestTruncationStrategyEnumType extends S.Literal("auto", "last_messages") {}
+
+export class CreateRunRequestTruncationStrategy extends S.Struct({
+  "type": S.Literal("auto", "last_messages"),
+  "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
+}) {}
+
+export class CreateRunRequestToolChoiceEnumEnum extends S.Literal("none", "auto", "required") {}
+
+export class CreateRunRequestToolChoice
+  extends S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice)
+{}
+
 export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunRequest")({
   "assistant_id": S.String,
   "model": S.optionalWith(S.Union(S.String, AssistantSupportedModels), { nullable: true }),
@@ -3992,16 +3939,8 @@ export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunReques
   "stream": S.optionalWith(S.Boolean, { nullable: true }),
   "max_prompt_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
   "max_completion_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
-  "truncation_strategy": S.optionalWith(
-    S.Struct({
-      "type": S.Literal("auto", "last_messages"),
-      "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
-    }),
-    { nullable: true }
-  ),
-  "tool_choice": S.optionalWith(S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice), {
-    nullable: true
-  }),
+  "truncation_strategy": S.optionalWith(CreateRunRequestTruncationStrategy, { nullable: true }),
+  "tool_choice": S.optionalWith(CreateRunRequestToolChoice, { nullable: true }),
   "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
   "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
 }) {}
@@ -4183,6 +4122,40 @@ export class UploadStatus extends S.Literal("pending", "completed", "cancelled",
 
 export class UploadObject extends S.Literal("upload") {}
 
+export class UploadFileEnumObject extends S.Literal("file") {}
+
+export class UploadFileEnumPurpose extends S.Literal(
+  "assistants",
+  "assistants_output",
+  "batch",
+  "batch_output",
+  "fine-tune",
+  "fine-tune-results",
+  "vision"
+) {}
+
+export class UploadFileEnumStatus extends S.Literal("uploaded", "processed", "error") {}
+
+export class UploadFile extends S.Struct({
+  "id": S.String,
+  "bytes": S.Int,
+  "created_at": S.Int,
+  "expires_at": S.optionalWith(S.Int, { nullable: true }),
+  "filename": S.String,
+  "object": S.Literal("file"),
+  "purpose": S.Literal(
+    "assistants",
+    "assistants_output",
+    "batch",
+    "batch_output",
+    "fine-tune",
+    "fine-tune-results",
+    "vision"
+  ),
+  "status": S.Literal("uploaded", "processed", "error"),
+  "status_details": S.optionalWith(S.String, { nullable: true })
+}) {}
+
 export class Upload extends S.Class<Upload>("Upload")({
   "id": S.String,
   "created_at": S.Int,
@@ -4192,28 +4165,7 @@ export class Upload extends S.Class<Upload>("Upload")({
   "status": UploadStatus,
   "expires_at": S.Int,
   "object": S.optionalWith(UploadObject, { nullable: true }),
-  "file": S.optionalWith(
-    S.Struct({
-      "id": S.String,
-      "bytes": S.Int,
-      "created_at": S.Int,
-      "expires_at": S.optionalWith(S.Int, { nullable: true }),
-      "filename": S.String,
-      "object": S.Literal("file"),
-      "purpose": S.Literal(
-        "assistants",
-        "assistants_output",
-        "batch",
-        "batch_output",
-        "fine-tune",
-        "fine-tune-results",
-        "vision"
-      ),
-      "status": S.Literal("uploaded", "processed", "error"),
-      "status_details": S.optionalWith(S.String, { nullable: true })
-    }),
-    { nullable: true }
-  )
+  "file": S.optionalWith(UploadFile, { nullable: true })
 }) {}
 
 export class CompleteUploadRequest extends S.Class<CompleteUploadRequest>("CompleteUploadRequest")({
@@ -4304,15 +4256,16 @@ export class CreateVectorStoreRequest extends S.Class<CreateVectorStoreRequest>(
   "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
+export class UpdateVectorStoreRequestExpiresAfterEnumAnchor extends S.Literal("last_active_at") {}
+
+export class UpdateVectorStoreRequestExpiresAfter extends S.Struct({
+  "anchor": S.Literal("last_active_at"),
+  "days": S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(365))
+}) {}
+
 export class UpdateVectorStoreRequest extends S.Class<UpdateVectorStoreRequest>("UpdateVectorStoreRequest")({
   "name": S.optionalWith(S.String, { nullable: true }),
-  "expires_after": S.optionalWith(
-    S.Struct({
-      "anchor": S.Literal("last_active_at"),
-      "days": S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(365))
-    }),
-    { nullable: true }
-  ),
+  "expires_after": S.optionalWith(UpdateVectorStoreRequestExpiresAfter, { nullable: true }),
   "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
@@ -4543,10 +4496,10 @@ export const make = (
     "listAssistants": (options) =>
       HttpClientRequest.make("GET")(`/assistants`).pipe(
         HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "order": options["order"],
-          "after": options["after"],
-          "before": options["before"]
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "before": options["before"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -4661,7 +4614,10 @@ export const make = (
       ),
     "listBatches": (options) =>
       HttpClientRequest.make("GET")(`/batches`).pipe(
-        HttpClientRequest.setUrlParams({ "after": options["after"], "limit": options["limit"] }),
+        HttpClientRequest.setUrlParams({
+          "after": options["after"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible
+        }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
@@ -4719,11 +4675,11 @@ export const make = (
     "listChatCompletions": (options) =>
       HttpClientRequest.make("GET")(`/chat/completions`).pipe(
         HttpClientRequest.setUrlParams({
-          "model": options["model"],
-          "metadata": options["metadata"] as any,
-          "after": options["after"],
-          "limit": options["limit"],
-          "order": options["order"]
+          "model": options["model"] as UrlParams.Coercible,
+          "metadata": options["metadata"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -4802,9 +4758,9 @@ export const make = (
     "getChatCompletionMessages": (completionId, options) =>
       HttpClientRequest.make("GET")(`/chat/completions/${completionId}/messages`).pipe(
         HttpClientRequest.setUrlParams({
-          "after": options["after"],
-          "limit": options["limit"],
-          "order": options["order"]
+          "after": options["after"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -4852,10 +4808,10 @@ export const make = (
     "listFiles": (options) =>
       HttpClientRequest.make("GET")(`/files`).pipe(
         HttpClientRequest.setUrlParams({
-          "purpose": options["purpose"],
-          "limit": options["limit"],
-          "order": options["order"],
-          "after": options["after"]
+          "purpose": options["purpose"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -4929,9 +4885,9 @@ export const make = (
     "listPaginatedFineTuningJobs": (options) =>
       HttpClientRequest.make("GET")(`/fine_tuning/jobs`).pipe(
         HttpClientRequest.setUrlParams({
-          "after": options["after"],
-          "limit": options["limit"],
-          "metadata": options["metadata"] as any
+          "after": options["after"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "metadata": options["metadata"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -4995,7 +4951,10 @@ export const make = (
       ),
     "listFineTuningJobCheckpoints": (fineTuningJobId, options) =>
       HttpClientRequest.make("GET")(`/fine_tuning/jobs/${fineTuningJobId}/checkpoints`).pipe(
-        HttpClientRequest.setUrlParams({ "after": options["after"], "limit": options["limit"] }),
+        HttpClientRequest.setUrlParams({
+          "after": options["after"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible
+        }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
@@ -5013,7 +4972,10 @@ export const make = (
       ),
     "listFineTuningEvents": (fineTuningJobId, options) =>
       HttpClientRequest.make("GET")(`/fine_tuning/jobs/${fineTuningJobId}/events`).pipe(
-        HttpClientRequest.setUrlParams({ "after": options["after"], "limit": options["limit"] }),
+        HttpClientRequest.setUrlParams({
+          "after": options["after"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible
+        }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
@@ -5132,9 +5094,9 @@ export const make = (
     "adminApiKeysList": (options) =>
       HttpClientRequest.make("GET")(`/organization/admin_api_keys`).pipe(
         HttpClientRequest.setUrlParams({
-          "after": options["after"],
-          "order": options["order"],
-          "limit": options["limit"]
+          "after": options["after"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5193,18 +5155,18 @@ export const make = (
     "listAuditLogs": (options) =>
       HttpClientRequest.make("GET")(`/organization/audit_logs`).pipe(
         HttpClientRequest.setUrlParams({
-          "effective_at[gt]": options["effective_at[gt]"],
-          "effective_at[gte]": options["effective_at[gte]"],
-          "effective_at[lt]": options["effective_at[lt]"],
-          "effective_at[lte]": options["effective_at[lte]"],
-          "project_ids[]": options["project_ids[]"],
-          "event_types[]": options["event_types[]"],
-          "actor_ids[]": options["actor_ids[]"],
-          "actor_emails[]": options["actor_emails[]"],
-          "resource_ids[]": options["resource_ids[]"],
-          "limit": options["limit"],
-          "after": options["after"],
-          "before": options["before"]
+          "effective_at[gt]": options["effective_at[gt]"] as UrlParams.Coercible,
+          "effective_at[gte]": options["effective_at[gte]"] as UrlParams.Coercible,
+          "effective_at[lt]": options["effective_at[lt]"] as UrlParams.Coercible,
+          "effective_at[lte]": options["effective_at[lte]"] as UrlParams.Coercible,
+          "project_ids[]": options["project_ids[]"] as UrlParams.Coercible,
+          "event_types[]": options["event_types[]"] as UrlParams.Coercible,
+          "actor_ids[]": options["actor_ids[]"] as UrlParams.Coercible,
+          "actor_emails[]": options["actor_emails[]"] as UrlParams.Coercible,
+          "resource_ids[]": options["resource_ids[]"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "before": options["before"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5221,13 +5183,13 @@ export const make = (
     "usageCosts": (options) =>
       HttpClientRequest.make("GET")(`/organization/costs`).pipe(
         HttpClientRequest.setUrlParams({
-          "start_time": options["start_time"],
-          "end_time": options["end_time"],
-          "bucket_width": options["bucket_width"],
-          "project_ids": options["project_ids"],
-          "group_by": options["group_by"],
-          "limit": options["limit"],
-          "page": options["page"]
+          "start_time": options["start_time"] as UrlParams.Coercible,
+          "end_time": options["end_time"] as UrlParams.Coercible,
+          "bucket_width": options["bucket_width"] as UrlParams.Coercible,
+          "project_ids": options["project_ids"] as UrlParams.Coercible,
+          "group_by": options["group_by"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "page": options["page"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5243,7 +5205,10 @@ export const make = (
       ),
     "listInvites": (options) =>
       HttpClientRequest.make("GET")(`/organization/invites`).pipe(
-        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
+        HttpClientRequest.setUrlParams({
+          "limit": options["limit"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible
+        }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
@@ -5301,9 +5266,9 @@ export const make = (
     "listProjects": (options) =>
       HttpClientRequest.make("GET")(`/organization/projects`).pipe(
         HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "after": options["after"],
-          "include_archived": options["include_archived"]
+          "limit": options["limit"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "include_archived": options["include_archived"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5362,7 +5327,10 @@ export const make = (
       ),
     "listProjectApiKeys": (projectId, options) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/api_keys`).pipe(
-        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
+        HttpClientRequest.setUrlParams({
+          "limit": options["limit"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible
+        }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
@@ -5430,9 +5398,9 @@ export const make = (
     "listProjectRateLimits": (projectId, options) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/rate_limits`).pipe(
         HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "after": options["after"],
-          "before": options["before"]
+          "limit": options["limit"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "before": options["before"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5469,7 +5437,10 @@ export const make = (
       ),
     "listProjectServiceAccounts": (projectId, options) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/service_accounts`).pipe(
-        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
+        HttpClientRequest.setUrlParams({
+          "limit": options["limit"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible
+        }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
@@ -5540,7 +5511,10 @@ export const make = (
       ),
     "listProjectUsers": (projectId, options) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/users`).pipe(
-        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
+        HttpClientRequest.setUrlParams({
+          "limit": options["limit"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible
+        }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
@@ -5631,16 +5605,16 @@ export const make = (
     "usageAudioSpeeches": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/audio_speeches`).pipe(
         HttpClientRequest.setUrlParams({
-          "start_time": options["start_time"],
-          "end_time": options["end_time"],
-          "bucket_width": options["bucket_width"],
-          "project_ids": options["project_ids"],
-          "user_ids": options["user_ids"],
-          "api_key_ids": options["api_key_ids"],
-          "models": options["models"],
-          "group_by": options["group_by"],
-          "limit": options["limit"],
-          "page": options["page"]
+          "start_time": options["start_time"] as UrlParams.Coercible,
+          "end_time": options["end_time"] as UrlParams.Coercible,
+          "bucket_width": options["bucket_width"] as UrlParams.Coercible,
+          "project_ids": options["project_ids"] as UrlParams.Coercible,
+          "user_ids": options["user_ids"] as UrlParams.Coercible,
+          "api_key_ids": options["api_key_ids"] as UrlParams.Coercible,
+          "models": options["models"] as UrlParams.Coercible,
+          "group_by": options["group_by"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "page": options["page"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5657,16 +5631,16 @@ export const make = (
     "usageAudioTranscriptions": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/audio_transcriptions`).pipe(
         HttpClientRequest.setUrlParams({
-          "start_time": options["start_time"],
-          "end_time": options["end_time"],
-          "bucket_width": options["bucket_width"],
-          "project_ids": options["project_ids"],
-          "user_ids": options["user_ids"],
-          "api_key_ids": options["api_key_ids"],
-          "models": options["models"],
-          "group_by": options["group_by"],
-          "limit": options["limit"],
-          "page": options["page"]
+          "start_time": options["start_time"] as UrlParams.Coercible,
+          "end_time": options["end_time"] as UrlParams.Coercible,
+          "bucket_width": options["bucket_width"] as UrlParams.Coercible,
+          "project_ids": options["project_ids"] as UrlParams.Coercible,
+          "user_ids": options["user_ids"] as UrlParams.Coercible,
+          "api_key_ids": options["api_key_ids"] as UrlParams.Coercible,
+          "models": options["models"] as UrlParams.Coercible,
+          "group_by": options["group_by"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "page": options["page"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5686,13 +5660,13 @@ export const make = (
     "usageCodeInterpreterSessions": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/code_interpreter_sessions`).pipe(
         HttpClientRequest.setUrlParams({
-          "start_time": options["start_time"],
-          "end_time": options["end_time"],
-          "bucket_width": options["bucket_width"],
-          "project_ids": options["project_ids"],
-          "group_by": options["group_by"],
-          "limit": options["limit"],
-          "page": options["page"]
+          "start_time": options["start_time"] as UrlParams.Coercible,
+          "end_time": options["end_time"] as UrlParams.Coercible,
+          "bucket_width": options["bucket_width"] as UrlParams.Coercible,
+          "project_ids": options["project_ids"] as UrlParams.Coercible,
+          "group_by": options["group_by"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "page": options["page"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5712,17 +5686,17 @@ export const make = (
     "usageCompletions": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/completions`).pipe(
         HttpClientRequest.setUrlParams({
-          "start_time": options["start_time"],
-          "end_time": options["end_time"],
-          "bucket_width": options["bucket_width"],
-          "project_ids": options["project_ids"],
-          "user_ids": options["user_ids"],
-          "api_key_ids": options["api_key_ids"],
-          "models": options["models"],
-          "batch": options["batch"],
-          "group_by": options["group_by"],
-          "limit": options["limit"],
-          "page": options["page"]
+          "start_time": options["start_time"] as UrlParams.Coercible,
+          "end_time": options["end_time"] as UrlParams.Coercible,
+          "bucket_width": options["bucket_width"] as UrlParams.Coercible,
+          "project_ids": options["project_ids"] as UrlParams.Coercible,
+          "user_ids": options["user_ids"] as UrlParams.Coercible,
+          "api_key_ids": options["api_key_ids"] as UrlParams.Coercible,
+          "models": options["models"] as UrlParams.Coercible,
+          "batch": options["batch"] as UrlParams.Coercible,
+          "group_by": options["group_by"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "page": options["page"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5739,16 +5713,16 @@ export const make = (
     "usageEmbeddings": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/embeddings`).pipe(
         HttpClientRequest.setUrlParams({
-          "start_time": options["start_time"],
-          "end_time": options["end_time"],
-          "bucket_width": options["bucket_width"],
-          "project_ids": options["project_ids"],
-          "user_ids": options["user_ids"],
-          "api_key_ids": options["api_key_ids"],
-          "models": options["models"],
-          "group_by": options["group_by"],
-          "limit": options["limit"],
-          "page": options["page"]
+          "start_time": options["start_time"] as UrlParams.Coercible,
+          "end_time": options["end_time"] as UrlParams.Coercible,
+          "bucket_width": options["bucket_width"] as UrlParams.Coercible,
+          "project_ids": options["project_ids"] as UrlParams.Coercible,
+          "user_ids": options["user_ids"] as UrlParams.Coercible,
+          "api_key_ids": options["api_key_ids"] as UrlParams.Coercible,
+          "models": options["models"] as UrlParams.Coercible,
+          "group_by": options["group_by"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "page": options["page"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5765,18 +5739,18 @@ export const make = (
     "usageImages": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/images`).pipe(
         HttpClientRequest.setUrlParams({
-          "start_time": options["start_time"],
-          "end_time": options["end_time"],
-          "bucket_width": options["bucket_width"],
-          "sources": options["sources"],
-          "sizes": options["sizes"],
-          "project_ids": options["project_ids"],
-          "user_ids": options["user_ids"],
-          "api_key_ids": options["api_key_ids"],
-          "models": options["models"],
-          "group_by": options["group_by"],
-          "limit": options["limit"],
-          "page": options["page"]
+          "start_time": options["start_time"] as UrlParams.Coercible,
+          "end_time": options["end_time"] as UrlParams.Coercible,
+          "bucket_width": options["bucket_width"] as UrlParams.Coercible,
+          "sources": options["sources"] as UrlParams.Coercible,
+          "sizes": options["sizes"] as UrlParams.Coercible,
+          "project_ids": options["project_ids"] as UrlParams.Coercible,
+          "user_ids": options["user_ids"] as UrlParams.Coercible,
+          "api_key_ids": options["api_key_ids"] as UrlParams.Coercible,
+          "models": options["models"] as UrlParams.Coercible,
+          "group_by": options["group_by"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "page": options["page"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5793,16 +5767,16 @@ export const make = (
     "usageModerations": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/moderations`).pipe(
         HttpClientRequest.setUrlParams({
-          "start_time": options["start_time"],
-          "end_time": options["end_time"],
-          "bucket_width": options["bucket_width"],
-          "project_ids": options["project_ids"],
-          "user_ids": options["user_ids"],
-          "api_key_ids": options["api_key_ids"],
-          "models": options["models"],
-          "group_by": options["group_by"],
-          "limit": options["limit"],
-          "page": options["page"]
+          "start_time": options["start_time"] as UrlParams.Coercible,
+          "end_time": options["end_time"] as UrlParams.Coercible,
+          "bucket_width": options["bucket_width"] as UrlParams.Coercible,
+          "project_ids": options["project_ids"] as UrlParams.Coercible,
+          "user_ids": options["user_ids"] as UrlParams.Coercible,
+          "api_key_ids": options["api_key_ids"] as UrlParams.Coercible,
+          "models": options["models"] as UrlParams.Coercible,
+          "group_by": options["group_by"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "page": options["page"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5819,13 +5793,13 @@ export const make = (
     "usageVectorStores": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/vector_stores`).pipe(
         HttpClientRequest.setUrlParams({
-          "start_time": options["start_time"],
-          "end_time": options["end_time"],
-          "bucket_width": options["bucket_width"],
-          "project_ids": options["project_ids"],
-          "group_by": options["group_by"],
-          "limit": options["limit"],
-          "page": options["page"]
+          "start_time": options["start_time"] as UrlParams.Coercible,
+          "end_time": options["end_time"] as UrlParams.Coercible,
+          "bucket_width": options["bucket_width"] as UrlParams.Coercible,
+          "project_ids": options["project_ids"] as UrlParams.Coercible,
+          "group_by": options["group_by"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "page": options["page"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5842,9 +5816,9 @@ export const make = (
     "listUsers": (options) =>
       HttpClientRequest.make("GET")(`/organization/users`).pipe(
         HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "after": options["after"],
-          "emails": options["emails"]
+          "limit": options["limit"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "emails": options["emails"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -5930,7 +5904,7 @@ export const make = (
       ),
     "getResponse": (responseId, options) =>
       HttpClientRequest.make("GET")(`/responses/${responseId}`).pipe(
-        HttpClientRequest.setUrlParams({ "include": options["include"] }),
+        HttpClientRequest.setUrlParams({ "include": options["include"] as UrlParams.Coercible }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
@@ -5960,10 +5934,10 @@ export const make = (
     "listInputItems": (responseId, options) =>
       HttpClientRequest.make("GET")(`/responses/${responseId}/input_items`).pipe(
         HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "order": options["order"],
-          "after": options["after"],
-          "before": options["before"]
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "before": options["before"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -6053,11 +6027,11 @@ export const make = (
     "listMessages": (threadId, options) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}/messages`).pipe(
         HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "order": options["order"],
-          "after": options["after"],
-          "before": options["before"],
-          "run_id": options["run_id"]
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "before": options["before"] as UrlParams.Coercible,
+          "run_id": options["run_id"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -6139,10 +6113,10 @@ export const make = (
     "listRuns": (threadId, options) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}/runs`).pipe(
         HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "order": options["order"],
-          "after": options["after"],
-          "before": options["before"]
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "before": options["before"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -6158,7 +6132,7 @@ export const make = (
       ),
     "createRun": (threadId, options) =>
       HttpClientRequest.make("POST")(`/threads/${threadId}/runs`).pipe(
-        HttpClientRequest.setUrlParams({ "include[]": options.params["include[]"] }),
+        HttpClientRequest.setUrlParams({ "include[]": options.params["include[]"] as UrlParams.Coercible }),
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options.payload)),
         Effect.flatMap((request) =>
           Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
@@ -6219,11 +6193,11 @@ export const make = (
     "listRunSteps": (threadId, runId, options) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}/runs/${runId}/steps`).pipe(
         HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "order": options["order"],
-          "after": options["after"],
-          "before": options["before"],
-          "include[]": options["include[]"]
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "before": options["before"] as UrlParams.Coercible,
+          "include[]": options["include[]"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -6242,7 +6216,7 @@ export const make = (
       ),
     "getRunStep": (threadId, runId, stepId, options) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}/runs/${runId}/steps/${stepId}`).pipe(
-        HttpClientRequest.setUrlParams({ "include[]": options["include[]"] }),
+        HttpClientRequest.setUrlParams({ "include[]": options["include[]"] as UrlParams.Coercible }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
@@ -6335,10 +6309,10 @@ export const make = (
     "listVectorStores": (options) =>
       HttpClientRequest.make("GET")(`/vector_stores`).pipe(
         HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "order": options["order"],
-          "after": options["after"],
-          "before": options["before"]
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "before": options["before"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -6465,11 +6439,11 @@ export const make = (
     "listFilesInVectorStoreBatch": (vectorStoreId, batchId, options) =>
       HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}/file_batches/${batchId}/files`).pipe(
         HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "order": options["order"],
-          "after": options["after"],
-          "before": options["before"],
-          "filter": options["filter"]
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "before": options["before"] as UrlParams.Coercible,
+          "filter": options["filter"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
@@ -6489,11 +6463,11 @@ export const make = (
     "listVectorStoreFiles": (vectorStoreId, options) =>
       HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}/files`).pipe(
         HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "order": options["order"],
-          "after": options["after"],
-          "before": options["before"],
-          "filter": options["filter"]
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "before": options["before"] as UrlParams.Coercible,
+          "filter": options["filter"] as UrlParams.Coercible
         }),
         Effect.succeed,
         Effect.flatMap((request) =>

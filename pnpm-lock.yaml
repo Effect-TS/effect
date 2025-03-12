@@ -187,8 +187,8 @@ importers:
         specifier: workspace:^
         version: link:../../platform-node/dist
       '@tim-smart/openapi-gen':
-        specifier: ^0.3.9
-        version: 0.3.9
+        specifier: ^0.3.11
+        version: 0.3.11
       effect:
         specifier: workspace:^
         version: link:../../effect/dist
@@ -213,8 +213,8 @@ importers:
         specifier: workspace:^
         version: link:../../platform-node/dist
       '@tim-smart/openapi-gen':
-        specifier: ^0.3.9
-        version: 0.3.9
+        specifier: ^0.3.11
+        version: 0.3.11
       effect:
         specifier: workspace:^
         version: link:../../effect/dist
@@ -3123,8 +3123,8 @@ packages:
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
 
-  '@tim-smart/openapi-gen@0.3.9':
-    resolution: {integrity: sha512-4E4CLespIeEs2Nw5Mv8ajpccSqPe/D/bbycH+KMUNETeEo3QqbL8iKnDZiRFUYn3I2zDbQInBC1PF60Odd5OHw==}
+  '@tim-smart/openapi-gen@0.3.11':
+    resolution: {integrity: sha512-PwkJKYrH03O1L41G8K+WZBL8wCGuEFKEc38SKc1CRH1faR3W4q4oa44fJbW7rx2tXoZR4kNO44mwIbI6QJt7/Q==}
     hasBin: true
 
   '@ts-graphviz/adapter@2.0.3':
@@ -10702,7 +10702,7 @@ snapshots:
     dependencies:
       '@testing-library/dom': 10.4.0
 
-  '@tim-smart/openapi-gen@0.3.9':
+  '@tim-smart/openapi-gen@0.3.11':
     dependencies:
       yaml: 2.7.0
 
