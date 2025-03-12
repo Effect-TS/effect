@@ -5,6 +5,7 @@ import type * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
+import type * as UrlParams from "@effect/platform/UrlParams"
 import * as Effect from "effect/Effect"
 import type { ParseError } from "effect/ParseResult"
 import * as S from "effect/Schema"
@@ -1478,9 +1479,9 @@ export const make = (
     "modelsList": (options) =>
       HttpClientRequest.make("GET")(`/v1/models`).pipe(
         HttpClientRequest.setUrlParams({
-          "before_id": options["before_id"],
-          "after_id": options["after_id"],
-          "limit": options["limit"]
+          "before_id": options["before_id"] as UrlParams.Coercible,
+          "after_id": options["after_id"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible
         }),
         HttpClientRequest.setHeaders({
           "anthropic-version": options["anthropic-version"] ?? undefined,
@@ -1521,9 +1522,9 @@ export const make = (
     "messageBatchesList": (options) =>
       HttpClientRequest.make("GET")(`/v1/messages/batches`).pipe(
         HttpClientRequest.setUrlParams({
-          "before_id": options["before_id"],
-          "after_id": options["after_id"],
-          "limit": options["limit"]
+          "before_id": options["before_id"] as UrlParams.Coercible,
+          "after_id": options["after_id"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible
         }),
         HttpClientRequest.setHeaders({
           "anthropic-version": options["anthropic-version"] ?? undefined,
@@ -1680,9 +1681,9 @@ export const make = (
     "betaModelsList": (options) =>
       HttpClientRequest.make("GET")(`/v1/models?beta=true`).pipe(
         HttpClientRequest.setUrlParams({
-          "before_id": options["before_id"],
-          "after_id": options["after_id"],
-          "limit": options["limit"]
+          "before_id": options["before_id"] as UrlParams.Coercible,
+          "after_id": options["after_id"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible
         }),
         HttpClientRequest.setHeaders({
           "anthropic-version": options["anthropic-version"] ?? undefined,
@@ -1723,9 +1724,9 @@ export const make = (
     "betaMessageBatchesList": (options) =>
       HttpClientRequest.make("GET")(`/v1/messages/batches?beta=true`).pipe(
         HttpClientRequest.setUrlParams({
-          "before_id": options["before_id"],
-          "after_id": options["after_id"],
-          "limit": options["limit"]
+          "before_id": options["before_id"] as UrlParams.Coercible,
+          "after_id": options["after_id"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible
         }),
         HttpClientRequest.setHeaders({
           "anthropic-beta": options["anthropic-beta"] ?? undefined,
