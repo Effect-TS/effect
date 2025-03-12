@@ -28,10 +28,10 @@ export class AssistantToolsCode extends S.Struct({
 
 export class AssistantToolsFileSearchType extends S.Literal("file_search") {}
 
-export class FileSearchRankingOptionsRanker extends S.Literal("auto", "default_2024_08_21") {}
+export class FileSearchRanker extends S.Literal("auto", "default_2024_08_21") {}
 
 export class FileSearchRankingOptions extends S.Struct({
-  "ranker": S.optionalWith(FileSearchRankingOptionsRanker, { nullable: true }),
+  "ranker": S.optionalWith(FileSearchRanker, { nullable: true }),
   "score_threshold": S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1))
 }) {}
 
@@ -162,6 +162,8 @@ export class AssistantSupportedModels extends S.Literal(
   "gpt-4o-2024-05-13",
   "gpt-4o-mini",
   "gpt-4o-mini-2024-07-18",
+  "gpt-4.5-preview",
+  "gpt-4.5-preview-2025-02-27",
   "gpt-4-turbo",
   "gpt-4-turbo-2024-04-09",
   "gpt-4-0125-preview",
@@ -447,84 +449,17 @@ export class CreateBatchRequest extends S.Class<CreateBatchRequest>("CreateBatch
   "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
-export class ChatCompletionRequestMessageContentPartTextType extends S.Literal("text") {}
+export class ListChatCompletionsParamsOrder extends S.Literal("asc", "desc") {}
 
-export class ChatCompletionRequestMessageContentPartText extends S.Struct({
-  "type": ChatCompletionRequestMessageContentPartTextType,
-  "text": S.String
+export class ListChatCompletionsParams extends S.Struct({
+  "model": S.optionalWith(S.String, { nullable: true }),
+  "metadata": S.optionalWith(Metadata, { nullable: true }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(ListChatCompletionsParamsOrder, { nullable: true, default: () => "asc" as const })
 }) {}
 
-export class ChatCompletionRequestDeveloperMessageRole extends S.Literal("developer") {}
-
-export class ChatCompletionRequestDeveloperMessage extends S.Struct({
-  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestMessageContentPartText)),
-  "role": ChatCompletionRequestDeveloperMessageRole,
-  "name": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-export class ChatCompletionRequestSystemMessageContentPart extends ChatCompletionRequestMessageContentPartText {}
-
-export class ChatCompletionRequestSystemMessageRole extends S.Literal("system") {}
-
-export class ChatCompletionRequestSystemMessage extends S.Struct({
-  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestSystemMessageContentPart)),
-  "role": ChatCompletionRequestSystemMessageRole,
-  "name": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-export class ChatCompletionRequestMessageContentPartImageType extends S.Literal("image_url") {}
-
-export class ChatCompletionRequestMessageContentPartImageImageUrlDetail extends S.Literal("auto", "low", "high") {}
-
-export class ChatCompletionRequestMessageContentPartImage extends S.Struct({
-  "type": ChatCompletionRequestMessageContentPartImageType,
-  "image_url": S.Struct({
-    "url": S.String,
-    "detail": S.optionalWith(ChatCompletionRequestMessageContentPartImageImageUrlDetail, {
-      nullable: true,
-      default: () => "auto" as const
-    })
-  })
-}) {}
-
-export class ChatCompletionRequestMessageContentPartAudioType extends S.Literal("input_audio") {}
-
-export class ChatCompletionRequestMessageContentPartAudioInputAudioFormat extends S.Literal("wav", "mp3") {}
-
-export class ChatCompletionRequestMessageContentPartAudio extends S.Struct({
-  "type": ChatCompletionRequestMessageContentPartAudioType,
-  "input_audio": S.Struct({
-    "data": S.String,
-    "format": ChatCompletionRequestMessageContentPartAudioInputAudioFormat
-  })
-}) {}
-
-export class ChatCompletionRequestUserMessageContentPart extends S.Union(
-  ChatCompletionRequestMessageContentPartText,
-  ChatCompletionRequestMessageContentPartImage,
-  ChatCompletionRequestMessageContentPartAudio
-) {}
-
-export class ChatCompletionRequestUserMessageRole extends S.Literal("user") {}
-
-export class ChatCompletionRequestUserMessage extends S.Struct({
-  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestUserMessageContentPart)),
-  "role": ChatCompletionRequestUserMessageRole,
-  "name": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-export class ChatCompletionRequestMessageContentPartRefusalType extends S.Literal("refusal") {}
-
-export class ChatCompletionRequestMessageContentPartRefusal extends S.Struct({
-  "type": ChatCompletionRequestMessageContentPartRefusalType,
-  "refusal": S.String
-}) {}
-
-export class ChatCompletionRequestAssistantMessageContentPart
-  extends S.Union(ChatCompletionRequestMessageContentPartText, ChatCompletionRequestMessageContentPartRefusal)
-{}
-
-export class ChatCompletionRequestAssistantMessageRole extends S.Literal("assistant") {}
+export class ChatCompletionListObject extends S.Literal("list") {}
 
 export class ChatCompletionMessageToolCallType extends S.Literal("function") {}
 
@@ -539,225 +474,24 @@ export class ChatCompletionMessageToolCall extends S.Struct({
 
 export class ChatCompletionMessageToolCalls extends S.Array(ChatCompletionMessageToolCall) {}
 
-export class ChatCompletionRequestAssistantMessage extends S.Struct({
-  "content": S.optionalWith(S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestAssistantMessageContentPart)), {
-    nullable: true
-  }),
-  "refusal": S.optionalWith(S.String, { nullable: true }),
-  "role": ChatCompletionRequestAssistantMessageRole,
-  "name": S.optionalWith(S.String, { nullable: true }),
-  "audio": S.optionalWith(
-    S.Struct({
-      "id": S.String
-    }),
-    { nullable: true }
-  ),
-  "tool_calls": S.optionalWith(ChatCompletionMessageToolCalls, { nullable: true }),
-  "function_call": S.optionalWith(
-    S.Struct({
-      "arguments": S.String,
-      "name": S.String
-    }),
-    { nullable: true }
-  )
-}) {}
-
-export class ChatCompletionRequestToolMessageRole extends S.Literal("tool") {}
-
-export class ChatCompletionRequestToolMessageContentPart extends ChatCompletionRequestMessageContentPartText {}
-
-export class ChatCompletionRequestToolMessage extends S.Struct({
-  "role": ChatCompletionRequestToolMessageRole,
-  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestToolMessageContentPart)),
-  "tool_call_id": S.String
-}) {}
-
-export class ChatCompletionRequestFunctionMessageRole extends S.Literal("function") {}
-
-export class ChatCompletionRequestFunctionMessage extends S.Struct({
-  "role": ChatCompletionRequestFunctionMessageRole,
-  "content": S.NullOr(S.String),
-  "name": S.String
-}) {}
-
-export class ChatCompletionRequestMessage extends S.Union(
-  ChatCompletionRequestDeveloperMessage,
-  ChatCompletionRequestSystemMessage,
-  ChatCompletionRequestUserMessage,
-  ChatCompletionRequestAssistantMessage,
-  ChatCompletionRequestToolMessage,
-  ChatCompletionRequestFunctionMessage
-) {}
-
-export class CreateChatCompletionRequestModelEnum extends S.Literal(
-  "o3-mini",
-  "o3-mini-2025-01-31",
-  "o1",
-  "o1-2024-12-17",
-  "o1-preview",
-  "o1-preview-2024-09-12",
-  "o1-mini",
-  "o1-mini-2024-09-12",
-  "gpt-4o",
-  "gpt-4o-2024-11-20",
-  "gpt-4o-2024-08-06",
-  "gpt-4o-2024-05-13",
-  "gpt-4o-audio-preview",
-  "gpt-4o-audio-preview-2024-10-01",
-  "gpt-4o-audio-preview-2024-12-17",
-  "gpt-4o-mini-audio-preview",
-  "gpt-4o-mini-audio-preview-2024-12-17",
-  "chatgpt-4o-latest",
-  "gpt-4o-mini",
-  "gpt-4o-mini-2024-07-18",
-  "gpt-4-turbo",
-  "gpt-4-turbo-2024-04-09",
-  "gpt-4-0125-preview",
-  "gpt-4-turbo-preview",
-  "gpt-4-1106-preview",
-  "gpt-4-vision-preview",
-  "gpt-4",
-  "gpt-4-0314",
-  "gpt-4-0613",
-  "gpt-4-32k",
-  "gpt-4-32k-0314",
-  "gpt-4-32k-0613",
-  "gpt-3.5-turbo",
-  "gpt-3.5-turbo-16k",
-  "gpt-3.5-turbo-0301",
-  "gpt-3.5-turbo-0613",
-  "gpt-3.5-turbo-1106",
-  "gpt-3.5-turbo-0125",
-  "gpt-3.5-turbo-16k-0613"
-) {}
-
-export class ChatCompletionModalities extends S.Array(S.Literal("text", "audio")) {}
-
-export class PredictionContentType extends S.Literal("content") {}
-
-export class PredictionContent extends S.Struct({
-  "type": PredictionContentType,
-  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestMessageContentPartText))
-}) {}
-
-export class CreateChatCompletionRequestAudioVoice
-  extends S.Literal("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse")
-{}
-
-export class CreateChatCompletionRequestAudioFormat extends S.Literal("wav", "mp3", "flac", "opus", "pcm16") {}
-
-export class CreateChatCompletionRequestServiceTier extends S.Literal("auto", "default") {}
-
-export class ChatCompletionStreamOptions extends S.Struct({
-  "include_usage": S.optionalWith(S.Boolean, { nullable: true })
-}) {}
-
-export class ChatCompletionToolType extends S.Literal("function") {}
-
-export class ChatCompletionTool extends S.Struct({
-  "type": ChatCompletionToolType,
-  "function": FunctionObject
-}) {}
-
-export class ChatCompletionToolChoiceOptionEnum extends S.Literal("none", "auto", "required") {}
-
-export class ChatCompletionNamedToolChoiceType extends S.Literal("function") {}
-
-export class ChatCompletionNamedToolChoice extends S.Struct({
-  "type": ChatCompletionNamedToolChoiceType,
-  "function": S.Struct({
-    "name": S.String
-  })
-}) {}
-
-export class ChatCompletionToolChoiceOption
-  extends S.Union(ChatCompletionToolChoiceOptionEnum, ChatCompletionNamedToolChoice)
-{}
-
-export class ParallelToolCalls extends S.Boolean {}
-
-export class CreateChatCompletionRequestFunctionCallEnum extends S.Literal("none", "auto") {}
-
-export class ChatCompletionFunctionCallOption extends S.Struct({
-  "name": S.String
-}) {}
-
-export class ChatCompletionFunctions extends S.Struct({
-  "description": S.optionalWith(S.String, { nullable: true }),
-  "name": S.String,
-  "parameters": S.optionalWith(FunctionParameters, { nullable: true })
-}) {}
-
-export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionRequest>("CreateChatCompletionRequest")({
-  "messages": S.NonEmptyArray(ChatCompletionRequestMessage),
-  "model": S.Union(S.String, CreateChatCompletionRequestModelEnum),
-  "store": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
-  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
-  "frequency_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 0 as const
-  }),
-  "logit_bias": S.optionalWith(S.NullOr(S.Record({ key: S.String, value: S.Unknown })), { default: () => null }),
-  "logprobs": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
-  "top_logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(20)), { nullable: true }),
-  "max_tokens": S.optionalWith(S.Int, { nullable: true }),
-  "max_completion_tokens": S.optionalWith(S.Int, { nullable: true }),
-  "n": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(128)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "modalities": S.optionalWith(ChatCompletionModalities, { nullable: true }),
-  "prediction": S.optionalWith(PredictionContent, { nullable: true }),
-  "audio": S.optionalWith(
-    S.Struct({
-      "voice": CreateChatCompletionRequestAudioVoice,
-      "format": CreateChatCompletionRequestAudioFormat
-    }),
-    { nullable: true }
-  ),
-  "presence_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 0 as const
-  }),
-  "response_format": S.optionalWith(S.Union(ResponseFormatText, ResponseFormatJsonObject, ResponseFormatJsonSchema), {
-    nullable: true
-  }),
-  "seed": S.optionalWith(S.Int, { nullable: true }),
-  "service_tier": S.optionalWith(CreateChatCompletionRequestServiceTier, {
-    nullable: true,
-    default: () => "auto" as const
-  }),
-  "stop": S.optionalWith(S.NullOr(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4)))), {
-    default: () => null
-  }),
-  "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
-  "stream_options": S.optionalWith(S.NullOr(ChatCompletionStreamOptions), { default: () => null }),
-  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "tools": S.optionalWith(S.Array(ChatCompletionTool), { nullable: true }),
-  "tool_choice": S.optionalWith(ChatCompletionToolChoiceOption, { nullable: true }),
-  "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
-  "user": S.optionalWith(S.String, { nullable: true }),
-  "function_call": S.optionalWith(
-    S.Union(CreateChatCompletionRequestFunctionCallEnum, ChatCompletionFunctionCallOption),
-    { nullable: true }
-  ),
-  "functions": S.optionalWith(S.Array(ChatCompletionFunctions).pipe(S.minItems(1), S.maxItems(128)), { nullable: true })
-}) {}
-
 export class ChatCompletionResponseMessageRole extends S.Literal("assistant") {}
 
 export class ChatCompletionResponseMessage extends S.Struct({
   "content": S.NullOr(S.String),
   "refusal": S.NullOr(S.String),
   "tool_calls": S.optionalWith(ChatCompletionMessageToolCalls, { nullable: true }),
+  "annotations": S.optionalWith(
+    S.Array(S.Struct({
+      "type": S.Literal("url_citation"),
+      "url_citation": S.Struct({
+        "end_index": S.Int,
+        "start_index": S.Int,
+        "url": S.String,
+        "title": S.String
+      })
+    })),
+    { nullable: true }
+  ),
   "role": ChatCompletionResponseMessageRole,
   "function_call": S.optionalWith(
     S.Struct({
@@ -814,26 +548,498 @@ export class CompletionUsage extends S.Struct({
   )
 }) {}
 
-export class CreateChatCompletionResponse
-  extends S.Class<CreateChatCompletionResponse>("CreateChatCompletionResponse")({
-    "id": S.String,
-    "choices": S.Array(S.Struct({
-      "finish_reason": S.Literal("stop", "length", "tool_calls", "content_filter", "function_call"),
-      "index": S.Int,
-      "message": ChatCompletionResponseMessage,
-      "logprobs": S.NullOr(S.Struct({
-        "content": S.NullOr(S.Array(ChatCompletionTokenLogprob)),
-        "refusal": S.NullOr(S.Array(ChatCompletionTokenLogprob))
-      }))
-    })),
-    "created": S.Int,
-    "model": S.String,
-    "service_tier": S.optionalWith(CreateChatCompletionResponseServiceTier, { nullable: true }),
-    "system_fingerprint": S.optionalWith(S.String, { nullable: true }),
-    "object": CreateChatCompletionResponseObject,
-    "usage": S.optionalWith(CompletionUsage, { nullable: true })
+export class CreateChatCompletionResponse extends S.Struct({
+  "id": S.String,
+  "choices": S.Array(S.Struct({
+    "finish_reason": S.Literal("stop", "length", "tool_calls", "content_filter", "function_call"),
+    "index": S.Int,
+    "message": ChatCompletionResponseMessage,
+    "logprobs": S.NullOr(S.Struct({
+      "content": S.NullOr(S.Array(ChatCompletionTokenLogprob)),
+      "refusal": S.NullOr(S.Array(ChatCompletionTokenLogprob))
+    }))
+  })),
+  "created": S.Int,
+  "model": S.String,
+  "service_tier": S.optionalWith(CreateChatCompletionResponseServiceTier, { nullable: true }),
+  "system_fingerprint": S.optionalWith(S.String, { nullable: true }),
+  "object": CreateChatCompletionResponseObject,
+  "usage": S.optionalWith(CompletionUsage, { nullable: true })
+}) {}
+
+export class ChatCompletionList extends S.Class<ChatCompletionList>("ChatCompletionList")({
+  "object": ChatCompletionListObject.pipe(S.propertySignature, S.withConstructorDefault(() => "list" as const)),
+  "data": S.Array(CreateChatCompletionResponse),
+  "first_id": S.String,
+  "last_id": S.String,
+  "has_more": S.Boolean
+}) {}
+
+export class ModelResponsePropertiesModelEnum extends S.Literal(
+  "o3-mini",
+  "o3-mini-2025-01-31",
+  "o1",
+  "o1-2024-12-17",
+  "o1-preview",
+  "o1-preview-2024-09-12",
+  "o1-mini",
+  "o1-mini-2024-09-12",
+  "computer-use-preview",
+  "computer-use-preview-2025-02-04",
+  "computer-use-preview-2025-03-11",
+  "gpt-4.5-preview",
+  "gpt-4.5-preview-2025-02-27",
+  "gpt-4o",
+  "gpt-4o-2024-11-20",
+  "gpt-4o-2024-08-06",
+  "gpt-4o-2024-05-13",
+  "gpt-4o-audio-preview",
+  "gpt-4o-audio-preview-2024-10-01",
+  "gpt-4o-audio-preview-2024-12-17",
+  "gpt-4o-mini-audio-preview",
+  "gpt-4o-mini-audio-preview-2024-12-17",
+  "chatgpt-4o-latest",
+  "gpt-4o-mini",
+  "gpt-4o-mini-2024-07-18",
+  "gpt-4-turbo",
+  "gpt-4-turbo-2024-04-09",
+  "gpt-4-0125-preview",
+  "gpt-4-turbo-preview",
+  "gpt-4-1106-preview",
+  "gpt-4-vision-preview",
+  "gpt-4",
+  "gpt-4-0314",
+  "gpt-4-0613",
+  "gpt-4-32k",
+  "gpt-4-32k-0314",
+  "gpt-4-32k-0613",
+  "gpt-3.5-turbo",
+  "gpt-3.5-turbo-16k",
+  "gpt-3.5-turbo-0301",
+  "gpt-3.5-turbo-0613",
+  "gpt-3.5-turbo-1106",
+  "gpt-3.5-turbo-0125",
+  "gpt-3.5-turbo-16k-0613"
+) {}
+
+export class ModelResponseProperties extends S.Struct({
+  "model": S.optionalWith(S.Union(S.String, ModelResponsePropertiesModelEnum), { nullable: true }),
+  "metadata": S.optionalWith(Metadata, { nullable: true }),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "user": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class CreateModelResponseProperties extends ModelResponseProperties {}
+
+export class ChatCompletionRequestMessageContentPartTextType extends S.Literal("text") {}
+
+export class ChatCompletionRequestMessageContentPartText extends S.Struct({
+  "type": ChatCompletionRequestMessageContentPartTextType,
+  "text": S.String
+}) {}
+
+export class ChatCompletionRequestDeveloperMessageRole extends S.Literal("developer") {}
+
+export class ChatCompletionRequestDeveloperMessage extends S.Struct({
+  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestMessageContentPartText)),
+  "role": ChatCompletionRequestDeveloperMessageRole,
+  "name": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ChatCompletionRequestSystemMessageContentPart extends ChatCompletionRequestMessageContentPartText {}
+
+export class ChatCompletionRequestSystemMessageRole extends S.Literal("system") {}
+
+export class ChatCompletionRequestSystemMessage extends S.Struct({
+  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestSystemMessageContentPart)),
+  "role": ChatCompletionRequestSystemMessageRole,
+  "name": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ChatCompletionRequestMessageContentPartImageType extends S.Literal("image_url") {}
+
+export class ChatCompletionRequestMessageContentPartImageImageUrlDetail extends S.Literal("auto", "low", "high") {}
+
+export class ChatCompletionRequestMessageContentPartImage extends S.Struct({
+  "type": ChatCompletionRequestMessageContentPartImageType,
+  "image_url": S.Struct({
+    "url": S.String,
+    "detail": S.optionalWith(ChatCompletionRequestMessageContentPartImageImageUrlDetail, {
+      nullable: true,
+      default: () => "auto" as const
+    })
   })
+}) {}
+
+export class ChatCompletionRequestMessageContentPartAudioType extends S.Literal("input_audio") {}
+
+export class ChatCompletionRequestMessageContentPartAudioInputAudioFormat extends S.Literal("wav", "mp3") {}
+
+export class ChatCompletionRequestMessageContentPartAudio extends S.Struct({
+  "type": ChatCompletionRequestMessageContentPartAudioType,
+  "input_audio": S.Struct({
+    "data": S.String,
+    "format": ChatCompletionRequestMessageContentPartAudioInputAudioFormat
+  })
+}) {}
+
+export class ChatCompletionRequestMessageContentPartFileType extends S.Literal("file") {}
+
+export class ChatCompletionRequestMessageContentPartFile extends S.Struct({
+  "type": ChatCompletionRequestMessageContentPartFileType,
+  "file": S.Struct({
+    "file_name": S.optionalWith(S.String, { nullable: true }),
+    "file_data": S.optionalWith(S.String, { nullable: true }),
+    "file_id": S.optionalWith(S.String, { nullable: true })
+  })
+}) {}
+
+export class ChatCompletionRequestUserMessageContentPart extends S.Union(
+  ChatCompletionRequestMessageContentPartText,
+  ChatCompletionRequestMessageContentPartImage,
+  ChatCompletionRequestMessageContentPartAudio,
+  ChatCompletionRequestMessageContentPartFile
+) {}
+
+export class ChatCompletionRequestUserMessageRole extends S.Literal("user") {}
+
+export class ChatCompletionRequestUserMessage extends S.Struct({
+  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestUserMessageContentPart)),
+  "role": ChatCompletionRequestUserMessageRole,
+  "name": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ChatCompletionRequestMessageContentPartRefusalType extends S.Literal("refusal") {}
+
+export class ChatCompletionRequestMessageContentPartRefusal extends S.Struct({
+  "type": ChatCompletionRequestMessageContentPartRefusalType,
+  "refusal": S.String
+}) {}
+
+export class ChatCompletionRequestAssistantMessageContentPart
+  extends S.Union(ChatCompletionRequestMessageContentPartText, ChatCompletionRequestMessageContentPartRefusal)
 {}
+
+export class ChatCompletionRequestAssistantMessageRole extends S.Literal("assistant") {}
+
+export class ChatCompletionRequestAssistantMessage extends S.Struct({
+  "content": S.optionalWith(S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestAssistantMessageContentPart)), {
+    nullable: true
+  }),
+  "refusal": S.optionalWith(S.String, { nullable: true }),
+  "role": ChatCompletionRequestAssistantMessageRole,
+  "name": S.optionalWith(S.String, { nullable: true }),
+  "audio": S.optionalWith(
+    S.Struct({
+      "id": S.String
+    }),
+    { nullable: true }
+  ),
+  "tool_calls": S.optionalWith(ChatCompletionMessageToolCalls, { nullable: true }),
+  "function_call": S.optionalWith(
+    S.Struct({
+      "arguments": S.String,
+      "name": S.String
+    }),
+    { nullable: true }
+  )
+}) {}
+
+export class ChatCompletionRequestToolMessageRole extends S.Literal("tool") {}
+
+export class ChatCompletionRequestToolMessageContentPart extends ChatCompletionRequestMessageContentPartText {}
+
+export class ChatCompletionRequestToolMessage extends S.Struct({
+  "role": ChatCompletionRequestToolMessageRole,
+  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestToolMessageContentPart)),
+  "tool_call_id": S.String
+}) {}
+
+export class ChatCompletionRequestFunctionMessageRole extends S.Literal("function") {}
+
+export class ChatCompletionRequestFunctionMessage extends S.Struct({
+  "role": ChatCompletionRequestFunctionMessageRole,
+  "content": S.NullOr(S.String),
+  "name": S.String
+}) {}
+
+export class ChatCompletionRequestMessage extends S.Union(
+  ChatCompletionRequestDeveloperMessage,
+  ChatCompletionRequestSystemMessage,
+  ChatCompletionRequestUserMessage,
+  ChatCompletionRequestAssistantMessage,
+  ChatCompletionRequestToolMessage,
+  ChatCompletionRequestFunctionMessage
+) {}
+
+export class ResponseModalities extends S.Array(S.Literal("text", "audio")) {}
+
+export class CreateChatCompletionRequestEnumWebSearchOptionsUserLocationType extends S.Literal("approximate") {}
+
+export class WebSearchLocation extends S.Struct({
+  "country": S.optionalWith(S.String, { nullable: true }),
+  "region": S.optionalWith(S.String, { nullable: true }),
+  "city": S.optionalWith(S.String, { nullable: true }),
+  "timezone": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class WebSearchContextSize extends S.Literal("low", "medium", "high") {}
+
+export class CreateChatCompletionRequestEnumServiceTier extends S.Literal("auto", "default") {}
+
+export class CreateChatCompletionRequestEnumAudioVoice
+  extends S.Literal("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse")
+{}
+
+export class CreateChatCompletionRequestEnumAudioFormat extends S.Literal("wav", "mp3", "flac", "opus", "pcm16") {}
+
+export class StopConfiguration extends S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4))) {}
+
+export class PredictionContentType extends S.Literal("content") {}
+
+export class PredictionContent extends S.Struct({
+  "type": PredictionContentType,
+  "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestMessageContentPartText))
+}) {}
+
+export class ChatCompletionStreamOptions extends S.Struct({
+  "include_usage": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+export class ChatCompletionToolType extends S.Literal("function") {}
+
+export class ChatCompletionTool extends S.Struct({
+  "type": ChatCompletionToolType,
+  "function": FunctionObject
+}) {}
+
+export class ChatCompletionToolChoiceOptionEnum extends S.Literal("none", "auto", "required") {}
+
+export class ChatCompletionNamedToolChoiceType extends S.Literal("function") {}
+
+export class ChatCompletionNamedToolChoice extends S.Struct({
+  "type": ChatCompletionNamedToolChoiceType,
+  "function": S.Struct({
+    "name": S.String
+  })
+}) {}
+
+export class ChatCompletionToolChoiceOption
+  extends S.Union(ChatCompletionToolChoiceOptionEnum, ChatCompletionNamedToolChoice)
+{}
+
+export class ParallelToolCalls extends S.Boolean {}
+
+export class CreateChatCompletionRequestEnumFunctionCallEnum extends S.Literal("none", "auto") {}
+
+export class ChatCompletionFunctionCallOption extends S.Struct({
+  "name": S.String
+}) {}
+
+export class ChatCompletionFunctions extends S.Struct({
+  "description": S.optionalWith(S.String, { nullable: true }),
+  "name": S.String,
+  "parameters": S.optionalWith(FunctionParameters, { nullable: true })
+}) {}
+
+export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionRequest>("CreateChatCompletionRequest")({
+  "messages": S.NonEmptyArray(ChatCompletionRequestMessage),
+  "modalities": S.optionalWith(ResponseModalities, { nullable: true }),
+  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
+  "max_completion_tokens": S.optionalWith(S.Int, { nullable: true }),
+  "frequency_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
+    nullable: true,
+    default: () => 0 as const
+  }),
+  "presence_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
+    nullable: true,
+    default: () => 0 as const
+  }),
+  "web_search_options": S.optionalWith(
+    S.Struct({
+      "user_location": S.optionalWith(
+        S.Struct({
+          "type": CreateChatCompletionRequestEnumWebSearchOptionsUserLocationType,
+          "approximate": WebSearchLocation
+        }),
+        { nullable: true }
+      ),
+      "search_context_size": S.optionalWith(WebSearchContextSize, { nullable: true, default: () => "medium" as const })
+    }),
+    { nullable: true }
+  ),
+  "top_logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(20)), { nullable: true }),
+  "response_format": S.optionalWith(S.Union(ResponseFormatText, ResponseFormatJsonSchema, ResponseFormatJsonObject), {
+    nullable: true
+  }),
+  "service_tier": S.optionalWith(CreateChatCompletionRequestEnumServiceTier, {
+    nullable: true,
+    default: () => "auto" as const
+  }),
+  "audio": S.optionalWith(
+    S.Struct({
+      "voice": CreateChatCompletionRequestEnumAudioVoice,
+      "format": CreateChatCompletionRequestEnumAudioFormat
+    }),
+    { nullable: true }
+  ),
+  "store": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  "stop": S.optionalWith(S.NullOr(StopConfiguration), { default: () => null }),
+  "logit_bias": S.optionalWith(S.NullOr(S.Record({ key: S.String, value: S.Unknown })), { default: () => null }),
+  "logprobs": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  "max_tokens": S.optionalWith(S.Int, { nullable: true }),
+  "n": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(128)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "prediction": S.optionalWith(PredictionContent, { nullable: true }),
+  "seed": S.optionalWith(
+    S.Int.pipe(S.greaterThanOrEqualTo(-9223372036854776000), S.lessThanOrEqualTo(9223372036854776000)),
+    { nullable: true }
+  ),
+  "stream_options": S.optionalWith(S.NullOr(ChatCompletionStreamOptions), { default: () => null }),
+  "tools": S.optionalWith(S.Array(ChatCompletionTool), { nullable: true }),
+  "tool_choice": S.optionalWith(ChatCompletionToolChoiceOption, { nullable: true }),
+  "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
+  "function_call": S.optionalWith(
+    S.Union(CreateChatCompletionRequestEnumFunctionCallEnum, ChatCompletionFunctionCallOption),
+    { nullable: true }
+  ),
+  "functions": S.optionalWith(S.Array(ChatCompletionFunctions).pipe(S.minItems(1), S.maxItems(128)), {
+    nullable: true
+  }),
+  "model": S.Union(
+    S.String,
+    S.Literal(
+      "o3-mini",
+      "o3-mini-2025-01-31",
+      "o1",
+      "o1-2024-12-17",
+      "o1-preview",
+      "o1-preview-2024-09-12",
+      "o1-mini",
+      "o1-mini-2024-09-12",
+      "computer-use-preview",
+      "computer-use-preview-2025-02-04",
+      "computer-use-preview-2025-03-11",
+      "gpt-4.5-preview",
+      "gpt-4.5-preview-2025-02-27",
+      "gpt-4o",
+      "gpt-4o-2024-11-20",
+      "gpt-4o-2024-08-06",
+      "gpt-4o-2024-05-13",
+      "gpt-4o-audio-preview",
+      "gpt-4o-audio-preview-2024-10-01",
+      "gpt-4o-audio-preview-2024-12-17",
+      "gpt-4o-mini-audio-preview",
+      "gpt-4o-mini-audio-preview-2024-12-17",
+      "chatgpt-4o-latest",
+      "gpt-4o-mini",
+      "gpt-4o-mini-2024-07-18",
+      "gpt-4-turbo",
+      "gpt-4-turbo-2024-04-09",
+      "gpt-4-0125-preview",
+      "gpt-4-turbo-preview",
+      "gpt-4-1106-preview",
+      "gpt-4-vision-preview",
+      "gpt-4",
+      "gpt-4-0314",
+      "gpt-4-0613",
+      "gpt-4-32k",
+      "gpt-4-32k-0314",
+      "gpt-4-32k-0613",
+      "gpt-3.5-turbo",
+      "gpt-3.5-turbo-16k",
+      "gpt-3.5-turbo-0301",
+      "gpt-3.5-turbo-0613",
+      "gpt-3.5-turbo-1106",
+      "gpt-3.5-turbo-0125",
+      "gpt-3.5-turbo-16k-0613"
+    )
+  ),
+  "metadata": S.optionalWith(Metadata, { nullable: true }),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "user": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UpdateChatCompletionRequest extends S.Class<UpdateChatCompletionRequest>("UpdateChatCompletionRequest")({
+  "metadata": S.NullOr(Metadata)
+}) {}
+
+export class ChatCompletionDeletedObject extends S.Literal("chat.completion.deleted") {}
+
+export class ChatCompletionDeleted extends S.Class<ChatCompletionDeleted>("ChatCompletionDeleted")({
+  "object": ChatCompletionDeletedObject,
+  "id": S.String,
+  "deleted": S.Boolean
+}) {}
+
+export class GetChatCompletionMessagesParamsOrder extends S.Literal("asc", "desc") {}
+
+export class GetChatCompletionMessagesParams extends S.Struct({
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(GetChatCompletionMessagesParamsOrder, { nullable: true, default: () => "asc" as const })
+}) {}
+
+export class ChatCompletionMessageListObject extends S.Literal("list") {}
+
+export class ChatCompletionMessageList extends S.Class<ChatCompletionMessageList>("ChatCompletionMessageList")({
+  "object": ChatCompletionMessageListObject.pipe(S.propertySignature, S.withConstructorDefault(() => "list" as const)),
+  "data": S.Array(S.Struct({
+    "id": S.String,
+    "content": S.NullOr(S.String),
+    "refusal": S.NullOr(S.String),
+    "tool_calls": S.optionalWith(ChatCompletionMessageToolCalls, { nullable: true }),
+    "annotations": S.optionalWith(
+      S.Array(S.Struct({
+        "type": S.Literal("url_citation"),
+        "url_citation": S.Struct({
+          "end_index": S.Int,
+          "start_index": S.Int,
+          "url": S.String,
+          "title": S.String
+        })
+      })),
+      { nullable: true }
+    ),
+    "role": S.Literal("assistant"),
+    "function_call": S.optionalWith(
+      S.Struct({
+        "arguments": S.String,
+        "name": S.String
+      }),
+      { nullable: true }
+    ),
+    "audio": S.optionalWith(
+      S.Struct({
+        "id": S.String,
+        "expires_at": S.Int,
+        "data": S.String,
+        "transcript": S.String
+      }),
+      { nullable: true }
+    )
+  })),
+  "first_id": S.String,
+  "last_id": S.String,
+  "has_more": S.Boolean
+}) {}
 
 export class CreateCompletionRequestModelEnum
   extends S.Literal("gpt-3.5-turbo-instruct", "davinci-002", "babbage-002")
@@ -867,9 +1073,7 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
     default: () => 0 as const
   }),
   "seed": S.optionalWith(S.Int, { nullable: true }),
-  "stop": S.optionalWith(S.NullOr(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4)))), {
-    default: () => null
-  }),
+  "stop": S.optionalWith(S.NullOr(StopConfiguration), { default: () => null }),
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
   "stream_options": S.optionalWith(S.NullOr(ChatCompletionStreamOptions), { default: () => null }),
   "suffix": S.optionalWith(S.NullOr(S.String), { default: () => null }),
@@ -975,6 +1179,7 @@ export class OpenAIFile extends S.Struct({
   "id": S.String,
   "bytes": S.Int,
   "created_at": S.Int,
+  "expires_at": S.optionalWith(S.Int, { nullable: true }),
   "filename": S.String,
   "object": OpenAIFileObject,
   "purpose": OpenAIFilePurpose,
@@ -1002,7 +1207,8 @@ export class DownloadFile200 extends S.String {}
 
 export class ListPaginatedFineTuningJobsParams extends S.Struct({
   "after": S.optionalWith(S.String, { nullable: true }),
-  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const })
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class FineTuningJobHyperparametersBatchSizeEnum extends S.Literal("auto") {}
@@ -1160,7 +1366,8 @@ export class FineTuningJob extends S.Struct({
   "integrations": S.optionalWith(S.Array(FineTuningIntegration).pipe(S.maxItems(5)), { nullable: true }),
   "seed": S.Int,
   "estimated_finish": S.optionalWith(S.Int, { nullable: true }),
-  "method": S.optionalWith(FineTuneMethod, { nullable: true })
+  "method": S.optionalWith(FineTuneMethod, { nullable: true }),
+  "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
 export class ListPaginatedFineTuningJobsResponseObject extends S.Literal("list") {}
@@ -1227,7 +1434,8 @@ export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobReque
     { nullable: true }
   ),
   "seed": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2147483647)), { nullable: true }),
-  "method": S.optionalWith(FineTuneMethod, { nullable: true })
+  "method": S.optionalWith(FineTuneMethod, { nullable: true }),
+  "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
 export class ListFineTuningJobCheckpointsParams extends S.Struct({
@@ -2466,7 +2674,8 @@ export class RealtimeSessionCreateRequest
         "threshold": S.optionalWith(S.Number, { nullable: true }),
         "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
         "silence_duration_ms": S.optionalWith(S.Int, { nullable: true }),
-        "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const })
+        "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+        "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const })
       }),
       { nullable: true }
     ),
@@ -2536,6 +2745,748 @@ export class RealtimeSessionCreateResponse
     )
   })
 {}
+
+export class ReasoningGenerateSummary extends S.Literal("concise", "detailed") {}
+
+export class Reasoning extends S.Struct({
+  "effort": S.NullOr(ReasoningEffort).pipe(S.propertySignature, S.withConstructorDefault(() => "medium" as const)),
+  "generate_summary": S.optionalWith(ReasoningGenerateSummary, { nullable: true })
+}) {}
+
+export class TextResponseFormatJsonSchemaType extends S.Literal("json_schema") {}
+
+export class TextResponseFormatJsonSchema extends S.Struct({
+  "type": TextResponseFormatJsonSchemaType,
+  "description": S.optionalWith(S.String, { nullable: true }),
+  "name": S.optionalWith(S.String, { nullable: true }),
+  "schema": ResponseFormatJsonSchemaSchema,
+  "strict": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
+}) {}
+
+export class TextResponseFormatConfiguration
+  extends S.Union(ResponseFormatText, TextResponseFormatJsonSchema, ResponseFormatJsonObject)
+{}
+
+export class FileSearchToolType extends S.Literal("file_search") {}
+
+export class ComparisonFilterType extends S.Literal("eq", "ne", "gt", "gte", "lt", "lte") {}
+
+export class ComparisonFilter extends S.Struct({
+  "type": ComparisonFilterType.pipe(S.propertySignature, S.withConstructorDefault(() => "eq" as const)),
+  "key": S.String,
+  "value": S.Union(S.String, S.Number, S.Boolean)
+}) {}
+
+export class CompoundFilterType extends S.Literal("and", "or") {}
+
+export class CompoundFilter extends S.Struct({
+  "type": CompoundFilterType,
+  "filters": S.Array(ComparisonFilter)
+}) {}
+
+export class FileSearchToolRankingOptionsRanker extends S.Literal("auto", "default-2024-11-15") {}
+
+export class FileSearchTool extends S.Struct({
+  "type": FileSearchToolType,
+  "vector_store_ids": S.Array(S.String),
+  "max_num_results": S.optionalWith(S.Int, { nullable: true }),
+  "filters": S.optionalWith(S.Union(ComparisonFilter, CompoundFilter), { nullable: true }),
+  "ranking_options": S.optionalWith(
+    S.Struct({
+      "ranker": S.optionalWith(FileSearchToolRankingOptionsRanker, { nullable: true, default: () => "auto" as const }),
+      "score_threshold": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
+        nullable: true,
+        default: () => 0 as const
+      })
+    }),
+    { nullable: true }
+  )
+}) {}
+
+export class FunctionToolType extends S.Literal("function") {}
+
+export class FunctionTool extends S.Struct({
+  "type": FunctionToolType,
+  "name": S.String,
+  "description": S.optionalWith(S.String, { nullable: true }),
+  "parameters": S.Record({ key: S.String, value: S.Unknown }),
+  "strict": S.Boolean
+}) {}
+
+export class ComputerToolType extends S.Literal("computer-preview") {}
+
+export class ComputerToolEnvironment extends S.Literal("mac", "windows", "ubuntu", "browser") {}
+
+export class ComputerTool extends S.Struct({
+  "type": ComputerToolType,
+  "display_width": S.Number,
+  "display_height": S.Number,
+  "environment": ComputerToolEnvironment
+}) {}
+
+export class WebSearchToolType extends S.Literal("web_search_preview", "web_search_preview_2025_03_11") {}
+
+export class WebSearchToolUserLocationEnumType extends S.Literal("approximate") {}
+
+export class WebSearchTool extends S.Struct({
+  "type": WebSearchToolType,
+  "user_location": S.optionalWith(
+    S.Struct({
+      "type": WebSearchToolUserLocationEnumType,
+      "country": S.optionalWith(S.String, { nullable: true }),
+      "region": S.optionalWith(S.String, { nullable: true }),
+      "city": S.optionalWith(S.String, { nullable: true }),
+      "timezone": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "search_context_size": S.optionalWith(WebSearchContextSize, { nullable: true, default: () => "medium" as const })
+}) {}
+
+export class Tool extends S.Union(FileSearchTool, FunctionTool, ComputerTool, WebSearchTool) {}
+
+export class ToolChoiceOptions extends S.Literal("none", "auto", "required") {}
+
+export class ToolChoiceTypesType
+  extends S.Literal("file_search", "web_search_preview", "computer_use_preview", "web_search_preview_2025_03_11")
+{}
+
+export class ToolChoiceTypes extends S.Struct({
+  "type": ToolChoiceTypesType
+}) {}
+
+export class ToolChoiceFunctionType extends S.Literal("function") {}
+
+export class ToolChoiceFunction extends S.Struct({
+  "type": ToolChoiceFunctionType,
+  "name": S.String
+}) {}
+
+export class ResponsePropertiesTruncation extends S.Literal("auto", "disabled") {}
+
+export class ResponseProperties extends S.Struct({
+  "previous_response_id": S.optionalWith(S.String, { nullable: true }),
+  "reasoning": S.optionalWith(Reasoning, { nullable: true }),
+  "max_output_tokens": S.optionalWith(S.Int, { nullable: true }),
+  "instructions": S.optionalWith(S.String, { nullable: true }),
+  "text": S.optionalWith(
+    S.Struct({
+      "format": S.optionalWith(TextResponseFormatConfiguration, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
+  "tool_choice": S.optionalWith(S.Union(ToolChoiceOptions, ToolChoiceTypes, ToolChoiceFunction), { nullable: true }),
+  "truncation": S.optionalWith(ResponsePropertiesTruncation, { nullable: true, default: () => "disabled" as const })
+}) {}
+
+export class EasyInputMessageRole extends S.Literal("user", "assistant", "system", "developer") {}
+
+export class InputTextType extends S.Literal("input_text") {}
+
+export class InputText extends S.Struct({
+  "type": InputTextType,
+  "text": S.String
+}) {}
+
+export class InputImageType extends S.Literal("input_image") {}
+
+export class InputImageDetail extends S.Literal("high", "low", "auto") {}
+
+export class InputImage extends S.Struct({
+  "type": InputImageType,
+  "image_url": S.optionalWith(S.String, { nullable: true }),
+  "file_id": S.optionalWith(S.String, { nullable: true }),
+  "detail": InputImageDetail.pipe(S.propertySignature, S.withConstructorDefault(() => "auto" as const))
+}) {}
+
+export class InputFileType extends S.Literal("input_file") {}
+
+export class InputFile extends S.Struct({
+  "type": InputFileType,
+  "file_id": S.optionalWith(S.String, { nullable: true }),
+  "filename": S.optionalWith(S.String, { nullable: true }),
+  "file_data": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class InputContent extends S.Union(InputText, InputImage, InputFile) {}
+
+export class InputMessageContentList extends S.Array(InputContent) {}
+
+export class EasyInputMessageType extends S.Literal("message") {}
+
+export class EasyInputMessage extends S.Struct({
+  "role": EasyInputMessageRole,
+  "content": S.Union(S.String, InputMessageContentList),
+  "type": S.optionalWith(EasyInputMessageType, { nullable: true })
+}) {}
+
+export class InputMessageType extends S.Literal("message") {}
+
+export class InputMessageRole extends S.Literal("user", "system", "developer") {}
+
+export class InputMessageStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+export class InputMessage extends S.Struct({
+  "type": S.optionalWith(InputMessageType, { nullable: true }),
+  "role": InputMessageRole,
+  "status": S.optionalWith(InputMessageStatus, { nullable: true }),
+  "content": InputMessageContentList
+}) {}
+
+export class OutputMessageType extends S.Literal("message") {}
+
+export class OutputMessageRole extends S.Literal("assistant") {}
+
+export class OutputTextType extends S.Literal("output_text") {}
+
+export class FileCitationType extends S.Literal("file_citation") {}
+
+export class FileCitation extends S.Struct({
+  "type": FileCitationType,
+  "index": S.Int,
+  "file_id": S.String
+}) {}
+
+export class UrlCitationType extends S.Literal("url_citation") {}
+
+export class UrlCitation extends S.Struct({
+  "url": S.String,
+  "title": S.String,
+  "type": UrlCitationType,
+  "start_index": S.Int,
+  "end_index": S.Int
+}) {}
+
+export class FilePathType extends S.Literal("file_path") {}
+
+export class FilePath extends S.Struct({
+  "type": FilePathType,
+  "file_id": S.String,
+  "index": S.Int
+}) {}
+
+export class Annotation extends S.Union(FileCitation, UrlCitation, FilePath) {}
+
+export class OutputText extends S.Struct({
+  "type": OutputTextType,
+  "text": S.String,
+  "annotations": S.Array(Annotation)
+}) {}
+
+export class RefusalType extends S.Literal("refusal") {}
+
+export class Refusal extends S.Struct({
+  "type": RefusalType,
+  "refusal": S.String
+}) {}
+
+export class OutputContent extends S.Union(OutputText, Refusal) {}
+
+export class OutputMessageStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+export class OutputMessage extends S.Struct({
+  "id": S.String,
+  "type": OutputMessageType,
+  "role": OutputMessageRole,
+  "content": S.Array(OutputContent),
+  "status": OutputMessageStatus
+}) {}
+
+export class FileSearchToolCallType extends S.Literal("file_search_call") {}
+
+export class FileSearchToolCallStatus
+  extends S.Literal("in_progress", "searching", "completed", "incomplete", "failed")
+{}
+
+export class VectorStoreFileAttributes extends S.Record({ key: S.String, value: S.Unknown }) {}
+
+export class FileSearchToolCall extends S.Struct({
+  "id": S.String,
+  "type": FileSearchToolCallType,
+  "status": FileSearchToolCallStatus,
+  "queries": S.Array(S.String),
+  "results": S.optionalWith(
+    S.Array(S.Struct({
+      "file_id": S.optionalWith(S.String, { nullable: true }),
+      "text": S.optionalWith(S.String, { nullable: true }),
+      "filename": S.optionalWith(S.String, { nullable: true }),
+      "attributes": S.optionalWith(VectorStoreFileAttributes, { nullable: true }),
+      "score": S.optionalWith(S.Number, { nullable: true })
+    })),
+    { nullable: true }
+  )
+}) {}
+
+export class ComputerToolCallType extends S.Literal("computer_call") {}
+
+export class ClickType extends S.Literal("click") {}
+
+export class ClickButton extends S.Literal("left", "right", "wheel", "back", "forward") {}
+
+export class Click extends S.Struct({
+  "type": ClickType.pipe(S.propertySignature, S.withConstructorDefault(() => "click" as const)),
+  "button": ClickButton,
+  "x": S.Int,
+  "y": S.Int
+}) {}
+
+export class DoubleClickType extends S.Literal("double_click") {}
+
+export class DoubleClick extends S.Struct({
+  "type": DoubleClickType.pipe(S.propertySignature, S.withConstructorDefault(() => "double_click" as const)),
+  "x": S.Int,
+  "y": S.Int
+}) {}
+
+export class DragType extends S.Literal("drag") {}
+
+export class Coordinate extends S.Struct({
+  "x": S.Int,
+  "y": S.Int
+}) {}
+
+export class Drag extends S.Struct({
+  "type": DragType.pipe(S.propertySignature, S.withConstructorDefault(() => "drag" as const)),
+  "path": S.Array(Coordinate)
+}) {}
+
+export class KeyPressType extends S.Literal("keypress") {}
+
+export class KeyPress extends S.Struct({
+  "type": KeyPressType.pipe(S.propertySignature, S.withConstructorDefault(() => "keypress" as const)),
+  "keys": S.Array(S.String)
+}) {}
+
+export class MoveType extends S.Literal("move") {}
+
+export class Move extends S.Struct({
+  "type": MoveType.pipe(S.propertySignature, S.withConstructorDefault(() => "move" as const)),
+  "x": S.Int,
+  "y": S.Int
+}) {}
+
+export class ScreenshotType extends S.Literal("screenshot") {}
+
+export class Screenshot extends S.Struct({
+  "type": ScreenshotType.pipe(S.propertySignature, S.withConstructorDefault(() => "screenshot" as const))
+}) {}
+
+export class ScrollType extends S.Literal("scroll") {}
+
+export class Scroll extends S.Struct({
+  "type": ScrollType.pipe(S.propertySignature, S.withConstructorDefault(() => "scroll" as const)),
+  "x": S.Int,
+  "y": S.Int,
+  "scroll_x": S.Int,
+  "scroll_y": S.Int
+}) {}
+
+export class TypeType extends S.Literal("type") {}
+
+export class Type extends S.Struct({
+  "type": TypeType.pipe(S.propertySignature, S.withConstructorDefault(() => "type" as const)),
+  "text": S.String
+}) {}
+
+export class WaitType extends S.Literal("wait") {}
+
+export class Wait extends S.Struct({
+  "type": WaitType.pipe(S.propertySignature, S.withConstructorDefault(() => "wait" as const))
+}) {}
+
+export class ComputerAction extends S.Union(Click, DoubleClick, Drag, KeyPress, Move, Screenshot, Scroll, Type, Wait) {}
+
+export class ComputerToolCallSafetyCheck extends S.Struct({
+  "id": S.String,
+  "code": S.String,
+  "message": S.String
+}) {}
+
+export class ComputerToolCallStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+export class ComputerToolCall extends S.Struct({
+  "type": ComputerToolCallType.pipe(S.propertySignature, S.withConstructorDefault(() => "computer_call" as const)),
+  "id": S.String,
+  "call_id": S.String,
+  "action": ComputerAction,
+  "pending_safety_checks": S.Array(ComputerToolCallSafetyCheck),
+  "status": ComputerToolCallStatus
+}) {}
+
+export class ComputerToolCallOutputType extends S.Literal("computer_call_output") {}
+
+export class ComputerScreenshotImageType extends S.Literal("computer_screenshot") {}
+
+export class ComputerScreenshotImage extends S.Struct({
+  "type": ComputerScreenshotImageType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "computer_screenshot" as const)
+  ),
+  "image_url": S.optionalWith(S.String, { nullable: true }),
+  "file_id": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ComputerToolCallOutputStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+export class ComputerToolCallOutput extends S.Struct({
+  "type": ComputerToolCallOutputType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "computer_call_output" as const)
+  ),
+  "id": S.optionalWith(S.String, { nullable: true }),
+  "call_id": S.String,
+  "acknowledged_safety_checks": S.optionalWith(S.Array(ComputerToolCallSafetyCheck), { nullable: true }),
+  "output": ComputerScreenshotImage,
+  "status": S.optionalWith(ComputerToolCallOutputStatus, { nullable: true })
+}) {}
+
+export class WebSearchToolCallType extends S.Literal("web_search_call") {}
+
+export class WebSearchToolCallStatus extends S.Literal("in_progress", "searching", "completed", "failed") {}
+
+export class WebSearchToolCall extends S.Struct({
+  "id": S.String,
+  "type": WebSearchToolCallType,
+  "status": WebSearchToolCallStatus
+}) {}
+
+export class FunctionToolCallType extends S.Literal("function_call") {}
+
+export class FunctionToolCallStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+export class FunctionToolCall extends S.Struct({
+  "id": S.String,
+  "type": FunctionToolCallType,
+  "call_id": S.String,
+  "name": S.String,
+  "arguments": S.String,
+  "status": S.optionalWith(FunctionToolCallStatus, { nullable: true })
+}) {}
+
+export class FunctionToolCallOutputType extends S.Literal("function_call_output") {}
+
+export class FunctionToolCallOutputStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+export class FunctionToolCallOutput extends S.Struct({
+  "id": S.optionalWith(S.String, { nullable: true }),
+  "type": FunctionToolCallOutputType,
+  "call_id": S.String,
+  "output": S.String,
+  "status": S.optionalWith(FunctionToolCallOutputStatus, { nullable: true })
+}) {}
+
+export class ReasoningItemType extends S.Literal("reasoning") {}
+
+export class ReasoningItemStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+export class ReasoningItem extends S.Struct({
+  "type": ReasoningItemType,
+  "id": S.String,
+  "content": S.Array(S.Struct({
+    "type": S.Literal("reasoning_summary"),
+    "text": S.String
+  })),
+  "status": S.optionalWith(ReasoningItemStatus, { nullable: true })
+}) {}
+
+export class Item extends S.Record({ key: S.String, value: S.Unknown }) {}
+
+export class ItemReferenceType extends S.Literal("item_reference") {}
+
+export class ItemReference extends S.Struct({
+  "id": S.String,
+  "type": ItemReferenceType
+}) {}
+
+export class InputItem
+  extends S.Union(EasyInputMessage, S.Record({ key: S.String, value: S.Unknown }), ItemReference)
+{}
+
+export class Includable extends S.Literal(
+  "file_search_call.results",
+  "message.input_image.image_url",
+  "computer_call_output.output.image_url"
+) {}
+
+export class CreateResponse extends S.Class<CreateResponse>("CreateResponse")({
+  "input": S.Union(S.String, S.Array(InputItem)),
+  "include": S.optionalWith(S.Array(Includable), { nullable: true }),
+  "parallel_tool_calls": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+  "store": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+  "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  "previous_response_id": S.optionalWith(S.String, { nullable: true }),
+  "reasoning": S.optionalWith(Reasoning, { nullable: true }),
+  "max_output_tokens": S.optionalWith(S.Int, { nullable: true }),
+  "instructions": S.optionalWith(S.String, { nullable: true }),
+  "text": S.optionalWith(
+    S.Struct({
+      "format": S.optionalWith(TextResponseFormatConfiguration, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
+  "tool_choice": S.optionalWith(S.Union(ToolChoiceOptions, ToolChoiceTypes, ToolChoiceFunction), { nullable: true }),
+  "truncation": S.optionalWith(S.Literal("auto", "disabled"), { nullable: true, default: () => "disabled" as const }),
+  "model": S.Union(
+    S.String,
+    S.Literal(
+      "o3-mini",
+      "o3-mini-2025-01-31",
+      "o1",
+      "o1-2024-12-17",
+      "o1-preview",
+      "o1-preview-2024-09-12",
+      "o1-mini",
+      "o1-mini-2024-09-12",
+      "computer-use-preview",
+      "computer-use-preview-2025-02-04",
+      "computer-use-preview-2025-03-11",
+      "gpt-4.5-preview",
+      "gpt-4.5-preview-2025-02-27",
+      "gpt-4o",
+      "gpt-4o-2024-11-20",
+      "gpt-4o-2024-08-06",
+      "gpt-4o-2024-05-13",
+      "gpt-4o-audio-preview",
+      "gpt-4o-audio-preview-2024-10-01",
+      "gpt-4o-audio-preview-2024-12-17",
+      "gpt-4o-mini-audio-preview",
+      "gpt-4o-mini-audio-preview-2024-12-17",
+      "chatgpt-4o-latest",
+      "gpt-4o-mini",
+      "gpt-4o-mini-2024-07-18",
+      "gpt-4-turbo",
+      "gpt-4-turbo-2024-04-09",
+      "gpt-4-0125-preview",
+      "gpt-4-turbo-preview",
+      "gpt-4-1106-preview",
+      "gpt-4-vision-preview",
+      "gpt-4",
+      "gpt-4-0314",
+      "gpt-4-0613",
+      "gpt-4-32k",
+      "gpt-4-32k-0314",
+      "gpt-4-32k-0613",
+      "gpt-3.5-turbo",
+      "gpt-3.5-turbo-16k",
+      "gpt-3.5-turbo-0301",
+      "gpt-3.5-turbo-0613",
+      "gpt-3.5-turbo-1106",
+      "gpt-3.5-turbo-0125",
+      "gpt-3.5-turbo-16k-0613"
+    )
+  ),
+  "metadata": S.optionalWith(Metadata, { nullable: true }),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "user": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ResponseEnumObject extends S.Literal("response") {}
+
+export class ResponseEnumStatus extends S.Literal("completed", "failed", "in_progress", "incomplete") {}
+
+export class ResponseErrorCode extends S.Literal(
+  "server_error",
+  "rate_limit_exceeded",
+  "invalid_prompt",
+  "vector_store_timeout",
+  "invalid_image",
+  "invalid_image_format",
+  "invalid_base64_image",
+  "invalid_image_url",
+  "image_too_large",
+  "image_too_small",
+  "image_parse_error",
+  "image_content_policy_violation",
+  "invalid_image_mode",
+  "image_file_too_large",
+  "unsupported_image_media_type",
+  "empty_image_file",
+  "failed_to_download_image",
+  "image_file_not_found"
+) {}
+
+export class ResponseError extends S.Struct({
+  "code": ResponseErrorCode,
+  "message": S.String
+}) {}
+
+export class ResponseEnumIncompleteDetailsReason extends S.Literal("max_output_tokens", "content_filter") {}
+
+export class OutputItem extends S.Union(
+  OutputMessage,
+  FileSearchToolCall,
+  FunctionToolCall,
+  WebSearchToolCall,
+  ComputerToolCall,
+  ReasoningItem
+) {}
+
+export class ResponseUsage extends S.Struct({
+  "input_tokens": S.Int,
+  "output_tokens": S.Int,
+  "output_tokens_details": S.Struct({
+    "reasoning_tokens": S.Int
+  }),
+  "total_tokens": S.Int
+}) {}
+
+export class Response extends S.Class<Response>("Response")({
+  "id": S.String,
+  "object": ResponseEnumObject,
+  "status": S.optionalWith(ResponseEnumStatus, { nullable: true }),
+  "created_at": S.Number,
+  "error": S.NullOr(ResponseError),
+  "incomplete_details": S.NullOr(S.Struct({
+    "reason": S.optionalWith(ResponseEnumIncompleteDetailsReason, { nullable: true })
+  })),
+  "output": S.Array(OutputItem),
+  "output_text": S.optionalWith(S.String, { nullable: true }),
+  "usage": S.optionalWith(ResponseUsage, { nullable: true }),
+  "parallel_tool_calls": S.Boolean.pipe(S.propertySignature, S.withConstructorDefault(() => true as const)),
+  "previous_response_id": S.optionalWith(S.String, { nullable: true }),
+  "reasoning": S.optionalWith(Reasoning, { nullable: true }),
+  "max_output_tokens": S.optionalWith(S.Int, { nullable: true }),
+  "instructions": S.NullOr(S.String),
+  "text": S.optionalWith(
+    S.Struct({
+      "format": S.optionalWith(TextResponseFormatConfiguration, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "tools": S.Array(Tool),
+  "tool_choice": S.Union(ToolChoiceOptions, ToolChoiceTypes, ToolChoiceFunction),
+  "truncation": S.optionalWith(S.Literal("auto", "disabled"), { nullable: true, default: () => "disabled" as const }),
+  "model": S.Union(
+    S.String,
+    S.Literal(
+      "o3-mini",
+      "o3-mini-2025-01-31",
+      "o1",
+      "o1-2024-12-17",
+      "o1-preview",
+      "o1-preview-2024-09-12",
+      "o1-mini",
+      "o1-mini-2024-09-12",
+      "computer-use-preview",
+      "computer-use-preview-2025-02-04",
+      "computer-use-preview-2025-03-11",
+      "gpt-4.5-preview",
+      "gpt-4.5-preview-2025-02-27",
+      "gpt-4o",
+      "gpt-4o-2024-11-20",
+      "gpt-4o-2024-08-06",
+      "gpt-4o-2024-05-13",
+      "gpt-4o-audio-preview",
+      "gpt-4o-audio-preview-2024-10-01",
+      "gpt-4o-audio-preview-2024-12-17",
+      "gpt-4o-mini-audio-preview",
+      "gpt-4o-mini-audio-preview-2024-12-17",
+      "chatgpt-4o-latest",
+      "gpt-4o-mini",
+      "gpt-4o-mini-2024-07-18",
+      "gpt-4-turbo",
+      "gpt-4-turbo-2024-04-09",
+      "gpt-4-0125-preview",
+      "gpt-4-turbo-preview",
+      "gpt-4-1106-preview",
+      "gpt-4-vision-preview",
+      "gpt-4",
+      "gpt-4-0314",
+      "gpt-4-0613",
+      "gpt-4-32k",
+      "gpt-4-32k-0314",
+      "gpt-4-32k-0613",
+      "gpt-3.5-turbo",
+      "gpt-3.5-turbo-16k",
+      "gpt-3.5-turbo-0301",
+      "gpt-3.5-turbo-0613",
+      "gpt-3.5-turbo-1106",
+      "gpt-3.5-turbo-0125",
+      "gpt-3.5-turbo-16k-0613"
+    )
+  ),
+  "metadata": S.NullOr(Metadata),
+  "temperature": S.NullOr(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2))).pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => 1 as const)
+  ),
+  "top_p": S.NullOr(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1))).pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => 1 as const)
+  ),
+  "user": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class GetResponseParams extends S.Struct({
+  "include": S.optionalWith(S.Array(Includable), { nullable: true })
+}) {}
+
+export class ListInputItemsParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListInputItemsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(ListInputItemsParamsOrder, { nullable: true }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "before": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ResponseItemListObject extends S.Literal("list") {}
+
+export class InputMessageResource extends S.Struct({
+  "id": S.String,
+  "type": S.optionalWith(S.Literal("message"), { nullable: true }),
+  "role": S.Literal("user", "system", "developer"),
+  "status": S.optionalWith(S.Literal("in_progress", "completed", "incomplete"), { nullable: true }),
+  "content": InputMessageContentList
+}) {}
+
+export class ComputerToolCallOutputResource extends S.Struct({
+  "id": S.String,
+  "type": S.Literal("computer_call_output").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "computer_call_output" as const)
+  ),
+  "call_id": S.String,
+  "acknowledged_safety_checks": S.optionalWith(S.Array(ComputerToolCallSafetyCheck), { nullable: true }),
+  "output": ComputerScreenshotImage,
+  "status": S.optionalWith(S.Literal("in_progress", "completed", "incomplete"), { nullable: true })
+}) {}
+
+export class FunctionToolCallOutputResource extends S.Struct({
+  "id": S.String,
+  "type": S.Literal("function_call_output"),
+  "call_id": S.String,
+  "output": S.String,
+  "status": S.optionalWith(S.Literal("in_progress", "completed", "incomplete"), { nullable: true })
+}) {}
+
+export class ItemResource extends S.Union(
+  InputMessageResource,
+  OutputMessage,
+  FileSearchToolCall,
+  ComputerToolCall,
+  ComputerToolCallOutputResource,
+  WebSearchToolCall,
+  FunctionToolCall,
+  FunctionToolCallOutputResource
+) {}
+
+export class ResponseItemList extends S.Class<ResponseItemList>("ResponseItemList")({
+  "object": ResponseItemListObject,
+  "data": S.Array(ItemResource),
+  "has_more": S.Boolean,
+  "first_id": S.String,
+  "last_id": S.String
+}) {}
 
 export class CreateMessageRequestRole extends S.Literal("user", "assistant") {}
 
@@ -2668,6 +3619,8 @@ export class CreateThreadAndRunRequestModelEnum extends S.Literal(
   "gpt-4o-2024-05-13",
   "gpt-4o-mini",
   "gpt-4o-mini-2024-07-18",
+  "gpt-4.5-preview",
+  "gpt-4.5-preview-2025-02-27",
   "gpt-4-turbo",
   "gpt-4-turbo-2024-04-09",
   "gpt-4-0125-preview",
@@ -2754,8 +3707,16 @@ export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest
   "stream": S.optionalWith(S.Boolean, { nullable: true }),
   "max_prompt_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
   "max_completion_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
-  "truncation_strategy": S.optionalWith(TruncationObject, { nullable: true }),
-  "tool_choice": S.optionalWith(AssistantsApiToolChoiceOption, { nullable: true }),
+  "truncation_strategy": S.optionalWith(
+    S.Struct({
+      "type": S.Literal("auto", "last_messages"),
+      "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "tool_choice": S.optionalWith(S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice), {
+    nullable: true
+  }),
   "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
   "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
 }) {}
@@ -2832,8 +3793,11 @@ export class RunObject extends S.Class<RunObject>("RunObject")({
   "top_p": S.optionalWith(S.Number, { nullable: true }),
   "max_prompt_tokens": S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(256))),
   "max_completion_tokens": S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(256))),
-  "truncation_strategy": TruncationObject,
-  "tool_choice": AssistantsApiToolChoiceOption,
+  "truncation_strategy": S.Struct({
+    "type": S.Literal("auto", "last_messages"),
+    "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
+  }),
+  "tool_choice": S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice),
   "parallel_tool_calls": ParallelToolCalls.pipe(S.propertySignature, S.withConstructorDefault(() => true as const)),
   "response_format": AssistantsApiResponseFormatOption
 }) {}
@@ -3028,8 +3992,16 @@ export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunReques
   "stream": S.optionalWith(S.Boolean, { nullable: true }),
   "max_prompt_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
   "max_completion_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
-  "truncation_strategy": S.optionalWith(TruncationObject, { nullable: true }),
-  "tool_choice": S.optionalWith(AssistantsApiToolChoiceOption, { nullable: true }),
+  "truncation_strategy": S.optionalWith(
+    S.Struct({
+      "type": S.Literal("auto", "last_messages"),
+      "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "tool_choice": S.optionalWith(S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice), {
+    nullable: true
+  }),
   "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
   "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
 }) {}
@@ -3096,10 +4068,8 @@ export class RunStepDetailsToolCallsCodeObject extends S.Struct({
 
 export class RunStepDetailsToolCallsFileSearchObjectType extends S.Literal("file_search") {}
 
-export class RunStepDetailsToolCallsFileSearchRankingOptionsObjectRanker extends S.Literal("default_2024_08_21") {}
-
 export class RunStepDetailsToolCallsFileSearchRankingOptionsObject extends S.Struct({
-  "ranker": RunStepDetailsToolCallsFileSearchRankingOptionsObjectRanker,
+  "ranker": FileSearchRanker,
   "score_threshold": S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1))
 }) {}
 
@@ -3222,7 +4192,28 @@ export class Upload extends S.Class<Upload>("Upload")({
   "status": UploadStatus,
   "expires_at": S.Int,
   "object": S.optionalWith(UploadObject, { nullable: true }),
-  "file": S.optionalWith(OpenAIFile, { nullable: true })
+  "file": S.optionalWith(
+    S.Struct({
+      "id": S.String,
+      "bytes": S.Int,
+      "created_at": S.Int,
+      "expires_at": S.optionalWith(S.Int, { nullable: true }),
+      "filename": S.String,
+      "object": S.Literal("file"),
+      "purpose": S.Literal(
+        "assistants",
+        "assistants_output",
+        "batch",
+        "batch_output",
+        "fine-tune",
+        "fine-tune-results",
+        "vision"
+      ),
+      "status": S.Literal("uploaded", "processed", "error"),
+      "status_details": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  )
 }) {}
 
 export class CompleteUploadRequest extends S.Class<CompleteUploadRequest>("CompleteUploadRequest")({
@@ -3315,7 +4306,13 @@ export class CreateVectorStoreRequest extends S.Class<CreateVectorStoreRequest>(
 
 export class UpdateVectorStoreRequest extends S.Class<UpdateVectorStoreRequest>("UpdateVectorStoreRequest")({
   "name": S.optionalWith(S.String, { nullable: true }),
-  "expires_after": S.optionalWith(VectorStoreExpirationAfter, { nullable: true }),
+  "expires_after": S.optionalWith(
+    S.Struct({
+      "anchor": S.Literal("last_active_at"),
+      "days": S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(365))
+    }),
+    { nullable: true }
+  ),
   "metadata": S.optionalWith(Metadata, { nullable: true })
 }) {}
 
@@ -3332,7 +4329,8 @@ export class ChunkingStrategyRequestParam extends S.Record({ key: S.String, valu
 export class CreateVectorStoreFileBatchRequest
   extends S.Class<CreateVectorStoreFileBatchRequest>("CreateVectorStoreFileBatchRequest")({
     "file_ids": S.Array(S.String).pipe(S.minItems(1), S.maxItems(500)),
-    "chunking_strategy": S.optionalWith(ChunkingStrategyRequestParam, { nullable: true })
+    "chunking_strategy": S.optionalWith(ChunkingStrategyRequestParam, { nullable: true }),
+    "attributes": S.optionalWith(VectorStoreFileAttributes, { nullable: true })
   })
 {}
 
@@ -3399,7 +4397,8 @@ export class VectorStoreFileObject extends S.Struct({
     "code": VectorStoreFileObjectLastErrorCode,
     "message": S.String
   })),
-  "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "attributes": S.optionalWith(VectorStoreFileAttributes, { nullable: true })
 }) {}
 
 export class ListVectorStoreFilesResponse
@@ -3427,7 +4426,14 @@ export class ListVectorStoreFilesParams extends S.Struct({
 export class CreateVectorStoreFileRequest
   extends S.Class<CreateVectorStoreFileRequest>("CreateVectorStoreFileRequest")({
     "file_id": S.String,
-    "chunking_strategy": S.optionalWith(ChunkingStrategyRequestParam, { nullable: true })
+    "chunking_strategy": S.optionalWith(ChunkingStrategyRequestParam, { nullable: true }),
+    "attributes": S.optionalWith(VectorStoreFileAttributes, { nullable: true })
+  })
+{}
+
+export class UpdateVectorStoreFileAttributesRequest
+  extends S.Class<UpdateVectorStoreFileAttributesRequest>("UpdateVectorStoreFileAttributesRequest")({
+    "attributes": S.NullOr(VectorStoreFileAttributes)
   })
 {}
 
@@ -3438,6 +4444,72 @@ export class DeleteVectorStoreFileResponse
     "id": S.String,
     "deleted": S.Boolean,
     "object": DeleteVectorStoreFileResponseObject
+  })
+{}
+
+export class VectorStoreFileContentResponseObject extends S.Literal("vector_store.file_content.page") {}
+
+export class VectorStoreFileContentResponse
+  extends S.Class<VectorStoreFileContentResponse>("VectorStoreFileContentResponse")({
+    "object": VectorStoreFileContentResponseObject,
+    "data": S.Array(S.Struct({
+      "type": S.optionalWith(S.String, { nullable: true }),
+      "text": S.optionalWith(S.String, { nullable: true })
+    })),
+    "has_more": S.Boolean,
+    "next_page": S.NullOr(S.String)
+  })
+{}
+
+export class VectorStoreSearchRequestRankingOptionsRanker extends S.Literal("auto", "default-2024-11-15") {}
+
+export class VectorStoreSearchRequest extends S.Class<VectorStoreSearchRequest>("VectorStoreSearchRequest")({
+  "query": S.Union(S.String, S.Array(S.String)),
+  "rewrite_query": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  "max_num_results": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50)), {
+    nullable: true,
+    default: () => 10 as const
+  }),
+  "filters": S.optionalWith(S.Union(ComparisonFilter, CompoundFilter), { nullable: true }),
+  "ranking_options": S.optionalWith(
+    S.Struct({
+      "ranker": S.optionalWith(VectorStoreSearchRequestRankingOptionsRanker, {
+        nullable: true,
+        default: () => "auto" as const
+      }),
+      "score_threshold": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
+        nullable: true,
+        default: () => 0 as const
+      })
+    }),
+    { nullable: true }
+  )
+}) {}
+
+export class VectorStoreSearchResultsPageObject extends S.Literal("vector_store.search_results.page") {}
+
+export class VectorStoreSearchResultContentObjectType extends S.Literal("text") {}
+
+export class VectorStoreSearchResultContentObject extends S.Struct({
+  "type": VectorStoreSearchResultContentObjectType,
+  "text": S.String
+}) {}
+
+export class VectorStoreSearchResultItem extends S.Struct({
+  "file_id": S.String,
+  "filename": S.String,
+  "score": S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)),
+  "attributes": S.NullOr(VectorStoreFileAttributes),
+  "content": S.Array(VectorStoreSearchResultContentObject)
+}) {}
+
+export class VectorStoreSearchResultsPage
+  extends S.Class<VectorStoreSearchResultsPage>("VectorStoreSearchResultsPage")({
+    "object": VectorStoreSearchResultsPageObject,
+    "search_query": S.Array(S.String),
+    "data": S.Array(VectorStoreSearchResultItem),
+    "has_more": S.Boolean,
+    "next_page": S.NullOr(S.String)
   })
 {}
 
@@ -3486,8 +4558,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createAssistant": (options) =>
       HttpClientRequest.make("POST")(`/assistants`).pipe(
@@ -3501,8 +4572,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "getAssistant": (assistantId) =>
       HttpClientRequest.make("GET")(`/assistants/${assistantId}`).pipe(
@@ -3516,8 +4586,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "modifyAssistant": (assistantId, options) =>
       HttpClientRequest.make("POST")(`/assistants/${assistantId}`).pipe(
@@ -3531,8 +4600,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "deleteAssistant": (assistantId) =>
       HttpClientRequest.make("DELETE")(`/assistants/${assistantId}`).pipe(
@@ -3546,8 +4614,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createSpeech": (options) =>
       HttpClientRequest.make("POST")(`/audio/speech`).pipe(
@@ -3560,8 +4627,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createTranscription": (options) =>
       HttpClientRequest.make("POST")(`/audio/transcriptions`).pipe(
@@ -3576,8 +4642,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createTranslation": (options) =>
       HttpClientRequest.make("POST")(`/audio/translations`).pipe(
@@ -3592,8 +4657,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listBatches": (options) =>
       HttpClientRequest.make("GET")(`/batches`).pipe(
@@ -3608,8 +4672,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createBatch": (options) =>
       HttpClientRequest.make("POST")(`/batches`).pipe(
@@ -3623,8 +4686,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "retrieveBatch": (batchId) =>
       HttpClientRequest.make("GET")(`/batches/${batchId}`).pipe(
@@ -3638,8 +4700,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "cancelBatch": (batchId) =>
       HttpClientRequest.make("POST")(`/batches/${batchId}/cancel`).pipe(
@@ -3653,8 +4714,28 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
+      ),
+    "listChatCompletions": (options) =>
+      HttpClientRequest.make("GET")(`/chat/completions`).pipe(
+        HttpClientRequest.setUrlParams({
+          "model": options["model"],
+          "metadata": options["metadata"] as any,
+          "after": options["after"],
+          "limit": options["limit"],
+          "order": options["order"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(ChatCompletionList)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
+        )
       ),
     "createChatCompletion": (options) =>
       HttpClientRequest.make("POST")(`/chat/completions`).pipe(
@@ -3668,8 +4749,77 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
+      ),
+    "getChatCompletion": (completionId) =>
+      HttpClientRequest.make("GET")(`/chat/completions/${completionId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(CreateChatCompletionResponse)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
+        )
+      ),
+    "updateChatCompletion": (completionId, options) =>
+      HttpClientRequest.make("POST")(`/chat/completions/${completionId}`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(CreateChatCompletionResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
+          )
+        )
+      ),
+    "deleteChatCompletion": (completionId) =>
+      HttpClientRequest.make("DELETE")(`/chat/completions/${completionId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ChatCompletionDeleted)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
+          )
+        )
+      ),
+    "getChatCompletionMessages": (completionId, options) =>
+      HttpClientRequest.make("GET")(`/chat/completions/${completionId}/messages`).pipe(
+        HttpClientRequest.setUrlParams({
+          "after": options["after"],
+          "limit": options["limit"],
+          "order": options["order"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ChatCompletionMessageList)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
+          )
+        )
       ),
     "createCompletion": (options) =>
       HttpClientRequest.make("POST")(`/completions`).pipe(
@@ -3683,8 +4833,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createEmbedding": (options) =>
       HttpClientRequest.make("POST")(`/embeddings`).pipe(
@@ -3698,8 +4847,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listFiles": (options) =>
       HttpClientRequest.make("GET")(`/files`).pipe(
@@ -3719,8 +4867,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createFile": (options) =>
       HttpClientRequest.make("POST")(`/files`).pipe(
@@ -3735,8 +4882,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "retrieveFile": (fileId) =>
       HttpClientRequest.make("GET")(`/files/${fileId}`).pipe(
@@ -3750,8 +4896,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "deleteFile": (fileId) =>
       HttpClientRequest.make("DELETE")(`/files/${fileId}`).pipe(
@@ -3765,8 +4910,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "downloadFile": (fileId) =>
       HttpClientRequest.make("GET")(`/files/${fileId}/content`).pipe(
@@ -3780,12 +4924,15 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listPaginatedFineTuningJobs": (options) =>
       HttpClientRequest.make("GET")(`/fine_tuning/jobs`).pipe(
-        HttpClientRequest.setUrlParams({ "after": options["after"], "limit": options["limit"] }),
+        HttpClientRequest.setUrlParams({
+          "after": options["after"],
+          "limit": options["limit"],
+          "metadata": options["metadata"] as any
+        }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
@@ -3796,8 +4943,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createFineTuningJob": (options) =>
       HttpClientRequest.make("POST")(`/fine_tuning/jobs`).pipe(
@@ -3811,8 +4957,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "retrieveFineTuningJob": (fineTuningJobId) =>
       HttpClientRequest.make("GET")(`/fine_tuning/jobs/${fineTuningJobId}`).pipe(
@@ -3829,8 +4974,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "cancelFineTuningJob": (fineTuningJobId) =>
       HttpClientRequest.make("POST")(`/fine_tuning/jobs/${fineTuningJobId}/cancel`).pipe(
@@ -3847,8 +4991,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "listFineTuningJobCheckpoints": (fineTuningJobId, options) =>
       HttpClientRequest.make("GET")(`/fine_tuning/jobs/${fineTuningJobId}/checkpoints`).pipe(
@@ -3866,8 +5009,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "listFineTuningEvents": (fineTuningJobId, options) =>
       HttpClientRequest.make("GET")(`/fine_tuning/jobs/${fineTuningJobId}/events`).pipe(
@@ -3885,8 +5027,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "createImageEdit": (options) =>
       HttpClientRequest.make("POST")(`/images/edits`).pipe(
@@ -3901,8 +5042,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createImage": (options) =>
       HttpClientRequest.make("POST")(`/images/generations`).pipe(
@@ -3916,8 +5056,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createImageVariation": (options) =>
       HttpClientRequest.make("POST")(`/images/variations`).pipe(
@@ -3932,8 +5071,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listModels": () =>
       HttpClientRequest.make("GET")(`/models`).pipe(
@@ -3947,8 +5085,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "retrieveModel": (model) =>
       HttpClientRequest.make("GET")(`/models/${model}`).pipe(
@@ -3962,8 +5099,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "deleteModel": (model) =>
       HttpClientRequest.make("DELETE")(`/models/${model}`).pipe(
@@ -3977,8 +5113,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createModeration": (options) =>
       HttpClientRequest.make("POST")(`/moderations`).pipe(
@@ -3992,8 +5127,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "adminApiKeysList": (options) =>
       HttpClientRequest.make("GET")(`/organization/admin_api_keys`).pipe(
@@ -4012,8 +5146,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "adminApiKeysCreate": (options) =>
       HttpClientRequest.make("POST")(`/organization/admin_api_keys`).pipe(
@@ -4027,8 +5160,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "adminApiKeysGet": (keyId) =>
       HttpClientRequest.make("GET")(`/organization/admin_api_keys/${keyId}`).pipe(
@@ -4042,8 +5174,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "adminApiKeysDelete": (keyId) =>
       HttpClientRequest.make("DELETE")(`/organization/admin_api_keys/${keyId}`).pipe(
@@ -4057,8 +5188,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listAuditLogs": (options) =>
       HttpClientRequest.make("GET")(`/organization/audit_logs`).pipe(
@@ -4086,8 +5216,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "usageCosts": (options) =>
       HttpClientRequest.make("GET")(`/organization/costs`).pipe(
@@ -4110,8 +5239,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listInvites": (options) =>
       HttpClientRequest.make("GET")(`/organization/invites`).pipe(
@@ -4126,8 +5254,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "inviteUser": (options) =>
       HttpClientRequest.make("POST")(`/organization/invites`).pipe(
@@ -4141,8 +5268,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "retrieveInvite": (inviteId) =>
       HttpClientRequest.make("GET")(`/organization/invites/${inviteId}`).pipe(
@@ -4156,8 +5282,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "deleteInvite": (inviteId) =>
       HttpClientRequest.make("DELETE")(`/organization/invites/${inviteId}`).pipe(
@@ -4171,8 +5296,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listProjects": (options) =>
       HttpClientRequest.make("GET")(`/organization/projects`).pipe(
@@ -4191,8 +5315,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createProject": (options) =>
       HttpClientRequest.make("POST")(`/organization/projects`).pipe(
@@ -4206,8 +5329,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "retrieveProject": (projectId) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}`).pipe(
@@ -4221,8 +5343,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "modifyProject": (projectId, options) =>
       HttpClientRequest.make("POST")(`/organization/projects/${projectId}`).pipe(
@@ -4237,8 +5358,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listProjectApiKeys": (projectId, options) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/api_keys`).pipe(
@@ -4256,8 +5376,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "retrieveProjectApiKey": (projectId, keyId) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/api_keys/${keyId}`).pipe(
@@ -4274,8 +5393,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "deleteProjectApiKey": (projectId, keyId) =>
       HttpClientRequest.make("DELETE")(`/organization/projects/${projectId}/api_keys/${keyId}`).pipe(
@@ -4293,8 +5411,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "archiveProject": (projectId) =>
       HttpClientRequest.make("POST")(`/organization/projects/${projectId}/archive`).pipe(
@@ -4308,8 +5425,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listProjectRateLimits": (projectId, options) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/rate_limits`).pipe(
@@ -4331,8 +5447,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "updateProjectRateLimits": (projectId, rateLimitId, options) =>
       HttpClientRequest.make("POST")(`/organization/projects/${projectId}/rate_limits/${rateLimitId}`).pipe(
@@ -4350,8 +5465,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "listProjectServiceAccounts": (projectId, options) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/service_accounts`).pipe(
@@ -4370,8 +5484,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "createProjectServiceAccount": (projectId, options) =>
       HttpClientRequest.make("POST")(`/organization/projects/${projectId}/service_accounts`).pipe(
@@ -4389,8 +5502,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "retrieveProjectServiceAccount": (projectId, serviceAccountId) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/service_accounts/${serviceAccountId}`).pipe(
@@ -4407,8 +5519,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "deleteProjectServiceAccount": (projectId, serviceAccountId) =>
       HttpClientRequest.make("DELETE")(`/organization/projects/${projectId}/service_accounts/${serviceAccountId}`).pipe(
@@ -4425,8 +5536,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "listProjectUsers": (projectId, options) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/users`).pipe(
@@ -4445,8 +5555,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "createProjectUser": (projectId, options) =>
       HttpClientRequest.make("POST")(`/organization/projects/${projectId}/users`).pipe(
@@ -4464,8 +5573,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "retrieveProjectUser": (projectId, userId) =>
       HttpClientRequest.make("GET")(`/organization/projects/${projectId}/users/${userId}`).pipe(
@@ -4482,8 +5590,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "modifyProjectUser": (projectId, userId, options) =>
       HttpClientRequest.make("POST")(`/organization/projects/${projectId}/users/${userId}`).pipe(
@@ -4501,8 +5608,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "deleteProjectUser": (projectId, userId) =>
       HttpClientRequest.make("DELETE")(`/organization/projects/${projectId}/users/${userId}`).pipe(
@@ -4520,8 +5626,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "usageAudioSpeeches": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/audio_speeches`).pipe(
@@ -4547,8 +5652,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "usageAudioTranscriptions": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/audio_transcriptions`).pipe(
@@ -4577,8 +5681,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "usageCodeInterpreterSessions": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/code_interpreter_sessions`).pipe(
@@ -4604,8 +5707,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "usageCompletions": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/completions`).pipe(
@@ -4632,8 +5734,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "usageEmbeddings": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/embeddings`).pipe(
@@ -4659,8 +5760,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "usageImages": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/images`).pipe(
@@ -4688,8 +5788,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "usageModerations": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/moderations`).pipe(
@@ -4715,8 +5814,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "usageVectorStores": (options) =>
       HttpClientRequest.make("GET")(`/organization/usage/vector_stores`).pipe(
@@ -4739,8 +5837,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listUsers": (options) =>
       HttpClientRequest.make("GET")(`/organization/users`).pipe(
@@ -4759,8 +5856,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "retrieveUser": (userId) =>
       HttpClientRequest.make("GET")(`/organization/users/${userId}`).pipe(
@@ -4774,8 +5870,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "modifyUser": (userId, options) =>
       HttpClientRequest.make("POST")(`/organization/users/${userId}`).pipe(
@@ -4789,8 +5884,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "deleteUser": (userId) =>
       HttpClientRequest.make("DELETE")(`/organization/users/${userId}`).pipe(
@@ -4804,8 +5898,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createRealtimeSession": (options) =>
       HttpClientRequest.make("POST")(`/realtime/sessions`).pipe(
@@ -4819,8 +5912,73 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
+      ),
+    "createResponse": (options) =>
+      HttpClientRequest.make("POST")(`/responses`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Response)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
+        )
+      ),
+    "getResponse": (responseId, options) =>
+      HttpClientRequest.make("GET")(`/responses/${responseId}`).pipe(
+        HttpClientRequest.setUrlParams({ "include": options["include"] }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "200": (r) => HttpClientResponse.schemaBodyJson(Response)(r),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
+        )
+      ),
+    "deleteResponse": (responseId) =>
+      HttpClientRequest.make("DELETE")(`/responses/${responseId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
+            Effect.flatMap(
+              httpClient.execute(request),
+              HttpClientResponse.matchStatus({
+                "404": (r) => decodeError(r, Error),
+                orElse: (response) => unexpectedStatus(request, response)
+              })
+            ))
+        )
+      ),
+    "listInputItems": (responseId, options) =>
+      HttpClientRequest.make("GET")(`/responses/${responseId}/input_items`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options["limit"],
+          "order": options["order"],
+          "after": options["after"],
+          "before": options["before"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ResponseItemList)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
+          )
+        )
       ),
     "createThread": (options) =>
       HttpClientRequest.make("POST")(`/threads`).pipe(
@@ -4834,8 +5992,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createThreadAndRun": (options) =>
       HttpClientRequest.make("POST")(`/threads/runs`).pipe(
@@ -4849,8 +6006,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "getThread": (threadId) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}`).pipe(
@@ -4864,8 +6020,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "modifyThread": (threadId, options) =>
       HttpClientRequest.make("POST")(`/threads/${threadId}`).pipe(
@@ -4879,8 +6034,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "deleteThread": (threadId) =>
       HttpClientRequest.make("DELETE")(`/threads/${threadId}`).pipe(
@@ -4894,8 +6048,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listMessages": (threadId, options) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}/messages`).pipe(
@@ -4916,8 +6069,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createMessage": (threadId, options) =>
       HttpClientRequest.make("POST")(`/threads/${threadId}/messages`).pipe(
@@ -4931,8 +6083,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "getMessage": (threadId, messageId) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}/messages/${messageId}`).pipe(
@@ -4949,8 +6100,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "modifyMessage": (threadId, messageId, options) =>
       HttpClientRequest.make("POST")(`/threads/${threadId}/messages/${messageId}`).pipe(
@@ -4967,8 +6117,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "deleteMessage": (threadId, messageId) =>
       HttpClientRequest.make("DELETE")(`/threads/${threadId}/messages/${messageId}`).pipe(
@@ -4985,8 +6134,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "listRuns": (threadId, options) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}/runs`).pipe(
@@ -5006,8 +6154,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createRun": (threadId, options) =>
       HttpClientRequest.make("POST")(`/threads/${threadId}/runs`).pipe(
@@ -5022,8 +6169,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "getRun": (threadId, runId) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}/runs/${runId}`).pipe(
@@ -5037,8 +6183,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "modifyRun": (threadId, runId, options) =>
       HttpClientRequest.make("POST")(`/threads/${threadId}/runs/${runId}`).pipe(
@@ -5055,8 +6200,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "cancelRun": (threadId, runId) =>
       HttpClientRequest.make("POST")(`/threads/${threadId}/runs/${runId}/cancel`).pipe(
@@ -5070,8 +6214,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listRunSteps": (threadId, runId, options) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}/runs/${runId}/steps`).pipe(
@@ -5095,8 +6238,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "getRunStep": (threadId, runId, stepId, options) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}/runs/${runId}/steps/${stepId}`).pipe(
@@ -5114,8 +6256,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "submitToolOuputsToRun": (threadId, runId, options) =>
       HttpClientRequest.make("POST")(`/threads/${threadId}/runs/${runId}/submit_tool_outputs`).pipe(
@@ -5132,8 +6273,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "createUpload": (options) =>
       HttpClientRequest.make("POST")(`/uploads`).pipe(
@@ -5147,8 +6287,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "cancelUpload": (uploadId) =>
       HttpClientRequest.make("POST")(`/uploads/${uploadId}/cancel`).pipe(
@@ -5162,8 +6301,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "completeUpload": (uploadId, options) =>
       HttpClientRequest.make("POST")(`/uploads/${uploadId}/complete`).pipe(
@@ -5177,8 +6315,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "addUploadPart": (uploadId, options) =>
       HttpClientRequest.make("POST")(`/uploads/${uploadId}/parts`).pipe(
@@ -5193,8 +6330,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "listVectorStores": (options) =>
       HttpClientRequest.make("GET")(`/vector_stores`).pipe(
@@ -5214,8 +6350,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createVectorStore": (options) =>
       HttpClientRequest.make("POST")(`/vector_stores`).pipe(
@@ -5229,8 +6364,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "getVectorStore": (vectorStoreId) =>
       HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}`).pipe(
@@ -5244,8 +6378,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "modifyVectorStore": (vectorStoreId, options) =>
       HttpClientRequest.make("POST")(`/vector_stores/${vectorStoreId}`).pipe(
@@ -5262,8 +6395,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "deleteVectorStore": (vectorStoreId) =>
       HttpClientRequest.make("DELETE")(`/vector_stores/${vectorStoreId}`).pipe(
@@ -5277,8 +6409,7 @@ export const make = (
                 orElse: (response) => unexpectedStatus(request, response)
               })
             ))
-        ),
-        Effect.scoped
+        )
       ),
     "createVectorStoreFileBatch": (vectorStoreId, options) =>
       HttpClientRequest.make("POST")(`/vector_stores/${vectorStoreId}/file_batches`).pipe(
@@ -5295,8 +6426,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "getVectorStoreFileBatch": (vectorStoreId, batchId) =>
       HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}/file_batches/${batchId}`).pipe(
@@ -5313,8 +6443,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "cancelVectorStoreFileBatch": (vectorStoreId, batchId) =>
       HttpClientRequest.make("POST")(`/vector_stores/${vectorStoreId}/file_batches/${batchId}/cancel`).pipe(
@@ -5331,8 +6460,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "listFilesInVectorStoreBatch": (vectorStoreId, batchId, options) =>
       HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}/file_batches/${batchId}/files`).pipe(
@@ -5356,8 +6484,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "listVectorStoreFiles": (vectorStoreId, options) =>
       HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}/files`).pipe(
@@ -5381,8 +6508,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "createVectorStoreFile": (vectorStoreId, options) =>
       HttpClientRequest.make("POST")(`/vector_stores/${vectorStoreId}/files`).pipe(
@@ -5399,8 +6525,7 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
       ),
     "getVectorStoreFile": (vectorStoreId, fileId) =>
       HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}/files/${fileId}`).pipe(
@@ -5417,8 +6542,24 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
+      ),
+    "updateVectorStoreFileAttributes": (vectorStoreId, fileId, options) =>
+      HttpClientRequest.make("POST")(`/vector_stores/${vectorStoreId}/files/${fileId}`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileObject)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
+          )
+        )
       ),
     "deleteVectorStoreFile": (vectorStoreId, fileId) =>
       HttpClientRequest.make("DELETE")(`/vector_stores/${vectorStoreId}/files/${fileId}`).pipe(
@@ -5435,8 +6576,41 @@ export const make = (
                 })
               )
           )
-        ),
-        Effect.scoped
+        )
+      ),
+    "retrieveVectorStoreFileContent": (vectorStoreId, fileId) =>
+      HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}/files/${fileId}/content`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileContentResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
+          )
+        )
+      ),
+    "searchVectorStore": (vectorStoreId, options) =>
+      HttpClientRequest.make("POST")(`/vector_stores/${vectorStoreId}/search`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreSearchResultsPage)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
+          )
+        )
       )
   }
 }
@@ -5479,9 +6653,26 @@ export interface Client {
   readonly "cancelBatch": (
     batchId: string
   ) => Effect.Effect<typeof Batch.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listChatCompletions": (
+    options: typeof ListChatCompletionsParams.Encoded
+  ) => Effect.Effect<typeof ChatCompletionList.Type, HttpClientError.HttpClientError | ParseError>
   readonly "createChatCompletion": (
     options: typeof CreateChatCompletionRequest.Encoded
   ) => Effect.Effect<typeof CreateChatCompletionResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "getChatCompletion": (
+    completionId: string
+  ) => Effect.Effect<typeof CreateChatCompletionResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "updateChatCompletion": (
+    completionId: string,
+    options: typeof UpdateChatCompletionRequest.Encoded
+  ) => Effect.Effect<typeof CreateChatCompletionResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "deleteChatCompletion": (
+    completionId: string
+  ) => Effect.Effect<typeof ChatCompletionDeleted.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "getChatCompletionMessages": (
+    completionId: string,
+    options: typeof GetChatCompletionMessagesParams.Encoded
+  ) => Effect.Effect<typeof ChatCompletionMessageList.Type, HttpClientError.HttpClientError | ParseError>
   readonly "createCompletion": (
     options: typeof CreateCompletionRequest.Encoded
   ) => Effect.Effect<typeof CreateCompletionResponse.Type, HttpClientError.HttpClientError | ParseError>
@@ -5707,6 +6898,20 @@ export interface Client {
   readonly "createRealtimeSession": (
     options: typeof RealtimeSessionCreateRequest.Encoded
   ) => Effect.Effect<typeof RealtimeSessionCreateResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createResponse": (
+    options: typeof CreateResponse.Encoded
+  ) => Effect.Effect<typeof Response.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "getResponse": (
+    responseId: string,
+    options: typeof GetResponseParams.Encoded
+  ) => Effect.Effect<typeof Response.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "deleteResponse": (
+    responseId: string
+  ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError | typeof Error.Type>
+  readonly "listInputItems": (
+    responseId: string,
+    options: typeof ListInputItemsParams.Encoded
+  ) => Effect.Effect<typeof ResponseItemList.Type, HttpClientError.HttpClientError | ParseError>
   readonly "createThread": (
     options: typeof CreateThreadRequest.Encoded
   ) => Effect.Effect<typeof ThreadObject.Type, HttpClientError.HttpClientError | ParseError>
@@ -5840,8 +7045,21 @@ export interface Client {
     vectorStoreId: string,
     fileId: string
   ) => Effect.Effect<typeof VectorStoreFileObject.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "updateVectorStoreFileAttributes": (
+    vectorStoreId: string,
+    fileId: string,
+    options: typeof UpdateVectorStoreFileAttributesRequest.Encoded
+  ) => Effect.Effect<typeof VectorStoreFileObject.Type, HttpClientError.HttpClientError | ParseError>
   readonly "deleteVectorStoreFile": (
     vectorStoreId: string,
     fileId: string
   ) => Effect.Effect<typeof DeleteVectorStoreFileResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "retrieveVectorStoreFileContent": (
+    vectorStoreId: string,
+    fileId: string
+  ) => Effect.Effect<typeof VectorStoreFileContentResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "searchVectorStore": (
+    vectorStoreId: string,
+    options: typeof VectorStoreSearchRequest.Encoded
+  ) => Effect.Effect<typeof VectorStoreSearchResultsPage.Type, HttpClientError.HttpClientError | ParseError>
 }

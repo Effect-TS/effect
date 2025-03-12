@@ -28,7 +28,7 @@ import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
  * @since 1.0.0
  * @category models
  */
-export type Model = typeof Generated.CreateChatCompletionRequestModelEnum.Encoded
+export type Model = typeof Generated.ModelResponsePropertiesModelEnum.Encoded
 
 // =============================================================================
 // Configuration
@@ -354,7 +354,7 @@ const makeContentPart = (
 }
 
 const makeResponse = (
-  response: Generated.CreateChatCompletionResponse,
+  response: typeof Generated.CreateChatCompletionResponse.Type,
   method: string,
   structuredTool?: {
     readonly name: string
@@ -436,7 +436,7 @@ const annotateRequest = (
 
 const annotateChatResponse = (
   span: Span,
-  response: Generated.CreateChatCompletionResponse
+  response: typeof Generated.CreateChatCompletionResponse.Type
 ): void => {
   addGenAIAnnotations(span, {
     response: {
