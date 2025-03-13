@@ -517,9 +517,9 @@ export const Tag: <const Id extends string>(id: Id) => <Self, Shape>() => TagCla
  * when the context is accessed, or override it with a custom implementation
  * when needed.
  *
- * @example
+ * **Example** (Declaring a Tag with a default value)
+ *
  * ```ts
- * // Title: Declaring a Tag with a default value
  * import * as assert from "node:assert"
  * import { Context, Effect } from "effect"
  *
@@ -540,9 +540,9 @@ export const Tag: <const Id extends string>(id: Id) => <Self, Shape>() => TagCla
  * // Output: The special number is 2048
  * ```
  *
- * @example
+ * **Example** (Overriding the default value)
+ *
  * ```ts
- * // Title: Overriding the default value
  * import { Context, Effect } from "effect"
  *
  * class SpecialNumber extends Context.Reference<SpecialNumber>()(

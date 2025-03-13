@@ -211,7 +211,7 @@ export const accumulateChunks: <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, 
  *   (file) => file.close
  * ).pipe(Stream.flatMap((file) => file.getLines))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // Opening file.txt
  * // Closing file.txt
  * // { _id: 'Chunk', values: [ [ 'Line 1', 'Line 2', 'Line 3' ] ] }
@@ -300,7 +300,7 @@ export const aggregateWithinEither: {
  *
  * const stream = Stream.range(1, 5).pipe(Stream.as(null))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ null, null, null, null, null ] }
  * ```
  *
@@ -350,7 +350,7 @@ export {
    *   }
    * )
    *
-   * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+   * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
    * // { _id: 'Chunk', values: [ 1, 2 ] }
    *
    * ```
@@ -489,7 +489,7 @@ export const branchAfter: {
  *   )
  * )
  *
- * // Effect.runPromise(numbers).then(console.log)
+ * Effect.runPromise(numbers).then(console.log)
  * // Emit 1 element before broadcasting
  * // Emit 2 element before broadcasting
  * // Emit 3 element before broadcasting
@@ -700,7 +700,7 @@ export const broadcastedQueuesDynamic: {
  *   Stream.schedule(Schedule.spaced("5 seconds"))
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // before buffering: 1
  * // before buffering: 2
  * // before buffering: 3
@@ -910,7 +910,7 @@ export const catchSomeCause: {
  *
  * const stream = Stream.make(1, 1, 1, 2, 2, 3, 4).pipe(Stream.changes)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 2, 3, 4 ] }
  * ```
  *
@@ -1054,7 +1054,7 @@ export const combineChunks: {
  *
  * const stream = Stream.concat(s1, s2)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 2, 3, 4, 5 ] }
  * ```
  *
@@ -1079,7 +1079,7 @@ export const concat: {
  *
  * const stream = Stream.concatAll(Chunk.make(s1, s2, s3))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // {
  * //   _id: 'Chunk',
  * //   values: [
@@ -1110,7 +1110,7 @@ export const concatAll: <A, E, R>(streams: Chunk.Chunk<Stream<A, E, R>>) => Stre
  *
  * const product = Stream.cross(s1, s2)
  *
- * // Effect.runPromise(Stream.runCollect(product)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(product)).then(console.log)
  * // {
  * //   _id: "Chunk",
  * //   values: [
@@ -1217,7 +1217,7 @@ export const crossWith: {
  *   Stream.tap((n) => log(`> Emitted ${n}`))
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // Received 1 after 5ms
  * // Received 2 after 2ms
  * // Received 3 after 0ms
@@ -1334,7 +1334,7 @@ export const distributedWithDynamic: {
  * // We create a stream and immediately drain it.
  * const stream = Stream.range(1, 6).pipe(Stream.drain)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [] }
  * ```
  *
@@ -1459,7 +1459,7 @@ export const either: <A, E, R>(self: Stream<A, E, R>) => Stream<Either.Either<A,
  *
  * const stream = Stream.empty
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [] }
  * ```
  *
@@ -1482,7 +1482,7 @@ export const empty: Stream<never> = internal.empty
  *   )
  * )
  *
- * // Effect.runPromise(Stream.runCollect(program)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(program)).then(console.log)
  * // Application Logic.
  * // Finalizing the stream
  * // Doing some other works after stream's finalization
@@ -1612,7 +1612,7 @@ export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Stream<nev
  *
  * const stream = Stream.range(1, 11).pipe(Stream.filter((n) => n % 2 === 0))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 2, 4, 6, 8, 10 ] }
  * ```
  *
@@ -1717,7 +1717,7 @@ export const filterMapWhileEffect: {
  *   )
  * )
  *
- * // Effect.runPromise(Stream.runCollect(program)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(program)).then(console.log)
  * // Application Logic.
  * // Deleting dir: tmp
  * // Temporary directory was deleted.
@@ -1892,7 +1892,7 @@ export const forever: <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, R> = inte
  *   (e) => new Error(String(e)) // Error Handling
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 2 ] }
  * ```
  *
@@ -1932,7 +1932,7 @@ export const toChannel: <A, E, R>(
  * // Creating a stream with values from a single Chunk
  * const stream = Stream.fromChunk(Chunk.make(1, 2, 3))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 2, 3 ] }
  * ```
  *
@@ -1989,7 +1989,7 @@ export const fromChunkQueue: <A>(
  * // Creating a stream with values from multiple Chunks
  * const stream = Stream.fromChunks(Chunk.make(1, 2, 3), Chunk.make(4, 5, 6))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 2, 3, 4, 5, 6 ] }
  * ```
  *
@@ -2008,7 +2008,7 @@ export const fromChunks: <A>(...chunks: Array<Chunk.Chunk<A>>) => Stream<A> = in
  *
  * const stream = Stream.fromEffect(Random.nextInt)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // Example Output: { _id: 'Chunk', values: [ 922694024 ] }
  * ```
  *
@@ -2075,7 +2075,7 @@ export const fromTPubSub: <A>(pubsub: TPubSub<A>) => Stream<A> = internal.fromTP
  *
  * const stream = Stream.fromIterable(numbers)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 2, 3 ] }
  * ```
  *
@@ -2100,9 +2100,9 @@ export const fromIterable: <A>(iterable: Iterable<A>) => Stream<A> = internal.fr
  *
  * const stream = Stream.fromIterableEffect(getUsers)
  *
- * // Effect.runPromise(
- * //   Stream.runCollect(stream.pipe(Stream.provideService(Database, { getUsers: Effect.succeed(["user1", "user2"]) })))
- * // ).then(console.log)
+ * Effect.runPromise(
+ *   Stream.runCollect(stream.pipe(Stream.provideService(Database, { getUsers: Effect.succeed(["user1", "user2"]) })))
+ * ).then(console.log)
  * // { _id: 'Chunk', values: [ 'user1', 'user2' ] }
  * ```
  *
@@ -2220,7 +2220,7 @@ export const fromReadableStreamByob: {
  *
  * const stream = Stream.fromSchedule(schedule)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 0, 1, 2, 3, 4 ] }
  * ```
  *
@@ -2269,7 +2269,7 @@ export const groupAdjacentBy: {
  *     )
  *   ))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // {
  * //   _id: 'Chunk',
  * //   values: [ [ 'M', 1 ], [ 'J', 3 ], [ 'R', 2 ], [ 'P', 2 ] ]
@@ -2351,7 +2351,7 @@ export const groupByKey: {
  *
  * const stream = Stream.range(0, 8).pipe(Stream.grouped(3))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then((chunks) => console.log("%o", chunks))
+ * Effect.runPromise(Stream.runCollect(stream)).then((chunks) => console.log("%o", chunks))
  * // {
  * //   _id: 'Chunk',
  * //   values: [
@@ -2385,7 +2385,7 @@ export const grouped: {
  *   Stream.take(3)
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then((chunks) => console.log(Chunk.toArray(chunks)))
+ * Effect.runPromise(Stream.runCollect(stream)).then((chunks) => console.log(Chunk.toArray(chunks)))
  * // [
  * //   {
  * //     _id: 'Chunk',
@@ -2494,7 +2494,7 @@ export const identity: <A, E = never, R = never>() => Stream<A, E, R> = internal
  *
  * const stream = Stream.interleave(s1, s2)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 4, 2, 5, 3, 6 ] }
  * ```
  * @since 2.0.0
@@ -2525,7 +2525,7 @@ export const interleave: {
  *
  * const stream = Stream.interleaveWith(s1, s2, booleanStream)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // {
  * //   _id: 'Chunk',
  * //   values: [
@@ -2559,7 +2559,7 @@ export const interleaveWith: {
  *
  * const stream = Stream.make(1, 2, 3, 4, 5).pipe(Stream.intersperse(0))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // {
  * //   _id: 'Chunk',
  * //   values: [
@@ -2592,7 +2592,7 @@ export const intersperse: {
  *   })
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // {
  * //   _id: 'Chunk',
  * //   values: [
@@ -2671,7 +2671,7 @@ export const interruptWhenDeferred: {
  * // An infinite Stream of numbers starting from 1 and incrementing
  * const stream = Stream.iterate(1, (n) => n + 1)
  *
- * // Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(10)))).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(10)))).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] }
  * ```
  *
@@ -2689,7 +2689,7 @@ export const iterate: <A>(value: A, next: (value: A) => A) => Stream<A> = intern
  *
  * const stream = Stream.make(1, 2, 3)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 2, 3 ] }
  * ```
  *
@@ -2707,7 +2707,7 @@ export const make: <As extends Array<any>>(...as: As) => Stream<As[number]> = in
  *
  * const stream = Stream.make(1, 2, 3).pipe(Stream.map((n) => n + 1))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 2, 3, 4 ] }
  * ```
  *
@@ -2730,9 +2730,9 @@ export const map: {
  *   stream.pipe(Stream.mapAccum(0, (s, a) => [s + a, s + a]))
  *
  * // input:  0, 1, 2, 3, 4, 5, 6
- * // Effect.runPromise(Stream.runCollect(runningTotal(Stream.range(0, 6)))).then(
- * //   console.log
- * // )
+ * Effect.runPromise(Stream.runCollect(runningTotal(Stream.range(0, 6)))).then(
+ *   console.log
+ * )
  * // { _id: "Chunk", values: [ 0, 1, 3, 6, 10, 15, 21 ] }
  * ```
  *
@@ -2820,7 +2820,7 @@ export const mapChunksEffect: {
  *   Stream.map((s) => parseInt(s))
  * )
  *
- * // Effect.runPromise(Stream.runCollect(numbers)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(numbers)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 2, 3, 4, 5, 6 ] }
  * ```
  *
@@ -2889,7 +2889,7 @@ export const mapConcatEffect: {
  *   Stream.mapEffect((n) => Random.nextIntBetween(0, n))
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // Example Output: { _id: 'Chunk', values: [ 7, 19, 8 ] }
  * ```
  *
@@ -2962,7 +2962,7 @@ export const mapErrorCause: {
  *
  * const stream = Stream.merge(s1, s2)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 4, 2, 3, 5, 6 ] }
  * ```
  *
@@ -3065,7 +3065,7 @@ export const mergeWithTag: {
  *   onOther: (n) => Math.floor(n)
  * })
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 4, 2, 3, 5, 6 ] }
  * ```
  *
@@ -3225,7 +3225,7 @@ export const onDone: {
  *   Stream.tap((n) => Console.log(`after mapping: ${n}`))
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // Stream started
  * // after mapping: 2
  * // after mapping: 4
@@ -3369,7 +3369,7 @@ export const orElseSucceed: {
  *   n < 3 ? Option.some(n + 1) : Option.none()
  * ])
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 0, 1, 2, 3 ] }
  * ```
  *
@@ -3429,12 +3429,9 @@ export const paginateEffect: <S, A, E, R>(
  * The faster stream may advance up to `bufferSize` elements ahead of the slower
  * one.
  *
- * @see {@link partitionEither} for partitioning a stream based on effectful
- * conditions.
+ * **Example** (Partitioning a Stream into Even and Odd Numbers)
  *
- * @example
  * ```ts
- * // Title: Partitioning a Stream into Even and Odd Numbers
  * import { Effect, Stream } from "effect"
  *
  * const partition = Stream.range(1, 9).pipe(
@@ -3449,10 +3446,13 @@ export const paginateEffect: <S, A, E, R>(
  *   })
  * )
  *
- * // Effect.runPromise(program)
+ * Effect.runPromise(program)
  * // { _id: 'Chunk', values: [ 1, 3, 5, 7, 9 ] }
  * // { _id: 'Chunk', values: [ 2, 4, 6, 8 ] }
  * ```
+ *
+ * @see {@link partitionEither} for partitioning a stream based on effectful
+ * conditions.
  *
  * @since 2.0.0
  * @category utils
@@ -3496,11 +3496,9 @@ export const partition: {
  * The faster stream may advance up to `bufferSize` elements ahead of the slower
  * one.
  *
- * @see {@link partition} for partitioning a stream based on simple conditions.
+ * **Example** (Partitioning a Stream with an Effectful Predicate)
  *
- * @example
  * ```ts
- * // Title: Partitioning a Stream with an Effectful Predicate
  * import { Effect, Either, Stream } from "effect"
  *
  * const partition = Stream.range(1, 9).pipe(
@@ -3518,10 +3516,12 @@ export const partition: {
  *   })
  * )
  *
- * // Effect.runPromise(program)
+ * Effect.runPromise(program)
  * // { _id: 'Chunk', values: [ 1, 3, 5, 7, 9 ] }
  * // { _id: 'Chunk', values: [ 2, 4, 6, 8 ] }
  * ```
+ *
+ * @see {@link partition} for partitioning a stream based on simple conditions.
  *
  * @since 2.0.0
  * @category utils
@@ -3802,7 +3802,7 @@ export const raceAll: <S extends ReadonlyArray<Stream<any, any, any>>>(
  * // A Stream with a range of numbers from 1 to 5
  * const stream = Stream.range(1, 5)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 2, 3, 4, 5 ] }
  * ```
  *
@@ -3859,7 +3859,7 @@ export const refineOrDieWith: {
  *
  * const stream = Stream.repeat(Stream.succeed(1), Schedule.forever)
  *
- * // Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 1, 1, 1, 1 ] }
  * ```
  *
@@ -3881,7 +3881,7 @@ export const repeat: {
  *
  * const stream = Stream.repeatEffect(Random.nextInt)
  *
- * // Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
  * // Example Output: { _id: 'Chunk', values: [ 3891571149, 4239494205, 2352981603, 2339111046, 1488052210 ] }
  * ```
  *
@@ -4020,7 +4020,7 @@ export const repeatElementsWith: {
  *
  * const stream = Stream.repeatValue(0)
  *
- * // Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
  * // { _id: 'Chunk', values: [ 0, 0, 0, 0, 0 ] }
  * ```
  *
@@ -4468,7 +4468,7 @@ export const runSum: <E, R>(self: Stream<number, E, R>) => Effect.Effect<number,
  *
  * const stream = Stream.range(1, 6).pipe(Stream.scan(0, (a, b) => a + b))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 0,  1,  3, 6, 10, 15, 21 ] }
  * ```
  *
@@ -4582,7 +4582,7 @@ export const scheduleWith: {
  *  Stream.flatMap(() => Console.log("use"))
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // acquire
  * // use
  * // release
@@ -4725,7 +4725,7 @@ export const splitLines: <E, R>(self: Stream<string, E, R>) => Stream<string, E,
  * // A Stream with a single number
  * const stream = Stream.succeed(3)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 3 ] }
  * ```
  *
@@ -4759,7 +4759,7 @@ export const suspend: <A, E, R>(stream: LazyArg<Stream<A, E, R>>) => Stream<A, E
  *
  * const stream = Stream.take(Stream.iterate(0, (n) => n + 1), 5)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 0, 1, 2, 3, 4 ] }
  * ```
  *
@@ -4780,7 +4780,7 @@ export const take: {
  *
  * const stream = Stream.takeRight(Stream.make(1, 2, 3, 4, 5, 6), 3)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 4, 5, 6 ] }
  * ```
  *
@@ -4802,7 +4802,7 @@ export const takeRight: {
  *
  * const stream = Stream.takeUntil(Stream.iterate(0, (n) => n + 1), (n) => n === 4)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 0, 1, 2, 3, 4 ] }
  * ```
  *
@@ -4841,7 +4841,7 @@ export const takeUntilEffect: {
  *
  * const stream = Stream.takeWhile(Stream.iterate(0, (n) => n + 1), (n) => n < 5)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ 0, 1, 2, 3, 4 ] }
  * ```
  *
@@ -4868,7 +4868,7 @@ export const takeWhile: {
  *   Stream.tap((n) => Console.log(`after mapping: ${n}`))
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // before mapping: 1
  * // after mapping: 2
  * // before mapping: 2
@@ -4989,7 +4989,7 @@ export const tapSink: {
  *   Stream.tap((n) => log(`> Emitted ${n}`))
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // Received 0 after 56ms
  * // > Emitted 0 after 0ms
  * // Received 1 after 52ms
@@ -5085,7 +5085,7 @@ export const throttleEffect: {
  *
  * const stream = Stream.tick("1 seconds").pipe(Stream.tap(() => log("tick")))
  *
- * // Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
  * // tick after 4ms
  * // tick after 1003ms
  * // tick after 1001ms
@@ -5209,7 +5209,7 @@ export const toPubSub: {
  *   }
  * })
  *
- * // Effect.runPromise(Effect.scoped(program)).then(console.log, console.error)
+ * Effect.runPromise(Effect.scoped(program)).then(console.log, console.error)
  * // { _id: 'Chunk', values: [ 1, 2 ] }
  * // { _id: 'Chunk', values: [ 3, 4 ] }
  * // { _id: 'Chunk', values: [ 5 ] }
@@ -5352,7 +5352,7 @@ export const transduce: {
  *
  * const stream = Stream.unfold(1, (n) => Option.some([n, n + 1]))
  *
- * // Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
  * // { _id: 'Chunk', values: [ 1, 2, 3, 4, 5 ] }
  * ```
  *
@@ -5397,7 +5397,7 @@ export const unfoldChunkEffect: <S, A, E, R>(
  *     Effect.map((b) => (b ? Option.some([n, -n]) : Option.some([n, n])))
  *   ))
  *
- * // Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(5)))).then(console.log)
  * // { _id: 'Chunk', values: [ 1, -1, -1, -1, -1 ] }
  * ```
  *
@@ -5420,7 +5420,7 @@ export {
    *
    * const stream = Stream.void
    *
-   * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+   * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
    * // { _id: 'Chunk', values: [ undefined ] }
    *
    * ```
@@ -5566,7 +5566,7 @@ export const withSpan: {
  *   Stream.make("a", "b", "c")
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ [ 1, 'a' ], [ 2, 'b' ], [ 3, 'c' ] ] }
  * ```
  *
@@ -5614,7 +5614,7 @@ export const zipFlatten: {
  *   defaultOther: "x"
  * })
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: "Chunk", values: [ [ 1, "a" ], [ 2, "b" ], [ 3, "c" ], [ 4, "x" ], [ 5, "x" ], [ 6, "x" ] ] }
  * ```
  *
@@ -5814,7 +5814,7 @@ export const zipAllSortedByKeyWith: {
  *   onBoth: (n, s) => [n - s.length, s]
  * })
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: "Chunk", values: [ [ 0, "a" ], [ 1, "b" ], [ 2, "c" ], [ 4, "x" ], [ 5, "x" ], [ 6, "x" ] ] }
  * ```
  *
@@ -5864,7 +5864,7 @@ export const zipAllWith: {
  *
  * const stream = Stream.zipLatest(s1, s2)
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: "Chunk", values: [ [ 1, "a" ], [ 1, "b" ], [ 2, "b" ], [ 2, "c" ], [ 2, "d" ], [ 3, "d" ] ] }
  * ```
  *
@@ -5894,7 +5894,7 @@ export const zipLatest: {
  *     Stream.fromSchedule(Schedule.spaced('4 millis')),
  * ).pipe(Stream.take(6), Stream.tap(Console.log))
  *
- * // Effect.runPromise(Stream.runDrain(stream))
+ * Effect.runPromise(Stream.runDrain(stream))
  * // Output:
  * // [ 0, 0, 0 ]
  * // [ 1, 0, 0 ]
@@ -5986,7 +5986,7 @@ export const zipRight: {
  *   (n, s) => [n - s.length, s]
  * )
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
  * // { _id: 'Chunk', values: [ [ 0, 'a' ], [ 1, 'b' ], [ 2, 'c' ] ] }
  * ```
  *
@@ -6041,7 +6041,7 @@ export const zipWithChunks: {
  *
  * const stream = Stream.zipWithNext(Stream.make(1, 2, 3, 4))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then((chunk) => console.log(Chunk.toArray(chunk)))
+ * Effect.runPromise(Stream.runCollect(stream)).then((chunk) => console.log(Chunk.toArray(chunk)))
  * // [
  * //   [ 1, { _id: 'Option', _tag: 'Some', value: 2 } ],
  * //   [ 2, { _id: 'Option', _tag: 'Some', value: 3 } ],
@@ -6065,7 +6065,7 @@ export const zipWithNext: <A, E, R>(self: Stream<A, E, R>) => Stream<[A, Option.
  *
  * const stream = Stream.zipWithPrevious(Stream.make(1, 2, 3, 4))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then((chunk) => console.log(Chunk.toArray(chunk)))
+ * Effect.runPromise(Stream.runCollect(stream)).then((chunk) => console.log(Chunk.toArray(chunk)))
  * // [
  * //   [ { _id: 'Option', _tag: 'None' }, 1 ],
  * //   [ { _id: 'Option', _tag: 'Some', value: 1 }, 2 ],
@@ -6089,7 +6089,7 @@ export const zipWithPrevious: <A, E, R>(self: Stream<A, E, R>) => Stream<[Option
  *
  * const stream = Stream.zipWithPreviousAndNext(Stream.make(1, 2, 3, 4))
  *
- * // Effect.runPromise(Stream.runCollect(stream)).then((chunk) => console.log(Chunk.toArray(chunk)))
+ * Effect.runPromise(Stream.runCollect(stream)).then((chunk) => console.log(Chunk.toArray(chunk)))
  * // [
  * //   [
  * //     { _id: 'Option', _tag: 'None' },
@@ -6132,7 +6132,7 @@ export const zipWithPreviousAndNext: <A, E, R>(
  *
  * const indexedStream = Stream.zipWithIndex(stream)
  *
- * // Effect.runPromise(Stream.runCollect(indexedStream)).then(console.log)
+ * Effect.runPromise(Stream.runCollect(indexedStream)).then(console.log)
  * // {
  * //   _id: 'Chunk',
  * //   values: [ [ 'Mary', 0 ], [ 'James', 1 ], [ 'Robert', 2 ], [ 'Patricia', 3 ] ]
@@ -6158,11 +6158,6 @@ export const zipWithIndex: <A, E, R>(self: Stream<A, E, R>) => Stream<[A, number
  * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
  *
- * @see {@link bindTo}
- * @see {@link bind}
- * @see {@link bindEffect}
- * @see {@link let_ let}
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -6176,6 +6171,11 @@ export const zipWithIndex: <A, E, R>(self: Stream<A, E, R>) => Stream<[A, number
  * )
  * assert.deepStrictEqual(Effect.runSync(Stream.runCollect(result)), Chunk.of({ x: 2, y: 3, sum: 5 }))
  * ```
+ *
+ * @see {@link bindTo}
+ * @see {@link bind}
+ * @see {@link bindEffect}
+ * @see {@link let_ let}
  *
  * @category do notation
  * @since 2.0.0
@@ -6192,11 +6192,6 @@ export const Do: Stream<{}> = internal.Do
  * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
  *
- * @see {@link Do}
- * @see {@link bindTo}
- * @see {@link bindEffect}
- * @see {@link let_ let}
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -6210,6 +6205,11 @@ export const Do: Stream<{}> = internal.Do
  * )
  * assert.deepStrictEqual(Effect.runSync(Stream.runCollect(result)), Chunk.of({ x: 2, y: 3, sum: 5 }))
  * ```
+ *
+ * @see {@link Do}
+ * @see {@link bindTo}
+ * @see {@link bindEffect}
+ * @see {@link let_ let}
  *
  * @category do notation
  * @since 2.0.0
@@ -6267,11 +6267,6 @@ export const bindEffect: {
  * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
  *
- * @see {@link Do}
- * @see {@link bind}
- * @see {@link bindEffect}
- * @see {@link let_ let}
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -6285,6 +6280,11 @@ export const bindEffect: {
  * )
  * assert.deepStrictEqual(Effect.runSync(Stream.runCollect(result)), Chunk.of({ x: 2, y: 3, sum: 5 }))
  * ```
+ *
+ * @see {@link Do}
+ * @see {@link bind}
+ * @see {@link bindEffect}
+ * @see {@link let_ let}
  *
  * @category do notation
  * @since 2.0.0
@@ -6317,11 +6317,6 @@ export {
    * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
    * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
    *
-   * @see {@link Do}
-   * @see {@link bindTo}
-   * @see {@link bind}
-   * @see {@link bindEffect}
-   *
    * @example
    * ```ts
    * import * as assert from "node:assert"
@@ -6334,8 +6329,13 @@ export {
    *   Stream.let("sum", ({ x, y }) => x + y)
    * )
    * assert.deepStrictEqual(Effect.runSync(Stream.runCollect(result)), Chunk.of({ x: 2, y: 3, sum: 5 }))
-   *
    * ```
+   *
+   * @see {@link Do}
+   * @see {@link bindTo}
+   * @see {@link bind}
+   * @see {@link bindEffect}
+   *
    * @category do notation
    * @since 2.0.0
    */

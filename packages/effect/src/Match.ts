@@ -160,11 +160,9 @@ export interface Not {
  * created, you can use pattern-matching functions like {@link when} to define
  * how different values should be processed.
  *
- * @see {@link value} for creating a matcher from a specific value.
+ * **Example** (Matching Numbers and Strings)
  *
- * @example
  * ```ts
- * // Title: Matching Numbers and Strings
  * import { Match } from "effect"
  *
  * // Create a matcher for values that are either strings or numbers
@@ -187,6 +185,8 @@ export interface Not {
  * // Output: "string: hello"
  * ```
  *
+ * @see {@link value} for creating a matcher from a specific value.
+ *
  * @category Creating a matcher
  * @since 1.0.0
  */
@@ -205,11 +205,9 @@ export const type: <I>() => Matcher<I, Types.Without<never>, I, never, never> = 
  * Once the matcher is created, you can use pattern-matching functions like
  * {@link when} to define how different cases should be handled.
  *
- * @see {@link type} for creating a matcher from a specific type.
+ * **Example** (Matching an Object by Property)
  *
- * @example
  * ```ts
- * // Title: Matching an Object by Property
  * import { Match } from "effect"
  *
  * const input = { name: "John", age: 30 }
@@ -228,6 +226,8 @@ export const type: <I>() => Matcher<I, Types.Without<never>, I, never, never> = 
  * console.log(result)
  * // Output: "John is 30 years old"
  * ```
+ *
+ * @see {@link type} for creating a matcher from a specific type.
  *
  * @category Creating a matcher
  * @since 1.0.0
@@ -277,9 +277,9 @@ export const typeTags: <I>() => <
  * **Important:** This function must be the first step in the matcher pipeline.
  * If used later, TypeScript will not enforce type consistency correctly.
  *
- * @example
+ * **Example** (Validating Return Type Consistency)
+ *
  * ```ts
- * // Title: Validating Return Type Consistency
  * import { Match } from "effect"
  *
  * const match = Match.type<{ a: number } | { b: string }>().pipe(
@@ -315,14 +315,9 @@ export const withReturnType: <Ret>() => <I, F, R, A, Pr, _>(
  * specific values or apply logical conditions to determine a match. It works
  * well with structured objects and primitive types.
  *
- * @see {@link whenOr} Use this when multiple patterns should match in a single
- * condition.
- * @see {@link whenAnd} Use this when a value must match all provided patterns.
- * @see {@link orElse} Provides a fallback when no patterns match.
+ * **Example** (Matching with Values and Predicates)
  *
- * @example
  * ```ts
- * // Title: Matching with Values and Predicates
  * import { Match } from "effect"
  *
  * // Create a matcher for objects with an "age" property
@@ -344,6 +339,11 @@ export const withReturnType: <Ret>() => <I, F, R, A, Pr, _>(
  * console.log(match({ age: 4 }))
  * // Output: "4 is too young"
  * ```
+ *
+ * @see {@link whenOr} Use this when multiple patterns should match in a single
+ * condition.
+ * @see {@link whenAnd} Use this when a value must match all provided patterns.
+ * @see {@link orElse} Provides a fallback when no patterns match.
  *
  * @category Defining patterns
  * @since 1.0.0
@@ -684,9 +684,9 @@ export const discriminatorsExhaustive: <D extends string>(
  * of naming the tag field as `"_tag"`. Ensure that your discriminated unions
  * follow this naming convention for proper functionality.
  *
- * @example
+ * **Example** (Matching a Discriminated Union by Tag)
+ *
  * ```ts
- * // Title: Matching a Discriminated Union by Tag
  * import { Match } from "effect"
  *
  * type Event =
@@ -883,9 +883,9 @@ export const tagsExhaustive: <
  * Any excluded value will bypass the provided function and continue matching
  * through other cases.
  *
- * @example
+ * **Example** (Ignoring a Specific Value)
+ *
  * ```ts
- * // Title: Ignoring a Specific Value
  * import { Match } from "effect"
  *
  * // Create a matcher for string or number values
@@ -1065,9 +1065,9 @@ export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(
  * `default` clause in a `switch` statement or the final `else` in an `if-else`
  * chain.
  *
- * @example
+ * **Example** (Providing a Default Value When No Patterns Match)
+ *
  * ```ts
- * // Title: Providing a Default Value When No Patterns Match
  * import { Match } from "effect"
  *
  * // Create a matcher for string or number values
@@ -1130,9 +1130,9 @@ export const orElseAbsurd: <I, R, RA, A, Pr, Ret>(
  * unmatched case should be explicitly handled rather than returning a default
  * value or throwing an error.
  *
- * @example
+ * **Example** (Extracting a User Role with `Match.either`)
+ *
  * ```ts
- * // Title: Extracting a User Role with Either
  * import { Match } from "effect"
  *
  * type User = { readonly role: "admin" | "editor" | "viewer" }
@@ -1171,9 +1171,9 @@ export const either: <I, F, R, A, Pr, Ret>(
  * handled explicitly rather than throwing an error or returning a default
  * value.
  *
- * @example
+ * **Example** (Extracting a User Role with `Match.option`)
+ *
  * ```ts
- * // Title: Extracting a User Role with Option
  * import { Match } from "effect"
  *
  * type User = { readonly role: "admin" | "editor" | "viewer" }
@@ -1205,9 +1205,9 @@ export const option: <I, F, R, A, Pr, Ret>(
  * TypeScript will produce a type error. This is particularly useful when
  * working with unions, as it helps prevent unintended gaps in pattern matching.
  *
- * @example
+ * **Example** (Ensuring All Cases Are Covered)
+ *
  * ```ts
- * // Title: Ensuring All Cases Are Covered
  * import { Match } from "effect"
  *
  * // Create a matcher for string or number values

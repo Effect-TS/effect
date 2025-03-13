@@ -2957,8 +2957,6 @@ export interface tag<Tag extends AST.LiteralValue> extends PropertySignature<":"
  * A tag is a literal value that is used to distinguish between different types of objects.
  * The tag is optional when using the `make` method.
  *
- * @see {@link TaggedStruct}
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -2972,6 +2970,8 @@ export interface tag<Tag extends AST.LiteralValue> extends PropertySignature<":"
  *
  * assert.deepStrictEqual(User.make({ name: "John", age: 44 }), { _tag: "User", name: "John", age: 44 })
  * ```
+ *
+ * @see {@link TaggedStruct}
  *
  * @since 3.10.0
  */
@@ -10064,6 +10064,7 @@ export function SortedSet<Value extends Schema.Any>(
  * Uses `!!val` to coerce the value to a `boolean`.
  *
  * @see https://developer.mozilla.org/docs/Glossary/Truthy
+ *
  * @category boolean constructors
  * @since 3.10.0
  */

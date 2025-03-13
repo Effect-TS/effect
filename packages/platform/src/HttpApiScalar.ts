@@ -41,9 +41,10 @@ export type ScalarScriptSource =
   }
 
 /**
+ * @see https://github.com/scalar/scalar/blob/main/documentation/configuration.md
+ *
  * @since 1.0.0
  * @category model
- * @see https://github.com/scalar/scalar/blob/main/documentation/configuration.md
  */
 export type ScalarConfig = {
   /** A string to use one of the color presets */

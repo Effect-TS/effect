@@ -49,6 +49,7 @@ import type { Covariant, NoInfer } from "./Types.js"
  * building internal utilities that check whether an unknown value is a `Cause`.
  *
  * @see {@link isCause} Check if a value is a `Cause`
+ *
  * @since 2.0.0
  * @category Symbols
  */
