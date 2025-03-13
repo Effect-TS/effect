@@ -14,7 +14,7 @@ import type * as Multipart from "@effect/platform/Multipart"
 import type * as Path from "@effect/platform/Path"
 import * as Socket from "@effect/platform/Socket"
 import * as UrlParams from "@effect/platform/UrlParams"
-import type { ServeOptions, Server as BunServer, ServerWebSocket } from "bun"
+import type { RouterTypes, ServeOptions, Server as BunServer, ServerWebSocket } from "bun"
 import * as Config from "effect/Config"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -31,9 +31,29 @@ import * as BunContext from "../BunContext.js"
 import * as Platform from "../BunHttpPlatform.js"
 import * as MultipartBun from "./multipart.js"
 
+export type BunServerRoutes<R> = { [K in keyof R]: RouterTypes.RouteValue<K & string> }
+
+export type BunServerOptions<R extends BunServerRoutes<R>> =
+  | (ServeOptions & {
+    routes: R
+    fetch?: (
+      this: BunServer,
+      request: Request,
+      server: BunServer
+    ) => Response | Promise<Response>
+  })
+  | (ServeOptions & {
+    routes?: never
+    fetch?: (
+      this: BunServer,
+      request: Request,
+      server: BunServer
+    ) => Response | Promise<Response>
+  })
+
 /** @internal */
-export const make = (
-  options: Omit<ServeOptions, "fetch" | "error">
+export const make = <R extends BunServerRoutes<R>>(
+  options: Omit<BunServerOptions<R>, "fetch" | "error" | "unix">
 ): Effect.Effect<Server.HttpServer, never, Scope.Scope> =>
   Effect.gen(function*() {
     const handlerStack: Array<(request: Request, server: BunServer) => Response | Promise<Response>> = [
@@ -41,17 +61,18 @@ export const make = (
         return new Response("not found", { status: 404 })
       }
     ]
-    const server = Bun.serve<WebSocketContext>({
+
+    const server = Bun.serve<WebSocketContext, R>({
       ...options,
       fetch: handlerStack[0],
       websocket: {
-        open(ws) {
+        open(ws: ServerWebSocket<WebSocketContext>) {
           Deferred.unsafeDone(ws.data.deferred, Exit.succeed(ws))
         },
-        message(ws, message) {
+        message(ws: ServerWebSocket<WebSocketContext>, message: string | Buffer) {
           ws.data.run(message)
         },
-        close(ws, code, closeReason) {
+        close(ws: ServerWebSocket<WebSocketContext>, code: number, closeReason: string) {
           Deferred.unsafeDone(
             ws.data.closeDeferred,
             Socket.defaultCloseCodeIsError(code)
@@ -95,12 +116,12 @@ export const make = (
           yield* Effect.acquireRelease(
             Effect.sync(() => {
               handlerStack.push(handler)
-              server.reload({ fetch: handler } as ServeOptions)
+              server.reload({ ...options, fetch: handler } as BunServerOptions<R>)
             }),
             () =>
               Effect.sync(() => {
                 handlerStack.pop()
-                server.reload({ fetch: handlerStack[handlerStack.length - 1] } as ServeOptions)
+                server.reload({ ...options, fetch: handlerStack[handlerStack.length - 1] } as BunServerOptions<R>)
               })
           )
         })
@@ -157,8 +178,8 @@ const makeResponse = (
 }
 
 /** @internal */
-export const layerServer = (
-  options: Omit<ServeOptions, "fetch" | "error">
+export const layerServer = <R extends BunServerRoutes<R>>(
+  options: Omit<BunServerOptions<R>, "fetch" | "error" | "unix">
 ) => Layer.scoped(Server.HttpServer, make(options))
 
 /** @internal */
@@ -169,8 +190,8 @@ export const layerContext = Layer.mergeAll(
 )
 
 /** @internal */
-export const layer = (
-  options: Omit<ServeOptions, "fetch" | "error">
+export const layer = <R extends BunServerRoutes<R>>(
+  options: Omit<BunServerOptions<R>, "fetch" | "error" | "unix">
 ) =>
   Layer.mergeAll(
     Layer.scoped(Server.HttpServer, make(options)),
@@ -186,8 +207,8 @@ export const layerTest = Server.layerTestClient.pipe(
 )
 
 /** @internal */
-export const layerConfig = (
-  options: Config.Config.Wrap<Omit<ServeOptions, "fetch" | "error">>
+export const layerConfig = <R extends BunServerRoutes<R>>(
+  options: Config.Config.Wrap<Omit<BunServerOptions<R>, "fetch" | "error" | "unix">>
 ) =>
   Layer.mergeAll(
     Layer.scoped(Server.HttpServer, Effect.flatMap(Config.unwrap(options), make)),
