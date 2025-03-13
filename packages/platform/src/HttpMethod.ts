@@ -42,14 +42,17 @@ export const all: ReadonlySet<HttpMethod> = new Set(["GET", "POST", "PUT", "DELE
 /**
  * Tests if a value is a `HttpMethod`.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { HttpMethod } from "@effect/platform"
  *
- * assert.deepStrictEqual(HttpMethod.isHttpMethod("GET"), true)
- * assert.deepStrictEqual(HttpMethod.isHttpMethod("get"), false)
- * assert.deepStrictEqual(HttpMethod.isHttpMethod(1), false)
+ * console.log(HttpMethod.isHttpMethod("GET"))
+ * // true
+ * console.log(HttpMethod.isHttpMethod("get"))
+ * // false
+ * console.log(HttpMethod.isHttpMethod(1))
+ * // false
  * ```
  *
  * @since 1.0.0

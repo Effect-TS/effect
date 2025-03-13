@@ -12,8 +12,8 @@ import * as internal from "./internal/platformLogger.js"
 /**
  * Create a Logger from another string Logger that writes to the specified file.
  *
- * @since 1.0.0
- * @example
+ * **Example**
+ *
  * ```ts
  * import { PlatformLogger } from "@effect/platform"
  * import { NodeFileSystem, NodeRuntime } from "@effect/platform-node"
@@ -33,6 +33,8 @@ import * as internal from "./internal/platformLogger.js"
  *   NodeRuntime.runMain
  * )
  * ```
+ *
+ * @since 1.0.0
  */
 export const toFile: {
   (

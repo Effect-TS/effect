@@ -348,14 +348,16 @@ const reverseChunk = <A>(self: Chunk<A>): Chunk<A> => {
  * Reverses the order of elements in a `Chunk`.
  * Importantly, if the input chunk is a `NonEmptyChunk`, the reversed chunk will also be a `NonEmptyChunk`.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { Chunk } from "effect"
  *
- * const numbers = Chunk.make(1, 2, 3)
- * const reversedNumbers = Chunk.reverse(numbers)
- * assert.deepStrictEqual(reversedNumbers, Chunk.make(3, 2, 1))
+ * const chunk = Chunk.make(1, 2, 3)
+ * const result = Chunk.reverse(chunk)
+ *
+ * console.log(result)
+ * // { _id: 'Chunk', values: [ 3, 2, 1 ] }
  * ```
  *
  * @since 2.0.0
@@ -578,15 +580,15 @@ export const dropWhile: {
  * Prepends the specified prefix chunk to the beginning of the specified chunk.
  * If either chunk is non-empty, the result is also a non-empty chunk.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { Chunk } from "effect"
  *
- * assert.deepStrictEqual(
- *   Chunk.make(1, 2).pipe(Chunk.prependAll(Chunk.make("a", "b")), Chunk.toArray),
- *   ["a", "b", 1, 2]
- * )
+ * const result = Chunk.make(1, 2).pipe(Chunk.prependAll(Chunk.make("a", "b")), Chunk.toArray)
+ *
+ * console.log(result)
+ * // [ "a", "b", 1, 2 ]
  * ```
  *
  * @category concatenating
@@ -605,15 +607,15 @@ export const prependAll: {
  * Concatenates two chunks, combining their elements.
  * If either chunk is non-empty, the result is also a non-empty chunk.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { Chunk } from "effect"
  *
- * assert.deepStrictEqual(
- *   Chunk.make(1, 2).pipe(Chunk.appendAll(Chunk.make("a", "b")), Chunk.toArray),
- *   [1, 2, "a", "b"]
- * )
+ * const result = Chunk.make(1, 2).pipe(Chunk.appendAll(Chunk.make("a", "b")), Chunk.toArray)
+ *
+ * console.log(result)
+ * // [ 1, 2, "a", "b" ]
  * ```
  *
  * @category concatenating
@@ -918,15 +920,15 @@ export declare namespace Chunk {
  * Transforms the elements of a chunk using the specified mapping function.
  * If the input chunk is non-empty, the resulting chunk will also be non-empty.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { Chunk } from "effect"
  *
- * assert.deepStrictEqual(
- *   Chunk.map(Chunk.make(1, 2), (n) => n + 1),
- *   Chunk.make(2, 3)
- * )
+ * const result = Chunk.map(Chunk.make(1, 2), (n) => n + 1)
+ *
+ * console.log(result)
+ * // { _id: 'Chunk', values: [ 2, 3 ] }
  * ```
  *
  * @since 2.0.0

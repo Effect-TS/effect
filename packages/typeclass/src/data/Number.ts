@@ -146,7 +146,8 @@ export const MonoidMultiply: monoid.Monoid<number> = monoid.fromSemigroup(Semigr
  *
  * The `empty` value is `-Infinity`.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import { MonoidMin } from "@effect/typeclass/data/Number"
  *
