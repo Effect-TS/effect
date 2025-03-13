@@ -13078,11 +13078,11 @@ export const transposeOption = <A = never, E = never, R = never>(
  *
  * @example
  * ```ts
- * import { Effect, Option } from "effect"
+ * import { Effect, Option, pipe } from "effect"
  *
  * //          ┌─── Effect<Option<number>, never, never>>
  * //          ▼
- * const noneResult = yield* pipe(
+ * const noneResult = pipe(
  *   Option.none(),
  *   Effect.transposeMapOption(() => Effect.succeed(42)) // will not be executed
  * )
@@ -13091,12 +13091,13 @@ export const transposeOption = <A = never, E = never, R = never>(
  *
  * //          ┌─── Effect<Option<number>, never, never>>
  * //          ▼
- * const someSuccessResult = yield* pipe(
+ * const someSuccessResult = pipe(
  *   Option.some(42),
  *   Effect.transposeMapOption((value) => Effect.succeed(value * 2))
  * )
  * console.log(Effect.runSync(someSuccessResult))
  * // Output: { _id: 'Option', _tag: 'Some', value: 84 }
+ * ```
  *
  * @since 3.14.0
  * @category Optional Wrapping & Unwrapping
