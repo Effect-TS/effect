@@ -9,12 +9,13 @@ import * as semigroup from "../Semigroup.js"
 /**
  * `bigint` semigroup under addition.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { SemigroupSum } from "@effect/typeclass/data/BigInt"
  *
- * assert.deepStrictEqual(SemigroupSum.combine(2n, 3n), 5n)
+ * console.log(SemigroupSum.combine(2n, 3n))
+ * // 5n
  * ```
  *
  * @category instances
@@ -50,12 +51,13 @@ export const SemigroupMultiply: semigroup.Semigroup<bigint> = semigroup.make(
 /**
  * A `Semigroup` that uses the minimum between two values.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { SemigroupMin } from "@effect/typeclass/data/BigInt"
  *
- * assert.deepStrictEqual(SemigroupMin.combine(2n, 3n), 2n)
+ * console.log(SemigroupMin.combine(2n, 3n))
+ * // 2n
  * ```
  *
  * @category instances
@@ -66,12 +68,13 @@ export const SemigroupMin: semigroup.Semigroup<bigint> = semigroup.min(Order)
 /**
  * A `Semigroup` that uses the maximum between two values.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { SemigroupMax } from "@effect/typeclass/data/BigInt"
  *
- * assert.deepStrictEqual(SemigroupMax.combine(2n, 3n), 3n)
+ * console.log(SemigroupMax.combine(2n, 3n))
+ * // 3n
  * ```
  *
  * @category instances
@@ -84,13 +87,15 @@ export const SemigroupMax: semigroup.Semigroup<bigint> = semigroup.max(Order)
  *
  * The `empty` value is `0n`.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { MonoidSum } from "@effect/typeclass/data/BigInt"
  *
- * assert.deepStrictEqual(MonoidSum.combine(2n, 3n), 5n)
- * assert.deepStrictEqual(MonoidSum.combine(2n, MonoidSum.empty), 2n)
+ * console.log(MonoidSum.combine(2n, 3n))
+ * // 5n
+ * console.log(MonoidSum.combine(2n, MonoidSum.empty))
+ * // 2n
  * ```
  *
  * @category instances
@@ -106,13 +111,15 @@ export const MonoidSum: monoid.Monoid<bigint> = monoid.fromSemigroup(
  *
  * The `empty` value is `1n`.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { MonoidMultiply } from "@effect/typeclass/data/BigInt"
  *
- * assert.deepStrictEqual(MonoidMultiply.combine(2n, 3n), 6n)
- * assert.deepStrictEqual(MonoidMultiply.combine(2n, MonoidMultiply.empty), 2n)
+ * console.log(MonoidMultiply.combine(2n, 3n))
+ * // 6n
+ * console.log(MonoidMultiply.combine(2n, MonoidMultiply.empty))
+ * // 2n
  * ```
  *
  * @category instances
