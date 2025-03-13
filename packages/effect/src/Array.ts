@@ -2795,7 +2795,7 @@ export const flatMapNullable: {
  * ```ts
  * import { Array, Either } from "effect"
  *
- * const parseNumber = (s: string): Either.Either.Either<number, Error> =>
+ * const parseNumber = (s: string): Either.Either<number, Error> =>
  *   isNaN(Number(s)) ? Either.left(new Error("Not a number")) : Either.right(Number(s))
  *
  * const liftedParseNumber = Array.liftEither(parseNumber)
