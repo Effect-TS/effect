@@ -53,9 +53,9 @@ export const formatDate = (date: Date): string => {
 }
 
 /** @internal */
-export const formatUnknown = (u: unknown): string => {
+export const formatUnknown = (u: unknown, checkCircular: boolean = true): string => {
   if (Array.isArray(u)) {
-    return `[${u.map(formatUnknown).join(",")}]`
+    return `[${u.map((i) => formatUnknown(i, checkCircular)).join(",")}]`
   }
   if (Predicate.isDate(u)) {
     return formatDate(u)
@@ -82,12 +82,16 @@ export const formatUnknown = (u: unknown): string => {
     return String(u) + "n"
   }
   if (Predicate.isIterable(u)) {
-    return `${u.constructor.name}(${formatUnknown(Array.from(u))})`
+    return `${u.constructor.name}(${formatUnknown(Array.from(u), checkCircular)})`
   }
   try {
-    JSON.stringify(u) // check for circular references
+    if (checkCircular) {
+      JSON.stringify(u) // check for circular references
+    }
     const pojo = `{${
-      ownKeys(u).map((k) => `${Predicate.isString(k) ? JSON.stringify(k) : String(k)}:${formatUnknown((u as any)[k])}`)
+      ownKeys(u).map((k) =>
+        `${Predicate.isString(k) ? JSON.stringify(k) : String(k)}:${formatUnknown((u as any)[k], false)}`
+      )
         .join(",")
     }}`
     const name = u.constructor.name
