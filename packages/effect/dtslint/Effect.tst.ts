@@ -1392,4 +1392,37 @@ describe("Effect", () => {
       Effect.Effect<Option.Option<string>, "err-1", "dep-1">
     >()
   })
+
+  it("transposeMapOption", () => {
+    expect(Effect.transposeMapOption(Option.none(), (value) => {
+      expect(value).type.toBe<never>()
+      return string
+    })).type.toBe<
+      Effect.Effect<Option.Option<string>, "err-1", "dep-1">
+    >()
+    expect(pipe(
+      Option.none(),
+      Effect.transposeMapOption((value) => {
+        expect(value).type.toBe<never>()
+        return string
+      })
+    )).type.toBe<
+      Effect.Effect<Option.Option<string>, "err-1", "dep-1">
+    >()
+    expect(Effect.transposeMapOption(Option.some(42), (value) => {
+      expect(value).type.toBe<number>()
+      return string
+    })).type.toBe<
+      Effect.Effect<Option.Option<string>, "err-1", "dep-1">
+    >()
+    expect(pipe(
+      Option.some(42),
+      Effect.transposeMapOption((value) => {
+        expect(value).type.toBe<number>()
+        return string
+      })
+    )).type.toBe<
+      Effect.Effect<Option.Option<string>, "err-1", "dep-1">
+    >()
+  })
 })
