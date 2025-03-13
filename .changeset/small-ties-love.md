@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add Effect.traverseOption
+Add Effect.transposeMapOption

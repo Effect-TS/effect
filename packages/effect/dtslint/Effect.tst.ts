@@ -1393,8 +1393,8 @@ describe("Effect", () => {
     >()
   })
 
-  it("traverseOption", () => {
-    expect(Effect.traverseOption(Option.none(), (value) => {
+  it("transposeMapOption", () => {
+    expect(Effect.transposeMapOption(Option.none(), (value) => {
       expect(value).type.toBe<never>()
       return string
     })).type.toBe<
@@ -1402,14 +1402,14 @@ describe("Effect", () => {
     >()
     expect(pipe(
       Option.none(),
-      Effect.traverseOption((value) => {
+      Effect.transposeMapOption((value) => {
         expect(value).type.toBe<never>()
         return string
       })
     )).type.toBe<
       Effect.Effect<Option.Option<string>, "err-1", "dep-1">
     >()
-    expect(Effect.traverseOption(Option.some(42), (value) => {
+    expect(Effect.transposeMapOption(Option.some(42), (value) => {
       expect(value).type.toBe<number>()
       return string
     })).type.toBe<
@@ -1417,7 +1417,7 @@ describe("Effect", () => {
     >()
     expect(pipe(
       Option.some(42),
-      Effect.traverseOption((value) => {
+      Effect.transposeMapOption((value) => {
         expect(value).type.toBe<number>()
         return string
       })

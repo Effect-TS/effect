@@ -13084,7 +13084,7 @@ export const transposeOption = <A = never, E = never, R = never>(
  * //          ▼
  * const noneResult = yield* pipe(
  *   Option.none(),
- *   Effect.traverseOption(() => Effect.succeed(42)) // will not be executed
+ *   Effect.transposeMapOption(() => Effect.succeed(42)) // will not be executed
  * )
  * console.log(Effect.runSync(noneResult))
  * // Output: { _id: 'Option', _tag: 'None' }
@@ -13093,7 +13093,7 @@ export const transposeOption = <A = never, E = never, R = never>(
  * //          ▼
  * const someSuccessResult = yield* pipe(
  *   Option.some(42),
- *   Effect.traverseOption((value) => Effect.succeed(value * 2))
+ *   Effect.transposeMapOption((value) => Effect.succeed(value * 2))
  * )
  * console.log(Effect.runSync(someSuccessResult))
  * // Output: { _id: 'Option', _tag: 'Some', value: 84 }
@@ -13101,7 +13101,7 @@ export const transposeOption = <A = never, E = never, R = never>(
  * @since 3.14.0
  * @category Optional Wrapping & Unwrapping
  */
-export const traverseOption = dual<
+export const transposeMapOption = dual<
   <A, B, E = never, R = never>(
     f: (self: A) => Effect<B, E, R>
   ) => (self: Option.Option<A>) => Effect<Option.Option<B>, E, R>,
