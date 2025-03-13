@@ -13068,6 +13068,16 @@ export const transposeOption = <A = never, E = never, R = never>(
   return option_.isNone(self) ? succeedNone : map(self.value, option_.some)
 }
 
+export const traverseOption = dual<
+  <A, B, E = never, R = never>(
+    f: (self: A) => Effect<B, E, R>
+  ) => (self: Option.Option<A>) => Effect<Option.Option<B>, E, R>,
+  <A, B, E = never, R = never>(
+    self: Option.Option<A>,
+    f: (self: A) => Effect<B, E, R>
+  ) => Effect<Option.Option<B>, E, R>
+>(2, (self, f) => option_.isNone(self) ? succeedNone : map(f(self.value), option_.some))
+
 /**
  * @since 2.0.0
  * @category Models
