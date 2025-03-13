@@ -13068,6 +13068,39 @@ export const transposeOption = <A = never, E = never, R = never>(
   return option_.isNone(self) ? succeedNone : map(self.value, option_.some)
 }
 
+/**
+ * Applies an `Effect` on an `Option` and transposes the result.
+ *
+ * **Details**
+ *
+ * If the `Option` is `None`, the resulting `Effect` will immediately succeed with a `None` value.
+ * If the `Option` is `Some`, the effectful operation will be executed on the inner value, and its result wrapped in a `Some`.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Option } from "effect"
+ *
+ * //          ┌─── Effect<Option<number>, never, never>>
+ * //          ▼
+ * const noneResult = yield* pipe(
+ *   Option.none(),
+ *   Effect.traverseOption(() => Effect.succeed(42)) // will not be executed
+ * )
+ * console.log(Effect.runSync(noneResult))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ *
+ * //          ┌─── Effect<Option<number>, never, never>>
+ * //          ▼
+ * const someSuccessResult = yield* pipe(
+ *   Option.some(42),
+ *   Effect.traverseOption((value) => Effect.succeed(value * 2))
+ * )
+ * console.log(Effect.runSync(someSuccessResult))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 84 }
+ *
+ * @since 3.14.0
+ * @category Optional Wrapping & Unwrapping
+ */
 export const traverseOption = dual<
   <A, B, E = never, R = never>(
     f: (self: A) => Effect<B, E, R>
