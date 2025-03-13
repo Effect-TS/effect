@@ -1576,6 +1576,7 @@ export const findFirst: {
  * // Currently at index 3
  * // Currently at index 4
  * // undefined
+ * ```
  *
  * @see {@link all} for combining multiple effects into one.
  *
@@ -2460,6 +2461,7 @@ export const validateFirst: {
  * Effect.runPromise(program)
  * // Output:
  * // Abort signal received
+ * ```
  *
  * @since 2.0.0
  * @category Creating Effects
@@ -3258,6 +3260,7 @@ export const succeedSome: <A>(value: A) => Effect<Option.Option<A>> = effect.suc
  *       ? Effect.fail(new Error("Cannot divide by zero"))
  *       : Effect.succeed(a / b)
  *   )
+ * ```
  *
  * @since 2.0.0
  * @category Creating Effects
@@ -4525,6 +4528,7 @@ export {
    * //      ┌─── Effect<any, Error, never>
    * //      ▼
    * const program = parse("")
+   * ```
    *
    * @see {@link sync} if the effectful computation is synchronous and does not
    * throw errors.
@@ -4635,6 +4639,7 @@ export const tryMapPromise: {
  * //      ┌─── Effect<Response, Error, never>
  * //      ▼
  * const program = getTodo(1)
+ * ```
  *
  * @see {@link promise} if the effectful computation is asynchronous and does not throw errors.
  *
@@ -10000,6 +10005,7 @@ export const iterate: {
  * // Currently at state 4
  * // Currently at state 5
  * // undefined
+ * ```
  *
  * @since 2.0.0
  * @category Looping
@@ -12047,6 +12053,7 @@ export const runCallback: <A, E>(
  * Effect.runPromise(Effect.fail("my error")).catch(console.error)
  * // Output:
  * // (FiberFailure) Error: my error
+ * ```
  *
  * @see {@link runPromiseExit} for a version that returns an `Exit` type instead
  * of rejecting.
@@ -12189,6 +12196,7 @@ export const runPromiseExit: <A, E>(
  * }
  * // Output:
  * // (FiberFailure) AsyncFiberException: Fiber #0 cannot be resolved synchronously. This is caused by using runSync on an effect that performs async work
+ * ```
  *
  * @see {@link runSyncExit} for a version that returns an `Exit` type instead of
  * throwing an error.
@@ -12269,6 +12277,7 @@ export const runSync: <A, E>(effect: Effect<A, E>) => A = runtime_.unsafeRunSync
  * //     }
  * //   }
  * // }
+ * ```
  *
  * @since 2.0.0
  * @category Running Effects
@@ -12458,6 +12467,7 @@ export const validateWith: {
  * // timestamp=... level=INFO fiber=#0 message="task2 done"
  * // timestamp=... level=INFO fiber=#0 message="task1 done"
  * // [ 1, 'hello' ]
+ * ```
  *
  * @see {@link zipWith} for a version that combines the results with a custom
  * function.
