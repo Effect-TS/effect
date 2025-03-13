@@ -23,7 +23,8 @@ import * as UrlParams from "./UrlParams.js"
  * `base`. This is especially useful when dealing with URLs that might not be
  * fully qualified.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import { Url } from "@effect/platform"
  * import { Either } from "effect"
@@ -68,7 +69,8 @@ export const fromString: {
  * This function clones the original `URL` object and applies a callback to the
  * clone, allowing multiple updates at once.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import { Url } from "@effect/platform"
  *
@@ -224,7 +226,8 @@ export const setUsername: {
  * object using the provided `UrlParams`. It creates a new `URL` object with the
  * updated parameters, leaving the original object unchanged.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import { Url, UrlParams } from "@effect/platform"
  *
@@ -260,7 +263,8 @@ export const setUrlParams: {
  * them as `UrlParams`. The resulting structure can be easily manipulated or
  * inspected.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import { Url } from "@effect/platform"
  *
@@ -288,7 +292,8 @@ export const urlParams = (url: URL): UrlParams.UrlParams => UrlParams.fromInput(
  * writing the updated parameters back to the URL. It returns a new `URL` object
  * with the modified parameters, ensuring immutability.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import { Url, UrlParams } from "@effect/platform"
  *

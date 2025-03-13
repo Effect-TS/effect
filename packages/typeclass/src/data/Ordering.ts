@@ -8,14 +8,17 @@ import * as semigroup from "../Semigroup.js"
 /**
  * `Semigroup` instance for `Ordering`, returns the left-most non-zero `Ordering`.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { Semigroup } from "@effect/typeclass/data/Ordering"
  *
- * assert.deepStrictEqual(Semigroup.combine(0, -1), -1)
- * assert.deepStrictEqual(Semigroup.combine(0, 1), 1)
- * assert.deepStrictEqual(Semigroup.combine(1, -1), 1)
+ * console.log(Semigroup.combine(0, -1))
+ * // -1
+ * console.log(Semigroup.combine(0, 1))
+ * // 1
+ * console.log(Semigroup.combine(1, -1))
+ * // 1
  * ```
  *
  * @category instances
@@ -42,14 +45,17 @@ export const Semigroup: semigroup.Semigroup<Ordering> = semigroup.make(
  *
  * The `empty` value is `0`.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { Monoid } from "@effect/typeclass/data/Ordering"
  *
- * assert.deepStrictEqual(Monoid.combine(Monoid.empty, -1), -1)
- * assert.deepStrictEqual(Monoid.combine(Monoid.empty, 1), 1)
- * assert.deepStrictEqual(Monoid.combine(1, -1), 1)
+ * console.log(Monoid.combine(Monoid.empty, -1))
+ * // -1
+ * console.log(Monoid.combine(Monoid.empty, 1))
+ * // 1
+ * console.log(Monoid.combine(1, -1))
+ * // 1
  * ```
  *
  * @category instances

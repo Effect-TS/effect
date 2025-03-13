@@ -192,7 +192,8 @@ export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors 
  * If you don't want to perform any validation but only distinguish between two values of the same type but with different meanings,
  * see {@link nominal}.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import * as assert from "node:assert"
  * import { Brand } from "effect"
@@ -204,7 +205,9 @@ export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors 
  *   (n) => Brand.error(`Expected ${n} to be an integer`)
  * )
  *
- * assert.strictEqual(Int(1), 1)
+ * console.log(Int(1))
+ * // 1
+ *
  * assert.throws(() => Int(1.1))
  * ```
  *
@@ -246,7 +249,8 @@ export function refined<A extends Brand<any>>(
  *
  * If you also want to perform some validation, see {@link refined}.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import * as assert from "node:assert"
  * import { Brand } from "effect"
@@ -255,7 +259,8 @@ export function refined<A extends Brand<any>>(
  *
  * const UserId = Brand.nominal<UserId>()
  *
- * assert.strictEqual(UserId(1), 1)
+ * console.log(UserId(1))
+ * // 1
  * ```
  *
  * @since 2.0.0
@@ -277,7 +282,8 @@ export const nominal = <A extends Brand<any>>(): Brand.Constructor<
  * Combines two or more brands together to form a single branded type.
  * This API is useful when you want to validate that the input data passes multiple brand validators.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import * as assert from "node:assert"
  * import { Brand } from "effect"
@@ -295,7 +301,9 @@ export const nominal = <A extends Brand<any>>(): Brand.Constructor<
  *
  * const PositiveInt = Brand.all(Int, Positive)
  *
- * assert.strictEqual(PositiveInt(1), 1)
+ * console.log(PositiveInt(1))
+ * // 1
+ *
  * assert.throws(() => PositiveInt(1.1))
  * ```
  *

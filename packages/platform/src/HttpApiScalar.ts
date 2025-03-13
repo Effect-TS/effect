@@ -41,9 +41,10 @@ export type ScalarScriptSource =
   }
 
 /**
+ * @see https://github.com/scalar/scalar/blob/main/documentation/configuration.md
+ *
  * @since 1.0.0
  * @category model
- * @see https://github.com/scalar/scalar/blob/main/documentation/configuration.md
  */
 export type ScalarConfig = {
   /** A string to use one of the color presets */
@@ -59,25 +60,25 @@ export type ScalarConfig = {
   /**
    * Whether to show models in the sidebar, search, and content.
    *
-   * @default false
+   * Default: `false`
    */
   hideModels?: boolean
   /**
    * Whether to show the “Download OpenAPI Document” button
    *
-   * @default false
+   * Default: `false`
    */
   hideDownloadButton?: boolean
   /**
    * Whether to show the “Test Request” button
    *
-   * @default: false
+   * Default: `false`
    */
   hideTestRequestButton?: boolean
   /**
    * Whether to show the sidebar search bar
    *
-   * @default: false
+   * Default: `false`
    */
   hideSearch?: boolean
   /** Whether dark mode is on or off initially (light mode) */
@@ -89,8 +90,8 @@ export type ScalarConfig = {
   /**
    * Path to a favicon image
    *
-   * @default undefined
-   * @example '/favicon.svg'
+   * Default: `undefined`
+   * Example: '/favicon.svg'
    */
   favicon?: string
   /** Custom CSS to be added to the page */
@@ -100,20 +101,20 @@ export type ScalarConfig = {
    * On the client we can grab the window.location.origin but on the server we need
    * to use this prop.
    *
-   * @default undefined
-   * @example 'http://localhost:3000'
+   * Default: `undefined`
+   * Example: 'http://localhost:3000'
    */
   baseServerURL?: string
   /**
    * We’re using Inter and JetBrains Mono as the default fonts. If you want to use your own fonts, set this to false.
    *
-   * @default true
+   * Default: `true`
    */
   withDefaultFonts?: boolean
   /**
    * By default we only open the relevant tag based on the url, however if you want all the tags open by default then set this configuration option :)
    *
-   * @default false
+   * Default: `false`
    */
   defaultOpenAllTags?: boolean
 }

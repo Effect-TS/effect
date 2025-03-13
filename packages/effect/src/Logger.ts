@@ -97,7 +97,7 @@ export declare namespace Logger {
  *   Effect.provide(Logger.replace(Logger.defaultLogger, logger))
  * )
  *
- * // Effect.runFork(program)
+ * Effect.runFork(program)
  * // [INFO] start
  * // [DEBUG] task1 done
  * // [DEBUG] task2 done
@@ -211,7 +211,7 @@ export const map: {
  *   yield* Effect.log("three")
  * }).pipe(Effect.provide(LoggerLive))
  *
- * // Effect.runFork(program)
+ * Effect.runFork(program)
  * // BATCH [
  * // timestamp=... level=INFO fiber=#0 message=one
  * // timestamp=... level=INFO fiber=#0 message=two
@@ -353,7 +353,7 @@ export const test: {
  *
  * const program = Effect.logDebug("message1").pipe(Logger.withMinimumLogLevel(LogLevel.Debug))
  *
- * // Effect.runFork(program)
+ * Effect.runFork(program)
  * // timestamp=... level=DEBUG fiber=#0 message=message1
  * ```
  *
@@ -436,7 +436,7 @@ export const defaultLogger: Logger<unknown, void> = fiberRuntime.defaultLogger
  *   Effect.withLogSpan("myspan")
  * )
  *
- * // Effect.runFork(program.pipe(Effect.provide(Logger.json)))
+ * Effect.runFork(program.pipe(Effect.provide(Logger.json)))
  * // {"message":["message1","message2"],"logLevel":"INFO","timestamp":"...","annotations":{"key2":"value2","key1":"value1"},"spans":{"myspan":0},"fiberId":"#0"}
  * ```
  *
@@ -458,7 +458,7 @@ export const jsonLogger: Logger<unknown, string> = internal.jsonLogger
  *   Effect.withLogSpan("myspan")
  * )
  *
- * // Effect.runFork(program.pipe(Effect.provide(Logger.logFmt)))
+ * Effect.runFork(program.pipe(Effect.provide(Logger.logFmt)))
  * // timestamp=... level=INFO fiber=#0 message=message1 message=message2 myspan=0ms key2=value2 key1=value1
  * ```
  *
@@ -488,7 +488,7 @@ export const stringLogger: Logger<unknown, string> = internal.stringLogger
  *   Effect.withLogSpan("myspan")
  * )
  *
- * // Effect.runFork(program.pipe(Effect.provide(Logger.pretty)))
+ * Effect.runFork(program.pipe(Effect.provide(Logger.pretty)))
  * //         green --v                      v-- bold and cyan
  * // [07:51:54.434] INFO (#0) myspan=1ms: message1
  * //   message2
@@ -531,7 +531,7 @@ export const prettyLoggerDefault: Logger<unknown, void> = internal.prettyLoggerD
  *   Effect.withLogSpan("myspan")
  * )
  *
- * // Effect.runFork(program.pipe(Effect.provide(Logger.structured)))
+ * Effect.runFork(program.pipe(Effect.provide(Logger.structured)))
  * // {
  * //   message: [ 'message1', 'message2' ],
  * //   logLevel: 'INFO',
@@ -578,7 +578,7 @@ export const tracerLogger: Logger<unknown, void> = fiberRuntime.tracerLogger
  *   Effect.withLogSpan("myspan")
  * )
  *
- * // Effect.runFork(program.pipe(Effect.provide(Logger.json)))
+ * Effect.runFork(program.pipe(Effect.provide(Logger.json)))
  * // {"message":["message1","message2"],"logLevel":"INFO","timestamp":"...","annotations":{"key2":"value2","key1":"value1"},"spans":{"myspan":0},"fiberId":"#0"}
  * ```
  *
@@ -600,7 +600,7 @@ export const json: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fibe
  *   Effect.withLogSpan("myspan")
  * )
  *
- * // Effect.runFork(program.pipe(Effect.provide(Logger.logFmt)))
+ * Effect.runFork(program.pipe(Effect.provide(Logger.logFmt)))
  * // timestamp=... level=INFO fiber=#0 message=message1 message=message2 myspan=0ms key2=value2 key1=value1
  * ```
  *
@@ -624,7 +624,7 @@ export const logFmt: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fi
  *   Effect.withLogSpan("myspan")
  * )
  *
- * // Effect.runFork(program.pipe(Effect.provide(Logger.pretty)))
+ * Effect.runFork(program.pipe(Effect.provide(Logger.pretty)))
  * //         green --v                      v-- bold and cyan
  * // [07:51:54.434] INFO (#0) myspan=1ms: message1
  * //   message2
@@ -652,7 +652,7 @@ export const pretty: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fi
  *   Effect.withLogSpan("myspan")
  * )
  *
- * // Effect.runFork(program.pipe(Effect.provide(Logger.structured)))
+ * Effect.runFork(program.pipe(Effect.provide(Logger.structured)))
  * // {
  * //   message: [ 'message1', 'message2' ],
  * //   logLevel: 'INFO',
@@ -684,7 +684,7 @@ export const structured: Layer.Layer<never> = replace(fiberRuntime.defaultLogger
  * })
  *
  * // Logging disabled using a layer
- * // Effect.runFork(program.pipe(Effect.provide(Logger.minimumLogLevel(LogLevel.None))))
+ * Effect.runFork(program.pipe(Effect.provide(Logger.minimumLogLevel(LogLevel.None))))
  * // task done
  * ```
  *

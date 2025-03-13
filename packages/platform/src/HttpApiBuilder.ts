@@ -125,9 +125,8 @@ export const httpApp: Effect.Effect<
 /**
  * Construct an http web handler from an `HttpApi` instance.
  *
- * @since 1.0.0
- * @category constructors
- * @example
+ * **Example**
+ *
  * ```ts
  * import { HttpApi, HttpApiBuilder, HttpServer } from "@effect/platform"
  * import { Layer } from "effect"
@@ -145,6 +144,9 @@ export const httpApp: Effect.Effect<
  *   )
  * )
  * ```
+ *
+ * @since 1.0.0
+ * @category constructors
  */
 export const toWebHandler = <LA, LE>(
   layer: Layer.Layer<LA | HttpApi.Api | HttpRouter.HttpRouter.DefaultServices, LE>,

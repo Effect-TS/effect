@@ -90,7 +90,8 @@ export const layerConfig: (
  * Layer starting a server on a random port and producing an `HttpClient`
  * with prepended url of the running http server.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import * as assert from "node:assert"
  * import { HttpClient, HttpRouter, HttpServer } from "@effect/platform"

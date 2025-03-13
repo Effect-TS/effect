@@ -204,7 +204,8 @@ export type AdditionalPropertiesStrategy = "allow" | "strict"
  *   - `"strict"`: Disallow additional properties (default behavior).
  *   - `"allow"`: Allow additional properties.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
  * import { Schema } from "effect"
@@ -218,7 +219,7 @@ export type AdditionalPropertiesStrategy = "allow" | "strict"
  *
  * const spec = OpenApi.fromApi(api)
  *
- * // console.log(JSON.stringify(spec, null, 2))
+ * console.log(JSON.stringify(spec, null, 2))
  * // Output: OpenAPI specification in JSON format
  * ```
  *

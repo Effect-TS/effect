@@ -179,7 +179,8 @@ export const integer: (name?: string) => Config<number> = internal.integer
 /**
  * Constructs a config for a literal value.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import { Config } from "effect"
  *

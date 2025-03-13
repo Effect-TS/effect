@@ -97,9 +97,9 @@ export declare namespace Option {
   /**
    * Extracts the type of the value contained in an `Option`.
    *
-   * @example
+   * **Example** (Getting the Value Type of an Option)
+   *
    * ```ts
-   * // Title: Getting the Value Type of an Option
    * import { Option } from "effect"
    *
    * // Declare an Option holding a string
@@ -139,11 +139,9 @@ export interface OptionTypeLambda extends TypeLambda {
  * This means you can use it in place of any `Option<A>` regardless of the type
  * `A`.
  *
- * @see {@link some} for the opposite operation.
+ * **Example** (Creating an Option with No Value)
  *
- * @example
  * ```ts
- * // Title: Creating an Option with No Value
  * import { Option } from "effect"
  *
  * // An Option holding no value
@@ -156,6 +154,8 @@ export interface OptionTypeLambda extends TypeLambda {
  * // Output: { _id: 'Option', _tag: 'None' }
  * ```
  *
+ * @see {@link some} for the opposite operation.
+ *
  * @category Constructors
  * @since 2.0.0
  */
@@ -164,11 +164,9 @@ export const none = <A = never>(): Option<A> => option.none
 /**
  * Wraps the given value into an `Option` to represent its presence.
  *
- * @see {@link none} for the opposite operation.
+ * **Example** (Creating an Option with a Value)
  *
- * @example
  * ```ts
- * // Title: Creating an Option with a Value
  * import { Option } from "effect"
  *
  * // An Option holding the number 1
@@ -180,6 +178,8 @@ export const none = <A = never>(): Option<A> => option.none
  * console.log(value)
  * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
  * ```
+ *
+ * @see {@link none} for the opposite operation.
  *
  * @category Constructors
  * @since 2.0.0
@@ -218,8 +218,6 @@ export const isOption: (input: unknown) => input is Option<unknown> = option.isO
 /**
  * Checks whether an `Option` represents the absence of a value (`None`).
  *
- * @see {@link isSome} for the opposite check.
- *
  * @example
  * ```ts
  * import { Option } from "effect"
@@ -231,6 +229,8 @@ export const isOption: (input: unknown) => input is Option<unknown> = option.isO
  * // Output: true
  * ```
  *
+ * @see {@link isSome} for the opposite check.
+ *
  * @category Guards
  * @since 2.0.0
  */
@@ -238,8 +238,6 @@ export const isNone: <A>(self: Option<A>) => self is None<A> = option.isNone
 
 /**
  * Checks whether an `Option` contains a value (`Some`).
- *
- * @see {@link isNone} for the opposite check.
  *
  * @example
  * ```ts
@@ -251,6 +249,8 @@ export const isNone: <A>(self: Option<A>) => self is None<A> = option.isNone
  * console.log(Option.isSome(Option.none()))
  * // Output: false
  * ```
+ *
+ * @see {@link isNone} for the opposite check.
  *
  * @category Guards
  * @since 2.0.0
@@ -277,9 +277,9 @@ export const isSome: <A>(self: Option<A>) => self is Some<A> = option.isSome
  * without resorting to `if` or manual checks, making your code more declarative
  * and readable.
  *
- * @example
+ * **Example** (Pattern Matching with Option)
+ *
  * ```ts
- * // Title: Pattern Matching with Option
  * import { Option } from "effect"
  *
  * const foo = Option.some(1)
@@ -412,8 +412,6 @@ export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
  * using this function, you can convert `Either` into a simpler structure for
  * cases where error handling is not required.
  *
- * @see {@link getLeft} for the opposite operation.
- *
  * @example
  * ```ts
  * import { Either, Option } from "effect"
@@ -424,6 +422,8 @@ export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
  * console.log(Option.getRight(Either.left("err")))
  * // Output: { _id: 'Option', _tag: 'None' }
  * ```
+ *
+ * @see {@link getLeft} for the opposite operation.
  *
  * @category Conversions
  * @since 2.0.0
@@ -446,8 +446,6 @@ export const getRight: <R, L>(self: Either<R, L>) => Option<R> = either.getRight
  * `Either` and want to handle it as an `Option`. By discarding the right value,
  * it simplifies error-focused workflows.
  *
- * @see {@link getRight} for the opposite operation.
- *
  * @example
  * ```ts
  * import { Either, Option } from "effect"
@@ -458,6 +456,8 @@ export const getRight: <R, L>(self: Either<R, L>) => Option<R> = either.getRight
  * console.log(Option.getLeft(Either.left("err")))
  * // Output: { _id: 'Option', _tag: 'Some', value: 'err' }
  * ```
+ *
+ * @see {@link getRight} for the opposite operation.
  *
  * @category Conversions
  * @since 2.0.0
@@ -480,9 +480,6 @@ export const getLeft: <R, L>(self: Either<R, L>) => Option<L> = either.getLeft
  * value. It is particularly useful for providing default values or alternative
  * logic when working with optional values.
  *
- * @see {@link getOrNull} for a version that returns `null` instead of executing a function.
- * @see {@link getOrUndefined} for a version that returns `undefined` instead of executing a function.
- *
  * @example
  * ```ts
  * import { Option } from "effect"
@@ -493,6 +490,9 @@ export const getLeft: <R, L>(self: Either<R, L>) => Option<L> = either.getLeft
  * console.log(Option.none().pipe(Option.getOrElse(() => 0)))
  * // Output: 0
  * ```
+ *
+ * @see {@link getOrNull} for a version that returns `null` instead of executing a function.
+ * @see {@link getOrUndefined} for a version that returns `undefined` instead of executing a function.
  *
  * @category Getters
  * @since 2.0.0
@@ -832,8 +832,6 @@ export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
  * a fail-fast behavior for empty `Option` values and want to provide a custom
  * error message or object.
  *
- * @see {@link getOrThrow} for a version that throws a default error.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -845,6 +843,8 @@ export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
  * )
  * assert.throws(() => Option.getOrThrowWith(Option.none(), () => new Error('Unexpected None')))
  * ```
+ *
+ * @see {@link getOrThrow} for a version that throws a default error.
  *
  * @category Conversions
  * @since 2.0.0
@@ -870,8 +870,6 @@ export const getOrThrowWith: {
  * scenarios where the absence of a value is treated as an exceptional case and
  * a default error is sufficient.
  *
- * @see {@link getOrThrowWith} for a version that allows you to provide a custom error.
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -880,6 +878,8 @@ export const getOrThrowWith: {
  * assert.deepStrictEqual(Option.getOrThrow(Option.some(1)), 1)
  * assert.throws(() => Option.getOrThrow(Option.none()))
  * ```
+ *
+ * @see {@link getOrThrowWith} for a version that allows you to provide a custom error.
  *
  * @category Conversions
  * @since 2.0.0
@@ -1661,9 +1661,9 @@ export const filter: {
  * - Two `Some` values are equivalent if their inner values are equivalent
  *   according to the provided `Equivalence`.
  *
- * @example
+ * **Example** (Comparing Optional Numbers for Equivalence)
+ *
  * ```ts
- * // Title: Comparing Optional Numbers for Equivalence
  * import { Number, Option } from "effect"
  *
  * const isEquivalent = Option.getEquivalence(Number.Equivalence)
@@ -1830,8 +1830,6 @@ export const liftPredicate: { // Note: I intentionally avoid using the NoInfer p
  * equivalence function returns `true`, the result is `true`. If the `Option` is
  * `None` or the values are not equivalent, the result is `false`.
  *
- * @see {@link contains} for a version that uses the default `Equivalence`.
- *
  * @example
  * ```ts
  * import { Number, Option } from "effect"
@@ -1847,6 +1845,8 @@ export const liftPredicate: { // Note: I intentionally avoid using the NoInfer p
  * console.log(Option.none().pipe(contains(2)))
  * // Output: false
  * ```
+ *
+ * @see {@link contains} for a version that uses the default `Equivalence`.
  *
  * @category Elements
  * @since 2.0.0
@@ -1870,8 +1870,6 @@ const _equivalence = Equal.equivalence()
  * result is `true`. If the `Option` is `None` or the values are not equivalent,
  * the result is `false`.
  *
- * @see {@link containsWith} for a version that allows you to specify a custom equivalence function.
- *
  * @example
  * ```ts
  * import { Option } from "effect"
@@ -1885,6 +1883,8 @@ const _equivalence = Equal.equivalence()
  * console.log(Option.none().pipe(Option.contains(2)))
  * // Output: false
  * ```
+ *
+ * @see {@link containsWith} for a version that allows you to specify a custom equivalence function.
  *
  * @category Elements
  * @since 2.0.0
@@ -1952,10 +1952,6 @@ export const exists: {
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
  * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
  *
- * @see {@link Do}
- * @see {@link bind}
- * @see {@link let_ let}
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -1970,6 +1966,10 @@ export const exists: {
  * )
  * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
  * ```
+ *
+ * @see {@link Do}
+ * @see {@link bind}
+ * @see {@link let_ let}
  *
  * @category Do notation
  * @since 2.0.0
@@ -2003,10 +2003,6 @@ export {
    * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
    * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
    *
-   * @see {@link Do}
-   * @see {@link bind}
-   * @see {@link bindTo}
-   *
    * @example
    * ```ts
    * import * as assert from "node:assert"
@@ -2020,8 +2016,12 @@ export {
    *   Option.filter(({ x, y }) => x * y > 5)
    * )
    * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
-   *
    * ```
+   *
+   * @see {@link Do}
+   * @see {@link bind}
+   * @see {@link bindTo}
+   *
    * @category Do notation
    * @since 2.0.0
    */
@@ -2039,10 +2039,6 @@ export {
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
  * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
  *
- * @see {@link Do}
- * @see {@link bindTo}
- * @see {@link let_ let}
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -2057,6 +2053,10 @@ export {
  * )
  * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
  * ```
+ *
+ * @see {@link Do}
+ * @see {@link bindTo}
+ * @see {@link let_ let}
  *
  * @category Do notation
  * @since 2.0.0
@@ -2084,10 +2084,6 @@ export const bind: {
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
  * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
  *
- * @see {@link bindTo}
- * @see {@link bind}
- * @see {@link let_ let}
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -2103,6 +2099,10 @@ export const bind: {
  * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
  * ```
  *
+ * @see {@link bindTo}
+ * @see {@link bind}
+ * @see {@link let_ let}
+ *
  * @category Do notation
  * @since 2.0.0
  */
@@ -2116,9 +2116,9 @@ const adapter = Gen.adapter<OptionTypeLambda>()
  * involves `Option` easier to write and understand. This approach is similar to
  * using `async/await` but tailored for `Option`.
  *
- * @example
+ * **Example** (Using `Option.gen` to Create a Combined Value)
+ *
  * ```ts
- * // Title: Using Option.gen to Create a Combined Value
  * import { Option } from "effect"
  *
  * const maybeName: Option.Option<string> = Option.some("John")

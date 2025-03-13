@@ -215,7 +215,8 @@ const baseUrl = (): string | undefined => {
  * as `string` (if only one value for a key) or a `NonEmptyArray<string>`
  * (when more than one value for a key)
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import * as assert from "node:assert"
  * import { UrlParams } from "@effect/platform"
@@ -270,7 +271,8 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: Pa
 /**
  * Extract schema from all key-value pairs in the given `UrlParams`.
  *
- * @example
+ * **Example**
+ *
  * ```ts
  * import * as assert from "node:assert"
  * import { Effect, Schema } from "effect"

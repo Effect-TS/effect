@@ -7,15 +7,19 @@ import * as semigroup from "../Semigroup.js"
 /**
  * `boolean` semigroup under conjunction.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { SemigroupEvery } from "@effect/typeclass/data/Boolean"
  *
- * assert.deepStrictEqual(SemigroupEvery.combine(true, true), true)
- * assert.deepStrictEqual(SemigroupEvery.combine(true, false), false)
- * assert.deepStrictEqual(SemigroupEvery.combine(false, true), false)
- * assert.deepStrictEqual(SemigroupEvery.combine(false, false), false)
+ * console.log(SemigroupEvery.combine(true, true))
+ * // true
+ * console.log(SemigroupEvery.combine(true, false))
+ * // false
+ * console.log(SemigroupEvery.combine(false, true))
+ * // false
+ * console.log(SemigroupEvery.combine(false, false))
+ * // false
  * ```
  *
  * @category instances
@@ -39,15 +43,19 @@ export const SemigroupEvery: semigroup.Semigroup<boolean> = semigroup.make(
 /**
  * `boolean` semigroup under disjunction.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { SemigroupSome } from "@effect/typeclass/data/Boolean"
  *
- * assert.deepStrictEqual(SemigroupSome.combine(true, true), true)
- * assert.deepStrictEqual(SemigroupSome.combine(true, false), true)
- * assert.deepStrictEqual(SemigroupSome.combine(false, true), true)
- * assert.deepStrictEqual(SemigroupSome.combine(false, false), false)
+ * console.log(SemigroupSome.combine(true, true))
+ * // true
+ * console.log(SemigroupSome.combine(true, false))
+ * // true
+ * console.log(SemigroupSome.combine(false, true))
+ * // true
+ * console.log(SemigroupSome.combine(false, false))
+ * // false
  * ```
  *
  * @category instances
@@ -71,15 +79,19 @@ export const SemigroupSome: semigroup.Semigroup<boolean> = semigroup.make(
 /**
  * `boolean` semigroup under exclusive disjunction.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { SemigroupXor } from "@effect/typeclass/data/Boolean"
  *
- * assert.deepStrictEqual(SemigroupXor.combine(true, true), false)
- * assert.deepStrictEqual(SemigroupXor.combine(true, false), true)
- * assert.deepStrictEqual(SemigroupXor.combine(false, true), true)
- * assert.deepStrictEqual(SemigroupXor.combine(false, false), false)
+ * console.log(SemigroupXor.combine(true, true))
+ * // false
+ * console.log(SemigroupXor.combine(true, false))
+ * // true
+ * console.log(SemigroupXor.combine(false, true))
+ * // true
+ * console.log(SemigroupXor.combine(false, false))
+ * // false
  * ```
  *
  * @category instances
@@ -90,15 +102,19 @@ export const SemigroupXor: semigroup.Semigroup<boolean> = semigroup.make((self, 
 /**
  * `boolean` semigroup under equivalence.
  *
- * @example
+ * **Example**
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { SemigroupEqv } from "@effect/typeclass/data/Boolean"
  *
- * assert.deepStrictEqual(SemigroupEqv.combine(true, true), true)
- * assert.deepStrictEqual(SemigroupEqv.combine(true, false), false)
- * assert.deepStrictEqual(SemigroupEqv.combine(false, true), false)
- * assert.deepStrictEqual(SemigroupEqv.combine(false, false), true)
+ * console.log(SemigroupEqv.combine(true, true))
+ * // true
+ * console.log(SemigroupEqv.combine(true, false))
+ * // false
+ * console.log(SemigroupEqv.combine(false, true))
+ * // false
+ * console.log(SemigroupEqv.combine(false, false))
+ * // true
  * ```
  *
  * @category instances

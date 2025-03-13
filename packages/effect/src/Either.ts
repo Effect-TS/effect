@@ -815,10 +815,6 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (..
  * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
  *
- * @see {@link bind}
- * @see {@link bindTo}
- * @see {@link let_ let}
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -832,6 +828,10 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (..
  * )
  * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
  * ```
+ *
+ * @see {@link bind}
+ * @see {@link bindTo}
+ * @see {@link let_ let}
  *
  * @category do notation
  * @since 2.0.0
@@ -848,10 +848,6 @@ export const Do: Either<{}> = right({})
  * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
  *
- * @see {@link Do}
- * @see {@link bindTo}
- * @see {@link let_ let}
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -865,6 +861,10 @@ export const Do: Either<{}> = right({})
  * )
  * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
  * ```
+ *
+ * @see {@link Do}
+ * @see {@link bindTo}
+ * @see {@link let_ let}
  *
  * @category do notation
  * @since 2.0.0
@@ -891,10 +891,6 @@ export const bind: {
  * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
  *
- * @see {@link Do}
- * @see {@link bind}
- * @see {@link let_ let}
- *
  * @example
  * ```ts
  * import * as assert from "node:assert"
@@ -908,6 +904,10 @@ export const bind: {
  * )
  * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
  * ```
+ *
+ * @see {@link Do}
+ * @see {@link bind}
+ * @see {@link let_ let}
  *
  * @category do notation
  * @since 2.0.0
@@ -940,10 +940,6 @@ export {
    * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
    * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
    *
-   * @see {@link Do}
-   * @see {@link bindTo}
-   * @see {@link bind}
-   *
    * @example
    * ```ts
    * import * as assert from "node:assert"
@@ -956,8 +952,12 @@ export {
    *   Either.let("sum", ({ x, y }) => x + y)
    * )
    * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
-   *
    * ```
+   *
+   * @see {@link Do}
+   * @see {@link bindTo}
+   * @see {@link bind}
+   *
    * @category do notation
    * @since 2.0.0
    */

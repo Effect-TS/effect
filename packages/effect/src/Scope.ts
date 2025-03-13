@@ -120,6 +120,7 @@ export declare namespace Scope {
  * `Exit` value that the scope is closed with.
  *
  * @see {@link addFinalizerExit}
+ *
  * @since 2.0.0
  * @category utils
  */
@@ -134,6 +135,7 @@ export const addFinalizer: (
  * on the exit status.
  *
  * @see {@link addFinalizer}
+ *
  * @since 2.0.0
  * @category utils
  */

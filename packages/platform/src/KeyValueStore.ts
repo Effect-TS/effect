@@ -233,9 +233,10 @@ export const layerSchema: <A, I, R>(
 /**
  * Creates an KeyValueStorage from an instance of the `Storage` api.
  *
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API
+ *
  * @since 1.0.0
  * @category layers
- * @see https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API
  */
 export const layerStorage: (
   evaluate: LazyArg<Storage>
