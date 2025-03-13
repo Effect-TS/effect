@@ -97,7 +97,7 @@ export const formatUnknown = (u: unknown, checkCircular: boolean = true): string
     const name = u.constructor.name
     return u.constructor !== Object.prototype.constructor ? `${name}(${pojo})` : pojo
   } catch (e) {
-    return String(u)
+    return "<circular structure>"
   }
 }
 

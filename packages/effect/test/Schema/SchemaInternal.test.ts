@@ -81,7 +81,7 @@ describe("effect/internal/schema/util", () => {
     it("should handle circular references", () => {
       const circular: any = { a: null }
       circular.a = circular
-      strictEqual(util.formatUnknown(circular), "[object Object]")
+      strictEqual(util.formatUnknown(circular), "<circular structure>")
     })
 
     it("should detect data types with a custom `toString` implementation", () => {
