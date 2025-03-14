@@ -10749,8 +10749,8 @@ const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equival
         let bStringKeys: Array<string> | undefined
         for (let i = 0; i < indexSignatures.length; i++) {
           const is = ast.indexSignatures[i]
-          const base = AST.getParameterBase(is.parameter)
-          const isSymbol = AST.isSymbolKeyword(base)
+          const encodedParameter = AST.getEncodedParameter(is.parameter)
+          const isSymbol = AST.isSymbolKeyword(encodedParameter)
           if (isSymbol) {
             bSymbolKeys = bSymbolKeys || Object.getOwnPropertySymbols(b)
             if (aSymbolKeys.length !== bSymbolKeys.length) {
