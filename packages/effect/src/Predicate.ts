@@ -297,6 +297,10 @@ export const isBigInt = (input: unknown): input is bigint => typeof input === "b
  */
 export const isSymbol = (input: unknown): input is symbol => typeof input === "symbol"
 
+// TODO: make public
+/** @internal */
+export const isPropertyKey = (u: unknown): u is PropertyKey => isString(u) || isNumber(u) || isSymbol(u)
+
 /**
  * Tests if a value is a `function`.
  *
