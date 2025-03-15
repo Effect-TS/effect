@@ -354,7 +354,7 @@ const makeContentPart = (
 }
 
 const makeResponse = (
-  response: Generated.CreateChatCompletionResponse,
+  response: typeof Generated.CreateChatCompletionResponse.Type,
   method: string,
   structuredTool?: {
     readonly name: string
@@ -436,7 +436,7 @@ const annotateRequest = (
 
 const annotateChatResponse = (
   span: Span,
-  response: Generated.CreateChatCompletionResponse
+  response: typeof Generated.CreateChatCompletionResponse.Type
 ): void => {
   addGenAIAnnotations(span, {
     response: {

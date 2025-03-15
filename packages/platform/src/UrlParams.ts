@@ -21,7 +21,7 @@ export interface UrlParams extends ReadonlyArray<readonly [string, string]> {}
  * @category models
  */
 export type Input =
-  | Readonly<Record<string, Coercible | ReadonlyArray<Coercible>>>
+  | CoercibleRecord
   | Iterable<readonly [string, Coercible]>
   | URLSearchParams
 
@@ -33,17 +33,44 @@ export type Coercible = string | number | bigint | boolean | null | undefined
 
 /**
  * @since 1.0.0
+ * @category models
+ */
+export interface CoercibleRecord {
+  readonly [key: string]: Coercible | ReadonlyArray<Coercible> | CoercibleRecord
+}
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
 export const fromInput = (input: Input): UrlParams => {
+  const parsed = fromInputNested(input)
+  const out: Array<[string, string]> = []
+  for (let i = 0; i < parsed.length; i++) {
+    if (Array.isArray(parsed[i][0])) {
+      const [keys, value] = parsed[i] as [Array<string>, string]
+      out.push([`${keys[0]}[${keys.slice(1).join("][")}]`, value])
+    } else {
+      out.push(parsed[i] as [string, string])
+    }
+  }
+  return out
+}
+
+const fromInputNested = (input: Input): Array<[string | Array<string>, any]> => {
   const entries = Symbol.iterator in input ? Arr.fromIterable(input) : Object.entries(input)
-  const out: Array<readonly [string, string]> = []
+  const out: Array<[string | Array<string>, string]> = []
   for (const [key, value] of entries) {
     if (Array.isArray(value)) {
       for (let i = 0; i < value.length; i++) {
         if (value[i] !== undefined) {
           out.push([key, String(value[i])])
         }
+      }
+    } else if (typeof value === "object") {
+      const nested = fromInputNested(value as CoercibleRecord)
+      for (const [k, v] of nested) {
+        out.push([[key, ...(typeof k === "string" ? [k] : k)], v])
       }
     } else if (value !== undefined) {
       out.push([key, String(value)])
