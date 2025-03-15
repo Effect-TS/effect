@@ -502,6 +502,16 @@ export const setTime = (instant: number): Effect.Effect<void> =>
   testClockWith((testClock) => testClock.setTime(instant))
 
 /**
+ * Accesses a `TestClock` instance in the context and sets the clock time
+ * to the specified `Date`, running any actions scheduled for on or before
+ * the new time in order.
+ *
+ * @since 3.14.0
+ */
+export const setDate = (date: Date): Effect.Effect<void> =>
+  testClockWith((testClock) => testClock.setTime(date.getTime()))
+
+/**
  * Semantically blocks the current fiber until the clock time is equal to or
  * greater than the specified duration. Once the clock time is adjusted to
  * on or after the duration, the fiber will automatically be resumed.
