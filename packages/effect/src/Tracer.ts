@@ -121,6 +121,7 @@ export interface Span {
   end(endTime: bigint, exit: Exit.Exit<unknown, unknown>): void
   attribute(key: string, value: unknown): void
   event(name: string, startTime: bigint, attributes?: Record<string, unknown>): void
+  addLinks(links: ReadonlyArray<SpanLink>): void
 }
 
 /**

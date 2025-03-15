@@ -81,9 +81,16 @@ export interface RunForkOptions {
  * @since 2.0.0
  * @category execution
  */
-export const runFork: <R>(
-  runtime: Runtime<R>
-) => <A, E>(self: Effect.Effect<A, E, R>, options?: RunForkOptions) => Fiber.RuntimeFiber<A, E> = internal.unsafeFork
+export const runFork: {
+  <R>(
+    runtime: Runtime<R>
+  ): <A, E>(effect: Effect.Effect<A, E, R>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<A, E>
+  <R, A, E>(
+    runtime: Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: RunForkOptions | undefined
+  ): Fiber.RuntimeFiber<A, E>
+} = internal.unsafeFork
 
 /**
  * Executes the effect synchronously returning the exit.
@@ -94,8 +101,10 @@ export const runFork: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runSyncExit: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E> =
-  internal.unsafeRunSyncExit
+export const runSyncExit: {
+  <A, E, R>(runtime: Runtime<R>, effect: Effect.Effect<A, E, R>): Exit.Exit<A, E>
+  <R>(runtime: Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E>
+} = internal.unsafeRunSyncExit
 
 /**
  * Executes the effect synchronously throwing in case of errors or async boundaries.
@@ -106,7 +115,10 @@ export const runSyncExit: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effe
  * @since 2.0.0
  * @category execution
  */
-export const runSync: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>) => A = internal.unsafeRunSync
+export const runSync: {
+  <A, E, R>(runtime: Runtime<R>, effect: Effect.Effect<A, E, R>): A
+  <R>(runtime: Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => A
+} = internal.unsafeRunSync
 
 /**
  * @since 2.0.0
@@ -126,10 +138,19 @@ export interface RunCallbackOptions<in A, in E = never> extends RunForkOptions {
  * @since 2.0.0
  * @category execution
  */
-export const runCallback: <R>(
-  runtime: Runtime<R>
-) => <A, E>(effect: Effect.Effect<A, E, R>, options?: RunCallbackOptions<A, E> | undefined) => Cancel<A, E> =
-  internal.unsafeRunCallback
+export const runCallback: {
+  <R>(
+    runtime: Runtime<R>
+  ): <A, E>(
+    effect: Effect.Effect<A, E, R>,
+    options?: RunCallbackOptions<A, E> | undefined
+  ) => (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<A, E> | undefined) => void
+  <R, A, E>(
+    runtime: Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: RunCallbackOptions<A, E> | undefined
+  ): (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<A, E> | undefined) => void
+} = internal.unsafeRunCallback
 
 /**
  * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
@@ -142,10 +163,16 @@ export const runCallback: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runPromise: <R>(
-  runtime: Runtime<R>
-) => <A, E>(effect: Effect.Effect<A, E, R>, options?: { readonly signal?: AbortSignal } | undefined) => Promise<A> =
-  internal.unsafeRunPromise
+export const runPromise: {
+  <R>(
+    runtime: Runtime<R>
+  ): <A, E>(effect: Effect.Effect<A, E, R>, options?: { readonly signal?: AbortSignal } | undefined) => Promise<A>
+  <R, A, E>(
+    runtime: Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: { readonly signal?: AbortSignal } | undefined
+  ): Promise<A>
+} = internal.unsafeRunPromise
 
 /**
  * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
@@ -157,12 +184,19 @@ export const runPromise: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runPromiseExit: <R>(
-  runtime: Runtime<R>
-) => <A, E>(
-  effect: Effect.Effect<A, E, R>,
-  options?: { readonly signal?: AbortSignal } | undefined
-) => Promise<Exit.Exit<A, E>> = internal.unsafeRunPromiseExit
+export const runPromiseExit: {
+  <R>(
+    runtime: Runtime<R>
+  ): <A, E>(
+    effect: Effect.Effect<A, E, R>,
+    options?: { readonly signal?: AbortSignal } | undefined
+  ) => Promise<Exit.Exit<A, E>>
+  <R, A, E>(
+    runtime: Runtime<R>,
+    effect: Effect.Effect<A, E, R>,
+    options?: { readonly signal?: AbortSignal } | undefined
+  ): Promise<Exit.Exit<A, E>>
+} = internal.unsafeRunPromiseExit
 
 /**
  * @since 2.0.0
