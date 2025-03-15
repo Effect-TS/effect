@@ -484,8 +484,8 @@ importers:
         specifier: workspace:^
         version: link:../platform/dist
       '@types/bun':
-        specifier: ^1.2.2
-        version: 1.2.2
+        specifier: ^1.2.5
+        version: 1.2.5
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -679,7 +679,7 @@ importers:
         version: 10.11.0
       drizzle-orm:
         specifier: ^0.31.0
-        version: 0.31.4(@cloudflare/workers-types@4.20250204.0)(@libsql/client@0.14.0)(@op-engineering/op-sqlite@11.4.7(react-native@0.77.1(@babel/core@7.26.9)(@babel/preset-env@7.26.9(@babel/core@7.26.9))(@react-native-community/cli-server-api@15.1.3)(react@19.0.0))(react@19.0.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.12)(better-sqlite3@11.8.1)(bun-types@1.2.2)(kysely@0.27.5)(mysql2@3.12.0)(postgres@3.4.5)(react@19.0.0)
+        version: 0.31.4(@cloudflare/workers-types@4.20250204.0)(@libsql/client@0.14.0)(@op-engineering/op-sqlite@11.4.7(react-native@0.77.1(@babel/core@7.26.9)(@babel/preset-env@7.26.9(@babel/core@7.26.9))(@react-native-community/cli-server-api@15.1.3)(react@19.0.0))(react@19.0.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.12)(better-sqlite3@11.8.1)(bun-types@1.2.5)(kysely@0.27.5)(mysql2@3.12.0)(postgres@3.4.5)(react@19.0.0)
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -3135,6 +3135,9 @@ packages:
   '@types/bun@1.2.2':
     resolution: {integrity: sha512-tr74gdku+AEDN5ergNiBnplr7hpDp3V1h7fqI2GcR/rsUaM39jpSeKH0TFibRvU0KwniRx5POgaYnaXbk0hU+w==}
 
+  '@types/bun@1.2.5':
+    resolution: {integrity: sha512-w2OZTzrZTVtbnJew1pdFmgV99H0/L+Pvw+z1P67HaR18MHOzYnTYOi6qzErhK8HyT+DB782ADVPPE92Xu2/Opg==}
+
   '@types/cookie@0.6.0':
     resolution: {integrity: sha512-4Kh9a6B2bQciAhf7FSuMRRkUWecJgJu9nPnx3yzpsfXX/c50REIqpHY4C82bXP90qrLtXtkDxTZosYO3UpOwlA==}
 
@@ -3725,6 +3728,9 @@ packages:
 
   bun-types@1.2.2:
     resolution: {integrity: sha512-RCbMH5elr9gjgDGDhkTTugA21XtJAy/9jkKe/G3WR2q17VPGhcquf9Sir6uay9iW+7P/BV0CAHA1XlHXMAVKHg==}
+
+  bun-types@1.2.5:
+    resolution: {integrity: sha512-3oO6LVGGRRKI4kHINx5PIdIgnLRb7l/SprhzqXapmoYkFl5m4j6EvALvbDVuuBFaamB46Ap6HCUxIXNLCGy+tg==}
 
   byline@5.0.0:
     resolution: {integrity: sha512-s6webAy+R4SR8XVuJWt2V2rGvhnrhxN+9S15GNuTK3wKPOXFF6RNc+8ug2XhH+2s4f+uudG4kUVYmYOQWL2g0Q==}
@@ -5403,7 +5409,6 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.7:
@@ -10541,6 +10546,10 @@ snapshots:
     dependencies:
       bun-types: 1.2.2
 
+  '@types/bun@1.2.5':
+    dependencies:
+      bun-types: 1.2.5
+
   '@types/cookie@0.6.0': {}
 
   '@types/dedent@0.7.0': {}
@@ -11352,6 +11361,11 @@ snapshots:
       '@types/node': 22.13.4
       '@types/ws': 8.5.14
 
+  bun-types@1.2.5:
+    dependencies:
+      '@types/node': 22.13.4
+      '@types/ws': 8.5.14
+
   byline@5.0.0: {}
 
   bytes@3.1.2:
@@ -11798,7 +11812,7 @@ snapshots:
 
   dotenv@8.6.0: {}
 
-  drizzle-orm@0.31.4(@cloudflare/workers-types@4.20250204.0)(@libsql/client@0.14.0)(@op-engineering/op-sqlite@11.4.7(react-native@0.77.1(@babel/core@7.26.9)(@babel/preset-env@7.26.9(@babel/core@7.26.9))(@react-native-community/cli-server-api@15.1.3)(react@19.0.0))(react@19.0.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.12)(better-sqlite3@11.8.1)(bun-types@1.2.2)(kysely@0.27.5)(mysql2@3.12.0)(postgres@3.4.5)(react@19.0.0):
+  drizzle-orm@0.31.4(@cloudflare/workers-types@4.20250204.0)(@libsql/client@0.14.0)(@op-engineering/op-sqlite@11.4.7(react-native@0.77.1(@babel/core@7.26.9)(@babel/preset-env@7.26.9(@babel/core@7.26.9))(@react-native-community/cli-server-api@15.1.3)(react@19.0.0))(react@19.0.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.12)(better-sqlite3@11.8.1)(bun-types@1.2.5)(kysely@0.27.5)(mysql2@3.12.0)(postgres@3.4.5)(react@19.0.0):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20250204.0
       '@libsql/client': 0.14.0
@@ -11806,7 +11820,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@types/better-sqlite3': 7.6.12
       better-sqlite3: 11.8.1
-      bun-types: 1.2.2
+      bun-types: 1.2.5
       kysely: 0.27.5
       mysql2: 3.12.0
       postgres: 3.4.5
