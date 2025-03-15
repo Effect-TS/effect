@@ -319,6 +319,16 @@ const constNumberConstraints = makeNumberConstraints({})
 const constBigIntConstraints = makeBigIntConstraints({})
 const defaultSuspendedArrayConstraints: FastCheck.ArrayConstraints = { maxLength: 2 }
 
+const getASTConstraints = (ast: AST.AST) => {
+  const TypeAnnotationId = ast.annotations[AST.SchemaIdAnnotationId]
+  if (Predicate.isPropertyKey(TypeAnnotationId)) {
+    const out = ast.annotations[TypeAnnotationId]
+    if (Predicate.isReadonlyRecord(out)) {
+      return out
+    }
+  }
+}
+
 /** @internal */
 export const toOp = (
   ast: AST.AST,
@@ -327,10 +337,12 @@ export const toOp = (
 ): Op => {
   switch (ast._tag) {
     case "Declaration": {
-      const TypeAnnotationId: any = ast.annotations[AST.SchemaIdAnnotationId]
-      switch (TypeAnnotationId) {
-        case schemaId_.DateFromSelfSchemaId:
-          return new Deferred(makeDateConstraints(ast.annotations[TypeAnnotationId] as any))
+      const TypeAnnotationId = ast.annotations[AST.SchemaIdAnnotationId]
+      if (TypeAnnotationId === schemaId_.DateFromSelfSchemaId) {
+        const c = getASTConstraints(ast)
+        if (c !== undefined) {
+          return new Deferred(makeDateConstraints(c))
+        }
       }
       return new Succeed(go(ast, ctx, path))
     }
@@ -412,7 +424,7 @@ export const toOp = (
           return new Succeed(from.lazyArbitrary, filters)
         }
         case "Deferred": {
-          return new Deferred(merge(from.config, getConstraints(from.config._tag, ast)), filters)
+          return new Deferred(merge(from.config, getRefinementConstraints(from.config._tag, ast)), filters)
         }
       }
     }
@@ -597,33 +609,36 @@ const goTupleType = (
 
 type Constraints = StringConstraints | NumberConstraints | BigIntConstraints | DateConstraints | ArrayConstraints
 
-const getConstraints = (_tag: Constraints["_tag"], ast: AST.Refinement): Constraints | undefined => {
-  const TypeAnnotationId: any = ast.annotations[AST.SchemaIdAnnotationId]
+const getRefinementConstraints = (_tag: Constraints["_tag"], ast: AST.Refinement): Constraints | undefined => {
+  const TypeAnnotationId = ast.annotations[AST.SchemaIdAnnotationId]
   const jsonSchema: Record<string, any> = Option.getOrElse(AST.getJSONSchemaAnnotation(ast), () => ({}))
 
   switch (_tag) {
     case "StringConstraints":
       return makeStringConstraints(jsonSchema)
     case "NumberConstraints": {
-      switch (TypeAnnotationId) {
-        case schemaId_.NonNaNSchemaId:
-          return makeNumberConstraints({ noNaN: true })
-        default:
-          return makeNumberConstraints({
-            isInteger: "type" in jsonSchema && jsonSchema.type === "integer",
-            noNaN: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
-            noDefaultInfinity: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
-            min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum,
-            minExcluded: "exclusiveMinimum" in jsonSchema ? true : undefined,
-            max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum,
-            maxExcluded: "exclusiveMaximum" in jsonSchema ? true : undefined
-          })
+      if (TypeAnnotationId === schemaId_.NonNaNSchemaId) {
+        return makeNumberConstraints({ noNaN: true })
+      } else {
+        return makeNumberConstraints({
+          isInteger: "type" in jsonSchema && jsonSchema.type === "integer",
+          noNaN: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
+          noDefaultInfinity: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
+          min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum,
+          minExcluded: "exclusiveMinimum" in jsonSchema ? true : undefined,
+          max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum,
+          maxExcluded: "exclusiveMaximum" in jsonSchema ? true : undefined
+        })
       }
     }
-    case "BigIntConstraints":
-      return makeBigIntConstraints(ast.annotations[TypeAnnotationId] as any)
-    case "DateConstraints":
-      return makeDateConstraints(ast.annotations[TypeAnnotationId] as any)
+    case "BigIntConstraints": {
+      const c = getASTConstraints(ast)
+      return c !== undefined ? makeBigIntConstraints(c) : undefined
+    }
+    case "DateConstraints": {
+      const c = getASTConstraints(ast)
+      return c !== undefined ? makeDateConstraints(c) : undefined
+    }
     case "ArrayConstraints":
       return makeArrayConstraints({
         minLength: jsonSchema.minItems,
