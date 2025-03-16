@@ -1,5 +1,6 @@
 /**
  * @since 3.14.0
+ * @experimental
  */
 import * as Context from "./Context.js"
 import type * as Duration from "./Duration.js"
@@ -25,6 +26,7 @@ export type TypeId = typeof TypeId
 /**
  * @since 3.14.0
  * @category Models
+ * @experimental
  */
 export interface LayerMap<in K, in out I, out S, out E = never> {
   readonly [TypeId]: TypeId
@@ -54,6 +56,7 @@ export interface LayerMap<in K, in out I, out S, out E = never> {
 /**
  * @since 3.14.0
  * @category Constructors
+ * @experimental
  *
  * A `LayerMap` allows you to create a map of Layer's that can be used to
  * dynamically access resources based on a key.
@@ -167,6 +170,7 @@ export const make: <
 /**
  * @since 3.14.0
  * @category Constructors
+ * @experimental
  */
 export const fromRecord = <
   Accessor extends Context.Tag<any, any> | Effect.Effect<any, any, any>,
@@ -240,6 +244,7 @@ export interface TagClass<
 /**
  * @since 3.14.0
  * @category Service
+ * @experimental
  *
  * Create a `LayerMap` service that provides a dynamic set of resources based on
  * a key.
@@ -354,11 +359,13 @@ export const Service = <Self>() =>
 /**
  * @since 3.14.0
  * @category Service
+ * @experimental
  */
 export declare namespace Service {
   /**
    * @since 3.14.0
    * @category Service
+   * @experimental
    */
   export type Key<Options> = Options extends { readonly lookup: (key: infer K) => any } ? K
     : Options extends { readonly layers: infer Layers } ? keyof Layers
@@ -367,6 +374,7 @@ export declare namespace Service {
   /**
    * @since 3.14.0
    * @category Service
+   * @experimental
    */
   export type Layers<Options> = Options extends { readonly lookup: (key: infer _K) => infer Layers } ? Layers
     : Options extends { readonly layers: infer Layers } ? Layers[keyof Layers]
@@ -375,12 +383,14 @@ export declare namespace Service {
   /**
    * @since 3.14.0
    * @category Service
+   * @experimental
    */
   export type Error<Options> = Layers<Options> extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never
 
   /**
    * @since 3.14.0
    * @category Service
+   * @experimental
    */
   export type Context<Options> = Layers<Options> extends Layer.Layer<infer _A, infer _E, infer _R> ? _R : never
 }
