@@ -703,8 +703,12 @@ const go = (
             propertyNames = go(parameter, $defs, true, path, options)
             break
           }
-          case "SymbolKeyword":
-            throw new Error(errors_.getJSONSchemaUnsupportedParameterErrorMessage(path, parameter))
+          case "SymbolKeyword": {
+            const indexSignaturePath = path.concat("[symbol]")
+            output.additionalProperties = go(is.type, $defs, true, indexSignaturePath, options)
+            propertyNames = go(parameter, $defs, true, indexSignaturePath, options)
+            break
+          }
         }
       }
       // ---------------------------------------------
