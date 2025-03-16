@@ -96,12 +96,6 @@ export const getJSONSchemaMissingIdentifierAnnotationErrorMessage = (
   )
 
 /** @internal */
-export const getJSONSchemaUnsupportedParameterErrorMessage = (
-  path: ReadonlyArray<PropertyKey>,
-  parameter: AST.AST
-): string => getErrorMessage("Unsupported index signature parameter", undefined, path, parameter)
-
-/** @internal */
 export const getJSONSchemaUnsupportedPostRestElementsErrorMessage = (path: ReadonlyArray<PropertyKey>): string =>
   getErrorMessage(
     "Generating a JSON Schema for post-rest elements is not currently supported. You're welcome to contribute by submitting a Pull Request",

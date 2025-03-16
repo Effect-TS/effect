@@ -753,10 +753,12 @@ schema (Suspend): <suspended schema>`
     })
 
     describe("Unsupported index signature parameter", () => {
-      it("Record(symbol, number)", () => {
+      it("Record(SymbolFromSelf, number)", () => {
         expectError(
           Schema.Record({ key: Schema.SymbolFromSelf, value: JsonNumber }),
-          `Unsupported index signature parameter
+          `Missing annotation
+at path: ["[symbol]"]
+details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
 schema (SymbolKeyword): symbol`
         )
       })
@@ -2167,7 +2169,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         }
       }
       expectJSONSchemaAnnotations(schema, jsonSchema)
-      deepStrictEqual(jsonSchema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       assertTrue(validate({}))
       assertTrue(validate({ "-": 1 }))
@@ -2176,6 +2177,27 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       assertTrue(validate({ "a-b": 1 }))
       assertFalse(validate({ "": 1 }))
       assertFalse(validate({ "-": "a" }))
+    })
+
+    it("Record(SymbolFromSelf & annotation, number)", () => {
+      expectJSONSchemaAnnotations(
+        Schema.Record({
+          key: Schema.SymbolFromSelf.annotations({ jsonSchema: { "type": "string" } }),
+          value: JsonNumber
+        }),
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "required": [],
+          "properties": {},
+          "additionalProperties": {
+            "type": "number"
+          },
+          "propertyNames": {
+            "type": "string"
+          }
+        }
+      )
     })
   })
 
