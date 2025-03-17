@@ -493,23 +493,15 @@ export const save = (): Effect.Effect<Effect.Effect<void>> => testClockWith((tes
 
 /**
  * Accesses a `TestClock` instance in the context and sets the clock time
- * to the specified `Instant`, running any actions scheduled for on or before
+ * to the specified `Instant` or `Date`, running any actions scheduled for on or before
  * the new time in order.
  *
  * @since 2.0.0
  */
-export const setTime = (instant: number): Effect.Effect<void> =>
-  testClockWith((testClock) => testClock.setTime(instant))
-
-/**
- * Accesses a `TestClock` instance in the context and sets the clock time
- * to the specified `Date`, running any actions scheduled for on or before
- * the new time in order.
- *
- * @since 3.14.0
- */
-export const setDate = (date: Date): Effect.Effect<void> =>
-  testClockWith((testClock) => testClock.setTime(date.getTime()))
+export const setTime = (instantOrDate: number | Date): Effect.Effect<void> =>
+  testClockWith((testClock) =>
+    testClock.setTime(instantOrDate instanceof Date ? instantOrDate.getTime() : instantOrDate)
+  )
 
 /**
  * Semantically blocks the current fiber until the clock time is equal to or
