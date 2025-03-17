@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add TestClock.setDate helper
+Make TestClock.setTime accept a Date input
