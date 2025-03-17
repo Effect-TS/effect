@@ -2767,7 +2767,7 @@ export interface TypeLiteral<
   ): Simplify<TypeLiteral.Type<Fields, Records>>
 }
 
-const preserveMissingMessageAnnotation = AST.whiteListAnnotations([AST.MissingMessageAnnotationId])
+const preserveMissingMessageAnnotation = AST.pickAnnotations([AST.MissingMessageAnnotationId])
 
 const getDefaultTypeLiteralAST = <
   Fields extends Struct.Fields,
@@ -3299,7 +3299,7 @@ const intersectTypeLiterals = (
   throw new Error(errors_.getSchemaExtendErrorMessage(x, y, path))
 }
 
-const preserveRefinementAnnotations = AST.blackListAnnotations([AST.IdentifierAnnotationId])
+const preserveRefinementAnnotations = AST.omitAnnotations([AST.IdentifierAnnotationId])
 
 const addRefinementToMembers = (refinement: AST.Refinement, asts: ReadonlyArray<AST.AST>): Array<AST.Refinement> =>
   asts.map((ast) => new AST.Refinement(ast, refinement.filter, preserveRefinementAnnotations(refinement)))
