@@ -4,6 +4,7 @@
 import * as Chunk from "./Chunk.js"
 import type * as Clock from "./Clock.js"
 import * as Context from "./Context.js"
+import * as DateTime from "./DateTime.js"
 import type * as Deferred from "./Deferred.js"
 import * as Duration from "./Duration.js"
 import type * as Effect from "./Effect.js"
@@ -498,10 +499,8 @@ export const save = (): Effect.Effect<Effect.Effect<void>> => testClockWith((tes
  *
  * @since 2.0.0
  */
-export const setTime = (instantOrDate: number | Date): Effect.Effect<void> =>
-  testClockWith((testClock) =>
-    testClock.setTime(instantOrDate instanceof Date ? instantOrDate.getTime() : instantOrDate)
-  )
+export const setTime = (input: DateTime.DateTime.Input): Effect.Effect<void> =>
+  testClockWith((testClock) => testClock.setTime(DateTime.unsafeMake(input).epochMillis))
 
 /**
  * Semantically blocks the current fiber until the clock time is equal to or
