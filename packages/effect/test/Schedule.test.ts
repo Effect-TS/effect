@@ -894,11 +894,12 @@ const checkRepetitions = <Env>(schedule: Schedule.Schedule<number, number, Env>)
     return [actual, expected] as const
   })
 }
+const MAX_DATE_TIMESTAMP = 8640000000000000
 export const run = <A, E, R>(
   effect: Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => {
   return Effect.fork(effect).pipe(
-    Effect.tap(() => TestClock.setTime(Number.POSITIVE_INFINITY)),
+    Effect.tap(() => TestClock.setTime(MAX_DATE_TIMESTAMP)),
     Effect.flatMap(Fiber.join)
   )
 }
