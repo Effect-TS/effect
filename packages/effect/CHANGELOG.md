@@ -1,5 +1,112 @@
 # effect
 
+## 3.13.12
+
+### Patch Changes
+
+- [#4610](https://github.com/Effect-TS/effect/pull/4610) [`0c4803f`](https://github.com/Effect-TS/effect/commit/0c4803fcc69262d11a97ce49d0e9b4288df0651f) Thanks @gcanti! - Preserve specific annotations (e.g., `arbitrary`) when using `Schema.typeSchema`, closes #4609.
+
+  Previously, annotations such as `arbitrary` were lost when calling `Schema.typeSchema` on a transformation. This update ensures that certain annotations, which depend only on the "to" side of the transformation, are preserved.
+
+  Annotations that are now retained:
+
+  - `examples`
+  - `default`
+  - `jsonSchema`
+  - `arbitrary`
+  - `pretty`
+  - `equivalence`
+
+  **Example**
+
+  Before
+
+  ```ts
+  import { Arbitrary, FastCheck, Schema } from "effect"
+
+  const schema = Schema.NumberFromString.annotations({
+    arbitrary: () => (fc) => fc.constant(1)
+  })
+
+  const to = Schema.typeSchema(schema) // ❌ Annotation is lost
+
+  console.log(FastCheck.sample(Arbitrary.make(to), 5))
+  /*
+  [
+    2.5223372357846707e-44,
+    -2.145443957806771e+25,
+    -3.4028179901346956e+38,
+    5.278086259208735e+29,
+    1.8216880036222622e-44
+  ]
+  */
+  ```
+
+  After
+
+  ```ts
+  import { Arbitrary, FastCheck, Schema } from "effect"
+
+  const schema = Schema.NumberFromString.annotations({
+    arbitrary: () => (fc) => fc.constant(1)
+  })
+
+  const to = Schema.typeSchema(schema) // ✅ Annotation is now preserved
+
+  console.log(FastCheck.sample(Arbitrary.make(to), 5))
+  /*
+  [ 1, 1, 1, 1, 1 ]
+  */
+  ```
+
+- [#4607](https://github.com/Effect-TS/effect/pull/4607) [`6f65ac4`](https://github.com/Effect-TS/effect/commit/6f65ac4eac1489cd6ea390e18b0908670722adad) Thanks @gcanti! - Add support for `jsonSchema` annotations on `SymbolFromSelf` index signatures.
+
+  **Before**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Record({
+    key: Schema.SymbolFromSelf.annotations({ jsonSchema: { type: "string" } }),
+    value: Schema.Number
+  })
+
+  JSONSchema.make(schema)
+  /*
+  throws:
+  Error: Unsupported index signature parameter
+  schema (SymbolKeyword): symbol
+  */
+  ```
+
+  **After**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Record({
+    key: Schema.SymbolFromSelf.annotations({ jsonSchema: { type: "string" } }),
+    value: Schema.Number
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [],
+    "properties": {},
+    "additionalProperties": {
+      "type": "number"
+    },
+    "propertyNames": {
+      "type": "string"
+    }
+  }
+  */
+  ```
+
 ## 3.13.11
 
 ### Patch Changes
