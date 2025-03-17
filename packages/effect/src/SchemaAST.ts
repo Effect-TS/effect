@@ -2074,12 +2074,12 @@ export const isTypeLiteralTransformation: (ast: TransformationKind) => ast is Ty
  *
  * @since 3.10.0
  */
-export const annotations = (ast: AST, a: Annotations): AST => {
+export const annotations = (ast: AST, overrides: Annotations): AST => {
   const d = Object.getOwnPropertyDescriptors(ast)
-  const value = { ...ast.annotations, ...a }
+  const value = { ...ast.annotations, ...overrides }
   const surrogate = getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
-    value[SurrogateAnnotationId] = annotations(surrogate.value, a)
+    value[SurrogateAnnotationId] = annotations(surrogate.value, overrides)
   }
   d.annotations.value = value
   return Object.create(Object.getPrototypeOf(ast), d)
@@ -2603,6 +2603,40 @@ export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
   return compile
 }
 
+/** @internal */
+export const pickAnnotations =
+  (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
+    let out: { [_: symbol]: unknown } | undefined = undefined
+    for (const id of annotationIds) {
+      if (Object.prototype.hasOwnProperty.call(annotated.annotations, id)) {
+        if (out === undefined) {
+          out = {}
+        }
+        out[id] = annotated.annotations[id]
+      }
+    }
+    return out
+  }
+
+/** @internal */
+export const omitAnnotations =
+  (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
+    const out = { ...annotated.annotations }
+    for (const id of annotationIds) {
+      delete out[id]
+    }
+    return out
+  }
+
+const preserveTransformationAnnotations = pickAnnotations([
+  ExamplesAnnotationId,
+  DefaultAnnotationId,
+  JSONSchemaAnnotationId,
+  ArbitraryAnnotationId,
+  PrettyAnnotationId,
+  EquivalenceAnnotationId
+])
+
 /**
  * @since 3.10.0
  */
@@ -2650,36 +2684,17 @@ export const typeAST = (ast: AST): AST => {
         ast :
         new Refinement(from, ast.filter, ast.annotations)
     }
-    case "Transformation":
-      return typeAST(ast.to)
+    case "Transformation": {
+      const preserve = preserveTransformationAnnotations(ast)
+      return typeAST(
+        preserve !== undefined ?
+          annotations(ast.to, preserve) :
+          ast.to
+      )
+    }
   }
   return ast
 }
-
-/** @internal */
-export const whiteListAnnotations =
-  (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
-    let out: { [_: symbol]: unknown } | undefined = undefined
-    for (const id of annotationIds) {
-      if (Object.prototype.hasOwnProperty.call(annotated.annotations, id)) {
-        if (out === undefined) {
-          out = {}
-        }
-        out[id] = annotated.annotations[id]
-      }
-    }
-    return out
-  }
-
-/** @internal */
-export const blackListAnnotations =
-  (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
-    const out = { ...annotated.annotations }
-    for (const id of annotationIds) {
-      delete out[id]
-    }
-    return out
-  }
 
 // To generate a JSON Schema from a recursive schema, an `identifier` annotation
 // is required. So, when we calculate the encodedAST, we need to preserve the

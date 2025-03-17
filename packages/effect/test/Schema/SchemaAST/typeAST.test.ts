@@ -1,7 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import * as S from "effect/Schema"
-import * as AST from "effect/SchemaAST"
-import { assertFalse, assertTrue } from "effect/test/util"
+import { Effect, Schema as S, SchemaAST as AST } from "effect"
+import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
 
 describe("typeAST", () => {
   describe(`should return the same reference if the AST doesn't represent a transformation`, () => {
@@ -73,6 +72,50 @@ describe("typeAST", () => {
     it("refinement (false)", () => {
       const schema = S.NumberFromString.pipe(S.filter((n) => n > 0))
       assertFalse(AST.typeAST(schema.ast) === schema.ast)
+    })
+  })
+
+  describe("Transformation", () => {
+    it("should preserve whitelisted annotations", () => {
+      const annotations: S.Annotations.GenericSchema<number> = {
+        title: "title",
+        description: "description",
+        documentation: "documentation",
+        identifier: "id",
+        message: () => "message",
+        schemaId: "schemaId",
+        concurrency: 6,
+        batching: true,
+        parseIssueTitle: () => "parseIssueTitle",
+        parseOptions: { onExcessProperty: "error" },
+        decodingFallback: () => Effect.succeed(7),
+        // whitelisted annotations
+        examples: [1, 2, 3],
+        default: 4,
+        jsonSchema: { type: "object" },
+        arbitrary: () => (fc) => fc.constant(5),
+        pretty: () => () => "pretty",
+        equivalence: () => () => true
+      }
+      const schema = S.transform(
+        S.Number,
+        S.Number.annotations({
+          title: "original-title",
+          description: "original-description"
+        }),
+        { decode: (n) => n, encode: (n) => n }
+      ).annotations(annotations)
+      deepStrictEqual(AST.typeAST(schema.ast).annotations, {
+        [AST.TitleAnnotationId]: "original-title",
+        [AST.DescriptionAnnotationId]: "original-description",
+        // whitelisted annotations
+        [AST.ExamplesAnnotationId]: annotations.examples,
+        [AST.DefaultAnnotationId]: annotations.default,
+        [AST.JSONSchemaAnnotationId]: annotations.jsonSchema,
+        [AST.ArbitraryAnnotationId]: annotations.arbitrary,
+        [AST.PrettyAnnotationId]: annotations.pretty,
+        [AST.EquivalenceAnnotationId]: annotations.equivalence
+      })
     })
   })
 })
