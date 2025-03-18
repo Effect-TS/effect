@@ -4,6 +4,7 @@
 import type * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as MsgPack from "@effect/platform/MsgPack"
 import type * as Socket from "@effect/platform/Socket"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -21,7 +22,6 @@ import { EntryId, makeRemoteId } from "./EventJournal.js"
 import { EncryptedRemoteEntry } from "./EventLogEncryption.js"
 import type { ProtocolRequest, ProtocolResponse } from "./EventLogRemote.js"
 import { Ack, Changes, ChunkedMessage, decodeRequest, encodeResponse, Hello, Pong } from "./EventLogRemote.js"
-import * as MsgPack from "./MsgPack.js"
 
 const constChunkSize = 512_000
 

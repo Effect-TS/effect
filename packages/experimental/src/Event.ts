@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
+import * as MsgPack from "@effect/platform/MsgPack"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
-import * as MsgPack from "./MsgPack.js"
 
 /**
  * @since 1.0.0

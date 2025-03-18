@@ -18,7 +18,9 @@ import type * as Etag from "./Etag.js"
 import type { FileSystem } from "./FileSystem.js"
 import type * as App from "./HttpApp.js"
 import type * as Method from "./HttpMethod.js"
+import type * as Middleware from "./HttpMiddleware.js"
 import type * as Platform from "./HttpPlatform.js"
+import type * as HttpServer from "./HttpServer.js"
 import type * as Error from "./HttpServerError.js"
 import type * as ServerRequest from "./HttpServerRequest.js"
 import type * as Respondable from "./HttpServerRespondable.js"
@@ -144,6 +146,13 @@ export declare namespace HttpRouter {
       f: (router: Service<E, R>) => Effect.Effect<XA, XE, XR>
     ) => Layer.Layer<never, XE, Exclude<XR, Scope.Scope>>
     readonly unwrap: <XA, XE, XR>(f: (router: HttpRouter<E, R>) => Layer.Layer<XA, XE, XR>) => Layer.Layer<XA, XE, XR>
+    readonly serve: <E = never, R = never>(
+      middleware?: Middleware.HttpMiddleware.Applied<App.Default, E, R>
+    ) => Layer.Layer<
+      never,
+      never,
+      HttpServer.HttpServer | Exclude<R, ServerRequest.HttpServerRequest | Scope.Scope>
+    >
   }
 }
 

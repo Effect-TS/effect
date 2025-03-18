@@ -153,7 +153,7 @@ export interface Uint8Array extends HttpBody.Proto {
  * @since 1.0.0
  * @category constructors
  */
-export const uint8Array: (body: globalThis.Uint8Array) => Uint8Array = internal.uint8Array
+export const uint8Array: (body: globalThis.Uint8Array, contentType?: string) => Uint8Array = internal.uint8Array
 
 /**
  * @since 1.0.0
