@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Make TestClock.setTime accept a Date input
+Make TestClock.setTime accept a DateTime.Input
