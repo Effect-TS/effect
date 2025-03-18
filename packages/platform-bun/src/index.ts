@@ -61,6 +61,11 @@ export * as BunSocket from "./BunSocket.js"
 /**
  * @since 1.0.0
  */
+export * as BunSocketServer from "./BunSocketServer.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as BunStream from "./BunStream.js"
 
 /**

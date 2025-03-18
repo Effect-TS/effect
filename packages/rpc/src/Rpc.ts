@@ -1,24 +1,19 @@
 /**
  * @since 1.0.0
  */
-import * as Headers from "@effect/platform/Headers"
-import type * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as FiberRef from "effect/FiberRef"
-import { dual, pipe } from "effect/Function"
+import type { Headers } from "@effect/platform/Headers"
+import * as Context_ from "effect/Context"
+import type { Effect } from "effect/Effect"
+import type { Exit as Exit_ } from "effect/Exit"
 import { globalValue } from "effect/GlobalValue"
-import type * as ParseResult from "effect/ParseResult"
+import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import type * as PrimaryKey from "effect/PrimaryKey"
-import type * as Record from "effect/Record"
-import type * as EffectRequest from "effect/Request"
-import type * as RequestResolver from "effect/RequestResolver"
 import * as Schema from "effect/Schema"
-import type { Scope } from "effect/Scope"
-import * as Stream from "effect/Stream"
-import type * as Types from "effect/Types"
-import * as Internal from "./internal/rpc.js"
+import type * as AST from "effect/SchemaAST"
+import type { Stream } from "effect/Stream"
+import type * as RpcMiddleware from "./RpcMiddleware.js"
+import * as RpcSchema from "./RpcSchema.js"
 
 /**
  * @since 1.0.0
@@ -34,400 +29,622 @@ export type TypeId = typeof TypeId
 
 /**
  * @since 1.0.0
- * @category refinements
+ * @category guards
  */
-export const isRpc = (u: unknown): u is Rpc<any, any> => Predicate.hasProperty(u, TypeId)
+export const isRpc = (u: unknown): u is Rpc<any, any, any> => Predicate.hasProperty(u, TypeId)
 
 /**
+ * Represents an API endpoint. An API endpoint is mapped to a single route on
+ * the underlying `HttpRouter`.
+ *
  * @since 1.0.0
  * @category models
  */
-export type Rpc<Req extends Schema.TaggedRequest.All, R> = RpcEffect<Req, R> | RpcStream<Req, R>
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface RpcEffect<Req extends Schema.TaggedRequest.All, R> extends Rpc.Proto<Req> {
-  readonly _tag: "Effect"
-  readonly handler: (
-    request: Req
-  ) => Effect.Effect<
-    EffectRequest.Request.Success<Req>,
-    EffectRequest.Request.Error<Req>,
-    R
-  >
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface RpcStream<Req extends Schema.TaggedRequest.All, R> extends Rpc.Proto<Req> {
-  readonly _tag: "Stream"
-  readonly handler: (
-    request: Req
-  ) => Stream.Stream<
-    Req extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R> ? A : never,
-    Req extends Schema.WithResult<infer _A, infer _I, infer E, infer _EI, infer _R> ? E : never,
-    R
-  >
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export declare namespace Rpc {
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface Proto<Req extends Schema.TaggedRequest.All> extends Pipeable {
-    readonly [TypeId]: TypeId
-    readonly _tag: string
-    readonly schema: Schema.Schema<Req, any, unknown>
-  }
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type Context<A extends Rpc<any, any>> = A extends Rpc<infer Req, infer R>
-    ? R | Schema.SerializableWithResult.Context<Req>
-    : never
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type Request<A extends Rpc<any, any>> = Schema.Schema.Type<A["schema"]>
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type Result<A extends Schema.TaggedRequest.All, R = never> = StreamRequestTypeId extends keyof A ?
-    EffectRequest.Request.Success<A> :
-    Effect.Effect<EffectRequest.Request.Success<A>, EffectRequest.Request.Error<A>, R>
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type ResultUndecoded<A extends Schema.TaggedRequest.All, R = never> = A extends
-    Schema.WithResult<infer _A, infer I, infer E, infer _EI, infer _R>
-    ? StreamRequestTypeId extends keyof A ? Stream.Stream<I, E, R>
-    : Effect.Effect<I, E, R>
-    : never
-}
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const effect = <Req extends Schema.TaggedRequest.All, R>(
-  schema: Schema.Schema<Req, any, unknown>,
-  handler: (request: Req) => Effect.Effect<EffectRequest.Request.Success<Req>, EffectRequest.Request.Error<Req>, R>
-): Rpc<Req, R> => ({
-  [TypeId]: TypeId,
-  _tag: "Effect",
-  schema,
-  handler,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-})
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export const StreamRequestTypeId: unique symbol = Internal.StreamRequestTypeId
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export type StreamRequestTypeId = typeof StreamRequestTypeId
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export interface StreamRequest<Tag extends string, SR, SI, S, RR, EI, E, AI, A>
-  extends EffectRequest.Request<Stream.Stream<A, E, never>>, Schema.SerializableWithResult<S, SI, SR, A, AI, E, EI, RR>
-{
-  readonly [StreamRequestTypeId]: StreamRequestTypeId
+export interface Rpc<
+  out Tag extends string,
+  out Payload extends AnyStructSchema = Schema.Struct<{}>,
+  out Success extends Schema.Schema.Any = typeof Schema.Void,
+  out Error extends Schema.Schema.All = typeof Schema.Never,
+  out Middleware extends RpcMiddleware.TagClassAny = never
+> extends Pipeable {
+  readonly [TypeId]: TypeId
   readonly _tag: Tag
-}
+  readonly key: string
+  readonly payloadSchema: Payload
+  readonly successSchema: Success
+  readonly errorSchema: Error
+  readonly annotations: Context_.Context<never>
+  readonly middlewares: ReadonlySet<Middleware>
 
-/**
- * @since 1.0.0
- * @category schemas
- */
-export declare namespace StreamRequest {
   /**
-   * @since 1.0.0
-   * @category schemas
+   * Set the schema for the success response of the rpc.
    */
-  export type Any =
-    | StreamRequest<string, any, any, any, any, any, any, any, any>
-    | StreamRequest<string, any, any, any, any, never, never, any, any>
-}
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export interface StreamRequestConstructor<Tag extends string, Self, R, IS, S, RR, IE, E, IA, A>
-  extends Schema.Schema<Self, Types.Simplify<IS & { readonly _tag: Tag }>, R>
-{
-  new(
-    props: Types.Equals<S, {}> extends true ? void : S,
-    disableValidation?: boolean
-  ): StreamRequest<Tag, R, IS & { readonly _tag: Tag }, Self, RR, IE, E, IA, A> & S
-}
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const StreamRequest =
-  <Self>() =>
-  <Tag extends string, E, IE, RE, A, IA, RA, Payload extends Schema.Struct.Fields>(
-    tag: Tag,
-    options: {
-      readonly failure: Schema.Schema<E, IE, RE>
-      readonly success: Schema.Schema<A, IA, RA>
-      readonly payload: Payload
-    }
-  ): StreamRequestConstructor<
+  setSuccess<S extends Schema.Schema.Any>(schema: S): Rpc<
     Tag,
-    Self,
-    Schema.Schema.Context<Payload[keyof Payload]>,
-    Types.Simplify<Schema.Struct.Encoded<Payload>>,
-    Types.Simplify<Schema.Struct.Type<Payload>>,
-    RE | RA,
-    IE,
+    Payload,
+    S,
+    Error,
+    Middleware
+  >
+
+  /**
+   * Set the schema for the error response of the rpc.
+   */
+  setError<E extends Schema.Schema.Any>(schema: E): Rpc<
+    Tag,
+    Payload,
+    Success,
     E,
-    IA,
-    A
-  > => {
-    return class extends (Schema.TaggedRequest<{}>()(tag, options) as any) {
-      constructor(props: any, disableValidation?: boolean) {
-        super(props, disableValidation)
-        ;(this as any)[Internal.StreamRequestTypeId] = Internal.StreamRequestTypeId
-      }
-    } as any
+    Middleware
+  >
+
+  /**
+   * Set the schema for the payload of the rpc.
+   */
+  setPayload<P extends Schema.Struct<any> | Schema.Struct.Fields>(
+    schema: P
+  ): Rpc<
+    Tag,
+    P extends Schema.Struct<infer _> ? P : P extends Schema.Struct.Fields ? Schema.Struct<P> : never,
+    Success,
+    Error,
+    Middleware
+  >
+
+  /**
+   * Add an `RpcMiddleware` to this procedure.
+   */
+  middleware<M extends RpcMiddleware.TagClassAny>(middleware: M): Rpc<
+    Tag,
+    Payload,
+    Success,
+    Error,
+    Middleware | M
+  >
+
+  /**
+   * Add an annotation on the rpc.
+   */
+  annotate<I, S>(
+    tag: Context_.Tag<I, S>,
+    value: S
+  ): Rpc<Tag, Payload, Success, Error, Middleware>
+
+  /**
+   * Merge the annotations of the rpc with the provided context.
+   */
+  annotateContext<I>(
+    context: Context_.Context<I>
+  ): Rpc<Tag, Payload, Success, Error, Middleware>
+}
+
+/**
+ * Represents an implemented rpc.
+ *
+ * @since 1.0.0
+ * @category models
+ */
+export interface Handler<Tag extends string> {
+  readonly _: unique symbol
+  readonly tag: Tag
+  readonly handler: (request: any, headers: Headers) => Effect<any, any> | Stream<any, any>
+  readonly context: Context<never>
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Any extends Pipeable {
+  readonly [TypeId]: TypeId
+  readonly _tag: string
+  readonly key: string
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface AnyWithProps {
+  readonly [TypeId]: TypeId
+  readonly _tag: string
+  readonly key: string
+  readonly payloadSchema: AnyStructSchema
+  readonly successSchema: Schema.Schema.Any
+  readonly errorSchema: Schema.Schema.All
+  readonly annotations: Context_.Context<never>
+  readonly middlewares: ReadonlySet<RpcMiddleware.TagClassAnyWithProps>
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Tag<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? _Tag
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Success<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? _Success["Type"]
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type SuccessEncoded<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? _Success["Encoded"]
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type SuccessExit<R> = Success<R> extends infer T ? T extends Stream<infer _A, infer _E, infer _Env> ? void : T
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type SuccessExitEncoded<R> = SuccessEncoded<R> extends infer T ?
+  T extends Stream<infer _A, infer _E, infer _Env> ? void : T
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type SuccessChunk<R> = Success<R> extends Stream<infer _A, infer _E, infer _Env> ? _A : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type SuccessChunkEncoded<R> = SuccessEncoded<R> extends Stream<infer _A, infer _E, infer _Env> ? _A : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type ErrorSchema<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? _Error | _Middleware
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Error<R> = Schema.Schema.Type<ErrorSchema<R>>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type ErrorEncoded<R> = Schema.Schema.Encoded<ErrorSchema<R>>
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type ErrorExit<R> = Success<R> extends Stream<infer _A, infer _E, infer _Env> ? _E | Error<R> : Error<R>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type ErrorExitEncoded<R> = SuccessEncoded<R> extends Stream<infer _A, infer _E, infer _Env>
+  ? _E | ErrorEncoded<R>
+  : ErrorEncoded<R>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Exit<R> = Exit_<SuccessExit<R>, ErrorExit<R>>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type ExitEncoded<R, Defect = unknown> = Schema.ExitEncoded<SuccessExitEncoded<R>, ErrorExitEncoded<R>, Defect>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type PayloadConstructor<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ?
+  Schema.Struct.Constructor<_Payload["fields"]> extends infer T ?
+    [keyof T] extends [never] ? void | {} : Schema.Simplify<T>
+  : never
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Payload<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? _Payload["Type"]
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Context<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? _Payload["Context"] | _Success["Context"] | _Error["Context"]
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Middleware<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? Context_.Tag.Identifier<_Middleware>
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type MiddlewareClient<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ?
+  _Middleware extends { readonly requiredForClient: true }
+    ? RpcMiddleware.ForClient<Context_.Tag.Identifier<_Middleware>>
+  : never
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type AddError<R extends Any, Error extends Schema.Schema.All> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? Rpc<
+    _Tag,
+    _Payload,
+    _Success,
+    _Error | Error,
+    _Middleware
+  > :
+  never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type AddMiddleware<R extends Any, Middleware extends RpcMiddleware.TagClassAny> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? Rpc<
+    _Tag,
+    _Payload,
+    _Success,
+    _Error,
+    _Middleware | Middleware
+  > :
+  never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type ToHandler<R extends Any> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? Handler<_Tag> :
+  never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type IsStream<R extends Any, Tag extends string> = R extends
+  Rpc<Tag, infer _Payload, RpcSchema.Stream<infer _A, infer _E>, infer _Error, infer _Middleware> ? true : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type ExtractTag<R extends Any, Tag extends string> = R extends
+  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ? R : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type ExtractProvides<R extends Any, Tag extends string> = R extends
+  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ? _Middleware extends {
+    readonly provides: Context_.Tag<infer _I, infer _S>
+  } ? _I :
+  never :
+  never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type ExcludeProvides<Env, R extends Any, Tag extends string> = Exclude<
+  Env,
+  ExtractProvides<R, Tag>
+>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface From<S extends AnyTaggedRequestSchema> extends Rpc<S["_tag"], S, S["success"], S["failure"]> {}
+
+const Proto = {
+  [TypeId]: TypeId,
+  pipe() {
+    return pipeArguments(this, arguments)
+  },
+  setSuccess(
+    this: AnyWithProps,
+    successSchema: Schema.Schema.Any
+  ) {
+    return makeProto({
+      ...this,
+      successSchema
+    })
+  },
+  setError(this: AnyWithProps, errorSchema: Schema.Schema.All) {
+    return makeProto({
+      ...this,
+      errorSchema
+    })
+  },
+  setPayload(this: AnyWithProps, payloadSchema: Schema.Struct<any> | Schema.Struct.Fields) {
+    return makeProto({
+      ...this,
+      payloadSchema: Schema.isSchema(payloadSchema) ? payloadSchema as any : Schema.Struct(payloadSchema as any)
+    })
+  },
+  middleware(this: AnyWithProps, middleware: RpcMiddleware.TagClassAny) {
+    return makeProto({
+      ...this,
+      middlewares: new Set([...this.middlewares, middleware])
+    })
+  },
+  annotate(this: AnyWithProps, tag: Context_.Tag<any, any>, value: any) {
+    return makeProto({
+      ...this,
+      annotations: Context_.add(this.annotations, tag, value)
+    })
+  },
+  annotateContext(this: AnyWithProps, context: Context_.Context<any>) {
+    return makeProto({
+      ...this,
+      annotations: Context_.merge(this.annotations, context)
+    })
   }
+}
+
+const makeProto = <
+  const Tag extends string,
+  Payload extends AnyStructSchema,
+  Success extends Schema.Schema.Any,
+  Error extends Schema.Schema.All,
+  Middleware extends RpcMiddleware.TagClassAny
+>(options: {
+  readonly _tag: Tag
+  readonly payloadSchema: Payload
+  readonly successSchema: Success
+  readonly errorSchema: Error
+  readonly annotations: Context_.Context<never>
+  readonly middlewares: ReadonlySet<Middleware>
+}): Rpc<Tag, Payload, Success, Error, Middleware> => {
+  const self = Object.assign(Object.create(Proto), options)
+  self.key = `@effect/rpc/Rpc/${options._tag}`
+  return self
+}
+
+const constEmptyStruct = Schema.Struct({})
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const stream = <Req extends StreamRequest.Any, R>(
-  schema: Schema.Schema<Req, any, unknown>,
-  handler: (
-    request: Req
-  ) => Stream.Stream<
-    Req extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R> ? A : never,
-    Req extends Schema.WithResult<infer _A, infer _I, infer E, infer _EI, infer _R> ? E : never,
-    R
-  >
-): Rpc<Req, R> => ({
-  [TypeId]: TypeId,
-  _tag: "Stream",
-  schema: schema as any,
-  handler,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-})
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface Request<A extends Schema.TaggedRequest.All> extends
-  EffectRequest.Request<
-    EffectRequest.Request.Success<A>,
-    EffectRequest.Request.Error<A>
-  >,
-  PrimaryKey.PrimaryKey,
-  Schema.WithResult<
-    Schema.WithResult.Context<A>,
-    Schema.Schema.Encoded<A[typeof Schema.symbolWithResult]["failure"]>,
-    Schema.Schema.Type<A[typeof Schema.symbolWithResult]["failure"]>,
-    Schema.Schema.Encoded<A[typeof Schema.symbolWithResult]["success"]>,
-    Schema.Schema.Type<A[typeof Schema.symbolWithResult]["success"]>
-  >
-{
-  readonly request: A
-  readonly traceId: string
-  readonly spanId: string
-  readonly sampled: boolean
-  readonly headers: Headers.Headers
+export const make = <
+  const Tag extends string,
+  Payload extends AnyStructSchema | Schema.Struct.Fields = Schema.Struct<{}>,
+  Success extends Schema.Schema.Any = typeof Schema.Void,
+  Error extends Schema.Schema.All = typeof Schema.Never,
+  const Stream extends boolean = false
+>(tag: Tag, options?: {
+  readonly payload?: Payload
+  readonly success?: Success
+  readonly error?: Error
+  readonly stream?: Stream
+}): Rpc<
+  Tag,
+  Payload extends Schema.Struct.Fields ? Schema.Struct<Payload> : Payload,
+  Stream extends true ? RpcSchema.Stream<Success, Error> : Success,
+  Stream extends true ? typeof Schema.Never : Error
+> => {
+  const successSchema = options?.success ?? Schema.Void
+  const errorSchema = options?.error ?? Schema.Never
+  return makeProto({
+    _tag: tag,
+    payloadSchema: Schema.isSchema(options?.payload)
+      ? options?.payload as any
+      : options?.payload
+      ? Schema.Struct(options?.payload as any)
+      : constEmptyStruct,
+    successSchema: options?.stream ?
+      RpcSchema.Stream({
+        success: successSchema,
+        failure: errorSchema
+      }) :
+      successSchema,
+    errorSchema: options?.stream ? Schema.Never : errorSchema,
+    annotations: Context_.empty(),
+    middlewares: new Set<never>()
+  }) as any
 }
 
 /**
  * @since 1.0.0
- * @category models
+ * @category constructors
  */
-export interface RequestFrom<A> {
-  readonly request: A
-  readonly traceId: string
-  readonly spanId: string
-  readonly sampled: boolean
-  readonly headers: Record<string, string>
+export interface AnyStructSchema extends Pipeable {
+  readonly [Schema.TypeId]: any
+  readonly make: any
+  readonly Type: any
+  readonly Encoded: any
+  readonly Context: any
+  readonly ast: AST.AST
+  readonly fields: Schema.Struct.Fields
+  readonly annotations: any
 }
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category constructors
  */
-export const RequestSchema = <A, I, R>(
-  schema: Schema.Schema<A, I, R>
-): Schema.Schema<RequestFrom<A>, RequestFrom<I>, R> =>
-  Schema.Struct({
-    request: schema,
-    traceId: Schema.String,
-    spanId: Schema.String,
-    sampled: Schema.Boolean,
-    headers: Schema.Record({ key: Schema.String, value: Schema.String })
+export interface AnyTaggedRequestSchema extends AnyStructSchema {
+  readonly _tag: string
+  readonly success: Schema.Schema.Any
+  readonly failure: Schema.Schema.All
+}
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fromTaggedRequest = <S extends AnyTaggedRequestSchema>(
+  schema: S
+): From<S> =>
+  makeProto({
+    _tag: schema._tag,
+    payloadSchema: schema as any,
+    successSchema: schema.success as any,
+    errorSchema: schema.failure,
+    annotations: Context_.empty(),
+    middlewares: new Set()
   })
 
-/**
- * @since 1.0.0
- * @category headers
- */
-export const currentHeaders: FiberRef.FiberRef<Headers.Headers> = globalValue(
-  "@effect/rpc/Rpc/currentHeaders",
-  () => FiberRef.unsafeMake(Headers.empty)
-)
+const exitSchemaCache = globalValue("@effect/rpc/Rpc/exitSchemaCache", () => new WeakMap<Any, Schema.Schema.Any>())
 
 /**
  * @since 1.0.0
- * @category headers
+ * @category constructors
  */
-export const annotateHeaders: {
-  (headers: Headers.Input): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(self: Effect.Effect<A, E, R>, headers: Headers.Input): Effect.Effect<A, E, R>
-} = dual(2, (self, headers) => {
-  const resolved = Headers.fromInput(headers)
-  return Effect.locallyWith(self, currentHeaders, (prev) => ({ ...prev, ...resolved }))
-})
-
-/**
- * @since 1.0.0
- * @category headers
- */
-export const schemaHeaders = <R, I extends Record.ReadonlyRecord<string, string | undefined>, A>(
-  schema: Schema.Schema<R, I, A>
-): Effect.Effect<R, ParseResult.ParseError, A> => {
-  const decode = Schema.decodeUnknown(schema)
-  return Effect.flatMap(FiberRef.get(currentHeaders), decode)
+export const exitSchema = <R extends Any>(
+  self: R
+): Schema.Schema<Exit<R>, ExitEncoded<R>, Context<R>> => {
+  if (exitSchemaCache.has(self)) {
+    return exitSchemaCache.get(self) as any
+  }
+  const rpc = self as any as AnyWithProps
+  const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema.ast)
+  const schema = Schema.Exit({
+    success: Option.isSome(streamSchemas) ? Schema.Void : rpc.successSchema,
+    failure: Option.isSome(streamSchemas) ?
+      Schema.Union(
+        streamSchemas.value.failure,
+        rpc.errorSchema
+      ) :
+      rpc.errorSchema,
+    defect: Schema.Defect
+  })
+  exitSchemaCache.set(self, schema)
+  return schema as any
 }
 
 /**
  * @since 1.0.0
- * @category requests
+ * @category Fork
  */
-export const request = <A extends Schema.TaggedRequest.All>(
-  request: A,
-  options?: {
-    readonly spanPrefix?: string
-  }
-): Effect.Effect<Request<A>, never, Scope> =>
-  pipe(
-    Effect.makeSpanScoped(`${options?.spanPrefix ?? "Rpc.request "}${request._tag}`, {
-      kind: "client",
-      captureStackTrace: false
-    }),
-    Effect.zip(FiberRef.get(currentHeaders)),
-    Effect.map(([span, headers]) =>
-      Internal.makeRequest({
-        request,
-        traceId: span.traceId,
-        spanId: span.spanId,
-        sampled: span.sampled,
-        headers
-      })
-    )
-  )
+export const ForkTypeId: unique symbol = Symbol.for("@effect/rpc/Rpc/Fork")
 
 /**
  * @since 1.0.0
- * @category requests
+ * @category Fork
  */
-export const call = <
-  A extends Schema.TaggedRequest.All,
-  R extends
-    | RequestResolver.RequestResolver<Request<A>>
-    | Effect.Effect<RequestResolver.RequestResolver<Request<A>>, never, any>
->(
-  req: A,
-  resolver: R,
-  options?: {
-    readonly spanPrefix?: string
-  }
-): R extends Effect.Effect<infer _A, infer _E, infer R> ? Rpc.Result<A, R> : Rpc.Result<A> => {
-  const isStream = Internal.StreamRequestTypeId in req
-  const res = pipe(
-    request(req, options),
-    Effect.flatMap((_) => Effect.request(_, resolver))
-  )
-  return isStream ? Stream.unwrapScoped(res as any) : Effect.scoped(res) as any
+export type ForkTypeId = typeof ForkTypeId
+
+/**
+ * @since 1.0.0
+ * @category Fork
+ */
+export interface Fork<A> {
+  readonly [ForkTypeId]: ForkTypeId
+  readonly value: A
 }
 
 /**
+ * You can use `fork` to wrap a response Effect or Stream, to ensure that the
+ * response is executed concurrently regardless of the RpcServer concurrency
+ * setting.
+ *
  * @since 1.0.0
- * @category context
+ * @category Fork
  */
-export const provideServiceEffect: {
-  <I, S, E, R2>(
-    tag: Context.Tag<I, S>,
-    effect: Effect.Effect<S, E, R2>
-  ): <Req extends Schema.TaggedRequest.All, R>(self: Rpc<Req, R>) => Rpc<Req, Exclude<R, I> | R2>
-  <Req extends Schema.TaggedRequest.All, R, I, S, E, R2>(
-    self: Rpc<Req, R>,
-    tag: Context.Tag<I, S>,
-    effect: Effect.Effect<S, E, R2>
-  ): Rpc<Req, Exclude<R, I> | R2>
-} = dual(3, <Req extends Schema.TaggedRequest.All, R, I, S, E, R2>(
-  self: Rpc<Req, R>,
-  tag: Context.Tag<I, S>,
-  make: Effect.Effect<S, E, R2>
-): Rpc<Req, Exclude<R, I> | R2> =>
-  self._tag === "Effect"
-    ? effect(self.schema, (req) => Effect.provideServiceEffect(self.handler(req), tag, Effect.orDie(make))) as any
-    : stream(
-      self.schema as any,
-      (req) => Stream.provideServiceEffect(self.handler(req as any), tag, Effect.orDie(make))
-    ))
+export const fork = <A>(value: A): Fork<A> => ({ [ForkTypeId]: ForkTypeId, value })
 
 /**
  * @since 1.0.0
- * @category context
+ * @category Fork
  */
-export const provideService: {
-  <I, S>(
-    tag: Context.Tag<I, S>,
-    service: S
-  ): <Req extends Schema.TaggedRequest.All, R>(self: Rpc<Req, R>) => Rpc<Req, Exclude<R, I>>
-  <Req extends Schema.TaggedRequest.All, R, I, S>(
-    self: Rpc<Req, R>,
-    tag: Context.Tag<I, S>,
-    service: S
-  ): Rpc<Req, Exclude<R, I>>
-} = dual(3, <Req extends Schema.TaggedRequest.All, R, I, S>(
-  self: Rpc<Req, R>,
-  tag: Context.Tag<I, S>,
-  service: S
-): Rpc<Req, Exclude<R, I>> =>
-  self._tag === "Effect"
-    ? effect(self.schema, (req) => Effect.provideService(self.handler(req), tag, service)) as any
-    : stream(
-      self.schema as any,
-      (req) => Stream.provideService(self.handler(req as any), tag, service)
-    ))
+export const isFork = (u: object): u is Fork<any> => ForkTypeId in u

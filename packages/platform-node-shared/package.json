@@ -42,7 +42,8 @@
   },
   "dependencies": {
     "@parcel/watcher": "^2.4.1",
-    "multipasta": "^0.2.5"
+    "multipasta": "^0.2.5",
+    "ws": "^8.18.0"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
@@ -51,6 +52,7 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@types/tar": "^6.1.12",
+    "@types/ws": "^8.5.12",
     "effect": "workspace:^",
     "tar": "^6"
   },
