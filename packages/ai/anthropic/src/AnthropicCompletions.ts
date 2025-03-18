@@ -29,7 +29,7 @@ import type * as Generated from "./Generated.js"
  * @since 1.0.0
  * @category models
  */
-export type Model = typeof Generated.ModelEnum.Encoded
+export type Model = typeof Generated.Model.Encoded
 
 // =============================================================================
 // Configuration
@@ -351,7 +351,8 @@ const makeResponse = Effect.fnUntraced(function*(
   }
 ) {
   if (structuredTool !== undefined && response.stop_reason === "tool_use") {
-    const [text, toolUse] = Arr.partition(response.content, (chunk) => chunk.type === "tool_use")
+    const toolUse = response.content.filter((chunk) => chunk.type === "tool_use")
+    const text = response.content.filter((chunk) => chunk.type === "text")
     if (toolUse.length !== 1) {
       return yield* new AiError({
         module: "AnthropicCompletions",
@@ -371,15 +372,23 @@ const makeResponse = Effect.fnUntraced(function*(
       parts: Chunk.unsafeFromArray([...textParts, toolCallPart])
     })
   }
-  const parts = response.content.map((chunk) =>
-    chunk.type === "text"
-      ? AiResponse.TextPart.fromContent(chunk.text)
-      : AiResponse.ToolCallPart.fromUnknown({
-        id: chunk.id,
-        name: chunk.name,
-        params: chunk.input
-      })
-  )
+  const parts = Arr.empty<AiResponse.Part>()
+  for (const chunk of response.content) {
+    switch (chunk.type) {
+      case "text": {
+        parts.push(AiResponse.TextPart.fromContent(chunk.text))
+        break
+      }
+      case "tool_use": {
+        parts.push(AiResponse.ToolCallPart.fromUnknown({
+          id: chunk.id,
+          name: chunk.name,
+          params: chunk.input
+        }))
+        break
+      }
+    }
+  }
   return AiResponse.AiResponse.make({
     role: AiRole.model,
     parts: Chunk.unsafeFromArray(parts)

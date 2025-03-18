@@ -142,4 +142,27 @@ describe("UrlParams", () => {
         })
       }))
   })
+
+  it("nested records", () => {
+    const urlParams = UrlParams.fromInput({
+      "a": [10, "string"],
+      "b": false,
+      "c": {
+        "d": 10,
+        "e": "string",
+        f: {
+          g: [10, "string"]
+        }
+      }
+    })
+    deepStrictEqual(Array.from(urlParams), [
+      ["a", "10"],
+      ["a", "string"],
+      ["b", "false"],
+      ["c[d]", "10"],
+      ["c[e]", "string"],
+      ["c[f][g]", "10"],
+      ["c[f][g]", "string"]
+    ])
+  })
 })
