@@ -16,10 +16,25 @@ import * as internal from "./internal/httpServer.js"
 
 /**
  * @since 1.0.0
+ * @category models
+ */
+export type BunServerRoutes<R> = internal.BunServerRoutes<R>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type BunServerOptions<R extends internal.BunServerRoutes<R>> = Omit<
+  internal.BunServerOptions<R>,
+  "fetch" | "error" | "unix"
+>
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
-export const make: <R extends internal.BunServerRoutes<R>>(
-  options: Omit<internal.BunServerOptions<R>, "fetch" | "error" | "unix">
+export const make: <R extends BunServerRoutes<R>>(
+  options: BunServerOptions<R>
 ) => Effect.Effect<Server.HttpServer, never, Scope.Scope> = internal.make
 
 /**
@@ -27,7 +42,7 @@ export const make: <R extends internal.BunServerRoutes<R>>(
  * @category layers
  */
 export const layerServer: <R extends internal.BunServerRoutes<R>>(
-  options: Omit<internal.BunServerOptions<R>, "fetch" | "error" | "unix">
+  options: BunServerOptions<R>
 ) => Layer.Layer<Server.HttpServer> = internal.layerServer
 
 /**
@@ -35,7 +50,7 @@ export const layerServer: <R extends internal.BunServerRoutes<R>>(
  * @category layers
  */
 export const layer: <R extends internal.BunServerRoutes<R>>(
-  options: Omit<internal.BunServerOptions<R>, "fetch" | "error" | "unix">
+  options: BunServerOptions<R>
 ) => Layer.Layer<Server.HttpServer | Platform.HttpPlatform | Etag.Generator | BunContext.BunContext> = internal.layer
 
 /**
@@ -59,7 +74,7 @@ export const layerTest: Layer.Layer<
  * @category layers
  */
 export const layerConfig: <R extends internal.BunServerRoutes<R>>(
-  options: Config.Config.Wrap<Omit<internal.BunServerOptions<R>, "fetch" | "error" | "unix">>
+  options: Config.Config.Wrap<BunServerOptions<R>>
 ) => Layer.Layer<
   Server.HttpServer | Platform.HttpPlatform | Etag.Generator | BunContext.BunContext,
   ConfigError.ConfigError
