@@ -66,6 +66,11 @@ export * as NodeSocket from "./NodeSocket.js"
 /**
  * @since 1.0.0
  */
+export * as NodeSocketServer from "./NodeSocketServer.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as NodeStream from "./NodeStream.js"
 
 /**

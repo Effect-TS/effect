@@ -17,8 +17,8 @@ export interface CollectorService {
   readonly unsafeAddAll: (_: Iterable<globalThis.Transferable>) => void
   readonly read: Effect.Effect<Array<globalThis.Transferable>>
   readonly unsafeRead: () => Array<globalThis.Transferable>
-  readonly unsafeClear: () => void
-  readonly clear: Effect.Effect<void>
+  readonly unsafeClear: () => Array<globalThis.Transferable>
+  readonly clear: Effect.Effect<Array<globalThis.Transferable>>
 }
 
 /**
@@ -35,15 +35,16 @@ export class Collector extends Context.Tag("@effect/platform/Transferable/Collec
  * @category constructors
  */
 export const unsafeMakeCollector = (): CollectorService => {
-  const tranferables: Array<globalThis.Transferable> = []
+  let tranferables: Array<globalThis.Transferable> = []
   const unsafeAddAll = (transfers: Iterable<globalThis.Transferable>): void => {
-    for (const transfer of transfers) {
-      tranferables.push(transfer)
-    }
+    // eslint-disable-next-line no-restricted-syntax
+    tranferables.push(...transfers)
   }
   const unsafeRead = (): Array<globalThis.Transferable> => tranferables
-  const unsafeClear = (): void => {
-    tranferables.length = 0
+  const unsafeClear = (): Array<globalThis.Transferable> => {
+    const prev = tranferables
+    tranferables = []
+    return prev
   }
   return Collector.of({
     unsafeAddAll,

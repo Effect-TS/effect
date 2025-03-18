@@ -5,6 +5,7 @@ import type * as Context from "effect/Context"
 import type * as Deferred from "effect/Deferred"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
+import type * as Mailbox from "effect/Mailbox"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
@@ -17,13 +18,14 @@ import type { WorkerError } from "./WorkerError.js"
  */
 export interface BackingRunner<I, O> {
   readonly run: <A, E, R>(
-    handler: (portId: number, message: I) => Effect.Effect<A, E, R>
+    handler: (portId: number, message: I) => Effect.Effect<A, E, R> | void
   ) => Effect.Effect<void, never, Scope.Scope | R>
   readonly send: (
     portId: number,
     message: O,
     transfers?: ReadonlyArray<unknown>
   ) => Effect.Effect<void>
+  readonly disconnects?: Mailbox.ReadonlyMailbox<number>
 }
 
 /**
