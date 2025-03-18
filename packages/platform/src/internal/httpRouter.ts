@@ -18,6 +18,7 @@ import * as FindMyWay from "find-my-way-ts"
 import type * as App from "../HttpApp.js"
 import type * as Method from "../HttpMethod.js"
 import type * as Router from "../HttpRouter.js"
+import * as HttpServer from "../HttpServer.js"
 import * as Error from "../HttpServerError.js"
 import * as ServerRequest from "../HttpServerRequest.js"
 import * as Respondable from "../HttpServerRespondable.js"
@@ -855,5 +856,6 @@ export const Tag =
         Layer.unwrapEffect,
         Layer.provide(TagClass_.Live)
       )
+    TagClass_.serve = (middleware) => TagClass_.unwrap(HttpServer.serve(middleware as any))
     return TagClass as any
   }
