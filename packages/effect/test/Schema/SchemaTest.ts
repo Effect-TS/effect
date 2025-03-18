@@ -55,6 +55,11 @@ export const assertions = Effect.gen(function*() {
   }
 
   const out = {
+    ast: {
+      equals: <A, I, R>(a: Schema.Schema<A, I, R>, b: Schema.Schema<A, I, R>) => {
+        deepStrictEqual(a.ast, b.ast)
+      }
+    },
     make: {
       /**
        * Ensures that the given constructor produces the expected value.

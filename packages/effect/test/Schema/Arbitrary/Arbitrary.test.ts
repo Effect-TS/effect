@@ -556,6 +556,12 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     })
 
     describe("array filters", () => {
+      it("Array", () => {
+        const schema = S.Array(S.String).pipe(S.filter(() => true))
+        expectConstraints(schema, Arbitrary.makeArrayConstraints({}))
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
+      })
+
       it("minItems (Array)", () => {
         const schema = S.Array(S.String).pipe(S.minItems(2))
         expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 2 }))
@@ -594,6 +600,12 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     })
 
     describe("string filters", () => {
+      it("String", () => {
+        const schema = S.String.pipe(S.filter(() => true))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({}))
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
+      })
+
       it("minLength", () => {
         const schema = S.String.pipe(S.minLength(2))
         expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2 }))
@@ -681,6 +693,12 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     })
 
     describe("number filters", () => {
+      it("Number", () => {
+        const schema = S.Number.pipe(S.filter(() => true))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({}))
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
+      })
+
       it("nonNaN", () => {
         const schema = S.Number.pipe(S.nonNaN())
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ noNaN: true }))
@@ -749,6 +767,12 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     })
 
     describe("bigint filters", () => {
+      it("BigIntFromSelf", () => {
+        const schema = S.BigIntFromSelf.pipe(S.filter(() => true))
+        expectConstraints(schema, Arbitrary.makeBigIntConstraints({}))
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
+      })
+
       it("lessThanOrEqualTo", () => {
         const schema = S.BigIntFromSelf.pipe(S.lessThanOrEqualToBigInt(BigInt(5)))
         expectConstraints(schema, Arbitrary.makeBigIntConstraints({ max: BigInt(5) }))
@@ -781,6 +805,12 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     })
 
     describe("date filters", () => {
+      it("DateFromSelf", () => {
+        const schema = S.DateFromSelf.pipe(S.filter(() => true))
+        expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: false }))
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
+      })
+
       it("ValidDateFromSelf", () => {
         const schema = S.ValidDateFromSelf
         expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: true }))

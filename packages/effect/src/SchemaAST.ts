@@ -1481,13 +1481,13 @@ export class TypeLiteral implements Annotated {
       symbol: false
     }
     for (let i = 0; i < indexSignatures.length; i++) {
-      const parameter = getParameterBase(indexSignatures[i].parameter)
-      if (isStringKeyword(parameter)) {
+      const encodedParameter = getEncodedParameter(indexSignatures[i].parameter)
+      if (isStringKeyword(encodedParameter)) {
         if (parameters.string) {
           throw new Error(errors_.getASTDuplicateIndexSignatureErrorMessage("string"))
         }
         parameters.string = true
-      } else if (isSymbolKeyword(parameter)) {
+      } else if (isSymbolKeyword(encodedParameter)) {
         if (parameters.symbol) {
           throw new Error(errors_.getASTDuplicateIndexSignatureErrorMessage("symbol"))
         }
@@ -2074,12 +2074,12 @@ export const isTypeLiteralTransformation: (ast: TransformationKind) => ast is Ty
  *
  * @since 3.10.0
  */
-export const annotations = (ast: AST, a: Annotations): AST => {
+export const annotations = (ast: AST, overrides: Annotations): AST => {
   const d = Object.getOwnPropertyDescriptors(ast)
-  const value = { ...ast.annotations, ...a }
+  const value = { ...ast.annotations, ...overrides }
   const surrogate = getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
-    value[SurrogateAnnotationId] = annotations(surrogate.value, a)
+    value[SurrogateAnnotationId] = annotations(surrogate.value, overrides)
   }
   d.annotations.value = value
   return Object.create(Object.getPrototypeOf(ast), d)
@@ -2169,20 +2169,35 @@ export const getTemplateLiteralCapturingRegExp = (ast: TemplateLiteral): RegExp 
  * @since 3.10.0
  */
 export const getPropertySignatures = (ast: AST): Array<PropertySignature> => {
+  const annotation = getSurrogateAnnotation(ast)
+  if (Option.isSome(annotation)) {
+    return getPropertySignatures(annotation.value)
+  }
   switch (ast._tag) {
-    case "Declaration": {
-      const annotation = getSurrogateAnnotation(ast)
-      if (Option.isSome(annotation)) {
-        return getPropertySignatures(annotation.value)
-      }
-      break
-    }
     case "TypeLiteral":
       return ast.propertySignatures.slice()
     case "Suspend":
       return getPropertySignatures(ast.f())
+    case "Refinement":
+      return getPropertySignatures(ast.from)
   }
   return getPropertyKeys(ast).map((name) => getPropertyKeyIndexedAccess(ast, name))
+}
+
+const getIndexSignatures = (ast: AST): Array<IndexSignature> => {
+  const annotation = getSurrogateAnnotation(ast)
+  if (Option.isSome(annotation)) {
+    return getIndexSignatures(annotation.value)
+  }
+  switch (ast._tag) {
+    case "TypeLiteral":
+      return ast.indexSignatures.slice()
+    case "Suspend":
+      return getIndexSignatures(ast.f())
+    case "Refinement":
+      return getIndexSignatures(ast.from)
+  }
+  return []
 }
 
 /** @internal */
@@ -2224,10 +2239,10 @@ const getTypeLiteralPropertySignature = (ast: TypeLiteral, name: PropertyKey): P
   if (Predicate.isString(name)) {
     let out: PropertySignature | undefined = undefined
     for (const is of ast.indexSignatures) {
-      const parameterBase = getParameterBase(is.parameter)
-      switch (parameterBase._tag) {
+      const encodedParameter = getEncodedParameter(is.parameter)
+      switch (encodedParameter._tag) {
         case "TemplateLiteral": {
-          const regex = getTemplateLiteralRegExp(parameterBase)
+          const regex = getTemplateLiteralRegExp(encodedParameter)
           if (regex.test(name)) {
             return new PropertySignature(name, is.type, false, true)
           }
@@ -2245,8 +2260,8 @@ const getTypeLiteralPropertySignature = (ast: TypeLiteral, name: PropertyKey): P
     }
   } else if (Predicate.isSymbol(name)) {
     for (const is of ast.indexSignatures) {
-      const parameterBase = getParameterBase(is.parameter)
-      if (isSymbolKeyword(parameterBase)) {
+      const encodedParameter = getEncodedParameter(is.parameter)
+      if (isSymbolKeyword(encodedParameter)) {
         return new PropertySignature(name, is.type, false, true)
       }
     }
@@ -2290,13 +2305,15 @@ const getPropertyKeys = (ast: AST): Array<PropertyKey> => {
   switch (ast._tag) {
     case "TypeLiteral":
       return ast.propertySignatures.map((ps) => ps.name)
-    case "Suspend":
-      return getPropertyKeys(ast.f())
     case "Union":
       return ast.types.slice(1).reduce(
         (out: Array<PropertyKey>, ast) => Arr.intersection(out, getPropertyKeys(ast)),
         getPropertyKeys(ast.types[0])
       )
+    case "Suspend":
+      return getPropertyKeys(ast.f())
+    case "Refinement":
+      return getPropertyKeys(ast.from)
     case "Transformation":
       return getPropertyKeys(ast.to)
   }
@@ -2422,8 +2439,16 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | 
  *
  * @since 3.10.0
  */
-export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | Transformation =>
-  pick(ast, getPropertyKeys(ast).filter((name) => !keys.includes(name)))
+export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | Transformation => {
+  let indexSignatures = getIndexSignatures(ast)
+  if (indexSignatures.length > 0) {
+    if (indexSignatures.some((is) => isStringKeyword(getEncodedParameter(is.parameter)))) {
+      indexSignatures = indexSignatures.filter((is) => !isTemplateLiteral(getEncodedParameter(is.parameter)))
+    }
+    return new TypeLiteral([], indexSignatures)
+  }
+  return pick(ast, getPropertyKeys(ast).filter((name) => !keys.includes(name)))
+}
 
 /** @internal */
 export const orUndefined = (ast: AST): AST => Union.make([ast, undefinedKeyword])
@@ -2578,6 +2603,40 @@ export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
   return compile
 }
 
+/** @internal */
+export const pickAnnotations =
+  (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
+    let out: { [_: symbol]: unknown } | undefined = undefined
+    for (const id of annotationIds) {
+      if (Object.prototype.hasOwnProperty.call(annotated.annotations, id)) {
+        if (out === undefined) {
+          out = {}
+        }
+        out[id] = annotated.annotations[id]
+      }
+    }
+    return out
+  }
+
+/** @internal */
+export const omitAnnotations =
+  (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
+    const out = { ...annotated.annotations }
+    for (const id of annotationIds) {
+      delete out[id]
+    }
+    return out
+  }
+
+const preserveTransformationAnnotations = pickAnnotations([
+  ExamplesAnnotationId,
+  DefaultAnnotationId,
+  JSONSchemaAnnotationId,
+  ArbitraryAnnotationId,
+  PrettyAnnotationId,
+  EquivalenceAnnotationId
+])
+
 /**
  * @since 3.10.0
  */
@@ -2625,36 +2684,17 @@ export const typeAST = (ast: AST): AST => {
         ast :
         new Refinement(from, ast.filter, ast.annotations)
     }
-    case "Transformation":
-      return typeAST(ast.to)
+    case "Transformation": {
+      const preserve = preserveTransformationAnnotations(ast)
+      return typeAST(
+        preserve !== undefined ?
+          annotations(ast.to, preserve) :
+          ast.to
+      )
+    }
   }
   return ast
 }
-
-/** @internal */
-export const whiteListAnnotations =
-  (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
-    let out: { [_: symbol]: unknown } | undefined = undefined
-    for (const id of annotationIds) {
-      if (Object.prototype.hasOwnProperty.call(annotated.annotations, id)) {
-        if (out === undefined) {
-          out = {}
-        }
-        out[id] = annotated.annotations[id]
-      }
-    }
-    return out
-  }
-
-/** @internal */
-export const blackListAnnotations =
-  (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
-    const out = { ...annotated.annotations }
-    for (const id of annotationIds) {
-      delete out[id]
-    }
-    return out
-  }
 
 // To generate a JSON Schema from a recursive schema, an `identifier` annotation
 // is required. So, when we calculate the encodedAST, we need to preserve the
@@ -2786,7 +2826,7 @@ const toJSONAnnotations = (annotations: Annotations): object => {
 }
 
 /** @internal */
-export const getParameterBase = (
+export const getEncodedParameter = (
   ast: Parameter
 ): StringKeyword | SymbolKeyword | TemplateLiteral => {
   switch (ast._tag) {
@@ -2795,7 +2835,7 @@ export const getParameterBase = (
     case "TemplateLiteral":
       return ast
     case "Refinement":
-      return getParameterBase(ast.from)
+      return getEncodedParameter(ast.from)
   }
 }
 
@@ -2858,7 +2898,7 @@ const _keyof = (ast: AST): Array<AST> => {
     case "TypeLiteral":
       return ast.propertySignatures.map((p): AST =>
         Predicate.isSymbol(p.name) ? new UniqueSymbol(p.name) : new Literal(p.name)
-      ).concat(ast.indexSignatures.map((is) => getParameterBase(is.parameter)))
+      ).concat(ast.indexSignatures.map((is) => getEncodedParameter(is.parameter)))
     case "Suspend":
       return _keyof(ast.f())
     case "Union":

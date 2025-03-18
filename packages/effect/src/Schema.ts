@@ -2767,7 +2767,7 @@ export interface TypeLiteral<
   ): Simplify<TypeLiteral.Type<Fields, Records>>
 }
 
-const preserveMissingMessageAnnotation = AST.whiteListAnnotations([AST.MissingMessageAnnotationId])
+const preserveMissingMessageAnnotation = AST.pickAnnotations([AST.MissingMessageAnnotationId])
 
 const getDefaultTypeLiteralAST = <
   Fields extends Struct.Fields,
@@ -3299,7 +3299,7 @@ const intersectTypeLiterals = (
   throw new Error(errors_.getSchemaExtendErrorMessage(x, y, path))
 }
 
-const preserveRefinementAnnotations = AST.blackListAnnotations([AST.IdentifierAnnotationId])
+const preserveRefinementAnnotations = AST.omitAnnotations([AST.IdentifierAnnotationId])
 
 const addRefinementToMembers = (refinement: AST.Refinement, asts: ReadonlyArray<AST.AST>): Array<AST.Refinement> =>
   asts.map((ast) => new AST.Refinement(ast, refinement.filter, preserveRefinementAnnotations(refinement)))
@@ -10749,8 +10749,8 @@ const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equival
         let bStringKeys: Array<string> | undefined
         for (let i = 0; i < indexSignatures.length; i++) {
           const is = ast.indexSignatures[i]
-          const base = AST.getParameterBase(is.parameter)
-          const isSymbol = AST.isSymbolKeyword(base)
+          const encodedParameter = AST.getEncodedParameter(is.parameter)
+          const isSymbol = AST.isSymbolKeyword(encodedParameter)
           if (isSymbol) {
             bSymbolKeys = bSymbolKeys || Object.getOwnPropertySymbols(b)
             if (aSymbolKeys.length !== bSymbolKeys.length) {

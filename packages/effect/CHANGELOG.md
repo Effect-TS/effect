@@ -1,5 +1,241 @@
 # effect
 
+## 3.13.12
+
+### Patch Changes
+
+- [#4610](https://github.com/Effect-TS/effect/pull/4610) [`0c4803f`](https://github.com/Effect-TS/effect/commit/0c4803fcc69262d11a97ce49d0e9b4288df0651f) Thanks @gcanti! - Preserve specific annotations (e.g., `arbitrary`) when using `Schema.typeSchema`, closes #4609.
+
+  Previously, annotations such as `arbitrary` were lost when calling `Schema.typeSchema` on a transformation. This update ensures that certain annotations, which depend only on the "to" side of the transformation, are preserved.
+
+  Annotations that are now retained:
+
+  - `examples`
+  - `default`
+  - `jsonSchema`
+  - `arbitrary`
+  - `pretty`
+  - `equivalence`
+
+  **Example**
+
+  Before
+
+  ```ts
+  import { Arbitrary, FastCheck, Schema } from "effect"
+
+  const schema = Schema.NumberFromString.annotations({
+    arbitrary: () => (fc) => fc.constant(1)
+  })
+
+  const to = Schema.typeSchema(schema) // ❌ Annotation is lost
+
+  console.log(FastCheck.sample(Arbitrary.make(to), 5))
+  /*
+  [
+    2.5223372357846707e-44,
+    -2.145443957806771e+25,
+    -3.4028179901346956e+38,
+    5.278086259208735e+29,
+    1.8216880036222622e-44
+  ]
+  */
+  ```
+
+  After
+
+  ```ts
+  import { Arbitrary, FastCheck, Schema } from "effect"
+
+  const schema = Schema.NumberFromString.annotations({
+    arbitrary: () => (fc) => fc.constant(1)
+  })
+
+  const to = Schema.typeSchema(schema) // ✅ Annotation is now preserved
+
+  console.log(FastCheck.sample(Arbitrary.make(to), 5))
+  /*
+  [ 1, 1, 1, 1, 1 ]
+  */
+  ```
+
+- [#4607](https://github.com/Effect-TS/effect/pull/4607) [`6f65ac4`](https://github.com/Effect-TS/effect/commit/6f65ac4eac1489cd6ea390e18b0908670722adad) Thanks @gcanti! - Add support for `jsonSchema` annotations on `SymbolFromSelf` index signatures.
+
+  **Before**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Record({
+    key: Schema.SymbolFromSelf.annotations({ jsonSchema: { type: "string" } }),
+    value: Schema.Number
+  })
+
+  JSONSchema.make(schema)
+  /*
+  throws:
+  Error: Unsupported index signature parameter
+  schema (SymbolKeyword): symbol
+  */
+  ```
+
+  **After**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Record({
+    key: Schema.SymbolFromSelf.annotations({ jsonSchema: { type: "string" } }),
+    value: Schema.Number
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [],
+    "properties": {},
+    "additionalProperties": {
+      "type": "number"
+    },
+    "propertyNames": {
+      "type": "string"
+    }
+  }
+  */
+  ```
+
+## 3.13.11
+
+### Patch Changes
+
+- [#4601](https://github.com/Effect-TS/effect/pull/4601) [`fad8cca`](https://github.com/Effect-TS/effect/commit/fad8cca9bbfcc2eaeb44b97c15dbe0a1eda75315) Thanks @gcanti! - Schema: enhance the internal `formatUnknown` function to handle various types including iterables, classes, and additional edge cases.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Array(Schema.Number)
+
+  Schema.decodeUnknownSync(schema)(new Set([1, 2]))
+  // throws Expected ReadonlyArray<number>, actual {}
+
+  class A {
+    constructor(readonly a: number) {}
+  }
+
+  Schema.decodeUnknownSync(schema)(new A(1))
+  // throws Expected ReadonlyArray<number>, actual {"a":1}
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Array(Schema.Number)
+
+  Schema.decodeUnknownSync(schema)(new Set([1, 2]))
+  // throws Expected ReadonlyArray<number>, actual Set([1,2])
+
+  class A {
+    constructor(readonly a: number) {}
+  }
+
+  Schema.decodeUnknownSync(schema)(new A(1))
+  // throws Expected ReadonlyArray<number>, actual A({"a":1})
+  ```
+
+- [#4606](https://github.com/Effect-TS/effect/pull/4606) [`4296293`](https://github.com/Effect-TS/effect/commit/4296293049414d0cf2d915a26c552b09f946b9a0) Thanks @gcanti! - Fix issue with generic filters when generating arbitraries, closes #4605.
+
+  Previously, applying a `filter` to a schema when generating arbitraries could cause a `TypeError` due to missing properties. This fix ensures that arbitraries are generated correctly when filters are used.
+
+  **Before**
+
+  ```ts
+  import { Arbitrary, Schema } from "effect"
+
+  const schema = Schema.BigIntFromSelf.pipe(Schema.filter(() => true))
+
+  Arbitrary.make(schema)
+  // TypeError: Cannot read properties of undefined (reading 'min')
+  ```
+
+  **After**
+
+  ```ts
+  import { Arbitrary, Schema } from "effect"
+
+  const schema = Schema.BigIntFromSelf.pipe(Schema.filter(() => true))
+
+  const result = Arbitrary.make(schema) // Works correctly
+  ```
+
+- [#4587](https://github.com/Effect-TS/effect/pull/4587) [`9c241ab`](https://github.com/Effect-TS/effect/commit/9c241abe47ccf7a5257b98a4a64a63054a12741d) Thanks @gcanti! - Schema: simplify `Struct` and `Record` return types.
+
+- [#4591](https://github.com/Effect-TS/effect/pull/4591) [`082b0c1`](https://github.com/Effect-TS/effect/commit/082b0c1b9f4252bcdd69608f2e4a9226f953ac3f) Thanks @IMax153! - Improve clarity of the `TimeoutException` error message
+
+- [#4604](https://github.com/Effect-TS/effect/pull/4604) [`be12983`](https://github.com/Effect-TS/effect/commit/be12983bc7e7537b41cd8910fc4eb7d1da56ab07) Thanks @gcanti! - Add support for refinements to `Schema.omit`, closes #4603.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.String,
+    b: Schema.String
+  })
+
+  const omitted = schema.pipe(
+    Schema.filter(() => true),
+    Schema.omit("a")
+  )
+
+  console.log(String(omitted.ast))
+  // {} ❌
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.String,
+    b: Schema.String
+  })
+
+  const omitted = schema.pipe(
+    Schema.filter(() => true),
+    Schema.omit("a")
+  )
+
+  console.log(String(omitted.ast))
+  // { readonly b: string }
+  ```
+
+- [#4593](https://github.com/Effect-TS/effect/pull/4593) [`de88127`](https://github.com/Effect-TS/effect/commit/de88127a5a5906ccece98af74787b5ae0e65e431) Thanks @gcanti! - Schema: export `Field` type.
+
+  Useful for creating a type that can be used to add custom constraints to the fields of a struct.
+
+  ```ts
+  import { Schema } from "effect"
+
+  const f = <Fields extends Record<"a" | "b", Schema.Struct.Field>>(
+    schema: Schema.Struct<Fields>
+  ) => {
+    return schema.omit("a")
+  }
+
+  //      ┌─── Schema.Struct<{ b: typeof Schema.Number; }>
+  //      ▼
+  const result = f(Schema.Struct({ a: Schema.String, b: Schema.Number }))
+  ```
+
 ## 3.13.10
 
 ### Patch Changes
