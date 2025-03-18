@@ -61,6 +61,7 @@ describe("Url", () => {
 
   it("setPort", () => {
     expectUrl(Url.setPort(testURL, "8080"), "https://example.com:8080/test")
+    expectUrl(Url.setPort(testURL, 8080), "https://example.com:8080/test")
   })
 
   it("setProtocol", () => {

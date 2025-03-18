@@ -98,9 +98,9 @@ export const mutate: {
 })
 
 /** @internal */
-const immutableURLSetter = <P extends keyof URL>(property: P): {
-  (value: URL[P]): (url: URL) => URL
-  (url: URL, value: URL[P]): URL
+const immutableURLSetter = <P extends keyof URL, A = never>(property: P): {
+  (value: URL[P] | A): (url: URL) => URL
+  (url: URL, value: URL[P] | A): URL
 } =>
   dual(2, (url: URL, value: URL[P]) =>
     mutate(url, (url) => {
@@ -180,8 +180,8 @@ export const setPathname: {
  * @category Setters
  */
 export const setPort: {
-  (port: string): (url: URL) => URL
-  (url: URL, port: string): URL
+  (port: string | number): (url: URL) => URL
+  (url: URL, port: string | number): URL
 } = immutableURLSetter("port")
 
 /**

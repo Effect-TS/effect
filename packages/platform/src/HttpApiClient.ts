@@ -131,7 +131,7 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
-    readonly baseUrl?: string | undefined
+    readonly baseUrl?: URL | string | undefined
   }
 ): Effect.Effect<
   void,
@@ -141,7 +141,11 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
   Effect.gen(function*() {
     const context = yield* Effect.context<any>()
     const httpClient = (yield* HttpClient.HttpClient).pipe(
-      options?.baseUrl === undefined ? identity : HttpClient.mapRequest(HttpClientRequest.prependUrl(options.baseUrl)),
+      options?.baseUrl === undefined
+        ? identity
+        : HttpClient.mapRequest(
+          HttpClientRequest.prependUrl(options.baseUrl.toString())
+        ),
       options?.transformClient === undefined ? identity : options.transformClient
     )
     HttpApi.reflect(api as any, {
@@ -244,7 +248,7 @@ export const make = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiE
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
-    readonly baseUrl?: string | undefined
+    readonly baseUrl?: URL | string | undefined
   }
 ): Effect.Effect<
   Simplify<Client<Groups, ApiError>>,
@@ -282,7 +286,7 @@ export const group = <
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
-    readonly baseUrl?: string | undefined
+    readonly baseUrl?: URL | string | undefined
   }
 ): Effect.Effect<
   Client.Group<Groups, GroupName, ApiError>,
@@ -324,7 +328,7 @@ export const endpoint = <
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
-    readonly baseUrl?: string | undefined
+    readonly baseUrl?: URL | string | undefined
   }
 ): Effect.Effect<
   Client.Method<
