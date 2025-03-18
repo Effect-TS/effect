@@ -17,7 +17,6 @@ import {
   ScheduleIntervals
 } from "effect"
 import { constVoid } from "effect/Function"
-import * as DateTime from "effect/internal/dateTime"
 import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as TestClock from "effect/TestClock"
 
@@ -899,7 +898,7 @@ export const run = <A, E, R>(
   effect: Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => {
   return Effect.fork(effect).pipe(
-    Effect.tap(() => TestClock.setTime(DateTime.maxEpochMillis)),
+    Effect.tap(() => TestClock.setTime(Number.POSITIVE_INFINITY)),
     Effect.flatMap(Fiber.join)
   )
 }

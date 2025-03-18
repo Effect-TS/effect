@@ -235,8 +235,7 @@ export const unsafeMake = <A extends DateTime.DateTime.Input>(input: A): DateTim
 }
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
-/** @internal */
-export const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)
+const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)
 
 /** @internal */
 export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {

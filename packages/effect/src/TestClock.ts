@@ -500,7 +500,13 @@ export const save = (): Effect.Effect<Effect.Effect<void>> => testClockWith((tes
  * @since 2.0.0
  */
 export const setTime = (input: DateTime.DateTime.Input): Effect.Effect<void> =>
-  testClockWith((testClock) => testClock.setTime(DateTime.unsafeMake(input).epochMillis))
+  testClockWith((testClock) =>
+    testClock.setTime(
+      typeof input === "number"
+        ? input
+        : DateTime.unsafeMake(input).epochMillis
+    )
+  )
 
 /**
  * Semantically blocks the current fiber until the clock time is equal to or
