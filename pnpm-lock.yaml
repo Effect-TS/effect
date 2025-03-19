@@ -553,9 +553,6 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect/dist
-      happy-dom:
-        specifier: ^14.12.3
-        version: 14.12.3
     publishDirectory: dist
 
   packages/sql:
