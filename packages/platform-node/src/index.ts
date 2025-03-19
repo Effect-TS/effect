@@ -1,6 +1,26 @@
 /**
  * @since 1.0.0
  */
+export * as NodeClusterRunnerHttp from "./NodeClusterRunnerHttp.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as NodeClusterRunnerSocket from "./NodeClusterRunnerSocket.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as NodeClusterShardManagerHttp from "./NodeClusterShardManagerHttp.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as NodeClusterShardManagerSocket from "./NodeClusterShardManagerSocket.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as NodeCommandExecutor from "./NodeCommandExecutor.js"
 
 /**

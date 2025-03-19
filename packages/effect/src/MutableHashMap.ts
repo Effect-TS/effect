@@ -164,11 +164,27 @@ export const get: {
  * @category elements
  */
 export const keys = <K, V>(self: MutableHashMap<K, V>): Array<K> => {
-  const keys: Array<K> = []
-  for (const [key] of self) {
-    keys.push(key)
+  const keys = Array.from(self.referential.keys())
+  for (const bucket of self.buckets.values()) {
+    for (let i = 0, len = bucket.length; i < len; i++) {
+      keys.push(bucket[i][0])
+    }
   }
   return keys
+}
+
+/**
+ * @since 3.8.0
+ * @category elements
+ */
+export const values = <K, V>(self: MutableHashMap<K, V>): Array<V> => {
+  const values = Array.from(self.referential.values())
+  for (const bucket of self.buckets.values()) {
+    for (let i = 0, len = bucket.length; i < len; i++) {
+      values.push(bucket[i][1])
+    }
+  }
+  return values
 }
 
 const getFromBucket = <K, V>(
@@ -373,3 +389,23 @@ export const clear = <K, V>(self: MutableHashMap<K, V>) => {
 export const size = <K, V>(self: MutableHashMap<K, V>): number => {
   return self.referential.size + self.bucketsSize
 }
+
+/**
+ * @since 2.0.0
+ */
+export const isEmpty = <K, V>(self: MutableHashMap<K, V>): boolean => size(self) === 0
+
+/**
+ * @since 2.0.0
+ */
+export const forEach: {
+  <K, V>(f: (value: V, key: K) => void): (self: MutableHashMap<K, V>) => void
+  <K, V>(self: MutableHashMap<K, V>, f: (value: V, key: K) => void): void
+} = dual(2, <K, V>(self: MutableHashMap<K, V>, f: (value: V, key: K) => void) => {
+  self.referential.forEach(f)
+  for (const bucket of self.buckets.values()) {
+    for (const [key, value] of bucket) {
+      f(value, key)
+    }
+  }
+})

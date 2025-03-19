@@ -26,14 +26,18 @@
     "coverage": "vitest --coverage"
   },
   "peerDependencies": {
+    "@effect/platform": "workspace:^",
+    "@effect/rpc": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
-    "@effect/platform-node": "workspace:^",
+    "@effect/rpc": "workspace:^",
     "@effect/sql": "workspace:^",
     "@effect/sql-sqlite-node": "workspace:^",
+    "@testcontainers/mysql": "^10.18.0",
+    "@testcontainers/postgresql": "^10.18.0",
     "effect": "workspace:^"
   }
 }
