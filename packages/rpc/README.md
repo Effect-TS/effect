@@ -121,7 +121,7 @@ This part explains how to serve the API using the handlers we defined earlier.
 // server.ts
 import { HttpRouter, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { toHttpApp } from "@effect/rpc-http/HttpRpcRouter";
+import { toHttpApp } from "@effect/rpc-http/HttpRpcRouter"
 import { Layer } from "effect"
 import { createServer } from "http"
 import { appRouter } from "./router.js"
@@ -281,7 +281,6 @@ export class UsersClient extends Effect.Service<UsersClient>()("UsersClient", {
   dependencies: [AuthClientLive]
 }) {}
 ```
-<<<<<<< HEAD
 
 ## Defining the Router
 
@@ -310,7 +309,7 @@ The server code configures an HTTP server to handle requests, using our appRoute
 // server.ts
 import { HttpRouter, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { toHttpApp } from "@effect/rpc-http/HttpRpcRouter";
+import { toHttpApp } from "@effect/rpc-http/HttpRpcRouter"
 import { Layer } from "effect"
 import { createServer } from "http"
 import { appRouter } from "./router.js"
@@ -336,11 +335,13 @@ import { Effect, Stream } from "effect"
 import { Counts } from "./request.js"
 import type { AppRouter } from "./router.js"
 
-const makeClient = Effect.gen(function*() {
+const makeClient = Effect.gen(function* () {
   const baseClient = yield* HttpClient.HttpClient
   const client = baseClient.pipe(
     HttpClient.filterStatusOk,
-    HttpClient.mapRequest(HttpClientRequest.prependUrl("http://localhost:3000/rpc"))
+    HttpClient.mapRequest(
+      HttpClientRequest.prependUrl("http://localhost:3000/rpc")
+    )
   )
   return RpcResolver.toClient(HttpRpcResolver.make<AppRouter>(client))
 })
@@ -355,10 +356,7 @@ const program = Effect.gen(function* () {
   )
 })
 
-program.pipe(
-  Effect.provide(FetchHttpClient.layer),
-  Effect.runPromise
-)
+program.pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise)
 /*
 timestamp=...:50.395Z level=INFO fiber=#0 message="Running the client"
 timestamp=...:52.438Z level=INFO fiber=#1 message=1
@@ -368,5 +366,3 @@ timestamp=...:55.445Z level=INFO fiber=#1 message=4
 timestamp=...:55.447Z level=INFO fiber=#1 message=5
 */
 ```
-=======
->>>>>>> 6e55d9ed4 (@effect/rpc 3rd revision)
