@@ -8,7 +8,6 @@
     { "path": "packages/ai/openai/tsconfig.build.json" },
     { "path": "packages/cli/tsconfig.build.json" },
     { "path": "packages/cluster/tsconfig.build.json" },
-    { "path": "packages/cluster-workflow/tsconfig.build.json" },
     { "path": "packages/experimental/tsconfig.build.json" },
     { "path": "packages/opentelemetry/tsconfig.build.json" },
     { "path": "packages/platform/tsconfig.build.json" },

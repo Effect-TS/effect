@@ -33,7 +33,6 @@ const config: ViteUserConfig = {
       ...alias("ai-openai", path.join("ai", "openai")),
       ...alias("cli"),
       ...alias("cluster"),
-      ...alias("cluster-workflow"),
       ...alias("experimental"),
       ...alias("opentelemetry"),
       ...alias("platform"),

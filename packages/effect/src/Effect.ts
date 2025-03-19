@@ -11820,6 +11820,16 @@ export interface Latch extends Effect<void> {
   readonly open: Effect<void>
 
   /**
+   * Opens the latch, releasing all fibers waiting on it.
+   *
+   * **Details**
+   *
+   * Once the latch is opened, it remains open. Any fibers waiting on `await`
+   * will be released and can continue execution.
+   */
+  readonly unsafeOpen: () => void
+
+  /**
    * Releases all fibers waiting on the latch without opening it.
    *
    * **Details**

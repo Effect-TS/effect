@@ -4,6 +4,7 @@
   "references": [
     { "path": "tsconfig.src.json" },
     { "path": "../effect/tsconfig.test.json" }, // We import test files from `effect`.
+    { "path": "../rpc/tsconfig.src.json" },
     { "path": "../vitest/tsconfig.src.json" }
   ],
   "compilerOptions": {

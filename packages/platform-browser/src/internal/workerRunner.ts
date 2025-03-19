@@ -55,7 +55,7 @@ export const make = (self: MessagePort | Window) =>
 
         function onMessage(portId: number) {
           return function(event: MessageEvent) {
-            const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
+            const message = event.data as Runner.BackingRunner.Message<I>
             if (message[0] === 0) {
               const result = handler(portId, message[1])
               if (Effect.isEffect(result)) {

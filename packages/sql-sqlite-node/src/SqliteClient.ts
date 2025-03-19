@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Reactivity from "@effect/experimental/Reactivity"
+import { SqlClient } from "@effect/sql"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
@@ -114,7 +115,7 @@ export const make = (
         lookup: (sql: string) =>
           Effect.try({
             try: () => db.prepare(sql),
-            catch: (cause) => new SqlError({ cause, message: "Failed to prepare statement" })
+            catch: (cause) => new SqlError({ cause, message: "Failed to prepare statement " })
           })
       })
 
@@ -123,15 +124,19 @@ export const make = (
         params: ReadonlyArray<Statement.Primitive>,
         raw: boolean
       ) =>
-        Effect.try({
-          try: () => {
+        Effect.withFiberRuntime<ReadonlyArray<any>, SqlError>((fiber) => {
+          if (Context.get(fiber.currentContext, SqlClient.SafeIntegers)) {
+            statement.safeIntegers(true)
+          }
+          try {
             if (statement.reader) {
-              return statement.all(...params)
+              return Effect.succeed(statement.all(...params))
             }
             const result = statement.run(...params)
-            return raw ? result as unknown as ReadonlyArray<any> : []
-          },
-          catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
+            return Effect.succeed(raw ? result as unknown as ReadonlyArray<any> : [])
+          } catch (cause) {
+            return Effect.fail(new SqlError({ cause, message: "Failed to execute statement" }))
+          }
         })
 
       const run = (

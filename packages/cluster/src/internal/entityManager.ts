@@ -1,402 +1,505 @@
-import * as Clock from "effect/Clock"
+import type * as Rpc from "@effect/rpc/Rpc"
+import { RequestId } from "@effect/rpc/RpcMessage"
+import * as RpcServer from "@effect/rpc/RpcServer"
+import * as Arr from "effect/Array"
+import * as Cause from "effect/Cause"
+import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
+import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import { pipe } from "effect/Function"
+import * as FiberRef from "effect/FiberRef"
+import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
+import * as Metric from "effect/Metric"
 import * as Option from "effect/Option"
+import * as Schedule from "effect/Schedule"
+import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
-import * as RefSynchronized from "effect/SynchronizedRef"
+import { AlreadyProcessingMessage, EntityNotManagedByRunner, MailboxFull, MalformedMessage } from "../ClusterError.js"
+import * as ClusterMetrics from "../ClusterMetrics.js"
+import { Persisted } from "../ClusterSchema.js"
+import type { Entity, HandlersFrom } from "../Entity.js"
+import { CurrentAddress, CurrentRunnerAddress, Request } from "../Entity.js"
+import type { EntityAddress } from "../EntityAddress.js"
+import type { EntityId } from "../EntityId.js"
+import * as Envelope from "../Envelope.js"
 import * as Message from "../Message.js"
-import * as MessageState from "../MessageState.js"
-import type * as RecipientAddress from "../RecipientAddress.js"
-import type * as RecipientBehaviour from "../RecipientBehaviour.js"
-import * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
-import type * as RecipientType from "../RecipientType.js"
-import type * as Serialization from "../Serialization.js"
-import type * as SerializedEnvelope from "../SerializedEnvelope.js"
-import type * as SerializedMessage from "../SerializedMessage.js"
-import type * as ShardId from "../ShardId.js"
-import type * as Sharding from "../Sharding.js"
-import type * as ShardingConfig from "../ShardingConfig.js"
-import * as ShardingException from "../ShardingException.js"
-import * as EntityState from "./entityState.js"
-
-/** @internal */
-const EntityManagerSymbolKey = "@effect/cluster/EntityManager"
-
-/** @internal */
-export const EntityManagerTypeId = Symbol.for(
-  EntityManagerSymbolKey
-)
-
-/** @internal */
-export type EntityManagerTypeId = typeof EntityManagerTypeId
+import * as MessageStorage from "../MessageStorage.js"
+import * as Reply from "../Reply.js"
+import type { RunnerAddress } from "../RunnerAddress.js"
+import type { ShardId } from "../ShardId.js"
+import type { Sharding } from "../Sharding.js"
+import { ShardingConfig } from "../ShardingConfig.js"
+import * as Snowflake from "../Snowflake.js"
+import { EntityReaper } from "./entityReaper.js"
+import { internalInterruptors } from "./interruptors.js"
+import { ResourceMap } from "./resourceMap.js"
+import { ResourceRef } from "./resourceRef.js"
 
 /** @internal */
 export interface EntityManager {
-  readonly [EntityManagerTypeId]: EntityManagerTypeId
+  readonly sendLocal: <R extends Rpc.Any>(
+    message: Message.IncomingLocal<R>
+  ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
 
-  /** @internal */
-  readonly sendAndGetState: (
-    envelope: SerializedEnvelope.SerializedEnvelope
-  ) => Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
-    | ShardingException.EntityNotManagedByThisPodException
-    | ShardingException.PodUnavailableException
-    | ShardingException.ExceptionWhileOfferingMessageException
-    | ShardingException.SerializationException
-  >
+  readonly send: (
+    message: Message.Incoming<any>
+  ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
 
-  /** @internal */
-  readonly terminateEntitiesOnShards: (
-    shards: HashSet.HashSet<ShardId.ShardId>
-  ) => Effect.Effect<void>
+  readonly isProcessingFor: (message: Message.Incoming<any>) => boolean
 
-  /** @internal */
-  readonly terminateAllEntities: Effect.Effect<void>
+  readonly interruptShard: (shardId: ShardId) => Effect.Effect<void>
+}
+
+// Represents the entities managed by this entity manager
+/** @internal */
+export type EntityState = {
+  readonly address: EntityAddress
+  readonly mailboxGauge: Metric.Metric.Gauge<bigint>
+  readonly activeRequests: Map<bigint, {
+    readonly rpc: Rpc.AnyWithProps
+    readonly message: Message.IncomingRequestLocal<any>
+    lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
+    sequence: number
+  }>
+  lastActiveCheck: number
+  write: RpcServer.RpcServer<any>["write"]
 }
 
 /** @internal */
-export function make<Msg extends Message.Message.Any, R>(
-  recipientType: RecipientType.RecipientType<Msg>,
-  recipientBehaviour: RecipientBehaviour.RecipientBehaviour<Msg, R>,
-  sharding: Sharding.Sharding,
-  config: ShardingConfig.ShardingConfig,
-  serialization: Serialization.Serialization,
-  options: RecipientBehaviour.EntityBehaviourOptions = {}
+export const make = Effect.fnUntraced(function*<
+  Rpcs extends Rpc.Any,
+  Handlers extends HandlersFrom<Rpcs>,
+  RX
+>(
+  entity: Entity<Rpcs>,
+  buildHandlers: Effect.Effect<Handlers, never, RX>,
+  options: {
+    readonly sharding: Sharding["Type"]
+    readonly storage: MessageStorage.MessageStorage["Type"]
+    readonly runnerAddress: RunnerAddress
+    readonly maxIdleTime?: DurationInput | undefined
+    readonly concurrency?: number | "unbounded" | undefined
+    readonly mailboxCapacity?: number | "unbounded" | undefined
+  }
 ) {
-  return Effect.gen(function*() {
-    const entityMaxIdle = options.entityMaxIdleTime || Option.none()
-    const env = yield* Effect.context<Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>>()
-    const entityStates = yield* RefSynchronized.make<
-      HashMap.HashMap<
-        RecipientAddress.RecipientAddress,
-        EntityState.EntityState
-      >
-    >(HashMap.empty())
+  const config = yield* ShardingConfig
+  const snowflakeGen = yield* Snowflake.Generator
+  const managerScope = yield* Effect.scope
+  const storageEnabled = options.storage !== MessageStorage.noop
+  const mailboxCapacity = options.mailboxCapacity ?? config.entityMailboxCapacity
+  const clock = yield* Effect.clock
+  const context = yield* Effect.context<Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | RX>()
 
-    function startExpirationFiber(recipientAddress: RecipientAddress.RecipientAddress) {
-      const maxIdleMillis = pipe(
-        entityMaxIdle,
-        Option.getOrElse(() => config.entityMaxIdleTime),
-        Duration.toMillis
-      )
+  const activeServers = new Map<EntityId, EntityState>()
 
-      function sleep(duration: number): Effect.Effect<void> {
-        return pipe(
-          Effect.Do,
-          Effect.zipLeft(Clock.sleep(Duration.millis(duration))),
-          Effect.bind("cdt", () => Clock.currentTimeMillis),
-          Effect.bind("map", () => RefSynchronized.get(entityStates)),
-          Effect.let("lastReceivedAt", ({ map }) =>
-            pipe(
-              HashMap.get(map, recipientAddress),
-              Option.map((_) => _.lastReceivedAt),
-              Option.getOrElse(() => 0)
-            )),
-          Effect.let("remaining", ({ cdt, lastReceivedAt }) => (maxIdleMillis - cdt + lastReceivedAt)),
-          Effect.tap((_) => _.remaining > 0 ? sleep(_.remaining) : Effect.void)
-        )
-      }
-
-      return pipe(
-        sleep(maxIdleMillis),
-        Effect.zipRight(forkEntityTermination(recipientAddress)),
-        Effect.asVoid,
-        Effect.interruptible,
-        Effect.annotateLogs("entityId", recipientAddress),
-        Effect.annotateLogs("recipientType", recipientType.name),
-        Effect.forkDaemon
-      )
+  const entities: ResourceMap<
+    EntityAddress,
+    EntityState,
+    EntityNotManagedByRunner
+  > = yield* ResourceMap.make(Effect.fnUntraced(function*(address) {
+    if (yield* options.sharding.isShutdown) {
+      return yield* new EntityNotManagedByRunner({ address })
     }
 
-    /**
-     * Performs proper termination of the entity, interrupting the expiration timer, closing the scope and failing pending replies
-     */
-    function terminateEntity(recipientAddress: RecipientAddress.RecipientAddress) {
-      return pipe(
-        // get the things to cleanup
-        RefSynchronized.get(
-          entityStates
-        ),
-        Effect.map(HashMap.get(recipientAddress)),
-        Effect.flatMap(Option.match({
-          // there is no entity state to cleanup
-          onNone: () => Effect.void,
-          // found it!
-          onSome: (entityState) =>
-            pipe(
-              // interrupt the expiration timer
-              Fiber.interrupt(entityState.expirationFiber),
-              // close the scope of the entity,
-              Effect.ensuring(Scope.close(entityState.executionScope, Exit.void)),
-              // remove the entry from the map
-              Effect.ensuring(RefSynchronized.update(entityStates, HashMap.remove(recipientAddress))),
-              // log error if happens
-              Effect.catchAllCause(Effect.logError),
-              Effect.asVoid,
-              Effect.annotateLogs("entityId", recipientAddress.entityId),
-              Effect.annotateLogs("recipientType", recipientAddress.recipientTypeName)
-            )
-        }))
-      )
-    }
+    const scope = yield* Effect.scope
+    const endLatch = yield* Effect.makeLatch()
 
-    /**
-     * Begins entity termination (if needed) and return the fiber to wait for completed termination (if any)
-     */
-    function forkEntityTermination(
-      recipientAddress: RecipientAddress.RecipientAddress
-    ): Effect.Effect<Option.Option<Fiber.RuntimeFiber<void, never>>> {
-      return RefSynchronized.modifyEffect(entityStates, (entityStatesMap) =>
-        pipe(
-          HashMap.get(entityStatesMap, recipientAddress),
-          Option.match({
-            // if no entry is found, the entity has succefully shut down
-            onNone: () => Effect.succeed([Option.none(), entityStatesMap] as const),
-            // there is an entry, so we should begin termination
-            onSome: (entityState) =>
-              pipe(
-                entityState.terminationFiber,
-                Option.match({
-                  // termination has already begun, keep everything as-is
-                  onSome: () => Effect.succeed([entityState.terminationFiber, entityStatesMap] as const),
-                  // begin to terminate the queue
-                  onNone: () =>
-                    pipe(
-                      terminateEntity(recipientAddress),
-                      Effect.forkDaemon,
-                      Effect.map((terminationFiber) =>
-                        [
-                          Option.some(terminationFiber),
-                          HashMap.modify(
-                            entityStatesMap,
-                            recipientAddress,
-                            EntityState.withTerminationFiber(terminationFiber)
-                          )
-                        ] as const
-                      )
-                    )
-                })
-              )
-          })
-        ))
-    }
-
-    function getOrCreateEntityState(
-      recipientAddress: RecipientAddress.RecipientAddress
-    ): Effect.Effect<
-      Option.Option<EntityState.EntityState>,
-      ShardingException.EntityNotManagedByThisPodException
-    > {
-      return RefSynchronized.modifyEffect(entityStates, (map) =>
-        pipe(
-          HashMap.get(map, recipientAddress),
-          Option.match({
-            onSome: (entityState) =>
-              pipe(
-                entityState.terminationFiber,
-                Option.match({
-                  // offer exists, delay the interruption fiber and return the offer
-                  onNone: () =>
-                    pipe(
-                      Clock.currentTimeMillis,
-                      Effect.map(
-                        (cdt) =>
-                          [
-                            Option.some(entityState),
-                            HashMap.modify(map, recipientAddress, EntityState.withLastReceivedAd(cdt))
-                          ] as const
-                      )
-                    ),
-                  // the queue is shutting down, stash and retry
-                  onSome: () => Effect.succeed([Option.none(), map] as const)
-                })
-              ),
-            onNone: () =>
-              Effect.flatMap(sharding.isShuttingDown, (isGoingDown) => {
-                if (isGoingDown) {
-                  // don't start any fiber while sharding is shutting down
-                  return Effect.fail(new ShardingException.EntityNotManagedByThisPodException({ recipientAddress }))
-                } else {
-                  // offer doesn't exist, create a new one
-                  return Effect.gen(function*() {
-                    const executionScope = yield* Scope.make()
-                    const expirationFiber = yield* startExpirationFiber(recipientAddress)
-                    const cdt = yield* Clock.currentTimeMillis
-                    const forkShutdown = pipe(forkEntityTermination(recipientAddress), Effect.asVoid)
-                    const shardId = sharding.getShardId(recipientAddress)
-
-                    const sendAndGetState = yield* pipe(
-                      recipientBehaviour,
-                      Effect.map((offer) => (envelope: SerializedEnvelope.SerializedEnvelope) =>
-                        pipe(
-                          serialization.decode(recipientType.schema, envelope.body),
-                          Effect.flatMap((message) =>
-                            pipe(
-                              offer(message),
-                              Effect.flatMap((_) =>
-                                MessageState.mapEffect(
-                                  _,
-                                  (value) => serialization.encode(Message.exitSchema(message), value)
-                                )
-                              )
-                            )
-                          )
-                        )
-                      ),
-                      Scope.extend(executionScope),
-                      Effect.provideService(
-                        RecipientBehaviourContext.RecipientBehaviourContext,
-                        RecipientBehaviourContext.make({
-                          recipientAddress,
-                          shardId,
-                          recipientType: recipientType as any,
-                          forkShutdown
-                        })
-                      ),
-                      Effect.provide(env)
-                    )
-
-                    const entityState = EntityState.make({
-                      sendAndGetState,
-                      expirationFiber,
-                      executionScope,
-                      terminationFiber: Option.none(),
-                      lastReceivedAt: cdt
-                    })
-
-                    return [
-                      Option.some(entityState),
-                      HashMap.set(
-                        map,
-                        recipientAddress,
-                        entityState
-                      )
-                    ] as const
-                  })
-                }
-              })
-          })
-        ))
-    }
-
-    function sendAndGetState(
-      envelope: SerializedEnvelope.SerializedEnvelope
-    ): Effect.Effect<
-      MessageState.MessageState<SerializedMessage.SerializedMessage>,
-      | ShardingException.EntityNotManagedByThisPodException
-      | ShardingException.PodUnavailableException
-      | ShardingException.ExceptionWhileOfferingMessageException
-      | ShardingException.SerializationException
-    > {
-      return pipe(
-        Effect.Do,
-        Effect.tap(() => {
-          // first, verify that this entity should be handled by this pod
-          if (recipientType._tag === "EntityType") {
-            return Effect.asVoid(Effect.unlessEffect(
-              Effect.fail(
-                new ShardingException.EntityNotManagedByThisPodException({
-                  recipientAddress: envelope.recipientAddress
-                })
-              ),
-              sharding.isEntityOnLocalShards(envelope.recipientAddress)
-            ))
-          } else if (recipientType._tag === "TopicType") {
-            return Effect.void
-          }
-          return Effect.die("Unhandled recipientType")
-        }),
-        Effect.bind("maybeEntityState", () => getOrCreateEntityState(envelope.recipientAddress)),
-        Effect.flatMap((_) =>
-          pipe(
-            _.maybeEntityState,
-            Option.match({
-              onNone: () =>
-                pipe(
-                  Effect.sleep(Duration.millis(100)),
-                  Effect.flatMap(() => sendAndGetState(envelope))
-                ),
-              onSome: (entityState) => {
-                return entityState.sendAndGetState(envelope)
-              }
-            })
-          )
-        )
-      )
-    }
-
-    const terminateAllEntities = pipe(
-      RefSynchronized.get(entityStates),
-      Effect.map(HashMap.keySet),
-      Effect.flatMap(terminateEntities)
+    // on shutdown, reset the storage for the entity
+    yield* Scope.addFinalizer(
+      scope,
+      Effect.ignore(options.storage.resetAddress(address))
     )
 
-    function terminateEntities(
-      entitiesToTerminate: HashSet.HashSet<
-        RecipientAddress.RecipientAddress
-      >
-    ) {
-      return pipe(
-        entitiesToTerminate,
-        Effect.forEach(
-          (recipientAddress) =>
-            pipe(
-              forkEntityTermination(recipientAddress),
-              Effect.flatMap((_) =>
-                Option.match(_, {
-                  onNone: () => Effect.void,
-                  onSome: (terminationFiber) =>
-                    pipe(
-                      Fiber.await(terminationFiber),
-                      Effect.timeout(config.entityTerminationTimeout),
-                      Effect.match({
-                        onFailure: () =>
-                          Effect.logError(
-                            `Entity ${recipientAddress} termination is taking more than expected entityTerminationTimeout (${
-                              Duration.toMillis(config.entityTerminationTimeout)
-                            }ms).`
-                          ),
-                        onSuccess: () =>
-                          Effect.logDebug(
-                            `Entity ${recipientAddress} cleaned up.`
-                          )
-                      }),
-                      Effect.asVoid
+    const activeRequests: EntityState["activeRequests"] = new Map()
+    let defectRequestIds: Array<bigint> = []
+
+    // the server is stored in a ref, so if there is a defect, we can
+    // swap the server without losing the active requests
+    const writeRef = yield* ResourceRef.from(
+      scope,
+      Effect.fnUntraced(function*(scope) {
+        let isShuttingDown = false
+
+        // Initiate the behavior for the entity
+        const handlers = yield* (entity.protocol.toHandlersContext(buildHandlers).pipe(
+          Effect.provide(context.pipe(
+            Context.add(CurrentAddress, address),
+            Context.add(CurrentRunnerAddress, options.runnerAddress),
+            Context.add(Scope.Scope, scope)
+          )),
+          Effect.locally(FiberRef.currentLogAnnotations, HashMap.empty())
+        ) as Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>)
+
+        const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
+          spanPrefix: `${entity.type}(${address.entityId})`,
+          concurrency: options.concurrency ?? 1,
+          onFromServer(response): Effect.Effect<void> {
+            switch (response._tag) {
+              case "Exit": {
+                const request = activeRequests.get(response.requestId)
+                if (!request) return Effect.void
+
+                // For durable messages, ignore interrupts during shutdown.
+                // They will be retried when the entity is restarted.
+                if (
+                  storageEnabled &&
+                  isShuttingDown &&
+                  Context.get(request.rpc.annotations, Persisted) &&
+                  Exit.isInterrupted(response.exit)
+                ) {
+                  return Effect.void
+                }
+                return retryRespond(
+                  4,
+                  Effect.suspend(() =>
+                    request.message.respond(
+                      new Reply.WithExit({
+                        requestId: Snowflake.Snowflake(response.requestId),
+                        id: snowflakeGen.unsafeNext(),
+                        exit: response.exit
+                      })
                     )
+                  )
+                ).pipe(
+                  Effect.flatMap(() => {
+                    activeRequests.delete(response.requestId)
+
+                    // ensure that the reaper does not remove the entity as we haven't
+                    // been "idle" yet
+                    if (activeRequests.size === 0) {
+                      state.lastActiveCheck = clock.unsafeCurrentTimeMillis()
+                    }
+
+                    return Effect.void
+                  }),
+                  Effect.orDie
+                )
+              }
+              case "Chunk": {
+                const request = activeRequests.get(response.requestId)
+                if (!request) return Effect.void
+                const sequence = request.sequence
+                request.sequence++
+                return Effect.orDie(retryRespond(
+                  4,
+                  Effect.suspend(() => {
+                    const reply = new Reply.Chunk({
+                      requestId: Snowflake.Snowflake(response.requestId),
+                      id: snowflakeGen.unsafeNext(),
+                      sequence,
+                      values: response.values
+                    })
+                    request.lastSentChunk = Option.some(reply)
+                    return request.message.respond(reply)
+                  })
+                ))
+              }
+              case "Defect": {
+                const effect = writeRef.unsafeRebuild()
+                defectRequestIds = Array.from(activeRequests.keys())
+                return Effect.logError("Defect in entity, restarting", Cause.die(response.defect)).pipe(
+                  Effect.andThen(effect.pipe(
+                    Effect.tapErrorCause(Effect.logError),
+                    Effect.retry(Schedule.spaced(500))
+                  )),
+                  Effect.annotateLogs({
+                    module: "EntityManager",
+                    address,
+                    runner: options.runnerAddress
+                  })
+                )
+              }
+              case "ClientEnd": {
+                return endLatch.open
+              }
+            }
+          }
+        }).pipe(
+          Scope.extend(scope),
+          Effect.provide(handlers)
+        )
+
+        yield* Scope.addFinalizer(
+          scope,
+          Effect.sync(() => {
+            isShuttingDown = true
+          })
+        )
+
+        for (const id of defectRequestIds) {
+          const { lastSentChunk, message } = activeRequests.get(id)!
+          yield* server.write(0, {
+            ...message.envelope,
+            id: RequestId(message.envelope.requestId),
+            tag: message.envelope.tag as any,
+            payload: new Request({
+              ...message.envelope,
+              lastSentChunk
+            } as any) as any
+          })
+        }
+        defectRequestIds = []
+
+        return server.write
+      })
+    )
+
+    const state: EntityState = {
+      address,
+      mailboxGauge: ClusterMetrics.mailboxSize.pipe(
+        Metric.tagged("type", entity.type),
+        Metric.tagged("entityId", address.entityId)
+      ),
+      write(clientId, message) {
+        if (writeRef.state.current._tag !== "Acquired") {
+          return Effect.flatMap(writeRef.await, (write) => write(clientId, message))
+        }
+        return writeRef.state.current.value(clientId, message)
+      },
+      activeRequests,
+      lastActiveCheck: clock.unsafeCurrentTimeMillis()
+    }
+
+    // During shutdown, signal that no more messages will be processed
+    // and wait for the fiber to complete.
+    //
+    // If the termination timeout is reached, let the server clean itself up
+    yield* Scope.addFinalizer(
+      scope,
+      Effect.withFiberRuntime((fiber) => {
+        activeServers.delete(address.entityId)
+        internalInterruptors.add(fiber.id())
+        return state.write(0, { _tag: "Eof" }).pipe(
+          Effect.andThen(Effect.interruptible(endLatch.await)),
+          Effect.timeoutOption(config.entityTerminationTimeout)
+        )
+      })
+    )
+    activeServers.set(address.entityId, state)
+
+    return state
+  }, Effect.locally(FiberRef.currentLogAnnotations, HashMap.empty())))
+
+  const reaper = yield* EntityReaper
+  const maxIdleTime = Duration.toMillis(options.maxIdleTime ?? config.entityMaxIdleTime)
+  if (Number.isFinite(maxIdleTime)) {
+    yield* reaper.register({
+      maxIdleTime,
+      servers: activeServers,
+      entities
+    })
+  }
+
+  // update metrics for active servers
+  const gauge = ClusterMetrics.entities.pipe(Metric.tagged("type", entity.type))
+  yield* Effect.sync(() => {
+    gauge.unsafeUpdate(BigInt(activeServers.size), [])
+    for (const state of activeServers.values()) {
+      state.mailboxGauge.unsafeUpdate(BigInt(state.activeRequests.size), [])
+    }
+  }).pipe(
+    Effect.andThen(Effect.sleep(1000)),
+    Effect.forever,
+    Effect.forkIn(managerScope)
+  )
+
+  function sendLocal<R extends Rpc.Any>(
+    message: Message.IncomingLocal<R>
+  ): Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage> {
+    return Effect.locally(
+      Effect.flatMap(
+        entities.get(message.envelope.address),
+        (server): Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage> => {
+          switch (message._tag) {
+            case "IncomingRequestLocal": {
+              // If the request is already running, then we might have more than
+              // one sender for the same request. In this case, the other senders
+              // should resume from storage only.
+              let entry = server.activeRequests.get(message.envelope.requestId)
+              if (entry) {
+                return Effect.fail(
+                  new AlreadyProcessingMessage({
+                    envelopeId: message.envelope.requestId,
+                    address: message.envelope.address
+                  })
+                )
+              }
+
+              if (mailboxCapacity !== "unbounded" && server.activeRequests.size >= mailboxCapacity) {
+                return Effect.fail(new MailboxFull({ address: message.envelope.address }))
+              }
+
+              entry = {
+                rpc: entity.protocol.requests.get(message.envelope.tag)! as any as Rpc.AnyWithProps,
+                message,
+                lastSentChunk: message.lastSentReply as any,
+                sequence: Option.match(message.lastSentReply, {
+                  onNone: () => 0,
+                  onSome: (reply) => reply._tag === "Chunk" ? reply.sequence + 1 : 0
                 })
+              }
+              server.activeRequests.set(message.envelope.requestId, entry)
+              return server.write(0, {
+                ...message.envelope,
+                id: RequestId(message.envelope.requestId),
+                payload: new Request({
+                  ...message.envelope,
+                  lastSentChunk: message.lastSentReply as any
+                })
+              })
+            }
+            case "IncomingEnvelope": {
+              const entry = server.activeRequests.get(message.envelope.requestId)
+              if (!entry) {
+                return Effect.fail(new EntityNotManagedByRunner({ address: message.envelope.address }))
+              } else if (
+                message.envelope._tag === "AckChunk" &&
+                Option.isSome(entry.lastSentChunk) &&
+                message.envelope.replyId !== entry.lastSentChunk.value.id
+              ) {
+                return Effect.void
+              }
+              return server.write(
+                0,
+                message.envelope._tag === "AckChunk"
+                  ? { _tag: "Ack", requestId: RequestId(message.envelope.requestId) }
+                  : { _tag: "Interrupt", requestId: RequestId(message.envelope.requestId), interruptors: [] }
               )
-            ),
-          { concurrency: "inherit" }
-        ),
-        Effect.asVoid
-      )
-    }
+            }
+          }
+        }
+      ),
+      FiberRef.currentLogAnnotations,
+      HashMap.empty()
+    )
+  }
 
-    function terminateEntitiesOnShards(shards: HashSet.HashSet<ShardId.ShardId>) {
-      return pipe(
-        RefSynchronized.modify(entityStates, (entities) => [
-          HashMap.filter(
-            entities,
-            (_, recipientAddress) => HashSet.has(shards, sharding.getShardId(recipientAddress))
-          ),
-          entities
-        ]),
-        Effect.map(HashMap.keySet),
-        Effect.flatMap(terminateEntities)
+  const interruptShard = (shardId: ShardId) =>
+    Effect.suspend(function loop(): Effect.Effect<void> {
+      const toInterrupt = new Set<EntityState>()
+      for (const state of activeServers.values()) {
+        if (shardId === state.address.shardId) {
+          toInterrupt.add(state)
+        }
+      }
+      if (toInterrupt.size === 0) {
+        return Effect.void
+      }
+      return Effect.flatMap(
+        Effect.forEach(toInterrupt, (state) => entities.removeIgnore(state.address), {
+          concurrency: "unbounded",
+          discard: true
+        }),
+        loop
       )
-    }
+    })
 
-    const self: EntityManager = {
-      [EntityManagerTypeId]: EntityManagerTypeId,
-      sendAndGetState,
-      terminateAllEntities,
-      terminateEntitiesOnShards
-    }
-    return self
+  const decodeMessage = Schema.decode(makeMessageSchema(entity))
+
+  return identity<EntityManager>({
+    interruptShard,
+    isProcessingFor(message) {
+      const state = activeServers.get(message.envelope.address.entityId)
+      if (!state) return false
+      return state.activeRequests.has(message.envelope.requestId)
+    },
+    sendLocal,
+    send: (message) =>
+      decodeMessage(message).pipe(
+        Effect.matchEffect({
+          onFailure: (cause) => {
+            if (message._tag === "IncomingEnvelope") {
+              return Effect.die(new MalformedMessage({ cause }))
+            }
+            return Effect.orDie(message.respond(
+              new Reply.ReplyWithContext({
+                reply: new Reply.WithExit({
+                  id: snowflakeGen.unsafeNext(),
+                  requestId: message.envelope.requestId,
+                  exit: Exit.die(new MalformedMessage({ cause }))
+                }),
+                rpc: entity.protocol.requests.get(message.envelope.tag)!,
+                context
+              })
+            ))
+          },
+          onSuccess: (decoded) => {
+            if (decoded._tag === "IncomingEnvelope") {
+              return sendLocal(
+                new Message.IncomingEnvelope(decoded)
+              )
+            }
+            const request = message as Message.IncomingRequest<any>
+            const rpc = entity.protocol.requests.get(decoded.envelope.tag)!
+            return sendLocal(
+              new Message.IncomingRequestLocal({
+                envelope: decoded.envelope,
+                lastSentReply: decoded.lastSentReply,
+                respond: (reply) =>
+                  request.respond(
+                    new Reply.ReplyWithContext({
+                      reply,
+                      rpc,
+                      context
+                    })
+                  )
+              })
+            )
+          }
+        }),
+        Effect.provide(context as Context.Context<unknown>)
+      )
   })
+})
+
+const makeMessageSchema = <Rpcs extends Rpc.Any>(entity: Entity<Rpcs>): Schema.Schema<
+  {
+    readonly _tag: "IncomingRequest"
+    readonly envelope: Envelope.Request.Any
+    readonly lastSentReply: Option.Option<Reply.Reply<Rpcs>>
+  } | {
+    readonly _tag: "IncomingEnvelope"
+    readonly envelope: Envelope.AckChunk | Envelope.Interrupt
+  },
+  Message.Incoming<Rpcs>,
+  Rpc.Context<Rpcs>
+> => {
+  const requests = Arr.empty<Schema.Schema.Any>()
+
+  for (const rpc of entity.protocol.requests.values()) {
+    requests.push(
+      Schema.TaggedStruct("IncomingRequest", {
+        envelope: Schema.transform(
+          Schema.Struct({
+            ...Envelope.PartialEncodedRequestFromSelf.fields,
+            tag: Schema.Literal(rpc._tag),
+            payload: (rpc as any as Rpc.AnyWithProps).payloadSchema
+          }),
+          Envelope.RequestFromSelf,
+          {
+            decode: (encoded) => Envelope.makeRequest(encoded),
+            encode: identity
+          }
+        ),
+        lastSentReply: Schema.OptionFromSelf(Reply.Reply(rpc))
+      })
+    )
+  }
+
+  return Schema.Union(
+    ...requests,
+    Schema.TaggedStruct("IncomingEnvelope", {
+      envelope: Schema.Union(
+        Schema.typeSchema(Envelope.AckChunk),
+        Schema.typeSchema(Envelope.Interrupt)
+      )
+    })
+  ) as any
 }
+
+const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+  times === 0 ?
+    effect :
+    Effect.catchAll(effect, () => Effect.delay(retryRespond(times - 1, effect), 200))
