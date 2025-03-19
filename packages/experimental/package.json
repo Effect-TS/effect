@@ -43,15 +43,11 @@
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
-    "@effect/platform-node": "workspace:^",
     "effect": "workspace:^",
     "ioredis": "^5",
     "lmdb": "^3"
   },
   "peerDependenciesMeta": {
-    "@effect/platform-node": {
-      "optional": true
-    },
     "ioredis": {
       "optional": true
     },

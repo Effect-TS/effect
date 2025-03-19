@@ -167,6 +167,7 @@ export const make = (
       ? Mysql.createPool({
         uri: Redacted.value(options.url),
         multipleStatements: true,
+        supportBigNumbers: true,
         connectionLimit: options.maxConnections!,
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(options.connectionTTL)
@@ -182,6 +183,7 @@ export const make = (
           ? Redacted.value(options.password)
           : undefined,
         multipleStatements: true,
+        supportBigNumbers: true,
         connectionLimit: options.maxConnections,
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(options.connectionTTL)

@@ -2,9 +2,12 @@
   "extends": "../../tsconfig.base.json",
   "include": ["src"],
   "references": [
+    { "path": "../cluster/tsconfig.src.json" },
     { "path": "../effect/tsconfig.src.json" },
     { "path": "../platform/tsconfig.src.json" },
-    { "path": "../platform-node-shared/tsconfig.src.json" }
+    { "path": "../platform-node-shared/tsconfig.src.json" },
+    { "path": "../rpc/tsconfig.src.json" },
+    { "path": "../sql/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",

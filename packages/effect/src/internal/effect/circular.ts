@@ -146,6 +146,11 @@ class Latch extends Effectable.Class<void> implements Effect.Latch {
     this.isOpen = true
     return this.unsafeSchedule(fiber)
   })
+  unsafeOpen() {
+    if (this.isOpen) return
+    this.isOpen = true
+    this.flushWaiters()
+  }
   release = core.withFiberRuntime<void>((fiber) => {
     if (this.isOpen) {
       return core.void
