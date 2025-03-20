@@ -1,5 +1,17 @@
 # @effect/cluster
 
+## 0.29.1
+
+### Patch Changes
+
+- [#4621](https://github.com/Effect-TS/effect/pull/4621) [`814733f`](https://github.com/Effect-TS/effect/commit/814733fe62bb3dc91c6cd632d16a8d2076b3755b) Thanks @tim-smart! - remove Sharding.make export
+
+- Updated dependencies [[`4a274fe`](https://github.com/Effect-TS/effect/commit/4a274fe9f623182b6b902827e0e83bd89ca3b05c)]:
+  - effect@3.14.1
+  - @effect/platform@0.80.1
+  - @effect/rpc@0.55.1
+  - @effect/sql@0.33.1
+
 ## 0.29.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # effect
 
+## 3.14.1
+
+### Patch Changes
+
+- [#4620](https://github.com/Effect-TS/effect/pull/4620) [`4a274fe`](https://github.com/Effect-TS/effect/commit/4a274fe9f623182b6b902827e0e83bd89ca3b05c) Thanks @tim-smart! - remove Context.ValidTagsById usage
+
 ## 3.14.0
 
 ### Minor Changes
