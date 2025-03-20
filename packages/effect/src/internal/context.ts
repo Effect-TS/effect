@@ -256,9 +256,9 @@ export const unsafeGet = dual<
 /** @internal */
 export const get: {
   <I, S>(tag: C.Reference<I, S>): <Services>(self: C.Context<Services>) => S
-  <Services, T extends C.ValidTagsById<Services>>(tag: T): (self: C.Context<Services>) => C.Tag.Service<T>
+  <Services, I extends Services, S>(tag: C.Tag<I, S>): (self: C.Context<Services>) => S
   <Services, I, S>(self: C.Context<Services>, tag: C.Reference<I, S>): S
-  <Services, T extends C.ValidTagsById<Services>>(self: C.Context<Services>, tag: T): C.Tag.Service<T>
+  <Services, I extends Services, S>(self: C.Context<Services>, tag: C.Tag<I, S>): S
 } = unsafeGet as any
 
 /** @internal */
@@ -310,9 +310,9 @@ export const mergeAll = <T extends Array<unknown>>(
 
 /** @internal */
 export const pick =
-  <Services, S extends Array<C.ValidTagsById<Services>>>(...tags: S) =>
-  (self: C.Context<Services>): C.Context<
-    { [k in keyof S]: C.Tag.Identifier<S[k]> }[number]
+  <Tags extends ReadonlyArray<C.Tag<any, any>>>(...tags: Tags) =>
+  <Services>(self: C.Context<Services>): C.Context<
+    Services & C.Tag.Identifier<Tags[number]>
   > => {
     const tagSet = new Set<string>(tags.map((_) => _.key))
     const newEnv = new Map()
@@ -321,14 +321,14 @@ export const pick =
         newEnv.set(tag, s)
       }
     }
-    return makeContext<{ [k in keyof S]: C.Tag.Identifier<S[k]> }[number]>(newEnv)
+    return makeContext(newEnv)
   }
 
 /** @internal */
 export const omit =
-  <Services, S extends Array<C.ValidTagsById<Services>>>(...tags: S) =>
-  (self: C.Context<Services>): C.Context<
-    Exclude<Services, { [k in keyof S]: C.Tag.Identifier<S[k]> }[keyof S]>
+  <Tags extends ReadonlyArray<C.Tag<any, any>>>(...tags: Tags) =>
+  <Services>(self: C.Context<Services>): C.Context<
+    Exclude<Services, C.Tag.Identifier<Tags[number]>>
   > => {
     const newEnv = new Map(self.unsafeMap)
     for (const tag of tags) {
