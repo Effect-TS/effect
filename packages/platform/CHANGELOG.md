@@ -1,5 +1,17 @@
 # @effect/platform
 
+## 0.79.4
+
+### Patch Changes
+
+- [#4592](https://github.com/Effect-TS/effect/pull/4592) [`5662363`](https://github.com/Effect-TS/effect/commit/566236361e270e575ef1cbf308ad1967c82a362c) Thanks @tim-smart! - support nested records in UrlParams module
+
+- [#4615](https://github.com/Effect-TS/effect/pull/4615) [`5f1fd15`](https://github.com/Effect-TS/effect/commit/5f1fd15308ab154791580059b89877d19a2055c2) Thanks @KhraksMamtsov! - - Relax `Url.setPort` constraint
+
+  - Use `URL | ...` for `baseUrl` in `HttpApiClient.make`
+
+- [#4614](https://github.com/Effect-TS/effect/pull/4614) [`8bb1460`](https://github.com/Effect-TS/effect/commit/8bb1460c824f66f0f25ebd899c5e74e388089c37) Thanks @gcanti! - HttpApiEndpoint: add missing `head` and `options` constructors, closes #4613.
+
 ## 0.79.3
 
 ### Patch Changes
