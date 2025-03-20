@@ -11,6 +11,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as RcMap from "effect/RcMap"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
@@ -74,7 +75,7 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
    */
   readonly notify: <R extends Rpc.Any>(
     options: {
-      readonly address: RunnerAddress
+      readonly address: Option.Option<RunnerAddress>
       readonly message: Message.Outgoing<R>
       readonly discard: boolean
     }
@@ -497,8 +498,11 @@ export const makeRpc: Effect.Effect<
       })
     },
     notify({ address, message }) {
+      if (Option.isNone(address)) {
+        return Effect.void
+      }
       const envelope = message.envelope
-      return RcMap.get(clients, address).pipe(
+      return RcMap.get(clients, address.value).pipe(
         Effect.flatMap((client) => client.Notify({ envelope })),
         Effect.scoped,
         Effect.ignore
