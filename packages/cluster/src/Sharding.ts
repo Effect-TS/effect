@@ -132,11 +132,7 @@ interface EntityManagerState {
   readonly manager: EntityManager.EntityManager
 }
 
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const make = Effect.gen(function*() {
+const make = Effect.gen(function*() {
   const config = yield* ShardingConfig
 
   const runners = yield* Runners
