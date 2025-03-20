@@ -1281,7 +1281,7 @@ export const modifyOption: {
  * console.log(outOfBoundsResult) // [1, 2, 3, 4]
  * ```
  *
- * @since 3.14.0
+ * @since 3.15.0
  */
 
 export const modifyFirst: {
@@ -1329,7 +1329,7 @@ export const modifyFirst: {
  * console.log(outOfBoundsResult) // Option.none()
  * ```
  *
- * @since 3.14.0
+ * @since 3.15.0
  */
 export const modifyFirstOption: {
   <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
