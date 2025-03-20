@@ -668,19 +668,18 @@ export const make = Effect.gen(function*() {
       Effect.suspend(() => {
         const address = message.envelope.address
         const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
-        if (Option.isNone(maybeRunner)) {
+        const isPersisted = storageEnabled && Context.get(message.rpc.annotations, Persisted)
+        const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
+        if (isPersisted) {
+          return runnerIsLocal
+            ? notifyLocal(message, discard)
+            : runners.notify({ address: maybeRunner, message, discard })
+        } else if (Option.isNone(maybeRunner)) {
           return Effect.fail(new EntityNotManagedByRunner({ address }))
         }
-        const runner = maybeRunner.value
-        const rpc = message.rpc as any as Rpc.AnyWithProps
-        if (storageEnabled && Context.get(rpc.annotations, Persisted)) {
-          return isLocalRunner(runner)
-            ? notifyLocal(message, discard)
-            : runners.notify({ address: runner, message, discard })
-        }
-        return isLocalRunner(runner)
+        return runnerIsLocal
           ? sendLocal(message)
-          : runners.send({ address: runner, message })
+          : runners.send({ address: maybeRunner.value, message })
       }),
       isTransientError,
       (error) => {
