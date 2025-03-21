@@ -291,13 +291,6 @@ export class StreamChunk extends Data.Class<{
    * @since 1.0.0
    */
   get asAiResponse(): AiResponse.AiResponse {
-    if (this.parts.length === 0) {
-      return AiResponse.AiResponse.fromText({
-        role: AiRole.model,
-        content: ""
-      })
-    }
-
     const aiResponseParts: Array<AiResponse.Part> = []
 
     for (let i = 0; i < this.parts.length; i++) {
@@ -314,6 +307,13 @@ export class StreamChunk extends Data.Class<{
           }))
           break
       }
+    }
+
+    if (aiResponseParts.length === 0) {
+      return AiResponse.AiResponse.fromText({
+        role: AiRole.model,
+        content: ""
+      })
     }
 
     return new AiResponse.AiResponse({
