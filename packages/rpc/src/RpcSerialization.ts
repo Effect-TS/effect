@@ -5,6 +5,7 @@ import { Msgpackr } from "@effect/platform/MsgPack"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import { hasProperty } from "effect/Predicate"
 import type * as RpcMessage from "./RpcMessage.js"
 
 /**
@@ -96,7 +97,7 @@ export const jsonrpc: Effect.Effect<RpcSerialization["Type"]> = Effect.sync(() =
             spanId: decoded.spanId ?? "noop",
             sampled: decoded.sampled ?? false
           }
-        } else if (decoded.error && decoded.error.code === jsonRpcDefectCode) {
+        } else if (decoded.error && decoded.error._tag === "Defect") {
           rpcMessage = {
             _tag: "Defect",
             defect: decoded.error.data
@@ -114,10 +115,12 @@ export const jsonrpc: Effect.Effect<RpcSerialization["Type"]> = Effect.sync(() =
               exit: decoded.error != null ?
                 {
                   _tag: "Failure",
-                  cause: decoded.error.code === jsonRpcErrorCode ? decoded.error.data as any : {
-                    _tag: "Die",
-                    defect: decoded.error
-                  }
+                  cause: decoded.error._tag === "Cause" ?
+                    decoded.error.data as any :
+                    {
+                      _tag: "Die",
+                      defect: decoded.error
+                    }
                 } :
                 {
                   _tag: "Success",
@@ -157,7 +160,10 @@ export const jsonrpc: Effect.Effect<RpcSerialization["Type"]> = Effect.sync(() =
             result: response.exit._tag === "Success" ? response.exit.value : undefined,
             error: response.exit._tag === "Failure" ?
               {
-                code: jsonRpcErrorCode,
+                _tag: "Cause",
+                code: response.exit.cause._tag === "Fail" && hasProperty(response.exit.cause.error, "code")
+                  ? Number(response.exit.cause.error.code)
+                  : 0,
                 message: "An error occurred",
                 data: response.exit.cause
               } :
@@ -166,10 +172,11 @@ export const jsonrpc: Effect.Effect<RpcSerialization["Type"]> = Effect.sync(() =
         } else if (response._tag === "Defect") {
           jsonRpcMessage = {
             jsonrpc: "2.0",
-            id: 0,
+            id: jsonRpcInternalError,
             error: {
-              code: jsonRpcDefectCode,
-              message: "Defect",
+              _tag: "Defect",
+              code: 1,
+              message: "A defect occurred",
               data: response.defect
             }
           }
@@ -183,8 +190,7 @@ export const jsonrpc: Effect.Effect<RpcSerialization["Type"]> = Effect.sync(() =
   })
 })
 
-const jsonRpcErrorCode = 34437
-const jsonRpcDefectCode = 34438
+const jsonRpcInternalError = -32603
 
 interface JsonRpcRequest {
   readonly jsonrpc: "2.0"
@@ -206,6 +212,7 @@ interface JsonRpcResponse {
     readonly code: number
     readonly message: string
     readonly data?: unknown
+    readonly _tag?: "Cause" | "Defect"
   }
 }
 
