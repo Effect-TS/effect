@@ -53,6 +53,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "gpt-tokenizer": "^2.8.1"
+    "gpt-tokenizer": "^2.9.0"
   }
 }
