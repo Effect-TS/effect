@@ -1266,6 +1266,105 @@ export const modifyOption: {
 })
 
 /**
+ * Apply a function to the first element matching the given predicate, creating a new `Array`,
+ * or return a copy of the input if the predicate does not match any element.
+ *
+ * @example
+ * ```ts
+ * import { Array } from "effect"
+ *
+ * const numbers = [1, 2, 3, 4]
+ * const result = Array.modifyFirst(numbers, { condition: n => n > 2, updateFunction: (n) => n * 2 })
+ * console.log(result) // [1, 2, 6, 4]
+ *
+ * const outOfBoundsResult = Array.modifyFirst(numbers, {condition: n => n > 5, updateFunction: (n) => n * 2 })
+ * console.log(outOfBoundsResult) // [1, 2, 3, 4]
+ * ```
+ *
+ * @since 3.15.0
+ */
+
+export const modifyFirst: {
+  <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
+    options: { condition: (a: ReadonlyArray.Infer<S>, i: number) => a is A2; updateFunction: (a: A2) => B }
+  ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    options: {
+      condition: (a: ReadonlyArray.Infer<S>, i: number) => boolean
+      updateFunction: (a: ReadonlyArray.Infer<S>) => B
+    }
+  ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+  <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
+    self: S,
+    options: { condition: (a: ReadonlyArray.Infer<S>, i: number) => a is A2; updateFunction: (a: A2) => B }
+  ): ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    self: S,
+    options: {
+      condition: (a: ReadonlyArray.Infer<S>, i: number) => boolean
+      updateFunction: (a: ReadonlyArray.Infer<S>) => B
+    }
+  ): ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+} = dual(
+  2,
+  <A, B>(
+    self: Iterable<A>,
+    options: { condition: (a: NoInfer<A>, i: number) => boolean; updateFunction: (a: A) => B }
+  ): Array<A | B> => O.getOrElse(modifyFirstOption(self, options), () => Array.from(self))
+)
+
+/**
+ * Apply a function to the first element matching the given predicate, creating a new `Array`,
+ * or return `None` if the predicate does not match any element.
+ *
+ * @example
+ * ```ts
+ * import { Array, Option } from "effect"
+ *
+ * const numbers = [1, 2, 3, 4]
+ * const result = Array.modifyFirstOption(numbers, { condition: n => n > 2, updateFunction: (n) => n * 2 })
+ * console.log(result) // Option.some([1, 2, 6, 4])
+ *
+ * const outOfBoundsResult = Array.modifyFirstOption(numbers, { condition: n => n > 5, updateFunction: (n) => n * 2 })
+ * console.log(outOfBoundsResult) // Option.none()
+ * ```
+ *
+ * @since 3.15.0
+ */
+export const modifyFirstOption: {
+  <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
+    options: { condition: (a: ReadonlyArray.Infer<S>, i: number) => a is A2; updateFunction: (a: A2) => B }
+  ): (self: S) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    options: {
+      condition: (a: ReadonlyArray.Infer<S>, i: number) => boolean
+      updateFunction: (a: ReadonlyArray.Infer<S>) => B
+    }
+  ): (self: S) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+  <A, B, S extends Iterable<A> = Iterable<A>, A2 extends ReadonlyArray.Infer<S> = ReadonlyArray.Infer<S>>(
+    self: S,
+    options: { condition: (a: ReadonlyArray.Infer<S>, i: number) => a is A2; updateFunction: (a: A2) => B }
+  ): Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    self: S,
+    options: {
+      condition: (a: ReadonlyArray.Infer<S>, i: number) => boolean
+      updateFunction: (a: ReadonlyArray.Infer<S>) => B
+    }
+  ): Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+} = dual(
+  2,
+  <A, B>(
+    self: Iterable<A>,
+    options: { condition: (a: A, i: number) => boolean; updateFunction: (a: A) => B }
+  ): Option<Array<A | B>> =>
+    O.flatMap(
+      findFirstIndex(self, options.condition),
+      (index) => modifyOption(self, index, options.updateFunction)
+    )
+)
+
+/**
  * Delete the element at the specified index, creating a new `Array`,
  * or return a copy of the input if the index is out of bounds.
  *
@@ -2005,8 +2104,8 @@ export const chunksOf: {
  * import { Array } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
- * assert.deepStrictEqual(Array.window(numbers, 3), [[1, 2, 3], [2, 3, 4], [3, 4, 5]])
- * assert.deepStrictEqual(Array.window(numbers, 6), [])
+ * console.log(Array.window(numbers, 3)) // [[1, 2, 3], [2, 3, 4], [3, 4, 5]]
+ * console.log(Array.window(numbers, 6)) // []
  * ```
  *
  * @category splitting
