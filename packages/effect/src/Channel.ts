@@ -159,6 +159,132 @@ export declare namespace Channel {
     _OutElem: Types.Covariant<OutElem>
     _OutDone: Types.Covariant<OutDone>
   }
+
+  /**
+   * @since 3.14.0
+   * @category Channel Type Extractors
+   */
+  type OutElem<T extends Channel.Channel<unknown, never, unknown, never, unknown, never, unknown>> = [T] extends [
+      Channel.Channel<
+          infer _OutElem,
+          infer _InElem,
+          infer _OutErr,
+          infer _InErr,
+          infer _OutDone,
+          infer _InDone,
+          infer _Env
+      >,
+  ]
+      ? _OutElem
+      : never;
+  
+  /**
+   * @since 3.14.0
+   * @category Channel Type Extractors
+   */
+  type InElem<T extends Channel.Channel<unknown, never, unknown, never, unknown, never, unknown>> = [T] extends [
+      Channel.Channel<
+          infer _OutElem,
+          infer _InElem,
+          infer _OutErr,
+          infer _InErr,
+          infer _OutDone,
+          infer _InDone,
+          infer _Env
+      >,
+  ]
+      ? _InElem
+      : never;
+  
+  /**
+   * @since 3.14.0
+   * @category Channel Type Extractors
+   */
+  type OutError<T extends Channel.Channel<unknown, never, unknown, never, unknown, never, unknown>> = [T] extends [
+      Channel.Channel<
+          infer _OutElem,
+          infer _InElem,
+          infer _OutErr,
+          infer _InErr,
+          infer _OutDone,
+          infer _InDone,
+          infer _Env
+      >,
+  ]
+      ? _OutErr
+      : never;
+  
+  /**
+   * @since 3.14.0
+   * @category Channel Type Extractors
+   */
+  type InError<T extends Channel.Channel<unknown, never, unknown, never, unknown, never, unknown>> = [T] extends [
+      Channel.Channel<
+          infer _OutElem,
+          infer _InElem,
+          infer _OutErr,
+          infer _InErr,
+          infer _OutDone,
+          infer _InDone,
+          infer _Env
+      >,
+  ]
+      ? _InErr
+      : never;
+  
+  /**
+   * @since 3.14.0
+   * @category Channel Type Extractors
+   */
+  type OutDone<T extends Channel.Channel<unknown, never, unknown, never, unknown, never, unknown>> = [T] extends [
+      Channel.Channel<
+          infer _OutElem,
+          infer _InElem,
+          infer _OutErr,
+          infer _InErr,
+          infer _OutDone,
+          infer _InDone,
+          infer _Env
+      >,
+  ]
+      ? _OutDone
+      : never;
+  
+  /**
+   * @since 3.14.0
+   * @category Channel Type Extractors
+   */
+  type InDone<T extends Channel.Channel<unknown, never, unknown, never, unknown, never, unknown>> = [T] extends [
+      Channel.Channel<
+          infer _OutElem,
+          infer _InElem,
+          infer _OutErr,
+          infer _InErr,
+          infer _OutDone,
+          infer _InDone,
+          infer _Env
+      >,
+  ]
+      ? _InDone
+      : never;
+  
+  /**
+   * @since 3.14.0
+   * @category Channel Type Extractors
+   */
+  type Env<T extends Channel.Channel<unknown, never, unknown, never, unknown, never, unknown>> = [T] extends [
+      Channel.Channel<
+          infer _OutElem,
+          infer _InElem,
+          infer _OutErr,
+          infer _InErr,
+          infer _OutDone,
+          infer _InDone,
+          infer _Env
+      >,
+  ]
+      ? _Env
+      : never;
 }
 
 /**
