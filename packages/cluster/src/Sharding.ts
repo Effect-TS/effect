@@ -120,6 +120,11 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
     void,
     EntityNotManagedByRunner
   >
+
+  /**
+   * Retrieves the active entity count for the current runner.
+   */
+  readonly activeEntityCount: Effect.Effect<number>
 }>() {}
 
 // -----------------------------------------------------------------------------
@@ -1055,6 +1060,14 @@ const make = Effect.gen(function*() {
     })
   )
 
+  const activeEntityCount = Effect.gen(function*() {
+    let count = 0
+    for (const state of entityManagers.values()) {
+      count += yield* state.manager.activeEntityCount
+    }
+    return count
+  })
+
   const sharding = Sharding.of({
     getRegistrationEvents,
     getShardId,
@@ -1063,7 +1076,8 @@ const make = Effect.gen(function*() {
     registerSingleton,
     makeClient,
     send: sendLocal,
-    notify: (message) => notifyLocal(message, false)
+    notify: (message) => notifyLocal(message, false),
+    activeEntityCount
   })
 
   return sharding

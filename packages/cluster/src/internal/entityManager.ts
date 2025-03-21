@@ -50,6 +50,8 @@ export interface EntityManager {
   readonly isProcessingFor: (message: Message.Incoming<any>) => boolean
 
   readonly interruptShard: (shardId: ShardId) => Effect.Effect<void>
+
+  readonly activeEntityCount: Effect.Effect<number>
 }
 
 // Represents the entities managed by this entity manager
@@ -450,7 +452,8 @@ export const make = Effect.fnUntraced(function*<
           }
         }),
         Effect.provide(context as Context.Context<unknown>)
-      )
+      ),
+    activeEntityCount: Effect.sync(() => activeServers.size)
   })
 })
 
