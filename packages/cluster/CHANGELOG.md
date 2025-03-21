@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.29.2
+
+### Patch Changes
+
+- [#4626](https://github.com/Effect-TS/effect/pull/4626) [`3a99a2d`](https://github.com/Effect-TS/effect/commit/3a99a2dbaa38348c1f6e210a531fcfb99b5e73c5) Thanks @tim-smart! - add Sharding.activeEntityCount
+
 ## 0.29.1
 
 ### Patch Changes
