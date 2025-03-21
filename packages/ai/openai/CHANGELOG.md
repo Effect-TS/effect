@@ -1,5 +1,11 @@
 # @effect/ai-openai
 
+## 0.16.2
+
+### Patch Changes
+
+- [#4624](https://github.com/Effect-TS/effect/pull/4624) [`9517601`](https://github.com/Effect-TS/effect/commit/9517601586318b70849963aeeec5adff8118d2dd) Thanks @IMax153! - Upgrade the version of gpt-tokenizer to be compatible with new models
+
 ## 0.16.1
 
 ### Patch Changes
