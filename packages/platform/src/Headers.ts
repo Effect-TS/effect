@@ -197,14 +197,34 @@ export const merge: {
  * @category combinators
  */
 export const remove: {
-  (key: string): (self: Headers) => Headers
-  (self: Headers, key: string): Headers
+  (key: string | RegExp | ReadonlyArray<string | RegExp>): (self: Headers) => Headers
+  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Headers
 } = dual<
-  (key: string) => (self: Headers) => Headers,
-  (self: Headers, key: string) => Headers
+  (key: string | RegExp | ReadonlyArray<string | RegExp>) => (self: Headers) => Headers,
+  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>) => Headers
 >(2, (self, key) => {
   const out = make(self)
-  delete out[key.toLowerCase()]
+  const modify = (key: string | RegExp) => {
+    if (typeof key === "string") {
+      const k = key.toLowerCase()
+      if (k in self) {
+        delete out[k]
+      }
+    } else {
+      for (const name in self) {
+        if (key.test(name)) {
+          delete out[name]
+        }
+      }
+    }
+  }
+  if (Array.isArray(key)) {
+    for (let i = 0; i < key.length; i++) {
+      modify(key[i])
+    }
+  } else {
+    modify(key as string | RegExp)
+  }
   return out
 })
 
