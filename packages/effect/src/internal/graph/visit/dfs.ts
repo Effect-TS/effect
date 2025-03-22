@@ -3,27 +3,17 @@ import * as Option from "../../../Option.js"
 import * as graph from "../graph.js"
 
 /**
- * Strictly monotonically increasing event time for a depth first search.
- *
- * @since 3.12.0
- * @category models
- */
-export interface Time {
-  readonly value: number
-}
-
-/**
  * A depth first search (DFS) visitor event.
  *
  * @since 3.12.0
  * @category models
  */
 export type DfsEvent<N> =
-  | { readonly _tag: "Discover"; readonly node: N; readonly time: Time }
+  | { readonly _tag: "Discover"; readonly node: N }
   | { readonly _tag: "TreeEdge"; readonly from: N; readonly to: N }
   | { readonly _tag: "BackEdge"; readonly from: N; readonly to: N }
   | { readonly _tag: "CrossForwardEdge"; readonly from: N; readonly to: N }
-  | { readonly _tag: "Finish"; readonly node: N; readonly time: Time }
+  | { readonly _tag: "Finish"; readonly node: N }
 
 /**
  * Control flow for `depthFirstSearch` callbacks.
@@ -54,12 +44,11 @@ export const depthFirstSearch = <N, E, B>(
   starts: Iterable<number>,
   visitor: (event: DfsEvent<N>) => Control<B>
 ): Option.Option<B> => {
-  const time = { value: 0 }
   const discovered = new Set<number>()
   const finished = new Set<number>()
 
   for (const start of starts) {
-    const result = dfsVisitor(self, start, visitor, discovered, finished, time)
+    const result = dfsVisitor(self, start, visitor, discovered, finished)
     if (result._tag === "Break") {
       return Option.some(result.value)
     }
@@ -74,17 +63,13 @@ const dfsVisitor = <N, E, B>(
   u: number,
   visitor: (event: DfsEvent<N>) => Control<B>,
   discovered: Set<number>,
-  finished: Set<number>,
-  time: Time
+  finished: Set<number>
 ): Control<B> => {
   if (discovered.has(u)) {
     return { _tag: "Continue" }
   }
 
   discovered.add(u)
-  time.value += 1
-  const discoverTime = time.value
-
   const node = self.nodes[u]
   if (!node) {
     return { _tag: "Continue" }
@@ -92,8 +77,7 @@ const dfsVisitor = <N, E, B>(
 
   const result = visitor({
     _tag: "Discover",
-    node: node.data,
-    time: { value: discoverTime }
+    node: node.data
   })
 
   if (result._tag === "Break") {
@@ -116,7 +100,7 @@ const dfsVisitor = <N, E, B>(
         }
 
         if (result._tag !== "Prune") {
-          const result = dfsVisitor(self, v, visitor, discovered, finished, time)
+          const result = dfsVisitor(self, v, visitor, discovered, finished)
           if (result._tag === "Break") {
             return result
           }
@@ -144,12 +128,10 @@ const dfsVisitor = <N, E, B>(
   }
 
   finished.add(u)
-  time.value += 1
 
   const result2 = visitor({
     _tag: "Finish",
-    node: node.data,
-    time: { value: time.value }
+    node: node.data
   })
 
   if (result2._tag === "Prune") {

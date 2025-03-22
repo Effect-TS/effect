@@ -1,5 +1,3 @@
-// Implementation of IndexMap here.
-
 import * as Equal from "../Equal.js"
 import { dual, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
@@ -149,7 +147,7 @@ export const get = dual<
   <K1>(key: K1) => <K, V>(self: IM.IndexMap<K, V>) => Option.Option<V>,
   <K, V, K1>(self: IM.IndexMap<K, V>, key: K1) => Option.Option<V>
 >(2, (self, key) => {
-  const impl = self as IndexMapImpl<K, V>
+  const impl = self as IndexMapImpl<any, any>
   const indexOption = HashMap.get(impl._indices, key)
   return Option.flatMap(indexOption, (index) => {
     if (index >= 0 && index < impl._values.length) {
@@ -295,7 +293,7 @@ export const forEach = dual<
   <V, K>(f: (value: V, key: K) => void) => (self: IM.IndexMap<K, V>) => void,
   <V, K>(self: IM.IndexMap<K, V>, f: (value: V, key: K) => void) => void
 >(2, (self, f) => {
-  const impl = self as IndexMapImpl<K, V>
+  const impl = self as IndexMapImpl<any, any>
   for (let i = 0; i < impl._keys.length; i++) {
     f(impl._values[i], impl._keys[i])
   }
