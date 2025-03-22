@@ -2,4 +2,4 @@
 
 ## Documentation
 
-- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/ai/ai-openai).
+- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/ai/openai).
