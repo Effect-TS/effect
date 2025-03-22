@@ -408,6 +408,7 @@ export * as Layer from "./Layer.js"
 
 /**
  * @since 3.14.0
+ * @experimental
  */
 export * as LayerMap from "./LayerMap.js"
 
