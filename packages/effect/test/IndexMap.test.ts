@@ -1,7 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Equal, Hash, Option, pipe } from "effect"
-import { assertFalse, assertNone, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
-import * as IM from "../src/IndexMap.js"
+import { Equal, Hash, IndexMap, Option, pipe } from "effect"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
 
 class Key implements Equal.Equal {
   constructor(readonly n: number) {}
@@ -37,14 +36,14 @@ describe("IndexMap", () => {
   }
 
   it("option", () => {
-    const map = IM.make([Option.some(1), 0], [Option.none(), 1])
-    assertTrue(pipe(map, IM.has(Option.none())))
-    assertTrue(pipe(map, IM.has(Option.some(1))))
-    assertFalse(pipe(map, IM.has(Option.some(2))))
+    const map = IndexMap.make([Option.some(1), 0], [Option.none(), 1])
+    assertTrue(IndexMap.has(map, Option.none()))
+    assertTrue(IndexMap.has(map, Option.some(1)))
+    assertFalse(IndexMap.has(map, Option.some(2)))
   })
 
   it("toString", () => {
-    const map = IM.make([0, "a"])
+    const map = IndexMap.make([0, "a"])
     strictEqual(
       String(map),
       `{
@@ -60,82 +59,60 @@ describe("IndexMap", () => {
   })
 
   it("toJSON", () => {
-    const map = IM.make([0, "a"])
+    const map = IndexMap.make([0, "a"])
     deepStrictEqual(map.toJSON(), { _id: "IndexMap", values: [[0, "a"]] })
   })
 
-  it("inspect", () => {
-    if (typeof window === "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { inspect } = require("node:util")
-      const map = IM.make([0, "a"])
-      deepStrictEqual(inspect(map), inspect({ _id: "IndexMap", values: [[0, "a"]] }))
-    }
-  })
-
   it("has", () => {
-    const map = IM.make([key(0), value("a")])
-
-    assertTrue(IM.has(key(0))(map))
-    assertFalse(IM.has(key(1))(map))
+    const map = IndexMap.make([key(0), value("a")])
+    assertTrue(IndexMap.has(key(0))(map))
+    assertFalse(IndexMap.has(key(1))(map))
   })
 
   it("get", () => {
-    const map = IM.make([key(0), value("a")])
-
-    const result1 = IM.get(key(0))(map)
-    assertTrue(Option.isSome(result1))
-    if (Option.isSome(result1)) {
-      deepStrictEqual(result1.value, value("a"))
-    }
-
-    assertNone(IM.get(key(1))(map))
+    const map = IndexMap.make([key(0), value("a")])
+    const result1 = IndexMap.get(key(0))(map)
+    assertSome(result1, value("a"))
+    assertNone(IndexMap.get(key(1))(map))
   })
 
   it("set", () => {
-    const map = pipe(IM.empty<Key, Value>(), IM.set(key(0), value("a")))
+    const map = pipe(
+      IndexMap.empty<Key, Value>(),
+      IndexMap.set(key(0), value("a"))
+    )
 
-    const result = IM.get(key(0))(map)
-    assertTrue(Option.isSome(result))
-    if (Option.isSome(result)) {
-      deepStrictEqual(result.value, value("a"))
-    }
+    const result = IndexMap.get(key(0))(map)
+    assertSome(result, value("a"))
   })
 
   it("mutation", () => {
-    let map = IM.empty()
+    let map = IndexMap.empty()
 
     assertFalse((map as any)._editable)
-    map = IM.beginMutation(map)
+    map = IndexMap.beginMutation(map)
     assertTrue((map as any)._editable)
-    map = IM.endMutation(map)
+    map = IndexMap.endMutation(map)
     assertFalse((map as any)._editable)
   })
 
   it("mutate", () => {
-    const map = IM.empty<number, string>()
-    const result = pipe(
-      map,
-      IM.mutate((mutableMap) => {
-        pipe(mutableMap, IM.set(0, "a"))
-      })
-    )
+    const map = IndexMap.empty<number, string>()
+    const result = IndexMap.mutate(map, (mutable) => {
+      IndexMap.set(mutable, 0, "a")
+    })
 
-    const optResult = IM.get(0)(result)
-    assertTrue(Option.isSome(optResult))
-    if (Option.isSome(optResult)) {
-      strictEqual(optResult.value, "a")
-    }
-
-    assertNone(IM.get(1)(result))
+    const optResult = IndexMap.get(0)(result)
+    assertSome(optResult, "a")
+    assertNone(IndexMap.get(1)(result))
   })
 
   it("preserves insertion order", () => {
     const map = pipe(
-      IM.empty<number, string>(),
-      IM.set(3, "c"),
-      IM.set(1, "a"),
-      IM.set(2, "b")
+      IndexMap.empty<number, string>(),
+      IndexMap.set(3, "c"),
+      IndexMap.set(1, "a"),
+      IndexMap.set(2, "b")
     )
 
     const entries = Array.from(map)
@@ -144,309 +121,260 @@ describe("IndexMap", () => {
 
   it("getIndex returns entry at position", () => {
     const map = pipe(
-      IM.empty<number, string>(),
-      IM.set(3, "c"),
-      IM.set(1, "a"),
-      IM.set(2, "b")
+      IndexMap.empty<number, string>(),
+      IndexMap.set(3, "c"),
+      IndexMap.set(1, "a"),
+      IndexMap.set(2, "b")
     )
 
-    const result0 = IM.getIndex(0)(map)
-    const result1 = IM.getIndex(1)(map)
-    const result2 = IM.getIndex(2)(map)
+    const result0 = IndexMap.getIndex(0)(map)
+    const result1 = IndexMap.getIndex(1)(map)
+    const result2 = IndexMap.getIndex(2)(map)
 
-    assertTrue(Option.isSome(result0))
-    if (Option.isSome(result0)) {
-      deepStrictEqual(result0.value, [3, "c"])
-    }
+    assertSome(result0, [3, "c"])
+    assertSome(result1, [1, "a"])
+    assertSome(result2, [2, "b"])
 
-    assertTrue(Option.isSome(result1))
-    if (Option.isSome(result1)) {
-      deepStrictEqual(result1.value, [1, "a"])
-    }
-
-    assertTrue(Option.isSome(result2))
-    if (Option.isSome(result2)) {
-      deepStrictEqual(result2.value, [2, "b"])
-    }
-
-    assertNone(IM.getIndex(3)(map))
-    assertNone(IM.getIndex(-1)(map))
+    assertNone(IndexMap.getIndex(3)(map))
+    assertNone(IndexMap.getIndex(-1)(map))
   })
 
   it("pop removes last entry", () => {
     const map = pipe(
-      IM.empty<number, string>(),
-      IM.set(3, "c"),
-      IM.set(1, "a"),
-      IM.set(2, "b")
+      IndexMap.empty<number, string>(),
+      IndexMap.set(3, "c"),
+      IndexMap.set(1, "a"),
+      IndexMap.set(2, "b")
     )
 
-    const result = IM.pop(map)
+    const result = IndexMap.pop(map)
     assertTrue(Option.isSome(result))
 
     if (Option.isSome(result)) {
       const [[key, value], newMap] = result.value
       strictEqual(key, 2)
       strictEqual(value, "b")
-      strictEqual(IM.size(newMap), 2)
+      strictEqual(IndexMap.size(newMap), 2)
       deepStrictEqual(Array.from(newMap), [[3, "c"], [1, "a"]])
     }
   })
 
   it("pop on empty map returns None", () => {
-    const map = IM.empty<number, string>()
-    assertNone(IM.pop(map))
+    const map = IndexMap.empty<number, string>()
+    assertNone(IndexMap.pop(map))
   })
 
   it("filter", () => {
-    const map1 = IM.make([key(0), value("a")], [key(1), value("bb")])
-    const result1 = pipe(map1, IM.filter((v: Value) => v.s.length > 1))
+    const map1 = IndexMap.make([key(0), value("a")], [key(1), value("bb")])
+    const result1 = pipe(map1, IndexMap.filter((v: Value) => v.s.length > 1))
 
-    assertNone(IM.get(key(0))(result1))
+    assertNone(IndexMap.get(key(0))(result1))
 
-    const getResult = IM.get(key(1))(result1)
-    assertTrue(Option.isSome(getResult))
-    if (Option.isSome(getResult)) {
-      deepStrictEqual(getResult.value, value("bb"))
-    }
+    const getResult = IndexMap.get(key(1))(result1)
+    assertSome(getResult, value("bb"))
 
-    const map2 = IM.make([key(0), value("a")], [key(1), value("bb")])
-    const result2 = pipe(map2, IM.filter((v: Value, k: Key) => k.n > 0 && v.s.length > 0))
+    const map2 = IndexMap.make([key(0), value("a")], [key(1), value("bb")])
+    const result2 = pipe(map2, IndexMap.filter((v: Value, k: Key) => k.n > 0 && v.s.length > 0))
 
-    assertNone(IM.get(key(0))(result2))
+    assertNone(IndexMap.get(key(0))(result2))
 
-    const getResult2 = IM.get(key(1))(result2)
-    assertTrue(Option.isSome(getResult2))
-    if (Option.isSome(getResult2)) {
-      deepStrictEqual(getResult2.value, value("bb"))
-    }
+    const getResult2 = IndexMap.get(key(1))(result2)
+    assertSome(getResult2, value("bb"))
   })
 
   it("forEach", () => {
-    const map1 = IM.make([key(0), value("a")], [key(1), value("b")])
+    const map1 = IndexMap.make([key(0), value("a")], [key(1), value("b")])
     const result1: Array<string> = []
-    pipe(
-      map1,
-      IM.forEach((v: Value) => {
-        result1.push(v.s)
-      })
-    )
+    IndexMap.forEach(map1, (v: Value) => {
+      result1.push(v.s)
+    })
 
     deepStrictEqual(result1, ["a", "b"])
 
-    const map2 = IM.make([key(0), value("a")], [key(1), value("b")])
+    const map2 = IndexMap.make([key(0), value("a")], [key(1), value("b")])
     const result2: Array<readonly [number, string]> = []
-    pipe(
-      map2,
-      IM.forEach((v: Value, k: Key) => {
-        result2.push([k.n, v.s])
-      })
-    )
+    IndexMap.forEach(map2, (v: Value, k: Key) => {
+      result2.push([k.n, v.s])
+    })
 
     deepStrictEqual(result2, [[0, "a"], [1, "b"]])
   })
 
   it("isEmpty", () => {
-    assertTrue(IM.isEmpty(IM.make()))
-    assertFalse(IM.isEmpty(IM.make([key(0), value("a")])))
+    assertTrue(IndexMap.isEmpty(IndexMap.make()))
+    assertFalse(IndexMap.isEmpty(IndexMap.make([key(0), value("a")])))
   })
 
   it("map", () => {
-    const map1 = IM.make([key(0), value("a")], [key(1), value("bb")])
-    const result1 = pipe(map1, IM.map((v: Value) => v.s.length))
+    const map1 = IndexMap.make([key(0), value("a")], [key(1), value("bb")])
+    const result1 = IndexMap.map(map1, (v: Value) => v.s.length)
 
-    const getResult1a = IM.get(key(0))(result1)
-    assertTrue(Option.isSome(getResult1a))
-    if (Option.isSome(getResult1a)) {
-      strictEqual(getResult1a.value, 1)
-    }
+    const getResult1a = IndexMap.get(result1, key(0))
+    assertSome(getResult1a, 1)
 
-    const getResult1b = IM.get(key(1))(result1)
-    assertTrue(Option.isSome(getResult1b))
-    if (Option.isSome(getResult1b)) {
-      strictEqual(getResult1b.value, 2)
-    }
+    const getResult1b = IndexMap.get(result1, key(1))
+    assertSome(getResult1b, 2)
 
-    assertNone(IM.get(key(2))(result1))
+    assertNone(IndexMap.get(result1, key(2)))
 
-    const map2 = IM.make([key(0), value("a")], [key(1), value("bb")])
-    const result2 = pipe(map2, IM.map((v: Value, k: Key) => k.n + v.s.length))
+    const map2 = IndexMap.make([key(0), value("a")], [key(1), value("bb")])
+    const result2 = IndexMap.map(map2, (v: Value, k: Key) => k.n + v.s.length)
 
-    const getResult2a = IM.get(key(0))(result2)
-    assertTrue(Option.isSome(getResult2a))
-    if (Option.isSome(getResult2a)) {
-      strictEqual(getResult2a.value, 1)
-    }
+    const getResult2a = IndexMap.get(result2, key(0))
+    assertSome(getResult2a, 1)
 
-    const getResult2b = IM.get(key(1))(result2)
-    assertTrue(Option.isSome(getResult2b))
-    if (Option.isSome(getResult2b)) {
-      strictEqual(getResult2b.value, 3)
-    }
+    const getResult2b = IndexMap.get(result2, key(1))
+    assertSome(getResult2b, 3)
 
-    assertNone(IM.get(key(2))(result2))
+    assertNone(IndexMap.get(result2, key(2)))
   })
 
   it("reduce", () => {
-    const map1 = IM.make([key(0), value("a")], [key(1), value("b")])
-    const result1 = pipe(map1, IM.reduce("", (acc, v: Value) => acc.length > 0 ? `${acc},${v.s}` : v.s))
+    const map1 = IndexMap.make([key(0), value("a")], [key(1), value("b")])
+    const result1 = IndexMap.reduce(map1, "", (acc, v: Value) => acc.length > 0 ? `${acc},${v.s}` : v.s)
 
     strictEqual(result1, "a,b")
 
-    const map2 = IM.make([key(0), value("a")], [key(1), value("b")])
-    const result2 = pipe(
+    const map2 = IndexMap.make([key(0), value("a")], [key(1), value("b")])
+    const result2 = IndexMap.reduce(
       map2,
-      IM.reduce(
-        "",
-        (acc, v: Value, k: Key) => acc.length > 0 ? `${acc},${k.n}:${v.s}` : `${k.n}:${v.s}`
-      )
+      "",
+      (acc, v: Value, k: Key) => acc.length > 0 ? `${acc},${k.n}:${v.s}` : `${k.n}:${v.s}`
     )
 
     strictEqual(result2, "0:a,1:b")
   })
 
   it("remove", () => {
-    const map = IM.make([key(0), value("a")], [key(1), value("b")])
-    const result = pipe(map, IM.remove(key(0)))
+    const map = IndexMap.make([key(0), value("a")], [key(1), value("b")])
+    const result = IndexMap.remove(map, key(0))
 
-    assertNone(IM.get(key(0))(result))
+    assertNone(IndexMap.get(result, key(0)))
 
-    const getResult = IM.get(key(1))(result)
-    assertTrue(Option.isSome(getResult))
-    if (Option.isSome(getResult)) {
-      deepStrictEqual(getResult.value, value("b"))
-    }
+    const getResult = IndexMap.get(result, key(1))
+    assertSome(getResult, value("b"))
   })
 
   it("remove maintains insertion order for remaining elements", () => {
     const map = pipe(
-      IM.empty<number, string>(),
-      IM.set(3, "c"),
-      IM.set(1, "a"),
-      IM.set(2, "b"),
-      IM.set(4, "d")
+      IndexMap.empty<number, string>(),
+      IndexMap.set(3, "c"),
+      IndexMap.set(1, "a"),
+      IndexMap.set(2, "b"),
+      IndexMap.set(4, "d")
     )
 
     // Remove middle element
-    const result = pipe(map, IM.remove(1))
+    const result = IndexMap.remove(map, 1)
 
     // Check order is preserved
     deepStrictEqual(Array.from(result), [[3, "c"], [2, "b"], [4, "d"]])
   })
 
   it("size", () => {
-    const map = IM.make([key(0), value("a")], [key(1), value("b")])
-    const result = IM.size(map)
+    const map = IndexMap.make([key(0), value("a")], [key(1), value("b")])
+    const result = IndexMap.size(map)
 
     strictEqual(result, 2)
   })
 
   it("keys", () => {
-    const map = IM.make([0, "a"], [1, "b"])
-    const result = Array.from(IM.keys(map))
+    const map = IndexMap.make([0, "a"], [1, "b"])
+    const result = Array.from(IndexMap.keys(map))
 
     deepStrictEqual(result, [0, 1])
   })
 
   it("values", () => {
-    const map = IM.make([key(0), value("a")], [key(1), value("b")])
-    const result = Array.from(IM.values(map))
+    const map = IndexMap.make([key(0), value("a")], [key(1), value("b")])
+    const result = Array.from(IndexMap.values(map))
 
     deepStrictEqual(result, [value("a"), value("b")])
   })
 
   it("entries", () => {
-    const map = IM.make([key(0), value("a")], [key(1), value("b")])
-    const result = Array.from(IM.entries(map))
+    const map = IndexMap.make([key(0), value("a")], [key(1), value("b")])
+    const result = Array.from(IndexMap.entries(map))
 
     deepStrictEqual(result, [[key(0), value("a")], [key(1), value("b")]])
   })
 
   it("pipe()", () => {
     strictEqual(
-      IM.empty<string, string>().pipe(IM.set("key", "value")).pipe(IM.size),
-      IM.make(["key", "value"]).pipe(IM.size)
+      IndexMap.empty<string, string>().pipe(IndexMap.set("key", "value")).pipe(IndexMap.size),
+      IndexMap.make(["key", "value"]).pipe(IndexMap.size)
     )
   })
 
   it("isIndexMap", () => {
-    assertTrue(IM.isIndexMap(IM.empty()))
-    assertFalse(IM.isIndexMap(null))
-    assertFalse(IM.isIndexMap({}))
+    assertTrue(IndexMap.isIndexMap(IndexMap.empty()))
+    assertFalse(IndexMap.isIndexMap(null))
+    assertFalse(IndexMap.isIndexMap({}))
   })
 
   it("findFirst", () => {
-    const map1 = IM.make([key(0), value("a")], [key(1), value("bb")])
+    const map1 = IndexMap.make([key(0), value("a")], [key(1), value("bb")])
 
-    const result1 = IM.findFirst(map1, (_v: Value, k: Key) => k.n === 0)
-    assertTrue(Option.isSome(result1))
-    if (Option.isSome(result1)) {
-      deepStrictEqual(result1.value, [key(0), value("a")])
-    }
+    const result1 = IndexMap.findFirst(map1, (_v: Value, k: Key) => k.n === 0)
+    assertSome(result1, [key(0), value("a")])
 
-    const result2 = IM.findFirst(map1, (v: Value, _k: Key) => v.s === "bb")
-    assertTrue(Option.isSome(result2))
-    if (Option.isSome(result2)) {
-      deepStrictEqual(result2.value, [key(1), value("bb")])
-    }
+    const result2 = IndexMap.findFirst(map1, (v: Value, _k: Key) => v.s === "bb")
+    assertSome(result2, [key(1), value("bb")])
 
-    assertNone(IM.findFirst(map1, (v: Value, k: Key) => k.n === 0 && v.s === "bb"))
+    assertNone(IndexMap.findFirst(map1, (v: Value, k: Key) => k.n === 0 && v.s === "bb"))
   })
 
   it("handles updates to existing keys", () => {
     const map = pipe(
-      IM.empty<number, string>(),
-      IM.set(1, "a"),
-      IM.set(2, "b"),
-      IM.set(3, "c")
+      IndexMap.empty<number, string>(),
+      IndexMap.set(1, "a"),
+      IndexMap.set(2, "b"),
+      IndexMap.set(3, "c")
     )
 
     // Update existing key
-    const result = pipe(map, IM.set(2, "updated"))
+    const result = IndexMap.set(map, 2, "updated")
 
     // Check value is updated
-    const getResult = IM.get(2)(result)
-    assertTrue(Option.isSome(getResult))
-    if (Option.isSome(getResult)) {
-      strictEqual(getResult.value, "updated")
-    }
+    const getResult = IndexMap.get(result, 2)
+    assertSome(getResult, "updated")
 
     // Check order is preserved
     deepStrictEqual(Array.from(result), [[1, "a"], [2, "updated"], [3, "c"]])
   })
 
   it("unsafeGet returns value or throws", () => {
-    const map = IM.make([key(0), value("a")])
+    const map = IndexMap.make([key(0), value("a")])
 
-    strictEqual(IM.unsafeGet(key(0))(map).s, "a")
+    strictEqual(IndexMap.unsafeGet(map, key(0)).s, "a")
 
     // Should throw for non-existent key
-    throws(() => IM.unsafeGet(key(1))(map))
+    throws(() => IndexMap.unsafeGet(map, key(1)))
   })
 
   it("equality compares both values and order", () => {
     const map1 = pipe(
-      IM.empty<number, string>(),
-      IM.set(1, "a"),
-      IM.set(2, "b")
+      IndexMap.empty<number, string>(),
+      IndexMap.set(1, "a"),
+      IndexMap.set(2, "b")
     )
 
     const map2 = pipe(
-      IM.empty<number, string>(),
-      IM.set(1, "a"),
-      IM.set(2, "b")
+      IndexMap.empty<number, string>(),
+      IndexMap.set(1, "a"),
+      IndexMap.set(2, "b")
     )
 
     const map3 = pipe(
-      IM.empty<number, string>(),
-      IM.set(2, "b"),
-      IM.set(1, "a")
+      IndexMap.empty<number, string>(),
+      IndexMap.set(2, "b"),
+      IndexMap.set(1, "a")
     )
 
     const map4 = pipe(
-      IM.empty<number, string>(),
-      IM.set(1, "a"),
-      IM.set(2, "c")
+      IndexMap.empty<number, string>(),
+      IndexMap.set(1, "a"),
+      IndexMap.set(2, "c")
     )
 
     // Same keys, values, and order

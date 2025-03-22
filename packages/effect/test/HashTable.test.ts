@@ -1,13 +1,23 @@
-import { describe, expect, it } from "vitest"
-import * as HashTable from "../src/HashTable.js"
+import { describe, it } from "@effect/vitest"
+import { HashTable, Option } from "effect"
+import {
+  assertFalse,
+  assertNone,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  notDeepStrictEqual,
+  strictEqual,
+  throws
+} from "effect/test/util"
 
 describe("HashTable", () => {
   it("should create an empty table", () => {
     const table = HashTable.empty<string, number>()
-    expect(HashTable.isEmpty(table)).toBe(true)
-    expect(HashTable.size(table)).toBe(0)
-    expect(HashTable.columnsLength(table)).toBe(0)
-    expect(HashTable.rowsLength(table)).toBe(0)
+    assertTrue(HashTable.isEmpty(table))
+    strictEqual(HashTable.size(table), 0)
+    strictEqual(HashTable.columnsLength(table), 0)
+    strictEqual(HashTable.rowsLength(table), 0)
   })
 
   it("should create a table from columns", () => {
@@ -17,15 +27,20 @@ describe("HashTable", () => {
       ["c", [7, 8, 9]]
     ])
 
-    expect(HashTable.isEmpty(table)).toBe(false)
-    expect(HashTable.size(table)).toBe(3)
-    expect(HashTable.columnsLength(table)).toBe(3)
-    expect(HashTable.rowsLength(table)).toBe(3)
+    assertFalse(HashTable.isEmpty(table))
+    strictEqual(HashTable.size(table), 3)
+    strictEqual(HashTable.columnsLength(table), 3)
+    strictEqual(HashTable.rowsLength(table), 3)
 
     // Check values
-    expect(HashTable.get(table, "a", 0)).toEqual({ value: 1 })
-    expect(HashTable.get(table, "b", 1)).toEqual({ value: 5 })
-    expect(HashTable.get(table, "c", 2)).toEqual({ value: 9 })
+    const val1 = HashTable.get(table, "a", 0)
+    assertSome(val1, 1)
+
+    const val2 = HashTable.get(table, "b", 1)
+    assertSome(val2, 5)
+
+    const val3 = HashTable.get(table, "c", 2)
+    assertSome(val3, 9)
   })
 
   it("should create a table from rows", () => {
@@ -38,15 +53,20 @@ describe("HashTable", () => {
       ]
     )
 
-    expect(HashTable.isEmpty(table)).toBe(false)
-    expect(HashTable.size(table)).toBe(3)
-    expect(HashTable.columnsLength(table)).toBe(3)
-    expect(HashTable.rowsLength(table)).toBe(3)
+    assertFalse(HashTable.isEmpty(table))
+    strictEqual(HashTable.size(table), 3)
+    strictEqual(HashTable.columnsLength(table), 3)
+    strictEqual(HashTable.rowsLength(table), 3)
 
     // Check values
-    expect(HashTable.get(table, "a", 0)).toEqual({ value: 1 })
-    expect(HashTable.get(table, "b", 1)).toEqual({ value: 5 })
-    expect(HashTable.get(table, "c", 2)).toEqual({ value: 9 })
+    const val1 = HashTable.get(table, "a", 0)
+    assertSome(val1, 1)
+
+    const val2 = HashTable.get(table, "b", 1)
+    assertSome(val2, 5)
+
+    const val3 = HashTable.get(table, "c", 2)
+    assertSome(val3, 9)
   })
 
   it("should get and set values", () => {
@@ -57,8 +77,11 @@ describe("HashTable", () => {
 
     const updatedTable = HashTable.set(table, "a", 1, 99)
 
-    expect(HashTable.get(table, "a", 1)).toEqual({ value: 2 })
-    expect(HashTable.get(updatedTable, "a", 1)).toEqual({ value: 99 })
+    const val1 = HashTable.get(table, "a", 1)
+    assertSome(val1, 2)
+
+    const val2 = HashTable.get(updatedTable, "a", 1)
+    assertSome(val2, 99)
   })
 
   it("should get rows and columns", () => {
@@ -68,21 +91,21 @@ describe("HashTable", () => {
     ])
 
     const row = HashTable.getRow(table, 1)
-    expect(row).toBeDefined()
-    if (row._tag !== "None") {
-      expect(row.value.keys).toContain("a")
-      expect(row.value.keys).toContain("b")
-      expect(row.value.values).toContain(2)
-      expect(row.value.values).toContain(5)
-      expect(row.value.index).toBe(1)
+    assertTrue(Option.isSome(row))
+    if (Option.isSome(row)) {
+      assertTrue(row.value.keys.includes("a"))
+      assertTrue(row.value.keys.includes("b"))
+      assertTrue(row.value.values.includes(2))
+      assertTrue(row.value.values.includes(5))
+      strictEqual(row.value.index, 1)
     }
 
     const column = HashTable.getColumn(table, "b")
-    expect(column).toBeDefined()
-    if (column._tag !== "None") {
-      expect(column.value.key).toBe("b")
-      expect(column.value.values).toEqual([4, 5, 6])
-      expect(column.value.index).toBeGreaterThanOrEqual(0)
+    assertTrue(Option.isSome(column))
+    if (Option.isSome(column)) {
+      strictEqual(column.value.key, "b")
+      deepStrictEqual(column.value.values, [4, 5, 6])
+      assertTrue(column.value.index >= 0)
     }
   })
 
@@ -93,14 +116,22 @@ describe("HashTable", () => {
     ])
 
     const withRow = HashTable.insertRow(table, [5, 6])
-    expect(HashTable.rowsLength(withRow)).toBe(3)
-    expect(HashTable.get(withRow, "a", 2)).toEqual({ value: 5 })
-    expect(HashTable.get(withRow, "b", 2)).toEqual({ value: 6 })
+    strictEqual(HashTable.rowsLength(withRow), 3)
+
+    const val1 = HashTable.get(withRow, "a", 2)
+    assertSome(val1, 5)
+
+    const val2 = HashTable.get(withRow, "b", 2)
+    assertSome(val2, 6)
 
     const afterRemove = HashTable.removeRow(withRow, 1)
-    expect(HashTable.rowsLength(afterRemove)).toBe(2)
-    expect(HashTable.get(afterRemove, "a", 0)).toEqual({ value: 1 })
-    expect(HashTable.get(afterRemove, "a", 1)).toEqual({ value: 5 })
+    strictEqual(HashTable.rowsLength(afterRemove), 2)
+
+    const val3 = HashTable.get(afterRemove, "a", 0)
+    assertSome(val3, 1)
+
+    const val4 = HashTable.get(afterRemove, "a", 1)
+    assertSome(val4, 5)
   })
 
   it("should insert and remove columns", () => {
@@ -110,14 +141,22 @@ describe("HashTable", () => {
     ])
 
     const withColumn = HashTable.insertColumn(table, "c", [5, 6])
-    expect(HashTable.columnsLength(withColumn)).toBe(3)
-    expect(HashTable.get(withColumn, "c", 0)).toEqual({ value: 5 })
-    expect(HashTable.get(withColumn, "c", 1)).toEqual({ value: 6 })
+    strictEqual(HashTable.columnsLength(withColumn), 3)
+
+    const val1 = HashTable.get(withColumn, "c", 0)
+    assertSome(val1, 5)
+
+    const val2 = HashTable.get(withColumn, "c", 1)
+    assertSome(val2, 6)
 
     const afterRemove = HashTable.removeColumn(withColumn, "b")
-    expect(HashTable.columnsLength(afterRemove)).toBe(2)
-    expect(HashTable.get(afterRemove, "a", 0)).toEqual({ value: 1 })
-    expect(HashTable.get(afterRemove, "c", 0)).toEqual({ value: 5 })
+    strictEqual(HashTable.columnsLength(afterRemove), 2)
+
+    const val3 = HashTable.get(afterRemove, "a", 0)
+    assertSome(val3, 1)
+
+    const val4 = HashTable.get(afterRemove, "c", 0)
+    assertSome(val4, 5)
   })
 
   it("should iterate over entries", () => {
@@ -131,11 +170,20 @@ describe("HashTable", () => {
       entries.push([key, value, rowIndex])
     }
 
-    expect(entries).toHaveLength(4)
-    expect(entries).toContainEqual(["a", 1, 0])
-    expect(entries).toContainEqual(["b", 3, 0])
-    expect(entries).toContainEqual(["a", 2, 1])
-    expect(entries).toContainEqual(["b", 4, 1])
+    strictEqual(entries.length, 4)
+
+    // Check that each expected entry exists in the array
+    let found = entries.filter((entry) => entry[0] === "a" && entry[1] === 1 && entry[2] === 0)
+    strictEqual(found.length, 1)
+
+    found = entries.filter((entry) => entry[0] === "b" && entry[1] === 3 && entry[2] === 0)
+    strictEqual(found.length, 1)
+
+    found = entries.filter((entry) => entry[0] === "a" && entry[1] === 2 && entry[2] === 1)
+    strictEqual(found.length, 1)
+
+    found = entries.filter((entry) => entry[0] === "b" && entry[1] === 4 && entry[2] === 1)
+    strictEqual(found.length, 1)
   })
 
   it("should handle mutations", () => {
@@ -149,12 +197,18 @@ describe("HashTable", () => {
       HashTable.set(mutable, "b", 1, 88)
     })
 
-    expect(HashTable.get(result, "a", 0)).toEqual({ value: 99 })
-    expect(HashTable.get(result, "b", 1)).toEqual({ value: 88 })
+    const val1 = HashTable.get(result, "a", 0)
+    assertSome(val1, 99)
+
+    const val2 = HashTable.get(result, "b", 1)
+    assertSome(val2, 88)
 
     // Original should be unchanged
-    expect(HashTable.get(table, "a", 0)).toEqual({ value: 1 })
-    expect(HashTable.get(table, "b", 1)).toEqual({ value: 4 })
+    const val3 = HashTable.get(table, "a", 0)
+    assertSome(val3, 1)
+
+    const val4 = HashTable.get(table, "b", 1)
+    assertSome(val4, 4)
   })
 
   it("should properly compare HashTables for equality", () => {
@@ -179,27 +233,27 @@ describe("HashTable", () => {
     ])
 
     // Equal tables
-    expect(Object.is(table1, table2)).toBe(false) // Different references
-    expect(table1).toEqual(table2) // But equal contents
+    assertFalse(Object.is(table1, table2)) // Different references
+    deepStrictEqual(table1, table2) // But equal contents
 
     // Different values
-    expect(table1).not.toEqual(table3)
+    notDeepStrictEqual(table1, table3)
 
     // Different keys
-    expect(table1).not.toEqual(table4)
+    notDeepStrictEqual(table1, table4)
   })
 
   it("should throw errors for inconsistent dimensions", () => {
     // Trying to create a table with inconsistent row lengths
-    expect(() => {
+    throws(() => {
       HashTable.fromColumns([
         ["a", [1, 2, 3]],
         ["b", [4, 5]] // Missing one value
       ])
-    }).toThrow()
+    })
 
     // Trying to create a table with inconsistent column count
-    expect(() => {
+    throws(() => {
       HashTable.fromRows(
         ["a", "b", "c"],
         [
@@ -207,7 +261,7 @@ describe("HashTable", () => {
           [2, 5] // Missing one value
         ]
       )
-    }).toThrow()
+    })
 
     // Trying to insert a row with wrong length
     const table = HashTable.fromColumns([
@@ -215,13 +269,13 @@ describe("HashTable", () => {
       ["b", [3, 4]]
     ])
 
-    expect(() => {
+    throws(() => {
       HashTable.insertRow(table, [5]) // Too few values
-    }).toThrow()
+    })
 
-    expect(() => {
+    throws(() => {
       HashTable.insertRow(table, [5, 6, 7]) // Too many values
-    }).toThrow()
+    })
   })
 
   it("should handle empty columns and rows correctly", () => {
@@ -231,14 +285,18 @@ describe("HashTable", () => {
       ["b", []]
     ])
 
-    expect(HashTable.columnsLength(emptyRowsTable)).toBe(2)
-    expect(HashTable.rowsLength(emptyRowsTable)).toBe(0)
+    strictEqual(HashTable.columnsLength(emptyRowsTable), 2)
+    strictEqual(HashTable.rowsLength(emptyRowsTable), 0)
 
     // Insert row into empty rows table
     const withRow = HashTable.insertRow(emptyRowsTable, [1, 2])
-    expect(HashTable.rowsLength(withRow)).toBe(1)
-    expect(HashTable.get(withRow, "a", 0)).toEqual({ value: 1 })
-    expect(HashTable.get(withRow, "b", 0)).toEqual({ value: 2 })
+    strictEqual(HashTable.rowsLength(withRow), 1)
+
+    const val1 = HashTable.get(withRow, "a", 0)
+    assertSome(val1, 1)
+
+    const val2 = HashTable.get(withRow, "b", 0)
+    assertSome(val2, 2)
 
     // Test getting nonexistent values
     const table = HashTable.fromColumns([
@@ -246,8 +304,8 @@ describe("HashTable", () => {
       ["b", [3, 4]]
     ])
 
-    expect(HashTable.get(table, "nonexistent", 0)._tag).toBe("None")
-    expect(HashTable.get(table, "a", 99)._tag).toBe("None")
+    assertNone(HashTable.get(table, "nonexistent", 0))
+    assertNone(HashTable.get(table, "a", 99))
   })
 
   it("should handle large tables efficiently", () => {
@@ -269,13 +327,18 @@ describe("HashTable", () => {
     const largeTable = HashTable.fromColumns(columnEntries)
 
     // Verify dimensions
-    expect(HashTable.columnsLength(largeTable)).toBe(columns)
-    expect(HashTable.rowsLength(largeTable)).toBe(rows)
+    strictEqual(HashTable.columnsLength(largeTable), columns)
+    strictEqual(HashTable.rowsLength(largeTable), rows)
 
     // Verify some random values
-    expect(HashTable.get(largeTable, "col0", 0)).toEqual({ value: 0 })
-    expect(HashTable.get(largeTable, "col50", 50)).toEqual({ value: 50050 })
-    expect(HashTable.get(largeTable, "col99", 99)).toEqual({ value: 99099 })
+    const val1 = HashTable.get(largeTable, "col0", 0)
+    assertSome(val1, 0)
+
+    const val2 = HashTable.get(largeTable, "col50", 50)
+    assertSome(val2, 50050)
+
+    const val3 = HashTable.get(largeTable, "col99", 99)
+    assertSome(val3, 99099)
 
     // Test performance of iteration
     let count = 0
@@ -285,6 +348,6 @@ describe("HashTable", () => {
     }
 
     // If we got here without timing out, the iteration is efficient enough
-    expect(true).toBe(true)
+    assertTrue(true)
   })
 })
