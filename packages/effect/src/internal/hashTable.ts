@@ -1,6 +1,5 @@
 import * as Equal from "../Equal.js"
-import * as Dual from "../Function.js"
-import { pipe } from "../Function.js"
+import { dual, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
 import * as HashMap from "../HashMap.js"
 import type * as HT from "../HashTable.js"
@@ -190,7 +189,7 @@ export const rowsLength = <K, V>(self: HT.HashTable<K, V>): number => {
 }
 
 /** @internal */
-export const get = Dual.dual<
+export const get = dual<
   <K1, V>(key: K1, rowIndex: number) => <K extends K1, V1 extends V>(self: HT.HashTable<K, V1>) => Option.Option<V1>,
   <K, V, K1 extends K>(self: HT.HashTable<K, V>, key: K1, rowIndex: number) => Option.Option<V>
 >(3, <K, V, K1 extends K>(self: HT.HashTable<K, V>, key: K1, rowIndex: number): Option.Option<V> => {
@@ -215,7 +214,7 @@ export const get = Dual.dual<
 })
 
 /** @internal */
-export const set = Dual.dual<
+export const set = dual<
   <K, V>(key: K, rowIndex: number, value: V) => (self: HT.HashTable<K, V>) => HT.HashTable<K, V>,
   <K, V>(self: HT.HashTable<K, V>, key: K, rowIndex: number, value: V) => HT.HashTable<K, V>
 >(4, <K, V>(self: HT.HashTable<K, V>, key: K, rowIndex: number, value: V): HT.HashTable<K, V> => {
@@ -244,7 +243,7 @@ export const set = Dual.dual<
 })
 
 /** @internal */
-export const getRow = Dual.dual<
+export const getRow = dual<
   <K, V>(rowIndex: number) => (self: HT.HashTable<K, V>) => Option.Option<HT.HashTableRow<K, V>>,
   <K, V>(self: HT.HashTable<K, V>, rowIndex: number) => Option.Option<HT.HashTableRow<K, V>>
 >(2, <K, V>(self: HT.HashTable<K, V>, rowIndex: number): Option.Option<HT.HashTableRow<K, V>> => {
@@ -284,7 +283,7 @@ export const getRow = Dual.dual<
 })
 
 /** @internal */
-export const getColumn = Dual.dual<
+export const getColumn = dual<
   <K1, V>(
     key: K1
   ) => <K extends K1, V1 extends V>(self: HT.HashTable<K, V1>) => Option.Option<HT.HashTableColumn<K, V1>>,
@@ -331,7 +330,7 @@ export const endMutation = <K, V>(self: HT.HashTable<K, V>): HT.HashTable<K, V> 
 }
 
 /** @internal */
-export const mutate = Dual.dual<
+export const mutate = dual<
   <K, V>(f: (self: HT.HashTable<K, V>) => void) => (self: HT.HashTable<K, V>) => HT.HashTable<K, V>,
   <K, V>(self: HT.HashTable<K, V>, f: (self: HT.HashTable<K, V>) => void) => HT.HashTable<K, V>
 >(2, <K, V>(self: HT.HashTable<K, V>, f: (self: HT.HashTable<K, V>) => void): HT.HashTable<K, V> => {
@@ -341,7 +340,7 @@ export const mutate = Dual.dual<
 })
 
 /** @internal */
-export const insertRow = Dual.dual<
+export const insertRow = dual<
   <K, V>(values: ReadonlyArray<V>) => (self: HT.HashTable<K, V>) => HT.HashTable<K, V>,
   <K, V>(self: HT.HashTable<K, V>, values: ReadonlyArray<V>) => HT.HashTable<K, V>
 >(2, <K, V>(self: HT.HashTable<K, V>, values: ReadonlyArray<V>): HT.HashTable<K, V> => {
@@ -388,7 +387,7 @@ export const insertRow = Dual.dual<
 })
 
 /** @internal */
-export const insertColumn = Dual.dual<
+export const insertColumn = dual<
   <K, V>(key: K, values: ReadonlyArray<V>) => (self: HT.HashTable<K, V>) => HT.HashTable<K, V>,
   <K, V>(self: HT.HashTable<K, V>, key: K, values: ReadonlyArray<V>) => HT.HashTable<K, V>
 >(3, <K, V>(self: HT.HashTable<K, V>, key: K, values: ReadonlyArray<V>): HT.HashTable<K, V> => {
@@ -449,7 +448,7 @@ export const insertColumn = Dual.dual<
 })
 
 /** @internal */
-export const removeColumn = Dual.dual<
+export const removeColumn = dual<
   <K1, V>(key: K1) => <K extends K1, V1 extends V>(self: HT.HashTable<K, V1>) => HT.HashTable<K, V1>,
   <K, V, K1 extends K>(self: HT.HashTable<K, V>, key: K1) => HT.HashTable<K, V>
 >(2, <K, V, K1 extends K>(self: HT.HashTable<K, V>, key: K1): HT.HashTable<K, V> => {
@@ -526,7 +525,7 @@ export const removeColumn = Dual.dual<
 })
 
 /** @internal */
-export const removeRow = Dual.dual<
+export const removeRow = dual<
   (rowIndex: number) => <K, V>(self: HT.HashTable<K, V>) => HT.HashTable<K, V>,
   <K, V>(self: HT.HashTable<K, V>, rowIndex: number) => HT.HashTable<K, V>
 >(2, <K, V>(self: HT.HashTable<K, V>, rowIndex: number): HT.HashTable<K, V> => {
