@@ -1,6 +1,6 @@
 import { dual } from "../../Function.js"
 import type * as Graph from "../../Graph.js"
-import { Predicate } from "../../index.js"
+import * as Predicate from "../../Predicate.js"
 import * as Inspectable from "../../Inspectable.js"
 import * as Option from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
