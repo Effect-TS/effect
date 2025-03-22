@@ -1,5 +1,6 @@
 import { dual } from "../../Function.js"
 import type * as Graph from "../../Graph.js"
+import { Predicate } from "../../index.js"
 import * as Inspectable from "../../Inspectable.js"
 import * as Option from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
@@ -217,12 +218,14 @@ export const mutate = <A extends Graph.Graph.Any>(
 export const isGraph: (value: unknown) => value is Graph.Graph.Unknown = hasProperty(TypeId) as any
 
 /** @internal */
-export const isDirected = <N, E>(value: unknown | Graph.Graph<N, E>): value is Graph.Graph.Directed<N, E> =>
-  isGraph(value) && value._tag === "DirectedGraph"
+export const isDirected: <N, E>(
+  value: Graph.Graph<N, E>
+) => value is Graph.Graph.Directed<N, E> = Predicate.isTagged("DirectedGraph") as any
 
 /** @internal */
-export const isUndirected = <N, E>(value: unknown | Graph.Graph<N, E>): value is Graph.Graph.Undirected<N, E> =>
-  isGraph(value) && value._tag === "UndirectedGraph"
+export const isUndirected: <N, E>(
+  value: Graph.Graph<N, E>
+) => value is Graph.Graph.Undirected<N, E> = Predicate.isTagged("UndirectedGraph") as any
 
 const makeDirected = <N, E>(
   nodes: ReadonlyArray<Graph.Node<N>>,

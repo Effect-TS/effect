@@ -110,7 +110,6 @@ export type NodeTypeId = typeof NodeTypeId
  * @category models
  */
 export interface Node<in out N> extends Pipeable, Inspectable.Inspectable, Node.Variance<N> {
-  readonly _tag: "GraphNode"
   /** @internal */
   readonly data: N
   /** @internal */
@@ -165,7 +164,6 @@ export type EdgeTypeId = typeof EdgeTypeId
  * @category models
  */
 export interface Edge<in out E> extends Pipeable, Inspectable.Inspectable, Edge.Variance<E> {
-  readonly _tag: "GraphEdge"
   /** @internal */
   readonly data: E
   /** @internal */
@@ -296,13 +294,13 @@ export const isGraph: (u: unknown) => u is Graph.Unknown = internal.isGraph
  * @since 3.12.0
  * @category combinators
  */
-export const isDirected: (u: unknown) => u is Graph.Directed<unknown, unknown> = internal.isDirected
+export const isDirected: <A, E>(u: Graph<A, E>) => u is Graph.Directed<A, E> = internal.isDirected
 
 /**
  * @since 3.12.0
  * @category combinators
  */
-export const isUndirected: (u: unknown) => u is Graph.Undirected<unknown, unknown> = internal.isUndirected
+export const isUndirected: <A, E>(u: Graph<A, E>) => u is Graph.Undirected<A, E> = internal.isUndirected
 
 /**
  * @since 3.12.0
