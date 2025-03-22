@@ -61,6 +61,11 @@ export * as HttpShardManager from "./HttpShardManager.js"
 /**
  * @since 1.0.0
  */
+export * as MachineId from "./MachineId.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Message from "./Message.js"
 
 /**
