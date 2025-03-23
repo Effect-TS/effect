@@ -175,6 +175,9 @@ export const makeUpgradeHandler = <R, E>(
         if (nodeResponse_ === undefined) {
           nodeResponse_ = new Http.ServerResponse(nodeRequest)
           nodeResponse_.assignSocket(socket as any)
+          nodeResponse_.on("finish", () => {
+            socket.end()
+          })
         }
         return nodeResponse_
       }
