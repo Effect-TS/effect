@@ -339,9 +339,19 @@ export * as Function from "./Function.js"
 export * as GlobalValue from "./GlobalValue.js"
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  */
 export * as Graph from "./Graph.js"
+
+/**
+ * Formats the graph in GraphViz DOT language format.
+ *
+ * @see https://graphviz.org/doc/info/lang.html
+ *
+ * @since 3.15.0
+ * @category combinators
+ */
+export * as GraphViz from "./GraphViz.js"
 
 /**
  * @since 2.0.0
@@ -369,12 +379,12 @@ export * as HashMap from "./HashMap.js"
 export * as HashSet from "./HashSet.js"
 
 /**
- * @since 2.0.0
+ * @since 3.15.0
  */
 export * as HashTable from "./HashTable.js"
 
 /**
- * @since 2.0.0
+ * @since 3.15.0
  */
 export * as IndexMap from "./IndexMap.js"
 
