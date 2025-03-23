@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { Graph, Option } from "effect"
+import { Graph, GraphViz, Option } from "effect"
 import { assertFalse, assertInclude, assertNone, assertSome, assertTrue, strictEqual } from "effect/test/util"
 
 describe("Graph", () => {
@@ -292,7 +292,7 @@ describe("Graph", () => {
         mutable.unsafeAddEdge(0, 1, 10)
       })
 
-      const dot = Graph.toDot(withData)
+      const dot = GraphViz.toDot(withData)
       assertTrue(typeof dot === "string")
       assertInclude(dot, "digraph")
       assertInclude(dot, "A")
