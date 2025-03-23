@@ -1,5 +1,5 @@
 /**
- * @since 3.12.0
+ * @since 3.15.0
  */
 import type * as Inspectable from "./Inspectable.js"
 import * as internal from "./internal/graph/graph.js"
@@ -8,40 +8,40 @@ import type { Pipeable } from "./Pipeable.js"
 import type * as Types from "./Types.js"
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category symbols
  */
 export const TypeId: unique symbol = internal.TypeId
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category symbols
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category models
  */
 export type Graph<N, E> = Graph.Directed<N, E> | Graph.Undirected<N, E>
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category models
  */
 export declare namespace Graph {
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Any = Graph<any, any>
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Unknown = Graph<unknown, unknown>
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Preserve<
     A extends Any,
@@ -52,7 +52,7 @@ export declare namespace Graph {
     never
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category models
    */
   export interface Variance<in out N, in out E> {
@@ -63,7 +63,7 @@ export declare namespace Graph {
   }
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category models
    */
   export interface Proto<
@@ -77,7 +77,7 @@ export declare namespace Graph {
   }
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category models
    */
   export interface Directed<N, E> extends Proto<N, E> {
@@ -85,7 +85,7 @@ export declare namespace Graph {
   }
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category models
    */
   export interface Undirected<N, E> extends Proto<N, E> {
@@ -94,19 +94,19 @@ export declare namespace Graph {
 }
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category symbols
  */
 export const NodeTypeId: unique symbol = internal.NodeTypeId
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category symbols
  */
 export type NodeTypeId = typeof NodeTypeId
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category models
  */
 export interface Node<in out N> extends Pipeable, Inspectable.Inspectable, Node.Variance<N> {
@@ -117,27 +117,27 @@ export interface Node<in out N> extends Pipeable, Inspectable.Inspectable, Node.
 }
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category models
  */
 export declare namespace Node {
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Any = Node<any>
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Unknown = Node<unknown>
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Data<A extends Graph.Any | Any> = A extends Node<infer N> ? N : A extends Graph<infer N, any> ? N : never
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category models
    */
   export interface Variance<in out N> {
@@ -148,19 +148,19 @@ export declare namespace Node {
 }
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category symbols
  */
 export const EdgeTypeId: unique symbol = internal.EdgeTypeId
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category symbols
  */
 export type EdgeTypeId = typeof EdgeTypeId
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category models
  */
 export interface Edge<in out E> extends Pipeable, Inspectable.Inspectable, Edge.Variance<E> {
@@ -173,42 +173,42 @@ export interface Edge<in out E> extends Pipeable, Inspectable.Inspectable, Edge.
 }
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category models
  */
 export declare namespace Edge {
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Any = Edge<any>
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Unknown = Edge<unknown>
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Data<A extends Graph.Any | Any> = A extends Edge<infer E> ? E : A extends Graph<any, infer E> ? E : never
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Outgoing = 0
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Incoming = 1
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    */
   export type Direction = Outgoing | Incoming
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category models
    */
   export interface Variance<in out E> {
@@ -219,19 +219,19 @@ export declare namespace Edge {
 }
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category symbols
  */
 export const MutableTypeId: unique symbol = internal.MutableTypeId
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category symbols
  */
 export type MutableTypeId = typeof MutableTypeId
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category models
  */
 export interface Mutable<in out A extends Graph.Any> {
@@ -242,80 +242,80 @@ export interface Mutable<in out A extends Graph.Any> {
   readonly graph: A
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category combinators
    */
   addNode(data: Node.Data<A>): number
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category combinators
    */
   removeNode(node: number): Option.Option<Node.Data<A>>
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category combinators
    */
   addEdge(from: number, to: number, data: Edge.Data<A>): Option.Option<number>
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category combinators
    */
   unsafeAddEdge(from: number, to: number, data: Edge.Data<A>): number
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category combinators
    */
   updateEdge(from: number, to: number, data: Edge.Data<A>): Option.Option<number>
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category combinators
    */
   unsafeUpdateEdge(from: number, to: number, data: Edge.Data<A>): number
 
   /**
-   * @since 3.12.0
+   * @since 3.15.0
    * @category combinators
    */
   removeEdge(edge: number): Option.Option<Edge.Data<A>>
 }
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const isGraph: (u: unknown) => u is Graph.Unknown = internal.isGraph
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const isDirected: <A, E>(u: Graph<A, E>) => u is Graph.Directed<A, E> = internal.isDirected
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const isUndirected: <A, E>(u: Graph<A, E>) => u is Graph.Undirected<A, E> = internal.isUndirected
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category constructors
  */
 export const directed: <N, E>() => Graph.Directed<N, E> = internal.directed
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category constructors
  */
 export const undirected: <N, E>() => Graph.Undirected<N, E> = internal.undirected
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category constructors
  */
 export const mutate: <A extends Graph.Any>(
@@ -324,19 +324,19 @@ export const mutate: <A extends Graph.Any>(
 ) => Graph.Preserve<A> = internal.mutate
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const nodes: <A extends Graph.Any>(graph: A) => IterableIterator<[number, Node.Data<A>]> = internal.nodes
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const edges: <A extends Graph.Any>(graph: A) => IterableIterator<[number, Edge.Data<A>]> = internal.edges
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const externals: <A extends Graph.Any>(
@@ -345,7 +345,7 @@ export const externals: <A extends Graph.Any>(
 ) => IterableIterator<[number, Node.Data<A>]> = internal.externals
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const getNode: {
@@ -354,7 +354,7 @@ export const getNode: {
 } = internal.getNode
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const addNode: {
@@ -363,7 +363,7 @@ export const addNode: {
 } = internal.addNode
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const removeNode: {
@@ -372,7 +372,7 @@ export const removeNode: {
 } = internal.removeNode
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const getEdge: {
@@ -390,7 +390,7 @@ export const getEdge: {
  * This allows adding parallel ("duplicate") edges. If you want to avoid this, use
  * {@link updateEdge} instead.
  *
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const addEdge: {
@@ -399,7 +399,7 @@ export const addEdge: {
 } = internal.addEdge
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const updateEdge: {
@@ -408,7 +408,7 @@ export const updateEdge: {
 } = internal.updateEdge
 
 /**
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const removeEdge: {
@@ -422,7 +422,7 @@ export const removeEdge: {
  * Computes in `O(e)` time, where `e` is the number of edges connected to
  * `a` (and `b`, if the graph edges are undirected).
  *
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const findEdge: {
@@ -436,7 +436,7 @@ export const findEdge: {
  * Computes in `O(e)` time, where `e` is the number of edges connected
  * to `a` (and `b`, if the graph edges are undirected).
  *
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const containsEdge: {
@@ -450,7 +450,7 @@ export const containsEdge: {
  * The resulting graph has the same structure and the same graph indices
  * as `self`.
  *
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const map: {
@@ -481,7 +481,7 @@ export const map: {
  * neither nodes nor edges are removed, the result has the same graph indices as
  * `self`.
  *
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const filterMap: {
@@ -497,22 +497,3 @@ export const filterMap: {
     }
   ): Graph.Preserve<A, N, E>
 } = internal.filterMap
-
-/**
- * Formats the graph in GraphViz DOT language format.
- *
- * @see https://graphviz.org/doc/info/lang.html
- *
- * @since 3.12.0
- * @category combinators
- */
-export const toDot: (
-  self: Graph.Any,
-  config?: {
-    readonly nodeIndexLabel?: boolean | undefined
-    readonly edgeIndexLabel?: boolean | undefined
-    readonly edgeNoLabel?: boolean | undefined
-    readonly nodeNoLabel?: boolean | undefined
-    readonly graphContentOnly?: boolean | undefined
-  }
-) => string = internal.toDot

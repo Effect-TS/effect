@@ -6,7 +6,7 @@ import * as internal from "./internal/graph/graphviz.js"
  *
  * @see https://graphviz.org/doc/info/lang.html
  *
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const toDot: (

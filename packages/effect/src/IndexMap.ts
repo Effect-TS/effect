@@ -1,5 +1,5 @@
 /**
- * @since 2.0.0
+ * @since 3.15.0
  */
 
 import type { Equal } from "./Equal.js"
@@ -11,7 +11,7 @@ import type { Pipeable } from "./Pipeable.js"
 const TypeId: unique symbol = IM.IndexMapTypeId as TypeId
 
 /**
- * @since 2.0.0
+ * @since 3.15.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
@@ -23,7 +23,7 @@ export type TypeId = typeof TypeId
  * It maintains both key-to-value mappings and the order in which entries
  * were inserted, allowing predictable iteration order across operations.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category models
  */
 export interface IndexMap<out Key, out Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
@@ -31,13 +31,13 @@ export interface IndexMap<out Key, out Value> extends Iterable<[Key, Value]>, Eq
 }
 
 /**
- * @since 2.0.0
+ * @since 3.15.0
  */
 export declare namespace IndexMap {
   /**
    * This type-level utility extracts the key type `K` from a `IndexMap<K, V>` type.
    *
-   * @since 2.0.0
+   * @since 3.15.0
    * @category type-level
    */
   export type Key<T extends IndexMap<any, any>> = [T] extends [IndexMap<infer _K, infer _V>] ? _K : never
@@ -45,7 +45,7 @@ export declare namespace IndexMap {
   /**
    * This type-level utility extracts the value type `V` from a `IndexMap<K, V>` type.
    *
-   * @since 2.0.0
+   * @since 3.15.0
    * @category type-level
    */
   export type Value<T extends IndexMap<any, any>> = [T] extends [IndexMap<infer _K, infer _V>] ? _V : never
@@ -53,7 +53,7 @@ export declare namespace IndexMap {
   /**
    * The update function signature for updating values in the `IndexMap`.
    *
-   * @since 2.0.0
+   * @since 3.15.0
    * @category models
    */
   export interface UpdateFn<A> {
@@ -62,7 +62,7 @@ export declare namespace IndexMap {
 }
 
 /**
- * @since 2.0.0
+ * @since 3.15.0
  * @category refinements
  */
 export const isIndexMap: {
@@ -73,7 +73,7 @@ export const isIndexMap: {
 /**
  * Creates a new empty `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category constructors
  */
 export const empty: <K = never, V = never>() => IndexMap<K, V> = IM.empty
@@ -81,7 +81,7 @@ export const empty: <K = never, V = never>() => IndexMap<K, V> = IM.empty
 /**
  * Constructs a new `IndexMap` from an array of key/value pairs.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category constructors
  */
 export const make: <Entries extends ReadonlyArray<readonly [any, any]>>(
@@ -94,7 +94,7 @@ export const make: <Entries extends ReadonlyArray<readonly [any, any]>>(
 /**
  * Constructs a new `IndexMap` from an iterable of key/value pairs.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category constructors
  */
 export const fromIterable: <K, V>(entries: Iterable<readonly [K, V]>) => IndexMap<K, V> = IM.fromIterable
@@ -102,7 +102,7 @@ export const fromIterable: <K, V>(entries: Iterable<readonly [K, V]>) => IndexMa
 /**
  * Checks if the `IndexMap` contains any entries.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category elements
  */
 export const isEmpty: <K, V>(self: IndexMap<K, V>) => boolean = IM.isEmpty
@@ -110,7 +110,7 @@ export const isEmpty: <K, V>(self: IndexMap<K, V>) => boolean = IM.isEmpty
 /**
  * Gets the number of entries in the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category elements
  */
 export const size: <K, V>(self: IndexMap<K, V>) => number = IM.size
@@ -118,7 +118,7 @@ export const size: <K, V>(self: IndexMap<K, V>) => number = IM.size
 /**
  * Safely lookup the value for the specified key in the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category elements
  */
 export const get: {
@@ -129,7 +129,7 @@ export const get: {
 /**
  * Gets the value for the specified key from the `IndexMap` or throws if the key doesn't exist.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category elements
  */
 export const unsafeGet: {
@@ -140,7 +140,7 @@ export const unsafeGet: {
 /**
  * Checks if the specified key exists in the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category elements
  */
 export const has: {
@@ -151,7 +151,7 @@ export const has: {
 /**
  * Sets the value for the specified key in the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category elements
  */
 export const set: {
@@ -162,7 +162,7 @@ export const set: {
 /**
  * Gets the key-value pair at the specified index in the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category elements
  */
 export const getIndex: {
@@ -173,7 +173,7 @@ export const getIndex: {
 /**
  * Removes the entry with the specified key from the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category elements
  */
 export const remove: {
@@ -184,7 +184,7 @@ export const remove: {
 /**
  * Removes and returns the last key-value pair from the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category elements
  */
 export const pop: <K, V>(self: IndexMap<K, V>) => Option<[[K, V], IndexMap<K, V>]> = IM.pop
@@ -192,7 +192,7 @@ export const pop: <K, V>(self: IndexMap<K, V>) => Option<[[K, V], IndexMap<K, V>
 /**
  * Prepares the `IndexMap` to be modified.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category mutations
  */
 export const beginMutation: <K, V>(self: IndexMap<K, V>) => IndexMap<K, V> = IM.beginMutation
@@ -200,7 +200,7 @@ export const beginMutation: <K, V>(self: IndexMap<K, V>) => IndexMap<K, V> = IM.
 /**
  * Finalizes mutations to the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category mutations
  */
 export const endMutation: <K, V>(self: IndexMap<K, V>) => IndexMap<K, V> = IM.endMutation
@@ -208,7 +208,7 @@ export const endMutation: <K, V>(self: IndexMap<K, V>) => IndexMap<K, V> = IM.en
 /**
  * Applies a function to a mutable copy of the `IndexMap` and returns a new immutable version.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category mutations
  */
 export const mutate: {
@@ -219,7 +219,7 @@ export const mutate: {
 /**
  * Applies a function to each entry in the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category traversing
  */
 export const forEach: {
@@ -230,7 +230,7 @@ export const forEach: {
 /**
  * Reduces the entries of the `IndexMap` to a single value using the specified function.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category traversing
  */
 export const reduce: {
@@ -241,7 +241,7 @@ export const reduce: {
 /**
  * Returns an iterator of all keys in the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category traversing
  */
 export const keys: <K, V>(self: IndexMap<K, V>) => IterableIterator<K> = IM.keys
@@ -249,7 +249,7 @@ export const keys: <K, V>(self: IndexMap<K, V>) => IterableIterator<K> = IM.keys
 /**
  * Returns an iterator of all values in the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category traversing
  */
 export const values: <K, V>(self: IndexMap<K, V>) => IterableIterator<V> = IM.values
@@ -257,7 +257,7 @@ export const values: <K, V>(self: IndexMap<K, V>) => IterableIterator<V> = IM.va
 /**
  * Returns an iterator of all entries in the `IndexMap`.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category traversing
  */
 export const entries: <K, V>(self: IndexMap<K, V>) => IterableIterator<[K, V]> = IM.entries
@@ -265,7 +265,7 @@ export const entries: <K, V>(self: IndexMap<K, V>) => IterableIterator<[K, V]> =
 /**
  * Finds the first entry in the `IndexMap` that satisfies the predicate.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category traversing
  */
 export const findFirst: {
@@ -278,7 +278,7 @@ export const findFirst: {
 /**
  * Filters the entries of the `IndexMap` using the specified predicate.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category filtering
  */
 export const filter: {
@@ -291,7 +291,7 @@ export const filter: {
 /**
  * Maps each value in the `IndexMap` to a new value using the specified function.
  *
- * @since 2.0.0
+ * @since 3.15.0
  * @category mapping
  */
 export const map: {

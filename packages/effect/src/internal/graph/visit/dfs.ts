@@ -5,7 +5,7 @@ import * as graph from "../graph.js"
 /**
  * A depth first search (DFS) visitor event.
  *
- * @since 3.12.0
+ * @since 3.15.0
  * @category models
  */
 export type DfsEvent<N> =
@@ -18,7 +18,7 @@ export type DfsEvent<N> =
 /**
  * Control flow for `depthFirstSearch` callbacks.
  *
- * @since 3.12.0
+ * @since 3.15.0
  * @category models
  */
 export type Control<B> =
@@ -36,7 +36,7 @@ export type Control<B> =
  * and edge classification of each reachable edge. `visitor` is called for each
  * event.
  *
- * @since 3.12.0
+ * @since 3.15.0
  * @category combinators
  */
 export const depthFirstSearch = <N, E, B>(
