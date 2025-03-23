@@ -158,7 +158,7 @@ export const empty = <K = never, V = never>(): HT.HashTable<K, V> => _empty
 
 /** @internal */
 export const make = <K, V>(...entries: ReadonlyArray<[K, ReadonlyArray<V>]>): HT.HashTable<K, V> => {
-  return fromColumns(entries)
+  return unsafeFromColumns(entries)
 }
 
 /** @internal */
@@ -341,6 +341,18 @@ export const mutate = dual<
 
 /** @internal */
 export const insertRow = dual<
+  <K, V>(values: ReadonlyArray<V>) => (self: HT.HashTable<K, V>) => Option.Option<HT.HashTable<K, V>>,
+  <K, V>(self: HT.HashTable<K, V>, values: ReadonlyArray<V>) => Option.Option<HT.HashTable<K, V>>
+>(2, <K, V>(self: HT.HashTable<K, V>, values: ReadonlyArray<V>): Option.Option<HT.HashTable<K, V>> => {
+  try {
+    return Option.some(unsafeInsertRow(self, values))
+  } catch {
+    return Option.none()
+  }
+})
+
+/** @internal */
+export const unsafeInsertRow = dual<
   <K, V>(values: ReadonlyArray<V>) => (self: HT.HashTable<K, V>) => HT.HashTable<K, V>,
   <K, V>(self: HT.HashTable<K, V>, values: ReadonlyArray<V>) => HT.HashTable<K, V>
 >(2, <K, V>(self: HT.HashTable<K, V>, values: ReadonlyArray<V>): HT.HashTable<K, V> => {
@@ -350,7 +362,7 @@ export const insertRow = dual<
   }
 
   if (values.length !== columns) {
-    throw new Error(`Row length ${values.length} doesn't match columns count ${columns}`)
+    throw new RangeError(`Row length ${values.length} doesn't match columns count ${columns}`)
   }
 
   // Sort values according to column indices
@@ -388,6 +400,18 @@ export const insertRow = dual<
 
 /** @internal */
 export const insertColumn = dual<
+  <K, V>(key: K, values: ReadonlyArray<V>) => (self: HT.HashTable<K, V>) => Option.Option<HT.HashTable<K, V>>,
+  <K, V>(self: HT.HashTable<K, V>, key: K, values: ReadonlyArray<V>) => Option.Option<HT.HashTable<K, V>>
+>(3, <K, V>(self: HT.HashTable<K, V>, key: K, values: ReadonlyArray<V>): Option.Option<HT.HashTable<K, V>> => {
+  try {
+    return Option.some(unsafeInsertColumn(self, key, values))
+  } catch {
+    return Option.none()
+  }
+})
+
+/** @internal */
+export const unsafeInsertColumn = dual<
   <K, V>(key: K, values: ReadonlyArray<V>) => (self: HT.HashTable<K, V>) => HT.HashTable<K, V>,
   <K, V>(self: HT.HashTable<K, V>, key: K, values: ReadonlyArray<V>) => HT.HashTable<K, V>
 >(3, <K, V>(self: HT.HashTable<K, V>, key: K, values: ReadonlyArray<V>): HT.HashTable<K, V> => {
@@ -396,12 +420,12 @@ export const insertColumn = dual<
   const impl = self as HashTableImpl<K, V>
 
   if (rows !== values.length) {
-    throw new Error(`Values length ${values.length} doesn't match rows count ${rows}`)
+    throw new RangeError(`Values length ${values.length} doesn't match rows count ${rows}`)
   }
 
   // Check if the key already exists
   if (HashMap.has(impl._indices, key)) {
-    throw new Error(`Column with key "${String(key)}" already exists`)
+    throw new RangeError(`Column with key "${String(key)}" already exists`)
   }
 
   if (impl._editable) {
@@ -573,6 +597,17 @@ export const removeRow = dual<
 /** @internal */
 export const fromColumns = <K, V>(
   columns: ReadonlyArray<[K, ReadonlyArray<V>]>
+): Option.Option<HT.HashTable<K, V>> => {
+  try {
+    return Option.some(unsafeFromColumns(columns))
+  } catch {
+    return Option.none()
+  }
+}
+
+/** @internal */
+export const unsafeFromColumns = <K, V>(
+  columns: ReadonlyArray<[K, ReadonlyArray<V>]>
 ): HT.HashTable<K, V> => {
   if (columns.length === 0) {
     return empty()
@@ -583,7 +618,7 @@ export const fromColumns = <K, V>(
   // Verify all columns have the same number of rows
   for (let i = 1; i < columns.length; i++) {
     if (columns[i][1].length !== rowsCount) {
-      throw new Error(`Column ${i} has ${columns[i][1].length} rows, expected ${rowsCount}`)
+      throw new RangeError(`Column ${i} has ${columns[i][1].length} rows, expected ${rowsCount}`)
     }
   }
 
@@ -611,6 +646,18 @@ export const fromColumns = <K, V>(
 export const fromRows = <K, V>(
   columnKeys: ReadonlyArray<K>,
   rows: ReadonlyArray<ReadonlyArray<V>>
+): Option.Option<HT.HashTable<K, V>> => {
+  try {
+    return Option.some(unsafeFromRows(columnKeys, rows))
+  } catch {
+    return Option.none()
+  }
+}
+
+/** @internal */
+export const unsafeFromRows = <K, V>(
+  columnKeys: ReadonlyArray<K>,
+  rows: ReadonlyArray<ReadonlyArray<V>>
 ): HT.HashTable<K, V> => {
   if (columnKeys.length === 0 || rows.length === 0) {
     return empty()
@@ -628,7 +675,7 @@ export const fromRows = <K, V>(
   // Verify all rows have correct number of columns
   for (let i = 0; i < rows.length; i++) {
     if (rows[i].length !== columnKeys.length) {
-      throw new Error(`Row ${i} has ${rows[i].length} columns, expected ${columnKeys.length}`)
+      throw new RangeError(`Row ${i} has ${rows[i].length} columns, expected ${columnKeys.length}`)
     }
   }
 

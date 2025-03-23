@@ -196,25 +196,51 @@ export const mutate: {
 
 /**
  * Inserts a new row with the provided values into the `HashTable`.
+ * Returns an Option of the new HashTable, or None if the operation would fail.
  *
  * @since 3.15.0
  * @category elements
  */
 export const insertRow: {
-  <K, V>(values: ReadonlyArray<V>): (self: HashTable<K, V>) => HashTable<K, V>
-  <K, V>(self: HashTable<K, V>, values: ReadonlyArray<V>): HashTable<K, V>
+  <K, V>(values: ReadonlyArray<V>): (self: HashTable<K, V>) => Option<HashTable<K, V>>
+  <K, V>(self: HashTable<K, V>, values: ReadonlyArray<V>): Option<HashTable<K, V>>
 } = HT.insertRow
 
 /**
+ * Inserts a new row with the provided values into the `HashTable`.
+ * Throws if the row length doesn't match the number of columns.
+ *
+ * @since 3.15.0
+ * @category elements
+ */
+export const unsafeInsertRow: {
+  <K, V>(values: ReadonlyArray<V>): (self: HashTable<K, V>) => HashTable<K, V>
+  <K, V>(self: HashTable<K, V>, values: ReadonlyArray<V>): HashTable<K, V>
+} = HT.unsafeInsertRow
+
+/**
  * Inserts a new column with the provided key and values into the `HashTable`.
+ * Returns an Option of the new HashTable, or None if the operation would fail.
  *
  * @since 3.15.0
  * @category elements
  */
 export const insertColumn: {
+  <K, V>(key: K, values: ReadonlyArray<V>): (self: HashTable<K, V>) => Option<HashTable<K, V>>
+  <K, V>(self: HashTable<K, V>, key: K, values: ReadonlyArray<V>): Option<HashTable<K, V>>
+} = HT.insertColumn
+
+/**
+ * Inserts a new column with the provided key and values into the `HashTable`.
+ * Throws if the values length doesn't match the number of rows or if the column already exists.
+ *
+ * @since 3.15.0
+ * @category elements
+ */
+export const unsafeInsertColumn: {
   <K, V>(key: K, values: ReadonlyArray<V>): (self: HashTable<K, V>) => HashTable<K, V>
   <K, V>(self: HashTable<K, V>, key: K, values: ReadonlyArray<V>): HashTable<K, V>
-} = HT.insertColumn
+} = HT.unsafeInsertColumn
 
 /**
  * Removes a column with the specified key from the `HashTable`.
@@ -240,14 +266,27 @@ export const removeRow: {
 
 /**
  * Creates a new `HashTable` from an array of column key/values pairs.
+ * Returns an Option of the new HashTable, or None if the operation would fail.
  *
  * @since 3.15.0
  * @category constructors
  */
-export const fromColumns: <K, V>(columns: ReadonlyArray<[K, ReadonlyArray<V>]>) => HashTable<K, V> = HT.fromColumns
+export const fromColumns: <K, V>(columns: ReadonlyArray<[K, ReadonlyArray<V>]>) => Option<HashTable<K, V>> =
+  HT.fromColumns
+
+/**
+ * Creates a new `HashTable` from an array of column key/values pairs.
+ * Throws if the columns have different row lengths.
+ *
+ * @since 3.15.0
+ * @category constructors
+ */
+export const unsafeFromColumns: <K, V>(columns: ReadonlyArray<[K, ReadonlyArray<V>]>) => HashTable<K, V> =
+  HT.unsafeFromColumns
 
 /**
  * Creates a new `HashTable` from column keys and an array of rows.
+ * Returns an Option of the new HashTable, or None if the operation would fail.
  *
  * @since 3.15.0
  * @category constructors
@@ -255,4 +294,16 @@ export const fromColumns: <K, V>(columns: ReadonlyArray<[K, ReadonlyArray<V>]>) 
 export const fromRows: <K, V>(
   columnKeys: ReadonlyArray<K>,
   rows: ReadonlyArray<ReadonlyArray<V>>
-) => HashTable<K, V> = HT.fromRows
+) => Option<HashTable<K, V>> = HT.fromRows
+
+/**
+ * Creates a new `HashTable` from column keys and an array of rows.
+ * Throws if the rows have incorrect column counts.
+ *
+ * @since 3.15.0
+ * @category constructors
+ */
+export const unsafeFromRows: <K, V>(
+  columnKeys: ReadonlyArray<K>,
+  rows: ReadonlyArray<ReadonlyArray<V>>
+) => HashTable<K, V> = HT.unsafeFromRows

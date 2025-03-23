@@ -164,7 +164,7 @@ export const unsafeGet = dual<
 >(2, (self, key) => {
   const element = get(self, key)
   if (Option.isNone(element)) {
-    throw new Error("Expected map to contain key")
+    throw new RangeError("Expected map to contain key")
   }
   return element.value
 })
