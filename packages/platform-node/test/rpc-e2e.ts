@@ -1,7 +1,7 @@
 import { RpcClient, RpcServer } from "@effect/rpc"
 import { assert, describe, it } from "@effect/vitest"
 import type { Layer } from "effect"
-import { Cause, Effect, Fiber, Stream } from "effect"
+import { Cause, Effect, Fiber, Option, Stream } from "effect"
 import { User, UsersClient } from "./fixtures/rpc-schemas.js"
 
 export const e2eSuite = <E>(
@@ -16,6 +16,13 @@ export const e2eSuite = <E>(
         const user = yield* client.GetUser({ id: "1" })
         assert.instanceOf(user, User)
         assert.deepStrictEqual(user, new User({ id: "1", name: "Logged in user" }))
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("should not flatten Option", () =>
+      Effect.gen(function*() {
+        const client = yield* UsersClient
+        const user = yield* client.GetUserOption({ id: "1" })
+        assert.deepStrictEqual(user, Option.some(new User({ id: "1", name: "John" })))
       }).pipe(Effect.provide(layer)))
 
     it.effect("headers", () =>

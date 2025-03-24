@@ -61,18 +61,28 @@ export type RpcClient<Rpcs extends Rpc.Any, E = never> = {
         readonly context?: Context.Context<never> | undefined
         readonly discard?: Discard | undefined
       }
-  ) => Rpc.Success<Current> extends Stream.Stream<infer _A, infer _E, infer _R>
-    ? AsMailbox extends true ? Effect.Effect<
-        Mailbox.ReadonlyMailbox<_A, _E | Rpc.Error<Current> | E>,
-        never,
-        Scope.Scope | Rpc.Context<Current>
+  ) => Current extends Rpc.Rpc<
+    infer _Tag,
+    infer _Payload,
+    infer _Success,
+    infer _Error,
+    infer _Middleware
+  > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? AsMailbox extends true ? Effect.Effect<
+          Mailbox.ReadonlyMailbox<_A["Type"], _E["Type"] | _Error["Type"] | E>,
+          never,
+          Scope.Scope | _Payload["Context"] | _Success["Context"] | _Error["Context"]
+        >
+      : Stream.Stream<
+        _A["Type"],
+        _E["Type"] | _Error["Type"] | E,
+        _Payload["Context"] | _Success["Context"] | _Error["Context"]
       >
-    : Stream.Stream<_A, _E | Rpc.Error<Current> | E, Rpc.Context<Current>>
     : Effect.Effect<
-      Discard extends true ? void : Rpc.Success<Current>,
-      Discard extends true ? never : Rpc.Error<Current> | E,
-      Rpc.Context<Current>
-    >
+      Discard extends true ? void : _Success["Type"],
+      Discard extends true ? never : _Error["Type"] | E,
+      _Payload["Context"] | _Success["Context"] | _Error["Context"]
+    > :
+    never
 }
 
 /**
