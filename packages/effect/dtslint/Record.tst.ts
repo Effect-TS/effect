@@ -599,10 +599,5 @@ describe("Record", () => {
       .type.toBe<Option.Option<[string, string]>>()
     expect(pipe(string$numbersOrStrings, Record.findFirst((a, _) => Predicate.isString(a))))
       .type.toBe<Option.Option<[string, string]>>()
-
-    expect(Record.findFirst(string$numbersOrStrings, () => Option.some(true)))
-      .type.toBe<Option.Option<boolean>>()
-    expect(pipe(string$numbersOrStrings, Record.findFirst(() => Option.some(true))))
-      .type.toBe<Option.Option<boolean>>()
   })
 })

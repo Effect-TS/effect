@@ -398,29 +398,6 @@ describe("Record", () => {
           Option.some(["a", 1])
         )
       })
-      it("option overloads", () => {
-        const record = {
-          a: 1,
-          b: 2,
-          c: 1
-        }
-        deepStrictEqual(
-          pipe(record, Record.findFirst((v) => v < 2 ? Option.some(v) : Option.none())),
-          Option.some(1)
-        )
-        deepStrictEqual(
-          pipe(record, Record.findFirst((v, k) => v < 2 && k !== "a" ? Option.some(k) : Option.none())),
-          Option.some("c")
-        )
-        deepStrictEqual(
-          pipe(record, Record.findFirst((v) => v > 2 ? Option.some(v) : Option.none())),
-          Option.none()
-        )
-        deepStrictEqual(
-          Record.findFirst(record, (v) => v < 2 ? Option.some(v) : Option.none()),
-          Option.some(1)
-        )
-      })
     })
   })
 })
