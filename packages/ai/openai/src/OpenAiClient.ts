@@ -284,8 +284,8 @@ export class StreamChunk extends Data.Class<{
    * @since 1.0.0
    */
   get text(): Option.Option<string> {
-    const contentParts = this.parts.filter((part) => part._tag === "Content").map((part) => part.content)
-    return contentParts.length > 0 ? Option.some(contentParts.join("")) : Option.none()
+    const firstContentPart = this.parts.find((part) => part._tag === "Content")
+    return firstContentPart ? Option.some(firstContentPart.content) : Option.none()
   }
   /**
    * @since 1.0.0
