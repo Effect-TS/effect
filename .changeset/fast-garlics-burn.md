@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add Record.findFirstEntry
+Add Record.findFirst

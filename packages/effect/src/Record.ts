@@ -1238,14 +1238,14 @@ export const singleton = <K extends string | symbol, A>(key: K, value: A): Recor
  * import { Record, Option } from "effect"
  *
  * const record = { a: 1, b: 2, c: 3 }
- * const result = Record.findFirstEntry(record, (value, key) => value > 1 && key !== "b")
+ * const result = Record.findFirst(record, (value, key) => value > 1 && key !== "b")
  * console.log(result) // Option.Some(["c", 3])
  * ```
  *
  * @category elements
  * @since 3.14.0
  */
-export const findFirstEntry: {
+export const findFirst: {
   <K extends string | symbol, V, V2>(
     f: (value: NoInfer<V>, key: NoInfer<K>) => Option.Option<V2>
   ): (self: Record<K, V>) => Option.Option<V2>
