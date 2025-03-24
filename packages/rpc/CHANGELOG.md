@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.55.2
+
+### Patch Changes
+
+- [#4639](https://github.com/Effect-TS/effect/pull/4639) [`d2f11e5`](https://github.com/Effect-TS/effect/commit/d2f11e557de4639762124951252170fbf4d7c906) Thanks @tim-smart! - ensure rpc does not flatten Effect sub-types
+
 ## 0.55.1
 
 ### Patch Changes
