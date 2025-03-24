@@ -555,10 +555,15 @@ export class CreateChatCompletionResponse extends S.Struct({
     "finish_reason": S.Literal("stop", "length", "tool_calls", "content_filter", "function_call"),
     "index": S.Int,
     "message": ChatCompletionResponseMessage,
-    "logprobs": S.NullOr(S.Struct({
-      "content": S.NullOr(S.Array(ChatCompletionTokenLogprob)),
-      "refusal": S.NullOr(S.Array(ChatCompletionTokenLogprob))
-    }))
+    // TODO: change this once the following upstream issue has been closed
+    //       https://github.com/openai/openai-openapi/issues/433
+    "logprobs": S.optionalWith(
+      S.Struct({
+        "content": S.NullOr(S.Array(ChatCompletionTokenLogprob)),
+        "refusal": S.NullOr(S.Array(ChatCompletionTokenLogprob))
+      }),
+      { nullable: true }
+    )
   })),
   "created": S.Int,
   "model": S.String,
