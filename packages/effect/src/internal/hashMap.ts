@@ -555,3 +555,12 @@ export const some: {
     return false
   }
 )
+
+/** @internal */
+export const every: {
+  <K, A>(predicate: (a: NoInfer<A>, k: K) => boolean): (self: HM.HashMap<K, A>) => boolean
+  <K, A>(self: HM.HashMap<K, A>, predicate: (a: A, k: K) => boolean): boolean
+} = Dual.dual(
+  2,
+  <K, A>(self: HM.HashMap<K, A>, predicate: (a: A, k: K) => boolean): boolean => !some(self, (a, k) => !predicate(a, k))
+)

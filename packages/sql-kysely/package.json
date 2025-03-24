@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-kysely",
-  "version": "0.28.3",
+  "version": "0.29.1",
   "type": "module",
   "license": "MIT",
   "description": "Kysely integration for @effect/sql",
@@ -48,9 +48,9 @@
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
-    "@testcontainers/mssqlserver": "^10.11.0",
-    "@testcontainers/mysql": "^10.11.0",
-    "@testcontainers/postgresql": "^10.11.0",
+    "@testcontainers/mssqlserver": "^10.18.0",
+    "@testcontainers/mysql": "^10.18.0",
+    "@testcontainers/postgresql": "^10.18.0",
     "@types/better-sqlite3": "^7.6.12",
     "better-sqlite3": "^11.8.1",
     "effect": "workspace:^",

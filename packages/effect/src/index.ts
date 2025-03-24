@@ -407,6 +407,12 @@ export * as KeyedPool from "./KeyedPool.js"
 export * as Layer from "./Layer.js"
 
 /**
+ * @since 3.14.0
+ * @experimental
+ */
+export * as LayerMap from "./LayerMap.js"
+
+/**
  * A data type for immutable linked lists representing ordered collections of elements of type `A`.
  *
  * This data type is optimal for last-in-first-out (LIFO), stack-like access patterns. If you need another access pattern, for example, random access or FIFO, consider using a collection more suited to this than `List`.

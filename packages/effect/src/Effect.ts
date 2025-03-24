@@ -11820,6 +11820,16 @@ export interface Latch extends Effect<void> {
   readonly open: Effect<void>
 
   /**
+   * Opens the latch, releasing all fibers waiting on it.
+   *
+   * **Details**
+   *
+   * Once the latch is opened, it remains open. Any fibers waiting on `await`
+   * will be released and can continue execution.
+   */
+  readonly unsafeOpen: () => void
+
+  /**
    * Releases all fibers waiting on the latch without opening it.
    *
    * **Details**
@@ -12963,6 +12973,17 @@ export const linkSpans: {
 } = effect.linkSpans
 
 /**
+ * Add span links to the current span.
+ *
+ * @since 3.14.0
+ * @category Tracing
+ */
+export const linkSpanCurrent: {
+  (span: Tracer.AnySpan, attributes?: Readonly<Record<string, unknown>> | undefined): Effect<void>
+  (links: ReadonlyArray<Tracer.SpanLink>): Effect<void>
+} = effect.linkSpanCurrent
+
+/**
  * Create a new span for tracing.
  *
  * @since 2.0.0
@@ -13251,6 +13272,50 @@ export const transposeOption = <A = never, E = never, R = never>(
 ): Effect<Option.Option<A>, E, R> => {
   return option_.isNone(self) ? succeedNone : map(self.value, option_.some)
 }
+
+/**
+ * Applies an `Effect` on an `Option` and transposes the result.
+ *
+ * **Details**
+ *
+ * If the `Option` is `None`, the resulting `Effect` will immediately succeed with a `None` value.
+ * If the `Option` is `Some`, the effectful operation will be executed on the inner value, and its result wrapped in a `Some`.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Option, pipe } from "effect"
+ *
+ * //          ┌─── Effect<Option<number>, never, never>>
+ * //          ▼
+ * const noneResult = pipe(
+ *   Option.none(),
+ *   Effect.transposeMapOption(() => Effect.succeed(42)) // will not be executed
+ * )
+ * console.log(Effect.runSync(noneResult))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ *
+ * //          ┌─── Effect<Option<number>, never, never>>
+ * //          ▼
+ * const someSuccessResult = pipe(
+ *   Option.some(42),
+ *   Effect.transposeMapOption((value) => Effect.succeed(value * 2))
+ * )
+ * console.log(Effect.runSync(someSuccessResult))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 84 }
+ * ```
+ *
+ * @since 3.14.0
+ * @category Optional Wrapping & Unwrapping
+ */
+export const transposeMapOption = dual<
+  <A, B, E = never, R = never>(
+    f: (self: A) => Effect<B, E, R>
+  ) => (self: Option.Option<A>) => Effect<Option.Option<B>, E, R>,
+  <A, B, E = never, R = never>(
+    self: Option.Option<A>,
+    f: (self: A) => Effect<B, E, R>
+  ) => Effect<Option.Option<B>, E, R>
+>(2, (self, f) => option_.isNone(self) ? succeedNone : map(f(self.value), option_.some))
 
 /**
  * @since 2.0.0

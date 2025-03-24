@@ -325,9 +325,9 @@ export const add: {
  */
 export const get: {
   <I, S>(tag: Reference<I, S>): <Services>(self: Context<Services>) => S
-  <Services, T extends ValidTagsById<Services>>(tag: T): (self: Context<Services>) => Tag.Service<T>
+  <Services, I extends Services, S>(tag: Tag<I, S>): (self: Context<Services>) => S
   <Services, I, S>(self: Context<Services>, tag: Reference<I, S>): S
-  <Services, T extends ValidTagsById<Services>>(self: Context<Services>, tag: T): Tag.Service<T>
+  <Services, I extends Services, S>(self: Context<Services>, tag: Tag<I, S>): S
 } = internal.get
 
 /**
@@ -476,17 +476,16 @@ export const mergeAll: <T extends Array<unknown>>(
  *
  * @since 2.0.0
  */
-export const pick: <Services, S extends Array<ValidTagsById<Services>>>(
-  ...tags: S
-) => (self: Context<Services>) => Context<{ [k in keyof S]: Tag.Identifier<S[k]> }[number]> = internal.pick
+export const pick: <Tags extends ReadonlyArray<Tag<any, any>>>(
+  ...tags: Tags
+) => <Services>(self: Context<Services>) => Context<Services & Tag.Identifier<Tags[number]>> = internal.pick
 
 /**
  * @since 2.0.0
  */
-export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
-  ...tags: S
-) => (self: Context<Services>) => Context<Exclude<Services, { [k in keyof S]: Tag.Identifier<S[k]> }[keyof S]>> =
-  internal.omit
+export const omit: <Tags extends ReadonlyArray<Tag<any, any>>>(
+  ...tags: Tags
+) => <Services>(self: Context<Services>) => Context<Exclude<Services, Tag.Identifier<Tags[number]>>> = internal.omit
 
 /**
  * @example

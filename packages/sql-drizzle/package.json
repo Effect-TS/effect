@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-drizzle",
-  "version": "0.31.3",
+  "version": "0.32.1",
   "type": "module",
   "license": "MIT",
   "description": "Drizzle integration for @effect/sql",
@@ -44,8 +44,8 @@
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
-    "@testcontainers/mysql": "^10.11.0",
-    "@testcontainers/postgresql": "^10.11.0",
+    "@testcontainers/mysql": "^10.18.0",
+    "@testcontainers/postgresql": "^10.18.0",
     "drizzle-orm": "^0.31.0",
     "effect": "workspace:^"
   },

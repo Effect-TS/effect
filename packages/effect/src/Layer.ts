@@ -134,6 +134,20 @@ export interface MemoMap {
 }
 
 /**
+ * @since 3.13.0
+ * @category models
+ */
+export interface CurrentMemoMap {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 3.13.0
+ * @category models
+ */
+export const CurrentMemoMap: Context.Reference<CurrentMemoMap, MemoMap> = internal.CurrentMemoMap
+
+/**
  * Returns `true` if the specified value is a `Layer`, `false` otherwise.
  *
  * @since 2.0.0

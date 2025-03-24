@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-node",
   "type": "module",
-  "version": "0.75.3",
+  "version": "0.76.3",
   "license": "MIT",
   "description": "Platform specific implementations for the Node.js runtime",
   "homepage": "https://effect.website",
@@ -50,14 +50,21 @@
     "ws": "^8.18.0"
   },
   "peerDependencies": {
+    "@effect/cluster": "workspace:^",
     "@effect/platform": "workspace:^",
+    "@effect/rpc": "workspace:^",
+    "@effect/sql": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
+    "@effect/cluster": "workspace:^",
     "@effect/platform": "workspace:^",
+    "@effect/rpc": "workspace:^",
+    "@effect/sql": "workspace:^",
     "@types/mime": "^3.0.4",
     "@types/ws": "^8.5.12",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "vitest-websocket-mock": "^0.4.0"
   },
   "effect": {
     "generateExports": {

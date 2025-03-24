@@ -1367,7 +1367,7 @@ export const sortWith: {
 } = dual(
   3,
   <A, B>(self: Iterable<A>, f: (a: A) => B, order: Order.Order<B>): Array<A> =>
-    Array.from(self).map((a) => [a, f(a)] as const).sort((a, b) => order(a[1], b[1])).map((x) => x[0])
+    Array.from(self).map((a) => [a, f(a)] as const).sort(([, a], [, b]) => order(a, b)).map(([_]) => _)
 )
 
 /**
@@ -1990,6 +1990,38 @@ export const chunksOf: {
   const input = fromIterable(self)
   if (isNonEmptyReadonlyArray(input)) {
     return chop(input, splitNonEmptyAt(n))
+  }
+  return []
+})
+
+/**
+ * Creates sliding windows of size `n` from an `Iterable`.
+ * If the number of elements is less than `n` or if `n` is not greater than zero,
+ * an empty array is returned.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Array } from "effect"
+ *
+ * const numbers = [1, 2, 3, 4, 5]
+ * assert.deepStrictEqual(Array.window(numbers, 3), [[1, 2, 3], [2, 3, 4], [3, 4, 5]])
+ * assert.deepStrictEqual(Array.window(numbers, 6), [])
+ * ```
+ *
+ * @category splitting
+ * @since 3.13.2
+ */
+export const window: {
+  (n: number): <A>(self: Iterable<A>) => Array<Array<A>>
+  <A>(self: Iterable<A>, n: number): Array<Array<A>>
+} = dual(2, <A>(self: Iterable<A>, n: number): Array<Array<A>> => {
+  const input = fromIterable(self)
+  if (n > 0 && isNonEmptyReadonlyArray(input)) {
+    return Array.from(
+      { length: input.length - (n - 1) },
+      (_, index) => input.slice(index, index + n)
+    )
   }
   return []
 })

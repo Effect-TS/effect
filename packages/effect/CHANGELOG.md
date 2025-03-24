@@ -1,5 +1,91 @@
 # effect
 
+## 3.14.1
+
+### Patch Changes
+
+- [#4620](https://github.com/Effect-TS/effect/pull/4620) [`4a274fe`](https://github.com/Effect-TS/effect/commit/4a274fe9f623182b6b902827e0e83bd89ca3b05c) Thanks @tim-smart! - remove Context.ValidTagsById usage
+
+## 3.14.0
+
+### Minor Changes
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`1f47e4e`](https://github.com/Effect-TS/effect/commit/1f47e4e12546ab691b29bfb7b5128bb17b93baa5) Thanks @vinassefranche! - Add DateTime.nowAsDate creator
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`26dd75f`](https://github.com/Effect-TS/effect/commit/26dd75f276a0d8a63eab313bd5a167d5072c9780) Thanks @tim-smart! - expose the Layer.MemoMap via Layer.CurrentMemoMap to the layers being built
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`04dff2d`](https://github.com/Effect-TS/effect/commit/04dff2d01ac68c260f29a6d4743381825c353c86) Thanks @tim-smart! - add Tracer Span.addLinks, for dynamically linking spans
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`c7fac0c`](https://github.com/Effect-TS/effect/commit/c7fac0cd7eadcd5cc0c3a987051c5b57ad271638) Thanks @LaureRC! - Add HashMap.every
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`ffaa3f3`](https://github.com/Effect-TS/effect/commit/ffaa3f3969df26610fcc02ad537340641d44e803) Thanks @vinassefranche! - Add Either.transposeOption
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`ab957c1`](https://github.com/Effect-TS/effect/commit/ab957c1fee714868f56c7ab4e802b9d449e9b666) Thanks @vinassefranche! - Make TestClock.setTime accept a DateTime.Input
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`35db9ce`](https://github.com/Effect-TS/effect/commit/35db9ce228f1416c8abacc6dc9c36fbd0f33ef0f) Thanks @LaureRC! - Add Effect.transposeMapOption
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`cf77ea9`](https://github.com/Effect-TS/effect/commit/cf77ea9ab4fc89e66a43f682a9926ccdee6c57ed) Thanks @f15u! - Add `Array.window` function
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`26dd75f`](https://github.com/Effect-TS/effect/commit/26dd75f276a0d8a63eab313bd5a167d5072c9780) Thanks @tim-smart! - add LayerMap module
+
+  A `LayerMap` allows you to create a map of Layer's that can be used to
+  dynamically access resources based on a key.
+
+  Here is an example of how you can use a `LayerMap` to create a service that
+  provides access to multiple OpenAI completions services.
+
+  ```ts
+  import { Completions } from "@effect/ai"
+  import { OpenAiClient, OpenAiCompletions } from "@effect/ai-openai"
+  import { FetchHttpClient } from "@effect/platform"
+  import { NodeRuntime } from "@effect/platform-node"
+  import { Config, Effect, Layer, LayerMap } from "effect"
+
+  // create the openai client layer
+  const OpenAiLayer = OpenAiClient.layerConfig({
+    apiKey: Config.redacted("OPENAI_API_KEY")
+  }).pipe(Layer.provide(FetchHttpClient.layer))
+
+  // create a service that wraps a LayerMap
+  class AiClients extends LayerMap.Service<AiClients>()("AiClients", {
+    // this LayerMap will provide the ai Completions service
+    provides: Completions.Completions,
+
+    // define the lookup function for the layer map
+    //
+    // The returned Layer will be used to provide the Completions service for the
+    // given model.
+    lookup: (model: OpenAiCompletions.Model) =>
+      OpenAiCompletions.layer({ model }),
+
+    // If a layer is not used for a certain amount of time, it can be removed
+    idleTimeToLive: "5 seconds",
+
+    // Supply the dependencies for the layers in the LayerMap
+    dependencies: [OpenAiLayer]
+  }) {}
+
+  // usage
+  Effect.gen(function* () {
+    // access and use the generic Completions service
+    const ai = yield* Completions.Completions
+    const response = yield* ai.create("Hello, world!")
+    console.log(response.text)
+  }).pipe(
+    // use the AiClients service to provide a variant of the Completions service
+    AiClients.provide("gpt-4o"),
+    // provide the LayerMap service
+    Effect.provide(AiClients.Default),
+    NodeRuntime.runMain
+  )
+  ```
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`baaab60`](https://github.com/Effect-TS/effect/commit/baaab60b737f35dfab8e4a21bce28a195d19e899) Thanks @vinassefranche! - Make Runtime.run\* apis dual
+
+### Patch Changes
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`aba2d1d`](https://github.com/Effect-TS/effect/commit/aba2d1d831ea149481bd4dd755528c0afa8239ce) Thanks @tim-smart! - preserve interruptors in channel executor .runIn
+
 ## 3.13.12
 
 ### Patch Changes

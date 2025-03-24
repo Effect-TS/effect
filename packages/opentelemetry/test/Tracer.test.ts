@@ -94,10 +94,13 @@ describe("Tracer", () => {
             attributes: { "root": "yes" }
           }, async (span) => {
             try {
-              const parent = await Runtime.runPromise(runtime)(Tracer.withSpanContext(
-                effect,
-                span.spanContext()
-              ))
+              const parent = await Runtime.runPromise(
+                runtime,
+                Tracer.withSpanContext(
+                  effect,
+                  span.spanContext()
+                )
+              )
               const { spanId, traceId } = span.spanContext()
               expect(parent).toMatchObject({
                 spanId,

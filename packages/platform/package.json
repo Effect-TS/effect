@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform",
   "type": "module",
-  "version": "0.79.3",
+  "version": "0.80.1",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "find-my-way-ts": "^0.1.5",
+    "msgpackr": "^1.11.2",
     "multipasta": "^0.2.5"
   },
   "peerDependencies": {

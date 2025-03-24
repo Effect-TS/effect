@@ -34,6 +34,9 @@ jobs:
         uses: ./.github/actions/setup
       - run: pnpm circular
       - run: pnpm lint
+      - run: pnpm codegen
+      - name: Check for codegen changes
+        run: git diff --exit-code
 
   test:
     name: Test (${{ matrix.runtime }} ${{ matrix.shard }})

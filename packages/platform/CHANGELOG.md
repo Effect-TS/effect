@@ -1,5 +1,41 @@
 # @effect/platform
 
+## 0.80.1
+
+### Patch Changes
+
+- Updated dependencies [[`4a274fe`](https://github.com/Effect-TS/effect/commit/4a274fe9f623182b6b902827e0e83bd89ca3b05c)]:
+  - effect@3.14.1
+
+## 0.80.0
+
+### Minor Changes
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`3131f8f`](https://github.com/Effect-TS/effect/commit/3131f8fd12ba9eb31b90fa2f42bf88b12309133c) Thanks @tim-smart! - refactor of @effect/cluster packages
+
+### Patch Changes
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`aba2d1d`](https://github.com/Effect-TS/effect/commit/aba2d1d831ea149481bd4dd755528c0afa8239ce) Thanks @tim-smart! - move the MsgPack, Ndjson & ChannelSchema modules to @effect/platform
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`aba2d1d`](https://github.com/Effect-TS/effect/commit/aba2d1d831ea149481bd4dd755528c0afa8239ce) Thanks @tim-smart! - add HttpRouter.Tag.serve api
+
+- [#4469](https://github.com/Effect-TS/effect/pull/4469) [`aba2d1d`](https://github.com/Effect-TS/effect/commit/aba2d1d831ea149481bd4dd755528c0afa8239ce) Thanks @tim-smart! - Move SocketServer modules to @effect/platform
+
+- Updated dependencies [[`1f47e4e`](https://github.com/Effect-TS/effect/commit/1f47e4e12546ab691b29bfb7b5128bb17b93baa5), [`26dd75f`](https://github.com/Effect-TS/effect/commit/26dd75f276a0d8a63eab313bd5a167d5072c9780), [`04dff2d`](https://github.com/Effect-TS/effect/commit/04dff2d01ac68c260f29a6d4743381825c353c86), [`c7fac0c`](https://github.com/Effect-TS/effect/commit/c7fac0cd7eadcd5cc0c3a987051c5b57ad271638), [`aba2d1d`](https://github.com/Effect-TS/effect/commit/aba2d1d831ea149481bd4dd755528c0afa8239ce), [`ffaa3f3`](https://github.com/Effect-TS/effect/commit/ffaa3f3969df26610fcc02ad537340641d44e803), [`ab957c1`](https://github.com/Effect-TS/effect/commit/ab957c1fee714868f56c7ab4e802b9d449e9b666), [`35db9ce`](https://github.com/Effect-TS/effect/commit/35db9ce228f1416c8abacc6dc9c36fbd0f33ef0f), [`cf77ea9`](https://github.com/Effect-TS/effect/commit/cf77ea9ab4fc89e66a43f682a9926ccdee6c57ed), [`26dd75f`](https://github.com/Effect-TS/effect/commit/26dd75f276a0d8a63eab313bd5a167d5072c9780), [`baaab60`](https://github.com/Effect-TS/effect/commit/baaab60b737f35dfab8e4a21bce28a195d19e899)]:
+  - effect@3.14.0
+
+## 0.79.4
+
+### Patch Changes
+
+- [#4592](https://github.com/Effect-TS/effect/pull/4592) [`5662363`](https://github.com/Effect-TS/effect/commit/566236361e270e575ef1cbf308ad1967c82a362c) Thanks @tim-smart! - support nested records in UrlParams module
+
+- [#4615](https://github.com/Effect-TS/effect/pull/4615) [`5f1fd15`](https://github.com/Effect-TS/effect/commit/5f1fd15308ab154791580059b89877d19a2055c2) Thanks @KhraksMamtsov! - - Relax `Url.setPort` constraint
+
+  - Use `URL | ...` for `baseUrl` in `HttpApiClient.make`
+
+- [#4614](https://github.com/Effect-TS/effect/pull/4614) [`8bb1460`](https://github.com/Effect-TS/effect/commit/8bb1460c824f66f0f25ebd899c5e74e388089c37) Thanks @gcanti! - HttpApiEndpoint: add missing `head` and `options` constructors, closes #4613.
+
 ## 0.79.3
 
 ### Patch Changes

@@ -904,9 +904,7 @@ export const patch: {
     name: Name,
     path: PathSegment
   ): HttpApiEndpoint<Name, "PATCH">
-} = make(
-  "PATCH"
-)
+} = make("PATCH")
 
 /**
  * @since 1.0.0
@@ -918,6 +916,28 @@ export const del: {
     name: Name,
     path: PathSegment
   ): HttpApiEndpoint<Name, "DELETE">
-} = make(
-  "DELETE"
-)
+} = make("DELETE")
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const head: {
+  <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "HEAD">
+  <const Name extends string>(
+    name: Name,
+    path: PathSegment
+  ): HttpApiEndpoint<Name, "HEAD">
+} = make("HEAD")
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const options: {
+  <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "OPTIONS">
+  <const Name extends string>(
+    name: Name,
+    path: PathSegment
+  ): HttpApiEndpoint<Name, "OPTIONS">
+} = make("OPTIONS")

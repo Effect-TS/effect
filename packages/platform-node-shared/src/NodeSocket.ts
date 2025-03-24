@@ -45,6 +45,7 @@ export const makeNet = (
           resume(Effect.succeed(conn))
         })
         conn.on("error", (cause) => {
+          conn.removeAllListeners()
           resume(Effect.fail(new Socket.SocketGenericError({ reason: "Open", cause })))
         })
         return Effect.sync(() => {
@@ -77,60 +78,58 @@ export const fromDuplex = <RO>(
     const latch = Effect.unsafeMakeLatch(false)
     const openContext = fiber.currentContext as Context.Context<RO>
     const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
-      Effect.scopedWith((scope) =>
-        Effect.gen(function*() {
-          const fiberSet = yield* FiberSet.make<any, E | Socket.SocketError>().pipe(
-            Scope.extend(scope)
+      Effect.scopedWith(Effect.fnUntraced(function*(scope) {
+        const fiberSet = yield* FiberSet.make<any, E | Socket.SocketError>().pipe(
+          Scope.extend(scope)
+        )
+        const conn = yield* Scope.extend(open, scope)
+        const run = yield* Effect.provideService(FiberSet.runtime(fiberSet)<R>(), NetSocket, conn as Net.Socket)
+
+        function onData(chunk: Uint8Array) {
+          const result = handler(chunk)
+          if (Effect.isEffect(result)) {
+            run(result)
+          }
+        }
+        function onEnd() {
+          Deferred.unsafeDone(fiberSet.deferred, Effect.void)
+        }
+        function onError(cause: Error) {
+          Deferred.unsafeDone(
+            fiberSet.deferred,
+            Effect.fail(new Socket.SocketGenericError({ reason: "Read", cause }))
           )
-          const conn = yield* Scope.extend(open, scope)
-          const run = yield* Effect.provideService(FiberSet.runtime(fiberSet)<R>(), NetSocket, conn as Net.Socket)
-
-          function onData(chunk: Uint8Array) {
-            const result = handler(chunk)
-            if (Effect.isEffect(result)) {
-              run(result)
-            }
-          }
-          function onEnd() {
-            Deferred.unsafeDone(fiberSet.deferred, Effect.void)
-          }
-          function onError(cause: Error) {
-            Deferred.unsafeDone(
-              fiberSet.deferred,
-              Effect.fail(new Socket.SocketGenericError({ reason: "Read", cause }))
+        }
+        function onClose(hadError: boolean) {
+          Deferred.unsafeDone(
+            fiberSet.deferred,
+            Effect.fail(
+              new Socket.SocketCloseError({
+                reason: "Close",
+                code: hadError ? 1006 : 1000
+              })
             )
-          }
-          function onClose(hadError: boolean) {
-            Deferred.unsafeDone(
-              fiberSet.deferred,
-              Effect.fail(
-                new Socket.SocketCloseError({
-                  reason: "Close",
-                  code: hadError ? 1006 : 1000
-                })
-              )
-            )
-          }
-          yield* Scope.addFinalizer(
-            scope,
-            Effect.sync(() => {
-              conn.off("data", onData)
-              conn.off("end", onEnd)
-              conn.off("error", onError)
-              conn.off("close", onClose)
-            })
           )
-          conn.on("data", onData)
-          conn.on("end", onEnd)
-          conn.on("error", onError)
-          conn.on("close", onClose)
+        }
+        yield* Scope.addFinalizer(
+          scope,
+          Effect.sync(() => {
+            conn.off("data", onData)
+            conn.off("end", onEnd)
+            conn.off("error", onError)
+            conn.off("close", onClose)
+          })
+        )
+        conn.on("data", onData)
+        conn.on("end", onEnd)
+        conn.on("error", onError)
+        conn.on("close", onClose)
 
-          currentSocket = conn
-          yield* latch.open
+        currentSocket = conn
+        yield* latch.open
 
-          return yield* FiberSet.join(fiberSet)
-        })
-      ).pipe(
+        return yield* FiberSet.join(fiberSet)
+      })).pipe(
         Effect.mapInputContext((input: Context.Context<R>) => Context.merge(openContext, input)),
         Effect.ensuring(Effect.sync(() => {
           latch.unsafeClose()
