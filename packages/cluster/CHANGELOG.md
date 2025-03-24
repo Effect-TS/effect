@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.29.3
+
+### Patch Changes
+
+- [#4637](https://github.com/Effect-TS/effect/pull/4637) [`18a7936`](https://github.com/Effect-TS/effect/commit/18a7936832158daa69e3c09a6caae55e3d6c0b86) Thanks @tim-smart! - fix clientOnly mode for SocketRunner
+
 ## 0.29.2
 
 ### Patch Changes
