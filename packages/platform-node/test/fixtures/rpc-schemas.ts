@@ -6,7 +6,7 @@ import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as RpcMiddleware from "@effect/rpc/RpcMiddleware"
 import * as RpcSchema from "@effect/rpc/RpcSchema"
 import * as RpcServer from "@effect/rpc/RpcServer"
-import { Context, Effect, Layer, Mailbox, Schema } from "effect"
+import { Context, Effect, Layer, Mailbox, Option, Schema } from "effect"
 
 export class User extends Schema.Class<User>("User")({
   id: Schema.String,
@@ -34,6 +34,10 @@ class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware
 export const UserRpcs = RpcGroup.make(
   Rpc.make("GetUser", {
     success: User,
+    payload: { id: Schema.String }
+  }),
+  Rpc.make("GetUserOption", {
+    success: Schema.Option(User),
     payload: { id: Schema.String }
   }),
   Rpc.fromTaggedRequest(StreamUsers),
@@ -64,6 +68,9 @@ const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
       CurrentUser.pipe(
         Rpc.fork
       ),
+    GetUserOption: Effect.fnUntraced(function*(req) {
+      return Option.some(new User({ id: req.id, name: "John" }))
+    }),
     StreamUsers: Effect.fnUntraced(function*(req) {
       const mailbox = yield* Mailbox.make<User>(0)
 

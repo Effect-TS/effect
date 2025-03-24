@@ -13,6 +13,7 @@ import type { Scope } from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import * as Rpc from "./Rpc.js"
 import type * as RpcMiddleware from "./RpcMiddleware.js"
+import type * as RpcSchema from "./RpcSchema.js"
 
 /**
  * @since 1.0.0
@@ -129,18 +130,29 @@ export type HandlersFrom<Rpc extends Rpc.Any> = {
  * @since 1.0.0
  * @category groups
  */
-export type ResultFrom<Rpc extends Rpc.Any> = Rpc.Success<Rpc> extends Stream.Stream<infer _A, infer _E, infer _R> ?
-    | Stream.Stream<
-      _A,
-      _E | Rpc.Error<Rpc>,
-      any
-    >
-    | Effect.Effect<ReadonlyMailbox<_A, _E | Rpc.Error<Rpc>>, _E | Rpc.Error<Rpc>, any> :
+export type ResultFrom<Rpc extends Rpc.Any> = Rpc extends Rpc.Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? [_Success] extends [RpcSchema.Stream<infer _SA, infer _SE>] ?
+      | Stream.Stream<
+        _SA["Type"],
+        _SE["Type"] | _Error["Type"],
+        any
+      >
+      | Effect.Effect<
+        ReadonlyMailbox<_SA["Type"], _SE["Type"] | _Error["Type"]>,
+        _SE["Type"] | Schema.Schema.Type<_Error>,
+        any
+      > :
   Effect.Effect<
-    Rpc.Success<Rpc>,
-    Rpc.Error<Rpc>,
+    _Success["Type"],
+    _Error["Type"],
     any
-  >
+  > :
+  never
 
 /**
  * @since 1.0.0
