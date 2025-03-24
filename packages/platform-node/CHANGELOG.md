@@ -1,5 +1,15 @@
 # @effect/platform-node
 
+## 0.76.3
+
+### Patch Changes
+
+- [#4634](https://github.com/Effect-TS/effect/pull/4634) [`168e388`](https://github.com/Effect-TS/effect/commit/168e3888258d38bce9f2619ca72bc1dc35268bb9) Thanks @tim-smart! - ensure upgrade socket is closed on http response finish
+
+- Updated dependencies [[`18a7936`](https://github.com/Effect-TS/effect/commit/18a7936832158daa69e3c09a6caae55e3d6c0b86)]:
+  - @effect/cluster@0.29.3
+  - @effect/platform-node-shared@0.30.3
+
 ## 0.76.2
 
 ### Patch Changes
