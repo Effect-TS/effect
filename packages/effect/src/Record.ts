@@ -1227,3 +1227,47 @@ export const getEquivalence = <K extends string, A>(
 export const singleton = <K extends string | symbol, A>(key: K, value: A): Record<K, A> => ({
   [key]: value
 } as any)
+
+/**
+ * Returns the first entry that satisfies the specified
+ * predicate, or `None` if no such entry exists.
+ *
+ * @example
+ * ```ts
+ * import { Record, Option } from "effect"
+ *
+ * const record = { a: 1, b: 2, c: 3 }
+ * const result = Record.findFirst(record, (value, key) => value > 1 && key !== "b")
+ * console.log(result) // Option.Some(["c", 3])
+ * ```
+ *
+ * @category elements
+ * @since 3.14.0
+ */
+export const findFirst: {
+  <K extends string | symbol, V, V2 extends V>(
+    refinement: (value: NoInfer<V>, key: NoInfer<K>) => value is V2
+  ): (self: Record<K, V>) => Option.Option<[K, V2]>
+  <K extends string | symbol, V>(
+    predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean
+  ): (self: Record<K, V>) => Option.Option<[K, V]>
+  <K extends string | symbol, V, V2 extends V>(
+    self: Record<K, V>,
+    refinement: (value: NoInfer<V>, key: NoInfer<K>) => value is V2
+  ): Option.Option<[K, V2]>
+  <K extends string | symbol, V>(
+    self: Record<K, V>,
+    predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean
+  ): Option.Option<[K, V]>
+} = dual(
+  2,
+  <K extends string | symbol, V>(self: Record<K, V>, f: (value: V, key: K) => boolean) => {
+    for (const a of Object.entries<V>(self)) {
+      const o = f(a[1], a[0] as K)
+      if (o) {
+        return Option.some(a)
+      }
+    }
+    return Option.none()
+  }
+)
