@@ -458,6 +458,10 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
           Stream.runForEachChunk((chunk) =>
             Effect.async<void>((resume) => {
               const array = Chunk.toReadonlyArray(chunk)
+              if (array.length === 0) {
+                resume(Effect.void)
+                return
+              }
               for (let i = 0; i < array.length - 1; i++) {
                 nodeResponse.write(array[i])
               }
