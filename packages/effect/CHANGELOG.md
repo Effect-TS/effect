@@ -1,5 +1,91 @@
 # effect
 
+## 3.14.2
+
+### Patch Changes
+
+- [#4646](https://github.com/Effect-TS/effect/pull/4646) [`f87991b`](https://github.com/Effect-TS/effect/commit/f87991b6d8a2edfaf90b01cebda4b466992ae865) Thanks @gcanti! - SchemaAST: add missing `getSchemaIdAnnotation` API
+
+- [#4646](https://github.com/Effect-TS/effect/pull/4646) [`f87991b`](https://github.com/Effect-TS/effect/commit/f87991b6d8a2edfaf90b01cebda4b466992ae865) Thanks @gcanti! - Arbitrary: fix bug where annotations were ignored.
+
+  Before
+
+  ```ts
+  import { Arbitrary, Schema } from "effect"
+
+  const schema = Schema.Int.annotations({
+    arbitrary: (_, ctx) => (fc) => {
+      console.log("context: ", ctx)
+      return fc.integer()
+    }
+  }).pipe(Schema.greaterThan(0), Schema.lessThan(10))
+
+  Arbitrary.make(schema)
+  // No output ❌
+  ```
+
+  After
+
+  ```ts
+  import { Arbitrary, Schema } from "effect"
+
+  const schema = Schema.Int.annotations({
+    arbitrary: (_, ctx) => (fc) => {
+      console.log("context: ", ctx)
+      return fc.integer()
+    }
+  }).pipe(Schema.greaterThan(0), Schema.lessThan(10))
+
+  Arbitrary.make(schema)
+  /*
+  context:  {
+    maxDepth: 2,
+    constraints: {
+      _tag: 'NumberConstraints',
+      constraints: { min: 0, minExcluded: true, max: 10, maxExcluded: true },
+      isInteger: true
+    }
+  }
+  */
+  ```
+
+- [#4648](https://github.com/Effect-TS/effect/pull/4648) [`0a3e3e1`](https://github.com/Effect-TS/effect/commit/0a3e3e18eea5e0d1882f1a6c906198e6ef226a41) Thanks @gcanti! - Schema: `standardSchemaV1` now includes the schema, closes #4494.
+
+  This update fixes an issue where passing `Schema.standardSchemaV1(...)` directly to `JSONSchema.make` would throw a `TypeError`. The schema was missing from the returned object, causing the JSON schema generation to fail.
+
+  Now `standardSchemaV1` includes the schema itself, so it can be used with `JSONSchema.make` without issues.
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const Person = Schema.Struct({
+    name: Schema.optionalWith(Schema.NonEmptyString, { exact: true })
+  })
+
+  const standardSchema = Schema.standardSchemaV1(Person)
+
+  console.log(JSONSchema.make(standardSchema))
+  /*
+  {
+    '$schema': 'http://json-schema.org/draft-07/schema#',
+    '$defs': {
+      NonEmptyString: {
+        type: 'string',
+        description: 'a non empty string',
+        title: 'nonEmptyString',
+        minLength: 1
+      }
+    },
+    type: 'object',
+    required: [],
+    properties: { name: { '$ref': '#/$defs/NonEmptyString' } },
+    additionalProperties: false
+  }
+  */
+  ```
+
 ## 3.14.1
 
 ### Patch Changes
