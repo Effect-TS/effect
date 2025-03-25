@@ -6,46 +6,6 @@ import { assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/ut
 
 describe("Arb", () => {
   describe("getDescription", () => {
-    // const expectConstraints = <A, I>(
-    //   schema: S.Schema<A, I, never>,
-    //   constraints: ReadonlyArray<
-    //     | ReturnType<typeof Arbitrary.makeStringConstraints>
-    //     | ReturnType<typeof Arbitrary.makeNumberConstraints>
-    //     | ReturnType<typeof Arbitrary.makeBigIntConstraints>
-    //     | ReturnType<typeof Arbitrary.makeDateConstraints>
-    //     | ReturnType<typeof Arbitrary.makeArrayConstraints>
-    //   >
-    // ) => {
-    //   const description = Arbitrary.getDescription(schema.ast, [])
-    //   switch (description._tag) {
-    //     case "StringKeyword": {
-    //       assertTrue(constraints.every((c) => c._tag === "StringConstraints"))
-    //       deepStrictEqual(description.constraints, constraints)
-    //       break
-    //     }
-    //     case "NumberKeyword": {
-    //       assertTrue(constraints.every((c) => c._tag === "NumberConstraints"))
-    //       deepStrictEqual(description.constraints, constraints)
-    //       break
-    //     }
-    //     case "BigIntKeyword": {
-    //       assertTrue(constraints.every((c) => c._tag === "BigIntConstraints"))
-    //       deepStrictEqual(description.constraints, constraints)
-    //       break
-    //     }
-    //     case "DateDeclaration": {
-    //       assertTrue(constraints.every((c) => c._tag === "DateConstraints"))
-    //       deepStrictEqual(description.constraints, constraints)
-    //       break
-    //     }
-    //     case "TupleType": {
-    //       assertTrue(constraints.every((c) => c._tag === "ArrayConstraints"))
-    //       deepStrictEqual(description.constraints, constraints)
-    //       break
-    //     }
-    //   }
-    // }
-
     describe("String", () => {
       it("String", () => {
         const schema = S.String
@@ -670,9 +630,63 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     })
 
     describe("Refinement", () => {
+      const assertConstraints = <A, I>(
+        schema: S.Schema<A, I, never>,
+        constraints: ReadonlyArray<
+          | ReturnType<typeof Arbitrary.makeStringConstraints>
+          | ReturnType<typeof Arbitrary.makeNumberConstraints>
+          | ReturnType<typeof Arbitrary.makeBigIntConstraints>
+          | ReturnType<typeof Arbitrary.makeDateConstraints>
+          | ReturnType<typeof Arbitrary.makeArrayConstraints>
+        >
+      ) => {
+        const description = Arbitrary.getDescription(schema.ast, [])
+        switch (description._tag) {
+          case "StringKeyword": {
+            assertTrue(constraints.every((c) => c._tag === "StringConstraints"))
+            deepStrictEqual(description.constraints, constraints)
+            break
+          }
+          case "NumberKeyword": {
+            assertTrue(constraints.every((c) => c._tag === "NumberConstraints"))
+            deepStrictEqual(description.constraints, constraints)
+            break
+          }
+          case "BigIntKeyword": {
+            assertTrue(constraints.every((c) => c._tag === "BigIntConstraints"))
+            deepStrictEqual(description.constraints, constraints)
+            break
+          }
+          case "DateDeclaration": {
+            assertTrue(constraints.every((c) => c._tag === "DateConstraints"))
+            deepStrictEqual(description.constraints, constraints)
+            break
+          }
+          case "TupleType": {
+            assertTrue(constraints.every((c) => c._tag === "ArrayConstraints"))
+            deepStrictEqual(description.constraints, constraints)
+            break
+          }
+        }
+      }
+
       describe("declaration filters", () => {
         it("ValidDateFromSelf", () => {
           const schema = S.ValidDateFromSelf
+          assertConstraints(schema, [
+            {
+              _tag: "DateConstraints",
+              constraints: {
+                noInvalidDate: false
+              }
+            },
+            {
+              _tag: "DateConstraints",
+              constraints: {
+                noInvalidDate: true
+              }
+            }
+          ])
           Util.assertions.arbitrary.validateGeneratedValues(schema)
         })
       })

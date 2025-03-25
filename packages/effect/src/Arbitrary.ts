@@ -191,15 +191,16 @@ export const makeDateConstraints = (options: {
 }): DateConstraints => {
   const out: Types.Mutable<DateConstraints> = {
     _tag: "DateConstraints",
-    constraints: {
-      noInvalidDate: options.noInvalidDate ?? false
-    }
+    constraints: {}
   }
   if (Predicate.isDate(options.min)) {
     out.constraints.min = options.min
   }
   if (Predicate.isDate(options.max)) {
     out.constraints.max = options.max
+  }
+  if (Predicate.isBoolean(options.noInvalidDate)) {
+    out.constraints.noInvalidDate = options.noInvalidDate
   }
   return out
 }
@@ -377,8 +378,10 @@ export const getDescription = wrapGetDescription(
     return description
   },
   (ast, path) => {
+    const schemaId = Option.getOrElse(SchemaAST.getSchemaIdAnnotation(ast), () => undefined)
     const jsonSchema: Record<string, any> = Option.getOrElse(SchemaAST.getJSONSchemaAnnotation(ast), () => ({}))
-    const TypeAnnotationId = ast.annotations[SchemaAST.SchemaIdAnnotationId]
+    const schemaParams = schemaId !== undefined ? ast.annotations[schemaId] : {}
+    const meta = Predicate.isObject(schemaParams) ? { ...schemaParams, ...jsonSchema } : jsonSchema
     switch (ast._tag) {
       case "Refinement": {
         const from = getDescription(ast.from, path)
@@ -386,20 +389,20 @@ export const getDescription = wrapGetDescription(
           case "StringKeyword":
             return {
               ...from,
-              constraints: [...from.constraints, makeStringConstraints(jsonSchema)],
+              constraints: [...from.constraints, makeStringConstraints(meta)],
               refinements: [...from.refinements, ast]
             }
           case "NumberKeyword": {
-            const c = TypeAnnotationId === schemaId_.NonNaNSchemaId ?
+            const c = schemaId === schemaId_.NonNaNSchemaId ?
               makeNumberConstraints({ noNaN: true }) :
               makeNumberConstraints({
-                isInteger: "type" in jsonSchema && jsonSchema.type === "integer",
-                noNaN: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
-                noDefaultInfinity: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
-                min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum,
-                minExcluded: "exclusiveMinimum" in jsonSchema ? true : undefined,
-                max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum,
-                maxExcluded: "exclusiveMaximum" in jsonSchema ? true : undefined
+                isInteger: "type" in meta && meta.type === "integer",
+                noNaN: "type" in meta && meta.type === "number" ? true : undefined,
+                noDefaultInfinity: "type" in meta && meta.type === "number" ? true : undefined,
+                min: meta.exclusiveMinimum ?? meta.minimum,
+                minExcluded: "exclusiveMinimum" in meta ? true : undefined,
+                max: meta.exclusiveMaximum ?? meta.maximum,
+                maxExcluded: "exclusiveMaximum" in meta ? true : undefined
               })
             return {
               ...from,
@@ -421,8 +424,8 @@ export const getDescription = wrapGetDescription(
               constraints: [
                 ...from.constraints,
                 makeArrayConstraints({
-                  minLength: jsonSchema.minItems,
-                  maxLength: jsonSchema.maxItems
+                  minLength: meta.minItems,
+                  maxLength: meta.maxItems
                 })
               ],
               refinements: [...from.refinements, ast]
@@ -430,7 +433,7 @@ export const getDescription = wrapGetDescription(
           case "DateDeclaration":
             return {
               ...from,
-              constraints: [...from.constraints, makeDateConstraints(jsonSchema)],
+              constraints: [...from.constraints, makeDateConstraints(meta)],
               refinements: [...from.refinements, ast]
             }
           default:
@@ -441,10 +444,10 @@ export const getDescription = wrapGetDescription(
         }
       }
       case "Declaration": {
-        if (TypeAnnotationId === schemaId_.DateFromSelfSchemaId) {
+        if (schemaId === schemaId_.DateFromSelfSchemaId) {
           return {
             _tag: "DateDeclaration",
-            constraints: [makeDateConstraints(jsonSchema)],
+            constraints: [makeDateConstraints(meta)],
             refinements: [],
             annotations: []
           }
