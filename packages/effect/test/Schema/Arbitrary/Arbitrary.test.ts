@@ -11,8 +11,9 @@ describe("Arb", () => {
         const schema = S.String
         deepStrictEqual(Arbitrary.getDescription(schema.ast, []), {
           _tag: "StringKeyword",
-          refinements: [],
           constraints: [],
+          path: [],
+          refinements: [],
           annotations: []
         })
       })
@@ -24,10 +25,6 @@ describe("Arb", () => {
         assertTrue(SchemaAST.isRefinement(ast.from))
         deepStrictEqual(Arbitrary.getDescription(ast, []), {
           _tag: "StringKeyword",
-          refinements: [
-            ast.from,
-            ast
-          ],
           constraints: [
             {
               _tag: "StringConstraints",
@@ -42,6 +39,11 @@ describe("Arb", () => {
               }
             }
           ],
+          path: [],
+          refinements: [
+            ast.from,
+            ast
+          ],
           annotations: []
         })
       })
@@ -51,8 +53,9 @@ describe("Arb", () => {
         const schema = S.String.annotations({ arbitrary: f })
         deepStrictEqual(Arbitrary.getDescription(schema.ast, []), {
           _tag: "StringKeyword",
-          refinements: [],
           constraints: [],
+          path: [],
+          refinements: [],
           annotations: [f]
         })
       })
@@ -64,7 +67,6 @@ describe("Arb", () => {
         assertTrue(SchemaAST.isRefinement(ast))
         deepStrictEqual(Arbitrary.getDescription(ast, []), {
           _tag: "StringKeyword",
-          refinements: [ast],
           constraints: [
             {
               _tag: "StringConstraints",
@@ -73,6 +75,8 @@ describe("Arb", () => {
               }
             }
           ],
+          path: [],
+          refinements: [ast],
           annotations: [f]
         })
       })
@@ -84,7 +88,6 @@ describe("Arb", () => {
         assertTrue(SchemaAST.isRefinement(ast))
         deepStrictEqual(Arbitrary.getDescription(ast, []), {
           _tag: "StringKeyword",
-          refinements: [ast],
           constraints: [
             {
               _tag: "StringConstraints",
@@ -93,6 +96,8 @@ describe("Arb", () => {
               }
             }
           ],
+          path: [],
+          refinements: [ast],
           annotations: [f]
         })
       })

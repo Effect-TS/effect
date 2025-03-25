@@ -208,6 +208,7 @@ export const makeDateConstraints = (options: {
 type Refinements = ReadonlyArray<SchemaAST.Refinement>
 
 interface Base {
+  readonly path: ReadonlyArray<PropertyKey>
   readonly refinements: Refinements
   readonly annotations: ReadonlyArray<ArbitraryAnnotation<any, any>>
 }
@@ -235,7 +236,7 @@ interface DateDeclaration extends Base {
 interface Declaration extends Base {
   readonly _tag: "Declaration"
   readonly typeParameters: ReadonlyArray<Description>
-  readonly error: string
+  readonly ast: SchemaAST.AST
 }
 
 interface TupleType extends Base {
@@ -281,7 +282,7 @@ interface Ref extends Base {
 
 interface NeverKeyword extends Base {
   readonly _tag: "NeverKeyword"
-  readonly error: string
+  readonly ast: SchemaAST.AST
 }
 
 interface Keyword extends Base {
@@ -309,7 +310,7 @@ interface UniqueSymbol extends Base {
 interface Enums extends Base {
   readonly _tag: "Enums"
   readonly enums: ReadonlyArray<readonly [string, string | number]>
-  readonly error: string | undefined
+  readonly ast: SchemaAST.AST
 }
 
 interface TemplateLiteral extends Base {
@@ -448,6 +449,7 @@ export const getDescription = wrapGetDescription(
           return {
             _tag: "DateDeclaration",
             constraints: [makeDateConstraints(meta)],
+            path,
             refinements: [],
             annotations: []
           }
@@ -455,15 +457,17 @@ export const getDescription = wrapGetDescription(
         return {
           _tag: "Declaration",
           typeParameters: ast.typeParameters.map((ast) => getDescription(ast, path)),
+          path,
           refinements: [],
           annotations: [],
-          error: errors_.getArbitraryMissingAnnotationErrorMessage(path, ast)
+          ast
         }
       }
       case "Literal": {
         return {
           _tag: "Literal",
           literal: ast.literal,
+          path,
           refinements: [],
           annotations: []
         }
@@ -472,6 +476,7 @@ export const getDescription = wrapGetDescription(
         return {
           _tag: "UniqueSymbol",
           symbol: ast.symbol,
+          path,
           refinements: [],
           annotations: []
         }
@@ -480,9 +485,10 @@ export const getDescription = wrapGetDescription(
         return {
           _tag: "Enums",
           enums: ast.enums,
+          path,
           refinements: [],
           annotations: [],
-          error: ast.enums.length === 0 ? errors_.getArbitraryEmptyEnumErrorMessage(path) : undefined
+          ast
         }
       }
       case "TemplateLiteral": {
@@ -493,6 +499,7 @@ export const getDescription = wrapGetDescription(
             description: getDescription(span.type, path),
             literal: span.literal
           })),
+          path,
           refinements: [],
           annotations: []
         }
@@ -501,6 +508,7 @@ export const getDescription = wrapGetDescription(
         return {
           _tag: "StringKeyword",
           constraints: [],
+          path,
           refinements: [],
           annotations: []
         }
@@ -508,6 +516,7 @@ export const getDescription = wrapGetDescription(
         return {
           _tag: "NumberKeyword",
           constraints: [],
+          path,
           refinements: [],
           annotations: []
         }
@@ -515,6 +524,7 @@ export const getDescription = wrapGetDescription(
         return {
           _tag: "BigIntKeyword",
           constraints: [],
+          path,
           refinements: [],
           annotations: []
         }
@@ -527,6 +537,7 @@ export const getDescription = wrapGetDescription(
             description: getDescription(element.type, [...path, i])
           })),
           rest: ast.rest.map((element, i) => getDescription(element.type, [...path, i])),
+          path,
           refinements: [],
           annotations: []
         }
@@ -542,6 +553,7 @@ export const getDescription = wrapGetDescription(
             parameter: getDescription(is.parameter, path),
             value: getDescription(is.type, path)
           })),
+          path,
           refinements: [],
           annotations: []
         }
@@ -549,6 +561,7 @@ export const getDescription = wrapGetDescription(
         return {
           _tag: "Union",
           members: ast.types.map((member, i) => getDescription(member, [...path, i])),
+          path,
           refinements: [],
           annotations: []
         }
@@ -559,6 +572,7 @@ export const getDescription = wrapGetDescription(
             _tag: "Ref",
             id: memoId,
             ast,
+            path,
             refinements: [],
             annotations: []
           }
@@ -571,6 +585,7 @@ export const getDescription = wrapGetDescription(
           id,
           ast,
           description: () => getDescription(ast.f(), path),
+          path,
           refinements: [],
           annotations: []
         }
@@ -580,14 +595,16 @@ export const getDescription = wrapGetDescription(
       case "NeverKeyword":
         return {
           _tag: "NeverKeyword",
+          path,
           refinements: [],
           annotations: [],
-          error: errors_.getArbitraryMissingAnnotationErrorMessage(path, ast)
+          ast
         }
       default: {
         return {
           _tag: "Keyword",
           value: ast._tag,
+          path,
           refinements: [],
           annotations: []
         }
@@ -759,10 +776,10 @@ const go = wrapGo(
       switch (description._tag) {
         case "Declaration":
         case "NeverKeyword":
-          throw new Error(description.error)
+          throw new Error(errors_.getArbitraryMissingAnnotationErrorMessage(description.path, description.ast))
         case "Enums":
-          if (description.error !== undefined) {
-            throw new Error(description.error)
+          if (description.enums.length === 0) {
+            throw new Error(errors_.getArbitraryEmptyEnumErrorMessage(description.path))
           }
       }
     }
