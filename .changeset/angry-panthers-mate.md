@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add missing getSchemaIdAnnotation API
+SchemaAST: add missing `getSchemaIdAnnotation` API
