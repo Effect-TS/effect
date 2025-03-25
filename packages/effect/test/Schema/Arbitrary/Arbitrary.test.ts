@@ -662,7 +662,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
             deepStrictEqual(description.constraints, constraints)
             break
           }
-          case "DateDeclaration": {
+          case "DateFromSelf": {
             assertTrue(constraints.every((c) => c._tag === "DateConstraints"))
             deepStrictEqual(description.constraints, constraints)
             break

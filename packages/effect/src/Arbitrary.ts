@@ -228,8 +228,8 @@ interface BigIntKeyword extends Base {
   readonly constraints: ReadonlyArray<BigIntConstraints>
 }
 
-interface DateDeclaration extends Base {
-  readonly _tag: "DateDeclaration"
+interface DateFromSelf extends Base {
+  readonly _tag: "DateFromSelf"
   readonly constraints: ReadonlyArray<DateConstraints>
 }
 
@@ -333,7 +333,7 @@ type Description =
   | StringKeyword
   | NumberKeyword
   | BigIntKeyword
-  | DateDeclaration
+  | DateFromSelf
   | TupleType
   | TypeLiteral
   | Union
@@ -442,7 +442,7 @@ export const getDescription = wrapGetDescription(
               ],
               refinements: [...from.refinements, ast]
             }
-          case "DateDeclaration":
+          case "DateFromSelf":
             return {
               ...from,
               constraints: [...from.constraints, makeDateConstraints(meta)],
@@ -458,7 +458,7 @@ export const getDescription = wrapGetDescription(
       case "Declaration": {
         if (schemaId === schemaId_.DateFromSelfSchemaId) {
           return {
-            _tag: "DateDeclaration",
+            _tag: "DateFromSelf",
             constraints: [makeDateConstraints(meta)],
             path,
             refinements: [],
@@ -711,7 +711,7 @@ function mergeDateConstraints(c1: DateConstraints, c2: DateConstraints): DateCon
   })
 }
 
-function buildDateConstraints(description: DateDeclaration): DateConstraints | undefined {
+function buildDateConstraints(description: DateFromSelf): DateConstraints | undefined {
   return description.constraints.length === 0
     ? undefined
     : description.constraints.reduce(mergeDateConstraints)
@@ -755,7 +755,7 @@ function getContextConstraints(description: Description): ArbitraryGenerationCon
       return buildNumberConstraints(description)
     case "BigIntKeyword":
       return buildBigIntConstraints(description)
-    case "DateDeclaration":
+    case "DateFromSelf":
       return buildDateConstraints(description)
     case "TupleType":
       return buildArrayConstraints(description)
@@ -810,7 +810,7 @@ const go = wrapGo(
   },
   (description, ctx) => {
     switch (description._tag) {
-      case "DateDeclaration": {
+      case "DateFromSelf": {
         const constraints = buildDateConstraints(description)
         return (fc) => fc.date(constraints?.constraints)
       }
