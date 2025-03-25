@@ -204,31 +204,31 @@ export const makeDateConstraints = (options: {
   return out
 }
 
-type Refinements = Array<SchemaAST.Refinement>
+type Refinements = ReadonlyArray<SchemaAST.Refinement>
 
 interface Base {
   readonly refinements: Refinements
-  readonly annotations: Array<ArbitraryAnnotation<any, any>>
+  readonly annotations: ReadonlyArray<ArbitraryAnnotation<any, any>>
 }
 
 interface StringKeyword extends Base {
   readonly _tag: "StringKeyword"
-  readonly constraints: Array<StringConstraints>
+  readonly constraints: ReadonlyArray<StringConstraints>
 }
 
 interface NumberKeyword extends Base {
   readonly _tag: "NumberKeyword"
-  readonly constraints: Array<NumberConstraints>
+  readonly constraints: ReadonlyArray<NumberConstraints>
 }
 
 interface BigIntKeyword extends Base {
   readonly _tag: "BigIntKeyword"
-  readonly constraints: Array<BigIntConstraints>
+  readonly constraints: ReadonlyArray<BigIntConstraints>
 }
 
 interface DateDeclaration extends Base {
   readonly _tag: "DateDeclaration"
-  readonly constraints: Array<DateConstraints>
+  readonly constraints: ReadonlyArray<DateConstraints>
 }
 
 interface Declaration extends Base {
@@ -239,7 +239,7 @@ interface Declaration extends Base {
 
 interface TupleType extends Base {
   readonly _tag: "TupleType"
-  readonly constraints: Array<ArrayConstraints>
+  readonly constraints: ReadonlyArray<ArrayConstraints>
   readonly elements: ReadonlyArray<{
     readonly isOptional: boolean
     readonly description: Description
@@ -365,7 +365,10 @@ function wrap<A, B, C>(f: (a: A, c: C) => C, g: (a: A, b: B) => C): (a: A, b: B)
 export const getDescription = wrap((ast, description) => {
   const annotation = getArbitraryAnnotation(ast)
   if (Option.isSome(annotation)) {
-    description.annotations.push(annotation.value)
+    return {
+      ...description,
+      annotations: [...description.annotations, annotation.value]
+    }
   }
   return description
 }, (ast: SchemaAST.AST, path: ReadonlyArray<PropertyKey>): Description => {
@@ -375,53 +378,61 @@ export const getDescription = wrap((ast, description) => {
     case "Refinement": {
       const from = getDescription(ast.from, path)
       switch (from._tag) {
-        case "StringKeyword": {
-          from.constraints.push(makeStringConstraints(jsonSchema))
-          from.refinements.push(ast)
-          return from
-        }
+        case "StringKeyword":
+          return {
+            ...from,
+            constraints: [...from.constraints, makeStringConstraints(jsonSchema)],
+            refinements: [...from.refinements, ast]
+          }
         case "NumberKeyword": {
-          from.constraints.push(
-            TypeAnnotationId === schemaId_.NonNaNSchemaId ?
-              makeNumberConstraints({ noNaN: true }) :
-              makeNumberConstraints({
-                isInteger: "type" in jsonSchema && jsonSchema.type === "integer",
-                noNaN: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
-                noDefaultInfinity: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
-                min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum,
-                minExcluded: "exclusiveMinimum" in jsonSchema ? true : undefined,
-                max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum,
-                maxExcluded: "exclusiveMaximum" in jsonSchema ? true : undefined
-              })
-          )
-          from.refinements.push(ast)
-          return from
+          const c = TypeAnnotationId === schemaId_.NonNaNSchemaId ?
+            makeNumberConstraints({ noNaN: true }) :
+            makeNumberConstraints({
+              isInteger: "type" in jsonSchema && jsonSchema.type === "integer",
+              noNaN: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
+              noDefaultInfinity: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
+              min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum,
+              minExcluded: "exclusiveMinimum" in jsonSchema ? true : undefined,
+              max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum,
+              maxExcluded: "exclusiveMaximum" in jsonSchema ? true : undefined
+            })
+          return {
+            ...from,
+            constraints: [...from.constraints, c],
+            refinements: [...from.refinements, ast]
+          }
         }
         case "BigIntKeyword": {
           const c = getASTConstraints(ast)
-          if (c !== undefined) {
-            from.constraints.push(makeBigIntConstraints(c))
+          return {
+            ...from,
+            constraints: c !== undefined ? [...from.constraints, makeBigIntConstraints(c)] : from.constraints,
+            refinements: [...from.refinements, ast]
           }
-          from.refinements.push(ast)
-          return from
         }
-        case "TupleType": {
-          from.constraints.push(makeArrayConstraints({
-            minLength: jsonSchema.minItems,
-            maxLength: jsonSchema.maxItems
-          }))
-          from.refinements.push(ast)
-          return from
-        }
-        case "DateDeclaration": {
-          from.constraints.push(makeDateConstraints(jsonSchema))
-          from.refinements.push(ast)
-          return from
-        }
-        default: {
-          from.refinements.push(ast)
-          return from
-        }
+        case "TupleType":
+          return {
+            ...from,
+            constraints: [
+              ...from.constraints,
+              makeArrayConstraints({
+                minLength: jsonSchema.minItems,
+                maxLength: jsonSchema.maxItems
+              })
+            ],
+            refinements: [...from.refinements, ast]
+          }
+        case "DateDeclaration":
+          return {
+            ...from,
+            constraints: [...from.constraints, makeDateConstraints(jsonSchema)],
+            refinements: [...from.refinements, ast]
+          }
+        default:
+          return {
+            ...from,
+            refinements: [...from.refinements, ast]
+          }
       }
     }
     case "Declaration": {
@@ -759,13 +770,10 @@ const go = wrap((description, lazyArb): LazyArbitrary<any> => {
     ...(constraints !== undefined ? { constraints } : {})
   }
 
-  if (description.refinements.length > 0) {
-    return applyFilters(filters, annotation(ctx))
-  } else if (description._tag === "Declaration") {
+  if (description._tag === "Declaration") {
     return applyFilters(filters, annotation(...description.typeParameters.map((p) => go(p, ctx)), ctx))
-  } else {
-    return annotation(ctx)
   }
+  return applyFilters(filters, annotation(ctx))
 }, (description: Description, ctx: ArbitraryGenerationContext): LazyArbitrary<any> => {
   switch (description._tag) {
     case "Declaration":
