@@ -6264,7 +6264,7 @@ export const fork: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber
  * useful for tasks that need to run in the background independently, such as
  * periodic logging, monitoring, or background data processing.
  *
- * **Example** (Creating a Daemon Fibe)
+ * **Example** (Creating a Daemon Fiber)
  *
  * ```ts
  * import { Effect, Console, Schedule } from "effect"
