@@ -90,6 +90,12 @@ const expectAsyncFailure = async <I, A>(
 const AsyncNonEmptyString = AsyncString.pipe(Schema.minLength(1))
 
 describe("standardSchemaV1", () => {
+  it("should return a schema", () => {
+    const schema = Schema.NumberFromString
+    const standardSchema = Schema.standardSchemaV1(schema)
+    assertTrue(Schema.isSchema(standardSchema))
+  })
+
   it("sync decoding + sync issue formatting", () => {
     const schema = Schema.NonEmptyString
     const standardSchema = Schema.standardSchemaV1(schema)

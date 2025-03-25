@@ -195,10 +195,10 @@ const makeStandardFailureFromParseIssue = (
 export const standardSchemaV1 = <A, I>(
   schema: Schema<A, I, never>,
   overrideOptions?: AST.ParseOptions
-): StandardSchemaV1<I, A> => {
+): StandardSchemaV1<I, A> & SchemaClass<A, I, never> => {
   const decodeUnknown = ParseResult.decodeUnknown(schema, { errors: "all" })
-  return {
-    "~standard": {
+  return class StandardSchemaV1Class extends make<A, I, never>(schema.ast) {
+    static "~standard" = {
       version: 1,
       vendor: "effect",
       validate(value) {

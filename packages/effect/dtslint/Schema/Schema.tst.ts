@@ -1,3 +1,4 @@
+import type { StandardSchemaV1 } from "@standard-schema/spec"
 import type {
   Arbitrary,
   BigDecimal,
@@ -4246,5 +4247,11 @@ describe("Schema", () => {
       expect(schema.from).type.toBe<typeof S.String>()
       expect(schema.to).type.toBe<typeof S.Number>()
     })
+  })
+
+  it("standardSchemaV1", () => {
+    const standardSchema = S.standardSchemaV1(S.NumberFromString)
+    expect(S.asSchema(standardSchema)).type.toBe<S.Schema<number, string>>()
+    expect(standardSchema).type.toBe<StandardSchemaV1<string, number> & S.SchemaClass<number, string, never>>()
   })
 })
