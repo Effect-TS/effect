@@ -4173,6 +4173,7 @@ export declare namespace Annotations {
     readonly equivalence?: (..._: any) => Equivalence.Equivalence<A>
   }
 
+  // TODO(4.0): replace `readonly [P]` with `readonly []`
   /**
    * @since 3.10.0
    */

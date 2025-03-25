@@ -11,7 +11,7 @@ import * as util_ from "./internal/schema/util.js"
 import * as Option from "./Option.js"
 import * as Predicate from "./Predicate.js"
 import type * as Schema from "./Schema.js"
-import * as AST from "./SchemaAST.js"
+import * as SchemaAST from "./SchemaAST.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -49,8 +49,10 @@ export type ArbitraryAnnotation<A, TypeParameters extends ReadonlyArray<any> = r
  * @category arbitrary
  * @since 3.10.0
  */
-export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary<A> =>
-  go(schema.ast, { maxDepth: 2 }, [])
+export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary<A> => {
+  const description = getDescription(schema.ast, [])
+  return go(description, { maxDepth: 2 })
+}
 
 /**
  * Returns a fast-check Arbitrary for the `A` type of the provided schema.
@@ -59,65 +61,6 @@ export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary
  * @since 3.10.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): FastCheck.Arbitrary<A> => makeLazy(schema)(FastCheck)
-
-const getArbitraryAnnotation = AST.getAnnotation<ArbitraryAnnotation<any, any>>(AST.ArbitraryAnnotationId)
-
-type Op = Succeed | Deferred
-
-/**
- * Represents an arbitrary with optional filters.
- */
-class Succeed {
-  readonly _tag = "Succeed"
-  constructor(
-    readonly lazyArbitrary: LazyArbitrary<any>,
-    readonly filters: Array<Predicate.Predicate<any>> = []
-  ) {}
-
-  toLazyArbitrary(): LazyArbitrary<any> {
-    return (fc) => {
-      let out = this.lazyArbitrary(fc)
-      for (const f of this.filters) {
-        out = out.filter(f)
-      }
-      return out
-    }
-  }
-}
-
-/**
- * Represents a deferred arbitrary value generator with optional filters.
- */
-class Deferred {
-  readonly _tag = "Deferred"
-  constructor(
-    readonly config: Config,
-    readonly filters: Array<Predicate.Predicate<any>> = []
-  ) {}
-
-  toLazyArbitrary(ctx: ArbitraryGenerationContext, path: ReadonlyArray<PropertyKey>): LazyArbitrary<any> {
-    const config = this.config
-    switch (config._tag) {
-      case "StringConstraints": {
-        const pattern = config.pattern
-        return pattern !== undefined ?
-          (fc) => fc.stringMatching(new RegExp(pattern)) :
-          (fc) => fc.string(config.constraints)
-      }
-      case "NumberConstraints": {
-        return config.isInteger ?
-          (fc) => fc.integer(config.constraints) :
-          (fc) => fc.float(config.constraints)
-      }
-      case "BigIntConstraints":
-        return (fc) => fc.bigInt(config.constraints)
-      case "DateConstraints":
-        return (fc) => fc.date(config.constraints)
-      case "ArrayConstraints":
-        return goTupleType(config.ast, ctx, path, config.constraints)
-    }
-  }
-}
 
 interface StringConstraints {
   readonly _tag: "StringConstraints"
@@ -156,9 +99,9 @@ interface NumberConstraints {
 /** @internal */
 export const makeNumberConstraints = (options: {
   readonly isInteger?: boolean | undefined
-  readonly min?: number | undefined
+  readonly min?: unknown
   readonly minExcluded?: boolean | undefined
-  readonly max?: number | undefined
+  readonly max?: unknown
   readonly maxExcluded?: boolean | undefined
   readonly noNaN?: boolean | undefined
   readonly noDefaultInfinity?: boolean | undefined
@@ -219,8 +162,8 @@ interface ArrayConstraints {
 
 /** @internal */
 export const makeArrayConstraints = (options: {
-  readonly minLength?: number | undefined
-  readonly maxLength?: number | undefined
+  readonly minLength?: unknown
+  readonly maxLength?: unknown
 }): ArrayConstraints => {
   const out: Types.Mutable<ArrayConstraints> = {
     _tag: "ArrayConstraints",
@@ -248,9 +191,7 @@ export const makeDateConstraints = (options: {
 }): DateConstraints => {
   const out: Types.Mutable<DateConstraints> = {
     _tag: "DateConstraints",
-    constraints: {
-      noInvalidDate: options.noInvalidDate ?? false
-    }
+    constraints: {}
   }
   if (Predicate.isDate(options.min)) {
     out.constraints.min = options.min
@@ -258,69 +199,151 @@ export const makeDateConstraints = (options: {
   if (Predicate.isDate(options.max)) {
     out.constraints.max = options.max
   }
+  if (Predicate.isBoolean(options.noInvalidDate)) {
+    out.constraints.noInvalidDate = options.noInvalidDate
+  }
   return out
 }
 
-interface ArrayConfig extends ArrayConstraints {
-  readonly ast: AST.TupleType
+type Refinements = ReadonlyArray<SchemaAST.Refinement>
+
+interface Base {
+  readonly path: ReadonlyArray<PropertyKey>
+  readonly refinements: Refinements
+  readonly annotations: ReadonlyArray<ArbitraryAnnotation<any, any>>
 }
 
-const makeArrayConfig = (options: {
-  readonly minLength?: number | undefined
-  readonly maxLength?: number | undefined
-}, ast: AST.TupleType): ArrayConfig => {
-  return {
-    ast,
-    ...makeArrayConstraints(options)
-  }
+interface StringKeyword extends Base {
+  readonly _tag: "StringKeyword"
+  readonly constraints: ReadonlyArray<StringConstraints>
 }
 
-type Config = StringConstraints | NumberConstraints | BigIntConstraints | DateConstraints | ArrayConfig
-
-const arbitraryMemoMap = globalValue(
-  Symbol.for("effect/Arbitrary/arbitraryMemoMap"),
-  () => new WeakMap<AST.AST, LazyArbitrary<any>>()
-)
-
-const go = (
-  ast: AST.AST,
-  ctx: ArbitraryGenerationContext,
-  path: ReadonlyArray<PropertyKey>
-): LazyArbitrary<any> => {
-  const hook = getArbitraryAnnotation(ast)
-  if (Option.isSome(hook)) {
-    switch (ast._tag) {
-      case "Declaration":
-        return hook.value(...ast.typeParameters.map((p) => go(p, ctx, path)), ctx)
-      case "Refinement": {
-        const op = toOp(ast, ctx, path)
-        ctx = op._tag === "Deferred" ? { ...ctx, constraints: op.config } : ctx
-        const from = go(ast.from, ctx, path)
-        return new Succeed(hook.value(from, ctx), op.filters).toLazyArbitrary()
-      }
-      default:
-        return hook.value(ctx)
-    }
-  }
-  if (AST.isDeclaration(ast)) {
-    throw new Error(errors_.getArbitraryMissingAnnotationErrorMessage(path, ast))
-  }
-  const op = toOp(ast, ctx, path)
-  switch (op._tag) {
-    case "Succeed":
-      return op.toLazyArbitrary()
-    case "Deferred":
-      return new Succeed(op.toLazyArbitrary(ctx, path), op.filters).toLazyArbitrary()
-  }
+interface NumberKeyword extends Base {
+  readonly _tag: "NumberKeyword"
+  readonly constraints: ReadonlyArray<NumberConstraints>
 }
 
-const constStringConstraints = makeStringConstraints({})
-const constNumberConstraints = makeNumberConstraints({})
-const constBigIntConstraints = makeBigIntConstraints({})
-const defaultSuspendedArrayConstraints: FastCheck.ArrayConstraints = { maxLength: 2 }
+interface BigIntKeyword extends Base {
+  readonly _tag: "BigIntKeyword"
+  readonly constraints: ReadonlyArray<BigIntConstraints>
+}
 
-const getASTConstraints = (ast: AST.AST) => {
-  const TypeAnnotationId = ast.annotations[AST.SchemaIdAnnotationId]
+interface DateFromSelf extends Base {
+  readonly _tag: "DateFromSelf"
+  readonly constraints: ReadonlyArray<DateConstraints>
+}
+
+interface Declaration extends Base {
+  readonly _tag: "Declaration"
+  readonly typeParameters: ReadonlyArray<Description>
+  readonly ast: SchemaAST.AST
+}
+
+interface TupleType extends Base {
+  readonly _tag: "TupleType"
+  readonly constraints: ReadonlyArray<ArrayConstraints>
+  readonly elements: ReadonlyArray<{
+    readonly isOptional: boolean
+    readonly description: Description
+  }>
+  readonly rest: ReadonlyArray<Description>
+}
+
+interface TypeLiteral extends Base {
+  readonly _tag: "TypeLiteral"
+  readonly propertySignatures: ReadonlyArray<{
+    readonly isOptional: boolean
+    readonly name: PropertyKey
+    readonly value: Description
+  }>
+  readonly indexSignatures: ReadonlyArray<{
+    readonly parameter: Description
+    readonly value: Description
+  }>
+}
+
+interface Union extends Base {
+  readonly _tag: "Union"
+  readonly members: ReadonlyArray<Description>
+}
+
+interface Suspend extends Base {
+  readonly _tag: "Suspend"
+  readonly id: string
+  readonly ast: SchemaAST.AST
+  readonly description: () => Description
+}
+
+interface Ref extends Base {
+  readonly _tag: "Ref"
+  readonly id: string
+  readonly ast: SchemaAST.AST
+}
+
+interface NeverKeyword extends Base {
+  readonly _tag: "NeverKeyword"
+  readonly ast: SchemaAST.AST
+}
+
+interface Keyword extends Base {
+  readonly _tag: "Keyword"
+  readonly value:
+    | "UndefinedKeyword"
+    | "VoidKeyword"
+    | "UnknownKeyword"
+    | "AnyKeyword"
+    | "BooleanKeyword"
+    | "SymbolKeyword"
+    | "ObjectKeyword"
+}
+
+interface Literal extends Base {
+  readonly _tag: "Literal"
+  readonly literal: SchemaAST.LiteralValue
+}
+
+interface UniqueSymbol extends Base {
+  readonly _tag: "UniqueSymbol"
+  readonly symbol: symbol
+}
+
+interface Enums extends Base {
+  readonly _tag: "Enums"
+  readonly enums: ReadonlyArray<readonly [string, string | number]>
+  readonly ast: SchemaAST.AST
+}
+
+interface TemplateLiteral extends Base {
+  readonly _tag: "TemplateLiteral"
+  readonly head: string
+  readonly spans: ReadonlyArray<{
+    readonly description: Description
+    readonly literal: string
+  }>
+}
+
+type Description =
+  | Declaration
+  | NeverKeyword
+  | Keyword
+  | Literal
+  | UniqueSymbol
+  | Enums
+  | TemplateLiteral
+  | StringKeyword
+  | NumberKeyword
+  | BigIntKeyword
+  | DateFromSelf
+  | TupleType
+  | TypeLiteral
+  | Union
+  | Suspend
+  | Ref
+
+const getArbitraryAnnotation = SchemaAST.getAnnotation<ArbitraryAnnotation<any, any>>(SchemaAST.ArbitraryAnnotationId)
+
+const getASTConstraints = (ast: SchemaAST.AST) => {
+  const TypeAnnotationId = ast.annotations[SchemaAST.SchemaIdAnnotationId]
   if (Predicate.isPropertyKey(TypeAnnotationId)) {
     const out = ast.annotations[TypeAnnotationId]
     if (Predicate.isReadonlyRecord(out)) {
@@ -329,323 +352,277 @@ const getASTConstraints = (ast: AST.AST) => {
   }
 }
 
+const idMemoMap = globalValue(
+  Symbol.for("effect/Arbitrary/IdMemoMap"),
+  () => new Map<SchemaAST.AST, string>()
+)
+
+let counter = 0
+
+function wrapGetDescription(
+  f: (ast: SchemaAST.AST, description: Description) => Description,
+  g: (ast: SchemaAST.AST, path: ReadonlyArray<PropertyKey>) => Description
+): (ast: SchemaAST.AST, path: ReadonlyArray<PropertyKey>) => Description {
+  return (ast, path) => f(ast, g(ast, path))
+}
+
+function parseMeta(ast: SchemaAST.AST): [SchemaAST.SchemaIdAnnotation | undefined, Record<string | symbol, unknown>] {
+  const jsonSchema = SchemaAST.getJSONSchemaAnnotation(ast).pipe(
+    Option.filter(Predicate.isReadonlyRecord),
+    Option.getOrUndefined
+  )
+  const schemaId = Option.getOrElse(SchemaAST.getSchemaIdAnnotation(ast), () => undefined)
+  const schemaParams = Option.fromNullable(schemaId).pipe(
+    Option.map((id) => ast.annotations[id]),
+    Option.filter(Predicate.isReadonlyRecord),
+    Option.getOrUndefined
+  )
+  return [schemaId, { ...schemaParams, ...jsonSchema }]
+}
+
 /** @internal */
-export const toOp = (
-  ast: AST.AST,
-  ctx: ArbitraryGenerationContext,
-  path: ReadonlyArray<PropertyKey>
-): Op => {
-  switch (ast._tag) {
-    case "Declaration": {
-      const TypeAnnotationId = ast.annotations[AST.SchemaIdAnnotationId]
-      if (TypeAnnotationId === schemaId_.DateFromSelfSchemaId) {
-        const c = getASTConstraints(ast)
-        if (c !== undefined) {
-          return new Deferred(makeDateConstraints(c))
-        }
+export const getDescription = wrapGetDescription(
+  (ast, description) => {
+    const annotation = getArbitraryAnnotation(ast)
+    if (Option.isSome(annotation)) {
+      return {
+        ...description,
+        annotations: [...description.annotations, annotation.value]
       }
-      return new Succeed(go(ast, ctx, path))
     }
-    case "Literal":
-      return new Succeed((fc) => fc.constant(ast.literal))
-    case "UniqueSymbol":
-      return new Succeed((fc) => fc.constant(ast.symbol))
-    case "UndefinedKeyword":
-      return new Succeed((fc) => fc.constant(undefined))
-    case "NeverKeyword":
-      throw new Error(errors_.getArbitraryMissingAnnotationErrorMessage(path, ast))
-    case "VoidKeyword":
-    case "UnknownKeyword":
-    case "AnyKeyword":
-      return new Succeed((fc) => fc.anything())
-    case "StringKeyword":
-      return new Deferred(constStringConstraints)
-    case "NumberKeyword":
-      return new Deferred(constNumberConstraints)
-    case "BooleanKeyword":
-      return new Succeed((fc) => fc.boolean())
-    case "BigIntKeyword":
-      return new Deferred(constBigIntConstraints)
-    case "SymbolKeyword":
-      return new Succeed((fc) => fc.string().map((s) => Symbol.for(s)))
-    case "ObjectKeyword":
-      return new Succeed((fc) => fc.oneof(fc.object(), fc.array(fc.anything())))
-    case "Enums": {
-      if (ast.enums.length === 0) {
-        throw new Error(errors_.getArbitraryEmptyEnumErrorMessage(path))
-      }
-      return new Succeed((fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value))))
-    }
-    case "TemplateLiteral":
-      return new Succeed((fc) => {
-        const string = fc.string({ maxLength: 5 })
-        const number = fc.float({ noDefaultInfinity: true, noNaN: true })
-
-        const getTemplateLiteralArb = (ast: AST.TemplateLiteral) => {
-          const components: Array<FastCheck.Arbitrary<string | number>> = ast.head !== "" ? [fc.constant(ast.head)] : []
-
-          const getTemplateLiteralSpanTypeArb = (
-            ast: AST.TemplateLiteralSpan["type"]
-          ): FastCheck.Arbitrary<string | number> => {
-            switch (ast._tag) {
-              case "StringKeyword":
-                return string
-              case "NumberKeyword":
-                return number
-              case "Literal":
-                return fc.constant(String(ast.literal))
-              case "Union":
-                return fc.oneof(...ast.types.map(getTemplateLiteralSpanTypeArb))
-              case "TemplateLiteral":
-                return getTemplateLiteralArb(ast)
+    return description
+  },
+  (ast, path) => {
+    const [schemaId, meta] = parseMeta(ast)
+    switch (ast._tag) {
+      case "Refinement": {
+        const from = getDescription(ast.from, path)
+        switch (from._tag) {
+          case "StringKeyword":
+            return {
+              ...from,
+              constraints: [...from.constraints, makeStringConstraints(meta)],
+              refinements: [...from.refinements, ast]
+            }
+          case "NumberKeyword": {
+            const c = schemaId === schemaId_.NonNaNSchemaId ?
+              makeNumberConstraints({ noNaN: true }) :
+              makeNumberConstraints({
+                isInteger: "type" in meta && meta.type === "integer",
+                noNaN: "type" in meta && meta.type === "number" ? true : undefined,
+                noDefaultInfinity: "type" in meta && meta.type === "number" ? true : undefined,
+                min: meta.exclusiveMinimum ?? meta.minimum,
+                minExcluded: "exclusiveMinimum" in meta ? true : undefined,
+                max: meta.exclusiveMaximum ?? meta.maximum,
+                maxExcluded: "exclusiveMaximum" in meta ? true : undefined
+              })
+            return {
+              ...from,
+              constraints: [...from.constraints, c],
+              refinements: [...from.refinements, ast]
             }
           }
-
-          ast.spans.forEach((span) => {
-            components.push(getTemplateLiteralSpanTypeArb(span.type))
-            if (span.literal !== "") {
-              components.push(fc.constant(span.literal))
-            }
-          })
-
-          return fc.tuple(...components).map((spans) => spans.join(""))
-        }
-
-        return getTemplateLiteralArb(ast)
-      })
-    case "Refinement": {
-      const from = toOp(ast.from, ctx, path)
-      const filters: Op["filters"] = [
-        ...from.filters,
-        (a) => Option.isNone(ast.filter(a, AST.defaultParseOption, ast))
-      ]
-      switch (from._tag) {
-        case "Succeed": {
-          return new Succeed(from.lazyArbitrary, filters)
-        }
-        case "Deferred": {
-          return new Deferred(merge(from.config, getRefinementConstraints(from.config._tag, ast)), filters)
-        }
-      }
-    }
-    case "TupleType":
-      return new Deferred(makeArrayConfig({}, ast))
-    case "TypeLiteral": {
-      const propertySignaturesTypes = ast.propertySignatures.map((ps) => go(ps.type, ctx, path.concat(ps.name)))
-      const indexSignatures = ast.indexSignatures.map((is) =>
-        [go(is.parameter, ctx, path), go(is.type, ctx, path)] as const
-      )
-      return new Succeed((fc) => {
-        const arbs: any = {}
-        const requiredKeys: Array<PropertyKey> = []
-        // ---------------------------------------------
-        // handle property signatures
-        // ---------------------------------------------
-        for (let i = 0; i < propertySignaturesTypes.length; i++) {
-          const ps = ast.propertySignatures[i]
-          const name = ps.name
-          if (!ps.isOptional) {
-            requiredKeys.push(name)
-          }
-          arbs[name] = propertySignaturesTypes[i](fc)
-        }
-        let output = fc.record<any, any>(arbs, { requiredKeys })
-        // ---------------------------------------------
-        // handle index signatures
-        // ---------------------------------------------
-        for (let i = 0; i < indexSignatures.length; i++) {
-          const key = indexSignatures[i][0](fc)
-          const value = indexSignatures[i][1](fc)
-          output = output.chain((o) => {
-            const item = fc.tuple(key, value)
-            /*
-
-              `getSuspendedArray` is used to generate less key/value pairs in
-              the context of a recursive schema. Without it, the following schema
-              would generate an big amount of values possibly leading to a stack
-              overflow:
-
-              ```ts
-              type A = { [_: string]: A }
-
-              const schema = S.Record({ key: S.String, value: S.suspend((): S.Schema<A> => schema) })
-              ```
-
-            */
-            const arr = ctx.depthIdentifier !== undefined ?
-              getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, defaultSuspendedArrayConstraints) :
-              fc.array(item)
-            return arr.map((tuples) => ({ ...Object.fromEntries(tuples), ...o }))
-          })
-        }
-
-        return output
-      })
-    }
-    case "Union": {
-      const types = ast.types.map((member) => go(member, ctx, path))
-      return new Succeed((fc) => fc.oneof(...types.map((arb) => arb(fc))))
-    }
-    case "Suspend": {
-      const memo = arbitraryMemoMap.get(ast)
-      if (memo) {
-        return new Succeed(memo)
-      }
-      const get = util_.memoizeThunk(() => {
-        return go(ast.f(), getSuspendedContext(ctx, ast), path)
-      })
-      const out: LazyArbitrary<any> = (fc) => fc.constant(null).chain(() => get()(fc))
-      arbitraryMemoMap.set(ast, out)
-      return new Succeed(out)
-    }
-    case "Transformation":
-      return toOp(ast.to, ctx, path)
-  }
-}
-
-function subtractElementsLength(
-  constraints: FastCheck.ArrayConstraints,
-  elementsLength: number
-): FastCheck.ArrayConstraints {
-  if (elementsLength === 0 || (constraints.minLength === undefined && constraints.maxLength === undefined)) {
-    return constraints
-  }
-  const out = { ...constraints }
-  if (out.minLength !== undefined) {
-    out.minLength = Math.max(out.minLength - elementsLength, 0)
-  }
-  if (out.maxLength !== undefined) {
-    out.maxLength = Math.max(out.maxLength - elementsLength, 0)
-  }
-  return out
-}
-
-const goTupleType = (
-  ast: AST.TupleType,
-  ctx: ArbitraryGenerationContext,
-  path: ReadonlyArray<PropertyKey>,
-  constraints: FastCheck.ArrayConstraints
-): LazyArbitrary<any> => {
-  const elements: Array<LazyArbitrary<any>> = []
-  let hasOptionals = false
-  let i = 0
-  for (const element of ast.elements) {
-    elements.push(go(element.type, ctx, path.concat(i++)))
-    if (element.isOptional) {
-      hasOptionals = true
-    }
-  }
-  const rest = ast.rest.map((annotatedAST) => go(annotatedAST.type, ctx, path))
-  return (fc) => {
-    // ---------------------------------------------
-    // handle elements
-    // ---------------------------------------------
-    let output = fc.tuple(...elements.map((arb) => arb(fc)))
-    if (hasOptionals) {
-      const indexes = fc.tuple(
-        ...ast.elements.map((element) => element.isOptional ? fc.boolean() : fc.constant(true))
-      )
-      output = output.chain((tuple) =>
-        indexes.map((booleans) => {
-          for (const [i, b] of booleans.reverse().entries()) {
-            if (!b) {
-              tuple.splice(booleans.length - i, 1)
+          case "BigIntKeyword": {
+            const c = getASTConstraints(ast)
+            return {
+              ...from,
+              constraints: c !== undefined ? [...from.constraints, makeBigIntConstraints(c)] : from.constraints,
+              refinements: [...from.refinements, ast]
             }
           }
-          return tuple
-        })
-      )
-    }
-
-    // ---------------------------------------------
-    // handle rest element
-    // ---------------------------------------------
-    if (Arr.isNonEmptyReadonlyArray(rest)) {
-      const [head, ...tail] = rest
-      const item = head(fc)
-      output = output.chain((as) => {
-        const len = as.length
-        // We must adjust the constraints for the rest element
-        // because the elements might have generated some values
-        const restArrayConstraints = subtractElementsLength(constraints, len)
-        if (restArrayConstraints.maxLength === 0) {
-          return fc.constant(as)
+          case "TupleType":
+            return {
+              ...from,
+              constraints: [
+                ...from.constraints,
+                makeArrayConstraints({
+                  minLength: meta.minItems,
+                  maxLength: meta.maxItems
+                })
+              ],
+              refinements: [...from.refinements, ast]
+            }
+          case "DateFromSelf":
+            return {
+              ...from,
+              constraints: [...from.constraints, makeDateConstraints(meta)],
+              refinements: [...from.refinements, ast]
+            }
+          default:
+            return {
+              ...from,
+              refinements: [...from.refinements, ast]
+            }
         }
-        /*
-
-          `getSuspendedArray` is used to generate less values in
-          the context of a recursive schema. Without it, the following schema
-          would generate an big amount of values possibly leading to a stack
-          overflow:
-
-          ```ts
-          type A = ReadonlyArray<A | null>
-
-          const schema = S.Array(
-            S.NullOr(S.suspend((): S.Schema<A> => schema))
-          )
-          ```
-
-        */
-        const arr = ctx.depthIdentifier !== undefined
-          ? getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, restArrayConstraints)
-          : fc.array(item, restArrayConstraints)
-        if (len === 0) {
-          return arr
+      }
+      case "Declaration": {
+        if (schemaId === schemaId_.DateFromSelfSchemaId) {
+          return {
+            _tag: "DateFromSelf",
+            constraints: [makeDateConstraints(meta)],
+            path,
+            refinements: [],
+            annotations: []
+          }
         }
-        return arr.map((rest) => [...as, ...rest])
-      })
-      // ---------------------------------------------
-      // handle post rest elements
-      // ---------------------------------------------
-      for (let j = 0; j < tail.length; j++) {
-        output = output.chain((as) => tail[j](fc).map((a) => [...as, a]))
+        return {
+          _tag: "Declaration",
+          typeParameters: ast.typeParameters.map((ast) => getDescription(ast, path)),
+          path,
+          refinements: [],
+          annotations: [],
+          ast
+        }
+      }
+      case "Literal": {
+        return {
+          _tag: "Literal",
+          literal: ast.literal,
+          path,
+          refinements: [],
+          annotations: []
+        }
+      }
+      case "UniqueSymbol": {
+        return {
+          _tag: "UniqueSymbol",
+          symbol: ast.symbol,
+          path,
+          refinements: [],
+          annotations: []
+        }
+      }
+      case "Enums": {
+        return {
+          _tag: "Enums",
+          enums: ast.enums,
+          path,
+          refinements: [],
+          annotations: [],
+          ast
+        }
+      }
+      case "TemplateLiteral": {
+        return {
+          _tag: "TemplateLiteral",
+          head: ast.head,
+          spans: ast.spans.map((span) => ({
+            description: getDescription(span.type, path),
+            literal: span.literal
+          })),
+          path,
+          refinements: [],
+          annotations: []
+        }
+      }
+      case "StringKeyword":
+        return {
+          _tag: "StringKeyword",
+          constraints: [],
+          path,
+          refinements: [],
+          annotations: []
+        }
+      case "NumberKeyword":
+        return {
+          _tag: "NumberKeyword",
+          constraints: [],
+          path,
+          refinements: [],
+          annotations: []
+        }
+      case "BigIntKeyword":
+        return {
+          _tag: "BigIntKeyword",
+          constraints: [],
+          path,
+          refinements: [],
+          annotations: []
+        }
+      case "TupleType":
+        return {
+          _tag: "TupleType",
+          constraints: [],
+          elements: ast.elements.map((element, i) => ({
+            isOptional: element.isOptional,
+            description: getDescription(element.type, [...path, i])
+          })),
+          rest: ast.rest.map((element, i) => getDescription(element.type, [...path, i])),
+          path,
+          refinements: [],
+          annotations: []
+        }
+      case "TypeLiteral":
+        return {
+          _tag: "TypeLiteral",
+          propertySignatures: ast.propertySignatures.map((ps) => ({
+            isOptional: ps.isOptional,
+            name: ps.name,
+            value: getDescription(ps.type, [...path, ps.name])
+          })),
+          indexSignatures: ast.indexSignatures.map((is) => ({
+            parameter: getDescription(is.parameter, path),
+            value: getDescription(is.type, path)
+          })),
+          path,
+          refinements: [],
+          annotations: []
+        }
+      case "Union":
+        return {
+          _tag: "Union",
+          members: ast.types.map((member, i) => getDescription(member, [...path, i])),
+          path,
+          refinements: [],
+          annotations: []
+        }
+      case "Suspend": {
+        const memoId = idMemoMap.get(ast)
+        if (memoId !== undefined) {
+          return {
+            _tag: "Ref",
+            id: memoId,
+            ast,
+            path,
+            refinements: [],
+            annotations: []
+          }
+        }
+        counter++
+        const id = `__id-${counter}__`
+        idMemoMap.set(ast, id)
+        return {
+          _tag: "Suspend",
+          id,
+          ast,
+          description: () => getDescription(ast.f(), path),
+          path,
+          refinements: [],
+          annotations: []
+        }
+      }
+      case "Transformation":
+        return getDescription(ast.to, path)
+      case "NeverKeyword":
+        return {
+          _tag: "NeverKeyword",
+          path,
+          refinements: [],
+          annotations: [],
+          ast
+        }
+      default: {
+        return {
+          _tag: "Keyword",
+          value: ast._tag,
+          path,
+          refinements: [],
+          annotations: []
+        }
       }
     }
-
-    return output
   }
-}
-
-type Constraints = StringConstraints | NumberConstraints | BigIntConstraints | DateConstraints | ArrayConstraints
-
-const getRefinementConstraints = (_tag: Constraints["_tag"], ast: AST.Refinement): Constraints | undefined => {
-  const TypeAnnotationId = ast.annotations[AST.SchemaIdAnnotationId]
-  const jsonSchema: Record<string, any> = Option.getOrElse(AST.getJSONSchemaAnnotation(ast), () => ({}))
-
-  switch (_tag) {
-    case "StringConstraints":
-      return makeStringConstraints(jsonSchema)
-    case "NumberConstraints": {
-      if (TypeAnnotationId === schemaId_.NonNaNSchemaId) {
-        return makeNumberConstraints({ noNaN: true })
-      } else {
-        return makeNumberConstraints({
-          isInteger: "type" in jsonSchema && jsonSchema.type === "integer",
-          noNaN: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
-          noDefaultInfinity: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
-          min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum,
-          minExcluded: "exclusiveMinimum" in jsonSchema ? true : undefined,
-          max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum,
-          maxExcluded: "exclusiveMaximum" in jsonSchema ? true : undefined
-        })
-      }
-    }
-    case "BigIntConstraints": {
-      const c = getASTConstraints(ast)
-      return c !== undefined ? makeBigIntConstraints(c) : undefined
-    }
-    case "DateConstraints": {
-      const c = getASTConstraints(ast)
-      return c !== undefined ? makeDateConstraints(c) : undefined
-    }
-    case "ArrayConstraints":
-      return makeArrayConstraints({
-        minLength: jsonSchema.minItems,
-        maxLength: jsonSchema.maxItems
-      })
-  }
-}
+)
 
 function getMax(n1: Date | undefined, n2: Date | undefined): Date | undefined
 function getMax(n1: bigint | undefined, n2: bigint | undefined): bigint | undefined
@@ -681,64 +658,423 @@ function mergePattern(pattern1: string | undefined, pattern2: string | undefined
   return `(?:${pattern1})|(?:${pattern2})`
 }
 
-const merge = (c1: Config, c2: Constraints | undefined): Config => {
-  if (c2) {
-    switch (c1._tag) {
-      case "StringConstraints": {
-        if (c2._tag === "StringConstraints") {
-          return makeStringConstraints({
-            minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
-            maxLength: getMin(c1.constraints.maxLength, c2.constraints.maxLength),
-            pattern: mergePattern(c1.pattern, c2.pattern)
-          })
-        }
-        break
+function mergeStringConstraints(c1: StringConstraints, c2: StringConstraints): StringConstraints {
+  return makeStringConstraints({
+    minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
+    maxLength: getMin(c1.constraints.maxLength, c2.constraints.maxLength),
+    pattern: mergePattern(c1.pattern, c2.pattern)
+  })
+}
+
+function buildStringConstraints(description: StringKeyword): StringConstraints | undefined {
+  return description.constraints.length === 0
+    ? undefined
+    : description.constraints.reduce(mergeStringConstraints)
+}
+
+function mergeNumberConstraints(c1: NumberConstraints, c2: NumberConstraints): NumberConstraints {
+  return makeNumberConstraints({
+    isInteger: c1.isInteger || c2.isInteger,
+    min: getMax(c1.constraints.min, c2.constraints.min),
+    minExcluded: getOr(c1.constraints.minExcluded, c2.constraints.minExcluded),
+    max: getMin(c1.constraints.max, c2.constraints.max),
+    maxExcluded: getOr(c1.constraints.maxExcluded, c2.constraints.maxExcluded),
+    noNaN: getOr(c1.constraints.noNaN, c2.constraints.noNaN),
+    noDefaultInfinity: getOr(c1.constraints.noDefaultInfinity, c2.constraints.noDefaultInfinity)
+  })
+}
+
+function buildNumberConstraints(description: NumberKeyword): NumberConstraints | undefined {
+  return description.constraints.length === 0
+    ? undefined
+    : description.constraints.reduce(mergeNumberConstraints)
+}
+
+function mergeBigIntConstraints(c1: BigIntConstraints, c2: BigIntConstraints): BigIntConstraints {
+  return makeBigIntConstraints({
+    min: getMax(c1.constraints.min, c2.constraints.min),
+    max: getMin(c1.constraints.max, c2.constraints.max)
+  })
+}
+
+function buildBigIntConstraints(description: BigIntKeyword): BigIntConstraints | undefined {
+  return description.constraints.length === 0
+    ? undefined
+    : description.constraints.reduce(mergeBigIntConstraints)
+}
+
+function mergeDateConstraints(c1: DateConstraints, c2: DateConstraints): DateConstraints {
+  return makeDateConstraints({
+    min: getMax(c1.constraints.min, c2.constraints.min),
+    max: getMin(c1.constraints.max, c2.constraints.max),
+    noInvalidDate: getOr(c1.constraints.noInvalidDate, c2.constraints.noInvalidDate)
+  })
+}
+
+function buildDateConstraints(description: DateFromSelf): DateConstraints | undefined {
+  return description.constraints.length === 0
+    ? undefined
+    : description.constraints.reduce(mergeDateConstraints)
+}
+
+const constArrayConstraints = makeArrayConstraints({})
+
+function mergeArrayConstraints(c1: ArrayConstraints, c2: ArrayConstraints): ArrayConstraints {
+  return makeArrayConstraints({
+    minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
+    maxLength: getMin(c1.constraints.maxLength, c2.constraints.maxLength)
+  })
+}
+
+function buildArrayConstraints(description: TupleType): ArrayConstraints | undefined {
+  return description.constraints.length === 0
+    ? undefined
+    : description.constraints.reduce(mergeArrayConstraints)
+}
+
+const arbitraryMemoMap = globalValue(
+  Symbol.for("effect/Arbitrary/arbitraryMemoMap"),
+  () => new WeakMap<SchemaAST.AST, LazyArbitrary<any>>()
+)
+
+function applyFilters(filters: ReadonlyArray<Predicate.Predicate<any>>, arb: LazyArbitrary<any>): LazyArbitrary<any> {
+  return (fc) => filters.reduce((arb, filter) => arb.filter(filter), arb(fc))
+}
+
+function absurd(message: string): LazyArbitrary<any> {
+  return () => {
+    throw new Error(message)
+  }
+}
+
+function getContextConstraints(description: Description): ArbitraryGenerationContext["constraints"] {
+  switch (description._tag) {
+    case "StringKeyword":
+      return buildStringConstraints(description)
+    case "NumberKeyword":
+      return buildNumberConstraints(description)
+    case "BigIntKeyword":
+      return buildBigIntConstraints(description)
+    case "DateFromSelf":
+      return buildDateConstraints(description)
+    case "TupleType":
+      return buildArrayConstraints(description)
+  }
+}
+
+function wrapGo(
+  f: (description: Description, ctx: ArbitraryGenerationContext, lazyArb: LazyArbitrary<any>) => LazyArbitrary<any>,
+  g: (description: Description, ctx: ArbitraryGenerationContext) => LazyArbitrary<any>
+): (description: Description, ctx: ArbitraryGenerationContext) => LazyArbitrary<any> {
+  return (description, ctx) => f(description, ctx, g(description, ctx))
+}
+
+const go = wrapGo(
+  (description, ctx, lazyArb) => {
+    const annotation: ArbitraryAnnotation<any, any> | undefined =
+      description.annotations[description.annotations.length - 1]
+
+    // error handling
+    if (annotation === undefined) {
+      switch (description._tag) {
+        case "Declaration":
+        case "NeverKeyword":
+          throw new Error(errors_.getArbitraryMissingAnnotationErrorMessage(description.path, description.ast))
+        case "Enums":
+          if (description.enums.length === 0) {
+            throw new Error(errors_.getArbitraryEmptyEnumErrorMessage(description.path))
+          }
       }
-      case "NumberConstraints": {
-        if (c2._tag === "NumberConstraints") {
-          return makeNumberConstraints({
-            isInteger: c1.isInteger || c2.isInteger,
-            min: getMax(c1.constraints.min, c2.constraints.min),
-            minExcluded: getOr(c1.constraints.minExcluded, c2.constraints.minExcluded),
-            max: getMin(c1.constraints.max, c2.constraints.max),
-            maxExcluded: getOr(c1.constraints.maxExcluded, c2.constraints.maxExcluded),
-            noNaN: getOr(c1.constraints.noNaN, c2.constraints.noNaN),
-            noDefaultInfinity: getOr(c1.constraints.noDefaultInfinity, c2.constraints.noDefaultInfinity)
-          })
-        }
-        break
+    }
+
+    const filters = description.refinements.map((ast) => (a: any) =>
+      Option.isNone(ast.filter(a, SchemaAST.defaultParseOption, ast))
+    )
+    if (annotation === undefined) {
+      return applyFilters(filters, lazyArb)
+    }
+
+    const constraints = getContextConstraints(description)
+    if (constraints !== undefined) {
+      ctx = { ...ctx, constraints }
+    }
+
+    if (description._tag === "Declaration") {
+      return applyFilters(filters, annotation(...description.typeParameters.map((p) => go(p, ctx)), ctx))
+    }
+    if (description.refinements.length > 0) {
+      // TODO(4.0): remove the `lazyArb` parameter
+      return applyFilters(filters, annotation(lazyArb, ctx))
+    }
+    return annotation(ctx)
+  },
+  (description, ctx) => {
+    switch (description._tag) {
+      case "DateFromSelf": {
+        const constraints = buildDateConstraints(description)
+        return (fc) => fc.date(constraints?.constraints)
       }
-      case "BigIntConstraints": {
-        if (c2._tag === "BigIntConstraints") {
-          return makeBigIntConstraints({
-            min: getMax(c1.constraints.min, c2.constraints.min),
-            max: getMin(c1.constraints.max, c2.constraints.max)
-          })
+      case "Declaration":
+      case "NeverKeyword":
+        return absurd(`BUG: cannot generate an arbitrary for ${description._tag}`)
+      case "Literal":
+        return (fc) => fc.constant(description.literal)
+      case "UniqueSymbol":
+        return (fc) => fc.constant(description.symbol)
+      case "Keyword": {
+        switch (description.value) {
+          case "UndefinedKeyword":
+            return (fc) => fc.constant(undefined)
+          case "VoidKeyword":
+          case "UnknownKeyword":
+          case "AnyKeyword":
+            return (fc) => fc.anything()
+          case "BooleanKeyword":
+            return (fc) => fc.boolean()
+          case "SymbolKeyword":
+            return (fc) => fc.string().map((s) => Symbol.for(s))
+          case "ObjectKeyword":
+            return (fc) => fc.oneof(fc.object(), fc.array(fc.anything()))
         }
-        break
       }
-      case "DateConstraints": {
-        if (c2._tag === "DateConstraints") {
-          return makeDateConstraints({
-            min: getMax(c1.constraints.min, c2.constraints.min),
-            max: getMin(c1.constraints.max, c2.constraints.max),
-            noInvalidDate: getOr(c1.constraints.noInvalidDate, c2.constraints.noInvalidDate)
-          })
+      case "Enums":
+        return (fc) => fc.oneof(...description.enums.map(([_, value]) => fc.constant(value)))
+      case "TemplateLiteral": {
+        return (fc) => {
+          const string = fc.string({ maxLength: 5 })
+          const number = fc.float({ noDefaultInfinity: true, noNaN: true })
+
+          const getTemplateLiteralArb = (description: TemplateLiteral) => {
+            const components: Array<FastCheck.Arbitrary<string | number>> = description.head !== ""
+              ? [fc.constant(description.head)]
+              : []
+
+            const getTemplateLiteralSpanTypeArb = (
+              description: Description
+            ): FastCheck.Arbitrary<string | number> => {
+              switch (description._tag) {
+                case "StringKeyword":
+                  return string
+                case "NumberKeyword":
+                  return number
+                case "Literal":
+                  return fc.constant(String(description.literal))
+                case "Union":
+                  return fc.oneof(...description.members.map(getTemplateLiteralSpanTypeArb))
+                case "TemplateLiteral":
+                  return getTemplateLiteralArb(description)
+                default:
+                  return fc.constant("")
+              }
+            }
+
+            description.spans.forEach((span) => {
+              components.push(getTemplateLiteralSpanTypeArb(span.description))
+              if (span.literal !== "") {
+                components.push(fc.constant(span.literal))
+              }
+            })
+
+            return fc.tuple(...components).map((spans) => spans.join(""))
+          }
+
+          return getTemplateLiteralArb(description)
         }
-        break
       }
-      case "ArrayConstraints": {
-        if (c2._tag === "ArrayConstraints") {
-          return makeArrayConfig({
-            minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
-            maxLength: getMin(c1.constraints.maxLength, c2.constraints.maxLength)
-          }, c1.ast)
+      case "StringKeyword": {
+        const constraints = buildStringConstraints(description)
+        const pattern = constraints?.pattern
+        return pattern !== undefined ?
+          (fc) => fc.stringMatching(new RegExp(pattern)) :
+          (fc) => fc.string(constraints?.constraints)
+      }
+      case "NumberKeyword": {
+        const constraints = buildNumberConstraints(description)
+        return constraints?.isInteger ?
+          (fc) => fc.integer(constraints.constraints) :
+          (fc) => fc.float(constraints?.constraints)
+      }
+      case "BigIntKeyword": {
+        const constraints = buildBigIntConstraints(description)
+        return (fc) => fc.bigInt(constraints?.constraints ?? {})
+      }
+      case "TupleType": {
+        const elements: Array<LazyArbitrary<any>> = []
+        let hasOptionals = false
+        for (const element of description.elements) {
+          elements.push(go(element.description, ctx))
+          if (element.isOptional) {
+            hasOptionals = true
+          }
         }
-        break
+        const rest = description.rest.map((d) => go(d, ctx))
+        return (fc) => {
+          // ---------------------------------------------
+          // handle elements
+          // ---------------------------------------------
+          let output = fc.tuple(...elements.map((arb) => arb(fc)))
+          if (hasOptionals) {
+            const indexes = fc.tuple(
+              ...description.elements.map((element) => element.isOptional ? fc.boolean() : fc.constant(true))
+            )
+            output = output.chain((tuple) =>
+              indexes.map((booleans) => {
+                for (const [i, b] of booleans.reverse().entries()) {
+                  if (!b) {
+                    tuple.splice(booleans.length - i, 1)
+                  }
+                }
+                return tuple
+              })
+            )
+          }
+
+          // ---------------------------------------------
+          // handle rest element
+          // ---------------------------------------------
+          if (Arr.isNonEmptyReadonlyArray(rest)) {
+            const constraints = buildArrayConstraints(description) ?? constArrayConstraints
+            const [head, ...tail] = rest
+            const item = head(fc)
+            output = output.chain((as) => {
+              const len = as.length
+              // We must adjust the constraints for the rest element
+              // because the elements might have generated some values
+              const restArrayConstraints = subtractElementsLength(constraints.constraints, len)
+              if (restArrayConstraints.maxLength === 0) {
+                return fc.constant(as)
+              }
+              /*
+
+              `getSuspendedArray` is used to generate less values in
+              the context of a recursive schema. Without it, the following schema
+              would generate an big amount of values possibly leading to a stack
+              overflow:
+
+              ```ts
+              type A = ReadonlyArray<A | null>
+
+              const schema = S.Array(
+                S.NullOr(S.suspend((): S.Schema<A> => schema))
+              )
+              ```
+
+            */
+              const arr = ctx.depthIdentifier !== undefined
+                ? getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, restArrayConstraints)
+                : fc.array(item, restArrayConstraints)
+              if (len === 0) {
+                return arr
+              }
+              return arr.map((rest) => [...as, ...rest])
+            })
+            // ---------------------------------------------
+            // handle post rest elements
+            // ---------------------------------------------
+            for (let j = 0; j < tail.length; j++) {
+              output = output.chain((as) => tail[j](fc).map((a) => [...as, a]))
+            }
+          }
+
+          return output
+        }
+      }
+      case "TypeLiteral": {
+        const propertySignatures: Array<LazyArbitrary<any>> = []
+        const requiredKeys: Array<PropertyKey> = []
+        for (const ps of description.propertySignatures) {
+          if (!ps.isOptional) {
+            requiredKeys.push(ps.name)
+          }
+          propertySignatures.push(go(ps.value, ctx))
+        }
+        const indexSignatures = description.indexSignatures.map((is) =>
+          [go(is.parameter, ctx), go(is.value, ctx)] as const
+        )
+        return (fc) => {
+          const pps: any = {}
+          for (let i = 0; i < propertySignatures.length; i++) {
+            const ps = description.propertySignatures[i]
+            pps[ps.name] = propertySignatures[i](fc)
+          }
+          let output = fc.record<any, any>(pps, { requiredKeys })
+          // ---------------------------------------------
+          // handle index signatures
+          // ---------------------------------------------
+          for (let i = 0; i < indexSignatures.length; i++) {
+            const key = indexSignatures[i][0](fc)
+            const value = indexSignatures[i][1](fc)
+            output = output.chain((o) => {
+              const item = fc.tuple(key, value)
+              /*
+
+              `getSuspendedArray` is used to generate less key/value pairs in
+              the context of a recursive schema. Without it, the following schema
+              would generate an big amount of values possibly leading to a stack
+              overflow:
+
+              ```ts
+              type A = { [_: string]: A }
+
+              const schema = S.Record({ key: S.String, value: S.suspend((): S.Schema<A> => schema) })
+              ```
+
+            */
+              const arr = ctx.depthIdentifier !== undefined ?
+                getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, { maxLength: 2 }) :
+                fc.array(item)
+              return arr.map((tuples) => ({ ...Object.fromEntries(tuples), ...o }))
+            })
+          }
+
+          return output
+        }
+      }
+      case "Union": {
+        const members = description.members.map((member) => go(member, ctx))
+        return (fc) => fc.oneof(...members.map((arb) => arb(fc)))
+      }
+      case "Suspend": {
+        const memo = arbitraryMemoMap.get(description.ast)
+        if (memo) {
+          return memo
+        }
+        if (ctx.depthIdentifier === undefined) {
+          ctx = { ...ctx, depthIdentifier: description.id }
+        }
+        const get = util_.memoizeThunk(() => {
+          return go(description.description(), ctx)
+        })
+        const out: LazyArbitrary<any> = (fc) => fc.constant(null).chain(() => get()(fc))
+        arbitraryMemoMap.set(description.ast, out)
+        return out
+      }
+      case "Ref": {
+        const memo = arbitraryMemoMap.get(description.ast)
+        if (memo) {
+          return memo
+        }
+        throw new Error(`BUG: Ref ${JSON.stringify(description.id)} not found`)
       }
     }
   }
-  return c1
+)
+
+function subtractElementsLength(
+  constraints: FastCheck.ArrayConstraints,
+  len: number
+): FastCheck.ArrayConstraints {
+  if (len === 0 || (constraints.minLength === undefined && constraints.maxLength === undefined)) {
+    return constraints
+  }
+  const out = { ...constraints }
+  if (out.minLength !== undefined) {
+    out.minLength = Math.max(out.minLength - len, 0)
+  }
+  if (out.maxLength !== undefined) {
+    out.maxLength = Math.max(out.maxLength - len, 0)
+  }
+  return out
 }
 
 const getSuspendedArray = (
@@ -760,18 +1096,4 @@ const getSuspendedArray = (
     fc.constant([]),
     fc.array(item, constraints)
   )
-}
-
-const getSuspendedContext = (
-  ctx: ArbitraryGenerationContext,
-  ast: AST.Suspend
-): ArbitraryGenerationContext => {
-  if (ctx.depthIdentifier !== undefined) {
-    return ctx
-  }
-  const depthIdentifier = AST.getIdentifierAnnotation(ast).pipe(
-    Option.orElse(() => AST.getIdentifierAnnotation(ast.f())),
-    Option.getOrElse(() => "SuspendDefaultDepthIdentifier")
-  )
-  return { ...ctx, depthIdentifier }
 }

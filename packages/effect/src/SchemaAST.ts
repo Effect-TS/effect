@@ -333,6 +333,12 @@ export const getBrandAnnotation = getAnnotation<BrandAnnotation>(BrandAnnotation
 
 /**
  * @category annotations
+ * @since 3.14.2
+ */
+export const getSchemaIdAnnotation = getAnnotation<SchemaIdAnnotation>(SchemaIdAnnotationId)
+
+/**
+ * @category annotations
  * @since 3.10.0
  */
 export const getMessageAnnotation = getAnnotation<MessageAnnotation>(MessageAnnotationId)
