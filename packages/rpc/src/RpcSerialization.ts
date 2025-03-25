@@ -95,7 +95,7 @@ export const msgPack: RpcSerialization["Type"] = RpcSerialization.of({
  * A rpc serialization layer that uses JSON for serialization.
  *
  * Use this if your protocol supports framing for messages, otherwise use
- * `layerSerializationNdjson`.
+ * {@link layerNdjson}.
  *
  * @since 1.0.0
  * @category serialization
@@ -106,7 +106,7 @@ export const layerJson: Layer.Layer<RpcSerialization> = Layer.effect(RpcSerializ
  * A rpc serialization layer that uses NDJSON for serialization.
  *
  * Use this if your protocol does not support framing for messages, otherwise
- * use `layerSerializationJson`.
+ * use {@link layerJson}.
  *
  * @since 1.0.0
  * @category serialization
