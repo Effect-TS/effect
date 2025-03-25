@@ -28,7 +28,7 @@ import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
  * @since 1.0.0
  * @category models
  */
-export type Model = typeof Generated.CreateChatCompletionRequestModelEnum.Encoded
+export type Model = typeof Generated.ModelIdsSharedEnum.Encoded
 
 // =============================================================================
 // Configuration
