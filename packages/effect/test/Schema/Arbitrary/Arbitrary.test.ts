@@ -670,23 +670,339 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         }
       }
 
-      describe("declaration filters", () => {
+      describe("array filters", () => {
+        it("Array", () => {
+          const schema = S.Array(S.String).pipe(S.filter(() => true))
+          assertConstraints(schema, [Arbitrary.makeArrayConstraints({})])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("minItems (Array)", () => {
+          const schema = S.Array(S.String).pipe(S.minItems(2))
+          assertConstraints(schema, [Arbitrary.makeArrayConstraints({ minLength: 2 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("minItems (NonEmptyArray)", () => {
+          const schema = S.NonEmptyArray(S.String).pipe(S.minItems(2))
+          assertConstraints(schema, [Arbitrary.makeArrayConstraints({ minLength: 2 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("maxItems (Array)", () => {
+          const schema = S.Array(S.String).pipe(S.maxItems(5))
+          assertConstraints(schema, [Arbitrary.makeArrayConstraints({ maxLength: 5 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("maxItems (NonEmptyArray)", () => {
+          const schema = S.NonEmptyArray(S.String).pipe(S.maxItems(5))
+          assertConstraints(schema, [Arbitrary.makeArrayConstraints({ maxLength: 5 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("itemsCount (Array)", () => {
+          const schema = S.Array(S.String).pipe(S.itemsCount(3))
+          assertConstraints(schema, [Arbitrary.makeArrayConstraints({ minLength: 3, maxLength: 3 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("itemsCount (NonEmptyArray)", () => {
+          const schema = S.NonEmptyArray(S.String).pipe(S.itemsCount(3))
+          assertConstraints(schema, [Arbitrary.makeArrayConstraints({ minLength: 3, maxLength: 3 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+      })
+
+      describe("string filters", () => {
+        it("String", () => {
+          const schema = S.String.pipe(S.filter(() => true))
+          assertConstraints(schema, [Arbitrary.makeStringConstraints({})])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("minLength", () => {
+          const schema = S.String.pipe(S.minLength(2))
+          assertConstraints(schema, [Arbitrary.makeStringConstraints({ minLength: 2 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("maxLength", () => {
+          const schema = S.String.pipe(S.maxLength(5))
+          assertConstraints(schema, [Arbitrary.makeStringConstraints({ maxLength: 5 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("length: number", () => {
+          const schema = S.String.pipe(S.length(10))
+          assertConstraints(schema, [Arbitrary.makeStringConstraints({ minLength: 10, maxLength: 10 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("length: { min, max }", () => {
+          const schema = S.String.pipe(S.length({ min: 2, max: 5 }))
+          assertConstraints(schema, [Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("minLength + maxLength", () => {
+          const schema = S.String.pipe(S.minLength(2), S.maxLength(5))
+          assertConstraints(schema, [
+            Arbitrary.makeStringConstraints({ minLength: 2 }),
+            Arbitrary.makeStringConstraints({ maxLength: 5 })
+          ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("annotation + minLength + maxLength", () => {
+          const schema = S.String.annotations({ arbitrary: () => (fc) => fc.string() }).pipe(
+            S.minLength(2),
+            S.maxLength(5)
+          )
+          assertConstraints(schema, [
+            Arbitrary.makeStringConstraints({ minLength: 2 }),
+            Arbitrary.makeStringConstraints({ maxLength: 5 })
+          ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("minLength + maxLength + annotation", () => {
+          const schema = S.String.pipe(
+            S.minLength(2),
+            S.maxLength(5)
+          ).annotations({ arbitrary: () => (fc) => fc.string() })
+          assertConstraints(schema, [
+            Arbitrary.makeStringConstraints({ minLength: 2 }),
+            Arbitrary.makeStringConstraints({ maxLength: 5 })
+          ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("startsWith", () => {
+          const schema = S.String.pipe(S.startsWith("a"))
+          assertConstraints(schema, [Arbitrary.makeStringConstraints({ pattern: "^a" })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("endsWith", () => {
+          const schema = S.String.pipe(S.endsWith("a"))
+          assertConstraints(schema, [Arbitrary.makeStringConstraints({ pattern: "^.*a$" })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("pattern", () => {
+          const regex = /^[A-Z]{3}[0-9]{3}$/
+          const schema = S.String.pipe(S.pattern(regex))
+          assertConstraints(schema, [Arbitrary.makeStringConstraints({ pattern: regex.source })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("nonEmptyString + pattern", () => {
+          const regex = /^[-]*$/
+          const schema = S.String.pipe(S.nonEmptyString(), S.pattern(regex))
+          assertConstraints(schema, [
+            Arbitrary.makeStringConstraints({ minLength: 1 }),
+            Arbitrary.makeStringConstraints({ pattern: regex.source })
+          ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("pattern + pattern", () => {
+          const regexp1 = /^[^A-Z]*$/
+          const regexp2 = /^0x[0-9a-f]{40}$/
+          const schema = S.String.pipe(S.pattern(regexp1), S.pattern(regexp2))
+          assertConstraints(
+            schema,
+            [
+              Arbitrary.makeStringConstraints({ pattern: regexp1.source }),
+              Arbitrary.makeStringConstraints({ pattern: regexp2.source })
+            ]
+          )
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+      })
+
+      describe("number filters", () => {
+        it("Number", () => {
+          const schema = S.Number.pipe(S.filter(() => true))
+          assertConstraints(schema, [Arbitrary.makeNumberConstraints({})])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("nonNaN", () => {
+          const schema = S.Number.pipe(S.nonNaN())
+          assertConstraints(schema, [Arbitrary.makeNumberConstraints({ noNaN: true })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("finite", () => {
+          const schema = S.Number.pipe(S.finite())
+          assertConstraints(schema, [Arbitrary.makeNumberConstraints({ noNaN: true, noDefaultInfinity: true })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("JsonNumber", () => {
+          const schema = S.JsonNumber
+          assertConstraints(schema, [Arbitrary.makeNumberConstraints({ noDefaultInfinity: true, noNaN: true })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("int", () => {
+          const schema = S.Number.pipe(S.int())
+          assertConstraints(schema, [Arbitrary.makeNumberConstraints({ isInteger: true })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("between int", () => {
+          const schema = S.Number.pipe(S.between(2, 5), S.int())
+          assertConstraints(schema, [
+            Arbitrary.makeNumberConstraints({ min: 2, max: 5 }),
+            Arbitrary.makeNumberConstraints({ isInteger: true })
+          ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("int between", () => {
+          const schema = S.Number.pipe(S.int(), S.between(2, 5))
+          assertConstraints(schema, [
+            Arbitrary.makeNumberConstraints({ isInteger: true }),
+            Arbitrary.makeNumberConstraints({ min: 2, max: 5 })
+          ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("lessThanOrEqualTo", () => {
+          const schema = S.Number.pipe(S.lessThanOrEqualTo(5))
+          assertConstraints(schema, [Arbitrary.makeNumberConstraints({ max: 5 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("greaterThanOrEqualTo", () => {
+          const schema = S.Number.pipe(S.greaterThanOrEqualTo(2))
+          assertConstraints(schema, [Arbitrary.makeNumberConstraints({ min: 2 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("lessThan", () => {
+          const schema = S.Number.pipe(S.lessThan(5))
+          assertConstraints(schema, [Arbitrary.makeNumberConstraints({ max: 5, maxExcluded: true })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("greaterThan", () => {
+          const schema = S.Number.pipe(S.greaterThan(2))
+          assertConstraints(schema, [Arbitrary.makeNumberConstraints({ min: 2, minExcluded: true })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("between", () => {
+          const schema = S.Number.pipe(S.between(2, 5))
+          assertConstraints(schema, [Arbitrary.makeNumberConstraints({ min: 2, max: 5 })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+      })
+
+      describe("bigint filters", () => {
+        it("BigIntFromSelf", () => {
+          const schema = S.BigIntFromSelf.pipe(S.filter(() => true))
+          assertConstraints(schema, [])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("lessThanOrEqualTo", () => {
+          const schema = S.BigIntFromSelf.pipe(S.lessThanOrEqualToBigInt(BigInt(5)))
+          assertConstraints(schema, [Arbitrary.makeBigIntConstraints({ max: BigInt(5) })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("greaterThanOrEqualTo", () => {
+          const schema = S.BigIntFromSelf.pipe(S.greaterThanOrEqualToBigInt(BigInt(2)))
+          assertConstraints(schema, [Arbitrary.makeBigIntConstraints({ min: BigInt(2) })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("lessThan", () => {
+          const schema = S.BigIntFromSelf.pipe(S.lessThanBigInt(BigInt(5)))
+          assertConstraints(schema, [Arbitrary.makeBigIntConstraints({ max: BigInt(5) })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("greaterThan", () => {
+          const schema = S.BigIntFromSelf.pipe(S.greaterThanBigInt(BigInt(2)))
+          assertConstraints(schema, [Arbitrary.makeBigIntConstraints({ min: BigInt(2) })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("between", () => {
+          const schema = S.BigIntFromSelf.pipe(S.betweenBigInt(BigInt(2), BigInt(5)))
+          assertConstraints(schema, [Arbitrary.makeBigIntConstraints({ min: BigInt(2), max: BigInt(5) })])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+      })
+
+      describe("date filters", () => {
+        it("DateFromSelf", () => {
+          const schema = S.DateFromSelf
+          assertConstraints(schema, [
+            Arbitrary.makeDateConstraints({ noInvalidDate: false })
+          ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
         it("ValidDateFromSelf", () => {
           const schema = S.ValidDateFromSelf
           assertConstraints(schema, [
-            {
-              _tag: "DateConstraints",
-              constraints: {
-                noInvalidDate: false
-              }
-            },
-            {
-              _tag: "DateConstraints",
-              constraints: {
-                noInvalidDate: true
-              }
-            }
+            Arbitrary.makeDateConstraints({ noInvalidDate: false }),
+            Arbitrary.makeDateConstraints({ noInvalidDate: true })
           ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("lessThanOrEqualTo", () => {
+          const schema = S.DateFromSelf.pipe(S.lessThanOrEqualToDate(new Date(5)))
+          assertConstraints(schema, [
+            Arbitrary.makeDateConstraints({ noInvalidDate: false }),
+            Arbitrary.makeDateConstraints({ max: new Date(5) })
+          ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("greaterThanOrEqualTo", () => {
+          const schema = S.DateFromSelf.pipe(S.greaterThanOrEqualToDate(new Date(2)))
+          assertConstraints(schema, [
+            Arbitrary.makeDateConstraints({ noInvalidDate: false }),
+            Arbitrary.makeDateConstraints({ min: new Date(2) })
+          ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("lessThan", () => {
+          const schema = S.DateFromSelf.pipe(S.lessThanDate(new Date(5)))
+          assertConstraints(schema, [
+            Arbitrary.makeDateConstraints({ noInvalidDate: false }),
+            Arbitrary.makeDateConstraints({ max: new Date(5) })
+          ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("greaterThan", () => {
+          const schema = S.DateFromSelf.pipe(S.greaterThanDate(new Date(2)))
+          assertConstraints(schema, [
+            Arbitrary.makeDateConstraints({ noInvalidDate: false }),
+            Arbitrary.makeDateConstraints({ min: new Date(2) })
+          ])
+          Util.assertions.arbitrary.validateGeneratedValues(schema)
+        })
+
+        it("between", () => {
+          const schema = S.DateFromSelf.pipe(S.betweenDate(new Date(2), new Date(5)))
+          assertConstraints(
+            schema,
+            [
+              Arbitrary.makeDateConstraints({ noInvalidDate: false }),
+              Arbitrary.makeDateConstraints({ min: new Date(2), max: new Date(5) })
+            ]
+          )
           Util.assertions.arbitrary.validateGeneratedValues(schema)
         })
       })
