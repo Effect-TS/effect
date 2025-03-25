@@ -99,9 +99,9 @@ interface NumberConstraints {
 /** @internal */
 export const makeNumberConstraints = (options: {
   readonly isInteger?: boolean | undefined
-  readonly min?: number | undefined
+  readonly min?: unknown
   readonly minExcluded?: boolean | undefined
-  readonly max?: number | undefined
+  readonly max?: unknown
   readonly maxExcluded?: boolean | undefined
   readonly noNaN?: boolean | undefined
   readonly noDefaultInfinity?: boolean | undefined
@@ -162,8 +162,8 @@ interface ArrayConstraints {
 
 /** @internal */
 export const makeArrayConstraints = (options: {
-  readonly minLength?: number | undefined
-  readonly maxLength?: number | undefined
+  readonly minLength?: unknown
+  readonly maxLength?: unknown
 }): ArrayConstraints => {
   const out: Types.Mutable<ArrayConstraints> = {
     _tag: "ArrayConstraints",
@@ -366,6 +366,20 @@ function wrapGetDescription(
   return (ast, path) => f(ast, g(ast, path))
 }
 
+function parseMeta(ast: SchemaAST.AST): [SchemaAST.SchemaIdAnnotation | undefined, Record<string | symbol, unknown>] {
+  const jsonSchema = SchemaAST.getJSONSchemaAnnotation(ast).pipe(
+    Option.filter(Predicate.isReadonlyRecord),
+    Option.getOrUndefined
+  )
+  const schemaId = Option.getOrElse(SchemaAST.getSchemaIdAnnotation(ast), () => undefined)
+  const schemaParams = Option.fromNullable(schemaId).pipe(
+    Option.map((id) => ast.annotations[id]),
+    Option.filter(Predicate.isReadonlyRecord),
+    Option.getOrUndefined
+  )
+  return [schemaId, { ...schemaParams, ...jsonSchema }]
+}
+
 /** @internal */
 export const getDescription = wrapGetDescription(
   (ast, description) => {
@@ -379,10 +393,7 @@ export const getDescription = wrapGetDescription(
     return description
   },
   (ast, path) => {
-    const schemaId = Option.getOrElse(SchemaAST.getSchemaIdAnnotation(ast), () => undefined)
-    const jsonSchema: Record<string, any> = Option.getOrElse(SchemaAST.getJSONSchemaAnnotation(ast), () => ({}))
-    const schemaParams = schemaId !== undefined ? ast.annotations[schemaId] : {}
-    const meta = Predicate.isObject(schemaParams) ? { ...schemaParams, ...jsonSchema } : jsonSchema
+    const [schemaId, meta] = parseMeta(ast)
     switch (ast._tag) {
       case "Refinement": {
         const from = getDescription(ast.from, path)
@@ -647,8 +658,6 @@ function mergePattern(pattern1: string | undefined, pattern2: string | undefined
   return `(?:${pattern1})|(?:${pattern2})`
 }
 
-const constStringConstraints = makeStringConstraints({})
-
 function mergeStringConstraints(c1: StringConstraints, c2: StringConstraints): StringConstraints {
   return makeStringConstraints({
     minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
@@ -662,8 +671,6 @@ function buildStringConstraints(description: StringKeyword): StringConstraints |
     ? undefined
     : description.constraints.reduce(mergeStringConstraints)
 }
-
-const constNumberConstraints = makeNumberConstraints({})
 
 function mergeNumberConstraints(c1: NumberConstraints, c2: NumberConstraints): NumberConstraints {
   return makeNumberConstraints({
@@ -683,8 +690,6 @@ function buildNumberConstraints(description: NumberKeyword): NumberConstraints |
     : description.constraints.reduce(mergeNumberConstraints)
 }
 
-const constBigIntConstraints = makeBigIntConstraints({})
-
 function mergeBigIntConstraints(c1: BigIntConstraints, c2: BigIntConstraints): BigIntConstraints {
   return makeBigIntConstraints({
     min: getMax(c1.constraints.min, c2.constraints.min),
@@ -697,8 +702,6 @@ function buildBigIntConstraints(description: BigIntKeyword): BigIntConstraints |
     ? undefined
     : description.constraints.reduce(mergeBigIntConstraints)
 }
-
-const constDateConstraints = makeDateConstraints({})
 
 function mergeDateConstraints(c1: DateConstraints, c2: DateConstraints): DateConstraints {
   return makeDateConstraints({
@@ -807,6 +810,10 @@ const go = wrapGo(
   },
   (description, ctx) => {
     switch (description._tag) {
+      case "DateDeclaration": {
+        const constraints = buildDateConstraints(description)
+        return (fc) => fc.date(constraints?.constraints)
+      }
       case "Declaration":
       case "NeverKeyword":
         return absurd(`BUG: cannot generate an arbitrary for ${description._tag}`)
@@ -875,25 +882,21 @@ const go = wrapGo(
         }
       }
       case "StringKeyword": {
-        const constraints = buildStringConstraints(description) ?? constStringConstraints
-        const pattern = constraints.pattern
+        const constraints = buildStringConstraints(description)
+        const pattern = constraints?.pattern
         return pattern !== undefined ?
           (fc) => fc.stringMatching(new RegExp(pattern)) :
-          (fc) => fc.string(constraints.constraints)
+          (fc) => fc.string(constraints?.constraints)
       }
       case "NumberKeyword": {
-        const constraints = buildNumberConstraints(description) ?? constNumberConstraints
-        return constraints.isInteger ?
+        const constraints = buildNumberConstraints(description)
+        return constraints?.isInteger ?
           (fc) => fc.integer(constraints.constraints) :
-          (fc) => fc.float(constraints.constraints)
+          (fc) => fc.float(constraints?.constraints)
       }
       case "BigIntKeyword": {
-        const constraints = buildBigIntConstraints(description) ?? constBigIntConstraints
-        return (fc) => fc.bigInt(constraints.constraints)
-      }
-      case "DateDeclaration": {
-        const constraints = buildDateConstraints(description) ?? constDateConstraints
-        return (fc) => fc.date(constraints.constraints)
+        const constraints = buildBigIntConstraints(description)
+        return (fc) => fc.bigInt(constraints?.constraints ?? {})
       }
       case "TupleType": {
         const elements: Array<LazyArbitrary<any>> = []
