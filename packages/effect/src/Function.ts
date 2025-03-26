@@ -45,28 +45,49 @@ export const isFunction = (input: unknown): input is Function => typeof input ==
  * which determines if the function is being used in a data-first or
  * data-last style.
  *
- * @example
+ * **Example** (Using arity to determine data-first or data-last style)
+ *
  * ```ts
- * import * as assert from "node:assert"
  * import { dual, pipe } from "effect/Function"
  *
- * // Exampe using arity to determine data-first or data-last style
+ * const sum = dual<
+ *   (that: number) => (self: number) => number,
+ *   (self: number, that: number) => number
+ * >(2, (self, that) => self + that)
+ *
+ * console.log(sum(2, 3)) // 5
+ * console.log(pipe(2, sum(3))) // 5
+ * ```
+ *
+ * **Example** (Using call signatures to define the overloads)
+ *
+ * ```ts
+ * import { dual, pipe } from "effect/Function"
+ *
  * const sum: {
  *   (that: number): (self: number) => number
  *   (self: number, that: number): number
  * } = dual(2, (self: number, that: number): number => self + that)
  *
- * assert.deepStrictEqual(sum(2, 3), 5)
- * assert.deepStrictEqual(pipe(2, sum(3)), 5)
+ * console.log(sum(2, 3)) // 5
+ * console.log(pipe(2, sum(3))) // 5
+ * ```
  *
- * // Example using a predicate to determine data-first or data-last style
- * const sum2: {
- *   (that: number): (self: number) => number
- *   (self: number, that: number): number
- * } = dual((args) => args.length === 1, (self: number, that: number): number => self + that)
+ * **Example** (Using a predicate to determine data-first or data-last style)
  *
- * assert.deepStrictEqual(sum(2, 3), 5)
- * assert.deepStrictEqual(pipe(2, sum(3)), 5)
+ * ```ts
+ * import { dual, pipe } from "effect/Function"
+ *
+ * const sum = dual<
+ *   (that: number) => (self: number) => number,
+ *   (self: number, that: number) => number
+ * >(
+ *   (args) => args.length === 2,
+ *   (self, that) => self + that
+ * )
+ *
+ * console.log(sum(2, 3)) // 5
+ * console.log(pipe(2, sum(3))) // 5
  * ```
  *
  * @since 2.0.0
