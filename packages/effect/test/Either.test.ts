@@ -304,8 +304,7 @@ describe("Either", () => {
 
   it("getOrThrowWith", () => {
     strictEqual(pipe(Either.right(1), Either.getOrThrowWith((e) => new Error(`Unexpected Left: ${e}`))), 1)
-    throws(() => pipe(Either.left("e"), Either.getOrThrowWith((e) => new Error(`Unexpected Left: ${e}`)))),
-      new Error("Unexpected Left: e")
+    throws(() => pipe(Either.left("e"), Either.getOrThrowWith((e) => new Error(`Unexpected Left: ${e}`))))
   })
 
   it("getOrThrow", () => {
