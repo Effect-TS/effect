@@ -35,7 +35,7 @@ function effectifyWith(
   commit: () => Effect.Effect<ReadonlyArray<unknown>, SqlError>,
   whitelist: Array<string>
 ) {
-  if (typeof obj !== "object") {
+  if (typeof obj !== "object" || obj === null) {
     return obj
   }
   return new Proxy(obj, {
