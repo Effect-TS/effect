@@ -117,7 +117,7 @@ export declare namespace Either {
  * @category constructors
  * @since 2.0.0
  */
-export const right: <R>(right: R) => Either<R> = either.right
+export const right: <R, L = never>(right: R) => Either<R, L> = either.right
 
 const void_: Either<void> = right(void 0)
 export {
@@ -135,7 +135,7 @@ export {
  * @category constructors
  * @since 2.0.0
  */
-export const left: <L>(left: L) => Either<never, L> = either.left
+export const left: <L, R = never>(left: L) => Either<R, L> = either.left
 
 /**
  * Takes a lazy default and a nullable value, if the value is not nully (`null` or `undefined`), turn it into a `Right`, if the value is nully use
