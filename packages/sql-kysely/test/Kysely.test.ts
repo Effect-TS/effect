@@ -7,6 +7,7 @@ import { CamelCasePlugin, type Generated, type Kysely, SqliteDialect } from "kys
 export interface User {
   id: Generated<number>
   userName: string
+  nickname: string | null
 }
 
 interface Database {
@@ -34,21 +35,22 @@ describe("Kysely", () => {
         .createTable("users")
         .addColumn("id", "integer", (c) => c.primaryKey().autoIncrement())
         .addColumn("userName", "text", (c) => c.notNull())
+        .addColumn("nickname", "text")
 
       yield* createTableQuery
 
       const inserted = yield* db.insertInto("users").values({ userName: "Alice" }).returningAll()
       const selected = yield* db.selectFrom("users").selectAll()
-      const updated = yield* db.updateTable("users").set({ userName: "Bob" }).returningAll()
+      const updated = yield* db.updateTable("users").set({ userName: "Bob", nickname: "The Bobinator" }).returningAll()
       const deleted = yield* db.deleteFrom("users").returningAll()
 
       assert.equal(
         createTableQuery.compile().sql,
-        "create table \"users\" (\"id\" integer primary key autoincrement, \"user_name\" text not null)"
+        "create table \"users\" (\"id\" integer primary key autoincrement, \"user_name\" text not null, \"nickname\" text)"
       )
-      assert.deepStrictEqual(inserted, [{ id: 1, userName: "Alice" }])
-      assert.deepStrictEqual(selected, [{ id: 1, userName: "Alice" }])
-      assert.deepStrictEqual(updated, [{ id: 1, userName: "Bob" }])
-      assert.deepStrictEqual(deleted, [{ id: 1, userName: "Bob" }])
+      assert.deepStrictEqual(inserted, [{ id: 1, userName: "Alice", nickname: null }])
+      assert.deepStrictEqual(selected, [{ id: 1, userName: "Alice", nickname: null }])
+      assert.deepStrictEqual(updated, [{ id: 1, userName: "Bob", nickname: "The Bobinator" }])
+      assert.deepStrictEqual(deleted, [{ id: 1, userName: "Bob", nickname: "The Bobinator" }])
     }).pipe(Effect.provide(KyselyDBLive)))
 })

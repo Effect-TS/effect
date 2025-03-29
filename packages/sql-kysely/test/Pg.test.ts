@@ -7,6 +7,7 @@ import { PgContainer } from "./utils.js"
 export interface User {
   id: Generated<number>
   name: string
+  nickname: string | null
 }
 
 interface Database {
@@ -25,15 +26,16 @@ describe("PgKysely", () => {
         .createTable("users")
         .addColumn("id", "serial", (c) => c.primaryKey())
         .addColumn("name", "text", (c) => c.notNull())
+        .addColumn("nickname", "text")
 
       const inserted = yield* db.insertInto("users").values({ name: "Alice" }).returningAll()
       const selected = yield* db.selectFrom("users").selectAll()
-      const updated = yield* db.updateTable("users").set({ name: "Bob" }).returningAll()
+      const updated = yield* db.updateTable("users").set({ name: "Bob", nickname: "The Bobinator" }).returningAll()
       const deleted = yield* db.deleteFrom("users").returningAll()
 
-      assert.deepStrictEqual(inserted, [{ id: 1, name: "Alice" }])
-      assert.deepStrictEqual(selected, [{ id: 1, name: "Alice" }])
-      assert.deepStrictEqual(updated, [{ id: 1, name: "Bob" }])
-      assert.deepStrictEqual(deleted, [{ id: 1, name: "Bob" }])
+      assert.deepStrictEqual(inserted, [{ id: 1, name: "Alice", nickname: null }])
+      assert.deepStrictEqual(selected, [{ id: 1, name: "Alice", nickname: null }])
+      assert.deepStrictEqual(updated, [{ id: 1, name: "Bob", nickname: "The Bobinator" }])
+      assert.deepStrictEqual(deleted, [{ id: 1, name: "Bob", nickname: "The Bobinator" }])
     }).pipe(Effect.provide(PgLive)), { timeout: 60000 })
 })
