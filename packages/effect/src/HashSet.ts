@@ -16,6 +16,7 @@
  * ## When to Use
  *
  * Use `HashSet` when you need:
+ *
  * - A collection with no duplicate values
  * - Efficient membership testing (**`O(1)`** average complexity)
  * - Set operations like union, intersection, and difference
@@ -24,6 +25,7 @@
  * ## Advanced Features
  *
  * HashSet provides operations for:
+ *
  * - Transforming sets with map and flatMap
  * - Filtering elements with filter
  * - Combining sets with union, intersection and difference
@@ -31,11 +33,15 @@
  *
  * ## Performance Characteristics
  *
- * - **Lookup** operations ({@link has}): **`O(1)`** average time complexity
- * - **Insertion** operations ({@link add}): **`O(1)`** average time complexity
- * - **Removal** operations ({@link remove}): **`O(1)`** average time complexity
- * - **Set** operations ({@link union}, {@link intersection}): **`O(n)`** where n is
- *   the size of the smaller set
+ * - **Lookup** operations ({@linkcode HashSet.has}): **`O(1)`** average time
+ *   complexity
+ * - **Insertion** operations ({@linkcode HashSet.add}): **`O(1)`** average time
+ *   complexity
+ * - **Removal** operations ({@linkcode HashSet.remove}): **`O(1)`** average time
+ *   complexity
+ * - **Set** operations ({@linkcode HashSet.union},
+ *   {@linkcode HashSet.intersection}): **`O(n)`** where n is the size of the
+ *   smaller set
  * - **Iteration**: **`O(n)`** where n is the size of the set
  *
  * The HashSet data structure implements the following traits:
@@ -47,40 +53,40 @@
  *
  * ## Operations Reference
  *
- * | Category     | Operation            | Description                                 | Complexity |
- * | ------------ | -------------------- | ------------------------------------------- | ---------- |
- * | constructors | {@link empty}        | Creates an empty HashSet                    | O(1)       |
- * | constructors | {@link fromIterable} | Creates a HashSet from an iterable          | O(n)       |
- * | constructors | {@link make}         | Creates a HashSet from multiple values      | O(n)       |
- * |              |                      |                                             |            |
- * | elements     | {@link has}          | Checks if a value exists in the set         | O(1) avg   |
- * | elements     | {@link some}         | Checks if any element satisfies a predicate | O(n)       |
- * | elements     | {@link every}        | Checks if all elements satisfy a predicate  | O(n)       |
- * | elements     | {@link isSubset}     | Checks if a set is a subset of another      | O(n)       |
- * |              |                      |                                             |            |
- * | getters      | {@link values}       | Gets an iterator of all values              | O(1)       |
- * | getters      | {@link toValues}     | Gets an array of all values                 | O(n)       |
- * | getters      | {@link size}         | Gets the number of elements                 | O(1)       |
- * |              |                      |                                             |            |
- * | mutations    | {@link add}          | Adds a value to the set                     | O(1) avg   |
- * | mutations    | {@link remove}       | Removes a value from the set                | O(1) avg   |
- * | mutations    | {@link toggle}       | Toggles a value's presence                  | O(1) avg   |
- * |              |                      |                                             |            |
- * | operations   | {@link difference}   | Computes set difference (A - B)             | O(n)       |
- * | operations   | {@link intersection} | Computes set intersection (A ∩ B)           | O(n)       |
- * | operations   | {@link union}        | Computes set union (A ∪ B)                  | O(n)       |
- * |              |                      |                                             |            |
- * | mapping      | {@link map}          | Transforms each element                     | O(n)       |
- * |              |                      |                                             |            |
- * | sequencing   | {@link flatMap}      | Transforms and flattens elements            | O(n)       |
- * |              |                      |                                             |            |
- * | traversing   | {@link forEach}      | Applies a function to each element          | O(n)       |
- * |              |                      |                                             |            |
- * | folding      | {@link reduce}       | Reduces the set to a single value           | O(n)       |
- * |              |                      |                                             |            |
- * | filtering    | {@link filter}       | Keeps elements that satisfy a predicate     | O(n)       |
- * |              |                      |                                             |            |
- * | partitioning | {@link partition}    | Splits into two sets by a predicate         | O(n)       |
+ * | Category     | Operation                        | Description                                 | Complexity |
+ * | ------------ | -------------------------------- | ------------------------------------------- | ---------- |
+ * | constructors | {@linkcode HashSet.empty}        | Creates an empty HashSet                    | O(1)       |
+ * | constructors | {@linkcode HashSet.fromIterable} | Creates a HashSet from an iterable          | O(n)       |
+ * | constructors | {@linkcode HashSet.make}         | Creates a HashSet from multiple values      | O(n)       |
+ * |              |                                  |                                             |            |
+ * | elements     | {@linkcode HashSet.has}          | Checks if a value exists in the set         | O(1) avg   |
+ * | elements     | {@linkcode HashSet.some}         | Checks if any element satisfies a predicate | O(n)       |
+ * | elements     | {@linkcode HashSet.every}        | Checks if all elements satisfy a predicate  | O(n)       |
+ * | elements     | {@linkcode HashSet.isSubset}     | Checks if a set is a subset of another      | O(n)       |
+ * |              |                                  |                                             |            |
+ * | getters      | {@linkcode HashSet.values}       | Gets an iterator of all values              | O(1)       |
+ * | getters      | {@linkcode HashSet.toValues}     | Gets an array of all values                 | O(n)       |
+ * | getters      | {@linkcode HashSet.size}         | Gets the number of elements                 | O(1)       |
+ * |              |                                  |                                             |            |
+ * | mutations    | {@linkcode HashSet.add}          | Adds a value to the set                     | O(1) avg   |
+ * | mutations    | {@linkcode HashSet.remove}       | Removes a value from the set                | O(1) avg   |
+ * | mutations    | {@linkcode HashSet.toggle}       | Toggles a value's presence                  | O(1) avg   |
+ * |              |                                  |                                             |            |
+ * | operations   | {@linkcode HashSet.difference}   | Computes set difference (A - B)             | O(n)       |
+ * | operations   | {@linkcode HashSet.intersection} | Computes set intersection (A ∩ B)           | O(n)       |
+ * | operations   | {@linkcode HashSet.union}        | Computes set union (A ∪ B)                  | O(n)       |
+ * |              |                                  |                                             |            |
+ * | mapping      | {@linkcode HashSet.map}          | Transforms each element                     | O(n)       |
+ * |              |                                  |                                             |            |
+ * | sequencing   | {@linkcode HashSet.flatMap}      | Transforms and flattens elements            | O(n)       |
+ * |              |                                  |                                             |            |
+ * | traversing   | {@linkcode HashSet.forEach}      | Applies a function to each element          | O(n)       |
+ * |              |                                  |                                             |            |
+ * | folding      | {@linkcode HashSet.reduce}       | Reduces the set to a single value           | O(n)       |
+ * |              |                                  |                                             |            |
+ * | filtering    | {@linkcode HashSet.filter}       | Keeps elements that satisfy a predicate     | O(n)       |
+ * |              |                                  |                                             |            |
+ * | partitioning | {@linkcode HashSet.partition}    | Splits into two sets by a predicate         | O(n)       |
  *
  * ## Notes
  *
@@ -262,8 +268,18 @@ const TypeId: unique symbol = HS.HashSetTypeId as TypeId
 export type TypeId = typeof TypeId
 
 /**
+ * @memberof HashSet
  * @since 2.0.0
  * @category models
+ * @example **Syntax**
+ *
+ * ```ts
+ * import { HashSet } from "effect"
+ *
+ * let numberSet: HashSet.HashSet<number>
+ * ```
+ *
+ * @interface
  */
 export interface HashSet<out A> extends Iterable<A>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
@@ -533,7 +549,7 @@ export const fromIterable: <A>(elements: Iterable<A>) => HashSet<A> = HS.fromIte
  * )
  * ```
  *
- * @see Other `HashSet` constructors are {@link fromIterable} {@link empty}
+ * @see Other `HashSet` constructors are {@linkcode fromIterable} {@linkcode empty}
  */
 export const make: <As extends ReadonlyArray<any>>(...elements: As) => HashSet<As[number]> = HS.make
 
@@ -1081,7 +1097,7 @@ export const beginMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.beginMutati
  * assert.deepStrictEqual(HashSet.toValues(newSet).sort(), [1, 2, 3, 4])
  * ```
  *
- * @see Other `HashSet` mutations are {@link add} {@link remove} {@link toggle} {@link beginMutation} {@link mutate}
+ * @see Other `HashSet` mutations are {@linkcode HashSet.add} {@linkcode HashSet.remove} {@linkcode HashSet.toggle} {@linkcode HashSet.beginMutation} {@linkcode HashSet.mutate}
  */
 export const endMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.endMutation
 
@@ -1089,8 +1105,8 @@ export const endMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.endMutation
  * Mutates the `HashSet` within the context of the provided function.
  *
  * You can consider it a functional abstraction on top of the lower-level
- * mutation primitives of {@linkcode beginMutation} `->` `mutable context` `->`
- * {@linkcode endMutation}.
+ * mutation primitives of {@linkcode HashSet.beginMutation} `->` `mutable
+ * context` `->` {@linkcode HashSet.endMutation}.
  *
  * @memberof HashSet
  * @since 2.0.0
@@ -1123,11 +1139,11 @@ export const endMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.endMutation
  * })
  * ```
  *
- * @see Other `HashSet` mutations are {@link add} {@link remove} {@link toggle} {@link beginMutation} {@link endMutation}
+ * @see Other `HashSet` mutations are {@linkcode HashSet.add} {@linkcode HashSet.remove} {@linkcode HashSet.toggle} {@linkcode HashSet.beginMutation} {@linkcode HashSet.endMutation}
  */
 export const mutate: {
   /**
-   * @example {@link mutate} `data-last` a.k.a. `pipeable` API
+   * @example {@linkcode HashSet.mutate} `data-last` a.k.a. `pipeable` API
    *
    * ```ts
    * import { HashSet, pipe } from "effect"
@@ -1163,7 +1179,7 @@ export const mutate: {
   <A>(f: (set: HashSet<A>) => void): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link mutate} `data-first` API
+   * @example {@linkcode HashSet.mutate} `data-first` API
    *
    * ```ts
    * import { HashSet } from "effect"
@@ -1559,15 +1575,24 @@ export const union: {
    * const result = pipe(selfSet, HashSet.union(thatIterable))
    *
    * // The result contains all elements from both sets (without duplicates)
-   * assert.deepStrictEqual(HashSet.toValues(result).sort(), [1, 2, 3, 4, 5])
+   * assert.deepStrictEqual(
+   *   HashSet.toValues(result).sort(),
+   *   [1, 2, 3, 4, 5]
+   * )
    *
    * // The original sets are unchanged
    * assert.deepStrictEqual(HashSet.toValues(selfSet).sort(), [1, 2, 3])
-   * assert.deepStrictEqual(HashSet.toValues(thatIterable).sort(), [3, 4, 5])
+   * assert.deepStrictEqual(
+   *   HashSet.toValues(thatIterable).sort(),
+   *   [3, 4, 5]
+   * )
    *
    * // You can also use arrays or other iterables
    * const unionWithArray = pipe(selfSet, HashSet.union([4, 5, 6]))
-   * assert.deepStrictEqual(HashSet.toValues(unionWithArray).sort(), [1, 2, 3, 4, 5, 6])
+   * assert.deepStrictEqual(
+   *   HashSet.toValues(unionWithArray).sort(),
+   *   [1, 2, 3, 4, 5, 6]
+   * )
    * ```
    */
   <A>(that: Iterable<A>): (self: HashSet<A>) => HashSet<A>
@@ -1587,15 +1612,24 @@ export const union: {
    * const result = HashSet.union(selfSet, thatIterable)
    *
    * // The result contains all elements from both sets (without duplicates)
-   * assert.deepStrictEqual(HashSet.toValues(result).sort(), [1, 2, 3, 4, 5])
+   * assert.deepStrictEqual(
+   *   HashSet.toValues(result).sort(),
+   *   [1, 2, 3, 4, 5]
+   * )
    *
    * // The original sets are unchanged
    * assert.deepStrictEqual(HashSet.toValues(selfSet).sort(), [1, 2, 3])
-   * assert.deepStrictEqual(HashSet.toValues(thatIterable).sort(), [3, 4, 5])
+   * assert.deepStrictEqual(
+   *   HashSet.toValues(thatIterable).sort(),
+   *   [3, 4, 5]
+   * )
    *
    * // You can also use arrays or other iterables
    * const unionWithArray = HashSet.union(selfSet, [4, 5, 6])
-   * assert.deepStrictEqual(HashSet.toValues(unionWithArray).sort(), [1, 2, 3, 4, 5, 6])
+   * assert.deepStrictEqual(
+   *   HashSet.toValues(unionWithArray).sort(),
+   *   [1, 2, 3, 4, 5, 6]
+   * )
    * ```
    */
   <A>(self: HashSet<A>, that: Iterable<A>): HashSet<A>
