@@ -33,15 +33,15 @@
  *
  * ## Performance Characteristics
  *
- * - **Lookup** operations ({@linkcode HashSet.has}): **`O(1)`** average time
- *   complexity
- * - **Insertion** operations ({@linkcode HashSet.add}): **`O(1)`** average time
- *   complexity
- * - **Removal** operations ({@linkcode HashSet.remove}): **`O(1)`** average time
- *   complexity
- * - **Set** operations ({@linkcode HashSet.union},
- *   {@linkcode HashSet.intersection}): **`O(n)`** where n is the size of the
- *   smaller set
+ * - **Lookup** operations ({@linkcode module:HashSet.has}): **`O(1)`** average
+ *   time complexity
+ * - **Insertion** operations ({@linkcode module:HashSet.add}): **`O(1)`** average
+ *   time complexity
+ * - **Removal** operations ({@linkcode module:HashSet.remove}): **`O(1)`** average
+ *   time complexity
+ * - **Set** operations ({@linkcode module:HashSet.union},
+ *   {@linkcode module:HashSet.intersection}): **`O(n)`** where n is the size of
+ *   the smaller set
  * - **Iteration**: **`O(n)`** where n is the size of the set
  *
  * The HashSet data structure implements the following traits:
@@ -53,40 +53,40 @@
  *
  * ## Operations Reference
  *
- * | Category     | Operation                        | Description                                 | Complexity |
- * | ------------ | -------------------------------- | ------------------------------------------- | ---------- |
- * | constructors | {@linkcode HashSet.empty}        | Creates an empty HashSet                    | O(1)       |
- * | constructors | {@linkcode HashSet.fromIterable} | Creates a HashSet from an iterable          | O(n)       |
- * | constructors | {@linkcode HashSet.make}         | Creates a HashSet from multiple values      | O(n)       |
- * |              |                                  |                                             |            |
- * | elements     | {@linkcode HashSet.has}          | Checks if a value exists in the set         | O(1) avg   |
- * | elements     | {@linkcode HashSet.some}         | Checks if any element satisfies a predicate | O(n)       |
- * | elements     | {@linkcode HashSet.every}        | Checks if all elements satisfy a predicate  | O(n)       |
- * | elements     | {@linkcode HashSet.isSubset}     | Checks if a set is a subset of another      | O(n)       |
- * |              |                                  |                                             |            |
- * | getters      | {@linkcode HashSet.values}       | Gets an iterator of all values              | O(1)       |
- * | getters      | {@linkcode HashSet.toValues}     | Gets an array of all values                 | O(n)       |
- * | getters      | {@linkcode HashSet.size}         | Gets the number of elements                 | O(1)       |
- * |              |                                  |                                             |            |
- * | mutations    | {@linkcode HashSet.add}          | Adds a value to the set                     | O(1) avg   |
- * | mutations    | {@linkcode HashSet.remove}       | Removes a value from the set                | O(1) avg   |
- * | mutations    | {@linkcode HashSet.toggle}       | Toggles a value's presence                  | O(1) avg   |
- * |              |                                  |                                             |            |
- * | operations   | {@linkcode HashSet.difference}   | Computes set difference (A - B)             | O(n)       |
- * | operations   | {@linkcode HashSet.intersection} | Computes set intersection (A ∩ B)           | O(n)       |
- * | operations   | {@linkcode HashSet.union}        | Computes set union (A ∪ B)                  | O(n)       |
- * |              |                                  |                                             |            |
- * | mapping      | {@linkcode HashSet.map}          | Transforms each element                     | O(n)       |
- * |              |                                  |                                             |            |
- * | sequencing   | {@linkcode HashSet.flatMap}      | Transforms and flattens elements            | O(n)       |
- * |              |                                  |                                             |            |
- * | traversing   | {@linkcode HashSet.forEach}      | Applies a function to each element          | O(n)       |
- * |              |                                  |                                             |            |
- * | folding      | {@linkcode HashSet.reduce}       | Reduces the set to a single value           | O(n)       |
- * |              |                                  |                                             |            |
- * | filtering    | {@linkcode HashSet.filter}       | Keeps elements that satisfy a predicate     | O(n)       |
- * |              |                                  |                                             |            |
- * | partitioning | {@linkcode HashSet.partition}    | Splits into two sets by a predicate         | O(n)       |
+ * | Category     | Operation                               | Description                                 | Complexity |
+ * | ------------ | --------------------------------------- | ------------------------------------------- | ---------- |
+ * | constructors | {@linkcode module:HashSet.empty}        | Creates an empty HashSet                    | O(1)       |
+ * | constructors | {@linkcode module:HashSet.fromIterable} | Creates a HashSet from an iterable          | O(n)       |
+ * | constructors | {@linkcode module:HashSet.make}         | Creates a HashSet from multiple values      | O(n)       |
+ * |              |                                         |                                             |            |
+ * | elements     | {@linkcode module:HashSet.has}          | Checks if a value exists in the set         | O(1) avg   |
+ * | elements     | {@linkcode module:HashSet.some}         | Checks if any element satisfies a predicate | O(n)       |
+ * | elements     | {@linkcode module:HashSet.every}        | Checks if all elements satisfy a predicate  | O(n)       |
+ * | elements     | {@linkcode module:HashSet.isSubset}     | Checks if a set is a subset of another      | O(n)       |
+ * |              |                                         |                                             |            |
+ * | getters      | {@linkcode module:HashSet.values}       | Gets an iterator of all values              | O(1)       |
+ * | getters      | {@linkcode module:HashSet.toValues}     | Gets an array of all values                 | O(n)       |
+ * | getters      | {@linkcode module:HashSet.size}         | Gets the number of elements                 | O(1)       |
+ * |              |                                         |                                             |            |
+ * | mutations    | {@linkcode module:HashSet.add}          | Adds a value to the set                     | O(1) avg   |
+ * | mutations    | {@linkcode module:HashSet.remove}       | Removes a value from the set                | O(1) avg   |
+ * | mutations    | {@linkcode module:HashSet.toggle}       | Toggles a value's presence                  | O(1) avg   |
+ * |              |                                         |                                             |            |
+ * | operations   | {@linkcode module:HashSet.difference}   | Computes set difference (A - B)             | O(n)       |
+ * | operations   | {@linkcode module:HashSet.intersection} | Computes set intersection (A ∩ B)           | O(n)       |
+ * | operations   | {@linkcode module:HashSet.union}        | Computes set union (A ∪ B)                  | O(n)       |
+ * |              |                                         |                                             |            |
+ * | mapping      | {@linkcode module:HashSet.map}          | Transforms each element                     | O(n)       |
+ * |              |                                         |                                             |            |
+ * | sequencing   | {@linkcode module:HashSet.flatMap}      | Transforms and flattens elements            | O(n)       |
+ * |              |                                         |                                             |            |
+ * | traversing   | {@linkcode module:HashSet.forEach}      | Applies a function to each element          | O(n)       |
+ * |              |                                         |                                             |            |
+ * | folding      | {@linkcode module:HashSet.reduce}       | Reduces the set to a single value           | O(n)       |
+ * |              |                                         |                                             |            |
+ * | filtering    | {@linkcode module:HashSet.filter}       | Keeps elements that satisfy a predicate     | O(n)       |
+ * |              |                                         |                                             |            |
+ * | partitioning | {@linkcode module:HashSet.partition}    | Splits into two sets by a predicate         | O(n)       |
  *
  * ## Notes
  *
@@ -369,7 +369,7 @@ export const isHashSet: {
  * ) // Output: [1, 2]
  * ```
  *
- * @see Other `HashSet` constructors are {@link make} {@link fromIterable}
+ * @see Other `HashSet` constructors are {@link module:HashSet.make} {@link module:HashSet.fromIterable}
  */
 export const empty: <A = never>() => HashSet<A> = HS.empty
 
@@ -460,7 +460,7 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * ) // Outputs: [1, 2, 3, 4]
  * ```
  *
- * @see Other `HashSet` constructors are {@link empty} {@link make}
+ * @see Other `HashSet` constructors are {@link module:HashSet.empty} {@link module:HashSet.make}
  */
 export const fromIterable: <A>(elements: Iterable<A>) => HashSet<A> = HS.fromIterable
 
@@ -549,7 +549,7 @@ export const fromIterable: <A>(elements: Iterable<A>) => HashSet<A> = HS.fromIte
  * )
  * ```
  *
- * @see Other `HashSet` constructors are {@linkcode fromIterable} {@linkcode empty}
+ * @see Other `HashSet` constructors are {@linkcode module:HashSet.fromIterable} {@linkcode module:HashSet.empty}
  */
 export const make: <As extends ReadonlyArray<any>>(...elements: As) => HashSet<As[number]> = HS.make
 
@@ -577,7 +577,7 @@ export const make: <As extends ReadonlyArray<any>>(...elements: As) => HashSet<A
  * ```
  *
  * @returns A `boolean` signaling the presence of the value in the HashSet
- * @see Other `HashSet` elements are {@link some} {@link every} {@link isSubset}
+ * @see Other `HashSet` elements are {@link module:HashSet.some} {@link module:HashSet.every} {@link module:HashSet.isSubset}
  */
 export const has: {
   /**
@@ -643,7 +643,7 @@ export const has: {
  * HashSet.some(set, (n) => n > 0) // true
  * ```
  *
- * @see Other `HashSet` elements are {@link has} {@link every} {@link isSubset}
+ * @see Other `HashSet` elements are {@link module:HashSet.has} {@link module:HashSet.every} {@link module:HashSet.isSubset}
  */
 export const some: {
   /**
@@ -752,7 +752,7 @@ export const some: {
  *
  * @returns A boolean once it has evaluated that whole collection fulfill the
  *   Predicate function
- * @see Other `HashSet` elements are {@link has} {@link some} {@link isSubset}
+ * @see Other `HashSet` elements are {@link module:HashSet.has} {@link module:HashSet.some} {@link module:HashSet.isSubset}
  */
 export const every: {
   /**
@@ -881,7 +881,7 @@ export const every: {
  * HashSet.isSubset(set1, set3) // true)
  * ```
  *
- * @see Other `HashSet` elements are {@link has} {@link some} {@link every}
+ * @see Other `HashSet` elements are {@link module:HashSet.has} {@link module:HashSet.some} {@link module:HashSet.every}
  */
 export const isSubset: {
   /**
@@ -948,7 +948,7 @@ export const isSubset: {
  * }
  * ```
  *
- * @see Other `HashSet` getters are {@link toValues} {@link size}
+ * @see Other `HashSet` getters are {@link module:HashSet.toValues} {@link module:HashSet.size}
  */
 export const values: <A>(self: HashSet<A>) => IterableIterator<A> = HS.values
 
@@ -975,7 +975,7 @@ export const values: <A>(self: HashSet<A>) => IterableIterator<A> = HS.values
  * )
  * ```
  *
- * @see Other `HashSet` getters are {@link values} {@link size}
+ * @see Other `HashSet` getters are {@link module:HashSet.values} {@link module:HashSet.size}
  */
 export const toValues = <A>(self: HashSet<A>): Array<A> => Array.from(values(self))
 
@@ -1001,7 +1001,7 @@ export const toValues = <A>(self: HashSet<A>): Array<A> => Array.from(values(sel
  * )
  * ```
  *
- * @see Other `HashSet` getters are {@link values} {@link toValues}
+ * @see Other `HashSet` getters are {@link module:HashSet.values} {@link module:HashSet.toValues}
  */
 export const size: <A>(self: HashSet<A>) => number = HS.size
 
@@ -1049,7 +1049,7 @@ export const size: <A>(self: HashSet<A>) => number = HS.size
  * console.log(HashSet.toValues(mutableSet).sort((a, b) => a - b)) // [0, 1, 2, 3, ...rest]
  * ```
  *
- * @see Other `HashSet` mutations are {@link add} {@link remove} {@link toggle} {@link endMutation} {@link mutate}
+ * @see Other `HashSet` mutations are {@link module:HashSet.add} {@link module:HashSet.remove} {@link module:HashSet.toggle} {@link module:HashSet.endMutation} {@link module:HashSet.mutate}
  */
 export const beginMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.beginMutation
 
@@ -1097,7 +1097,7 @@ export const beginMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.beginMutati
  * assert.deepStrictEqual(HashSet.toValues(newSet).sort(), [1, 2, 3, 4])
  * ```
  *
- * @see Other `HashSet` mutations are {@linkcode HashSet.add} {@linkcode HashSet.remove} {@linkcode HashSet.toggle} {@linkcode HashSet.beginMutation} {@linkcode HashSet.mutate}
+ * @see Other `HashSet` mutations are {@linkcode module:HashSet.add} {@linkcode module:HashSet.remove} {@linkcode module:HashSet.toggle} {@linkcode module:HashSet.beginMutation} {@linkcode module:HashSet.mutate}
  */
 export const endMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.endMutation
 
@@ -1139,7 +1139,7 @@ export const endMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.endMutation
  * })
  * ```
  *
- * @see Other `HashSet` mutations are {@linkcode HashSet.add} {@linkcode HashSet.remove} {@linkcode HashSet.toggle} {@linkcode HashSet.beginMutation} {@linkcode HashSet.endMutation}
+ * @see Other `HashSet` mutations are {@linkcode module:HashSet.add} {@linkcode module:HashSet.remove} {@linkcode module:HashSet.toggle} {@linkcode module:HashSet.beginMutation} {@linkcode module:HashSet.endMutation}
  */
 export const mutate: {
   /**
@@ -1238,7 +1238,7 @@ export const mutate: {
  * HashSet.add(HashSet.empty(), 0)
  * ```
  *
- * @see Other `HashSet` mutations are {@link remove} {@link toggle} {@link beginMutation} {@link endMutation} {@link mutate}
+ * @see Other `HashSet` mutations are {@link module:HashSet.remove} {@link module:HashSet.toggle} {@link module:HashSet.beginMutation} {@link module:HashSet.endMutation} {@link module:HashSet.mutate}
  */
 export const add: {
   /**
@@ -1304,7 +1304,7 @@ export const add: {
  * HashSet.remove(HashSet.make(0, 1, 2), 0)
  * ```
  *
- * @see Other `HashSet` mutations are {@link add} {@link toggle} {@link beginMutation} {@link endMutation} {@link mutate}
+ * @see Other `HashSet` mutations are {@link module:HashSet.add} {@link module:HashSet.toggle} {@link module:HashSet.beginMutation} {@link module:HashSet.endMutation} {@link module:HashSet.mutate}
  */
 export const remove: {
   /**
@@ -1372,7 +1372,7 @@ export const remove: {
  * HashSet.difference(HashSet.make(1, 2, 3), HashSet.make(3, 4, 5))
  * ```
  *
- * @see Other `HashSet` operations are {@link intersection} {@link union}
+ * @see Other `HashSet` operations are {@link module:HashSet.intersection} {@link module:HashSet.union}
  */
 export const difference: {
   /**
@@ -1465,7 +1465,7 @@ export const difference: {
  * HashSet.intersection(HashSet.make(1, 2, 3), HashSet.make(2, 3, 4))
  * ```
  *
- * @see Other `HashSet` operations are {@link difference} {@link union}
+ * @see Other `HashSet` operations are {@link module:HashSet.difference} {@link module:HashSet.union}
  */
 export const intersection: {
   /**
@@ -1557,7 +1557,7 @@ export const intersection: {
  * HashSet.union(HashSet.make(1, 2, 3), HashSet.make(3, 4, 5))
  * ```
  *
- * @see Other `HashSet` operations are {@link difference} {@link intersection}
+ * @see Other `HashSet` operations are {@link module:HashSet.difference} {@link module:HashSet.intersection}
  */
 export const union: {
   /**
@@ -1661,7 +1661,7 @@ export const union: {
  *
  * @returns A new `HashSet` where the toggled value is being either added or
  *   removed based on the initial `HashSet` state.
- * @see Other `HashSet` mutations are {@link add} {@link remove} {@link beginMutation} {@link endMutation} {@link mutate}
+ * @see Other `HashSet` mutations are {@link module:HashSet.add} {@link module:HashSet.remove} {@link module:HashSet.beginMutation} {@link module:HashSet.endMutation} {@link module:HashSet.mutate}
  */
 export const toggle: {
   /**
