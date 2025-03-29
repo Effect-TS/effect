@@ -293,18 +293,21 @@ export class DeleteAssistantResponse extends S.Class<DeleteAssistantResponse>("D
   "object": DeleteAssistantResponseObject
 }) {}
 
-export class CreateSpeechRequestModelEnum extends S.Literal("tts-1", "tts-1-hd") {}
+export class CreateSpeechRequestModelEnum extends S.Literal("tts-1", "tts-1-hd", "gpt-4o-mini-tts") {}
 
-export class CreateSpeechRequestVoice
-  extends S.Literal("alloy", "ash", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer")
+export class VoiceIdsSharedEnum
+  extends S.Literal("alloy", "ash", "ballad", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer", "verse")
 {}
+
+export class VoiceIdsShared extends S.Union(S.String, VoiceIdsSharedEnum) {}
 
 export class CreateSpeechRequestResponseFormat extends S.Literal("mp3", "opus", "aac", "flac", "wav", "pcm") {}
 
 export class CreateSpeechRequest extends S.Class<CreateSpeechRequest>("CreateSpeechRequest")({
   "model": S.Union(S.String, CreateSpeechRequestModelEnum),
   "input": S.String.pipe(S.maxLength(4096)),
-  "voice": CreateSpeechRequestVoice,
+  "instructions": S.optionalWith(S.String.pipe(S.maxLength(4096)), { nullable: true }),
+  "voice": VoiceIdsShared,
   "response_format": S.optionalWith(CreateSpeechRequestResponseFormat, {
     nullable: true,
     default: () => "mp3" as const
@@ -315,8 +318,15 @@ export class CreateSpeechRequest extends S.Class<CreateSpeechRequest>("CreateSpe
   })
 }) {}
 
+export class LogProbProperties extends S.Struct({
+  "token": S.String,
+  "logprob": S.Number,
+  "bytes": S.Array(S.Int)
+}) {}
+
 export class CreateTranscriptionResponseJson extends S.Struct({
-  "text": S.String
+  "text": S.String,
+  "logprobs": S.optionalWith(S.Array(LogProbProperties), { nullable: true })
 }) {}
 
 export class TranscriptionWord extends S.Struct({
@@ -438,7 +448,7 @@ export class ListBatchesResponse extends S.Class<ListBatchesResponse>("ListBatch
 }) {}
 
 export class CreateBatchRequestEndpoint
-  extends S.Literal("/v1/chat/completions", "/v1/embeddings", "/v1/completions")
+  extends S.Literal("/v1/responses", "/v1/chat/completions", "/v1/embeddings", "/v1/completions")
 {}
 
 export class CreateBatchRequestCompletionWindow extends S.Literal("24h") {}
@@ -555,10 +565,15 @@ export class CreateChatCompletionResponse extends S.Struct({
     "finish_reason": S.Literal("stop", "length", "tool_calls", "content_filter", "function_call"),
     "index": S.Int,
     "message": ChatCompletionResponseMessage,
-    "logprobs": S.NullOr(S.Struct({
-      "content": S.NullOr(S.Array(ChatCompletionTokenLogprob)),
-      "refusal": S.NullOr(S.Array(ChatCompletionTokenLogprob))
-    }))
+    // TODO: change this once the following upstream issue has been closed
+    //       https://github.com/openai/openai-openapi/issues/433
+    "logprobs": S.optionalWith(
+      S.Struct({
+        "content": S.NullOr(S.Array(ChatCompletionTokenLogprob)),
+        "refusal": S.NullOr(S.Array(ChatCompletionTokenLogprob))
+      }),
+      { nullable: true }
+    )
   })),
   "created": S.Int,
   "model": S.String,
@@ -633,7 +648,7 @@ export class ChatCompletionRequestMessageContentPartFileType extends S.Literal("
 export class ChatCompletionRequestMessageContentPartFile extends S.Struct({
   "type": ChatCompletionRequestMessageContentPartFileType,
   "file": S.Struct({
-    "file_name": S.optionalWith(S.String, { nullable: true }),
+    "filename": S.optionalWith(S.String, { nullable: true }),
     "file_data": S.optionalWith(S.String, { nullable: true }),
     "file_id": S.optionalWith(S.String, { nullable: true })
   })
@@ -717,6 +732,54 @@ export class ChatCompletionRequestMessage extends S.Union(
   ChatCompletionRequestFunctionMessage
 ) {}
 
+export class ModelIdsSharedEnum extends S.Literal(
+  "o3-mini",
+  "o3-mini-2025-01-31",
+  "o1",
+  "o1-2024-12-17",
+  "o1-preview",
+  "o1-preview-2024-09-12",
+  "o1-mini",
+  "o1-mini-2024-09-12",
+  "gpt-4o",
+  "gpt-4o-2024-11-20",
+  "gpt-4o-2024-08-06",
+  "gpt-4o-2024-05-13",
+  "gpt-4o-audio-preview",
+  "gpt-4o-audio-preview-2024-10-01",
+  "gpt-4o-audio-preview-2024-12-17",
+  "gpt-4o-mini-audio-preview",
+  "gpt-4o-mini-audio-preview-2024-12-17",
+  "gpt-4o-search-preview",
+  "gpt-4o-mini-search-preview",
+  "gpt-4o-search-preview-2025-03-11",
+  "gpt-4o-mini-search-preview-2025-03-11",
+  "chatgpt-4o-latest",
+  "gpt-4o-mini",
+  "gpt-4o-mini-2024-07-18",
+  "gpt-4-turbo",
+  "gpt-4-turbo-2024-04-09",
+  "gpt-4-0125-preview",
+  "gpt-4-turbo-preview",
+  "gpt-4-1106-preview",
+  "gpt-4-vision-preview",
+  "gpt-4",
+  "gpt-4-0314",
+  "gpt-4-0613",
+  "gpt-4-32k",
+  "gpt-4-32k-0314",
+  "gpt-4-32k-0613",
+  "gpt-3.5-turbo",
+  "gpt-3.5-turbo-16k",
+  "gpt-3.5-turbo-0301",
+  "gpt-3.5-turbo-0613",
+  "gpt-3.5-turbo-1106",
+  "gpt-3.5-turbo-0125",
+  "gpt-3.5-turbo-16k-0613"
+) {}
+
+export class ModelIdsShared extends S.Union(S.String, ModelIdsSharedEnum) {}
+
 export class ResponseModalities extends S.Array(S.Literal("text", "audio")) {}
 
 export class CreateChatCompletionRequestWebSearchOptionsUserLocationType extends S.Literal("approximate") {}
@@ -731,10 +794,6 @@ export class WebSearchLocation extends S.Struct({
 export class WebSearchContextSize extends S.Literal("low", "medium", "high") {}
 
 export class CreateChatCompletionRequestServiceTier extends S.Literal("auto", "default") {}
-
-export class CreateChatCompletionRequestAudioVoice
-  extends S.Literal("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse")
-{}
 
 export class CreateChatCompletionRequestAudioFormat extends S.Literal("wav", "mp3", "flac", "opus", "pcm16") {}
 
@@ -787,55 +846,9 @@ export class ChatCompletionFunctions extends S.Struct({
   "parameters": S.optionalWith(FunctionParameters, { nullable: true })
 }) {}
 
-export class CreateChatCompletionRequestModelEnum extends S.Literal(
-  "o3-mini",
-  "o3-mini-2025-01-31",
-  "o1",
-  "o1-2024-12-17",
-  "o1-preview",
-  "o1-preview-2024-09-12",
-  "o1-mini",
-  "o1-mini-2024-09-12",
-  "computer-use-preview",
-  "computer-use-preview-2025-02-04",
-  "computer-use-preview-2025-03-11",
-  "gpt-4.5-preview",
-  "gpt-4.5-preview-2025-02-27",
-  "gpt-4o",
-  "gpt-4o-2024-11-20",
-  "gpt-4o-2024-08-06",
-  "gpt-4o-2024-05-13",
-  "gpt-4o-audio-preview",
-  "gpt-4o-audio-preview-2024-10-01",
-  "gpt-4o-audio-preview-2024-12-17",
-  "gpt-4o-mini-audio-preview",
-  "gpt-4o-mini-audio-preview-2024-12-17",
-  "chatgpt-4o-latest",
-  "gpt-4o-mini",
-  "gpt-4o-mini-2024-07-18",
-  "gpt-4-turbo",
-  "gpt-4-turbo-2024-04-09",
-  "gpt-4-0125-preview",
-  "gpt-4-turbo-preview",
-  "gpt-4-1106-preview",
-  "gpt-4-vision-preview",
-  "gpt-4",
-  "gpt-4-0314",
-  "gpt-4-0613",
-  "gpt-4-32k",
-  "gpt-4-32k-0314",
-  "gpt-4-32k-0613",
-  "gpt-3.5-turbo",
-  "gpt-3.5-turbo-16k",
-  "gpt-3.5-turbo-0301",
-  "gpt-3.5-turbo-0613",
-  "gpt-3.5-turbo-1106",
-  "gpt-3.5-turbo-0125",
-  "gpt-3.5-turbo-16k-0613"
-) {}
-
 export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionRequest>("CreateChatCompletionRequest")({
   "messages": S.NonEmptyArray(ChatCompletionRequestMessage),
+  "model": ModelIdsShared,
   "modalities": S.optionalWith(ResponseModalities, { nullable: true }),
   "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
   "max_completion_tokens": S.optionalWith(S.Int, { nullable: true }),
@@ -870,7 +883,7 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   }),
   "audio": S.optionalWith(
     S.Struct({
-      "voice": CreateChatCompletionRequestAudioVoice,
+      "voice": VoiceIdsShared,
       "format": CreateChatCompletionRequestAudioFormat
     }),
     { nullable: true }
@@ -886,10 +899,7 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     default: () => 1 as const
   }),
   "prediction": S.optionalWith(PredictionContent, { nullable: true }),
-  "seed": S.optionalWith(
-    S.Int.pipe(S.greaterThanOrEqualTo(-9223372036854776000), S.lessThanOrEqualTo(9223372036854776000)),
-    { nullable: true }
-  ),
+  "seed": S.optionalWith(S.Int, { nullable: true }),
   "stream_options": S.optionalWith(S.NullOr(ChatCompletionStreamOptions), { default: () => null }),
   "tools": S.optionalWith(S.Array(ChatCompletionTool), { nullable: true }),
   "tool_choice": S.optionalWith(ChatCompletionToolChoiceOption, { nullable: true }),
@@ -901,7 +911,6 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   "functions": S.optionalWith(S.Array(ChatCompletionFunctions).pipe(S.minItems(1), S.maxItems(128)), {
     nullable: true
   }),
-  "model": S.Union(S.String, CreateChatCompletionRequestModelEnum),
   "metadata": S.optionalWith(Metadata, { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
@@ -1141,6 +1150,55 @@ export class DeleteFileResponse extends S.Class<DeleteFileResponse>("DeleteFileR
 }) {}
 
 export class DownloadFile200 extends S.String {}
+
+export class ListFineTuningCheckpointPermissionsParamsOrder extends S.Literal("ascending", "descending") {}
+
+export class ListFineTuningCheckpointPermissionsParams extends S.Struct({
+  "project_id": S.optionalWith(S.String, { nullable: true }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 10 as const }),
+  "order": S.optionalWith(ListFineTuningCheckpointPermissionsParamsOrder, {
+    nullable: true,
+    default: () => "descending" as const
+  })
+}) {}
+
+export class FineTuningCheckpointPermissionObject extends S.Literal("checkpoint.permission") {}
+
+export class FineTuningCheckpointPermission extends S.Struct({
+  "id": S.String,
+  "created_at": S.Int,
+  "project_id": S.String,
+  "object": FineTuningCheckpointPermissionObject
+}) {}
+
+export class ListFineTuningCheckpointPermissionResponseObject extends S.Literal("list") {}
+
+export class ListFineTuningCheckpointPermissionResponse
+  extends S.Class<ListFineTuningCheckpointPermissionResponse>("ListFineTuningCheckpointPermissionResponse")({
+    "data": S.Array(FineTuningCheckpointPermission),
+    "object": ListFineTuningCheckpointPermissionResponseObject,
+    "first_id": S.optionalWith(S.String, { nullable: true }),
+    "last_id": S.optionalWith(S.String, { nullable: true }),
+    "has_more": S.Boolean
+  })
+{}
+
+export class CreateFineTuningCheckpointPermissionRequest
+  extends S.Class<CreateFineTuningCheckpointPermissionRequest>("CreateFineTuningCheckpointPermissionRequest")({
+    "project_ids": S.Array(S.String)
+  })
+{}
+
+export class DeleteFineTuningCheckpointPermissionResponseObject extends S.Literal("checkpoint.permission") {}
+
+export class DeleteFineTuningCheckpointPermissionResponse
+  extends S.Class<DeleteFineTuningCheckpointPermissionResponse>("DeleteFineTuningCheckpointPermissionResponse")({
+    "id": S.String,
+    "object": DeleteFineTuningCheckpointPermissionResponseObject,
+    "deleted": S.Boolean
+  })
+{}
 
 export class ListPaginatedFineTuningJobsParams extends S.Struct({
   "after": S.optionalWith(S.String, { nullable: true }),
@@ -2580,13 +2638,15 @@ export class RealtimeSessionCreateRequestModel extends S.Literal(
   "gpt-4o-mini-realtime-preview-2024-12-17"
 ) {}
 
-export class RealtimeSessionCreateRequestVoice
-  extends S.Literal("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse")
-{}
-
 export class RealtimeSessionCreateRequestInputAudioFormat extends S.Literal("pcm16", "g711_ulaw", "g711_alaw") {}
 
 export class RealtimeSessionCreateRequestOutputAudioFormat extends S.Literal("pcm16", "g711_ulaw", "g711_alaw") {}
+
+export class RealtimeSessionCreateRequestTurnDetectionType extends S.Literal("server_vad", "semantic_vad") {}
+
+export class RealtimeSessionCreateRequestTurnDetectionEagerness extends S.Literal("low", "medium", "high", "auto") {}
+
+export class RealtimeSessionCreateRequestInputAudioNoiseReductionType extends S.Literal("near_field", "far_field") {}
 
 export class RealtimeSessionCreateRequestMaxResponseOutputTokensEnum extends S.Literal("inf") {}
 
@@ -2594,9 +2654,15 @@ export class RealtimeSessionCreateRequest
   extends S.Class<RealtimeSessionCreateRequest>("RealtimeSessionCreateRequest")({
     "model": S.optionalWith(RealtimeSessionCreateRequestModel, { nullable: true }),
     "instructions": S.optionalWith(S.String, { nullable: true }),
-    "voice": S.optionalWith(RealtimeSessionCreateRequestVoice, { nullable: true }),
-    "input_audio_format": S.optionalWith(RealtimeSessionCreateRequestInputAudioFormat, { nullable: true }),
-    "output_audio_format": S.optionalWith(RealtimeSessionCreateRequestOutputAudioFormat, { nullable: true }),
+    "voice": S.optionalWith(VoiceIdsShared, { nullable: true }),
+    "input_audio_format": S.optionalWith(RealtimeSessionCreateRequestInputAudioFormat, {
+      nullable: true,
+      default: () => "pcm16" as const
+    }),
+    "output_audio_format": S.optionalWith(RealtimeSessionCreateRequestOutputAudioFormat, {
+      nullable: true,
+      default: () => "pcm16" as const
+    }),
     "input_audio_transcription": S.optionalWith(
       S.Struct({
         "model": S.optionalWith(S.String, { nullable: true }),
@@ -2607,7 +2673,14 @@ export class RealtimeSessionCreateRequest
     ),
     "turn_detection": S.optionalWith(
       S.Struct({
-        "type": S.optionalWith(S.String, { nullable: true }),
+        "type": S.optionalWith(RealtimeSessionCreateRequestTurnDetectionType, {
+          nullable: true,
+          default: () => "server_vad" as const
+        }),
+        "eagerness": S.optionalWith(RealtimeSessionCreateRequestTurnDetectionEagerness, {
+          nullable: true,
+          default: () => "auto" as const
+        }),
         "threshold": S.optionalWith(S.Number, { nullable: true }),
         "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
         "silence_duration_ms": S.optionalWith(S.Int, { nullable: true }),
@@ -2615,6 +2688,12 @@ export class RealtimeSessionCreateRequest
         "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const })
       }),
       { nullable: true }
+    ),
+    "input_audio_noise_reduction": S.optionalWith(
+      S.NullOr(S.Struct({
+        "type": S.optionalWith(RealtimeSessionCreateRequestInputAudioNoiseReductionType, { nullable: true })
+      })),
+      { default: () => null }
     ),
     "tools": S.optionalWith(
       S.Array(S.Struct({
@@ -2625,17 +2704,13 @@ export class RealtimeSessionCreateRequest
       })),
       { nullable: true }
     ),
-    "tool_choice": S.optionalWith(S.String, { nullable: true }),
-    "temperature": S.optionalWith(S.Number, { nullable: true }),
+    "tool_choice": S.optionalWith(S.String, { nullable: true, default: () => "auto" as const }),
+    "temperature": S.optionalWith(S.Number, { nullable: true, default: () => 0.8 as const }),
     "max_response_output_tokens": S.optionalWith(
       S.Union(S.Int, RealtimeSessionCreateRequestMaxResponseOutputTokensEnum),
       { nullable: true }
     )
   })
-{}
-
-export class RealtimeSessionCreateResponseVoice
-  extends S.Literal("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse")
 {}
 
 export class RealtimeSessionCreateResponseMaxResponseOutputTokensEnum extends S.Literal("inf") {}
@@ -2647,7 +2722,7 @@ export class RealtimeSessionCreateResponse
       "expires_at": S.Int
     }),
     "instructions": S.optionalWith(S.String, { nullable: true }),
-    "voice": S.optionalWith(RealtimeSessionCreateResponseVoice, { nullable: true }),
+    "voice": S.optionalWith(VoiceIdsShared, { nullable: true }),
     "input_audio_format": S.optionalWith(S.String, { nullable: true }),
     "output_audio_format": S.optionalWith(S.String, { nullable: true }),
     "input_audio_transcription": S.optionalWith(
@@ -2678,6 +2753,105 @@ export class RealtimeSessionCreateResponse
     "temperature": S.optionalWith(S.Number, { nullable: true }),
     "max_response_output_tokens": S.optionalWith(
       S.Union(S.Int, RealtimeSessionCreateResponseMaxResponseOutputTokensEnum),
+      { nullable: true }
+    )
+  })
+{}
+
+export class RealtimeTranscriptionSessionCreateRequestInputAudioFormat
+  extends S.Literal("pcm16", "g711_ulaw", "g711_alaw")
+{}
+
+export class RealtimeTranscriptionSessionCreateRequestInputAudioTranscriptionModel
+  extends S.Literal("gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1")
+{}
+
+export class RealtimeTranscriptionSessionCreateRequestTurnDetectionType
+  extends S.Literal("server_vad", "semantic_vad")
+{}
+
+export class RealtimeTranscriptionSessionCreateRequestTurnDetectionEagerness
+  extends S.Literal("low", "medium", "high", "auto")
+{}
+
+export class RealtimeTranscriptionSessionCreateRequestInputAudioNoiseReductionType
+  extends S.Literal("near_field", "far_field")
+{}
+
+export class RealtimeTranscriptionSessionCreateRequest
+  extends S.Class<RealtimeTranscriptionSessionCreateRequest>("RealtimeTranscriptionSessionCreateRequest")({
+    "input_audio_format": S.optionalWith(RealtimeTranscriptionSessionCreateRequestInputAudioFormat, {
+      nullable: true,
+      default: () => "pcm16" as const
+    }),
+    "input_audio_transcription": S.optionalWith(
+      S.Struct({
+        "model": S.optionalWith(RealtimeTranscriptionSessionCreateRequestInputAudioTranscriptionModel, {
+          nullable: true
+        }),
+        "language": S.optionalWith(S.String, { nullable: true }),
+        "prompt": S.optionalWith(S.String, { nullable: true })
+      }),
+      { nullable: true }
+    ),
+    "turn_detection": S.optionalWith(
+      S.Struct({
+        "type": S.optionalWith(RealtimeTranscriptionSessionCreateRequestTurnDetectionType, {
+          nullable: true,
+          default: () => "server_vad" as const
+        }),
+        "eagerness": S.optionalWith(RealtimeTranscriptionSessionCreateRequestTurnDetectionEagerness, {
+          nullable: true,
+          default: () => "auto" as const
+        }),
+        "threshold": S.optionalWith(S.Number, { nullable: true }),
+        "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+        "silence_duration_ms": S.optionalWith(S.Int, { nullable: true }),
+        "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+        "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const })
+      }),
+      { nullable: true }
+    ),
+    "input_audio_noise_reduction": S.optionalWith(
+      S.NullOr(S.Struct({
+        "type": S.optionalWith(RealtimeTranscriptionSessionCreateRequestInputAudioNoiseReductionType, {
+          nullable: true
+        })
+      })),
+      { default: () => null }
+    ),
+    "include": S.optionalWith(S.Array(S.String), { nullable: true })
+  })
+{}
+
+export class RealtimeTranscriptionSessionCreateResponseInputAudioTranscriptionModel
+  extends S.Literal("gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1")
+{}
+
+export class RealtimeTranscriptionSessionCreateResponse
+  extends S.Class<RealtimeTranscriptionSessionCreateResponse>("RealtimeTranscriptionSessionCreateResponse")({
+    "client_secret": S.Struct({
+      "value": S.String,
+      "expires_at": S.Int
+    }),
+    "input_audio_format": S.optionalWith(S.String, { nullable: true }),
+    "input_audio_transcription": S.optionalWith(
+      S.Struct({
+        "model": S.optionalWith(RealtimeTranscriptionSessionCreateResponseInputAudioTranscriptionModel, {
+          nullable: true
+        }),
+        "language": S.optionalWith(S.String, { nullable: true }),
+        "prompt": S.optionalWith(S.String, { nullable: true })
+      }),
+      { nullable: true }
+    ),
+    "turn_detection": S.optionalWith(
+      S.Struct({
+        "type": S.optionalWith(S.String, { nullable: true }),
+        "threshold": S.optionalWith(S.Number, { nullable: true }),
+        "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+        "silence_duration_ms": S.optionalWith(S.Int, { nullable: true })
+      }),
       { nullable: true }
     )
   })
@@ -2959,7 +3133,7 @@ export class FunctionToolCallType extends S.Literal("function_call") {}
 export class FunctionToolCallStatus extends S.Literal("in_progress", "completed", "incomplete") {}
 
 export class FunctionToolCall extends S.Struct({
-  "id": S.String,
+  "id": S.optionalWith(S.String, { nullable: true }),
   "type": FunctionToolCallType,
   "call_id": S.String,
   "name": S.String,
@@ -2986,8 +3160,8 @@ export class ReasoningItemStatus extends S.Literal("in_progress", "completed", "
 export class ReasoningItem extends S.Struct({
   "type": ReasoningItemType,
   "id": S.String,
-  "content": S.Array(S.Struct({
-    "type": S.Literal("reasoning_summary"),
+  "summary": S.Array(S.Struct({
+    "type": S.Literal("summary_text"),
     "text": S.String
   })),
   "status": S.optionalWith(ReasoningItemStatus, { nullable: true })
@@ -3012,10 +3186,16 @@ export class Includable extends S.Literal(
   "computer_call_output.output.image_url"
 ) {}
 
+export class ModelIdsResponsesEnum
+  extends S.Literal("o1-pro", "o1-pro-2025-03-19", "computer-use-preview", "computer-use-preview-2025-03-11")
+{}
+
+export class ModelIdsResponses extends S.Union(ModelIdsShared, ModelIdsResponsesEnum) {}
+
 export class ReasoningGenerateSummary extends S.Literal("concise", "detailed") {}
 
 export class Reasoning extends S.Struct({
-  "effort": S.NullOr(ReasoningEffort).pipe(S.propertySignature, S.withConstructorDefault(() => "medium" as const)),
+  "effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
   "generate_summary": S.optionalWith(ReasoningGenerateSummary, { nullable: true })
 }) {}
 
@@ -3047,7 +3227,7 @@ export class CompoundFilterType extends S.Literal("and", "or") {}
 
 export class CompoundFilter extends S.Struct({
   "type": CompoundFilterType,
-  "filters": S.Array(ComparisonFilter)
+  "filters": S.Array(S.Union(ComparisonFilter, S.Record({ key: S.String, value: S.Unknown })))
 }) {}
 
 export class FileSearchToolRankingOptionsRanker extends S.Literal("auto", "default-2024-11-15") {}
@@ -3079,7 +3259,7 @@ export class FunctionTool extends S.Struct({
   "strict": S.Boolean
 }) {}
 
-export class ComputerToolType extends S.Literal("computer-preview") {}
+export class ComputerToolType extends S.Literal("computer_use_preview") {}
 
 export class ComputerToolEnvironment extends S.Literal("mac", "windows", "ubuntu", "browser") {}
 
@@ -3129,53 +3309,6 @@ export class ToolChoiceFunction extends S.Struct({
 
 export class CreateResponseTruncation extends S.Literal("auto", "disabled") {}
 
-export class CreateResponseModelEnum extends S.Literal(
-  "o3-mini",
-  "o3-mini-2025-01-31",
-  "o1",
-  "o1-2024-12-17",
-  "o1-preview",
-  "o1-preview-2024-09-12",
-  "o1-mini",
-  "o1-mini-2024-09-12",
-  "computer-use-preview",
-  "computer-use-preview-2025-02-04",
-  "computer-use-preview-2025-03-11",
-  "gpt-4.5-preview",
-  "gpt-4.5-preview-2025-02-27",
-  "gpt-4o",
-  "gpt-4o-2024-11-20",
-  "gpt-4o-2024-08-06",
-  "gpt-4o-2024-05-13",
-  "gpt-4o-audio-preview",
-  "gpt-4o-audio-preview-2024-10-01",
-  "gpt-4o-audio-preview-2024-12-17",
-  "gpt-4o-mini-audio-preview",
-  "gpt-4o-mini-audio-preview-2024-12-17",
-  "chatgpt-4o-latest",
-  "gpt-4o-mini",
-  "gpt-4o-mini-2024-07-18",
-  "gpt-4-turbo",
-  "gpt-4-turbo-2024-04-09",
-  "gpt-4-0125-preview",
-  "gpt-4-turbo-preview",
-  "gpt-4-1106-preview",
-  "gpt-4-vision-preview",
-  "gpt-4",
-  "gpt-4-0314",
-  "gpt-4-0613",
-  "gpt-4-32k",
-  "gpt-4-32k-0314",
-  "gpt-4-32k-0613",
-  "gpt-3.5-turbo",
-  "gpt-3.5-turbo-16k",
-  "gpt-3.5-turbo-0301",
-  "gpt-3.5-turbo-0613",
-  "gpt-3.5-turbo-1106",
-  "gpt-3.5-turbo-0125",
-  "gpt-3.5-turbo-16k-0613"
-) {}
-
 export class CreateResponse extends S.Class<CreateResponse>("CreateResponse")({
   "input": S.Union(S.String, S.Array(InputItem)),
   "include": S.optionalWith(S.Array(Includable), { nullable: true }),
@@ -3183,6 +3316,7 @@ export class CreateResponse extends S.Class<CreateResponse>("CreateResponse")({
   "store": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
   "previous_response_id": S.optionalWith(S.String, { nullable: true }),
+  "model": ModelIdsResponses,
   "reasoning": S.optionalWith(Reasoning, { nullable: true }),
   "max_output_tokens": S.optionalWith(S.Int, { nullable: true }),
   "instructions": S.optionalWith(S.String, { nullable: true }),
@@ -3195,7 +3329,6 @@ export class CreateResponse extends S.Class<CreateResponse>("CreateResponse")({
   "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
   "tool_choice": S.optionalWith(S.Union(ToolChoiceOptions, ToolChoiceTypes, ToolChoiceFunction), { nullable: true }),
   "truncation": S.optionalWith(CreateResponseTruncation, { nullable: true, default: () => "disabled" as const }),
-  "model": S.Union(S.String, CreateResponseModelEnum),
   "metadata": S.optionalWith(Metadata, { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
     nullable: true,
@@ -3251,6 +3384,9 @@ export class OutputItem extends S.Union(
 
 export class ResponseUsage extends S.Struct({
   "input_tokens": S.Int,
+  "input_tokens_details": S.Struct({
+    "cached_tokens": S.Int
+  }),
   "output_tokens": S.Int,
   "output_tokens_details": S.Struct({
     "reasoning_tokens": S.Int
@@ -3259,53 +3395,6 @@ export class ResponseUsage extends S.Struct({
 }) {}
 
 export class ResponseTruncation extends S.Literal("auto", "disabled") {}
-
-export class ResponseModelEnum extends S.Literal(
-  "o3-mini",
-  "o3-mini-2025-01-31",
-  "o1",
-  "o1-2024-12-17",
-  "o1-preview",
-  "o1-preview-2024-09-12",
-  "o1-mini",
-  "o1-mini-2024-09-12",
-  "computer-use-preview",
-  "computer-use-preview-2025-02-04",
-  "computer-use-preview-2025-03-11",
-  "gpt-4.5-preview",
-  "gpt-4.5-preview-2025-02-27",
-  "gpt-4o",
-  "gpt-4o-2024-11-20",
-  "gpt-4o-2024-08-06",
-  "gpt-4o-2024-05-13",
-  "gpt-4o-audio-preview",
-  "gpt-4o-audio-preview-2024-10-01",
-  "gpt-4o-audio-preview-2024-12-17",
-  "gpt-4o-mini-audio-preview",
-  "gpt-4o-mini-audio-preview-2024-12-17",
-  "chatgpt-4o-latest",
-  "gpt-4o-mini",
-  "gpt-4o-mini-2024-07-18",
-  "gpt-4-turbo",
-  "gpt-4-turbo-2024-04-09",
-  "gpt-4-0125-preview",
-  "gpt-4-turbo-preview",
-  "gpt-4-1106-preview",
-  "gpt-4-vision-preview",
-  "gpt-4",
-  "gpt-4-0314",
-  "gpt-4-0613",
-  "gpt-4-32k",
-  "gpt-4-32k-0314",
-  "gpt-4-32k-0613",
-  "gpt-3.5-turbo",
-  "gpt-3.5-turbo-16k",
-  "gpt-3.5-turbo-0301",
-  "gpt-3.5-turbo-0613",
-  "gpt-3.5-turbo-1106",
-  "gpt-3.5-turbo-0125",
-  "gpt-3.5-turbo-16k-0613"
-) {}
 
 export class Response extends S.Class<Response>("Response")({
   "id": S.String,
@@ -3321,6 +3410,7 @@ export class Response extends S.Class<Response>("Response")({
   "usage": S.optionalWith(ResponseUsage, { nullable: true }),
   "parallel_tool_calls": S.Boolean.pipe(S.propertySignature, S.withConstructorDefault(() => true as const)),
   "previous_response_id": S.optionalWith(S.String, { nullable: true }),
+  "model": ModelIdsResponses,
   "reasoning": S.optionalWith(Reasoning, { nullable: true }),
   "max_output_tokens": S.optionalWith(S.Int, { nullable: true }),
   "instructions": S.NullOr(S.String),
@@ -3333,7 +3423,6 @@ export class Response extends S.Class<Response>("Response")({
   "tools": S.Array(Tool),
   "tool_choice": S.Union(ToolChoiceOptions, ToolChoiceTypes, ToolChoiceFunction),
   "truncation": S.optionalWith(ResponseTruncation, { nullable: true, default: () => "disabled" as const }),
-  "model": S.Union(S.String, ResponseModelEnum),
   "metadata": S.NullOr(Metadata),
   "temperature": S.NullOr(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2))).pipe(
     S.propertySignature,
@@ -3391,6 +3480,19 @@ export class ComputerToolCallOutputResource extends S.Struct({
   "status": S.optionalWith(ComputerToolCallOutputResourceStatus, { nullable: true })
 }) {}
 
+export class FunctionToolCallResourceType extends S.Literal("function_call") {}
+
+export class FunctionToolCallResourceStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+export class FunctionToolCallResource extends S.Struct({
+  "id": S.String,
+  "type": FunctionToolCallResourceType,
+  "call_id": S.String,
+  "name": S.String,
+  "arguments": S.String,
+  "status": S.optionalWith(FunctionToolCallResourceStatus, { nullable: true })
+}) {}
+
 export class FunctionToolCallOutputResourceType extends S.Literal("function_call_output") {}
 
 export class FunctionToolCallOutputResourceStatus extends S.Literal("in_progress", "completed", "incomplete") {}
@@ -3410,7 +3512,7 @@ export class ItemResource extends S.Union(
   ComputerToolCall,
   ComputerToolCallOutputResource,
   WebSearchToolCall,
-  FunctionToolCall,
+  FunctionToolCallResource,
   FunctionToolCallOutputResource
 ) {}
 
@@ -4882,6 +4984,63 @@ export const make = (
             ))
         )
       ),
+    "listFineTuningCheckpointPermissions": (permissionId, options) =>
+      HttpClientRequest.make("GET")(`/fine_tuning/checkpoints/${permissionId}/permissions`).pipe(
+        HttpClientRequest.setUrlParams({
+          "project_id": options["project_id"] as UrlParams.Coercible,
+          "after": options["after"] as UrlParams.Coercible,
+          "limit": options["limit"] as UrlParams.Coercible,
+          "order": options["order"] as UrlParams.Coercible
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ListFineTuningCheckpointPermissionResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
+          )
+        )
+      ),
+    "createFineTuningCheckpointPermission": (permissionId, options) =>
+      HttpClientRequest.make("POST")(`/fine_tuning/checkpoints/${permissionId}/permissions`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(ListFineTuningCheckpointPermissionResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
+          )
+        )
+      ),
+    "deleteFineTuningCheckpointPermission": (permissionId) =>
+      HttpClientRequest.make("DELETE")(`/fine_tuning/checkpoints/${permissionId}/permissions`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(DeleteFineTuningCheckpointPermissionResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
+          )
+        )
+      ),
     "listPaginatedFineTuningJobs": (options) =>
       HttpClientRequest.make("GET")(`/fine_tuning/jobs`).pipe(
         HttpClientRequest.setUrlParams({
@@ -5888,6 +6047,23 @@ export const make = (
             ))
         )
       ),
+    "createRealtimeTranscriptionSession": (options) =>
+      HttpClientRequest.make("POST")(`/realtime/transcription_sessions`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            applyClientTransform(httpClient),
+            (httpClient) =>
+              Effect.flatMap(
+                httpClient.execute(request),
+                HttpClientResponse.matchStatus({
+                  "200": (r) => HttpClientResponse.schemaBodyJson(RealtimeTranscriptionSessionCreateResponse)(r),
+                  orElse: (response) => unexpectedStatus(request, response)
+                })
+              )
+          )
+        )
+      ),
     "createResponse": (options) =>
       HttpClientRequest.make("POST")(`/responses`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
@@ -6668,6 +6844,26 @@ export interface Client {
   readonly "downloadFile": (
     fileId: string
   ) => Effect.Effect<typeof DownloadFile200.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listFineTuningCheckpointPermissions": (
+    permissionId: string,
+    options: typeof ListFineTuningCheckpointPermissionsParams.Encoded
+  ) => Effect.Effect<
+    typeof ListFineTuningCheckpointPermissionResponse.Type,
+    HttpClientError.HttpClientError | ParseError
+  >
+  readonly "createFineTuningCheckpointPermission": (
+    permissionId: string,
+    options: typeof CreateFineTuningCheckpointPermissionRequest.Encoded
+  ) => Effect.Effect<
+    typeof ListFineTuningCheckpointPermissionResponse.Type,
+    HttpClientError.HttpClientError | ParseError
+  >
+  readonly "deleteFineTuningCheckpointPermission": (
+    permissionId: string
+  ) => Effect.Effect<
+    typeof DeleteFineTuningCheckpointPermissionResponse.Type,
+    HttpClientError.HttpClientError | ParseError
+  >
   readonly "listPaginatedFineTuningJobs": (
     options: typeof ListPaginatedFineTuningJobsParams.Encoded
   ) => Effect.Effect<typeof ListPaginatedFineTuningJobsResponse.Type, HttpClientError.HttpClientError | ParseError>
@@ -6872,6 +7068,12 @@ export interface Client {
   readonly "createRealtimeSession": (
     options: typeof RealtimeSessionCreateRequest.Encoded
   ) => Effect.Effect<typeof RealtimeSessionCreateResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createRealtimeTranscriptionSession": (
+    options: typeof RealtimeTranscriptionSessionCreateRequest.Encoded
+  ) => Effect.Effect<
+    typeof RealtimeTranscriptionSessionCreateResponse.Type,
+    HttpClientError.HttpClientError | ParseError
+  >
   readonly "createResponse": (
     options: typeof CreateResponse.Encoded
   ) => Effect.Effect<typeof Response.Type, HttpClientError.HttpClientError | ParseError>
