@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
 Simplified the creation of `Right` `Left` with broader types.
