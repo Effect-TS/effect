@@ -271,9 +271,10 @@ export type TypeId = typeof TypeId
  * @memberof HashSet
  * @since 2.0.0
  * @category models
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet } from "effect"
  *
  * let numberSet: HashSet.HashSet<number>
@@ -381,9 +382,10 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * @memberof HashSet
  * @since 2.0.0
  * @category constructors
- * @example Creating a HashSet from an {@link Array}
+ * @example
  *
  * ```ts
+ * // Creating a HashSet from an Array
  * import { HashSet, pipe } from "effect"
  *
  * console.log(
@@ -395,9 +397,10 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * ) // Output: [1, 2, 3, 4, 5]
  * ```
  *
- * @example Creating a HashSet from a {@link Set}
+ * @example
  *
  * ```ts
+ * // Creating a HashSet from a Set
  * import { HashSet, pipe } from "effect"
  *
  * console.log(
@@ -409,9 +412,10 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * ) // Output: ["apple", "banana", "orange"]
  * ```
  *
- * @example Creating a HashSet from a {@link Generator}
+ * @example
  *
  * ```ts
+ * // Creating a HashSet from a Generator
  * import { HashSet } from "effect"
  *
  * // Generator functions return iterables
@@ -430,9 +434,10 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * // Outputs: [0, 1, 2, 3, 5, 8, 13, 21, 34] but in unsorted order
  * ```
  *
- * @example Creating a HashSet from another {@link HashSet}
+ * @example
  *
  * ```ts
+ * //  Creating a HashSet from another HashSet
  * import { HashSet, pipe } from "effect"
  *
  * console.log(
@@ -445,10 +450,10 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * ) // Output: [1, 2, 3, 4]
  * ```
  *
- * @example Creating a HashSet from other Effect's data structures like
- * {@link Chunk}
+ * @example
  *
  * ```ts
+ * // Creating a HashSet from other Effect's data structures like Chunk
  * import { Chunk, HashSet, pipe } from "effect"
  *
  * console.log(
@@ -561,9 +566,10 @@ export const make: <As extends ReadonlyArray<any>>(...elements: As) => HashSet<A
  * @memberof HashSet
  * @since 2.0.0
  * @category elements
- * @example **syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -581,9 +587,10 @@ export const make: <As extends ReadonlyArray<any>>(...elements: As) => HashSet<A
  */
 export const has: {
   /**
-   * @example {@link has} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import * as assert from "node:assert/strict"
    * import { HashSet, pipe } from "effect"
    *
@@ -598,9 +605,10 @@ export const has: {
   <A>(value: A): (self: HashSet<A>) => boolean
 
   /**
-   * @example {@link has} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import * as assert from "node:assert/strict"
    * import { HashSet, pipe } from "effect"
    *
@@ -623,9 +631,10 @@ export const has: {
  * @memberof HashSet
  * @since 2.0.0
  * @category elements
- * @example **syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * const set: HashSet.HashSet<number> = HashSet.make(0, 1, 2)
@@ -647,9 +656,10 @@ export const has: {
  */
 export const some: {
   /**
-   * @example {@link some} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import * as assert from "node:assert/strict"
    * import { HashSet, pipe } from "effect"
    *
@@ -675,9 +685,10 @@ export const some: {
   <A>(f: Predicate<A>): (self: HashSet<A>) => boolean
 
   /**
-   * @example {@link some} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import * as assert from "node:assert/strict"
    * import { HashSet } from "effect"
    *
@@ -706,9 +717,10 @@ export const some: {
  * @memberof HashSet
  * @since 2.0.0
  * @category elements
- * @example **syntax** with {@link Refinement}
+ * @example
  *
  * ```ts
+ * // Syntax with Refinement
  * import { HashSet, pipe, Predicate } from "effect"
  *
  * const numberOrString = HashSet.make(1, "1", "one", "uno")
@@ -730,9 +742,10 @@ export const some: {
  * ) // HashSet.HashSet<string>
  * ```
  *
- * @example **syntax** with {@link Predicate}
+ * @example
  *
  * ```ts
+ * // Syntax with Predicate
  * import { HashSet, pipe } from "effect"
  *
  * const set = HashSet.make(1, 2, 3)
@@ -859,9 +872,10 @@ export const every: {
  * @memberof HashSet
  * @since 2.0.0
  * @category elements
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * const set1 = HashSet.make(0, 1)
@@ -1110,9 +1124,10 @@ export const endMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.endMutation
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with data-last, a.k.a. pipeable API
@@ -1143,9 +1158,10 @@ export const endMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.endMutation
  */
 export const mutate: {
   /**
-   * @example {@link module:HashSet.mutate} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1179,9 +1195,10 @@ export const mutate: {
   <A>(f: (set: HashSet<A>) => void): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link module:HashSet.mutate} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1223,9 +1240,10 @@ export const mutate: {
  * with the added value.
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with data-last, a.k.a. pipeable API
@@ -1242,9 +1260,10 @@ export const mutate: {
  */
 export const add: {
   /**
-   * @example {@link add} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1264,9 +1283,10 @@ export const add: {
   <A>(value: A): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link add} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet, pipe } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1289,9 +1309,10 @@ export const add: {
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -1308,9 +1329,10 @@ export const add: {
  */
 export const remove: {
   /**
-   * @example {@link remove} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1326,9 +1348,10 @@ export const remove: {
   <A>(value: A): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link remove} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet, pipe } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1357,9 +1380,10 @@ export const remove: {
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with data-last, a.k.a. pipeable API
@@ -1376,9 +1400,10 @@ export const remove: {
  */
 export const difference: {
   /**
-   * @example {@link difference} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1407,9 +1432,10 @@ export const difference: {
   <A>(that: Iterable<A>): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link difference} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1450,9 +1476,10 @@ export const difference: {
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with data-last, a.k.a. pipeable API
@@ -1469,9 +1496,10 @@ export const difference: {
  */
 export const intersection: {
   /**
-   * @example {@link intersection} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1500,9 +1528,10 @@ export const intersection: {
   <A>(that: Iterable<A>): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link intersection} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1542,9 +1571,10 @@ export const intersection: {
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with data-last, a.k.a. pipeable API
@@ -1561,9 +1591,10 @@ export const intersection: {
  */
 export const union: {
   /**
-   * @example {@link union} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1598,9 +1629,10 @@ export const union: {
   <A>(that: Iterable<A>): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link union} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1644,9 +1676,10 @@ export const union: {
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -1665,9 +1698,10 @@ export const union: {
  */
 export const toggle: {
   /**
-   * @example {@link toggle} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1693,9 +1727,10 @@ export const toggle: {
   <A>(value: A): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link toggle} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet, pipe } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1729,9 +1764,10 @@ export const toggle: {
  * @memberof HashSet
  * @since 2.0.0
  * @category mapping
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -1793,9 +1829,10 @@ export const map: {
  * @memberof HashSet
  * @since 2.0.0
  * @category sequencing
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -1859,9 +1896,10 @@ export const flatMap: {
  * @memberof HashSet
  * @since 2.0.0
  * @category traversing
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -1923,9 +1961,10 @@ export const forEach: {
  * @memberof HashSet
  * @since 2.0.0
  * @category folding
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * const sum = (a: number, b: number): number => a + b
@@ -1987,9 +2026,10 @@ export const reduce: {
  * @memberof HashSet
  * @since 2.0.0
  * @category filtering
- * @example **Syntax** with {@link Predicate}
+ * @example
  *
  * ```ts
+ * // Syntax with  Predicate
  * import { HashSet, type Predicate, pipe } from "effect"
  *
  * const filterPositiveNumbers: Predicate.Predicate<number> = (n) => n > 0
@@ -2007,9 +2047,10 @@ export const reduce: {
  * HashSet.filter(HashSet.make(-2, -1, 0, 1, 2), filterPositiveNumbers)
  * ```
  *
- * @example **Syntax** with {@link Refinement}
+ * @example
  *
  * ```ts
+ * /// Syntax with Refinement
  * import { HashSet, pipe } from "effect"
  *
  * const stringRefinement = (value: unknown): value is string =>
@@ -2141,9 +2182,10 @@ export const filter: {
  * @memberof HashSet
  * @since 2.0.0
  * @category partitioning
- * @example **Syntax** with {@link Predicate}
+ * @example
  *
  * ```ts
+ * // Syntax with Predicate
  * import { HashSet, pipe, Predicate } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -2161,9 +2203,10 @@ export const filter: {
  * HashSet.partition(HashSet.make(0, 1, 2, 3, 4, 5), (n) => n % 2 === 0)
  * ```
  *
- * @example **Syntax** with {@link Refinement}
+ * @example
  *
  * ```ts
+ * // Syntax with Refinement
  * import { HashSet, pipe, Predicate } from "effect"
  *
  * const stringRefinement: Predicate.Refinement<string | number, string> = (
