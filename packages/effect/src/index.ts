@@ -393,14 +393,14 @@ export * as HashMap from "./HashMap.js"
  *
  * ## Performance Characteristics
  *
- * - **Lookup** operations ({@linkcode HashSet.has}): **`O(1)`** average time
+ * - **Lookup** operations ({@link module:HashSet.has}): **`O(1)`** average time
  *   complexity
- * - **Insertion** operations ({@linkcode HashSet.add}): **`O(1)`** average time
+ * - **Insertion** operations ({@link module:HashSet.add}): **`O(1)`** average time
  *   complexity
- * - **Removal** operations ({@linkcode HashSet.remove}): **`O(1)`** average time
- *   complexity
- * - **Set** operations ({@linkcode HashSet.union},
- *   {@linkcode HashSet.intersection}): **`O(n)`** where n is the size of the
+ * - **Removal** operations ({@link module:HashSet.remove}): **`O(1)`** average
+ *   time complexity
+ * - **Set** operations ({@link module:HashSet.union},
+ *   {@link module:HashSet.intersection}): **`O(n)`** where n is the size of the
  *   smaller set
  * - **Iteration**: **`O(n)`** where n is the size of the set
  *
@@ -413,40 +413,40 @@ export * as HashMap from "./HashMap.js"
  *
  * ## Operations Reference
  *
- * | Category     | Operation                        | Description                                 | Complexity |
- * | ------------ | -------------------------------- | ------------------------------------------- | ---------- |
- * | constructors | {@linkcode HashSet.empty}        | Creates an empty HashSet                    | O(1)       |
- * | constructors | {@linkcode HashSet.fromIterable} | Creates a HashSet from an iterable          | O(n)       |
- * | constructors | {@linkcode HashSet.make}         | Creates a HashSet from multiple values      | O(n)       |
- * |              |                                  |                                             |            |
- * | elements     | {@linkcode HashSet.has}          | Checks if a value exists in the set         | O(1) avg   |
- * | elements     | {@linkcode HashSet.some}         | Checks if any element satisfies a predicate | O(n)       |
- * | elements     | {@linkcode HashSet.every}        | Checks if all elements satisfy a predicate  | O(n)       |
- * | elements     | {@linkcode HashSet.isSubset}     | Checks if a set is a subset of another      | O(n)       |
- * |              |                                  |                                             |            |
- * | getters      | {@linkcode HashSet.values}       | Gets an iterator of all values              | O(1)       |
- * | getters      | {@linkcode HashSet.toValues}     | Gets an array of all values                 | O(n)       |
- * | getters      | {@linkcode HashSet.size}         | Gets the number of elements                 | O(1)       |
- * |              |                                  |                                             |            |
- * | mutations    | {@linkcode HashSet.add}          | Adds a value to the set                     | O(1) avg   |
- * | mutations    | {@linkcode HashSet.remove}       | Removes a value from the set                | O(1) avg   |
- * | mutations    | {@linkcode HashSet.toggle}       | Toggles a value's presence                  | O(1) avg   |
- * |              |                                  |                                             |            |
- * | operations   | {@linkcode HashSet.difference}   | Computes set difference (A - B)             | O(n)       |
- * | operations   | {@linkcode HashSet.intersection} | Computes set intersection (A ∩ B)           | O(n)       |
- * | operations   | {@linkcode HashSet.union}        | Computes set union (A ∪ B)                  | O(n)       |
- * |              |                                  |                                             |            |
- * | mapping      | {@linkcode HashSet.map}          | Transforms each element                     | O(n)       |
- * |              |                                  |                                             |            |
- * | sequencing   | {@linkcode HashSet.flatMap}      | Transforms and flattens elements            | O(n)       |
- * |              |                                  |                                             |            |
- * | traversing   | {@linkcode HashSet.forEach}      | Applies a function to each element          | O(n)       |
- * |              |                                  |                                             |            |
- * | folding      | {@linkcode HashSet.reduce}       | Reduces the set to a single value           | O(n)       |
- * |              |                                  |                                             |            |
- * | filtering    | {@linkcode HashSet.filter}       | Keeps elements that satisfy a predicate     | O(n)       |
- * |              |                                  |                                             |            |
- * | partitioning | {@linkcode HashSet.partition}    | Splits into two sets by a predicate         | O(n)       |
+ * | Category     | Operation                           | Description                                 | Complexity |
+ * | ------------ | ----------------------------------- | ------------------------------------------- | ---------- |
+ * | constructors | {@link module:HashSet.empty}        | Creates an empty HashSet                    | O(1)       |
+ * | constructors | {@link module:HashSet.fromIterable} | Creates a HashSet from an iterable          | O(n)       |
+ * | constructors | {@link module:HashSet.make}         | Creates a HashSet from multiple values      | O(n)       |
+ * |              |                                     |                                             |            |
+ * | elements     | {@link module:HashSet.has}          | Checks if a value exists in the set         | O(1) avg   |
+ * | elements     | {@link module:HashSet.some}         | Checks if any element satisfies a predicate | O(n)       |
+ * | elements     | {@link module:HashSet.every}        | Checks if all elements satisfy a predicate  | O(n)       |
+ * | elements     | {@link module:HashSet.isSubset}     | Checks if a set is a subset of another      | O(n)       |
+ * |              |                                     |                                             |            |
+ * | getters      | {@link module:HashSet.values}       | Gets an iterator of all values              | O(1)       |
+ * | getters      | {@link module:HashSet.toValues}     | Gets an array of all values                 | O(n)       |
+ * | getters      | {@link module:HashSet.size}         | Gets the number of elements                 | O(1)       |
+ * |              |                                     |                                             |            |
+ * | mutations    | {@link module:HashSet.add}          | Adds a value to the set                     | O(1) avg   |
+ * | mutations    | {@link module:HashSet.remove}       | Removes a value from the set                | O(1) avg   |
+ * | mutations    | {@link module:HashSet.toggle}       | Toggles a value's presence                  | O(1) avg   |
+ * |              |                                     |                                             |            |
+ * | operations   | {@link module:HashSet.difference}   | Computes set difference (A - B)             | O(n)       |
+ * | operations   | {@link module:HashSet.intersection} | Computes set intersection (A ∩ B)           | O(n)       |
+ * | operations   | {@link module:HashSet.union}        | Computes set union (A ∪ B)                  | O(n)       |
+ * |              |                                     |                                             |            |
+ * | mapping      | {@link module:HashSet.map}          | Transforms each element                     | O(n)       |
+ * |              |                                     |                                             |            |
+ * | sequencing   | {@link module:HashSet.flatMap}      | Transforms and flattens elements            | O(n)       |
+ * |              |                                     |                                             |            |
+ * | traversing   | {@link module:HashSet.forEach}      | Applies a function to each element          | O(n)       |
+ * |              |                                     |                                             |            |
+ * | folding      | {@link module:HashSet.reduce}       | Reduces the set to a single value           | O(n)       |
+ * |              |                                     |                                             |            |
+ * | filtering    | {@link module:HashSet.filter}       | Keeps elements that satisfy a predicate     | O(n)       |
+ * |              |                                     |                                             |            |
+ * | partitioning | {@link module:HashSet.partition}    | Splits into two sets by a predicate         | O(n)       |
  *
  * ## Notes
  *
