@@ -70,4 +70,40 @@ describe("Pipeable", () => {
       126
     )
   })
+  it("pipeable", () => {
+    class A {
+      constructor(public a: number) {}
+      methodA() {
+        return this.a
+      }
+    }
+    class B extends Pipeable.pipeable(A) {
+      constructor(private b: string) {
+        super(b.length)
+      }
+      methodB() {
+        return [this.b, this.methodA()]
+      }
+    }
+    const b = new B("bb")
+
+    assertInstanceOf(b, A)
+    assertInstanceOf(b, B)
+    deepStrictEqual(b.methodB(), ["bb", 2])
+  })
+  it("Class", () => {
+    class A extends Pipeable.Class {
+      constructor(public a: number) {
+        super()
+      }
+      methodA() {
+        return this.a
+      }
+    }
+    const a = new A(2)
+
+    assertInstanceOf(a, A)
+    assertInstanceOf(a, Pipeable.Class)
+    deepStrictEqual(a.methodA(), 2)
+  })
 })
