@@ -90,6 +90,7 @@ describe("Pipeable", () => {
     assertInstanceOf(b, A)
     assertInstanceOf(b, B)
     deepStrictEqual(b.methodB(), ["bb", 2])
+    deepStrictEqual(b.pipe((x) => x.methodB()), ["bb", 2])
   })
   it("Class", () => {
     class A extends Pipeable.Class {
@@ -105,5 +106,6 @@ describe("Pipeable", () => {
     assertInstanceOf(a, A)
     assertInstanceOf(a, Pipeable.Class)
     deepStrictEqual(a.methodA(), 2)
+    deepStrictEqual(a.pipe((x) => x.methodA()), 2)
   })
 })
