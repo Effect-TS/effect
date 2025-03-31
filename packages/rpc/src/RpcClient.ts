@@ -710,7 +710,7 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
         HttpBody.uint8Array(encoded, serialization.contentType)
 
       if (isJson) {
-        return client.post("/", { body }).pipe(
+        return client.post("", { body }).pipe(
           Effect.flatMap((r) => r.json),
           Effect.scoped,
           Effect.flatMap((u) => {
@@ -728,7 +728,7 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
         )
       }
 
-      return client.post("/", { body }).pipe(
+      return client.post("", { body }).pipe(
         Effect.flatMap((r) =>
           Stream.runForEachChunk(r.stream, (chunk) => {
             const responses = Chunk.toReadonlyArray(chunk).flatMap(parser.decode) as Array<FromServerEncoded>
