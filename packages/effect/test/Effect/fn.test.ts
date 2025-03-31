@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Cause, Effect } from "effect"
-import { assertEquals, assertInstanceOf, assertTrue, strictEqual } from "effect/test/util"
+import { Cause, Chunk, Effect, Stream } from "effect"
+import { assertEquals, assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Effect.fn", () => {
   it.effect("catches defects in the function", () =>
@@ -93,7 +93,7 @@ describe("Effect.fnUntraced", () => {
 
   it.effect("can access args in single pipe", () =>
     Effect.gen(function*() {
-      const fn = Effect.fn("test")(
+      const fn = Effect.fnUntraced(
         function*(n: number) {
           return n
         },
@@ -102,5 +102,18 @@ describe("Effect.fnUntraced", () => {
       )
       const n = yield* fn(1)
       assertEquals(n, 3)
+    }))
+
+  it.effect("can return non-effects", () =>
+    Effect.gen(function*() {
+      const fn = Effect.fnUntraced(
+        function*(n: number) {
+          return n
+        },
+        (effect, n) => Effect.map(effect, (a) => a + n),
+        Stream.fromEffect
+      )
+      const n = yield* Stream.runCollect(fn(1))
+      deepStrictEqual(Chunk.toReadonlyArray(n), [2])
     }))
 })

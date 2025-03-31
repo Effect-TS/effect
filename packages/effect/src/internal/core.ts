@@ -1422,7 +1422,7 @@ export const gen: typeof Effect.gen = function() {
 }
 
 /** @internal */
-export const fnUntraced: Effect.fn.Gen = (body: Function, ...pipeables: Array<any>) =>
+export const fnUntraced: Effect.fn.Untraced = (body: Function, ...pipeables: Array<any>) =>
   Object.defineProperty(
     pipeables.length === 0
       ? function(this: any, ...args: Array<any>) {
