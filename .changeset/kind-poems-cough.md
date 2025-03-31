@@ -5,7 +5,7 @@
 Simplified the creation of pipeable classes.
 
 ```ts
-class MyClass extends Pipeable.Class {
+class MyClass extends Pipeable.Class() {
   constructor(public a: number) {
     super()
   }
@@ -23,7 +23,7 @@ class A {
     return this.a
   }
 }
-class B extends Pipeable.pipeable(A) {
+class B extends Pipeable.Class(A) {
   constructor(private b: string) {
     super(b.length)
   }
