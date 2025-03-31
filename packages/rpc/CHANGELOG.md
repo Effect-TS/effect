@@ -1,5 +1,17 @@
 # @effect/rpc
 
+## 0.55.5
+
+### Patch Changes
+
+- [#4677](https://github.com/Effect-TS/effect/pull/4677) [`e3e5873`](https://github.com/Effect-TS/effect/commit/e3e5873f30080bb0e5eed8a876170acaa6ed47ff) Thanks @tim-smart! - allow RpcGroup.merge to accept multiple groups
+
+- [#4678](https://github.com/Effect-TS/effect/pull/4678) [`26c060c`](https://github.com/Effect-TS/effect/commit/26c060c65914a623220a20356991784f974bfe18) Thanks @tim-smart! - remove trailing slash from rpc http requests
+
+- Updated dependencies [[`e4ba2c6`](https://github.com/Effect-TS/effect/commit/e4ba2c66a878e81b5e295d6d49aaf724b80a28ef)]:
+  - effect@3.14.4
+  - @effect/platform@0.80.4
+
 ## 0.55.4
 
 ### Patch Changes
