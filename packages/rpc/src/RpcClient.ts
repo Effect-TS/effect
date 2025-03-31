@@ -442,8 +442,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
               })
             )
             : identity,
-          Effect.onError((cause) => entry.mailbox.done(Exit.failCause(cause))),
-          Effect.forkIn(entry.scope)
+          Effect.catchAllCause((cause) => entry.mailbox.done(Exit.failCause(cause)))
         )
       }
       case "Exit": {
