@@ -1,5 +1,13 @@
 # effect
 
+## 3.14.3
+
+### Patch Changes
+
+- [#4664](https://github.com/Effect-TS/effect/pull/4664) [`37aa8e1`](https://github.com/Effect-TS/effect/commit/37aa8e137725a902e70cd1e468ea98b873aa5056) Thanks @suddenlyGiovanni! - Improved TsDoc documentation for `HashSet` module.
+
+- [#4670](https://github.com/Effect-TS/effect/pull/4670) [`34f03d6`](https://github.com/Effect-TS/effect/commit/34f03d66875f21f266f102223a03cd14c2ed6ea6) Thanks @tim-smart! - fix Data.TaggedEnum with generics regression
+
 ## 3.14.2
 
 ### Patch Changes
