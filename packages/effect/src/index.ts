@@ -818,6 +818,97 @@ export * as ModuleVersion from "./ModuleVersion.js"
 export * as MutableHashMap from "./MutableHashMap.js"
 
 /**
+ * # MutableHashSet
+ *
+ * A mutable `MutableHashSet` provides a collection of unique values with
+ * efficient lookup, insertion and removal. Unlike its immutable sibling
+ * {@link module:HashSet}, a `MutableHashSet` can be modified in-place;
+ * operations like add, remove, and clear directly modify the original set
+ * rather than creating a new one. This mutability offers benefits like improved
+ * performance in scenarios where you need to build or modify a set
+ * incrementally.
+ *
+ * ## What Problem Does It Solve?
+ *
+ * `MutableHashSet` solves the problem of maintaining an unsorted collection
+ * where each value appears exactly once, with fast operations for checking
+ * membership and adding/removing values, in contexts where mutability is
+ * preferred for performance or implementation simplicity.
+ *
+ * ## When to Use
+ *
+ * Use `MutableHashSet` when you need:
+ *
+ * - A collection with no duplicate values
+ * - Efficient membership testing (**`O(1)`** average complexity)
+ * - In-place modifications for better performance
+ * - A set that will be built or modified incrementally
+ * - Local mutability in otherwise immutable code
+ *
+ * ## Advanced Features
+ *
+ * MutableHashSet provides operations for:
+ *
+ * - Adding and removing elements with direct mutation
+ * - Checking for element existence
+ * - Clearing all elements at once
+ * - Converting to/from other collection types
+ *
+ * ## Performance Characteristics
+ *
+ * - **Lookup** operations ({@link module:MutableHashSet.has}): **`O(1)`** average
+ *   time complexity
+ * - **Insertion** operations ({@link module:MutableHashSet.add}): **`O(1)`**
+ *   average time complexity
+ * - **Removal** operations ({@link module:MutableHashSet.remove}): **`O(1)`**
+ *   average time complexity
+ * - **Iteration**: **`O(n)`** where n is the size of the set
+ *
+ * The MutableHashSet data structure implements the following traits:
+ *
+ * - {@link Iterable}: allows iterating over the values in the set
+ * - {@link Pipeable}: allows chaining operations with the pipe operator
+ * - {@link Inspectable}: allows inspecting the contents of the set
+ *
+ * ## Operations Reference
+ *
+ * | Category     | Operation                                  | Description                         | Complexity |
+ * | ------------ | ------------------------------------------ | ----------------------------------- | ---------- |
+ * | constructors | {@link module:MutableHashSet.empty}        | Creates an empty MutableHashSet     | O(1)       |
+ * | constructors | {@link module:MutableHashSet.fromIterable} | Creates a set from an iterable      | O(n)       |
+ * | constructors | {@link module:MutableHashSet.make}         | Creates a set from multiple values  | O(n)       |
+ * |              |                                            |                                     |            |
+ * | elements     | {@link module:MutableHashSet.has}          | Checks if a value exists in the set | O(1) avg   |
+ * | elements     | {@link module:MutableHashSet.add}          | Adds a value to the set             | O(1) avg   |
+ * | elements     | {@link module:MutableHashSet.remove}       | Removes a value from the set        | O(1) avg   |
+ * | elements     | {@link module:MutableHashSet.size}         | Gets the number of elements         | O(1)       |
+ * | elements     | {@link module:MutableHashSet.clear}        | Removes all values from the set     | O(1)       |
+ *
+ * ## Notes
+ *
+ * ### Mutability Considerations:
+ *
+ * Unlike most data structures in the Effect ecosystem, `MutableHashSet` is
+ * mutable. This means that operations like `add`, `remove`, and `clear` modify
+ * the original set rather than creating a new one. This can lead to more
+ * efficient code in some scenarios, but requires careful handling to avoid
+ * unexpected side effects.
+ *
+ * ### When to Choose `MutableHashSet` vs {@link module:HashSet}:
+ *
+ * - Use `MutableHashSet` when you need to build or modify a set incrementally and
+ *   performance is a priority
+ * - Use `HashSet` when you want immutability guarantees and functional
+ *   programming patterns
+ * - Consider using {@link module:HashSet}'s bounded mutation context (via
+ *   {@link module:HashSet.beginMutation}, {@link module:HashSet.endMutation}, and
+ *   {@link module:HashSet.mutate} methods) when you need temporary mutability
+ *   within an otherwise immutable context - this approach might be sufficient
+ *   for many use cases without requiring a separate `MutableHashSet`
+ * - `MutableHashSet` is often useful for local operations where the mutability is
+ *   contained and doesn't leak into the broader application
+ *
+ * @module MutableHashSet
  * @since 2.0.0
  */
 export * as MutableHashSet from "./MutableHashSet.js"
