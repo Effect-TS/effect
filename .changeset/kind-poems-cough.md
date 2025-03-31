@@ -31,5 +31,5 @@ class B extends Pipeable.pipeable(A) {
     return [this.b, this.methodA()]
   }
 }
-console.log(new B("pipe").pipe((x) => x.methodA())) // ['pipe', 4]
+console.log(new B("pipe").pipe((x) => x.methodB())) // ['pipe', 4]
 ```
