@@ -33,14 +33,14 @@
  *
  * ## Performance Characteristics
  *
- * - **Lookup** operations ({@linkcode HashSet.has}): **`O(1)`** average time
+ * - **Lookup** operations ({@link module:HashSet.has}): **`O(1)`** average time
  *   complexity
- * - **Insertion** operations ({@linkcode HashSet.add}): **`O(1)`** average time
+ * - **Insertion** operations ({@link module:HashSet.add}): **`O(1)`** average time
  *   complexity
- * - **Removal** operations ({@linkcode HashSet.remove}): **`O(1)`** average time
- *   complexity
- * - **Set** operations ({@linkcode HashSet.union},
- *   {@linkcode HashSet.intersection}): **`O(n)`** where n is the size of the
+ * - **Removal** operations ({@link module:HashSet.remove}): **`O(1)`** average
+ *   time complexity
+ * - **Set** operations ({@link module:HashSet.union},
+ *   {@link module:HashSet.intersection}): **`O(n)`** where n is the size of the
  *   smaller set
  * - **Iteration**: **`O(n)`** where n is the size of the set
  *
@@ -53,40 +53,40 @@
  *
  * ## Operations Reference
  *
- * | Category     | Operation                        | Description                                 | Complexity |
- * | ------------ | -------------------------------- | ------------------------------------------- | ---------- |
- * | constructors | {@linkcode HashSet.empty}        | Creates an empty HashSet                    | O(1)       |
- * | constructors | {@linkcode HashSet.fromIterable} | Creates a HashSet from an iterable          | O(n)       |
- * | constructors | {@linkcode HashSet.make}         | Creates a HashSet from multiple values      | O(n)       |
- * |              |                                  |                                             |            |
- * | elements     | {@linkcode HashSet.has}          | Checks if a value exists in the set         | O(1) avg   |
- * | elements     | {@linkcode HashSet.some}         | Checks if any element satisfies a predicate | O(n)       |
- * | elements     | {@linkcode HashSet.every}        | Checks if all elements satisfy a predicate  | O(n)       |
- * | elements     | {@linkcode HashSet.isSubset}     | Checks if a set is a subset of another      | O(n)       |
- * |              |                                  |                                             |            |
- * | getters      | {@linkcode HashSet.values}       | Gets an iterator of all values              | O(1)       |
- * | getters      | {@linkcode HashSet.toValues}     | Gets an array of all values                 | O(n)       |
- * | getters      | {@linkcode HashSet.size}         | Gets the number of elements                 | O(1)       |
- * |              |                                  |                                             |            |
- * | mutations    | {@linkcode HashSet.add}          | Adds a value to the set                     | O(1) avg   |
- * | mutations    | {@linkcode HashSet.remove}       | Removes a value from the set                | O(1) avg   |
- * | mutations    | {@linkcode HashSet.toggle}       | Toggles a value's presence                  | O(1) avg   |
- * |              |                                  |                                             |            |
- * | operations   | {@linkcode HashSet.difference}   | Computes set difference (A - B)             | O(n)       |
- * | operations   | {@linkcode HashSet.intersection} | Computes set intersection (A ∩ B)           | O(n)       |
- * | operations   | {@linkcode HashSet.union}        | Computes set union (A ∪ B)                  | O(n)       |
- * |              |                                  |                                             |            |
- * | mapping      | {@linkcode HashSet.map}          | Transforms each element                     | O(n)       |
- * |              |                                  |                                             |            |
- * | sequencing   | {@linkcode HashSet.flatMap}      | Transforms and flattens elements            | O(n)       |
- * |              |                                  |                                             |            |
- * | traversing   | {@linkcode HashSet.forEach}      | Applies a function to each element          | O(n)       |
- * |              |                                  |                                             |            |
- * | folding      | {@linkcode HashSet.reduce}       | Reduces the set to a single value           | O(n)       |
- * |              |                                  |                                             |            |
- * | filtering    | {@linkcode HashSet.filter}       | Keeps elements that satisfy a predicate     | O(n)       |
- * |              |                                  |                                             |            |
- * | partitioning | {@linkcode HashSet.partition}    | Splits into two sets by a predicate         | O(n)       |
+ * | Category     | Operation                           | Description                                 | Complexity |
+ * | ------------ | ----------------------------------- | ------------------------------------------- | ---------- |
+ * | constructors | {@link module:HashSet.empty}        | Creates an empty HashSet                    | O(1)       |
+ * | constructors | {@link module:HashSet.fromIterable} | Creates a HashSet from an iterable          | O(n)       |
+ * | constructors | {@link module:HashSet.make}         | Creates a HashSet from multiple values      | O(n)       |
+ * |              |                                     |                                             |            |
+ * | elements     | {@link module:HashSet.has}          | Checks if a value exists in the set         | O(1) avg   |
+ * | elements     | {@link module:HashSet.some}         | Checks if any element satisfies a predicate | O(n)       |
+ * | elements     | {@link module:HashSet.every}        | Checks if all elements satisfy a predicate  | O(n)       |
+ * | elements     | {@link module:HashSet.isSubset}     | Checks if a set is a subset of another      | O(n)       |
+ * |              |                                     |                                             |            |
+ * | getters      | {@link module:HashSet.values}       | Gets an iterator of all values              | O(1)       |
+ * | getters      | {@link module:HashSet.toValues}     | Gets an array of all values                 | O(n)       |
+ * | getters      | {@link module:HashSet.size}         | Gets the number of elements                 | O(1)       |
+ * |              |                                     |                                             |            |
+ * | mutations    | {@link module:HashSet.add}          | Adds a value to the set                     | O(1) avg   |
+ * | mutations    | {@link module:HashSet.remove}       | Removes a value from the set                | O(1) avg   |
+ * | mutations    | {@link module:HashSet.toggle}       | Toggles a value's presence                  | O(1) avg   |
+ * |              |                                     |                                             |            |
+ * | operations   | {@link module:HashSet.difference}   | Computes set difference (A - B)             | O(n)       |
+ * | operations   | {@link module:HashSet.intersection} | Computes set intersection (A ∩ B)           | O(n)       |
+ * | operations   | {@link module:HashSet.union}        | Computes set union (A ∪ B)                  | O(n)       |
+ * |              |                                     |                                             |            |
+ * | mapping      | {@link module:HashSet.map}          | Transforms each element                     | O(n)       |
+ * |              |                                     |                                             |            |
+ * | sequencing   | {@link module:HashSet.flatMap}      | Transforms and flattens elements            | O(n)       |
+ * |              |                                     |                                             |            |
+ * | traversing   | {@link module:HashSet.forEach}      | Applies a function to each element          | O(n)       |
+ * |              |                                     |                                             |            |
+ * | folding      | {@link module:HashSet.reduce}       | Reduces the set to a single value           | O(n)       |
+ * |              |                                     |                                             |            |
+ * | filtering    | {@link module:HashSet.filter}       | Keeps elements that satisfy a predicate     | O(n)       |
+ * |              |                                     |                                             |            |
+ * | partitioning | {@link module:HashSet.partition}    | Splits into two sets by a predicate         | O(n)       |
  *
  * ## Notes
  *
@@ -271,9 +271,10 @@ export type TypeId = typeof TypeId
  * @memberof HashSet
  * @since 2.0.0
  * @category models
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet } from "effect"
  *
  * let numberSet: HashSet.HashSet<number>
@@ -369,7 +370,7 @@ export const isHashSet: {
  * ) // Output: [1, 2]
  * ```
  *
- * @see Other `HashSet` constructors are {@link make} {@link fromIterable}
+ * @see Other `HashSet` constructors are {@link module:HashSet.make} {@link module:HashSet.fromIterable}
  */
 export const empty: <A = never>() => HashSet<A> = HS.empty
 
@@ -381,9 +382,10 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * @memberof HashSet
  * @since 2.0.0
  * @category constructors
- * @example Creating a HashSet from an {@link Array}
+ * @example
  *
  * ```ts
+ * // Creating a HashSet from an Array
  * import { HashSet, pipe } from "effect"
  *
  * console.log(
@@ -395,9 +397,10 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * ) // Output: [1, 2, 3, 4, 5]
  * ```
  *
- * @example Creating a HashSet from a {@link Set}
+ * @example
  *
  * ```ts
+ * // Creating a HashSet from a Set
  * import { HashSet, pipe } from "effect"
  *
  * console.log(
@@ -409,9 +412,10 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * ) // Output: ["apple", "banana", "orange"]
  * ```
  *
- * @example Creating a HashSet from a {@link Generator}
+ * @example
  *
  * ```ts
+ * // Creating a HashSet from a Generator
  * import { HashSet } from "effect"
  *
  * // Generator functions return iterables
@@ -430,9 +434,10 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * // Outputs: [0, 1, 2, 3, 5, 8, 13, 21, 34] but in unsorted order
  * ```
  *
- * @example Creating a HashSet from another {@link HashSet}
+ * @example
  *
  * ```ts
+ * //  Creating a HashSet from another HashSet
  * import { HashSet, pipe } from "effect"
  *
  * console.log(
@@ -445,10 +450,10 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * ) // Output: [1, 2, 3, 4]
  * ```
  *
- * @example Creating a HashSet from other Effect's data structures like
- * {@link Chunk}
+ * @example
  *
  * ```ts
+ * // Creating a HashSet from other Effect's data structures like Chunk
  * import { Chunk, HashSet, pipe } from "effect"
  *
  * console.log(
@@ -460,7 +465,7 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
  * ) // Outputs: [1, 2, 3, 4]
  * ```
  *
- * @see Other `HashSet` constructors are {@link empty} {@link make}
+ * @see Other `HashSet` constructors are {@link module:HashSet.empty} {@link module:HashSet.make}
  */
 export const fromIterable: <A>(elements: Iterable<A>) => HashSet<A> = HS.fromIterable
 
@@ -549,7 +554,7 @@ export const fromIterable: <A>(elements: Iterable<A>) => HashSet<A> = HS.fromIte
  * )
  * ```
  *
- * @see Other `HashSet` constructors are {@linkcode fromIterable} {@linkcode empty}
+ * @see Other `HashSet` constructors are {@link module:HashSet.fromIterable} {@link module:HashSet.empty}
  */
 export const make: <As extends ReadonlyArray<any>>(...elements: As) => HashSet<As[number]> = HS.make
 
@@ -561,9 +566,10 @@ export const make: <As extends ReadonlyArray<any>>(...elements: As) => HashSet<A
  * @memberof HashSet
  * @since 2.0.0
  * @category elements
- * @example **syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -577,13 +583,14 @@ export const make: <As extends ReadonlyArray<any>>(...elements: As) => HashSet<A
  * ```
  *
  * @returns A `boolean` signaling the presence of the value in the HashSet
- * @see Other `HashSet` elements are {@link some} {@link every} {@link isSubset}
+ * @see Other `HashSet` elements are {@link module:HashSet.some} {@link module:HashSet.every} {@link module:HashSet.isSubset}
  */
 export const has: {
   /**
-   * @example {@link has} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import * as assert from "node:assert/strict"
    * import { HashSet, pipe } from "effect"
    *
@@ -598,9 +605,10 @@ export const has: {
   <A>(value: A): (self: HashSet<A>) => boolean
 
   /**
-   * @example {@link has} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import * as assert from "node:assert/strict"
    * import { HashSet, pipe } from "effect"
    *
@@ -623,9 +631,10 @@ export const has: {
  * @memberof HashSet
  * @since 2.0.0
  * @category elements
- * @example **syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * const set: HashSet.HashSet<number> = HashSet.make(0, 1, 2)
@@ -643,13 +652,14 @@ export const has: {
  * HashSet.some(set, (n) => n > 0) // true
  * ```
  *
- * @see Other `HashSet` elements are {@link has} {@link every} {@link isSubset}
+ * @see Other `HashSet` elements are {@link module:HashSet.has} {@link module:HashSet.every} {@link module:HashSet.isSubset}
  */
 export const some: {
   /**
-   * @example {@link some} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import * as assert from "node:assert/strict"
    * import { HashSet, pipe } from "effect"
    *
@@ -675,9 +685,10 @@ export const some: {
   <A>(f: Predicate<A>): (self: HashSet<A>) => boolean
 
   /**
-   * @example {@link some} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import * as assert from "node:assert/strict"
    * import { HashSet } from "effect"
    *
@@ -706,9 +717,10 @@ export const some: {
  * @memberof HashSet
  * @since 2.0.0
  * @category elements
- * @example **syntax** with {@link Refinement}
+ * @example
  *
  * ```ts
+ * // Syntax with Refinement
  * import { HashSet, pipe, Predicate } from "effect"
  *
  * const numberOrString = HashSet.make(1, "1", "one", "uno")
@@ -730,9 +742,10 @@ export const some: {
  * ) // HashSet.HashSet<string>
  * ```
  *
- * @example **syntax** with {@link Predicate}
+ * @example
  *
  * ```ts
+ * // Syntax with Predicate
  * import { HashSet, pipe } from "effect"
  *
  * const set = HashSet.make(1, 2, 3)
@@ -752,7 +765,7 @@ export const some: {
  *
  * @returns A boolean once it has evaluated that whole collection fulfill the
  *   Predicate function
- * @see Other `HashSet` elements are {@link has} {@link some} {@link isSubset}
+ * @see Other `HashSet` elements are {@link module:HashSet.has} {@link module:HashSet.some} {@link module:HashSet.isSubset}
  */
 export const every: {
   /**
@@ -859,9 +872,10 @@ export const every: {
  * @memberof HashSet
  * @since 2.0.0
  * @category elements
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * const set1 = HashSet.make(0, 1)
@@ -881,7 +895,7 @@ export const every: {
  * HashSet.isSubset(set1, set3) // true)
  * ```
  *
- * @see Other `HashSet` elements are {@link has} {@link some} {@link every}
+ * @see Other `HashSet` elements are {@link module:HashSet.has} {@link module:HashSet.some} {@link module:HashSet.every}
  */
 export const isSubset: {
   /**
@@ -948,7 +962,7 @@ export const isSubset: {
  * }
  * ```
  *
- * @see Other `HashSet` getters are {@link toValues} {@link size}
+ * @see Other `HashSet` getters are {@link module:HashSet.toValues} {@link module:HashSet.size}
  */
 export const values: <A>(self: HashSet<A>) => IterableIterator<A> = HS.values
 
@@ -975,7 +989,7 @@ export const values: <A>(self: HashSet<A>) => IterableIterator<A> = HS.values
  * )
  * ```
  *
- * @see Other `HashSet` getters are {@link values} {@link size}
+ * @see Other `HashSet` getters are {@link module:HashSet.values} {@link module:HashSet.size}
  */
 export const toValues = <A>(self: HashSet<A>): Array<A> => Array.from(values(self))
 
@@ -1001,7 +1015,7 @@ export const toValues = <A>(self: HashSet<A>): Array<A> => Array.from(values(sel
  * )
  * ```
  *
- * @see Other `HashSet` getters are {@link values} {@link toValues}
+ * @see Other `HashSet` getters are {@link module:HashSet.values} {@link module:HashSet.toValues}
  */
 export const size: <A>(self: HashSet<A>) => number = HS.size
 
@@ -1049,7 +1063,7 @@ export const size: <A>(self: HashSet<A>) => number = HS.size
  * console.log(HashSet.toValues(mutableSet).sort((a, b) => a - b)) // [0, 1, 2, 3, ...rest]
  * ```
  *
- * @see Other `HashSet` mutations are {@link add} {@link remove} {@link toggle} {@link endMutation} {@link mutate}
+ * @see Other `HashSet` mutations are {@link module:HashSet.add} {@link module:HashSet.remove} {@link module:HashSet.toggle} {@link module:HashSet.endMutation} {@link module:HashSet.mutate}
  */
 export const beginMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.beginMutation
 
@@ -1097,7 +1111,7 @@ export const beginMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.beginMutati
  * assert.deepStrictEqual(HashSet.toValues(newSet).sort(), [1, 2, 3, 4])
  * ```
  *
- * @see Other `HashSet` mutations are {@linkcode HashSet.add} {@linkcode HashSet.remove} {@linkcode HashSet.toggle} {@linkcode HashSet.beginMutation} {@linkcode HashSet.mutate}
+ * @see Other `HashSet` mutations are {@link module:HashSet.add} {@link module:HashSet.remove} {@link module:HashSet.toggle} {@link module:HashSet.beginMutation} {@link module:HashSet.mutate}
  */
 export const endMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.endMutation
 
@@ -1105,14 +1119,15 @@ export const endMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.endMutation
  * Mutates the `HashSet` within the context of the provided function.
  *
  * You can consider it a functional abstraction on top of the lower-level
- * mutation primitives of {@linkcode HashSet.beginMutation} `->` `mutable
- * context` `->` {@linkcode HashSet.endMutation}.
+ * mutation primitives of {@link module:HashSet.beginMutation} `->` `mutable
+ * context` `->` {@link HashSet.endMutation}.
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with data-last, a.k.a. pipeable API
@@ -1139,13 +1154,14 @@ export const endMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.endMutation
  * })
  * ```
  *
- * @see Other `HashSet` mutations are {@linkcode HashSet.add} {@linkcode HashSet.remove} {@linkcode HashSet.toggle} {@linkcode HashSet.beginMutation} {@linkcode HashSet.endMutation}
+ * @see Other `HashSet` mutations are {@link module:HashSet.add} {@link module:HashSet.remove} {@link module:HashSet.toggle} {@link module:HashSet.beginMutation} {@link module:HashSet.endMutation}
  */
 export const mutate: {
   /**
-   * @example {@linkcode HashSet.mutate} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1179,9 +1195,10 @@ export const mutate: {
   <A>(f: (set: HashSet<A>) => void): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@linkcode HashSet.mutate} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1223,9 +1240,10 @@ export const mutate: {
  * with the added value.
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with data-last, a.k.a. pipeable API
@@ -1238,13 +1256,14 @@ export const mutate: {
  * HashSet.add(HashSet.empty(), 0)
  * ```
  *
- * @see Other `HashSet` mutations are {@link remove} {@link toggle} {@link beginMutation} {@link endMutation} {@link mutate}
+ * @see Other `HashSet` mutations are {@link module:HashSet.remove} {@link module:HashSet.toggle} {@link module:HashSet.beginMutation} {@link module:HashSet.endMutation} {@link module:HashSet.mutate}
  */
 export const add: {
   /**
-   * @example {@link add} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1264,9 +1283,10 @@ export const add: {
   <A>(value: A): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link add} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet, pipe } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1289,9 +1309,10 @@ export const add: {
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -1304,13 +1325,14 @@ export const add: {
  * HashSet.remove(HashSet.make(0, 1, 2), 0)
  * ```
  *
- * @see Other `HashSet` mutations are {@link add} {@link toggle} {@link beginMutation} {@link endMutation} {@link mutate}
+ * @see Other `HashSet` mutations are {@link module:HashSet.add} {@link module:HashSet.toggle} {@link module:HashSet.beginMutation} {@link module:HashSet.endMutation} {@link module:HashSet.mutate}
  */
 export const remove: {
   /**
-   * @example {@link remove} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1326,9 +1348,10 @@ export const remove: {
   <A>(value: A): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link remove} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet, pipe } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1357,9 +1380,10 @@ export const remove: {
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with data-last, a.k.a. pipeable API
@@ -1372,13 +1396,14 @@ export const remove: {
  * HashSet.difference(HashSet.make(1, 2, 3), HashSet.make(3, 4, 5))
  * ```
  *
- * @see Other `HashSet` operations are {@link intersection} {@link union}
+ * @see Other `HashSet` operations are {@link module:HashSet.intersection} {@link module:HashSet.union}
  */
 export const difference: {
   /**
-   * @example {@link difference} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1407,9 +1432,10 @@ export const difference: {
   <A>(that: Iterable<A>): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link difference} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1450,9 +1476,10 @@ export const difference: {
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with data-last, a.k.a. pipeable API
@@ -1465,13 +1492,14 @@ export const difference: {
  * HashSet.intersection(HashSet.make(1, 2, 3), HashSet.make(2, 3, 4))
  * ```
  *
- * @see Other `HashSet` operations are {@link difference} {@link union}
+ * @see Other `HashSet` operations are {@link module:HashSet.difference} {@link module:HashSet.union}
  */
 export const intersection: {
   /**
-   * @example {@link intersection} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1500,9 +1528,10 @@ export const intersection: {
   <A>(that: Iterable<A>): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link intersection} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1542,9 +1571,10 @@ export const intersection: {
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with data-last, a.k.a. pipeable API
@@ -1557,13 +1587,14 @@ export const intersection: {
  * HashSet.union(HashSet.make(1, 2, 3), HashSet.make(3, 4, 5))
  * ```
  *
- * @see Other `HashSet` operations are {@link difference} {@link intersection}
+ * @see Other `HashSet` operations are {@link module:HashSet.difference} {@link module:HashSet.intersection}
  */
 export const union: {
   /**
-   * @example {@link union} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1598,9 +1629,10 @@ export const union: {
   <A>(that: Iterable<A>): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link union} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet } from "effect"
    * import * as assert from "node:assert/strict"
    *
@@ -1644,9 +1676,10 @@ export const union: {
  *
  * @memberof HashSet
  * @since 2.0.0
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -1661,13 +1694,14 @@ export const union: {
  *
  * @returns A new `HashSet` where the toggled value is being either added or
  *   removed based on the initial `HashSet` state.
- * @see Other `HashSet` mutations are {@link add} {@link remove} {@link beginMutation} {@link endMutation} {@link mutate}
+ * @see Other `HashSet` mutations are {@link module:HashSet.add} {@link module:HashSet.remove} {@link module:HashSet.beginMutation} {@link module:HashSet.endMutation} {@link module:HashSet.mutate}
  */
 export const toggle: {
   /**
-   * @example {@link toggle} `data-last` a.k.a. `pipeable` API
+   * @example
    *
    * ```ts
+   * // `data-last` a.k.a. `pipeable` API
    * import { HashSet, pipe } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1693,9 +1727,10 @@ export const toggle: {
   <A>(value: A): (self: HashSet<A>) => HashSet<A>
 
   /**
-   * @example {@link toggle} `data-first` API
+   * @example
    *
    * ```ts
+   * // `data-first` API
    * import { HashSet, pipe } from "effect"
    * import assert from "node:assert/strict"
    *
@@ -1729,9 +1764,10 @@ export const toggle: {
  * @memberof HashSet
  * @since 2.0.0
  * @category mapping
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -1793,9 +1829,10 @@ export const map: {
  * @memberof HashSet
  * @since 2.0.0
  * @category sequencing
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -1859,9 +1896,10 @@ export const flatMap: {
  * @memberof HashSet
  * @since 2.0.0
  * @category traversing
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -1923,9 +1961,10 @@ export const forEach: {
  * @memberof HashSet
  * @since 2.0.0
  * @category folding
- * @example **Syntax**
+ * @example
  *
  * ```ts
+ * // Syntax
  * import { HashSet, pipe } from "effect"
  *
  * const sum = (a: number, b: number): number => a + b
@@ -1987,9 +2026,10 @@ export const reduce: {
  * @memberof HashSet
  * @since 2.0.0
  * @category filtering
- * @example **Syntax** with {@link Predicate}
+ * @example
  *
  * ```ts
+ * // Syntax with  Predicate
  * import { HashSet, type Predicate, pipe } from "effect"
  *
  * const filterPositiveNumbers: Predicate.Predicate<number> = (n) => n > 0
@@ -2007,9 +2047,10 @@ export const reduce: {
  * HashSet.filter(HashSet.make(-2, -1, 0, 1, 2), filterPositiveNumbers)
  * ```
  *
- * @example **Syntax** with {@link Refinement}
+ * @example
  *
  * ```ts
+ * /// Syntax with Refinement
  * import { HashSet, pipe } from "effect"
  *
  * const stringRefinement = (value: unknown): value is string =>
@@ -2141,9 +2182,10 @@ export const filter: {
  * @memberof HashSet
  * @since 2.0.0
  * @category partitioning
- * @example **Syntax** with {@link Predicate}
+ * @example
  *
  * ```ts
+ * // Syntax with Predicate
  * import { HashSet, pipe, Predicate } from "effect"
  *
  * // with `data-last`, a.k.a. `pipeable` API
@@ -2161,9 +2203,10 @@ export const filter: {
  * HashSet.partition(HashSet.make(0, 1, 2, 3, 4, 5), (n) => n % 2 === 0)
  * ```
  *
- * @example **Syntax** with {@link Refinement}
+ * @example
  *
  * ```ts
+ * // Syntax with Refinement
  * import { HashSet, pipe, Predicate } from "effect"
  *
  * const stringRefinement: Predicate.Refinement<string | number, string> = (
