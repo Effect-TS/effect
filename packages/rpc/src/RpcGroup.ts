@@ -31,11 +31,11 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category groups
  */
-export interface RpcGroup<in out Rpcs extends Rpc.Any> extends Pipeable {
+export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
   new(_: never): {}
 
   readonly [TypeId]: TypeId
-  readonly requests: ReadonlyMap<string, Rpcs>
+  readonly requests: ReadonlyMap<string, R>
   readonly annotations: Context.Context<never>
 
   /**
@@ -43,26 +43,26 @@ export interface RpcGroup<in out Rpcs extends Rpc.Any> extends Pipeable {
    */
   add<const Rpcs2 extends ReadonlyArray<Rpc.Any>>(
     ...rpcs: Rpcs2
-  ): RpcGroup<Rpcs | Rpcs2[number]>
+  ): RpcGroup<R | Rpcs2[number]>
 
   /**
-   * Merge this group with another group.
+   * Merge this group with one or more other groups.
    */
-  merge<Rpcs2 extends Rpc.Any>(
-    that: RpcGroup<Rpcs2>
-  ): RpcGroup<Rpcs | Rpcs2>
+  merge<const Groups extends ReadonlyArray<RpcGroup<any>>>(
+    ...groups: Groups
+  ): RpcGroup<R | Rpcs<Groups[number]>>
 
   /**
    * Add middleware to all the procedures added to the group until this point.
    */
-  middleware<M extends RpcMiddleware.TagClassAny>(middleware: M): RpcGroup<Rpc.AddMiddleware<Rpcs, M>>
+  middleware<M extends RpcMiddleware.TagClassAny>(middleware: M): RpcGroup<Rpc.AddMiddleware<R, M>>
 
   /**
    * Implement the handlers for the procedures in this group, returning a
    * context object.
    */
   toHandlersContext<
-    Handlers extends HandlersFrom<Rpcs>,
+    Handlers extends HandlersFrom<R>,
     EX = never,
     RX = never
   >(
@@ -70,17 +70,17 @@ export interface RpcGroup<in out Rpcs extends Rpc.Any> extends Pipeable {
       | Handlers
       | Effect.Effect<Handlers, EX, RX>
   ): Effect.Effect<
-    Context.Context<Rpc.ToHandler<Rpcs>>,
+    Context.Context<Rpc.ToHandler<R>>,
     EX,
     | RX
-    | HandlersContext<Rpcs, Handlers>
+    | HandlersContext<R, Handlers>
   >
 
   /**
    * Implement the handlers for the procedures in this group.
    */
   toLayer<
-    Handlers extends HandlersFrom<Rpcs>,
+    Handlers extends HandlersFrom<R>,
     EX = never,
     RX = never
   >(
@@ -88,31 +88,31 @@ export interface RpcGroup<in out Rpcs extends Rpc.Any> extends Pipeable {
       | Handlers
       | Effect.Effect<Handlers, EX, RX>
   ): Layer.Layer<
-    Rpc.ToHandler<Rpcs>,
+    Rpc.ToHandler<R>,
     EX,
     | Exclude<RX, Scope>
-    | HandlersContext<Rpcs, Handlers>
+    | HandlersContext<R, Handlers>
   >
 
   /**
    * Annotate the group with a value.
    */
-  annotate<I, S>(tag: Context.Tag<I, S>, value: S): RpcGroup<Rpcs>
+  annotate<I, S>(tag: Context.Tag<I, S>, value: S): RpcGroup<R>
 
   /**
    * Annotate the Rpc's above this point with a value.
    */
-  annotateRpcs<I, S>(tag: Context.Tag<I, S>, value: S): RpcGroup<Rpcs>
+  annotateRpcs<I, S>(tag: Context.Tag<I, S>, value: S): RpcGroup<R>
 
   /**
    * Annotate the group with a context object.
    */
-  annotateContext<S>(context: Context.Context<S>): RpcGroup<Rpcs>
+  annotateContext<S>(context: Context.Context<S>): RpcGroup<R>
 
   /**
    * Annotate the Rpc's above this point with a context object.
    */
-  annotateRpcsContext<S>(context: Context.Context<S>): RpcGroup<Rpcs>
+  annotateRpcsContext<S>(context: Context.Context<S>): RpcGroup<R>
 }
 
 /**
@@ -187,7 +187,7 @@ export type HandlersContext<Rpcs extends Rpc.Any, Handlers> = keyof Handlers ext
  * @since 1.0.0
  * @category groups
  */
-export type Rpcs<Group> = Group extends RpcGroup<infer R> ? R : never
+export type Rpcs<Group> = Group extends RpcGroup<infer R> ? string extends R["_tag"] ? never : R : never
 
 const RpcGroupProto = {
   add(this: RpcGroup<any>, ...rpcs: Array<any>) {
@@ -199,14 +199,22 @@ const RpcGroupProto = {
       annotations: this.annotations
     })
   },
-  merge(this: RpcGroup<any>, that: RpcGroup<any>) {
+  merge(this: RpcGroup<any>, ...groups: ReadonlyArray<RpcGroup<any>>) {
     const requests = new Map(this.requests)
-    for (const rpc of that.requests.values()) {
-      requests.set(rpc._tag, rpc)
+    const annotations = new Map(this.annotations.unsafeMap)
+
+    for (const group of groups) {
+      for (const [tag, rpc] of group.requests) {
+        requests.set(tag, rpc)
+      }
+      for (const [key, value] of group.annotations.unsafeMap) {
+        annotations.set(key, value)
+      }
     }
+
     return makeProto({
       requests,
-      annotations: Context.merge(this.annotations, that.annotations)
+      annotations: Context.unsafeMake(annotations)
     })
   },
   middleware(this: RpcGroup<any>, middleware: RpcMiddleware.TagClassAny) {
