@@ -5333,6 +5333,17 @@ export const toReadableStreamRuntime: {
 } = internal.toReadableStreamRuntime
 
 /**
+ * Converts the stream to a `AsyncIterable` using the provided runtime.
+ *
+ * @since 3.15.0
+ * @category destructors
+ */
+export const toAsyncIterableRuntime: {
+  <A, XR>(runtime: Runtime<XR>): <E, R extends XR>(self: Stream<A, E, R>) => AsyncIterable<A>
+  <A, E, XR, R extends XR>(self: Stream<A, E, R>, runtime: Runtime<XR>): AsyncIterable<A>
+} = internal.toAsyncIterableRuntime
+
+/**
  * Applies the transducer to the stream and emits its outputs.
  *
  * @since 2.0.0
