@@ -1,5 +1,17 @@
 # @effect/cluster
 
+## 0.29.6
+
+### Patch Changes
+
+- [#4670](https://github.com/Effect-TS/effect/pull/4670) [`34f03d6`](https://github.com/Effect-TS/effect/commit/34f03d66875f21f266f102223a03cd14c2ed6ea6) Thanks @tim-smart! - fix Data.TaggedEnum with generics regression
+
+- Updated dependencies [[`0ec5e03`](https://github.com/Effect-TS/effect/commit/0ec5e0353a1db5d27c3500deba0df61001258e76), [`05c4d77`](https://github.com/Effect-TS/effect/commit/05c4d772acc42b7425add7b22f914c5ee3ff84bd), [`37aa8e1`](https://github.com/Effect-TS/effect/commit/37aa8e137725a902e70cd1e468ea98b873aa5056), [`34f03d6`](https://github.com/Effect-TS/effect/commit/34f03d66875f21f266f102223a03cd14c2ed6ea6)]:
+  - @effect/rpc@0.55.4
+  - effect@3.14.3
+  - @effect/platform@0.80.3
+  - @effect/sql@0.33.3
+
 ## 0.29.5
 
 ### Patch Changes

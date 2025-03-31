@@ -1,5 +1,17 @@
 # @effect/rpc
 
+## 0.55.4
+
+### Patch Changes
+
+- [#4672](https://github.com/Effect-TS/effect/pull/4672) [`0ec5e03`](https://github.com/Effect-TS/effect/commit/0ec5e0353a1db5d27c3500deba0df61001258e76) Thanks @tim-smart! - ensure RpcClient does not miss chunks
+
+- [#4671](https://github.com/Effect-TS/effect/pull/4671) [`05c4d77`](https://github.com/Effect-TS/effect/commit/05c4d772acc42b7425add7b22f914c5ee3ff84bd) Thanks @tim-smart! - ensure RpcClient fiber is defined before polling
+
+- Updated dependencies [[`37aa8e1`](https://github.com/Effect-TS/effect/commit/37aa8e137725a902e70cd1e468ea98b873aa5056), [`34f03d6`](https://github.com/Effect-TS/effect/commit/34f03d66875f21f266f102223a03cd14c2ed6ea6)]:
+  - effect@3.14.3
+  - @effect/platform@0.80.3
+
 ## 0.55.3
 
 ### Patch Changes
