@@ -1,5 +1,11 @@
 # effect
 
+## 3.14.4
+
+### Patch Changes
+
+- [#4667](https://github.com/Effect-TS/effect/pull/4667) [`e4ba2c6`](https://github.com/Effect-TS/effect/commit/e4ba2c66a878e81b5e295d6d49aaf724b80a28ef) Thanks @suddenlyGiovanni! - Fix: `HashSet.md` api docs; previously broken by issue with Docgen JsDoc parser.
+
 ## 3.14.3
 
 ### Patch Changes
