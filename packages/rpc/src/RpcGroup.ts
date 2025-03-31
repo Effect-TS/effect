@@ -46,11 +46,11 @@ export interface RpcGroup<in out Rpcs extends Rpc.Any> extends Pipeable {
   ): RpcGroup<Rpcs | Rpcs2[number]>
 
   /**
-   * Merge this group with another group.
+   * Merge this group with one or more other groups.
    */
-  merge<Rpcs2 extends Rpc.Any>(
-    that: RpcGroup<Rpcs2>
-  ): RpcGroup<Rpcs | Rpcs2>
+  merge<const Groups extends ReadonlyArray<RpcGroup<any>>>(
+    ...groups: Groups
+  ): RpcGroup<Rpcs | (Groups[number] extends infer Group ? Group extends RpcGroup<infer R> ? R : never : never)>
 
   /**
    * Add middleware to all the procedures added to the group until this point.
@@ -199,14 +199,22 @@ const RpcGroupProto = {
       annotations: this.annotations
     })
   },
-  merge(this: RpcGroup<any>, that: RpcGroup<any>) {
+  merge(this: RpcGroup<any>, ...groups: ReadonlyArray<RpcGroup<any>>) {
     const requests = new Map(this.requests)
-    for (const rpc of that.requests.values()) {
-      requests.set(rpc._tag, rpc)
+    const annotations = new Map(this.annotations.unsafeMap)
+
+    for (const group of groups) {
+      for (const [tag, rpc] of group.requests) {
+        requests.set(tag, rpc)
+      }
+      for (const [key, value] of group.annotations.unsafeMap) {
+        annotations.set(key, value)
+      }
     }
+
     return makeProto({
       requests,
-      annotations: Context.merge(this.annotations, that.annotations)
+      annotations: Context.unsafeMake(annotations)
     })
   },
   middleware(this: RpcGroup<any>, middleware: RpcMiddleware.TagClassAny) {
