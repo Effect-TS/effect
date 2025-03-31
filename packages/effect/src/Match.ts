@@ -873,6 +873,45 @@ export const tagsExhaustive: <
   internal.tagsExhaustive
 
 /**
+ * Matches values in tuple based on their `_tag` field and requires handling of all
+ * possible cases.
+ *
+ * **Details**
+ *
+ * This function is designed for tuple of **discriminated unions** where every possible
+ * `_tag` combinations must have a corresponding handler.
+ *
+ * @example
+ * ```ts
+ * import { Match, pipe } from "effect"
+ *
+ * const match = pipe(
+ *   Match.type<[{ _tag: "A"; a: string } | { _tag: "B"; b: number }, { _tag: "B"; b: number } | { _tag: "C"; c: boolean }]>(),
+ *   Match.tagsTupleExhaustive({
+ *     AB: (a, b) => [a.a, b.b],
+ *     AC: (a, c) => [a.a, c.c],
+ *     BB: (b, b) => [b.b, b.b],
+ *     BC: (b, c) => [b.b, c.c],
+ *   })
+ * )
+ * ```
+ *
+ * @category Defining patterns
+ * @since 1.0.0
+ */
+export const tagsTupleExhaustive: <
+  R extends ReadonlyArray<{ _tag: string }>,
+  Ret,
+  P extends internal.Combine<R>,
+  M extends P & Record<string, (...args: Array<any>) => any> & Record<Exclude<keyof M, keyof P>, "Excess property">
+>(
+  fields: M
+) => <I, F, A, Pr>(
+  self: Matcher<I, F, R, A, Pr, Ret>
+) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<M[keyof M]>> : Unify<A | ReturnType<M[keyof M]>> = internal
+  .tagsTupleExhaustive
+
+/**
  * Excludes a specific value from matching while allowing all others.
  *
  * **Details**

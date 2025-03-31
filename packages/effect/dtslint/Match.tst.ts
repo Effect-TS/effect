@@ -493,6 +493,49 @@ describe("Match", () => {
     )(value)
   })
 
+  it("tagsTupleExhaustive", () => {
+    pipe(
+      Match.type<[Value, Value]>(),
+      Match.tagsTupleExhaustive({
+        AA: (A1, A2) => {
+          expect(A1).type.toBe<{ _tag: "A"; a: number }>()
+          expect(A2).type.toBe<{ _tag: "A"; a: number }>()
+          return [A1.a, A2.a] as const
+        },
+        AB: (A, B) => {
+          expect(A).type.toBe<{ _tag: "A"; a: number }>()
+          expect(B).type.toBe<{ _tag: "B"; b: number }>()
+          return [A.a, "B"] as const
+        },
+        BA: (B, A) => {
+          expect(A).type.toBe<{ _tag: "A"; a: number }>()
+          expect(B).type.toBe<{ _tag: "B"; b: number }>()
+          return ["B", A.a] as const
+        },
+        BB: (B1, B2) => {
+          expect(B1).type.toBe<{ _tag: "B"; b: number }>()
+          expect(B2).type.toBe<{ _tag: "B"; b: number }>()
+          return ["B", "B"] as const
+        }
+      })
+    )([value, value])
+    expect().type.toBe<
+      readonly [number, number] | readonly [number, "B"] | readonly ["B", number] | readonly ["B", "B"]
+    >()
+
+    pipe(
+      Match.type<[Value, Value]>(),
+      Match.tagsTupleExhaustive({
+        AA: (_) => _.a,
+        BA: () => "B",
+        AB: () => "B",
+        BB: () => "B",
+        // @ts-expect-error: Type '() => boolean' is not assignable to type '"Excess property"'
+        C: () => false
+      })
+    )([value, value])
+  })
+
   it("tag", () => {
     expect(
       pipe(

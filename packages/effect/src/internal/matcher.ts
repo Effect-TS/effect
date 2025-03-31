@@ -14,6 +14,7 @@ import type {
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Predicate from "../Predicate.js"
+import type * as T from "../Types.js"
 import type { Unify } from "../Unify.js"
 
 /** @internal */
@@ -466,6 +467,45 @@ export const tags = discriminators("_tag")
 
 /** @internal */
 export const tagsExhaustive = discriminatorsExhaustive("_tag")
+
+export type Combine<
+  A extends ReadonlyArray<{ _tag: string }>,
+  Result extends Record<string, ReadonlyArray<{ _tag: string }>> = {}
+> = T.Simplify<
+  T.UnionToIntersection<
+    A extends readonly [infer Head extends { _tag: string }, ...infer Tail extends ReadonlyArray<{ _tag: string }>]
+      ? Head extends Head ? {} extends Result ? Combine<Tail, Record<Head["_tag"], [Head]>>
+        : Combine<
+          Tail,
+          {
+            [K in keyof Result as `${K & string}${Head["_tag"]}`]: [
+              ...Result[K],
+              Head
+            ]
+          }
+        >
+      : never
+      : { [K in keyof Result]: (...args: Result[K]) => any }
+  >
+>
+/** @internal */
+export const tagsTupleExhaustive: <
+  R extends ReadonlyArray<{ _tag: string }>,
+  Ret,
+  P extends Combine<R>,
+  M extends P & Record<string, (...args: Array<any>) => any> & Record<Exclude<keyof M, keyof P>, "Excess property">
+>(
+  fields: M
+) => <I, F, A, Pr>(
+  self: Matcher<I, F, R, A, Pr, Ret>
+) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<M[keyof M]>> : Unify<A | ReturnType<M[keyof M]>> =
+  (fields: object) => (matcher: any) => {
+    const predicate = makeWhen(
+      (tuple: unknown) => Array.isArray(tuple) && tuple.reduce((acc, tuple) => acc + tuple["_tag"], "") in fields,
+      (data: any) => (fields as any)[(data as Array<any>).reduce((acc, el) => acc + el["_tag"], "")](...data)
+    )
+    return exhaustive(matcher.add(predicate))
+  }
 
 /** @internal */
 export const not = <

@@ -7,6 +7,7 @@ import {
   assertRight,
   assertSome,
   assertTrue,
+  deepStrictEqual,
   doesNotThrow,
   strictEqual,
   throws
@@ -619,6 +620,32 @@ describe("Match", () => {
 
     strictEqual(match({ _tag: "A", a: 1 }), 1)
     strictEqual(match({ _tag: "B", b: 1 }), "B")
+  })
+
+  it("tagsExhaustive", () => {
+    type AB = { _tag: "A"; a: number } | { _tag: "B"; b: number }
+    const match = pipe(
+      M.type<[AB, AB]>(),
+      M.tagsTupleExhaustive({
+        AA: (a1, a2) => [a1.a, a2.a],
+        AB: (a, b) => [a.a, b.b],
+        BA: (b, a) => [b.b, a.a],
+        BB: (b1, b2) => [b1.b, b2.b]
+      })
+    )
+    M.value([Option.some(1), Either.left(33)]).pipe(
+      M.tagsTupleExhaustive({
+        NoneLeft: (none, left) => {}, // (none: Option.None<number>, left: Either.Left<number, never>) => void
+        NoneRight: (none, right) => {}, // (none: Option.None<number>, left: Either.Right<number, never>) => void
+        SomeLeft: (some, left) => {}, // (none: Option.Some<number>, left: Either.Left<number, never>) => void
+        SomeRight: (some, right) => {} // (none: Option.Some<number>, left: Either.Right<number, never>) => void
+      })
+    )
+
+    deepStrictEqual(match([{ _tag: "A", a: 1 }, { _tag: "A", a: 2 }]), [1, 2])
+    deepStrictEqual(match([{ _tag: "A", a: 3 }, { _tag: "B", b: 4 }]), [3, 4])
+    deepStrictEqual(match([{ _tag: "B", b: 5 }, { _tag: "A", a: 6 }]), [5, 6])
+    deepStrictEqual(match([{ _tag: "B", b: 7 }, { _tag: "B", b: 8 }]), [7, 8])
   })
 
   it("valueTags", () => {
