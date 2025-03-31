@@ -158,7 +158,7 @@ export declare namespace SaveResult {
    * @category SaveResult
    */
   export interface Constructor extends Data.TaggedEnum.WithGenerics<1> {
-    readonly taggedEnum: SaveResult<this["A"]>
+    readonly taggedEnum: SaveResult<this["A"] extends Rpc.Any ? this["A"] : never>
   }
 }
 

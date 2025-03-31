@@ -309,10 +309,10 @@ export declare namespace TaggedEnum {
     readonly taggedEnum: { readonly _tag: string }
     readonly numberOfGenerics: Count
 
-    readonly A: any
-    readonly B: any
-    readonly C: any
-    readonly D: any
+    readonly A: unknown
+    readonly B: unknown
+    readonly C: unknown
+    readonly D: unknown
   }
 
   /**
