@@ -557,9 +557,9 @@ export const Class: PipeableConstructor = (function() {
  * @since 3.15.0
  * @category Mixins
  */
-export const pipeable = <TBase extends Ctor>(Base: TBase) =>
+export const pipeable = <TBase extends Ctor>(Base: TBase): TBase & PipeableConstructor =>
   class extends Base {
     pipe() {
       return pipeArguments(this, arguments)
     }
-  } as any as TBase & PipeableConstructor
+  }
