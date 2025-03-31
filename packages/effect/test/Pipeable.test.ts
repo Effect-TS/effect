@@ -77,7 +77,7 @@ describe("Pipeable", () => {
         return this.a
       }
     }
-    class B extends Pipeable.pipeable(A) {
+    class B extends Pipeable.Class(A) {
       constructor(private b: string) {
         super(b.length)
       }
@@ -93,7 +93,7 @@ describe("Pipeable", () => {
     deepStrictEqual(b.pipe((x) => x.methodB()), ["bb", 2])
   })
   it("Class", () => {
-    class A extends Pipeable.Class {
+    class A extends Pipeable.Class() {
       constructor(public a: number) {
         super()
       }
@@ -104,7 +104,7 @@ describe("Pipeable", () => {
     const a = new A(2)
 
     assertInstanceOf(a, A)
-    assertInstanceOf(a, Pipeable.Class)
+    assertInstanceOf(a, Pipeable.Class())
     deepStrictEqual(a.methodA(), 2)
     deepStrictEqual(a.pipe((x) => x.methodA()), 2)
   })

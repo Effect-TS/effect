@@ -543,11 +543,7 @@ export const Prototype: Pipeable = {
   }
 }
 
-/**
- * @since 3.15.0
- * @category Constructors
- */
-export const Class: PipeableConstructor = (function() {
+const Base: PipeableConstructor = (function() {
   function PipeableBase() {}
   PipeableBase.prototype = Prototype
   return PipeableBase as any
@@ -555,11 +551,16 @@ export const Class: PipeableConstructor = (function() {
 
 /**
  * @since 3.15.0
- * @category Mixins
+ * @category Constructors
  */
-export const pipeable = <TBase extends Ctor>(Base: TBase): TBase & PipeableConstructor =>
-  class extends Base {
-    pipe() {
-      return pipeArguments(this, arguments)
+export const Class: {
+  (): PipeableConstructor
+  <TBase extends Ctor>(klass: TBase): TBase & PipeableConstructor
+} = (klass?: Ctor) =>
+  klass ?
+    class extends klass {
+      pipe() {
+        return pipeArguments(this, arguments)
+      }
     }
-  }
+    : Base
