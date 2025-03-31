@@ -266,7 +266,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
             context,
             resume(exit) {
               resume(exit)
-              if (!fiber.unsafePoll()) {
+              if (fiber && !fiber.unsafePoll()) {
                 parentFiber.currentScheduler.scheduleTask(() => {
                   fiber.unsafeInterruptAsFork(parentFiber.id())
                 }, 0)
