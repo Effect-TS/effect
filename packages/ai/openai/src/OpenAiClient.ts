@@ -284,37 +284,42 @@ export class StreamChunk extends Data.Class<{
    * @since 1.0.0
    */
   get text(): Option.Option<string> {
-    return this.parts[0]?._tag === "Content" ? Option.some(this.parts[0].content) : Option.none()
+    const firstContentPart = this.parts.find((part) => part._tag === "Content")
+    return firstContentPart ? Option.some(firstContentPart.content) : Option.none()
   }
   /**
    * @since 1.0.0
    */
   get asAiResponse(): AiResponse.AiResponse {
-    if (this.parts.length === 0) {
+    const aiResponseParts: Array<AiResponse.Part> = []
+
+    for (let i = 0; i < this.parts.length; i++) {
+      const part = this.parts[i]
+      switch (part._tag) {
+        case "Content":
+          aiResponseParts.push(AiResponse.TextPart.fromContent(part.content))
+          break
+        case "ToolCall":
+          aiResponseParts.push(AiResponse.ToolCallPart.fromUnknown({
+            id: part.id,
+            name: part.name,
+            params: part.arguments
+          }))
+          break
+      }
+    }
+
+    if (aiResponseParts.length === 0) {
       return AiResponse.AiResponse.fromText({
         role: AiRole.model,
         content: ""
       })
     }
-    const part = this.parts[0]
-    switch (part._tag) {
-      case "Content":
-        return AiResponse.AiResponse.fromText({
-          role: AiRole.model,
-          content: part.content
-        })
-      case "ToolCall":
-        return new AiResponse.AiResponse({
-          role: AiRole.model,
-          parts: Chunk.of(AiResponse.ToolCallPart.fromUnknown({
-            id: part.id,
-            name: part.name,
-            params: part.arguments
-          }))
-        })
-      case "Usage":
-        return AiResponse.AiResponse.empty
-    }
+
+    return new AiResponse.AiResponse({
+      role: AiRole.model,
+      parts: Chunk.unsafeFromArray(aiResponseParts)
+    })
   }
 }
 
