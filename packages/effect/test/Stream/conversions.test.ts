@@ -73,4 +73,13 @@ describe("Stream", () => {
       )
       deepStrictEqual(queue, Exit.die(new Cause.RuntimeException("die")))
     }))
+
+  it("toAsyncIterable", async () => {
+    const stream = Stream.make(1, 2, 3)
+    const results: Array<number> = []
+    for await (const result of Stream.toAsyncIterable(stream)) {
+      results.push(result)
+    }
+    deepStrictEqual(results, [1, 2, 3])
+  })
 })
