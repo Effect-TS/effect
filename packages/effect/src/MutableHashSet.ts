@@ -157,6 +157,7 @@ const fromHashMap = <V>(
  * Time complexity: **`O(1)`**
  *
  * @memberof MutableHashSet
+ * @since 2.0.0
  * @category constructors
  * @example
  *
