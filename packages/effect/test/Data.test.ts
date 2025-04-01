@@ -126,6 +126,15 @@ describe("Data", () => {
     assertTrue(Equal.equals(a, b))
   })
 
+  it("URL compares by value", () => {
+    const a = Data.struct({ date: new URL("http://example.com") })
+    const b = Data.struct({ date: new URL("http://example.com") })
+    const c = Data.struct({ date: new URL("https://effect.website") })
+
+    assertTrue(Equal.equals(a, b))
+    assertFalse(Equal.equals(a, c))
+  })
+
   it("tagged class", () => {
     class Person extends Data.TaggedClass("Person")<{ name: string }> {}
     const a = new Person({ name: "Mike" })
