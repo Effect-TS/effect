@@ -942,6 +942,8 @@ export * as NonEmptyIterable from "./NonEmptyIterable.js"
  */
 export * as Number from "./Number.js"
 
+export * as Int from "./Int.js"
+
 /**
  * @since 2.0.0
  */
