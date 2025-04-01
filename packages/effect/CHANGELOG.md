@@ -1,5 +1,13 @@
 # effect
 
+## 3.14.5
+
+### Patch Changes
+
+- [#4676](https://github.com/Effect-TS/effect/pull/4676) [`40dbfef`](https://github.com/Effect-TS/effect/commit/40dbfeff239b6e567706752114f31b2fce7de4e3) Thanks @tim-smart! - allow Effect.fnUntraced to return non-effects
+
+- [#4682](https://github.com/Effect-TS/effect/pull/4682) [`5a5ebdd`](https://github.com/Effect-TS/effect/commit/5a5ebdddfaddd259538b4599a6676281faca778e) Thanks @thewilkybarkid! - ensure Equal considers URL by value
+
 ## 3.14.4
 
 ### Patch Changes

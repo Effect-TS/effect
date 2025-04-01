@@ -1,5 +1,19 @@
 # @effect/ai-openai
 
+## 0.16.6
+
+### Patch Changes
+
+- [#4630](https://github.com/Effect-TS/effect/pull/4630) [`3ed0b56`](https://github.com/Effect-TS/effect/commit/3ed0b56ae69c20c4bd82dc9c0280b56768dfdd2a) Thanks @mattrossman! - Handle arbitrary length StreamChunkPart in OpenAiClient
+
+- [#4638](https://github.com/Effect-TS/effect/pull/4638) [`d46d2c6`](https://github.com/Effect-TS/effect/commit/d46d2c6f4084dfc45c8cc78da0e89b92aeedf261) Thanks @IMax153! - Manually fix schema for `CreateChatCompletionResponse.logprobs` until https://github.com/openai/openai-openapi/issues/433 is addressed
+
+- Updated dependencies [[`40dbfef`](https://github.com/Effect-TS/effect/commit/40dbfeff239b6e567706752114f31b2fce7de4e3), [`85fba81`](https://github.com/Effect-TS/effect/commit/85fba815ac07eb13d4227a69ac76a18e4b94df18), [`5a5ebdd`](https://github.com/Effect-TS/effect/commit/5a5ebdddfaddd259538b4599a6676281faca778e)]:
+  - effect@3.14.5
+  - @effect/platform@0.80.5
+  - @effect/ai@0.13.5
+  - @effect/experimental@0.44.5
+
 ## 0.16.5
 
 ### Patch Changes
