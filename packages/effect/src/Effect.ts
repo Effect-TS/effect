@@ -14110,6 +14110,225 @@ export namespace fn {
       i: (_: H, ...args: Args) => Eff
     ): (...args: Args) => Eff
   }
+
+  /**
+   * @since 3.11.0
+   * @category Models
+   */
+  export type Untraced = {
+    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
+      body: (...args: Args) => Generator<Eff, AEff, never>
+    ): (...args: Args) => Effect<
+      AEff,
+      [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+      [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+    >
+    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A>(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >,
+        ...args: Args
+      ) => A
+    ): (...args: Args) => A
+    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A, B>(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B
+    ): (...args: Args) => B
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C
+    ): (...args: Args) => C
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D
+    ): (...args: Args) => D
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E
+    ): (...args: Args) => E
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F
+    ): (...args: Args) => F
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G
+    ): (...args: Args) => G
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H
+    ): (...args: Args) => H
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I
+    ): (...args: Args) => I
+  }
 }
 
 /**
@@ -14372,4 +14591,4 @@ function fnApply(options: {
  * @since 3.12.0
  * @category Tracing
  */
-export const fnUntraced: fn.Gen = core.fnUntraced
+export const fnUntraced: fn.Untraced = core.fnUntraced
