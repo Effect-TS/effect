@@ -281,7 +281,10 @@ export const raw = (body: unknown, options?: ServerResponse.Options | undefined)
     options?.statusText,
     options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
     options?.cookies ?? Cookies.empty,
-    internalBody.raw(body)
+    internalBody.raw(body, {
+      contentType: options?.contentType,
+      contentLength: options?.contentLength
+    })
   )
 
 /** @internal */
