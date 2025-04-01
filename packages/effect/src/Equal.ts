@@ -53,6 +53,8 @@ function compareBoth(self: unknown, that: unknown): boolean {
         }
       } else if (self instanceof Date && that instanceof Date) {
         return self.toISOString() === that.toISOString()
+      } else if (self instanceof URL && that instanceof URL) {
+        return self.href === that.href
       }
     }
     if (structuralRegionState.enabled) {

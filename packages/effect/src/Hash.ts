@@ -54,6 +54,8 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         return string("null")
       } else if (self instanceof Date) {
         return hash(self.toISOString())
+      } else if (self instanceof URL) {
+        return hash(self.href)
       } else if (isHash(self)) {
         return self[symbol]()
       } else {
