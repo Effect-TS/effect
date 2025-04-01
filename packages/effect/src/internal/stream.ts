@@ -7201,6 +7201,74 @@ export const transduce = dual<
 )
 
 /** @internal */
+export const toAsyncIterableRuntime = dual<
+  <A, XR>(
+    runtime: Runtime.Runtime<XR>
+  ) => <E, R extends XR>(self: Stream.Stream<A, E, R>) => AsyncIterable<A>,
+  <A, E, XR, R extends XR>(
+    self: Stream.Stream<A, E, R>,
+    runtime: Runtime.Runtime<XR>
+  ) => AsyncIterable<A>
+>(
+  (args) => isStream(args[0]),
+  <A, E, XR, R extends XR>(
+    self: Stream.Stream<A, E, R>,
+    runtime: Runtime.Runtime<XR>
+  ): AsyncIterable<A> => {
+    const runFork = Runtime.runFork(runtime)
+    return {
+      [Symbol.asyncIterator]() {
+        let currentResolve: ((value: IteratorResult<A>) => void) | undefined = undefined
+        let currentReject: ((reason: any) => void) | undefined = undefined
+        let fiber: Fiber.RuntimeFiber<void, E> | undefined = undefined
+        const latch = Effect.unsafeMakeLatch(false)
+        return {
+          next() {
+            if (!fiber) {
+              fiber = runFork(runForEach(self, (value) =>
+                latch.whenOpen(Effect.sync(() => {
+                  latch.unsafeClose()
+                  currentResolve!({ done: false, value })
+                  currentResolve = currentReject = undefined
+                }))))
+              fiber.addObserver((exit) => {
+                fiber = Effect.runFork(latch.whenOpen(Effect.sync(() => {
+                  if (exit._tag === "Failure") {
+                    currentReject!(Cause.squash(exit.cause))
+                  } else {
+                    currentResolve!({ done: true, value: void 0 })
+                  }
+                  currentResolve = currentReject = undefined
+                })))
+              })
+            }
+            return new Promise<IteratorResult<A>>((resolve, reject) => {
+              currentResolve = resolve
+              currentReject = reject
+              latch.unsafeOpen()
+            })
+          },
+          return() {
+            if (!fiber) return Promise.resolve({ done: true, value: void 0 })
+            return Effect.runPromise(Effect.as(Fiber.interrupt(fiber), { done: true, value: void 0 }))
+          }
+        }
+      }
+    }
+  }
+)
+
+/** @internal */
+export const toAsyncIterable = <A, E>(self: Stream.Stream<A, E>): AsyncIterable<A> =>
+  toAsyncIterableRuntime(self, Runtime.defaultRuntime)
+
+/** @internal */
+export const toAsyncIterableEffect = <A, E, R>(
+  self: Stream.Stream<A, E, R>
+): Effect.Effect<AsyncIterable<A>, never, R> =>
+  Effect.map(Effect.runtime<R>(), (runtime) => toAsyncIterableRuntime(self, runtime))
+
+/** @internal */
 export const unfold = <S, A>(s: S, f: (s: S) => Option.Option<readonly [A, S]>): Stream.Stream<A> =>
   unfoldChunk(s, (s) => pipe(f(s), Option.map(([a, s]) => [Chunk.of(a), s])))
 
