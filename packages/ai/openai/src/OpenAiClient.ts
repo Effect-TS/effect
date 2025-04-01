@@ -318,7 +318,7 @@ export class StreamChunk extends Data.Class<{
 
     return new AiResponse.AiResponse({
       role: AiRole.model,
-      parts: Chunk.fromIterable(aiResponseParts)
+      parts: Chunk.unsafeFromArray(aiResponseParts)
     })
   }
 }
