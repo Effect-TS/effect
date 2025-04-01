@@ -5344,6 +5344,23 @@ export const toAsyncIterableRuntime: {
 } = internal.toAsyncIterableRuntime
 
 /**
+ * Converts the stream to a `AsyncIterable` capturing the required dependencies.
+ *
+ * @since 3.15.0
+ * @category destructors
+ */
+export const toAsyncIterableEffect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<AsyncIterable<A>, never, R> =
+  internal.toAsyncIterableEffect
+
+/**
+ * Converts the stream to a `AsyncIterable`.
+ *
+ * @since 3.15.0
+ * @category destructors
+ */
+export const toAsyncIterable: <A, E>(self: Stream<A, E>) => AsyncIterable<A> = internal.toAsyncIterable
+
+/**
  * Applies the transducer to the stream and emits its outputs.
  *
  * @since 2.0.0

@@ -7229,18 +7229,16 @@ export const toAsyncIterableRuntime = dual<
                 latch.whenOpen(Effect.sync(() => {
                   latch.unsafeClose()
                   currentResolve!({ done: false, value })
-                  currentResolve = undefined
-                  currentReject = undefined
+                  currentResolve = currentReject = undefined
                 }))))
               fiber.addObserver((exit) => {
                 fiber = Effect.runFork(latch.whenOpen(Effect.sync(() => {
                   if (exit._tag === "Failure") {
-                    currentReject!(exit.cause)
+                    currentReject!(Cause.squash(exit.cause))
                   } else {
                     currentResolve!({ done: true, value: void 0 })
                   }
-                  currentResolve = undefined
-                  currentReject = undefined
+                  currentResolve = currentReject = undefined
                 })))
               })
             }
@@ -7259,6 +7257,16 @@ export const toAsyncIterableRuntime = dual<
     }
   }
 )
+
+/** @internal */
+export const toAsyncIterable = <A, E>(self: Stream.Stream<A, E>): AsyncIterable<A> =>
+  toAsyncIterableRuntime(self, Runtime.defaultRuntime)
+
+/** @internal */
+export const toAsyncIterableEffect = <A, E, R>(
+  self: Stream.Stream<A, E, R>
+): Effect.Effect<AsyncIterable<A>, never, R> =>
+  Effect.map(Effect.runtime<R>(), (runtime) => toAsyncIterableRuntime(self, runtime))
 
 /** @internal */
 export const unfold = <S, A>(s: S, f: (s: S) => Option.Option<readonly [A, S]>): Stream.Stream<A> =>
