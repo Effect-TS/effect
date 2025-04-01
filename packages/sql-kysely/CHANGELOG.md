@@ -1,5 +1,15 @@
 # @effect/sql-kysely
 
+## 0.29.5
+
+### Patch Changes
+
+- [#4661](https://github.com/Effect-TS/effect/pull/4661) [`e1dfdf1`](https://github.com/Effect-TS/effect/commit/e1dfdf123ee3927b9e57b4a184bfa4b5b530e546) Thanks @chrislambe! - prevent error caused by attempted creation of null proxy
+
+- Updated dependencies [[`40dbfef`](https://github.com/Effect-TS/effect/commit/40dbfeff239b6e567706752114f31b2fce7de4e3), [`5a5ebdd`](https://github.com/Effect-TS/effect/commit/5a5ebdddfaddd259538b4599a6676281faca778e)]:
+  - effect@3.14.5
+  - @effect/sql@0.33.5
+
 ## 0.29.4
 
 ### Patch Changes

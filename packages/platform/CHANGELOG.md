@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.80.5
+
+### Patch Changes
+
+- [#4642](https://github.com/Effect-TS/effect/pull/4642) [`85fba81`](https://github.com/Effect-TS/effect/commit/85fba815ac07eb13d4227a69ac76a18e4b94df18) Thanks @nounder! - Fix options in `HttpServerResponse.raw`
+
+- Updated dependencies [[`40dbfef`](https://github.com/Effect-TS/effect/commit/40dbfeff239b6e567706752114f31b2fce7de4e3), [`5a5ebdd`](https://github.com/Effect-TS/effect/commit/5a5ebdddfaddd259538b4599a6676281faca778e)]:
+  - effect@3.14.5
+
 ## 0.80.4
 
 ### Patch Changes
