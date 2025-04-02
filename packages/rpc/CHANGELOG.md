@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.55.7
+
+### Patch Changes
+
+- [#4690](https://github.com/Effect-TS/effect/pull/4690) [`4414042`](https://github.com/Effect-TS/effect/commit/44140423a2fb185f92f7db4d5b383f9b62a97bf9) Thanks @tim-smart! - fix assignability in RpcGroup.merge
+
 ## 0.55.6
 
 ### Patch Changes
