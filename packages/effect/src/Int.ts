@@ -24,7 +24,7 @@ import type * as Predicate from "./Predicate.js"
 export type Int = number & Brand.Brand<"Int">
 
 const Int = Brand.refined<Int>(
-  (n) => Number.isInteger(n),
+  (n) => _Number.isNumber(n) && !Number.isNaN(n) && Number.isInteger(n),
   (n) => Brand.error(`Expected ${n} to be an integer`)
 )
 

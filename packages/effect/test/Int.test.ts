@@ -9,8 +9,8 @@ describe("Int", () => {
     const zero = 0
 
     strictEqual(Int.of(zero), zero)
-
     throws(() => Int.of(float))
+    throws(() => Int.of(Number.NaN))
   })
 
   it("empty", () => {
