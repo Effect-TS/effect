@@ -1,6 +1,7 @@
 /** @module Int */
 
 import * as Brand from "./Brand.js"
+import { dual } from "./Function.js"
 import * as _Number from "./Number.js"
 import type * as Predicate from "./Predicate.js"
 
@@ -52,6 +53,8 @@ const Int = Brand.refined<Int>(
 
 export const of: (n: number) => Int = (n) => Int(n)
 
+export const empty: Int = of(0)
+
 /**
  * Type guard to test if a value is an `Int`.
  *
@@ -83,3 +86,88 @@ export const of: (n: number) => Int = (n) => Int(n)
  * @returns `true` if the value is an `Int`, `false` otherwise.
  */
 export const isInt: Predicate.Refinement<unknown, Int> = (input) => _Number.isNumber(input) && Int.is(input)
+
+/**
+ * Provides an addition operation on `Int`.
+ *
+ * It supports multiple method signatures, allowing for both curried and direct
+ * invocation styles with integers and floating-point numbers.
+ *
+ * @memberOf Int
+ * @category: math
+ */
+export const sum: {
+  /**
+   * Sum curried function in the set of integers.
+   *
+   * **data-last api** a.k.a. pipeable
+   *
+   * ```ts
+   * import { pipe, Int } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.of(10),
+   *     Int.add(-10),
+   *     Int.add(Int.empty), // 0
+   *     Int.add(1)
+   *   ),
+   *   1
+   * )
+   * ```
+   */
+  (that: Int): (self: Int) => Int
+
+  /**
+   * Sum curried function in the set of numbers. It allows you to start from an
+   * `Int` and add a number to it.
+   *
+   * @example
+   *
+   * ```ts
+   * import { pipe, Int, Number } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.of(10),
+   *     Int.add(-10.5), // now the output is no longer an `Int`, but it has been widened to a `number`
+   *     Number.add(0)
+   *   ),
+   *   -0.5
+   * )
+   * ```
+   */
+  // (that: number): (self: Int) => number
+
+  /**
+   * **data first api**
+   *
+   * ```ts
+   * import { pipe, Int } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(Int.add(Int.of(10), Int.of(-10)), Int.empty)
+   * ```
+   */
+  (self: Int, that: Int): Int
+  /**
+   * Sum in the set of Ints and numbers. It allows you to start from an `Int`
+   * and add a number to it. The result will be a number.
+   *
+   * @example
+   *
+   * ```ts
+   * import { pipe, Int, Number } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(Int.add(Int.of(10), -10.5), -0.5)
+   * ```
+   *
+   * @param self - The first term of kind `Int`.
+   * @param that - The second term of kind `number`.
+   * @returns A `number`
+   */
+  // (self: Int, that: number): number
+} = dual(2, (self: Int, that: Int): Int => of(self + that))
