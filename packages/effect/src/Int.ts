@@ -223,3 +223,61 @@ export const subtract: {
    */
   (minuend: Int, subtrahend: Int): Int
 } = dual(2, (minuend: Int, subtrahend: Int): Int => of(minuend - subtrahend))
+
+/**
+ * Provides a multiplication operation on `Int`s.
+ *
+ * @memberof Int
+ * @category Math
+ */
+export const multiply: {
+  /**
+   * Returns a function that multiplies a specified `multiplier` with a given
+   * `multiplicand`.
+   *
+   * @example
+   *
+   * ```ts
+   * import { pipe, Int } from "effect"
+   * import assert from "node:assert/strict"
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.of(2),
+   *     Int.multiply(Int.of(3)) //
+   *   ),
+   *   6
+   * )
+   * ```
+   *
+   * @param multiplicand - The integer to multiply with the `multiplier` when
+   *   the resultant function is invoked.
+   * @returns A function that takes a `multiplier` and returns the `product` of
+   *   multiplying the `multiplier` with the `multiplicand`.
+   */
+  (multiplicand: Int): (multiplier: Int) => Int
+
+  /**
+   * Multiplies two integers and returns the resulting `product`.
+   *
+   * @example
+   *
+   * ```ts
+   * import { Int } from "effect"
+   * import assert from "node:assert/strict"
+   *
+   * assert.equal(
+   *   Int.multiply(Int.of(10), Int.of(-10)), //
+   *   -100
+   * )
+   * ```
+   *
+   * @param multiplier - The first integer to multiply.
+   * @param multiplicand - The second integer to multiply.
+   * @returns The `product` of the multiplier and the multiplicand.
+   */
+  (multiplier: Int, multiplicand: Int): Int
+} = dual(
+  2,
+  (multiplier: Int, multiplicand: Int): Int => of(multiplier * multiplicand)
+)

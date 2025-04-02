@@ -45,4 +45,35 @@ describe("Int", () => {
     strictEqual(Int.subtract(three, Int.unit), two)
     strictEqual(Int.subtract(Int.unit, three), -2)
   })
+
+  it("multiply", () => {
+    strictEqual(pipe(Int.of(2), Int.multiply(Int.of(3))), 6)
+    strictEqual(Int.multiply(Int.of(2), Int.of(3)), 6)
+
+    strictEqual(Int.multiply(Int.of(10), Int.of(-10)), -100)
+
+    strictEqual(
+      pipe(Int.of(2), Int.multiply(Int.of(3))),
+      pipe(Int.of(3), Int.multiply(Int.of(2))),
+      "multiplication under Int is commutative" // Doha !
+    )
+
+    strictEqual(
+      pipe(Int.of(2), Int.multiply(Int.of(3)), Int.multiply(Int.of(4))),
+      pipe(Int.of(2), Int.multiply(Int.of(4)), Int.multiply(Int.of(3))),
+      "multiplication under Int is associative" // Doha !
+    )
+
+    strictEqual(
+      Int.multiply(Int.of(2), Int.unit),
+      Int.of(2),
+      "multiplication with the identity element" /* Doha ! */
+    )
+
+    strictEqual(
+      Int.multiply(Int.of(2), Int.empty),
+      Int.empty,
+      "multiplication by zero" /* Doha ! */
+    )
+  })
 })
