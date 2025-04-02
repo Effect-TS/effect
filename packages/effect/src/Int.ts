@@ -173,3 +173,38 @@ export const sum: {
    */
   // (self: Int, that: number): number
 } = dual(2, (self: Int, that: Int): Int => of(self + that))
+
+/**
+ * Provides a subtraction operation on `number`s.
+ *
+ * @memberof Int
+ * @category Math
+ */
+export const subtract: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import { pipe, Int } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(pipe(Int.of(10), Int.subtract(Int.of(10))), Int.empty)
+   * ```
+   */
+  (subtrahend: Int): (minuend: Int) => Int
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(
+   *   Int.subtract(Int.of(10), Int.of(10)), //
+   *   Int.empty
+   * )
+   * ```
+   */
+  (minuend: Int, subtrahend: Int): Int
+} = dual(2, (minuend: Int, subtrahend: Int): Int => of(minuend - subtrahend))
