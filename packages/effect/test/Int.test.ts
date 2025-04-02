@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Int, pipe } from "effect"
 
-import { assertFalse, assertTrue, strictEqual, throws } from "effect/test/util"
+import { assertFalse, assertTrue, notDeepStrictEqual, strictEqual, throws } from "effect/test/util"
 
 describe("Int", () => {
   it("of", () => {
@@ -61,6 +61,24 @@ describe("Int", () => {
 
     strictEqual(Int.subtract(three, Int.unit), two)
     strictEqual(Int.subtract(Int.unit, three), -2)
+
+    strictEqual(
+      pipe(three, Int.subtract(two)),
+      -pipe(two, Int.subtract(three)),
+      "subtraction under Int is anticommutative" // Doha !
+    )
+
+    notDeepStrictEqual(
+      pipe(three, Int.subtract(two), Int.subtract(Int.unit)),
+      pipe(two, Int.subtract(three), Int.subtract(Int.unit)),
+      "subtraction under Int is not associative" // Doha !
+    )
+
+    strictEqual(
+      pipe(Int.empty, Int.subtract(three)),
+      -three,
+      "zero is the identity element under subtraction"
+    )
   })
 
   it("multiply", () => {
