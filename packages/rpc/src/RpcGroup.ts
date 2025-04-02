@@ -48,7 +48,7 @@ export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
   /**
    * Merge this group with one or more other groups.
    */
-  merge<const Groups extends ReadonlyArray<RpcGroup<any>>>(
+  merge<const Groups extends ReadonlyArray<Any>>(
     ...groups: Groups
   ): RpcGroup<R | Rpcs<Groups[number]>>
 
@@ -113,6 +113,14 @@ export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
    * Annotate the Rpc's above this point with a context object.
    */
   annotateRpcsContext<S>(context: Context.Context<S>): RpcGroup<R>
+}
+
+/**
+ * @since 1.0.0
+ * @category groups
+ */
+export interface Any {
+  readonly [TypeId]: TypeId
 }
 
 /**
