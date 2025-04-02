@@ -39,7 +39,6 @@ const Int = Brand.refined<Int>(
  * import * as Int from "effect/Int"
  * import assert from "node:assert/strict"
  *
- * const n = Int.of(1)
  * const aFloat = 1.5
  *
  * assert.throws(() => {
