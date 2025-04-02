@@ -55,6 +55,8 @@ export const of: (n: number) => Int = (n) => Int(n)
 
 export const empty: Int = of(0)
 
+export const unit: Int = of(1)
+
 /**
  * Type guard to test if a value is an `Int`.
  *
@@ -93,7 +95,7 @@ export const isInt: Predicate.Refinement<unknown, Int> = (input) => _Number.isNu
  * It supports multiple method signatures, allowing for both curried and direct
  * invocation styles with integers and floating-point numbers.
  *
- * @memberOf Int
+ * @memberof Int
  * @category: math
  */
 export const sum: {
