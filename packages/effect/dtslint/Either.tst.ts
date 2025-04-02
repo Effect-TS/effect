@@ -121,16 +121,16 @@ describe("Either", () => {
     ).type.toBe<Either.Either<string | number, "b">>()
 
     expect(
-      Either.liftPredicate(primitiveNumber, predicateNumberOrString, (n) => {
-        expect(n).type.toBe<number>()
+      Either.liftPredicate(primitiveNumber, predicateNumberOrString, (sn) => {
+        expect(sn).type.toBe<string | number>()
         return "b" as const
       })
     ).type.toBe<Either.Either<number, "b">>()
     expect(
       pipe(
         primitiveNumber,
-        Either.liftPredicate(predicateNumberOrString, (n) => {
-          expect(n).type.toBe<number>()
+        Either.liftPredicate(predicateNumberOrString, (sn) => {
+          expect(sn).type.toBe<string | number>()
           return "b" as const
         })
       )
