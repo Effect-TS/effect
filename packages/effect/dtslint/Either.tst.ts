@@ -74,6 +74,20 @@ describe("Either", () => {
     const primitiveNumber = hole<number>()
     const stringOrNumber = hole<string | number>()
     const predicateNumberOrString = hole<Predicate.Predicate<number | string>>()
+    const refinementNumberOrStringToNumber = hole<Predicate.Refinement<number | string, number>>()
+
+    expect(
+      Either.liftPredicate(predicateNumberOrString, (sn) => {
+        expect(sn).type.toBe<string | number>()
+        return "b" as const
+      })
+    ).type.toBe<(a: string | number) => Either.Either<string | number, "b">>()
+    expect(
+      Either.liftPredicate(refinementNumberOrStringToNumber, (sn) => {
+        expect(sn).type.toBe<string | number>()
+        return "b" as const
+      })
+    ).type.toBe<(a: string | number) => Either.Either<number, "b">>()
 
     expect(
       Either.liftPredicate(
