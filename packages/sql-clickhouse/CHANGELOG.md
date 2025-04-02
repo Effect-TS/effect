@@ -1,5 +1,12 @@
 # @effect/sql-clickhouse
 
+## 0.18.9
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform-node@0.76.9
+
 ## 0.18.8
 
 ### Patch Changes
