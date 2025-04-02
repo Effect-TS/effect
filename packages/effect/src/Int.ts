@@ -96,7 +96,7 @@ export const isInt: Predicate.Refinement<unknown, Int> = (input) => _Number.isNu
  * invocation styles with integers and floating-point numbers.
  *
  * @memberof Int
- * @category: math
+ * @category Math
  */
 export const sum: {
   /**
@@ -175,13 +175,16 @@ export const sum: {
 } = dual(2, (self: Int, that: Int): Int => of(self + that))
 
 /**
- * Provides a subtraction operation on `number`s.
+ * Provides a subtraction operation on `Int`s.
  *
  * @memberof Int
  * @category Math
  */
 export const subtract: {
   /**
+   * Returns a function that subtracts a specified `subtrahend` from a given
+   * `minuend`.
+   *
    * @example
    *
    * ```ts
@@ -190,10 +193,17 @@ export const subtract: {
    *
    * assert.equal(pipe(Int.of(10), Int.subtract(Int.of(10))), Int.empty)
    * ```
+   *
+   * @param subtrahend - The integer to subtract from the `minuend` when the
+   *   resultant function is invoked.
+   * @returns A function that takes a `minuend` and returns the `difference` of
+   *   subtracting the `subtrahend` from it.
    */
   (subtrahend: Int): (minuend: Int) => Int
 
   /**
+   * Subtracts the `subtrahend` from the `minuend` and returns the difference.
+   *
    * @example
    *
    * ```ts
@@ -205,6 +215,11 @@ export const subtract: {
    *   Int.empty
    * )
    * ```
+   *
+   * @param minuend - The integer from which another integer is to be
+   *   subtracted.
+   * @param subtrahend - The integer to subtract from the minuend.
+   * @returns The difference of subtracting the subtrahend from the minuend.
    */
   (minuend: Int, subtrahend: Int): Int
 } = dual(2, (minuend: Int, subtrahend: Int): Int => of(minuend - subtrahend))
