@@ -1265,12 +1265,12 @@ describe("Effect", () => {
       return "b" as const
     })).type.toBe<Effect.Effect<string, "b">>()
 
-    expect(Effect.liftPredicate(hole<Predicate.Refinement<string | number, number>>(), (sn: string) => {
+    expect(Effect.liftPredicate(hole<Predicate.Refinement<string | number, number>>(), (sn) => {
       expect(sn).type.toBe<string | number>()
       return "b" as const
     })).type.toBe<(a: string | number) => Effect.Effect<number, "b">>()
     expect(Effect.liftPredicate(Predicate.isString, (sn) => {
-      expect(sn).type.toBe<string | number>()
+      expect(sn).type.toBe<unknown>()
       return "b" as const
     })).type.toBe<(a: unknown) => Effect.Effect<string, "b">>()
 
