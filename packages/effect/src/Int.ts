@@ -3,6 +3,7 @@
 import * as Brand from "./Brand.js"
 import { dual } from "./Function.js"
 import * as _Number from "./Number.js"
+import type { Option } from "./Option.js"
 import type * as Predicate from "./Predicate.js"
 
 /**
@@ -279,4 +280,64 @@ export const multiply: {
 } = dual(
   2,
   (multiplier: Int, multiplicand: Int): Int => of(multiplier * multiplicand)
+)
+
+/**
+ * Provides a division operation on `Int`s.
+ * It returns an `Option` containing the quotient of the division if valid,
+ * otherwise `None`.
+ *
+ * @memberof Int
+ * @category Math
+ */
+export const divide: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int, Option, pipe } from "effect"
+   * import assert from "node:assert/strict"
+   *
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     Int.of(6), //
+   *     Int.divide(Int.of(2))
+   *   ),
+   *   Option.some(3)
+   * )
+   * ```
+   *
+   * @param divisor - The number by which the dividend will be divided.
+   * @returns A function that takes a `dividend` and returns an `Option<number>`
+   *   representing the result of the division. Returns `None` if division by
+   *   zero is attempted; Otherwise, returns `Some<number>` with the result.
+   */
+  (divisor: Int): (dividend: Int) => Option<number>
+
+  /**
+   * Divides the `dividend` by the `divisor` and returns an `Option` containing
+   * the `quotient`. If the `divisor` is zero, returns `None` to signify an invalid
+   * operation.
+   *
+   * @example
+   *
+   * ```ts
+   * import { Int, Option } from "effect"
+   * import assert from "node:assert/strict"
+   *
+   * assert.deepStrictEqual(
+   *   Int.divide(Int.of(6), Int.of(2)),
+   *   Option.some(3)
+   * )
+   * ```
+   *
+   * @param dividend - The Int to be divided.
+   * @param divisor - The Int by which the dividend is divided.
+   * @returns An `Option` containing the quotient of the division if valid,
+   *   otherwise `None`.
+   */
+  (dividend: Int, divisor: Int): Option<number>
+} = dual(
+  2,
+  (dividend: Int, divisor: Int): Option<number> => _Number.divide(dividend, divisor)
 )

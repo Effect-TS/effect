@@ -1,7 +1,15 @@
 import { describe, it } from "@effect/vitest"
-import { Int, pipe } from "effect"
+import { Int, Number as _Number, Option, pipe } from "effect"
 
-import { assertFalse, assertTrue, notDeepStrictEqual, strictEqual, throws } from "effect/test/util"
+import {
+  assertFalse,
+  assertNone,
+  assertSome,
+  assertTrue,
+  notDeepStrictEqual,
+  strictEqual,
+  throws
+} from "effect/test/util"
 
 describe("Int", () => {
   it("of", () => {
@@ -110,5 +118,29 @@ describe("Int", () => {
       Int.empty,
       "multiplication by zero" /* Doha ! */
     )
+  })
+
+  it("divide", () => {
+    assertSome(pipe(Int.of(6), Int.divide(Int.of(2))), 3)
+
+    notDeepStrictEqual(
+      pipe(Int.of(6), Int.divide(Int.of(2))),
+      pipe(Int.of(2), Int.divide(Int.of(6))),
+      "division under Int is not commutative" // Doha !
+    )
+
+    notDeepStrictEqual(
+      pipe(
+        Int.divide(Int.of(24), Int.of(6)), //
+        Option.flatMap((n: number) => _Number.divide(n, Int.of(2)))
+      ),
+      pipe(
+        Int.divide(Int.of(6), Int.of(2)),
+        Option.flatMap(_Number.divide(Int.of(24)))
+      ),
+      "division under Int is not associative" // Doha !
+    )
+
+    assertNone(pipe(Int.of(6), Int.divide(Int.of(0))))
   })
 })
