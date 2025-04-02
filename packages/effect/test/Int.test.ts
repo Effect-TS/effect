@@ -26,8 +26,25 @@ describe("Int", () => {
 
   it("sum", () => {
     strictEqual(pipe(Int.of(100), Int.sum(Int.of(-50))), Int.of(50))
-
     strictEqual(Int.sum(Int.of(-50), Int.of(100)), Int.of(50))
+
+    strictEqual(
+      pipe(Int.of(100), Int.sum(Int.of(-50))),
+      pipe(Int.of(-50), Int.sum(Int.of(100))),
+      "addition under Int is `commutative`" // Doha !
+    )
+
+    strictEqual(
+      pipe(Int.of(100), Int.sum(Int.of(-50)), Int.sum(Int.of(-50))),
+      pipe(Int.of(-50), Int.sum(Int.of(100)), Int.sum(Int.of(-50))),
+      "addition under Int is `associative`" // Doha !
+    )
+
+    strictEqual(
+      pipe(Int.empty, Int.sum(Int.of(100))),
+      Int.of(100),
+      "'zeo' is the identity element for addition"
+    ) // Doha !
 
     throws(
       // @ts-expect-error - can't pass a float
@@ -67,7 +84,7 @@ describe("Int", () => {
     strictEqual(
       Int.multiply(Int.of(2), Int.unit),
       Int.of(2),
-      "multiplication with the identity element" /* Doha ! */
+      "`1` is the identity element under multiplication" /* Doha ! */
     )
 
     strictEqual(
