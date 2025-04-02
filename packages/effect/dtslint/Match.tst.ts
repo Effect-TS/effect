@@ -494,7 +494,7 @@ describe("Match", () => {
   })
 
   it("tagsTupleExhaustive", () => {
-    pipe(
+    const result = pipe(
       Match.type<[Value, Value]>(),
       Match.tagsTupleExhaustive({
         AA: (A1, A2) => {
@@ -519,7 +519,8 @@ describe("Match", () => {
         }
       })
     )([value, value])
-    expect().type.toBe<
+
+    expect(result).type.toBe<
       readonly [number, number] | readonly [number, "B"] | readonly ["B", number] | readonly ["B", "B"]
     >()
 
