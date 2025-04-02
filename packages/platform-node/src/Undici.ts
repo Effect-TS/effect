@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 
+export { default } from "undici"
 /**
  * @since 1.0.0
  * @category undici
  */
-export { default } from "undici"
 export * from "undici"
