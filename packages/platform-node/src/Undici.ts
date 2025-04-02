@@ -6,4 +6,5 @@
  * @since 1.0.0
  * @category undici
  */
+export { default } from "undici"
 export * from "undici"
