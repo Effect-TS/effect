@@ -1,13 +1,13 @@
 /** @module Int */
 
-import * as brand from "./Brand.js"
-import * as data from "./Data.js"
-import type * as equivalence from "./Equivalence.js"
+import * as Brand from "./Brand.js"
+import * as Data from "./Data.js"
+import type * as _Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
-import * as number from "./Number.js"
-import type * as option from "./Option.js"
-import type * as order from "./Order.js"
-import type * as predicate from "./Predicate.js"
+import * as _Number from "./Number.js"
+import type * as _Option from "./Option.js"
+import * as _Order from "./Order.js"
+import type * as _Predicate from "./Predicate.js"
 
 /**
  * A type representing singed integers.
@@ -25,11 +25,11 @@ import type * as predicate from "./Predicate.js"
  * const notInt: Int.Int = 1.5
  * ```
  */
-export type Int = number & brand.Brand<"Int">
+export type Int = number & Brand.Brand<"Int">
 
-const Int = brand.refined<Int>(
-  (n) => number.isNumber(n) && !Number.isNaN(n) && Number.isInteger(n),
-  (n) => brand.error(`Expected ${n} to be an integer`)
+const Int = Brand.refined<Int>(
+  (n) => _Number.isNumber(n) && !Number.isNaN(n) && Number.isInteger(n),
+  (n) => Brand.error(`Expected ${n} to be an integer`)
 )
 
 /**
@@ -56,7 +56,7 @@ const Int = brand.refined<Int>(
 
 export const of: (n: number) => Int = (n) => Int(n)
 
-export const empty: Int = of(0)
+export const empty: Int = Int(0)
 
 export const empty: Int = Int(0)
 
@@ -92,7 +92,7 @@ export const unit: Int = Int(1)
  * @param input - The value to test.
  * @returns `true` if the value is an `Int`, `false` otherwise.
  */
-export const isInt: predicate.Refinement<unknown, Int> = (input) => number.isNumber(input) && Int.is(input)
+export const isInt: _Predicate.Refinement<unknown, Int> = (input) => _Number.isNumber(input) && Int.is(input)
 
 /**
  * Provides an addition operation on `Int`.
@@ -318,7 +318,7 @@ export const divide: {
    *   representing the result of the division. Returns `None` if division by
    *   zero is attempted; Otherwise, returns `Some<number>` with the result.
    */
-  (divisor: Int): (dividend: Int) => option.Option<number>
+  (divisor: Int): (dividend: Int) => _Option.Option<number>
 
   /**
    * Divides the `dividend` by the `divisor` and returns an `Option` containing
@@ -342,10 +342,10 @@ export const divide: {
    * @returns An `Option` containing the quotient of the division if valid,
    *   otherwise `None`.
    */
-  (dividend: Int, divisor: Int): option.Option<number>
+  (dividend: Int, divisor: Int): _Option.Option<number>
 } = dual(
   2,
-  (dividend: Int, divisor: Int): option.Option<number> => number.divide(dividend, divisor)
+  (dividend: Int, divisor: Int): _Option.Option<number> => _Number.divide(dividend, divisor)
 )
 
 /**
@@ -354,7 +354,7 @@ export const divide: {
  * @memberof Int
  * @category Errors
  */
-export class IntegerDivisionError extends data.TaggedError(
+export class IntegerDivisionError extends Data.TaggedError(
   "IntegerDivisionError"
 )<{
   readonly dividend: Int
@@ -541,7 +541,7 @@ export const decrement: (n: Int) => Int = (n) => sum(Int(-unit))(n)
  * assert.equal(Int.Equivalence(Int.of(1), Int.of(2)), false)
  * ```
  */
-export const Equivalence: equivalence.Equivalence<Int> = number.Equivalence
+export const Equivalence: _Equivalence.Equivalence<Int> = _Number.Equivalence
 
 /**
  * Type class instance of `Order` for `Int`.
@@ -565,4 +565,4 @@ export const Equivalence: equivalence.Equivalence<Int> = number.Equivalence
  * @param that - The second `Int` to compare.
  * @returns -1 if `self` is less than `that`, 0 if they are equal, and 1 if
  */
-export const Order: order.Order<Int> = number.Order
+export const Order: _Order.Order<Int> = _Number.Order
