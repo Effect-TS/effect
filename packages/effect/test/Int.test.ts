@@ -154,7 +154,33 @@ describe("Int", () => {
     strictEqual(pipe(six, Int.unsafeDivide(two)), 3)
 
     strictEqual(Int.unsafeDivide(Int.empty, six), 0)
-    throws(() => Int.unsafeDivide(six, Int.empty), Int.IntegerDivisionError.divisionByZero(six))
-    throws(() => Int.unsafeDivide(Int.empty, Int.empty), Int.IntegerDivisionError.indeterminateForm())
+    throws(
+      () => Int.unsafeDivide(six, Int.empty),
+      Int.IntegerDivisionError.divisionByZero(six)
+    )
+    throws(
+      () => Int.unsafeDivide(Int.empty, Int.empty),
+      Int.IntegerDivisionError.indeterminateForm()
+    )
+  })
+
+  it("increment", () => {
+    strictEqual(Int.increment(Int.of(1)), Int.of(2))
+
+    strictEqual(Int.increment(Int.of(-99)), Int.of(-98))
+
+    strictEqual(
+      pipe(
+        Int.of(1),
+        Int.increment,
+        Int.increment,
+        Int.increment,
+        Int.increment
+      ),
+      Int.of(5)
+    )
+  })
+
+  it.skip("scratchpad", () => {
   })
 })

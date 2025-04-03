@@ -460,3 +460,32 @@ export const unsafeDivide: {
   }
   return dividend / divisor
 })
+
+/**
+ * Returns the result of adding {@link module:Int.unit} to a given `Int`.
+ *
+ * @memberof Int
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { Int } from "effect"
+ *
+ * assert.strictEqual(Int.increment(Int.of(1)), Int.of(2))
+ * assert.strictEqual(
+ *   pipe(
+ *     Int.of(1),
+ *     Int.increment,
+ *     Int.increment,
+ *     Int.increment,
+ *     Int.increment
+ *   ),
+ *   Int.of(5)
+ * )
+ * ```
+ *
+ * @param n - The integer value to be incremented.
+ * @returns The incremented value by one Int as an `Int`.
+ */
+export const increment: (n: Int) => Int = (n) => sum(n, unit)
