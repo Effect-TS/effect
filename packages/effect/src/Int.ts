@@ -540,3 +540,27 @@ export const decrement: (n: Int) => Int = (n) => sum(of(-unit))(n)
  * ```
  */
 export const Equivalence: equivalence.Equivalence<Int> = number.Equivalence
+
+/**
+ * Type class instance of `Order` for `Int`.
+ *
+ * @memberof Int
+ * @category Instances
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { Int } from "effect"
+ *
+ * assert.equal(Int.Order(Int.of(-1), Int.of(2)), -1)
+ *
+ * assert.equal(Int.Order(Int.of(2), Int.of(2)), 0)
+ *
+ * assert.equal(Int.Order(Int.of(2), Int.of(-1)), 1)
+ * ```
+ *
+ * @param self - The first `Int` to compare.
+ * @param that - The second `Int` to compare.
+ * @returns -1 if `self` is less than `that`, 0 if they are equal, and 1 if
+ */
+export const Order: order.Order<Int> = number.Order

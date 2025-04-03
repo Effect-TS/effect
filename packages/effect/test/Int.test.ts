@@ -203,6 +203,21 @@ describe("Int", () => {
     assertFalse(Int.Equivalence(Int.of(1), Int.of(2)))
   })
 
-  it.skip("scratchpad", () => {
+  it("Order", () => {
+    strictEqual(Int.Order(Int.of(1), Int.of(2)), -1)
+
+    strictEqual(Int.Order(Int.of(-1), Int.of(2)), -1)
+
+    strictEqual(Int.Order(Int.of(-2), Int.of(-1)), -1)
+
+    strictEqual(Int.Order(Int.of(2), Int.of(1)), 1)
+
+    strictEqual(Int.Order(Int.of(2), Int.of(-1)), 1)
+
+    strictEqual(Int.Order(Int.of(-1), Int.of(-2)), 1)
+
+    strictEqual(Int.Order(Int.of(2), Int.of(2)), 0)
+
+    strictEqual(Int.Order(Int.of(-2), Int.of(-2)), 0)
   })
 })
