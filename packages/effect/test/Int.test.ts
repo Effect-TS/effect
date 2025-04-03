@@ -1,8 +1,9 @@
 import { describe, it } from "@effect/vitest"
-import { Int, Number as _Number, Option, pipe } from "effect"
+import { Either, Int, Number as _Number, Option, pipe } from "effect"
 import {
   assertFalse,
   assertNone,
+  assertRight,
   assertSome,
   assertTrue,
   notDeepStrictEqual,
@@ -28,6 +29,37 @@ describe("Int", () => {
 
     assertNone(Int.option(-1.5))
     assertNone(Int.option(Number.NaN))
+  })
+
+  it("either", () => {
+    // Valid integers return Right<Int>
+    assertRight(Int.either(0), Int.of(0))
+    assertRight(Int.either(Int.empty), Int.empty)
+    assertRight(Int.either(-1), Int.of(-1))
+    assertRight(Int.either(Number.MAX_SAFE_INTEGER), Int.of(Number.MAX_SAFE_INTEGER))
+    assertRight(Int.either(Number.MIN_SAFE_INTEGER), Int.of(Number.MIN_SAFE_INTEGER))
+
+    // Non-integers return Left<BrandErrors>
+    assertTrue(Either.isLeft(Int.either(3.14)))
+    assertTrue(Either.isLeft(Int.either(-2.5)))
+    assertTrue(Either.isLeft(Int.either(Number.NaN)))
+    assertTrue(Either.isLeft(Int.either(Number.POSITIVE_INFINITY)))
+    assertTrue(Either.isLeft(Int.either(Number.NEGATIVE_INFINITY)))
+
+    // Error messages detail the validation failure
+    const Pi = 3.14
+    const floatResult = Int.either(Pi)
+    if (Either.isLeft(floatResult)) {
+      pipe(
+        Either.getLeft(floatResult),
+        Option.match({
+          onNone: () => assertFalse(true, "Should have error message"),
+          onSome: ([{ message }]) => {
+            strictEqual(message, `Expected ${Pi} to be an integer`)
+          }
+        })
+      )
+    }
   })
 
   it("empty", () => {
