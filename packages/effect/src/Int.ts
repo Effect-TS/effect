@@ -2,6 +2,7 @@
 
 import * as Brand from "./Brand.js"
 import * as Data from "./Data.js"
+import type * as Either from "./Either.js"
 import type * as _Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as _Number from "./Number.js"
@@ -106,8 +107,70 @@ export const of: (n: number) => Int = (n) => Int(n)
  */
 export const option: (n: number) => _Option.Option<Int> = Int.option
 
-
-export const empty: Int = Int(0)
+/**
+ * Lift a `number` in the set of `Either.Right<Int>` if the number is a valid
+ * Int, `Either.Left<BrandError>` otherwise.
+ *
+ * @memberof Int
+ * @category Constructors
+ * @example
+ *
+ * ```ts
+ * import { Int, Either, pipe } from "effect"
+ * import * as assert from "node:assert/strict"
+ *
+ * // Valid integers return Right<Int>
+ * assert.deepStrictEqual(Int.either(42), Either.right(Int.of(42)))
+ * assert.deepStrictEqual(Int.either(0), Either.right(Int.empty))
+ * assert.deepStrictEqual(Int.either(-7), Either.right(Int.of(-7)))
+ *
+ * // Non-integers return Left<BrandErrors>
+ * assert.equal(Either.isLeft(Int.either(3.14)), true)
+ * assert.equal(Either.isLeft(Int.either(Number.NaN)), true)
+ *
+ * const Pi = 3.14
+ * const floatResult = Int.either(Pi)
+ * if (Either.isLeft(floatResult)) {
+ *   assert.deepEqual(
+ *     pipe(
+ *       Either.getLeft(floatResult),
+ *       // Error messages detail the validation failure
+ *       Option.map(([{ message }]) => message)
+ *     ),
+ *     Option.some(`Expected ${Pi} to be an integer`)
+ *   )
+ * }
+ *
+ * // Map over valid integers
+ * const doubleIfValid = (n: number) =>
+ *   pipe(
+ *     Int.either(n),
+ *     Either.map((int) => Int.multiply(int, Int.of(2)))
+ *   )
+ *
+ * assert.deepStrictEqual(doubleIfValid(5), Either.right(10))
+ * assert.equal(Either.isLeft(doubleIfValid(5.5)), true)
+ *
+ * // Handle both cases with Either.match
+ * const processNumber = (n: number): string =>
+ *   pipe(
+ *     Int.either(n),
+ *     Either.match({
+ *       onLeft: ([{ message }]) => `Error: ${message}`,
+ *       onRight: (int) => `Valid integer: ${int}`
+ *     })
+ *   )
+ *
+ * assert.equal(processNumber(42), "Valid integer: 42")
+ * ```
+ *
+ * @param n - The number to convert to an Int
+ * @returns An `Either` containing the `Int` if valid, or `BrandErrors` if
+ *   invalid
+ */
+export const either: (
+  n: number
+) => Either.Either<Int, Brand.Brand.BrandErrors> = Int.either
 
 export const empty: Int = Int(0)
 
