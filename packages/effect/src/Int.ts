@@ -58,7 +58,9 @@ export const of: (n: number) => Int = (n) => Int(n)
 
 export const empty: Int = of(0)
 
-export const unit: Int = of(1)
+export const empty: Int = Int(0)
+
+export const unit: Int = Int(1)
 
 /**
  * Type guard to test if a value is an `Int`.
@@ -175,7 +177,7 @@ export const sum: {
    * @returns A `number`
    */
   // (self: Int, that: number): number
-} = dual(2, (self: Int, that: Int): Int => of(self + that))
+} = dual(2, (self: Int, that: Int): Int => Int(self + that))
 
 /**
  * Provides a subtraction operation on `Int`s.
@@ -225,7 +227,7 @@ export const subtract: {
    * @returns The difference of subtracting the subtrahend from the minuend.
    */
   (minuend: Int, subtrahend: Int): Int
-} = dual(2, (minuend: Int, subtrahend: Int): Int => of(minuend - subtrahend))
+} = dual(2, (minuend: Int, subtrahend: Int): Int => Int(minuend - subtrahend))
 
 /**
  * Provides a multiplication operation on `Int`s.
@@ -282,7 +284,7 @@ export const multiply: {
   (multiplier: Int, multiplicand: Int): Int
 } = dual(
   2,
-  (multiplier: Int, multiplicand: Int): Int => of(multiplier * multiplicand)
+  (multiplier: Int, multiplicand: Int): Int => Int(multiplier * multiplicand)
 )
 
 /**
@@ -522,7 +524,7 @@ export const increment: (n: Int) => Int = (n) => sum(unit)(n)
  * @param n - The `Int` to be decremented.
  * @returns The decremented value by one Int as an `Int`.
  */
-export const decrement: (n: Int) => Int = (n) => sum(of(-unit))(n)
+export const decrement: (n: Int) => Int = (n) => sum(Int(-unit))(n)
 
 /**
  * Type class instance of `Equivalence` for `Int`.
