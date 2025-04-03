@@ -2,6 +2,7 @@
 
 import * as Brand from "./Brand.js"
 import * as Data from "./Data.js"
+import type * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as _Number from "./Number.js"
 import type { Option } from "./Option.js"
@@ -521,3 +522,11 @@ export const increment: (n: Int) => Int = (n) => sum(unit)(n)
  * @returns The decremented value by one Int as an `Int`.
  */
 export const decrement: (n: Int) => Int = (n) => sum(of(-unit))(n)
+
+/**
+ * Type class instance of `Equivalence` for `Int`.
+ *
+ * @category instances
+ * @memberOf Int
+ */
+export const Equivalence: equivalence.Equivalence<Int> = _Number.Equivalence

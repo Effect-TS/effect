@@ -198,6 +198,11 @@ describe("Int", () => {
     )
   })
 
+  it("Equivalence", () => {
+    assertTrue(Int.Equivalence(Int.of(1), Int.of(1)))
+    assertFalse(Int.Equivalence(Int.of(1), Int.of(2)))
+  })
+
   it.skip("scratchpad", () => {
   })
 })
