@@ -56,6 +56,57 @@ const Int = Brand.refined<Int>(
 
 export const of: (n: number) => Int = (n) => Int(n)
 
+/**
+ * Lift a `number` in the set of `Option<Int>`, and brands it as an `Int` if the
+ * provided number is a valid integer.
+ *
+ * @memberof Int
+ * @category Constructors
+ * @example
+ *
+ * ```ts
+ * import { Int, Option, pipe } from "effect"
+ * import * as assert from "node:assert/strict"
+ *
+ * // Valid integers return Some<Int>
+ * assert.deepStrictEqual(Int._option(42), Option.some(Int.of(42)))
+ * assert.deepStrictEqual(Int._option(0), Option.some(Int.empty))
+ * assert.deepStrictEqual(Int._option(-7), Option.some(Int.of(-7)))
+ *
+ * // Non-integers return None
+ * assert.deepStrictEqual(Int._option(3.14), Option.none())
+ * assert.deepStrictEqual(Int._option(Number.NaN), Option.none())
+ *
+ * // Safe operations on potentially non-integer values
+ * const safelyDouble = (n: number) =>
+ *   pipe(
+ *     Int._option(n),
+ *     Option.map((int) => Int.multiply(int, Int.of(2)))
+ *   )
+ *
+ * assert.deepStrictEqual(safelyDouble(5), Option.some(10))
+ * assert.deepStrictEqual(safelyDouble(5.5), Option.none())
+ *
+ * // Handling both cases with Option.match
+ * const processNumber = (n: number) =>
+ *   pipe(
+ *     Int._option(n),
+ *     Option.match({
+ *       onNone: () => "Not an integer",
+ *       onSome: (int) => `Integer: ${int}`
+ *     })
+ *   )
+ *
+ * assert.equal(processNumber(42), "Integer: 42")
+ * assert.equal(processNumber(4.2), "Not an integer")
+ * ```
+ *
+ * @param n - The `number` to convert to an `Int`
+ * @returns An `Option` containing the `Int` if valid, `None` otherwise
+ */
+export const option: (n: number) => _Option.Option<Int> = Int.option
+
+
 export const empty: Int = Int(0)
 
 export const empty: Int = Int(0)

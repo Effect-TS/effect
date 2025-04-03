@@ -21,6 +21,15 @@ describe("Int", () => {
     throws(() => Int.of(Number.NaN))
   })
 
+  it("option", () => {
+    assertSome(Int.option(0), Int.of(0))
+    assertSome(Int.option(Int.empty), Int.empty)
+    assertSome(Int.option(-1), Int.of(-1))
+
+    assertNone(Int.option(-1.5))
+    assertNone(Int.option(Number.NaN))
+  })
+
   it("empty", () => {
     strictEqual(Int.empty, 0)
   })
