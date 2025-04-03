@@ -181,6 +181,23 @@ describe("Int", () => {
     )
   })
 
+  it("decrement", () => {
+    strictEqual(Int.decrement(Int.of(2)), Int.of(1))
+
+    strictEqual(Int.decrement(Int.of(-100)), Int.of(-101))
+
+    strictEqual(
+      pipe(
+        Int.of(100),
+        Int.decrement,
+        Int.decrement,
+        Int.decrement,
+        Int.decrement
+      ),
+      Int.of(96)
+    )
+  })
+
   it.skip("scratchpad", () => {
   })
 })

@@ -462,7 +462,7 @@ export const unsafeDivide: {
 })
 
 /**
- * Returns the result of adding {@link module:Int.unit} to a given `Int`.
+ * Returns the result of adding one {@link module:Int.unit} to the given `Int`.
  *
  * @memberof Int
  * @category Math
@@ -473,6 +473,7 @@ export const unsafeDivide: {
  * import { Int } from "effect"
  *
  * assert.strictEqual(Int.increment(Int.of(1)), Int.of(2))
+ *
  * assert.strictEqual(
  *   pipe(
  *     Int.of(1),
@@ -488,4 +489,35 @@ export const unsafeDivide: {
  * @param n - The integer value to be incremented.
  * @returns The incremented value by one Int as an `Int`.
  */
-export const increment: (n: Int) => Int = (n) => sum(n, unit)
+export const increment: (n: Int) => Int = (n) => sum(unit)(n)
+
+/**
+ * Returns the result of decrementing by one {@link module:Int.unit} to the given
+ * `Int`.
+ *
+ * @memberof Int
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { Int } from "effect"
+ *
+ * assert.strictEqual(Int.decrement(Int.of(-100)), Int.of(-101))
+ *
+ * assert.strictEqual(
+ *   pipe(
+ *     Int.of(100),
+ *     Int.decrement,
+ *     Int.decrement,
+ *     Int.decrement,
+ *     Int.decrement
+ *   ),
+ *   Int.of(96)
+ * )
+ * ```
+ *
+ * @param n - The `Int` to be decremented.
+ * @returns The decremented value by one Int as an `Int`.
+ */
+export const decrement: (n: Int) => Int = (n) => sum(of(-unit))(n)
