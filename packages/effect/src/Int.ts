@@ -1,6 +1,7 @@
 /** @module Int */
 
 import * as Brand from "./Brand.js"
+import * as Data from "./Data.js"
 import { dual } from "./Function.js"
 import * as _Number from "./Number.js"
 import type { Option } from "./Option.js"
@@ -284,6 +285,7 @@ export const multiply: {
 
 /**
  * Provides a division operation on `Int`s.
+ *
  * It returns an `Option` containing the quotient of the division if valid,
  * otherwise `None`.
  *
@@ -316,8 +318,8 @@ export const divide: {
 
   /**
    * Divides the `dividend` by the `divisor` and returns an `Option` containing
-   * the `quotient`. If the `divisor` is zero, returns `None` to signify an invalid
-   * operation.
+   * the `quotient`. If the `divisor` is zero, returns `None` to signify an
+   * invalid operation.
    *
    * @example
    *
@@ -341,3 +343,120 @@ export const divide: {
   2,
   (dividend: Int, divisor: Int): Option<number> => _Number.divide(dividend, divisor)
 )
+
+/**
+ * Represents errors that can occur during integer division operations.
+ *
+ * @memberof Int
+ * @category Errors
+ */
+export class IntegerDivisionError extends Data.TaggedError(
+  "IntegerDivisionError"
+)<{
+  readonly dividend: Int
+  readonly divisor: Int
+  readonly type: "DivisionByZero" | "IndeterminateForm"
+  readonly message: string
+}> {
+  /** @internal */
+  static readonly divisionByZero: (dividend: Int) => IntegerDivisionError = (
+    dividend
+  ) =>
+    new IntegerDivisionError({
+      dividend,
+      divisor: empty,
+      type: "DivisionByZero",
+      message: `Division by zero: ${dividend} / 0`
+    })
+
+  /** @internal */
+  static readonly indeterminateForm: () => IntegerDivisionError = () =>
+    new IntegerDivisionError({
+      dividend: empty,
+      divisor: empty,
+      type: "IndeterminateForm",
+      message: `Indeterminate form: division of zero by zero`
+    })
+}
+
+/**
+ * Performs an unsafe division of two `Int`'s, returning the `quotient` which
+ * type is widened to a `number`.
+ *
+ * As the name suggests, **this operation may throw an
+ * {@link module:Int.IntegerDivisionError}** if the `divisor` is zero, resulting
+ * in either a division by zero or an indeterminate form.
+ *
+ * @memberof Int
+ * @category Math
+ * @throws - An {@link module:Int.IntegerDivisionError} if the divisor is zero.
+ */
+export const unsafeDivide: {
+  /**
+   * Divides by the given `divisor`.
+   *
+   * @example
+   *
+   * ```ts
+   * import { Int, pipe } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.of(6), //
+   *     Int.unsafeDivide(Int.of(2))
+   *   ),
+   *   3
+   * )
+   *
+   * assert.throws(() =>
+   *   pipe(
+   *     Int.of(6),
+   *     Int.unsafeDivide(Int.empty) // throws IntegerDivisionError
+   *   )
+   * )
+   * assert.throws(() =>
+   *   pipe(
+   *     Int.empty,
+   *     Int.unsafeDivide(Int.empty) // throws IntegerDivisionError
+   *   )
+   * )
+   * ```
+   *
+   * @param divisor - The `Int` by which the `dividend` will be divided.
+   * @returns A function that takes a `dividend` and returns the quotient, which
+   *   is a `number`. This operation may throw an
+   *   {@link module:Int.IntegerDivisionError} if the divisor is zero.
+   */
+  (divisor: Int): (dividend: Int) => number
+
+  /**
+   * Divides the `dividend` by the `divisor`.
+   *
+   * @example
+   *
+   * ```ts
+   * import { Int } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(Int.unsafeDivide(Int.of(6), Int.of(2)), 3)
+   *
+   * assert.throws(() => Int.unsafeDivide(Int.of(6), Int.of(0))) // throws IntegerDivisionError
+   * assert.throws(() => Int.unsafeDivide(Int.of(0), Int.of(0))) // throws IntegerDivisionError
+   * ```
+   *
+   * @param dividend - The `Int` to be divided.
+   * @param divisor - The `Int` by which the dividend is divided.
+   * @returns The quotient of the division, which is a `number`.
+   * @throws - An {@link module:Int.IntegerDivisionError} if the divisor is zero.
+   */
+  (dividend: Int, divisor: Int): number
+} = dual(2, (dividend: Int, divisor: Int): number => {
+  if (divisor === 0) {
+    if (dividend === 0) {
+      throw IntegerDivisionError.indeterminateForm()
+    }
+    throw IntegerDivisionError.divisionByZero(dividend)
+  }
+  return dividend / divisor
+})

@@ -1,6 +1,5 @@
 import { describe, it } from "@effect/vitest"
 import { Int, Number as _Number, Option, pipe } from "effect"
-
 import {
   assertFalse,
   assertNone,
@@ -10,6 +9,7 @@ import {
   strictEqual,
   throws
 } from "effect/test/util"
+import * as assert from "node:assert/strict"
 
 describe("Int", () => {
   it("of", () => {
@@ -142,5 +142,19 @@ describe("Int", () => {
     )
 
     assertNone(pipe(Int.of(6), Int.divide(Int.of(0))))
+  })
+
+  it("unsafeDivide", () => {
+    const six = Int.of(6)
+    const two = Int.of(2)
+
+    strictEqual(pipe(six, Int.unsafeDivide(two)), Int.unsafeDivide(six, two))
+
+    strictEqual(pipe(six, Int.unsafeDivide(two)), 3)
+    strictEqual(pipe(six, Int.unsafeDivide(two)), 3)
+
+    strictEqual(Int.unsafeDivide(Int.empty, six), 0)
+    throws(() => Int.unsafeDivide(six, Int.empty), Int.IntegerDivisionError.divisionByZero(six))
+    throws(() => Int.unsafeDivide(Int.empty, Int.empty), Int.IntegerDivisionError.indeterminateForm())
   })
 })
