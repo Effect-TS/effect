@@ -51,7 +51,7 @@ export class UserRpcs extends RpcGroup.make(
 
 This section introduces how to implement the rpc handlers, using an imaginary database setup to manage user data.
 
-```ts filename="router.ts"
+```ts filename="handers.ts"
 // handlers.ts
 import type { Rpc } from "@effect/rpc"
 import { Effect, Layer, Ref, Stream } from "effect"
@@ -119,21 +119,29 @@ This part explains how to serve the API using the handlers we defined earlier.
 
 ```ts filename="server.ts"
 // server.ts
-import { HttpRouter, HttpServer } from "@effect/platform"
-import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { toHttpApp } from "@effect/rpc-http/HttpRpcRouter"
+import { HttpRouter } from "@effect/platform"
+import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
+import { RpcSerialization, RpcServer } from "@effect/rpc"
 import { Layer } from "effect"
-import { createServer } from "http"
-import { appRouter } from "./router.js"
+import { UsersLive } from "./handlers.js"
+import { UserRpcs } from "./request.js"
 
-const HttpLive = HttpRouter.empty.pipe(
-  HttpRouter.post("/rpc", toHttpApp(appRouter)),
-  HttpServer.serve(),
-  HttpServer.withLogAddress,
-  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+// Create the RPC server layer
+const RpcLayer = RpcServer.layer(UserRpcs).pipe(Layer.provide(UsersLive))
+
+// Choose the protocol and serialization format
+const HttpProtocol = RpcServer.layerProtocolHttp({
+  path: "/rpc"
+}).pipe(Layer.provide(RpcSerialization.layerNdjson))
+
+// Create the main server layer
+const Main = HttpRouter.Default.serve().pipe(
+  Layer.provide(RpcLayer),
+  Layer.provide(HttpProtocol),
+  Layer.provide(BunHttpServer.layer({ port: 3000 }))
 )
 
-NodeRuntime.runMain(Layer.launch(HttpLive))
+BunRuntime.runMain(Layer.launch(Main))
 ```
 
 **Testing the API with curl**
