@@ -623,6 +623,12 @@ describe("Int", () => {
     assertEquals(positiveValueLarger, pipe(negativeTwo, Int.max(two)))
   })
 
+  it("sign", () => {
+    strictEqual(Int.sign(Int.of(-10)), -1)
+    strictEqual(Int.sign(Int.of(0)), 0)
+    strictEqual(Int.sign(Int.of(10)), 1)
+  })
+
   it.skip("sumAll", () => {
     strictEqual(Int.sumAll([Int.of(2), Int.of(3), Int.of(4)]), 9)
   })

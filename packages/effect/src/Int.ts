@@ -1360,9 +1360,20 @@ export const max: {
  *
  * @memberof Int
  * @category Math
- * @todo Provide an implementation and tests
+ * @example
+ *
+ * ```ts
+ * import { Int } from "effect"
+ * import * as assert from "node:assert/strict"
+ *
+ * assert.equal(Int.sign(Int.of(-10)), -1)
+ * assert.equal(Int.sign(Int.of(0)), 0)
+ * assert.equal(Int.sign(Int.of(10)), 1)
+ * ```
+ * @param n - The `Int` to determine the sign of.
+ * @returns -1 if `n` is negative, 0 if `n` is zero, and 1 if `n` is positive.
  */
-export const sign: (n: Int) => Ordering = (_n) => hole()
+export const sign: (n: Int) => Ordering = (n) => Order(n, empty)
 
 /**
  * Takes an `Iterable` of `Int`s and returns their sum as a single `Int`.
