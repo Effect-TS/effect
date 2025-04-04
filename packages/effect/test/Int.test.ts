@@ -628,7 +628,11 @@ describe("Int", () => {
 
   it("sign", () => {
     strictEqual(Int.sign(Int.of(-10)), -1)
+
     strictEqual(Int.sign(Int.of(0)), 0)
+
+    strictEqual(Int.sign(Int.of(-0)), 0, "Sign of negative zero should be zero")
+
     strictEqual(Int.sign(Int.of(10)), 1)
   })
 
