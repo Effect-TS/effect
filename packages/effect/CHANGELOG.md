@@ -1,5 +1,66 @@
 # effect
 
+## 3.14.6
+
+### Patch Changes
+
+- [#4674](https://github.com/Effect-TS/effect/pull/4674) [`47618c1`](https://github.com/Effect-TS/effect/commit/47618c1ad84ebcc5a51133a3fff5aa5012d49d45) Thanks @suddenlyGiovanni! - Improved TsDoc documentation for `MutableHashSet` module.
+
+- [#4699](https://github.com/Effect-TS/effect/pull/4699) [`6077882`](https://github.com/Effect-TS/effect/commit/60778824a4794336c33807801f813f8751d1c7e4) Thanks @gcanti! - Fix JSONSchema generation for record values that include `undefined`, closes #4697.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.partial(
+    Schema.Struct(
+      { foo: Schema.Number },
+      {
+        key: Schema.String,
+        value: Schema.Number
+      }
+    )
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  // throws
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.partial(
+    Schema.Struct(
+      { foo: Schema.Number },
+      {
+        key: Schema.String,
+        value: Schema.Number
+      }
+    )
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [],
+    "properties": {
+      "foo": {
+        "type": "number"
+      }
+    },
+    "additionalProperties": {
+      "type": "number"
+    }
+  }
+  */
+  ```
+
 ## 3.14.5
 
 ### Patch Changes
