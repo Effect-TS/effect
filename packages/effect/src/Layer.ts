@@ -948,7 +948,7 @@ export const setConfigProvider: (configProvider: ConfigProvider) => Layer<never>
 export const parentSpan: (span: Tracer.AnySpan) => Layer<Tracer.ParentSpan> = circularLayer.parentSpan
 
 /**
- * @since 2.0.0
+ * @since 3.15.0
  * @category Random
  */
 export const setRandom = <A extends Random.Random>(random: A): Layer<never> =>
