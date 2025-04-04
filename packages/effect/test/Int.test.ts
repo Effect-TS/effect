@@ -539,8 +539,58 @@ describe("Int", () => {
     assertEquals(valueAboveMax, pipe(Int.of(6), clampBetweenZeroAndFive))
   })
 
-  it.skip("min", () => {
-    strictEqual(Int.min(Int.of(2), Int.of(3)), 2)
+  it("min", () => {
+    const two = Int.of(2)
+    const three = Int.of(3)
+    const negativeTwo = Int.of(-2)
+
+    // case: first value is smaller
+    const firstValueSmaller = Int.min(two, three)
+    strictEqual(
+      firstValueSmaller,
+      two,
+      "When first value is smaller, it should be returned"
+    )
+    assertEquals(
+      firstValueSmaller,
+      pipe(two, Int.min(three))
+    )
+
+    // case: second value is smaller
+    const secondValueSmaller = Int.min(three, two)
+    strictEqual(
+      secondValueSmaller,
+      two,
+      "When second value is smaller, it should be returned"
+    )
+    assertEquals(
+      secondValueSmaller,
+      pipe(three, Int.min(two))
+    )
+
+    // case: equal values
+    const equalValues = Int.min(two, two)
+    strictEqual(
+      equalValues,
+      two,
+      "When values are equal, either can be returned"
+    )
+    assertEquals(
+      equalValues,
+      pipe(two, Int.min(two))
+    )
+
+    // case: negative value is smaller
+    const negativeValueSmaller = Int.min(negativeTwo, two)
+    strictEqual(
+      negativeValueSmaller,
+      negativeTwo,
+      "When comparing positive and negative values, the smaller one should be returned"
+    )
+    assertEquals(
+      negativeValueSmaller,
+      pipe(negativeTwo, Int.min(two))
+    )
   })
 
   it.skip("max", () => {

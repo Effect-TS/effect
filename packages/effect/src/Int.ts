@@ -1210,13 +1210,76 @@ export const clamp: {
 /**
  * Returns the minimum between two `Int`s.
  *
+ * `Int.min` is a `commutative` operation; this means that the order in which
+ * the arguments are provided does not affect the result.
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import { Int, pipe } from "effect"
+ * import * as assert from "node:assert/strict"
+ *
+ * const three = Int.of(3)
+ * const five = Int.of(5)
+ *
+ * assert.equal(
+ *   // data-last api
+ *   pipe(three, Int.min(five)),
+ *   // data-first api
+ *   Int.min(three, five) // returns three
+ * )
+ * ```
+ *
  * @memberof Int
- * @todo Provide an implementation and tests
  */
 export const min: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int, pipe } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * const three = Int.of(3)
+   * const two = Int.of(2)
+   *
+   * assert.equal(
+   *   pipe(three, Int.min(two)), // returns 2
+   *   pipe(two, Int.min(three)), // returns 2
+   *   "the min operation is commutative"
+   * )
+   * ```
+   *
+   * @param that - The `Int` to compare with the `self` when the resultant
+   *   function is invoked.
+   * @returns A function that takes a `self` and returns the minimum of the two
+   *   `Int`s (`self` | `that`).
+   */
   (that: Int): (self: Int) => Int
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * const three = Int.of(3)
+   * const five = Int.of(5)
+   *
+   * assert.equal(
+   *   Int.min(three, five), // returns 3
+   *   Int.min(five, three), // returns 3
+   *   "the min operation is commutative"
+   * )
+   * ```
+   *
+   * @param self - The first `Int` to compare.
+   * @param that - The second `Int` to compare.
+   * @returns The minimum of the two `Int`s (`self` | `that`).
+   */
   (self: Int, that: Int): Int
-} = hole()
+} = _Order.min(Order)
 
 /**
  * Returns the maximum between two `Int`s.
