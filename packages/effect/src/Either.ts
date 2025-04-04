@@ -421,19 +421,14 @@ export const match: {
  * import { pipe, Either } from "effect"
  *
  * const isPositive = (n: number): boolean => n > 0
+ * const isPositiveEither = Either.liftPredicate(isPositive, n => `${n} is not positive`)
  *
  * assert.deepStrictEqual(
- *   pipe(
- *     1,
- *     Either.liftPredicate(isPositive, n => `${n} is not positive`)
- *   ),
+ *   isPositiveEither(1),
  *   Either.right(1)
  * )
  * assert.deepStrictEqual(
- *   pipe(
- *     0,
- *     Either.liftPredicate(isPositive, n => `${n} is not positive`)
- *   ),
+ *   isPositiveEither(0),
  *   Either.left("0 is not positive")
  * )
  * ```
@@ -441,22 +436,22 @@ export const match: {
  * @category lifting
  * @since 3.4.0
  */
-export const liftPredicate: {
-  <A, B extends A, E>(refinement: Refinement<NoInfer<A>, B>, orLeftWith: (a: NoInfer<A>) => E): (a: A) => Either<B, E>
-  <A, E>(
-    predicate: Predicate<NoInfer<A>>,
-    orLeftWith: (a: NoInfer<A>) => E
-  ): (a: A) => Either<A, E>
+export const liftPredicate: { // Note: I intentionally avoid using the NoInfer pattern here.
+  <A, B extends A, E>(refinement: Refinement<A, B>, orLeftWith: (a: A) => E): (a: A) => Either<B, E>
+  <B extends A, E, A = B>(
+    predicate: Predicate<A>,
+    orLeftWith: (a: A) => E
+  ): (a: B) => Either<B, E>
   <A, E, B extends A>(
     self: A,
     refinement: Refinement<A, B>,
     orLeftWith: (a: A) => E
   ): Either<B, E>
-  <A, E>(
-    self: A,
-    predicate: Predicate<NoInfer<A>>,
-    orLeftWith: (a: NoInfer<A>) => E
-  ): Either<A, E>
+  <B extends A, E, A = B>(
+    self: B,
+    predicate: Predicate<A>,
+    orLeftWith: (a: A) => E
+  ): Either<B, E>
 } = dual(
   3,
   <A, E>(a: A, predicate: Predicate<A>, orLeftWith: (a: A) => E): Either<A, E> =>
