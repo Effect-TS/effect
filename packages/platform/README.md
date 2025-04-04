@@ -70,7 +70,7 @@ import { createServer } from "node:http"
 // Define our API with one group named "Greetings" and one endpoint called "hello-world"
 const MyApi = HttpApi.make("MyApi").add(
   HttpApiGroup.make("Greetings").add(
-    HttpApiEndpoint.get("hello-world")`/`.addSuccess(Schema.String)
+    HttpApiEndpoint.get("hello-world", "/").addSuccess(Schema.String)
   )
 )
 
@@ -120,7 +120,7 @@ import { createServer } from "node:http"
 
 const MyApi = HttpApi.make("MyApi").add(
   HttpApiGroup.make("Greetings").add(
-    HttpApiEndpoint.get("hello-world")`/`.addSuccess(Schema.String)
+    HttpApiEndpoint.get("hello-world", `/`).addSuccess(Schema.String)
   )
 )
 
@@ -168,7 +168,7 @@ import { createServer } from "node:http"
 
 const MyApi = HttpApi.make("MyApi").add(
   HttpApiGroup.make("Greetings").add(
-    HttpApiEndpoint.get("hello-world")`/`.addSuccess(Schema.String)
+    HttpApiEndpoint.get("hello-world", `/`).addSuccess(Schema.String)
   )
 )
 
@@ -295,7 +295,7 @@ const User = Schema.Struct({
 const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
 // Define the GET endpoint using a template string
-const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(
+const getUser = HttpApiEndpoint.get("getUser", `/user/${idParam}`).addSuccess(
   User
 )
 ```
@@ -534,7 +534,7 @@ By default, API responses are encoded as JSON. If your application requires a di
 import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 
-const csv = HttpApiEndpoint.get("csv")`/users/csv`
+const csv = HttpApiEndpoint.get("csv", `/users/csv`)
   // Set the success response as a string with CSV encoding
   .addSuccess(
     Schema.String.pipe(
@@ -601,7 +601,7 @@ const getUsers = HttpApiEndpoint.get("getUsers", "/users").addSuccess(
   Schema.Array(User)
 )
 
-const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(
+const getUser = HttpApiEndpoint.get("getUser", `/user/${idParam}`).addSuccess(
   User
 )
 
@@ -670,7 +670,7 @@ const getUsers = HttpApiEndpoint.get("getUsers", "/users").addSuccess(
   Schema.Array(User)
 )
 
-const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(
+const getUser = HttpApiEndpoint.get("getUser", `/user/${idParam}`).addSuccess(
   User
 )
 
@@ -684,7 +684,7 @@ const createUser = HttpApiEndpoint.post("createUser", "/users")
 
 const deleteUser = HttpApiEndpoint.del("deleteUser")`/users/${idParam}`
 
-const updateUser = HttpApiEndpoint.patch("updateUser")`/users/${idParam}`
+const updateUser = HttpApiEndpoint.patch("updateUser", `/users/${idParam}`)
   .setPayload(
     Schema.Struct({
       name: Schema.String
@@ -745,7 +745,7 @@ const getUsers = HttpApiEndpoint.get("getUsers", "/users").addSuccess(
   Schema.Array(User)
 )
 
-const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`
+const getUser = HttpApiEndpoint.get("getUser", `/user/${idParam}`)
   .addSuccess(User)
   // Add a 404 error response for this endpoint
   .addError(UserNotFound, { status: 404 })
@@ -763,7 +763,7 @@ You can assign multiple error responses to a single endpoint by calling `HttpApi
 **Example** (Adding Multiple Errors to an Endpoint)
 
 ```ts
-const deleteUser = HttpApiEndpoint.del("deleteUser")`/users/${idParam}`
+const deleteUser = HttpApiEndpoint.del("deleteUser", `/users/${idParam}`)
   // Add a 404 error response for when the user is not found
   .addError(UserNotFound, { status: 404 })
   // Add a 401 error response for unauthorized access
@@ -788,7 +788,7 @@ const User = Schema.Struct({
 
 const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
-const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`
+const getUser = HttpApiEndpoint.get("getUser", `/user/${idParam}`)
   .addSuccess(User)
   .addError(HttpApiError.NotFound)
 ```
@@ -862,7 +862,7 @@ const User = Schema.Struct({
 const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
 const usersGroup = HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+  HttpApiEndpoint.get("getUser", `/user/${idParam}`).addSuccess(User)
 )
 
 const api = HttpApi.make("myApi").add(usersGroup)
@@ -903,7 +903,7 @@ const User = Schema.Struct({
 const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
 const usersGroup = HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+  HttpApiEndpoint.get("getUser", `/user/${idParam}`).addSuccess(User)
 )
 
 const api = HttpApi.make("myApi").add(usersGroup)
@@ -965,7 +965,7 @@ const User = Schema.Struct({
 const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
 const usersGroup = HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+  HttpApiEndpoint.get("getUser", `/user/${idParam}`).addSuccess(User)
 )
 
 const api = HttpApi.make("myApi").add(usersGroup)
@@ -1024,7 +1024,7 @@ const User = Schema.Struct({
 const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
 const usersGroup = HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+  HttpApiEndpoint.get("getUser", `/user/${idParam}`).addSuccess(User)
 )
 
 const api = HttpApi.make("myApi").add(usersGroup)
@@ -1075,7 +1075,7 @@ const User = Schema.Struct({
 const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
 const usersGroup = HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+  HttpApiEndpoint.get("getUser", `/user/${idParam}`).addSuccess(User)
 )
 
 const api = HttpApi.make("myApi").add(usersGroup)
@@ -1336,7 +1336,7 @@ const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
 const usersGroup = HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get("getUser")`/user/${idParam}`
+    HttpApiEndpoint.get("getUser", `/user/${idParam}`)
       .addSuccess(User)
       // Apply the middleware to a single endpoint
       .middleware(Logger)
@@ -1422,7 +1422,7 @@ const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
 const usersGroup = HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get("getUser")`/user/${idParam}`
+    HttpApiEndpoint.get("getUser", `/user/${idParam}`)
       .addSuccess(User)
       // Apply the middleware to a single endpoint
       .middleware(Logger)
@@ -1673,7 +1673,7 @@ const User = Schema.Struct({
 const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
 const usersGroup = HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+  HttpApiEndpoint.get("getUser", `/user/${idParam}`).addSuccess(User)
 )
 
 const api = HttpApi.make("myApi").add(usersGroup)
@@ -2169,7 +2169,7 @@ const User = Schema.Struct({
 const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
 const usersGroup = HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+  HttpApiEndpoint.get("getUser", `/user/${idParam}`).addSuccess(User)
 )
 
 const api = HttpApi.make("myApi").add(usersGroup)
