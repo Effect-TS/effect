@@ -489,65 +489,54 @@ describe("Int", () => {
     )
   })
 
-  it.skip("clamp", () => {
-    strictEqual(
-      pipe(
-        Int.of(3), //
-        Int.clamp({
-          minimum: Int.of(0),
-          maximum: Int.of(5)
-        })
-      ),
-      3
-    )
+  it("clamp", () => {
+    const clampOptions = { minimum: Int.empty, maximum: Int.of(5) } as const
+    const clampBetweenZeroAndFive: (n: Int.Int) => Int.Int = Int.clamp(clampOptions)
 
+    // Test value within range
+    const valueWithinRange = Int.clamp(Int.of(3), clampOptions)
     strictEqual(
-      pipe(
-        Int.of(-1), //
-        Int.clamp({
-          minimum: Int.of(0),
-          maximum: Int.of(5)
-        })
-      ),
-      0
+      valueWithinRange,
+      Int.of(3),
+      "Value within range should remain unchanged"
     )
+    assertEquals(valueWithinRange, pipe(Int.of(3), clampBetweenZeroAndFive))
 
+    // Test minimum boundary value (inclusive)
+    const minBoundaryValue = Int.clamp(Int.of(0), clampOptions)
     strictEqual(
-      pipe(
-        Int.of(6), //
-        Int.clamp({
-          minimum: Int.of(0),
-          maximum: Int.of(5)
-        })
-      ),
-      5
+      minBoundaryValue,
+      Int.of(0),
+      "Minimum boundary value should remain unchanged (inclusive)"
     )
-  })
+    assertEquals(minBoundaryValue, pipe(Int.of(0), clampBetweenZeroAndFive))
 
-  it.skip("clamp", () => {
+    // Test maximum boundary value (inclusive)
+    const maxBoundaryValue = Int.clamp(Int.of(5), clampOptions)
     strictEqual(
-      pipe(
-        Int.of(3), //
-        Int.clamp({ minimum: Int.of(0), maximum: Int.of(5) })
-      ),
-      3
+      maxBoundaryValue,
+      Int.of(5),
+      "Maximum boundary value should remain unchanged (inclusive)"
     )
+    assertEquals(maxBoundaryValue, pipe(Int.of(5), clampBetweenZeroAndFive))
 
+    // Test value below minimum
+    const valueBelowMin = Int.clamp(Int.of(-1), clampOptions)
     strictEqual(
-      pipe(
-        Int.of(-1), //
-        Int.clamp({ minimum: Int.of(0), maximum: Int.of(5) })
-      ),
-      0
+      valueBelowMin,
+      Int.of(0),
+      "Value below minimum should be clamped to minimum"
     )
+    assertEquals(valueBelowMin, pipe(Int.of(-1), clampBetweenZeroAndFive))
 
+    // Test value above maximum
+    const valueAboveMax = Int.clamp(Int.of(6), clampOptions)
     strictEqual(
-      pipe(
-        Int.of(6), //
-        Int.clamp({ minimum: Int.of(0), maximum: Int.of(5) })
-      ),
-      5
+      valueAboveMax,
+      Int.of(5),
+      "Value above maximum should be clamped to maximum"
     )
+    assertEquals(valueAboveMax, pipe(Int.of(6), clampBetweenZeroAndFive))
   })
 
   it.skip("min", () => {

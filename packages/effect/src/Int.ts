@@ -1132,19 +1132,80 @@ export const between: {
  *   `maximum` value.
  * - Otherwise, it returns the original `Int`.
  *
+ * **Syntax**
+ *
+ * ```ts
+ * import { Int, pipe } from "effect"
+ * import * as assert from "node:assert/strict"
+ *
+ * assert.equal(
+ *   // data-last api
+ *   pipe(Int.of(3), Int.clamp({ minimum: Int.of(0), maximum: Int.of(5) })),
+ *   // data-first api
+ *   Int.clamp(Int.of(3), { minimum: Int.of(0), maximum: Int.of(5) })
+ * )
+ * ```
+ *
  * @memberof Int
- * @todo Provide an implementation and tests
  */
 export const clamp: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int, pipe } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * const clampBetweenZeroAndFive: (n: Int.Int) => Int.Int = Int.clamp({
+   *   minimum: Int.of(0),
+   *   maximum: Int.of(5)
+   * })
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.of(3), //
+   *     Int.clamp({ minimum: Int.of(0), maximum: Int.of(5) })
+   *   ),
+   *   3
+   * )
+   *
+   * assert.equal(pipe(Int.of(-1), clampBetweenZeroAndFive), 0)
+   *
+   * assert.equal(pipe(Int.of(6), clampBetweenZeroAndFive), 5)
+   * ```
+   *
+   * @param options
+   * @param options.minimum - The minimum inclusive `Int`.
+   * @param options.maximum - The maximum inclusive `Int`.
+   * @returns A function that takes a `self` and returns the clamped `Int`
+   *   value.
+   */
   (options: { minimum: Int; maximum: Int }): (self: Int) => Int
-  (
-    self: Int,
-    options: {
-      minimum: Int
-      maximum: Int
-    }
-  ): Int
-} = hole()
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { Int } from "effect"
+   *
+   * const options = { minimum: Int.of(1), maximum: Int.of(5) }
+   *
+   * assert.equal(Int.clamp(Int.of(3), options), 3)
+   *
+   * assert.equal(Int.clamp(Int.of(0), options), 1)
+   *
+   * assert.equal(Int.clamp(Int.of(6), options), 5)
+   * ```
+   *
+   * @param self - The `Int` to be clamped.
+   * @param options
+   * @param options.minimum - The minimum inclusive `Int`.
+   * @param options.maximum - The maximum inclusive `Int`.
+   * @returns The clamped `Int` value.
+   */
+  (self: Int, options: { minimum: Int; maximum: Int }): Int
+} = _Order.clamp(Order)
 
 /**
  * Returns the minimum between two `Int`s.
