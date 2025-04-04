@@ -70,7 +70,7 @@ import { createServer } from "node:http"
 // Define our API with one group named "Greetings" and one endpoint called "hello-world"
 const MyApi = HttpApi.make("MyApi").add(
   HttpApiGroup.make("Greetings").add(
-    HttpApiEndpoint.get("hello-world", "/").addSuccess(Schema.String)
+    HttpApiEndpoint.get("hello-world", `/`).addSuccess(Schema.String)
   )
 )
 
