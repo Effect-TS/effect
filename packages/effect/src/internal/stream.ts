@@ -2582,18 +2582,54 @@ export const filterMapEffect = dual<
             onFailure: core.failCause,
             onDone: core.succeed
           })
-        } else {
-          return pipe(
-            pf(next.value),
-            Option.match({
-              onNone: () => Effect.sync(() => loop(iterator)),
-              onSome: Effect.map((a2) => core.flatMap(core.write(Chunk.of(a2)), () => loop(iterator)))
-            }),
-            channel.unwrap
-          )
         }
+        const o = pf(next.value)
+        if (Option.isNone(o)) return loop(iterator)
+        return core.flatMap(
+          core.flatMap(o.value, (a2) => core.write(Chunk.of(a2))),
+          () => loop(iterator)
+        )
       }
       return new StreamImpl(pipe(toChannel(self), core.pipeTo(loop(Chunk.empty<A>()[Symbol.iterator]()))))
+    })
+)
+
+/** @internal */
+export const filterMapEffectOption = dual<
+  <A, A2, E2, R2>(
+    f: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2, E2 | E, R2 | R>,
+  <A, E, R, A2, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    f: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
+  ) => Stream.Stream<A2, E2 | E, R2 | R>
+>(
+  2,
+  <A, E, R, A2, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    f: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
+  ): Stream.Stream<A2, E | E2, R | R2> =>
+    suspend(() => {
+      const loop = (
+        iterator: Iterator<A>
+      ): Channel.Channel<Chunk.Chunk<A2>, Chunk.Chunk<A>, E | E2, E, unknown, unknown, R | R2> => {
+        const next = iterator.next()
+        if (next.done) {
+          return core.readWithCause({
+            onInput: (input) => loop(input[Symbol.iterator]()),
+            onFailure: core.failCause,
+            onDone: core.succeed
+          })
+        }
+        return core.flatMap(
+          core.fromEffect(f(next.value)),
+          (o) =>
+            Option.isNone(o)
+              ? loop(iterator)
+              : core.flatMap(core.write(Chunk.of(o.value)), () => loop(iterator))
+        )
+      }
+      return new StreamImpl(core.pipeTo(toChannel(self), loop(Chunk.empty<A>()[Symbol.iterator]())))
     })
 )
 
