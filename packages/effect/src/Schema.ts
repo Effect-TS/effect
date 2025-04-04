@@ -9273,6 +9273,8 @@ const CauseInterruptEncoded = Struct({
   fiberId: FiberIdEncoded
 })
 
+let causeEncodedId = 0
+
 const causeEncoded = <E extends Schema.All, D extends Schema.All>(
   error: E,
   defect: D
@@ -9303,7 +9305,10 @@ const causeEncoded = <E extends Schema.All, D extends Schema.All>(
       left: suspended,
       right: suspended
     })
-  ).annotations({ title: `CauseEncoded<${format(error)}>` })
+  ).annotations({
+    title: `CauseEncoded<${format(error)}>`,
+    identifier: `CauseEncoded${causeEncodedId++}`
+  })
   return out
 }
 
