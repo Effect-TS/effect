@@ -711,7 +711,14 @@ describe("Int", () => {
 
   it("nextPow2", () => {
     strictEqual(Int.nextPow2(Int.of(5)), Int.of(8))
+
     strictEqual(Int.nextPow2(Int.of(17)), Int.of(32))
+
+    strictEqual(Int.nextPow2(Int.of(0)), Int.of(2), "nextPow2 of 0 should be 2")
+
+    strictEqual(Int.nextPow2(Int.of(8)), Int.of(8), "nextPow2 of a power of 2 should be the same number")
+
+    strictEqual(Int.nextPow2(Int.of(16)), Int.of(16), "nextPow2 of a power of 2 should be the same number")
   })
 
   it.skip("scratchpad", () => {})
