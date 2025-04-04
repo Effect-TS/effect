@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Either, Int, Number as _Number, Option, pipe } from "effect"
 import {
+  assertEquals,
   assertFalse,
   assertNone,
   assertRight,
@@ -290,11 +291,43 @@ describe("Int", () => {
     const three = Int.of(3)
     const four = Int.of(4)
 
-    assertTrue(Int.lessThanOrEqualTo(negativeTwo, three))
+    const isNegativeTwoLessThenOrEqualToThree = Int.lessThanOrEqualTo(
+      negativeTwo,
+      three
+    )
 
-    assertTrue(Int.lessThanOrEqualTo(three, three))
+    assertTrue(isNegativeTwoLessThenOrEqualToThree)
 
-    assertFalse(Int.lessThanOrEqualTo(four, three))
+    assertEquals(
+      isNegativeTwoLessThenOrEqualToThree,
+      pipe(
+        negativeTwo, //
+        Int.lessThanOrEqualTo(three)
+      )
+    )
+
+    const isThreeLessThenOrEqualToThree = Int.lessThanOrEqualTo(three, three)
+
+    assertTrue(isThreeLessThenOrEqualToThree)
+
+    assertEquals(
+      isThreeLessThenOrEqualToThree,
+      pipe(
+        three, //
+        Int.lessThanOrEqualTo(three)
+      )
+    )
+
+    const isFourLessThanOrEqualThree = Int.lessThanOrEqualTo(four, three)
+    assertFalse(isFourLessThanOrEqualThree)
+
+    assertEquals(
+      isFourLessThanOrEqualThree,
+      pipe(
+        four, //
+        Int.lessThanOrEqualTo(three)
+      )
+    )
   })
 
   it.skip("greaterThan", () => {
