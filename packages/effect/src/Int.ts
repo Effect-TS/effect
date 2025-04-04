@@ -846,17 +846,71 @@ export const lessThanOrEqualTo: {
 } = _Order.lessThanOrEqualTo(Order)
 
 /**
- * Returns true if the first argument is greater than the second, otherwise
- * false.
+ * Returns `true` if the first `Int` is greater than the second `Int`, otherwise
+ * `false`.
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import { Int, pipe } from "effect"
+ * import * as assert from "node:assert/strict"
+ *
+ * assert.equal(
+ *   pipe(
+ *     // data-last api
+ *     Int.of(3),
+ *     Int.greaterThan(Int.of(2))
+ *   ),
+ *   // data-first api
+ *   Int.greaterThan(Int.of(3), Int.of(2))
+ * )
+ * ```
  *
  * @memberof Int
  * @category Predicates
- * @todo Provide an implementation and tests
  */
 export const greaterThan: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { Int, pipe } from "effect"
+   *
+   * assert.equal(pipe(Int.of(4), Int.greaterThan(Int.of(-2))), true)
+   *
+   * assert.equal(pipe(Int.of(-2), Int.greaterThan(Int.of(-2))), false)
+   *
+   * assert.equal(pipe(Int.of(-2), Int.greaterThan(Int.of(3))), false)
+   * ```
+   *
+   * @param that - The `Int` to compare with the `self` when the resultant
+   *   function is invoked.
+   * @returns A function that takes a `self` and returns `true` if `self` is
+   *   greater than `that`, otherwise `false`.
+   */
   (that: Int): (self: Int) => boolean
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(Int.greaterThan(Int.of(4), Int.of(-2)), true)
+   *
+   * assert.equal(Int.greaterThan(Int.of(-2), Int.of(-2)), false)
+   *
+   * assert.equal(Int.greaterThan(Int.of(-2), Int.of(3)), false)
+   * ```
+   *
+   * @param self - The first `Int` value to compare.
+   * @param that - The second `Int` value to compare.
+   * @returns A `boolean` indicating whether `self` was greater than `that`.
+   */
   (self: Int, that: Int): boolean
-} = hole()
+} = _Order.greaterThan(Order)
 
 /**
  * Returns a function that checks if a given `Int` is greater than or equal to

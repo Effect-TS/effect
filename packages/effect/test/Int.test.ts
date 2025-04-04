@@ -330,16 +330,45 @@ describe("Int", () => {
     )
   })
 
-  it.skip("greaterThan", () => {
+  it("greaterThan", () => {
     const negativeTwo = Int.of(-2)
     const three = Int.of(3)
     const four = Int.of(4)
 
-    assertFalse(Int.greaterThan(negativeTwo, three))
+    const isNegativeTwoGreaterThree = Int.greaterThan(negativeTwo, three)
+    assertFalse(isNegativeTwoGreaterThree)
+    assertEquals(
+      isNegativeTwoGreaterThree,
+      pipe(
+        negativeTwo, //
+        Int.greaterThan(three)
+      )
+    )
 
-    assertFalse(Int.greaterThan(negativeTwo, negativeTwo))
+    assertFalse(Int.greaterThan(Int.empty, Int.empty))
 
-    assertTrue(Int.greaterThan(four, negativeTwo))
+    const isNegativeTwoGreaterThanNegativeTwo = Int.greaterThan(
+      negativeTwo,
+      negativeTwo
+    )
+    assertFalse(isNegativeTwoGreaterThanNegativeTwo)
+    assertEquals(
+      isNegativeTwoGreaterThanNegativeTwo,
+      pipe(
+        negativeTwo, //
+        Int.greaterThan(negativeTwo)
+      )
+    )
+
+    const isFourGreaterThanNegativeTwo = Int.greaterThan(four, negativeTwo)
+    assertTrue(isFourGreaterThanNegativeTwo)
+    assertEquals(
+      isFourGreaterThanNegativeTwo,
+      pipe(
+        four, //
+        Int.greaterThan(negativeTwo)
+      )
+    )
   })
 
   it.skip("greaterThanOrEqualTo", () => {
