@@ -285,53 +285,111 @@ describe("Int", () => {
     )
   })
 
-  it.skip("lessThanOrEqualTo", () => {
-    assertTrue(Int.lessThanOrEqualTo(2, 3))
-    assertTrue(Int.lessThanOrEqualTo(3, 3))
-    assertFalse(Int.lessThanOrEqualTo(4, 3))
+  it("lessThanOrEqualTo", () => {
+    const negativeTwo = Int.of(-2)
+    const three = Int.of(3)
+    const four = Int.of(4)
+
+    assertTrue(Int.lessThanOrEqualTo(negativeTwo, three))
+
+    assertTrue(Int.lessThanOrEqualTo(three, three))
+
+    assertFalse(Int.lessThanOrEqualTo(four, three))
   })
 
   it.skip("greaterThan", () => {
-    assertFalse(Int.greaterThan(2, 3))
-    assertFalse(Int.greaterThan(3, 3))
-    assertTrue(Int.greaterThan(4, 3))
+    const negativeTwo = Int.of(-2)
+    const three = Int.of(3)
+    const four = Int.of(4)
+
+    assertFalse(Int.greaterThan(negativeTwo, three))
+
+    assertFalse(Int.greaterThan(negativeTwo, negativeTwo))
+
+    assertTrue(Int.greaterThan(four, negativeTwo))
   })
 
   it.skip("greaterThanOrEqualTo", () => {
-    assertFalse(Int.greaterThanOrEqualTo(2, 3))
-    assertTrue(Int.greaterThanOrEqualTo(3, 3))
-    assertTrue(Int.greaterThanOrEqualTo(4, 3))
+    const negativeTwo = Int.of(-2)
+    const three = Int.of(3)
+    const four = Int.of(4)
+
+    assertFalse(Int.greaterThanOrEqualTo(negativeTwo, three))
+
+    assertTrue(Int.greaterThanOrEqualTo(three, three))
+
+    assertTrue(Int.greaterThanOrEqualTo(four, negativeTwo))
   })
 
   it.skip("between", () => {
-    assertTrue(Int.between({ minimum: 0, maximum: 5 })(3))
-    assertFalse(Int.between({ minimum: 0, maximum: 5 })(-1))
-    assertFalse(Int.between({ minimum: 0, maximum: 5 })(6))
+    assertTrue(
+      pipe(
+        Int.of(3),
+        Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+      )
+    )
 
-    assertTrue(Int.between(3, { minimum: 0, maximum: 5 }))
+    assertFalse(
+      pipe(
+        Int.of(-1),
+        Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+      )
+    )
+
+    assertFalse(
+      pipe(
+        Int.of(6),
+        Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+      )
+    )
+
+    assertTrue(
+      Int.between(Int.of(3), { minimum: Int.of(0), maximum: Int.of(5) })
+    )
   })
 
   it.skip("clamp", () => {
-    strictEqual(Int.clamp({ minimum: 0, maximum: 5 })(3), 3)
-    strictEqual(Int.clamp({ minimum: 0, maximum: 5 })(-1), 0)
-    strictEqual(Int.clamp({ minimum: 0, maximum: 5 })(6), 5)
+    strictEqual(
+      pipe(
+        Int.of(3), //
+        Int.clamp({ minimum: Int.of(0), maximum: Int.of(5) })
+      ),
+      3
+    )
+
+    strictEqual(
+      pipe(
+        Int.of(-1), //
+        Int.clamp({ minimum: Int.of(0), maximum: Int.of(5) })
+      ),
+      0
+    )
+
+    strictEqual(
+      pipe(
+        Int.of(6), //
+        Int.clamp({ minimum: Int.of(0), maximum: Int.of(5) })
+      ),
+      5
+    )
   })
 
   it.skip("min", () => {
-    strictEqual(Int.min(2, 3), 2)
+    strictEqual(Int.min(Int.of(2), Int.of(3)), 2)
   })
 
   it.skip("max", () => {
-    strictEqual(Int.max(2, 3), 3)
+    strictEqual(Int.max(Int.of(2), Int.of(3)), 3)
   })
 
   it.skip("sumAll", () => {
-    strictEqual(Int.sumAll([2, 3, 4]), 9)
+    strictEqual(Int.sumAll([Int.of(2), Int.of(3), Int.of(4)]), 9)
   })
 
   it.skip("multiplyAll", () => {
-    strictEqual(Int.multiplyAll([2, 0, 4]), 0)
-    strictEqual(Int.multiplyAll([2, 3, 4]), 24)
+    strictEqual(Int.multiplyAll([Int.of(2), Int.empty, Int.of(4)]), 0)
+
+    strictEqual(Int.multiplyAll([Int.of(2), Int.of(3), Int.of(4)]), 24)
   })
 
   it.skip("scratchpad", () => {})
