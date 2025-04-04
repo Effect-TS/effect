@@ -551,10 +551,7 @@ describe("Int", () => {
       two,
       "When first value is smaller, it should be returned"
     )
-    assertEquals(
-      firstValueSmaller,
-      pipe(two, Int.min(three))
-    )
+    assertEquals(firstValueSmaller, pipe(two, Int.min(three)))
 
     // case: second value is smaller
     const secondValueSmaller = Int.min(three, two)
@@ -563,10 +560,7 @@ describe("Int", () => {
       two,
       "When second value is smaller, it should be returned"
     )
-    assertEquals(
-      secondValueSmaller,
-      pipe(three, Int.min(two))
-    )
+    assertEquals(secondValueSmaller, pipe(three, Int.min(two)))
 
     // case: equal values
     const equalValues = Int.min(two, two)
@@ -575,10 +569,7 @@ describe("Int", () => {
       two,
       "When values are equal, either can be returned"
     )
-    assertEquals(
-      equalValues,
-      pipe(two, Int.min(two))
-    )
+    assertEquals(equalValues, pipe(two, Int.min(two)))
 
     // case: negative value is smaller
     const negativeValueSmaller = Int.min(negativeTwo, two)
@@ -587,14 +578,49 @@ describe("Int", () => {
       negativeTwo,
       "When comparing positive and negative values, the smaller one should be returned"
     )
-    assertEquals(
-      negativeValueSmaller,
-      pipe(negativeTwo, Int.min(two))
-    )
+    assertEquals(negativeValueSmaller, pipe(negativeTwo, Int.min(two)))
   })
 
-  it.skip("max", () => {
-    strictEqual(Int.max(Int.of(2), Int.of(3)), 3)
+  it("max", () => {
+    const two = Int.of(2)
+    const three = Int.of(3)
+    const negativeTwo = Int.of(-2)
+
+    // case: first value is larger
+    const firstValueLarger = Int.max(three, two)
+    strictEqual(
+      firstValueLarger,
+      three,
+      "When first value is larger, it should be returned"
+    )
+    assertEquals(firstValueLarger, pipe(three, Int.max(two)))
+
+    // case: second value is larger
+    const secondValueLarger = Int.max(two, three)
+    strictEqual(
+      secondValueLarger,
+      three,
+      "When second value is larger, it should be returned"
+    )
+    assertEquals(secondValueLarger, pipe(two, Int.max(three)))
+
+    // case: equal values
+    const equalValues = Int.max(two, two)
+    strictEqual(
+      equalValues,
+      two,
+      "When values are equal, either can be returned"
+    )
+    assertEquals(equalValues, pipe(two, Int.max(two)))
+
+    // case: positive value is larger
+    const positiveValueLarger = Int.max(negativeTwo, two)
+    strictEqual(
+      positiveValueLarger,
+      two,
+      "When comparing positive and negative values, the larger one should be returned"
+    )
+    assertEquals(positiveValueLarger, pipe(negativeTwo, Int.max(two)))
   })
 
   it.skip("sumAll", () => {

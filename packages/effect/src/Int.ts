@@ -1284,13 +1284,76 @@ export const min: {
 /**
  * Returns the maximum between two `Int`s.
  *
+ * **Syntax**
+ *
+ * ```ts
+ * import { Int, pipe } from "effect"
+ * import * as assert from "node:assert/strict"
+ *
+ * const negativeTwo = Int.of(-2)
+ * const three = Int.of(3)
+ *
+ * assert.equal(
+ *   // data-last api
+ *   Int.max(negativeTwo, three), // returns 3
+ *   // data-first api
+ *   pipe(negativeTwo, Int.max(three)) // returns 3
+ * )
+ * ```
+ *
  * @memberof Int
- * @todo Provide an implementation and tests
  */
 export const max: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int, pipe } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * const negativeTwo = Int.of(-2)
+   * const three = Int.of(3)
+   *
+   * assert.equal(
+   *   pipe(
+   *     negativeTwo,
+   *     Int.max(three) // returns 3
+   *   ),
+   *   pipe(
+   *     three,
+   *     Int.max(negativeTwo) // returns 3
+   *   ),
+   *   "the max operation is commutative"
+   * )
+   * ```
+   *
+   * @param that - The `Int` to compare with the `self` when the resultant
+   *   function is invoked.
+   * @returns A function that takes a `self` and returns the maximum of the two
+   *   `Int`s (`self` | `that`).
+   */
   (that: Int): (self: Int) => Int
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(
+   *   Int.max(Int.of(-2), Int.of(3)), // returns 3
+   *   Int.max(Int.of(3), Int.of(-2)), // returns 3
+   *   "the max operation is commutative"
+   * )
+   * ```
+   *
+   * @param self - The first `Int` to compare.
+   * @param that - The second `Int` to compare.
+   * @returns The maximum of the two `Int`s (`self` | `that`).
+   */
   (self: Int, that: Int): Int
-} = hole()
+} = _Order.max(Order)
 
 /**
  * Determines the sign of a given `Int`.
