@@ -1,4 +1,9 @@
-/** @module Int */
+/**
+ * @module Int
+ * @since 3.14.6
+ * @experimental
+ * @internal
+ */
 import * as Brand from "./Brand.js"
 import * as Data from "./Data.js"
 import type * as Either from "./Either.js"
@@ -15,17 +20,24 @@ import type * as _Predicate from "./Predicate.js"
  * A type representing singed integers.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Type
  * @example
  *
  * ```ts
- * import * as Int from "effect/Int"
+ * import { Int } from "effect"
  *
- * const int: Int.Int = 1
+ * function onlyInts(int: Int.Int): void {
+ *   //... stuff for only integers fans
+ * }
+ *
+ * onlyInts(Int.of(1)) // ok
  *
  * // @ts-expect-error - This will fail because 1.5 is not an integer
- * const notInt: Int.Int = 1.5
+ * onlyInts(1.5)
  * ```
+ *
+ * @experimental
  */
 export type Int = number & Brand.Brand<"Int">
 
@@ -38,6 +50,7 @@ const Int = Brand.refined<Int>(
  * Lift a number in the set of integers, and brands it as an `Int`.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Constructors
  * @example
  *
@@ -54,6 +67,7 @@ const Int = Brand.refined<Int>(
  *
  * @param n - The number to be lifted in the set of Integers .
  * @returns A Int branded type.
+ * @experimental
  */
 
 export const of: (n: number) => Int = (n) => Int(n)
@@ -63,6 +77,7 @@ export const of: (n: number) => Int = (n) => Int(n)
  * provided number is a valid integer.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Constructors
  * @example
  *
@@ -71,18 +86,18 @@ export const of: (n: number) => Int = (n) => Int(n)
  * import * as assert from "node:assert/strict"
  *
  * // Valid integers return Some<Int>
- * assert.deepStrictEqual(Int._option(42), Option.some(Int.of(42)))
- * assert.deepStrictEqual(Int._option(0), Option.some(Int.empty))
- * assert.deepStrictEqual(Int._option(-7), Option.some(Int.of(-7)))
+ * assert.deepStrictEqual(Int.option(42), Option.some(Int.of(42)))
+ * assert.deepStrictEqual(Int.option(0), Option.some(Int.empty))
+ * assert.deepStrictEqual(Int.option(-7), Option.some(Int.of(-7)))
  *
  * // Non-integers return None
- * assert.deepStrictEqual(Int._option(3.14), Option.none())
- * assert.deepStrictEqual(Int._option(Number.NaN), Option.none())
+ * assert.deepStrictEqual(Int.option(3.14), Option.none())
+ * assert.deepStrictEqual(Int.option(Number.NaN), Option.none())
  *
  * // Safe operations on potentially non-integer values
  * const safelyDouble = (n: number) =>
  *   pipe(
- *     Int._option(n),
+ *     Int.option(n),
  *     Option.map((int) => Int.multiply(int, Int.of(2)))
  *   )
  *
@@ -92,7 +107,7 @@ export const of: (n: number) => Int = (n) => Int(n)
  * // Handling both cases with Option.match
  * const processNumber = (n: number) =>
  *   pipe(
- *     Int._option(n),
+ *     Int.option(n),
  *     Option.match({
  *       onNone: () => "Not an integer",
  *       onSome: (int) => `Integer: ${int}`
@@ -105,6 +120,7 @@ export const of: (n: number) => Int = (n) => Int(n)
  *
  * @param n - The `number` to convert to an `Int`
  * @returns An `Option` containing the `Int` if valid, `None` otherwise
+ * @experimental
  */
 export const option: (n: number) => _Option.Option<Int> = Int.option
 
@@ -113,11 +129,12 @@ export const option: (n: number) => _Option.Option<Int> = Int.option
  * Int, `Either.Left<BrandError>` otherwise.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Constructors
  * @example
  *
  * ```ts
- * import { Int, Either, pipe } from "effect"
+ * import { Either, Int, Option, pipe } from "effect"
  * import * as assert from "node:assert/strict"
  *
  * // Valid integers return Right<Int>
@@ -168,24 +185,40 @@ export const option: (n: number) => _Option.Option<Int> = Int.option
  * @param n - The number to convert to an Int
  * @returns An `Either` containing the `Int` if valid, or `BrandErrors` if
  *   invalid
+ * @experimental
  */
 export const either: (
   n: number
 ) => Either.Either<Int, Brand.Brand.BrandErrors> = Int.either
 
-export const empty: Int = Int(0)
+/**
+ * Constant of `Int<0>`
+ *
+ * @since 3.14.6
+ * @category Constants
+ * @experimental
+ */
+export const empty: Int = of(0)
 
-export const unit: Int = Int(1)
+/**
+ * Constant of `Int<1>`
+ *
+ * @since 3.14.6
+ * @category Constants
+ * @experimental
+ */
+export const unit: Int = of(1)
 
 /**
  * Type guard to test if a value is an `Int`.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Guards
  * @example
  *
  * ```ts
- * import * as Int from "effect/Int"
+ * import { Int } from "effect"
  * import assert from "node:assert/strict"
  *
  * assert.equal(Int.isInt(1), true)
@@ -206,6 +239,7 @@ export const unit: Int = Int(1)
  *
  * @param input - The value to test.
  * @returns `true` if the value is an `Int`, `false` otherwise.
+ * @experimental
  */
 export const isInt: _Predicate.Refinement<unknown, Int> = (input) => _Number.isNumber(input) && Int.is(input)
 
@@ -216,7 +250,9 @@ export const isInt: _Predicate.Refinement<unknown, Int> = (input) => _Number.isN
  * invocation styles with integers and floating-point numbers.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Math
+ * @experimental
  */
 export const sum: {
   /**
@@ -292,13 +328,15 @@ export const sum: {
    * @returns A `number`
    */
   // (self: Int, that: number): number
-} = dual(2, (self: Int, that: Int): Int => Int(self + that))
+} = dual(2, (self: Int, that: Int): Int => of(self + that))
 
 /**
  * Provides a subtraction operation on `Int`s.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Math
+ * @experimental
  */
 export const subtract: {
   /**
@@ -342,13 +380,15 @@ export const subtract: {
    * @returns The difference of subtracting the subtrahend from the minuend.
    */
   (minuend: Int, subtrahend: Int): Int
-} = dual(2, (minuend: Int, subtrahend: Int): Int => Int(minuend - subtrahend))
+} = dual(2, (minuend: Int, subtrahend: Int): Int => of(minuend - subtrahend))
 
 /**
  * Provides a multiplication operation on `Int`s.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Math
+ * @experimental
  */
 export const multiply: {
   /**
@@ -399,7 +439,7 @@ export const multiply: {
   (multiplier: Int, multiplicand: Int): Int
 } = dual(
   2,
-  (multiplier: Int, multiplicand: Int): Int => Int(multiplier * multiplicand)
+  (multiplier: Int, multiplicand: Int): Int => of(multiplier * multiplicand)
 )
 
 /**
@@ -409,7 +449,9 @@ export const multiply: {
  * otherwise `None`.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Math
+ * @experimental
  */
 export const divide: {
   /**
@@ -467,7 +509,9 @@ export const divide: {
  * Represents errors that can occur during integer division operations.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Errors
+ * @experimental
  */
 export class IntegerDivisionError extends Data.TaggedError(
   "IntegerDivisionError"
@@ -507,8 +551,10 @@ export class IntegerDivisionError extends Data.TaggedError(
  * in either a division by zero or an indeterminate form.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Math
  * @throws - An {@link module:Int.IntegerDivisionError} if the divisor is zero.
+ * @experimental
  */
 export const unsafeDivide: {
   /**
@@ -584,12 +630,13 @@ export const unsafeDivide: {
  * Returns the result of adding one {@link module:Int.unit} to the given `Int`.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Math
  * @example
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Int } from "effect"
+ * import { Int, pipe } from "effect"
  *
  * assert.strictEqual(Int.increment(Int.of(1)), Int.of(2))
  *
@@ -607,6 +654,7 @@ export const unsafeDivide: {
  *
  * @param n - The integer value to be incremented.
  * @returns The incremented value by one Int as an `Int`.
+ * @experimental
  */
 export const increment: (n: Int) => Int = (n) => sum(unit)(n)
 
@@ -615,12 +663,13 @@ export const increment: (n: Int) => Int = (n) => sum(unit)(n)
  * `Int`.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Math
  * @example
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Int } from "effect"
+ * import { Int, pipe } from "effect"
  *
  * assert.strictEqual(Int.decrement(Int.of(-100)), Int.of(-101))
  *
@@ -638,13 +687,15 @@ export const increment: (n: Int) => Int = (n) => sum(unit)(n)
  *
  * @param n - The `Int` to be decremented.
  * @returns The decremented value by one Int as an `Int`.
+ * @experimental
  */
-export const decrement: (n: Int) => Int = (n) => sum(Int(-unit))(n)
+export const decrement: (n: Int) => Int = (n) => sum(of(-unit))(n)
 
 /**
  * Type class instance of `Equivalence` for `Int`.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Instances
  * @example
  *
@@ -655,6 +706,8 @@ export const decrement: (n: Int) => Int = (n) => sum(Int(-unit))(n)
  * assert.equal(Int.Equivalence(Int.of(1), Int.of(1)), true)
  * assert.equal(Int.Equivalence(Int.of(1), Int.of(2)), false)
  * ```
+ *
+ * @experimental
  */
 export const Equivalence: _Equivalence.Equivalence<Int> = _Number.Equivalence
 
@@ -662,6 +715,7 @@ export const Equivalence: _Equivalence.Equivalence<Int> = _Number.Equivalence
  * Type class instance of `Order` for `Int`.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Instances
  * @example
  *
@@ -679,6 +733,7 @@ export const Equivalence: _Equivalence.Equivalence<Int> = _Number.Equivalence
  * @param self - The first `Int` to compare.
  * @param that - The second `Int` to compare.
  * @returns -1 if `self` is less than `that`, 0 if they are equal, and 1 if
+ * @experimental
  */
 export const Order: _Order.Order<Int> = _Number.Order
 
@@ -687,17 +742,20 @@ export const Order: _Order.Order<Int> = _Number.Order
  * `false`.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Predicates
  * @example
  *
  * ```ts
  * import * as assert from "node:assert"
- * import { Int } from "effect"
+ * import { Int, pipe } from "effect"
  *
  * assert.deepStrictEqual(Int.lessThan(Int.of(2), Int.of(3)), true)
  *
  * assert.deepStrictEqual(pipe(Int.of(3), Int.lessThan(Int.of(3))), false)
  * ```
+ *
+ * @experimental
  */
 export const lessThan: {
   /**
@@ -705,7 +763,7 @@ export const lessThan: {
    *
    * ```ts
    * import * as assert from "node:assert"
-   * import { Int } from "effect"
+   * import { Int, pipe } from "effect"
    *
    * assert.deepStrictEqual(
    *   pipe(
@@ -773,7 +831,9 @@ export const lessThan: {
  * ```
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Predicates
+ * @experimental
  */
 export const lessThanOrEqualTo: {
   /**
@@ -868,7 +928,9 @@ export const lessThanOrEqualTo: {
  * ```
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Predicates
+ * @experimental
  */
 export const greaterThan: {
   /**
@@ -935,7 +997,9 @@ export const greaterThan: {
  * ```
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Predicates
+ * @experimental
  */
 export const greaterThanOrEqualTo: {
   /**
@@ -1020,7 +1084,9 @@ export const greaterThanOrEqualTo: {
  * ```
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Predicates
+ * @experimental
  */
 export const between: {
   /**
@@ -1120,7 +1186,13 @@ export const between: {
    * @returns `true` if the `Int` is between the `minimum` and `maximum` values
    *   (inclusive), otherwise `false`.
    */
-  (self: Int, options: { minimum: Int; maximum: Int }): boolean
+  (
+    self: Int,
+    options: {
+      minimum: Int
+      maximum: Int
+    }
+  ): boolean
 } = _Order.between(Order)
 
 /**
@@ -1148,6 +1220,8 @@ export const between: {
  * ```
  *
  * @memberof Int
+ * @since 3.14.6
+ * @experimental
  */
 export const clamp: {
   /**
@@ -1205,7 +1279,13 @@ export const clamp: {
    * @param options.maximum - The maximum inclusive `Int`.
    * @returns The clamped `Int` value.
    */
-  (self: Int, options: { minimum: Int; maximum: Int }): Int
+  (
+    self: Int,
+    options: {
+      minimum: Int
+      maximum: Int
+    }
+  ): Int
 } = _Order.clamp(Order)
 
 /**
@@ -1232,6 +1312,8 @@ export const clamp: {
  * ```
  *
  * @memberof Int
+ * @since 3.14.6
+ * @experimental
  */
 export const min: {
   /**
@@ -1303,6 +1385,8 @@ export const min: {
  * ```
  *
  * @memberof Int
+ * @since 3.14.6
+ * @experimental
  */
 export const max: {
   /**
@@ -1360,6 +1444,7 @@ export const max: {
  * Determines the sign of a given `Int`.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Math
  * @example
  *
@@ -1374,6 +1459,7 @@ export const max: {
  *
  * @param n - The `Int` to determine the sign of.
  * @returns -1 if `n` is negative, 0 if `n` is zero, and 1 if `n` is positive.
+ * @experimental
  */
 export const sign: (n: Int) => Ordering = (n) => Order(n, empty)
 
@@ -1381,6 +1467,7 @@ export const sign: (n: Int) => Ordering = (n) => Order(n, empty)
  * Takes an `Iterable` of `Int`s and returns their sum as a single `Int`.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Math
  * @example
  *
@@ -1393,8 +1480,10 @@ export const sign: (n: Int) => Ordering = (n) => Order(n, empty)
  *   Int.of(-1)
  * )
  * ```
- * @param collection - an `Iterable<Int>` to reduce to a sum.
+ *
+ * @param collection - An `Iterable<Int>` to reduce to a sum.
  * @returns The sum of the `Int`s in the `Iterable`.
+ * @experimental
  */
 export const sumAll: (collection: Iterable<Int, any, any>) => Int = (
   collection
@@ -1404,7 +1493,11 @@ export const sumAll: (collection: Iterable<Int, any, any>) => Int = (
  * Takes an `Iterable` of `Int`s and returns their multiplication as a single
  * `Int`.
  *
+ * @memberof Int
+ * @since 3.14.6
+ * @category Math
  * @example
+ *
  * ```ts
  * import * as assert from "node:assert/strict"
  * import { Int, HashSet } from "effect"
@@ -1415,10 +1508,9 @@ export const sumAll: (collection: Iterable<Int, any, any>) => Int = (
  * )
  * ```
  *
- * @memberof Int
- * @category Math
- * @param collection - an `Iterable<Int>` to reduce to a product.
+ * @param collection - An `Iterable<Int>` to reduce to a product.
  * @returns The product of the `Int`s in the `Iterable`.
+ * @experimental
  */
 export const multiplyAll: (collection: Iterable<Int>) => Int = (collection) =>
   _Iterable.reduce(collection, unit, multiply)
@@ -1430,19 +1522,23 @@ export const multiplyAll: (collection: Iterable<Int>) => Int = (collection) =>
  * It always takes the sign of the dividend.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Math
+ * @experimental
  * @todo Provide an implementation and tests
  */
 export const remainder: {
   (divisor: Int): (self: Int) => Int
   (self: Int, divisor: Int): Int
-} = hole()
+} = hole
 
 /**
  * Returns the next power of 2 from the given `Int`.
  *
  * @memberof Int
+ * @since 3.14.6
  * @category Math
+ * @experimental
  * @todo Provide an implementation and tests
  */
-export const nextPow2: (n: Int) => Int = (n) => hole()
+export const nextPow2 = (_n: Int): Int => empty
