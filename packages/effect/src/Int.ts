@@ -1,13 +1,13 @@
 /** @module Int */
-
 import * as Brand from "./Brand.js"
 import * as Data from "./Data.js"
 import type * as Either from "./Either.js"
 import type * as _Equivalence from "./Equivalence.js"
-import { dual } from "./Function.js"
+import { dual, hole } from "./Function.js"
 import * as _Number from "./Number.js"
 import type * as _Option from "./Option.js"
 import * as _Order from "./Order.js"
+import type { Ordering } from "./Ordering.js"
 import type * as _Predicate from "./Predicate.js"
 
 /**
@@ -699,53 +699,210 @@ export const Order: _Order.Order<Int> = _Number.Order
  * ```
  */
 export const lessThan: {
-    /**
-     * @example
-     *
-     * ```ts
-     * import * as assert from "node:assert"
-     * import { Int } from "effect"
-     *
-     * assert.deepStrictEqual(
-     *   pipe(
-     *     Int.of(2), //
-     *     Int.lessThan(Int.of(3))
-     *   ),
-     *   true
-     * )
-     *
-     * assert.deepStrictEqual(
-     *   pipe(
-     *     Int.of(3), //
-     *     Int.lessThan(Int.of(3))
-     *   ),
-     *   false
-     * )
-     *
-     * assert.deepStrictEqual(
-     *   pipe(
-     *     Int.of(4), //
-     *     Int.lessThan(Int.of(3))
-     *   ),
-     *   false
-     * )
-     * ```
-     */
-    (that: Int): (self: Int) => boolean
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Int } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     Int.of(2), //
+   *     Int.lessThan(Int.of(3))
+   *   ),
+   *   true
+   * )
+   *
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     Int.of(3), //
+   *     Int.lessThan(Int.of(3))
+   *   ),
+   *   false
+   * )
+   *
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     Int.of(4), //
+   *     Int.lessThan(Int.of(3))
+   *   ),
+   *   false
+   * )
+   * ```
+   */
+  (that: Int): (self: Int) => boolean
 
-    /**
-     * @example
-     *
-     * ```ts
-     * import * as assert from "node:assert"
-     * import { Int } from "effect"
-     *
-     * assert.deepStrictEqual(Int.lessThan(Int.of(2), Int.of(3)), true)
-     *
-     * assert.deepStrictEqual(Int.lessThan(Int.of(3), Int.of(3)), false)
-     *
-     * assert.deepStrictEqual(Int.lessThan(Int.of(4), Int.of(3)), false)
-     * ```
-     */
-    (self: Int, that: Int): boolean
-  } = _Order.lessThan(Order)
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Int } from "effect"
+   *
+   * assert.deepStrictEqual(Int.lessThan(Int.of(2), Int.of(3)), true)
+   *
+   * assert.deepStrictEqual(Int.lessThan(Int.of(3), Int.of(3)), false)
+   *
+   * assert.deepStrictEqual(Int.lessThan(Int.of(4), Int.of(3)), false)
+   * ```
+   */
+  (self: Int, that: Int): boolean
+} = _Order.lessThan(Order)
+
+/**
+ * Returns a function that checks if a given `Int` is less than or equal to the
+ * provided one.
+ *
+ * @memberof Int
+ * @category Predicates
+ * @todo Provide an implementation and tests
+ */
+export const lessThanOrEqualTo: {
+  (that: Int): (self: Int) => boolean
+  (self: Int, that: Int): boolean
+} = hole()
+
+/**
+ * Returns true if the first argument is greater than the second, otherwise
+ * false.
+ *
+ * @memberof Int
+ * @category Predicates
+ * @todo Provide an implementation and tests
+ */
+export const greaterThan: {
+  (that: Int): (self: Int) => boolean
+  (self: Int, that: Int): boolean
+} = hole()
+
+/**
+ * Returns a function that checks if a given `Int` is greater than or equal to
+ * the provided one.
+ *
+ * @memberof Int
+ * @category Predicates
+ * @todo Provide an implementation and tests
+ */
+export const greaterThanOrEqualTo: {
+  (that: Int): (self: Int) => boolean
+  (self: Int, that: Int): boolean
+} = hole()
+
+/**
+ * Checks if a `Int` is between a minimum and maximum value (inclusive).
+ *
+ * @memberof Int
+ * @category Predicates
+ * @todo Provide an implementation and tests
+ */
+export const between: {
+  (options: { minimum: Int; maximum: Int }): (self: Int) => boolean
+  (
+    self: Int,
+    options: {
+      minimum: Int
+      maximum: Int
+    }
+  ): boolean
+} = hole()
+
+/**
+ * Restricts the given `Int` to be within the range specified by the `minimum`
+ * and `maximum` values.
+ *
+ * - If the `Int` is less than the `minimum` value, the function returns the
+ *   `minimum` value.
+ * - If the `Int` is greater than the `maximum` value, the function returns the
+ *   `maximum` value.
+ * - Otherwise, it returns the original `Int`.
+ *
+ * @memberof Int
+ * @todo Provide an implementation and tests
+ */
+export const clamp: {
+  (options: { minimum: Int; maximum: Int }): (self: Int) => Int
+  (
+    self: Int,
+    options: {
+      minimum: Int
+      maximum: Int
+    }
+  ): Int
+} = hole()
+
+/**
+ * Returns the minimum between two `Int`s.
+ *
+ * @memberof Int
+ * @todo Provide an implementation and tests
+ */
+export const min: {
+  (that: Int): (self: Int) => Int
+  (self: Int, that: Int): Int
+} = hole()
+
+/**
+ * Returns the maximum between two `Int`s.
+ *
+ * @memberof Int
+ * @todo Provide an implementation and tests
+ */
+export const max: {
+  (that: Int): (self: Int) => Int
+  (self: Int, that: Int): Int
+} = hole()
+
+/**
+ * Determines the sign of a given `Int`.
+ *
+ * @memberof Int
+ * @category Math
+ * @todo Provide an implementation and tests
+ */
+export const sign: (n: Int) => Ordering = (_n) => hole()
+
+/**
+ * Takes an `Iterable` of `Int`s and returns their sum as a single `Int`.
+ *
+ * @memberof Int
+ * @category Math
+ * @todo Provide an implementation and tests
+ */
+export const sumAll: (collection: Iterable<Int, any, any>) => Int = (
+  _collection
+) => hole()
+
+/**
+ * Takes an `Iterable` of `Int`s and returns their multiplication as a single
+ * `Int`.
+ *
+ * @memberof Int
+ * @category Math
+ * @todo Provide an implementation and tests
+ */
+export const multiplyAll: (collection: Iterable<Int>) => Int = (_collection) => hole()
+
+/**
+ * Returns the remainder left over when one operand is divided by a second
+ * operand.
+ *
+ * It always takes the sign of the dividend.
+ *
+ * @memberof Int
+ * @category Math
+ * @todo Provide an implementation and tests
+ */
+export const remainder: {
+  (divisor: Int): (self: Int) => Int
+  (self: Int, divisor: Int): Int
+} = hole()
+
+/**
+ * Returns the next power of 2 from the given `Int`.
+ *
+ * @memberof Int
+ * @category Math
+ * @todo Provide an implementation and tests
+ */
+export const nextPow2: (n: Int) => Int = (n) => hole()
