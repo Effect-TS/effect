@@ -4,6 +4,7 @@ import * as Data from "./Data.js"
 import type * as Either from "./Either.js"
 import type * as _Equivalence from "./Equivalence.js"
 import { dual, hole } from "./Function.js"
+import * as _Iterable from "./Iterable.js"
 import * as _Number from "./Number.js"
 import type * as _Option from "./Option.js"
 import * as _Order from "./Order.js"
@@ -1370,6 +1371,7 @@ export const max: {
  * assert.equal(Int.sign(Int.of(0)), 0)
  * assert.equal(Int.sign(Int.of(10)), 1)
  * ```
+ *
  * @param n - The `Int` to determine the sign of.
  * @returns -1 if `n` is negative, 0 if `n` is zero, and 1 if `n` is positive.
  */
@@ -1383,8 +1385,8 @@ export const sign: (n: Int) => Ordering = (n) => Order(n, empty)
  * @todo Provide an implementation and tests
  */
 export const sumAll: (collection: Iterable<Int, any, any>) => Int = (
-  _collection
-) => hole()
+  collection
+) => _Iterable.reduce(collection, empty, sum)
 
 /**
  * Takes an `Iterable` of `Int`s and returns their multiplication as a single

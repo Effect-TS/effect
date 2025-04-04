@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { Either, Int, Number as _Number, Option, pipe } from "effect"
+import { Either, HashSet, Int, List, Number as _Number, Option, pipe } from "effect"
 import {
   assertEquals,
   assertFalse,
@@ -629,8 +629,45 @@ describe("Int", () => {
     strictEqual(Int.sign(Int.of(10)), 1)
   })
 
-  it.skip("sumAll", () => {
-    strictEqual(Int.sumAll([Int.of(2), Int.of(3), Int.of(4)]), 9)
+  it("sumAll", () => {
+    // Array of Int
+    strictEqual(
+      Int.sumAll([Int.of(2), Int.of(3), Int.of(4)]),
+      9,
+      "Array of Int should sum correctly"
+    )
+
+    // HashSet of Int
+    const hashSet = HashSet.make(Int.of(2), Int.of(3), Int.of(4))
+    strictEqual(Int.sumAll(hashSet), 9, "HashSet of Int should sum correctly")
+
+    // List of Int
+    const list = List.make(Int.of(2), Int.of(3), Int.of(4))
+    strictEqual(Int.sumAll(list), 9, "List of Int should sum correctly")
+
+    // Generator function yielding Int
+    function* intGenerator(): Generator<Int.Int, void, never> {
+      const intBatch = [
+        Int.of(2),
+        Int.of(3),
+        Int.of(4),
+        Int.of(-4),
+        Int.of(-3),
+        Int.of(7)
+      ]
+      for (const int of intBatch) {
+        yield int
+      }
+    }
+    strictEqual(
+      Int.sumAll(intGenerator()),
+      9,
+      "Generator of Int should sum correctly"
+    )
+
+    // Set of Int (standard JavaScript Set)
+    const set = new Set<Int.Int>([Int.of(2), Int.of(3), Int.of(4)])
+    strictEqual(Int.sumAll(set), 9, "Set of Int should sum correctly")
   })
 
   it.skip("multiplyAll", () => {
