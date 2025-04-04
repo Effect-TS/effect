@@ -10,7 +10,6 @@ import {
   strictEqual,
   throws
 } from "effect/test/util"
-import * as assert from "node:assert/strict"
 
 describe("Int", () => {
   it("of", () => {
@@ -36,8 +35,14 @@ describe("Int", () => {
     assertRight(Int.either(0), Int.of(0))
     assertRight(Int.either(Int.empty), Int.empty)
     assertRight(Int.either(-1), Int.of(-1))
-    assertRight(Int.either(Number.MAX_SAFE_INTEGER), Int.of(Number.MAX_SAFE_INTEGER))
-    assertRight(Int.either(Number.MIN_SAFE_INTEGER), Int.of(Number.MIN_SAFE_INTEGER))
+    assertRight(
+      Int.either(Number.MAX_SAFE_INTEGER),
+      Int.of(Number.MAX_SAFE_INTEGER)
+    )
+    assertRight(
+      Int.either(Number.MIN_SAFE_INTEGER),
+      Int.of(Number.MIN_SAFE_INTEGER)
+    )
 
     // Non-integers return Left<BrandErrors>
     assertTrue(Either.isLeft(Int.either(3.14)))
@@ -260,5 +265,23 @@ describe("Int", () => {
     strictEqual(Int.Order(Int.of(2), Int.of(2)), 0)
 
     strictEqual(Int.Order(Int.of(-2), Int.of(-2)), 0)
+  })
+
+  it("lessThan", () => {
+    assertTrue(Int.lessThan(Int.of(2), Int.of(3)))
+
+    assertFalse(
+      pipe(
+        Int.of(3), //
+        Int.lessThan(Int.of(3))
+      )
+    )
+
+    assertFalse(
+      pipe(
+        Int.of(4), //
+        Int.lessThan(Int.of(3))
+      )
+    )
   })
 })

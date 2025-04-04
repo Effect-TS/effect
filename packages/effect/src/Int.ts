@@ -680,3 +680,72 @@ export const Equivalence: _Equivalence.Equivalence<Int> = _Number.Equivalence
  * @returns -1 if `self` is less than `that`, 0 if they are equal, and 1 if
  */
 export const Order: _Order.Order<Int> = _Number.Order
+
+/**
+ * Returns `true` if the first argument is less than the second, otherwise
+ * `false`.
+ *
+ * @memberof Int
+ * @category Predicates
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Int } from "effect"
+ *
+ * assert.deepStrictEqual(Int.lessThan(Int.of(2), Int.of(3)), true)
+ *
+ * assert.deepStrictEqual(pipe(Int.of(3), Int.lessThan(Int.of(3))), false)
+ * ```
+ */
+export const lessThan: {
+    /**
+     * @example
+     *
+     * ```ts
+     * import * as assert from "node:assert"
+     * import { Int } from "effect"
+     *
+     * assert.deepStrictEqual(
+     *   pipe(
+     *     Int.of(2), //
+     *     Int.lessThan(Int.of(3))
+     *   ),
+     *   true
+     * )
+     *
+     * assert.deepStrictEqual(
+     *   pipe(
+     *     Int.of(3), //
+     *     Int.lessThan(Int.of(3))
+     *   ),
+     *   false
+     * )
+     *
+     * assert.deepStrictEqual(
+     *   pipe(
+     *     Int.of(4), //
+     *     Int.lessThan(Int.of(3))
+     *   ),
+     *   false
+     * )
+     * ```
+     */
+    (that: Int): (self: Int) => boolean
+
+    /**
+     * @example
+     *
+     * ```ts
+     * import * as assert from "node:assert"
+     * import { Int } from "effect"
+     *
+     * assert.deepStrictEqual(Int.lessThan(Int.of(2), Int.of(3)), true)
+     *
+     * assert.deepStrictEqual(Int.lessThan(Int.of(3), Int.of(3)), false)
+     *
+     * assert.deepStrictEqual(Int.lessThan(Int.of(4), Int.of(3)), false)
+     * ```
+     */
+    (self: Int, that: Int): boolean
+  } = _Order.lessThan(Order)
