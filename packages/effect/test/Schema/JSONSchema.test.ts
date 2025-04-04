@@ -2199,6 +2199,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         }
       )
     })
+
+    it("Record(string, number | undefined)", () => {
+      expectJSONSchemaAnnotations(Schema.Record({ key: Schema.String, value: Schema.UndefinedOr(JsonNumber) }), {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": { "type": "number" }
+      })
+    })
   })
 
   describe("Union", () => {

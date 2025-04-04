@@ -684,14 +684,15 @@ const go = (
       let patternProperties: JsonSchema7 | undefined = undefined
       let propertyNames: JsonSchema7 | undefined = undefined
       for (const is of ast.indexSignatures) {
+        const pruned = pruneUndefined(is.type) ?? is.type
         const parameter = is.parameter
         switch (parameter._tag) {
           case "StringKeyword": {
-            output.additionalProperties = go(is.type, $defs, true, path, options)
+            output.additionalProperties = go(pruned, $defs, true, path, options)
             break
           }
           case "TemplateLiteral": {
-            patternProperties = go(is.type, $defs, true, path, options)
+            patternProperties = go(pruned, $defs, true, path, options)
             propertyNames = {
               type: "string",
               pattern: AST.getTemplateLiteralRegExp(parameter).source
@@ -699,13 +700,13 @@ const go = (
             break
           }
           case "Refinement": {
-            patternProperties = go(is.type, $defs, true, path, options)
+            patternProperties = go(pruned, $defs, true, path, options)
             propertyNames = go(parameter, $defs, true, path, options)
             break
           }
           case "SymbolKeyword": {
             const indexSignaturePath = path.concat("[symbol]")
-            output.additionalProperties = go(is.type, $defs, true, indexSignaturePath, options)
+            output.additionalProperties = go(pruned, $defs, true, indexSignaturePath, options)
             propertyNames = go(parameter, $defs, true, indexSignaturePath, options)
             break
           }
