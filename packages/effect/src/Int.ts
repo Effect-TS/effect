@@ -1382,7 +1382,19 @@ export const sign: (n: Int) => Ordering = (n) => Order(n, empty)
  *
  * @memberof Int
  * @category Math
- * @todo Provide an implementation and tests
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { Int, HashSet } from "effect"
+ *
+ * assert.equal(
+ *   Int.sumAll(HashSet.make(Int.of(-2), Int.of(-3), Int.of(4))), //
+ *   Int.of(-1)
+ * )
+ * ```
+ * @param collection - an `Iterable<Int>` to reduce to a sum.
+ * @returns The sum of the `Int`s in the `Iterable`.
  */
 export const sumAll: (collection: Iterable<Int, any, any>) => Int = (
   collection
@@ -1392,11 +1404,24 @@ export const sumAll: (collection: Iterable<Int, any, any>) => Int = (
  * Takes an `Iterable` of `Int`s and returns their multiplication as a single
  * `Int`.
  *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { Int, HashSet } from "effect"
+ *
+ * assert.equal(
+ *   Int.multiplyAll(HashSet.make(Int.of(-2), Int.of(-3), Int.of(4))), //
+ *   Int.of(24)
+ * )
+ * ```
+ *
  * @memberof Int
  * @category Math
- * @todo Provide an implementation and tests
+ * @param collection - an `Iterable<Int>` to reduce to a product.
+ * @returns The product of the `Int`s in the `Iterable`.
  */
-export const multiplyAll: (collection: Iterable<Int>) => Int = (_collection) => hole()
+export const multiplyAll: (collection: Iterable<Int>) => Int = (collection) =>
+  _Iterable.reduce(collection, unit, multiply)
 
 /**
  * Returns the remainder left over when one operand is divided by a second

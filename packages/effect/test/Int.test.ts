@@ -670,10 +670,26 @@ describe("Int", () => {
     strictEqual(Int.sumAll(set), 9, "Set of Int should sum correctly")
   })
 
-  it.skip("multiplyAll", () => {
-    strictEqual(Int.multiplyAll([Int.of(2), Int.empty, Int.of(4)]), 0)
+  it("multiplyAll", () => {
+    strictEqual(
+      Int.multiplyAll(Array.of(Int.of(2), Int.empty, Int.of(4))),
+      Int.empty
+    )
 
-    strictEqual(Int.multiplyAll([Int.of(2), Int.of(3), Int.of(4)]), 24)
+    strictEqual(
+      Int.multiplyAll(HashSet.make(Int.of(-2), Int.of(-3), Int.of(4))),
+      Int.of(24)
+    )
+
+    strictEqual(
+      Int.multiplyAll(Array.of(Int.of(-2), Int.of(3), Int.of(4))),
+      Int.of(-24)
+    )
+
+    strictEqual(
+      Int.multiplyAll(List.make(Int.of(-3), Int.of(-2), Int.of(4))),
+      Int.of(24)
+    )
   })
 
   it.skip("scratchpad", () => {})
