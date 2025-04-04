@@ -2200,12 +2200,38 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 
-    it("Record(string, number | undefined)", () => {
+    it("Record(string, UndefinedOr(number))", () => {
       expectJSONSchemaAnnotations(Schema.Record({ key: Schema.String, value: Schema.UndefinedOr(JsonNumber) }), {
         "type": "object",
         "properties": {},
         "required": [],
         "additionalProperties": { "type": "number" }
+      })
+    })
+
+    it("partial(Struct + Record(string, number))", () => {
+      const schema = Schema.partial(
+        Schema.Struct(
+          { foo: Schema.Number },
+          {
+            key: Schema.String,
+            value: Schema.Number
+          }
+        )
+      )
+
+      expectJSONSchemaAnnotations(schema, {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [],
+        "properties": {
+          "foo": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": {
+          "type": "number"
+        }
       })
     })
   })
