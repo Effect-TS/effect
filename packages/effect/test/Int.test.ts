@@ -490,7 +490,10 @@ describe("Int", () => {
   })
 
   it("clamp", () => {
-    const clampOptions = { minimum: Int.empty, maximum: Int.of(5) } as const
+    const clampOptions = {
+      minimum: Int.empty,
+      maximum: Int.of(5)
+    } as const
     const clampBetweenZeroAndFive: (n: Int.Int) => Int.Int = Int.clamp(clampOptions)
 
     // Test value within range
@@ -659,6 +662,7 @@ describe("Int", () => {
         yield int
       }
     }
+
     strictEqual(
       Int.sumAll(intGenerator()),
       9,
@@ -690,6 +694,20 @@ describe("Int", () => {
       Int.multiplyAll(List.make(Int.of(-3), Int.of(-2), Int.of(4))),
       Int.of(24)
     )
+  })
+
+  it("remainder", () => {
+    strictEqual(Int.remainder(Int.of(2), Int.of(2)), 0)
+    strictEqual(Int.remainder(Int.of(3), Int.of(2)), 1)
+    strictEqual(Int.remainder(Int.of(4), Int.of(2)), 0)
+    strictEqual(Int.remainder(Int.of(-2), Int.of(2)), -0)
+    strictEqual(Int.remainder(Int.of(-3), Int.of(2)), -1)
+    strictEqual(Int.remainder(Int.of(-4), Int.of(2)), -0)
+  })
+
+  it("nextPow2", () => {
+    strictEqual(Int.nextPow2(Int.of(5)), Int.of(8))
+    strictEqual(Int.nextPow2(Int.of(17)), Int.of(32))
   })
 
   it.skip("scratchpad", () => {})

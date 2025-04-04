@@ -8,7 +8,7 @@ import * as Brand from "./Brand.js"
 import * as Data from "./Data.js"
 import type * as Either from "./Either.js"
 import type * as _Equivalence from "./Equivalence.js"
-import { dual, hole } from "./Function.js"
+import { dual } from "./Function.js"
 import * as _Iterable from "./Iterable.js"
 import * as _Number from "./Number.js"
 import type * as _Option from "./Option.js"
@@ -1528,9 +1528,9 @@ export const multiplyAll: (collection: Iterable<Int>) => Int = (collection) =>
  * @todo Provide an implementation and tests
  */
 export const remainder: {
-  (divisor: Int): (self: Int) => Int
-  (self: Int, divisor: Int): Int
-} = hole
+  (divisor: Int): (dividend: Int) => Int
+  (dividend: Int, divisor: Int): Int
+} = dual(2, (dividend: Int, divisor: Int): number => dividend % divisor)
 
 /**
  * Returns the next power of 2 from the given `Int`.
@@ -1541,4 +1541,4 @@ export const remainder: {
  * @experimental
  * @todo Provide an implementation and tests
  */
-export const nextPow2 = (_n: Int): Int => empty
+export const nextPow2 = (int: Int): Int => of(_Number.nextPow2(int))
