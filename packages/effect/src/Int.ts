@@ -916,14 +916,88 @@ export const greaterThan: {
  * Returns a function that checks if a given `Int` is greater than or equal to
  * the provided one.
  *
+ * **Syntax**
+ *
+ * ```ts
+ * import { Int, pipe } from "effect"
+ * import * as assert from "node:assert/strict"
+ *
+ * assert.equal(
+ *   pipe(
+ *     // data-last api
+ *     Int.of(3),
+ *     Int.greaterThanOrEqualTo(Int.of(2))
+ *   ),
+ *   // data-first api
+ *   Int.greaterThanOrEqualTo(Int.of(3), Int.of(2))
+ * )
+ * ```
+ *
  * @memberof Int
  * @category Predicates
  * @todo Provide an implementation and tests
  */
 export const greaterThanOrEqualTo: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int, pipe } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.of(-2), //
+   *     Int.greaterThanOrEqualTo(Int.of(3))
+   *   ),
+   *   false
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.empty, //
+   *     Int.greaterThanOrEqualTo(Int.of(-Int.empty))
+   *   ),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   pipe(Int.of(4), Int.greaterThanOrEqualTo(Int.of(-2))),
+   *   true
+   * )
+   * ```
+   *
+   * @param that - The `Int` to compare with the `self` when the resultant
+   *   function is invoked.
+   * @returns A function that takes a `self` and returns `true` if `self` is
+   *   greater than or equal to `that`, otherwise `false`.
+   */
   (that: Int): (self: Int) => boolean
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(Int.greaterThanOrEqualTo(Int.of(-2), Int.of(3)), false)
+   *
+   * assert.equal(
+   *   Int.greaterThanOrEqualTo(Int.empty, Int.of(-Int.empty)),
+   *   true
+   * )
+   *
+   * assert.equal(Int.greaterThanOrEqualTo(Int.of(4), Int.of(-2)), true)
+   * ```
+   *
+   * @param self - The first `Int` to compare.
+   * @param that - The second `Int` to compare.
+   * @returns `true` if `self` is greater than or equal to `that`, otherwise
+   *   `false`.
+   */
   (self: Int, that: Int): boolean
-} = hole()
+} = _Order.greaterThanOrEqualTo(Order)
 
 /**
  * Checks if a `Int` is between a minimum and maximum value (inclusive).

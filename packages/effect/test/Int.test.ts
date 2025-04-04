@@ -371,16 +371,48 @@ describe("Int", () => {
     )
   })
 
-  it.skip("greaterThanOrEqualTo", () => {
+  it("greaterThanOrEqualTo", () => {
     const negativeTwo = Int.of(-2)
     const three = Int.of(3)
     const four = Int.of(4)
 
-    assertFalse(Int.greaterThanOrEqualTo(negativeTwo, three))
+    const isNegativeTwoGreaterOrEqualToThree = Int.greaterThanOrEqualTo(
+      negativeTwo,
+      three
+    )
+    assertFalse(isNegativeTwoGreaterOrEqualToThree)
+    assertEquals(
+      isNegativeTwoGreaterOrEqualToThree,
+      pipe(
+        negativeTwo, //
+        Int.greaterThanOrEqualTo(three)
+      )
+    )
 
-    assertTrue(Int.greaterThanOrEqualTo(three, three))
+    const isZeroGreaterThanOrEqualToZero = Int.greaterThanOrEqualTo(
+      Int.empty,
+      Int.empty
+    )
+    assertTrue(isZeroGreaterThanOrEqualToZero)
+    assertEquals(
+      isZeroGreaterThanOrEqualToZero,
+      pipe(
+        Int.empty, //
+        Int.greaterThanOrEqualTo(Int.empty)
+      )
+    )
 
-    assertTrue(Int.greaterThanOrEqualTo(four, negativeTwo))
+    assertTrue(Int.greaterThanOrEqualTo(Int.empty, Int.of(-Int.empty)))
+
+    const isFourGreaterThanOrEqualToNegativeTwo = Int.greaterThanOrEqualTo(
+      four,
+      negativeTwo
+    )
+    assertTrue(isFourGreaterThanOrEqualToNegativeTwo)
+    assertEquals(
+      isFourGreaterThanOrEqualToNegativeTwo,
+      pipe(four, Int.greaterThanOrEqualTo(negativeTwo))
+    )
   })
 
   it.skip("between", () => {
