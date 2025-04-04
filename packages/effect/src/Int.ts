@@ -935,7 +935,6 @@ export const greaterThan: {
  *
  * @memberof Int
  * @category Predicates
- * @todo Provide an implementation and tests
  */
 export const greaterThanOrEqualTo: {
   /**
@@ -1002,20 +1001,126 @@ export const greaterThanOrEqualTo: {
 /**
  * Checks if a `Int` is between a minimum and maximum value (inclusive).
  *
+ * **Syntax**
+ *
+ * ```ts
+ * import { Int, pipe } from "effect"
+ * import * as assert from "node:assert/strict"
+ *
+ * assert.equal(
+ *   // data-last api
+ *   pipe(
+ *     Int.of(3),
+ *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+ *   ),
+ *   // data-first api
+ *   Int.between(Int.of(3), { minimum: Int.of(0), maximum: Int.of(5) })
+ * )
+ * ```
+ *
  * @memberof Int
  * @category Predicates
- * @todo Provide an implementation and tests
  */
 export const between: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int, pipe } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.of(-1),
+   *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+   *   ),
+   *   false
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.of(0),
+   *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+   *   ),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.of(3),
+   *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+   *   ),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.of(5),
+   *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+   *   ),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     Int.of(6),
+   *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+   *   ),
+   *   false
+   * )
+   * ```
+   *
+   * @param options
+   * @param options.minimum - The minimum inclusive `Int`.
+   * @param options.maximum - The maximum inclusive `Int`.
+   * @returns A function that takes a `self` and returns `true` if `self` is
+   *   between the `minimum` and `maximum` values (inclusive), otherwise
+   *   `false`.
+   */
   (options: { minimum: Int; maximum: Int }): (self: Int) => boolean
-  (
-    self: Int,
-    options: {
-      minimum: Int
-      maximum: Int
-    }
-  ): boolean
-} = hole()
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import { Int } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(
+   *   Int.between(Int.of(-1), { minimum: Int.of(0), maximum: Int.of(5) }),
+   *   false
+   * )
+   *
+   * assert.equal(
+   *   Int.between(Int.of(0), { minimum: Int.of(0), maximum: Int.of(5) }),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   Int.between(Int.of(3), { minimum: Int.of(0), maximum: Int.of(5) }),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   Int.between(Int.of(5), { minimum: Int.of(0), maximum: Int.of(5) }),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   Int.between(Int.of(6), { minimum: Int.of(0), maximum: Int.of(5) }),
+   *   false
+   * )
+   * ```
+   *
+   * @param self - The `Int` to check.
+   * @param options
+   * @param options.minimum - The minimum inclusive `Int`.
+   * @param options.maximum - The maximum inclusive `Int`.
+   * @returns `true` if the `Int` is between the `minimum` and `maximum` values
+   *   (inclusive), otherwise `false`.
+   */
+  (self: Int, options: { minimum: Int; maximum: Int }): boolean
+} = _Order.between(Order)
 
 /**
  * Restricts the given `Int` to be within the range specified by the `minimum`

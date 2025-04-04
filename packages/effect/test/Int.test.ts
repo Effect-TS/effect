@@ -415,30 +415,112 @@ describe("Int", () => {
     )
   })
 
-  it.skip("between", () => {
-    assertTrue(
-      pipe(
-        Int.of(3),
-        Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
-      )
-    )
+  it("between", () => {
+    const options = {
+      minimum: Int.of(0),
+      maximum: Int.of(5)
+    } as const
 
-    assertFalse(
-      pipe(
-        Int.of(-1),
-        Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
-      )
-    )
-
-    assertFalse(
-      pipe(
-        Int.of(6),
-        Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
-      )
-    )
+    const isThreeBetweenZeroAndFive = Int.between(Int.of(3), options)
 
     assertTrue(
-      Int.between(Int.of(3), { minimum: Int.of(0), maximum: Int.of(5) })
+      isThreeBetweenZeroAndFive,
+      "Value is between minimum and maximum"
+    )
+    assertEquals(
+      isThreeBetweenZeroAndFive,
+      pipe(Int.of(3), Int.between(options))
+    )
+
+    const isZeroBetweenZeroAndFive = Int.between(Int.of(0), options)
+
+    assertTrue(
+      isZeroBetweenZeroAndFive,
+      "The lower bound of the range is inclusive"
+    )
+    assertEquals(
+      isZeroBetweenZeroAndFive,
+      pipe(Int.of(0), Int.between(options))
+    )
+
+    const isFiveBetweenZeroAndFive = Int.between(Int.of(5), options)
+
+    assertTrue(
+      isFiveBetweenZeroAndFive,
+      "The higher bound of the range is inclusive"
+    )
+    assertEquals(
+      isFiveBetweenZeroAndFive,
+      pipe(Int.of(5), Int.between(options))
+    )
+
+    const isMinusOneBetweenZeroAndFive = Int.between(Int.of(-1), options)
+
+    assertFalse(
+      isMinusOneBetweenZeroAndFive,
+      "Value is out of the lower bound defined by the range"
+    )
+    assertEquals(
+      isMinusOneBetweenZeroAndFive,
+      pipe(Int.of(-1), Int.between(options))
+    )
+
+    const isSixBetweenZeroAndFive = Int.between(Int.of(6), options)
+
+    assertFalse(
+      isSixBetweenZeroAndFive,
+      "Value is out of the higher bound defined by the range"
+    )
+    assertEquals(isSixBetweenZeroAndFive, pipe(Int.of(6), Int.between(options)))
+
+    assertTrue(
+      Int.between(Int.of(0), {
+        minimum: Int.of(0),
+        maximum: Int.of(0)
+      }),
+      "The value is equal to both minimum and maximum bounds of the range"
+    )
+
+    assertTrue(
+      Int.between(Int.of(0), {
+        minimum: Int.of(-Int.empty),
+        maximum: Int.empty
+      })
+    )
+  })
+
+  it.skip("clamp", () => {
+    strictEqual(
+      pipe(
+        Int.of(3), //
+        Int.clamp({
+          minimum: Int.of(0),
+          maximum: Int.of(5)
+        })
+      ),
+      3
+    )
+
+    strictEqual(
+      pipe(
+        Int.of(-1), //
+        Int.clamp({
+          minimum: Int.of(0),
+          maximum: Int.of(5)
+        })
+      ),
+      0
+    )
+
+    strictEqual(
+      pipe(
+        Int.of(6), //
+        Int.clamp({
+          minimum: Int.of(0),
+          maximum: Int.of(5)
+        })
+      ),
+      5
     )
   })
 
