@@ -67,8 +67,8 @@ export const update = dual<
   <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => TestAnnotationMap
 >(3, <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => {
   let value = key.initial
-  if (HashMap.has(self.map, key.identifier)) {
-    value = HashMap.unsafeGet(self.map, key.identifier) as A
+  if (HashMap.has(self.map, key)) {
+    value = HashMap.unsafeGet(self.map, key) as A
   }
   return overwrite(self, key, f(value))
 })
@@ -83,8 +83,8 @@ export const get = dual<
   <A>(key: TestAnnotation.TestAnnotation<A>) => (self: TestAnnotationMap) => A,
   <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>) => A
 >(2, <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>) => {
-  if (HashMap.has(self.map, key.identifier)) {
-    return HashMap.unsafeGet(self.map, key.identifier) as A
+  if (HashMap.has(self.map, key)) {
+    return HashMap.unsafeGet(self.map, key) as A
   }
   return key.initial
 })
