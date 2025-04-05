@@ -216,7 +216,23 @@ describe("Int", () => {
     expect(pipe(a, Int.lessThanOrEqualTo(b))).type.toBe<boolean>()
   })
 
-  it.todo("greaterThan", () => {})
+  it("greaterThan", () => {
+    const dataLast = Int.greaterThan(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Int.greaterThan
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Int.Int, Int.Int]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[Int.Int]>()
+    expect<Parameters<DataLast>>().type.not.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Int.greaterThan(a, b)).type.toBe<boolean>()
+    expect(pipe(a, Int.greaterThan(b))).type.toBe<boolean>()
+  })
+
   it.todo("greaterThanOrEqualTo", () => {})
   it.todo("between", () => {})
   it.todo("clamp", () => {})
