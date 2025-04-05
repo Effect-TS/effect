@@ -33,13 +33,4 @@ export const decrement = (n: number): number => n - one
 export const sumAll = (collection: Iterable<number>): number => Iterable.reduce(collection, zero, sum)
 
 /** @internal */
-export const multiplyAll = (collection: Iterable<number>): number => {
-  let out = 1
-  for (const n of collection) {
-    if (n === 0) {
-      return 0
-    }
-    out *= n
-  }
-  return out
-}
+export const multiplyAll = (collection: Iterable<number>): number => Iterable.reduce(collection, one, multiply)
