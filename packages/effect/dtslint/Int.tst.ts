@@ -320,7 +320,17 @@ describe("Int", () => {
     expect(pipe(a, Int.max(b))).type.not.toBeAssignableWith<number>()
   })
 
-  it.todo("sign", () => {})
+  it("sign", () => {
+    type DataFirst = typeof Int.sign
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Int.Int]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Int.sign(a)).type.toBe<-1 | 0 | 1>()
+  })
+
   it.todo("sumAll", () => {})
   it.todo("multiplyAll", () => {})
   it.todo("remainder", () => {})
