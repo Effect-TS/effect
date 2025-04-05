@@ -102,7 +102,23 @@ describe("Int", () => {
     expect(pipe(a, Int.multiply(b))).type.toBeAssignableTo<Int.Int>()
   })
 
-  it.todo("divide", () => {})
+  it("divide", () => {
+    const dataLast = Int.divide(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Int.divide
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Int.Int, Int.Int]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[Int.Int]>()
+    expect<Parameters<DataLast>>().type.not.toBeAssignableWith<[number]>()
+
+    // test the output type: division for the set of Int is not total;
+    expect(Int.divide(a, b)).type.not.toBeAssignableTo<Option.Option<Int.Int>>()
+    expect(pipe(a, Int.divide(b))).type.toBeAssignableTo<Option.Option<number>>()
+  })
+
   it.todo("unsafeDivide", () => {})
   it.todo("increment", () => {})
   it.todo("decrement", () => {})
