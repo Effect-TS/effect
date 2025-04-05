@@ -63,7 +63,7 @@ describe("Int", () => {
     expect<Parameters<DataLast>>().type.toBeAssignableWith<[Int.Int]>()
     expect<Parameters<DataLast>>().type.not.toBeAssignableWith<[number]>()
 
-    // test the output type
+    // test the output type still in the set of Int
     expect(Int.sum(a, b)).type.toBeAssignableTo<Int.Int>()
     expect(pipe(a, Int.sum(b))).type.toBeAssignableTo<Int.Int>()
   })
@@ -80,12 +80,28 @@ describe("Int", () => {
     expect<Parameters<DataLast>>().type.toBeAssignableWith<[Int.Int]>()
     expect<Parameters<DataLast>>().type.not.toBeAssignableWith<[number]>()
 
-    // test the output type
+    // test the output type still in the set of Int
     expect(Int.subtract(a, b)).type.toBeAssignableTo<Int.Int>()
     expect(pipe(a, Int.subtract(b))).type.toBeAssignableTo<Int.Int>()
   })
 
-  it.todo("multiply", () => {})
+  it("multiply", () => {
+    const dataLast = Int.multiply(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Int.multiply
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Int.Int, Int.Int]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[Int.Int]>()
+    expect<Parameters<DataLast>>().type.not.toBeAssignableWith<[number]>()
+
+    // test the output type still in the set of Int
+    expect(Int.multiply(a, b)).type.toBeAssignableTo<Int.Int>()
+    expect(pipe(a, Int.multiply(b))).type.toBeAssignableTo<Int.Int>()
+  })
+
   it.todo("divide", () => {})
   it.todo("unsafeDivide", () => {})
   it.todo("increment", () => {})
