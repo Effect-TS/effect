@@ -84,9 +84,9 @@ export const multiply: {
  * @since 2.0.0
  */
 export const subtract: {
-  (that: number): (self: number) => number
-  (self: number, that: number): number
-} = dual(2, (self: number, that: number): number => self - that)
+  (subtrahend: number): (minuend: number) => number
+  (minuend: number, subtrahend: number): number
+} = dual(2, internal.subtract)
 
 /**
  * Provides a division operation on `number`s.
