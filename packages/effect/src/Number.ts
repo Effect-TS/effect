@@ -162,7 +162,7 @@ export const increment: (n: number) => number = internal.increment
  * @category math
  * @since 2.0.0
  */
-export const decrement = (n: number): number => n - 1
+export const decrement: (n: number) => number = internal.decrement
 
 /**
  * @category instances

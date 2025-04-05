@@ -23,3 +23,6 @@ export const divide = (dividend: number, divisor: number): Option<number> =>
 
 /** @internal */
 export const increment = (n: number): number => n + one
+
+/** @internal */
+export const decrement = (n: number): number => n - one
