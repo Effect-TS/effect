@@ -11,7 +11,10 @@ export const subtract = (minuend: number, subtrahend: number): number => minuend
 export const multiply = (multiplier: number, multiplicand: number): number => multiplier * multiplicand
 
 /** @internal */
+export const unsafeDivide = (dividend: number, divisor: number): number => dividend / divisor
+
+/** @internal */
 export const divide = (dividend: number, divisor: number): Option<number> =>
   divisor === 0 //
     ? option.none
-    : option.some(dividend / divisor)
+    : option.some(unsafeDivide(dividend, divisor))

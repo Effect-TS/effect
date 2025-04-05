@@ -128,9 +128,9 @@ export const divide: {
  * @since 2.0.0
  */
 export const unsafeDivide: {
-  (that: number): (self: number) => number
-  (self: number, that: number): number
-} = dual(2, (self: number, that: number): number => self / that)
+  (divisor: number): (dividend: number) => number
+  (dividend: number, divisor: number): number
+} = dual(2, internal.unsafeDivide)
 
 /**
  * Returns the result of adding `1` to a given number.
