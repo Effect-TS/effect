@@ -389,13 +389,7 @@ export const sign = (n: number): Ordering => Order(n, 0)
  * @category math
  * @since 2.0.0
  */
-export const sumAll = (collection: Iterable<number>): number => {
-  let out = 0
-  for (const n of collection) {
-    out += n
-  }
-  return out
-}
+export const sumAll: (collection: Iterable<number>) => number = internal.sumAll
 
 /**
  * Takes an `Iterable` of `number`s and returns their multiplication as a single `number`.

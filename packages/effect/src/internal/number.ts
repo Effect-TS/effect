@@ -26,3 +26,12 @@ export const increment = (n: number): number => n + one
 
 /** @internal */
 export const decrement = (n: number): number => n - one
+
+/** @internal */
+export const sumAll = (collection: Iterable<number>): number => {
+  let out = 0
+  for (const n of collection) {
+    out += n
+  }
+  return out
+}
