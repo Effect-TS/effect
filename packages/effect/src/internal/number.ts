@@ -34,3 +34,14 @@ export const sumAll = (collection: Iterable<number>): number => Iterable.reduce(
 
 /** @internal */
 export const multiplyAll = (collection: Iterable<number>): number => Iterable.reduce(collection, one, multiply)
+
+/** @internal */
+export const remainder = (dividend: number, divisor: number): number => {
+  // https://stackoverflow.com/questions/3966484/why-does-modulus-operator-return-fractional-number-in-javascript/31711034#31711034
+  const selfDecCount = (dividend.toString().split(".")[1] || "").length
+  const divisorDecCount = (divisor.toString().split(".")[1] || "").length
+  const decCount = selfDecCount > divisorDecCount ? selfDecCount : divisorDecCount
+  const selfInt = parseInt(dividend.toFixed(decCount).replace(".", ""))
+  const divisorInt = parseInt(divisor.toFixed(decCount).replace(".", ""))
+  return (selfInt % divisorInt) / Math.pow(10, decCount)
+}

@@ -426,17 +426,9 @@ export const multiplyAll: (collection: Iterable<number>) => number = internal.mu
  * @since 2.0.0
  */
 export const remainder: {
-  (divisor: number): (self: number) => number
-  (self: number, divisor: number): number
-} = dual(2, (self: number, divisor: number): number => {
-  // https://stackoverflow.com/questions/3966484/why-does-modulus-operator-return-fractional-number-in-javascript/31711034#31711034
-  const selfDecCount = (self.toString().split(".")[1] || "").length
-  const divisorDecCount = (divisor.toString().split(".")[1] || "").length
-  const decCount = selfDecCount > divisorDecCount ? selfDecCount : divisorDecCount
-  const selfInt = parseInt(self.toFixed(decCount).replace(".", ""))
-  const divisorInt = parseInt(divisor.toFixed(decCount).replace(".", ""))
-  return (selfInt % divisorInt) / Math.pow(10, decCount)
-})
+  (divisor: number): (dividend: number) => number
+  (dividend: number, divisor: number): number
+} = dual(2, internal.remainder)
 
 /**
  * Returns the next power of 2 from the given number.
