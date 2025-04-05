@@ -250,7 +250,24 @@ describe("Int", () => {
     expect(pipe(a, Int.greaterThanOrEqualTo(b))).type.toBe<boolean>()
   })
 
-  it.todo("between", () => {})
+  it("between", () => {
+    const options = { minimum: a, maximum: b }
+    const dataLast = Int.between(options)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Int.between
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Int.Int, { minimum: Int.Int; maximum: Int.Int }]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[number, { minimum: number; maximum: number }]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[Int.Int]>()
+    expect<Parameters<DataLast>>().type.not.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Int.between(a, options)).type.toBe<boolean>()
+    expect(pipe(a, Int.between(options))).type.toBe<boolean>()
+  })
+
   it.todo("clamp", () => {})
   it.todo("min", () => {})
   it.todo("max", () => {})
