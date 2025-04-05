@@ -136,7 +136,17 @@ describe("Int", () => {
     expect(pipe(a, Int.unsafeDivide(b))).type.toBeAssignableTo<number>()
   })
 
-  it.todo("increment", () => {})
+  it("increment", () => {
+    type DataFirst = typeof Int.increment
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Int.Int]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[number]>()
+
+    // test the output type still in the set of Int
+    expect(Int.increment(a)).type.toBeAssignableTo<Int.Int>()
+    expect(pipe(a, Int.increment)).type.toBeAssignableTo<Int.Int>()
+  })
   it.todo("decrement", () => {})
   it.todo("Equivalence", () => {})
   it.todo("Order", () => {})
