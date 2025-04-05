@@ -355,6 +355,22 @@ describe("Int", () => {
     expect(Int.multiplyAll(HashSet.make(a, b, a, b, a, b))).type.not.toBeAssignableWith<number>()
   })
 
-  it.todo("remainder", () => {})
+  it("remainder", () => {
+    const dataLast = Int.remainder(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Int.remainder
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Int.Int, Int.Int]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[Int.Int]>()
+    expect<Parameters<DataLast>>().type.not.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Int.remainder(a, b)).type.toBe<Int.Int>()
+    expect(pipe(a, Int.remainder(b))).type.not.toBeAssignableWith<number>()
+  })
+
   it.todo("nextPow2", () => {})
 })
