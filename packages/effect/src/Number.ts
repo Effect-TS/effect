@@ -445,10 +445,7 @@ export const remainder: {
  * @category math
  * @since 2.0.0
  */
-export const nextPow2 = (n: number): number => {
-  const nextPow = Math.ceil(Math.log(n) / Math.log(2))
-  return Math.max(Math.pow(2, nextPow), 2)
-}
+export const nextPow2: (n: number) => number = internal.nextPow2
 
 /**
  * Tries to parse a `number` from a `string` using the `Number()` function.
