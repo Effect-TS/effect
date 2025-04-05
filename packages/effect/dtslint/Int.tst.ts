@@ -372,5 +372,14 @@ describe("Int", () => {
     expect(pipe(a, Int.remainder(b))).type.not.toBeAssignableWith<number>()
   })
 
-  it.todo("nextPow2", () => {})
+  it("nextPow2", () => {
+    type DataFirst = typeof Int.nextPow2
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Int.Int]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Int.nextPow2(a)).type.toBe<Int.Int>()
+  })
 })
