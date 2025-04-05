@@ -1,5 +1,5 @@
 import type { Brand, Either, Option } from "effect"
-import { Int, pipe } from "effect"
+import { HashSet, Int, pipe } from "effect"
 import { describe, expect, it } from "tstyche"
 
 declare const _number: number
@@ -331,7 +331,18 @@ describe("Int", () => {
     expect(Int.sign(a)).type.toBe<-1 | 0 | 1>()
   })
 
-  it.todo("sumAll", () => {})
+  it("sumAll", () => {
+    type DataFirst = typeof Int.sumAll
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Iterable<Int.Int>]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[Iterable<number>]>()
+
+    // test the output type
+    expect(Int.sumAll(Array.of(a, b, a, b, a, b))).type.toBe<Int.Int>()
+    expect(Int.sumAll(HashSet.make(a, b, a, b, a, b))).type.not.toBeAssignableWith<number>()
+  })
+
   it.todo("multiplyAll", () => {})
   it.todo("remainder", () => {})
   it.todo("nextPow2", () => {})
