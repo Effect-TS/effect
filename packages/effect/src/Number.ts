@@ -7,6 +7,7 @@
  */
 import * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
+import * as internal from "./internal/number.js"
 import * as option from "./internal/option.js"
 import type { Option } from "./Option.js"
 import * as order from "./Order.js"
@@ -47,7 +48,7 @@ export const isNumber: (input: unknown) => input is number = predicate.isNumber
 export const sum: {
   (that: number): (self: number) => number
   (self: number, that: number): number
-} = dual(2, (self: number, that: number): number => self + that)
+} = dual(2, internal.sum)
 
 /**
  * Provides a multiplication operation on `number`s.
