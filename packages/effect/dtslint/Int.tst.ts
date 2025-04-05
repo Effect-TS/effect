@@ -171,7 +171,17 @@ describe("Int", () => {
     expect(Int.Equivalence(a, b)).type.toBeAssignableTo<boolean>()
   })
 
-  it.todo("Order", () => {})
+  it("Order", () => {
+    type DataFirst = typeof Int.Order
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Int.Int, Int.Int]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[number, number]>()
+
+    // test the output type
+    expect(Int.Order(a, b)).type.toBeAssignableTo<-1 | 0 | 1>()
+  })
+
   it.todo("lessThan", () => {})
   it.todo("lessThanOrEqualTo", () => {})
   it.todo("greaterThan", () => {})
