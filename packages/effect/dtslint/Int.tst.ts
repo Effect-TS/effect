@@ -343,7 +343,18 @@ describe("Int", () => {
     expect(Int.sumAll(HashSet.make(a, b, a, b, a, b))).type.not.toBeAssignableWith<number>()
   })
 
-  it.todo("multiplyAll", () => {})
+  it("multiplyAll", () => {
+    type DataFirst = typeof Int.multiplyAll
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Iterable<Int.Int>]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[Iterable<number>]>()
+
+    // test the output type
+    expect(Int.multiplyAll(Array.of(a, b, a, b, a, b))).type.toBe<Int.Int>()
+    expect(Int.multiplyAll(HashSet.make(a, b, a, b, a, b))).type.not.toBeAssignableWith<number>()
+  })
+
   it.todo("remainder", () => {})
   it.todo("nextPow2", () => {})
 })
