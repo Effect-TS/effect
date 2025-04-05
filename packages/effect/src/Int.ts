@@ -17,7 +17,7 @@ import type { Ordering } from "./Ordering.js"
 import type * as _Predicate from "./Predicate.js"
 
 /**
- * A type representing singed integers.
+ * A type representing signed integers.
  *
  * @memberof Int
  * @since 3.14.6
@@ -234,7 +234,7 @@ export const unit: Int = of(1)
  *
  * assert.equal(Int.isInt(definitelyAFloat), false)
  * assert.equal(Int.isInt("a"), false)
- * assert.equal(Int.isInt(true), true)
+ * assert.equal(Int.isInt(true), false)
  * ```
  *
  * @param input - The value to test.
