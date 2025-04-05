@@ -1,54 +1,342 @@
-import { Int, Number, pipe } from "effect"
+import type { Option } from "effect"
+import { HashSet, Number, pipe } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("Number", () => {
-  it.todo("isNumber", () => {})
+  const a = 10
+  const b = -5
 
-  it.todo("sum", () => {})
+  it("isNumber", () => {
+    const value: unknown = 42
+    expect(value).type.not.toBeAssignableTo<number>()
 
-  it.todo("subtract", () => {})
+    if (Number.isNumber(value)) {
+      expect(value).type.toBe<number>()
+    }
 
-  it.todo("multiply", () => {})
+    // Type guard should properly narrow union types
+    const numOrString: number | string = 123
+    if (Number.isNumber(numOrString)) {
+      expect(numOrString).type.toBe<number>()
+      expect(numOrString).type.not.toBeAssignableWith<string>()
+    }
+  })
 
-  it.todo("divide", () => {})
+  it("sum", () => {
+    const dataLast = Number.sum(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.sum
 
-  it.todo("unsafeDivide", () => {})
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
 
-  it.todo("increment", () => {})
+    // test the output type
+    expect(Number.sum(a, b)).type.toBe<number>()
+    expect(pipe(a, Number.sum(b))).type.toBe<number>()
+  })
 
-  it.todo("decrement", () => {})
+  it("subtract", () => {
+    const dataLast = Number.subtract(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.subtract
 
-  it.todo("Equivalence", () => {})
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
 
-  it.todo("Order", () => {})
+    // test the output type
+    expect(Number.subtract(a, b)).type.toBe<number>()
+    expect(pipe(a, Number.subtract(b))).type.toBe<number>()
+  })
 
-  it.todo("lessThan", () => {})
+  it("multiply", () => {
+    const dataLast = Number.multiply(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.multiply
 
-  it.todo("lessThanOrEqualTo", () => {})
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
 
-  it.todo("greaterThan", () => {})
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
 
-  it.todo("greaterThanOrEqualTo", () => {})
+    // test the output type
+    expect(Number.multiply(a, b)).type.toBe<number>()
+    expect(pipe(a, Number.multiply(b))).type.toBe<number>()
+  })
 
-  it.todo("between", () => {})
+  it("divide", () => {
+    const dataLast = Number.divide(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.divide
 
-  it.todo("clamp", () => {})
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
 
-  it.todo("min", () => {})
+    // test the output type
+    expect(Number.divide(a, b)).type.toBe<Option.Option<number>>()
+    expect(pipe(a, Number.divide(b))).type.toBe<Option.Option<number>>()
+  })
 
-  it.todo("max", () => {})
+  it("unsafeDivide", () => {
+    const dataLast = Number.unsafeDivide(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.unsafeDivide
 
-  it.todo("sign", () => {})
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
 
-  it.todo("sumAll", () => {})
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
 
-  it.todo("multiplyAll", () => {})
+    // test the output type
+    expect(Number.unsafeDivide(a, b)).type.toBe<number>()
+    expect(pipe(a, Number.unsafeDivide(b))).type.toBe<number>()
+  })
 
-  it.todo("remainder", () => {})
+  it("increment", () => {
+    type DataFirst = typeof Number.increment
 
-  it.todo("nextPow2", () => {})
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number]>()
 
-  it.todo("parse", () => {})
+    // test the output type
+    expect(Number.increment(a)).type.toBe<number>()
+    expect(pipe(a, Number.increment)).type.toBe<number>()
+  })
 
-  it.todo("round", () => {})
+  it("decrement", () => {
+    type DataFirst = typeof Number.decrement
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.decrement(a)).type.toBe<number>()
+    expect(pipe(a, Number.decrement)).type.toBe<number>()
+  })
+
+  it("Equivalence", () => {
+    type DataFirst = typeof Number.Equivalence
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+
+    // test the output type
+    expect(Number.Equivalence(a, b)).type.toBe<boolean>()
+  })
+
+  it("Order", () => {
+    type DataFirst = typeof Number.Order
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+
+    // test the output type
+    expect(Number.Order(a, b)).type.toBe<-1 | 0 | 1>()
+  })
+
+  it("lessThan", () => {
+    const dataLast = Number.lessThan(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.lessThan
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.lessThan(a, b)).type.toBe<boolean>()
+    expect(pipe(a, Number.lessThan(b))).type.toBe<boolean>()
+  })
+
+  it("lessThanOrEqualTo", () => {
+    const dataLast = Number.lessThanOrEqualTo(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.lessThanOrEqualTo
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.lessThanOrEqualTo(a, b)).type.toBe<boolean>()
+    expect(pipe(a, Number.lessThanOrEqualTo(b))).type.toBe<boolean>()
+  })
+
+  it("greaterThan", () => {
+    const dataLast = Number.greaterThan(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.greaterThan
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.greaterThan(a, b)).type.toBe<boolean>()
+    expect(pipe(a, Number.greaterThan(b))).type.toBe<boolean>()
+  })
+
+  it("greaterThanOrEqualTo", () => {
+    const dataLast = Number.greaterThanOrEqualTo(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.greaterThanOrEqualTo
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.greaterThanOrEqualTo(a, b)).type.toBe<boolean>()
+    expect(pipe(a, Number.greaterThanOrEqualTo(b))).type.toBe<boolean>()
+  })
+
+  it("between", () => {
+    const options = { minimum: a, maximum: b }
+    const dataLast = Number.between(options)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.between
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, { minimum: number; maximum: number }]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.between(a, options)).type.toBe<boolean>()
+    expect(pipe(a, Number.between(options))).type.toBe<boolean>()
+  })
+
+  it("clamp", () => {
+    const options = { minimum: a, maximum: b }
+    const dataLast = Number.clamp(options)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.clamp
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, { minimum: number; maximum: number }]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.clamp(a, options)).type.toBe<number>()
+    expect(pipe(a, Number.clamp(options))).type.toBe<number>()
+  })
+
+  it("min", () => {
+    const dataLast = Number.min(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.min
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.min(a, b)).type.toBe<number>()
+    expect(pipe(a, Number.min(b))).type.toBe<number>()
+  })
+
+  it("max", () => {
+    const dataLast = Number.max(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.max
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.max(a, b)).type.toBe<number>()
+    expect(pipe(a, Number.max(b))).type.toBe<number>()
+  })
+
+  it("sign", () => {
+    type DataFirst = typeof Number.sign
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.sign(a)).type.toBe<-1 | 0 | 1>()
+  })
+
+  it("sumAll", () => {
+    type DataFirst = typeof Number.sumAll
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Iterable<number>]>()
+
+    // test the output type
+    expect(Number.sumAll([a, b, a, b, a, b])).type.toBe<number>()
+    expect(Number.sumAll(HashSet.make(a, b, a, b, a, b))).type.toBe<number>()
+  })
+
+  it("multiplyAll", () => {
+    type DataFirst = typeof Number.multiplyAll
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Iterable<number>]>()
+
+    // test the output type
+    expect(Number.multiplyAll([a, b, a, b, a, b])).type.toBe<number>()
+    expect(Number.multiplyAll(HashSet.make(a, b, a, b, a, b))).type.toBe<number>()
+  })
+
+  it("remainder", () => {
+    const dataLast = Number.remainder(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.remainder
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.remainder(a, b)).type.toBe<number>()
+    expect(pipe(a, Number.remainder(b))).type.toBe<number>()
+  })
+
+  it("nextPow2", () => {
+    type DataFirst = typeof Number.nextPow2
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.nextPow2(a)).type.toBe<number>()
+  })
+
+  it("parse", () => {
+    type DataFirst = typeof Number.parse
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[string]>()
+
+    // test the output type
+    expect(Number.parse("123")).type.toBe<Option.Option<number>>()
+  })
+
+  it("round", () => {
+    const dataLast = Number.round(2)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Number.round
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.round(a, 2)).type.toBe<number>()
+    expect(pipe(a, Number.round(2))).type.toBe<number>()
+  })
 })
