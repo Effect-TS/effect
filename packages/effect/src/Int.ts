@@ -41,7 +41,7 @@ import type * as _Predicate from "./Predicate.js"
  */
 export type Int = number & Brand.Brand<"Int">
 
-const Int = Brand.refined<Int>(
+const IntConstructor = Brand.refined<Int>(
   (n) => _Number.isNumber(n) && !Number.isNaN(n) && Number.isInteger(n),
   (n) => Brand.error(`Expected ${n} to be an integer`)
 )
@@ -70,7 +70,7 @@ const Int = Brand.refined<Int>(
  * @experimental
  */
 
-export const of: (n: number) => Int = (n) => Int(n)
+export const of: (n: number) => Int = (n) => IntConstructor(n)
 
 /**
  * Lift a `number` in the set of `Option<Int>`, and brands it as an `Int` if the
@@ -122,7 +122,7 @@ export const of: (n: number) => Int = (n) => Int(n)
  * @returns An `Option` containing the `Int` if valid, `None` otherwise
  * @experimental
  */
-export const option: (n: number) => _Option.Option<Int> = Int.option
+export const option: (n: number) => _Option.Option<Int> = IntConstructor.option
 
 /**
  * Lift a `number` in the set of `Either.Right<Int>` if the number is a valid
@@ -189,7 +189,7 @@ export const option: (n: number) => _Option.Option<Int> = Int.option
  */
 export const either: (
   n: number
-) => Either.Either<Int, Brand.Brand.BrandErrors> = Int.either
+) => Either.Either<Int, Brand.Brand.BrandErrors> = IntConstructor.either
 
 /**
  * Constant of `Int<0>`
@@ -241,7 +241,7 @@ export const one: Int = of(1)
  * @returns `true` if the value is an `Int`, `false` otherwise.
  * @experimental
  */
-export const isInt: _Predicate.Refinement<unknown, Int> = (input) => _Number.isNumber(input) && Int.is(input)
+export const isInt: _Predicate.Refinement<unknown, Int> = (input) => _Number.isNumber(input) && IntConstructor.is(input)
 
 /**
  * Provides an addition operation on `Int`.
