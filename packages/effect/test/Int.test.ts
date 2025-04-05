@@ -24,7 +24,7 @@ describe("Int", () => {
 
   it("option", () => {
     assertSome(Int.option(0), Int.of(0))
-    assertSome(Int.option(Int.empty), Int.empty)
+    assertSome(Int.option(Int.zero), Int.zero)
     assertSome(Int.option(-1), Int.of(-1))
 
     assertNone(Int.option(-1.5))
@@ -34,7 +34,7 @@ describe("Int", () => {
   it("either", () => {
     // Valid integers return Right<Int>
     assertRight(Int.either(0), Int.of(0))
-    assertRight(Int.either(Int.empty), Int.empty)
+    assertRight(Int.either(Int.zero), Int.zero)
     assertRight(Int.either(-1), Int.of(-1))
     assertRight(
       Int.either(Number.MAX_SAFE_INTEGER),
@@ -69,7 +69,7 @@ describe("Int", () => {
   })
 
   it("empty", () => {
-    strictEqual(Int.empty, 0)
+    strictEqual(Int.zero, 0)
   })
 
   it("isInt", () => {
@@ -96,7 +96,7 @@ describe("Int", () => {
     )
 
     strictEqual(
-      pipe(Int.empty, Int.sum(Int.of(100))),
+      pipe(Int.zero, Int.sum(Int.of(100))),
       Int.of(100),
       "'zeo' is the identity element for addition"
     ) // Doha !
@@ -111,11 +111,11 @@ describe("Int", () => {
     const three = Int.of(3)
     const two = Int.of(2)
 
-    strictEqual(pipe(three, Int.subtract(Int.unit)), two)
-    strictEqual(pipe(Int.unit, Int.subtract(three)), -2)
+    strictEqual(pipe(three, Int.subtract(Int.one)), two)
+    strictEqual(pipe(Int.one, Int.subtract(three)), -2)
 
-    strictEqual(Int.subtract(three, Int.unit), two)
-    strictEqual(Int.subtract(Int.unit, three), -2)
+    strictEqual(Int.subtract(three, Int.one), two)
+    strictEqual(Int.subtract(Int.one, three), -2)
 
     strictEqual(
       pipe(three, Int.subtract(two)),
@@ -124,13 +124,13 @@ describe("Int", () => {
     )
 
     notDeepStrictEqual(
-      pipe(three, Int.subtract(two), Int.subtract(Int.unit)),
-      pipe(two, Int.subtract(three), Int.subtract(Int.unit)),
+      pipe(three, Int.subtract(two), Int.subtract(Int.one)),
+      pipe(two, Int.subtract(three), Int.subtract(Int.one)),
       "subtraction under Int is not associative" // Doha !
     )
 
     strictEqual(
-      pipe(Int.empty, Int.subtract(three)),
+      pipe(Int.zero, Int.subtract(three)),
       -three,
       "zero is the identity element under subtraction"
     )
@@ -155,14 +155,14 @@ describe("Int", () => {
     )
 
     strictEqual(
-      Int.multiply(Int.of(2), Int.unit),
+      Int.multiply(Int.of(2), Int.one),
       Int.of(2),
       "`1` is the identity element under multiplication" /* Doha ! */
     )
 
     strictEqual(
-      Int.multiply(Int.of(2), Int.empty),
-      Int.empty,
+      Int.multiply(Int.of(2), Int.zero),
+      Int.zero,
       "multiplication by zero" /* Doha ! */
     )
   })
@@ -200,13 +200,13 @@ describe("Int", () => {
     strictEqual(pipe(six, Int.unsafeDivide(two)), 3)
     strictEqual(pipe(six, Int.unsafeDivide(two)), 3)
 
-    strictEqual(Int.unsafeDivide(Int.empty, six), 0)
+    strictEqual(Int.unsafeDivide(Int.zero, six), 0)
     throws(
-      () => Int.unsafeDivide(six, Int.empty),
+      () => Int.unsafeDivide(six, Int.zero),
       Int.IntegerDivisionError.divisionByZero(six)
     )
     throws(
-      () => Int.unsafeDivide(Int.empty, Int.empty),
+      () => Int.unsafeDivide(Int.zero, Int.zero),
       Int.IntegerDivisionError.indeterminateForm()
     )
   })
@@ -345,7 +345,7 @@ describe("Int", () => {
       )
     )
 
-    assertFalse(Int.greaterThan(Int.empty, Int.empty))
+    assertFalse(Int.greaterThan(Int.zero, Int.zero))
 
     const isNegativeTwoGreaterThanNegativeTwo = Int.greaterThan(
       negativeTwo,
@@ -390,19 +390,19 @@ describe("Int", () => {
     )
 
     const isZeroGreaterThanOrEqualToZero = Int.greaterThanOrEqualTo(
-      Int.empty,
-      Int.empty
+      Int.zero,
+      Int.zero
     )
     assertTrue(isZeroGreaterThanOrEqualToZero)
     assertEquals(
       isZeroGreaterThanOrEqualToZero,
       pipe(
-        Int.empty, //
-        Int.greaterThanOrEqualTo(Int.empty)
+        Int.zero, //
+        Int.greaterThanOrEqualTo(Int.zero)
       )
     )
 
-    assertTrue(Int.greaterThanOrEqualTo(Int.empty, Int.of(-Int.empty)))
+    assertTrue(Int.greaterThanOrEqualTo(Int.zero, Int.of(-Int.zero)))
 
     const isFourGreaterThanOrEqualToNegativeTwo = Int.greaterThanOrEqualTo(
       four,
@@ -483,15 +483,15 @@ describe("Int", () => {
 
     assertTrue(
       Int.between(Int.of(0), {
-        minimum: Int.of(-Int.empty),
-        maximum: Int.empty
+        minimum: Int.of(-Int.zero),
+        maximum: Int.zero
       })
     )
   })
 
   it("clamp", () => {
     const clampOptions = {
-      minimum: Int.empty,
+      minimum: Int.zero,
       maximum: Int.of(5)
     } as const
     const clampBetweenZeroAndFive: (n: Int.Int) => Int.Int = Int.clamp(clampOptions)
@@ -680,8 +680,8 @@ describe("Int", () => {
 
   it("multiplyAll", () => {
     strictEqual(
-      Int.multiplyAll(Array.of(Int.of(2), Int.empty, Int.of(4))),
-      Int.empty
+      Int.multiplyAll(Array.of(Int.of(2), Int.zero, Int.of(4))),
+      Int.zero
     )
 
     strictEqual(

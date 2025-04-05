@@ -23,14 +23,14 @@ describe("Int", () => {
     expect(Int.either(_number)).type.toBeAssignableTo<Either.Either<number, Brand.Brand.BrandErrors>>()
   })
 
-  it("empty", () => {
-    expect(Int.empty).type.toBe<Int.Int>()
-    expect(Int.empty).type.toBeAssignableTo<number>()
+  it("zero", () => {
+    expect(Int.zero).type.toBe<Int.Int>()
+    expect(Int.zero).type.toBeAssignableTo<number>()
   })
 
-  it("unit", () => {
-    expect(Int.unit).type.toBe<Int.Int>()
-    expect(Int.unit).type.toBeAssignableTo<number>()
+  it("one", () => {
+    expect(Int.one).type.toBe<Int.Int>()
+    expect(Int.one).type.toBeAssignableTo<number>()
   })
 
   it("isInt", () => {

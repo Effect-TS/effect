@@ -198,7 +198,7 @@ export const either: (
  * @category Constants
  * @experimental
  */
-export const empty: Int = of(0)
+export const zero: Int = of(0)
 
 /**
  * Constant of `Int<1>`
@@ -207,7 +207,7 @@ export const empty: Int = of(0)
  * @category Constants
  * @experimental
  */
-export const unit: Int = of(1)
+export const one: Int = of(1)
 
 /**
  * Type guard to test if a value is an `Int`.
@@ -527,7 +527,7 @@ export class IntegerDivisionError extends Data.TaggedError(
   ) =>
     new IntegerDivisionError({
       dividend,
-      divisor: empty,
+      divisor: zero,
       type: "DivisionByZero",
       message: `Division by zero: ${dividend} / 0`
     })
@@ -535,8 +535,8 @@ export class IntegerDivisionError extends Data.TaggedError(
   /** @internal */
   static readonly indeterminateForm: () => IntegerDivisionError = () =>
     new IntegerDivisionError({
-      dividend: empty,
-      divisor: empty,
+      dividend: zero,
+      divisor: zero,
       type: "IndeterminateForm",
       message: `Indeterminate form: division of zero by zero`
     })
@@ -627,7 +627,7 @@ export const unsafeDivide: {
 })
 
 /**
- * Returns the result of adding one {@link module:Int.unit} to the given `Int`.
+ * Returns the result of adding one {@link module:Int.one} to the given `Int`.
  *
  * @memberof Int
  * @since 3.14.6
@@ -656,10 +656,10 @@ export const unsafeDivide: {
  * @returns The incremented value by one Int as an `Int`.
  * @experimental
  */
-export const increment: (n: Int) => Int = (n) => sum(unit)(n)
+export const increment: (n: Int) => Int = (n) => sum(one)(n)
 
 /**
- * Returns the result of decrementing by one {@link module:Int.unit} to the given
+ * Returns the result of decrementing by one {@link module:Int.one} to the given
  * `Int`.
  *
  * @memberof Int
@@ -689,7 +689,7 @@ export const increment: (n: Int) => Int = (n) => sum(unit)(n)
  * @returns The decremented value by one Int as an `Int`.
  * @experimental
  */
-export const decrement: (n: Int) => Int = (n) => sum(of(-unit))(n)
+export const decrement: (n: Int) => Int = (n) => sum(of(-one))(n)
 
 /**
  * Type class instance of `Equivalence` for `Int`.
@@ -1461,7 +1461,7 @@ export const max: {
  * @returns -1 if `n` is negative, 0 if `n` is zero, and 1 if `n` is positive.
  * @experimental
  */
-export const sign: (n: Int) => Ordering = (n) => Order(n, empty)
+export const sign: (n: Int) => Ordering = (n) => Order(n, zero)
 
 /**
  * Takes an `Iterable` of `Int`s and returns their sum as a single `Int`.
@@ -1487,7 +1487,7 @@ export const sign: (n: Int) => Ordering = (n) => Order(n, empty)
  */
 export const sumAll: (collection: Iterable<Int, any, any>) => Int = (
   collection
-) => _Iterable.reduce(collection, empty, sum)
+) => _Iterable.reduce(collection, zero, sum)
 
 /**
  * Takes an `Iterable` of `Int`s and returns their multiplication as a single
@@ -1513,7 +1513,7 @@ export const sumAll: (collection: Iterable<Int, any, any>) => Int = (
  * @experimental
  */
 export const multiplyAll: (collection: Iterable<Int>) => Int = (collection) =>
-  _Iterable.reduce(collection, unit, multiply)
+  _Iterable.reduce(collection, one, multiply)
 
 /**
  * Returns the remainder left over when one operand is divided by a second
