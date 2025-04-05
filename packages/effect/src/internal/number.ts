@@ -1,6 +1,8 @@
 import type { Option } from "../Option.js"
 import * as option from "./option.js"
 
+const one = 1 as const
+
 /** @internal */
 export const sum = (self: number, that: number): number => self + that
 
@@ -18,3 +20,6 @@ export const divide = (dividend: number, divisor: number): Option<number> =>
   divisor === 0 //
     ? option.none
     : option.some(unsafeDivide(dividend, divisor))
+
+/** @internal */
+export const increment = (n: number): number => n + one

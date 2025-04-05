@@ -146,7 +146,7 @@ export const unsafeDivide: {
  * @category math
  * @since 2.0.0
  */
-export const increment = (n: number): number => n + 1
+export const increment: (n: number) => number = internal.increment
 
 /**
  * Decrements a number by `1`.
