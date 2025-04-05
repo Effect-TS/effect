@@ -16,6 +16,11 @@ import * as _Order from "./Order.js"
 import type { Ordering } from "./Ordering.js"
 import type * as _Predicate from "./Predicate.js"
 
+const IntConstructor = Brand.refined<number & Brand.Brand<"Int">>(
+  (n) => _Number.isNumber(n) && !Number.isNaN(n) && Number.isInteger(n),
+  (n) => Brand.error(`Expected ${n} to be an integer`)
+)
+
 /**
  * A type representing signed integers.
  *
@@ -39,12 +44,7 @@ import type * as _Predicate from "./Predicate.js"
  *
  * @experimental
  */
-export type Int = number & Brand.Brand<"Int">
-
-const IntConstructor = Brand.refined<Int>(
-  (n) => _Number.isNumber(n) && !Number.isNaN(n) && Number.isInteger(n),
-  (n) => Brand.error(`Expected ${n} to be an integer`)
-)
+export type Int = Brand.Brand.FromConstructor<typeof IntConstructor>
 
 /**
  * Lift a number in the set of integers, and brands it as an `Int`.
