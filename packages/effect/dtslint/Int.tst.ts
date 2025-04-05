@@ -68,7 +68,23 @@ describe("Int", () => {
     expect(pipe(a, Int.sum(b))).type.toBeAssignableTo<Int.Int>()
   })
 
-  it.todo("subtract", () => {})
+  it("subtract", () => {
+    const dataLast = Int.subtract(a)
+    type DataLast = typeof dataLast
+    type DataFirst = typeof Int.subtract
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Int.Int, Int.Int]>()
+    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[number, number]>()
+
+    expect<Parameters<DataLast>>().type.toBeAssignableWith<[Int.Int]>()
+    expect<Parameters<DataLast>>().type.not.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Int.subtract(a, b)).type.toBeAssignableTo<Int.Int>()
+    expect(pipe(a, Int.subtract(b))).type.toBeAssignableTo<Int.Int>()
+  })
+
   it.todo("multiply", () => {})
   it.todo("divide", () => {})
   it.todo("unsafeDivide", () => {})
