@@ -1,7 +1,9 @@
+import * as Iterable from "../Iterable.js"
 import type { Option } from "../Option.js"
 import * as option from "./option.js"
 
 const one = 1 as const
+const zero = 0 as const
 
 /** @internal */
 export const sum = (self: number, that: number): number => self + that
@@ -28,10 +30,4 @@ export const increment = (n: number): number => n + one
 export const decrement = (n: number): number => n - one
 
 /** @internal */
-export const sumAll = (collection: Iterable<number>): number => {
-  let out = 0
-  for (const n of collection) {
-    out += n
-  }
-  return out
-}
+export const sumAll = (collection: Iterable<number>): number => Iterable.reduce(collection, zero, sum)
