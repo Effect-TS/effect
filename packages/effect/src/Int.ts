@@ -1530,7 +1530,7 @@ export const multiplyAll: (collection: Iterable<Int>) => Int = (collection) =>
 export const remainder: {
   (divisor: Int): (dividend: Int) => Int
   (dividend: Int, divisor: Int): Int
-} = dual(2, (dividend: Int, divisor: Int): number => dividend % divisor)
+} = dual(2, (dividend: Int, divisor: Int): Int => of(dividend % divisor))
 
 /**
  * Returns the next power of 2 from the given `Int`.
