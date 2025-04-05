@@ -1,3 +1,6 @@
+import type { Option } from "../Option.js"
+import * as option from "./option.js"
+
 /** @internal */
 export const sum = (self: number, that: number): number => self + that
 
@@ -6,3 +9,9 @@ export const subtract = (minuend: number, subtrahend: number): number => minuend
 
 /** @internal */
 export const multiply = (multiplier: number, multiplicand: number): number => multiplier * multiplicand
+
+/** @internal */
+export const divide = (dividend: number, divisor: number): Option<number> =>
+  divisor === 0 //
+    ? option.none
+    : option.some(dividend / divisor)

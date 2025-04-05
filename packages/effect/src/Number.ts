@@ -104,11 +104,11 @@ export const subtract: {
  * @since 2.0.0
  */
 export const divide: {
-  (that: number): (self: number) => Option<number>
-  (self: number, that: number): Option<number>
+  (divisor: number): (dividend: number) => Option<number>
+  (dividend: number, divisor: number): Option<number>
 } = dual(
   2,
-  (self: number, that: number): Option<number> => that === 0 ? option.none : option.some(self / that)
+  internal.divide
 )
 
 /**
