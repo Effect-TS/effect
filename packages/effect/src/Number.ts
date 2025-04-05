@@ -405,16 +405,7 @@ export const sumAll: (collection: Iterable<number>) => number = internal.sumAll
  * @category math
  * @since 2.0.0
  */
-export const multiplyAll = (collection: Iterable<number>): number => {
-  let out = 1
-  for (const n of collection) {
-    if (n === 0) {
-      return 0
-    }
-    out *= n
-  }
-  return out
-}
+export const multiplyAll: (collection: Iterable<number>) => number = internal.multiplyAll
 
 /**
  * Returns the remainder left over when one operand is divided by a second operand.
