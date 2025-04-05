@@ -65,9 +65,9 @@ export const sum: {
  * @since 2.0.0
  */
 export const multiply: {
-  (that: number): (self: number) => number
-  (self: number, that: number): number
-} = dual(2, (self: number, that: number): number => self * that)
+  (multiplicand: number): (multiplier: number) => number
+  (multiplier: number, multiplicand: number): number
+} = dual(2, internal.multiply)
 
 /**
  * Provides a subtraction operation on `number`s.
