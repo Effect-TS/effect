@@ -9,6 +9,7 @@ import * as Data from "./Data.js"
 import type * as Either from "./Either.js"
 import type * as _Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
+import * as internal from "./internal/number.js"
 import * as _Iterable from "./Iterable.js"
 import * as _Number from "./Number.js"
 import type * as _Option from "./Option.js"
@@ -328,7 +329,7 @@ export const sum: {
    * @returns A `number`
    */
   // (self: Int, that: number): number
-} = dual(2, (self: Int, that: Int): Int => of(self + that))
+} = dual(2, (self: Int, that: Int): Int => internal.sum(self, that))
 
 /**
  * Provides a subtraction operation on `Int`s.

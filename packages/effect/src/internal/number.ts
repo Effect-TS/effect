@@ -6,7 +6,7 @@ const one = 1 as const
 const zero = 0 as const
 
 /** @internal */
-export const sum = (self: number, that: number): number => self + that
+export const sum = <A extends number = number, B extends number = A>(self: A, that: A): B => (self + that) as B
 
 /** @internal */
 export const subtract = (minuend: number, subtrahend: number): number => minuend - subtrahend
