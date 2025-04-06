@@ -381,7 +381,7 @@ export const subtract: {
    * @returns The difference of subtracting the subtrahend from the minuend.
    */
   (minuend: Int, subtrahend: Int): Int
-} = dual(2, (minuend: Int, subtrahend: Int): Int => of(minuend - subtrahend))
+} = dual(2, (minuend: Int, subtrahend: Int): Int => internal.subtract(minuend, subtrahend))
 
 /**
  * Provides a multiplication operation on `Int`s.
