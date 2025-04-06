@@ -381,7 +381,10 @@ export const subtract: {
    * @returns The difference of subtracting the subtrahend from the minuend.
    */
   (minuend: Int, subtrahend: Int): Int
-} = dual(2, (minuend: Int, subtrahend: Int): Int => internal.subtract(minuend, subtrahend))
+} = dual(
+  2,
+  (minuend: Int, subtrahend: Int): Int => internal.subtract(minuend, subtrahend)
+)
 
 /**
  * Provides a multiplication operation on `Int`s.
@@ -1500,12 +1503,27 @@ export const remainder: {
 } = dual(2, (dividend: Int, divisor: Int): Int => of(dividend % divisor))
 
 /**
- * Returns the next power of 2 from the given `Int`.
+ * Returns the next power of 2 greater than or equal to the given `Int`.
  *
  * @memberof Int
  * @since 3.14.6
  * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { Int } from "effect"
+ *
+ * assert.deepStrictEqual(Int.nextPow2(Int.of(5)), 8)
+ * assert.deepStrictEqual(Int.nextPow2(Int.of(17)), 32)
+ * assert.deepStrictEqual(Int.nextPow2(Int.of(0)), 2)
+ * assert.deepStrictEqual(Number.isNaN(Int.nextPow2(Int.of(-1))), true) // Negative inputs result in NaN
+ * ```
+ *
  * @experimental
- * @todo Provide an implementation and tests
  */
-export const nextPow2 = (int: Int): Int => of(_Number.nextPow2(int))
+
+export const nextPow2 = (n: Int): Int => {
+  const nextPow = Math.ceil(Math.log(n) / Math.log(2))
+  return Math.max(Math.pow(2, nextPow), 2) as Int
+}
