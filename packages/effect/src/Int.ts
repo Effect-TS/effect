@@ -4,10 +4,11 @@
  * @experimental
  * @internal
  */
+
 import * as Brand from "./Brand.js"
 import * as Data from "./Data.js"
 import type * as Either from "./Either.js"
-import type * as _Equivalence from "./Equivalence.js"
+import * as _Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as internal from "./internal/number.js"
 import * as _Iterable from "./Iterable.js"
@@ -15,7 +16,7 @@ import * as _Number from "./Number.js"
 import type * as _Option from "./Option.js"
 import * as _Order from "./Order.js"
 import type { Ordering } from "./Ordering.js"
-import type * as _Predicate from "./Predicate.js"
+import * as _Predicate from "./Predicate.js"
 
 const IntConstructor = Brand.refined<number & Brand.Brand<"Int">>(
   (n) => _Number.isNumber(n) && !Number.isNaN(n) && Number.isInteger(n),
@@ -710,7 +711,7 @@ export const decrement: (n: Int) => Int = (n) => sum(of(-one))(n)
  *
  * @experimental
  */
-export const Equivalence: _Equivalence.Equivalence<Int> = _Number.Equivalence
+export const Equivalence: _Equivalence.Equivalence<Int> = _Equivalence.number
 
 /**
  * Type class instance of `Order` for `Int`.
@@ -736,7 +737,7 @@ export const Equivalence: _Equivalence.Equivalence<Int> = _Number.Equivalence
  * @returns -1 if `self` is less than `that`, 0 if they are equal, and 1 if
  * @experimental
  */
-export const Order: _Order.Order<Int> = _Number.Order
+export const Order: _Order.Order<Int> = _Order.number
 
 /**
  * Returns `true` if the first argument is less than the second, otherwise
