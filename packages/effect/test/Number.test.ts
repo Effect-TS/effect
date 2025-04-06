@@ -47,7 +47,23 @@ describe("Number", () => {
   })
 
   it("decrement", () => {
-    strictEqual(Number.decrement(2), 1)
+    strictEqual(Number.decrement(3.14), 2.14)
+
+    strictEqual(Number.decrement(-0.69314), -1.69314)
+
+    strictEqual(
+      pipe(
+        100,
+        Number.decrement,
+        Number.decrement,
+        Number.decrement,
+        Number.decrement,
+        Number.decrement,
+        Number.decrement,
+        Number.decrement
+      ),
+      93
+    )
   })
 
   it("Equivalence", () => {

@@ -655,7 +655,7 @@ export const increment: (n: Int) => Int = internal.increment
  * @returns The decremented value by one Int as an `Int`.
  * @experimental
  */
-export const decrement: (n: Int) => Int = (n) => sum(of(-one))(n)
+export const decrement: (n: Int) => Int = internal.decrement
 
 /**
  * Type class instance of `Equivalence` for `Int`.

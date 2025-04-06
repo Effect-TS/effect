@@ -84,7 +84,7 @@ export const divide = <A extends number = number, B extends number = A>(dividend
 export const increment = <A extends number = number, B extends number = A>(n: A): B => sum(n, one as A)
 
 /** @internal */
-export const decrement = (n: number): number => n - one
+export const decrement = <A extends number = number, B extends number = A>(n: A): B => subtract(n, one as A)
 
 /** @internal */
 export const sumAll = (collection: Iterable<number>): number => Iterable.reduce(collection, zero, sum)
