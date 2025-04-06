@@ -135,9 +135,3 @@ export const remainder = (dividend: number, divisor: number): number => {
   const divisorInt = parseInt(divisor.toFixed(decCount).replace(".", ""))
   return (selfInt % divisorInt) / Math.pow(10, decCount)
 }
-
-/** @internal */
-export const nextPow2 = (n: number): number => {
-  const nextPow = Math.ceil(Math.log(n) / Math.log(2))
-  return Math.max(Math.pow(2, nextPow), 2)
-}
