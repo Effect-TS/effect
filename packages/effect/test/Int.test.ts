@@ -203,11 +203,11 @@ describe("Int", () => {
     strictEqual(Int.unsafeDivide(Int.zero, six), 0)
     throws(
       () => Int.unsafeDivide(six, Int.zero),
-      Int.IntegerDivisionError.divisionByZero(six)
+      Int.DivisionByZeroError.divisionByZero(six)
     )
     throws(
       () => Int.unsafeDivide(Int.zero, Int.zero),
-      Int.IntegerDivisionError.indeterminateForm()
+      Int.DivisionByZeroError.indeterminateForm()
     )
   })
 

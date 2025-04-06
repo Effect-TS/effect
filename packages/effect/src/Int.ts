@@ -514,19 +514,19 @@ export const divide: {
  * @category Errors
  * @experimental
  */
-export class IntegerDivisionError extends Data.TaggedError(
+export class DivisionByZeroError<A extends number = number> extends Data.TaggedError(
   "IntegerDivisionError"
 )<{
-  readonly dividend: Int
+  readonly dividend: A
   readonly divisor: Int
   readonly type: "DivisionByZero" | "IndeterminateForm"
   readonly message: string
 }> {
   /** @internal */
-  static readonly divisionByZero: (dividend: Int) => IntegerDivisionError = (
+  static readonly divisionByZero: <A extends number = number>(dividend: A) => DivisionByZeroError = (
     dividend
   ) =>
-    new IntegerDivisionError({
+    new DivisionByZeroError({
       dividend,
       divisor: zero,
       type: "DivisionByZero",
@@ -534,8 +534,8 @@ export class IntegerDivisionError extends Data.TaggedError(
     })
 
   /** @internal */
-  static readonly indeterminateForm: () => IntegerDivisionError = () =>
-    new IntegerDivisionError({
+  static readonly indeterminateForm: () => DivisionByZeroError = () =>
+    new DivisionByZeroError({
       dividend: zero,
       divisor: zero,
       type: "IndeterminateForm",
@@ -548,13 +548,13 @@ export class IntegerDivisionError extends Data.TaggedError(
  * type is widened to a `number`.
  *
  * As the name suggests, **this operation may throw an
- * {@link module:Int.IntegerDivisionError}** if the `divisor` is zero, resulting
+ * {@link module:Int.DivisionByZeroError}** if the `divisor` is zero, resulting
  * in either a division by zero or an indeterminate form.
  *
  * @memberof Int
  * @since 3.14.6
  * @category Math
- * @throws - An {@link module:Int.IntegerDivisionError} if the divisor is zero.
+ * @throws - An {@link module:Int.DivisionByZeroError} if the divisor is zero.
  * @experimental
  */
 export const unsafeDivide: {
@@ -592,7 +592,7 @@ export const unsafeDivide: {
    * @param divisor - The `Int` by which the `dividend` will be divided.
    * @returns A function that takes a `dividend` and returns the quotient, which
    *   is a `number`. This operation may throw an
-   *   {@link module:Int.IntegerDivisionError} if the divisor is zero.
+   *   {@link module:Int.DivisionByZeroError} if the divisor is zero.
    */
   (divisor: Int): (dividend: Int) => number
 
@@ -614,15 +614,15 @@ export const unsafeDivide: {
    * @param dividend - The `Int` to be divided.
    * @param divisor - The `Int` by which the dividend is divided.
    * @returns The quotient of the division, which is a `number`.
-   * @throws - An {@link module:Int.IntegerDivisionError} if the divisor is zero.
+   * @throws - An {@link module:Int.DivisionByZeroError} if the divisor is zero.
    */
   (dividend: Int, divisor: Int): number
 } = dual(2, (dividend: Int, divisor: Int): number => {
   if (divisor === 0) {
     if (dividend === 0) {
-      throw IntegerDivisionError.indeterminateForm()
+      throw DivisionByZeroError.indeterminateForm()
     }
-    throw IntegerDivisionError.divisionByZero(dividend)
+    throw DivisionByZeroError.divisionByZero(dividend)
   }
   return dividend / divisor
 })
