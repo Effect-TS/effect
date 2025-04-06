@@ -447,19 +447,29 @@ export const remainder: {
 } = dual(2, internal.remainder)
 
 /**
- * Returns the next power of 2 from the given number.
+ * Returns the next power of 2 greater than or equal to the given number.
  *
+ * - For `positive` inputs, returns the smallest power of 2 that is >= the input
+ * - For `zero`, returns 2
+ * - For `negative` inputs, returns NaN (as logarithms of negative numbers are
+ *   undefined)
+ * - For `NaN` input, returns NaN
+ * - For `Infinity`, returns Infinity
+ *
+ * @since 2.0.0
+ * @category Math
+ * @memberOf Number
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { nextPow2 } from "effect/Number"
  *
  * assert.deepStrictEqual(nextPow2(5), 8)
  * assert.deepStrictEqual(nextPow2(17), 32)
+ * assert.deepStrictEqual(nextPow2(0), 2)
+ * assert.deepStrictEqual(Number.isNaN(nextPow2(-1)), true) // Negative inputs result in NaN
  * ```
- *
- * @category math
- * @since 2.0.0
  */
 export const nextPow2: (n: number) => number = internal.nextPow2
 
