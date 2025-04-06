@@ -440,7 +440,7 @@ export const multiply: {
   (multiplier: Int, multiplicand: Int): Int
 } = dual(
   2,
-  (multiplier: Int, multiplicand: Int): Int => of(multiplier * multiplicand)
+  (multiplier: Int, multiplicand: Int): Int => internal.multiply(multiplier, multiplicand)
 )
 
 /**

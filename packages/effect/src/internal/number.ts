@@ -6,14 +6,22 @@ const one = 1 as const
 const zero = 0 as const
 
 /** @internal */
-export const sum = <A extends number = number, B extends number = A>(self: A, that: A): B => (self + that) as B
+export const sum = <A extends number = number, B extends number = A>(
+  self: A,
+  that: A
+): B => (self + that) as B
 
 /** @internal */
-export const subtract = <A extends number = number, B extends number = A>(minuend: A, subtrahend: A): B =>
-  (minuend - subtrahend) as B
+export const subtract = <A extends number = number, B extends number = A>(
+  minuend: A,
+  subtrahend: A
+): B => (minuend - subtrahend) as B
 
 /** @internal */
-export const multiply = (multiplier: number, multiplicand: number): number => multiplier * multiplicand
+export const multiply = <A extends number = number, B extends number = A>(
+  multiplier: A,
+  multiplicand: A
+): B => (multiplier * multiplicand) as B
 
 /** @internal */
 export const unsafeDivide = (dividend: number, divisor: number): number => dividend / divisor
