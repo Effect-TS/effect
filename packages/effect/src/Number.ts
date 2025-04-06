@@ -1,10 +1,11 @@
 /**
- * This module provides utility functions and type class instances for working with the `number` type in TypeScript.
- * It includes functions for basic arithmetic operations, as well as type class instances for
- * `Equivalence` and `Order`.
+ * This module provides utility functions and type class instances for working
+ * with the `number` type in TypeScript. It includes functions for basic
+ * arithmetic operations, as well as type class instances for `Equivalence` and
+ * `Order`.
  *
- * @since 2.0.0
  * @module Number
+ * @since 2.0.0
  */
 import * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
@@ -18,7 +19,11 @@ import * as predicate from "./Predicate.js"
 /**
  * Tests if a value is a `number`.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Guards
  * @example
+ *
  * ```ts
  * import * as assert from "node:assert"
  * import { isNumber } from "effect/Number"
@@ -26,25 +31,23 @@ import * as predicate from "./Predicate.js"
  * assert.deepStrictEqual(isNumber(2), true)
  * assert.deepStrictEqual(isNumber("2"), false)
  * ```
- *
- * @category guards
- * @since 2.0.0
  */
 export const isNumber: (input: unknown) => input is number = predicate.isNumber
 
 /**
  * Provides an addition operation on `number`s.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { sum } from "effect/Number"
  *
  * assert.deepStrictEqual(sum(2, 3), 5)
  * ```
- *
- * @category math
- * @since 2.0.0
  */
 export const sum: {
   (that: number): (self: number) => number
@@ -54,16 +57,17 @@ export const sum: {
 /**
  * Provides a multiplication operation on `number`s.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { multiply } from "effect/Number"
  *
  * assert.deepStrictEqual(multiply(2, 3), 6)
  * ```
- *
- * @category math
- * @since 2.0.0
  */
 export const multiply: {
   (multiplicand: number): (multiplier: number) => number
@@ -73,16 +77,17 @@ export const multiply: {
 /**
  * Provides a subtraction operation on `number`s.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { subtract } from "effect/Number"
  *
  * assert.deepStrictEqual(subtract(2, 3), -1)
  * ```
- *
- * @category math
- * @since 2.0.0
  */
 export const subtract: {
   (subtrahend: number): (minuend: number) => number
@@ -92,17 +97,18 @@ export const subtract: {
 /**
  * Provides a division operation on `number`s.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { Number, Option } from "effect"
  *
  * assert.deepStrictEqual(Number.divide(6, 3), Option.some(2))
  * assert.deepStrictEqual(Number.divide(6, 0), Option.none())
  * ```
- *
- * @category math
- * @since 2.0.0
  */
 export const divide: {
   (divisor: number): (dividend: number) => Option<number>
@@ -123,15 +129,16 @@ export const DivisionByZeroError = internal.DivisionByZeroError
  * Provides a division operation on `number`s.
  *
  * As the name suggests, **this operation may throw an
- * {@link module:Number.DivisionByZeroError}** if the `divisor` is zero, resulting
- * in either a division by zero or an indeterminate form.
+ * {@link module:Number.DivisionByZeroError}** if the `divisor` is zero,
+ * resulting in either a division by zero or an indeterminate form.
  *
+ * @memberof Number
  * @since 2.0.0
  * @category Math
  * @example
  *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { unsafeDivide } from "effect/Number"
  *
  * assert.deepStrictEqual(unsafeDivide(6, 3), 2)
@@ -147,62 +154,68 @@ export const unsafeDivide: {
 /**
  * Returns the result of adding `1` to a given number.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { increment } from "effect/Number"
  *
  * assert.deepStrictEqual(increment(2), 3)
  * ```
- *
- * @category math
- * @since 2.0.0
  */
 export const increment: (n: number) => number = internal.increment
 
 /**
  * Decrements a number by `1`.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { decrement } from "effect/Number"
  *
  * assert.deepStrictEqual(decrement(3), 2)
  * ```
- *
- * @category math
- * @since 2.0.0
  */
 export const decrement: (n: number) => number = internal.decrement
 
 /**
- * @category instances
+ * @memberof Number
  * @since 2.0.0
+ * @category Instances
  */
 export const Equivalence: equivalence.Equivalence<number> = equivalence.number
 
 /**
- * @category instances
+ * @memberof Number
  * @since 2.0.0
+ * @category Instances
  */
 export const Order: order.Order<number> = order.number
 
 /**
- * Returns `true` if the first argument is less than the second, otherwise `false`.
+ * Returns `true` if the first argument is less than the second, otherwise
+ * `false`.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Predicates
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { lessThan } from "effect/Number"
  *
  * assert.deepStrictEqual(lessThan(2, 3), true)
  * assert.deepStrictEqual(lessThan(3, 3), false)
  * assert.deepStrictEqual(lessThan(4, 3), false)
  * ```
- *
- * @category predicates
- * @since 2.0.0
  */
 export const lessThan: {
   (that: number): (self: number) => boolean
@@ -210,20 +223,22 @@ export const lessThan: {
 } = order.lessThan(Order)
 
 /**
- * Returns a function that checks if a given `number` is less than or equal to the provided one.
+ * Returns a function that checks if a given `number` is less than or equal to
+ * the provided one.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Predicates
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { lessThanOrEqualTo } from "effect/Number"
  *
  * assert.deepStrictEqual(lessThanOrEqualTo(2, 3), true)
  * assert.deepStrictEqual(lessThanOrEqualTo(3, 3), true)
  * assert.deepStrictEqual(lessThanOrEqualTo(4, 3), false)
  * ```
- *
- * @category predicates
- * @since 2.0.0
  */
 export const lessThanOrEqualTo: {
   (that: number): (self: number) => boolean
@@ -231,20 +246,22 @@ export const lessThanOrEqualTo: {
 } = order.lessThanOrEqualTo(Order)
 
 /**
- * Returns `true` if the first argument is greater than the second, otherwise `false`.
+ * Returns `true` if the first argument is greater than the second, otherwise
+ * `false`.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Predicates
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { greaterThan } from "effect/Number"
  *
  * assert.deepStrictEqual(greaterThan(2, 3), false)
  * assert.deepStrictEqual(greaterThan(3, 3), false)
  * assert.deepStrictEqual(greaterThan(4, 3), true)
  * ```
- *
- * @category predicates
- * @since 2.0.0
  */
 export const greaterThan: {
   (that: number): (self: number) => boolean
@@ -252,20 +269,22 @@ export const greaterThan: {
 } = order.greaterThan(Order)
 
 /**
- * Returns a function that checks if a given `number` is greater than or equal to the provided one.
+ * Returns a function that checks if a given `number` is greater than or equal
+ * to the provided one.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Predicates
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { greaterThanOrEqualTo } from "effect/Number"
  *
  * assert.deepStrictEqual(greaterThanOrEqualTo(2, 3), false)
  * assert.deepStrictEqual(greaterThanOrEqualTo(3, 3), true)
  * assert.deepStrictEqual(greaterThanOrEqualTo(4, 3), true)
  * ```
- *
- * @category predicates
- * @since 2.0.0
  */
 export const greaterThanOrEqualTo: {
   (that: number): (self: number) => boolean
@@ -275,9 +294,13 @@ export const greaterThanOrEqualTo: {
 /**
  * Checks if a `number` is between a `minimum` and `maximum` value (inclusive).
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Predicates
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { Number } from "effect"
  *
  * const between = Number.between({ minimum: 0, maximum: 5 })
@@ -286,31 +309,34 @@ export const greaterThanOrEqualTo: {
  * assert.deepStrictEqual(between(-1), false)
  * assert.deepStrictEqual(between(6), false)
  * ```
- *
- * @category predicates
- * @since 2.0.0
  */
 export const between: {
-  (options: {
-    minimum: number
-    maximum: number
-  }): (self: number) => boolean
-  (self: number, options: {
-    minimum: number
-    maximum: number
-  }): boolean
+  (options: { minimum: number; maximum: number }): (self: number) => boolean
+  (
+    self: number,
+    options: {
+      minimum: number
+      maximum: number
+    }
+  ): boolean
 } = order.between(Order)
 
 /**
- * Restricts the given `number` to be within the range specified by the `minimum` and `maximum` values.
+ * Restricts the given `number` to be within the range specified by the
+ * `minimum` and `maximum` values.
  *
- * - If the `number` is less than the `minimum` value, the function returns the `minimum` value.
- * - If the `number` is greater than the `maximum` value, the function returns the `maximum` value.
+ * - If the `number` is less than the `minimum` value, the function returns the
+ *   `minimum` value.
+ * - If the `number` is greater than the `maximum` value, the function returns the
+ *   `maximum` value.
  * - Otherwise, it returns the original `number`.
  *
+ * @memberof Number
+ * @since 2.0.0
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { Number } from "effect"
  *
  * const clamp = Number.clamp({ minimum: 1, maximum: 5 })
@@ -319,32 +345,31 @@ export const between: {
  * assert.equal(clamp(0), 1)
  * assert.equal(clamp(6), 5)
  * ```
- *
- * @since 2.0.0
  */
 export const clamp: {
-  (options: {
-    minimum: number
-    maximum: number
-  }): (self: number) => number
-  (self: number, options: {
-    minimum: number
-    maximum: number
-  }): number
+  (options: { minimum: number; maximum: number }): (self: number) => number
+  (
+    self: number,
+    options: {
+      minimum: number
+      maximum: number
+    }
+  ): number
 } = order.clamp(Order)
 
 /**
  * Returns the minimum between two `number`s.
  *
+ * @memberof Number
+ * @since 2.0.0
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { min } from "effect/Number"
  *
  * assert.deepStrictEqual(min(2, 3), 2)
  * ```
- *
- * @since 2.0.0
  */
 export const min: {
   (that: number): (self: number) => number
@@ -354,15 +379,16 @@ export const min: {
 /**
  * Returns the maximum between two `number`s.
  *
+ * @memberof Number
+ * @since 2.0.0
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { max } from "effect/Number"
  *
  * assert.deepStrictEqual(max(2, 3), 3)
  * ```
- *
- * @since 2.0.0
  */
 export const max: {
   (that: number): (self: number) => number
@@ -372,74 +398,80 @@ export const max: {
 /**
  * Determines the sign of a given `number`.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { sign } from "effect/Number"
  *
  * assert.deepStrictEqual(sign(-5), -1)
  * assert.deepStrictEqual(sign(0), 0)
  * assert.deepStrictEqual(sign(5), 1)
  * ```
- *
- * @category math
- * @since 2.0.0
  */
 export const sign = (n: number): Ordering => Order(n, 0)
 
 /**
  * Takes an `Iterable` of `number`s and returns their sum as a single `number`.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { sumAll } from "effect/Number"
  *
  * assert.deepStrictEqual(sumAll([2, 3, 4]), 9)
  * ```
- *
- * @category math
- * @since 2.0.0
  */
 export const sumAll: {
   (collection: Iterable<number>): number
 } = internal.sumAll<number>
 
 /**
- * Takes an `Iterable` of `number`s and returns their multiplication as a single `number`.
+ * Takes an `Iterable` of `number`s and returns their multiplication as a single
+ * `number`.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { multiplyAll } from "effect/Number"
  *
  * assert.deepStrictEqual(multiplyAll([2, 3, 4]), 24)
  * ```
- *
- * @category math
- * @since 2.0.0
  */
 export const multiplyAll: {
   (collection: Iterable<number>): number
 } = internal.multiplyAll<number>
 
 /**
- * Returns the remainder left over when one operand is divided by a second operand.
+ * Returns the remainder left over when one operand is divided by a second
+ * operand.
  *
  * It always takes the sign of the dividend.
  *
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { remainder } from "effect/Number"
  *
  * assert.deepStrictEqual(remainder(2, 2), 0)
  * assert.deepStrictEqual(remainder(3, 2), 1)
  * assert.deepStrictEqual(remainder(-4, 2), -0)
  * ```
- *
- * @category math
- * @since 2.0.0
  */
 export const remainder: {
   (divisor: number): (dividend: number) => number
@@ -456,9 +488,9 @@ export const remainder: {
  * - For `NaN` input, returns NaN
  * - For `Infinity`, returns Infinity
  *
+ * @memberof Number
  * @since 2.0.0
  * @category Math
- * @memberOf Number
  * @example
  *
  * ```ts
@@ -477,11 +509,13 @@ export const nextPow2 = (n: number): number => {
 }
 
 /**
- * Tries to parse a `number` from a `string` using the `Number()` function.
- * The following special string values are supported: "NaN", "Infinity", "-Infinity".
+ * Tries to parse a `number` from a `string` using the `Number()` function. The
+ * following special string values are supported: "NaN", "Infinity",
+ * "-Infinity".
  *
- * @category constructors
+ * @memberof Number
  * @since 2.0.0
+ * @category Constructors
  */
 export const parse = (s: string): Option<number> => {
   if (s === "NaN") {
@@ -497,25 +531,24 @@ export const parse = (s: string): Option<number> => {
     return option.none
   }
   const n = Number(s)
-  return Number.isNaN(n)
-    ? option.none
-    : option.some(n)
+  return Number.isNaN(n) ? option.none : option.some(n)
 }
 
 /**
  * Returns the number rounded with the given precision.
  *
+ * @memberof Number
+ * @since 3.8.0
+ * @category Math
  * @example
+ *
  * ```ts
- * import * as assert from "node:assert"
+ * import * as assert from "node:assert/strict"
  * import { round } from "effect/Number"
  *
  * assert.deepStrictEqual(round(1.1234, 2), 1.12)
  * assert.deepStrictEqual(round(1.567, 2), 1.57)
  * ```
- *
- * @category math
- * @since 3.8.0
  */
 export const round: {
   (precision: number): (self: number) => number
