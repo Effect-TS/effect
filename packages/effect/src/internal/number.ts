@@ -86,8 +86,25 @@ export const increment = <A extends number = number, B extends number = A>(n: A)
 /** @internal */
 export const decrement = <A extends number = number, B extends number = A>(n: A): B => subtract(n, one as A)
 
-/** @internal */
-export const sumAll = (collection: Iterable<number>): number => Iterable.reduce(collection, zero, sum)
+/**
+ * @internal
+ *
+ * ```ts
+ * declare type _t0 = typeof sumAll
+ * //           ^? number -> number
+ * declare type _t1 = typeof sumAll<number>
+ * //           ^? number -> number
+ * declare type _t2 = typeof sumAll<number, number>
+ * //           ^? number -> number
+ * declare type _t3 = typeof sumAll<Int.Int>
+ * //           ^? Int -> Int
+ * declare type _t4 = typeof sumAll<Int.Int, number>
+ * //           ^? Int -> number
+ * ```
+ */
+export const sumAll = <A extends number = number, B extends number = A>(
+  collection: Iterable<A>
+): B => Iterable.reduce<A, B>(collection, 0 as B, (acc, n) => sum(acc, n as unknown as B))
 
 /** @internal */
 export const multiplyAll = (collection: Iterable<number>): number => Iterable.reduce(collection, one, multiply)

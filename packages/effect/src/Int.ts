@@ -1451,9 +1451,9 @@ export const sign: (n: Int) => Ordering = (n) => Order(n, zero)
  * @returns The sum of the `Int`s in the `Iterable`.
  * @experimental
  */
-export const sumAll: (collection: Iterable<Int, any, any>) => Int = (
-  collection
-) => _Iterable.reduce(collection, zero, sum)
+export const sumAll: {
+  (collection: Iterable<Int>): Int
+} = internal.sumAll<Int>
 
 /**
  * Takes an `Iterable` of `Int`s and returns their multiplication as a single

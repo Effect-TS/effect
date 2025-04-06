@@ -638,9 +638,9 @@ describe("Int", () => {
 
   it("sumAll", () => {
     // Array of Int
-    strictEqual(
+    strictEqual<Int.Int>(
       Int.sumAll([Int.of(2), Int.of(3), Int.of(4)]),
-      9,
+      Int.of(9),
       "Array of Int should sum correctly"
     )
 
@@ -650,7 +650,7 @@ describe("Int", () => {
 
     // List of Int
     const list = List.make(Int.of(2), Int.of(3), Int.of(4))
-    strictEqual(Int.sumAll(list), 9, "List of Int should sum correctly")
+    strictEqual(Int.sumAll(list), Int.of(9), "List of Int should sum correctly")
 
     // Generator function yielding Int
     function* intGenerator(): Generator<Int.Int, void, never> {
@@ -669,13 +669,13 @@ describe("Int", () => {
 
     strictEqual(
       Int.sumAll(intGenerator()),
-      9,
+      Int.of(9),
       "Generator of Int should sum correctly"
     )
 
     // Set of Int (standard JavaScript Set)
     const set = new Set<Int.Int>([Int.of(2), Int.of(3), Int.of(4)])
-    strictEqual(Int.sumAll(set), 9, "Set of Int should sum correctly")
+    strictEqual(Int.sumAll(set), Int.of(9), "Set of Int should sum correctly")
   })
 
   it("multiplyAll", () => {
