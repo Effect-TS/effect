@@ -419,7 +419,9 @@ export const sumAll: {
  * @category math
  * @since 2.0.0
  */
-export const multiplyAll: (collection: Iterable<number>) => number = internal.multiplyAll
+export const multiplyAll: {
+  (collection: Iterable<number>): number
+} = internal.multiplyAll<number>
 
 /**
  * Returns the remainder left over when one operand is divided by a second operand.

@@ -106,8 +106,24 @@ export const sumAll = <A extends number = number, B extends number = A>(
   collection: Iterable<A>
 ): B => Iterable.reduce<A, B>(collection, 0 as B, (acc, n) => sum(acc, n as unknown as B))
 
-/** @internal */
-export const multiplyAll = (collection: Iterable<number>): number => Iterable.reduce(collection, one, multiply)
+/**
+ * @internal
+ *
+ * ```ts
+ * declare type _t0 = typeof multiplyAll
+ * //           ^? number -> number
+ * declare type _t1 = typeof multiplyAll<number>
+ * //           ^? number -> number
+ * declare type _t2 = typeof multiplyAll<number, number>
+ * //           ^? number -> number
+ * declare type _t3 = typeof multiplyAll<Int.Int>
+ * //           ^? Int -> Int
+ * declare type _t4 = typeof multiplyAll<Int.Int, number>
+ * //           ^? Int -> number
+ * ```
+ */
+export const multiplyAll = <A extends number = number, B extends number = A>(collection: Iterable<A>): B =>
+  Iterable.reduce<A, B>(collection, 1 as B, (acc, n) => multiply(acc, n as unknown as B))
 
 /** @internal */
 export const remainder = (dividend: number, divisor: number): number => {

@@ -1478,8 +1478,9 @@ export const sumAll: {
  * @returns The product of the `Int`s in the `Iterable`.
  * @experimental
  */
-export const multiplyAll: (collection: Iterable<Int>) => Int = (collection) =>
-  _Iterable.reduce(collection, one, multiply)
+export const multiplyAll: {
+  (collection: Iterable<Int>): Int
+} = internal.multiplyAll<Int>
 
 /**
  * Returns the remainder left over when one operand is divided by a second
