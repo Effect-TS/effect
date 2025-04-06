@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Number, pipe } from "effect"
-import { assertFalse, assertNone, assertSome, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertNone, assertSome, assertTrue, strictEqual, throws } from "effect/test/util"
 
 describe("Number", () => {
   it("isNumber", () => {
@@ -27,7 +27,23 @@ describe("Number", () => {
   })
 
   it("unsafeDivide", () => {
-    strictEqual(pipe(6, Number.unsafeDivide(2)), 3)
+    const six = 6 as const
+    const two = 2 as const
+
+    strictEqual(pipe(six, Number.unsafeDivide(two)), Number.unsafeDivide(six, two))
+
+    strictEqual(pipe(six, Number.unsafeDivide(two)), 3)
+    strictEqual(pipe(six, Number.unsafeDivide(two)), 3)
+
+    strictEqual(Number.unsafeDivide(0, six), 0)
+    throws(
+      () => Number.unsafeDivide(six, 0),
+      Number.DivisionByZeroError.divisionByZero(six)
+    )
+    throws(
+      () => Number.unsafeDivide(0, 0),
+      Number.DivisionByZeroError.indeterminateForm()
+    )
   })
 
   it("decrement", () => {

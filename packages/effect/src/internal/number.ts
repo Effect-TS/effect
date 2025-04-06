@@ -1,6 +1,7 @@
+import * as Data from "../Data.js"
 import * as Iterable from "../Iterable.js"
 import type { Option } from "../Option.js"
-import * as option from "./option.js"
+import { liftThrowable } from "../Option.js"
 
 const one = 1 as const
 const zero = 0 as const
@@ -23,14 +24,61 @@ export const multiply = <A extends number = number, B extends number = A>(
   multiplicand: A
 ): B => (multiplier * multiplicand) as B
 
-/** @internal */
-export const unsafeDivide = (dividend: number, divisor: number): number => dividend / divisor
+/**
+ * Represents errors that can occur during division operations.
+ * @internal
+ */
+export class DivisionByZeroError<A extends number = number> extends Data.TaggedError(
+  "IntegerDivisionError"
+)<{
+  readonly dividend: A
+  readonly divisor: number
+  readonly type: "DivisionByZero" | "IndeterminateForm"
+  readonly message: string
+}> {
+  /** @internal */
+  static readonly divisionByZero: <A extends number = number>(
+    dividend: A
+  ) => DivisionByZeroError = (dividend) =>
+    new DivisionByZeroError({
+      dividend,
+      divisor: 0,
+      type: "DivisionByZero",
+      message: `Division by zero: ${dividend} / 0`
+    })
+
+  /** @internal */
+  static readonly indeterminateForm: () => DivisionByZeroError = () =>
+    new DivisionByZeroError({
+      dividend: 0,
+      divisor: 0,
+      type: "IndeterminateForm",
+      message: `Indeterminate form: division of zero by zero`
+    })
+}
+
+/**
+ * @internal
+ * @throws DivisionByZeroError
+ */
+export const unsafeDivide = <A extends number = number, B extends number = A>(
+  dividend: A,
+  divisor: A
+): B => {
+  if (divisor === 0) {
+    if (dividend === 0) {
+      throw DivisionByZeroError.indeterminateForm()
+    }
+    throw DivisionByZeroError.divisionByZero(dividend)
+  }
+  return (dividend / divisor) as B
+}
 
 /** @internal */
-export const divide = (dividend: number, divisor: number): Option<number> =>
-  divisor === 0 //
-    ? option.none
-    : option.some(unsafeDivide(dividend, divisor))
+export const divide = <A extends number = number, B extends number = A>(dividend: A, divisor: A): Option<B> => {
+  const safeDivide = liftThrowable(unsafeDivide)
+  return safeDivide(dividend, divisor) as Option<B>
+}
 
 /** @internal */
 export const increment = (n: number): number => n + one

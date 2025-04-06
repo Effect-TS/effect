@@ -4,6 +4,7 @@
  * `Equivalence` and `Order`.
  *
  * @since 2.0.0
+ * @module Number
  */
 import * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
@@ -106,17 +107,29 @@ export const subtract: {
 export const divide: {
   (divisor: number): (dividend: number) => Option<number>
   (dividend: number, divisor: number): Option<number>
-} = dual(
-  2,
-  internal.divide
-)
+} = dual(2, internal.divide)
+
+/**
+ * Represents errors that can occur during division operations.
+ *
+ * @memberof Number
+ * @since 3.14.6
+ * @category Errors
+ * @experimental
+ */
+export const DivisionByZeroError = internal.DivisionByZeroError
 
 /**
  * Provides a division operation on `number`s.
  *
- * Throws a `RangeError` if the divisor is `0`.
+ * As the name suggests, **this operation may throw an
+ * {@link module:Number.DivisionByZeroError}** if the `divisor` is zero, resulting
+ * in either a division by zero or an indeterminate form.
  *
+ * @since 2.0.0
+ * @category Math
  * @example
+ *
  * ```ts
  * import * as assert from "node:assert"
  * import { unsafeDivide } from "effect/Number"
@@ -124,8 +137,7 @@ export const divide: {
  * assert.deepStrictEqual(unsafeDivide(6, 3), 2)
  * ```
  *
- * @category math
- * @since 2.0.0
+ * @throws - An {@link module:Number.DivisionByZeroError} if the divisor is zero.
  */
 export const unsafeDivide: {
   (divisor: number): (dividend: number) => number

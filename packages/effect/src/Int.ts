@@ -6,7 +6,6 @@
  */
 
 import * as Brand from "./Brand.js"
-import * as Data from "./Data.js"
 import type * as Either from "./Either.js"
 import * as _Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
@@ -19,7 +18,7 @@ import type { Ordering } from "./Ordering.js"
 import * as _Predicate from "./Predicate.js"
 
 const IntConstructor = Brand.refined<number & Brand.Brand<"Int">>(
-  (n) => _Number.isNumber(n) && !Number.isNaN(n) && Number.isInteger(n),
+  (n) => _Predicate.isNumber(n) && !Number.isNaN(n) && Number.isInteger(n),
   (n) => Brand.error(`Expected ${n} to be an integer`)
 )
 
@@ -515,34 +514,7 @@ export const divide: {
  * @category Errors
  * @experimental
  */
-export class DivisionByZeroError<A extends number = number> extends Data.TaggedError(
-  "IntegerDivisionError"
-)<{
-  readonly dividend: A
-  readonly divisor: Int
-  readonly type: "DivisionByZero" | "IndeterminateForm"
-  readonly message: string
-}> {
-  /** @internal */
-  static readonly divisionByZero: <A extends number = number>(dividend: A) => DivisionByZeroError = (
-    dividend
-  ) =>
-    new DivisionByZeroError({
-      dividend,
-      divisor: zero,
-      type: "DivisionByZero",
-      message: `Division by zero: ${dividend} / 0`
-    })
-
-  /** @internal */
-  static readonly indeterminateForm: () => DivisionByZeroError = () =>
-    new DivisionByZeroError({
-      dividend: zero,
-      divisor: zero,
-      type: "IndeterminateForm",
-      message: `Indeterminate form: division of zero by zero`
-    })
-}
+export const DivisionByZeroError = internal.DivisionByZeroError
 
 /**
  * Performs an unsafe division of two `Int`'s, returning the `quotient` which
@@ -618,15 +590,7 @@ export const unsafeDivide: {
    * @throws - An {@link module:Int.DivisionByZeroError} if the divisor is zero.
    */
   (dividend: Int, divisor: Int): number
-} = dual(2, (dividend: Int, divisor: Int): number => {
-  if (divisor === 0) {
-    if (dividend === 0) {
-      throw DivisionByZeroError.indeterminateForm()
-    }
-    throw DivisionByZeroError.divisionByZero(dividend)
-  }
-  return dividend / divisor
-})
+} = dual(2, (dividend: Int, divisor: Int): number => internal.unsafeDivide(dividend, divisor))
 
 /**
  * Returns the result of adding one {@link module:Int.one} to the given `Int`.
