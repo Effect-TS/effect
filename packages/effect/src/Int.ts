@@ -622,7 +622,7 @@ export const unsafeDivide: {
  * @returns The incremented value by one Int as an `Int`.
  * @experimental
  */
-export const increment: (n: Int) => Int = (n) => sum(one)(n)
+export const increment: (n: Int) => Int = internal.increment
 
 /**
  * Returns the result of decrementing by one {@link module:Int.one} to the given

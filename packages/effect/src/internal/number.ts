@@ -81,7 +81,7 @@ export const divide = <A extends number = number, B extends number = A>(dividend
 }
 
 /** @internal */
-export const increment = (n: number): number => n + one
+export const increment = <A extends number = number, B extends number = A>(n: A): B => sum(n, one as A)
 
 /** @internal */
 export const decrement = (n: number): number => n - one
