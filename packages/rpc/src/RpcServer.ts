@@ -27,7 +27,7 @@ import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as Option from "effect/Option"
-import { ArrayFormatter, type ParseError } from "effect/ParseResult"
+import { type ParseError, TreeFormatter } from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Runtime from "effect/Runtime"
 import * as Schema from "effect/Schema"
@@ -565,7 +565,7 @@ export const make: <Rpcs extends Rpc.Any>(
       Effect.flatMap((a) => send(client.id, onSuccess(a), collector && collector.unsafeClear())),
       Effect.catchAllCause((cause) => {
         client.schemas.delete(requestId)
-        const defect = Cause.squash(Cause.map(cause, ArrayFormatter.formatErrorSync))
+        const defect = Cause.squash(Cause.map(cause, TreeFormatter.formatErrorSync))
         return Effect.zipRight(
           server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] }),
           sendRequestDefect(client, requestId, defect)
@@ -632,7 +632,7 @@ export const make: <Rpcs extends Rpc.Any>(
         return Effect.matchEffect(
           Effect.provide(schemas.decode(request.payload), schemas.context),
           {
-            onFailure: (error) => sendRequestDefect(client, requestId, ArrayFormatter.formatErrorSync(error)),
+            onFailure: (error) => sendRequestDefect(client, requestId, TreeFormatter.formatErrorSync(error)),
             onSuccess: (payload) => {
               client.schemas.set(
                 requestId,
