@@ -18,6 +18,19 @@ export const IntConstructor = Brand.refined<number & Brand.Brand<"Int">>(
 export type Int = Brand.Brand.FromConstructor<typeof IntConstructor>
 
 /** @internal */
+const PositiveConstructor = Brand.refined<number & Brand.Brand<"Positive">>(
+  (n) => n >= 0,
+  (n) => Brand.error(`Expected ${n} to be positive or zero`)
+)
+
+/** @internal */
+export const PositiveIntConstructor = Brand.all(IntConstructor, PositiveConstructor)
+
+export type PositiveInt = Brand.Brand.FromConstructor<
+  typeof PositiveIntConstructor
+>
+
+/** @internal */
 export const sum = <A extends number = number, B extends number = A>(
   self: A,
   that: A

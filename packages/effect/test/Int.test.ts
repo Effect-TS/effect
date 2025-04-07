@@ -68,7 +68,7 @@ describe("Int", () => {
     }
   })
 
-  it("empty", () => {
+  it("zero", () => {
     strictEqual(Int.zero, 0)
   })
 
