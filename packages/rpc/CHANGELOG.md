@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.55.9
+
+### Patch Changes
+
+- [#4703](https://github.com/Effect-TS/effect/pull/4703) [`a1d4673`](https://github.com/Effect-TS/effect/commit/a1d4673a423dfed050c0a762664d9d64002cfa90) Thanks @tim-smart! - improve RpcServer schema defects
+
 ## 0.55.8
 
 ### Patch Changes
