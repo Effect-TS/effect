@@ -1,6 +1,6 @@
 import * as Brand from "../Brand.js"
 import * as Data from "../Data.js"
-import * as Iterable from "../Iterable.js"
+import * as _Iterable from "../Iterable.js"
 import type { Option } from "../Option.js"
 import { liftThrowable } from "../Option.js"
 import * as Predicate from "../Predicate.js"
@@ -123,7 +123,7 @@ export const decrement = <A extends number = number, B extends number = A>(
  */
 export const sumAll = <A extends number = number, B extends number = A>(
   collection: Iterable<A>
-): B => Iterable.reduce<A, B>(collection, 0 as B, (acc, n) => sum(acc, n as unknown as B))
+): B => _Iterable.reduce<A, B>(collection, 0 as B, (acc, n) => sum(acc, n as unknown as B))
 
 /**
  * @internal
@@ -143,7 +143,7 @@ export const sumAll = <A extends number = number, B extends number = A>(
  */
 export const multiplyAll = <A extends number = number, B extends number = A>(
   collection: Iterable<A>
-): B => Iterable.reduce<A, B>(collection, 1 as B, (acc, n) => multiply(acc, n as unknown as B))
+): B => _Iterable.reduce<A, B>(collection, 1 as B, (acc, n) => multiply(acc, n as unknown as B))
 
 /** @internal */
 export const remainder = (dividend: number, divisor: number): number => {
