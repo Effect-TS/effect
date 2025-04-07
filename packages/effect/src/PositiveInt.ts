@@ -9,6 +9,7 @@ import type * as Brand from "./Brand.js"
 import type * as Either from "./Either.js"
 import * as internal from "./internal/number.js"
 import type * as _Option from "./Option.js"
+import * as _Predicate from "./Predicate.js"
 
 /**
  * A type representing non-negative integers (0 -> +Infinity).
@@ -109,7 +110,9 @@ export const of: {
  * const safelyDouble = (n: number) =>
  *   pipe(
  *     PositiveInt.option(n),
- *     Option.map((positiveInt) => PositiveInt.multiply(positiveInt, PositiveInt.of(2)))
+ *     Option.map((positiveInt) =>
+ *       PositiveInt.multiply(positiveInt, PositiveInt.of(2))
+ *     )
  *   )
  *
  * assert.deepStrictEqual(safelyDouble(5), Option.some(10))
@@ -241,3 +244,48 @@ export const zero: PositiveInt = of(0)
  * @experimental
  */
 export const one: PositiveInt = of(1)
+
+/**
+ * Type guard to test if a value is a `PositiveInt`.
+ *
+ * This function checks if the provided value is a valid non-negative integer
+ * that satisfies the `PositiveInt` brand requirements. It can be used in
+ * conditional statements to narrow the type of a value to `PositiveInt`.
+ *
+ * @memberof PositiveInt
+ * @since 3.14.6
+ * @category Guards
+ * @example
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as PositiveInt from "effect/PositiveInt"
+ * import * as assert from "node:assert/strict"
+ *
+ * assert.equal(PositiveInt.isPositiveInt(0), true)
+ * assert.equal(PositiveInt.isPositiveInt(1), true)
+ * assert.equal(PositiveInt.isPositiveInt(42), true)
+ *
+ * // Type narrowing example
+ * const processValue = (value: unknown): string => {
+ *   if (PositiveInt.isPositiveInt(value)) {
+ *     // value is now typed as PositiveInt
+ *     return `Valid non-negative integer: ${value}`
+ *   }
+ *   return "Invalid value"
+ * }
+ *
+ * assert.equal(processValue(5), "Valid non-negative integer: 5")
+ * assert.equal(processValue(-5), "Invalid value")
+ * assert.equal(processValue(3.14), "Invalid value")
+ * assert.equal(processValue("42"), "Invalid value")
+ * ```
+ *
+ * @param input - The value to check
+ * @returns `true` if the value is a valid non-negative integer, `false`
+ *   otherwise
+ * @experimental
+ */
+export const isPositiveInt: _Predicate.Refinement<unknown, PositiveInt> = (
+  input
+) => _Predicate.isNumber(input) && internal.PositiveIntConstructor.is(input)

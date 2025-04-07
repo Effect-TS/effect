@@ -16,15 +16,15 @@ import {
 } from "effect/test/util"
 
 describe("PositiveInt", () => {
-  describe("Constructors", () => {
-    const nonIntegers = [0.5, 1.5, 3.14, Number.EPSILON]
-    const negativeIntegers = [-1, -2, -100, Number.MIN_SAFE_INTEGER]
-    const specialValues = [
-      Number.NaN,
-      Number.POSITIVE_INFINITY,
-      Number.NEGATIVE_INFINITY
-    ]
+  const nonIntegers = [0.5, 1.5, 3.14, Number.EPSILON]
+  const negativeIntegers = [-1, -2, -100, Number.MIN_SAFE_INTEGER]
+  const specialValues = [
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY
+  ]
 
+  describe("Constructors", () => {
     const maxSafeInt = Number.MAX_SAFE_INTEGER
 
     it("of", () => {
@@ -184,6 +184,43 @@ describe("PositiveInt", () => {
         processWithErrorHandling(3.14),
         "Error: Expected 3.14 to be an integer"
       )
+    })
+  })
+
+  describe("Guards", () => {
+    it("isPositiveInt", () => {
+      // Valid positive integers
+      assertTrue(PositiveInt.isPositiveInt(0))
+      assertTrue(PositiveInt.isPositiveInt(1))
+      assertTrue(PositiveInt.isPositiveInt(42))
+      assertTrue(PositiveInt.isPositiveInt(Number.MAX_SAFE_INTEGER))
+
+      // Valid positive integers from Int module
+      assertTrue(PositiveInt.isPositiveInt(Int.zero))
+      assertTrue(PositiveInt.isPositiveInt(Int.one))
+
+      // Non-integers
+      for (const value of nonIntegers) {
+        assertFalse(PositiveInt.isPositiveInt(value))
+      }
+
+      // Negative integers
+      for (const value of negativeIntegers) {
+        assertFalse(PositiveInt.isPositiveInt(value))
+      }
+
+      // Special values
+      for (const value of specialValues) {
+        assertFalse(PositiveInt.isPositiveInt(value))
+      }
+
+      // Non-number types
+      assertFalse(PositiveInt.isPositiveInt("0"))
+      assertFalse(PositiveInt.isPositiveInt(true))
+      assertFalse(PositiveInt.isPositiveInt({}))
+      assertFalse(PositiveInt.isPositiveInt([]))
+      assertFalse(PositiveInt.isPositiveInt(null))
+      assertFalse(PositiveInt.isPositiveInt(undefined))
     })
   })
 })
