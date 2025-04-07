@@ -1,10 +1,21 @@
-import type * as Brand from "../Brand.js"
+import * as Brand from "../Brand.js"
 import * as Data from "../Data.js"
 import * as Iterable from "../Iterable.js"
 import type { Option } from "../Option.js"
 import { liftThrowable } from "../Option.js"
+import * as Predicate from "../Predicate.js"
 
+/** @internal */
 export type NaN = number & Brand.Brand<"NaN">
+
+/** @internal */
+export const IntConstructor = Brand.refined<number & Brand.Brand<"Int">>(
+  (n) => Predicate.isNumber(n) && !Number.isNaN(n) && Number.isInteger(n),
+  (n) => Brand.error(`Expected ${n} to be an integer`)
+)
+
+/** @internal */
+export type Int = Brand.Brand.FromConstructor<typeof IntConstructor>
 
 /** @internal */
 export const sum = <A extends number = number, B extends number = A>(
