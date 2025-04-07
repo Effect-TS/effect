@@ -2,18 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { Brand, Either, Option, pipe } from "effect"
 import * as Int from "effect/Int"
 import * as PositiveInt from "effect/PositiveInt"
-import {
-  assertEquals,
-  assertFalse,
-  assertLeft,
-  assertNone,
-  assertRight,
-  assertSome,
-  assertTrue,
-  notDeepStrictEqual,
-  strictEqual,
-  throws
-} from "effect/test/util"
+import { assertFalse, assertNone, assertRight, assertSome, assertTrue, strictEqual, throws } from "effect/test/util"
 
 describe("PositiveInt", () => {
   const nonIntegers = [0.5, 1.5, 3.14, Number.EPSILON]
@@ -62,7 +51,7 @@ describe("PositiveInt", () => {
       // Function that only accepts PositiveInt
       const calculateArea: (radius: PositiveInt.PositiveInt) => number = (
         radius
-      ) => Math.PI * (radius ** 2)
+      ) => Math.PI * radius ** 2
 
       // Valid usage
       strictEqual(calculateArea(PositiveInt.of(5)), Math.PI * 25)
@@ -110,10 +99,12 @@ describe("PositiveInt", () => {
 
     it("demonstrates safe conversion with option", () => {
       // Function that safely converts and processes a number
-      const safelyProcessRadius: (input: number) => Option.Option<number> = (input) =>
+      const safelyProcessRadius: (input: number) => Option.Option<number> = (
+        input
+      ) =>
         pipe(
           PositiveInt.option(input),
-          Option.map((radius) => Math.PI * (radius ** 2))
+          Option.map((radius) => Math.PI * radius ** 2)
         )
 
       // Valid input
@@ -167,7 +158,7 @@ describe("PositiveInt", () => {
           PositiveInt.either(input),
           Either.match({
             onLeft: ([{ message }]) => `Error: ${message}`,
-            onRight: (radius) => `Area: ${Math.PI * (radius ** 2)}`
+            onRight: (radius) => `Area: ${Math.PI * radius ** 2}`
           })
         )
 
@@ -221,6 +212,83 @@ describe("PositiveInt", () => {
       assertFalse(PositiveInt.isPositiveInt([]))
       assertFalse(PositiveInt.isPositiveInt(null))
       assertFalse(PositiveInt.isPositiveInt(undefined))
+    })
+  })
+
+  describe("Math", () => {
+    it("sum", () => {
+      const ten = PositiveInt.of(10)
+      const thirtyTwo = PositiveInt.of(32)
+      const meaningOfLife = PositiveInt.of(42)
+      const largeNumber = Number.MAX_SAFE_INTEGER - 10
+
+      // Basic functionality tests
+      strictEqual(
+        PositiveInt.sum(ten, thirtyTwo),
+        pipe(ten, PositiveInt.sum(thirtyTwo)),
+        "should add two positive integers correctly"
+      )
+
+      // Boundary conditions
+      strictEqual(
+        PositiveInt.sum(PositiveInt.zero, meaningOfLife),
+        PositiveInt.sum(meaningOfLife, PositiveInt.zero),
+        "Adding zero should not change the value"
+      )
+      strictEqual(
+        PositiveInt.sum(PositiveInt.of(largeNumber), ten),
+        Number.MAX_SAFE_INTEGER,
+        "Should correctly handle large numbers"
+      )
+
+      strictEqual(
+        PositiveInt.sum(PositiveInt.of(41), PositiveInt.one),
+        42,
+        "Adding one should increment the value"
+      )
+
+      // Mathematical properties
+      // Commutativity: a + b = b + a
+      strictEqual(
+        PositiveInt.sum(ten, thirtyTwo),
+        PositiveInt.sum(thirtyTwo, ten),
+        "Addition is commutative"
+      )
+
+      // Associativity: (a + b) + c = a + (b + c)
+      strictEqual(
+        pipe(
+          ten,
+          PositiveInt.sum(PositiveInt.of(20)),
+          PositiveInt.sum(PositiveInt.of(12))
+        ),
+        pipe(
+          ten,
+          PositiveInt.sum(
+            PositiveInt.sum(PositiveInt.of(20), PositiveInt.of(12))
+          )
+        ),
+        "Addition is associative"
+      )
+
+      // Identity element: a + 0 = a
+      strictEqual(
+        pipe(meaningOfLife, PositiveInt.sum(PositiveInt.zero)),
+        meaningOfLife,
+        "Zero is the identity element for addition"
+      )
+
+      // Chaining operations
+      strictEqual(
+        pipe(
+          PositiveInt.of(0),
+          PositiveInt.sum(PositiveInt.of(10)),
+          PositiveInt.sum(PositiveInt.of(20)),
+          PositiveInt.sum(PositiveInt.of(12))
+        ),
+        meaningOfLife,
+        "Should correctly chain multiple additions"
+      )
     })
   })
 })

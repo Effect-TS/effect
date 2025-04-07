@@ -275,28 +275,6 @@ export const sum: {
   (that: Int): (self: Int) => Int
 
   /**
-   * Sum curried function in the set of numbers. It allows you to start from an
-   * `Int` and add a number to it.
-   *
-   * @example
-   *
-   * ```ts
-   * import { pipe, Int, Number } from "effect"
-   * import * as assert from "node:assert/strict"
-   *
-   * assert.equal(
-   *   pipe(
-   *     Int.of(10),
-   *     Int.add(-10.5), // now the output is no longer an `Int`, but it has been widened to a `number`
-   *     Number.add(0)
-   *   ),
-   *   -0.5
-   * )
-   * ```
-   */
-  // (that: number): (self: Int) => number
-
-  /**
    * **data first api**
    *
    * ```ts
@@ -307,24 +285,6 @@ export const sum: {
    * ```
    */
   (self: Int, that: Int): Int
-  /**
-   * Sum in the set of Ints and numbers. It allows you to start from an `Int`
-   * and add a number to it. The result will be a number.
-   *
-   * @example
-   *
-   * ```ts
-   * import { pipe, Int, Number } from "effect"
-   * import * as assert from "node:assert/strict"
-   *
-   * assert.equal(Int.add(Int.of(10), -10.5), -0.5)
-   * ```
-   *
-   * @param self - The first term of kind `Int`.
-   * @param that - The second term of kind `number`.
-   * @returns A `number`
-   */
-  // (self: Int, that: number): number
 } = dual(2, (self: Int, that: Int): Int => internal.sum(self, that))
 
 /**

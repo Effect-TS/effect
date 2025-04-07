@@ -7,6 +7,7 @@
 
 import type * as Brand from "./Brand.js"
 import type * as Either from "./Either.js"
+import { dual } from "./Function.js"
 import * as internal from "./internal/number.js"
 import type * as _Option from "./Option.js"
 import * as _Predicate from "./Predicate.js"
@@ -289,3 +290,111 @@ export const one: PositiveInt = of(1)
 export const isPositiveInt: _Predicate.Refinement<unknown, PositiveInt> = (
   input
 ) => _Predicate.isNumber(input) && internal.PositiveIntConstructor.is(input)
+
+/**
+ * Provides an addition operation on `PositiveInt`.
+ *
+ * The operation preserves the `PositiveInt` type, ensuring that the result is
+ * always a valid non-negative integer.
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as PositiveInt from "effect/PositiveInt"
+ *
+ * assert.strictEqual<PositiveInt.PositiveInt>(
+ *   pipe(PositiveInt.of(10), PositiveInt.sum(PositiveInt.of(5))),
+ *   PositiveInt.sum(PositiveInt.of(10), PositiveInt.of(5))
+ * )
+ * ```
+ *
+ * @memberof PositiveInt
+ * @since 3.14.6
+ * @category Math
+ * @experimental
+ */
+export const sum: {
+  /**
+   * Returns a function that adds a specified `that` value to a given `self`
+   * value.
+   *
+   * **Data-last API** (a.k.a. pipeable)
+   *
+   * @example
+   *
+   * ```ts
+   * import { pipe } from "effect"
+   * import * as PositiveInt from "effect/PositiveInt"
+   * import * as assert from "node:assert/strict"
+   *
+   * // Basic addition
+   * assert.equal(
+   *   pipe(PositiveInt.of(10), PositiveInt.sum(PositiveInt.of(5))),
+   *   15
+   * )
+   *
+   * // Chaining multiple additions
+   * assert.equal(
+   *   pipe(
+   *     PositiveInt.of(10),
+   *     PositiveInt.sum(PositiveInt.of(20)),
+   *     PositiveInt.sum(PositiveInt.of(12))
+   *   ),
+   *   42
+   * )
+   *
+   * // Using with zero (identity element)
+   * assert.equal(
+   *   pipe(PositiveInt.of(42), PositiveInt.sum(PositiveInt.zero)),
+   *   42
+   * )
+   * ```
+   *
+   * @param that - The value to add to `self` when the resultant function is
+   *   invoked
+   * @returns A function that takes a `self` value and returns the sum of `self`
+   *   and `that`
+   */
+  (that: PositiveInt): (self: PositiveInt) => PositiveInt
+
+  /**
+   * Adds two `PositiveInt` values and returns their sum.
+   *
+   * **Data-first API**
+   *
+   * @example
+   *
+   * ```ts
+   * import * as PositiveInt from "effect/PositiveInt"
+   * import * as assert from "node:assert/strict"
+   *
+   * // Basic addition
+   * assert.equal(
+   *   PositiveInt.sum(PositiveInt.of(10), PositiveInt.of(32)),
+   *   42
+   * )
+   *
+   * // Adding zero (identity element)
+   * assert.equal(PositiveInt.sum(PositiveInt.of(42), PositiveInt.zero), 42)
+   *
+   * // Adding large numbers
+   * assert.equal(
+   *   PositiveInt.sum(
+   *     PositiveInt.of(Number.MAX_SAFE_INTEGER - 10),
+   *     PositiveInt.of(10)
+   *   ),
+   *   Number.MAX_SAFE_INTEGER
+   * )
+   * ```
+   *
+   * @param self - The first value to add
+   * @param that - The second value to add
+   * @returns The sum of `self` and `that`
+   */
+  (self: PositiveInt, that: PositiveInt): PositiveInt
+} = dual(
+  2,
+  (self: PositiveInt, that: PositiveInt): PositiveInt => internal.sum(self, that)
+)
