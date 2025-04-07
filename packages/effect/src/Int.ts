@@ -1522,8 +1522,9 @@ export const remainder: {
  *
  * @experimental
  */
-
-export const nextPow2 = (n: Int): Int => {
+export const nextPow2: {
+  (n: Int): Int | internal.NaN
+} = (n) => {
   const nextPow = Math.ceil(Math.log(n) / Math.log(2))
-  return Math.max(Math.pow(2, nextPow), 2) as Int
+  return Math.max(Math.pow(2, nextPow), 2) as Int | internal.NaN
 }

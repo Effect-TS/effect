@@ -1,10 +1,10 @@
+import type * as Brand from "../Brand.js"
 import * as Data from "../Data.js"
 import * as Iterable from "../Iterable.js"
 import type { Option } from "../Option.js"
 import { liftThrowable } from "../Option.js"
 
-const one = 1 as const
-const zero = 0 as const
+export type NaN = number & Brand.Brand<"NaN">
 
 /** @internal */
 export const sum = <A extends number = number, B extends number = A>(
@@ -26,11 +26,12 @@ export const multiply = <A extends number = number, B extends number = A>(
 
 /**
  * Represents errors that can occur during division operations.
+ *
  * @internal
  */
-export class DivisionByZeroError<A extends number = number> extends Data.TaggedError(
-  "IntegerDivisionError"
-)<{
+export class DivisionByZeroError<
+  A extends number = number
+> extends Data.TaggedError("IntegerDivisionError")<{
   readonly dividend: A
   readonly divisor: number
   readonly type: "DivisionByZero" | "IndeterminateForm"
@@ -58,8 +59,8 @@ export class DivisionByZeroError<A extends number = number> extends Data.TaggedE
 }
 
 /**
- * @internal
  * @throws DivisionByZeroError
+ * @internal
  */
 export const unsafeDivide = <A extends number = number, B extends number = A>(
   dividend: A,
@@ -75,16 +76,23 @@ export const unsafeDivide = <A extends number = number, B extends number = A>(
 }
 
 /** @internal */
-export const divide = <A extends number = number, B extends number = A>(dividend: A, divisor: A): Option<B> => {
+export const divide = <A extends number = number, B extends number = A>(
+  dividend: A,
+  divisor: A
+): Option<B> => {
   const safeDivide = liftThrowable(unsafeDivide)
   return safeDivide(dividend, divisor) as Option<B>
 }
 
 /** @internal */
-export const increment = <A extends number = number, B extends number = A>(n: A): B => sum(n, one as A)
+export const increment = <A extends number = number, B extends number = A>(
+  n: A
+): B => sum(n, 1 as A)
 
 /** @internal */
-export const decrement = <A extends number = number, B extends number = A>(n: A): B => subtract(n, one as A)
+export const decrement = <A extends number = number, B extends number = A>(
+  n: A
+): B => subtract(n, 1 as A)
 
 /**
  * @internal
@@ -122,8 +130,9 @@ export const sumAll = <A extends number = number, B extends number = A>(
  * //           ^? Int -> number
  * ```
  */
-export const multiplyAll = <A extends number = number, B extends number = A>(collection: Iterable<A>): B =>
-  Iterable.reduce<A, B>(collection, 1 as B, (acc, n) => multiply(acc, n as unknown as B))
+export const multiplyAll = <A extends number = number, B extends number = A>(
+  collection: Iterable<A>
+): B => Iterable.reduce<A, B>(collection, 1 as B, (acc, n) => multiply(acc, n as unknown as B))
 
 /** @internal */
 export const remainder = (dividend: number, divisor: number): number => {

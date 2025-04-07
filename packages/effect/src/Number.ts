@@ -7,6 +7,7 @@
  * @module Number
  * @since 2.0.0
  */
+
 import * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as internal from "./internal/number.js"
@@ -503,7 +504,7 @@ export const remainder: {
  * assert.deepStrictEqual(Number.isNaN(nextPow2(-1)), true) // Negative inputs result in NaN
  * ```
  */
-export const nextPow2 = (n: number): number => {
+export const nextPow2 = (n: number): number | internal.NaN => {
   const nextPow = Math.ceil(Math.log(n) / Math.log(2))
   return Math.max(Math.pow(2, nextPow), 2)
 }
