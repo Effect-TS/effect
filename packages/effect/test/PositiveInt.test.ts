@@ -2,7 +2,16 @@ import { describe, it } from "@effect/vitest"
 import { Brand, Either, Option, pipe } from "effect"
 import * as Int from "effect/Int"
 import * as PositiveInt from "effect/PositiveInt"
-import { assertFalse, assertNone, assertRight, assertSome, assertTrue, strictEqual, throws } from "effect/test/util"
+import {
+  assertFalse,
+  assertNone,
+  assertRight,
+  assertSome,
+  assertTrue,
+  notDeepStrictEqual,
+  strictEqual,
+  throws
+} from "effect/test/util"
 
 describe("PositiveInt", () => {
   const nonIntegers = [0.5, 1.5, 3.14, Number.EPSILON]
@@ -288,6 +297,99 @@ describe("PositiveInt", () => {
         ),
         meaningOfLife,
         "Should correctly chain multiple additions"
+      )
+    })
+
+    it("subtract", () => {
+      const three = PositiveInt.of(3)
+      const two = PositiveInt.of(2)
+      const meaningOfLife = PositiveInt.of(42)
+      const largeNumber = PositiveInt.of(Number.MAX_SAFE_INTEGER - 10)
+
+      // Basic functionality tests
+      strictEqual(
+        PositiveInt.subtract(three, PositiveInt.one),
+        pipe(three, PositiveInt.subtract(PositiveInt.one))
+      )
+
+      // Boundary conditions
+
+      strictEqual(
+        PositiveInt.subtract(meaningOfLife, PositiveInt.zero),
+        Int.of(42),
+        "Subtracting zero doesn't change the value"
+      )
+
+      strictEqual(
+        PositiveInt.subtract(PositiveInt.zero, meaningOfLife),
+        Int.of(-42),
+        "Zero minus a positive number equals the negative of that number"
+      )
+
+      strictEqual(
+        PositiveInt.subtract(meaningOfLife, meaningOfLife),
+        Int.zero,
+        "Subtracting a number from itself results in zero"
+      )
+
+      strictEqual(
+        PositiveInt.subtract(largeNumber, PositiveInt.of(10)),
+        Int.of(Number.MAX_SAFE_INTEGER - 20),
+        "Should correctly handle large numbers"
+      )
+
+      strictEqual(
+        PositiveInt.subtract(PositiveInt.of(5), PositiveInt.of(10)),
+        Int.of(-5),
+        "Subtracting a larger number from a smaller one results in a negative number"
+      )
+
+      // Mathematical properties:
+
+      /** Anti-commutativity: a - b = -(b - a) */
+      strictEqual(
+        pipe(three, PositiveInt.subtract(two)),
+        -pipe(two, PositiveInt.subtract(three)),
+        "Subtraction is anti-commutative: a - b = -(b - a)"
+      )
+
+      /** Non-associativity: (a - b) - c ≠ a - (b - c) */
+      notDeepStrictEqual(
+        pipe(three, PositiveInt.subtract(two), Int.subtract(PositiveInt.one)),
+        pipe(
+          three,
+          Int.subtract(pipe(two, PositiveInt.subtract(PositiveInt.one)))
+        ),
+        "Subtraction is not associative: (a - b) - c ≠ a - (b - c)"
+      )
+
+      /** Identity element: 0 - a = -a */
+      strictEqual(
+        pipe(PositiveInt.zero, PositiveInt.subtract(three)),
+        Int.of(-3),
+        "Zero is the identity element: 0 - a = -a"
+      )
+
+      /** Chaining subtractions */
+      strictEqual(
+        pipe(
+          PositiveInt.of(10),
+          PositiveInt.subtract(PositiveInt.of(3)),
+          Int.subtract(Int.of(2))
+        ),
+        Int.of(5),
+        "Should correctly chain multiple subtractions"
+      )
+
+      /** Mixing with other operations */
+      strictEqual(
+        pipe(
+          PositiveInt.of(10),
+          PositiveInt.subtract(PositiveInt.of(3)),
+          Int.sum(Int.of(5))
+        ),
+        Int.of(12),
+        "Should work correctly when mixed with other operations"
       )
     })
   })

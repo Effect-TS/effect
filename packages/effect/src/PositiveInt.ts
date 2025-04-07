@@ -1,4 +1,19 @@
 /**
+ * # `PositiveInt` a.k.a. `Natural Numbers (ℕ)`
+ *
+ * This module provides operations for working with natural numbers (ℕ = {0, 1,
+ * 2, ...}).
+ *
+ * Note that not all operations are closed within the set of natural numbers:
+ *
+ * - Addition and multiplication are closed operations (the result is always a
+ *   natural number)
+ * - Subtraction is not closed (may produce negative results)
+ * - Division is not closed (may produce fractions)
+ *
+ * Operations that cannot guarantee a natural number result will return a more
+ * appropriate type and are clearly documented.
+ *
  * @module PositiveInt
  * @since 3.14.6
  * @experimental
@@ -8,12 +23,15 @@
 import type * as Brand from "./Brand.js"
 import type * as Either from "./Either.js"
 import { dual } from "./Function.js"
+import type * as Int from "./Int.js"
 import * as internal from "./internal/number.js"
 import type * as _Option from "./Option.js"
 import * as _Predicate from "./Predicate.js"
 
 /**
  * A type representing non-negative integers (0 -> +Infinity).
+ *
+ * This is also known as the set of natural numbers (ℕ = {0, 1, 2, ...}).
  *
  * @memberof PositiveInt
  * @since 3.14.6
@@ -397,4 +415,137 @@ export const sum: {
 } = dual(
   2,
   (self: PositiveInt, that: PositiveInt): PositiveInt => internal.sum(self, that)
+)
+
+/**
+ * Subtracts one positive integer from another, returning a number that may not
+ * be positive.
+ *
+ * In the set of natural numbers (ℕ = {0, 1, 2, ...}), subtraction is not a
+ * total operation, meaning it's not closed under this set. When b > a, the
+ * result of a - b falls outside ℕ. Therefore, this function returns an `Int`
+ * rather than a natural number.
+ *
+ * Mathematical properties of subtraction in natural numbers:
+ *
+ * - Non-closure: If `a, b ∈ ℕ`, then `a - b` may not ∈ ℕ
+ * - Non-commutativity: `a - b ≠ b - a` (unless a = b)
+ * - Anti-commutativity: `a - b = -(b - a)`
+ * - Non-associativity: `(a - b) - c ≠ a - (b - c)`
+ * - Right identity element: `a - 0 = a` for all a ∈ ℕ
+ * - No left identity element: There is no `e ∈ ℕ` such that `e - a = a` for all
+ *   `a ∈ ℕ`
+ * - No inverse elements: For any `a ∈ ℕ` where `a > 0`, there is no `b ∈ ℕ` such
+ *   that `a - b = 0 and b - a = 0`
+ *
+ * @memberof PositiveInt
+ * @since 3.14.6
+ * @category Math
+ * @experimental
+ */
+export const subtract: {
+  /**
+   * Returns a function that subtracts a specified `subtrahend` from a given
+   * `minuend`.
+   *
+   * **Data-last API** (a.k.a. pipeable)
+   *
+   * @example
+   *
+   * ```ts
+   * import { pipe } from "effect"
+   * import * as Int from "effect/Int"
+   * import * as PositiveInt from "effect/PositiveInt"
+   * import * as assert from "node:assert/strict"
+   *
+   * // Basic subtraction
+   * assert.equal(
+   *   pipe(PositiveInt.of(5), PositiveInt.subtract(PositiveInt.of(3))),
+   *   Int.of(2)
+   * )
+   *
+   * // Subtraction resulting in zero
+   * assert.equal(
+   *   pipe(PositiveInt.of(10), PositiveInt.subtract(PositiveInt.of(10))),
+   *   Int.zero
+   * )
+   *
+   * // Subtraction resulting in negative number
+   * assert.equal(
+   *   pipe(PositiveInt.of(5), PositiveInt.subtract(PositiveInt.of(10))),
+   *   Int.of(-5)
+   * )
+   *
+   * // Chaining operations
+   * assert.equal(
+   *   pipe(
+   *     PositiveInt.of(10),
+   *     PositiveInt.subtract(PositiveInt.of(5)),
+   *     Int.subtract(Int.of(3))
+   *   ),
+   *   Int.of(2)
+   * )
+   * ```
+   *
+   * @param subtrahend - The `PositiveInt` to subtract from the `minuend` when
+   *   the resultant function is invoked.
+   * @returns A function that takes a `minuend` and returns the `difference` of
+   *   subtracting the `subtrahend` from it.
+   */
+  (subtrahend: PositiveInt): (minuend: PositiveInt) => Int.Int
+
+  /**
+   * Subtracts the `subtrahend` from the `minuend` and returns the difference.
+   *
+   * **Data-first API**
+   *
+   * @example
+   *
+   * ```ts
+   * import * as PositiveInt from "effect/PositiveInt"
+   * import * as Int from "effect/Int"
+   * import * as assert from "node:assert/strict"
+   *
+   * // Basic subtraction
+   * assert.equal(
+   *   PositiveInt.subtract(PositiveInt.of(10), PositiveInt.of(7)),
+   *   Int.of(3)
+   * )
+   *
+   * // Subtraction resulting in zero
+   * assert.equal(
+   *   PositiveInt.subtract(PositiveInt.of(10), PositiveInt.of(10)),
+   *   Int.zero
+   * )
+   *
+   * // Subtraction resulting in negative number
+   * assert.equal(
+   *   PositiveInt.subtract(PositiveInt.of(5), PositiveInt.of(10)),
+   *   Int.of(-5)
+   * )
+   *
+   * // Using with zero
+   * assert.equal(
+   *   PositiveInt.subtract(PositiveInt.of(42), PositiveInt.zero),
+   *   Int.of(42),
+   *   "Subtracting zero doesn't change the value"
+   * )
+   *
+   * assert.equal(
+   *   PositiveInt.subtract(PositiveInt.zero, PositiveInt.of(42)),
+   *   Int.of(-42),
+   *   "Zero minus a positive number equals the negative of that number"
+   * )
+   * ```
+   *
+   * @param minuend - The `PositiveInt` from which another integer is to be
+   *   subtracted.
+   * @param subtrahend - The `PositiveInt` to subtract from the minuend.
+   * @returns The difference of subtracting the subtrahend from the minuend as
+   *   an `Int.Int`.
+   */
+  (minuend: PositiveInt, subtrahend: PositiveInt): Int.Int
+} = dual(
+  2,
+  (minuend: PositiveInt, subtrahend: PositiveInt): Int.Int => internal.subtract(minuend, subtrahend)
 )
