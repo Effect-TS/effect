@@ -518,7 +518,9 @@ export const nextPow2 = (n: number): number | internal.NaN => {
  * @since 2.0.0
  * @category Constructors
  */
-export const parse = (s: string): Option<number> => {
+export const parse: {
+  (s: "NaN" | "Infinity" | "-Infinity" | (string & {})): Option<number>
+} = (s) => {
   if (s === "NaN") {
     return option.some(NaN)
   }
