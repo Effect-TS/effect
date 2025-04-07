@@ -24,11 +24,21 @@ const PositiveConstructor = Brand.refined<number & Brand.Brand<"Positive">>(
 )
 
 /** @internal */
-export const PositiveIntConstructor = Brand.all(IntConstructor, PositiveConstructor)
+export const PositiveIntConstructor = Brand.all(
+  IntConstructor,
+  PositiveConstructor
+)
 
+/** @internal */
 export type PositiveInt = Brand.Brand.FromConstructor<
   typeof PositiveIntConstructor
 >
+
+/** @internal */
+export const zero: PositiveInt = PositiveIntConstructor(0)
+
+/** @internal */
+export const one: PositiveInt = PositiveIntConstructor(1)
 
 /** @internal */
 export const sum = <A extends number = number, B extends number = A>(
@@ -67,7 +77,7 @@ export class DivisionByZeroError<
   ) => DivisionByZeroError = (dividend) =>
     new DivisionByZeroError({
       dividend,
-      divisor: 0,
+      divisor: zero,
       type: "DivisionByZero",
       message: `Division by zero: ${dividend} / 0`
     })
@@ -75,8 +85,8 @@ export class DivisionByZeroError<
   /** @internal */
   static readonly indeterminateForm: () => DivisionByZeroError = () =>
     new DivisionByZeroError({
-      dividend: 0,
-      divisor: 0,
+      dividend: zero,
+      divisor: zero,
       type: "IndeterminateForm",
       message: `Indeterminate form: division of zero by zero`
     })

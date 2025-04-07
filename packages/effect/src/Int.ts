@@ -194,7 +194,7 @@ export const either: (
  * @category Constants
  * @experimental
  */
-export const zero: Int = of(0)
+export const zero: Int = internal.zero
 
 /**
  * Constant of `Int<1>`
@@ -203,7 +203,7 @@ export const zero: Int = of(0)
  * @category Constants
  * @experimental
  */
-export const one: Int = of(1)
+export const one: Int = internal.one
 
 /**
  * Type guard to test if a value is an `Int`.

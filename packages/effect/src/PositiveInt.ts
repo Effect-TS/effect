@@ -235,7 +235,7 @@ export const either: {
  * @category Constants
  * @experimental
  */
-export const zero: PositiveInt = of(0)
+export const zero: PositiveInt = internal.zero
 
 /**
  * Constant of `PositiveInt<1>`
@@ -244,7 +244,7 @@ export const zero: PositiveInt = of(0)
  * @category Constants
  * @experimental
  */
-export const one: PositiveInt = of(1)
+export const one: PositiveInt = internal.one
 
 /**
  * Type guard to test if a value is a `PositiveInt`.
