@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Brand, Either, Option, pipe } from "effect"
 import * as Int from "effect/Int"
-import * as PositiveInt from "effect/PositiveInt"
+import * as NaturalNumber from "effect/NaturalNumber"
 import {
   assertFalse,
   assertNone,
@@ -13,7 +13,7 @@ import {
   throws
 } from "effect/test/util"
 
-describe("PositiveInt", () => {
+describe("NaturalNumber", () => {
   const nonIntegers = [0.5, 1.5, 3.14, Number.EPSILON]
   const negativeIntegers = [-1, -2, -100, Number.MIN_SAFE_INTEGER]
   const specialValues = [
@@ -28,42 +28,45 @@ describe("PositiveInt", () => {
     it("of", () => {
       const zero = 0
 
-      strictEqual<PositiveInt.PositiveInt>(PositiveInt.of(1), PositiveInt.one)
-      strictEqual<PositiveInt.PositiveInt>(
-        PositiveInt.of(zero),
-        PositiveInt.zero
+      strictEqual<NaturalNumber.NaturalNumber>(
+        NaturalNumber.of(1),
+        NaturalNumber.one
       )
-      strictEqual(PositiveInt.of(maxSafeInt), maxSafeInt)
+      strictEqual<NaturalNumber.NaturalNumber>(
+        NaturalNumber.of(zero),
+        NaturalNumber.zero
+      )
+      strictEqual(NaturalNumber.of(maxSafeInt), maxSafeInt)
 
       for (const value of nonIntegers) {
         throws(
-          () => PositiveInt.of(value),
+          () => NaturalNumber.of(value),
           Brand.error(`Expected ${value} to be an integer`) as unknown as Error
         )
       }
 
       for (const value of negativeIntegers) {
         throws(
-          () => PositiveInt.of(value),
+          () => NaturalNumber.of(value),
           Brand.error(
-            `Expected ${value} to be positive or zero`
+            `Expected (${value}) to be a greater than or equal to (0)`
           ) as unknown as Error
         )
       }
 
       for (const value of specialValues) {
-        throws(() => PositiveInt.of(value))
+        throws(() => NaturalNumber.of(value))
       }
     })
 
     it("demonstrates type safety with of", () => {
-      // Function that only accepts PositiveInt
-      const calculateArea: (radius: PositiveInt.PositiveInt) => number = (
+      // Function that only accepts NaturalNumber
+      const calculateArea: (radius: NaturalNumber.NaturalNumber) => number = (
         radius
       ) => Math.PI * radius ** 2
 
       // Valid usage
-      strictEqual(calculateArea(PositiveInt.of(5)), Math.PI * 25)
+      strictEqual(calculateArea(NaturalNumber.of(5)), Math.PI * 25)
 
       // Would fail at compile time (demonstrated with runtime check)
       throws(() => {
@@ -73,37 +76,43 @@ describe("PositiveInt", () => {
     })
 
     it("zero", () => {
-      strictEqual(PositiveInt.zero, 0)
-      strictEqual<PositiveInt.PositiveInt>(PositiveInt.zero, PositiveInt.of(0))
+      strictEqual(NaturalNumber.zero, 0)
+      strictEqual<NaturalNumber.NaturalNumber>(
+        NaturalNumber.zero,
+        NaturalNumber.of(0)
+      )
     })
 
     it("one", () => {
-      strictEqual(PositiveInt.one, 1)
-      strictEqual<PositiveInt.PositiveInt>(PositiveInt.one, PositiveInt.of(1))
+      strictEqual(NaturalNumber.one, 1)
+      strictEqual<NaturalNumber.NaturalNumber>(
+        NaturalNumber.one,
+        NaturalNumber.of(1)
+      )
     })
 
     it("option", () => {
       const maxSafeInt = Number.MAX_SAFE_INTEGER
 
-      assertSome(PositiveInt.option(42), PositiveInt.of(42))
-      assertSome(PositiveInt.option(0), PositiveInt.of(0))
-      assertSome(PositiveInt.option(Int.zero), PositiveInt.zero)
-      assertSome(PositiveInt.option(maxSafeInt), maxSafeInt)
+      assertSome(NaturalNumber.option(42), NaturalNumber.of(42))
+      assertSome(NaturalNumber.option(0), NaturalNumber.of(0))
+      assertSome(NaturalNumber.option(Int.zero), NaturalNumber.zero)
+      assertSome(NaturalNumber.option(maxSafeInt), maxSafeInt)
 
       for (const value of nonIntegers) {
-        assertNone(PositiveInt.option(value))
+        assertNone(NaturalNumber.option(value))
       }
 
       for (const value of negativeIntegers) {
-        assertNone(PositiveInt.option(value))
+        assertNone(NaturalNumber.option(value))
       }
 
       for (const value of specialValues) {
-        assertNone(PositiveInt.option(value))
+        assertNone(NaturalNumber.option(value))
       }
 
-      assertNone(PositiveInt.option(+Infinity))
-      assertNone(PositiveInt.option(-Infinity))
+      assertNone(NaturalNumber.option(+Infinity))
+      assertNone(NaturalNumber.option(-Infinity))
     })
 
     it("demonstrates safe conversion with option", () => {
@@ -112,7 +121,7 @@ describe("PositiveInt", () => {
         input
       ) =>
         pipe(
-          PositiveInt.option(input),
+          NaturalNumber.option(input),
           Option.map((radius) => Math.PI * radius ** 2)
         )
 
@@ -125,36 +134,36 @@ describe("PositiveInt", () => {
     })
 
     it("either", () => {
-      // Valid integers return Right<PositiveInt>
-      assertRight(PositiveInt.either(0), PositiveInt.zero)
-      assertRight(PositiveInt.either(Int.zero), PositiveInt.zero)
+      // Valid integers return Right<NaturalNumber>
+      assertRight(NaturalNumber.either(0), NaturalNumber.zero)
+      assertRight(NaturalNumber.either(Int.zero), NaturalNumber.zero)
 
       assertRight(
-        PositiveInt.either(Number.MAX_SAFE_INTEGER),
-        PositiveInt.of(Number.MAX_SAFE_INTEGER)
+        NaturalNumber.either(Number.MAX_SAFE_INTEGER),
+        NaturalNumber.of(Number.MAX_SAFE_INTEGER)
       )
 
       for (const value of nonIntegers) {
-        assertTrue(Either.isLeft(PositiveInt.either(value)))
+        assertTrue(Either.isLeft(NaturalNumber.either(value)))
       }
 
       for (const value of negativeIntegers) {
-        assertTrue(Either.isLeft(PositiveInt.either(value)))
+        assertTrue(Either.isLeft(NaturalNumber.either(value)))
       }
 
       for (const value of specialValues) {
-        assertTrue(Either.isLeft(PositiveInt.either(value)))
+        assertTrue(Either.isLeft(NaturalNumber.either(value)))
       }
 
       // Error messages detail the validation failure
       const kelvin = -273
       pipe(
-        PositiveInt.either(kelvin),
+        NaturalNumber.either(kelvin),
         Either.getLeft,
         Option.match({
           onNone: () => assertFalse(true, "Should have error message"),
           onSome: ([{ message }]) => {
-            strictEqual(message, `Expected ${kelvin} to be positive or zero`)
+            strictEqual(message, `Expected (${kelvin}) to be a greater than or equal to (0)`)
           }
         })
       )
@@ -164,7 +173,7 @@ describe("PositiveInt", () => {
       // Function that provides detailed errors for invalid inputs
       const processWithErrorHandling = (input: number): string =>
         pipe(
-          PositiveInt.either(input),
+          NaturalNumber.either(input),
           Either.match({
             onLeft: ([{ message }]) => `Error: ${message}`,
             onRight: (radius) => `Area: ${Math.PI * radius ** 2}`
@@ -177,7 +186,7 @@ describe("PositiveInt", () => {
       // Invalid inputs provide error messages
       strictEqual(
         processWithErrorHandling(-5),
-        "Error: Expected -5 to be positive or zero"
+        "Error: Expected (-5) to be a greater than or equal to (0)"
       )
 
       strictEqual(
@@ -188,70 +197,70 @@ describe("PositiveInt", () => {
   })
 
   describe("Guards", () => {
-    it("isPositiveInt", () => {
+    it("isNaturalNumber", () => {
       // Valid positive integers
-      assertTrue(PositiveInt.isPositiveInt(0))
-      assertTrue(PositiveInt.isPositiveInt(1))
-      assertTrue(PositiveInt.isPositiveInt(42))
-      assertTrue(PositiveInt.isPositiveInt(Number.MAX_SAFE_INTEGER))
+      assertTrue(NaturalNumber.isNaturalNumber(0))
+      assertTrue(NaturalNumber.isNaturalNumber(1))
+      assertTrue(NaturalNumber.isNaturalNumber(42))
+      assertTrue(NaturalNumber.isNaturalNumber(Number.MAX_SAFE_INTEGER))
 
       // Valid positive integers from Int module
-      assertTrue(PositiveInt.isPositiveInt(Int.zero))
-      assertTrue(PositiveInt.isPositiveInt(Int.one))
+      assertTrue(NaturalNumber.isNaturalNumber(Int.zero))
+      assertTrue(NaturalNumber.isNaturalNumber(Int.one))
 
       // Non-integers
       for (const value of nonIntegers) {
-        assertFalse(PositiveInt.isPositiveInt(value))
+        assertFalse(NaturalNumber.isNaturalNumber(value))
       }
 
       // Negative integers
       for (const value of negativeIntegers) {
-        assertFalse(PositiveInt.isPositiveInt(value))
+        assertFalse(NaturalNumber.isNaturalNumber(value))
       }
 
       // Special values
       for (const value of specialValues) {
-        assertFalse(PositiveInt.isPositiveInt(value))
+        assertFalse(NaturalNumber.isNaturalNumber(value))
       }
 
       // Non-number types
-      assertFalse(PositiveInt.isPositiveInt("0"))
-      assertFalse(PositiveInt.isPositiveInt(true))
-      assertFalse(PositiveInt.isPositiveInt({}))
-      assertFalse(PositiveInt.isPositiveInt([]))
-      assertFalse(PositiveInt.isPositiveInt(null))
-      assertFalse(PositiveInt.isPositiveInt(undefined))
+      assertFalse(NaturalNumber.isNaturalNumber("0"))
+      assertFalse(NaturalNumber.isNaturalNumber(true))
+      assertFalse(NaturalNumber.isNaturalNumber({}))
+      assertFalse(NaturalNumber.isNaturalNumber([]))
+      assertFalse(NaturalNumber.isNaturalNumber(null))
+      assertFalse(NaturalNumber.isNaturalNumber(undefined))
     })
   })
 
   describe("Math", () => {
     it("sum", () => {
-      const ten = PositiveInt.of(10)
-      const thirtyTwo = PositiveInt.of(32)
-      const meaningOfLife = PositiveInt.of(42)
+      const ten = NaturalNumber.of(10)
+      const thirtyTwo = NaturalNumber.of(32)
+      const meaningOfLife = NaturalNumber.of(42)
       const largeNumber = Number.MAX_SAFE_INTEGER - 10
 
       // Basic functionality tests
       strictEqual(
-        PositiveInt.sum(ten, thirtyTwo),
-        pipe(ten, PositiveInt.sum(thirtyTwo)),
+        NaturalNumber.sum(ten, thirtyTwo),
+        pipe(ten, NaturalNumber.sum(thirtyTwo)),
         "should add two positive integers correctly"
       )
 
       // Boundary conditions
       strictEqual(
-        PositiveInt.sum(PositiveInt.zero, meaningOfLife),
-        PositiveInt.sum(meaningOfLife, PositiveInt.zero),
+        NaturalNumber.sum(NaturalNumber.zero, meaningOfLife),
+        NaturalNumber.sum(meaningOfLife, NaturalNumber.zero),
         "Adding zero should not change the value"
       )
       strictEqual(
-        PositiveInt.sum(PositiveInt.of(largeNumber), ten),
+        NaturalNumber.sum(NaturalNumber.of(largeNumber), ten),
         Number.MAX_SAFE_INTEGER,
         "Should correctly handle large numbers"
       )
 
       strictEqual(
-        PositiveInt.sum(PositiveInt.of(41), PositiveInt.one),
+        NaturalNumber.sum(NaturalNumber.of(41), NaturalNumber.one),
         42,
         "Adding one should increment the value"
       )
@@ -259,8 +268,8 @@ describe("PositiveInt", () => {
       // Mathematical properties
       // Commutativity: a + b = b + a
       strictEqual(
-        PositiveInt.sum(ten, thirtyTwo),
-        PositiveInt.sum(thirtyTwo, ten),
+        NaturalNumber.sum(ten, thirtyTwo),
+        NaturalNumber.sum(thirtyTwo, ten),
         "Addition is commutative"
       )
 
@@ -268,13 +277,13 @@ describe("PositiveInt", () => {
       strictEqual(
         pipe(
           ten,
-          PositiveInt.sum(PositiveInt.of(20)),
-          PositiveInt.sum(PositiveInt.of(12))
+          NaturalNumber.sum(NaturalNumber.of(20)),
+          NaturalNumber.sum(NaturalNumber.of(12))
         ),
         pipe(
           ten,
-          PositiveInt.sum(
-            PositiveInt.sum(PositiveInt.of(20), PositiveInt.of(12))
+          NaturalNumber.sum(
+            NaturalNumber.sum(NaturalNumber.of(20), NaturalNumber.of(12))
           )
         ),
         "Addition is associative"
@@ -282,7 +291,7 @@ describe("PositiveInt", () => {
 
       // Identity element: a + 0 = a
       strictEqual(
-        pipe(meaningOfLife, PositiveInt.sum(PositiveInt.zero)),
+        pipe(meaningOfLife, NaturalNumber.sum(NaturalNumber.zero)),
         meaningOfLife,
         "Zero is the identity element for addition"
       )
@@ -290,10 +299,10 @@ describe("PositiveInt", () => {
       // Chaining operations
       strictEqual(
         pipe(
-          PositiveInt.of(0),
-          PositiveInt.sum(PositiveInt.of(10)),
-          PositiveInt.sum(PositiveInt.of(20)),
-          PositiveInt.sum(PositiveInt.of(12))
+          NaturalNumber.of(0),
+          NaturalNumber.sum(NaturalNumber.of(10)),
+          NaturalNumber.sum(NaturalNumber.of(20)),
+          NaturalNumber.sum(NaturalNumber.of(12))
         ),
         meaningOfLife,
         "Should correctly chain multiple additions"
@@ -301,45 +310,45 @@ describe("PositiveInt", () => {
     })
 
     it("subtract", () => {
-      const three = PositiveInt.of(3)
-      const two = PositiveInt.of(2)
-      const meaningOfLife = PositiveInt.of(42)
-      const largeNumber = PositiveInt.of(Number.MAX_SAFE_INTEGER - 10)
+      const three = NaturalNumber.of(3)
+      const two = NaturalNumber.of(2)
+      const meaningOfLife = NaturalNumber.of(42)
+      const largeNumber = NaturalNumber.of(Number.MAX_SAFE_INTEGER - 10)
 
       // Basic functionality tests
       strictEqual(
-        PositiveInt.subtract(three, PositiveInt.one),
-        pipe(three, PositiveInt.subtract(PositiveInt.one))
+        NaturalNumber.subtract(three, NaturalNumber.one),
+        pipe(three, NaturalNumber.subtract(NaturalNumber.one))
       )
 
       // Boundary conditions
 
       strictEqual(
-        PositiveInt.subtract(meaningOfLife, PositiveInt.zero),
+        NaturalNumber.subtract(meaningOfLife, NaturalNumber.zero),
         Int.of(42),
         "Subtracting zero doesn't change the value"
       )
 
       strictEqual(
-        PositiveInt.subtract(PositiveInt.zero, meaningOfLife),
+        NaturalNumber.subtract(NaturalNumber.zero, meaningOfLife),
         Int.of(-42),
         "Zero minus a positive number equals the negative of that number"
       )
 
       strictEqual(
-        PositiveInt.subtract(meaningOfLife, meaningOfLife),
+        NaturalNumber.subtract(meaningOfLife, meaningOfLife),
         Int.zero,
         "Subtracting a number from itself results in zero"
       )
 
       strictEqual(
-        PositiveInt.subtract(largeNumber, PositiveInt.of(10)),
+        NaturalNumber.subtract(largeNumber, NaturalNumber.of(10)),
         Int.of(Number.MAX_SAFE_INTEGER - 20),
         "Should correctly handle large numbers"
       )
 
       strictEqual(
-        PositiveInt.subtract(PositiveInt.of(5), PositiveInt.of(10)),
+        NaturalNumber.subtract(NaturalNumber.of(5), NaturalNumber.of(10)),
         Int.of(-5),
         "Subtracting a larger number from a smaller one results in a negative number"
       )
@@ -348,24 +357,28 @@ describe("PositiveInt", () => {
 
       /** Anti-commutativity: a - b = -(b - a) */
       strictEqual(
-        pipe(three, PositiveInt.subtract(two)),
-        -pipe(two, PositiveInt.subtract(three)),
+        pipe(three, NaturalNumber.subtract(two)),
+        -pipe(two, NaturalNumber.subtract(three)),
         "Subtraction is anti-commutative: a - b = -(b - a)"
       )
 
       /** Non-associativity: (a - b) - c ≠ a - (b - c) */
       notDeepStrictEqual(
-        pipe(three, PositiveInt.subtract(two), Int.subtract(PositiveInt.one)),
         pipe(
           three,
-          Int.subtract(pipe(two, PositiveInt.subtract(PositiveInt.one)))
+          NaturalNumber.subtract(two),
+          Int.subtract(NaturalNumber.one)
+        ),
+        pipe(
+          three,
+          Int.subtract(pipe(two, NaturalNumber.subtract(NaturalNumber.one)))
         ),
         "Subtraction is not associative: (a - b) - c ≠ a - (b - c)"
       )
 
       /** Identity element: 0 - a = -a */
       strictEqual(
-        pipe(PositiveInt.zero, PositiveInt.subtract(three)),
+        pipe(NaturalNumber.zero, NaturalNumber.subtract(three)),
         Int.of(-3),
         "Zero is the identity element: 0 - a = -a"
       )
@@ -373,8 +386,8 @@ describe("PositiveInt", () => {
       /** Chaining subtractions */
       strictEqual(
         pipe(
-          PositiveInt.of(10),
-          PositiveInt.subtract(PositiveInt.of(3)),
+          NaturalNumber.of(10),
+          NaturalNumber.subtract(NaturalNumber.of(3)),
           Int.subtract(Int.of(2))
         ),
         Int.of(5),
@@ -384,8 +397,8 @@ describe("PositiveInt", () => {
       /** Mixing with other operations */
       strictEqual(
         pipe(
-          PositiveInt.of(10),
-          PositiveInt.subtract(PositiveInt.of(3)),
+          NaturalNumber.of(10),
+          NaturalNumber.subtract(NaturalNumber.of(3)),
           Int.sum(Int.of(5))
         ),
         Int.of(12),

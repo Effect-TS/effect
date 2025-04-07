@@ -86,20 +86,20 @@ describe("Int", () => {
     strictEqual(
       pipe(Int.of(100), Int.sum(Int.of(-50))),
       pipe(Int.of(-50), Int.sum(Int.of(100))),
-      "addition under Int is `commutative`" // Doha !
+      "addition under Int is `commutative`"
     )
 
     strictEqual(
       pipe(Int.of(100), Int.sum(Int.of(-50)), Int.sum(Int.of(-50))),
       pipe(Int.of(-50), Int.sum(Int.of(100)), Int.sum(Int.of(-50))),
-      "addition under Int is `associative`" // Doha !
+      "addition under Int is `associative`"
     )
 
     strictEqual(
       pipe(Int.zero, Int.sum(Int.of(100))),
       Int.of(100),
-      "'zeo' is the identity element for addition"
-    ) // Doha !
+      "'zero' is the identity element for addition"
+    )
 
     throws(
       // @ts-expect-error - can't pass a float
@@ -120,13 +120,13 @@ describe("Int", () => {
     strictEqual(
       pipe(three, Int.subtract(two)),
       -pipe(two, Int.subtract(three)),
-      "subtraction under Int is anticommutative" // Doha !
+      "subtraction under Int is anticommutative"
     )
 
     notDeepStrictEqual(
       pipe(three, Int.subtract(two), Int.subtract(Int.one)),
       pipe(two, Int.subtract(three), Int.subtract(Int.one)),
-      "subtraction under Int is not associative" // Doha !
+      "subtraction under Int is not associative"
     )
 
     strictEqual(
@@ -145,25 +145,25 @@ describe("Int", () => {
     strictEqual(
       pipe(Int.of(2), Int.multiply(Int.of(3))),
       pipe(Int.of(3), Int.multiply(Int.of(2))),
-      "multiplication under Int is commutative" // Doha !
+      "multiplication under Int is commutative"
     )
 
     strictEqual(
       pipe(Int.of(2), Int.multiply(Int.of(3)), Int.multiply(Int.of(4))),
       pipe(Int.of(2), Int.multiply(Int.of(4)), Int.multiply(Int.of(3))),
-      "multiplication under Int is associative" // Doha !
+      "multiplication under Int is associative"
     )
 
     strictEqual(
       Int.multiply(Int.of(2), Int.one),
       Int.of(2),
-      "`1` is the identity element under multiplication" /* Doha ! */
+      "`1` is the identity element under multiplication"
     )
 
     strictEqual(
       Int.multiply(Int.of(2), Int.zero),
       Int.zero,
-      "multiplication by zero" /* Doha ! */
+      "multiplication by zero"
     )
   })
 
@@ -173,7 +173,7 @@ describe("Int", () => {
     notDeepStrictEqual(
       pipe(Int.of(6), Int.divide(Int.of(2))),
       pipe(Int.of(2), Int.divide(Int.of(6))),
-      "division under Int is not commutative" // Doha !
+      "division under Int is not commutative"
     )
 
     notDeepStrictEqual(
@@ -185,7 +185,7 @@ describe("Int", () => {
         Int.divide(Int.of(6), Int.of(2)),
         Option.flatMap(_Number.divide(Int.of(24)))
       ),
-      "division under Int is not associative" // Doha !
+      "division under Int is not associative"
     )
 
     assertNone(pipe(Int.of(6), Int.divide(Int.of(0))))

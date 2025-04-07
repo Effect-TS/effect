@@ -1,4 +1,9 @@
 /**
+ * # Integers (ℤ)
+ *
+ * This module provides operations for working with integers (ℤ = {..., -3, -2,
+ * -1, 0, 1, 2, 3, ...}).
+ *
  * @module Int
  * @since 3.14.6
  * @experimental
@@ -83,7 +88,7 @@ export const of: {
  *
  * // Valid integers return Some<Int>
  * assert.deepStrictEqual(Int.option(42), Option.some(Int.of(42)))
- * assert.deepStrictEqual(Int.option(0), Option.some(Int.empty))
+ * assert.deepStrictEqual(Int.option(0), Option.some(Int.zero))
  * assert.deepStrictEqual(Int.option(-7), Option.some(Int.of(-7)))
  *
  * // Non-integers return None
@@ -135,7 +140,7 @@ export const option: (n: number) => _Option.Option<Int> = internal.IntConstructo
  *
  * // Valid integers return Right<Int>
  * assert.deepStrictEqual(Int.either(42), Either.right(Int.of(42)))
- * assert.deepStrictEqual(Int.either(0), Either.right(Int.empty))
+ * assert.deepStrictEqual(Int.either(0), Either.right(Int.zero))
  * assert.deepStrictEqual(Int.either(-7), Either.right(Int.of(-7)))
  *
  * // Non-integers return Left<BrandErrors>
@@ -265,7 +270,7 @@ export const sum: {
    *   pipe(
    *     Int.of(10),
    *     Int.add(-10),
-   *     Int.add(Int.empty), // 0
+   *     Int.add(Int.zero), // 0
    *     Int.add(1)
    *   ),
    *   1
@@ -281,7 +286,7 @@ export const sum: {
    * import { pipe, Int } from "effect"
    * import * as assert from "node:assert/strict"
    *
-   * assert.equal(Int.add(Int.of(10), Int.of(-10)), Int.empty)
+   * assert.equal(Int.add(Int.of(10), Int.of(-10)), Int.zero)
    * ```
    */
   (self: Int, that: Int): Int
@@ -306,7 +311,7 @@ export const subtract: {
    * import { pipe, Int } from "effect"
    * import * as assert from "node:assert/strict"
    *
-   * assert.equal(pipe(Int.of(10), Int.subtract(Int.of(10))), Int.empty)
+   * assert.equal(pipe(Int.of(10), Int.subtract(Int.of(10))), Int.zero)
    * ```
    *
    * @param subtrahend - The integer to subtract from the `minuend` when the
@@ -327,7 +332,7 @@ export const subtract: {
    *
    * assert.equal(
    *   Int.subtract(Int.of(10), Int.of(10)), //
-   *   Int.empty
+   *   Int.zero
    * )
    * ```
    *
@@ -510,13 +515,13 @@ export const unsafeDivide: {
    * assert.throws(() =>
    *   pipe(
    *     Int.of(6),
-   *     Int.unsafeDivide(Int.empty) // throws IntegerDivisionError
+   *     Int.unsafeDivide(Int.zero) // throws IntegerDivisionError
    *   )
    * )
    * assert.throws(() =>
    *   pipe(
-   *     Int.empty,
-   *     Int.unsafeDivide(Int.empty) // throws IntegerDivisionError
+   *     Int.zero,
+   *     Int.unsafeDivide(Int.zero) // throws IntegerDivisionError
    *   )
    * )
    * ```
@@ -944,8 +949,8 @@ export const greaterThanOrEqualTo: {
    *
    * assert.equal(
    *   pipe(
-   *     Int.empty, //
-   *     Int.greaterThanOrEqualTo(Int.of(-Int.empty))
+   *     Int.zero, //
+   *     Int.greaterThanOrEqualTo(Int.of(-Int.zero))
    *   ),
    *   true
    * )
@@ -973,7 +978,7 @@ export const greaterThanOrEqualTo: {
    * assert.equal(Int.greaterThanOrEqualTo(Int.of(-2), Int.of(3)), false)
    *
    * assert.equal(
-   *   Int.greaterThanOrEqualTo(Int.empty, Int.of(-Int.empty)),
+   *   Int.greaterThanOrEqualTo(Int.zero, Int.of(-Int.zero)),
    *   true
    * )
    *

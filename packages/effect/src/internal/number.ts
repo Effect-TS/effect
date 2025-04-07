@@ -18,27 +18,27 @@ export const IntConstructor = Brand.refined<number & Brand.Brand<"Int">>(
 export type Int = Brand.Brand.FromConstructor<typeof IntConstructor>
 
 /** @internal */
-const PositiveConstructor = Brand.refined<number & Brand.Brand<"Positive">>(
+const PositiveNumberConstructor = Brand.refined<number & Brand.Brand<"PositiveNumber">>(
   (n) => n >= 0,
-  (n) => Brand.error(`Expected ${n} to be positive or zero`)
+  (n) => Brand.error(`Expected (${n}) to be a greater than or equal to (0)`)
 )
 
 /** @internal */
-export const PositiveIntConstructor = Brand.all(
+export const NaturalNumberConstructor = Brand.all(
   IntConstructor,
-  PositiveConstructor
+  PositiveNumberConstructor
 )
 
 /** @internal */
-export type PositiveInt = Brand.Brand.FromConstructor<
-  typeof PositiveIntConstructor
+export type NaturalNumber = Brand.Brand.FromConstructor<
+  typeof NaturalNumberConstructor
 >
 
 /** @internal */
-export const zero: PositiveInt = PositiveIntConstructor(0)
+export const zero: NaturalNumber = NaturalNumberConstructor(0)
 
 /** @internal */
-export const one: PositiveInt = PositiveIntConstructor(1)
+export const one: NaturalNumber = NaturalNumberConstructor(1)
 
 /** @internal */
 export const sum = <A extends number = number, B extends number = A>(

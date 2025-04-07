@@ -1,5 +1,5 @@
 /**
- * # `PositiveInt` a.k.a. `Natural Numbers (ℕ)`
+ * # Natural Numbers (ℕ)
  *
  * This module provides operations for working with natural numbers (ℕ = {0, 1,
  * 2, ...}).
@@ -14,7 +14,7 @@
  * Operations that cannot guarantee a natural number result will return a more
  * appropriate type and are clearly documented.
  *
- * @module PositiveInt
+ * @module NaturalNumber
  * @since 3.14.6
  * @experimental
  * @internal
@@ -33,104 +33,104 @@ import * as _Predicate from "./Predicate.js"
  *
  * This is also known as the set of natural numbers (ℕ = {0, 1, 2, ...}).
  *
- * @memberof PositiveInt
+ * @memberof NaturalNumber
  * @since 3.14.6
  * @category Type
  * @example
  *
  * ```ts
- * import * as PositiveInt from "effect/PositiveInt"
+ * import * as NaturalNumber from "effect/NaturalNumber"
  *
- * function onlyPositiveInts(int: PositiveInt.PositiveInt): void {
+ * function onlyNaturalNumbers(int: NaturalNumber.NaturalNumber): void {
  *   //... stuff for ONLY non-negative integers FANS
  * }
  *
- * onlyPositiveInts(PositiveInt.of(1)) // ok
+ * onlyNaturalNumbers(NaturalNumber.of(1)) // ok
  *
- * onlyPositiveInts(PositiveInt.of(0)) // ok too
+ * onlyNaturalNumbers(NaturalNumber.of(0)) // ok too
  *
  * // @ts-expect-error - This will fail because it is not a non-negative integer
- * onlyPositiveInts(PositiveInt.of(-99))
+ * onlyNaturalNumbers(NaturalNumber.of(-99))
  *
  * // @ts-expect-error - This will fail because 1.5 is not an integer
- * onlyPositiveInts(1.5)
+ * onlyNaturalNumbers(1.5)
  * ```
  *
  * @experimental
  */
-export type PositiveInt = internal.PositiveInt
+export type NaturalNumber = internal.NaturalNumber
 
 /**
  * Lift a number in the set of non-negative integers, and brands it as a
- * `PositiveInt`. It throws an error if the provided number is not an integer or
- * is negative.
+ * `NaturalNumber`. It throws an error if the provided number is not an integer
+ * or is negative.
  *
- * @memberof PositiveInt
+ * @memberof NaturalNumber
  * @since 3.14.6
  * @category Constructors
  * @example
  *
  * ```ts
- * import * as PositiveInt from "effect/PositiveInt"
+ * import * as NaturalNumber from "effect/NaturalNumber"
  * import assert from "node:assert/strict"
  *
  * const aNegativeFloat = -1.5
  *
  * assert.throws(() => {
- *   PositiveInt.of(aNegativeFloat)
+ *   NaturalNumber.of(aNegativeFloat)
  * }, `Expected ${aNegativeFloat} to be an integer`)
  *
  * assert.throws(() => {
- *   PositiveInt.of(-1)
+ *   NaturalNumber.of(-1)
  * }, `Expected -1 to be positive or zero`)
  * ```
  *
  * @param n - The number to be lifted in the set of non-negative integers.
- * @returns A PositiveInt branded type.
+ * @returns A NaturalNumber branded type.
  * @experimental
  *
- * @see other constructors that do not throw, but return a {@link Brand.BrandErrors} instead are {@link module:PositiveInt.option} and {@link module:PositiveInt.either}
+ * @see other constructors that do not throw, but return a {@link Brand.BrandErrors} instead are {@link module:NaturalNumber.option} and {@link module:NaturalNumber.either}
  */
 export const of: {
-  (n: number): PositiveInt
-} = (n) => internal.PositiveIntConstructor(n)
+  (n: number): NaturalNumber
+} = (n) => internal.NaturalNumberConstructor(n)
 
 /**
- * Lift a `number` in the set of `Option<PositiveInt>`, and brands it as an
- * `PositiveInt` if the provided number is a valid non-negative integer. It
+ * Lift a `number` in the set of `Option<NaturalNumber>`, and brands it as an
+ * `NaturalNumber` if the provided number is a valid non-negative integer. It
  * returns `None` otherwise.
  *
- * @memberof PositiveInt
+ * @memberof NaturalNumber
  * @since 3.14.6
  * @category Constructors
  * @example
  *
  * ```ts
  * import { Option, pipe } from "effect"
- * import * as PositiveInt from "effect/PositiveInt"
+ * import * as NaturalNumber from "effect/NaturalNumber"
  * import * as assert from "node:assert/strict"
  *
- * // Valid non-negative integers return Some<PositiveInt>
+ * // Valid non-negative integers return Some<NaturalNumber>
  * assert.deepStrictEqual(
- *   PositiveInt.option(42),
- *   Option.some(PositiveInt.of(42))
+ *   NaturalNumber.option(42),
+ *   Option.some(NaturalNumber.of(42))
  * )
  * assert.deepStrictEqual(
- *   PositiveInt.option(0),
- *   Option.some(PositiveInt.zero)
+ *   NaturalNumber.option(0),
+ *   Option.some(NaturalNumber.zero)
  * )
- * assert.deepStrictEqual(PositiveInt.option(-7), Option.none())
+ * assert.deepStrictEqual(NaturalNumber.option(-7), Option.none())
  *
  * // Non-integers return None
- * assert.deepStrictEqual(PositiveInt.option(3.14), Option.none())
- * assert.deepStrictEqual(PositiveInt.option(Number.NaN), Option.none())
+ * assert.deepStrictEqual(NaturalNumber.option(3.14), Option.none())
+ * assert.deepStrictEqual(NaturalNumber.option(Number.NaN), Option.none())
  *
  * // Safe operations on potentially non-integer values
  * const safelyDouble = (n: number) =>
  *   pipe(
- *     PositiveInt.option(n),
+ *     NaturalNumber.option(n),
  *     Option.map((positiveInt) =>
- *       PositiveInt.multiply(positiveInt, PositiveInt.of(2))
+ *       NaturalNumber.multiply(positiveInt, NaturalNumber.of(2))
  *     )
  *   )
  *
@@ -140,52 +140,53 @@ export const of: {
  * // Handling both cases with Option.match
  * const processNumber = (n: number): string =>
  *   pipe(
- *     PositiveInt.option(n),
+ *     NaturalNumber.option(n),
  *     Option.match({
  *       onNone: () => "Not a non-negative integer",
- *       onSome: (positiveInt) => `PositiveInt: ${positiveInt}`
+ *       onSome: (positiveInt) => `NaturalNumber: ${positiveInt}`
  *     })
  *   )
  *
- * assert.equal(processNumber(42), "PositiveInt: 42")
+ * assert.equal(processNumber(42), "NaturalNumber: 42")
  * assert.equal(processNumber(-4.2), "Not a non-negative integer")
  * ```
  *
- * @param n - The `number` to maybe lift into the `PositiveInt`
- * @returns An `Option` containing the `PositiveInt` if valid, `None` otherwise
+ * @param n - The `number` to maybe lift into the `NaturalNumber`
+ * @returns An `Option` containing the `NaturalNumber` if valid, `None`
+ *   otherwise
  * @experimental
- * @see the constructor that does not throw, but returns a {@link Brand.BrandErrors} instead is {@link module:PositiveInt.either}.
+ * @see the constructor that does not throw, but returns a {@link Brand.BrandErrors} instead is {@link module:NaturalNumber.either}.
  */
 export const option: {
-  (n: number): _Option.Option<PositiveInt>
-} = internal.PositiveIntConstructor.option
+  (n: number): _Option.Option<NaturalNumber>
+} = internal.NaturalNumberConstructor.option
 
 /**
- * Lift a `number` in the set of `Either.Right<PositiveInt>` if the number is a
- * valid non-negative integer, `Either.Left<BrandError>` otherwise.
+ * Lift a `number` in the set of `Either.Right<NaturalNumber>` if the number is
+ * a valid non-negative integer, `Either.Left<BrandError>` otherwise.
  *
- * @memberof PositiveInt
+ * @memberof NaturalNumber
  * @since 3.14.6
  * @category Constructors
  * @example
  *
  * ```ts
  * import { Either, Option, pipe } from "effect"
- * import * as PositiveInt from "effect/PositiveInt"
+ * import * as NaturalNumber from "effect/NaturalNumber"
  * import * as Int from "effect/Int"
  * import * as assert from "node:assert/strict"
  *
- * // Valid non-negative integers return Right<PositiveInt>
+ * // Valid non-negative integers return Right<NaturalNumber>
  * assert.deepStrictEqual(
- *   PositiveInt.either(42),
- *   Either.right(PositiveInt.of(42))
+ *   NaturalNumber.either(42),
+ *   Either.right(NaturalNumber.of(42))
  * )
  * assert.deepStrictEqual(
- *   PositiveInt.either(0),
- *   Either.right(PositiveInt.zero)
+ *   NaturalNumber.either(0),
+ *   Either.right(NaturalNumber.zero)
  * )
  * assert.deepStrictEqual(
- *   PositiveInt.either(-7),
+ *   NaturalNumber.either(-7),
  *   Either.left([
  *     {
  *       message: "Expected -7 to be positive or zero",
@@ -195,11 +196,11 @@ export const option: {
  * )
  *
  * // Non-integers return Left<BrandErrors>
- * assert.equal(Either.isLeft(PositiveInt.either(3.14)), true)
- * assert.equal(Either.isLeft(PositiveInt.either(Number.NaN)), true)
+ * assert.equal(Either.isLeft(NaturalNumber.either(3.14)), true)
+ * assert.equal(Either.isLeft(NaturalNumber.either(Number.NaN)), true)
  *
  * const Pi = 3.14 as const
- * const floatResult = PositiveInt.either(Pi)
+ * const floatResult = NaturalNumber.either(Pi)
  * if (Either.isLeft(floatResult)) {
  *   assert.deepEqual(
  *     pipe(
@@ -214,9 +215,9 @@ export const option: {
  * // Map over valid positiveInt
  * const doubleIfValid = (n: number) =>
  *   pipe(
- *     PositiveInt.either(n),
+ *     NaturalNumber.either(n),
  *     Either.map((positiveInt) =>
- *       Int.multiply(positiveInt, PositiveInt.of(2))
+ *       Int.multiply(positiveInt, NaturalNumber.of(2))
  *     )
  *   )
  *
@@ -226,7 +227,7 @@ export const option: {
  * // Handle both cases with Either.match
  * const processNumber = (n: number): string =>
  *   pipe(
- *     PositiveInt.either(n),
+ *     NaturalNumber.either(n),
  *     Either.match({
  *       onLeft: ([{ message }]) => `Error: ${message}`,
  *       onRight: (positiveInt) =>
@@ -237,58 +238,58 @@ export const option: {
  * assert.equal(processNumber(42), "Valid non-negative integer: 42")
  * ```
  *
- * @param n - The number to convert to a PositiveInt
- * @returns An `Either.Right<PositiveInt>` if valid, or
+ * @param n - The number to convert to a NaturalNumber
+ * @returns An `Either.Right<NaturalNumber>` if valid, or
  *   `Either.Left<BrandErrors>` if invalid
  * @experimental
  */
 export const either: {
-  (n: number): Either.Either<PositiveInt, Brand.Brand.BrandErrors>
-} = internal.PositiveIntConstructor.either
+  (n: number): Either.Either<NaturalNumber, Brand.Brand.BrandErrors>
+} = internal.NaturalNumberConstructor.either
 
 /**
- * Constant of `PositiveInt<0>` - the smallest valid non-negative integer
+ * Constant of `NaturalNumber<0>` - the smallest valid non-negative integer
  *
  * @since 3.14.6
  * @category Constants
  * @experimental
  */
-export const zero: PositiveInt = internal.zero
+export const zero: NaturalNumber = internal.zero
 
 /**
- * Constant of `PositiveInt<1>`
+ * Constant of `NaturalNumber<1>`
  *
  * @since 3.14.6
  * @category Constants
  * @experimental
  */
-export const one: PositiveInt = internal.one
+export const one: NaturalNumber = internal.one
 
 /**
- * Type guard to test if a value is a `PositiveInt`.
+ * Type guard to test if a value is a `NaturalNumber`.
  *
  * This function checks if the provided value is a valid non-negative integer
- * that satisfies the `PositiveInt` brand requirements. It can be used in
- * conditional statements to narrow the type of a value to `PositiveInt`.
+ * that satisfies the `NaturalNumber` brand requirements. It can be used in
+ * conditional statements to narrow the type of a value to `NaturalNumber`.
  *
- * @memberof PositiveInt
+ * @memberof NaturalNumber
  * @since 3.14.6
  * @category Guards
  * @example
  *
  * ```ts
  * import { pipe } from "effect"
- * import * as PositiveInt from "effect/PositiveInt"
+ * import * as NaturalNumber from "effect/NaturalNumber"
  * import * as assert from "node:assert/strict"
  *
- * assert.equal(PositiveInt.isPositiveInt(0), true)
- * assert.equal(PositiveInt.isPositiveInt(1), true)
- * assert.equal(PositiveInt.isPositiveInt(42), true)
+ * assert.equal(NaturalNumber.isNaturalNumber(0), true)
+ * assert.equal(NaturalNumber.isNaturalNumber(1), true)
+ * assert.equal(NaturalNumber.isNaturalNumber(42), true)
  *
  * // Type narrowing example
  * const processValue = (value: unknown): string => {
- *   if (PositiveInt.isPositiveInt(value)) {
- *     // value is now typed as PositiveInt
+ *   if (NaturalNumber.isNaturalNumber(value)) {
+ *     // value is now typed as NaturalNumber
  *     return `Valid non-negative integer: ${value}`
  *   }
  *   return "Invalid value"
@@ -305,14 +306,14 @@ export const one: PositiveInt = internal.one
  *   otherwise
  * @experimental
  */
-export const isPositiveInt: _Predicate.Refinement<unknown, PositiveInt> = (
+export const isNaturalNumber: _Predicate.Refinement<unknown, NaturalNumber> = (
   input
-) => _Predicate.isNumber(input) && internal.PositiveIntConstructor.is(input)
+) => _Predicate.isNumber(input) && internal.NaturalNumberConstructor.is(input)
 
 /**
- * Provides an addition operation on `PositiveInt`.
+ * Provides an addition operation on `NaturalNumber`.
  *
- * The operation preserves the `PositiveInt` type, ensuring that the result is
+ * The operation preserves the `NaturalNumber` type, ensuring that the result is
  * always a valid non-negative integer.
  *
  * **Syntax**
@@ -320,15 +321,15 @@ export const isPositiveInt: _Predicate.Refinement<unknown, PositiveInt> = (
  * ```ts
  * import * as assert from "node:assert/strict"
  * import { pipe } from "effect"
- * import * as PositiveInt from "effect/PositiveInt"
+ * import * as NaturalNumber from "effect/NaturalNumber"
  *
- * assert.strictEqual<PositiveInt.PositiveInt>(
- *   pipe(PositiveInt.of(10), PositiveInt.sum(PositiveInt.of(5))),
- *   PositiveInt.sum(PositiveInt.of(10), PositiveInt.of(5))
+ * assert.strictEqual<NaturalNumber.NaturalNumber>(
+ *   pipe(NaturalNumber.of(10), NaturalNumber.sum(NaturalNumber.of(5))),
+ *   NaturalNumber.sum(NaturalNumber.of(10), NaturalNumber.of(5))
  * )
  * ```
  *
- * @memberof PositiveInt
+ * @memberof NaturalNumber
  * @since 3.14.6
  * @category Math
  * @experimental
@@ -344,28 +345,28 @@ export const sum: {
    *
    * ```ts
    * import { pipe } from "effect"
-   * import * as PositiveInt from "effect/PositiveInt"
+   * import * as NaturalNumber from "effect/NaturalNumber"
    * import * as assert from "node:assert/strict"
    *
    * // Basic addition
    * assert.equal(
-   *   pipe(PositiveInt.of(10), PositiveInt.sum(PositiveInt.of(5))),
+   *   pipe(NaturalNumber.of(10), NaturalNumber.sum(NaturalNumber.of(5))),
    *   15
    * )
    *
    * // Chaining multiple additions
    * assert.equal(
    *   pipe(
-   *     PositiveInt.of(10),
-   *     PositiveInt.sum(PositiveInt.of(20)),
-   *     PositiveInt.sum(PositiveInt.of(12))
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.sum(NaturalNumber.of(20)),
+   *     NaturalNumber.sum(NaturalNumber.of(12))
    *   ),
    *   42
    * )
    *
    * // Using with zero (identity element)
    * assert.equal(
-   *   pipe(PositiveInt.of(42), PositiveInt.sum(PositiveInt.zero)),
+   *   pipe(NaturalNumber.of(42), NaturalNumber.sum(NaturalNumber.zero)),
    *   42
    * )
    * ```
@@ -375,33 +376,36 @@ export const sum: {
    * @returns A function that takes a `self` value and returns the sum of `self`
    *   and `that`
    */
-  (that: PositiveInt): (self: PositiveInt) => PositiveInt
+  (that: NaturalNumber): (self: NaturalNumber) => NaturalNumber
 
   /**
-   * Adds two `PositiveInt` values and returns their sum.
+   * Adds two `NaturalNumber` values and returns their sum.
    *
    * **Data-first API**
    *
    * @example
    *
    * ```ts
-   * import * as PositiveInt from "effect/PositiveInt"
+   * import * as NaturalNumber from "effect/NaturalNumber"
    * import * as assert from "node:assert/strict"
    *
    * // Basic addition
    * assert.equal(
-   *   PositiveInt.sum(PositiveInt.of(10), PositiveInt.of(32)),
+   *   NaturalNumber.sum(NaturalNumber.of(10), NaturalNumber.of(32)),
    *   42
    * )
    *
    * // Adding zero (identity element)
-   * assert.equal(PositiveInt.sum(PositiveInt.of(42), PositiveInt.zero), 42)
+   * assert.equal(
+   *   NaturalNumber.sum(NaturalNumber.of(42), NaturalNumber.zero),
+   *   42
+   * )
    *
    * // Adding large numbers
    * assert.equal(
-   *   PositiveInt.sum(
-   *     PositiveInt.of(Number.MAX_SAFE_INTEGER - 10),
-   *     PositiveInt.of(10)
+   *   NaturalNumber.sum(
+   *     NaturalNumber.of(Number.MAX_SAFE_INTEGER - 10),
+   *     NaturalNumber.of(10)
    *   ),
    *   Number.MAX_SAFE_INTEGER
    * )
@@ -411,10 +415,10 @@ export const sum: {
    * @param that - The second value to add
    * @returns The sum of `self` and `that`
    */
-  (self: PositiveInt, that: PositiveInt): PositiveInt
+  (self: NaturalNumber, that: NaturalNumber): NaturalNumber
 } = dual(
   2,
-  (self: PositiveInt, that: PositiveInt): PositiveInt => internal.sum(self, that)
+  (self: NaturalNumber, that: NaturalNumber): NaturalNumber => internal.sum(self, that)
 )
 
 /**
@@ -438,7 +442,7 @@ export const sum: {
  * - No inverse elements: For any `a ∈ ℕ` where `a > 0`, there is no `b ∈ ℕ` such
  *   that `a - b = 0 and b - a = 0`
  *
- * @memberof PositiveInt
+ * @memberof NaturalNumber
  * @since 3.14.6
  * @category Math
  * @experimental
@@ -455,44 +459,53 @@ export const subtract: {
    * ```ts
    * import { pipe } from "effect"
    * import * as Int from "effect/Int"
-   * import * as PositiveInt from "effect/PositiveInt"
+   * import * as NaturalNumber from "effect/NaturalNumber"
    * import * as assert from "node:assert/strict"
    *
    * // Basic subtraction
    * assert.equal(
-   *   pipe(PositiveInt.of(5), PositiveInt.subtract(PositiveInt.of(3))),
+   *   pipe(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.subtract(NaturalNumber.of(3))
+   *   ),
    *   Int.of(2)
    * )
    *
    * // Subtraction resulting in zero
    * assert.equal(
-   *   pipe(PositiveInt.of(10), PositiveInt.subtract(PositiveInt.of(10))),
+   *   pipe(
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.subtract(NaturalNumber.of(10))
+   *   ),
    *   Int.zero
    * )
    *
    * // Subtraction resulting in negative number
    * assert.equal(
-   *   pipe(PositiveInt.of(5), PositiveInt.subtract(PositiveInt.of(10))),
+   *   pipe(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.subtract(NaturalNumber.of(10))
+   *   ),
    *   Int.of(-5)
    * )
    *
    * // Chaining operations
    * assert.equal(
    *   pipe(
-   *     PositiveInt.of(10),
-   *     PositiveInt.subtract(PositiveInt.of(5)),
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.subtract(NaturalNumber.of(5)),
    *     Int.subtract(Int.of(3))
    *   ),
    *   Int.of(2)
    * )
    * ```
    *
-   * @param subtrahend - The `PositiveInt` to subtract from the `minuend` when
+   * @param subtrahend - The `NaturalNumber` to subtract from the `minuend` when
    *   the resultant function is invoked.
    * @returns A function that takes a `minuend` and returns the `difference` of
    *   subtracting the `subtrahend` from it.
    */
-  (subtrahend: PositiveInt): (minuend: PositiveInt) => Int.Int
+  (subtrahend: NaturalNumber): (minuend: NaturalNumber) => Int.Int
 
   /**
    * Subtracts the `subtrahend` from the `minuend` and returns the difference.
@@ -502,50 +515,50 @@ export const subtract: {
    * @example
    *
    * ```ts
-   * import * as PositiveInt from "effect/PositiveInt"
+   * import * as NaturalNumber from "effect/NaturalNumber"
    * import * as Int from "effect/Int"
    * import * as assert from "node:assert/strict"
    *
    * // Basic subtraction
    * assert.equal(
-   *   PositiveInt.subtract(PositiveInt.of(10), PositiveInt.of(7)),
+   *   NaturalNumber.subtract(NaturalNumber.of(10), NaturalNumber.of(7)),
    *   Int.of(3)
    * )
    *
    * // Subtraction resulting in zero
    * assert.equal(
-   *   PositiveInt.subtract(PositiveInt.of(10), PositiveInt.of(10)),
+   *   NaturalNumber.subtract(NaturalNumber.of(10), NaturalNumber.of(10)),
    *   Int.zero
    * )
    *
    * // Subtraction resulting in negative number
    * assert.equal(
-   *   PositiveInt.subtract(PositiveInt.of(5), PositiveInt.of(10)),
+   *   NaturalNumber.subtract(NaturalNumber.of(5), NaturalNumber.of(10)),
    *   Int.of(-5)
    * )
    *
    * // Using with zero
    * assert.equal(
-   *   PositiveInt.subtract(PositiveInt.of(42), PositiveInt.zero),
+   *   NaturalNumber.subtract(NaturalNumber.of(42), NaturalNumber.zero),
    *   Int.of(42),
    *   "Subtracting zero doesn't change the value"
    * )
    *
    * assert.equal(
-   *   PositiveInt.subtract(PositiveInt.zero, PositiveInt.of(42)),
+   *   NaturalNumber.subtract(NaturalNumber.zero, NaturalNumber.of(42)),
    *   Int.of(-42),
    *   "Zero minus a positive number equals the negative of that number"
    * )
    * ```
    *
-   * @param minuend - The `PositiveInt` from which another integer is to be
+   * @param minuend - The `NaturalNumber` from which another integer is to be
    *   subtracted.
-   * @param subtrahend - The `PositiveInt` to subtract from the minuend.
+   * @param subtrahend - The `NaturalNumber` to subtract from the minuend.
    * @returns The difference of subtracting the subtrahend from the minuend as
    *   an `Int.Int`.
    */
-  (minuend: PositiveInt, subtrahend: PositiveInt): Int.Int
+  (minuend: NaturalNumber, subtrahend: NaturalNumber): Int.Int
 } = dual(
   2,
-  (minuend: PositiveInt, subtrahend: PositiveInt): Int.Int => internal.subtract(minuend, subtrahend)
+  (minuend: NaturalNumber, subtrahend: NaturalNumber): Int.Int => internal.subtract(minuend, subtrahend)
 )
