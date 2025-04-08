@@ -56,7 +56,7 @@
     "@effect/platform": "workspace:^",
     "@effect/rpc": "workspace:^",
     "@effect/sql": "workspace:^",
-    "@types/bun": "^1.2.2",
+    "@types/bun": "^1.2.5",
     "effect": "workspace:^"
   },
   "effect": {
