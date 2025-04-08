@@ -585,6 +585,170 @@ export const subtractToInteger: {
 } = dual(2, internal.subtract<NaturalNumber, Integer.Integer>)
 
 /**
+ * Performs a subtraction operation that maintains closure within the set of
+ * natural numbers by returning an Option type.
+ *
+ * @remarks
+ * For the subtraction function f: ℕ × ℕ → Option<ℕ> defined by:
+ *
+ * - `f(a, b) = Some(a - b)` when `a ≥ b`
+ * - `f(a, b) = None` when `a < b`
+ * - **Domain**: The set of ordered pairs of natural numbers (ℕ × ℕ)
+ * - **Codomain**: Option<ℕ> (an option of natural numbers)
+ *
+ * Unlike {@link module:NaturalNumber.subtractToInteger}, this operation
+ * preserves closure within the natural numbers domain by returning `None` when
+ * the result would be negative. This creates **a partial function that is only
+ * defined when the `minuend` is greater than or equal to the `subtrahend`**.
+ *
+ * Mathematical properties of safe subtraction:
+ *
+ * - Closure in ℕ: When defined (Some case), the result is always in ℕ
+ * - Partiality: The function is undefined (None) when minuend < subtrahend
+ * - Non-commutativity: `f(a, b) ≠ f(b, a)` (unless a = b)
+ * - Non-associativity: `f(f(a, b), c) ≠ f(a, f(b, c))` when both sides are
+ *   defined
+ * - Right identity element: `f(a, 0) = Some(a)` for all `a ∈ ℕ`
+ * - Zero result: `f(a, a) = Some(0)` for all `a ∈ ℕ`
+ * - Monotonicity: If `a ≥ b` and `c ≥ d`, then `f(a, c) ≥ f(b, d)` when both are
+ *   defined
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @experimental
+ */
+export const subtractSafe: {
+  /**
+   * Returns a function that safely subtracts a specified `subtrahend` from a
+   * given `minuend`, ensuring the result remains within the natural numbers
+   * domain.
+   *
+   * **Data-last API** (a.k.a. pipeable)
+   *
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { pipe, Option } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * // When minuend > subtrahend, returns Some(result)
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.subtractSafe(NaturalNumber.of(7))
+   *   ),
+   *   Option.some(NaturalNumber.of(3))
+   * )
+   *
+   * // When minuend = subtrahend, returns Some(0)
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.subtractSafe(NaturalNumber.of(5))
+   *   ),
+   *   Option.some(NaturalNumber.zero)
+   * )
+   *
+   * // When minuend < subtrahend, returns None
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     NaturalNumber.of(3),
+   *     NaturalNumber.subtractSafe(NaturalNumber.of(5))
+   *   ),
+   *   Option.none()
+   * )
+   *
+   * // Can be used in pipelines with Option functions
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.subtractSafe(NaturalNumber.of(4)),
+   *     Option.flatMap((n) =>
+   *       NaturalNumber.subtractSafe(n, NaturalNumber.of(3))
+   *     ),
+   *     Option.map((n) => NaturalNumber.add(n, NaturalNumber.of(2)))
+   *   ),
+   *   Option.some(NaturalNumber.of(5))
+   * )
+   * ```
+   *
+   * @param subtrahend - The `NaturalNumber` to subtract from the `minuend` when
+   *   the resultant function is invoked.
+   * @returns A function that takes a `minuend` and returns an `Option`
+   *   containing the natural number difference if minuend ≥ subtrahend, or None
+   *   otherwise.
+   */
+  (
+    subtrahend: NaturalNumber
+  ): (minuend: NaturalNumber) => _Option.Option<NaturalNumber>
+
+  /**
+   * Safely subtracts the `subtrahend` from the `minuend`, returning an Option
+   * that contains the result only if it remains within the natural numbers
+   * domain.
+   *
+   * **Data-first API**
+   *
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { Option } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * // When minuend > subtrahend, returns Some(result)
+   * assert.deepStrictEqual(
+   *   NaturalNumber.subtractSafe(
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.of(7)
+   *   ),
+   *   Option.some(NaturalNumber.of(3))
+   * )
+   *
+   * // When minuend = subtrahend, returns Some(0)
+   * assert.deepStrictEqual(
+   *   NaturalNumber.subtractSafe(NaturalNumber.of(5), NaturalNumber.of(5)),
+   *   Option.some(NaturalNumber.zero)
+   * )
+   *
+   * // When minuend < subtrahend, returns None
+   * assert.deepStrictEqual(
+   *   NaturalNumber.subtractSafe(NaturalNumber.of(3), NaturalNumber.of(5)),
+   *   Option.none()
+   * )
+   *
+   * // Using with zero
+   * assert.deepStrictEqual(
+   *   NaturalNumber.subtractSafe(NaturalNumber.of(42), NaturalNumber.zero),
+   *   Option.some(NaturalNumber.of(42)),
+   *   "Subtracting zero doesn't change the value"
+   * )
+   *
+   * assert.deepStrictEqual(
+   *   NaturalNumber.subtractSafe(NaturalNumber.zero, NaturalNumber.zero),
+   *   Option.some(NaturalNumber.zero),
+   *   "Zero minus zero equals zero"
+   * )
+   * ```
+   *
+   * @param minuend - The `NaturalNumber` from which another natural number is
+   *   to be subtracted.
+   * @param subtrahend - The `NaturalNumber` to subtract from the minuend.
+   * @returns An Option containing the natural number difference if minuend ≥
+   *   subtrahend, or None if the result would be negative.
+   */
+  (
+    minuend: NaturalNumber,
+    subtrahend: NaturalNumber
+  ): _Option.Option<NaturalNumber>
+} = dual(2, (minuend: NaturalNumber, subtrahend: NaturalNumber) =>
+  minuend < subtrahend
+    ? _Option.none()
+    : _Option.some(internal.subtract(minuend, subtrahend)))
+
+/**
  * Provides a multiplication operation on `NaturalNumber`s.
  *
  * **Multiplication is closed** within the set of natural numbers (ℕ = {0, 1, 2,
