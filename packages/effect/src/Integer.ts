@@ -50,8 +50,8 @@ export type Integer = internal.Integer
  * Nominal type representing `NaN` (Not a Number).
  *
  * @memberof Integer
- * @category Type
  * @since 3.14.6
+ * @category Type
  */
 export type NaN = internal.NaN
 
@@ -353,10 +353,7 @@ export const subtract: {
    * @returns The difference of subtracting the subtrahend from the minuend.
    */
   (minuend: Integer, subtrahend: Integer): Integer
-} = dual(
-  2,
-  (minuend: Integer, subtrahend: Integer): Integer => internal.subtract(minuend, subtrahend)
-)
+} = dual(2, internal.subtract<Integer>)
 
 /**
  * Provides a multiplication operation on `Integer`s.
@@ -413,10 +410,7 @@ export const multiply: {
    * @returns The `product` of the multiplier and the multiplicand.
    */
   (multiplier: Integer, multiplicand: Integer): Integer
-} = dual(
-  2,
-  (multiplier: Integer, multiplicand: Integer): Integer => internal.multiply(multiplier, multiplicand)
-)
+} = dual(2, internal.multiply<Integer>)
 
 /**
  * Provides a division operation on `Integer`s.
@@ -476,16 +470,10 @@ export const divide: {
    *   otherwise `None`.
    */
   (dividend: Integer, divisor: Integer): _Option.Option<number>
-} = dual(
-  2,
-  (dividend: Integer, divisor: Integer): _Option.Option<number> => _Number.divide(dividend, divisor)
-)
+} = dual(2, internal.divide<Integer, number>)
 
 /**
-
-
-/**
- * Performs an unsafe division of two `Integer`'s, returning the `quotient`
+ * /** Performs an unsafe division of two `Integer`'s, returning the `quotient`
  * which type is widened to a `number`.
  *
  * As the name suggests, **this operation may throw an
@@ -495,8 +483,7 @@ export const divide: {
  * @memberof Integer
  * @since 3.14.6
  * @category Math
- * @throws - An {@link module:Number.DivisionByZeroError} if the divisor is
- *   zero.
+ * @throws - An {@link module:Number.DivisionByZeroError} if the divisor is zero.
  * @experimental
  */
 export const unsafeDivide: {
@@ -560,7 +547,7 @@ export const unsafeDivide: {
    *   zero.
    */
   (dividend: Integer, divisor: Integer): number
-} = dual(2, (dividend: Integer, divisor: Integer): number => internal.unsafeDivide(dividend, divisor))
+} = dual(2, internal.unsafeDivide<Integer, number>)
 
 /**
  * Returns the result of adding one {@link module:Integer.one} to the given
