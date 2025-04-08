@@ -1,7 +1,7 @@
 import * as internal from "@effect/opentelemetry/internal/metrics"
 import { assert, describe, it } from "@effect/vitest"
 import { ValueType } from "@opentelemetry/api"
-import * as Resources from "@opentelemetry/resources"
+import { resourceFromAttributes } from "@opentelemetry/resources"
 import * as Effect from "effect/Effect"
 import * as Metric from "effect/Metric"
 
@@ -11,7 +11,7 @@ const findMetric = (metrics: any, name: string) =>
 describe("Metrics", () => {
   it.effect("gauge", () =>
     Effect.gen(function*(_) {
-      const resource = Resources.resourceFromAttributes({
+      const resource = resourceFromAttributes({
         name: "test",
         version: "1.0.0"
       })
@@ -28,16 +28,16 @@ describe("Metrics", () => {
         ["name", "test"],
         ["version", "1.0.0"]
       ])
-
       assert.equal(object.resourceMetrics.scopeMetrics.length, 1)
       const metric = findMetric(object, "rps")
-
       assert.deepEqual(metric, {
         "dataPointType": 2,
         "descriptor": {
+          "advice": {},
           "name": "rps",
           "description": "",
           "unit": "requests",
+          "type": "OBSERVABLE_GAUGE",
           "valueType": ValueType.DOUBLE
         },
         "aggregationTemporality": 1,
@@ -66,7 +66,7 @@ describe("Metrics", () => {
   it.effect("gauge bigint", () =>
     Effect.gen(function*(_) {
       const producer = new internal.MetricProducerImpl(
-        Resources.resourceFromAttributes({
+        resourceFromAttributes({
           name: "test",
           version: "1.0.0"
         })
@@ -88,9 +88,11 @@ describe("Metrics", () => {
       assert.deepEqual(metric, {
         "dataPointType": 2,
         "descriptor": {
+          "advice": {},
           "name": "rps-bigint",
           "description": "",
           "unit": "requests",
+          "type": "OBSERVABLE_GAUGE",
           "valueType": ValueType.INT
         },
         "aggregationTemporality": 1,
@@ -119,7 +121,7 @@ describe("Metrics", () => {
   it.effect("counter", () =>
     Effect.gen(function*(_) {
       const producer = new internal.MetricProducerImpl(
-        Resources.resourceFromAttributes({
+        resourceFromAttributes({
           name: "test",
           version: "1.0.0"
         })
@@ -141,9 +143,11 @@ describe("Metrics", () => {
       assert.deepEqual(metric, {
         "dataPointType": 3,
         "descriptor": {
+          "advice": {},
           "name": "counter",
           "description": "Example",
           "unit": "requests",
+          "type": "UP_DOWN_COUNTER",
           "valueType": ValueType.DOUBLE
         },
         "isMonotonic": false,
@@ -173,7 +177,7 @@ describe("Metrics", () => {
   it.effect("counter-inc", () =>
     Effect.gen(function*(_) {
       const producer = new internal.MetricProducerImpl(
-        Resources.resourceFromAttributes({
+        resourceFromAttributes({
           name: "test",
           version: "1.0.0"
         })
@@ -198,9 +202,11 @@ describe("Metrics", () => {
       assert.deepEqual(metric, {
         "dataPointType": 3,
         "descriptor": {
+          "advice": {},
           "name": "counter-inc",
           "description": "Example",
           "unit": "requests",
+          "type": "COUNTER",
           "valueType": ValueType.DOUBLE
         },
         "isMonotonic": true,
@@ -230,7 +236,7 @@ describe("Metrics", () => {
   it.effect("counter-bigint", () =>
     Effect.gen(function*(_) {
       const producer = new internal.MetricProducerImpl(
-        Resources.resourceFromAttributes({
+        resourceFromAttributes({
           name: "test",
           version: "1.0.0"
         })
@@ -253,13 +259,14 @@ describe("Metrics", () => {
       ])
       assert.equal(object.resourceMetrics.scopeMetrics.length, 1)
       const metric = findMetric(object, "counter-bigint")
-
       assert.deepEqual(metric, {
         "dataPointType": 3,
         "descriptor": {
+          "advice": {},
           "name": "counter-bigint",
           "description": "Example",
           "unit": "requests",
+          "type": "COUNTER",
           "valueType": ValueType.INT
         },
         "isMonotonic": true,

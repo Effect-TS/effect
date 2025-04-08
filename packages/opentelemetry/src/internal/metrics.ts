@@ -7,22 +7,27 @@ import type {
   Histogram,
   MetricCollectOptions,
   MetricData,
-  MetricDescriptor,
   MetricProducer,
   MetricReader
 } from "@opentelemetry/sdk-metrics"
-import { AggregationTemporality, DataPointType } from "@opentelemetry/sdk-metrics"
+import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
+import type { InstrumentDescriptor } from "@opentelemetry/sdk-metrics/build/src/InstrumentDescriptor.js"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Metric from "effect/Metric"
 import type * as MetricKey from "effect/MetricKey"
+import * as MetricKeyType from "effect/MetricKeyType"
 import * as MetricState from "effect/MetricState"
 import * as Option from "effect/Option"
 import * as Resource from "../Resource.js"
 
 const sdkName = "@effect/opentelemetry/Metrics"
+
+type MetricDataWithInstrumentDescriptor = MetricData & {
+  readonly descriptor: InstrumentDescriptor
+}
 
 /** @internal */
 export class MetricProducerImpl implements MetricProducer {
@@ -43,7 +48,7 @@ export class MetricProducerImpl implements MetricProducer {
     const hrTimeNow = currentHrTime()
     const metricData: Array<MetricData> = []
     const metricDataByName = new Map<string, MetricData>()
-    const addMetricData = (data: MetricData) => {
+    const addMetricData = (data: MetricDataWithInstrumentDescriptor) => {
       metricData.push(data)
       metricDataByName.set(data.descriptor.name, data)
     }
@@ -70,7 +75,7 @@ export class MetricProducerImpl implements MetricProducer {
           addMetricData({
             dataPointType: DataPointType.SUM,
             descriptor,
-            isMonotonic: !("incremental" in metricKey.keyType && metricKey.keyType.incremental === false),
+            isMonotonic: descriptor.type === InstrumentType.COUNTER,
             aggregationTemporality: AggregationTemporality.CUMULATIVE,
             dataPoints: [dataPoint]
           })
@@ -208,6 +213,7 @@ export class MetricProducerImpl implements MetricProducer {
             descriptor: {
               ...descriptorMeta(metricKey, "count"),
               unit: "1",
+              type: InstrumentType.COUNTER,
               valueType: ValueType.INT
             },
             aggregationTemporality: AggregationTemporality.CUMULATIVE,
@@ -219,6 +225,7 @@ export class MetricProducerImpl implements MetricProducer {
             descriptor: {
               ...descriptorMeta(metricKey, "sum"),
               unit: "1",
+              type: InstrumentType.COUNTER,
               valueType: ValueType.DOUBLE
             },
             aggregationTemporality: AggregationTemporality.CUMULATIVE,
@@ -247,18 +254,34 @@ const descriptorMeta = (
   suffix?: string
 ) => ({
   name: suffix ? `${metricKey.name}_${suffix}` : metricKey.name,
-  description: Option.getOrElse(metricKey.description, () => "")
+  description: Option.getOrElse(metricKey.description, () => ""),
+  advice: {}
 })
 
 const descriptorFromKey = (
   metricKey: MetricKey.MetricKey.Untyped,
   tags: Record<string, string>,
   suffix?: string
-): MetricDescriptor => ({
+): InstrumentDescriptor => ({
   ...descriptorMeta(metricKey, suffix),
   unit: tags.unit ?? tags.time_unit ?? "1",
+  type: instrumentTypeFromKey(metricKey),
   valueType: "bigint" in metricKey.keyType && metricKey.keyType.bigint === true ? ValueType.INT : ValueType.DOUBLE
 })
+
+const instrumentTypeFromKey = (key: MetricKey.MetricKey.Untyped): InstrumentType => {
+  if (MetricKeyType.isHistogramKey(key.keyType)) {
+    return InstrumentType.HISTOGRAM
+  } else if (MetricKeyType.isGaugeKey(key.keyType)) {
+    return InstrumentType.OBSERVABLE_GAUGE
+  } else if (MetricKeyType.isFrequencyKey(key.keyType)) {
+    return InstrumentType.COUNTER
+  } else if (MetricKeyType.isCounterKey(key.keyType) && key.keyType.incremental) {
+    return InstrumentType.COUNTER
+  }
+
+  return InstrumentType.UP_DOWN_COUNTER
+}
 
 const currentHrTime = (): HrTime => {
   const now = Date.now()
