@@ -852,5 +852,28 @@ describe("NaturalNumber", () => {
         "Should work correctly when combined with other incremented values"
       )
     })
+
+    it("decrementToInteger", () => {
+      strictEqual(
+        NaturalNumber.decrementToInteger(NaturalNumber.of(2)),
+        Integer.of(1)
+      )
+
+      strictEqual(
+        NaturalNumber.decrementToInteger(NaturalNumber.zero),
+        Integer.of(-1)
+      )
+
+      strictEqual(
+        pipe(
+          NaturalNumber.of(100),
+          NaturalNumber.decrementToInteger,
+          Integer.decrement,
+          Integer.decrement,
+          Integer.decrement
+        ),
+        Integer.of(96)
+      )
+    })
   })
 })

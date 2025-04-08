@@ -22,10 +22,10 @@
 
 import type * as Brand from "./Brand.js"
 import type * as Either from "./Either.js"
-import { dual } from "./Function.js"
-import type * as Integer from "./Integer.js"
+import { dual, pipe } from "./Function.js"
+import * as Integer from "./Integer.js"
 import * as internal from "./internal/number.js"
-import type * as _Option from "./Option.js"
+import * as _Option from "./Option.js"
 import * as _Predicate from "./Predicate.js"
 
 /**
@@ -426,9 +426,9 @@ export const sum: {
  * be positive.
  *
  * In the set of natural numbers (ℕ = {0, 1, 2, ...}), subtraction is not a
- * total operation, meaning it's not closed under this set. When b > a, the
- * result of a - b falls outside ℕ. Therefore, this function returns an
- * `Integer` rather than a natural number.
+ * total operation, meaning **it's not closed under this set**.
+ * When `b > a`, the result of `a - b` falls outside `ℕ`.
+ * Therefore, this function returns an `Integer` rather than a natural number.
  *
  * Mathematical properties of subtraction in natural numbers:
  *
@@ -566,7 +566,7 @@ export const subtract: {
 /**
  * Provides a multiplication operation on `NaturalNumber`s.
  *
- * Multiplication is closed within the set of natural numbers (ℕ = {0, 1, 2,
+ * **Multiplication is closed** within the set of natural numbers (ℕ = {0, 1, 2,
  * ...}), meaning the product of any two natural numbers is always a natural
  * number.
  *
@@ -720,7 +720,7 @@ export const multiply: {
 /**
  * Provides a division operation on `NaturalNumber`s.
  *
- * Division is not closed within the set of natural numbers (ℕ = {0, 1, 2,
+ * **Division is not closed** within the set of natural numbers (ℕ = {0, 1, 2,
  * ...}). When the division doesn't result in a natural number, this function
  * still returns the fractional result as a number, but wrapped in an Option.
  *
@@ -882,7 +882,7 @@ export const divide: {
  * Performs an unsafe division operation on `NaturalNumber`s, returning a
  * `number` result.
  *
- * Division is not closed within the set of natural numbers (`ℕ = {0, 1, 2,
+ * **Division is not closed** within the set of natural numbers (`ℕ = {0, 1, 2,
  * ...}`). This operation returns the exact quotient as a number, which may be a
  * fractional value.
  *
@@ -989,8 +989,8 @@ export const unsafeDivide: {
  * Returns the result of adding one to the given `NaturalNumber`.
  *
  * Increment is a special case of addition that adds one to a natural number.
- * This operation is closed within the set of natural numbers (`ℕ = {0, 1, 2,
- * ...}`), meaning the result is always a natural number.
+ * **This operation is closed** within the set of natural numbers (`ℕ = {0, 1,
+ * 2, ...}`), meaning the result is always a natural number.
  *
  * Mathematical properties of increment in natural numbers:
  *
@@ -1032,3 +1032,57 @@ export const unsafeDivide: {
  * @experimental
  */
 export const increment: (n: NaturalNumber) => NaturalNumber = internal.increment
+
+/**
+ * Returns the result of subtracting one from the given `NaturalNumber`, widened
+ * to an `Integer`.
+ *
+ * `decrementToInteger` is a convenience function that widens the domain to
+ * Integers, as the decrement operation is not closed within the set of natural
+ * numbers (`ℕ = {0, 1, 2, ...}`). Decrementing 0 produces -1, which is outside
+ * ℕ. Therefore, the return type is an `Integer` to accommodate all possible
+ * results.
+ *
+ * Mathematical properties of decrement on natural numbers:
+ *
+ * - Non-closure: If `n = 0`, then `decrementToInteger(n) ∉ ℕ`
+ * - Injective: If `decrementToInteger(a) = decrementToInteger(b)`, then `a = b`
+ * - Inverse of increment: `decrementToInteger(increment(n)) = n` for all `n ∈ ℕ`
+ * - Predecessor function: decrementToInteger defines the predecessor for each
+ *   natural number, but widens to Integer type
+ * - Relation to subtraction: `decrementToInteger(n) = n - 1`
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Integer from "effect/Integer"
+ *
+ * assert.strictEqual(
+ *   NaturalNumber.decrementToInteger(NaturalNumber.of(0)),
+ *   Integer.of(-1)
+ * )
+ *
+ * assert.strictEqual(
+ *   pipe(
+ *     NaturalNumber.of(100),
+ *     NaturalNumber.decrementToInteger,
+ *     Integer.decrement,
+ *     Integer.decrement,
+ *     Integer.decrement
+ *   ),
+ *   Integer.of(96)
+ * )
+ * ```
+ *
+ * @param n - The `NaturalNumber` to be decremented.
+ * @returns The predecessor of n as an `Integer` (which may be negative when n =
+ *   0).
+ * @experimental
+ */
+export const decrementToInteger: (n: NaturalNumber) => Integer.Integer = Integer.decrement
