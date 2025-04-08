@@ -716,3 +716,164 @@ export const multiply: {
   2,
   (multiplier: NaturalNumber, multiplicand: NaturalNumber): NaturalNumber => internal.multiply(multiplier, multiplicand)
 )
+
+/**
+ * Provides a division operation on `NaturalNumber`s.
+ *
+ * Division is not closed within the set of natural numbers (ℕ = {0, 1, 2,
+ * ...}). When the division doesn't result in a natural number, this function
+ * still returns the fractional result as a number, but wrapped in an Option.
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as assert from "node:assert/strict"
+ *
+ * assert.equal(
+ *   pipe(
+ *     NaturalNumber.of(42),
+ *     // data-last API
+ *     NaturalNumber.divide(NaturalNumber.of(6))
+ *   ),
+ *   // data-first API
+ *   NaturalNumber.divide(NaturalNumber.of(42), NaturalNumber.of(6))
+ * )
+ *
+ * NaturalNumber.divide(NaturalNumber.of(6), NaturalNumber.of(2)) // Some(3)
+ * NaturalNumber.divide(NaturalNumber.of(5), NaturalNumber.of(2)) // Some(2.5)
+ * NaturalNumber.divide(NaturalNumber.of(0), NaturalNumber.of(5)) // Some(0)
+ * NaturalNumber.divide(NaturalNumber.of(5), NaturalNumber.of(0)) // None (division by zero is undefined)
+ * ```
+ *
+ * Mathematical properties of division in natural numbers:
+ *
+ * - Non-closure: If `a, b ∈ ℕ`, then `a ÷ b` may `not ∈ ℕ`
+ * - Non-commutativity: `a ÷ b ≠ b ÷ a` (unless a = b = 1)
+ * - Non-associativity: `(a ÷ b) ÷ c ≠ a ÷ (b ÷ c)`
+ * - Right identity element: `a ÷ 1 = a` for all `a ∈ ℕ`
+ * - No left identity element: There is no `e ∈ ℕ` such that `e ÷ a = a` for all
+ *   `a ∈ ℕ`
+ * - Division by zero is undefined: `a ÷ 0` is not defined for any a
+ * - Not generally distributive over addition: `a ÷ (b + c) ≠ (a ÷ b) + (a ÷ c)`
+ *
+ * This function returns an `Option` type to handle division by zero, which is
+ * mathematically undefined. When the divisor is zero, it returns `None`.
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @param dividend - The number to be divided
+ * @param divisor - The number to divide by
+ * @returns `Some<number>` containing the quotient if the divisor is not zero,
+ *   `None` if the divisor is 0
+ * @experimental
+ */
+export const divide: {
+  /**
+   * Returns a function that divides a given `dividend` by a specified
+   * `divisor`.
+   *
+   * **Data-last API** (a.k.a. pipeable)
+   *
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { Option, pipe } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * // Basic division
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.divide(NaturalNumber.of(2))
+   *   ),
+   *   Option.some(5)
+   * )
+   *
+   * // Division resulting in a fraction
+   * assert.deepStrictEqual(
+   *   pipe(NaturalNumber.of(5), NaturalNumber.divide(NaturalNumber.of(2))),
+   *   Option.some(2.5)
+   * )
+   *
+   * // Division by zero returns None
+   * assert.deepStrictEqual(
+   *   pipe(NaturalNumber.of(5), NaturalNumber.divide(NaturalNumber.zero)),
+   *   Option.none()
+   * )
+   *
+   * // Chaining operations
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.divide(NaturalNumber.of(2)),
+   *     Option.flatMap((result) =>
+   *       pipe(
+   *         NaturalNumber.option(result),
+   *         Option.flatMap(NaturalNumber.divide(NaturalNumber.of(5)))
+   *       )
+   *     )
+   *   ),
+   *   Option.some(1)
+   * )
+   * ```
+   *
+   * @param divisor - The `NaturalNumber` to divide the `dividend` by when the
+   *   resultant function is invoked
+   * @returns A function that takes a `dividend` and returns an `Option`
+   *   containing the quotient if the divisor is not zero, `None` if the divisor
+   *   is 0
+   */
+  (divisor: NaturalNumber): (dividend: NaturalNumber) => _Option.Option<number>
+
+  /**
+   * Divides the `dividend` by the `divisor` and returns an `Option` containing
+   * the quotient.
+   *
+   * **Data-first API**
+   *
+   * @example
+   *
+   * ```ts
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   * import { Option } from "effect"
+   * import * as assert from "node:assert/strict"
+   *
+   * // Basic division
+   * assert.deepStrictEqual(
+   *   NaturalNumber.divide(NaturalNumber.of(6), NaturalNumber.of(3)),
+   *   Option.some(2)
+   * )
+   *
+   * // Division resulting in a fraction
+   * assert.deepStrictEqual(
+   *   NaturalNumber.divide(NaturalNumber.of(5), NaturalNumber.of(2)),
+   *   Option.some(2.5)
+   * )
+   *
+   * // Division by zero returns None
+   * assert.deepStrictEqual(
+   *   NaturalNumber.divide(NaturalNumber.of(5), NaturalNumber.zero),
+   *   Option.none()
+   * )
+   *
+   * // Division with zero as dividend
+   * assert.deepStrictEqual(
+   *   NaturalNumber.divide(NaturalNumber.zero, NaturalNumber.of(5)),
+   *   Option.some(0)
+   * )
+   * ```
+   *
+   * @param dividend - The `NaturalNumber` to be divided
+   * @param divisor - The `NaturalNumber` to divide by
+   * @returns An `Option` containing the quotient if the divisor is not zero,
+   *   `None` if the divisor is 0
+   */
+  (dividend: NaturalNumber, divisor: NaturalNumber): _Option.Option<number>
+} = dual(
+  2,
+  (dividend: NaturalNumber, divisor: NaturalNumber): _Option.Option<number> => internal.divide(dividend, divisor)
+)
