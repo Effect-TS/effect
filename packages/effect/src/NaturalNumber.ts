@@ -422,35 +422,43 @@ export const sum: {
 )
 
 /**
- * Subtracts one positive integer from another, returning a number that may not
- * be positive.
+ * Subtracts one natural number from another, mapping from the domain of natural
+ * numbers to the codomain of integers to accommodate potentially negative
+ * results.
  *
- * In the set of natural numbers (ℕ = {0, 1, 2, ...}), subtraction is not a
- * total operation, meaning **it's not closed under this set**. When `b > a`,
- * the result of `a - b` falls outside `ℕ`. Therefore, this function returns an
- * `Integer` rather than a natural number.
+ * @remarks
+ * For the subtraction function f: ℕ × ℕ → ℤ defined by f(a, b) = a - b:
  *
- * Mathematical properties of subtraction in natural numbers:
+ * - **Domain**: The set of ordered pairs of natural numbers (ℕ × ℕ)
+ * - **Codomain**: The set of integers (ℤ)
  *
- * - Non-closure: If `a, b ∈ ℕ`, then `a - b` may not ∈ ℕ
- * - Non-commutativity: `a - b ≠ b - a` (unless a = b)
- * - Anti-commutativity: `a - b = -(b - a)`
- * - Non-associativity: `(a - b) - c ≠ a - (b - c)`
- * - Right identity element: `a - 0 = a` for all a ∈ ℕ
- * - No left identity element: There is no `e ∈ ℕ` such that `e - a = a` for all
+ * Subtraction is not a closed operation on the set of natural numbers (`ℕ = {0,
+ * 1, 2, ...}`). When `b > a`, the result of `a - b` is negative, falling
+ * outside ℕ. Therefore, this function maps to the codomain of integers rather
+ * than remaining within natural numbers.
+ *
+ * Mathematical properties of subtraction as a function from ℕ × ℕ → ℤ:
+ *
+ * - Non-closure in ℕ: The image of f is not contained within ℕ
+ * - Non-commutativity: `f(a, b) ≠ f(b, a)` (unless a = b)
+ * - Anti-commutativity: `f(a, b) = -f(b, a)`
+ * - Non-associativity: `f(f(a, b), c) ≠ f(a, f(b, c))`
+ * - Right identity element: `f(a, 0) = a` for all `a ∈ ℕ`
+ * - No left identity element: There is no `e ∈ ℕ` such that `f(e, a) = a` for all
  *   `a ∈ ℕ`
  * - No inverse elements: For any `a ∈ ℕ` where `a > 0`, there is no `b ∈ ℕ` such
- *   that `a - b = 0 and b - a = 0`
+ *   that `f(a, b) = 0` and `f(b, a) = 0`
  *
  * @memberof NaturalNumber
  * @since 3.14.6
  * @category Math
  * @experimental
  */
-export const subtract: {
+export const subtractToInteger: {
   /**
    * Returns a function that subtracts a specified `subtrahend` from a given
-   * `minuend`.
+   * `minuend`, mapping from the domain of natural numbers to the codomain of
+   * integers.
    *
    * **Data-last API** (a.k.a. pipeable)
    *
@@ -466,7 +474,7 @@ export const subtract: {
    * assert.equal(
    *   pipe(
    *     NaturalNumber.of(5),
-   *     NaturalNumber.subtract(NaturalNumber.of(3))
+   *     NaturalNumber.subtractToInteger(NaturalNumber.of(3))
    *   ),
    *   Integer.of(2)
    * )
@@ -475,16 +483,16 @@ export const subtract: {
    * assert.equal(
    *   pipe(
    *     NaturalNumber.of(10),
-   *     NaturalNumber.subtract(NaturalNumber.of(10))
+   *     NaturalNumber.subtractToInteger(NaturalNumber.of(10))
    *   ),
    *   Integer.zero
    * )
    *
-   * // Subtraction resulting in negative number
+   * // Subtraction mapping to a negative integer
    * assert.equal(
    *   pipe(
    *     NaturalNumber.of(5),
-   *     NaturalNumber.subtract(NaturalNumber.of(10))
+   *     NaturalNumber.subtractToInteger(NaturalNumber.of(10))
    *   ),
    *   Integer.of(-5)
    * )
@@ -493,7 +501,7 @@ export const subtract: {
    * assert.equal(
    *   pipe(
    *     NaturalNumber.of(10),
-   *     NaturalNumber.subtract(NaturalNumber.of(5)),
+   *     NaturalNumber.subtractToInteger(NaturalNumber.of(5)),
    *     Integer.subtract(Integer.of(3))
    *   ),
    *   Integer.of(2)
@@ -503,12 +511,13 @@ export const subtract: {
    * @param subtrahend - The `NaturalNumber` to subtract from the `minuend` when
    *   the resultant function is invoked.
    * @returns A function that takes a `minuend` and returns the `difference` of
-   *   subtracting the `subtrahend` from it.
+   *   subtracting the `subtrahend` from it, as an `Integer`.
    */
   (subtrahend: NaturalNumber): (minuend: NaturalNumber) => Integer.Integer
 
   /**
-   * Subtracts the `subtrahend` from the `minuend` and returns the difference.
+   * Subtracts the `subtrahend` from the `minuend` and returns the difference,
+   * mapping from the domain of natural numbers to the codomain of integers.
    *
    * **Data-first API**
    *
@@ -521,47 +530,59 @@ export const subtract: {
    *
    * // Basic subtraction
    * assert.equal(
-   *   NaturalNumber.subtract(NaturalNumber.of(10), NaturalNumber.of(7)),
+   *   NaturalNumber.subtractToInteger(
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.of(7)
+   *   ),
    *   Integer.of(3)
    * )
    *
    * // Subtraction resulting in zero
    * assert.equal(
-   *   NaturalNumber.subtract(NaturalNumber.of(10), NaturalNumber.of(10)),
+   *   NaturalNumber.subtractToInteger(
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.of(10)
+   *   ),
    *   Integer.zero
    * )
    *
-   * // Subtraction resulting in negative number
+   * // Subtraction mapping to a negative integer
    * assert.equal(
-   *   NaturalNumber.subtract(NaturalNumber.of(5), NaturalNumber.of(10)),
+   *   NaturalNumber.subtractToInteger(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.of(10)
+   *   ),
    *   Integer.of(-5)
    * )
    *
    * // Using with zero
    * assert.equal(
-   *   NaturalNumber.subtract(NaturalNumber.of(42), NaturalNumber.zero),
+   *   NaturalNumber.subtractToInteger(
+   *     NaturalNumber.of(42),
+   *     NaturalNumber.zero
+   *   ),
    *   Integer.of(42),
    *   "Subtracting zero doesn't change the value"
    * )
    *
    * assert.equal(
-   *   NaturalNumber.subtract(NaturalNumber.zero, NaturalNumber.of(42)),
+   *   NaturalNumber.subtractToInteger(
+   *     NaturalNumber.zero,
+   *     NaturalNumber.of(42)
+   *   ),
    *   Integer.of(-42),
    *   "Zero minus a positive number equals the negative of that number"
    * )
    * ```
    *
-   * @param minuend - The `NaturalNumber` from which another integer is to be
-   *   subtracted.
+   * @param minuend - The `NaturalNumber` from which another natural number is
+   *   to be subtracted.
    * @param subtrahend - The `NaturalNumber` to subtract from the minuend.
    * @returns The difference of subtracting the subtrahend from the minuend as
    *   an `Integer.Integer`.
    */
   (minuend: NaturalNumber, subtrahend: NaturalNumber): Integer.Integer
-} = dual(
-  2,
-  (minuend: NaturalNumber, subtrahend: NaturalNumber): Integer.Integer => internal.subtract(minuend, subtrahend)
-)
+} = dual(2, internal.subtract<NaturalNumber, Integer.Integer>)
 
 /**
  * Provides a multiplication operation on `NaturalNumber`s.

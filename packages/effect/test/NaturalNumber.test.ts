@@ -321,41 +321,44 @@ describe("NaturalNumber", () => {
       )
     })
 
-    it("subtract", () => {
+    it("subtractToInteger", () => {
       // Basic functionality tests
       strictEqual(
-        NaturalNumber.subtract(three, NaturalNumber.one),
-        pipe(three, NaturalNumber.subtract(NaturalNumber.one))
+        NaturalNumber.subtractToInteger(three, NaturalNumber.one),
+        pipe(three, NaturalNumber.subtractToInteger(NaturalNumber.one))
       )
 
       // Boundary conditions
 
       strictEqual(
-        NaturalNumber.subtract(meaningOfLife, NaturalNumber.zero),
+        NaturalNumber.subtractToInteger(meaningOfLife, NaturalNumber.zero),
         Integer.of(42),
         "Subtracting zero doesn't change the value"
       )
 
       strictEqual(
-        NaturalNumber.subtract(NaturalNumber.zero, meaningOfLife),
+        NaturalNumber.subtractToInteger(NaturalNumber.zero, meaningOfLife),
         Integer.of(-42),
         "Zero minus a positive number equals the negative of that number"
       )
 
       strictEqual(
-        NaturalNumber.subtract(meaningOfLife, meaningOfLife),
+        NaturalNumber.subtractToInteger(meaningOfLife, meaningOfLife),
         Integer.zero,
         "Subtracting a number from itself results in zero"
       )
 
       strictEqual(
-        NaturalNumber.subtract(largeNumber, NaturalNumber.of(10)),
+        NaturalNumber.subtractToInteger(largeNumber, NaturalNumber.of(10)),
         Integer.of(Number.MAX_SAFE_INTEGER - 20),
         "Should correctly handle large numbers"
       )
 
       strictEqual(
-        NaturalNumber.subtract(NaturalNumber.of(5), NaturalNumber.of(10)),
+        NaturalNumber.subtractToInteger(
+          NaturalNumber.of(5),
+          NaturalNumber.of(10)
+        ),
         Integer.of(-5),
         "Subtracting a larger number from a smaller one results in a negative number"
       )
@@ -364,8 +367,8 @@ describe("NaturalNumber", () => {
 
       /** Anti-commutativity: a - b = -(b - a) */
       strictEqual(
-        pipe(three, NaturalNumber.subtract(two)),
-        -pipe(two, NaturalNumber.subtract(three)),
+        pipe(three, NaturalNumber.subtractToInteger(two)),
+        -pipe(two, NaturalNumber.subtractToInteger(three)),
         "Subtraction is anti-commutative: a - b = -(b - a)"
       )
 
@@ -373,19 +376,21 @@ describe("NaturalNumber", () => {
       notDeepStrictEqual(
         pipe(
           three,
-          NaturalNumber.subtract(two),
+          NaturalNumber.subtractToInteger(two),
           Integer.subtract(NaturalNumber.one)
         ),
         pipe(
           three,
-          Integer.subtract(pipe(two, NaturalNumber.subtract(NaturalNumber.one)))
+          Integer.subtract(
+            pipe(two, NaturalNumber.subtractToInteger(NaturalNumber.one))
+          )
         ),
         "Subtraction is not associative: (a - b) - c ≠ a - (b - c)"
       )
 
       /** Identity element: 0 - a = -a */
       strictEqual(
-        pipe(NaturalNumber.zero, NaturalNumber.subtract(three)),
+        pipe(NaturalNumber.zero, NaturalNumber.subtractToInteger(three)),
         Integer.of(-3),
         "Zero is the identity element: 0 - a = -a"
       )
@@ -394,7 +399,7 @@ describe("NaturalNumber", () => {
       strictEqual(
         pipe(
           NaturalNumber.of(10),
-          NaturalNumber.subtract(NaturalNumber.of(3)),
+          NaturalNumber.subtractToInteger(NaturalNumber.of(3)),
           Integer.subtract(Integer.of(2))
         ),
         Integer.of(5),
@@ -405,7 +410,7 @@ describe("NaturalNumber", () => {
       strictEqual(
         pipe(
           NaturalNumber.of(10),
-          NaturalNumber.subtract(NaturalNumber.of(3)),
+          NaturalNumber.subtractToInteger(NaturalNumber.of(3)),
           Integer.sum(Integer.of(5))
         ),
         Integer.of(12),
