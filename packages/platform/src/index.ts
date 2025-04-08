@@ -202,6 +202,11 @@ export * as HttpTraceContext from "./HttpTraceContext.js"
 /**
  * @since 1.0.0
  */
+export * as IndexedDb from "./IndexedDb.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as KeyValueStore from "./KeyValueStore.js"
 
 /**
