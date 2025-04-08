@@ -482,27 +482,20 @@ export const divide: {
 )
 
 /**
- * Represents errors that can occur during integer division operations.
- *
- * @memberof Integer
- * @since 3.14.6
- * @category Errors
- * @experimental
- */
-export const DivisionByZeroError = internal.DivisionByZeroError
+
 
 /**
  * Performs an unsafe division of two `Integer`'s, returning the `quotient`
  * which type is widened to a `number`.
  *
  * As the name suggests, **this operation may throw an
- * {@link module:Integer.DivisionByZeroError}** if the `divisor` is zero,
+ * {@link module:Number.DivisionByZeroError}** if the `divisor` is zero,
  * resulting in either a division by zero or an indeterminate form.
  *
  * @memberof Integer
  * @since 3.14.6
  * @category Math
- * @throws - An {@link module:Integer.DivisionByZeroError} if the divisor is
+ * @throws - An {@link module:Number.DivisionByZeroError} if the divisor is
  *   zero.
  * @experimental
  */
@@ -541,7 +534,7 @@ export const unsafeDivide: {
    * @param divisor - The `Integer` by which the `dividend` will be divided.
    * @returns A function that takes a `dividend` and returns the quotient, which
    *   is a `number`. This operation may throw an
-   *   {@link module:Integer.DivisionByZeroError} if the divisor is zero.
+   *   {@link module:Number.DivisionByZeroError} if the divisor is zero.
    */
   (divisor: Integer): (dividend: Integer) => number
 
@@ -563,7 +556,7 @@ export const unsafeDivide: {
    * @param dividend - The `Integer` to be divided.
    * @param divisor - The `Integer` by which the dividend is divided.
    * @returns The quotient of the division, which is a `number`.
-   * @throws - An {@link module:Integer.DivisionByZeroError} if the divisor is
+   * @throws - An {@link module:Number.DivisionByZeroError} if the divisor is
    *   zero.
    */
   (dividend: Integer, divisor: Integer): number

@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Either, HashSet, List, Number as _Number, Option, pipe } from "effect"
 import * as Integer from "effect/Integer"
+import { DivisionByZeroError } from "effect/internal/number"
 import {
   assertEquals,
   assertFalse,
@@ -226,11 +227,11 @@ describe("Integer", () => {
     strictEqual(Integer.unsafeDivide(Integer.zero, six), 0)
     throws(
       () => Integer.unsafeDivide(six, Integer.zero),
-      Integer.DivisionByZeroError.divisionByZero(six)
+      DivisionByZeroError.divisionByZero(six)
     )
     throws(
       () => Integer.unsafeDivide(Integer.zero, Integer.zero),
-      Integer.DivisionByZeroError.indeterminateForm()
+      DivisionByZeroError.indeterminateForm()
     )
   })
 
