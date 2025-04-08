@@ -7,7 +7,7 @@ import * as Effect from "effect/Effect"
 import * as HashMap from "effect/HashMap"
 import * as Layer from "effect/Layer"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
-import type * as Schema from "effect/Schema"
+import * as Schema from "effect/Schema"
 import * as IndexedDb from "./IndexedDbDatabase.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
@@ -92,14 +92,23 @@ export declare namespace IndexedDbQuery {
       IndexedDbQueryError | IndexedDb.IndexedDbDatabaseError
     >
 
-    readonly create: <
+    readonly getAll: <
       A extends IndexedDbTable.IndexedDbTable.TableName<
         IndexedDbVersion.IndexedDbVersion.Tables<Source>
       >
     >(
       table: A
     ) => Effect.Effect<
-      void,
+      Array<
+        Schema.Schema.Type<
+          IndexedDbTable.IndexedDbTable.TableSchema<
+            IndexedDbTable.IndexedDbTable.WithName<
+              IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+              A
+            >
+          >
+        >
+      >,
       IndexedDbQueryError | IndexedDb.IndexedDbDatabaseError
     >
   }
@@ -161,30 +170,41 @@ const makeProto = <
       }
     })
 
-  IndexedDbQuery.create = (
-    table: string
-  ): Effect.Effect<
-    void,
-    IndexedDbQueryError | IndexedDb.IndexedDbDatabaseError
-  > =>
-    Effect.async<void, IndexedDbQueryError>((resume) => {
-      const createTable = HashMap.unsafeGet(source.tables, table)
+  IndexedDbQuery.getAll = (table: string) =>
+    Effect.gen(function*() {
+      const data = yield* Effect.async<any, IndexedDbQueryError>((resume) => {
+        const objectStore = database.transaction([table]).objectStore(table)
+        const request = objectStore.getAll()
 
-      const request = database.createObjectStore(
-        createTable.tableName,
-        createTable.options
+        request.onerror = (event) => {
+          resume(
+            Effect.fail(
+              new IndexedDbQueryError({
+                reason: "TransactionError",
+                cause: event
+              })
+            )
+          )
+        }
+
+        request.onsuccess = () => {
+          resume(Effect.succeed(request.result))
+        }
+      })
+
+      const tableSchema = Schema.Array(
+        source.tables.pipe(HashMap.unsafeGet(table), (_) => _.tableSchema)
       )
 
-      request.transaction.onerror = (event) => {
-        resume(
-          Effect.fail(
+      return yield* Schema.decodeUnknown(tableSchema)(data).pipe(
+        Effect.mapError(
+          (error) =>
             new IndexedDbQueryError({
-              reason: "TransactionError",
-              cause: event
+              reason: "DecodeError",
+              cause: error
             })
-          )
         )
-      }
+      )
     })
 
   return IndexedDbQuery as any
