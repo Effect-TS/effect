@@ -22,7 +22,7 @@
 
 import type * as Brand from "./Brand.js"
 import type * as Either from "./Either.js"
-import { dual, pipe } from "./Function.js"
+import { dual } from "./Function.js"
 import * as Integer from "./Integer.js"
 import * as internal from "./internal/number.js"
 import * as _Option from "./Option.js"
@@ -1267,6 +1267,7 @@ export const decrementToInteger: (n: NaturalNumber) => Integer.Integer = Integer
  * Returns the result of decrementing a natural number, ensuring the result
  * remains within the domain of natural numbers through the Option type.
  *
+ * @remarks
  * Unlike {@link module:NaturalNumber.decrementToInteger}, this operation
  * maintains closure within the set of natural numbers (`ℕ = {0, 1, 2, ...}`) by
  * returning `None` when decrementing would produce a value outside the domain
@@ -1326,9 +1327,4 @@ export const decrementToInteger: (n: NaturalNumber) => Integer.Integer = Integer
  */
 export const decrementSafe: {
   (n: NaturalNumber): _Option.Option<NaturalNumber>
-} = (n) =>
-  pipe(
-    n,
-    internal.decrement<NaturalNumber, Integer.Integer>,
-    _Option.liftPredicate(isNaturalNumber)
-  )
+} = (n) => (n >= 1 ? _Option.some(internal.decrement(n)) : _Option.none())
