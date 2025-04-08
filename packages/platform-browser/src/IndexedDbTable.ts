@@ -4,6 +4,21 @@
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type * as Schema from "effect/Schema"
 
+type IsValidIndexedDbKeyType<T> = T extends number | string | Date | ArrayBuffer | ArrayBufferView ? true :
+  T extends Array<infer U> ? IsValidIndexedDbKeyType<U>
+  : false
+
+type IndexedDbValidKeys<TableSchema extends Schema.Schema.AnyNoContext> = {
+  [K in keyof Schema.Schema.Encoded<TableSchema>]: K extends string
+    ? IsValidIndexedDbKeyType<Schema.Schema.Encoded<TableSchema>[K]> extends true ? K
+    : never
+    : never
+}[keyof Schema.Schema.Encoded<TableSchema>]
+
+type KeyPath<TableSchema extends Schema.Schema.AnyNoContext> =
+  | IndexedDbValidKeys<TableSchema>
+  | Array<IndexedDbValidKeys<TableSchema>>
+
 /**
  * @since 1.0.0
  * @category type ids
@@ -31,7 +46,9 @@ export interface IndexedDbTable<
   readonly [TypeId]: TypeId
   readonly tableName: TableName
   readonly tableSchema: TableSchema
-  readonly options?: globalThis.IDBObjectStoreParameters
+  readonly options?: {
+    keyPath: KeyPath<TableSchema>
+  }
 }
 
 /**
@@ -98,7 +115,7 @@ const makeProto = <
   readonly tableName: TableName
   readonly tableSchema: TableSchema
   readonly options: Partial<{
-    keyPath: keyof Schema.Schema.Encoded<TableSchema>
+    keyPath: KeyPath<TableSchema>
   }>
 }): IndexedDbTable<TableName, TableSchema> => {
   function IndexedDbTable() {}
@@ -120,6 +137,6 @@ export const make = <
   tableName: TableName,
   tableSchema: TableSchema,
   options?: {
-    keyPath: keyof Schema.Schema.Encoded<TableSchema>
+    keyPath: KeyPath<TableSchema>
   }
 ): IndexedDbTable<TableName, TableSchema> => makeProto({ tableName, tableSchema, options: options ?? {} })
