@@ -479,7 +479,7 @@ describe("Metric", () => {
           maxAge: Duration.minutes(1),
           maxSize: 10,
           error: 0,
-          quantiles: [0, 1, 10]
+          quantiles: [0.25, 0.5, 0.75]
         }).pipe(
           Metric.taggedWithLabels(labels)
         )
@@ -493,6 +493,8 @@ describe("Metric", () => {
         strictEqual(result.sum, 4)
         strictEqual(result.min, 1)
         strictEqual(result.max, 3)
+        const medianQuantileValue = result.quantiles[1][1]
+        strictEqual(Option.getOrNull(medianQuantileValue), 1)
       }))
     it.effect("direct observe", () =>
       Effect.gen(function*() {
@@ -502,7 +504,7 @@ describe("Metric", () => {
           maxAge: Duration.minutes(1),
           maxSize: 10,
           error: 0,
-          quantiles: [0, 1, 10]
+          quantiles: [0.25, 0.5, 0.75]
         }).pipe(
           Metric.taggedWithLabels(labels)
         )
@@ -516,6 +518,8 @@ describe("Metric", () => {
         strictEqual(result.sum, 4)
         strictEqual(result.min, 1)
         strictEqual(result.max, 3)
+        const medianQuantileValue = result.quantiles[1][1]
+        strictEqual(Option.getOrNull(medianQuantileValue), 1)
       }))
     it.effect("custom observe with mapInput", () =>
       Effect.gen(function*() {
@@ -525,7 +529,7 @@ describe("Metric", () => {
           maxAge: Duration.minutes(1),
           maxSize: 10,
           error: 0,
-          quantiles: [0, 1, 10]
+          quantiles: [0.25, 0.5, 0.75]
         }).pipe(
           Metric.taggedWithLabels(labels),
           Metric.mapInput((s: string) => s.length)
@@ -540,6 +544,8 @@ describe("Metric", () => {
         strictEqual(result.sum, 4)
         strictEqual(result.min, 1)
         strictEqual(result.max, 3)
+        const medianQuantileValue = result.quantiles[1][1]
+        strictEqual(Option.getOrNull(medianQuantileValue), 1)
       }))
     it.effect("observeSummaryWith + taggedWith", () =>
       Effect.gen(function*() {
@@ -549,7 +555,7 @@ describe("Metric", () => {
           maxAge: Duration.minutes(1),
           maxSize: 10,
           error: 0,
-          quantiles: [0, 1, 10]
+          quantiles: [0.25, 0.5, 0.75]
         }).pipe(
           Metric.taggedWithLabels(labels),
           Metric.mapInput((s: string) => s.length)

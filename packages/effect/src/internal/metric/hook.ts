@@ -245,7 +245,7 @@ export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook
       if (item != null) {
         const [t, v] = item
         const age = Duration.millis(now - t)
-        if (Duration.greaterThanOrEqualTo(age, Duration.zero) && age <= maxAge) {
+        if (Duration.greaterThanOrEqualTo(age, Duration.zero) && Duration.lessThanOrEqualTo(age, maxAge)) {
           builder.push(v)
         }
       }
