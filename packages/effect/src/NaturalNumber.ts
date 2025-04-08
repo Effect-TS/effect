@@ -416,10 +416,7 @@ export const sum: {
    * @returns The sum of `self` and `that`
    */
   (self: NaturalNumber, that: NaturalNumber): NaturalNumber
-} = dual(
-  2,
-  (self: NaturalNumber, that: NaturalNumber): NaturalNumber => internal.sum(self, that)
-)
+} = dual(2, internal.sum<NaturalNumber>)
 
 /**
  * Subtracts one natural number from another, mapping from the domain of natural
@@ -897,10 +894,7 @@ export const multiply: {
    * @returns The product of the multiplication
    */
   (multiplier: NaturalNumber, multiplicand: NaturalNumber): NaturalNumber
-} = dual(
-  2,
-  (multiplier: NaturalNumber, multiplicand: NaturalNumber): NaturalNumber => internal.multiply(multiplier, multiplicand)
-)
+} = dual(2, internal.multiply<NaturalNumber>)
 
 /**
  * Provides a division operation on `NaturalNumber`s.
@@ -1058,10 +1052,7 @@ export const divide: {
    *   `None` if the divisor is 0
    */
   (dividend: NaturalNumber, divisor: NaturalNumber): _Option.Option<number>
-} = dual(
-  2,
-  (dividend: NaturalNumber, divisor: NaturalNumber): _Option.Option<number> => internal.divide(dividend, divisor)
-)
+} = dual(2, internal.divide<NaturalNumber, number>)
 
 /**
  * Performs an unsafe division operation on `NaturalNumber`s, returning a
@@ -1168,7 +1159,7 @@ export const unsafeDivide: {
    *   zero.
    */
   (dividend: NaturalNumber, divisor: NaturalNumber): number
-} = dual(2, (dividend: NaturalNumber, divisor: NaturalNumber): number => internal.unsafeDivide(dividend, divisor))
+} = dual(2, internal.unsafeDivide<NaturalNumber, number>)
 
 /**
  * Returns the result of adding one to the given `NaturalNumber`.
