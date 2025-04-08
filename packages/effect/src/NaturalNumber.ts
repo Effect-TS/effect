@@ -877,3 +877,110 @@ export const divide: {
   2,
   (dividend: NaturalNumber, divisor: NaturalNumber): _Option.Option<number> => internal.divide(dividend, divisor)
 )
+
+/**
+ * Performs an unsafe division operation on `NaturalNumber`s, returning a
+ * `number` result.
+ *
+ * Division is not closed within the set of natural numbers (`ℕ = {0, 1, 2,
+ * ...}`). This operation returns the exact quotient as a number, which may be a
+ * fractional value.
+ *
+ * Mathematical properties of division in natural numbers:
+ *
+ * - Non-closure: If `a, b ∈ ℕ`, then `a ÷ b` may `not ∈ ℕ`
+ * - Non-commutativity: `a ÷ b ≠ b ÷ a` (unless a = b = 1)
+ * - Non-associativity: `(a ÷ b) ÷ c ≠ a ÷ (b ÷ c)`
+ * - Right identity element: `a ÷ 1 = a` for all `a ∈ ℕ`
+ * - No left identity element: There is no `e ∈ ℕ` such that `e ÷ a = a` for all
+ *   `a ∈ ℕ`
+ * - Division by zero is undefined: `a ÷ 0` is not defined for any a
+ *
+ * Unlike the safe {@link module:NaturalNumber.divide} operation which returns an
+ * `Option`, this function will throw a {@link module:Number.DivisionByZeroError}
+ * if the divisor is zero.
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @throws - A {@link module:Number.DivisionByZeroError} if the divisor is zero.
+ * @experimental
+ */
+export const unsafeDivide: {
+  /**
+   * Divides by the given `divisor`.
+   *
+   * @example
+   *
+   * ```ts
+   * import { pipe } from "effect"
+   * import * as assert from "node:assert/strict"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(6),
+   *     NaturalNumber.unsafeDivide(NaturalNumber.of(2))
+   *   ),
+   *   3
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.unsafeDivide(NaturalNumber.of(2))
+   *   ),
+   *   2.5
+   * )
+   *
+   * // The following throws DivisionByZeroError
+   * assert.throws(() =>
+   *   pipe(
+   *     NaturalNumber.of(6),
+   *     NaturalNumber.unsafeDivide(NaturalNumber.zero)
+   *   )
+   * )
+   * ```
+   *
+   * @param divisor - The `NaturalNumber` by which the `dividend` will be
+   *   divided.
+   * @returns A function that takes a `dividend` and returns the quotient as a
+   *   `number`.
+   * @throws - A {@link module:Number.DivisionByZeroError} if the divisor is
+   *   zero.
+   */
+  (divisor: NaturalNumber): (dividend: NaturalNumber) => number
+
+  /**
+   * Divides the `dividend` by the `divisor`.
+   *
+   * @example
+   *
+   * ```ts
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   * import * as assert from "node:assert/strict"
+   *
+   * assert.equal(
+   *   NaturalNumber.unsafeDivide(NaturalNumber.of(6), NaturalNumber.of(2)),
+   *   3
+   * )
+   *
+   * assert.equal(
+   *   NaturalNumber.unsafeDivide(NaturalNumber.of(5), NaturalNumber.of(2)),
+   *   2.5
+   * )
+   *
+   * // The following throws DivisionByZeroError
+   * assert.throws(() =>
+   *   NaturalNumber.unsafeDivide(NaturalNumber.of(6), NaturalNumber.zero)
+   * )
+   * ```
+   *
+   * @param dividend - The `NaturalNumber` to be divided.
+   * @param divisor - The `NaturalNumber` by which the dividend is divided.
+   * @returns The quotient of the division as a `number`.
+   * @throws - A {@link module:Number.DivisionByZeroError} if the divisor is
+   *   zero.
+   */
+  (dividend: NaturalNumber, divisor: NaturalNumber): number
+} = dual(2, (dividend: NaturalNumber, divisor: NaturalNumber): number => internal.unsafeDivide(dividend, divisor))
