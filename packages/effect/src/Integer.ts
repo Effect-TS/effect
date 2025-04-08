@@ -4,7 +4,7 @@
  * This module provides operations for working with integers (ℤ = {..., -3, -2,
  * -1, 0, 1, 2, 3, ...}).
  *
- * @module Int
+ * @module Integer
  * @since 3.14.6
  * @experimental
  * @internal
@@ -24,19 +24,19 @@ import * as _Predicate from "./Predicate.js"
 /**
  * A type representing signed integers.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Type
  * @example
  *
  * ```ts
- * import { Int } from "effect"
+ * import { Integer } from "effect"
  *
- * function onlyInts(int: Int.Int): void {
+ * function onlyInts(int: Integer.Integer): void {
  *   //... stuff for only integers fans
  * }
  *
- * onlyInts(Int.of(1)) // ok
+ * onlyInts(Integer.of(1)) // ok
  *
  * // @ts-expect-error - This will fail because 1.5 is not an integer
  * onlyInts(1.5)
@@ -44,62 +44,71 @@ import * as _Predicate from "./Predicate.js"
  *
  * @experimental
  */
-export type Int = internal.Int
+export type Integer = internal.Integer
 
 /**
- * Lift a number in the set of integers, and brands it as an `Int`.
+ * Nominal type representing `NaN` (Not a Number).
  *
- * @memberof Int
+ * @memberof Integer
+ * @category Type
+ * @since 3.14.6
+ */
+export type NaN = internal.NaN
+
+/**
+ * Lift a number in the set of integers, and brands it as an `Integer`.
+ *
+ * @memberof Integer
  * @since 3.14.6
  * @category Constructors
  * @example
  *
  * ```ts
- * import * as Int from "effect/Int"
+ * import * as Integer from "effect/Integer"
  * import assert from "node:assert/strict"
  *
  * const aFloat = 1.5
  *
  * assert.throws(() => {
- *   Int.of(aFloat)
+ *   Integer.of(aFloat)
  * }, `Expected ${aFloat} to be an integer`)
  * ```
  *
  * @param n - The number to be lifted in the set of Integers .
- * @returns A Int branded type.
+ * @returns A Integer branded type.
  * @experimental
  */
 export const of: {
-  (n: number): Int
-} = (n) => internal.IntConstructor(n)
+  (n: number): Integer
+} = (n) => internal.IntegerConstructor(n)
 
 /**
- * Lift a `number` in the set of `Option<Int>`, and brands it as an `Int` if the
- * provided number is a valid integer.
+ * Lift a `number` in the set of `Option<Integer>`, and brands it as an
+ * `Integer` if the provided number is a valid integer.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Constructors
  * @example
  *
  * ```ts
- * import { Int, Option, pipe } from "effect"
+ * import { Integer, Option, pipe } from "effect"
  * import * as assert from "node:assert/strict"
  *
- * // Valid integers return Some<Int>
- * assert.deepStrictEqual(Int.option(42), Option.some(Int.of(42)))
- * assert.deepStrictEqual(Int.option(0), Option.some(Int.zero))
- * assert.deepStrictEqual(Int.option(-7), Option.some(Int.of(-7)))
+ * // Valid integers return Some<Integer>
+ * assert.deepStrictEqual(Integer.option(42), Option.some(Integer.of(42)))
+ * assert.deepStrictEqual(Integer.option(0), Option.some(Integer.zero))
+ * assert.deepStrictEqual(Integer.option(-7), Option.some(Integer.of(-7)))
  *
  * // Non-integers return None
- * assert.deepStrictEqual(Int.option(3.14), Option.none())
- * assert.deepStrictEqual(Int.option(Number.NaN), Option.none())
+ * assert.deepStrictEqual(Integer.option(3.14), Option.none())
+ * assert.deepStrictEqual(Integer.option(Number.NaN), Option.none())
  *
  * // Safe operations on potentially non-integer values
  * const safelyDouble = (n: number) =>
  *   pipe(
- *     Int.option(n),
- *     Option.map((int) => Int.multiply(int, Int.of(2)))
+ *     Integer.option(n),
+ *     Option.map((int) => Integer.multiply(int, Integer.of(2)))
  *   )
  *
  * assert.deepStrictEqual(safelyDouble(5), Option.some(10))
@@ -108,7 +117,7 @@ export const of: {
  * // Handling both cases with Option.match
  * const processNumber = (n: number) =>
  *   pipe(
- *     Int.option(n),
+ *     Integer.option(n),
  *     Option.match({
  *       onNone: () => "Not an integer",
  *       onSome: (int) => `Integer: ${int}`
@@ -119,36 +128,36 @@ export const of: {
  * assert.equal(processNumber(4.2), "Not an integer")
  * ```
  *
- * @param n - The `number` to convert to an `Int`
- * @returns An `Option` containing the `Int` if valid, `None` otherwise
+ * @param n - The `number` to convert to an `Integer`
+ * @returns An `Option` containing the `Integer` if valid, `None` otherwise
  * @experimental
  */
-export const option: (n: number) => _Option.Option<Int> = internal.IntConstructor.option
+export const option: (n: number) => _Option.Option<Integer> = internal.IntegerConstructor.option
 
 /**
- * Lift a `number` in the set of `Either.Right<Int>` if the number is a valid
- * Int, `Either.Left<BrandError>` otherwise.
+ * Lift a `number` in the set of `Either.Right<Integer>` if the number is a
+ * valid Integer, `Either.Left<BrandError>` otherwise.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Constructors
  * @example
  *
  * ```ts
- * import { Either, Int, Option, pipe } from "effect"
+ * import { Either, Integer, Option, pipe } from "effect"
  * import * as assert from "node:assert/strict"
  *
- * // Valid integers return Right<Int>
- * assert.deepStrictEqual(Int.either(42), Either.right(Int.of(42)))
- * assert.deepStrictEqual(Int.either(0), Either.right(Int.zero))
- * assert.deepStrictEqual(Int.either(-7), Either.right(Int.of(-7)))
+ * // Valid integers return Right<Integer>
+ * assert.deepStrictEqual(Integer.either(42), Either.right(Integer.of(42)))
+ * assert.deepStrictEqual(Integer.either(0), Either.right(Integer.zero))
+ * assert.deepStrictEqual(Integer.either(-7), Either.right(Integer.of(-7)))
  *
  * // Non-integers return Left<BrandErrors>
- * assert.equal(Either.isLeft(Int.either(3.14)), true)
- * assert.equal(Either.isLeft(Int.either(Number.NaN)), true)
+ * assert.equal(Either.isLeft(Integer.either(3.14)), true)
+ * assert.equal(Either.isLeft(Integer.either(Number.NaN)), true)
  *
  * const Pi = 3.14
- * const floatResult = Int.either(Pi)
+ * const floatResult = Integer.either(Pi)
  * if (Either.isLeft(floatResult)) {
  *   assert.deepEqual(
  *     pipe(
@@ -163,8 +172,8 @@ export const option: (n: number) => _Option.Option<Int> = internal.IntConstructo
  * // Map over valid integers
  * const doubleIfValid = (n: number) =>
  *   pipe(
- *     Int.either(n),
- *     Either.map((int) => Int.multiply(int, Int.of(2)))
+ *     Integer.either(n),
+ *     Either.map((int) => Integer.multiply(int, Integer.of(2)))
  *   )
  *
  * assert.deepStrictEqual(doubleIfValid(5), Either.right(10))
@@ -173,7 +182,7 @@ export const option: (n: number) => _Option.Option<Int> = internal.IntConstructo
  * // Handle both cases with Either.match
  * const processNumber = (n: number): string =>
  *   pipe(
- *     Int.either(n),
+ *     Integer.either(n),
  *     Either.match({
  *       onLeft: ([{ message }]) => `Error: ${message}`,
  *       onRight: (int) => `Valid integer: ${int}`
@@ -183,75 +192,77 @@ export const option: (n: number) => _Option.Option<Int> = internal.IntConstructo
  * assert.equal(processNumber(42), "Valid integer: 42")
  * ```
  *
- * @param n - The number to convert to an Int
- * @returns An `Either` containing the `Int` if valid, or `BrandErrors` if
+ * @param n - The number to convert to an Integer
+ * @returns An `Either` containing the `Integer` if valid, or `BrandErrors` if
  *   invalid
  * @experimental
  */
 export const either: (
   n: number
-) => Either.Either<Int, Brand.Brand.BrandErrors> = internal.IntConstructor.either
+) => Either.Either<Integer, Brand.Brand.BrandErrors> = internal.IntegerConstructor.either
 
 /**
- * Constant of `Int<0>`
+ * Constant of `Integer<0>`
  *
+ * @memberof Integer
  * @since 3.14.6
  * @category Constants
  * @experimental
  */
-export const zero: Int = internal.zero
+export const zero: Integer = internal.zero
 
 /**
- * Constant of `Int<1>`
+ * Constant of `Integer<1>`
  *
+ * @memberof Integer
  * @since 3.14.6
  * @category Constants
  * @experimental
  */
-export const one: Int = internal.one
+export const one: Integer = internal.one
 
 /**
- * Type guard to test if a value is an `Int`.
+ * Type guard to test if a value is an `Integer`.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Guards
  * @example
  *
  * ```ts
- * import { Int } from "effect"
+ * import * as Integer from "effect/Integer"
  * import assert from "node:assert/strict"
  *
- * assert.equal(Int.isInt(1), true)
+ * assert.equal(Integer.isInt(1), true)
  *
  * const definitelyAFloat = 1.5
- * let anInt: Int.Int
- * if (Int.isInt(definitelyAFloat)) {
+ * let anInt: Integer.Integer
+ * if (Integer.isInt(definitelyAFloat)) {
  *   // this is not erroring even if it is absurd because at the type level this is totally fine
- *   // we can assign a float to an `Int` because we have passed through the `Int.isInt` type guard
+ *   // we can assign a float to an `Integer` because we have passed through the `Integer.isInt` type guard
  *   // by the way, this branch is unreachable at runtime!
  *   anInt = definitelyAFloat
  * }
  *
- * assert.equal(Int.isInt(definitelyAFloat), false)
- * assert.equal(Int.isInt("a"), false)
- * assert.equal(Int.isInt(true), false)
+ * assert.equal(Integer.isInt(definitelyAFloat), false)
+ * assert.equal(Integer.isInt("a"), false)
+ * assert.equal(Integer.isInt(true), false)
  * ```
  *
  * @param input - The value to test.
- * @returns `true` if the value is an `Int`, `false` otherwise.
+ * @returns `true` if the value is an `Integer`, `false` otherwise.
  * @experimental
  */
-export const isInt: _Predicate.Refinement<unknown, Int> = (input) =>
-  _Predicate.isNumber(input) && internal.IntConstructor.is(input)
+export const isInteger: _Predicate.Refinement<unknown, Integer> = (input) =>
+  _Predicate.isNumber(input) && internal.IntegerConstructor.is(input)
 
 /**
- * Provides an addition operation on `Int`.
+ * Provides an addition operation on `Integer`.
  *
  * It supports multiple method signatures, allowing for both curried and direct
  * invocation styles with integers and floating-point numbers.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @experimental
@@ -277,7 +288,7 @@ export const sum: {
    * )
    * ```
    */
-  (that: Int): (self: Int) => Int
+  (that: Integer): (self: Integer) => Integer
 
   /**
    * **data first api**
@@ -289,13 +300,13 @@ export const sum: {
    * assert.equal(Int.add(Int.of(10), Int.of(-10)), Int.zero)
    * ```
    */
-  (self: Int, that: Int): Int
-} = dual(2, (self: Int, that: Int): Int => internal.sum(self, that))
+  (self: Integer, that: Integer): Integer
+} = dual(2, (self: Integer, that: Integer): Integer => internal.sum(self, that))
 
 /**
- * Provides a subtraction operation on `Int`s.
+ * Provides a subtraction operation on `Integer`s.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @experimental
@@ -319,7 +330,7 @@ export const subtract: {
    * @returns A function that takes a `minuend` and returns the `difference` of
    *   subtracting the `subtrahend` from it.
    */
-  (subtrahend: Int): (minuend: Int) => Int
+  (subtrahend: Integer): (minuend: Integer) => Integer
 
   /**
    * Subtracts the `subtrahend` from the `minuend` and returns the difference.
@@ -341,16 +352,16 @@ export const subtract: {
    * @param subtrahend - The integer to subtract from the minuend.
    * @returns The difference of subtracting the subtrahend from the minuend.
    */
-  (minuend: Int, subtrahend: Int): Int
+  (minuend: Integer, subtrahend: Integer): Integer
 } = dual(
   2,
-  (minuend: Int, subtrahend: Int): Int => internal.subtract(minuend, subtrahend)
+  (minuend: Integer, subtrahend: Integer): Integer => internal.subtract(minuend, subtrahend)
 )
 
 /**
- * Provides a multiplication operation on `Int`s.
+ * Provides a multiplication operation on `Integer`s.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @experimental
@@ -380,7 +391,7 @@ export const multiply: {
    * @returns A function that takes a `multiplier` and returns the `product` of
    *   multiplying the `multiplier` with the `multiplicand`.
    */
-  (multiplicand: Int): (multiplier: Int) => Int
+  (multiplicand: Integer): (multiplier: Integer) => Integer
 
   /**
    * Multiplies two integers and returns the resulting `product`.
@@ -401,19 +412,19 @@ export const multiply: {
    * @param multiplicand - The second integer to multiply.
    * @returns The `product` of the multiplier and the multiplicand.
    */
-  (multiplier: Int, multiplicand: Int): Int
+  (multiplier: Integer, multiplicand: Integer): Integer
 } = dual(
   2,
-  (multiplier: Int, multiplicand: Int): Int => internal.multiply(multiplier, multiplicand)
+  (multiplier: Integer, multiplicand: Integer): Integer => internal.multiply(multiplier, multiplicand)
 )
 
 /**
- * Provides a division operation on `Int`s.
+ * Provides a division operation on `Integer`s.
  *
  * It returns an `Option` containing the quotient of the division if valid,
  * otherwise `None`.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @experimental
@@ -440,7 +451,7 @@ export const divide: {
    *   representing the result of the division. Returns `None` if division by
    *   zero is attempted; Otherwise, returns `Some<number>` with the result.
    */
-  (divisor: Int): (dividend: Int) => _Option.Option<number>
+  (divisor: Integer): (dividend: Integer) => _Option.Option<number>
 
   /**
    * Divides the `dividend` by the `divisor` and returns an `Option` containing
@@ -464,16 +475,16 @@ export const divide: {
    * @returns An `Option` containing the quotient of the division if valid,
    *   otherwise `None`.
    */
-  (dividend: Int, divisor: Int): _Option.Option<number>
+  (dividend: Integer, divisor: Integer): _Option.Option<number>
 } = dual(
   2,
-  (dividend: Int, divisor: Int): _Option.Option<number> => _Number.divide(dividend, divisor)
+  (dividend: Integer, divisor: Integer): _Option.Option<number> => _Number.divide(dividend, divisor)
 )
 
 /**
  * Represents errors that can occur during integer division operations.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Errors
  * @experimental
@@ -481,17 +492,18 @@ export const divide: {
 export const DivisionByZeroError = internal.DivisionByZeroError
 
 /**
- * Performs an unsafe division of two `Int`'s, returning the `quotient` which
- * type is widened to a `number`.
+ * Performs an unsafe division of two `Integer`'s, returning the `quotient`
+ * which type is widened to a `number`.
  *
  * As the name suggests, **this operation may throw an
- * {@link module:Int.DivisionByZeroError}** if the `divisor` is zero, resulting
- * in either a division by zero or an indeterminate form.
+ * {@link module:Integer.DivisionByZeroError}** if the `divisor` is zero,
+ * resulting in either a division by zero or an indeterminate form.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
- * @throws - An {@link module:Int.DivisionByZeroError} if the divisor is zero.
+ * @throws - An {@link module:Integer.DivisionByZeroError} if the divisor is
+ *   zero.
  * @experimental
  */
 export const unsafeDivide: {
@@ -501,37 +513,37 @@ export const unsafeDivide: {
    * @example
    *
    * ```ts
-   * import { Int, pipe } from "effect"
+   * import { Integer, pipe } from "effect"
    * import * as assert from "node:assert/strict"
    *
    * assert.equal(
    *   pipe(
-   *     Int.of(6), //
-   *     Int.unsafeDivide(Int.of(2))
+   *     Integer.of(6), //
+   *     Integer.unsafeDivide(Integer.of(2))
    *   ),
    *   3
    * )
    *
    * assert.throws(() =>
    *   pipe(
-   *     Int.of(6),
-   *     Int.unsafeDivide(Int.zero) // throws IntegerDivisionError
+   *     Integer.of(6),
+   *     Integer.unsafeDivide(Integer.zero) // throws IntegerDivisionError
    *   )
    * )
    * assert.throws(() =>
    *   pipe(
-   *     Int.zero,
-   *     Int.unsafeDivide(Int.zero) // throws IntegerDivisionError
+   *     Integer.zero,
+   *     Integer.unsafeDivide(Integer.zero) // throws IntegerDivisionError
    *   )
    * )
    * ```
    *
-   * @param divisor - The `Int` by which the `dividend` will be divided.
+   * @param divisor - The `Integer` by which the `dividend` will be divided.
    * @returns A function that takes a `dividend` and returns the quotient, which
    *   is a `number`. This operation may throw an
-   *   {@link module:Int.DivisionByZeroError} if the divisor is zero.
+   *   {@link module:Integer.DivisionByZeroError} if the divisor is zero.
    */
-  (divisor: Int): (dividend: Int) => number
+  (divisor: Integer): (dividend: Integer) => number
 
   /**
    * Divides the `dividend` by the `divisor`.
@@ -539,150 +551,158 @@ export const unsafeDivide: {
    * @example
    *
    * ```ts
-   * import { Int } from "effect"
+   * import { Integer } from "effect"
    * import * as assert from "node:assert/strict"
    *
-   * assert.equal(Int.unsafeDivide(Int.of(6), Int.of(2)), 3)
+   * assert.equal(Integer.unsafeDivide(Integer.of(6), Integer.of(2)), 3)
    *
-   * assert.throws(() => Int.unsafeDivide(Int.of(6), Int.of(0))) // throws IntegerDivisionError
-   * assert.throws(() => Int.unsafeDivide(Int.of(0), Int.of(0))) // throws IntegerDivisionError
+   * assert.throws(() => Integer.unsafeDivide(Integer.of(6), Integer.of(0))) // throws IntegerDivisionError
+   * assert.throws(() => Integer.unsafeDivide(Integer.of(0), Integer.of(0))) // throws IntegerDivisionError
    * ```
    *
-   * @param dividend - The `Int` to be divided.
-   * @param divisor - The `Int` by which the dividend is divided.
+   * @param dividend - The `Integer` to be divided.
+   * @param divisor - The `Integer` by which the dividend is divided.
    * @returns The quotient of the division, which is a `number`.
-   * @throws - An {@link module:Int.DivisionByZeroError} if the divisor is zero.
+   * @throws - An {@link module:Integer.DivisionByZeroError} if the divisor is
+   *   zero.
    */
-  (dividend: Int, divisor: Int): number
-} = dual(2, (dividend: Int, divisor: Int): number => internal.unsafeDivide(dividend, divisor))
+  (dividend: Integer, divisor: Integer): number
+} = dual(2, (dividend: Integer, divisor: Integer): number => internal.unsafeDivide(dividend, divisor))
 
 /**
- * Returns the result of adding one {@link module:Int.one} to the given `Int`.
+ * Returns the result of adding one {@link module:Integer.one} to the given
+ * `Integer`.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @example
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Int, pipe } from "effect"
+ * import { Integer, pipe } from "effect"
  *
- * assert.strictEqual(Int.increment(Int.of(1)), Int.of(2))
+ * assert.strictEqual(Integer.increment(Integer.of(1)), Integer.of(2))
  *
  * assert.strictEqual(
  *   pipe(
- *     Int.of(1),
- *     Int.increment,
- *     Int.increment,
- *     Int.increment,
- *     Int.increment
+ *     Integer.of(1),
+ *     Integer.increment,
+ *     Integer.increment,
+ *     Integer.increment,
+ *     Integer.increment
  *   ),
- *   Int.of(5)
+ *   Integer.of(5)
  * )
  * ```
  *
  * @param n - The integer value to be incremented.
- * @returns The incremented value by one Int as an `Int`.
+ * @returns The incremented value by one Integer as an `Integer`.
  * @experimental
  */
-export const increment: (n: Int) => Int = internal.increment
+export const increment: (n: Integer) => Integer = internal.increment
 
 /**
- * Returns the result of decrementing by one {@link module:Int.one} to the given
- * `Int`.
+ * Returns the result of decrementing by one {@link module:Integer.one} to the
+ * given `Integer`.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @example
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Int, pipe } from "effect"
+ * import { Integer, pipe } from "effect"
  *
- * assert.strictEqual(Int.decrement(Int.of(-100)), Int.of(-101))
+ * assert.strictEqual(Integer.decrement(Integer.of(-100)), Integer.of(-101))
  *
  * assert.strictEqual(
  *   pipe(
- *     Int.of(100),
- *     Int.decrement,
- *     Int.decrement,
- *     Int.decrement,
- *     Int.decrement
+ *     Integer.of(100),
+ *     Integer.decrement,
+ *     Integer.decrement,
+ *     Integer.decrement,
+ *     Integer.decrement
  *   ),
- *   Int.of(96)
+ *   Integer.of(96)
  * )
  * ```
  *
- * @param n - The `Int` to be decremented.
- * @returns The decremented value by one Int as an `Int`.
+ * @param n - The `Integer` to be decremented.
+ * @returns The decremented value by one Integer as an `Integer`.
  * @experimental
  */
-export const decrement: (n: Int) => Int = internal.decrement
+export const decrement: (n: Integer) => Integer = internal.decrement
 
 /**
- * Type class instance of `Equivalence` for `Int`.
+ * Type class instance of `Equivalence` for `Integer`.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Instances
  * @example
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Int } from "effect"
+ * import { Integer } from "effect"
  *
- * assert.equal(Int.Equivalence(Int.of(1), Int.of(1)), true)
- * assert.equal(Int.Equivalence(Int.of(1), Int.of(2)), false)
+ * assert.equal(Integer.Equivalence(Integer.of(1), Integer.of(1)), true)
+ * assert.equal(Integer.Equivalence(Integer.of(1), Integer.of(2)), false)
  * ```
  *
  * @experimental
  */
-export const Equivalence: _Equivalence.Equivalence<Int> = _Equivalence.number
+export const Equivalence: _Equivalence.Equivalence<Integer> = _Equivalence.number
 
 /**
- * Type class instance of `Order` for `Int`.
+ * Type class instance of `Order` for `Integer`.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Instances
  * @example
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Int } from "effect"
+ * import { Integer } from "effect"
  *
- * assert.equal(Int.Order(Int.of(-1), Int.of(2)), -1)
+ * assert.equal(Integer.Order(Integer.of(-1), Integer.of(2)), -1)
  *
- * assert.equal(Int.Order(Int.of(2), Int.of(2)), 0)
+ * assert.equal(Integer.Order(Integer.of(2), Integer.of(2)), 0)
  *
- * assert.equal(Int.Order(Int.of(2), Int.of(-1)), 1)
+ * assert.equal(Integer.Order(Integer.of(2), Integer.of(-1)), 1)
  * ```
  *
- * @param self - The first `Int` to compare.
- * @param that - The second `Int` to compare.
+ * @param self - The first `Integer` to compare.
+ * @param that - The second `Integer` to compare.
  * @returns -1 if `self` is less than `that`, 0 if they are equal, and 1 if
  * @experimental
  */
-export const Order: _Order.Order<Int> = _Order.number
+export const Order: _Order.Order<Integer> = _Order.number
 
 /**
  * Returns `true` if the first argument is less than the second, otherwise
  * `false`.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Predicates
  * @example
  *
  * ```ts
  * import * as assert from "node:assert"
- * import { Int, pipe } from "effect"
+ * import { Integer, pipe } from "effect"
  *
- * assert.deepStrictEqual(Int.lessThan(Int.of(2), Int.of(3)), true)
+ * assert.deepStrictEqual(
+ *   Integer.lessThan(Integer.of(2), Integer.of(3)),
+ *   true
+ * )
  *
- * assert.deepStrictEqual(pipe(Int.of(3), Int.lessThan(Int.of(3))), false)
+ * assert.deepStrictEqual(
+ *   pipe(Integer.of(3), Integer.lessThan(Integer.of(3))),
+ *   false
+ * )
  * ```
  *
  * @experimental
@@ -720,7 +740,7 @@ export const lessThan: {
    * )
    * ```
    */
-  (that: Int): (self: Int) => boolean
+  (that: Integer): (self: Integer) => boolean
 
   /**
    * @example
@@ -736,31 +756,31 @@ export const lessThan: {
    * assert.deepStrictEqual(Int.lessThan(Int.of(4), Int.of(3)), false)
    * ```
    */
-  (self: Int, that: Int): boolean
+  (self: Integer, that: Integer): boolean
 } = _Order.lessThan(Order)
 
 /**
- * Returns a function that checks if a given `Int` is less than or equal to the
- * provided one.
+ * Returns a function that checks if a given `Integer` is less than or equal to
+ * the provided one.
  *
  * **Syntax**
  *
  * ```ts
- * import { Int, pipe } from "effect"
+ * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
  *
  * assert.equal(
  *   pipe(
  *     // data-last api
- *     Int.of(2),
- *     Int.lessThanOrEqualTo(Int.of(3))
+ *     Integer.of(2),
+ *     Integer.lessThanOrEqualTo(Integer.of(3))
  *   ),
  *   // data-first api
- *   Int.lessThanOrEqualTo(Int.of(2), Int.of(3))
+ *   Integer.lessThanOrEqualTo(Integer.of(2), Integer.of(3))
  * )
  * ```
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Predicates
  * @experimental
@@ -803,7 +823,7 @@ export const lessThanOrEqualTo: {
    * @returns A function that takes a `self` and returns `true` if `self` is
    *   less than or equal to `that`, otherwise `false`.
    */
-  (that: Int): (self: Int) => boolean
+  (that: Integer): (self: Integer) => boolean
 
   /**
    * @example
@@ -833,31 +853,31 @@ export const lessThanOrEqualTo: {
    * @returns `true` if `self` is less than or equal to `that`, otherwise
    *   `false`.
    */
-  (self: Int, that: Int): boolean
+  (self: Integer, that: Integer): boolean
 } = _Order.lessThanOrEqualTo(Order)
 
 /**
- * Returns `true` if the first `Int` is greater than the second `Int`, otherwise
- * `false`.
+ * Returns `true` if the first `Integer` is greater than the second `Integer`,
+ * otherwise `false`.
  *
  * **Syntax**
  *
  * ```ts
- * import { Int, pipe } from "effect"
+ * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
  *
  * assert.equal(
  *   pipe(
  *     // data-last api
- *     Int.of(3),
- *     Int.greaterThan(Int.of(2))
+ *     Integer.of(3),
+ *     Integer.greaterThan(Integer.of(2))
  *   ),
  *   // data-first api
- *   Int.greaterThan(Int.of(3), Int.of(2))
+ *   Integer.greaterThan(Integer.of(3), Integer.of(2))
  * )
  * ```
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Predicates
  * @experimental
@@ -882,7 +902,7 @@ export const greaterThan: {
    * @returns A function that takes a `self` and returns `true` if `self` is
    *   greater than `that`, otherwise `false`.
    */
-  (that: Int): (self: Int) => boolean
+  (that: Integer): (self: Integer) => boolean
 
   /**
    * @example
@@ -902,31 +922,31 @@ export const greaterThan: {
    * @param that - The second `Int` value to compare.
    * @returns A `boolean` indicating whether `self` was greater than `that`.
    */
-  (self: Int, that: Int): boolean
+  (self: Integer, that: Integer): boolean
 } = _Order.greaterThan(Order)
 
 /**
- * Returns a function that checks if a given `Int` is greater than or equal to
- * the provided one.
+ * Returns a function that checks if a given `Integer` is greater than or equal
+ * to the provided one.
  *
  * **Syntax**
  *
  * ```ts
- * import { Int, pipe } from "effect"
+ * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
  *
  * assert.equal(
  *   pipe(
  *     // data-last api
- *     Int.of(3),
- *     Int.greaterThanOrEqualTo(Int.of(2))
+ *     Integer.of(3),
+ *     Integer.greaterThanOrEqualTo(Integer.of(2))
  *   ),
  *   // data-first api
- *   Int.greaterThanOrEqualTo(Int.of(3), Int.of(2))
+ *   Integer.greaterThanOrEqualTo(Integer.of(3), Integer.of(2))
  * )
  * ```
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Predicates
  * @experimental
@@ -966,7 +986,7 @@ export const greaterThanOrEqualTo: {
    * @returns A function that takes a `self` and returns `true` if `self` is
    *   greater than or equal to `that`, otherwise `false`.
    */
-  (that: Int): (self: Int) => boolean
+  (that: Integer): (self: Integer) => boolean
 
   /**
    * @example
@@ -990,30 +1010,33 @@ export const greaterThanOrEqualTo: {
    * @returns `true` if `self` is greater than or equal to `that`, otherwise
    *   `false`.
    */
-  (self: Int, that: Int): boolean
+  (self: Integer, that: Integer): boolean
 } = _Order.greaterThanOrEqualTo(Order)
 
 /**
- * Checks if a `Int` is between a minimum and maximum value (inclusive).
+ * Checks if a `Integer` is between a minimum and maximum value (inclusive).
  *
  * **Syntax**
  *
  * ```ts
- * import { Int, pipe } from "effect"
+ * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
  *
  * assert.equal(
  *   // data-last api
  *   pipe(
- *     Int.of(3),
- *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+ *     Integer.of(3),
+ *     Integer.between({ minimum: Integer.of(0), maximum: Integer.of(5) })
  *   ),
  *   // data-first api
- *   Int.between(Int.of(3), { minimum: Int.of(0), maximum: Int.of(5) })
+ *   Integer.between(Integer.of(3), {
+ *     minimum: Integer.of(0),
+ *     maximum: Integer.of(5)
+ *   })
  * )
  * ```
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Predicates
  * @experimental
@@ -1074,7 +1097,7 @@ export const between: {
    *   between the `minimum` and `maximum` values (inclusive), otherwise
    *   `false`.
    */
-  (options: { minimum: Int; maximum: Int }): (self: Int) => boolean
+  (options: { minimum: Integer; maximum: Integer }): (self: Integer) => boolean
 
   /**
    * @example
@@ -1117,39 +1140,45 @@ export const between: {
    *   (inclusive), otherwise `false`.
    */
   (
-    self: Int,
+    self: Integer,
     options: {
-      minimum: Int
-      maximum: Int
+      minimum: Integer
+      maximum: Integer
     }
   ): boolean
 } = _Order.between(Order)
 
 /**
- * Restricts the given `Int` to be within the range specified by the `minimum`
- * and `maximum` values.
+ * Restricts the given `Integer` to be within the range specified by the
+ * `minimum` and `maximum` values.
  *
- * - If the `Int` is less than the `minimum` value, the function returns the
+ * - If the `Integer` is less than the `minimum` value, the function returns the
  *   `minimum` value.
- * - If the `Int` is greater than the `maximum` value, the function returns the
- *   `maximum` value.
- * - Otherwise, it returns the original `Int`.
+ * - If the `Integer` is greater than the `maximum` value, the function returns
+ *   the `maximum` value.
+ * - Otherwise, it returns the original `Integer`.
  *
  * **Syntax**
  *
  * ```ts
- * import { Int, pipe } from "effect"
+ * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
  *
  * assert.equal(
  *   // data-last api
- *   pipe(Int.of(3), Int.clamp({ minimum: Int.of(0), maximum: Int.of(5) })),
+ *   pipe(
+ *     Integer.of(3),
+ *     Integer.clamp({ minimum: Integer.of(0), maximum: Integer.of(5) })
+ *   ),
  *   // data-first api
- *   Int.clamp(Int.of(3), { minimum: Int.of(0), maximum: Int.of(5) })
+ *   Integer.clamp(Integer.of(3), {
+ *     minimum: Integer.of(0),
+ *     maximum: Integer.of(5)
+ *   })
  * )
  * ```
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @experimental
  */
@@ -1185,7 +1214,7 @@ export const clamp: {
    * @returns A function that takes a `self` and returns the clamped `Int`
    *   value.
    */
-  (options: { minimum: Int; maximum: Int }): (self: Int) => Int
+  (options: { minimum: Integer; maximum: Integer }): (self: Integer) => Integer
 
   /**
    * @example
@@ -1210,38 +1239,38 @@ export const clamp: {
    * @returns The clamped `Int` value.
    */
   (
-    self: Int,
+    self: Integer,
     options: {
-      minimum: Int
-      maximum: Int
+      minimum: Integer
+      maximum: Integer
     }
-  ): Int
+  ): Integer
 } = _Order.clamp(Order)
 
 /**
- * Returns the minimum between two `Int`s.
+ * Returns the minimum between two `Integer`s.
  *
- * `Int.min` is a `commutative` operation; this means that the order in which
- * the arguments are provided does not affect the result.
+ * `Integer.min` is a `commutative` operation; this means that the order in
+ * which the arguments are provided does not affect the result.
  *
  * **Syntax**
  *
  * ```ts
- * import { Int, pipe } from "effect"
+ * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
  *
- * const three = Int.of(3)
- * const five = Int.of(5)
+ * const three = Integer.of(3)
+ * const five = Integer.of(5)
  *
  * assert.equal(
  *   // data-last api
- *   pipe(three, Int.min(five)),
+ *   pipe(three, Integer.min(five)),
  *   // data-first api
- *   Int.min(three, five) // returns three
+ *   Integer.min(three, five) // returns three
  * )
  * ```
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @experimental
  */
@@ -1268,7 +1297,7 @@ export const min: {
    * @returns A function that takes a `self` and returns the minimum of the two
    *   `Int`s (`self` | `that`).
    */
-  (that: Int): (self: Int) => Int
+  (that: Integer): (self: Integer) => Integer
 
   /**
    * @example
@@ -1291,30 +1320,30 @@ export const min: {
    * @param that - The second `Int` to compare.
    * @returns The minimum of the two `Int`s (`self` | `that`).
    */
-  (self: Int, that: Int): Int
+  (self: Integer, that: Integer): Integer
 } = _Order.min(Order)
 
 /**
- * Returns the maximum between two `Int`s.
+ * Returns the maximum between two `Integer`s.
  *
  * **Syntax**
  *
  * ```ts
- * import { Int, pipe } from "effect"
+ * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
  *
- * const negativeTwo = Int.of(-2)
- * const three = Int.of(3)
+ * const negativeTwo = Integer.of(-2)
+ * const three = Integer.of(3)
  *
  * assert.equal(
  *   // data-last api
- *   Int.max(negativeTwo, three), // returns 3
+ *   Integer.max(negativeTwo, three), // returns 3
  *   // data-first api
- *   pipe(negativeTwo, Int.max(three)) // returns 3
+ *   pipe(negativeTwo, Integer.max(three)) // returns 3
  * )
  * ```
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @experimental
  */
@@ -1347,7 +1376,7 @@ export const max: {
    * @returns A function that takes a `self` and returns the maximum of the two
    *   `Int`s (`self` | `that`).
    */
-  (that: Int): (self: Int) => Int
+  (that: Integer): (self: Integer) => Integer
 
   /**
    * @example
@@ -1367,84 +1396,89 @@ export const max: {
    * @param that - The second `Int` to compare.
    * @returns The maximum of the two `Int`s (`self` | `that`).
    */
-  (self: Int, that: Int): Int
+  (self: Integer, that: Integer): Integer
 } = _Order.max(Order)
 
 /**
- * Determines the sign of a given `Int`.
+ * Determines the sign of a given `Integer`.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @example
  *
  * ```ts
- * import { Int } from "effect"
+ * import { Integer } from "effect"
  * import * as assert from "node:assert/strict"
  *
- * assert.equal(Int.sign(Int.of(-10)), -1)
- * assert.equal(Int.sign(Int.of(0)), 0)
- * assert.equal(Int.sign(Int.of(10)), 1)
+ * assert.equal(Integer.sign(Integer.of(-10)), -1)
+ * assert.equal(Integer.sign(Integer.of(0)), 0)
+ * assert.equal(Integer.sign(Integer.of(10)), 1)
  * ```
  *
- * @param n - The `Int` to determine the sign of.
+ * @param n - The `Integer` to determine the sign of.
  * @returns -1 if `n` is negative, 0 if `n` is zero, and 1 if `n` is positive.
  * @experimental
  */
-export const sign: (n: Int) => Ordering = (n) => Order(n, zero)
+export const sign: (n: Integer) => Ordering = (n) => Order(n, zero)
 
 /**
- * Takes an `Iterable` of `Int`s and returns their sum as a single `Int`.
+ * Takes an `Iterable` of `Integer`s and returns their sum as a single
+ * `Integer`.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @example
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Int, HashSet } from "effect"
+ * import { Integer, HashSet } from "effect"
  *
  * assert.equal(
- *   Int.sumAll(HashSet.make(Int.of(-2), Int.of(-3), Int.of(4))), //
- *   Int.of(-1)
+ *   Integer.sumAll(
+ *     HashSet.make(Integer.of(-2), Integer.of(-3), Integer.of(4))
+ *   ), //
+ *   Integer.of(-1)
  * )
  * ```
  *
- * @param collection - An `Iterable<Int>` to reduce to a sum.
- * @returns The sum of the `Int`s in the `Iterable`.
+ * @param collection - An `Iterable<Integer>` to reduce to a sum.
+ * @returns The sum of the `Integer`s in the `Iterable`.
  * @experimental
  */
 export const sumAll: {
-  (collection: Iterable<Int>): Int
-} = internal.sumAll<Int>
+  (collection: Iterable<Integer>): Integer
+} = internal.sumAll<Integer>
 
 /**
- * Takes an `Iterable` of `Int`s and returns their multiplication as a single
- * `Int`.
+ * Takes an `Iterable` of `Integer`s and returns their multiplication as a
+ * single `Integer`.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @example
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Int, HashSet } from "effect"
+ * import { Integer, HashSet } from "effect"
  *
  * assert.equal(
- *   Int.multiplyAll(HashSet.make(Int.of(-2), Int.of(-3), Int.of(4))), //
- *   Int.of(24)
+ *   Integer.multiplyAll(
+ *     HashSet.make(Integer.of(-2), Integer.of(-3), Integer.of(4))
+ *   ), //
+ *   Integer.of(24)
  * )
  * ```
  *
- * @param collection - An `Iterable<Int>` to reduce to a product.
- * @returns The product of the `Int`s in the `Iterable`.
+ * @param collection - An `Iterable<Integer>` to reduce to a product.
+ * @returns The product of the `Integer`s in the `Iterable`.
  * @experimental
  */
 export const multiplyAll: {
-  (collection: Iterable<Int>): Int
-} = internal.multiplyAll<Int>
+  (collection: Iterable<Integer>): Integer
+} = internal.multiplyAll<Integer>
 
 /**
  * Returns the remainder left over when one operand is divided by a second
@@ -1452,40 +1486,46 @@ export const multiplyAll: {
  *
  * It always takes the sign of the dividend.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @experimental
  * @todo Provide an implementation and tests
  */
 export const remainder: {
-  (divisor: Int): (dividend: Int) => Int
-  (dividend: Int, divisor: Int): Int
-} = dual(2, (dividend: Int, divisor: Int): Int => of(dividend % divisor))
+  (divisor: Integer): (dividend: Integer) => Integer
+  (dividend: Integer, divisor: Integer): Integer
+} = dual(
+  2,
+  (dividend: Integer, divisor: Integer): Integer => of(dividend % divisor)
+)
 
 /**
- * Returns the next power of 2 greater than or equal to the given `Int`.
+ * Returns the next power of 2 greater than or equal to the given `Integer`.
  *
- * @memberof Int
+ * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @example
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Int } from "effect"
+ * import { Integer } from "effect"
  *
- * assert.deepStrictEqual(Int.nextPow2(Int.of(5)), 8)
- * assert.deepStrictEqual(Int.nextPow2(Int.of(17)), 32)
- * assert.deepStrictEqual(Int.nextPow2(Int.of(0)), 2)
- * assert.deepStrictEqual(Number.isNaN(Int.nextPow2(Int.of(-1))), true) // Negative inputs result in NaN
+ * assert.deepStrictEqual(Integer.nextPow2(Integer.of(5)), 8)
+ * assert.deepStrictEqual(Integer.nextPow2(Integer.of(17)), 32)
+ * assert.deepStrictEqual(Integer.nextPow2(Integer.of(0)), 2)
+ * assert.deepStrictEqual(
+ *   Number.isNaN(Integer.nextPow2(Integer.of(-1))),
+ *   true
+ * ) // Negative inputs result in NaN
  * ```
  *
  * @experimental
  */
 export const nextPow2: {
-  (n: Int): Int | internal.NaN
+  (n: Integer): Integer | internal.NaN
 } = (n) => {
   const nextPow = Math.ceil(Math.log(n) / Math.log(2))
-  return Math.max(Math.pow(2, nextPow), 2) as Int | internal.NaN
+  return Math.max(Math.pow(2, nextPow), 2) as Integer | internal.NaN
 }

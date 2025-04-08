@@ -18,6 +18,15 @@ import type { Ordering } from "./Ordering.js"
 import * as predicate from "./Predicate.js"
 
 /**
+ * Nominal type representing `NaN` (Not a Number).
+ *
+ * @memberof Number
+ * @category Type
+ * @since 3.14.6
+ */
+export type NaN = internal.NaN
+
+/**
  * Tests if a value is a `number`.
  *
  * @memberof Number

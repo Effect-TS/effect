@@ -9,23 +9,27 @@ import * as Predicate from "../Predicate.js"
 export type NaN = number & Brand.Brand<"NaN">
 
 /** @internal */
-export const IntConstructor = Brand.refined<number & Brand.Brand<"Int">>(
+export const IntegerConstructor = Brand.refined<
+  number & Brand.Brand<"Integer">
+>(
   (n) => Predicate.isNumber(n) && !Number.isNaN(n) && Number.isInteger(n),
-  (n) => Brand.error(`Expected ${n} to be an integer`)
+  (n) => Brand.error(`Expected (${n}) to be an integer`)
 )
 
 /** @internal */
-export type Int = Brand.Brand.FromConstructor<typeof IntConstructor>
+export type Integer = Brand.Brand.FromConstructor<typeof IntegerConstructor>
 
 /** @internal */
-const PositiveNumberConstructor = Brand.refined<number & Brand.Brand<"PositiveNumber">>(
+const PositiveNumberConstructor = Brand.refined<
+  number & Brand.Brand<"PositiveNumber">
+>(
   (n) => n >= 0,
   (n) => Brand.error(`Expected (${n}) to be a greater than or equal to (0)`)
 )
 
 /** @internal */
 export const NaturalNumberConstructor = Brand.all(
-  IntConstructor,
+  IntegerConstructor,
   PositiveNumberConstructor
 )
 
@@ -138,10 +142,10 @@ export const decrement = <A extends number = number, B extends number = A>(
  * //           ^? number -> number
  * declare type _t2 = typeof sumAll<number, number>
  * //           ^? number -> number
- * declare type _t3 = typeof sumAll<Int.Int>
- * //           ^? Int -> Int
- * declare type _t4 = typeof sumAll<Int.Int, number>
- * //           ^? Int -> number
+ * declare type _t3 = typeof sumAll<Integer.Integer>
+ * //           ^? Integer -> Integer
+ * declare type _t4 = typeof sumAll<Integer.Integer, number>
+ * //           ^? Integer -> number
  * ```
  */
 export const sumAll = <A extends number = number, B extends number = A>(
@@ -158,10 +162,10 @@ export const sumAll = <A extends number = number, B extends number = A>(
  * //           ^? number -> number
  * declare type _t2 = typeof multiplyAll<number, number>
  * //           ^? number -> number
- * declare type _t3 = typeof multiplyAll<Int.Int>
- * //           ^? Int -> Int
- * declare type _t4 = typeof multiplyAll<Int.Int, number>
- * //           ^? Int -> number
+ * declare type _t3 = typeof multiplyAll<Integer.Integer>
+ * //           ^? Integer -> Integer
+ * declare type _t4 = typeof multiplyAll<Integer.Integer, number>
+ * //           ^? Integer -> number
  * ```
  */
 export const multiplyAll = <A extends number = number, B extends number = A>(

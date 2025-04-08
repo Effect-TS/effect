@@ -943,14 +943,6 @@ export * as NonEmptyIterable from "./NonEmptyIterable.js"
 export * as Number from "./Number.js"
 
 /**
- * @module Int
- * @since 3.14.6
- * @experimental
- * @internal
- */
-export * as Int from "./Int.js"
-
-/**
  * @since 2.0.0
  */
 export * as Option from "./Option.js"

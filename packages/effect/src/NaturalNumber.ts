@@ -16,14 +16,14 @@
  *
  * @module NaturalNumber
  * @since 3.14.6
- * @experimental
  * @internal
+ * @experimental
  */
 
 import type * as Brand from "./Brand.js"
 import type * as Either from "./Either.js"
 import { dual } from "./Function.js"
-import type * as Int from "./Int.js"
+import type * as Integer from "./Integer.js"
 import * as internal from "./internal/number.js"
 import type * as _Option from "./Option.js"
 import * as _Predicate from "./Predicate.js"
@@ -173,7 +173,7 @@ export const option: {
  * ```ts
  * import { Either, Option, pipe } from "effect"
  * import * as NaturalNumber from "effect/NaturalNumber"
- * import * as Int from "effect/Int"
+ * import * as Integer from "effect/Integer"
  * import * as assert from "node:assert/strict"
  *
  * // Valid non-negative integers return Right<NaturalNumber>
@@ -217,7 +217,7 @@ export const option: {
  *   pipe(
  *     NaturalNumber.either(n),
  *     Either.map((positiveInt) =>
- *       Int.multiply(positiveInt, NaturalNumber.of(2))
+ *       Integer.multiply(positiveInt, NaturalNumber.of(2))
  *     )
  *   )
  *
@@ -427,8 +427,8 @@ export const sum: {
  *
  * In the set of natural numbers (ℕ = {0, 1, 2, ...}), subtraction is not a
  * total operation, meaning it's not closed under this set. When b > a, the
- * result of a - b falls outside ℕ. Therefore, this function returns an `Int`
- * rather than a natural number.
+ * result of a - b falls outside ℕ. Therefore, this function returns an
+ * `Integer` rather than a natural number.
  *
  * Mathematical properties of subtraction in natural numbers:
  *
@@ -458,7 +458,7 @@ export const subtract: {
    *
    * ```ts
    * import { pipe } from "effect"
-   * import * as Int from "effect/Int"
+   * import * as Integer from "effect/Integer"
    * import * as NaturalNumber from "effect/NaturalNumber"
    * import * as assert from "node:assert/strict"
    *
@@ -468,7 +468,7 @@ export const subtract: {
    *     NaturalNumber.of(5),
    *     NaturalNumber.subtract(NaturalNumber.of(3))
    *   ),
-   *   Int.of(2)
+   *   Integer.of(2)
    * )
    *
    * // Subtraction resulting in zero
@@ -477,7 +477,7 @@ export const subtract: {
    *     NaturalNumber.of(10),
    *     NaturalNumber.subtract(NaturalNumber.of(10))
    *   ),
-   *   Int.zero
+   *   Integer.zero
    * )
    *
    * // Subtraction resulting in negative number
@@ -486,7 +486,7 @@ export const subtract: {
    *     NaturalNumber.of(5),
    *     NaturalNumber.subtract(NaturalNumber.of(10))
    *   ),
-   *   Int.of(-5)
+   *   Integer.of(-5)
    * )
    *
    * // Chaining operations
@@ -494,9 +494,9 @@ export const subtract: {
    *   pipe(
    *     NaturalNumber.of(10),
    *     NaturalNumber.subtract(NaturalNumber.of(5)),
-   *     Int.subtract(Int.of(3))
+   *     Integer.subtract(Integer.of(3))
    *   ),
-   *   Int.of(2)
+   *   Integer.of(2)
    * )
    * ```
    *
@@ -505,7 +505,7 @@ export const subtract: {
    * @returns A function that takes a `minuend` and returns the `difference` of
    *   subtracting the `subtrahend` from it.
    */
-  (subtrahend: NaturalNumber): (minuend: NaturalNumber) => Int.Int
+  (subtrahend: NaturalNumber): (minuend: NaturalNumber) => Integer.Integer
 
   /**
    * Subtracts the `subtrahend` from the `minuend` and returns the difference.
@@ -516,37 +516,37 @@ export const subtract: {
    *
    * ```ts
    * import * as NaturalNumber from "effect/NaturalNumber"
-   * import * as Int from "effect/Int"
+   * import * as Integer from "effect/Integer"
    * import * as assert from "node:assert/strict"
    *
    * // Basic subtraction
    * assert.equal(
    *   NaturalNumber.subtract(NaturalNumber.of(10), NaturalNumber.of(7)),
-   *   Int.of(3)
+   *   Integer.of(3)
    * )
    *
    * // Subtraction resulting in zero
    * assert.equal(
    *   NaturalNumber.subtract(NaturalNumber.of(10), NaturalNumber.of(10)),
-   *   Int.zero
+   *   Integer.zero
    * )
    *
    * // Subtraction resulting in negative number
    * assert.equal(
    *   NaturalNumber.subtract(NaturalNumber.of(5), NaturalNumber.of(10)),
-   *   Int.of(-5)
+   *   Integer.of(-5)
    * )
    *
    * // Using with zero
    * assert.equal(
    *   NaturalNumber.subtract(NaturalNumber.of(42), NaturalNumber.zero),
-   *   Int.of(42),
+   *   Integer.of(42),
    *   "Subtracting zero doesn't change the value"
    * )
    *
    * assert.equal(
    *   NaturalNumber.subtract(NaturalNumber.zero, NaturalNumber.of(42)),
-   *   Int.of(-42),
+   *   Integer.of(-42),
    *   "Zero minus a positive number equals the negative of that number"
    * )
    * ```
@@ -555,10 +555,10 @@ export const subtract: {
    *   subtracted.
    * @param subtrahend - The `NaturalNumber` to subtract from the minuend.
    * @returns The difference of subtracting the subtrahend from the minuend as
-   *   an `Int.Int`.
+   *   an `Integer.Integer`.
    */
-  (minuend: NaturalNumber, subtrahend: NaturalNumber): Int.Int
+  (minuend: NaturalNumber, subtrahend: NaturalNumber): Integer.Integer
 } = dual(
   2,
-  (minuend: NaturalNumber, subtrahend: NaturalNumber): Int.Int => internal.subtract(minuend, subtrahend)
+  (minuend: NaturalNumber, subtrahend: NaturalNumber): Integer.Integer => internal.subtract(minuend, subtrahend)
 )

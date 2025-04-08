@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Brand, Either, Option, pipe } from "effect"
-import * as Int from "effect/Int"
+import * as Integer from "effect/Integer"
 import * as NaturalNumber from "effect/NaturalNumber"
 import {
   assertFalse,
@@ -41,7 +41,7 @@ describe("NaturalNumber", () => {
       for (const value of nonIntegers) {
         throws(
           () => NaturalNumber.of(value),
-          Brand.error(`Expected ${value} to be an integer`) as unknown as Error
+          Brand.error(`Expected (${value}) to be an integer`) as unknown as Error
         )
       }
 
@@ -96,7 +96,7 @@ describe("NaturalNumber", () => {
 
       assertSome(NaturalNumber.option(42), NaturalNumber.of(42))
       assertSome(NaturalNumber.option(0), NaturalNumber.of(0))
-      assertSome(NaturalNumber.option(Int.zero), NaturalNumber.zero)
+      assertSome(NaturalNumber.option(Integer.zero), NaturalNumber.zero)
       assertSome(NaturalNumber.option(maxSafeInt), maxSafeInt)
 
       for (const value of nonIntegers) {
@@ -136,7 +136,7 @@ describe("NaturalNumber", () => {
     it("either", () => {
       // Valid integers return Right<NaturalNumber>
       assertRight(NaturalNumber.either(0), NaturalNumber.zero)
-      assertRight(NaturalNumber.either(Int.zero), NaturalNumber.zero)
+      assertRight(NaturalNumber.either(Integer.zero), NaturalNumber.zero)
 
       assertRight(
         NaturalNumber.either(Number.MAX_SAFE_INTEGER),
@@ -163,7 +163,10 @@ describe("NaturalNumber", () => {
         Option.match({
           onNone: () => assertFalse(true, "Should have error message"),
           onSome: ([{ message }]) => {
-            strictEqual(message, `Expected (${kelvin}) to be a greater than or equal to (0)`)
+            strictEqual(
+              message,
+              `Expected (${kelvin}) to be a greater than or equal to (0)`
+            )
           }
         })
       )
@@ -191,7 +194,7 @@ describe("NaturalNumber", () => {
 
       strictEqual(
         processWithErrorHandling(3.14),
-        "Error: Expected 3.14 to be an integer"
+        "Error: Expected (3.14) to be an integer"
       )
     })
   })
@@ -204,9 +207,9 @@ describe("NaturalNumber", () => {
       assertTrue(NaturalNumber.isNaturalNumber(42))
       assertTrue(NaturalNumber.isNaturalNumber(Number.MAX_SAFE_INTEGER))
 
-      // Valid positive integers from Int module
-      assertTrue(NaturalNumber.isNaturalNumber(Int.zero))
-      assertTrue(NaturalNumber.isNaturalNumber(Int.one))
+      // Valid positive integers from Integer module
+      assertTrue(NaturalNumber.isNaturalNumber(Integer.zero))
+      assertTrue(NaturalNumber.isNaturalNumber(Integer.one))
 
       // Non-integers
       for (const value of nonIntegers) {
@@ -325,31 +328,31 @@ describe("NaturalNumber", () => {
 
       strictEqual(
         NaturalNumber.subtract(meaningOfLife, NaturalNumber.zero),
-        Int.of(42),
+        Integer.of(42),
         "Subtracting zero doesn't change the value"
       )
 
       strictEqual(
         NaturalNumber.subtract(NaturalNumber.zero, meaningOfLife),
-        Int.of(-42),
+        Integer.of(-42),
         "Zero minus a positive number equals the negative of that number"
       )
 
       strictEqual(
         NaturalNumber.subtract(meaningOfLife, meaningOfLife),
-        Int.zero,
+        Integer.zero,
         "Subtracting a number from itself results in zero"
       )
 
       strictEqual(
         NaturalNumber.subtract(largeNumber, NaturalNumber.of(10)),
-        Int.of(Number.MAX_SAFE_INTEGER - 20),
+        Integer.of(Number.MAX_SAFE_INTEGER - 20),
         "Should correctly handle large numbers"
       )
 
       strictEqual(
         NaturalNumber.subtract(NaturalNumber.of(5), NaturalNumber.of(10)),
-        Int.of(-5),
+        Integer.of(-5),
         "Subtracting a larger number from a smaller one results in a negative number"
       )
 
@@ -367,11 +370,11 @@ describe("NaturalNumber", () => {
         pipe(
           three,
           NaturalNumber.subtract(two),
-          Int.subtract(NaturalNumber.one)
+          Integer.subtract(NaturalNumber.one)
         ),
         pipe(
           three,
-          Int.subtract(pipe(two, NaturalNumber.subtract(NaturalNumber.one)))
+          Integer.subtract(pipe(two, NaturalNumber.subtract(NaturalNumber.one)))
         ),
         "Subtraction is not associative: (a - b) - c ≠ a - (b - c)"
       )
@@ -379,7 +382,7 @@ describe("NaturalNumber", () => {
       /** Identity element: 0 - a = -a */
       strictEqual(
         pipe(NaturalNumber.zero, NaturalNumber.subtract(three)),
-        Int.of(-3),
+        Integer.of(-3),
         "Zero is the identity element: 0 - a = -a"
       )
 
@@ -388,9 +391,9 @@ describe("NaturalNumber", () => {
         pipe(
           NaturalNumber.of(10),
           NaturalNumber.subtract(NaturalNumber.of(3)),
-          Int.subtract(Int.of(2))
+          Integer.subtract(Integer.of(2))
         ),
-        Int.of(5),
+        Integer.of(5),
         "Should correctly chain multiple subtractions"
       )
 
@@ -399,9 +402,9 @@ describe("NaturalNumber", () => {
         pipe(
           NaturalNumber.of(10),
           NaturalNumber.subtract(NaturalNumber.of(3)),
-          Int.sum(Int.of(5))
+          Integer.sum(Integer.of(5))
         ),
-        Int.of(12),
+        Integer.of(12),
         "Should work correctly when mixed with other operations"
       )
     })
