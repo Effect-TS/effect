@@ -41,7 +41,9 @@ describe("NaturalNumber", () => {
       for (const value of nonIntegers) {
         throws(
           () => NaturalNumber.of(value),
-          Brand.error(`Expected (${value}) to be an integer`) as unknown as Error
+          Brand.error(
+            `Expected (${value}) to be an integer`
+          ) as unknown as Error
         )
       }
 
@@ -405,6 +407,124 @@ describe("NaturalNumber", () => {
           Integer.sum(Integer.of(5))
         ),
         Integer.of(12),
+        "Should work correctly when mixed with other operations"
+      )
+    })
+
+    it("multiply", () => {
+      const two = NaturalNumber.of(2)
+      const three = NaturalNumber.of(3)
+      const four = NaturalNumber.of(4)
+      const five = NaturalNumber.of(5)
+      const ten = NaturalNumber.of(10)
+
+      // Basic functionality tests
+      strictEqual<NaturalNumber.NaturalNumber>(
+        pipe(two, NaturalNumber.multiply(three)),
+        NaturalNumber.multiply(two, three),
+        "both data-first and data-last APIs should work"
+      )
+
+      // Boundary conditions
+      strictEqual(
+        NaturalNumber.multiply(NaturalNumber.zero, five),
+        NaturalNumber.zero,
+        "Multiplying by zero should result in zero"
+      )
+
+      strictEqual(
+        NaturalNumber.multiply(five, NaturalNumber.zero),
+        NaturalNumber.zero,
+        "Multiplying by zero should result in zero (commutative)"
+      )
+
+      strictEqual(
+        NaturalNumber.multiply(NaturalNumber.one, five),
+        five,
+        "Multiplying by one should not change the value"
+      )
+
+      strictEqual(
+        NaturalNumber.multiply(five, NaturalNumber.one),
+        five,
+        "Multiplying by one should not change the value (commutative)"
+      )
+
+      // Mathematical properties
+
+      /** Closure: If a, b ∈ ℕ, then a × b ∈ ℕ */
+      assertTrue(
+        NaturalNumber.isNaturalNumber(NaturalNumber.multiply(three, four)),
+        "Multiplication is closed within natural numbers"
+      )
+
+      /** Commutativity: a × b = b × a */
+      strictEqual(
+        pipe(two, NaturalNumber.multiply(three)),
+        pipe(three, NaturalNumber.multiply(two)),
+        "Multiplication is commutative: a × b = b × a"
+      )
+
+      /** Associativity: (a × b) × c = a × (b × c) */
+      strictEqual(
+        pipe(two, NaturalNumber.multiply(three), NaturalNumber.multiply(four)),
+        pipe(two, NaturalNumber.multiply(NaturalNumber.multiply(three, four))),
+        "Multiplication is associative: (a × b) × c = a × (b × c)"
+      )
+
+      /** Identity element: a × 1 = a */
+      strictEqual(
+        NaturalNumber.multiply(five, NaturalNumber.one),
+        five,
+        "1 is the multiplicative identity: a × 1 = a"
+      )
+
+      /** Absorption element: a × 0 = 0 */
+      strictEqual(
+        NaturalNumber.multiply(five, NaturalNumber.zero),
+        NaturalNumber.zero,
+        "0 is the multiplicative absorbing element: a × 0 = 0"
+      )
+
+      /** Distributivity: a × (b + c) = (a × b) + (a × c) */
+      strictEqual(
+        NaturalNumber.multiply(three, NaturalNumber.sum(four, five)),
+        NaturalNumber.sum(
+          NaturalNumber.multiply(three, four),
+          NaturalNumber.multiply(three, five)
+        ),
+        "Multiplication distributes over addition: a × (b + c) = (a × b) + (a × c)"
+      )
+
+      /** No zero divisors: If a × b = 0, then either a = 0 or b = 0 */
+      strictEqual(
+        NaturalNumber.multiply(NaturalNumber.zero, five),
+        NaturalNumber.zero,
+        "If a × b = 0, then either a = 0 or b = 0 (case: a = 0)"
+      )
+
+      strictEqual(
+        NaturalNumber.multiply(five, NaturalNumber.zero),
+        NaturalNumber.zero,
+        "If a × b = 0, then either a = 0 or b = 0 (case: b = 0)"
+      )
+
+      // Chaining operations
+      strictEqual(
+        pipe(two, NaturalNumber.multiply(three), NaturalNumber.multiply(four)),
+        NaturalNumber.of(24),
+        "Should correctly chain multiple multiplications"
+      )
+
+      // Mixing with other operations
+      strictEqual<number>(
+        pipe(
+          two, //
+          NaturalNumber.multiply(three), //
+          NaturalNumber.sum(four), //
+          Integer.unsafeDivide(ten) //
+        ),
+        1,
         "Should work correctly when mixed with other operations"
       )
     })

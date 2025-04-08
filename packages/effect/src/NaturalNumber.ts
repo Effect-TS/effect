@@ -562,3 +562,157 @@ export const subtract: {
   2,
   (minuend: NaturalNumber, subtrahend: NaturalNumber): Integer.Integer => internal.subtract(minuend, subtrahend)
 )
+
+/**
+ * Provides a multiplication operation on `NaturalNumber`s.
+ *
+ * Multiplication is closed within the set of natural numbers (ℕ = {0, 1, 2,
+ * ...}), meaning the product of any two natural numbers is always a natural
+ * number.
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * assert.equal(
+ *   pipe(
+ *     NaturalNumber.of(10),
+ *     // data-last API
+ *     NaturalNumber.multiply(NaturalNumber.of(5))
+ *   ),
+ *   // data-first API
+ *   NaturalNumber.multiply(NaturalNumber.of(10), NaturalNumber.of(5))
+ * )
+ * ```
+ *
+ * Mathematical properties of multiplication in natural numbers:
+ *
+ * - Closure: If `a, b ∈ ℕ`, then `a × b ∈ ℕ`
+ * - Commutativity: `a × b = b × a` for all a, b ∈ ℕ
+ * - Associativity: `(a × b) × c = a × (b × c)` for all a, b, c ∈ ℕ
+ * - Identity element: `a × 1 = a` for all a ∈ ℕ (1 is the multiplicative
+ *   identity)
+ * - Absorption element: `a × 0 = 0` for all a ∈ ℕ (0 is the multiplicative
+ *   absorbing element)
+ * - Distributivity: `a × (b + c) = (a × b) + (a × c)` for all a, b, c ∈ ℕ
+ * - No zero divisors: If `a × b = 0`, then either `a = 0` or `b = 0`
+ * - No multiplicative inverses: For a > 1, there is no b ∈ ℕ such that a × b = 1
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @param multiplicand - The number to be multiplied
+ * @param multiplier - The number of times to multiply
+ * @returns The product of the multiplication
+ * @experimental
+ */
+export const multiply: {
+  /**
+   * Returns a function that multiplies a specified `multiplicand` with a given
+   * `multiplier`.
+   *
+   * **Data-last API** (a.k.a. pipeable)
+   *
+   * @example
+   *
+   * ```ts
+   * import { pipe } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   * import * as assert from "node:assert/strict"
+   *
+   * // Basic multiplication
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.multiply(NaturalNumber.of(3))
+   *   ),
+   *   15
+   * )
+   *
+   * // Chaining multiple multiplications
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(2),
+   *     NaturalNumber.multiply(NaturalNumber.of(3)),
+   *     NaturalNumber.multiply(NaturalNumber.of(4))
+   *   ),
+   *   24
+   * )
+   *
+   * // Using with identity element (one)
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(42),
+   *     NaturalNumber.multiply(NaturalNumber.one)
+   *   ),
+   *   42
+   * )
+   *
+   * // Using with absorbing element (zero)
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(42),
+   *     NaturalNumber.multiply(NaturalNumber.zero)
+   *   ),
+   *   0
+   * )
+   * ```
+   *
+   * @param multiplicand - The NaturalNumber to multiply with the `multiplier`
+   *   when the resultant function is invoked.
+   * @returns A function that takes a `multiplier` and returns the `product` of
+   *   multiplying the `multiplier` with the `multiplicand`.
+   */
+  (multiplicand: NaturalNumber): (multiplier: NaturalNumber) => NaturalNumber
+
+  /**
+   * Multiplies two `NaturalNumber` values and returns their product.
+   *
+   * **Data-first API**
+   *
+   * @example
+   *
+   * ```ts
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   * import * as assert from "node:assert/strict"
+   *
+   * // Basic multiplication
+   * assert.equal(
+   *   NaturalNumber.multiply(NaturalNumber.of(6), NaturalNumber.of(7)),
+   *   42
+   * )
+   *
+   * // Multiplying by one (identity element)
+   * assert.equal(
+   *   NaturalNumber.multiply(NaturalNumber.of(42), NaturalNumber.one),
+   *   42
+   * )
+   *
+   * // Multiplying by zero (absorbing element)
+   * assert.equal(
+   *   NaturalNumber.multiply(NaturalNumber.of(42), NaturalNumber.zero),
+   *   0
+   * )
+   *
+   * // Multiplying large numbers
+   * assert.equal(
+   *   NaturalNumber.multiply(
+   *     NaturalNumber.of(1000),
+   *     NaturalNumber.of(1000)
+   *   ),
+   *   1_000_000
+   * )
+   * ```
+   *
+   * @param multiplicand - The number to be multiplied
+   * @param multiplier - The number of times to multiply
+   * @returns The product of the multiplication
+   */
+  (multiplier: NaturalNumber, multiplicand: NaturalNumber): NaturalNumber
+} = dual(
+  2,
+  (multiplier: NaturalNumber, multiplicand: NaturalNumber): NaturalNumber => internal.multiply(multiplier, multiplicand)
+)
