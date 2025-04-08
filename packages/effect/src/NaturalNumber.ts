@@ -426,9 +426,9 @@ export const sum: {
  * be positive.
  *
  * In the set of natural numbers (ℕ = {0, 1, 2, ...}), subtraction is not a
- * total operation, meaning **it's not closed under this set**.
- * When `b > a`, the result of `a - b` falls outside `ℕ`.
- * Therefore, this function returns an `Integer` rather than a natural number.
+ * total operation, meaning **it's not closed under this set**. When `b > a`,
+ * the result of `a - b` falls outside `ℕ`. Therefore, this function returns an
+ * `Integer` rather than a natural number.
  *
  * Mathematical properties of subtraction in natural numbers:
  *
@@ -1086,3 +1086,73 @@ export const increment: (n: NaturalNumber) => NaturalNumber = internal.increment
  * @experimental
  */
 export const decrementToInteger: (n: NaturalNumber) => Integer.Integer = Integer.decrement
+
+/**
+ * Returns the result of decrementing a natural number, ensuring the result
+ * remains within the domain of natural numbers through the Option type.
+ *
+ * Unlike {@link module:NaturalNumber.decrementToInteger}, this operation
+ * maintains closure within the set of natural numbers (`ℕ = {0, 1, 2, ...}`) by
+ * returning `None` when decrementing would produce a value outside the domain
+ * (specifically, when decrementing 0).
+ *
+ * Mathematical properties of safe decrement on natural numbers:
+ *
+ * - Domain preservation: For all `n ∈ ℕ`, `decrementSafe(n)` is either `Some(m)`
+ *   where `m ∈ ℕ` or `None`
+ * - Partiality: `decrementSafe(0) = None` and `decrementSafe(n) = Some(n-1)` for
+ *   all `n > 0`
+ * - Injective (where defined): If `decrementSafe(a) = Some(x)` and
+ *   `decrementSafe(b) = Some(x)`, then `a = b`
+ * - Inverse of increment: For all `n ∈ ℕ`, `decrementSafe(increment(n)) =
+ *   Some(n)`
+ * - Non-totality: Unlike `decrementToInteger`, this function is not defined for
+ *   all inputs
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe, Option } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * // When decrementing a positive natural number, returns Some(result)
+ * assert.deepStrictEqual(
+ *   NaturalNumber.decrementSafe(NaturalNumber.of(5)),
+ *   Option.some(NaturalNumber.of(4))
+ * )
+ *
+ * // When decrementing 0, returns None as the result would be outside ℕ
+ * assert.deepStrictEqual(
+ *   NaturalNumber.decrementSafe(NaturalNumber.zero),
+ *   Option.none()
+ * )
+ *
+ * // Can be used in pipelines with Option functions
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     NaturalNumber.of(3),
+ *     NaturalNumber.decrementSafe,
+ *     Option.flatMap(NaturalNumber.decrementSafe),
+ *     Option.map((n) => NaturalNumber.add(n, NaturalNumber.of(5)))
+ *   ),
+ *   Option.some(NaturalNumber.of(6))
+ * )
+ * ```
+ *
+ * @param n - The `NaturalNumber` to safely decrement.
+ * @returns `Some<NaturalNumber>` containing the decremented value if `n > 0`,
+ *   or `None` if `n = 0`
+ * @experimental
+ */
+export const decrementSafe: {
+  (n: NaturalNumber): _Option.Option<NaturalNumber>
+} = (n) =>
+  pipe(
+    n,
+    internal.decrement<NaturalNumber, Integer.Integer>,
+    _Option.liftPredicate(isNaturalNumber)
+  )

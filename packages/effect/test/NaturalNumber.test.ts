@@ -875,5 +875,109 @@ describe("NaturalNumber", () => {
         Integer.of(96)
       )
     })
+
+    it("decrementSafe", () => {
+      // Basic functionality tests
+      assertSome(
+        NaturalNumber.decrementSafe(NaturalNumber.of(5)),
+        NaturalNumber.of(4)
+      )
+
+      assertSome(
+        NaturalNumber.decrementSafe(NaturalNumber.one),
+        NaturalNumber.zero
+      )
+
+      // Boundary conditions
+      assertNone(NaturalNumber.decrementSafe(NaturalNumber.zero))
+
+      assertSome(
+        NaturalNumber.decrementSafe(NaturalNumber.of(Number.MAX_SAFE_INTEGER)),
+        NaturalNumber.of(Number.MAX_SAFE_INTEGER - 1)
+      )
+
+      // Mathematical properties
+
+      /**
+       * Domain preservation:
+       *
+       * For all n ∈ ℕ, decrementSafe(n) is either Some(m) where m ∈ ℕ or None
+       */
+      const result = NaturalNumber.decrementSafe(NaturalNumber.of(42))
+      if (Option.isSome(result)) {
+        assertTrue(
+          NaturalNumber.isNaturalNumber(result.value),
+          "Result should be a natural number when defined"
+        )
+      }
+
+      /**
+       * Partiality:
+       *
+       * DecrementSafe(0) = None and decrementSafe(n) = Some(n-1) for all n > 0
+       */
+      assertNone(NaturalNumber.decrementSafe(NaturalNumber.zero))
+
+      assertSome(
+        NaturalNumber.decrementSafe(meaningOfLife),
+        NaturalNumber.of(41)
+      )
+
+      /**
+       * Inverse of increment: For all n ∈ ℕ, decrementSafe(increment(n)) =
+       * Some(n)
+       */
+
+      assertSome(
+        NaturalNumber.decrementSafe(NaturalNumber.increment(meaningOfLife)),
+        meaningOfLife
+      )
+
+      // Operation chaining
+      assertSome(
+        pipe(
+          three,
+          NaturalNumber.decrementSafe,
+          Option.flatMap(NaturalNumber.decrementSafe)
+        ),
+        NaturalNumber.one
+      )
+
+      /** Chaining decrements should result in None when reaching 0 */
+      assertNone(
+        pipe(
+          NaturalNumber.one,
+          NaturalNumber.decrementSafe, // Some(O)
+          Option.flatMap(NaturalNumber.decrementSafe), // None
+          Option.flatMap(NaturalNumber.decrementSafe) // None
+        )
+      )
+
+      // Mixing with other operations
+      assertSome(
+        pipe(
+          three,
+          NaturalNumber.decrementSafe, // Some(2)
+          Option.map((n) => NaturalNumber.sum(n, five))
+        ),
+        NaturalNumber.of(7)
+      )
+
+      strictEqual(
+        pipe(
+          ten,
+          NaturalNumber.decrementSafe, // Some(9)
+          Option.flatMap((n) =>
+            pipe(
+              n, // 9
+              NaturalNumber.decrementSafe, // Some(8)
+              Option.map((m) => NaturalNumber.multiply(m, two)) // Some(16)
+            )
+          ),
+          Option.getOrThrow
+        ),
+        NaturalNumber.of(16)
+      )
+    })
   })
 })
