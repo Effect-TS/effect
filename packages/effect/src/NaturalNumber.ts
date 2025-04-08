@@ -1,8 +1,8 @@
 /**
  * # Natural Numbers (ℕ)
  *
- * This module provides operations for working with natural numbers (ℕ = {0, 1,
- * 2, ...}).
+ * This module provides operations for working with natural numbers ( `ℕ = {0,
+ * 1, 2, ...}`).
  *
  * Note that not all operations are closed within the set of natural numbers:
  *
@@ -984,3 +984,51 @@ export const unsafeDivide: {
    */
   (dividend: NaturalNumber, divisor: NaturalNumber): number
 } = dual(2, (dividend: NaturalNumber, divisor: NaturalNumber): number => internal.unsafeDivide(dividend, divisor))
+
+/**
+ * Returns the result of adding one to the given `NaturalNumber`.
+ *
+ * Increment is a special case of addition that adds one to a natural number.
+ * This operation is closed within the set of natural numbers (`ℕ = {0, 1, 2,
+ * ...}`), meaning the result is always a natural number.
+ *
+ * Mathematical properties of increment in natural numbers:
+ *
+ * - Closure: If `n ∈ ℕ`, then `increment(n) ∈ ℕ`
+ * - Injective: If `increment(a) = increment(b)`, then `a = b`
+ * - No fixed points: increment(n) ≠ n for all n ∈ ℕ
+ * - Successor function: increment defines the successor for each natural number
+ * - Relation to addition: `increment(n) = n + 1`
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ *
+ * assert.strictEqual<NaturalNumber.NaturalNumber>(
+ *   NaturalNumber.increment(NaturalNumber.of(1)),
+ *   NaturalNumber.of(2)
+ * )
+ *
+ * assert.strictEqual<NaturalNumber.NaturalNumber>(
+ *   pipe(
+ *     NaturalNumber.zero,
+ *     NaturalNumber.increment,
+ *     NaturalNumber.increment,
+ *     NaturalNumber.increment,
+ *     NaturalNumber.increment
+ *   ),
+ *   NaturalNumber.of(4)
+ * )
+ * ```
+ *
+ * @param n - The NaturalNumber value to be incremented.
+ * @returns The successor of n as a `NaturalNumber`.
+ * @experimental
+ */
+export const increment: (n: NaturalNumber) => NaturalNumber = internal.increment

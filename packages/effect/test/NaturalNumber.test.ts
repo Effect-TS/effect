@@ -752,5 +752,105 @@ describe("NaturalNumber", () => {
         "Should work correctly when mixed with other operations"
       )
     })
+
+    it("increment", () => {
+      // Basic functionality tests
+      strictEqual(
+        NaturalNumber.increment(NaturalNumber.one),
+        two,
+        "Incrementing 1 should result in 2"
+      )
+
+      strictEqual(
+        pipe(
+          NaturalNumber.zero,
+          NaturalNumber.increment,
+          NaturalNumber.increment,
+          NaturalNumber.increment,
+          NaturalNumber.increment
+        ),
+        NaturalNumber.of(4),
+        "Chaining multiple increments should work correctly"
+      )
+
+      // Boundary conditions
+      strictEqual(
+        NaturalNumber.increment(NaturalNumber.zero),
+        NaturalNumber.one,
+        "Incrementing 0 should result in 1"
+      )
+
+      const largeNumber = NaturalNumber.of(Number.MAX_SAFE_INTEGER - 1)
+      strictEqual(
+        NaturalNumber.increment(largeNumber),
+        Number.MAX_SAFE_INTEGER,
+        "Should correctly handle large numbers"
+      )
+
+      // Mathematical properties
+
+      /** Closure: If n ∈ ℕ, then increment(n) ∈ ℕ */
+      assertTrue(
+        NaturalNumber.isNaturalNumber(NaturalNumber.increment(five)),
+        "Increment is closed within natural numbers"
+      )
+
+      /** Injective: If increment(a) = increment(b), then a = b */
+      const a = NaturalNumber.of(42)
+      const b = NaturalNumber.of(42)
+      const c = NaturalNumber.of(43)
+
+      strictEqual(
+        NaturalNumber.increment(a),
+        NaturalNumber.increment(b),
+        "Increment of equal numbers should be equal"
+      )
+
+      notDeepStrictEqual(
+        NaturalNumber.increment(a),
+        NaturalNumber.increment(c),
+        "Increment of different numbers should be different"
+      )
+
+      /** No fixed points: increment(n) ≠ n for all n ∈ ℕ */
+      notDeepStrictEqual(
+        NaturalNumber.increment(five),
+        five,
+        "Increment of a number should not equal the number itself"
+      )
+
+      /**
+       * Successor function: increment defines the successor for each natural
+       * number
+       */
+      strictEqual(
+        NaturalNumber.increment(NaturalNumber.of(41)),
+        NaturalNumber.of(42),
+        "Increment should produce the successor of a natural number"
+      )
+
+      /** Relation to addition: increment(n) = n + 1 */
+      strictEqual(
+        NaturalNumber.increment(five),
+        NaturalNumber.sum(five, NaturalNumber.one),
+        "Increment should be equivalent to adding 1"
+      )
+
+      // Mixing with other operations
+      strictEqual(
+        NaturalNumber.multiply(NaturalNumber.increment(two), three),
+        NaturalNumber.of(9),
+        "Should work correctly when mixed with other operations"
+      )
+
+      strictEqual(
+        NaturalNumber.sum(
+          NaturalNumber.increment(two),
+          NaturalNumber.increment(three)
+        ),
+        NaturalNumber.of(7),
+        "Should work correctly when combined with other incremented values"
+      )
+    })
   })
 })
