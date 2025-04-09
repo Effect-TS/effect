@@ -1646,3 +1646,124 @@ export const lessThan: {
    */
   (self: NaturalNumber, that: NaturalNumber): boolean
 } = _Order.lessThan(Order)
+
+/**
+ * Returns a function that checks if a given `NaturalNumber` is less than or
+ * equal to the provided one.
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Integer from "effect/Integer"
+ * import { pipe } from "effect"
+ *
+ * assert.equal(
+ *   pipe(
+ *     // data-last api
+ *     NaturalNumber.of(2),
+ *     NaturalNumber.lessThanOrEqualTo(NaturalNumber.of(3))
+ *   ),
+ *   // data-first api
+ *   NaturalNumber.lessThanOrEqualTo(
+ *     NaturalNumber.of(2),
+ *     NaturalNumber.of(3)
+ *   )
+ * )
+ *
+ * assert(
+ *   pipe(
+ *     Integer.of(-2),
+ *     // @ts-expect-error - It is not allowed to compare different types
+ *     NaturalNumber.lessThanOrEqualTo(NaturalNumber.of(3))
+ *   )
+ * )
+ *
+ * assert(
+ *   Integer.lessThanOrEqualTo(Integer.of(-2), NaturalNumber.of(3)),
+ *   "when comparing different number types, you need to choose a wider operator instance such as Integer.lessThanOrEqualTo"
+ * )
+ * ```
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Predicates
+ * @experimental
+ */
+export const lessThanOrEqualTo: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * assert(
+   *   pipe(
+   *     NaturalNumber.of(3), //
+   *     NaturalNumber.lessThanOrEqualTo(NaturalNumber.of(2))
+   *   )
+   * )
+   *
+   * assert(
+   *   pipe(
+   *     NaturalNumber.of(3), //
+   *     NaturalNumber.lessThanOrEqualTo(NaturalNumber.of(3))
+   *   )
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(3), //
+   *     NaturalNumber.lessThanOrEqualTo(NaturalNumber.of(4))
+   *   ),
+   *   false
+   * )
+   * ```
+   *
+   * @param that - The `NaturalNumber` to compare with the `self` when the
+   *   resultant function is invoked.
+   * @returns A function that takes a `self` and returns `true` if `self` is
+   *   less than or equal to `that`, otherwise `false`.
+   */
+  (that: NaturalNumber): (self: NaturalNumber) => boolean
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * assert(
+   *   NaturalNumber.lessThanOrEqualTo(
+   *     NaturalNumber.of(2),
+   *     NaturalNumber.of(3)
+   *   )
+   * )
+   *
+   * assert(
+   *   NaturalNumber.lessThanOrEqualTo(
+   *     NaturalNumber.of(3),
+   *     NaturalNumber.of(3)
+   *   )
+   * )
+   *
+   * assert.equal(
+   *   NaturalNumber.lessThanOrEqualTo(
+   *     NaturalNumber.of(4),
+   *     NaturalNumber.of(3)
+   *   ),
+   *   false
+   * )
+   * ```
+   *
+   * @param self - The first `NaturalNumber` to compare.
+   * @param that - The second `NaturalNumber` to compare.
+   * @returns `true` if `self` is less than or equal to `that`, otherwise
+   *   `false`.
+   */
+  (self: NaturalNumber, that: NaturalNumber): boolean
+} = _Order.lessThanOrEqualTo(Order)

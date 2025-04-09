@@ -1053,28 +1053,78 @@ describe("NaturalNumber", () => {
   })
 
   describe("Predicates", () => {
+    const two = NaturalNumber.of(2)
+    const three = NaturalNumber.of(3)
+    const four = NaturalNumber.of(4)
+
     it("lessThan", () => {
-      assertTrue(
-        NaturalNumber.lessThan(NaturalNumber.of(2), NaturalNumber.of(3))
-      )
+      assertTrue(NaturalNumber.lessThan(two, three))
 
       assertFalse(
         pipe(
-          NaturalNumber.of(3), //
-          NaturalNumber.lessThan(NaturalNumber.of(3))
+          three, //
+          NaturalNumber.lessThan(three)
         )
       )
 
       assertFalse(
         pipe(
-          NaturalNumber.of(4), //
-          NaturalNumber.lessThan(NaturalNumber.of(3))
+          four, //
+          NaturalNumber.lessThan(three)
         )
       )
 
       assertTrue(
-        pipe(Integer.of(-1), Integer.lessThan(NaturalNumber.of(3))),
+        pipe(Integer.of(-1), Integer.lessThan(three)),
         "when comparing different number types, you need to choose a wider operator instance such as Integer.lessThan"
+      )
+    })
+
+    it("lessThanOrEqualTo", () => {
+      const negativeTwoInt = Integer.of(-2)
+
+      const isNegativeTwoLessThenOrEqualToThree = Integer.lessThanOrEqualTo(
+        negativeTwoInt,
+        three
+      )
+
+      assertTrue(isNegativeTwoLessThenOrEqualToThree)
+
+      assertEquals(
+        isNegativeTwoLessThenOrEqualToThree,
+        pipe(
+          negativeTwoInt, //
+          Integer.lessThanOrEqualTo(three)
+        )
+      )
+
+      const isThreeLessThenOrEqualToThree = NaturalNumber.lessThanOrEqualTo(
+        three,
+        three
+      )
+
+      assertTrue(isThreeLessThenOrEqualToThree)
+
+      assertEquals(
+        isThreeLessThenOrEqualToThree,
+        pipe(
+          three, //
+          NaturalNumber.lessThanOrEqualTo(three)
+        )
+      )
+
+      const isFourLessThanOrEqualThree = NaturalNumber.lessThanOrEqualTo(
+        four,
+        three
+      )
+      assertFalse(isFourLessThanOrEqualThree)
+
+      assertEquals(
+        isFourLessThanOrEqualThree,
+        pipe(
+          four, //
+          NaturalNumber.lessThanOrEqualTo(three)
+        )
       )
     })
   })
