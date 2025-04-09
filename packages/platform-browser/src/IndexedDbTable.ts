@@ -41,7 +41,7 @@ export type TypeId = typeof TypeId
 export interface IndexedDbTable<
   out TableName extends string,
   out TableSchema extends Schema.Schema.AnyNoContext = never,
-  out Indexes extends Record<string, KeyPath<TableSchema>> = {}
+  out Indexes extends Record<string, KeyPath<TableSchema>> = never
 > extends Pipeable {
   new(_: never): {}
 
@@ -72,7 +72,7 @@ export declare namespace IndexedDbTable {
    * @since 1.0.0
    * @category models
    */
-  export type AnyWithProps = IndexedDbTable<string, Schema.Schema.AnyNoContext>
+  export type AnyWithProps = IndexedDbTable<string, Schema.Schema.AnyNoContext, any>
 
   /**
    * @since 1.0.0
@@ -80,7 +80,8 @@ export declare namespace IndexedDbTable {
    */
   export type TableName<Table extends Any> = Table extends IndexedDbTable<
     infer _TableName,
-    infer _Schema
+    infer _Schema,
+    infer _Indexes
   > ? _TableName
     : never
 
@@ -90,7 +91,8 @@ export declare namespace IndexedDbTable {
    */
   export type TableSchema<Table extends Any> = Table extends IndexedDbTable<
     infer _TableName,
-    infer _Schema
+    infer _Schema,
+    infer _Indexes
   > ? _Schema
     : never
 
