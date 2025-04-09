@@ -7,11 +7,11 @@ import type {
   Histogram,
   MetricCollectOptions,
   MetricData,
-  MetricDescriptor,
   MetricProducer,
   MetricReader
 } from "@opentelemetry/sdk-metrics"
 import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
+import type { InstrumentDescriptor } from "@opentelemetry/sdk-metrics/build/src/InstrumentDescriptor.js"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
@@ -24,6 +24,10 @@ import * as Option from "effect/Option"
 import * as Resource from "../Resource.js"
 
 const sdkName = "@effect/opentelemetry/Metrics"
+
+type MetricDataWithInstrumentDescriptor = MetricData & {
+  readonly descriptor: InstrumentDescriptor
+}
 
 /** @internal */
 export class MetricProducerImpl implements MetricProducer {
@@ -44,7 +48,7 @@ export class MetricProducerImpl implements MetricProducer {
     const hrTimeNow = currentHrTime()
     const metricData: Array<MetricData> = []
     const metricDataByName = new Map<string, MetricData>()
-    const addMetricData = (data: MetricData) => {
+    const addMetricData = (data: MetricDataWithInstrumentDescriptor) => {
       metricData.push(data)
       metricDataByName.set(data.descriptor.name, data)
     }
@@ -250,14 +254,15 @@ const descriptorMeta = (
   suffix?: string
 ) => ({
   name: suffix ? `${metricKey.name}_${suffix}` : metricKey.name,
-  description: Option.getOrElse(metricKey.description, () => "")
+  description: Option.getOrElse(metricKey.description, () => ""),
+  advice: {}
 })
 
 const descriptorFromKey = (
   metricKey: MetricKey.MetricKey.Untyped,
   tags: Record<string, string>,
   suffix?: string
-): MetricDescriptor => ({
+): InstrumentDescriptor => ({
   ...descriptorMeta(metricKey, suffix),
   unit: tags.unit ?? tags.time_unit ?? "1",
   type: instrumentTypeFromKey(metricKey),

@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type * as Resources from "@opentelemetry/resources"
+import type * as OtelApi from "@opentelemetry/api"
 import type { LoggerProviderConfig, LogRecordProcessor } from "@opentelemetry/sdk-logs"
 import type { MetricReader } from "@opentelemetry/sdk-metrics"
 import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
@@ -29,7 +29,7 @@ export interface Configuration {
   readonly resource?: {
     readonly serviceName: string
     readonly serviceVersion?: string
-    readonly attributes?: Resources.ResourceAttributes
+    readonly attributes?: OtelApi.Attributes
   } | undefined
 }
 
@@ -50,13 +50,9 @@ export const layerTracerProvider = (
           Effect.sync(() => {
             const provider = new NodeTracerProvider({
               ...(config ?? undefined),
-              resource
+              resource,
+              spanProcessors: Array.isArray(processor) ? (processor as any) : [processor]
             })
-            if (Array.isArray(processor)) {
-              processor.forEach((p) => provider.addSpanProcessor(p))
-            } else {
-              provider.addSpanProcessor(processor as any)
-            }
             return provider
           }),
           (provider) => Effect.ignoreLogged(Effect.promise(() => provider.forceFlush().then(() => provider.shutdown())))

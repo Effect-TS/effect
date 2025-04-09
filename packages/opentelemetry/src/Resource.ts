@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as OtelApi from "@opentelemetry/api"
 import * as Resources from "@opentelemetry/resources"
 import {
   SEMRESATTRS_SERVICE_NAME,
@@ -38,11 +39,11 @@ export const Resource = GenericTag<Resource, Resources.Resource>("@effect/opente
 export const layer = (config: {
   readonly serviceName: string
   readonly serviceVersion?: string
-  readonly attributes?: Resources.ResourceAttributes
+  readonly attributes?: OtelApi.Attributes
 }) =>
   Layer.succeed(
     Resource,
-    new Resources.Resource(configToAttributes(config))
+    Resources.resourceFromAttributes(configToAttributes(config))
   )
 
 /**
@@ -52,7 +53,7 @@ export const layer = (config: {
 export const configToAttributes = (options: {
   readonly serviceName: string
   readonly serviceVersion?: string
-  readonly attributes?: Resources.ResourceAttributes
+  readonly attributes?: OtelApi.Attributes
 }): Record<string, string> => {
   const attributes: Record<string, string> = {
     ...(options.attributes ?? undefined),
@@ -74,7 +75,7 @@ export const configToAttributes = (options: {
  */
 export const layerFromEnv = (
   additionalAttributes?:
-    | Resources.ResourceAttributes
+    | OtelApi.Attributes
     | undefined
 ): Layer.Layer<Resource> =>
   Layer.effect(
@@ -86,7 +87,7 @@ export const layerFromEnv = (
         Config.withDefault(""),
         Config.map((s) => {
           const attrs = s.split(",")
-          return Arr.reduce(attrs, {} as Resources.ResourceAttributes, (acc, attr) => {
+          return Arr.reduce(attrs, {} as OtelApi.Attributes, (acc, attr) => {
             const parts = attr.split("=")
             if (parts.length !== 2) {
               return acc
@@ -103,7 +104,7 @@ export const layerFromEnv = (
       if (additionalAttributes) {
         Object.assign(attributes, additionalAttributes)
       }
-      return new Resources.Resource(attributes)
+      return Resources.resourceFromAttributes(attributes)
     })
   )
 
@@ -113,5 +114,5 @@ export const layerFromEnv = (
  */
 export const layerEmpty = Layer.succeed(
   Resource,
-  Resources.Resource.empty()
+  Resources.emptyResource()
 )

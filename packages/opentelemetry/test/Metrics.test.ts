@@ -1,7 +1,7 @@
 import * as internal from "@effect/opentelemetry/internal/metrics"
 import { assert, describe, it } from "@effect/vitest"
 import { ValueType } from "@opentelemetry/api"
-import { Resource } from "@opentelemetry/resources"
+import { resourceFromAttributes } from "@opentelemetry/resources"
 import * as Effect from "effect/Effect"
 import * as Metric from "effect/Metric"
 
@@ -11,12 +11,11 @@ const findMetric = (metrics: any, name: string) =>
 describe("Metrics", () => {
   it.effect("gauge", () =>
     Effect.gen(function*(_) {
-      const producer = new internal.MetricProducerImpl(
-        new Resource({
-          name: "test",
-          version: "1.0.0"
-        })
-      )
+      const resource = resourceFromAttributes({
+        name: "test",
+        version: "1.0.0"
+      })
+      const producer = new internal.MetricProducerImpl(resource)
       const gauge = Metric.gauge("rps")
 
       yield* _(Metric.set(gauge, 10), Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
@@ -25,15 +24,16 @@ describe("Metrics", () => {
 
       const results = yield* _(Effect.promise(() => producer.collect()))
       const object = JSON.parse(JSON.stringify(results))
-      assert.deepEqual(object.resourceMetrics.resource._attributes, {
-        "name": "test",
-        "version": "1.0.0"
-      })
+      assert.deepEqual(object.resourceMetrics.resource._rawAttributes, [
+        ["name", "test"],
+        ["version", "1.0.0"]
+      ])
       assert.equal(object.resourceMetrics.scopeMetrics.length, 1)
       const metric = findMetric(object, "rps")
       assert.deepEqual(metric, {
         "dataPointType": 2,
         "descriptor": {
+          "advice": {},
           "name": "rps",
           "description": "",
           "unit": "requests",
@@ -66,7 +66,7 @@ describe("Metrics", () => {
   it.effect("gauge bigint", () =>
     Effect.gen(function*(_) {
       const producer = new internal.MetricProducerImpl(
-        new Resource({
+        resourceFromAttributes({
           name: "test",
           version: "1.0.0"
         })
@@ -79,15 +79,16 @@ describe("Metrics", () => {
 
       const results = yield* _(Effect.promise(() => producer.collect()))
       const object = JSON.parse(JSON.stringify(results))
-      assert.deepEqual(object.resourceMetrics.resource._attributes, {
-        "name": "test",
-        "version": "1.0.0"
-      })
+      assert.deepEqual(object.resourceMetrics.resource._rawAttributes, [
+        ["name", "test"],
+        ["version", "1.0.0"]
+      ])
       assert.equal(object.resourceMetrics.scopeMetrics.length, 1)
       const metric = findMetric(object, "rps-bigint")
       assert.deepEqual(metric, {
         "dataPointType": 2,
         "descriptor": {
+          "advice": {},
           "name": "rps-bigint",
           "description": "",
           "unit": "requests",
@@ -120,7 +121,7 @@ describe("Metrics", () => {
   it.effect("counter", () =>
     Effect.gen(function*(_) {
       const producer = new internal.MetricProducerImpl(
-        new Resource({
+        resourceFromAttributes({
           name: "test",
           version: "1.0.0"
         })
@@ -133,15 +134,16 @@ describe("Metrics", () => {
 
       const results = yield* _(Effect.promise(() => producer.collect()))
       const object = JSON.parse(JSON.stringify(results))
-      assert.deepEqual(object.resourceMetrics.resource._attributes, {
-        "name": "test",
-        "version": "1.0.0"
-      })
+      assert.deepEqual(object.resourceMetrics.resource._rawAttributes, [
+        ["name", "test"],
+        ["version", "1.0.0"]
+      ])
       assert.equal(object.resourceMetrics.scopeMetrics.length, 1)
       const metric = findMetric(object, "counter")
       assert.deepEqual(metric, {
         "dataPointType": 3,
         "descriptor": {
+          "advice": {},
           "name": "counter",
           "description": "Example",
           "unit": "requests",
@@ -175,7 +177,7 @@ describe("Metrics", () => {
   it.effect("counter-inc", () =>
     Effect.gen(function*(_) {
       const producer = new internal.MetricProducerImpl(
-        new Resource({
+        resourceFromAttributes({
           name: "test",
           version: "1.0.0"
         })
@@ -191,15 +193,16 @@ describe("Metrics", () => {
 
       const results = yield* _(Effect.promise(() => producer.collect()))
       const object = JSON.parse(JSON.stringify(results))
-      assert.deepEqual(object.resourceMetrics.resource._attributes, {
-        "name": "test",
-        "version": "1.0.0"
-      })
+      assert.deepEqual(object.resourceMetrics.resource._rawAttributes, [
+        ["name", "test"],
+        ["version", "1.0.0"]
+      ])
       assert.equal(object.resourceMetrics.scopeMetrics.length, 1)
       const metric = findMetric(object, "counter-inc")
       assert.deepEqual(metric, {
         "dataPointType": 3,
         "descriptor": {
+          "advice": {},
           "name": "counter-inc",
           "description": "Example",
           "unit": "requests",
@@ -233,7 +236,7 @@ describe("Metrics", () => {
   it.effect("counter-bigint", () =>
     Effect.gen(function*(_) {
       const producer = new internal.MetricProducerImpl(
-        new Resource({
+        resourceFromAttributes({
           name: "test",
           version: "1.0.0"
         })
@@ -250,15 +253,16 @@ describe("Metrics", () => {
 
       const results = yield* _(Effect.promise(() => producer.collect()))
       const object = JSON.parse(JSON.stringify(results))
-      assert.deepEqual(object.resourceMetrics.resource._attributes, {
-        "name": "test",
-        "version": "1.0.0"
-      })
+      assert.deepEqual(object.resourceMetrics.resource._rawAttributes, [
+        ["name", "test"],
+        ["version", "1.0.0"]
+      ])
       assert.equal(object.resourceMetrics.scopeMetrics.length, 1)
       const metric = findMetric(object, "counter-bigint")
       assert.deepEqual(metric, {
         "dataPointType": 3,
         "descriptor": {
+          "advice": {},
           "name": "counter-bigint",
           "description": "Example",
           "unit": "requests",
