@@ -15,7 +15,8 @@ type IndexedDbValidKeys<TableSchema extends Schema.Schema.AnyNoContext> = {
     : never
 }[keyof Schema.Schema.Encoded<TableSchema>]
 
-type KeyPath<TableSchema extends Schema.Schema.AnyNoContext> =
+/** @internal */
+export type KeyPath<TableSchema extends Schema.Schema.AnyNoContext> =
   | IndexedDbValidKeys<TableSchema>
   | Array<IndexedDbValidKeys<TableSchema>>
 
@@ -39,7 +40,8 @@ export type TypeId = typeof TypeId
  */
 export interface IndexedDbTable<
   out TableName extends string,
-  out TableSchema extends Schema.Schema.AnyNoContext = never
+  out TableSchema extends Schema.Schema.AnyNoContext = never,
+  out Indexes extends Record<string, KeyPath<TableSchema>> = {}
 > extends Pipeable {
   new(_: never): {}
 
@@ -48,6 +50,7 @@ export interface IndexedDbTable<
   readonly tableSchema: TableSchema
   readonly options?: {
     keyPath: KeyPath<TableSchema>
+    indexes: Indexes
   }
 }
 
@@ -95,6 +98,17 @@ export declare namespace IndexedDbTable {
    * @since 1.0.0
    * @category models
    */
+  export type Indexes<Table extends Any> = Table extends IndexedDbTable<
+    infer _TableName,
+    infer _Schema,
+    infer _Indexes
+  > ? _Indexes
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type WithName<Table extends Any, TableName extends string> = Extract<
     Table,
     { readonly tableName: TableName }
@@ -110,14 +124,16 @@ const Proto = {
 
 const makeProto = <
   TableName extends string,
-  TableSchema extends Schema.Schema.AnyNoContext
+  TableSchema extends Schema.Schema.AnyNoContext,
+  Indexes extends Record<string, KeyPath<TableSchema>>
 >(options: {
   readonly tableName: TableName
   readonly tableSchema: TableSchema
   readonly options: Partial<{
     keyPath: KeyPath<TableSchema>
+    indexes: Indexes
   }>
-}): IndexedDbTable<TableName, TableSchema> => {
+}): IndexedDbTable<TableName, TableSchema, Indexes> => {
   function IndexedDbTable() {}
   Object.setPrototypeOf(IndexedDbTable, Proto)
   IndexedDbTable.tableName = options.tableName
@@ -132,11 +148,13 @@ const makeProto = <
  */
 export const make = <
   TableName extends string,
-  TableSchema extends Schema.Schema.AnyNoContext
+  TableSchema extends Schema.Schema.AnyNoContext,
+  Indexes extends Record<string, KeyPath<TableSchema>>
 >(
   tableName: TableName,
   tableSchema: TableSchema,
-  options?: {
+  options?: Partial<{
     keyPath: KeyPath<TableSchema>
-  }
-): IndexedDbTable<TableName, TableSchema> => makeProto({ tableName, tableSchema, options: options ?? {} })
+    indexes: Indexes
+  }>
+): IndexedDbTable<TableName, TableSchema, Indexes> => makeProto({ tableName, tableSchema, options: options ?? {} })
