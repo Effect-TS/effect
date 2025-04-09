@@ -3,7 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
 
 describe("IndexedDbTable", () => {
-  it("params", () => {
+  it("make", () => {
     const Table = IndexedDbTable.make(
       "todo",
       Schema.Struct({
