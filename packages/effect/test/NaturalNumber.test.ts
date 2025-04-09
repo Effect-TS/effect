@@ -1051,4 +1051,31 @@ describe("NaturalNumber", () => {
       )
     })
   })
+
+  describe("Predicates", () => {
+    it("lessThan", () => {
+      assertTrue(
+        NaturalNumber.lessThan(NaturalNumber.of(2), NaturalNumber.of(3))
+      )
+
+      assertFalse(
+        pipe(
+          NaturalNumber.of(3), //
+          NaturalNumber.lessThan(NaturalNumber.of(3))
+        )
+      )
+
+      assertFalse(
+        pipe(
+          NaturalNumber.of(4), //
+          NaturalNumber.lessThan(NaturalNumber.of(3))
+        )
+      )
+
+      assertTrue(
+        pipe(Integer.of(-1), Integer.lessThan(NaturalNumber.of(3))),
+        "when comparing different number types, you need to choose a wider operator instance such as Integer.lessThan"
+      )
+    })
+  })
 })

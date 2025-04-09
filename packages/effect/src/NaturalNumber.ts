@@ -1550,3 +1550,99 @@ export const Equivalence: _Equivalence.Equivalence<NaturalNumber> = _Equivalence
  * @experimental
  */
 export const Order: _Order.Order<NaturalNumber> = _Order.number
+
+/**
+ * Returns `true` if the first argument is less than the second, otherwise
+ * `false`.
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Predicates
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Integer from "effect/Integer"
+ *
+ * assert.equal(
+ *   NaturalNumber.lessThan(NaturalNumber.of(2), NaturalNumber.of(3)),
+ *   true
+ * )
+ *
+ * assert.equal(
+ *   pipe(NaturalNumber.of(3), NaturalNumber.lessThan(NaturalNumber.of(3))),
+ *   false
+ * )
+ *
+ * assert.equal(
+ *   pipe(Integer.of(-1), Integer.lessThan(NaturalNumber.of(3))),
+ *   true,
+ *   "when comparing different number types, you need to choose a wider operator instance such as Integer.lessThan"
+ * )
+ * ```
+ *
+ * @experimental
+ */
+export const lessThan: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(2), //
+   *     NaturalNumber.lessThan(NaturalNumber.of(3))
+   *   ),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(3), //
+   *     NaturalNumber.lessThan(NaturalNumber.of(3))
+   *   ),
+   *   false
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(4), //
+   *     NaturalNumber.lessThan(NaturalNumber.of(3))
+   *   ),
+   *   false
+   * )
+   * ```
+   */
+  (that: NaturalNumber): (self: NaturalNumber) => boolean
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * assert.equal(
+   *   NaturalNumber.lessThan(NaturalNumber.of(2), NaturalNumber.of(3)),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   NaturalNumber.lessThan(NaturalNumber.of(3), NaturalNumber.of(3)),
+   *   false
+   * )
+   *
+   * assert.equal(
+   *   NaturalNumber.lessThan(NaturalNumber.of(4), NaturalNumber.of(3)),
+   *   false
+   * )
+   * ```
+   */
+  (self: NaturalNumber, that: NaturalNumber): boolean
+} = _Order.lessThan(Order)
