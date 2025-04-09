@@ -1062,6 +1062,63 @@ describe("NaturalNumber", () => {
         "Set of NaturalNumber should sum correctly"
       )
     })
+
+    it("multiplyAll", () => {
+      strictEqual(
+        NaturalNumber.multiplyAll(
+          Array.of(NaturalNumber.of(2), NaturalNumber.zero, NaturalNumber.of(4))
+        ),
+        NaturalNumber.zero
+      )
+
+      strictEqual(
+        NaturalNumber.multiplyAll(
+          HashSet.make(
+            NaturalNumber.of(2),
+            NaturalNumber.of(3),
+            NaturalNumber.of(4)
+          )
+        ),
+        NaturalNumber.of(24)
+      )
+
+      strictEqual(
+        NaturalNumber.multiplyAll(
+          Array.of(
+            NaturalNumber.of(2),
+            NaturalNumber.of(3),
+            NaturalNumber.of(4)
+          )
+        ),
+        NaturalNumber.of(24)
+      )
+
+      strictEqual(
+        NaturalNumber.multiplyAll(
+          List.make(
+            NaturalNumber.of(3),
+            NaturalNumber.of(2),
+            NaturalNumber.of(4)
+          )
+        ),
+        NaturalNumber.of(24)
+      )
+
+      strictEqual(
+        NaturalNumber.multiplyAll(
+          Iterable.makeBy(
+            (n: NaturalNumber.NaturalNumber) =>
+              pipe(
+                n, // 0, 1, 2, 3, 4,
+                NaturalNumber.increment, // 1, 2, 3, 4, 5
+                NaturalNumber.multiply(NaturalNumber.of(2)) // 2, 4, 6, 8, 10
+              ),
+            { length: 5 }
+          ) // Iterable<NaturalNumber>
+        ),
+        NaturalNumber.of(3_840)
+      )
+    })
   })
 
   describe("Instances", () => {
