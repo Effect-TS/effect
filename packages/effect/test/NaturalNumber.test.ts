@@ -1107,9 +1107,9 @@ describe("NaturalNumber", () => {
       strictEqual(
         NaturalNumber.multiplyAll(
           Iterable.makeBy(
-            (n: NaturalNumber.NaturalNumber) =>
+            (n) =>
               pipe(
-                n, // 0, 1, 2, 3, 4,
+                n as NaturalNumber.NaturalNumber, // 0, 1, 2, 3, 4,
                 NaturalNumber.increment, // 1, 2, 3, 4, 5
                 NaturalNumber.multiply(NaturalNumber.of(2)) // 2, 4, 6, 8, 10
               ),
