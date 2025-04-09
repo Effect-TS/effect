@@ -1001,4 +1001,27 @@ describe("NaturalNumber", () => {
       )
     })
   })
+
+  describe("Instances", () => {
+    it("Equivalence", () => {
+      assertTrue(
+        NaturalNumber.Equivalence(NaturalNumber.one, NaturalNumber.of(1))
+      )
+
+      assertFalse(
+        NaturalNumber.Equivalence(NaturalNumber.one, NaturalNumber.of(2))
+      )
+
+      assertTrue(
+        // @ts-expect-error - It is not allowed to compare different types
+        NaturalNumber.Equivalence(Integer.one, NaturalNumber.one),
+        "Won't compile because Integer is not a NaturalNumber"
+      )
+
+      assertTrue(
+        Integer.Equivalence(NaturalNumber.one, Integer.one),
+        "Comparing Integer with NaturalNumber should work"
+      )
+    })
+  })
 })

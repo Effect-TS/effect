@@ -19,9 +19,9 @@
  * @internal
  * @experimental
  */
-
 import type * as Brand from "./Brand.js"
 import type * as Either from "./Either.js"
+import * as _Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as Integer from "./Integer.js"
 import * as internal from "./internal/number.js"
@@ -1455,3 +1455,46 @@ export const decrementToInteger: (n: NaturalNumber) => Integer.Integer = Integer
 export const decrementSafe: {
   (n: NaturalNumber): _Option.Option<NaturalNumber>
 } = (n) => (n >= 1 ? _Option.some(internal.decrement(n)) : _Option.none())
+
+/**
+ * Type class instance of `Equivalence` for `NaturalNumber`.
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Instances
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Integer from "effect/Integer"
+ *
+ * assert.equal(
+ *   NaturalNumber.Equivalence(NaturalNumber.of(1), NaturalNumber.of(1)),
+ *   true
+ * )
+ * assert.equal(
+ *   NaturalNumber.Equivalence(NaturalNumber.of(1), NaturalNumber.of(2)),
+ *   false
+ * )
+ *
+ * assert(
+ *   // @ts-expect-error - It is not allowed to compare different types
+ *   NaturalNumber.Equivalence(Integer.one, NaturalNumber.one),
+ *   "Won't compile because Integer is not a NaturalNumber"
+ * )
+ *
+ * // if you need to compare wider types, use the `Integer.Equivalence` instance
+ * assert(
+ *   Integer.Equivalence(NaturalNumber.one, Integer.one),
+ *   "Comparing Integer with NaturalNumber should work"
+ * )
+ * ```
+ *
+ * @param a - The first `NaturalNumber` to compare.
+ * @param b - The second `NaturalNumber` to compare.
+ * @returns `true` if the two `NaturalNumber`s are equal (have the same value),
+ *   `false` otherwise.
+ * @experimental
+ */
+export const Equivalence: _Equivalence.Equivalence<NaturalNumber> = _Equivalence.number
