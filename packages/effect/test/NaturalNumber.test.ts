@@ -1245,5 +1245,91 @@ describe("NaturalNumber", () => {
         "The value is equal to both minimum and maximum bounds of the range"
       )
     })
+
+    it("clamp", () => {
+      const clampOptions = {
+        minimum: NaturalNumber.one,
+        maximum: NaturalNumber.of(5)
+      } as const
+
+      const clampBetweenOneAndFive: (
+        n: NaturalNumber.NaturalNumber
+      ) => NaturalNumber.NaturalNumber = NaturalNumber.clamp(clampOptions)
+
+      // Test value within range
+      const valueWithinRange = NaturalNumber.clamp(
+        NaturalNumber.of(3),
+        clampOptions
+      )
+      strictEqual(
+        valueWithinRange,
+        NaturalNumber.of(3),
+        "Value within range should remain unchanged"
+      )
+      assertEquals(
+        valueWithinRange,
+        pipe(NaturalNumber.of(3), clampBetweenOneAndFive)
+      )
+
+      // Test minimum boundary value (inclusive)
+      const minBoundaryValue = NaturalNumber.clamp(
+        NaturalNumber.of(0),
+        clampOptions
+      )
+      strictEqual(
+        minBoundaryValue,
+        Integer.one,
+        "Minimum boundary value should remain unchanged (inclusive)"
+      )
+      assertEquals(
+        minBoundaryValue,
+        pipe(NaturalNumber.of(0), clampBetweenOneAndFive)
+      )
+
+      // Test maximum boundary value (inclusive)
+      const maxBoundaryValue = NaturalNumber.clamp(
+        NaturalNumber.of(5),
+        clampOptions
+      )
+      strictEqual(
+        maxBoundaryValue,
+        Integer.of(5),
+        "Maximum boundary value should remain unchanged (inclusive)"
+      )
+      assertEquals(
+        maxBoundaryValue,
+        pipe(NaturalNumber.of(5), clampBetweenOneAndFive)
+      )
+
+      // Test value below minimum
+      const valueBelowMin = NaturalNumber.clamp(
+        NaturalNumber.zero,
+        clampOptions
+      )
+      strictEqual(
+        valueBelowMin,
+        NaturalNumber.of(1),
+        "Value below minimum should be clamped to minimum"
+      )
+      assertEquals(
+        valueBelowMin,
+        pipe(NaturalNumber.one, clampBetweenOneAndFive)
+      )
+
+      // Test value above maximum
+      const valueAboveMax = NaturalNumber.clamp(
+        NaturalNumber.of(6),
+        clampOptions
+      )
+      strictEqual(
+        valueAboveMax,
+        NaturalNumber.of(5),
+        "Value above maximum should be clamped to maximum"
+      )
+      assertEquals(
+        valueAboveMax,
+        pipe(NaturalNumber.of(6), clampBetweenOneAndFive)
+      )
+    })
   })
 })

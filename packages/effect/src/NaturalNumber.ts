@@ -2143,3 +2143,118 @@ export const between: {
     }
   ): boolean
 } = _Order.between(Order)
+
+/**
+ * Restricts the given `NaturalNumber` to be within the range specified by the
+ * `minimum` and `maximum` values.
+ *
+ * - If the `NaturalNumber` is less than the `minimum` value, the function returns
+ *   the `minimum` value.
+ * - If the `NaturalNumber` is greater than the `maximum` value, the function
+ *   returns the `maximum` value.
+ * - Otherwise, it returns the original `NaturalNumber`.
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as assert from "node:assert/strict"
+ *
+ * assert.equal(
+ *   // data-last api
+ *   pipe(
+ *     NaturalNumber.of(3),
+ *     NaturalNumber.clamp({
+ *       minimum: NaturalNumber.of(0),
+ *       maximum: NaturalNumber.of(5)
+ *     })
+ *   ),
+ *   // data-first api
+ *   NaturalNumber.clamp(NaturalNumber.of(3), {
+ *     minimum: NaturalNumber.of(0),
+ *     maximum: NaturalNumber.of(5)
+ *   })
+ * )
+ * ```
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @experimental
+ */
+export const clamp: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * const clampBetweenOneAndFive: (
+   *   n: NaturalNumber.NaturalNumber
+   * ) => NaturalNumber.NaturalNumber = NaturalNumber.clamp({
+   *   minimum: NaturalNumber.of(1),
+   *   maximum: NaturalNumber.of(5)
+   * })
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(3), //
+   *     NaturalNumber.clamp({
+   *       minimum: NaturalNumber.of(1),
+   *       maximum: NaturalNumber.of(5)
+   *     })
+   *   ),
+   *   3
+   * )
+   *
+   * assert.equal(pipe(NaturalNumber.of(0), clampBetweenZeroAndFive), 0)
+   *
+   * assert.equal(pipe(NaturalNumber.of(6), clampBetweenZeroAndFive), 5)
+   * ```
+   *
+   * @param options
+   * @param options.minimum - The minimum inclusive `NaturalNumber`.
+   * @param options.maximum - The maximum inclusive `NaturalNumber`.
+   * @returns A function that takes a `self` and returns the clamped
+   *   `NaturalNumber` value.
+   */
+  (options: {
+    minimum: NaturalNumber
+    maximum: NaturalNumber
+  }): (self: NaturalNumber) => NaturalNumber
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * const options = {
+   *   minimum: NaturalNumber.of(1),
+   *   maximum: NaturalNumber.of(5)
+   * }
+   *
+   * assert.equal(NaturalNumber.clamp(NaturalNumber.of(3), options), 3)
+   *
+   * assert.equal(NaturalNumber.clamp(NaturalNumber.of(0), options), 1)
+   *
+   * assert.equal(NaturalNumber.clamp(NaturalNumber.of(6), options), 5)
+   * ```
+   *
+   * @param self - The `NaturalNumber` to be clamped.
+   * @param options
+   * @param options.minimum - The minimum inclusive `NaturalNumber`.
+   * @param options.maximum - The maximum inclusive `NaturalNumber`.
+   * @returns The clamped `NaturalNumber` value.
+   */
+  (
+    self: NaturalNumber,
+    options: {
+      minimum: NaturalNumber
+      maximum: NaturalNumber
+    }
+  ): NaturalNumber
+} = _Order.clamp(Order)
