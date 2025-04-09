@@ -10,6 +10,10 @@ import * as Schema from "effect/Schema"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 
+type IsStringLiteral<T> = T extends string ? string extends T ? false
+  : true
+  : false
+
 /**
  * @since 1.0.0
  * @category type ids
@@ -86,12 +90,26 @@ export interface MigrationApi<
     >
   >(
     table: A,
-    indexName: Extract<
-      keyof IndexedDbTable.IndexedDbTable.Indexes<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>
-      >,
-      string
-    >,
+    indexName: IsStringLiteral<
+      Extract<
+        keyof IndexedDbTable.IndexedDbTable.Indexes<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            A
+          >
+        >,
+        string
+      >
+    > extends true ? Extract<
+        keyof IndexedDbTable.IndexedDbTable.Indexes<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            A
+          >
+        >,
+        string
+      > :
+      never,
     options?: IDBIndexParameters
   ) => Effect.Effect<globalThis.IDBIndex, IndexedDbMigrationError>
 
@@ -101,12 +119,26 @@ export interface MigrationApi<
     >
   >(
     table: A,
-    indexName: Extract<
-      keyof IndexedDbTable.IndexedDbTable.Indexes<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>
-      >,
-      string
-    >
+    indexName: IsStringLiteral<
+      Extract<
+        keyof IndexedDbTable.IndexedDbTable.Indexes<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            A
+          >
+        >,
+        string
+      >
+    > extends true ? Extract<
+        keyof IndexedDbTable.IndexedDbTable.Indexes<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            A
+          >
+        >,
+        string
+      > :
+      never
   ) => Effect.Effect<void, IndexedDbMigrationError>
 
   readonly getAll: <
@@ -291,7 +323,6 @@ export const migrationApi = <
         const sourceTable = HashMap.unsafeGet(source.tables, table)
 
         const keyPath = yield* Effect.fromNullable(
-          // @ts-expect-error
           sourceTable.options?.indexes[indexName] ?? undefined
         ).pipe(
           Effect.catchTag("NoSuchElementException", (error) =>
