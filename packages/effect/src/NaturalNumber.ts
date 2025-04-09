@@ -2258,3 +2258,82 @@ export const clamp: {
     }
   ): NaturalNumber
 } = _Order.clamp(Order)
+
+/**
+ * Returns the minimum between two `NaturalNumber`s.
+ *
+ * `NaturalNumber.min` is a `commutative` operation; this means that the order
+ * in which the arguments are provided does not affect the result.
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * const three = NaturalNumber.of(3)
+ * const five = NaturalNumber.of(5)
+ *
+ * assert.equal(
+ *   // data-last api
+ *   pipe(three, NaturalNumber.min(five)),
+ *   // data-first api
+ *   NaturalNumber.min(three, five) // returns three
+ * )
+ * ```
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @experimental
+ */
+export const min: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * const three = NaturalNumber.of(3)
+   * const two = NaturalNumber.of(2)
+   *
+   * assert.equal(
+   *   pipe(three, NaturalNumber.min(two)), // returns 2
+   *   pipe(two, NaturalNumber.min(three)), // returns 2
+   *   "the min operation is commutative"
+   * )
+   * ```
+   *
+   * @param that - The `NaturalNumber` to compare with the `self` when the
+   *   resultant function is invoked.
+   * @returns A function that takes a `self` and returns the minimum of the two
+   *   `NaturalNumber`s (`self` | `that`).
+   */
+  (that: NaturalNumber): (self: NaturalNumber) => NaturalNumber
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * const three = NaturalNumber.of(3)
+   * const five = NaturalNumber.of(5)
+   *
+   * assert.equal(
+   *   NaturalNumber.min(three, five), // returns 3
+   *   NaturalNumber.min(five, three), // returns 3
+   *   "the min operation is commutative"
+   * )
+   * ```
+   *
+   * @param self - The first `NaturalNumber` to compare.
+   * @param that - The second `NaturalNumber` to compare.
+   * @returns The minimum of the two `NaturalNumber`s (`self` | `that`).
+   */
+  (self: NaturalNumber, that: NaturalNumber): NaturalNumber
+} = _Order.min(Order)
