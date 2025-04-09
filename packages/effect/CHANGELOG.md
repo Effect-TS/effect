@@ -1,5 +1,11 @@
 # effect
 
+## 3.14.7
+
+### Patch Changes
+
+- [#4706](https://github.com/Effect-TS/effect/pull/4706) [`b542a4b`](https://github.com/Effect-TS/effect/commit/b542a4bf195be0c9af1523e1ba96c953decc4d25) Thanks @IGassmann! - Fix summary metric’s quantile values
+
 ## 3.14.6
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @effect/opentelemetry
 
+## 0.46.0
+
+### Minor Changes
+
+- [#4696](https://github.com/Effect-TS/effect/pull/4696) [`f367477`](https://github.com/Effect-TS/effect/commit/f3674777fcd4c1797ac1b46be48c3ad2d6321cfc) Thanks @titouancreach! - update otel peer dependencies to ^2.0.0 and fix breaking changes
+
+### Patch Changes
+
+- Updated dependencies [[`b542a4b`](https://github.com/Effect-TS/effect/commit/b542a4bf195be0c9af1523e1ba96c953decc4d25)]:
+  - effect@3.14.7
+
 ## 0.45.6
 
 ### Patch Changes
