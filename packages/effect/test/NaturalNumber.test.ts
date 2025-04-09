@@ -1365,4 +1365,34 @@ describe("NaturalNumber", () => {
     )
     assertEquals(negativeValueSmaller, pipe(negativeTwo, Integer.min(two)))
   })
+
+  it("max", () => {
+    // case: first value is larger
+    strictEqual(
+      NaturalNumber.max(NaturalNumber.of(42), NaturalNumber.zero),
+      NaturalNumber.of(42),
+      "When first value is larger, it should be returned"
+    )
+
+    // case: second value is larger
+    strictEqual(
+      pipe(NaturalNumber.zero, NaturalNumber.max(NaturalNumber.of(42))),
+      NaturalNumber.of(42),
+      "When second value is larger, it should be returned"
+    )
+
+    // case: equal values
+    strictEqual(
+      pipe(NaturalNumber.of(42), NaturalNumber.max(NaturalNumber.of(42))),
+      NaturalNumber.of(42),
+      "When values are equal, either can be returned"
+    )
+
+    // max with negative value forces us to use Integer's max operator.
+    strictEqual<Integer.Integer>(
+      Integer.max(Integer.of(-42), NaturalNumber.of(42)),
+      NaturalNumber.of(42),
+      "When comparing positive and negative values, the larger one should be returned"
+    )
+  })
 })

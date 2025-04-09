@@ -2337,3 +2337,69 @@ export const min: {
    */
   (self: NaturalNumber, that: NaturalNumber): NaturalNumber
 } = _Order.min(Order)
+
+/**
+ * Returns the maximum between two `NaturalNumber`s.
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * assert.equal(
+ *   // data-last api
+ *   pipe(NaturalNumber.of(42), NaturalNumber.max(NaturalNumber.of(0))),
+ *   // data-first api
+ *   NaturalNumber.max(NaturalNumber.of(42), NaturalNumber.of(0))
+ * )
+ * ```
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @experimental
+ */
+export const max: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * assert.equal(
+   *   pipe(NaturalNumber.of(0), NaturalNumber.max(NaturalNumber.of(3))), // returns 3
+   *   pipe(NaturalNumber.of(3), NaturalNumber.max(NaturalNumber.of(0))),
+   *   "the max operation is commutative"
+   * )
+   * ```
+   *
+   * @param that - The `NaturalNumber` to compare with the `self` when the
+   *   resultant function is invoked.
+   * @returns A function that takes a `self` and returns the maximum of the two
+   *   `Int`s (`self` | `that`).
+   */
+  (that: NaturalNumber): (self: NaturalNumber) => NaturalNumber
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * assert.equal(
+   *   NaturalNumber.max(NaturalNumber.zero, NaturalNumber.of(3)),
+   *   NaturalNumber.max(NaturalNumber.of(3), NaturalNumber.zero), // returns 3
+   *   "the max operation is commutative"
+   * )
+   * ```
+   *
+   * @param self - The first `Int` to compare.
+   * @param that - The second `Int` to compare.
+   * @returns The maximum of the two `Int`s (`self` | `that`).
+   */
+  (self: NaturalNumber, that: NaturalNumber): NaturalNumber
+} = _Order.max(Order)
