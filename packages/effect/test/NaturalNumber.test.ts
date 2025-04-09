@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { Brand, Either, Option, pipe } from "effect"
+import { Brand, Either, HashSet, Iterable, List, Option, pipe } from "effect"
 import * as Integer from "effect/Integer"
 import * as NaturalNumber from "effect/NaturalNumber"
 import {
@@ -999,6 +999,67 @@ describe("NaturalNumber", () => {
           Option.getOrThrow
         ),
         NaturalNumber.of(16)
+      )
+    })
+
+    it("sumAll", () => {
+      // Array of Integer
+      strictEqual<NaturalNumber.NaturalNumber>(
+        NaturalNumber.sumAll(
+          Array.of(
+            NaturalNumber.of(2),
+            NaturalNumber.of(3),
+            NaturalNumber.of(4)
+          )
+        ),
+        NaturalNumber.of(9),
+        "Array of NaturalNumber should sum correctly"
+      )
+
+      // HashSet of Integer
+      strictEqual(
+        NaturalNumber.sumAll(
+          HashSet.make(
+            NaturalNumber.of(2),
+            NaturalNumber.of(3),
+            NaturalNumber.of(4)
+          )
+        ),
+        9,
+        "HashSet of NaturalNumber should sum correctly"
+      )
+
+      // List of Integer
+      strictEqual(
+        NaturalNumber.sumAll(
+          List.make(
+            NaturalNumber.of(2),
+            NaturalNumber.of(3),
+            NaturalNumber.of(4)
+          )
+        ),
+        NaturalNumber.of(9),
+        "List of NaturalNumber should sum correctly"
+      )
+
+      strictEqual(
+        NaturalNumber.sumAll(
+          Iterable.makeBy((n) => NaturalNumber.of(n * 2), { length: 5 }) // Iterable<NaturalNumber>
+        ),
+        NaturalNumber.of(20)
+      )
+
+      // Set of Integer (standard JavaScript Set)
+      strictEqual(
+        NaturalNumber.sumAll(
+          new Set([
+            NaturalNumber.of(2),
+            NaturalNumber.of(3),
+            NaturalNumber.of(4)
+          ])
+        ),
+        NaturalNumber.of(9),
+        "Set of NaturalNumber should sum correctly"
       )
     })
   })

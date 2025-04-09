@@ -2403,3 +2403,33 @@ export const max: {
    */
   (self: NaturalNumber, that: NaturalNumber): NaturalNumber
 } = _Order.max(Order)
+
+/**
+ * Takes an `Iterable` of `NaturalNumber`s and returns their sum as a single
+ * `NaturalNumber`.
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Iterable from "effect/Iterable"
+ *
+ * assert.equal<NaturalNumber.NaturalNumber>(
+ *   NaturalNumber.sumAll(
+ *     Iterable.makeBy((n) => NaturalNumber.of(n * 2), { length: 5 }) // Iterable<NaturalNumber>
+ *   ),
+ *   NaturalNumber.of(20)
+ * )
+ * ```
+ *
+ * @param collection - An `Iterable<NaturalNumber>` to reduce to a sum.
+ * @returns The sum of the `NaturalNumber`s in the `Iterable`.
+ * @experimental
+ */
+export const sumAll: {
+  (collection: Iterable<NaturalNumber>): NaturalNumber
+} = internal.sumAll<NaturalNumber>
