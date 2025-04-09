@@ -21,7 +21,7 @@ describe("IndexedDbDatabase", () => {
         title: Schema.String,
         completed: Schema.Boolean
       }),
-      { keyPath: "id" }
+      { keyPath: "id", indexes: { titleIndex: "title" } }
     )
 
     const Db = IndexedDbVersion.make(Table)
@@ -33,10 +33,14 @@ describe("IndexedDbDatabase", () => {
       const name = yield* use(async (database) => database.name)
       const version = yield* use(async (database) => database.version)
       const objectStoreNames = yield* use(async (database) => database.objectStoreNames)
+      const indexNames = yield* use(async (database) => database.transaction("todo").objectStore("todo").indexNames)
+      const index = yield* use(async (database) => database.transaction("todo").objectStore("todo").index("titleIndex"))
       assert.equal(name, "db")
       assert.equal(version, 1)
       assert.deepStrictEqual(todo, [{ id: 1, title: "test", completed: false }])
       assert.deepStrictEqual(Array.from(objectStoreNames), ["todo"])
+      assert.deepStrictEqual(Array.from(indexNames), ["titleIndex"])
+      assert.deepStrictEqual(index.keyPath, "title")
 
       // Close database to avoid errors when running other tests (blocked access)
       yield* use(async (database) => database.close())
@@ -52,6 +56,7 @@ describe("IndexedDbDatabase", () => {
                 execute: (_, toQuery) =>
                   Effect.gen(function*() {
                     yield* toQuery.createObjectStore("todo")
+                    yield* toQuery.createIndex("todo", "titleIndex")
                     yield* toQuery.insert("todo", {
                       id: 1,
                       title: "test",
@@ -74,7 +79,7 @@ describe("IndexedDbDatabase", () => {
         title: Schema.String,
         completed: Schema.Boolean
       }),
-      { keyPath: "id" }
+      { keyPath: "id", indexes: { titleIndex: "title" } }
     )
 
     const Table2 = IndexedDbTable.make(
@@ -98,10 +103,12 @@ describe("IndexedDbDatabase", () => {
       const name = yield* use(async (database) => database.name)
       const version = yield* use(async (database) => database.version)
       const objectStoreNames = yield* use(async (database) => database.objectStoreNames)
+      const indexNames = yield* use(async (database) => database.transaction("todo").objectStore("todo").indexNames)
       assert.equal(name, "db")
       assert.equal(version, 2)
       assert.deepStrictEqual(todo, [{ uuid, title: "test", completed: false }])
       assert.deepStrictEqual(Array.from(objectStoreNames), ["todo"])
+      assert.deepStrictEqual(Array.from(indexNames), [])
 
       // Close database to avoid errors when running other tests (blocked access)
       yield* use(async (database) => database.close())
@@ -117,6 +124,7 @@ describe("IndexedDbDatabase", () => {
                 execute: (_, toQuery) =>
                   Effect.gen(function*() {
                     yield* toQuery.createObjectStore("todo")
+                    yield* toQuery.createIndex("todo", "titleIndex")
                     yield* toQuery.insert("todo", {
                       id: 1,
                       title: "test",
@@ -130,6 +138,7 @@ describe("IndexedDbDatabase", () => {
                 execute: (fromQuery, toQuery) =>
                   Effect.gen(function*() {
                     const todo = yield* fromQuery.getAll("todo")
+                    yield* fromQuery.deleteIndex("todo", "titleIndex")
                     yield* fromQuery.deleteObjectStore("todo")
                     yield* toQuery.createObjectStore("todo")
                     yield* toQuery.insertAll(
