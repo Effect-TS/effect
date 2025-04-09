@@ -26,6 +26,7 @@ import { dual } from "./Function.js"
 import * as Integer from "./Integer.js"
 import * as internal from "./internal/number.js"
 import * as _Option from "./Option.js"
+import * as _Order from "./Order.js"
 import * as _Predicate from "./Predicate.js"
 
 /**
@@ -1498,3 +1499,54 @@ export const decrementSafe: {
  * @experimental
  */
 export const Equivalence: _Equivalence.Equivalence<NaturalNumber> = _Equivalence.number
+
+/**
+ * Type class instance of `Order` for `NaturalNumber`.
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Instances
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Integer from "effect/Integer"
+ *
+ * assert.equal(
+ *   NaturalNumber.Order(NaturalNumber.one, NaturalNumber.of(2)),
+ *   -1
+ * )
+ *
+ * assert.equal(
+ *   NaturalNumber.Order(NaturalNumber.of(2), NaturalNumber.of(2)),
+ *   0
+ * )
+ *
+ * assert.equal(
+ *   NaturalNumber.Order(NaturalNumber.of(2), NaturalNumber.one),
+ *   1
+ * )
+ *
+ * assert.equal(
+ *   // @ts-expect-error - It is not allowed to order with different types
+ *   NaturalNumber.Order(Integer.one, NaturalNumber.one),
+ *   0,
+ *   "Won't compile because Integer is not a NaturalNumber"
+ * )
+ *
+ * // if you need to order wider types, use a wider ordering instance such as `Integer.Order`
+ * assert.equal(
+ *   Integer.Order(NaturalNumber.one, Integer.of(-100)),
+ *   1,
+ *   "Ordering Integer with NaturalNumber should work"
+ * )
+ * ```
+ *
+ * @param self - The first `Integer` to compare.
+ * @param that - The second `Integer` to compare.
+ * @returns `-1` if self is **less** than that, `0` if they are **equal**, and
+ *   `1` if self is **greater** than that.
+ * @experimental
+ */
+export const Order: _Order.Order<NaturalNumber> = _Order.number

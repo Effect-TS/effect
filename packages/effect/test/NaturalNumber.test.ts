@@ -3,6 +3,7 @@ import { Brand, Either, Option, pipe } from "effect"
 import * as Integer from "effect/Integer"
 import * as NaturalNumber from "effect/NaturalNumber"
 import {
+  assertEquals,
   assertFalse,
   assertNone,
   assertRight,
@@ -1021,6 +1022,32 @@ describe("NaturalNumber", () => {
       assertTrue(
         Integer.Equivalence(NaturalNumber.one, Integer.one),
         "Comparing Integer with NaturalNumber should work"
+      )
+    })
+
+    it("Order", () => {
+      strictEqual(
+        NaturalNumber.Order(NaturalNumber.of(1), NaturalNumber.of(2)),
+        -1
+      )
+
+      strictEqual(
+        NaturalNumber.Order(NaturalNumber.of(1), NaturalNumber.of(2)),
+        -1
+      )
+
+      strictEqual(
+        NaturalNumber.Order(NaturalNumber.of(2), NaturalNumber.of(1)),
+        1
+      )
+
+      strictEqual(Integer.Order(Integer.of(-1), NaturalNumber.of(2)), -1)
+
+      strictEqual(Integer.Order(NaturalNumber.of(1), Integer.of(-2)), 1)
+
+      strictEqual(
+        NaturalNumber.Order(NaturalNumber.of(2), NaturalNumber.of(2)),
+        0
       )
     })
   })
