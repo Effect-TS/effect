@@ -82,10 +82,7 @@ export interface IndexedDbQuery<
         >
       >
     >
-  ) => Effect.Effect<
-    globalThis.IDBValidKey,
-    IndexedDbQueryError | IndexedDbDatabase.IndexedDbDatabaseError
-  >
+  ) => Effect.Effect<globalThis.IDBValidKey, IndexedDbQueryError>
 
   readonly getAll: <
     A extends IndexedDbTable.IndexedDbTable.TableName<
@@ -104,7 +101,7 @@ export interface IndexedDbQuery<
         >
       >
     >,
-    IndexedDbQueryError | IndexedDbDatabase.IndexedDbDatabaseError
+    IndexedDbQueryError
   >
 }
 
@@ -133,7 +130,7 @@ const makeProto = <
     data: any
   ): Effect.Effect<
     globalThis.IDBValidKey,
-    IndexedDbQueryError | IndexedDbDatabase.IndexedDbDatabaseError
+    IndexedDbQueryError
   > =>
     Effect.async<globalThis.IDBValidKey, IndexedDbQueryError>((resume) => {
       const transaction = database.transaction([table], "readwrite")
