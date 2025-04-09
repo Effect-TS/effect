@@ -8,7 +8,7 @@ import * as HashMap from "effect/HashMap"
 import * as Layer from "effect/Layer"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Schema from "effect/Schema"
-import * as IndexedDb from "./IndexedDbDatabase.js"
+import * as IndexedDbDatabase from "./IndexedDbDatabase.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 
@@ -31,7 +31,7 @@ export type TypeId = typeof TypeId
  * @category type ids
  */
 export const ErrorTypeId: unique symbol = Symbol.for(
-  "@effect/platform-browser/IndexedDbQuery/IndexedDbError"
+  "@effect/platform-browser/IndexedDbQuery/IndexedDbQueryError"
 )
 
 /**
@@ -48,7 +48,7 @@ export class IndexedDbQueryError extends TypeIdError(
   ErrorTypeId,
   "IndexedDbQueryError"
 )<{
-  readonly reason: "TransactionError" | "DecodeError"
+  readonly reason: "TransactionError" | "DecodeError" | "UnknownError"
   readonly cause: unknown
 }> {
   get message() {
@@ -60,26 +60,42 @@ export class IndexedDbQueryError extends TypeIdError(
  * @since 1.0.0
  * @category models
  */
-export declare namespace IndexedDbQuery {
-  /**
-   * @since 1.0.0
-   * @category model
-   */
-  export interface Service<
-    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
-  > extends Pipeable {
-    new(_: never): {}
+export interface IndexedDbQuery<
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
+> extends Pipeable {
+  new(_: never): {}
 
-    readonly [TypeId]: TypeId
-    readonly source: Source
+  readonly [TypeId]: TypeId
+  readonly source: Source
 
-    readonly insert: <
-      A extends IndexedDbTable.IndexedDbTable.TableName<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>
+  readonly insert: <
+    A extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    >
+  >(
+    table: A,
+    data: Schema.Schema.Encoded<
+      IndexedDbTable.IndexedDbTable.TableSchema<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          A
+        >
       >
-    >(
-      table: A,
-      data: Schema.Schema.Encoded<
+    >
+  ) => Effect.Effect<
+    globalThis.IDBValidKey,
+    IndexedDbQueryError | IndexedDbDatabase.IndexedDbDatabaseError
+  >
+
+  readonly getAll: <
+    A extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    >
+  >(
+    table: A
+  ) => Effect.Effect<
+    Array<
+      Schema.Schema.Type<
         IndexedDbTable.IndexedDbTable.TableSchema<
           IndexedDbTable.IndexedDbTable.WithName<
             IndexedDbVersion.IndexedDbVersion.Tables<Source>,
@@ -87,39 +103,9 @@ export declare namespace IndexedDbQuery {
           >
         >
       >
-    ) => Effect.Effect<
-      globalThis.IDBValidKey,
-      IndexedDbQueryError | IndexedDb.IndexedDbDatabaseError
-    >
-
-    readonly getAll: <
-      A extends IndexedDbTable.IndexedDbTable.TableName<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>
-      >
-    >(
-      table: A
-    ) => Effect.Effect<
-      Array<
-        Schema.Schema.Type<
-          IndexedDbTable.IndexedDbTable.TableSchema<
-            IndexedDbTable.IndexedDbTable.WithName<
-              IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-              A
-            >
-          >
-        >
-      >,
-      IndexedDbQueryError | IndexedDb.IndexedDbDatabaseError
-    >
-  }
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface Any {
-    readonly [TypeId]: TypeId
-  }
+    >,
+    IndexedDbQueryError | IndexedDbDatabase.IndexedDbDatabaseError
+  >
 }
 
 const Proto = {
@@ -135,9 +121,9 @@ const makeProto = <
   database,
   source
 }: {
-  readonly database: IDBDatabase
+  readonly database: globalThis.IDBDatabase
   readonly source: Source
-}): IndexedDbQuery.Service<Source> => {
+}): IndexedDbQuery<Source> => {
   function IndexedDbQuery() {}
   Object.setPrototypeOf(IndexedDbQuery, Proto)
   IndexedDbQuery.source = source
@@ -147,25 +133,25 @@ const makeProto = <
     data: any
   ): Effect.Effect<
     globalThis.IDBValidKey,
-    IndexedDbQueryError | IndexedDb.IndexedDbDatabaseError
+    IndexedDbQueryError | IndexedDbDatabase.IndexedDbDatabaseError
   > =>
     Effect.async<globalThis.IDBValidKey, IndexedDbQueryError>((resume) => {
       const transaction = database.transaction([table], "readwrite")
       const objectStore = transaction.objectStore(table)
       const request = objectStore.add(data)
 
-      request.onerror = (event) => {
+      request.onerror = () => {
         resume(
           Effect.fail(
             new IndexedDbQueryError({
               reason: "TransactionError",
-              cause: event
+              cause: request.error
             })
           )
         )
       }
 
-      request.onsuccess = (_) => {
+      request.onsuccess = () => {
         resume(Effect.succeed(request.result))
       }
     })
@@ -219,25 +205,40 @@ export class IndexedDbApi extends Context.Tag(
 )<
   IndexedDbApi,
   {
+    readonly use: <A>(
+      f: (database: globalThis.IDBDatabase) => Promise<A>
+    ) => Effect.Effect<A, IndexedDbQueryError>
+
     readonly makeApi: <
       Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
-    >(
-      source: Source
-    ) => IndexedDbQuery.Service<Source>
+    >(source: Source) => IndexedDbQuery<Source>
   }
 >() {}
 
-export const makeApi = <
+/** @internal */
+const makeApi = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
->(
-  database: IDBDatabase,
-  source: Source
-): IndexedDbQuery.Service<Source> => makeProto({ database, source })
+>(database: globalThis.IDBDatabase, source: Source): IndexedDbQuery<Source> => makeProto({ database, source })
 
+/**
+ * @since 1.0.0
+ * @category layers
+ */
 export const layer = Layer.effect(
   IndexedDbApi,
   Effect.gen(function*() {
-    const { database } = yield* IndexedDb.IndexedDbDatabase
-    return IndexedDbApi.of({ makeApi: (source) => makeApi(database, source) })
+    const { database } = yield* IndexedDbDatabase.IndexedDbDatabase
+    return IndexedDbApi.of({
+      makeApi: (source) => makeApi(database, source),
+      use: (f) =>
+        Effect.tryPromise({
+          try: () => f(database),
+          catch: (error) =>
+            new IndexedDbQueryError({
+              reason: "UnknownError",
+              cause: error
+            })
+        })
+    })
   })
 )
