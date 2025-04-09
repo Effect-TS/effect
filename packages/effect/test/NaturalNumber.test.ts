@@ -1144,5 +1144,21 @@ describe("NaturalNumber", () => {
         pipe(four, Integer.greaterThan(negativeTwoInt))
       )
     })
+
+    it("greaterThanOrEqualTo", () => {
+      assertEquals(
+        Integer.greaterThanOrEqualTo(negativeTwoInt, three),
+        pipe(negativeTwoInt, Integer.greaterThanOrEqualTo(three))
+      )
+
+      assertTrue(
+        NaturalNumber.greaterThanOrEqualTo(
+          NaturalNumber.zero,
+          NaturalNumber.zero
+        )
+      )
+
+      assertTrue(NaturalNumber.greaterThanOrEqualTo(four, two))
+    })
   })
 })
