@@ -48,8 +48,10 @@ export class IndexedDbMigrationError extends TypeIdError(
   readonly reason:
     | "OpenError"
     | "TransactionError"
+    | "DecodeError"
     | "Blocked"
     | "UpgradeError"
+    | "MissingTable"
   readonly cause: unknown
 }> {
   get message() {
@@ -66,7 +68,7 @@ export interface MigrationApi<
     >
   >(
     table: A
-  ) => Effect.Effect<globalThis.IDBObjectStore>
+  ) => Effect.Effect<globalThis.IDBObjectStore, IndexedDbMigrationError>
 
   readonly deleteObjectStore: <
     A extends IndexedDbTable.IndexedDbTable.TableName<
@@ -74,7 +76,7 @@ export interface MigrationApi<
     >
   >(
     table: A
-  ) => Effect.Effect<void>
+  ) => Effect.Effect<void, IndexedDbMigrationError>
 
   readonly getAll: <
     A extends IndexedDbTable.IndexedDbTable.TableName<
@@ -92,7 +94,8 @@ export interface MigrationApi<
           >
         >
       >
-    >
+    >,
+    IndexedDbMigrationError
   >
 
   readonly insert: <
@@ -109,7 +112,7 @@ export interface MigrationApi<
         >
       >
     >
-  ) => Effect.Effect<globalThis.IDBValidKey>
+  ) => Effect.Effect<globalThis.IDBValidKey, IndexedDbMigrationError>
 
   readonly insertAll: <
     A extends IndexedDbTable.IndexedDbTable.TableName<
@@ -127,7 +130,7 @@ export interface MigrationApi<
         >
       >
     >
-  ) => Effect.Effect<globalThis.IDBValidKey>
+  ) => Effect.Effect<globalThis.IDBValidKey, IndexedDbMigrationError>
 }
 
 /** @internal */
@@ -157,19 +160,19 @@ export const migrationApi = <
       const { tableSchema } = yield* HashMap.get(source.tables, table).pipe(
         Effect.catchTag(
           "NoSuchElementException",
-          () =>
+          (cause) =>
             new IndexedDbMigrationError({
-              reason: "TransactionError",
-              cause: null
+              reason: "MissingTable",
+              cause
             })
         )
       )
 
       yield* Schema.decodeUnknown(tableSchema)(data).pipe(
-        Effect.catchTag("ParseError", (error) =>
+        Effect.catchTag("ParseError", (cause) =>
           new IndexedDbMigrationError({
-            reason: "TransactionError",
-            cause: error
+            reason: "DecodeError",
+            cause
           }))
       )
 
@@ -180,22 +183,22 @@ export const migrationApi = <
         const objectStore = transaction.objectStore(table)
         const request = objectStore.add(data)
 
-        request.onerror = (event) => {
+        request.onerror = () => {
           resume(
             Effect.fail(
               new IndexedDbMigrationError({
                 reason: "TransactionError",
-                cause: event
+                cause: request.error
               })
             )
           )
         }
 
-        request.onsuccess = (_) => {
+        request.onsuccess = () => {
           resume(Effect.succeed(request.result))
         }
       })
-    }).pipe(Effect.orDie)
+    })
 
   return {
     insert,
@@ -203,17 +206,52 @@ export const migrationApi = <
 
     createObjectStore: (table) =>
       Effect.gen(function*() {
-        const createTable = HashMap.unsafeGet(source.tables, table)
-        return database.createObjectStore(
-          createTable.tableName,
-          createTable.options
+        const createTable = yield* HashMap.get(source.tables, table).pipe(
+          Effect.catchTag(
+            "NoSuchElementException",
+            (cause) =>
+              new IndexedDbMigrationError({
+                reason: "MissingTable",
+                cause
+              })
+          )
         )
+
+        return yield* Effect.try({
+          try: () =>
+            database.createObjectStore(
+              createTable.tableName,
+              createTable.options
+            ),
+          catch: (cause) =>
+            new IndexedDbMigrationError({
+              reason: "TransactionError",
+              cause
+            })
+        })
       }),
 
     deleteObjectStore: (table) =>
       Effect.gen(function*() {
-        const createTable = HashMap.unsafeGet(source.tables, table)
-        return database.deleteObjectStore(createTable.tableName)
+        const createTable = yield* HashMap.get(source.tables, table).pipe(
+          Effect.catchTag(
+            "NoSuchElementException",
+            (cause) =>
+              new IndexedDbMigrationError({
+                reason: "MissingTable",
+                cause
+              })
+          )
+        )
+
+        return yield* Effect.try({
+          try: () => database.deleteObjectStore(createTable.tableName),
+          catch: (cause) =>
+            new IndexedDbMigrationError({
+              reason: "TransactionError",
+              cause
+            })
+        })
       }),
 
     getAll: (table) =>
@@ -224,10 +262,10 @@ export const migrationApi = <
         ).pipe(
           Effect.catchTag(
             "NoSuchElementException",
-            () =>
+            (cause) =>
               new IndexedDbMigrationError({
-                reason: "TransactionError",
-                cause: null
+                reason: "MissingTable",
+                cause
               })
           )
         )
@@ -237,12 +275,12 @@ export const migrationApi = <
             const store = transaction.objectStore(tableName)
             const request = store.getAll()
 
-            request.onerror = (event) => {
+            request.onerror = () => {
               resume(
                 Effect.fail(
                   new IndexedDbMigrationError({
                     reason: "TransactionError",
-                    cause: event
+                    cause: request.error
                   })
                 )
               )
@@ -264,13 +302,13 @@ export const migrationApi = <
         >
 
         return yield* Schema.decodeUnknown(tableSchemaArray)(data).pipe(
-          Effect.catchTag("ParseError", (error) =>
+          Effect.catchTag("ParseError", (cause) =>
             new IndexedDbMigrationError({
-              reason: "TransactionError",
-              cause: error
+              reason: "DecodeError",
+              cause
             }))
         )
-      }).pipe(Effect.orDie)
+      })
   }
 }
 
