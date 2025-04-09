@@ -1866,8 +1866,8 @@ export const greaterThan: {
 } = _Order.greaterThan(Order)
 
 /**
- * Returns a function that checks if a given `NaturalNumber` is greater than or equal
- * to the provided one.
+ * Returns a function that checks if a given `NaturalNumber` is greater than or
+ * equal to the provided one.
  *
  * **Syntax**
  *
@@ -1967,3 +1967,179 @@ export const greaterThanOrEqualTo: {
    */
   (self: NaturalNumber, that: NaturalNumber): boolean
 } = _Order.greaterThanOrEqualTo(Order)
+
+/**
+ * Checks if a `NaturalNumber` is between a minimum and maximum value
+ * (inclusive).
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * assert.equal(
+ *   // data-last api
+ *   pipe(
+ *     NaturalNumber.of(3),
+ *     NaturalNumber.between({
+ *       minimum: NaturalNumber.zero,
+ *       maximum: NaturalNumber.of(5)
+ *     })
+ *   ),
+ *   // data-first api
+ *   Integer.between(NaturalNumber.of(3), {
+ *     minimum: NaturalNumber.zero,
+ *     maximum: NaturalNumber.of(5)
+ *   })
+ * )
+ * ```
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Predicates
+ * @experimental
+ */
+export const between: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   * import * as Integer from "effect/Integer"
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.zero,
+   *     Int.between({
+   *       minimum: NaturalNumber.one,
+   *       maximum: NaturalNumber.of(5)
+   *     })
+   *   ),
+   *   false
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.zero,
+   *     Int.between({
+   *       minimum: NaturalNumber.zero,
+   *       maximum: NaturalNumber.of(5)
+   *     })
+   *   ),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(3),
+   *     NaturalNumber.between({
+   *       minimum: NaturalNumber.zero,
+   *       maximum: NaturalNumber.of(5)
+   *     })
+   *   ),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.between({
+   *       minimum: NaturalNumber.zero,
+   *       maximum: NaturalNumber.of(5)
+   *     })
+   *   ),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     Integer.of(6),
+   *     Integer.between({
+   *       minimum: Integer.of(-42),
+   *       maximum: NaturalNumber.of(5)
+   *     })
+   *   ),
+   *   false
+   * )
+   * ```
+   *
+   * @param options
+   * @param options.minimum - The minimum inclusive `NaturalNumber`.
+   * @param options.maximum - The maximum inclusive `NaturalNumber`.
+   * @returns A function that takes a `self` and returns `true` if `self` is
+   *   between the `minimum` and `maximum` values (inclusive), otherwise
+   *   `false`.
+   */
+  (options: {
+    minimum: NaturalNumber
+    maximum: NaturalNumber
+  }): (self: NaturalNumber) => boolean
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   * import * as Integer from "effect/Integer"
+   *
+   * assert.equal(
+   *   Integer.between(Integer.of(-1), {
+   *     minimum: NaturalNumber.of(0),
+   *     maximum: NaturalNumber.of(5)
+   *   }),
+   *   false
+   * )
+   *
+   * assert.equal(
+   *   NaturalNumber.between(Integer.of(0), {
+   *     minimum: NaturalNumber.of(0),
+   *     maximum: NaturalNumber.of(5)
+   *   }),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   NaturalNumber.between(NaturalNumber.of(3), {
+   *     minimum: NaturalNumber.of(0),
+   *     maximum: NaturalNumber.of(5)
+   *   }),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   NaturalNumber.between(NaturalNumber.of(5), {
+   *     minimum: NaturalNumber.of(0),
+   *     maximum: NaturalNumber.of(5)
+   *   }),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   NaturalNumber.between(NaturalNumber.of(6), {
+   *     minimum: NaturalNumber.of(0),
+   *     maximum: NaturalNumber.of(5)
+   *   }),
+   *   false
+   * )
+   * ```
+   *
+   * @param self - The `NaturalNumber` to check.
+   * @param options
+   * @param options.minimum - The minimum inclusive `NaturalNumber`.
+   * @param options.maximum - The maximum inclusive `NaturalNumber`.
+   * @returns `true` if the `Int` is between the `minimum` and `maximum` values
+   *   (inclusive), otherwise `false`.
+   */
+  (
+    self: NaturalNumber,
+    options: {
+      minimum: NaturalNumber
+      maximum: NaturalNumber
+    }
+  ): boolean
+} = _Order.between(Order)

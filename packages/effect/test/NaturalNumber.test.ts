@@ -1160,5 +1160,90 @@ describe("NaturalNumber", () => {
 
       assertTrue(NaturalNumber.greaterThanOrEqualTo(four, two))
     })
+
+    it("between", () => {
+      const options = {
+        minimum: NaturalNumber.zero,
+        maximum: NaturalNumber.of(5)
+      } as const
+
+      const isThreeBetweenZeroAndFive = NaturalNumber.between(
+        NaturalNumber.of(3),
+        options
+      )
+
+      assertTrue(
+        isThreeBetweenZeroAndFive,
+        "Value is between minimum and maximum"
+      )
+      assertEquals(
+        isThreeBetweenZeroAndFive,
+        pipe(NaturalNumber.of(3), Integer.between(options))
+      )
+
+      const isZeroBetweenZeroAndFive = NaturalNumber.between(
+        NaturalNumber.zero,
+        options
+      )
+
+      assertTrue(
+        isZeroBetweenZeroAndFive,
+        "The lower bound of the range is inclusive"
+      )
+      assertEquals(
+        isZeroBetweenZeroAndFive,
+        pipe(NaturalNumber.of(0), NaturalNumber.between(options))
+      )
+
+      const isFiveBetweenZeroAndFive = NaturalNumber.between(
+        NaturalNumber.of(5),
+        options
+      )
+
+      assertTrue(
+        isFiveBetweenZeroAndFive,
+        "The higher bound of the range is inclusive"
+      )
+      assertEquals(
+        isFiveBetweenZeroAndFive,
+        pipe(NaturalNumber.of(5), NaturalNumber.between(options))
+      )
+
+      const isMinusOneBetweenZeroAndFive = Integer.between(
+        Integer.of(-1),
+        options
+      )
+
+      assertFalse(
+        isMinusOneBetweenZeroAndFive,
+        "Value is out of the lower bound defined by the range"
+      )
+      assertEquals(
+        isMinusOneBetweenZeroAndFive,
+        pipe(Integer.of(-1), Integer.between(options))
+      )
+
+      const isSixBetweenZeroAndFive = NaturalNumber.between(
+        NaturalNumber.of(6),
+        options
+      )
+
+      assertFalse(
+        isSixBetweenZeroAndFive,
+        "Value is out of the higher bound defined by the range"
+      )
+      assertEquals(
+        isSixBetweenZeroAndFive,
+        pipe(NaturalNumber.of(6), NaturalNumber.between(options))
+      )
+
+      assertTrue(
+        NaturalNumber.between(NaturalNumber.of(0), {
+          minimum: NaturalNumber.of(0),
+          maximum: NaturalNumber.of(0)
+        }),
+        "The value is equal to both minimum and maximum bounds of the range"
+      )
+    })
   })
 })
