@@ -529,15 +529,15 @@ describe("NaturalNumber", () => {
       )
     })
 
-    it("divide", () => {
+    it("divideToNumber", () => {
       // Basic functionality tests
-      assertSome(pipe(six, NaturalNumber.divide(two)), 3)
+      assertSome(pipe(six, NaturalNumber.divideToNumber(two)), 3)
 
-      assertSome(NaturalNumber.divide(six, two), 3)
+      assertSome(NaturalNumber.divideToNumber(six, two), 3)
 
       // Test equivalence of data-first and data-last APIs
-      const divideResult = pipe(six, NaturalNumber.divide(two))
-      const divideResultDataFirst = NaturalNumber.divide(six, two)
+      const divideResult = pipe(six, NaturalNumber.divideToNumber(two))
+      const divideResultDataFirst = NaturalNumber.divideToNumber(six, two)
 
       strictEqual(
         Option.getOrElse(divideResult, () => -1),
@@ -548,29 +548,29 @@ describe("NaturalNumber", () => {
       // Boundary conditions
 
       /** Zero divided by any non-zero number should be zero */
-      assertSome(NaturalNumber.divide(NaturalNumber.zero, five), 0)
+      assertSome(NaturalNumber.divideToNumber(NaturalNumber.zero, five), 0)
 
       /** Division by zero should return None */
-      assertNone(NaturalNumber.divide(five, NaturalNumber.zero))
+      assertNone(NaturalNumber.divideToNumber(five, NaturalNumber.zero))
 
       /** Division by one should not change the value */
-      assertSome(NaturalNumber.divide(five, NaturalNumber.one), 5)
+      assertSome(NaturalNumber.divideToNumber(five, NaturalNumber.one), 5)
 
       /** Division resulting in a fraction should work */
-      assertSome(NaturalNumber.divide(five, two), 2.5)
+      assertSome(NaturalNumber.divideToNumber(five, two), 2.5)
 
       // Mathematical properties
 
       /** Non-closure: If a, b ∈ ℕ, then a ÷ b may not ∈ ℕ */
-      assertSome(NaturalNumber.divide(five, two), 2.5)
+      assertSome(NaturalNumber.divideToNumber(five, two), 2.5)
 
       /** Non-commutativity: a ÷ b ≠ b ÷ a */
       const divideA = Option.getOrElse(
-        NaturalNumber.divide(six, three),
+        NaturalNumber.divideToNumber(six, three),
         () => -1
       )
       const divideB = Option.getOrElse(
-        NaturalNumber.divide(three, six),
+        NaturalNumber.divideToNumber(three, six),
         () => -1
       )
 
@@ -582,18 +582,18 @@ describe("NaturalNumber", () => {
 
       /** Non-associativity: (a ÷ b) ÷ c ≠ a ÷ (b ÷ c) */
       const divideAssoc1 = pipe(
-        NaturalNumber.divide(six, two),
+        NaturalNumber.divideToNumber(six, two),
         Option.flatMap((result) =>
           NaturalNumber.option(result).pipe(
-            Option.flatMap((n) => NaturalNumber.divide(n, three))
+            Option.flatMap((n) => NaturalNumber.divideToNumber(n, three))
           )
         )
       )
 
       const divideAssoc2 = pipe(
-        NaturalNumber.divide(three, two),
+        NaturalNumber.divideToNumber(three, two),
         Option.flatMap((result) =>
-          NaturalNumber.divide(
+          NaturalNumber.divideToNumber(
             six,
             NaturalNumber.option(result).pipe(
               Option.getOrElse(() => NaturalNumber.one)
@@ -613,23 +613,23 @@ describe("NaturalNumber", () => {
        *
        * 1 is the right identity element for division: a ÷ 1 = a
        */
-      assertSome(NaturalNumber.divide(five, NaturalNumber.one), 5)
+      assertSome(NaturalNumber.divideToNumber(five, NaturalNumber.one), 5)
 
       /** Division by zero is undefined */
-      assertNone(NaturalNumber.divide(five, NaturalNumber.zero))
+      assertNone(NaturalNumber.divideToNumber(five, NaturalNumber.zero))
 
       /** Not generally distributive over addition */
       notDeepStrictEqual(
         Option.getOrElse(
-          NaturalNumber.divide(ten, NaturalNumber.sum(two, three)),
+          NaturalNumber.divideToNumber(ten, NaturalNumber.sum(two, three)),
           () => -1
         ),
         Option.getOrElse(
           pipe(
-            NaturalNumber.divide(ten, two),
+            NaturalNumber.divideToNumber(ten, two),
             Option.flatMap((result1) =>
               pipe(
-                NaturalNumber.divide(ten, three),
+                NaturalNumber.divideToNumber(ten, three),
                 Option.map((result2) => result1 + result2)
               )
             )
@@ -642,11 +642,11 @@ describe("NaturalNumber", () => {
       // Chaining operations
       assertSome(
         pipe(
-          NaturalNumber.divide(six, two),
+          NaturalNumber.divideToNumber(six, two),
           Option.flatMap((result) =>
             pipe(
               NaturalNumber.option(result),
-              Option.flatMap((n) => NaturalNumber.divide(n, NaturalNumber.one))
+              Option.flatMap((n) => NaturalNumber.divideToNumber(n, NaturalNumber.one))
             )
           )
         ),
@@ -657,7 +657,7 @@ describe("NaturalNumber", () => {
       assertSome(
         pipe(
           NaturalNumber.sum(four, two),
-          NaturalNumber.divide(two),
+          NaturalNumber.divideToNumber(two),
           Option.map((result) => result ** 2)
         ),
         9

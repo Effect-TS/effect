@@ -897,62 +897,69 @@ export const multiply: {
 } = dual(2, internal.multiply<NaturalNumber>)
 
 /**
- * Provides a division operation on `NaturalNumber`s.
+ * Divides one natural number by another, mapping from the domain of `natural
+ * numbers` to the codomain of `real numbers` (represented as JavaScript's
+ * number type) to accommodate possible fractional results.
  *
- * **Division is not closed** within the set of natural numbers (ℕ = {0, 1, 2,
- * ...}). When the division doesn't result in a natural number, this function
- * still returns the fractional result as a number, but wrapped in an Option.
+ * For the division function `f: ℕ × ℕ → Option<ℝ>` defined by:
+ *
+ * - `f(a, b) = Some(a / b)` when `b ≠ 0`
+ * - `f(a, 0) = None` (division by zero is undefined)
+ * - **Domain**: The set of ordered pairs of natural numbers (`ℕ × ℕ`)
+ * - **Codomain**: `Option<ℝ>` (an option of real numbers)
  *
  * **Syntax**
  *
  * ```ts
- * import { pipe } from "effect"
- * import * as NaturalNumber from "effect/NaturalNumber"
  * import * as assert from "node:assert/strict"
+ * import { pipe, type Option } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
  *
- * assert.equal(
+ * assert.deepStrictEqual<Option.Option<number>>(
  *   pipe(
  *     NaturalNumber.of(42),
  *     // data-last API
- *     NaturalNumber.divide(NaturalNumber.of(6))
+ *     NaturalNumber.divideToNumber(NaturalNumber.of(6))
  *   ),
  *   // data-first API
- *   NaturalNumber.divide(NaturalNumber.of(42), NaturalNumber.of(6))
+ *   NaturalNumber.divideToNumber(NaturalNumber.of(42), NaturalNumber.of(6))
  * )
  *
- * NaturalNumber.divide(NaturalNumber.of(6), NaturalNumber.of(2)) // Some(3)
- * NaturalNumber.divide(NaturalNumber.of(5), NaturalNumber.of(2)) // Some(2.5)
- * NaturalNumber.divide(NaturalNumber.of(0), NaturalNumber.of(5)) // Some(0)
- * NaturalNumber.divide(NaturalNumber.of(5), NaturalNumber.of(0)) // None (division by zero is undefined)
+ * NaturalNumber.divideToNumber(NaturalNumber.of(6), NaturalNumber.of(2)) // Some(3)
+ * NaturalNumber.divideToNumber(NaturalNumber.of(5), NaturalNumber.of(2)) // Some(2.5)
+ * NaturalNumber.divideToNumber(NaturalNumber.of(0), NaturalNumber.of(5)) // Some(0)
+ * NaturalNumber.divideToNumber(NaturalNumber.of(5), NaturalNumber.of(0)) // None (division by zero is undefined)
  * ```
  *
- * Mathematical properties of division in natural numbers:
+ * @remarks
+ * **Division is not a closed operation within the set of natural numbers** (`ℕ
+ * = {0, 1, 2, ...}`).
  *
- * - Non-closure: If `a, b ∈ ℕ`, then `a ÷ b` may `not ∈ ℕ`
- * - Non-commutativity: `a ÷ b ≠ b ÷ a` (unless a = b = 1)
- * - Non-associativity: `(a ÷ b) ÷ c ≠ a ÷ (b ÷ c)`
- * - Right identity element: `a ÷ 1 = a` for all `a ∈ ℕ`
- * - No left identity element: There is no `e ∈ ℕ` such that `e ÷ a = a` for all
- *   `a ∈ ℕ`
- * - Division by zero is undefined: `a ÷ 0` is not defined for any a
- * - Not generally distributive over addition: `a ÷ (b + c) ≠ (a ÷ b) + (a ÷ c)`
+ * When division doesn't yield a whole number, the result is a fractional number
+ * outside ℕ. This function widens to JavaScript's number type (representing ℝ)
+ * to accommodate all possible results, and returns an Option to handle the
+ * undefined case of division by zero.
  *
- * This function returns an `Option` type to handle division by zero, which is
- * mathematically undefined. When the divisor is zero, it returns `None`.
+ * Mathematical properties of division on natural numbers:
+ *
+ * - Non-closure in ℕ: The image of f is not contained within ℕ
+ * - Partiality: Division by zero is undefined (represented as None)
+ * - Non-commutativity: `f(a, b) ≠ f(b, a)` (`unless a = b = 1`)
+ * - Non-associativity: `f(f(a, b), c) ≠ f(a, f(b, c))` when all are defined
+ * - Right identity element: `f(a, 1) = Some(a)` for all `a ∈ ℕ`
+ * - No left identity element: There is no `e ∈ ℕ` such that `f(e, a) = Some(a)`
+ *   for all `a ∈ ℕ`
+ * - Not generally distributive over addition: `f(a, (b + c)) ≠ f(a, b) + f(a, c)`
  *
  * @memberof NaturalNumber
  * @since 3.14.6
  * @category Math
- * @param dividend - The number to be divided
- * @param divisor - The number to divide by
- * @returns `Some<number>` containing the quotient if the divisor is not zero,
- *   `None` if the divisor is 0
  * @experimental
  */
-export const divide: {
+export const divideToNumber: {
   /**
    * Returns a function that divides a given `dividend` by a specified
-   * `divisor`.
+   * `divisor`, mapping to the real number domain.
    *
    * **Data-last API** (a.k.a. pipeable)
    *
@@ -963,24 +970,30 @@ export const divide: {
    * import { Option, pipe } from "effect"
    * import * as NaturalNumber from "effect/NaturalNumber"
    *
-   * // Basic division
+   * // Division resulting in a whole number
    * assert.deepStrictEqual(
    *   pipe(
    *     NaturalNumber.of(10),
-   *     NaturalNumber.divide(NaturalNumber.of(2))
+   *     NaturalNumber.divideToNumber(NaturalNumber.of(2))
    *   ),
    *   Option.some(5)
    * )
    *
-   * // Division resulting in a fraction
+   * // Division mapping to a fractional number
    * assert.deepStrictEqual(
-   *   pipe(NaturalNumber.of(5), NaturalNumber.divide(NaturalNumber.of(2))),
+   *   pipe(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.divideToNumber(NaturalNumber.of(2))
+   *   ),
    *   Option.some(2.5)
    * )
    *
    * // Division by zero returns None
    * assert.deepStrictEqual(
-   *   pipe(NaturalNumber.of(5), NaturalNumber.divide(NaturalNumber.zero)),
+   *   pipe(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.divideToNumber(NaturalNumber.zero)
+   *   ),
    *   Option.none()
    * )
    *
@@ -988,11 +1001,13 @@ export const divide: {
    * assert.deepStrictEqual(
    *   pipe(
    *     NaturalNumber.of(10),
-   *     NaturalNumber.divide(NaturalNumber.of(2)),
+   *     NaturalNumber.divideToNumber(NaturalNumber.of(2)),
    *     Option.flatMap((result) =>
    *       pipe(
    *         NaturalNumber.option(result),
-   *         Option.flatMap(NaturalNumber.divide(NaturalNumber.of(5)))
+   *         Option.flatMap(
+   *           NaturalNumber.divideToNumber(NaturalNumber.of(5))
+   *         )
    *       )
    *     )
    *   ),
@@ -1010,7 +1025,7 @@ export const divide: {
 
   /**
    * Divides the `dividend` by the `divisor` and returns an `Option` containing
-   * the quotient.
+   * the quotient, mapping from natural numbers to real numbers.
    *
    * **Data-first API**
    *
@@ -1021,27 +1036,39 @@ export const divide: {
    * import { Option } from "effect"
    * import * as assert from "node:assert/strict"
    *
-   * // Basic division
+   * // Division resulting in a whole number
    * assert.deepStrictEqual(
-   *   NaturalNumber.divide(NaturalNumber.of(6), NaturalNumber.of(3)),
+   *   NaturalNumber.divideToNumber(
+   *     NaturalNumber.of(6),
+   *     NaturalNumber.of(3)
+   *   ),
    *   Option.some(2)
    * )
    *
-   * // Division resulting in a fraction
+   * // Division mapping to a fractional number
    * assert.deepStrictEqual(
-   *   NaturalNumber.divide(NaturalNumber.of(5), NaturalNumber.of(2)),
+   *   NaturalNumber.divideToNumber(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.of(2)
+   *   ),
    *   Option.some(2.5)
    * )
    *
    * // Division by zero returns None
    * assert.deepStrictEqual(
-   *   NaturalNumber.divide(NaturalNumber.of(5), NaturalNumber.zero),
+   *   NaturalNumber.divideToNumber(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.zero
+   *   ),
    *   Option.none()
    * )
    *
    * // Division with zero as dividend
    * assert.deepStrictEqual(
-   *   NaturalNumber.divide(NaturalNumber.zero, NaturalNumber.of(5)),
+   *   NaturalNumber.divideToNumber(
+   *     NaturalNumber.zero,
+   *     NaturalNumber.of(5)
+   *   ),
    *   Option.some(0)
    * )
    * ```
