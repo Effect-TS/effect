@@ -1,8 +1,8 @@
 /**
  * # Integers (ℤ)
  *
- * This module provides operations for working with integers (ℤ = {..., -3, -2,
- * -1, 0, 1, 2, 3, ...}).
+ * This module provides operations for working with integers (`ℤ = {..., -3, -2,
+ * -1, 0, 1, 2, 3, ...}`).
  *
  * @module Integer
  * @since 3.14.6
@@ -15,7 +15,6 @@ import type * as Either from "./Either.js"
 import * as _Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as internal from "./internal/number.js"
-import * as _Number from "./Number.js"
 import type * as _Option from "./Option.js"
 import * as _Order from "./Order.js"
 import type { Ordering } from "./Ordering.js"
@@ -30,7 +29,7 @@ import * as _Predicate from "./Predicate.js"
  * @example
  *
  * ```ts
- * import { Integer } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * function onlyInts(int: Integer.Integer): void {
  *   //... stuff for only integers fans
@@ -92,8 +91,9 @@ export const of: {
  * @example
  *
  * ```ts
- * import { Integer, Option, pipe } from "effect"
  * import * as assert from "node:assert/strict"
+ * import { Option, pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * // Valid integers return Some<Integer>
  * assert.deepStrictEqual(Integer.option(42), Option.some(Integer.of(42)))
@@ -144,8 +144,9 @@ export const option: (n: number) => _Option.Option<Integer> = internal.IntegerCo
  * @example
  *
  * ```ts
- * import { Either, Integer, Option, pipe } from "effect"
  * import * as assert from "node:assert/strict"
+ * import { Either, Option, pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * // Valid integers return Right<Integer>
  * assert.deepStrictEqual(Integer.either(42), Either.right(Integer.of(42)))
@@ -230,23 +231,23 @@ export const one: Integer = internal.one
  * @example
  *
  * ```ts
- * import * as Integer from "effect/Integer"
  * import assert from "node:assert/strict"
+ * import * as Integer from "effect/Integer"
  *
- * assert.equal(Integer.isInt(1), true)
+ * assert.equal(Integer.isInteger(1), true)
  *
  * const definitelyAFloat = 1.5
  * let anInt: Integer.Integer
- * if (Integer.isInt(definitelyAFloat)) {
+ * if (Integer.isInteger(definitelyAFloat)) {
  *   // this is not erroring even if it is absurd because at the type level this is totally fine
- *   // we can assign a float to an `Integer` because we have passed through the `Integer.isInt` type guard
+ *   // we can assign a float to an `Integer` because we have passed through the `Integer.isInteger` type guard
  *   // by the way, this branch is unreachable at runtime!
  *   anInt = definitelyAFloat
  * }
  *
- * assert.equal(Integer.isInt(definitelyAFloat), false)
- * assert.equal(Integer.isInt("a"), false)
- * assert.equal(Integer.isInt(true), false)
+ * assert.equal(Integer.isInteger(definitelyAFloat), false)
+ * assert.equal(Integer.isInteger("a"), false)
+ * assert.equal(Integer.isInteger(true), false)
  * ```
  *
  * @param input - The value to test.
@@ -274,15 +275,16 @@ export const sum: {
    * **data-last api** a.k.a. pipeable
    *
    * ```ts
-   * import { pipe, Int } from "effect"
    * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
    * assert.equal(
    *   pipe(
-   *     Int.of(10),
-   *     Int.add(-10),
-   *     Int.add(Int.zero), // 0
-   *     Int.add(1)
+   *     Integer.of(10),
+   *     Integer.add(-10),
+   *     Integer.add(Integer.zero), // 0
+   *     Integer.one
    *   ),
    *   1
    * )
@@ -294,10 +296,14 @@ export const sum: {
    * **data first api**
    *
    * ```ts
-   * import { pipe, Int } from "effect"
    * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
-   * assert.equal(Int.add(Int.of(10), Int.of(-10)), Int.zero)
+   * assert.equal(
+   *   Integer.add(Integer.of(10), Integer.of(-10)),
+   *   Integer.zero
+   * )
    * ```
    */
   (self: Integer, that: Integer): Integer
@@ -319,10 +325,14 @@ export const subtract: {
    * @example
    *
    * ```ts
-   * import { pipe, Int } from "effect"
    * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
-   * assert.equal(pipe(Int.of(10), Int.subtract(Int.of(10))), Int.zero)
+   * assert.equal(
+   *   pipe(Integer.of(10), Integer.subtract(Integer.of(10))),
+   *   Integer.zero
+   * )
    * ```
    *
    * @param subtrahend - The integer to subtract from the `minuend` when the
@@ -338,12 +348,12 @@ export const subtract: {
    * @example
    *
    * ```ts
-   * import { Int } from "effect"
    * import * as assert from "node:assert/strict"
+   * import * as Integer from "effect/Integer"
    *
    * assert.equal(
-   *   Int.subtract(Int.of(10), Int.of(10)), //
-   *   Int.zero
+   *   Integer.subtract(Integer.of(10), Integer.of(10)), //
+   *   Integer.zero
    * )
    * ```
    *
@@ -371,15 +381,16 @@ export const multiply: {
    * @example
    *
    * ```ts
-   * import { pipe, Int } from "effect"
    * import assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
    * assert.equal(
    *   pipe(
-   *     Int.of(2),
-   *     Int.multiply(Int.of(3)) //
+   *     Integer.of(2),
+   *     Integer.multiply(Integer.of(3)) //
    *   ),
-   *   6
+   *   Integer.of(6)
    * )
    * ```
    *
@@ -396,12 +407,12 @@ export const multiply: {
    * @example
    *
    * ```ts
-   * import { Int } from "effect"
    * import assert from "node:assert/strict"
+   * import * as Integer from "effect/Integer"
    *
    * assert.equal(
-   *   Int.multiply(Int.of(10), Int.of(-10)), //
-   *   -100
+   *   Integer.multiply(Integer.of(10), Integer.of(-10)), //
+   *   Integer.of(-100)
    * )
    * ```
    *
@@ -428,13 +439,14 @@ export const divide: {
    * @example
    *
    * ```ts
-   * import { Int, Option, pipe } from "effect"
    * import assert from "node:assert/strict"
+   * import { Option, pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
    * assert.deepStrictEqual(
    *   pipe(
-   *     Int.of(6), //
-   *     Int.divide(Int.of(2))
+   *     Integer.of(6), //
+   *     Integer.divide(Integer.of(2))
    *   ),
    *   Option.some(3)
    * )
@@ -455,17 +467,18 @@ export const divide: {
    * @example
    *
    * ```ts
-   * import { Int, Option } from "effect"
+   * import { Option } from "effect"
    * import assert from "node:assert/strict"
+   * import * as Integer from "effect/Integer"
    *
    * assert.deepStrictEqual(
-   *   Int.divide(Int.of(6), Int.of(2)),
+   *   Integer.divide(Integer.of(6), Integer.of(2)),
    *   Option.some(3)
    * )
    * ```
    *
-   * @param dividend - The Int to be divided.
-   * @param divisor - The Int by which the dividend is divided.
+   * @param dividend - The Integer to be divided.
+   * @param divisor - The Integer by which the dividend is divided.
    * @returns An `Option` containing the quotient of the division if valid,
    *   otherwise `None`.
    */
@@ -493,8 +506,9 @@ export const unsafeDivide: {
    * @example
    *
    * ```ts
-   * import { Integer, pipe } from "effect"
    * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
    * assert.equal(
    *   pipe(
@@ -531,8 +545,8 @@ export const unsafeDivide: {
    * @example
    *
    * ```ts
-   * import { Integer } from "effect"
    * import * as assert from "node:assert/strict"
+   * import * as Integer from "effect/Integer"
    *
    * assert.equal(Integer.unsafeDivide(Integer.of(6), Integer.of(2)), 3)
    *
@@ -560,7 +574,8 @@ export const unsafeDivide: {
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Integer, pipe } from "effect"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.strictEqual(Integer.increment(Integer.of(1)), Integer.of(2))
  *
@@ -593,7 +608,8 @@ export const increment: (n: Integer) => Integer = internal.increment
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Integer, pipe } from "effect"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.strictEqual(Integer.decrement(Integer.of(-100)), Integer.of(-101))
  *
@@ -625,7 +641,7 @@ export const decrement: (n: Integer) => Integer = internal.decrement
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Integer } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.equal(Integer.Equivalence(Integer.of(1), Integer.of(1)), true)
  * assert.equal(Integer.Equivalence(Integer.of(1), Integer.of(2)), false)
@@ -645,7 +661,7 @@ export const Equivalence: _Equivalence.Equivalence<Integer> = _Equivalence.numbe
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Integer } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.equal(Integer.Order(Integer.of(-1), Integer.of(2)), -1)
  *
@@ -672,7 +688,8 @@ export const Order: _Order.Order<Integer> = _Order.number
  *
  * ```ts
  * import * as assert from "node:assert"
- * import { Integer, pipe } from "effect"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.deepStrictEqual(
  *   Integer.lessThan(Integer.of(2), Integer.of(3)),
@@ -693,28 +710,29 @@ export const lessThan: {
    *
    * ```ts
    * import * as assert from "node:assert"
-   * import { Int, pipe } from "effect"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
    * assert.deepStrictEqual(
    *   pipe(
-   *     Int.of(2), //
-   *     Int.lessThan(Int.of(3))
+   *     Integer.of(2), //
+   *     Integer.lessThan(Integer.of(3))
    *   ),
    *   true
    * )
    *
    * assert.deepStrictEqual(
    *   pipe(
-   *     Int.of(3), //
-   *     Int.lessThan(Int.of(3))
+   *     Integer.of(3), //
+   *     Integer.lessThan(Integer.of(3))
    *   ),
    *   false
    * )
    *
    * assert.deepStrictEqual(
    *   pipe(
-   *     Int.of(4), //
-   *     Int.lessThan(Int.of(3))
+   *     Integer.of(4), //
+   *     Integer.lessThan(Integer.of(3))
    *   ),
    *   false
    * )
@@ -727,13 +745,22 @@ export const lessThan: {
    *
    * ```ts
    * import * as assert from "node:assert"
-   * import { Int } from "effect"
+   * import * as Integer from "effect/Integer"
    *
-   * assert.deepStrictEqual(Int.lessThan(Int.of(2), Int.of(3)), true)
+   * assert.deepStrictEqual(
+   *   Integer.lessThan(Integer.of(2), Integer.of(3)),
+   *   true
+   * )
    *
-   * assert.deepStrictEqual(Int.lessThan(Int.of(3), Int.of(3)), false)
+   * assert.deepStrictEqual(
+   *   Integer.lessThan(Integer.of(3), Integer.of(3)),
+   *   false
+   * )
    *
-   * assert.deepStrictEqual(Int.lessThan(Int.of(4), Int.of(3)), false)
+   * assert.deepStrictEqual(
+   *   Integer.lessThan(Integer.of(4), Integer.of(3)),
+   *   false
+   * )
    * ```
    */
   (self: Integer, that: Integer): boolean
@@ -746,8 +773,9 @@ export const lessThan: {
  * **Syntax**
  *
  * ```ts
- * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.equal(
  *   pipe(
@@ -771,34 +799,35 @@ export const lessThanOrEqualTo: {
    *
    * ```ts
    * import * as assert from "node:assert/strict"
-   * import { Int, pipe } from "effect"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
    * assert.deepStrictEqual(
    *   pipe(
-   *     Int.of(3), //
-   *     Int.lessThanOrEqualTo(Int.of(2))
+   *     Integer.of(3), //
+   *     Integer.lessThanOrEqualTo(Integer.of(2))
    *   ),
    *   true
    * )
    *
    * assert.deepStrictEqual(
    *   pipe(
-   *     Int.of(3), //
-   *     Int.lessThanOrEqualTo(Int.of(3))
+   *     Integer.of(3), //
+   *     Integer.lessThanOrEqualTo(Integer.of(3))
    *   ),
    *   true
    * )
    *
    * assert.deepStrictEqual(
    *   pipe(
-   *     Int.of(3), //
-   *     Int.lessThanOrEqualTo(Int.of(4))
+   *     Integer.of(3), //
+   *     Integer.lessThanOrEqualTo(Integer.of(4))
    *   ),
    *   false
    * )
    * ```
    *
-   * @param that - The `Int` to compare with the `self` when the resultant
+   * @param that - The `Integer` to compare with the `self` when the resultant
    *   function is invoked.
    * @returns A function that takes a `self` and returns `true` if `self` is
    *   less than or equal to `that`, otherwise `false`.
@@ -810,26 +839,26 @@ export const lessThanOrEqualTo: {
    *
    * ```ts
    * import * as assert from "node:assert/strict"
-   * import { Int } from "effect"
+   * import * as Integer from "effect/Integer"
    *
    * assert.deepStrictEqual(
-   *   Int.lessThanOrEqualTo(Int.of(2), Int.of(3)),
+   *   Integer.lessThanOrEqualTo(Integer.of(2), Integer.of(3)),
    *   true
    * )
    *
    * assert.deepStrictEqual(
-   *   Int.lessThanOrEqualTo(Int.of(3), Int.of(3)),
+   *   Integer.lessThanOrEqualTo(Integer.of(3), Integer.of(3)),
    *   true
    * )
    *
    * assert.deepStrictEqual(
-   *   Int.lessThanOrEqualTo(Int.of(4), Int.of(3)),
+   *   Integer.lessThanOrEqualTo(Integer.of(4), Integer.of(3)),
    *   false
    * )
    * ```
    *
-   * @param self - The first `Int` to compare.
-   * @param that - The second `Int` to compare.
+   * @param self - The first `Integer` to compare.
+   * @param that - The second `Integer` to compare.
    * @returns `true` if `self` is less than or equal to `that`, otherwise
    *   `false`.
    */
@@ -843,8 +872,9 @@ export const lessThanOrEqualTo: {
  * **Syntax**
  *
  * ```ts
- * import { Integer, pipe } from "effect"
+ * import { pipe } from "effect"
  * import * as assert from "node:assert/strict"
+ * import * as Integer from "effect/Integer"
  *
  * assert.equal(
  *   pipe(
@@ -868,16 +898,26 @@ export const greaterThan: {
    *
    * ```ts
    * import * as assert from "node:assert/strict"
-   * import { Int, pipe } from "effect"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
-   * assert.equal(pipe(Int.of(4), Int.greaterThan(Int.of(-2))), true)
+   * assert.equal(
+   *   pipe(Integer.of(4), Integer.greaterThan(Integer.of(-2))),
+   *   true
+   * )
    *
-   * assert.equal(pipe(Int.of(-2), Int.greaterThan(Int.of(-2))), false)
+   * assert.equal(
+   *   pipe(Integer.of(-2), Integer.greaterThan(Integer.of(-2))),
+   *   false
+   * )
    *
-   * assert.equal(pipe(Int.of(-2), Int.greaterThan(Int.of(3))), false)
+   * assert.equal(
+   *   pipe(Integer.of(-2), Integer.greaterThan(Integer.of(3))),
+   *   false
+   * )
    * ```
    *
-   * @param that - The `Int` to compare with the `self` when the resultant
+   * @param that - The `Integer` to compare with the `self` when the resultant
    *   function is invoked.
    * @returns A function that takes a `self` and returns `true` if `self` is
    *   greater than `that`, otherwise `false`.
@@ -888,18 +928,21 @@ export const greaterThan: {
    * @example
    *
    * ```ts
-   * import { Int } from "effect"
    * import * as assert from "node:assert/strict"
+   * import * as Integer from "effect/Integer"
    *
-   * assert.equal(Int.greaterThan(Int.of(4), Int.of(-2)), true)
+   * assert.equal(Integer.greaterThan(Integer.of(4), Integer.of(-2)), true)
    *
-   * assert.equal(Int.greaterThan(Int.of(-2), Int.of(-2)), false)
+   * assert.equal(
+   *   Integer.greaterThan(Integer.of(-2), Integer.of(-2)),
+   *   false
+   * )
    *
-   * assert.equal(Int.greaterThan(Int.of(-2), Int.of(3)), false)
+   * assert.equal(Integer.greaterThan(Integer.of(-2), Integer.of(3)), false)
    * ```
    *
-   * @param self - The first `Int` value to compare.
-   * @param that - The second `Int` value to compare.
+   * @param self - The first `Integer` value to compare.
+   * @param that - The second `Integer` value to compare.
    * @returns A `boolean` indicating whether `self` was greater than `that`.
    */
   (self: Integer, that: Integer): boolean
@@ -912,8 +955,9 @@ export const greaterThan: {
  * **Syntax**
  *
  * ```ts
- * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.equal(
  *   pipe(
@@ -936,32 +980,33 @@ export const greaterThanOrEqualTo: {
    * @example
    *
    * ```ts
-   * import { Int, pipe } from "effect"
    * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
    * assert.equal(
    *   pipe(
-   *     Int.of(-2), //
-   *     Int.greaterThanOrEqualTo(Int.of(3))
+   *     Integer.of(-2), //
+   *     Integer.greaterThanOrEqualTo(Integer.of(3))
    *   ),
    *   false
    * )
    *
    * assert.equal(
    *   pipe(
-   *     Int.zero, //
-   *     Int.greaterThanOrEqualTo(Int.of(-Int.zero))
+   *     Integer.zero, //
+   *     Integer.greaterThanOrEqualTo(Integer.of(-Integer.zero))
    *   ),
    *   true
    * )
    *
    * assert.equal(
-   *   pipe(Int.of(4), Int.greaterThanOrEqualTo(Int.of(-2))),
+   *   pipe(Integer.of(4), Integer.greaterThanOrEqualTo(Integer.of(-2))),
    *   true
    * )
    * ```
    *
-   * @param that - The `Int` to compare with the `self` when the resultant
+   * @param that - The `Integer` to compare with the `self` when the resultant
    *   function is invoked.
    * @returns A function that takes a `self` and returns `true` if `self` is
    *   greater than or equal to `that`, otherwise `false`.
@@ -972,21 +1017,30 @@ export const greaterThanOrEqualTo: {
    * @example
    *
    * ```ts
-   * import { Int } from "effect"
    * import * as assert from "node:assert/strict"
-   *
-   * assert.equal(Int.greaterThanOrEqualTo(Int.of(-2), Int.of(3)), false)
+   * import * as Integer from "effect/Integer"
    *
    * assert.equal(
-   *   Int.greaterThanOrEqualTo(Int.zero, Int.of(-Int.zero)),
+   *   Integer.greaterThanOrEqualTo(Integer.of(-2), Integer.of(3)),
+   *   false
+   * )
+   *
+   * assert.equal(
+   *   Integer.greaterThanOrEqualTo(
+   *     Integer.zero,
+   *     Integer.of(-Integer.zero)
+   *   ),
    *   true
    * )
    *
-   * assert.equal(Int.greaterThanOrEqualTo(Int.of(4), Int.of(-2)), true)
+   * assert.equal(
+   *   Integer.greaterThanOrEqualTo(Integer.of(4), Integer.of(-2)),
+   *   true
+   * )
    * ```
    *
-   * @param self - The first `Int` to compare.
-   * @param that - The second `Int` to compare.
+   * @param self - The first `Integer` to compare.
+   * @param that - The second `Integer` to compare.
    * @returns `true` if `self` is greater than or equal to `that`, otherwise
    *   `false`.
    */
@@ -999,8 +1053,9 @@ export const greaterThanOrEqualTo: {
  * **Syntax**
  *
  * ```ts
- * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.equal(
  *   // data-last api
@@ -1026,53 +1081,54 @@ export const between: {
    * @example
    *
    * ```ts
-   * import { Int, pipe } from "effect"
    * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
    * assert.equal(
    *   pipe(
-   *     Int.of(-1),
-   *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+   *     Integer.of(-1),
+   *     Integer.between({ minimum: Integer.of(0), maximum: Integer.of(5) })
    *   ),
    *   false
    * )
    *
    * assert.equal(
    *   pipe(
-   *     Int.of(0),
-   *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+   *     Integer.of(0),
+   *     Integer.between({ minimum: Integer.of(0), maximum: Integer.of(5) })
    *   ),
    *   true
    * )
    *
    * assert.equal(
    *   pipe(
-   *     Int.of(3),
-   *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+   *     Integer.of(3),
+   *     Integer.between({ minimum: Integer.of(0), maximum: Integer.of(5) })
    *   ),
    *   true
    * )
    *
    * assert.equal(
    *   pipe(
-   *     Int.of(5),
-   *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+   *     Integer.of(5),
+   *     Integer.between({ minimum: Integer.of(0), maximum: Integer.of(5) })
    *   ),
    *   true
    * )
    *
    * assert.equal(
    *   pipe(
-   *     Int.of(6),
-   *     Int.between({ minimum: Int.of(0), maximum: Int.of(5) })
+   *     Integer.of(6),
+   *     Integer.between({ minimum: Integer.of(0), maximum: Integer.of(5) })
    *   ),
    *   false
    * )
    * ```
    *
    * @param options
-   * @param options.minimum - The minimum inclusive `Int`.
-   * @param options.maximum - The maximum inclusive `Int`.
+   * @param options.minimum - The minimum inclusive `Integer`.
+   * @param options.maximum - The maximum inclusive `Integer`.
    * @returns A function that takes a `self` and returns `true` if `self` is
    *   between the `minimum` and `maximum` values (inclusive), otherwise
    *   `false`.
@@ -1083,41 +1139,56 @@ export const between: {
    * @example
    *
    * ```ts
-   * import { Int } from "effect"
    * import * as assert from "node:assert/strict"
+   * import * as Integer from "effect/Integer"
    *
    * assert.equal(
-   *   Int.between(Int.of(-1), { minimum: Int.of(0), maximum: Int.of(5) }),
+   *   Integer.between(Integer.of(-1), {
+   *     minimum: Integer.of(0),
+   *     maximum: Integer.of(5)
+   *   }),
    *   false
    * )
    *
    * assert.equal(
-   *   Int.between(Int.of(0), { minimum: Int.of(0), maximum: Int.of(5) }),
+   *   Integer.between(Integer.of(0), {
+   *     minimum: Integer.of(0),
+   *     maximum: Integer.of(5)
+   *   }),
    *   true
    * )
    *
    * assert.equal(
-   *   Int.between(Int.of(3), { minimum: Int.of(0), maximum: Int.of(5) }),
+   *   Integer.between(Integer.of(3), {
+   *     minimum: Integer.of(0),
+   *     maximum: Integer.of(5)
+   *   }),
    *   true
    * )
    *
    * assert.equal(
-   *   Int.between(Int.of(5), { minimum: Int.of(0), maximum: Int.of(5) }),
+   *   Integer.between(Integer.of(5), {
+   *     minimum: Integer.of(0),
+   *     maximum: Integer.of(5)
+   *   }),
    *   true
    * )
    *
    * assert.equal(
-   *   Int.between(Int.of(6), { minimum: Int.of(0), maximum: Int.of(5) }),
+   *   Integer.between(Integer.of(6), {
+   *     minimum: Integer.of(0),
+   *     maximum: Integer.of(5)
+   *   }),
    *   false
    * )
    * ```
    *
-   * @param self - The `Int` to check.
+   * @param self - The `Integer` to check.
    * @param options
-   * @param options.minimum - The minimum inclusive `Int`.
-   * @param options.maximum - The maximum inclusive `Int`.
-   * @returns `true` if the `Int` is between the `minimum` and `maximum` values
-   *   (inclusive), otherwise `false`.
+   * @param options.minimum - The minimum inclusive `Integer`.
+   * @param options.maximum - The maximum inclusive `Integer`.
+   * @returns `true` if the `Integer` is between the `minimum` and `maximum`
+   *   values (inclusive), otherwise `false`.
    */
   (
     self: Integer,
@@ -1141,8 +1212,9 @@ export const between: {
  * **Syntax**
  *
  * ```ts
- * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.equal(
  *   // data-last api
@@ -1167,31 +1239,34 @@ export const clamp: {
    * @example
    *
    * ```ts
-   * import { Int, pipe } from "effect"
    * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
-   * const clampBetweenZeroAndFive: (n: Int.Int) => Int.Int = Int.clamp({
-   *   minimum: Int.of(0),
-   *   maximum: Int.of(5)
+   * const clampBetweenZeroAndFive: (
+   *   n: Integer.Integer
+   * ) => Integer.Integer = Integer.clamp({
+   *   minimum: Integer.of(0),
+   *   maximum: Integer.of(5)
    * })
    *
    * assert.equal(
    *   pipe(
-   *     Int.of(3), //
-   *     Int.clamp({ minimum: Int.of(0), maximum: Int.of(5) })
+   *     Integer.of(3), //
+   *     Integer.clamp({ minimum: Integer.of(0), maximum: Integer.of(5) })
    *   ),
    *   3
    * )
    *
-   * assert.equal(pipe(Int.of(-1), clampBetweenZeroAndFive), 0)
+   * assert.equal(pipe(Integer.of(-1), clampBetweenZeroAndFive), 0)
    *
-   * assert.equal(pipe(Int.of(6), clampBetweenZeroAndFive), 5)
+   * assert.equal(pipe(Integer.of(6), clampBetweenZeroAndFive), 5)
    * ```
    *
    * @param options
-   * @param options.minimum - The minimum inclusive `Int`.
-   * @param options.maximum - The maximum inclusive `Int`.
-   * @returns A function that takes a `self` and returns the clamped `Int`
+   * @param options.minimum - The minimum inclusive `Integer`.
+   * @param options.maximum - The maximum inclusive `Integer`.
+   * @returns A function that takes a `self` and returns the clamped `Integer`
    *   value.
    */
   (options: { minimum: Integer; maximum: Integer }): (self: Integer) => Integer
@@ -1201,22 +1276,22 @@ export const clamp: {
    *
    * ```ts
    * import * as assert from "node:assert/strict"
-   * import { Int } from "effect"
+   * import * as Integer from "effect/Integer"
    *
-   * const options = { minimum: Int.of(1), maximum: Int.of(5) }
+   * const options = { minimum: Integer.of(1), maximum: Integer.of(5) }
    *
-   * assert.equal(Int.clamp(Int.of(3), options), 3)
+   * assert.equal(Integer.clamp(Integer.of(3), options), 3)
    *
-   * assert.equal(Int.clamp(Int.of(0), options), 1)
+   * assert.equal(Integer.clamp(Integer.of(0), options), 1)
    *
-   * assert.equal(Int.clamp(Int.of(6), options), 5)
+   * assert.equal(Integer.clamp(Integer.of(6), options), 5)
    * ```
    *
-   * @param self - The `Int` to be clamped.
+   * @param self - The `Integer` to be clamped.
    * @param options
-   * @param options.minimum - The minimum inclusive `Int`.
-   * @param options.maximum - The maximum inclusive `Int`.
-   * @returns The clamped `Int` value.
+   * @param options.minimum - The minimum inclusive `Integer`.
+   * @param options.maximum - The maximum inclusive `Integer`.
+   * @returns The clamped `Integer` value.
    */
   (
     self: Integer,
@@ -1236,8 +1311,9 @@ export const clamp: {
  * **Syntax**
  *
  * ```ts
- * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * const three = Integer.of(3)
  * const five = Integer.of(5)
@@ -1259,23 +1335,24 @@ export const min: {
    * @example
    *
    * ```ts
-   * import { Int, pipe } from "effect"
    * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
-   * const three = Int.of(3)
-   * const two = Int.of(2)
+   * const three = Integer.of(3)
+   * const two = Integer.of(2)
    *
    * assert.equal(
-   *   pipe(three, Int.min(two)), // returns 2
-   *   pipe(two, Int.min(three)), // returns 2
+   *   pipe(three, Integer.min(two)), // returns 2
+   *   pipe(two, Integer.min(three)), // returns 2
    *   "the min operation is commutative"
    * )
    * ```
    *
-   * @param that - The `Int` to compare with the `self` when the resultant
+   * @param that - The `Integer` to compare with the `self` when the resultant
    *   function is invoked.
    * @returns A function that takes a `self` and returns the minimum of the two
-   *   `Int`s (`self` | `that`).
+   *   `Integer`s (`self` | `that`).
    */
   (that: Integer): (self: Integer) => Integer
 
@@ -1283,22 +1360,22 @@ export const min: {
    * @example
    *
    * ```ts
-   * import { Int } from "effect"
+   * import * as Integer from "effect/Integer"
    * import * as assert from "node:assert/strict"
    *
-   * const three = Int.of(3)
-   * const five = Int.of(5)
+   * const three = Integer.of(3)
+   * const five = Integer.of(5)
    *
    * assert.equal(
-   *   Int.min(three, five), // returns 3
-   *   Int.min(five, three), // returns 3
+   *   Integer.min(three, five), // returns 3
+   *   Integer.min(five, three), // returns 3
    *   "the min operation is commutative"
    * )
    * ```
    *
-   * @param self - The first `Int` to compare.
-   * @param that - The second `Int` to compare.
-   * @returns The minimum of the two `Int`s (`self` | `that`).
+   * @param self - The first `Integer` to compare.
+   * @param that - The second `Integer` to compare.
+   * @returns The minimum of the two `Integer`s (`self` | `that`).
    */
   (self: Integer, that: Integer): Integer
 } = _Order.min(Order)
@@ -1309,8 +1386,9 @@ export const min: {
  * **Syntax**
  *
  * ```ts
- * import { Integer, pipe } from "effect"
  * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * const negativeTwo = Integer.of(-2)
  * const three = Integer.of(3)
@@ -1332,29 +1410,30 @@ export const max: {
    * @example
    *
    * ```ts
-   * import { Int, pipe } from "effect"
    * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as Integer from "effect/Integer"
    *
-   * const negativeTwo = Int.of(-2)
-   * const three = Int.of(3)
+   * const negativeTwo = Integer.of(-2)
+   * const three = Integer.of(3)
    *
    * assert.equal(
    *   pipe(
    *     negativeTwo,
-   *     Int.max(three) // returns 3
+   *     Integer.max(three) // returns 3
    *   ),
    *   pipe(
    *     three,
-   *     Int.max(negativeTwo) // returns 3
+   *     Integer.max(negativeTwo) // returns 3
    *   ),
    *   "the max operation is commutative"
    * )
    * ```
    *
-   * @param that - The `Int` to compare with the `self` when the resultant
+   * @param that - The `Integer` to compare with the `self` when the resultant
    *   function is invoked.
    * @returns A function that takes a `self` and returns the maximum of the two
-   *   `Int`s (`self` | `that`).
+   *   `Integer`s (`self` | `that`).
    */
   (that: Integer): (self: Integer) => Integer
 
@@ -1362,19 +1441,19 @@ export const max: {
    * @example
    *
    * ```ts
-   * import { Int } from "effect"
    * import * as assert from "node:assert/strict"
+   * import * as Integer from "effect/Integer"
    *
    * assert.equal(
-   *   Int.max(Int.of(-2), Int.of(3)), // returns 3
-   *   Int.max(Int.of(3), Int.of(-2)), // returns 3
+   *   Integer.max(Integer.of(-2), Integer.of(3)), // returns 3
+   *   Integer.max(Integer.of(3), Integer.of(-2)), // returns 3
    *   "the max operation is commutative"
    * )
    * ```
    *
-   * @param self - The first `Int` to compare.
-   * @param that - The second `Int` to compare.
-   * @returns The maximum of the two `Int`s (`self` | `that`).
+   * @param self - The first `Integer` to compare.
+   * @param that - The second `Integer` to compare.
+   * @returns The maximum of the two `Integer`s (`self` | `that`).
    */
   (self: Integer, that: Integer): Integer
 } = _Order.max(Order)
@@ -1388,8 +1467,8 @@ export const max: {
  * @example
  *
  * ```ts
- * import { Integer } from "effect"
  * import * as assert from "node:assert/strict"
+ * import * as Integer from "effect/Integer"
  *
  * assert.equal(Integer.sign(Integer.of(-10)), -1)
  * assert.equal(Integer.sign(Integer.of(0)), 0)
@@ -1413,7 +1492,8 @@ export const sign: (n: Integer) => Ordering = (n) => Order(n, zero)
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Integer, HashSet } from "effect"
+ * import { HashSet } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.equal(
  *   Integer.sumAll(
@@ -1442,7 +1522,8 @@ export const sumAll: {
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Integer, HashSet } from "effect"
+ * import { HashSet } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.equal(
  *   Integer.multiplyAll(
@@ -1490,7 +1571,7 @@ export const remainder: {
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Integer } from "effect"
+ * import * as Integer from "effect/Integer"
  *
  * assert.deepStrictEqual(Integer.nextPow2(Integer.of(5)), 8)
  * assert.deepStrictEqual(Integer.nextPow2(Integer.of(17)), 32)

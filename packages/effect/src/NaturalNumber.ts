@@ -41,6 +41,7 @@ import * as _Predicate from "./Predicate.js"
  *
  * ```ts
  * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Integer from "effect/Integer"
  *
  * function onlyNaturalNumbers(int: NaturalNumber.NaturalNumber): void {
  *   //... stuff for ONLY non-negative integers FANS
@@ -51,7 +52,7 @@ import * as _Predicate from "./Predicate.js"
  * onlyNaturalNumbers(NaturalNumber.of(0)) // ok too
  *
  * // @ts-expect-error - This will fail because it is not a non-negative integer
- * onlyNaturalNumbers(NaturalNumber.of(-99))
+ * onlyNaturalNumbers(Integer.of(-99))
  *
  * // @ts-expect-error - This will fail because 1.5 is not an integer
  * onlyNaturalNumbers(1.5)
@@ -1098,10 +1099,10 @@ export const divideToNumber: {
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { pipe, type Option } from "effect"
+ * import { pipe, Option } from "effect"
  * import * as NaturalNumber from "effect/NaturalNumber"
  *
- * assert.deepStrictEqual<Option.Option<NaturalNumber>>(
+ * assert.deepStrictEqual<Option.Option<NaturalNumber.NaturalNumber>>(
  *   // data-last API
  *   pipe(
  *     NaturalNumber.of(42),
@@ -1442,7 +1443,7 @@ export const decrementToInteger: (n: NaturalNumber) => Integer.Integer = Integer
  *     NaturalNumber.of(3),
  *     NaturalNumber.decrementSafe,
  *     Option.flatMap(NaturalNumber.decrementSafe),
- *     Option.map((n) => NaturalNumber.add(n, NaturalNumber.of(5)))
+ *     Option.map((n) => NaturalNumber.sum(n, NaturalNumber.of(5)))
  *   ),
  *   Option.some(NaturalNumber.of(6))
  * )
@@ -1669,14 +1670,6 @@ export const lessThan: {
  *   NaturalNumber.lessThanOrEqualTo(
  *     NaturalNumber.of(2),
  *     NaturalNumber.of(3)
- *   )
- * )
- *
- * assert(
- *   pipe(
- *     Integer.of(-2),
- *     // @ts-expect-error - It is not allowed to compare different types
- *     NaturalNumber.lessThanOrEqualTo(NaturalNumber.of(3))
  *   )
  * )
  *
@@ -1978,6 +1971,7 @@ export const greaterThanOrEqualTo: {
  * import * as assert from "node:assert/strict"
  * import { pipe } from "effect"
  * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Integer from "effect/Integer"
  *
  * assert.equal(
  *   // data-last api
@@ -2452,9 +2446,9 @@ export const sumAll: {
  * assert.equal<NaturalNumber.NaturalNumber>(
  *   NaturalNumber.multiplyAll(
  *     Iterable.makeBy(
- *       (n: NaturalNumber.NaturalNumber) =>
+ *       (n) =>
  *         pipe(
- *           n, // 0, 1, 2, 3, 4,
+ *           n as NaturalNumber.NaturalNumber, // 0, 1, 2, 3, 4,
  *           NaturalNumber.increment, // 1, 2, 3, 4, 5
  *           NaturalNumber.multiply(NaturalNumber.of(2)) // 2, 4, 6, 8, 10
  *         ),
