@@ -1082,6 +1082,213 @@ export const divideToNumber: {
 } = dual(2, internal.divide<NaturalNumber, number>)
 
 /**
+ * Implements **division as a partial function on natural numbers** that ensures
+ * the closure property, that results remain within the set of natural numbers
+ * (`ℕ`), by returning None when the result would fall outside ℕ.
+ *
+ * For the division function `f: ℕ × ℕ → Option<ℕ>` defined by:
+ *
+ * - `f(a, b) = Some(a / b)` when `b ≠ 0` and `a` is _exactly divisible_ by `b`
+ * - `f(a, b) = None` when `b = 0` or `a` is _not exactly divisible_ by `b`
+ * - **Domain**: The set of ordered pairs of natural numbers (`ℕ × ℕ`)
+ * - **Codomain**: `Option<ℕ>` (an option of natural numbers)
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe, type Option } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * assert.deepStrictEqual<Option.Option<NaturalNumber>>(
+ *   // data-last API
+ *   pipe(
+ *     NaturalNumber.of(42),
+ *     NaturalNumber.divideSafe(NaturalNumber.of(6))
+ *   ),
+ *   // data-first API
+ *   NaturalNumber.divideSafe(NaturalNumber.of(42), NaturalNumber.of(6))
+ * )
+ *
+ * // Mixing with other operations
+ * console.log(
+ *   pipe(
+ *     NaturalNumber.of(12),
+ *     NaturalNumber.divideSafe(NaturalNumber.of(4)), // Some(3)
+ *     Option.flatMap(NaturalNumber.subtractSafe(NaturalNumber.one)), // Some(2)
+ *     Option.flatMap(NaturalNumber.divideSafe(NaturalNumber.of(2))), // Some(1)
+ *     Option.flatMap(NaturalNumber.decrementSafe) // Some(0)
+ *   )
+ * )
+ * ```
+ *
+ * @remarks
+ * Unlike {@link module:NaturalNumber.divideToNumber}, this operation preserves
+ * closure within the natural numbers domain by returning `None` when the result
+ * would be fractional or when division is undefined. This creates a partial
+ * function that is only defined when the divisor is non-zero and the dividend
+ * is exactly divisible by the divisor.
+ *
+ * Mathematical properties of safe division:
+ *
+ * - **Closure in `ℕ`**: When defined (Some case), the result is always in ℕ
+ * - **Partiality**: The function is undefined (None) when divisor = 0 or when
+ *   division would yield a fraction
+ * - **Non-commutativity**: `f(a, b) ≠ f(b, a)` (unless `a = b = 0` or `a = b =
+ *   1`)
+ * - **Non-associativity**: `f(f(a, b), c) ≠ f(a, f(b, c))` when both sides are
+ *   defined
+ * - **Right identity element**: `f(a, 1) = Some(a)` for all `a ∈ ℕ`
+ * - **Divisibility property**: `f(a, b) = Some(q)` if and only if `a = b × q` for
+ *   some `q ∈ ℕ`
+ * - **Quotient uniqueness**: If `f(a, b) = Some(q)`, then `q` is the unique
+ *   natural number such that `a = b × q`
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @experimental
+ */
+export const divideSafe: {
+  /**
+   * Returns a function that safely divides a given `dividend` by a specified
+   * `divisor`, ensuring the result remains within the natural numbers domain.
+   *
+   * **Data-last API** (a.k.a. pipeable)
+   *
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { pipe, Option } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * // When dividend is exactly divisible by divisor, returns Some(result)
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.divideSafe(NaturalNumber.of(2))
+   *   ),
+   *   Option.some(NaturalNumber.of(5))
+   * )
+   *
+   * // When division would result in a fraction, returns None
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     NaturalNumber.of(5),
+   *     NaturalNumber.divideSafe(NaturalNumber.of(2))
+   *   ),
+   *   Option.none()
+   * )
+   *
+   * // When dividing by zero, returns None
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     NaturalNumber.of(10),
+   *     NaturalNumber.divideSafe(NaturalNumber.zero)
+   *   ),
+   *   Option.none()
+   * )
+   *
+   * // Can be used in pipelines with Option functions
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     NaturalNumber.of(12),
+   *     NaturalNumber.divideSafe(NaturalNumber.of(4)),
+   *     Option.flatMap((n) =>
+   *       NaturalNumber.divideSafe(n, NaturalNumber.of(3))
+   *     ),
+   *     Option.map((n) => NaturalNumber.add(n, NaturalNumber.of(2)))
+   *   ),
+   *   Option.some(NaturalNumber.of(3))
+   * )
+   * ```
+   *
+   * @param divisor - The `NaturalNumber` to divide the `dividend` by when the
+   *   resultant function is invoked.
+   * @returns A function that takes a `dividend` and returns an Option
+   *   containing the natural number quotient if the divisor is non-zero and the
+   *   division yields a natural number, or None otherwise.
+   */
+  (
+    divisor: NaturalNumber
+  ): (dividend: NaturalNumber) => _Option.Option<NaturalNumber>
+
+  /**
+   * Safely divides the `dividend` by the `divisor`, returning an Option that
+   * contains the result only if it remains within the natural numbers domain.
+   *
+   * **Data-first API**
+   *
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { Option } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   *
+   * // When dividend is exactly divisible by divisor, returns Some(result)
+   * assert.deepStrictEqual(
+   *   NaturalNumber.divideSafe(NaturalNumber.of(6), NaturalNumber.of(3)),
+   *   Option.some(NaturalNumber.of(2))
+   * )
+   *
+   * // When division would result in a fraction, returns None
+   * assert.deepStrictEqual(
+   *   NaturalNumber.divideSafe(NaturalNumber.of(5), NaturalNumber.of(2)),
+   *   Option.none()
+   * )
+   *
+   * // When dividing by zero, returns None
+   * assert.deepStrictEqual(
+   *   NaturalNumber.divideSafe(NaturalNumber.of(10), NaturalNumber.zero),
+   *   Option.none()
+   * )
+   *
+   * // Division with zero as dividend and non-zero divisor
+   * assert.deepStrictEqual(
+   *   NaturalNumber.divideSafe(NaturalNumber.zero, NaturalNumber.of(5)),
+   *   Option.some(NaturalNumber.zero),
+   *   "Zero divided by any non-zero natural number equals zero"
+   * )
+   *
+   * // Division when both operands are zero
+   * assert.deepStrictEqual(
+   *   NaturalNumber.divideSafe(NaturalNumber.zero, NaturalNumber.zero),
+   *   Option.none(),
+   *   "Division by zero is undefined, even when the dividend is also zero"
+   * )
+   * ```
+   *
+   * @param dividend - The `NaturalNumber` to be divided.
+   * @param divisor - The `NaturalNumber` to divide by.
+   * @returns An Option containing the natural number quotient if the divisor is
+   *   non-zero and the division yields a natural number, or None if the divisor
+   *   is zero or the division would result in a fraction.
+   */
+  (
+    dividend: NaturalNumber,
+    divisor: NaturalNumber
+  ): _Option.Option<NaturalNumber>
+} = dual(
+  2,
+  (
+    dividend: NaturalNumber,
+    divisor: NaturalNumber
+  ): _Option.Option<NaturalNumber> => {
+    if (divisor === 0) {
+      return _Option.none()
+    }
+
+    if (dividend % divisor !== 0) {
+      return _Option.none()
+    }
+
+    return option(dividend / divisor)
+  }
+)
+
+/**
  * Returns the result of adding one to the given `NaturalNumber`.
  *
  * Increment is a special case of addition that adds one to a natural number.

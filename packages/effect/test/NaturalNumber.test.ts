@@ -8,6 +8,7 @@ import {
   assertRight,
   assertSome,
   assertTrue,
+  deepStrictEqual,
   notDeepStrictEqual,
   strictEqual,
   throws
@@ -661,6 +662,115 @@ describe("NaturalNumber", () => {
           Option.map((result) => result ** 2)
         ),
         9
+      )
+    })
+
+    it("divideSafe", () => {
+      // Basic functionality tests
+      deepStrictEqual(
+        pipe(six, NaturalNumber.divideSafe(two)),
+        NaturalNumber.divideSafe(six, two)
+      )
+
+      // Boundary conditions
+
+      /** Zero divided by any non-zero number should be zero */
+      assertSome(
+        NaturalNumber.divideSafe(NaturalNumber.zero, five),
+        NaturalNumber.zero
+      )
+
+      /** Division by zero should return None */
+      assertNone(NaturalNumber.divideSafe(five, NaturalNumber.zero))
+
+      /** Division by one should not change the value */
+      assertSome(NaturalNumber.divideSafe(five, NaturalNumber.one), five)
+
+      /** Division resulting in a fraction should return None */
+      assertNone(NaturalNumber.divideSafe(five, two))
+
+      /** Division that results in a natural number should return Some */
+      assertSome(NaturalNumber.divideSafe(ten, five), two)
+
+      /** Division when both operands are zero should return None */
+      assertNone(
+        NaturalNumber.divideSafe(NaturalNumber.zero, NaturalNumber.zero)
+      )
+
+      // Mathematical properties
+
+      /** Closure: If a, b ∈ ℕ and a is exactly divisible by b, then a ÷ b ∈ ℕ */
+      const exactDivisionResult = NaturalNumber.divideSafe(six, three)
+      if (Option.isSome(exactDivisionResult)) {
+        assertTrue(
+          NaturalNumber.isNaturalNumber(exactDivisionResult.value),
+          "Result should be a natural number when defined"
+        )
+      }
+
+      /** Non-commutativity: a ÷ b ≠ b ÷ a */
+      notDeepStrictEqual(
+        NaturalNumber.divideSafe(six, three), // Some(2)
+        NaturalNumber.divideSafe(three, six), // None
+        "Division is not commutative: a ÷ b ≠ b ÷ a"
+      )
+
+      /**
+       * Non-associativity: (a ÷ b) ÷ c ≠ a ÷ (b ÷ c) when both sides are
+       * defined
+       */
+      notDeepStrictEqual(
+        pipe(
+          NaturalNumber.divideSafe(NaturalNumber.of(12), NaturalNumber.of(4)),
+          Option.flatMap((n) => NaturalNumber.divideSafe(n, NaturalNumber.of(3)))
+        ),
+        pipe(
+          NaturalNumber.divideSafe(NaturalNumber.of(4), NaturalNumber.of(2)),
+          Option.flatMap((n) => NaturalNumber.divideSafe(NaturalNumber.of(12), n))
+        ),
+        "Division is not associative: (a ÷ b) ÷ c ≠ a ÷ (b ÷ c)"
+      )
+
+      /**
+       * Right identity element: a ÷ 1 = a
+       *
+       * 1 is the right identity element for division: a ÷ 1 = a
+       */
+      assertSome(NaturalNumber.divideSafe(five, NaturalNumber.one), five)
+
+      /** Division by zero is undefined */
+      assertNone(NaturalNumber.divideSafe(five, NaturalNumber.zero))
+
+      // Chaining operations
+      assertSome(
+        pipe(
+          NaturalNumber.of(12),
+          NaturalNumber.divideSafe(NaturalNumber.of(4)),
+          Option.flatMap((n) => NaturalNumber.subtractSafe(n, NaturalNumber.of(2)))
+        ),
+        NaturalNumber.one
+      )
+
+      // Mixing with other operations
+      assertSome(
+        pipe(
+          NaturalNumber.of(12),
+          NaturalNumber.divideSafe(NaturalNumber.of(3)),
+          Option.flatMap(NaturalNumber.decrementSafe)
+        ),
+        NaturalNumber.of(3)
+      )
+
+      // Example from documentation
+      assertSome(
+        pipe(
+          NaturalNumber.of(12),
+          NaturalNumber.divideSafe(NaturalNumber.of(4)), // Some(3)
+          Option.flatMap(NaturalNumber.subtractSafe(NaturalNumber.one)), // Some(2)
+          Option.flatMap(NaturalNumber.divideSafe(NaturalNumber.of(2))), // Some(1)
+          Option.flatMap(NaturalNumber.decrementSafe) // Some(0)
+        ),
+        NaturalNumber.zero
       )
     })
 
