@@ -8,12 +8,8 @@ import * as IndexedDb from "@effect/platform/IndexedDb"
 import { Layer } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as HashMap from "effect/HashMap"
 import { pipeArguments } from "effect/Pipeable"
-import * as Schema from "effect/Schema"
-import type * as IndexedDbMigration from "./IndexedDbMigration.js"
-import type * as IndexedDbTable from "./IndexedDbTable.js"
-import type * as IndexedDbVersion from "./IndexedDbVersion.js"
+import * as IndexedDbMigration from "./IndexedDbMigration.js"
 
 /**
  * @since 1.0.0
@@ -55,6 +51,7 @@ export class IndexedDbDatabaseError extends TypeIdError(
     | "OpenError"
     | "TransactionError"
     | "Blocked"
+    | "Aborted"
     | "UpgradeError"
   readonly cause: unknown
 }> {
@@ -124,149 +121,6 @@ const makeProto = <Id extends string>(options: {
   return IndexedDb as any
 }
 
-export const migrationApi = <
-  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
->(
-  database: IDBDatabase,
-  transaction: IDBTransaction,
-  source: Source
-): IndexedDbMigration.MigrationApi<Source> => {
-  const insert = <
-    A extends IndexedDbTable.IndexedDbTable.TableName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>
-    >
-  >(
-    table: A,
-    data: Schema.Schema.Encoded<
-      IndexedDbTable.IndexedDbTable.TableSchema<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          A
-        >
-      >
-    >
-  ) =>
-    Effect.gen(function*() {
-      const { tableSchema } = yield* HashMap.get(source.tables, table).pipe(
-        Effect.catchTag(
-          "NoSuchElementException",
-          () =>
-            new IndexedDbDatabaseError({
-              reason: "TransactionError",
-              cause: null
-            })
-        )
-      )
-
-      yield* Schema.decodeUnknown(tableSchema)(data).pipe(
-        Effect.catchTag("ParseError", (error) =>
-          new IndexedDbDatabaseError({
-            reason: "TransactionError",
-            cause: error
-          }))
-      )
-
-      return yield* Effect.async<
-        globalThis.IDBValidKey,
-        IndexedDbDatabaseError
-      >((resume) => {
-        const objectStore = transaction.objectStore(table)
-        const request = objectStore.add(data)
-
-        request.onerror = (event) => {
-          resume(
-            Effect.fail(
-              new IndexedDbDatabaseError({
-                reason: "TransactionError",
-                cause: event
-              })
-            )
-          )
-        }
-
-        request.onsuccess = (_) => {
-          resume(Effect.succeed(request.result))
-        }
-      })
-    }).pipe(Effect.orDie)
-
-  return {
-    insert,
-    insertAll: (table, dataList) => Effect.all(dataList.map((data) => insert(table, data))),
-
-    createObjectStore: (table) =>
-      Effect.gen(function*() {
-        const createTable = HashMap.unsafeGet(source.tables, table)
-        return database.createObjectStore(
-          createTable.tableName,
-          createTable.options
-        )
-      }),
-
-    deleteObjectStore: (table) =>
-      Effect.gen(function*() {
-        const createTable = HashMap.unsafeGet(source.tables, table)
-        return database.deleteObjectStore(createTable.tableName)
-      }),
-
-    getAll: (table) =>
-      Effect.gen(function*() {
-        const { tableName, tableSchema } = yield* HashMap.get(
-          source.tables,
-          table
-        ).pipe(
-          Effect.catchTag(
-            "NoSuchElementException",
-            () =>
-              new IndexedDbDatabaseError({
-                reason: "TransactionError",
-                cause: null
-              })
-          )
-        )
-
-        const data = yield* Effect.async<any, IndexedDbDatabaseError>(
-          (resume) => {
-            const store = transaction.objectStore(tableName)
-            const request = store.getAll()
-
-            request.onerror = (event) => {
-              resume(
-                Effect.fail(
-                  new IndexedDbDatabaseError({
-                    reason: "TransactionError",
-                    cause: event
-                  })
-                )
-              )
-            }
-
-            request.onsuccess = () => {
-              resume(Effect.succeed(request.result))
-            }
-          }
-        )
-
-        const tableSchemaArray = Schema.Array(
-          tableSchema
-        ) as unknown as IndexedDbTable.IndexedDbTable.TableSchema<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            typeof tableName
-          >
-        >
-
-        return yield* Schema.decodeUnknown(tableSchemaArray)(data).pipe(
-          Effect.catchTag("ParseError", (error) =>
-            new IndexedDbDatabaseError({
-              reason: "TransactionError",
-              cause: error
-            }))
-        )
-      }).pipe(Effect.orDie)
-  }
-}
-
 /**
  * @since 1.0.0
  * @category constructors
@@ -314,7 +168,6 @@ export const layer = <
           )
         }
 
-        // If `onupgradeneeded` exits successfully, `onsuccess` will then be triggered
         request.onupgradeneeded = (event) => {
           const idbRequest = event.target as IDBRequest<IDBDatabase>
           const database = idbRequest.result
@@ -335,7 +188,7 @@ export const layer = <
               resume(
                 Effect.fail(
                   new IndexedDbDatabaseError({
-                    reason: "Blocked",
+                    reason: "Aborted",
                     cause: event
                   })
                 )
@@ -355,12 +208,12 @@ export const layer = <
 
             migrations.slice(oldVersion).reduce((prev, untypedMigration) => {
               const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyWithProps
-              const fromApi = migrationApi(
+              const fromApi = IndexedDbMigration.migrationApi(
                 database,
                 transaction,
                 migration.fromVersion
               )
-              const toApi = migrationApi(
+              const toApi = IndexedDbMigration.migrationApi(
                 database,
                 transaction,
                 migration.toVersion
