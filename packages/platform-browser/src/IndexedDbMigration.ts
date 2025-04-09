@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import { TypeIdError } from "@effect/platform/Error"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as HashMap from "effect/HashMap"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
@@ -52,6 +53,7 @@ export class IndexedDbMigrationError extends TypeIdError(
     | "Blocked"
     | "UpgradeError"
     | "MissingTable"
+    | "MissingIndex"
   readonly cause: unknown
 }> {
   get message() {
@@ -76,6 +78,35 @@ export interface MigrationApi<
     >
   >(
     table: A
+  ) => Effect.Effect<void, IndexedDbMigrationError>
+
+  readonly createIndex: <
+    A extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    >
+  >(
+    table: A,
+    indexName: Extract<
+      keyof IndexedDbTable.IndexedDbTable.Indexes<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>
+      >,
+      string
+    >,
+    options?: IDBIndexParameters
+  ) => Effect.Effect<globalThis.IDBIndex, IndexedDbMigrationError>
+
+  readonly deleteIndex: <
+    A extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    >
+  >(
+    table: A,
+    indexName: Extract<
+      keyof IndexedDbTable.IndexedDbTable.Indexes<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>
+      >,
+      string
+    >
   ) => Effect.Effect<void, IndexedDbMigrationError>
 
   readonly getAll: <
@@ -246,6 +277,45 @@ export const migrationApi = <
 
         return yield* Effect.try({
           try: () => database.deleteObjectStore(createTable.tableName),
+          catch: (cause) =>
+            new IndexedDbMigrationError({
+              reason: "TransactionError",
+              cause
+            })
+        })
+      }),
+
+    createIndex: (table, indexName, options) =>
+      Effect.gen(function*() {
+        const store = transaction.objectStore(table)
+        const sourceTable = HashMap.unsafeGet(source.tables, table)
+
+        const keyPath = yield* Effect.fromNullable(
+          // @ts-expect-error
+          sourceTable.options?.indexes[indexName] ?? undefined
+        ).pipe(
+          Effect.catchTag("NoSuchElementException", (error) =>
+            new IndexedDbMigrationError({
+              reason: "MissingIndex",
+              cause: Cause.fail(error)
+            }))
+        )
+
+        return yield* Effect.try({
+          try: () => store.createIndex(indexName, keyPath, options),
+          catch: (cause) =>
+            new IndexedDbMigrationError({
+              reason: "TransactionError",
+              cause
+            })
+        })
+      }),
+
+    deleteIndex: (table, indexName) =>
+      Effect.gen(function*() {
+        const store = transaction.objectStore(table)
+        return yield* Effect.try({
+          try: () => store.deleteIndex(indexName),
           catch: (cause) =>
             new IndexedDbMigrationError({
               reason: "TransactionError",
