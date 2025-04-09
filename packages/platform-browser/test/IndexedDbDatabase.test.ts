@@ -12,7 +12,7 @@ import { indexedDB } from "fake-indexeddb"
 
 const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB }))
 
-describe.sequential("IndexedDbDatabase", () => {
+describe("IndexedDbDatabase", () => {
   it.effect("insert and read todos", () => {
     const Table = IndexedDbTable.make(
       "todo",
@@ -140,6 +140,76 @@ describe.sequential("IndexedDbDatabase", () => {
                         completed: t.completed
                       }))
                     )
+                  })
+              })
+            ).pipe(Layer.provide(layerFakeIndexedDb))
+          )
+        )
+      )
+    )
+  })
+
+  it.effect("delete object store migration", () => {
+    const Table1 = IndexedDbTable.make(
+      "todo",
+      Schema.Struct({
+        id: Schema.Number,
+        title: Schema.String,
+        completed: Schema.Boolean
+      }),
+      { keyPath: "id" }
+    )
+
+    const Table2 = IndexedDbTable.make(
+      "user",
+      Schema.Struct({
+        userId: Schema.Number,
+        name: Schema.String,
+        email: Schema.String
+      }),
+      { keyPath: "userId" }
+    )
+
+    const Db1 = IndexedDbVersion.make(Table1)
+    const Db2 = IndexedDbVersion.make(Table2)
+
+    return Effect.gen(function*() {
+      const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+      const api = makeApi(Db2)
+      const user = yield* api.getAll("user")
+      const name = yield* use(async (database) => database.name)
+      const version = yield* use(async (database) => database.version)
+      const objectStoreNames = yield* use(async (database) => database.objectStoreNames)
+      assert.equal(name, "indexed-db")
+      assert.equal(version, 2)
+      assert.deepStrictEqual(user, [{ userId: 1, name: "John Doe", email: "john.doe@example.com" }])
+      assert.deepStrictEqual(Array.from(objectStoreNames), ["user"])
+
+      // Close database to avoid errors when running other tests (blocked access)
+      yield* use(async (database) => database.close())
+    }).pipe(
+      Effect.provide(
+        IndexedDbQuery.layer.pipe(
+          Layer.provide(
+            IndexedDbDatabase.layer(
+              "indexed-db",
+              IndexedDbMigration.make({
+                fromVersion: IndexedDbVersion.makeEmpty,
+                toVersion: Db1,
+                execute: (_, toQuery) => toQuery.createObjectStore("todo")
+              }),
+              IndexedDbMigration.make({
+                fromVersion: Db1,
+                toVersion: Db2,
+                execute: (fromQuery, toQuery) =>
+                  Effect.gen(function*() {
+                    yield* fromQuery.deleteObjectStore("todo")
+                    yield* toQuery.createObjectStore("user")
+                    yield* toQuery.insert("user", {
+                      userId: 1,
+                      name: "John Doe",
+                      email: "john.doe@example.com"
+                    })
                   })
               })
             ).pipe(Layer.provide(layerFakeIndexedDb))
