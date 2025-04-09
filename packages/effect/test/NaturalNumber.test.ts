@@ -1053,6 +1053,7 @@ describe("NaturalNumber", () => {
   })
 
   describe("Predicates", () => {
+    const negativeTwoInt = Integer.of(-2)
     const two = NaturalNumber.of(2)
     const three = NaturalNumber.of(3)
     const four = NaturalNumber.of(4)
@@ -1081,8 +1082,6 @@ describe("NaturalNumber", () => {
     })
 
     it("lessThanOrEqualTo", () => {
-      const negativeTwoInt = Integer.of(-2)
-
       const isNegativeTwoLessThenOrEqualToThree = Integer.lessThanOrEqualTo(
         negativeTwoInt,
         three
@@ -1125,6 +1124,24 @@ describe("NaturalNumber", () => {
           four, //
           NaturalNumber.lessThanOrEqualTo(three)
         )
+      )
+    })
+
+    it("greaterThan", () => {
+      assertEquals(
+        NaturalNumber.greaterThan(two, three),
+        pipe(two, Integer.greaterThan(three))
+      )
+
+      assertFalse(
+        NaturalNumber.greaterThan(NaturalNumber.zero, NaturalNumber.zero)
+      )
+
+      assertFalse(NaturalNumber.greaterThan(three, three))
+
+      assertEquals(
+        Integer.greaterThan(four, negativeTwoInt),
+        pipe(four, Integer.greaterThan(negativeTwoInt))
       )
     })
   })

@@ -1767,3 +1767,100 @@ export const lessThanOrEqualTo: {
    */
   (self: NaturalNumber, that: NaturalNumber): boolean
 } = _Order.lessThanOrEqualTo(Order)
+
+/**
+ * Returns `true` if the first `NaturalNumber` is greater than the second
+ * `NaturalNumber`, otherwise `false`.
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * assert.equal(
+ *   pipe(
+ *     // data-last api
+ *     NaturalNumber.of(3),
+ *     NaturalNumber.greaterThan(NaturalNumber.of(2))
+ *   ),
+ *   // data-first api
+ *   NaturalNumber.greaterThan(NaturalNumber.of(3), NaturalNumber.of(2))
+ * )
+ * ```
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Predicates
+ * @experimental
+ */
+export const greaterThan: {
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { pipe } from "effect"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   * import * as Integer from "effect/Integer"
+   *
+   * assert.equal(
+   *   NaturalNumber(
+   *     NaturalNumber.of(4),
+   *     NaturalNumber.greaterThan(NaturalNumber.of(2))
+   *   ),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   pipe(NaturalNumber.of(0), Integer.greaterThan(Integer.of(-1))),
+   *   false
+   * )
+   *
+   * assert.equal(
+   *   pipe(
+   *     NaturalNumber.of(0),
+   *     NaturalNumber.greaterThan(NaturalNumber.of(3))
+   *   ),
+   *   false
+   * )
+   * ```
+   *
+   * @param that - The `NaturalNumber` to compare with the `self` when the
+   *   resultant function is invoked.
+   * @returns A function that takes a `self` and returns `true` if `self` is
+   *   greater than `that`, otherwise `false`.
+   */
+  (that: NaturalNumber): (self: NaturalNumber) => boolean
+
+  /**
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import * as NaturalNumber from "effect/NaturalNumber"
+   * import * as Integer from "effect/Integer"
+   *
+   * assert.equal(
+   *   NaturalNumber.greaterThan(NaturalNumber.of(4), NaturalNumber.of(2)),
+   *   true
+   * )
+   *
+   * assert.equal(
+   *   Integer.greaterThan(Integer.of(-2), NaturalNumber.of(0)),
+   *   false
+   * )
+   *
+   * assert.equal(
+   *   NaturalNumber.greaterThan(NaturalNumber.of(2), NaturalNumber.of(2)),
+   *   false
+   * )
+   * ```
+   *
+   * @param self - The first `NaturalNumber` value to compare.
+   * @param that - The second `NaturalNumber` value to compare.
+   * @returns A `boolean` indicating whether `self` was greater than `that`.
+   */
+  (self: NaturalNumber, that: NaturalNumber): boolean
+} = _Order.greaterThan(Order)
