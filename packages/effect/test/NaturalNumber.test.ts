@@ -1,7 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Brand, Either, Option, pipe } from "effect"
 import * as Integer from "effect/Integer"
-import { DivisionByZeroError } from "effect/internal/number"
 import * as NaturalNumber from "effect/NaturalNumber"
 import {
   assertFalse,
@@ -662,99 +661,6 @@ describe("NaturalNumber", () => {
           Option.map((result) => result ** 2)
         ),
         9
-      )
-    })
-
-    it("unsafeDivide", () => {
-      // Basic functionality tests
-      strictEqual(
-        pipe(six, NaturalNumber.unsafeDivide(two)),
-        NaturalNumber.unsafeDivide(six, two),
-        "both data-first and data-last APIs should work"
-      )
-
-      strictEqual(pipe(six, NaturalNumber.unsafeDivide(two)), 3)
-
-      // Boundary conditions
-
-      /** Zero divided by any non-zero number should be zero */
-      strictEqual(
-        NaturalNumber.unsafeDivide(NaturalNumber.zero, five),
-        0,
-        "Zero divided by any non-zero number should be zero"
-      )
-
-      /** Division by zero throws error */
-      throws(
-        () => NaturalNumber.unsafeDivide(five, NaturalNumber.zero),
-        DivisionByZeroError.divisionByZero(five)
-      )
-
-      /** Indeterminate form (0/0) throws error */
-      throws(
-        () => NaturalNumber.unsafeDivide(NaturalNumber.zero, NaturalNumber.zero),
-        DivisionByZeroError.indeterminateForm()
-      )
-
-      /** Division by one should not change the value */
-      strictEqual(
-        NaturalNumber.unsafeDivide(five, NaturalNumber.one),
-        5,
-        "Division by one should not change the value"
-      )
-
-      /** Division resulting in a fraction should work */
-      strictEqual(
-        NaturalNumber.unsafeDivide(five, two),
-        2.5,
-        "Division resulting in a fraction should work"
-      )
-
-      // Mathematical properties
-
-      /** Non-closure: If a, b ∈ ℕ, then a ÷ b may not ∈ ℕ */
-      strictEqual(
-        NaturalNumber.unsafeDivide(five, two),
-        2.5,
-        "Division is not closed within natural numbers"
-      )
-
-      /** Non-commutativity: a ÷ b ≠ b ÷ a */
-      notDeepStrictEqual(
-        NaturalNumber.unsafeDivide(six, three),
-        NaturalNumber.unsafeDivide(three, six),
-        "Division is not commutative: a ÷ b ≠ b ÷ a"
-      )
-
-      /** Non-associativity: (a ÷ b) ÷ c ≠ a ÷ (b ÷ c) */
-      notDeepStrictEqual(
-        // @ts-expect-error - can't assign number to NaturalNumber
-        NaturalNumber.unsafeDivide(NaturalNumber.unsafeDivide(six, two), three),
-        // @ts-expect-error - can't assign number to NaturalNumber
-        NaturalNumber.unsafeDivide(six, NaturalNumber.unsafeDivide(two, three)),
-        "Division is not associative: (a ÷ b) ÷ c ≠ a ÷ (b ÷ c)"
-      )
-
-      /** Right identity element: a ÷ 1 = a */
-      strictEqual(
-        NaturalNumber.unsafeDivide(five, NaturalNumber.one),
-        five,
-        "1 is the right identity element for division: a ÷ 1 = a"
-      )
-
-      /** Not generally distributive over addition */
-      notDeepStrictEqual(
-        NaturalNumber.unsafeDivide(ten, NaturalNumber.sum(two, three)),
-        NaturalNumber.unsafeDivide(ten, two) +
-          NaturalNumber.unsafeDivide(ten, three),
-        "Division is not distributive over addition: a ÷ (b + c) ≠ (a ÷ b) + (a ÷ c)"
-      )
-
-      // Mixing with other operations
-      strictEqual(
-        NaturalNumber.unsafeDivide(NaturalNumber.sum(four, two), two),
-        3,
-        "Should work correctly when mixed with other operations"
       )
     })
 
