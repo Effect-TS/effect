@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { Either, HashSet, List, Number as _Number, Option, pipe } from "effect"
+import { Either, flow, HashSet, List, Number as _Number, Option, pipe } from "effect"
 import * as Integer from "effect/Integer"
 import {
   assertEquals,
@@ -887,5 +887,147 @@ describe("Integer", () => {
     assertEquals(positiveValueLarger, pipe(negativeTwo, Integer.max(two)))
   })
 
-  it.skip("scratchpad", () => {})
+  describe("Schema", async () => {
+    const Schema = await import("effect/Schema")
+    const Util = await import("effect/test/Schema/TestUtils")
+
+    it("decoding", async () => {
+      // Test valid integers
+      await Util.assertions.decoding.succeed(Integer.Schema, 0, Integer.of(0))
+      await Util.assertions.decoding.succeed(Integer.Schema, 1, Integer.of(1))
+      await Util.assertions.decoding.succeed(Integer.Schema, -1, Integer.of(-1))
+      await Util.assertions.decoding.succeed(
+        Integer.Schema,
+        Number.MAX_SAFE_INTEGER,
+        Integer.of(Number.MAX_SAFE_INTEGER)
+      )
+      await Util.assertions.decoding.succeed(
+        Integer.Schema,
+        Number.MIN_SAFE_INTEGER,
+        Integer.of(Number.MIN_SAFE_INTEGER)
+      )
+
+      // Test invalid values (non-integers)
+      await Util.assertions.decoding.fail(
+        Integer.Schema,
+        1.5,
+        `{ number | filter }
+└─ Predicate refinement failure
+   └─ Expected (1.5) to be an integer`
+      )
+
+      await Util.assertions.decoding.fail(
+        Integer.Schema,
+        Number.NaN,
+        `{ number | filter }
+└─ Predicate refinement failure
+   └─ Expected (NaN) to be an integer`
+      )
+
+      await Util.assertions.decoding.fail(
+        Integer.Schema,
+        Number.POSITIVE_INFINITY,
+        `{ number | filter }
+└─ Predicate refinement failure
+   └─ Expected (Infinity) to be an integer`
+      )
+
+      // Test roundtrip consistency
+      Util.assertions.testRoundtripConsistency(Integer.Schema)
+
+      // Test that the schema can be used with Schema.is
+      const isInteger = Schema.is(Integer.Schema)
+      assertTrue(isInteger(0))
+      assertTrue(isInteger(1))
+      assertTrue(isInteger(-1))
+      assertFalse(isInteger(1.5))
+      assertFalse(isInteger(Number.NaN))
+      assertFalse(isInteger(Number.POSITIVE_INFINITY))
+    })
+
+    it("Schema with Integer operations", async () => {
+      const program: {
+        (input: number): Option.Option<Integer.Integer>
+      } = (input) =>
+        pipe(
+          input,
+          Schema.decodeUnknownOption(Integer.Schema),
+          Option.flatMap((n) =>
+            pipe(
+              n,
+              Integer.multiply(Integer.of(2)), // Double the value
+              Integer.sum(Integer.of(10)), // Add 10
+              Integer.subtract(Integer.of(5)), // Subtract 5
+              Integer.divideSafe(Integer.of(5)) // Divide by 5
+            )
+          )
+        )
+
+      // Test with valid integers
+      assertSome(program(10), Integer.of(5)) // (10 * 2 + 10 - 5) / 5 = 25 / 5 = 5
+      assertSome(program(5), Integer.of(3)) // (5 * 2 + 10 - 5) / 5 = 15 / 5 = 3
+      assertSome(program(0), Integer.of(1)) // (0 * 2 + 10 - 5) / 5 = 5 / 5 = 1
+      assertSome(program(-5), Integer.of(-1)) // (((-5 * 2) + 10) - 5) / 5 = -1
+
+      // Test with invalid inputs (should return None)
+      assertNone(program(1.5))
+      assertNone(program(Number.NaN))
+      assertNone(program(Number.POSITIVE_INFINITY))
+
+      // Test with values that would result in non-integer division
+      assertNone(program(1)) // (1 * 2 + 10 - 5) / 5 = 8 / 5 = 1.6 (not an integer)
+    })
+
+    it("Complex Integer Schema operations", async () => {
+      // Define a more complex function that demonstrates various Integer operations
+      const program = flow(
+        Schema.decodeUnknownEither(Integer.Schema),
+        Either.match({
+          onLeft: () => Option.none(),
+          onRight: (int) => {
+            if (Integer.greaterThan(int, Integer.zero)) {
+              // For positive integers ...
+              return pipe(
+                int,
+                Integer.multiply(int), // square it
+                Integer.sum(int), // add original
+                Integer.divideSafe(Integer.of(2)) // divide by 2 (if divisible)
+              )
+            }
+
+            if (Integer.Equivalence(int, Integer.zero)) {
+              // For zero ..
+              return Option.some(Integer.zero)
+            }
+            // For negative integers ...
+            return pipe(
+              int,
+              Integer.multiply(Integer.of(-1)), // absolute value
+              Integer.multiply(Integer.of(3)), // multiply by 3
+              Integer.subtract(Integer.one), // subtract 1
+              Option.some
+            )
+          }
+        })
+      )
+
+      // Test with positive integers
+      assertSome(program(3), Integer.of(6)) // (3² + 3) / 2 = (9 + 3) / 2 = 12 / 2 = 6
+      assertSome(program(4), Integer.of(10)) // (4² + 4) / 2 = (16 + 4) / 2 = 20 / 2 = 10
+      assertSome(program(5), Integer.of(15)) // (5² + 5) / 2 = (25 + 5) / 2 = 30 / 2 = 15
+
+      // Test with zero
+      assertSome(program(0), Integer.of(0))
+
+      // Test with negative integers
+      assertSome(program(-3), Integer.of(8)) // | -3 | * 3 - 1 = 3 * 3 - 1 = 9 - 1 = 8
+      assertSome(program(-5), Integer.of(14)) // | -5 | * 3 - 1 = 5 * 3 - 1 = 15 - 1 = 14
+
+      // Test with invalid inputs
+      assertNone(program(2.5))
+      assertNone(program("not a number"))
+      assertNone(program(null))
+      assertNone(program(undefined))
+    })
+  })
 })

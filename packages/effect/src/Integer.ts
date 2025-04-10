@@ -19,6 +19,7 @@ import * as _Option from "./Option.js"
 import * as _Order from "./Order.js"
 import type { Ordering } from "./Ordering.js"
 import * as _Predicate from "./Predicate.js"
+import * as _Schema from "./Schema.js"
 
 /**
  * A type representing the set of integers (`ℤ = {..., -2, -1, 0, 1, 2, ...}`).
@@ -327,6 +328,63 @@ export const option: (n: number) => _Option.Option<Integer> = internal.IntegerCo
 export const either: (
   n: number
 ) => Either.Either<Integer, Brand.Brand.BrandErrors> = internal.IntegerConstructor.either
+
+/**
+ * A Schema for Integer values.
+ *
+ * This Schema allows for seamless integration between the Integer module and
+ * the Schema module, enabling validation, parsing, and composition of Integer
+ * values within the Schema ecosystem.
+ *
+ * @remarks
+ * The Integer.Schema serves as a bridge between the "pure" world of the Integer
+ * module and the Schema module, allowing you to leverage all the benefits that
+ * Schema provides such as:
+ *
+ * - Validation and parsing of input data
+ * - Composition with other schemas
+ * - Integration with Schema combinators
+ * - Type-safe transformations
+ *
+ * Under the hood, it uses `Schema.fromBrand` with the Integer brand constructor
+ * to create a schema that validates that values are valid integers.
+ * @since 3.14.6
+ * @category Constructors
+ * @example
+ *
+ * ```ts
+ * import { pipe, flow, Schema, Option } from "effect"
+ * import * as Integer from "effect/Integer"
+ *
+ * // Decode a number to an Integer
+ * const result = Schema.decodeUnknownSync(Integer.Schema)(42)
+ * // result: Right<Integer>
+ *
+ * // Combine with other Schema operations
+ * const isInteger = Schema.is(Integer.Schema)
+ * isInteger(42) // true
+ * isInteger(3.14) // false
+ *
+ * // Use in a pipeline with Integer operations
+ * const process = flow(
+ *   Schema.decodeUnknownOption(Integer.Schema),
+ *   Option.flatMap((n) =>
+ *     pipe(
+ *       n,
+ *       Integer.multiply(Integer.of(2)),
+ *       Integer.sum(Integer.of(10)),
+ *       Integer.divideSafe(Integer.of(5))
+ *     )
+ *   )
+ * )
+ *
+ * process(5) // Some(4) - ((5 * 2) + 10) / 5 = 20 / 5 = 4
+ * process(3.14) // None - not an integer
+ * ```
+ */
+export const Schema: _Schema.Schema<Integer, number> = _Schema.Number.pipe(
+  _Schema.fromBrand(internal.IntegerConstructor)
+)
 
 /**
  * Constant of `Integer<0>`
