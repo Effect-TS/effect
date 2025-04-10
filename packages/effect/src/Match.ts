@@ -240,16 +240,20 @@ export const value: <const I>(
  * @category Creating a matcher
  * @since 1.0.0
  */
-export const valueTags: <
-  const I,
-  P extends
-    & {
-      readonly [Tag in Types.Tags<"_tag", I> & string]: (
-        _: Extract<I, { readonly _tag: Tag }>
-      ) => any
-    }
-    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
->(fields: P) => (input: I) => Unify<ReturnType<P[keyof P]>> = internal.valueTags
+export const valueTags: {
+  <
+    const I,
+    P extends
+      & { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
+      & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
+  >(fields: P): (input: I) => Unify<ReturnType<P[keyof P]>>
+  <
+    const I,
+    P extends
+      & { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
+      & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
+  >(input: I, fields: P): Unify<ReturnType<P[keyof P]>>
+} = internal.valueTags
 
 /**
  * @category Creating a matcher
