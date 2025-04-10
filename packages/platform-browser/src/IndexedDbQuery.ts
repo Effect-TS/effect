@@ -68,6 +68,7 @@ export interface IndexedDbQuery<
 
   readonly [TypeId]: TypeId
   readonly source: Source
+  readonly database: globalThis.IDBDatabase
 
   readonly insert: <
     A extends IndexedDbTable.IndexedDbTable.TableName<
@@ -131,12 +132,13 @@ const makeProto = <
   function IndexedDbQuery() {}
   Object.setPrototypeOf(IndexedDbQuery, Proto)
   IndexedDbQuery.source = source
+  IndexedDbQuery.database = database
 
   IndexedDbQuery.from = <
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(table: A) => IndexedDbQueryBuilder.fromMakeProto({ source, table })
+  >(table: A) => IndexedDbQueryBuilder.fromMakeProto({ database, source, table })
 
   IndexedDbQuery.insert = (
     table: string,
