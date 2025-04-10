@@ -9,6 +9,7 @@ import * as Layer from "effect/Layer"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Schema from "effect/Schema"
 import * as IndexedDbDatabase from "./IndexedDbDatabase.js"
+import * as IndexedDbQueryBuilder from "./IndexedDbQueryBuilder.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 
@@ -103,6 +104,12 @@ export interface IndexedDbQuery<
     >,
     IndexedDbQueryError
   >
+
+  readonly from: <
+    A extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    >
+  >(table: A) => IndexedDbQueryBuilder.IndexedDbQueryBuilder<Source, A>
 }
 
 const Proto = {
@@ -124,6 +131,12 @@ const makeProto = <
   function IndexedDbQuery() {}
   Object.setPrototypeOf(IndexedDbQuery, Proto)
   IndexedDbQuery.source = source
+
+  IndexedDbQuery.from = <
+    A extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    >
+  >(table: A) => IndexedDbQueryBuilder.makeProto({ source, table })
 
   IndexedDbQuery.insert = (
     table: string,
