@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { Brand, Either, HashSet, Iterable, List, Option, pipe } from "effect"
+import { Brand, Either, flow, HashSet, Iterable, List, Option, pipe } from "effect"
 import * as Integer from "effect/Integer"
 import * as NaturalNumber from "effect/NaturalNumber"
 import {
@@ -200,6 +200,167 @@ describe("NaturalNumber", () => {
         processWithErrorHandling(3.14),
         "Error: Expected (3.14) to be an integer"
       )
+    })
+
+    describe("Schema", async () => {
+      const Schema = await import("effect/Schema")
+      const Util = await import("effect/test/Schema/TestUtils")
+
+      it("decoding", async () => {
+        // Test valid natural numbers
+        await Util.assertions.decoding.succeed(
+          NaturalNumber.Schema,
+          0,
+          NaturalNumber.of(0)
+        )
+        await Util.assertions.decoding.succeed(
+          NaturalNumber.Schema,
+          1,
+          NaturalNumber.of(1)
+        )
+        await Util.assertions.decoding.succeed(
+          NaturalNumber.Schema,
+          42,
+          NaturalNumber.of(42)
+        )
+        await Util.assertions.decoding.succeed(
+          NaturalNumber.Schema,
+          Number.MAX_SAFE_INTEGER,
+          NaturalNumber.of(Number.MAX_SAFE_INTEGER)
+        )
+
+        // Test invalid values (negative numbers, non-integers)
+        await Util.assertions.decoding.fail(
+          NaturalNumber.Schema,
+          -1,
+          `{ number | filter }
+└─ Predicate refinement failure
+   └─ Expected (-1) to be a greater than or equal to (0)`
+        )
+
+        await Util.assertions.decoding.fail(
+          NaturalNumber.Schema,
+          1.5,
+          `{ number | filter }
+└─ Predicate refinement failure
+   └─ Expected (1.5) to be an integer`
+        )
+
+        await Util.assertions.decoding.fail(
+          NaturalNumber.Schema,
+          Number.NaN,
+          `{ number | filter }
+└─ Predicate refinement failure
+   └─ Expected (NaN) to be an integer, Expected (NaN) to be a greater than or equal to (0)`
+        )
+
+        await Util.assertions.decoding.fail(
+          NaturalNumber.Schema,
+          Number.POSITIVE_INFINITY,
+          `{ number | filter }
+└─ Predicate refinement failure
+   └─ Expected (Infinity) to be an integer`
+        )
+
+        // Test roundtrip consistency
+        Util.assertions.testRoundtripConsistency(NaturalNumber.Schema)
+
+        // Test that the schema can be used with Schema.is
+        const isNaturalNumber = Schema.is(NaturalNumber.Schema)
+        assertTrue(isNaturalNumber(0))
+        assertTrue(isNaturalNumber(1))
+        assertTrue(isNaturalNumber(42))
+        assertFalse(isNaturalNumber(-1))
+        assertFalse(isNaturalNumber(1.5))
+        assertFalse(isNaturalNumber(Number.NaN))
+        assertFalse(isNaturalNumber(Number.POSITIVE_INFINITY))
+      })
+
+      it("Schema with NaturalNumber operations", async () => {
+        const program = flow(
+          Schema.decodeUnknownOption(NaturalNumber.Schema),
+          Option.flatMap(
+            flow(
+              NaturalNumber.multiply(NaturalNumber.of(2)), // Double the value
+              NaturalNumber.sum(NaturalNumber.of(10)), // Add 10
+              NaturalNumber.subtractSafe(NaturalNumber.of(5)), // Subtract 5 (if possible)
+              Option.flatMap(NaturalNumber.divideSafe(NaturalNumber.of(5))) // Divide by 5 (if divisible)
+            )
+          )
+        )
+
+        // Test with valid natural numbers
+        assertSome(program(10), NaturalNumber.of(5)) // (((10 * 2) + 10) - 5) / 5 = 25 / 5 = 5
+        assertSome(program(5), NaturalNumber.of(3)) // (((5 * 2) + 10) - 5) / 5 = 15 / 5 = 3
+        assertSome(program(0), NaturalNumber.of(1)) // (((0 * 2) + 10) - 5) / 5 = 5 / 5 = 1
+
+        // Test with invalid inputs (should return None)
+        assertNone(program(-5)) // Negative number
+        assertNone(program(1.5)) // Non-integer
+        assertNone(program(Number.NaN)) // NaN
+        assertNone(program(Number.POSITIVE_INFINITY)) // Infinity
+
+        // Test with values that would result in non-integer division
+        assertNone(program(1)) // (((1 * 2) + 10) - 5) / 5 = 7 / 5 = 1.4 (not an integer)
+
+        // Test with values that would result in negative numbers (invalid for NaturalNumber)
+        assertNone(program(2)) // (((2 * 2) + 10) - 5) / 5 = 9 / 5 = 1.8 (not an integer)
+      })
+
+      it("Complex NaturalNumber Schema operations", async () => {
+        // Define a more complex function that demonstrates various NaturalNumber operations
+        const program = flow(
+          Schema.decodeUnknownEither(NaturalNumber.Schema),
+          Either.match({
+            onLeft: () => Option.none(),
+            onRight: (nat) => {
+              if (NaturalNumber.greaterThan(nat, NaturalNumber.of(10))) {
+                // For natural numbers > 10
+                return pipe(
+                  nat,
+                  NaturalNumber.multiply(nat), // square it
+                  NaturalNumber.sum(nat), // add original
+                  NaturalNumber.divideSafe(NaturalNumber.of(3)) // divide by 3 (if divisible)
+                )
+              }
+
+              if (NaturalNumber.Equivalence(nat, NaturalNumber.zero)) {
+                // For zero
+                return Option.some(NaturalNumber.zero)
+              }
+
+              // For natural numbers between 1 and 10
+              return pipe(
+                nat,
+                NaturalNumber.multiply(NaturalNumber.of(3)), // multiply by 3
+                NaturalNumber.increment, // add 1
+                Option.some
+              )
+            }
+          })
+        )
+
+        // Test with natural numbers > 10
+        assertSome(program(12), NaturalNumber.of(52)) // (12² + 12) / 3 = (144 + 12) / 3 = 156 / 3 = 52
+        assertSome(program(15), NaturalNumber.of(80)) // (15² + 15) / 3 = (225 + 15) / 3 = 240 / 3 = 80
+
+        // Test with zero
+        assertSome(program(0), NaturalNumber.of(0))
+
+        // Test with natural numbers between 1 and 10
+        assertSome(program(5), NaturalNumber.of(16)) // 5 * 3 + 1 = 15 + 1 = 16
+        assertSome(program(10), NaturalNumber.of(31)) // 10 * 3 + 1 = 30 + 1 = 31
+
+        // Test with invalid inputs
+        assertNone(program(-5)) // Negative number
+        assertNone(program(2.5)) // Non-integer
+        assertNone(program("not a number"))
+        assertNone(program(null))
+        assertNone(program(undefined))
+
+        // Test with values that would result in non-integer division
+        assertNone(program(13)) // (13² + 13) / 3 = (169 + 13) / 3 = 182 / 3 = 60.666... (not an integer)
+      })
     })
   })
 

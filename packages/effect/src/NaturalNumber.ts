@@ -28,6 +28,7 @@ import * as internal from "./internal/number.js"
 import * as _Option from "./Option.js"
 import * as _Order from "./Order.js"
 import * as _Predicate from "./Predicate.js"
+import * as _Schema from "./Schema.js"
 
 /**
  * A type representing non-negative integers (0 -> +Infinity).
@@ -248,6 +249,64 @@ export const option: {
 export const either: {
   (n: number): Either.Either<NaturalNumber, Brand.Brand.BrandErrors>
 } = internal.NaturalNumberConstructor.either
+
+/**
+ * A Schema for NaturalNumber values.
+ *
+ * This Schema allows for seamless integration between the `NaturalNumber`
+ * module and the `Schema` module, enabling validation, parsing, and composition
+ * of NaturalNumber values within the Schema ecosystem.
+ *
+ * @remarks
+ * The NaturalNumber.Schema serves as a bridge between the "pure" world of the
+ * NaturalNumber module and the Schema module, allowing you to leverage all the
+ * benefits that Schema provides such as:
+ *
+ * - Validation and parsing of input data
+ * - Composition with other schemas
+ * - Integration with Schema combinators
+ * - Type-safe transformations
+ *
+ * @since 3.14.6
+ * @category Constructors
+ * @example
+ *
+ * ```ts
+ * import { pipe, flow, Schema, Option } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * // Decode a number to a NaturalNumber
+ * const result: NaturalNumber.NaturalNumber = pipe(
+ *   42,
+ *   Schema.decodeUnknownSync(NaturalNumber.Schema)
+ * ) // NaturalNumber or throws an error
+ *
+ * // Combine with other Schema operations
+ * const isNaturalNumber = Schema.is(NaturalNumber.Schema)
+ * isNaturalNumber(42) // true
+ * isNaturalNumber(-1) // false
+ * isNaturalNumber(3.14) // false
+ *
+ * // Use in a pipeline with NaturalNumber operations
+ * const process = flow(
+ *   Schema.decodeUnknownOption(NaturalNumber.Schema),
+ *   Option.flatMap(
+ *     flow(
+ *       NaturalNumber.multiply(NaturalNumber.of(2)),
+ *       NaturalNumber.sum(NaturalNumber.of(10)),
+ *       NaturalNumber.divideSafe(NaturalNumber.of(5))
+ *     )
+ *   )
+ * )
+ *
+ * process(5) // Some(4) - ((5 * 2) + 10) / 5 = 20 / 5 = 4
+ * process(-1) // None - not a natural number
+ * process(3.14) // None - not an integer
+ * ```
+ */
+export const Schema: _Schema.Schema<NaturalNumber, number> = _Schema.Number.pipe(
+  _Schema.fromBrand(internal.NaturalNumberConstructor)
+)
 
 /**
  * Constant of `NaturalNumber<0>` - the smallest valid non-negative integer
