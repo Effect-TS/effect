@@ -427,27 +427,6 @@ describe("Integer", () => {
     ).type.not.toBeAssignableWith<number>()
   })
 
-  it("remainder", () => {
-    const dataLast = Integer.remainder(a)
-    type DataLast = typeof dataLast
-    type DataFirst = typeof Integer.remainder
-
-    // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<
-      [Integer.Integer, Integer.Integer]
-    >()
-    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<
-      [number, number]
-    >()
-
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[Integer.Integer]>()
-    expect<Parameters<DataLast>>().type.not.toBeAssignableWith<[number]>()
-
-    // test the output type
-    expect(Integer.remainder(a, b)).type.toBe<Integer.Integer>()
-    expect(pipe(a, Integer.remainder(b))).type.not.toBeAssignableWith<number>()
-  })
-
   it("nextPow2", () => {
     type DataFirst = typeof Integer.nextPow2
 

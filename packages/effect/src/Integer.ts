@@ -1739,26 +1739,6 @@ export const multiplyAll: {
 } = internal.multiplyAll<Integer>
 
 /**
- * Returns the remainder left over when one operand is divided by a second
- * operand.
- *
- * It always takes the sign of the dividend.
- *
- * @memberof Integer
- * @since 3.14.6
- * @category Math
- * @experimental
- * @todo Provide an implementation and tests
- */
-export const remainder: {
-  (divisor: Integer): (dividend: Integer) => Integer
-  (dividend: Integer, divisor: Integer): Integer
-} = dual(
-  2,
-  (dividend: Integer, divisor: Integer): Integer => of(dividend % divisor)
-)
-
-/**
  * Returns the next power of 2 greater than or equal to the given `Integer`.
  *
  * @memberof Integer

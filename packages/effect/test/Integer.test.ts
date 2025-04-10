@@ -389,15 +389,6 @@ describe("Integer", () => {
       )
     })
 
-    it("remainder", () => {
-      strictEqual(Integer.remainder(Integer.of(2), Integer.of(2)), 0)
-      strictEqual(Integer.remainder(Integer.of(3), Integer.of(2)), 1)
-      strictEqual(Integer.remainder(Integer.of(4), Integer.of(2)), 0)
-      strictEqual(Integer.remainder(Integer.of(-2), Integer.of(2)), -0)
-      strictEqual(Integer.remainder(Integer.of(-3), Integer.of(2)), -1)
-      strictEqual(Integer.remainder(Integer.of(-4), Integer.of(2)), -0)
-    })
-
     it("nextPow2", () => {
       strictEqual(Integer.nextPow2(Integer.of(5)), Integer.of(8))
 
