@@ -424,31 +424,94 @@ export const multiply: {
 } = dual(2, internal.multiply<Integer>)
 
 /**
- * Provides a division operation on `Integer`s.
+ * Divides one integer by another, mapping from the domain of `Integers` to the
+ * codomain of `real numbers` (represented as JavaScript's number type) to
+ * accommodate possible fractional results.
  *
- * It returns an `Option` containing the quotient of the division if valid,
- * otherwise `None`.
+ * For the division function `f: ℤ × ℤ → Option<ℝ>` defined by:
+ *
+ * - `f(a, b) = Some(a / b)` when `b ≠ 0`
+ * - `f(a, 0) = None` (division by zero is undefined)
+ * - **Domain**: The set of ordered pairs of integers (`ℤ × ℤ`)
+ * - **Codomain**: `Option<ℝ>` (an option of real numbers)
+ *
+ * **Syntax**
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { Option, pipe } from "effect"
+ * import * as Integer from "effect/Integer"
+ *
+ * assert.deepStrictEqual(
+ *   // data-last api
+ *   pipe(Integer.of(-5), Integer.divideToNumber(Integer.of(-2))),
+ *   // data-first api
+ *   Integer.divideToNumber(Integer.of(-5), Integer.of(-2)) //   Option.some(2.5)
+ * )
+ * ```
+ *
+ * @remarks
+ * Division is not a closed operation within the set of integers (`ℤ = {..., -2,
+ * -1, 0, 1, 2, ...}`). When division doesn't yield a whole number, the result
+ * is a fractional number outside ℤ. This function widens to JavaScript's number
+ * type (representing ℝ) to accommodate all possible results, and returns an
+ * Option to handle the undefined case of division by zero.
+ *
+ * **Mathematical properties of division on integers**:
+ *
+ * - **Non-closure in ℤ**: The image of f is not contained within ℤ
+ * - **Partiality**: Division by zero is undefined (represented as None)
+ * - **Non-commutativity**: `f(a, b) ≠ f(b, a)` (unless `a = b = ±1`)
+ * - **Non-associativity**: `f(f(a, b), c) ≠ f(a, f(b, c))` when all are defined
+ * - **Right identity** elements: `f(a, ±1) = Some(±a)` for all `a ∈ ℤ`
+ * - **No left identity** element: There is no `e ∈ ℤ` such that `f(e, a) =
+ *   Some(a)` for all `a ∈ ℤ`
+ * - Sign properties:
+ *
+ *   - `f(a, b) = f(-a, -b)` for all `a, b ∈ ℤ, b ≠ 0`
+ *   - `f(-a, b) = f(a, -b) = -f(a, b)` for all `a, b ∈ ℤ, b ≠ 0`
  *
  * @memberof Integer
  * @since 3.14.6
  * @category Math
  * @experimental
  */
-export const divide: {
+export const divideToNumber: {
   /**
+   * Returns a function that divides a given `dividend` by a specified
+   * `divisor`, mapping to the real number domain.
+   *
+   * **Data-last API** (a.k.a. pipeable)
+   *
    * @example
    *
    * ```ts
-   * import assert from "node:assert/strict"
+   * import * as assert from "node:assert/strict"
    * import { Option, pipe } from "effect"
    * import * as Integer from "effect/Integer"
    *
+   * // Division resulting in a whole number
    * assert.deepStrictEqual(
-   *   pipe(
-   *     Integer.of(6), //
-   *     Integer.divide(Integer.of(2))
-   *   ),
+   *   pipe(Integer.of(6), Integer.divideToNumber(Integer.of(2))),
    *   Option.some(3)
+   * )
+   *
+   * // Division mapping to a fractional number
+   * assert.deepStrictEqual(
+   *   pipe(Integer.of(5), Integer.divideToNumber(Integer.of(2))),
+   *   Option.some(2.5)
+   * )
+   *
+   * // Division with negative integers
+   * assert.deepStrictEqual(
+   *   pipe(Integer.of(6), Integer.divideToNumber(Integer.of(-3))),
+   *   Option.some(-2)
+   * )
+   *
+   * // Division by zero returns None
+   * assert.deepStrictEqual(
+   *   pipe(Integer.of(5), Integer.divideToNumber(Integer.zero)),
+   *   Option.none()
    * )
    * ```
    *
@@ -461,19 +524,39 @@ export const divide: {
 
   /**
    * Divides the `dividend` by the `divisor` and returns an `Option` containing
-   * the `quotient`. If the `divisor` is zero, returns `None` to signify an
-   * invalid operation.
+   * the `quotient`, mapping from integers to the real number domain.
+   *
+   * **Data-first API**
    *
    * @example
    *
    * ```ts
+   * import * as assert from "node:assert/strict"
    * import { Option } from "effect"
-   * import assert from "node:assert/strict"
    * import * as Integer from "effect/Integer"
    *
+   * // Division resulting in a whole number
    * assert.deepStrictEqual(
-   *   Integer.divide(Integer.of(6), Integer.of(2)),
-   *   Option.some(3)
+   *   Integer.divideToNumber(Integer.of(6), Integer.of(-2)),
+   *   Option.some(-3)
+   * )
+   *
+   * // Division mapping to a fractional number
+   * assert.deepStrictEqual(
+   *   Integer.divideToNumber(Integer.of(5), Integer.of(2)),
+   *   Option.some(2.5)
+   * )
+   *
+   * // Division by zero returns None
+   * assert.deepStrictEqual(
+   *   Integer.divideToNumber(Integer.of(5), Integer.zero),
+   *   Option.none()
+   * )
+   *
+   * // Division with zero as dividend
+   * assert.deepStrictEqual(
+   *   Integer.divideToNumber(Integer.zero, Integer.of(5)),
+   *   Option.some(0)
    * )
    * ```
    *

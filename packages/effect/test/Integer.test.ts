@@ -226,28 +226,31 @@ describe("Integer", () => {
     })
 
     //
-    it("divide", () => {
-      assertSome(pipe(Integer.of(6), Integer.divide(Integer.of(2))), 3)
+    it("divideToNumber", () => {
+      assertSome(
+        pipe(Integer.of(6), Integer.divideToNumber(Integer.of(-2))),
+        -3
+      )
 
       notDeepStrictEqual(
-        pipe(Integer.of(6), Integer.divide(Integer.of(2))),
-        pipe(Integer.of(2), Integer.divide(Integer.of(6))),
+        pipe(Integer.of(-6), Integer.divideToNumber(Integer.of(-2))),
+        pipe(Integer.of(-2), Integer.divideToNumber(Integer.of(-6))),
         "division under Integer is not commutative"
       )
 
       notDeepStrictEqual(
         pipe(
-          Integer.divide(Integer.of(24), Integer.of(6)), //
+          Integer.divideToNumber(Integer.of(24), Integer.of(6)), //
           Option.flatMap((n: number) => _Number.divide(n, Integer.of(2)))
         ),
         pipe(
-          Integer.divide(Integer.of(6), Integer.of(2)),
+          Integer.divideToNumber(Integer.of(6), Integer.of(2)),
           Option.flatMap(_Number.divide(Integer.of(24)))
         ),
         "division under Integer is not associative"
       )
 
-      assertNone(pipe(Integer.of(6), Integer.divide(Integer.of(0))))
+      assertNone(pipe(Integer.of(6), Integer.divideToNumber(Integer.of(0))))
     })
 
     it("unsafeDivide", () => {

@@ -125,10 +125,10 @@ describe("Integer", () => {
     ).type.toBeAssignableTo<Integer.Integer>()
   })
 
-  it("divide", () => {
-    const dataLast = Integer.divide(a)
+  it("divideToNumber", () => {
+    const dataLast = Integer.divideToNumber(a)
     type DataLast = typeof dataLast
-    type DataFirst = typeof Integer.divide
+    type DataFirst = typeof Integer.divideToNumber
 
     // test the input type
     expect<Parameters<DataFirst>>().type.toBeAssignableWith<
@@ -142,10 +142,10 @@ describe("Integer", () => {
     expect<Parameters<DataLast>>().type.not.toBeAssignableWith<[number]>()
 
     // test the output type: division for the set of Integer is not total;
-    expect(Integer.divide(a, b)).type.not.toBeAssignableTo<
+    expect(Integer.divideToNumber(a, b)).type.not.toBeAssignableTo<
       Option.Option<Integer.Integer>
     >()
-    expect(pipe(a, Integer.divide(b))).type.toBeAssignableTo<
+    expect(pipe(a, Integer.divideToNumber(b))).type.toBeAssignableTo<
       Option.Option<number>
     >()
   })
