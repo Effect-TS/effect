@@ -67,15 +67,6 @@ import * as _Predicate from "./Predicate.js"
 export type Integer = internal.Integer
 
 /**
- * Nominal type representing `NaN` (Not a Number).
- *
- * @memberof Integer
- * @since 3.14.6
- * @category Type
- */
-export type NaN = internal.NaN
-
-/**
  * Constructs a value in the set of integers (ℤ) and brands it as an `Integer`
  * type.
  *
