@@ -13,8 +13,9 @@
 import type * as Brand from "./Brand.js"
 import type * as Either from "./Either.js"
 import * as _Equivalence from "./Equivalence.js"
-import { dual } from "./Function.js"
+import { dual, flow } from "./Function.js"
 import * as internal from "./internal/number.js"
+import * as NaturalNumber from "./NaturalNumber.js"
 import * as _Option from "./Option.js"
 import * as _Order from "./Order.js"
 import type { Ordering } from "./Ordering.js"
@@ -479,6 +480,97 @@ export const one: Integer = internal.one
  */
 export const isInteger: _Predicate.Refinement<unknown, Integer> = (input) =>
   _Predicate.isNumber(input) && internal.IntegerConstructor.is(input)
+
+/**
+ * Computes the absolute value of an integer, returning a natural number.
+ *
+ * @remarks
+ * The absolute value function maps each integer to its distance from zero,
+ * removing any negative sign. Mathematically, this function implements:
+ *
+ * - `|n| = n` if `n ≥ 0`
+ * - `|n| = -n` if `n < 0`
+ *
+ * **Key mathematical properties**:
+ *
+ * - **Non-negativity**: `|n| ≥ 0` for all `n ∈ ℤ`
+ * - **Symmetry**: `|-n| = |n|` for all `n ∈ ℤ`
+ * - **Triangle inequality**: `|n + m| ≤ |n| + |m|` for all `n, m ∈ ℤ`
+ * - **Multiplicative**: `|n × m| = |n| × |m|` for all `n, m ∈ ℤ`
+ *
+ * Since the absolute value of any integer is always non-negative, the return
+ * type is {@link module:NaturalNumber.NaturalNumber} rather than `Integer`,
+ * providing stronger type guarantees about the result.
+ *
+ * Note that since `ℕ₀ ⊂ ℤ` (natural numbers are a subset of integers), the
+ * `NaturalNumber` **result can still be passed to any function expecting an
+ * Integer**. This enables seamless chaining with other Integer operations while
+ * maintaining the additional type information when desired.
+ * @memberof Integer
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * // Basic usage
+ * assert.equal(Integer.abs(5), NaturalNumber.of(5))
+ * assert.equal(Integer.abs(-5), NaturalNumber.of(5))
+ * assert.equal(Integer.abs(0), NaturalNumber.of(0))
+ *
+ * // Verify mathematical properties
+ * const a = -7
+ * const b = 3
+ *
+ * // Symmetry
+ * assert.equal(Integer.abs(-a), Integer.abs(a))
+ *
+ * // Multiplicative property
+ * const absProduct: NaturalNumber.NaturalNumber = Integer.abs(
+ *   Integer.multiply(a, b) // -21
+ * ) // 21
+ * const productOfAbs: NaturalNumber.NaturalNumber = NaturalNumber.multiply(
+ *   Integer.abs(a), // 7
+ *   Integer.abs(b) // 3
+ * ) // 21
+ * assert.equal(absProduct, productOfAbs)
+ *
+ * // Using with other Integer operations
+ * const result = Integer.subtract(-10, 5) // -5
+ * const magnitude = Integer.abs(result) // 5 as NaturalNumber
+ *
+ * // Chaining with other Integer operations (NaturalNumber can be used as an Integer)
+ * assert.equal(
+ *   pipe(
+ *     -42,
+ *     Integer.abs, // Returns NaturalNumber 42
+ *     Integer.multiply(2) // Works because NaturalNumber can be used as an Integer
+ *   ),
+ *   84
+ * )
+ *
+ * // Working with potentially negative values
+ * function getDistance(
+ *   a: Integer,
+ *   b: Integer
+ * ): NaturalNumber.NaturalNumber {
+ *   return Integer.abs(Integer.subtract(b, a))
+ * }
+ *
+ * assert.deepStrictEqual(getDistance(10, 15), NaturalNumber.of(5)) // 15 - 10 = 5
+ * assert.deepStrictEqual(getDistance(15, 10), NaturalNumber.of(5)) // 10 - 15 = -5, abs(-5) = 5
+ * ```
+ *
+ * @param n - The integer whose absolute value is to be computed
+ * @returns The absolute value of n as a natural number
+ */
+export const abs: {
+  (n: Integer): NaturalNumber.NaturalNumber
+} = flow(Math.abs, NaturalNumber.of)
 
 /**
  * Performs addition in the set of integers (ℤ), preserving closure within the

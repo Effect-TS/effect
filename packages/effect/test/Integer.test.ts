@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Either, flow, HashSet, List, Number as _Number, Option, pipe } from "effect"
 import * as Integer from "effect/Integer"
+import * as NaturalNumber from "effect/NaturalNumber"
 import {
   assertEquals,
   assertFalse,
@@ -513,10 +514,149 @@ describe("Integer", () => {
         one // 12/(-4) = -3, then -3/3 = -1, then -1+2 = 1
       )
     })
+
+    it("abs", () => {
+      // Basic functionality tests
+      strictEqual(
+        Integer.abs(Integer.of(5)),
+        NaturalNumber.of(5),
+        "Absolute value of a positive integer should be the same value as a NaturalNumber"
+      )
+
+      strictEqual(
+        Integer.abs(Integer.of(-5)),
+        NaturalNumber.of(5),
+        "Absolute value of a negative integer should be the positive value as a NaturalNumber"
+      )
+
+      strictEqual(
+        Integer.abs(Integer.zero),
+        NaturalNumber.zero,
+        "Absolute value of zero should be zero"
+      )
+
+      strictEqual(
+        Integer.abs(Integer.of(-0)),
+        NaturalNumber.zero,
+        "Absolute value of negative zero should be zero"
+      )
+
+      // Boundary conditions
+      strictEqual(
+        Integer.abs(Integer.of(Number.MAX_SAFE_INTEGER)),
+        NaturalNumber.of(Number.MAX_SAFE_INTEGER),
+        "Absolute value of MAX_SAFE_INTEGER should be MAX_SAFE_INTEGER as a NaturalNumber"
+      )
+
+      strictEqual(
+        Integer.abs(Integer.of(Number.MIN_SAFE_INTEGER)),
+        NaturalNumber.of(-Number.MIN_SAFE_INTEGER),
+        "Absolute value of MIN_SAFE_INTEGER should be -MIN_SAFE_INTEGER as a NaturalNumber"
+      )
+
+      // Mathematical properties
+      const a = Integer.of(-7)
+      const b = Integer.of(7)
+
+      strictEqual(
+        Integer.abs(a),
+        Integer.abs(b),
+        "abs(-a) = abs(a) for any integer a"
+      )
+
+      // Composability with other Integer methods
+      const c = Integer.of(-7)
+      const d = Integer.of(3)
+
+      /** Test abs(a * b) = abs(a) * abs(b) */
+      strictEqual(
+        Integer.abs(Integer.multiply(c, d)), // abs(-7 * 3) = abs(-21) = 21,
+        NaturalNumber.multiply(
+          Integer.abs(c), // 7
+          Integer.abs(d) // 3
+        ), // 7 * 3 = 21
+        "abs(a * b) = abs(a) * abs(b) for any integers a, b"
+      )
+
+      /** Test abs(a + b) <= abs(a) + abs(b) (triangle inequality) */
+      assertTrue(
+        NaturalNumber.lessThanOrEqualTo(
+          Integer.abs(Integer.sum(Integer.of(-10), Integer.of(7))), // abs(-3) = 3
+          NaturalNumber.sum(
+            Integer.abs(Integer.of(-10)), // 10
+            Integer.abs(Integer.of(7)) // 7
+          ) // 10 + 7 = 17
+        ),
+        "abs(a + b) <= abs(a) + abs(b) for any integers a, b (triangle inequality)"
+      )
+
+      /** Test abs(a - b) >= abs(a) - abs(b) (reverse triangle inequality) */
+      assertSome(
+        Option.map(
+          NaturalNumber.subtractSafe(
+            Integer.abs(Integer.of(10)), // 10
+            Integer.abs(Integer.of(5)) // 5
+          ), // 10 - 5 = 5
+          (_diffOfAbs) =>
+            NaturalNumber.greaterThanOrEqualTo(
+              Integer.abs(
+                Integer.subtract(Integer.of(5), Integer.of(10)) // 5 - 10 = -5
+              ), // abs(-5) = 5
+              _diffOfAbs
+            )
+        ),
+        true
+      )
+
+      // Composability with NaturalNumber module
+
+      /**
+       * Test that the result of abs can be used with NaturalNumber | Integer
+       * operations
+       */
+      strictEqual<Integer.Integer>(
+        pipe(Integer.of(-42), Integer.abs, Integer.sum(NaturalNumber.of(8))),
+        NaturalNumber.of(50),
+        "Result of abs can be used with Integer.sum"
+      )
+
+      strictEqual<NaturalNumber.NaturalNumber>(
+        pipe(
+          Integer.of(-42),
+          Integer.abs,
+          NaturalNumber.multiply(NaturalNumber.of(2))
+        ),
+        NaturalNumber.of(84),
+        "Result of abs can be used with NaturalNumber.multiply"
+      )
+
+      // Test with pipe syntax
+      strictEqual(
+        pipe(Integer.of(-15), Integer.abs),
+        NaturalNumber.of(15),
+        "abs works with pipe syntax"
+      )
+
+      // Practical example: calculating distance between two integers
+      const getDistance: {
+        (a: Integer.Integer, b: Integer.Integer): NaturalNumber.NaturalNumber
+      } = (a, b) => pipe(b, Integer.subtract(a), Integer.abs)
+
+      strictEqual(
+        getDistance(Integer.of(10), Integer.of(15)),
+        NaturalNumber.of(5),
+        "Distance from 10 to 15 should be 5"
+      )
+
+      strictEqual(
+        getDistance(Integer.of(15), Integer.of(10)),
+        NaturalNumber.of(5),
+        "Distance from 15 to 10 should be 5"
+      )
+    })
   })
 
   describe("Predicates", () => {
-    //
     it("lessThan", () => {
       assertTrue(Integer.lessThan(Integer.of(2), Integer.of(3)))
 
