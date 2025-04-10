@@ -14,6 +14,33 @@ type IsStringLiteral<T> = T extends string ? string extends T ? false
   : true
   : false
 
+/** @internal */
+export type IndexFromTable<
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Table extends IndexedDbTable.IndexedDbTable.TableName<
+    IndexedDbVersion.IndexedDbVersion.Tables<Source>
+  >
+> = IsStringLiteral<
+  Extract<
+    keyof IndexedDbTable.IndexedDbTable.Indexes<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    >,
+    string
+  >
+> extends true ? Extract<
+    keyof IndexedDbTable.IndexedDbTable.Indexes<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    >,
+    string
+  > :
+  never
+
 /**
  * @since 1.0.0
  * @category type ids
@@ -72,17 +99,13 @@ export interface MigrationApi<
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(
-    table: A
-  ) => Effect.Effect<globalThis.IDBObjectStore, IndexedDbMigrationError>
+  >(table: A) => Effect.Effect<globalThis.IDBObjectStore, IndexedDbMigrationError>
 
   readonly deleteObjectStore: <
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(
-    table: A
-  ) => Effect.Effect<void, IndexedDbMigrationError>
+  >(table: A) => Effect.Effect<void, IndexedDbMigrationError>
 
   readonly createIndex: <
     A extends IndexedDbTable.IndexedDbTable.TableName<
@@ -90,26 +113,7 @@ export interface MigrationApi<
     >
   >(
     table: A,
-    indexName: IsStringLiteral<
-      Extract<
-        keyof IndexedDbTable.IndexedDbTable.Indexes<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            A
-          >
-        >,
-        string
-      >
-    > extends true ? Extract<
-        keyof IndexedDbTable.IndexedDbTable.Indexes<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            A
-          >
-        >,
-        string
-      > :
-      never,
+    indexName: IndexFromTable<Source, A>,
     options?: IDBIndexParameters
   ) => Effect.Effect<globalThis.IDBIndex, IndexedDbMigrationError>
 
@@ -117,37 +121,13 @@ export interface MigrationApi<
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(
-    table: A,
-    indexName: IsStringLiteral<
-      Extract<
-        keyof IndexedDbTable.IndexedDbTable.Indexes<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            A
-          >
-        >,
-        string
-      >
-    > extends true ? Extract<
-        keyof IndexedDbTable.IndexedDbTable.Indexes<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            A
-          >
-        >,
-        string
-      > :
-      never
-  ) => Effect.Effect<void, IndexedDbMigrationError>
+  >(table: A, indexName: IndexFromTable<Source, A>) => Effect.Effect<void, IndexedDbMigrationError>
 
   readonly getAll: <
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(
-    table: A
-  ) => Effect.Effect<
+  >(table: A) => Effect.Effect<
     Array<
       Schema.Schema.Type<
         IndexedDbTable.IndexedDbTable.TableSchema<
