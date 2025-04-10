@@ -21,7 +21,21 @@ import type { Ordering } from "./Ordering.js"
 import * as _Predicate from "./Predicate.js"
 
 /**
- * A type representing signed integers.
+ * A type representing the set of integers (`ℤ = {..., -2, -1, 0, 1, 2, ...}`).
+ *
+ * The `Integer` type is a branded subset of JavaScript's number type that
+ * enforces integer values at compile-time through TypeScript's type system.
+ * This provides both mathematical correctness and type safety by preventing
+ * operations that would expect integers from accidentally receiving fractional
+ * numbers.
+ *
+ * @remarks
+ * **Mathematical properties of the integer set (ℤ)**:
+ *
+ * - Closure under addition: `∀a,b ∈ ℤ`, `a + b ∈ ℤ`
+ * - Closure under subtraction: `∀a,b ∈ ℤ`, `a - b ∈ ℤ`
+ * - Closure under multiplication: `∀a,b ∈ ℤ`, `a × b ∈ ℤ`
+ * - Non-closure under division: `∃a,b ∈ ℤ` such that `a ÷ b ∉ ℤ`
  *
  * @memberof Integer
  * @since 3.14.6
@@ -31,14 +45,21 @@ import * as _Predicate from "./Predicate.js"
  * ```ts
  * import * as Integer from "effect/Integer"
  *
+ * // Type safety through compile-time checking
  * function onlyInts(int: Integer.Integer): void {
- *   //... stuff for only integers fans
+ *   // Operations that require integers
  * }
  *
- * onlyInts(Integer.of(1)) // ok
+ * onlyInts(Integer.of(1)) // OK: 1 is an integer
+ * onlyInts(Integer.of(-42)) // OK: -42 is an integer
  *
- * // @ts-expect-error - This will fail because 1.5 is not an integer
+ * // @ts-expect-error - This will not compile because 1.5 is not branded integer
  * onlyInts(1.5)
+ *
+ * // Using predicates for runtime validation
+ * const numbers = [1, 2.5, 3, 4.7, 5]
+ * const onlyIntegers = numbers.filter(Integer.isInteger).map(Integer.of)
+ * // onlyIntegers: Integer.Integer[] = [1, 3, 5]
  * ```
  *
  * @experimental
@@ -55,7 +76,18 @@ export type Integer = internal.Integer
 export type NaN = internal.NaN
 
 /**
- * Lift a number in the set of integers, and brands it as an `Integer`.
+ * Constructs a value in the set of integers (ℤ) and brands it as an `Integer`
+ * type.
+ *
+ * This function:
+ *
+ * 1. Validates at runtime that the input number is an integer (a member of ℤ)
+ * 2. Associates the TypeScript type brand `Integer` with the value for
+ *    compile-time type safety
+ *
+ * The function performs strict validation to ensure mathematical correctness.
+ * **It throws an error if the provided value is not a member of the integer set
+ * `ℤ = {..., -2, -1, 0, 1, 2, ...}`**.
  *
  * @memberof Integer
  * @since 3.14.6
@@ -63,18 +95,36 @@ export type NaN = internal.NaN
  * @example
  *
  * ```ts
- * import * as Integer from "effect/Integer"
  * import assert from "node:assert/strict"
+ * import * as Integer from "effect/Integer"
  *
- * const aFloat = 1.5
+ * // Successful cases (members of ℤ)
+ * const positiveInt = Integer.of(42) // OK: 42 ∈ ℤ
+ * const negativeInt = Integer.of(-7) // OK: -7 ∈ ℤ
+ * const zero = Integer.of(0) // OK: 0 ∈ ℤ
+ *
+ * // Runtime validation prevents non-integers
+ * const notAnInteger = 1.5 // 1.5 ∉ ℤ
  *
  * assert.throws(() => {
- *   Integer.of(aFloat)
- * }, `Expected ${aFloat} to be an integer`)
+ *   Integer.of(notAnInteger) // Throws error: "Expected 1.5 to be an integer"
+ * })
+ *
+ * // Type safety in use
+ * function requiresInteger(i: Integer.Integer): Integer.Integer {
+ *   return Integer.add(i, Integer.of(1)) // Safe integer operation
+ * }
+ *
+ * const result = requiresInteger(Integer.of(5)) // OK
+ *
+ * // @ts-expect-error - Type checking prevents passing non-Integer values
+ * requiresInteger(10) // Type error: '10' is not assignable to parameter of type 'Integer'
  * ```
  *
- * @param n - The number to be lifted in the set of Integers .
- * @returns A Integer branded type.
+ * @param n - The number to be validated and lifted into the set of Integers.
+ * @returns The input value branded with the `Integer` type.
+ * @throws {Brand.BrandErrors} When the input is not an integer (i.e., when n ∉
+ *   ℤ).
  * @experimental
  */
 export const of: {
@@ -82,8 +132,27 @@ export const of: {
 } = (n) => internal.IntegerConstructor(n)
 
 /**
- * Lift a `number` in the set of `Option<Integer>`, and brands it as an
- * `Integer` if the provided number is a valid integer.
+ * Safely attempts to construct a value in the set of integers (ℤ) from a
+ * number, returning an `Option` that contains the Integer if the input is a
+ * member of ℤ.
+ *
+ * For the function `f: ℝ → Option<ℤ>` defined by:
+ *
+ * - `f(n) = Some(n)` when `n ∈ ℤ`
+ * - `f(n) = None` when `n ∉ ℤ`
+ * - **Domain**: The set of real numbers (ℝ, represented by JavaScript's number
+ *   type)
+ * - **Codomain**: Option<ℤ> (an option of integers)
+ *
+ * @remarks
+ * This function provides a safe alternative to {@link module:Integer.of} by
+ * performing a non-throwing validation that the input number is an integer. It
+ * returns:
+ *
+ * - `Some(n)` when the input is a member of the integer set `ℤ = {..., -2, -1, 0,
+ *   1, 2, ...}`
+ * - `None` when the input is not an integer (including `NaN`, `Infinity`, and
+ *   fractional numbers)
  *
  * @memberof Integer
  * @since 3.14.6
@@ -94,50 +163,87 @@ export const of: {
  * import * as assert from "node:assert/strict"
  * import { Option, pipe } from "effect"
  * import * as Integer from "effect/Integer"
+ * import * as RealNumber from "effect/Number"
  *
- * // Valid integers return Some<Integer>
+ * // Members of ℤ return Some<Integer>
  * assert.deepStrictEqual(Integer.option(42), Option.some(Integer.of(42)))
  * assert.deepStrictEqual(Integer.option(0), Option.some(Integer.zero))
  * assert.deepStrictEqual(Integer.option(-7), Option.some(Integer.of(-7)))
  *
- * // Non-integers return None
+ * // Non-integers (not in ℤ) return None
  * assert.deepStrictEqual(Integer.option(3.14), Option.none())
- * assert.deepStrictEqual(Integer.option(Number.NaN), Option.none())
+ * assert.deepStrictEqual(Integer.option(NaN), Option.none())
+ * assert.deepStrictEqual(Integer.option(Infinity), Option.none())
  *
- * // Safe operations on potentially non-integer values
- * const safelyDouble = (n: number) =>
+ * // Safe operations on values of unknown integer status
+ * const safelyDouble = (n: number): Option.Option<Integer.Integer> =>
  *   pipe(
  *     Integer.option(n),
  *     Option.map((int) => Integer.multiply(int, Integer.of(2)))
  *   )
  *
- * assert.deepStrictEqual(safelyDouble(5), Option.some(10))
+ * assert.deepStrictEqual(safelyDouble(5), Option.some(Integer.of(10)))
  * assert.deepStrictEqual(safelyDouble(5.5), Option.none())
  *
- * // Handling both cases with Option.match
- * const processNumber = (n: number) =>
+ * // Handling integer membership testing with Option.match
+ * const classifyNumber = (n: number): string =>
  *   pipe(
  *     Integer.option(n),
  *     Option.match({
- *       onNone: () => "Not an integer",
- *       onSome: (int) => `Integer: ${int}`
+ *       onNone: () => `${n} is not in the set of integers (ℤ)`,
+ *       onSome: (int) => `${int} is a member of the integer set (ℤ)`
  *     })
  *   )
  *
- * assert.equal(processNumber(42), "Integer: 42")
- * assert.equal(processNumber(4.2), "Not an integer")
+ * assert.equal(classifyNumber(42), "42 is a member of the integer set (ℤ)")
+ * assert.equal(
+ *   classifyNumber(4.2),
+ *   "4.2 is not in the set of integers (ℤ)"
+ * )
+ *
+ * // Converting from string inputs safely
+ * const parseIntegerSafely = (s: string): Option.Option<Integer.Integer> =>
+ *   pipe(RealNumber.parseFloat(s), Integer.option)
+ *
+ * assert.deepStrictEqual(
+ *   parseIntegerSafely("42"),
+ *   Option.some(Integer.of(42))
+ * )
+ * assert.deepStrictEqual(parseIntegerSafely("3.14"), Option.none())
+ * assert.deepStrictEqual(parseIntegerSafely("not a number"), Option.none())
  * ```
  *
- * @param n - The `number` to convert to an `Integer`
- * @returns An `Option` containing the `Integer` if valid, `None` otherwise
+ * @param n - The number to be validated as a member of the integer set ℤ
+ * @returns An `Option` containing the integer if valid (i.e., `n ∈ ℤ`), `None`
+ *   otherwise
  * @experimental
  */
 export const option: (n: number) => _Option.Option<Integer> = internal.IntegerConstructor.option
 
 /**
- * Lift a `number` in the set of `Either.Right<Integer>` if the number is a
- * valid Integer, `Either.Left<BrandError>` otherwise.
+ * Validates whether a number is a member of the integer set (ℤ), returning
+ * either an `Integer` or detailed error information.
  *
+ * For the function `f: ℝ → Either<BrandErrors, ℤ>` defined by:
+ *
+ * - `f(n) = Right(n)` when `n ∈ ℤ`
+ * - `f(n) = Left(errors)` when `n ∉ ℤ`
+ * - **Domain**: The set of real numbers (`ℝ`, represented by JavaScript's number
+ *   type)
+ * - **Codomain**: `Either<BrandErrors, ℤ>` (either brand errors or `integers`)
+ *
+ * @remarks
+ * This function is similar to {@link module:Integer.option} but provides
+ * detailed error information when the input is not a valid integer. It
+ * returns:
+ *
+ * - `Right(n)` when the input is a member of the integer set `ℤ = {..., -2, -1,
+ *   0, 1, 2, ...}`
+ * - `Left(errors)` when the input is not an integer, with specific validation
+ *   error messages
+ *
+ * This constructor is particularly useful in validation scenarios where you
+ * need to collect and report detailed error information.
  * @memberof Integer
  * @since 3.14.6
  * @category Constructors
@@ -148,15 +254,17 @@ export const option: (n: number) => _Option.Option<Integer> = internal.IntegerCo
  * import { Either, Option, pipe } from "effect"
  * import * as Integer from "effect/Integer"
  *
- * // Valid integers return Right<Integer>
+ * // Members of ℤ return Right<Integer>
  * assert.deepStrictEqual(Integer.either(42), Either.right(Integer.of(42)))
  * assert.deepStrictEqual(Integer.either(0), Either.right(Integer.zero))
  * assert.deepStrictEqual(Integer.either(-7), Either.right(Integer.of(-7)))
  *
- * // Non-integers return Left<BrandErrors>
+ * // Non-integers (not in ℤ) return Left<BrandErrors>
  * assert.equal(Either.isLeft(Integer.either(3.14)), true)
  * assert.equal(Either.isLeft(Integer.either(Number.NaN)), true)
+ * assert.equal(Either.isLeft(Integer.either(Infinity)), true)
  *
+ * // Extracting error information for invalid inputs
  * const Pi = 3.14
  * const floatResult = Integer.either(Pi)
  * if (Either.isLeft(floatResult)) {
@@ -170,32 +278,59 @@ export const option: (n: number) => _Option.Option<Integer> = internal.IntegerCo
  *   )
  * }
  *
- * // Map over valid integers
- * const doubleIfValid = (n: number) =>
+ * // Mapping over valid integers with Either
+ * const doubleIfValid = (
+ *   n: number
+ * ): Either.Either<Integer.Integer, Brand.BrandErrors> =>
  *   pipe(
  *     Integer.either(n),
  *     Either.map((int) => Integer.multiply(int, Integer.of(2)))
  *   )
  *
- * assert.deepStrictEqual(doubleIfValid(5), Either.right(10))
+ * assert.deepStrictEqual(doubleIfValid(5), Either.right(Integer.of(10)))
  * assert.equal(Either.isLeft(doubleIfValid(5.5)), true)
  *
- * // Handle both cases with Either.match
- * const processNumber = (n: number): string =>
+ * // Handling both cases with Either.match
+ * const classifyNumber = (n: number): string =>
  *   pipe(
  *     Integer.either(n),
  *     Either.match({
- *       onLeft: ([{ message }]) => `Error: ${message}`,
- *       onRight: (int) => `Valid integer: ${int}`
+ *       onLeft: ([{ message }]) => `Validation error: ${message}`,
+ *       onRight: (int) => `${int} is a valid member of ℤ`
  *     })
  *   )
  *
- * assert.equal(processNumber(42), "Valid integer: 42")
+ * assert.equal(classifyNumber(42), "42 is a valid member of ℤ")
+ * assert.equal(
+ *   classifyNumber(3.14),
+ *   "Validation error: Expected 3.14 to be an integer"
+ * )
+ *
+ * // For form validation and user input processing
+ * const processUserInput = (input: string): string =>
+ *   pipe(
+ *     Number.parseFloat(input),
+ *     Integer.either,
+ *     Either.match({
+ *       onLeft: ([{ message }]) => `Invalid input: ${message}`,
+ *       onRight: (int) => `You entered the integer ${int}`
+ *     })
+ *   )
+ *
+ * assert.equal(processUserInput("42"), "You entered the integer 42")
+ * assert.equal(
+ *   processUserInput("3.14"),
+ *   "Invalid input: Expected 3.14 to be an integer"
+ * )
+ * assert.equal(
+ *   processUserInput("not a number"),
+ *   "Invalid input: Expected NaN to be an integer"
+ * )
  * ```
  *
- * @param n - The number to convert to an Integer
- * @returns An `Either` containing the `Integer` if valid, or `BrandErrors` if
- *   invalid
+ * @param n - The number to be validated as a member of the integer set ℤ
+ * @returns An `Either` containing the integer on the right if valid (i.e., `n ∈
+ *   ℤ`), or validation errors on the left otherwise
  * @experimental
  */
 export const either: (
@@ -223,7 +358,17 @@ export const zero: Integer = internal.zero
 export const one: Integer = internal.one
 
 /**
- * Type guard to test if a value is an `Integer`.
+ * Type guard to test if a value is a member of the integer set (ℤ).
+ *
+ * This function performs both:
+ *
+ * 1. A runtime check to verify the value is a number that belongs to ℤ
+ * 2. A TypeScript type refinement that narrows the type to `Integer` when used in
+ *    conditionals
+ *
+ * In mathematical terms, this predicate tests whether a value is a member of
+ * the set `ℤ = {..., -2, -1, 0, 1, 2, ...}` by checking if it's a number with
+ * no fractional part.
  *
  * @memberof Integer
  * @since 3.14.6
@@ -234,35 +379,77 @@ export const one: Integer = internal.one
  * import assert from "node:assert/strict"
  * import * as Integer from "effect/Integer"
  *
- * assert.equal(Integer.isInteger(1), true)
+ * // Testing various values
+ * assert.equal(Integer.isInteger(1), true) // 1 ∈ ℤ
+ * assert.equal(Integer.isInteger(-42), true) // -42 ∈ ℤ
+ * assert.equal(Integer.isInteger(0), true) // 0 ∈ ℤ
+ * assert.equal(Integer.isInteger(1.5), false) // 1.5 ∉ ℤ
+ * assert.equal(Integer.isInteger(NaN), false) // NaN ∉ ℤ
+ * assert.equal(Integer.isInteger(Infinity), false) // Infinity ∉ ℤ
+ * assert.equal(Integer.isInteger("123"), false) // Strings ∉ ℤ
+ * assert.equal(Integer.isInteger(true), false) // Booleans ∉ ℤ
+ * assert.equal(Integer.isInteger(null), false) // null ∉ ℤ
  *
+ * // Type refinement behavior
+ * function processValue(value: unknown): string {
+ *   if (Integer.isInteger(value)) {
+ *     // In this branch, TypeScript knows that value is an Integer
+ *     const doubled: Integer.Integer = Integer.multiply(
+ *       value,
+ *       Integer.of(2)
+ *     )
+ *     return `Integer: ${doubled}`
+ *   }
+ *   return "Not an integer"
+ * }
+ *
+ * assert.equal(processValue(5), "Integer: 10")
+ * assert.equal(processValue(3.14), "Not an integer")
+ *
+ * // IMPORTANT TypeScript BEHAVIOR NOTE:
  * const definitelyAFloat = 1.5
  * let anInt: Integer.Integer
+ *
  * if (Integer.isInteger(definitelyAFloat)) {
- *   // this is not erroring even if it is absurd because at the type level this is totally fine
- *   // we can assign a float to an `Integer` because we have passed through the `Integer.isInteger` type guard
- *   // by the way, this branch is unreachable at runtime!
+ *   // TypeScript allows this assignment because the type guard has refined
+ *   // 'definitelyAFloat' to an Integer within this branch.
+ *   // However, this code branch is unreachable at runtime since 1.5 is not an integer!
  *   anInt = definitelyAFloat
  * }
  *
- * assert.equal(Integer.isInteger(definitelyAFloat), false)
- * assert.equal(Integer.isInteger("a"), false)
- * assert.equal(Integer.isInteger(true), false)
+ * // Filtering collections for integers
+ * const mixedNumbers = [1, 2.5, 3, 4.7, 5]
+ * const onlyIntegers = mixedNumbers.filter(Integer.isInteger)
+ * assert.deepEqual(onlyIntegers, [1, 3, 5])
  * ```
  *
- * @param input - The value to test.
- * @returns `true` if the value is an `Integer`, `false` otherwise.
+ * @param input - The value to test for membership in the integer set ℤ
+ * @returns `true` if the value is a number with no fractional part (i.e., a
+ *   member of ℤ), `false` otherwise.
  * @experimental
  */
 export const isInteger: _Predicate.Refinement<unknown, Integer> = (input) =>
   _Predicate.isNumber(input) && internal.IntegerConstructor.is(input)
 
 /**
- * Provides an addition operation on `Integer`.
+ * Performs addition in the set of integers (ℤ), preserving closure within the
+ * integer domain.
  *
- * It supports multiple method signatures, allowing for both curried and direct
- * invocation styles with integers and floating-point numbers.
+ * @remarks
+ * For the binary operation `(+): ℤ × ℤ → ℤ` defined by standard addition, this
+ * function implements the mathematical notion of addition on integers with the
+ * following properties:
  *
+ * - **Closure**: For all `a, b ∈ ℤ`, `a + b ∈ ℤ`
+ * - **Associativity**: For all `a, b, c ∈ ℤ`, `(a + b) + c = a + (b + c)`
+ * - **Commutativity**: For all `a, b ∈ ℤ`, `a + b = b + a`
+ * - **Identity element**: There exists `0 ∈ ℤ` such that for all `a ∈ ℤ`, `a + 0
+ *   = 0 + a = a`
+ * - **Inverse elements**: For every `a ∈ ℤ`, there exists `−a ∈ ℤ` such that `a +
+ *   (−a) = (−a) + a = 0`
+ *
+ * The addition operation maintains type safety through the Integer branded
+ * type.
  * @memberof Integer
  * @since 3.14.6
  * @category Math
@@ -270,9 +457,11 @@ export const isInteger: _Predicate.Refinement<unknown, Integer> = (input) =>
  */
 export const sum: {
   /**
-   * Sum curried function in the set of integers.
+   * Returns a function that adds a specified integer to its argument.
    *
-   * **data-last api** a.k.a. pipeable
+   * **Data-last API** (a.k.a. pipeable)
+   *
+   * @example
    *
    * ```ts
    * import * as assert from "node:assert/strict"
@@ -282,36 +471,132 @@ export const sum: {
    * assert.equal(
    *   pipe(
    *     Integer.of(10),
-   *     Integer.add(-10),
-   *     Integer.add(Integer.zero), // 0
-   *     Integer.one
+   *     Integer.sum(Integer.of(-10)), // 10 + (-10) = 0
+   *     Integer.sum(Integer.zero), // 0 + 0 = 0
+   *     Integer.sum(Integer.of(1)) // 0 + 1 = 1
    *   ),
    *   1
    * )
+   *
+   * // Addition with negative integers
+   * assert.equal(
+   *   pipe(
+   *     Integer.of(-5),
+   *     Integer.sum(Integer.of(-3)) // (-5) + (-3) = -8
+   *   ),
+   *   -8
+   * )
+   *
+   * // Demonstrating commutativity: a + b = b + a
+   * const a = Integer.of(7)
+   * const b = Integer.of(3)
+   * assert.equal(pipe(a, Integer.sum(b)), pipe(b, Integer.sum(a)))
    * ```
+   *
+   * @param that - The integer to add to the input of the resulting function
+   * @returns A function that takes an integer and returns the sum of that
+   *   integer and `that`
    */
   (that: Integer): (self: Integer) => Integer
 
   /**
-   * **data first api**
+   * Adds two integers together.
+   *
+   * **Data-first API**
+   *
+   * @example
    *
    * ```ts
    * import * as assert from "node:assert/strict"
-   * import { pipe } from "effect"
    * import * as Integer from "effect/Integer"
    *
    * assert.equal(
-   *   Integer.add(Integer.of(10), Integer.of(-10)),
+   *   Integer.sum(Integer.of(10), Integer.of(-10)), // 10 + (-10) = 0
    *   Integer.zero
    * )
+   *
+   * // Addition with positive integers
+   * assert.equal(
+   *   Integer.sum(Integer.of(25), Integer.of(17)), // 25 + 17 = 42
+   *   42
+   * )
+   *
+   * // Addition with mixed signs
+   * assert.equal(
+   *   Integer.sum(Integer.of(30), Integer.of(-12)), // 30 + (-12) = 18
+   *   18
+   * )
+   *
+   * // Identity property: a + 0 = a
+   * const a = Integer.of(42)
+   * assert.equal(Integer.sum(a, Integer.zero), a)
+   *
+   * // Demonstrating associativity: (a + b) + c = a + (b + c)
+   * const b = Integer.of(5)
+   * const c = Integer.of(3)
+   * assert.equal(
+   *   Integer.sum(Integer.sum(a, b), c),
+   *   Integer.sum(a, Integer.sum(b, c))
+   * )
    * ```
+   *
+   * @param self - The first integer addend
+   * @param that - The second integer addend
+   * @returns The sum of the two integers, which is also an integer (closure
+   *   property of ℤ)
    */
   (self: Integer, that: Integer): Integer
-} = dual(2, (self: Integer, that: Integer): Integer => internal.sum(self, that))
+} = dual(2, internal.sum<Integer>)
 
 /**
- * Provides a subtraction operation on `Integer`s.
+ * Takes an `Iterable` of `Integer`s and returns their sum as a single
+ * `Integer`.
  *
+ * @memberof Integer
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { HashSet } from "effect"
+ * import * as Integer from "effect/Integer"
+ *
+ * assert.equal(
+ *   Integer.sumAll(
+ *     HashSet.make(Integer.of(-2), Integer.of(-3), Integer.of(4))
+ *   ), //
+ *   Integer.of(-1)
+ * )
+ * ```
+ *
+ * @param collection - An `Iterable<Integer>` to reduce to a sum.
+ * @returns The sum of the `Integer`s in the `Iterable`.
+ * @experimental
+ */
+export const sumAll: {
+  (collection: Iterable<Integer>): Integer
+} = internal.sumAll<Integer>
+
+/**
+ * Performs subtraction in the set of integers (ℤ), preserving closure within
+ * the integer domain.
+ *
+ * @remarks
+ * For the binary operation `(-): ℤ × ℤ → ℤ` defined by standard subtraction,
+ * this function implements the mathematical notion of subtraction on integers
+ * with the following properties:
+ *
+ * - **Closure**: For all `a, b ∈ ℤ`, `a - b ∈ ℤ`
+ * - **Relation to addition**: For all `a, b ∈ ℤ`, `a - b = a + (-b)` where (-b)
+ *   is the additive inverse of b
+ * - **Non-commutativity**: In general, `a - b ≠ b - a` (unless `a = b`)
+ * - **Right identity element**: For all `a ∈ ℤ`, `a - 0 = a`
+ * - **Self-annihilation**: For all `a ∈ ℤ`, `a - a = 0`
+ * - **Inverse relation**: For all `a, b ∈ ℤ`, `a - b = -(b - a)`
+ *
+ * The subtraction operation maintains type safety through the Integer branded
+ * type.
  * @memberof Integer
  * @since 3.14.6
  * @category Math
@@ -322,6 +607,8 @@ export const subtract: {
    * Returns a function that subtracts a specified `subtrahend` from a given
    * `minuend`.
    *
+   * **Data-last API** (a.k.a. pipeable)
+   *
    * @example
    *
    * ```ts
@@ -329,9 +616,33 @@ export const subtract: {
    * import { pipe } from "effect"
    * import * as Integer from "effect/Integer"
    *
+   * // Basic subtraction
    * assert.equal(
-   *   pipe(Integer.of(10), Integer.subtract(Integer.of(10))),
+   *   pipe(Integer.of(10), Integer.subtract(Integer.of(7))), // 10 - 7 = 3
+   *   3
+   * )
+   *
+   * // Subtraction resulting in zero
+   * assert.equal(
+   *   pipe(Integer.of(10), Integer.subtract(Integer.of(10))), // 10 - 10 = 0
    *   Integer.zero
+   * )
+   *
+   * // Subtraction resulting in a negative number
+   * assert.equal(
+   *   pipe(Integer.of(5), Integer.subtract(Integer.of(8))), // 5 - 8 = -3
+   *   -3
+   * )
+   *
+   * // Chaining multiple operations
+   * assert.equal(
+   *   pipe(
+   *     Integer.of(20),
+   *     Integer.subtract(Integer.of(5)), // 20 - 5 = 15
+   *     Integer.subtract(Integer.of(10)), // 15 - 10 = 5
+   *     Integer.subtract(Integer.of(-3)) // 5 - (-3) = 5 + 3 = 8
+   *   ),
+   *   8
    * )
    * ```
    *
@@ -345,29 +656,83 @@ export const subtract: {
   /**
    * Subtracts the `subtrahend` from the `minuend` and returns the difference.
    *
+   * **Data-first API**
+   *
    * @example
    *
    * ```ts
    * import * as assert from "node:assert/strict"
    * import * as Integer from "effect/Integer"
    *
+   * // Basic subtraction
    * assert.equal(
-   *   Integer.subtract(Integer.of(10), Integer.of(10)), //
+   *   Integer.subtract(Integer.of(10), Integer.of(7)), // 10 - 7 = 3
+   *   3
+   * )
+   *
+   * // Subtraction resulting in zero (self-annihilation property)
+   * assert.equal(
+   *   Integer.subtract(Integer.of(10), Integer.of(10)), // 10 - 10 = 0
    *   Integer.zero
    * )
+   *
+   * // Subtraction with negatives
+   * assert.equal(
+   *   Integer.subtract(Integer.of(-5), Integer.of(-8)), // (-5) - (-8) = -5 + 8 = 3
+   *   3
+   * )
+   *
+   * // Demonstrating right identity: a - 0 = a
+   * const a = Integer.of(42)
+   * assert.equal(Integer.subtract(a, Integer.zero), a)
+   *
+   * // Demonstrating non-commutativity: a - b ≠ b - a
+   * const b = Integer.of(30)
+   * const c = Integer.of(20)
+   * assert.notEqual(
+   *   Integer.subtract(b, c), // 30 - 20 = 10
+   *   Integer.subtract(c, b) // 20 - 30 = -10
+   * )
+   *
+   * // Demonstrating inverse relation: a - b = -(b - a)
+   * assert.equal(Integer.subtract(b, c), -Integer.subtract(c, b))
    * ```
    *
    * @param minuend - The integer from which another integer is to be
    *   subtracted.
    * @param subtrahend - The integer to subtract from the minuend.
-   * @returns The difference of subtracting the subtrahend from the minuend.
+   * @returns The difference of subtracting the subtrahend from the minuend,
+   *   which is also an integer (closure property of ℤ).
    */
   (minuend: Integer, subtrahend: Integer): Integer
 } = dual(2, internal.subtract<Integer>)
 
 /**
- * Provides a multiplication operation on `Integer`s.
+ * Performs multiplication in the set of integers (ℤ), preserving closure within
+ * the integer domain.
  *
+ * @remarks
+ * For the binary operation `(×): ℤ × ℤ → ℤ` defined by standard multiplication,
+ * this function implements the mathematical notion of multiplication on
+ * integers with the following properties:
+ *
+ * - **Closure**: For all `a, b ∈ ℤ`, `a × b ∈ ℤ`
+ * - **Associativity**: For all `a, b, c ∈ ℤ`, `(a × b) × c = a × (b × c)`
+ * - **Commutativity**: For all `a, b ∈ ℤ`, `a × b = b × a`
+ * - **Distributivity over addition**: For all `a, b, c ∈ ℤ`, `a × (b + c) = (a ×
+ *   b) + (a × c)`
+ * - **Identity element**: There exists `1 ∈ ℤ` such that for all `a ∈ ℤ`, `a × 1
+ *   = 1 × a = a`
+ * - **Zero property**: For all `a ∈ ℤ`, `a × 0 = 0 × a = 0`
+ * - **Sign rules**:
+ *
+ *   - Positive × Positive = Positive
+ *   - Negative × Negative = Positive
+ *   - Positive × Negative = Negative
+ *   - Negative × Positive = Negative
+ *
+ * The multiplication operation maintains type safety through the Integer
+ * branded type.
  * @memberof Integer
  * @since 3.14.6
  * @category Math
@@ -375,8 +740,10 @@ export const subtract: {
  */
 export const multiply: {
   /**
-   * Returns a function that multiplies a specified `multiplier` with a given
-   * `multiplicand`.
+   * Returns a function that multiplies a specified `multiplicand` with a given
+   * `multiplier`.
+   *
+   * **Data-last API** (a.k.a. pipeable)
    *
    * @example
    *
@@ -385,12 +752,41 @@ export const multiply: {
    * import { pipe } from "effect"
    * import * as Integer from "effect/Integer"
    *
+   * // Basic multiplication
    * assert.equal(
    *   pipe(
    *     Integer.of(2),
-   *     Integer.multiply(Integer.of(3)) //
+   *     Integer.multiply(Integer.of(3)) // 2 × 3 = 6
    *   ),
-   *   Integer.of(6)
+   *   6
+   * )
+   *
+   * // Multiplication with negative numbers
+   * assert.equal(
+   *   pipe(
+   *     Integer.of(-5),
+   *     Integer.multiply(Integer.of(4)) // (-5) × 4 = -20
+   *   ),
+   *   -20
+   * )
+   *
+   * // Multiplication by zero (annihilation property)
+   * assert.equal(
+   *   pipe(
+   *     Integer.of(42),
+   *     Integer.multiply(Integer.zero) // 42 × 0 = 0
+   *   ),
+   *   0
+   * )
+   *
+   * // Chaining multiple operations
+   * assert.equal(
+   *   pipe(
+   *     Integer.of(3),
+   *     Integer.multiply(Integer.of(4)), // 3 × 4 = 12
+   *     Integer.multiply(Integer.of(-2)) // 12 × (-2) = -24
+   *   ),
+   *   -24
    * )
    * ```
    *
@@ -404,24 +800,89 @@ export const multiply: {
   /**
    * Multiplies two integers and returns the resulting `product`.
    *
+   * **Data-first API**
+   *
    * @example
    *
    * ```ts
    * import assert from "node:assert/strict"
    * import * as Integer from "effect/Integer"
    *
+   * // Basic multiplication
    * assert.equal(
-   *   Integer.multiply(Integer.of(10), Integer.of(-10)), //
-   *   Integer.of(-100)
+   *   Integer.multiply(Integer.of(10), Integer.of(-10)), // 10 × (-10) = -100
+   *   -100
+   * )
+   *
+   * // Multiplication with two negative numbers
+   * assert.equal(
+   *   Integer.multiply(Integer.of(-7), Integer.of(-6)), // (-7) × (-6) = 42
+   *   42
+   * )
+   *
+   * // Identity property: a × 1 = a
+   * const a = Integer.of(42)
+   * assert.equal(Integer.multiply(a, Integer.of(1)), a)
+   *
+   * // Zero property: a × 0 = 0
+   * assert.equal(
+   *   Integer.multiply(Integer.of(123), Integer.zero),
+   *   Integer.zero
+   * )
+   *
+   * // Demonstrating commutativity: a × b = b × a
+   * const b = Integer.of(6)
+   * const c = Integer.of(7)
+   * assert.equal(
+   *   Integer.multiply(b, c), // 6 × 7 = 42
+   *   Integer.multiply(c, b) // 7 × 6 = 42
+   * )
+   *
+   * // Demonstrating associativity: (a × b) × c = a × (b × c)
+   * const d = Integer.of(2)
+   * assert.equal(
+   *   Integer.multiply(Integer.multiply(b, c), d),
+   *   Integer.multiply(b, Integer.multiply(c, d))
    * )
    * ```
    *
    * @param multiplier - The first integer to multiply.
    * @param multiplicand - The second integer to multiply.
-   * @returns The `product` of the multiplier and the multiplicand.
+   * @returns The `product` of the multiplier and the multiplicand, which is
+   *   also an integer (closure property of ℤ).
    */
   (multiplier: Integer, multiplicand: Integer): Integer
 } = dual(2, internal.multiply<Integer>)
+
+/**
+ * Takes an `Iterable` of `Integer`s and returns their multiplication as a
+ * single `Integer`.
+ *
+ * @memberof Integer
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { HashSet } from "effect"
+ * import * as Integer from "effect/Integer"
+ *
+ * assert.equal(
+ *   Integer.multiplyAll(
+ *     HashSet.make(Integer.of(-2), Integer.of(-3), Integer.of(4))
+ *   ), //
+ *   Integer.of(24)
+ * )
+ * ```
+ *
+ * @param collection - An `Iterable<Integer>` to reduce to a product.
+ * @returns The product of the `Integer`s in the `Iterable`.
+ * @experimental
+ */
+export const multiplyAll: {
+  (collection: Iterable<Integer>): Integer
+} = internal.multiplyAll<Integer>
 
 /**
  * Divides one integer by another, mapping from the domain of `Integers` to the
@@ -761,8 +1222,21 @@ export const divideSafe: {
 })
 
 /**
- * Returns the result of adding one {@link module:Integer.one} to the given
- * `Integer`.
+ * Implements the `successor` operation on `integers`, adding one to the
+ * provided integer.
+ *
+ * @remarks
+ * This function represents the mathematical successor function `S: ℤ → ℤ`
+ * defined by `S(n) = n + 1` for all `n ∈ ℤ`. It is equivalent to adding the
+ * multiplicative identity element (1) to any integer.
+ *
+ * Properties of the increment operation:
+ *
+ * - **Closure in ℤ**: For all `n ∈ ℤ`, `S(n) = n + 1 ∈ ℤ`
+ * - **Injectivity**: For all `a, b ∈ ℤ`, if `S(a) = S(b)`, then `a = b`
+ * - **Non-surjectivity in ℕ**: When restricted to ℕ, there is no `n ∈ ℕ` such
+ *   that `S(n) = 0`
+ * - **Relation to addition**: `S(n) = n + 1` for all `n ∈ ℤ`
  *
  * @memberof Integer
  * @since 3.14.6
@@ -774,29 +1248,55 @@ export const divideSafe: {
  * import { pipe } from "effect"
  * import * as Integer from "effect/Integer"
  *
+ * // Basic increment operation
  * assert.strictEqual(Integer.increment(Integer.of(1)), Integer.of(2))
+ * assert.strictEqual(Integer.increment(Integer.zero), Integer.of(1))
  *
+ * // Incrementing negative numbers
+ * assert.strictEqual(Integer.increment(Integer.of(-1)), Integer.zero)
+ * assert.strictEqual(Integer.increment(Integer.of(-42)), Integer.of(-41))
+ *
+ * // Chaining multiple increments (creating n + 4)
  * assert.strictEqual(
  *   pipe(
  *     Integer.of(1),
- *     Integer.increment,
- *     Integer.increment,
- *     Integer.increment,
- *     Integer.increment
+ *     Integer.increment, // 1 + 1 = 2
+ *     Integer.increment, // 2 + 1 = 3
+ *     Integer.increment, // 3 + 1 = 4
+ *     Integer.increment // 4 + 1 = 5
  *   ),
  *   Integer.of(5)
  * )
+ *
+ * // Equivalent to adding one
+ * const n = Integer.of(37)
+ * assert.strictEqual(Integer.increment(n), Integer.add(n, Integer.of(1)))
  * ```
  *
  * @param n - The integer value to be incremented.
- * @returns The incremented value by one Integer as an `Integer`.
+ * @returns The successor of n (n + 1) as an `Integer`.
  * @experimental
  */
 export const increment: (n: Integer) => Integer = internal.increment
 
 /**
- * Returns the result of decrementing by one {@link module:Integer.one} to the
- * given `Integer`.
+ * Implements the predecessor operation on integers, subtracting one from the
+ * provided integer.
+ *
+ * @remarks
+ * This function represents the mathematical predecessor function `P: ℤ → ℤ`
+ * defined by `P(n) = n - 1` for all `n ∈ ℤ`. It is the inverse of the successor
+ * (increment) operation and is equivalent to subtracting the multiplicative
+ * identity element (1) from any integer.
+ *
+ * **Properties of the decrement operation**:
+ *
+ * - **Closure in ℤ**: For all `n ∈ ℤ`, `P(n) = n - 1 ∈ ℤ`
+ * - **Injectivity**: For all `a, b ∈ ℤ`, if `P(a) = P(b)`, then `a = b`
+ * - **Non-surjectivity in ℕ**: When restricted to ℕ, there is no `n ∈ ℕ` such
+ *   that `P(0) ∈ ℕ`
+ * - **Relation to subtraction**: `P(n) = n - 1` for all `n ∈ ℤ`
+ * - **Inverse of increment**: `P(S(n)) = S(P(n)) = n` for all `n ∈ ℤ`
  *
  * @memberof Integer
  * @since 3.14.6
@@ -808,22 +1308,48 @@ export const increment: (n: Integer) => Integer = internal.increment
  * import { pipe } from "effect"
  * import * as Integer from "effect/Integer"
  *
+ * // Basic decrement operation
+ * assert.strictEqual(Integer.decrement(Integer.of(5)), Integer.of(4))
+ * assert.strictEqual(Integer.decrement(Integer.zero), Integer.of(-1))
+ *
+ * // Decrementing negative numbers
  * assert.strictEqual(Integer.decrement(Integer.of(-100)), Integer.of(-101))
  *
+ * // Chaining multiple decrements (creating n - 4)
  * assert.strictEqual(
  *   pipe(
  *     Integer.of(100),
- *     Integer.decrement,
- *     Integer.decrement,
- *     Integer.decrement,
- *     Integer.decrement
+ *     Integer.decrement, // 100 - 1 = 99
+ *     Integer.decrement, // 99 - 1 = 98
+ *     Integer.decrement, // 98 - 1 = 97
+ *     Integer.decrement // 97 - 1 = 96
  *   ),
  *   Integer.of(96)
  * )
+ *
+ * // Decrementing through zero
+ * assert.strictEqual(
+ *   pipe(
+ *     Integer.of(1),
+ *     Integer.decrement, // 1 - 1 = 0
+ *     Integer.decrement // 0 - 1 = -1
+ *   ),
+ *   Integer.of(-1)
+ * )
+ *
+ * // Equivalent to subtracting one
+ * const n = Integer.of(42)
+ * assert.strictEqual(
+ *   Integer.decrement(n),
+ *   Integer.subtract(n, Integer.of(1))
+ * )
+ *
+ * // Inverse relationship with increment
+ * assert.strictEqual(Integer.decrement(Integer.increment(n)), n)
  * ```
  *
- * @param n - The `Integer` to be decremented.
- * @returns The decremented value by one Integer as an `Integer`.
+ * @param n - The integer value to be decremented.
+ * @returns The predecessor of n (n - 1) as an `Integer`.
  * @experimental
  */
 export const decrement: (n: Integer) => Integer = internal.decrement
@@ -1677,63 +2203,3 @@ export const max: {
  * @experimental
  */
 export const sign: (n: Integer) => Ordering = (n) => Order(n, zero)
-
-/**
- * Takes an `Iterable` of `Integer`s and returns their sum as a single
- * `Integer`.
- *
- * @memberof Integer
- * @since 3.14.6
- * @category Math
- * @example
- *
- * ```ts
- * import * as assert from "node:assert/strict"
- * import { HashSet } from "effect"
- * import * as Integer from "effect/Integer"
- *
- * assert.equal(
- *   Integer.sumAll(
- *     HashSet.make(Integer.of(-2), Integer.of(-3), Integer.of(4))
- *   ), //
- *   Integer.of(-1)
- * )
- * ```
- *
- * @param collection - An `Iterable<Integer>` to reduce to a sum.
- * @returns The sum of the `Integer`s in the `Iterable`.
- * @experimental
- */
-export const sumAll: {
-  (collection: Iterable<Integer>): Integer
-} = internal.sumAll<Integer>
-
-/**
- * Takes an `Iterable` of `Integer`s and returns their multiplication as a
- * single `Integer`.
- *
- * @memberof Integer
- * @since 3.14.6
- * @category Math
- * @example
- *
- * ```ts
- * import * as assert from "node:assert/strict"
- * import { HashSet } from "effect"
- * import * as Integer from "effect/Integer"
- *
- * assert.equal(
- *   Integer.multiplyAll(
- *     HashSet.make(Integer.of(-2), Integer.of(-3), Integer.of(4))
- *   ), //
- *   Integer.of(24)
- * )
- * ```
- *
- * @param collection - An `Iterable<Integer>` to reduce to a product.
- * @returns The product of the `Integer`s in the `Iterable`.
- * @experimental
- */
-export const multiplyAll: {
-  (collection: Iterable<Integer>): Integer
-} = internal.multiplyAll<Integer>
