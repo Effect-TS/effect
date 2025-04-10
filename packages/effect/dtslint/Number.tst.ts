@@ -516,10 +516,10 @@ describe("Number", () => {
     expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Integer.Integer]>()
 
     // test the output type
-    expect(Number.nextPow2(a)).type.toBe<number | Number.NaN>()
+    expect(Number.nextPow2(a)).type.toBe<number>()
 
     // test with Integer.Integer input
-    expect(Number.nextPow2(intA)).type.toBe<number | Number.NaN>()
+    expect(Number.nextPow2(intA)).type.toBe<number>()
     expect(Number.nextPow2(intA)).type.not.toBeAssignableTo<Integer.Integer>()
   })
 

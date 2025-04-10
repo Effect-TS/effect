@@ -6,9 +6,6 @@ import { liftThrowable } from "../Option.js"
 import * as Predicate from "../Predicate.js"
 
 /** @internal */
-export type NaN = number & Brand.Brand<"NaN">
-
-/** @internal */
 export const IntegerConstructor = Brand.refined<
   number & Brand.Brand<"Integer">
 >(

@@ -18,15 +18,6 @@ import type { Ordering } from "./Ordering.js"
 import * as predicate from "./Predicate.js"
 
 /**
- * Nominal type representing `NaN` (Not a Number).
- *
- * @memberof Number
- * @since 3.14.6
- * @category Type
- */
-export type NaN = internal.NaN
-
-/**
  * Type guard that tests if a value is a member of the set of JavaScript
  * numbers, which approximates the mathematical set of `real numbers` (`ℝ`).
  *
@@ -1060,7 +1051,7 @@ export const remainder: {
  * assert.deepStrictEqual(Number.isNaN(nextPow2(-1)), true) // Negative inputs result in NaN
  * ```
  */
-export const nextPow2 = (n: number): number | internal.NaN => {
+export const nextPow2 = (n: number): number => {
   const nextPow = Math.ceil(Math.log(n) / Math.log(2))
   return Math.max(Math.pow(2, nextPow), 2)
 }
