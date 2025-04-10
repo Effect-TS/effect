@@ -151,10 +151,12 @@ describe("Number", () => {
 
   it("sumAll", () => {
     strictEqual(Number.sumAll([2, 3, 4]), 9)
+    strictEqual(Number.sumAll([]), 0)
   })
 
   it("multiplyAll", () => {
     strictEqual(Number.multiplyAll([2, 0, 4]), 0)
+    strictEqual(Number.multiplyAll([]), 1)
     strictEqual(Number.multiplyAll([2, 3, 4]), 24)
   })
 

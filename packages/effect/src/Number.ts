@@ -21,13 +21,34 @@ import * as predicate from "./Predicate.js"
  * Nominal type representing `NaN` (Not a Number).
  *
  * @memberof Number
- * @category Type
  * @since 3.14.6
+ * @category Type
  */
 export type NaN = internal.NaN
 
 /**
- * Tests if a value is a `number`.
+ * Type guard that tests if a value is a member of the set of JavaScript
+ * numbers, which approximates the mathematical set of `real numbers` (`ℝ`).
+ *
+ * @remarks
+ * This function performs both:
+ *
+ * 1. A runtime check to determine if the value is a JavaScript number
+ * 2. A TypeScript type refinement that narrows the type to `number` when used in
+ *    conditionals
+ *
+ * For the predicate function `f: unknown → boolean` defined by:
+ *
+ * - `f(x) = true` when x is a JavaScript number
+ * - `f(x) = false` otherwise
+ * - **Domain**: All JavaScript values (`unknown`)
+ * - **Codomain**: `boolean`, indicating membership in the number type
+ *
+ * Note that this function returns true for all JavaScript number values,
+ * including:
+ *
+ * - Regular numbers (integers and floating-point): `1`, `-2`, `3.14`, etc.
+ * - Special numeric values: `Infinity`, `-Infinity`, `NaN`
  *
  * @memberof Number
  * @since 2.0.0
@@ -36,17 +57,68 @@ export type NaN = internal.NaN
  *
  * ```ts
  * import * as assert from "node:assert"
- * import { isNumber } from "effect/Number"
+ * import * as RealNumber from "effect/Number"
  *
- * assert.deepStrictEqual(isNumber(2), true)
- * assert.deepStrictEqual(isNumber("2"), false)
+ * // Regular numbers
+ * assert.deepStrictEqual(RealNumber.isNumber(2), true)
+ * assert.deepStrictEqual(RealNumber.isNumber(-3.14), true)
+ * assert.deepStrictEqual(RealNumber.isNumber(0), true)
+ *
+ * // Special numeric values
+ * assert.deepStrictEqual(RealNumber.isNumber(Infinity), true)
+ * assert.deepStrictEqual(RealNumber.isNumber(NaN), true)
+ *
+ * // Non-number values
+ * assert.deepStrictEqual(RealNumber.isNumber("2"), false)
+ * assert.deepStrictEqual(RealNumber.isNumber(true), false)
+ * assert.deepStrictEqual(RealNumber.isNumber(null), false)
+ * assert.deepStrictEqual(RealNumber.isNumber(undefined), false)
+ * assert.deepStrictEqual(RealNumber.isNumber({}), false)
+ * assert.deepStrictEqual(RealNumber.isNumber([]), false)
+ *
+ * // Using as a type guard in conditionals
+ * function processValue(value: unknown): string {
+ *   if (RealNumber.isNumber(value)) {
+ *     // TypeScript now knows 'value' is a number
+ *     return `Numeric value: ${value.toFixed(2)}`
+ *   }
+ *   return "Not a number"
+ * }
+ *
+ * assert.strictEqual(processValue(42), "Numeric value: 42.00")
+ * assert.strictEqual(processValue("hello"), "Not a number")
+ *
+ * // Filtering for numbers in an array
+ * const mixed = [1, "two", 3, false, 5]
+ * const onlyNumbers = mixed.filter(RealNumber.isNumber)
+ * assert.deepStrictEqual(onlyNumbers, [1, 3, 5])
  * ```
+ *
+ * @param input - The value to test for membership in the set of JavaScript
+ *   numbers
+ * @returns `true` if the input is a JavaScript number, `false` otherwise
  */
 export const isNumber: (input: unknown) => input is number = predicate.isNumber
 
 /**
- * Provides an addition operation on `number`s.
+ * Performs addition in the set of JavaScript numbers, approximating addition in
+ * the mathematical set of real numbers (ℝ).
  *
+ * @remarks
+ * For the binary operation `(+): ℝ × ℝ → ℝ` defined by standard addition, this
+ * function implements the addition of two JavaScript numbers with the following
+ * mathematical properties (subject to floating-point precision limitations):
+ *
+ * - **Closure**: For all `a, b ∈ ℝ`, `a + b ∈ ℝ`
+ * - **Associativity**: For all `a, b, c ∈ ℝ`, `(a + b) + c = a + (b + c)`
+ * - **Commutativity**: For all `a, b ∈ ℝ`, `a + b = b + a`
+ * - **Identity element**: There exists `0 ∈ ℝ` such that for all `a ∈ ℝ`, `a + 0
+ *   = 0 + a = a`
+ * - **Inverse elements**: For every `a ∈ ℝ`, there exists `−a ∈ ℝ` such that `a +
+ *   (−a) = (−a) + a = 0`
+ *
+ * Note: JavaScript's floating-point arithmetic follows IEEE 754 standards and
+ * may introduce precision errors when working with decimal values.
  * @memberof Number
  * @since 2.0.0
  * @category Math
@@ -54,18 +126,75 @@ export const isNumber: (input: unknown) => input is number = predicate.isNumber
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { sum } from "effect/Number"
+ * import { pipe } from "effect"
+ * import * as RealNumber from "effect/Number"
  *
- * assert.deepStrictEqual(sum(2, 3), 5)
+ * // Data-first style (direct application)
+ * assert.deepStrictEqual(RealNumber.sum(2, 3), 5)
+ * assert.deepStrictEqual(RealNumber.sum(-10, 5), -5)
+ * assert.deepStrictEqual(RealNumber.sum(0.1, 0.2), 0.30000000000000004) // Note: floating-point precision limitation
+ *
+ * // Data-last style (pipeable)
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     10,
+ *     RealNumber.sum(5) // 10 + 5 = 15
+ *   ),
+ *   15
+ * )
+ *
+ * // Chaining multiple additions
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     1,
+ *     RealNumber.sum(2), // 1 + 2 = 3
+ *     RealNumber.sum(3), // 3 + 3 = 6
+ *     RealNumber.sum(4) // 6 + 4 = 10
+ *   ),
+ *   10
+ * )
+ *
+ * // Identity property: a + 0 = a
+ * assert.deepStrictEqual(RealNumber.sum(42, 0), 42)
+ *
+ * // Commutative property: a + b = b + a
+ * assert.deepStrictEqual(RealNumber.sum(5, 3), RealNumber.sum(3, 5))
  * ```
  */
 export const sum: {
+  /**
+   * Returns a function that adds a specified number to its argument.
+   *
+   * @param that - The number to add to the input of the resulting function
+   * @returns A function that takes a number and returns the sum of that number
+   *   and `that`
+   */
   (that: number): (self: number) => number
+
+  /**
+   * Adds two numbers together.
+   *
+   * @param self - The first addend
+   * @param that - The second addend
+   * @returns The sum of the two numbers
+   */
   (self: number, that: number): number
 } = dual(2, internal.sum)
 
 /**
- * Provides a multiplication operation on `number`s.
+ * Computes the sum of all elements in an iterable collection of numbers.
+ *
+ * @remarks
+ * This function implements the mathematical concept of a `finite sum`: `∑(a₁,
+ * a₂, ..., aₙ) = a₁ + a₂ + ... + aₙ`
+ *
+ * Properties of this operation:
+ *
+ * - For an **empty collection**, **returns** 0 (**the additive identity
+ *   element**)
+ * - Inherits the **associative** and **commutative** properties of addition
+ * - The result is the same regardless of the order in which elements are summed
+ * - The operation maintains closure in the set of real numbers
  *
  * @memberof Number
  * @since 2.0.0
@@ -74,19 +203,68 @@ export const sum: {
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { multiply } from "effect/Number"
+ * import * as RealNumber from "effect/Number"
  *
- * assert.deepStrictEqual(multiply(2, 3), 6)
+ * // Basic sums
+ * assert.deepStrictEqual(RealNumber.sumAll([2, 3, 4]), 9) // 2 + 3 + 4 = 9
+ * assert.deepStrictEqual(RealNumber.sumAll([1.1, 2.2, 3.3]), 6.6) // 1.1 + 2.2 + 3.3 = 6.6
+ *
+ * // Empty collection returns the additive identity (0)
+ * assert.deepStrictEqual(RealNumber.sumAll([]), 0)
+ *
+ * // Single element collection
+ * assert.deepStrictEqual(RealNumber.sumAll([42]), 42)
+ *
+ * // Sums with negative numbers
+ * assert.deepStrictEqual(RealNumber.sumAll([2, -3, 4]), 3) // 2 + (-3) + 4 = 3
+ * assert.deepStrictEqual(RealNumber.sumAll([-2, -3, -4]), -9) // (-2) + (-3) + (-4) = -9
+ *
+ * // Works with any iterable
+ * assert.deepStrictEqual(RealNumber.sumAll(new Set([2, 3, 4])), 9)
+ *
+ * // Using with generated sequences
+ * function* range(start: number, end: number) {
+ *   for (let i = start; i <= end; i++) yield i
+ * }
+ *
+ * // Compute sum of first 5 natural numbers: 1 + 2 + 3 + 4 + 5 = 15
+ * assert.deepStrictEqual(RealNumber.sumAll(range(1, 5)), 15)
+ *
+ * // Floating point precision example
+ * assert.deepStrictEqual(
+ *   RealNumber.sumAll([0.1, 0.2]),
+ *   0.30000000000000004 // Note IEEE 754 precision limitation
+ * )
  * ```
+ *
+ * @param collection - An `iterable` containing the `numbers` to sum
+ * @returns The sum of all numbers in the collection, or 0 if the collection is
+ *   empty
  */
-export const multiply: {
-  (multiplicand: number): (multiplier: number) => number
-  (multiplier: number, multiplicand: number): number
-} = dual(2, internal.multiply)
+export const sumAll: {
+  (collection: Iterable<number>): number
+} = internal.sumAll<number>
 
 /**
- * Provides a subtraction operation on `number`s.
+ * Performs subtraction in the set of JavaScript numbers, approximating
+ * subtraction in the mathematical set of real numbers (ℝ).
  *
+ * @remarks
+ * For the binary operation `(-): ℝ × ℝ → ℝ` defined by standard subtraction,
+ * this function implements the subtraction of two JavaScript numbers with the
+ * following mathematical properties (subject to floating-point precision
+ * limitations):
+ *
+ * - **Closure**: For all `a, b ∈ ℝ`, `a - b ∈ ℝ`
+ * - **Relation to addition**: For all `a, b ∈ ℝ`, `a - b = a + (-b)` where (-b)
+ *   is the additive inverse of b
+ * - **Non-commutativity**: In general, `a - b ≠ b - a` (unless `a = b`)
+ * - **Right identity element**: For all `a ∈ ℝ`, `a - 0 = a`
+ * - **Self-annihilation**: For all `a ∈ ℝ`, `a - a = 0`
+ * - **Inverse relation**: For all `a, b ∈ ℝ`, `a - b = -(b - a)`
+ *
+ * Note: JavaScript's floating-point arithmetic follows IEEE 754 standards and
+ * may introduce precision errors when working with decimal values.
  * @memberof Number
  * @since 2.0.0
  * @category Math
@@ -94,18 +272,196 @@ export const multiply: {
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { subtract } from "effect/Number"
+ * import { pipe } from "effect"
+ * import * as RealNumber from "effect/Number"
  *
- * assert.deepStrictEqual(subtract(2, 3), -1)
+ * // Data-first style (direct application)
+ * assert.deepStrictEqual(RealNumber.subtract(2, 3), -1) // 2 - 3 = -1
+ * assert.deepStrictEqual(RealNumber.subtract(10, 5), 5) // 10 - 5 = 5
+ * assert.deepStrictEqual(
+ *   RealNumber.subtract(0.3, 0.1),
+ *   0.19999999999999998
+ * ) // Note: floating-point precision limitation
+ *
+ * // Data-last style (pipeable)
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     10,
+ *     RealNumber.subtract(5) // 10 - 5 = 5
+ *   ),
+ *   5
+ * )
+ *
+ * // Chaining multiple subtractions
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     20,
+ *     RealNumber.subtract(5), // 20 - 5 = 15
+ *     RealNumber.subtract(3), // 15 - 3 = 12
+ *     RealNumber.subtract(2) // 12 - 2 = 10
+ *   ),
+ *   10
+ * )
+ *
+ * // Right identity property: a - 0 = a
+ * assert.deepStrictEqual(RealNumber.subtract(42, 0), 42)
+ *
+ * // Self-annihilation property: a - a = 0
+ * assert.deepStrictEqual(RealNumber.subtract(42, 42), 0)
+ *
+ * // Non-commutative property: a - b ≠ b - a
+ * assert.deepStrictEqual(RealNumber.subtract(5, 3), 2) // 5 - 3 = 2
+ * assert.deepStrictEqual(RealNumber.subtract(3, 5), -2) // 3 - 5 = -2
+ *
+ * // Inverse relation: a - b = -(b - a)
+ * assert.deepStrictEqual(
+ *   RealNumber.subtract(5, 3),
+ *   -RealNumber.subtract(3, 5)
+ * )
  * ```
  */
 export const subtract: {
+  /**
+   * Returns a function that subtracts a specified number from its argument.
+   *
+   * @param subtrahend - The number to subtract from the input of the resulting
+   *   function
+   * @returns A function that takes a minuend and returns the difference of
+   *   subtracting the subtrahend from it
+   */
   (subtrahend: number): (minuend: number) => number
+
+  /**
+   * Subtracts the subtrahend from the minuend and returns the difference.
+   *
+   * @param minuend - The number from which another number is to be subtracted
+   * @param subtrahend - The number to subtract from the minuend
+   * @returns The difference of the minuend minus the subtrahend
+   */
   (minuend: number, subtrahend: number): number
 } = dual(2, internal.subtract)
 
 /**
- * Provides a division operation on `number`s.
+ * Performs **multiplication** in the set of JavaScript numbers, approximating
+ * multiplication in the mathematical set of real numbers (`ℝ`).
+ *
+ * @remarks
+ * For the binary operation `(×): ℝ × ℝ → ℝ` defined by standard multiplication,
+ * this function implements the multiplication of two JavaScript numbers with
+ * the following mathematical properties (subject to floating-point precision
+ * limitations):
+ *
+ * - **Closure**: For all `a, b ∈ ℝ`, `a × b ∈ ℝ`
+ * - **Associativity**: For all `a, b, c ∈ ℝ`, `(a × b) × c = a × (b × c)`
+ * - **Commutativity**: For all `a, b ∈ ℝ`, `a × b = b × a`
+ * - **Distributivity over addition**: For all `a, b, c ∈ ℝ`, `a × (b + c) = (a ×
+ *   b) + (a × c)`
+ * - **Identity element**: There exists `1 ∈ ℝ` such that for all `a ∈ ℝ`, `a × 1
+ *   = 1 × a = a`
+ * - **Zero property**: For all `a ∈ ℝ`, `a × 0 = 0 × a = 0`
+ * - **Sign rules**:
+ *
+ *   - Positive × Positive = Positive
+ *   - Negative × Negative = Positive
+ *   - Positive × Negative = Negative
+ *   - Negative × Positive = Negative
+ *
+ * Note: JavaScript's floating-point arithmetic follows IEEE 754 standards and
+ * may introduce precision errors when working with decimal values.
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as RealNumber from "effect/Number"
+ *
+ * // Data-first style (direct application)
+ * assert.deepStrictEqual(RealNumber.multiply(2, 3), 6) // 2 × 3 = 6
+ * assert.deepStrictEqual(RealNumber.multiply(-4, 5), -20) // (-4) × 5 = -20
+ * assert.deepStrictEqual(RealNumber.multiply(-3, -2), 6) // (-3) × (-2) = 6
+ * assert.deepStrictEqual(
+ *   RealNumber.multiply(0.1, 0.2),
+ *   0.020000000000000004
+ * ) // Note: floating-point precision limitation
+ *
+ * // Data-last style (pipeable)
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     10,
+ *     RealNumber.multiply(5) // 10 × 5 = 50
+ *   ),
+ *   50
+ * )
+ *
+ * // Chaining multiple multiplications
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     2,
+ *     RealNumber.multiply(3), // 2 × 3 = 6
+ *     RealNumber.multiply(4), // 6 × 4 = 24
+ *     RealNumber.multiply(0.5) // 24 × 0.5 = 12
+ *   ),
+ *   12
+ * )
+ *
+ * // Identity property: a × 1 = a
+ * assert.deepStrictEqual(RealNumber.multiply(42, 1), 42)
+ *
+ * // Zero property: a × 0 = 0
+ * assert.deepStrictEqual(RealNumber.multiply(42, 0), 0)
+ *
+ * // Commutative property: a × b = b × a
+ * assert.deepStrictEqual(
+ *   RealNumber.multiply(5, 3),
+ *   RealNumber.multiply(3, 5)
+ * )
+ *
+ * // Associative property: (a × b) × c = a × (b × c)
+ * const a = 2,
+ *   b = 3,
+ *   c = 4
+ * assert.deepStrictEqual(
+ *   RealNumber.multiply(RealNumber.multiply(a, b), c),
+ *   RealNumber.multiply(a, RealNumber.multiply(b, c))
+ * )
+ * ```
+ */
+export const multiply: {
+  /**
+   * Returns a function that multiplies a specified number with its argument.
+   *
+   * @param multiplicand - The number to multiply with the input of the
+   *   resulting function
+   * @returns A function that takes a multiplier and returns the product of that
+   *   multiplier and the multiplicand
+   */
+  (multiplicand: number): (multiplier: number) => number
+
+  /**
+   * Multiplies two numbers together.
+   *
+   * @param multiplier - The first factor
+   * @param multiplicand - The second factor
+   * @returns The product of the two numbers
+   */
+  (multiplier: number, multiplicand: number): number
+} = dual(2, internal.multiply)
+
+/**
+ * Computes the product of all elements in an iterable collection of numbers.
+ *
+ * @remarks
+ * Properties of this operation:
+ *
+ * - For an empty collection, returns 1 (the multiplicative identity element)
+ * - Inherits the associative and commutative properties of multiplication
+ * - The result is the same regardless of the order in which elements are
+ *   multiplied
+ * - If any element is 0, the result is 0 (absorption property)
+ * - The operation maintains closure in the set of real numbers
  *
  * @memberof Number
  * @since 2.0.0
@@ -114,14 +470,152 @@ export const subtract: {
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { Number, Option } from "effect"
+ * import * as RealNumber from "effect/Number"
  *
- * assert.deepStrictEqual(Number.divide(6, 3), Option.some(2))
- * assert.deepStrictEqual(Number.divide(6, 0), Option.none())
+ * // Basic products
+ * assert.deepStrictEqual(RealNumber.multiplyAll([2, 3, 4]), 24) // 2 × 3 × 4 = 24
+ * assert.deepStrictEqual(RealNumber.multiplyAll([1.5, 2, 3]), 9) // 1.5 × 2 × 3 = 9
+ *
+ * // Empty collection returns the multiplicative identity (1)
+ * assert.deepStrictEqual(RealNumber.multiplyAll([]), 1)
+ *
+ * // Single element collection
+ * assert.deepStrictEqual(RealNumber.multiplyAll([42]), 42)
+ *
+ * // Products with negative numbers
+ * assert.deepStrictEqual(RealNumber.multiplyAll([2, -3, 4]), -24) // 2 × (-3) × 4 = -24
+ * assert.deepStrictEqual(RealNumber.multiplyAll([-2, -3]), 6) // (-2) × (-3) = 6
+ *
+ * // Zero property - if any element is zero, product is zero
+ * assert.deepStrictEqual(RealNumber.multiplyAll([2, 0, 3]), 0)
+ *
+ * // Works with any iterable
+ * assert.deepStrictEqual(RealNumber.multiplyAll(new Set([2, 3, 4])), 24)
+ *
+ * // Using with generated sequences
+ * function* range(start: number, end: number) {
+ *   for (let i = start; i <= end; i++) yield i
+ * }
+ *
+ * // Compute factorial: 5! = 5 × 4 × 3 × 2 × 1 = 120
+ * assert.deepStrictEqual(RealNumber.multiplyAll(range(1, 5)), 120)
  * ```
+ *
+ * @param collection - An `iterable` containing the `numbers` to multiply
+ * @returns The product of all numbers in the collection, or 1 if the collection
+ *   is empty
+ */
+export const multiplyAll: {
+  (collection: Iterable<number>): number
+} = internal.multiplyAll<number>
+
+/**
+ * Performs division in the set of JavaScript numbers, approximating division in
+ * the mathematical set of real numbers (`ℝ`), returning the result wrapped in
+ * an `Option` to handle division by zero.
+ *
+ * @remarks
+ * For the partial binary operation `(÷): ℝ × (ℝ \ {0}) → ℝ` defined by standard
+ * division, this function implements the division of two JavaScript numbers
+ * with the following mathematical properties (subject to floating-point
+ * precision limitations):
+ *
+ * - **Partial operation**: Division is defined for all `a, b ∈ ℝ` where `b ≠ 0`
+ * - **Division by zero**: For any `a ∈ ℝ`, `a ÷ 0` is undefined (returns
+ *   Option.none())
+ * - **Relation to multiplication**: For all `a, b ∈ ℝ` where `b ≠ 0, a ÷ b = a ×
+ *   (1/b)`
+ * - **Non-commutativity**: In general, `a ÷ b ≠ b ÷ a` (unless `a = b = 1`)
+ * - **Division by one**: For all `a ∈ ℝ`, `a ÷ 1 = a`
+ * - **Self-division**: For all `a ∈ ℝ` where `a ≠ 0`, `a ÷ a = 1`
+ * - **Sign rules**:
+ *
+ *   - Positive ÷ Positive = Positive
+ *   - Negative ÷ Negative = Positive
+ *   - Positive ÷ Negative = Negative
+ *   - Negative ÷ Positive = Negative
+ *
+ * Note: JavaScript's floating-point arithmetic follows IEEE 754 standards and
+ * may introduce precision errors when working with decimal values.
+ * @memberof Number
+ * @since 2.0.0
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as RealNumber from "effect/Number"
+ * import * as Option from "effect/Option"
+ *
+ * // Data-first style (direct application)
+ * assert.deepStrictEqual(RealNumber.divide(6, 3), Option.some(2)) // 6 ÷ 3 = 2
+ * assert.deepStrictEqual(RealNumber.divide(-8, 4), Option.some(-2)) // (-8) ÷ 4 = -2
+ * assert.deepStrictEqual(RealNumber.divide(-10, -5), Option.some(2)) // (-10) ÷ (-5) = 2
+ * assert.deepStrictEqual(
+ *   RealNumber.divide(1, 3),
+ *   Option.some(0.3333333333333333)
+ * ) // Note: floating-point approximation
+ *
+ * // Handling division by zero
+ * assert.deepStrictEqual(RealNumber.divide(6, 0), Option.none()) // 6 ÷ 0 is undefined
+ *
+ * // Data-last style (pipeable)
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     10,
+ *     RealNumber.divide(2) // 10 ÷ 2 = 5
+ *   ),
+ *   Option.some(5)
+ * )
+ *
+ * // Chaining multiple divisions using Option combinators
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     Option.some(24),
+ *     Option.flatMap((n) => RealNumber.divide(n, 2)), // 24 ÷ 2 = 12
+ *     Option.flatMap((n) => RealNumber.divide(n, 3)), // 12 ÷ 3 = 4
+ *     Option.flatMap((n) => RealNumber.divide(n, 2)) // 4 ÷ 2 = 2
+ *   ),
+ *   Option.some(2)
+ * )
+ *
+ * // Division-by-one property: a ÷ 1 = a
+ * assert.deepStrictEqual(RealNumber.divide(42, 1), Option.some(42))
+ *
+ * // Self-division property: a ÷ a = 1 (for a ≠ 0)
+ * assert.deepStrictEqual(RealNumber.divide(42, 42), Option.some(1))
+ *
+ * // Non-commutative property: a ÷ b ≠ b ÷ a
+ * assert.notDeepStrictEqual(
+ *   RealNumber.divide(6, 3), // 6 ÷ 3 = 2
+ *   RealNumber.divide(3, 6) // 3 ÷ 6 = 0.5
+ * )
+ * ```
+ *
+ * @see {@link module:Integer.divideToNumber} - Division operation in the Integer domain returning a Number
+ * @see {@link module:Integer.divideSafe} - Safe division operation in the Integer domain
+ * @see {@link module:NaturalNumber.divideSafe} - Safe division operation in the Natural Number domain
+ * @see {@link module:NaturalNumber.divideToNumber} - Division operation in the Natural Number domain returning a Number
  */
 export const divide: {
+  /**
+   * Returns a function that divides its input by a specified divisor.
+   *
+   * @param divisor - The number to divide by
+   * @returns A function that takes a dividend and returns the quotient wrapped
+   *   in an Option (Option.none() if divisor is 0)
+   */
   (divisor: number): (dividend: number) => Option<number>
+
+  /**
+   * Divides the dividend by the divisor and returns the quotient wrapped in an
+   * Option.
+   *
+   * @param dividend - The number to be divided
+   * @param divisor - The number to divide by
+   * @returns Some(quotient) if the divisor is not 0, None otherwise
+   */
   (dividend: number, divisor: number): Option<number>
 } = dual(2, internal.divide)
 
@@ -136,11 +630,46 @@ export const divide: {
 export const DivisionByZeroError = internal.DivisionByZeroError
 
 /**
- * Provides a division operation on `number`s.
+ * Performs division in the set of JavaScript numbers, but throws an exception
+ * when dividing by zero.
  *
- * As the name suggests, **this operation may throw an
- * {@link module:Number.DivisionByZeroError}** if the `divisor` is zero,
- * resulting in either a division by zero or an indeterminate form.
+ * Unlike {@link module:Number.divide} which returns an Option, this function
+ * directly returns a number but may throw an exception.
+ *
+ * @remarks
+ * For the partial binary operation `(÷): ℝ × (ℝ \ {0}) → ℝ` defined by standard
+ * division, this function implements the division of two JavaScript numbers
+ * with the following mathematical properties (subject to floating-point
+ * precision limitations):
+ *
+ * - **Partial operation**: Division is defined for all `a, b ∈ ℝ` where `b ≠ 0`
+ * - **Division by zero**: For any `a ∈ ℝ`, `a ÷ 0` is undefined and throws
+ *   {@link module:Number.DivisionByZeroError}
+ * - **Relation to multiplication**: For all `a, b ∈ ℝ` where `b ≠ 0`, `a ÷ b = a
+ *   × (1/b)`
+ * - **Non-commutativity**: In general, `a ÷ b ≠ b ÷ a` (unless `a = b = 1`)
+ * - **Division by one**: For all `a ∈ ℝ`, `a ÷ 1 = a`
+ * - **Self-division**: For all `a ∈ ℝ` where `a ≠ 0`, `a ÷ a = 1`
+ * - **Sign rules**:
+ *
+ *   - Positive ÷ Positive = Positive
+ *   - Negative ÷ Negative = Positive
+ *   - Positive ÷ Negative = Negative
+ *   - Negative ÷ Positive = Negative
+ *
+ * **When to use**: This function is appropriate in contexts where:
+ *
+ * - Division by zero is considered a programming error that should halt execution
+ * - You've already validated that the divisor is non-zero
+ * - You're implementing code where exceptions are the preferred error handling
+ *   mechanism
+ *
+ * **Safety considerations**:
+ *
+ * - For safer division that handles division by zero without throwing, use
+ *   {@link divide}
+ * - In performance-critical code paths, pre-validating the divisor and using this
+ *   function may be more efficient than using the Option-returning variant
  *
  * @memberof Number
  * @since 2.0.0
@@ -149,15 +678,72 @@ export const DivisionByZeroError = internal.DivisionByZeroError
  *
  * ```ts
  * import * as assert from "node:assert/strict"
- * import { unsafeDivide } from "effect/Number"
+ * import { pipe } from "effect"
+ * import * as RealNumber from "effect/Number"
  *
- * assert.deepStrictEqual(unsafeDivide(6, 3), 2)
+ * // Data-first style (direct application)
+ * assert.deepStrictEqual(RealNumber.unsafeDivide(6, 3), 2) // 6 ÷ 3 = 2
+ * assert.deepStrictEqual(RealNumber.unsafeDivide(-8, 4), -2) // (-8) ÷ 4 = -2
+ * assert.deepStrictEqual(RealNumber.unsafeDivide(-10, -5), 2) // (-10) ÷ (-5) = 2
+ * assert.deepStrictEqual(RealNumber.unsafeDivide(1, 3), 0.3333333333333333)
+ *
+ * // Data-last style (pipeable)
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     10,
+ *     RealNumber.unsafeDivide(2) // 10 ÷ 2 = 5
+ *   ),
+ *   5
+ * )
+ *
+ * // Chaining multiple divisions
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     24,
+ *     RealNumber.unsafeDivide(2), // 24 ÷ 2 = 12
+ *     RealNumber.unsafeDivide(3), // 12 ÷ 3 = 4
+ *     RealNumber.unsafeDivide(2) // 4 ÷ 2 = 2
+ *   ),
+ *   2
+ * )
+ *
+ * // Error handling with try/catch
+ * try {
+ *   RealNumber.unsafeDivide(6, 0) // Throws DivisionByZeroError
+ *   console.log("This will not execute")
+ * } catch (e) {
+ *   assert.ok(e instanceof RealNumber.DivisionByZeroError)
+ *   console.log("Caught division by zero error")
+ * }
+ *
+ * // Compare with safe division
+ * const safeResult = RealNumber.divide(6, 3) // Option.some(2)
+ * const unsafeResult = RealNumber.unsafeDivide(6, 3) // 2 directly
  * ```
  *
  * @throws - An {@link module:Number.DivisionByZeroError} if the divisor is zero.
+ * @see {@link module:Number.divide} - Safe division returning an Option
  */
 export const unsafeDivide: {
+  /**
+   * Returns a function that divides its input by a specified divisor.
+   *
+   * @param divisor - The number to divide by
+   * @returns A function that takes a dividend and returns the quotient
+   * @throws - An {@link module:Number.DivisionByZeroError} if the divisor is
+   *   zero
+   */
   (divisor: number): (dividend: number) => number
+
+  /**
+   * Divides the dividend by the divisor and returns the quotient.
+   *
+   * @param dividend - The number to be divided
+   * @param divisor - The number to divide by
+   * @returns The quotient of the division
+   * @throws - An {@link module:Number.DivisionByZeroError} if the divisor is
+   *   zero
+   */
   (dividend: number, divisor: number): number
 } = dual(2, internal.unsafeDivide)
 
@@ -423,45 +1009,6 @@ export const max: {
  * ```
  */
 export const sign = (n: number): Ordering => Order(n, 0)
-
-/**
- * Takes an `Iterable` of `number`s and returns their sum as a single `number`.
- *
- * @memberof Number
- * @since 2.0.0
- * @category Math
- * @example
- *
- * ```ts
- * import * as assert from "node:assert/strict"
- * import { sumAll } from "effect/Number"
- *
- * assert.deepStrictEqual(sumAll([2, 3, 4]), 9)
- * ```
- */
-export const sumAll: {
-  (collection: Iterable<number>): number
-} = internal.sumAll<number>
-
-/**
- * Takes an `Iterable` of `number`s and returns their multiplication as a single
- * `number`.
- *
- * @memberof Number
- * @since 2.0.0
- * @category Math
- * @example
- *
- * ```ts
- * import * as assert from "node:assert/strict"
- * import { multiplyAll } from "effect/Number"
- *
- * assert.deepStrictEqual(multiplyAll([2, 3, 4]), 24)
- * ```
- */
-export const multiplyAll: {
-  (collection: Iterable<number>): number
-} = internal.multiplyAll<number>
 
 /**
  * Returns the remainder left over when one operand is divided by a second
