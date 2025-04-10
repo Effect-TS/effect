@@ -135,7 +135,7 @@ export class Config extends Context.Tag("@effect/cluster/ShardManager/Config")<C
     rebalanceRate: 2 / 100,
     persistRetryCount: 100,
     persistRetryInterval: Duration.seconds(3),
-    runnerHealthCheckInterval: Duration.minutes(1),
+    runnerHealthCheckInterval: Duration.seconds(10),
     runnerPingTimeout: Duration.seconds(3)
   }
 }
@@ -692,12 +692,9 @@ export const make = Effect.gen(function*() {
 
   const checkRunnerHealth: Effect.Effect<void> = Effect.suspend(() =>
     Effect.forEach(MutableHashMap.keys(state.runners), notifyUnhealthyRunner, {
-      concurrency: "inherit",
+      concurrency: 10,
       discard: true
     })
-  ).pipe(
-    Effect.withConcurrency(4),
-    Effect.asVoid
   )
 
   yield* Effect.addFinalizer(() =>
