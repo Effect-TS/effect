@@ -1,5 +1,11 @@
 # effect
 
+## 3.14.8
+
+### Patch Changes
+
+- [#4708](https://github.com/Effect-TS/effect/pull/4708) [`b3a2d32`](https://github.com/Effect-TS/effect/commit/b3a2d32772e6f7f20eacf2e18128e99324c4d378) Thanks @thewilkybarkid! - Make Match.valueTags dual
+
 ## 3.14.7
 
 ### Patch Changes
