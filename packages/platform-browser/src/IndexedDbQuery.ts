@@ -109,7 +109,7 @@ export interface IndexedDbQuery<
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(table: A) => IndexedDbQueryBuilder.IndexedDbQueryBuilder<Source, A>
+  >(table: A) => IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, A>
 }
 
 const Proto = {
@@ -136,7 +136,7 @@ const makeProto = <
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(table: A) => IndexedDbQueryBuilder.makeProto({ source, table })
+  >(table: A) => IndexedDbQueryBuilder.fromMakeProto({ source, table })
 
   IndexedDbQuery.insert = (
     table: string,
