@@ -1737,33 +1737,3 @@ export const sumAll: {
 export const multiplyAll: {
   (collection: Iterable<Integer>): Integer
 } = internal.multiplyAll<Integer>
-
-/**
- * Returns the next power of 2 greater than or equal to the given `Integer`.
- *
- * @memberof Integer
- * @since 3.14.6
- * @category Math
- * @example
- *
- * ```ts
- * import * as assert from "node:assert/strict"
- * import * as Integer from "effect/Integer"
- *
- * assert.deepStrictEqual(Integer.nextPow2(Integer.of(5)), 8)
- * assert.deepStrictEqual(Integer.nextPow2(Integer.of(17)), 32)
- * assert.deepStrictEqual(Integer.nextPow2(Integer.of(0)), 2)
- * assert.deepStrictEqual(
- *   Number.isNaN(Integer.nextPow2(Integer.of(-1))),
- *   true
- * ) // Negative inputs result in NaN
- * ```
- *
- * @experimental
- */
-export const nextPow2: {
-  (n: Integer): Integer | internal.NaN
-} = (n) => {
-  const nextPow = Math.ceil(Math.log(n) / Math.log(2))
-  return Math.max(Math.pow(2, nextPow), 2) as Integer | internal.NaN
-}

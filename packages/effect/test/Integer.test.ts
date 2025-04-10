@@ -389,30 +389,6 @@ describe("Integer", () => {
       )
     })
 
-    it("nextPow2", () => {
-      strictEqual(Integer.nextPow2(Integer.of(5)), Integer.of(8))
-
-      strictEqual(Integer.nextPow2(Integer.of(17)), Integer.of(32))
-
-      strictEqual(
-        Integer.nextPow2(Integer.of(0)),
-        Integer.of(2),
-        "nextPow2 of 0 should be 2"
-      )
-
-      strictEqual(
-        Integer.nextPow2(Integer.of(8)),
-        Integer.of(8),
-        "nextPow2 of a power of 2 should be the same number"
-      )
-
-      strictEqual(
-        Integer.nextPow2(Integer.of(16)),
-        Integer.of(16),
-        "nextPow2 of a power of 2 should be the same number"
-      )
-    })
-
     it("divideSafe", () => {
       // Define some common values for testing
       const negativeThree = Integer.of(-3)

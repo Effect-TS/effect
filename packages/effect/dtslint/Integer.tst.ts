@@ -426,15 +426,4 @@ describe("Integer", () => {
       Integer.multiplyAll(HashSet.make(a, b, a, b, a, b))
     ).type.not.toBeAssignableWith<number>()
   })
-
-  it("nextPow2", () => {
-    type DataFirst = typeof Integer.nextPow2
-
-    // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[Integer.Integer]>()
-    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<[number]>()
-
-    // test the output type
-    expect(Integer.nextPow2(a)).type.toBe<Integer.Integer | Integer.NaN>()
-  })
 })
