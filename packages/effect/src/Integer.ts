@@ -15,7 +15,7 @@ import type * as Either from "./Either.js"
 import * as _Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as internal from "./internal/number.js"
-import type * as _Option from "./Option.js"
+import * as _Option from "./Option.js"
 import * as _Order from "./Order.js"
 import type { Ordering } from "./Ordering.js"
 import * as _Predicate from "./Predicate.js"
@@ -567,6 +567,198 @@ export const divideToNumber: {
    */
   (dividend: Integer, divisor: Integer): _Option.Option<number>
 } = dual(2, internal.divide<Integer, number>)
+
+/**
+ * Implements **division as a partial function on integers** that ensures the
+ * closure property, that results remain within the set of integers (`ℤ`), by
+ * returning None when the result would fall outside ℤ.
+ *
+ * For the division function `f: ℤ × ℤ → Option<ℤ>` defined by:
+ *
+ * - `f(a, b) = Some(a / b)` when `b ≠ 0` and `a` is _exactly divisible_ by `b`
+ * - `f(a, b) = None` when `b = 0` or `a` is _not exactly divisible_ by `b`
+ * - **Domain**: The set of ordered pairs of integers (`ℤ × ℤ`)
+ * - **Codomain**: `Option<ℤ>` (an option of integers)
+ *
+ * @remarks
+ * Unlike {@link module:Integer.divideToNumber}, this operation preserves closure
+ * within the integers domain by returning `None` when the result would be
+ * fractional or when division is undefined. This creates a partial function
+ * that is only defined when the divisor is non-zero and the dividend is exactly
+ * divisible by the divisor.
+ *
+ * **Mathematical properties of safe division on integers**:
+ *
+ * - **Closure in `ℤ`**: When defined (Some case), the result is always in ℤ
+ * - **Partiality**: The function is undefined (None) when divisor = 0 or when
+ *   division would yield a fraction
+ * - **Non-commutativity**: `f(a, b) ≠ f(b, a)` (unless `a = b = 0` or `a = b =
+ *   ±1`)
+ * - **Non-associativity**: `f(f(a, b), c) ≠ f(a, f(b, c))` when both sides are
+ *   defined
+ * - **Right identity elements**: `f(a, ±1) = Some(±a)` for all `a ∈ ℤ`
+ * - **Divisibility property**: `f(a, b) = Some(q)` if and only if `a = b × q` for
+ *   some `q ∈ ℤ`
+ * - **Quotient uniqueness**: If `f(a, b) = Some(q)`, then `q` is the unique
+ *   integer such that `a = b × q`
+ * - **Sign properties**:
+ *
+ *   - `f(a, b) = f(-a, -b)` for all `a, b ∈ ℤ`, `b ≠ 0` (same signs yield positive)
+ *   - `f(-a, b) = f(a, -b) = -f(a, b)` for all `a, b ∈ ℤ`, `b ≠ 0` (different signs
+ *       yield negative)
+ *
+ * @memberof Integer
+ * @since 3.14.6
+ * @category Math
+ * @experimental
+ */
+export const divideSafe: {
+  /**
+   * Returns a function that safely divides a given `dividend` by a specified
+   * `divisor`, ensuring the result remains within the integers domain.
+   *
+   * **Data-last API** (a.k.a. pipeable)
+   *
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { pipe, Option } from "effect"
+   * import * as Integer from "effect/Integer"
+   *
+   * // When dividend is exactly divisible by divisor, returns Some(result)
+   * assert.deepStrictEqual(
+   *   pipe(Integer.of(10), Integer.divideSafe(Integer.of(2))),
+   *   Option.some(Integer.of(5))
+   * )
+   *
+   * // When division would result in a fraction, returns None
+   * assert.deepStrictEqual(
+   *   pipe(Integer.of(5), Integer.divideSafe(Integer.of(2))),
+   *   Option.none()
+   * )
+   *
+   * // When dividing by zero, returns None
+   * assert.deepStrictEqual(
+   *   pipe(Integer.of(10), Integer.divideSafe(Integer.zero)),
+   *   Option.none()
+   * )
+   *
+   * // With negative numbers (both negative)
+   * assert.deepStrictEqual(
+   *   pipe(Integer.of(-6), Integer.divideSafe(Integer.of(-2))),
+   *   Option.some(Integer.of(3))
+   * )
+   *
+   * // With negative numbers (one negative)
+   * assert.deepStrictEqual(
+   *   pipe(Integer.of(-6), Integer.divideSafe(Integer.of(3))),
+   *   Option.some(Integer.of(-2))
+   * )
+   *
+   * // Can be used in pipelines with Option functions
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     Integer.of(12),
+   *     Integer.divideSafe(Integer.of(-4)),
+   *     Option.flatMap((n) => Integer.divideSafe(n, Integer.of(3))),
+   *     Option.map((n) => Integer.add(n, Integer.of(2)))
+   *   ),
+   *   Option.some(Integer.of(1)) // 12/(-4) = -3, then -3/3 = -1, then -1+2 = 1
+   * )
+   * ```
+   *
+   * @param divisor - The `Integer` to divide the `dividend` by when the
+   *   resultant function is invoked.
+   * @returns A function that takes a `dividend` and returns an Option
+   *   containing the integer quotient if the divisor is non-zero and the
+   *   division yields an integer, or None otherwise.
+   */
+  (divisor: Integer): (dividend: Integer) => _Option.Option<Integer>
+
+  /**
+   * Safely divides the `dividend` by the `divisor`, returning an Option that
+   * contains the result only if it remains within the integers domain.
+   *
+   * **Data-first API**
+   *
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { Option } from "effect"
+   * import * as Integer from "effect/Integer"
+   *
+   * // When dividend is exactly divisible by divisor, returns Some(result)
+   * assert.deepStrictEqual(
+   *   Integer.divideSafe(Integer.of(6), Integer.of(3)),
+   *   Option.some(Integer.of(2))
+   * )
+   *
+   * // When division would result in a fraction, returns None
+   * assert.deepStrictEqual(
+   *   Integer.divideSafe(Integer.of(5), Integer.of(2)),
+   *   Option.none()
+   * )
+   *
+   * // When dividing by zero, returns None
+   * assert.deepStrictEqual(
+   *   Integer.divideSafe(Integer.of(10), Integer.zero),
+   *   Option.none()
+   * )
+   *
+   * // Division with zero as dividend and non-zero divisor
+   * assert.deepStrictEqual(
+   *   Integer.divideSafe(Integer.zero, Integer.of(5)),
+   *   Option.some(Integer.zero),
+   *   "Zero divided by any non-zero integer equals zero"
+   * )
+   *
+   * // Division when both operands are zero
+   * assert.deepStrictEqual(
+   *   Integer.divideSafe(Integer.zero, Integer.zero),
+   *   Option.none(),
+   *   "Division by zero is undefined, even when the dividend is also zero"
+   * )
+   *
+   * // Negative numbers (negative dividend)
+   * assert.deepStrictEqual(
+   *   Integer.divideSafe(Integer.of(-8), Integer.of(4)),
+   *   Option.some(Integer.of(-2)),
+   *   "Negative divided by positive gives negative"
+   * )
+   *
+   * // Negative numbers (negative divisor)
+   * assert.deepStrictEqual(
+   *   Integer.divideSafe(Integer.of(8), Integer.of(-4)),
+   *   Option.some(Integer.of(-2)),
+   *   "Positive divided by negative gives negative"
+   * )
+   *
+   * // Negative numbers (both negative)
+   * assert.deepStrictEqual(
+   *   Integer.divideSafe(Integer.of(-8), Integer.of(-4)),
+   *   Option.some(Integer.of(2)),
+   *   "Negative divided by negative gives positive"
+   * )
+   * ```
+   *
+   * @param dividend - The `Integer` to be divided.
+   * @param divisor - The `Integer` to divide by.
+   * @returns An Option containing the integer quotient if the divisor is
+   *   non-zero and the division yields an integer, or None if the divisor is
+   *   zero or the division would result in a fraction.
+   */
+  (dividend: Integer, divisor: Integer): _Option.Option<Integer>
+} = dual(2, (dividend: Integer, divisor: Integer) => {
+  if (divisor === zero) {
+    return _Option.none()
+  }
+  if (dividend % divisor !== 0) {
+    return _Option.none()
+  }
+  return option(dividend / divisor)
+})
 
 /**
  * Returns the result of adding one {@link module:Integer.one} to the given

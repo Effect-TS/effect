@@ -8,6 +8,7 @@ import {
   assertRight,
   assertSome,
   assertTrue,
+  deepStrictEqual,
   notDeepStrictEqual,
   strictEqual,
   throws
@@ -418,6 +419,131 @@ describe("Integer", () => {
         Integer.nextPow2(Integer.of(16)),
         Integer.of(16),
         "nextPow2 of a power of 2 should be the same number"
+      )
+    })
+
+    it("divideSafe", () => {
+      // Define some common values for testing
+      const negativeThree = Integer.of(-3)
+      const negativeTwo = Integer.of(-2)
+      const negativeOne = Integer.of(-1)
+      const zero = Integer.zero
+      const one = Integer.one
+      const two = Integer.of(2)
+      const three = Integer.of(3)
+      const four = Integer.of(4)
+      const five = Integer.of(5)
+      const six = Integer.of(6)
+      const ten = Integer.of(10)
+      const twelve = Integer.of(12)
+
+      // Basic functionality tests
+      deepStrictEqual(
+        pipe(six, Integer.divideSafe(two)),
+        Integer.divideSafe(six, two),
+        "Data-first and data-last APIs should be equivalent"
+      )
+
+      // Boundary conditions
+
+      /** Zero divided by any non-zero number should be zero */
+      assertSome(Integer.divideSafe(zero, five), zero)
+
+      /** Division by zero should return None */
+      assertNone(Integer.divideSafe(five, zero))
+
+      /** Division by one should not change the value */
+      assertSome(Integer.divideSafe(five, one), five)
+
+      /** Division by negative one should negate the value */
+      assertSome(Integer.divideSafe(five, negativeOne), Integer.of(-5))
+
+      /** Division resulting in a fraction should return None */
+      assertNone(Integer.divideSafe(five, two))
+
+      /** Division that results in an integer should return Some */
+      assertSome<Integer.Integer>(Integer.divideSafe(ten, five), two)
+
+      /** Division when both operands are zero should return None */
+      assertNone(Integer.divideSafe(zero, zero))
+
+      // Negative number tests
+
+      /** Negative dividend, positive divisor */
+      assertSome(Integer.divideSafe(Integer.of(-6), three), negativeTwo)
+
+      /** Positive dividend, negative divisor */
+      assertSome(Integer.divideSafe(six, negativeTwo), negativeThree)
+
+      /** Both negative */
+      assertSome(Integer.divideSafe(Integer.of(-6), negativeTwo), three)
+
+      /** Negative dividend, negative divisor, non-exact division */
+      assertNone(Integer.divideSafe(Integer.of(-5), negativeTwo))
+
+      // Mathematical properties
+
+      /** Closure: If a, b ∈ ℤ and a is exactly divisible by b, then a ÷ b ∈ ℤ */
+      const exactDivisionResult = Integer.divideSafe(six, three)
+      if (Option.isSome(exactDivisionResult)) {
+        assertTrue(
+          Integer.isInteger(exactDivisionResult.value),
+          "Result should be an integer when defined"
+        )
+      }
+
+      /** Non-commutativity: a ÷ b ≠ b ÷ a */
+      notDeepStrictEqual(
+        Integer.divideSafe(six, three), // Some(2)
+        Integer.divideSafe(three, six), // None
+        "Division is not commutative: a ÷ b ≠ b ÷ a"
+      )
+
+      /**
+       * Non-associativity: (a ÷ b) ÷ c ≠ a ÷ (b ÷ c) when both sides are
+       * defined
+       */
+      notDeepStrictEqual(
+        pipe(
+          Integer.divideSafe(twelve, four),
+          Option.flatMap(Integer.divideSafe(three))
+        ),
+        pipe(
+          Integer.divideSafe(four, two),
+          Option.flatMap((n) => Integer.divideSafe(twelve, n))
+        ),
+        "Division is not associative: (a ÷ b) ÷ c ≠ a ÷ (b ÷ c)"
+      )
+
+      /**
+       * Right identity element: a ÷ 1 = a
+       *
+       * 1 is the right identity element for division: a ÷ 1 = a
+       */
+      assertSome(Integer.divideSafe(five, one), five)
+
+      /** Division by zero is undefined */
+      assertNone(Integer.divideSafe(five, zero))
+
+      // Chaining operations
+      assertSome(
+        pipe(
+          twelve,
+          Integer.divideSafe(four),
+          Option.flatMap(Integer.divideSafe(three))
+        ),
+        one
+      )
+
+      // Example from documentation
+      assertSome(
+        pipe(
+          twelve,
+          Integer.divideSafe(Integer.of(-4)),
+          Option.flatMap(Integer.divideSafe(three)),
+          Option.map(Integer.sum(two))
+        ),
+        one // 12/(-4) = -3, then -3/3 = -1, then -1+2 = 1
       )
     })
   })
