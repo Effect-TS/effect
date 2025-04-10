@@ -1,7 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Either, HashSet, List, Number as _Number, Option, pipe } from "effect"
 import * as Integer from "effect/Integer"
-import { DivisionByZeroError } from "effect/internal/number"
 import {
   assertEquals,
   assertFalse,
@@ -251,29 +250,6 @@ describe("Integer", () => {
       )
 
       assertNone(pipe(Integer.of(6), Integer.divideToNumber(Integer.of(0))))
-    })
-
-    it("unsafeDivide", () => {
-      const six = Integer.of(6)
-      const two = Integer.of(2)
-
-      strictEqual(
-        pipe(six, Integer.unsafeDivide(two)),
-        Integer.unsafeDivide(six, two)
-      )
-
-      strictEqual(pipe(six, Integer.unsafeDivide(two)), 3)
-      strictEqual(pipe(six, Integer.unsafeDivide(two)), 3)
-
-      strictEqual(Integer.unsafeDivide(Integer.zero, six), 0)
-      throws(
-        () => Integer.unsafeDivide(six, Integer.zero),
-        DivisionByZeroError.divisionByZero(six)
-      )
-      throws(
-        () => Integer.unsafeDivide(Integer.zero, Integer.zero),
-        DivisionByZeroError.indeterminateForm()
-      )
     })
 
     it("increment", () => {

@@ -519,15 +519,14 @@ describe("NaturalNumber", () => {
       )
 
       // Mixing with other operations
-      strictEqual<number>(
+      assertSome(
         pipe(
           two, //
           NaturalNumber.multiply(three), //
           NaturalNumber.sum(four), //
-          Integer.unsafeDivide(ten) //
+          NaturalNumber.divideToNumber(ten) //
         ),
-        1,
-        "Should work correctly when mixed with other operations"
+        1
       )
     })
 

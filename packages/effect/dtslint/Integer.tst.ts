@@ -150,29 +150,6 @@ describe("Integer", () => {
     >()
   })
 
-  it("unsafeDivide", () => {
-    const dataLast = Integer.unsafeDivide(a)
-    type DataLast = typeof dataLast
-    type DataFirst = typeof Integer.unsafeDivide
-
-    // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<
-      [Integer.Integer, Integer.Integer]
-    >()
-    expect<Parameters<DataFirst>>().type.not.toBeAssignableWith<
-      [number, number]
-    >()
-
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[Integer.Integer]>()
-    expect<Parameters<DataLast>>().type.not.toBeAssignableWith<[number]>()
-
-    // test the output type: division for the set of Integer is not total;
-    expect(
-      Integer.unsafeDivide(a, b)
-    ).type.not.toBeAssignableTo<Integer.Integer>()
-    expect(pipe(a, Integer.unsafeDivide(b))).type.toBeAssignableTo<number>()
-  })
-
   it("increment", () => {
     type DataFirst = typeof Integer.increment
 
