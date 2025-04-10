@@ -54,7 +54,7 @@ export class ShardStorage extends Context.Tag("@effect/cluster/ShardStorage")<Sh
   /**
    * Refresh the locks owned by the given runner.
    *
-   * Locks expire after 90 seconds, so this method should be called every 60
+   * Locks expire after 30 seconds, so this method should be called every 20
    * seconds to keep the locks alive.
    */
   readonly refresh: (
