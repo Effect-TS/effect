@@ -82,7 +82,8 @@ export declare namespace IndexedDbDatabase {
     readonly [TypeId]: TypeId
     readonly identifier: Id
     readonly version: number
-    readonly database: IDBDatabase
+    readonly database: globalThis.IDBDatabase
+    readonly IDBKeyRange: typeof globalThis.IDBKeyRange
   }
 
   /**
@@ -112,12 +113,14 @@ const makeProto = <Id extends string>(options: {
   readonly identifier: Id
   readonly version: number
   readonly database: globalThis.IDBDatabase
+  readonly IDBKeyRange: typeof globalThis.IDBKeyRange
 }): IndexedDbDatabase.Service<Id> => {
   function IndexedDb() {}
   Object.setPrototypeOf(IndexedDb, Proto)
   IndexedDb.identifier = options.identifier
   IndexedDb.version = options.version
   IndexedDb.database = options.database
+  IndexedDb.IDBKeyRange = options.IDBKeyRange
   return IndexedDb as any
 }
 
@@ -137,7 +140,7 @@ export const layer = <
   Layer.effect(
     IndexedDbDatabase,
     Effect.gen(function*() {
-      const { indexedDB } = yield* IndexedDb.IndexedDb
+      const { IDBKeyRange, indexedDB } = yield* IndexedDb.IndexedDb
 
       let oldVersion = 0
       const version = migrations.length
@@ -244,6 +247,6 @@ export const layer = <
         }
       })
 
-      return makeProto({ identifier, version, database })
+      return makeProto({ identifier, version, database, IDBKeyRange })
     })
   )

@@ -46,6 +46,7 @@ export declare namespace IndexedDbQueryBuilder {
     readonly source: Source
     readonly table: Table
     readonly database: globalThis.IDBDatabase
+    readonly IDBKeyRange: typeof globalThis.IDBKeyRange
 
     readonly select: <
       Index extends IndexedDbMigration.IndexFromTable<Source, Table>
@@ -83,6 +84,21 @@ export declare namespace IndexedDbQueryBuilder {
     readonly [TypeId]: TypeId
     readonly from: From<Source, Table>
     readonly index?: Index
+    readonly only?: Schema.Schema.Type<
+      IndexedDbTable.IndexedDbTable.TableSchema<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >
+    >[
+      IndexedDbTable.IndexedDbTable.Indexes<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >[Index]
+    ]
 
     readonly equals: (
       value: Schema.Schema.Type<
@@ -100,39 +116,7 @@ export declare namespace IndexedDbQueryBuilder {
           >
         >[Index]
       ]
-    ) => Where<Source, Table, Index>
-  }
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface Where<
-    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
-    Table extends IndexedDbTable.IndexedDbTable.TableName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>
-    > = never,
-    Index extends IndexedDbMigration.IndexFromTable<Source, Table> = never
-  > extends Pipeable {
-    new(_: never): {}
-
-    readonly [TypeId]: TypeId
-    readonly select: Select<Source, Table, Index>
-    readonly only?: Schema.Schema.Type<
-      IndexedDbTable.IndexedDbTable.TableSchema<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >
-    >[
-      IndexedDbTable.IndexedDbTable.Indexes<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >[Index]
-    ]
+    ) => Select<Source, Table, Index>
   }
 }
 
@@ -140,15 +124,21 @@ const getSelect = (query: IndexedDbQueryBuilder.Select) =>
   Effect.gen(function*() {
     const data = yield* Effect.async<any, IndexedDbQuery.IndexedDbQueryError>((resume) => {
       const database = query.from.database
+      const IDBKeyRange = query.from.IDBKeyRange
       const objectStore = database.transaction([query.from.table]).objectStore(query.from.table)
 
       let request: globalThis.IDBRequest
+      let keyRange: globalThis.IDBKeyRange | undefined = undefined
+
+      if (query.only !== undefined) {
+        keyRange = IDBKeyRange.only(query.only)
+      }
 
       if (query.index !== undefined) {
         const index = objectStore.index(query.index)
-        request = index.getAll()
+        request = index.getAll(keyRange)
       } else {
-        request = objectStore.getAll()
+        request = objectStore.getAll(keyRange)
       }
 
       request.onerror = (event) => {
@@ -185,10 +175,7 @@ const getSelect = (query: IndexedDbQueryBuilder.Select) =>
 
 const Proto = {
   ...Effectable.CommitPrototype,
-  [TypeId]: TypeId,
-  commit(this: IndexedDbQueryBuilder.Select) {
-    return getSelect(this)
-  }
+  [TypeId]: TypeId
 }
 
 /** @internal */
@@ -199,12 +186,15 @@ export const fromMakeProto = <
   readonly source: Source
   readonly table: Table
   readonly database: globalThis.IDBDatabase
+  readonly IDBKeyRange: typeof globalThis.IDBKeyRange
 }): IndexedDbQueryBuilder.From<Source, Table> => {
   function IndexedDbQueryBuilder() {}
   Object.setPrototypeOf(IndexedDbQueryBuilder, Proto)
   IndexedDbQueryBuilder.source = options.source
   IndexedDbQueryBuilder.table = options.table
   IndexedDbQueryBuilder.database = options.database
+  IndexedDbQueryBuilder.IDBKeyRange = options.IDBKeyRange
+
   IndexedDbQueryBuilder.select = <
     Index extends IndexedDbMigration.IndexFromTable<Source, Table>
   >(index?: Index) =>
@@ -224,6 +214,21 @@ const selectMakeProto = <
 >(options: {
   readonly from: IndexedDbQueryBuilder.From<Source, Table>
   readonly index?: Index
+  readonly only?: Schema.Schema.Type<
+    IndexedDbTable.IndexedDbTable.TableSchema<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    >
+  >[
+    IndexedDbTable.IndexedDbTable.Indexes<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    >[Index]
+  ]
 }): IndexedDbQueryBuilder.Select<Source, Table, Index> => {
   function IndexedDbQueryBuilderImpl() {}
   const equals = (
@@ -242,35 +247,20 @@ const selectMakeProto = <
         >
       >[Index]
     ]
-  ): IndexedDbQueryBuilder.Where<Source, Table, Index> =>
-    whereMakeProto({ select: IndexedDbQueryBuilderImpl as any, only: value })
+  ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    selectMakeProto({ from: options.from, index: options.index as any, only: value })
 
-  Object.setPrototypeOf(IndexedDbQueryBuilderImpl, Proto)
+  Object.setPrototypeOf(
+    IndexedDbQueryBuilderImpl,
+    Object.assign(Object.create(Proto), {
+      commit(this: IndexedDbQueryBuilder.Select) {
+        return getSelect(this)
+      }
+    })
+  )
   IndexedDbQueryBuilderImpl.from = options.from
   IndexedDbQueryBuilderImpl.index = options.index
+  IndexedDbQueryBuilderImpl.only = options.only
   IndexedDbQueryBuilderImpl.equals = equals
   return IndexedDbQueryBuilderImpl as any
-}
-
-/** @internal */
-export const whereMakeProto = <
-  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
->(options: {
-  readonly select: IndexedDbQueryBuilder.Select<Source, Table, Index>
-  readonly only?: Schema.Schema.Type<
-    IndexedDbTable.IndexedDbTable.TableSchema<
-      IndexedDbTable.IndexedDbTable.WithName<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >
-  >
-}): IndexedDbQueryBuilder.Where<Source, Table, Index> => {
-  function IndexedDbQueryBuilder() {}
-  Object.setPrototypeOf(IndexedDbQueryBuilder, Proto)
-  IndexedDbQueryBuilder.select = options.select
-  IndexedDbQueryBuilder.only = options.only
-  return IndexedDbQueryBuilder as any
 }

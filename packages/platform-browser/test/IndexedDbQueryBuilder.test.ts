@@ -8,9 +8,9 @@ import {
 } from "@effect/platform-browser"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
-import { indexedDB } from "fake-indexeddb"
+import { IDBKeyRange, indexedDB } from "fake-indexeddb"
 
-const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB }))
+const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB, IDBKeyRange }))
 
 const Table = IndexedDbTable.make(
   "todo",
@@ -31,8 +31,15 @@ describe("IndexedDbQueryBuilder", () => {
       {
         const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
         const api = makeApi(Db)
-        const data = yield* api.from("todo").select()
+        const from = api.from("todo")
+        const select = from.select()
+        const data = yield* select
 
+        assert.equal(from.table, "todo")
+        assert.deepStrictEqual(from.source, Db)
+        assert.equal(select.index, undefined)
+        assert.deepStrictEqual(select.from, from)
+        assert.deepStrictEqual(select.from.IDBKeyRange, IDBKeyRange)
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ id: 1, title: "test", count: 1, completed: false }])
 
@@ -67,8 +74,15 @@ describe("IndexedDbQueryBuilder", () => {
       {
         const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
         const api = makeApi(Db)
-        const data = yield* api.from("todo").select("titleIndex")
+        const from = api.from("todo")
+        const select = from.select("titleIndex")
+        const data = yield* select
 
+        assert.equal(from.table, "todo")
+        assert.deepStrictEqual(from.source, Db)
+        assert.equal(select.index, "titleIndex")
+        assert.deepStrictEqual(select.from, from)
+        assert.deepStrictEqual(select.from.IDBKeyRange, IDBKeyRange)
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ id: 2, title: "test2", count: 2, completed: false }])
 
@@ -90,6 +104,55 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* toQuery.createIndex("todo", "titleIndex")
                     yield* toQuery.createIndex("todo", "countIndex")
                     yield* toQuery.insert("todo", { id: 2, title: "test2", count: 2, completed: false })
+                  })
+              })
+            ).pipe(Layer.provide(layerFakeIndexedDb))
+          )
+        )
+      )
+    ))
+
+  it.effect("select equals", () =>
+    Effect.gen(function*() {
+      {
+        const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+        const api = makeApi(Db)
+        const from = api.from("todo")
+        const select = from.select()
+        const equals = select.equals(2)
+        const data = yield* equals
+
+        assert.equal(from.table, "todo")
+        assert.deepStrictEqual(from.source, Db)
+        assert.equal(equals.index, undefined)
+        assert.deepStrictEqual(equals.from, from)
+        assert.deepStrictEqual(equals.from.IDBKeyRange, IDBKeyRange)
+        assert.equal(equals.only, 2)
+        assert.equal(data.length, 1)
+        assert.deepStrictEqual(data, [{ id: 2, title: "test2", count: 2, completed: false }])
+
+        // Close database to avoid errors when running other tests (blocked access)
+        yield* use(async (database) => database.close())
+      }
+    }).pipe(
+      Effect.provide(
+        IndexedDbQuery.layer.pipe(
+          Layer.provide(
+            IndexedDbDatabase.layer(
+              "db2",
+              IndexedDbMigration.make({
+                fromVersion: IndexedDbVersion.makeEmpty,
+                toVersion: Db,
+                execute: (_, toQuery) =>
+                  Effect.gen(function*() {
+                    yield* toQuery.createObjectStore("todo")
+                    yield* toQuery.createIndex("todo", "titleIndex")
+                    yield* toQuery.createIndex("todo", "countIndex")
+                    yield* toQuery.insertAll("todo", [
+                      { id: 1, title: "test1", count: 1, completed: false },
+                      { id: 2, title: "test2", count: 2, completed: false },
+                      { id: 3, title: "test3", count: 3, completed: false }
+                    ])
                   })
               })
             ).pipe(Layer.provide(layerFakeIndexedDb))

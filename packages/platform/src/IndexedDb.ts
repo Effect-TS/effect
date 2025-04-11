@@ -26,6 +26,7 @@ export type TypeId = typeof TypeId
 export interface IndexedDb {
   readonly [TypeId]: TypeId
   readonly indexedDB: globalThis.IDBFactory
+  readonly IDBKeyRange: typeof globalThis.IDBKeyRange
 }
 
 /**
@@ -50,8 +51,14 @@ export const make = (impl: Omit<IndexedDb, TypeId>): IndexedDb => IndexedDb.of({
  */
 export const layerWindow = Layer.effect(
   IndexedDb,
-  Effect.fromNullable(window?.indexedDB).pipe(
-    Effect.map((indexedDB) => make({ indexedDB })),
+  Effect.fromNullable(window).pipe(
+    Effect.flatMap((window) =>
+      Effect.all({
+        indexedDB: Effect.fromNullable(window.indexedDB),
+        IDBKeyRange: Effect.fromNullable(window.IDBKeyRange)
+      })
+    ),
+    Effect.map(({ IDBKeyRange, indexedDB }) => make({ indexedDB, IDBKeyRange })),
     Effect.mapError((cause) =>
       ConfigError.SourceUnavailable(
         ["window"],
