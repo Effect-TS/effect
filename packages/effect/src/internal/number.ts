@@ -179,3 +179,40 @@ export const remainder = (dividend: number, divisor: number): number => {
   const divisorInt = parseInt(divisor.toFixed(decCount).replace(".", ""))
   return (selfInt % divisorInt) / Math.pow(10, decCount)
 }
+
+/** @internal */
+export const pow = <A extends Integer = Integer, B extends Integer = A>(
+  base: A,
+  exponent: NaturalNumber
+): B => Math.pow(base, exponent) as B
+
+/**
+ * @privateRemarks
+ * For any `n ∈ ℤ`, `n² ≥ 0`
+ *
+ * **Examples**:
+ *
+ * - `5² = 25` (positive)
+ * - `(-5)² = 25` (positive)
+ * - `0² = 0` (zero)
+ *
+ * @internal
+ */
+export const square = <A extends Integer = Integer>(base: A): NaturalNumber =>
+  pow<A, NaturalNumber>(base, NaturalNumberConstructor(2))
+
+/**
+ * @privateRemarks
+ * For any `n ∈ ℤ`, `n³` **preserves the sign of `n`**
+ *
+ * **Examples**:
+ *
+ * - `5³ = 125` (positive)
+ * - `(-5)³ = -125` (negative)
+ * - `0³ = 0` (zero)
+ *
+ * @internal
+ */
+export const cube: {
+  <A extends Integer = Integer>(n: A): A
+} = (n) => pow(n, NaturalNumberConstructor(3))
