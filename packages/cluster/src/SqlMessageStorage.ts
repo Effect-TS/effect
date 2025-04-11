@@ -661,6 +661,12 @@ export const make = Effect.fnUntraced(function*(options?: {
         PersistenceError.refail
       ),
 
+    clearReplies: (requestId) =>
+      sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)}`.pipe(
+        Effect.asVoid,
+        PersistenceError.refail
+      ),
+
     repliesFor: (requestIds) =>
       // replies where:
       // - the request is in the list

@@ -33,6 +33,7 @@
     { "path": "packages/sql-sqlite-react-native/tsconfig.build.json" },
     { "path": "packages/sql-sqlite-wasm/tsconfig.build.json" },
     { "path": "packages/typeclass/tsconfig.build.json" },
-    { "path": "packages/vitest/tsconfig.build.json" }
+    { "path": "packages/vitest/tsconfig.build.json" },
+    { "path": "packages/workflow/tsconfig.build.json" }
   ]
 }
