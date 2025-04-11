@@ -99,6 +99,21 @@ export declare namespace IndexedDbQueryBuilder {
         >
       >[Index]
     ]
+    readonly lowerBound?: Schema.Schema.Type<
+      IndexedDbTable.IndexedDbTable.TableSchema<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >
+    >[
+      IndexedDbTable.IndexedDbTable.Indexes<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >[Index]
+    ]
 
     readonly equals: (
       value: Schema.Schema.Type<
@@ -116,7 +131,25 @@ export declare namespace IndexedDbQueryBuilder {
           >
         >[Index]
       ]
-    ) => Select<Source, Table, Index>
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gte: (
+      value: Schema.Schema.Type<
+        IndexedDbTable.IndexedDbTable.TableSchema<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            Table
+          >
+        >
+      >[
+        IndexedDbTable.IndexedDbTable.Indexes<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            Table
+          >
+        >[Index]
+      ]
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
   }
 }
 
@@ -132,6 +165,8 @@ const getSelect = (query: IndexedDbQueryBuilder.Select) =>
 
       if (query.only !== undefined) {
         keyRange = IDBKeyRange.only(query.only)
+      } else if (query.lowerBound !== undefined) {
+        keyRange = IDBKeyRange.lowerBound(query.lowerBound)
       }
 
       if (query.index !== undefined) {
@@ -229,8 +264,24 @@ const selectMakeProto = <
       >
     >[Index]
   ]
+  readonly lowerBound?: Schema.Schema.Type<
+    IndexedDbTable.IndexedDbTable.TableSchema<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    >
+  >[
+    IndexedDbTable.IndexedDbTable.Indexes<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    >[Index]
+  ]
 }): IndexedDbQueryBuilder.Select<Source, Table, Index> => {
   function IndexedDbQueryBuilderImpl() {}
+
   const equals = (
     value: Schema.Schema.Type<
       IndexedDbTable.IndexedDbTable.TableSchema<
@@ -250,6 +301,25 @@ const selectMakeProto = <
   ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
     selectMakeProto({ from: options.from, index: options.index as any, only: value })
 
+  const gte = (
+    value: Schema.Schema.Type<
+      IndexedDbTable.IndexedDbTable.TableSchema<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >
+    >[
+      IndexedDbTable.IndexedDbTable.Indexes<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >[Index]
+    ]
+  ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    selectMakeProto({ from: options.from, index: options.index as any, only: undefined, lowerBound: value })
+
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
     Object.assign(Object.create(Proto), {
@@ -261,6 +331,8 @@ const selectMakeProto = <
   IndexedDbQueryBuilderImpl.from = options.from
   IndexedDbQueryBuilderImpl.index = options.index
   IndexedDbQueryBuilderImpl.only = options.only
+  IndexedDbQueryBuilderImpl.lowerBound = options.lowerBound
   IndexedDbQueryBuilderImpl.equals = equals
+  IndexedDbQueryBuilderImpl.gte = gte
   return IndexedDbQueryBuilderImpl as any
 }
