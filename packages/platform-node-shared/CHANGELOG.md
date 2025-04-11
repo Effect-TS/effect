@@ -1,5 +1,12 @@
 # @effect/platform-node-shared
 
+## 0.30.15
+
+### Patch Changes
+
+- Updated dependencies [[`6966708`](https://github.com/Effect-TS/effect/commit/6966708a3061a3eb4bcfcb4d5877657fb41a019a)]:
+  - @effect/cluster@0.29.15
+
 ## 0.30.14
 
 ### Patch Changes
