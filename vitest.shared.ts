@@ -52,6 +52,7 @@ const config: ViteUserConfig = {
       ...alias("sql-mssql"),
       ...alias("sql-mysql2"),
       ...alias("sql-pg"),
+      ...alias("sql-pglite"),
       ...alias("sql-sqlite-bun"),
       ...alias("sql-sqlite-do"),
       ...alias("sql-sqlite-node"),
