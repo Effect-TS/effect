@@ -33,7 +33,7 @@ import * as _Schema from "./Schema.js"
 /**
  * A type representing non-negative integers (0 -> +Infinity).
  *
- * This is also known as the set of natural numbers (ℕ = {0, 1, 2, ...}).
+ * This is also known as the set of natural numbers (`ℕ = {0, 1, 2, ...}`).
  *
  * @memberof NaturalNumber
  * @since 3.14.6
@@ -478,6 +478,36 @@ export const sum: {
    */
   (self: NaturalNumber, that: NaturalNumber): NaturalNumber
 } = dual(2, internal.sum<NaturalNumber>)
+
+/**
+ * Takes an `Iterable` of `NaturalNumber`s and returns their sum as a single
+ * `NaturalNumber`.
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Iterable from "effect/Iterable"
+ *
+ * assert.equal<NaturalNumber.NaturalNumber>(
+ *   NaturalNumber.sumAll(
+ *     Iterable.makeBy((n) => NaturalNumber.of(n * 2), { length: 5 }) // Iterable<NaturalNumber>
+ *   ),
+ *   NaturalNumber.of(20)
+ * )
+ * ```
+ *
+ * @param collection - An `Iterable<NaturalNumber>` to reduce to a sum.
+ * @returns The sum of the `NaturalNumber`s in the `Iterable`.
+ * @experimental
+ */
+export const sumAll: {
+  (collection: Iterable<NaturalNumber>): NaturalNumber
+} = internal.sumAll<NaturalNumber>
 
 /**
  * Subtracts one natural number from another, mapping from the domain of natural
@@ -956,6 +986,45 @@ export const multiply: {
    */
   (multiplier: NaturalNumber, multiplicand: NaturalNumber): NaturalNumber
 } = dual(2, internal.multiply<NaturalNumber>)
+
+/**
+ * Takes an `Iterable` of `NaturalNumber`s and returns their multiplication as a
+ * single `NaturalNumber`.
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Iterable from "effect/Iterable"
+ *
+ * assert.equal<NaturalNumber.NaturalNumber>(
+ *   NaturalNumber.multiplyAll(
+ *     Iterable.makeBy(
+ *       (n) =>
+ *         pipe(
+ *           n as NaturalNumber.NaturalNumber, // 0, 1, 2, 3, 4,
+ *           NaturalNumber.increment, // 1, 2, 3, 4, 5
+ *           NaturalNumber.multiply(NaturalNumber.of(2)) // 2, 4, 6, 8, 10
+ *         ),
+ *       { length: 5 }
+ *     ) // Iterable<NaturalNumber>
+ *   ),
+ *   NaturalNumber.of(3_840)
+ * )
+ * ```
+ *
+ * @param collection - An `Iterable<NaturalNumber>` to reduce to a product.
+ * @returns The product of the `Integer`s in the `Iterable`.
+ * @experimental
+ */
+export const multiplyAll: {
+  (collection: Iterable<NaturalNumber>): NaturalNumber
+} = internal.multiplyAll<NaturalNumber>
 
 /**
  * Divides one natural number by another, mapping from the domain of `natural
@@ -2456,72 +2525,3 @@ export const max: {
    */
   (self: NaturalNumber, that: NaturalNumber): NaturalNumber
 } = _Order.max(Order)
-
-/**
- * Takes an `Iterable` of `NaturalNumber`s and returns their sum as a single
- * `NaturalNumber`.
- *
- * @memberof NaturalNumber
- * @since 3.14.6
- * @category Math
- * @example
- *
- * ```ts
- * import * as assert from "node:assert/strict"
- * import * as NaturalNumber from "effect/NaturalNumber"
- * import * as Iterable from "effect/Iterable"
- *
- * assert.equal<NaturalNumber.NaturalNumber>(
- *   NaturalNumber.sumAll(
- *     Iterable.makeBy((n) => NaturalNumber.of(n * 2), { length: 5 }) // Iterable<NaturalNumber>
- *   ),
- *   NaturalNumber.of(20)
- * )
- * ```
- *
- * @param collection - An `Iterable<NaturalNumber>` to reduce to a sum.
- * @returns The sum of the `NaturalNumber`s in the `Iterable`.
- * @experimental
- */
-export const sumAll: {
-  (collection: Iterable<NaturalNumber>): NaturalNumber
-} = internal.sumAll<NaturalNumber>
-
-/**
- * Takes an `Iterable` of `NaturalNumber`s and returns their multiplication as a
- * single `NaturalNumber`.
- *
- * @memberof NaturalNumber
- * @since 3.14.6
- * @category Math
- * @example
- *
- * ```ts
- * import * as assert from "node:assert/strict"
- * import { pipe } from "effect"
- * import * as NaturalNumber from "effect/NaturalNumber"
- * import * as Iterable from "effect/Iterable"
- *
- * assert.equal<NaturalNumber.NaturalNumber>(
- *   NaturalNumber.multiplyAll(
- *     Iterable.makeBy(
- *       (n) =>
- *         pipe(
- *           n as NaturalNumber.NaturalNumber, // 0, 1, 2, 3, 4,
- *           NaturalNumber.increment, // 1, 2, 3, 4, 5
- *           NaturalNumber.multiply(NaturalNumber.of(2)) // 2, 4, 6, 8, 10
- *         ),
- *       { length: 5 }
- *     ) // Iterable<NaturalNumber>
- *   ),
- *   NaturalNumber.of(3_840)
- * )
- * ```
- *
- * @param collection - An `Iterable<NaturalNumber>` to reduce to a product.
- * @returns The product of the `Integer`s in the `Iterable`.
- * @experimental
- */
-export const multiplyAll: {
-  (collection: Iterable<NaturalNumber>): NaturalNumber
-} = internal.multiplyAll<NaturalNumber>
