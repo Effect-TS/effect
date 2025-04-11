@@ -65,7 +65,9 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
   /**
    * For locally sent messages, register a handler to process the replies.
    */
-  readonly registerReplyHandler: <R extends Rpc.Any>(message: Message.OutgoingRequest<R>) => Effect.Effect<void>
+  readonly registerReplyHandler: <R extends Rpc.Any>(
+    message: Message.OutgoingRequest<R> | Message.IncomingRequest<R>
+  ) => Effect.Effect<void>
 
   /**
    * Retrieves the unprocessed messages for the specified shards.
@@ -269,13 +271,16 @@ export const make = (
   Effect.sync(() => {
     const replyHandlers = new Map<
       Snowflake.Snowflake,
-      (reply: Reply.Reply<any>) => Effect.Effect<void, PersistenceError>
+      (reply: Reply.ReplyWithContext<any>) => Effect.Effect<void, PersistenceError | MalformedMessage>
     >()
     return MessageStorage.of({
       ...storage,
       registerReplyHandler: (message) =>
         Effect.sync(() => {
-          replyHandlers.set(message.envelope.requestId, message.respond)
+          replyHandlers.set(
+            message.envelope.requestId,
+            message._tag === "IncomingRequest" ? message.respond : (reply) => message.respond(reply.reply)
+          )
         }),
       saveReply(reply) {
         return Effect.flatMap(storage.saveReply(reply), () => {
@@ -285,7 +290,7 @@ export const make = (
           } else if (reply.reply._tag === "WithExit") {
             replyHandlers.delete(reply.reply.requestId)
           }
-          return handler(reply.reply)
+          return handler(reply)
         })
       }
     })

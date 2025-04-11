@@ -8,7 +8,7 @@ import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import * as Message from "./Message.js"
-import type * as MessageStorage from "./MessageStorage.js"
+import * as MessageStorage from "./MessageStorage.js"
 import * as Reply from "./Reply.js"
 import * as Runners from "./Runners.js"
 import * as Sharding from "./Sharding.js"
@@ -25,6 +25,7 @@ const constVoid = constant(Effect.void)
  */
 export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
   const sharding = yield* Sharding.Sharding
+  const storage = yield* MessageStorage.MessageStorage
 
   return {
     Ping: () => Effect.void,
@@ -38,7 +39,7 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
           })
           : new Message.IncomingEnvelope({ envelope })
       ),
-    Effect: ({ request }) => {
+    Effect: ({ persisted, request }) => {
       let resume: (reply: Effect.Effect<Reply.ReplyEncoded<any>>) => void
       let replyEncoded: Reply.ReplyEncoded<any> | undefined
       const message = new Message.IncomingRequest({
@@ -56,7 +57,12 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
         }
       })
       return Effect.zipRight(
-        sharding.send(message),
+        persisted ?
+          Effect.zipRight(
+            storage.registerReplyHandler(message),
+            sharding.notify(message)
+          ) :
+          sharding.send(message),
         Effect.async<Reply.ReplyEncoded<any>>((resume_) => {
           if (replyEncoded) {
             resume_(Effect.succeed(replyEncoded))
@@ -66,25 +72,30 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
         })
       )
     },
-    Stream: ({ request }) =>
+    Stream: ({ persisted, request }) =>
       Effect.flatMap(
         Mailbox.make<Reply.ReplyEncoded<any>>(),
-        (mailbox) =>
-          Effect.as(
-            sharding.send(
-              new Message.IncomingRequest({
-                envelope: request,
-                lastSentReply: Option.none(),
-                respond(reply) {
-                  return Effect.flatMap(Reply.serialize(reply), (reply) => {
-                    mailbox.unsafeOffer(reply)
-                    return Effect.void
-                  })
-                }
+        (mailbox) => {
+          const message = new Message.IncomingRequest({
+            envelope: request,
+            lastSentReply: Option.none(),
+            respond(reply) {
+              return Effect.flatMap(Reply.serialize(reply), (reply) => {
+                mailbox.unsafeOffer(reply)
+                return Effect.void
               })
-            ),
+            }
+          })
+          return Effect.as(
+            persisted ?
+              Effect.zipRight(
+                storage.registerReplyHandler(message),
+                sharding.notify(message)
+              ) :
+              sharding.send(message),
             mailbox
           )
+        }
       ),
     Envelope: ({ envelope }) => sharding.send(new Message.IncomingEnvelope({ envelope }))
   }

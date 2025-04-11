@@ -197,7 +197,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
               rpc,
               middleware,
               span,
-              payload ? rpc.payloadSchema.make(payload) : {},
+              "make" in rpc.payloadSchema ? rpc.payloadSchema.make(payload ?? {}) : {},
               headers,
               options?.context ?? Context.empty(),
               options?.discard ?? false

@@ -297,9 +297,17 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
     },
     notify(options_) {
       const { discard, message } = options_
-      return notifyWith(message, (message) => {
+      return notifyWith(message, (message, duplicate) => {
         if (message._tag === "OutgoingEnvelope") {
           return options.notify(options_)
+        } else if (!duplicate && options_.address._tag === "Some") {
+          return Effect.catchAllCause(
+            options.send({
+              address: options_.address.value,
+              message
+            }),
+            () => Effect.orDie(replyFromStorage(message))
+          )
         }
         return discard ? options.notify(options_) : options.notify(options_).pipe(
           Effect.fork,
@@ -367,25 +375,30 @@ export class Rpcs extends RpcGroup.make(
       envelope: Envelope.PartialEncoded
     },
     success: Schema.Void,
-    error: EntityNotManagedByRunner
+    error: Schema.Union(EntityNotManagedByRunner, AlreadyProcessingMessage)
   }),
   Rpc.make("Effect", {
     payload: {
-      request: Envelope.PartialEncodedRequest
+      request: Envelope.PartialEncodedRequest,
+      persisted: Schema.Boolean
     },
     success: Schema.Object as Schema.Schema<Reply.ReplyEncoded<any>>,
     error: rpcErrors
   }),
   Rpc.make("Stream", {
     payload: {
-      request: Envelope.PartialEncodedRequest
+      request: Envelope.PartialEncodedRequest,
+      persisted: Schema.Boolean
     },
     error: rpcErrors,
     success: Schema.Object as Schema.Schema<Reply.ReplyEncoded<any>>,
     stream: true
   }),
   Rpc.make("Envelope", {
-    payload: { envelope: Schema.Union(Envelope.AckChunk, Envelope.Interrupt) },
+    payload: {
+      envelope: Schema.Union(Envelope.AckChunk, Envelope.Interrupt),
+      persisted: Schema.Boolean
+    },
     error: rpcErrors
   })
 ) {}
@@ -436,20 +449,31 @@ export const makeRpc: Effect.Effect<
       )
     },
     send({ address, message }) {
+      const rpc = message.rpc as any as Rpc.AnyWithProps
+      const isPersisted = Context.get(rpc.annotations, Persisted)
       if (message._tag === "OutgoingEnvelope") {
         return RcMap.get(clients, address).pipe(
-          Effect.flatMap((client) => client.Envelope({ envelope: message.envelope })),
+          Effect.flatMap((client) =>
+            client.Envelope({
+              envelope: message.envelope,
+              persisted: isPersisted
+            })
+          ),
           Effect.scoped,
           Effect.catchAllDefect(() => Effect.fail(new RunnerUnavailable({ address })))
         )
       }
-      const rpc = message.rpc as any as Rpc.AnyWithProps
       const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
       if (!isStream) {
         return Effect.matchEffect(Message.serializeRequest(message), {
           onSuccess: (request) =>
             RcMap.get(clients, address).pipe(
-              Effect.flatMap((client) => client.Effect({ request })),
+              Effect.flatMap((client) =>
+                client.Effect({
+                  request,
+                  persisted: isPersisted
+                })
+              ),
               Effect.flatMap((reply) =>
                 Schema.decode(Reply.Reply(message.rpc))(reply).pipe(
                   Effect.locally(FiberRef.currentContext, message.context),
@@ -473,7 +497,12 @@ export const makeRpc: Effect.Effect<
       return Effect.matchEffect(Message.serializeRequest(message), {
         onSuccess: (request) =>
           RcMap.get(clients, address).pipe(
-            Effect.flatMap((client) => client.Stream({ request }, { asMailbox: true })),
+            Effect.flatMap((client) =>
+              client.Stream({
+                request,
+                persisted: isPersisted
+              }, { asMailbox: true })
+            ),
             Effect.flatMap((mailbox) => {
               const decode = Schema.decode(Reply.Reply(message.rpc))
               return mailbox.take.pipe(
