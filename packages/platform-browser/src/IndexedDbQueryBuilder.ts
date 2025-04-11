@@ -111,10 +111,6 @@ export declare namespace IndexedDbQueryBuilder {
     readonly excludeLowerBound?: boolean
     readonly excludeUpperBound?: boolean
 
-    readonly limit: (
-      limit: number
-    ) => Omit<Select<Source, Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between">
-
     readonly equals: (
       value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
@@ -140,40 +136,82 @@ export declare namespace IndexedDbQueryBuilder {
       upperBound: ExtractIndexType<Source, Table, Index>,
       options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
     ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly limit: (
+      limit: number
+    ) => Omit<Select<Source, Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between" | "first">
+
+    readonly first: () => First<Source, Table, Index>
   }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface First<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never,
+    Index extends IndexedDbMigration.IndexFromTable<Source, Table> = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<
+      Effect.Effect<
+        Schema.Schema.Type<
+          IndexedDbTable.IndexedDbTable.TableSchema<
+            IndexedDbTable.IndexedDbTable.WithName<
+              IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+              Table
+            >
+          >
+        >
+      >
+    >
+
+    readonly [TypeId]: TypeId
+    readonly select: Select<Source, Table, Index>
+  }
+}
+
+const getObjectStore = (query: IndexedDbQueryBuilder.Select) => {
+  const database = query.from.database
+  const IDBKeyRange = query.from.IDBKeyRange
+  const objectStore = database.transaction([query.from.table]).objectStore(query.from.table)
+
+  let keyRange: globalThis.IDBKeyRange | undefined = undefined
+  let store: globalThis.IDBObjectStore | globalThis.IDBIndex
+
+  if (query.only !== undefined) {
+    keyRange = IDBKeyRange.only(query.only)
+  } else if (query.lowerBound !== undefined && query.upperBound !== undefined) {
+    keyRange = IDBKeyRange.bound(
+      query.lowerBound,
+      query.upperBound,
+      query.excludeLowerBound,
+      query.excludeUpperBound
+    )
+  } else if (query.lowerBound !== undefined) {
+    keyRange = IDBKeyRange.lowerBound(query.lowerBound, query.excludeLowerBound)
+  } else if (query.upperBound !== undefined) {
+    keyRange = IDBKeyRange.upperBound(query.upperBound, query.excludeUpperBound)
+  }
+
+  if (query.index !== undefined) {
+    store = objectStore.index(query.index)
+  } else {
+    store = objectStore
+  }
+
+  return { store, keyRange }
 }
 
 const getSelect = (query: IndexedDbQueryBuilder.Select) =>
   Effect.gen(function*() {
     const data = yield* Effect.async<any, IndexedDbQuery.IndexedDbQueryError>((resume) => {
-      const database = query.from.database
-      const IDBKeyRange = query.from.IDBKeyRange
-      const objectStore = database.transaction([query.from.table]).objectStore(query.from.table)
-
-      let keyRange: globalThis.IDBKeyRange | undefined = undefined
       let request: globalThis.IDBRequest
-      let store: globalThis.IDBObjectStore | globalThis.IDBIndex
-
-      if (query.only !== undefined) {
-        keyRange = IDBKeyRange.only(query.only)
-      } else if (query.lowerBound !== undefined && query.upperBound !== undefined) {
-        keyRange = IDBKeyRange.bound(
-          query.lowerBound,
-          query.upperBound,
-          query.excludeLowerBound,
-          query.excludeUpperBound
-        )
-      } else if (query.lowerBound !== undefined) {
-        keyRange = IDBKeyRange.lowerBound(query.lowerBound, query.excludeLowerBound)
-      } else if (query.upperBound !== undefined) {
-        keyRange = IDBKeyRange.upperBound(query.upperBound, query.excludeUpperBound)
-      }
-
-      if (query.index !== undefined) {
-        store = objectStore.index(query.index)
-      } else {
-        store = objectStore
-      }
+      const { keyRange, store } = getObjectStore(query)
 
       if (query.limitValue !== undefined) {
         const cursorRequest = store.openCursor()
@@ -223,6 +261,78 @@ const getSelect = (query: IndexedDbQueryBuilder.Select) =>
     const tableSchema = Schema.Array(
       // @ts-expect-error
       query.from.source.tables.pipe(HashMap.unsafeGet(query.from.table), (_) => _.tableSchema)
+    )
+
+    return yield* Schema.decodeUnknown(tableSchema)(data).pipe(
+      Effect.mapError(
+        (error) =>
+          new IndexedDbQuery.IndexedDbQueryError({
+            reason: "DecodeError",
+            cause: error
+          })
+      )
+    )
+  })
+
+const getFirst = (query: IndexedDbQueryBuilder.First) =>
+  Effect.gen(function*() {
+    const data = yield* Effect.async<any, IndexedDbQuery.IndexedDbQueryError>((resume) => {
+      const { keyRange, store } = getObjectStore(query.select)
+
+      if (keyRange !== undefined) {
+        const request = store.get(keyRange)
+
+        request.onerror = (event) => {
+          resume(
+            Effect.fail(
+              new IndexedDbQuery.IndexedDbQueryError({
+                reason: "TransactionError",
+                cause: event
+              })
+            )
+          )
+        }
+
+        request.onsuccess = () => {
+          resume(Effect.succeed(request.result))
+        }
+      } else {
+        const request = store.openCursor()
+
+        request.onerror = (event) => {
+          resume(
+            Effect.fail(
+              new IndexedDbQuery.IndexedDbQueryError({
+                reason: "TransactionError",
+                cause: event
+              })
+            )
+          )
+        }
+
+        request.onsuccess = () => {
+          const value = request.result?.value
+
+          if (value === undefined) {
+            resume(
+              Effect.fail(
+                new IndexedDbQuery.IndexedDbQueryError({
+                  reason: "NotFoundError",
+                  cause: request.error
+                })
+              )
+            )
+          } else {
+            resume(Effect.succeed(request.result?.value))
+          }
+        }
+      }
+    })
+
+    // @ts-expect-error
+    const tableSchema = query.select.from.source.tables.pipe(
+      HashMap.unsafeGet(query.select.from.table),
+      (_: any) => _.tableSchema
     )
 
     return yield* Schema.decodeUnknown(tableSchema)(data).pipe(
@@ -355,6 +465,9 @@ const selectMakeProto = <
       limitValue: options.limitValue
     })
 
+  const first = (): IndexedDbQueryBuilder.First<Source, Table, Index> =>
+    firstMakeProto({ select: IndexedDbQueryBuilderImpl as any })
+
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
     Object.assign(Object.create(Proto), {
@@ -378,5 +491,28 @@ const selectMakeProto = <
   IndexedDbQueryBuilderImpl.lt = lt
   IndexedDbQueryBuilderImpl.between = between
   IndexedDbQueryBuilderImpl.limit = limit
+  IndexedDbQueryBuilderImpl.first = first
+  return IndexedDbQueryBuilderImpl as any
+}
+
+/** @internal */
+const firstMakeProto = <
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
+  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+>(options: {
+  readonly select: IndexedDbQueryBuilder.Select<Source, Table, Index>
+}): IndexedDbQueryBuilder.First<Source, Table, Index> => {
+  function IndexedDbQueryBuilderImpl() {}
+
+  Object.setPrototypeOf(
+    IndexedDbQueryBuilderImpl,
+    Object.assign(Object.create(Proto), {
+      commit(this: IndexedDbQueryBuilder.First) {
+        return getFirst(this)
+      }
+    })
+  )
+  IndexedDbQueryBuilderImpl.select = options.select
   return IndexedDbQueryBuilderImpl as any
 }
