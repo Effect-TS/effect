@@ -104,11 +104,16 @@ export declare namespace IndexedDbQueryBuilder {
     readonly [TypeId]: TypeId
     readonly from: From<Source, Table>
     readonly index?: Index
+    readonly limitValue?: number
     readonly only?: ExtractIndexType<Source, Table, Index>
     readonly lowerBound?: ExtractIndexType<Source, Table, Index>
     readonly upperBound?: ExtractIndexType<Source, Table, Index>
     readonly excludeLowerBound?: boolean
     readonly excludeUpperBound?: boolean
+
+    readonly limit: (
+      limit: number
+    ) => Omit<Select<Source, Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly equals: (
       value: ExtractIndexType<Source, Table, Index>
@@ -145,8 +150,9 @@ const getSelect = (query: IndexedDbQueryBuilder.Select) =>
       const IDBKeyRange = query.from.IDBKeyRange
       const objectStore = database.transaction([query.from.table]).objectStore(query.from.table)
 
-      let request: globalThis.IDBRequest
       let keyRange: globalThis.IDBKeyRange | undefined = undefined
+      let request: globalThis.IDBRequest
+      let store: globalThis.IDBObjectStore | globalThis.IDBIndex
 
       if (query.only !== undefined) {
         keyRange = IDBKeyRange.only(query.only)
@@ -164,25 +170,53 @@ const getSelect = (query: IndexedDbQueryBuilder.Select) =>
       }
 
       if (query.index !== undefined) {
-        const index = objectStore.index(query.index)
-        request = index.getAll(keyRange)
+        store = objectStore.index(query.index)
       } else {
-        request = objectStore.getAll(keyRange)
+        store = objectStore
       }
 
-      request.onerror = (event) => {
-        resume(
-          Effect.fail(
-            new IndexedDbQuery.IndexedDbQueryError({
-              reason: "TransactionError",
-              cause: event
-            })
+      if (query.limitValue !== undefined) {
+        const cursorRequest = store.openCursor()
+        const results: Array<any> = []
+        let count = 0
+
+        cursorRequest.onerror = () => {
+          resume(
+            Effect.fail(
+              new IndexedDbQuery.IndexedDbQueryError({ reason: "TransactionError", cause: cursorRequest.error })
+            )
           )
-        )
-      }
+        }
 
-      request.onsuccess = () => {
-        resume(Effect.succeed(request.result))
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result
+          if (cursor !== null) {
+            results.push(cursor.value)
+            count += 1
+            if (count >= query.limitValue!) {
+              cursor.continue()
+            }
+          }
+
+          resume(Effect.succeed(results))
+        }
+      } else {
+        request = store.getAll(keyRange)
+
+        request.onerror = (event) => {
+          resume(
+            Effect.fail(
+              new IndexedDbQuery.IndexedDbQueryError({
+                reason: "TransactionError",
+                cause: event
+              })
+            )
+          )
+        }
+
+        request.onsuccess = () => {
+          resume(Effect.succeed(request.result))
+        }
       }
     })
 
@@ -242,7 +276,8 @@ const selectMakeProto = <
   Index extends IndexedDbMigration.IndexFromTable<Source, Table>
 >(options: {
   readonly from: IndexedDbQueryBuilder.From<Source, Table>
-  readonly index?: Index
+  readonly index: Index | undefined
+  readonly limitValue: number | undefined
   readonly only?: ExtractIndexType<Source, Table, Index>
   readonly lowerBound?: ExtractIndexType<Source, Table, Index>
   readonly upperBound?: ExtractIndexType<Source, Table, Index>
@@ -251,30 +286,59 @@ const selectMakeProto = <
 }): IndexedDbQueryBuilder.Select<Source, Table, Index> => {
   function IndexedDbQueryBuilderImpl() {}
 
+  const limit = (
+    limit: number
+  ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    selectMakeProto({ from: options.from, index: options.index, limitValue: limit })
+
   const equals = (
     value: ExtractIndexType<Source, Table, Index>
   ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
-    selectMakeProto({ from: options.from, index: options.index as any, only: value })
+    selectMakeProto({ from: options.from, index: options.index, only: value, limitValue: options.limitValue })
 
   const gte = (
     value: ExtractIndexType<Source, Table, Index>
   ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
-    selectMakeProto({ from: options.from, index: options.index as any, lowerBound: value, excludeLowerBound: false })
+    selectMakeProto({
+      from: options.from,
+      index: options.index,
+      lowerBound: value,
+      excludeLowerBound: false,
+      limitValue: options.limitValue
+    })
 
   const lte = (
     value: ExtractIndexType<Source, Table, Index>
   ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
-    selectMakeProto({ from: options.from, index: options.index as any, upperBound: value, excludeUpperBound: false })
+    selectMakeProto({
+      from: options.from,
+      index: options.index,
+      upperBound: value,
+      excludeUpperBound: false,
+      limitValue: options.limitValue
+    })
 
   const gt = (
     value: ExtractIndexType<Source, Table, Index>
   ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
-    selectMakeProto({ from: options.from, index: options.index as any, lowerBound: value, excludeLowerBound: true })
+    selectMakeProto({
+      from: options.from,
+      index: options.index,
+      lowerBound: value,
+      excludeLowerBound: true,
+      limitValue: options.limitValue
+    })
 
   const lt = (
     value: ExtractIndexType<Source, Table, Index>
   ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
-    selectMakeProto({ from: options.from, index: options.index as any, upperBound: value, excludeUpperBound: true })
+    selectMakeProto({
+      from: options.from,
+      index: options.index,
+      upperBound: value,
+      excludeUpperBound: true,
+      limitValue: options.limitValue
+    })
 
   const between = (
     lowerBound: ExtractIndexType<Source, Table, Index>,
@@ -283,11 +347,12 @@ const selectMakeProto = <
   ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
     selectMakeProto({
       from: options.from,
-      index: options.index as any,
+      index: options.index,
       lowerBound,
       upperBound,
       excludeLowerBound: queryOptions?.excludeLowerBound ?? false,
-      excludeUpperBound: queryOptions?.excludeUpperBound ?? false
+      excludeUpperBound: queryOptions?.excludeUpperBound ?? false,
+      limitValue: options.limitValue
     })
 
   Object.setPrototypeOf(
@@ -301,6 +366,7 @@ const selectMakeProto = <
   IndexedDbQueryBuilderImpl.from = options.from
   IndexedDbQueryBuilderImpl.index = options.index
   IndexedDbQueryBuilderImpl.only = options.only
+  IndexedDbQueryBuilderImpl.limitValue = options.limitValue
   IndexedDbQueryBuilderImpl.lowerBound = options.lowerBound
   IndexedDbQueryBuilderImpl.upperBound = options.upperBound
   IndexedDbQueryBuilderImpl.excludeLowerBound = options.excludeLowerBound
@@ -311,5 +377,6 @@ const selectMakeProto = <
   IndexedDbQueryBuilderImpl.gt = gt
   IndexedDbQueryBuilderImpl.lt = lt
   IndexedDbQueryBuilderImpl.between = between
+  IndexedDbQueryBuilderImpl.limit = limit
   return IndexedDbQueryBuilderImpl as any
 }
