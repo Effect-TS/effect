@@ -1,6 +1,25 @@
 /**
- * Operations on **integers** (`ℤ`), representing whole numbers `{..., -2, -1,
- * 0, 1, 2, ...}`.
+ * # Integer
+ *
+ * **Operations on integers** (`ℤ`), **representing whole numbers** `{..., -2,
+ * -1, 0, 1, 2, ...}`.
+ *
+ * ## What Problem Does It Solve?
+ *
+ * The `Integer` module solves the problem of working with whole numbers in a
+ * **type-safe**, **functional** manner. It ensures operations maintain integer
+ * constraints (no fractional components) while providing a rich set of
+ * mathematical operations with proper error handling and type refinements.
+ *
+ * ## When to Use
+ *
+ * Use the `Integer` module when you need:
+ *
+ * - Strict whole-number arithmetic with no fractional components
+ * - To model quantities that can be negative but must be whole numbers
+ * - Precise control over numeric type flow in function composition
+ * - Mathematical operations that preserve integer properties
+ * - Operations that intelligently return more specific types when appropriate
  *
  * Integers extend natural numbers by including negative values, enabling
  * modeling of:
@@ -10,51 +29,139 @@
  * - Positions relative to an origin point
  * - Direction along with magnitude
  *
- * This module provides a **type-safe approach to integer arithmetic** with:
+ * ## Advanced Features
  *
- * - Runtime validation ensuring values have no fractional component
- * - Type class instances for `Equivalence` and `Order`
- * - Comprehensive comparison predicates (`lessThan`, `greaterThan`, etc.)
- * - Operations that maintain integer constraints
- * - Type refinements for special cases (e.g., absolute value converts to
- *   {@link module:NaturalNumber})
+ * The Integer module provides:
  *
- * @remarks
- * ## Type Variance and Composition
+ * - **Type refinement** with runtime validation ensuring no fractional components
+ * - **Mathematical operations** that preserve integer properties
+ * - **Type-narrowing operations** that return more specific types when
+ *   appropriate
+ * - **Option-returning operations** for potentially invalid operations
+ * - **Comparison predicates** for rich relational operations
+ * - **Type-class instances** for functional programming patterns
  *
- * Operations in this module follow specific variance patterns for type safety:
+ * ## Operations Reference
  *
- * - **Type-preserving operations** (`Integer → Integer`):
+ * | Category   | Operation                                   | Description                                     | Domain                          | Co-domain              |
+ * | ---------- | ------------------------------------------- | ----------------------------------------------- | ------------------------------- | ---------------------- |
+ * | math       | {@link module:Integer.sign}                 | Determines the sign of an integer               | `Integer`                       | `Ordering`             |
+ * | math       | {@link module:Integer.abs}                  | Returns absolute value as a NaturalNumber       | `Integer`                       | `NaturalNumber`        |
+ * | math       | {@link module:Integer.negate}               | Returns the additive inverse                    | `Integer`                       | `Integer`              |
+ * | math       | {@link module:Integer.add}                  | Adds two integers                               | `Integer`, `Integer`            | `Integer`              |
+ * | math       | {@link module:Integer.subtract}             | Subtracts one integer from another              | `Integer`, `Integer`            | `Integer`              |
+ * | math       | {@link module:Integer.multiply}             | Multiplies two integers                         | `Integer`, `Integer`            | `Integer`              |
+ * | math       | {@link module:Integer.square}               | Computes square (returns NaturalNumber)         | `Integer`                       | `NaturalNumber`        |
+ * | math       | {@link module:Integer.cube}                 | Computes cube (preserves sign)                  | `Integer`                       | `Integer`              |
+ * | math       | {@link module:Integer.pow}                  | Integer exponentiation                          | `Integer`, `Integer`            | `Integer`              |
+ * | math       | {@link module:Integer.divideToNumber}       | Divides yielding possibly non-integer result    | `Integer`, `Integer`            | `number`               |
+ * | math       | {@link module:Integer.divideSafe}           | Safely divides returning Option for non-integer | `Integer`, `Integer`            | `Option<Integer>`      |
+ * |            |                                             |                                                 |                                 |                        |
+ * | predicates | {@link module:Integer.between}              | Checks if integer is in a range                 | `Integer`, `{minimum, maximum}` | `boolean`              |
+ * | predicates | {@link module:Integer.lessThan}             | Checks if one integer is less than another      | `Integer`, `Integer`            | `boolean`              |
+ * | predicates | {@link module:Integer.lessThanOrEqualTo}    | Checks if one integer is less than or equal     | `Integer`, `Integer`            | `boolean`              |
+ * | predicates | {@link module:Integer.greaterThan}          | Checks if one integer is greater than another   | `Integer`, `Integer`            | `boolean`              |
+ * | predicates | {@link module:Integer.greaterThanOrEqualTo} | Checks if one integer is greater or equal       | `Integer`, `Integer`            | `boolean`              |
+ * |            |                                             |                                                 |                                 |                        |
+ * | comparison | {@link module:Integer.min}                  | Returns the minimum of two integers             | `Integer`, `Integer`            | `Integer`              |
+ * | comparison | {@link module:Integer.max}                  | Returns the maximum of two integers             | `Integer`, `Integer`            | `Integer`              |
+ * | comparison | {@link module:Integer.clamp}                | Restricts an integer to a range                 | `Integer`, `{minimum, maximum}` | `Integer`              |
+ * |            |                                             |                                                 |                                 |                        |
+ * | instances  | {@link module:Integer.Equivalence}          | Equivalence instance for integers               |                                 | `Equivalence<Integer>` |
+ * | instances  | {@link module:Integer.Order}                | Order instance for integers                     |                                 | `Order<Integer>`       |
  *
- *   - Basic arithmetic: {@link module:Integer.sum}, {@link module:Integer.subtract},
- *       {@link module:Integer.multiply}
- *   - Sign operations: ~negate~
- * - **Type-narrowing operations** (`Integer → NaturalNumber`):
+ * ## Composition Patterns and Type Safety
  *
- *   - {@link module:Integer.abs}: Returns a non-negative result, narrowing to
- *       NaturalNumber
- *   - {@link module:Integer.square}: Returns a perfect square, always non-negative
- * - **Type-widening operations** (`Integer → number`):
+ * When building function pipelines, understanding how types flow through
+ * operations is critical:
  *
- *   - {@link module:Integer.divideToNumber}: Result may be fractional, widening to
- *       number
- * - **Option-returning operations** (`Integer → Option<Integer|NaturalNumber>`):
+ * ### Composing with type-preserving operations
  *
- *   - {@link module:Integer.divideSafe}: Returns Option.none() when division would
- *       yield a non-integer
+ * Operations where domain and co-domain match (Integer → Integer) can be freely
+ * chained:
  *
- * For composition chains, be mindful of:
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
  *
- * - Type narrowing operations can't be followed by operations specific to Integer
- * - Type widening operations leave the Integer domain and enter number
- * - Option-returning functions require Option combinators for further
- *   transformations
+ * const result = pipe(
+ *   Integer.of(-5),
+ *   Integer.add(10), // Integer → Integer
+ *   Integer.multiply(2), // Integer → Integer
+ *   Integer.negate // Integer → Integer
+ * ) // Result: Integer (-10)
+ * ```
+ *
+ * ### Handling type transitions
+ *
+ * When an operation changes the type, subsequent operations must be compatible
+ * with the new type:
+ *
+ * ```ts
+ * import { pipe, Option } from "effect"
+ * import * as Integer from "effect/Integer"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as RealNumber from "effect/Number"
+ *
+ * // Type narrowing: Integer → NaturalNumber
+ * const positiveResult = pipe(
+ *   Integer.of(-5),
+ *   Integer.abs, // Integer → NaturalNumber
+ *   NaturalNumber.increment // NaturalNumber → NaturalNumber
+ *   // Cannot use Integer.negate here! (negate requires Integer)
+ * ) // Result: NaturalNumber (6)
+ *
+ * // Type widening: Integer → number
+ * const fractionResult = pipe(
+ *   Integer.of(10),
+ *   Integer.divideToNumber(3), // Integer → Option<number>
+ *   Option.map(
+ *     // Cannot use Integer operations here!
+ *     (n: number) => RealNumber.multiply(2, n) // number → number
+ *   )
+ * ) // Result: Some(6.666...)
+ * ```
+ *
+ * ### Working with Option results
+ *
+ * Operations returning Option types require Option combinators for further
+ * processing:
+ *
+ * ```ts
+ * import { pipe, Option } from "effect"
+ * import * as Integer from "effect/Integer"
+ *
+ * const result = pipe(
+ *   Integer.of(10),
+ *   Integer.divideSafe(3), // Integer → Option<Integer>
+ *   Option.map(Integer.add(1)), // Option<Integer> → Option<Integer>
+ *   Option.getOrElse(() => Integer.zero)
+ * ) // Result: Integer.of(0)
+ * ```
+ *
+ * ### Composition best practices
+ *
+ * - Chain type-preserving operations for maximum composability
+ * - Handle type transitions explicitly - don't mix operations from different
+ *   domains
+ * - Use Option combinators when working with potentially failing operations
+ * - Be aware when operations narrow to NaturalNumber or widen to number
+ *
+ * ## Mathematical Properties
  *
  * From an algebraic perspective, `Integer` forms a ring under:
  *
  * - Addition with identity 0 and inverses (negation)
  * - Multiplication with identity 1
  * - Standard associative, commutative, and distributive properties
+ *
+ * Mathematically, `ℤ` is characterized by:
+ *
+ * - Discreteness: There is a distinct successor and predecessor for each integer
+ * - Total ordering: For any two integers, one is greater than, equal to, or less
+ *   than the other
+ * - Euclidean property: For any integers `a` and `b` where `b ≠ 0`, there exist
+ *   unique `q`, `r` such that `a = bq + r` where `0 ≤ r < |b|`
  *
  * In the type system hierarchy:
  *
@@ -64,7 +171,6 @@
  *
  * @module Integer
  * @since 3.14.6
- * @experimental
  */
 
 import type * as Brand from "./Brand.js"
