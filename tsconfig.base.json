@@ -148,7 +148,10 @@
       "@effect/typeclass": ["./packages/typeclass/src/index.js"],
       "@effect/typeclass/*": ["./packages/typeclass/src/*.js"],
       "@effect/typeclass/test/*": ["./packages/typeclass/test/*.js"],
-      "@effect/vitest": ["./packages/vitest/src/index.js"]
+      "@effect/vitest": ["./packages/vitest/src/index.js"],
+      "@effect/workflow": ["./packages/workflow/src/index.js"],
+      "@effect/workflow/*": ["./packages/workflow/src/*.js"],
+      "@effect/workflow/test/*": ["./packages/workflow/test/*.js"]
     }
   }
 }

@@ -58,7 +58,8 @@ const config: ViteUserConfig = {
       ...alias("sql-sqlite-react-native"),
       ...alias("sql-sqlite-wasm"),
       ...alias("typeclass"),
-      ...alias("vitest")
+      ...alias("vitest"),
+      ...alias("workflow")
     }
   }
 }

@@ -53,6 +53,13 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
   ) => Effect.Effect<void, PersistenceError | MalformedMessage>
 
   /**
+   * Save the provided `Reply` and its associated metadata.
+   */
+  readonly clearReplies: (
+    requestId: Snowflake.Snowflake
+  ) => Effect.Effect<void, PersistenceError>
+
+  /**
    * Retrieves the replies for the specified requests.
    *
    * - Un-acknowledged chunk replies
@@ -192,6 +199,13 @@ export type Encoded = {
    */
   readonly saveReply: (
     reply: Reply.ReplyEncoded<any>
+  ) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Remove the replies for the specified request.
+   */
+  readonly clearReplies: (
+    requestId: Snowflake.Snowflake
   ) => Effect.Effect<void, PersistenceError>
 
   /**
@@ -362,6 +376,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         Effect.asVoid
       ),
     saveReply: (reply) => Effect.flatMap(Reply.serialize(reply), encoded.saveReply),
+    clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
       const map = new Map<string, Message.OutgoingRequest<any>>()
@@ -506,6 +521,7 @@ export const noop: MessageStorage["Type"] = globalValue(
       saveRequest: () => Effect.succeed(SaveResult.Success()),
       saveEnvelope: () => Effect.void,
       saveReply: () => Effect.void,
+      clearReplies: () => Effect.void,
       repliesFor: () => Effect.succeed([]),
       unprocessedMessages: () => Effect.succeed([]),
       unprocessedMessagesById: () => Effect.succeed([]),
@@ -608,6 +624,13 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
           entry.replies.push(reply)
           replyIds.add(reply.id)
           replyLatch.unsafeOpen()
+        }),
+      clearReplies: (requestId) =>
+        Effect.sync(() => {
+          const entry = requests.get(String(requestId))
+          if (!entry) return
+          entry.replies = []
+          entry.lastReceivedChunk = Option.none()
         }),
       repliesFor: (requestIds) =>
         Effect.sync(() => {
