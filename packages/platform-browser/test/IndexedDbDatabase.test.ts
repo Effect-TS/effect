@@ -8,9 +8,9 @@ import {
 } from "@effect/platform-browser"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
-import { indexedDB } from "fake-indexeddb"
+import { IDBKeyRange, indexedDB } from "fake-indexeddb"
 
-const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB }))
+const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB, IDBKeyRange }))
 
 describe("IndexedDbDatabase", () => {
   it.effect("insert and read todos", () => {
