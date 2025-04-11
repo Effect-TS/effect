@@ -452,4 +452,44 @@ describe("IndexedDbQueryBuilder", () => {
         )
       )
     ))
+
+  it.effect("select limit", () =>
+    Effect.gen(function*() {
+      const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+      const api = makeApi(Db)
+      const data = yield* api.from("todo").select().limit(1)
+
+      assert.equal(data.length, 1)
+      assert.deepStrictEqual(data, [{ id: 1, title: "test1", count: 1, completed: false }])
+
+      // Close database to avoid errors when running other tests (blocked access)
+      yield* use(async (database) => database.close())
+    }).pipe(
+      Effect.provide(
+        IndexedDbQuery.layer.pipe(
+          Layer.provide(
+            IndexedDbDatabase.layer(
+              "db11",
+              IndexedDbMigration.make({
+                fromVersion: IndexedDbVersion.makeEmpty,
+                toVersion: Db,
+                execute: (_, toQuery) =>
+                  Effect.gen(function*() {
+                    yield* toQuery.createObjectStore("todo")
+                    yield* toQuery.createIndex("todo", "titleIndex")
+                    yield* toQuery.createIndex("todo", "countIndex")
+                    yield* toQuery.insertAll("todo", [
+                      { id: 1, title: "test1", count: 1, completed: false },
+                      { id: 2, title: "test2", count: 2, completed: false },
+                      { id: 3, title: "test3", count: 3, completed: false },
+                      { id: 4, title: "test4", count: 4, completed: false },
+                      { id: 5, title: "test5", count: 5, completed: false }
+                    ])
+                  })
+              })
+            ).pipe(Layer.provide(layerFakeIndexedDb))
+          )
+        )
+      )
+    ))
 })
