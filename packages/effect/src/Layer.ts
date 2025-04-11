@@ -32,9 +32,11 @@ import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as internal from "./internal/layer.js"
 import * as circularLayer from "./internal/layer/circular.js"
 import * as query from "./internal/query.js"
+import { randomTag } from "./internal/random.js"
 import type { LogLevel } from "./LogLevel.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Random from "./Random.js"
 import type * as Request from "./Request.js"
 import type * as Runtime from "./Runtime.js"
 import type * as Schedule from "./Schedule.js"
@@ -944,6 +946,15 @@ export const setConfigProvider: (configProvider: ConfigProvider) => Layer<never>
  * @category tracing
  */
 export const parentSpan: (span: Tracer.AnySpan) => Layer<Tracer.ParentSpan> = circularLayer.parentSpan
+
+/**
+ * @since 3.15.0
+ * @category Random
+ */
+export const setRandom = <A extends Random.Random>(random: A): Layer<never> =>
+  scopedDiscard(
+    fiberRuntime.fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(randomTag, random))
+  )
 
 /**
  * @since 2.0.0

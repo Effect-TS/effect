@@ -589,4 +589,15 @@ describe("Record", () => {
     expect(Record.intersection(string$structAB, { b: 2 }, (a, _) => a))
       .type.toBe<Record<"b", number>>()
   })
+
+  it("findFirst", () => {
+    expect(Record.findFirst(string$numbersOrStrings, (a, _) => predicateNumbersOrStrings(a)))
+      .type.toBe<Option.Option<[string, string | number]>>()
+    expect(pipe(string$numbersOrStrings, Record.findFirst((a, _) => predicateNumbersOrStrings(a))))
+      .type.toBe<Option.Option<[string, string | number]>>()
+    expect(Record.findFirst(string$numbersOrStrings, Predicate.isString))
+      .type.toBe<Option.Option<[string, string]>>()
+    expect(pipe(string$numbersOrStrings, Record.findFirst(Predicate.isString)))
+      .type.toBe<Option.Option<[string, string]>>()
+  })
 })
