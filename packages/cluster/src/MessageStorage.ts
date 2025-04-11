@@ -91,6 +91,13 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
   ) => Effect.Effect<Array<Message.Incoming<R>>, PersistenceError>
 
   /**
+   * Reset the mailbox state for the provided shards.
+   */
+  readonly resetShards: (
+    shardIds: Iterable<ShardId>
+  ) => Effect.Effect<void, PersistenceError>
+
+  /**
    * Reset the mailbox state for the provided address.
    */
   readonly resetAddress: (
@@ -239,6 +246,13 @@ export type Encoded = {
   readonly resetAddress: (
     address: EntityAddress
   ) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Reset the mailbox state for the provided shards.
+   */
+  readonly resetShards: (
+    shardIds: ReadonlyArray<number>
+  ) => Effect.Effect<void, PersistenceError>
 }
 
 /**
@@ -376,7 +390,8 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         decodeMessages
       )
     },
-    resetAddress: (address) => encoded.resetAddress(address)
+    resetAddress: (address) => encoded.resetAddress(address),
+    resetShards: (shardIds) => encoded.resetShards(Array.from(shardIds))
   })
 
   const decodeMessages = (
@@ -494,7 +509,8 @@ export const noop: MessageStorage["Type"] = globalValue(
       repliesFor: () => Effect.succeed([]),
       unprocessedMessages: () => Effect.succeed([]),
       unprocessedMessagesById: () => Effect.succeed([]),
-      resetAddress: () => Effect.void
+      resetAddress: () => Effect.void,
+      resetShards: () => Effect.void
     }))
 )
 
@@ -650,7 +666,8 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
           }
           return unprocessedWith((envelope) => envelopeIds.has(envelope.requestId))
         }),
-      resetAddress: () => Effect.void
+      resetAddress: () => Effect.void,
+      resetShards: () => Effect.void
     }
 
     const storage = yield* makeEncoded(encoded)

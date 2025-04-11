@@ -750,7 +750,18 @@ export const make = Effect.fnUntraced(function*(options?: {
         AND shard_id = ${address.shardId}
         AND entity_type = ${address.entityType}
         AND entity_id = ${address.entityId}
-`.pipe(
+      `.pipe(
+        Effect.asVoid,
+        PersistenceError.refail
+      ),
+
+    resetShards: (shardIds) =>
+      sql`
+        UPDATE ${messagesTableSql}
+        SET last_read = NULL
+        WHERE processed = ${sqlFalse}
+        AND shard_id IN (${sql.literal(shardIds.join(","))})
+      `.pipe(
         Effect.asVoid,
         PersistenceError.refail
       )
