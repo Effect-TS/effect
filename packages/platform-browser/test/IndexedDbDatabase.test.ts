@@ -31,10 +31,6 @@ describe("IndexedDbDatabase", () => {
       const api = makeApi(Db)
       const todo = yield* api.getAll("todo")
 
-      // api.from("todo").select(/** index */).gte(/** WHERE */).limit(/** number */)
-      // api.from("todo").select(/** index */).gte(/** WHERE */).first()
-      // api.from("todo").select(/** index */).gte(/** WHERE */).firstRequired()
-
       const name = yield* use(async (database) => database.name)
       const version = yield* use(async (database) => database.version)
       const objectStoreNames = yield* use(async (database) => database.objectStoreNames)

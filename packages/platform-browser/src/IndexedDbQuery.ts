@@ -49,7 +49,7 @@ export class IndexedDbQueryError extends TypeIdError(
   ErrorTypeId,
   "IndexedDbQueryError"
 )<{
-  readonly reason: "TransactionError" | "DecodeError" | "UnknownError"
+  readonly reason: "TransactionError" | "DecodeError" | "UnknownError" | "NotFoundError"
   readonly cause: unknown
 }> {
   get message() {
