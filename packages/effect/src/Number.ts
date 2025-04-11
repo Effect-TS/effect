@@ -1,6 +1,26 @@
 /**
+ * # Number
+ *
  * Operations on JavaScript numbers, representing an approximation of **real
  * numbers** (`ℝ`).
+ *
+ * ## What Problem Does It Solve?
+ *
+ * The `Number` module solves the problem of working with JavaScript's native
+ * number type in a **functional**, **type-safe manner**. It provides a
+ * comprehensive set of operations that handle edge cases (like division by
+ * zero), maintain type safety, and support both data-first and data-last
+ * programming styles.
+ *
+ * ## When to Use
+ *
+ * Use the `Number` module when you need:
+ *
+ * - Type-safe arithmetic operations with proper error handling
+ * - Mathematical operations beyond JavaScript's built-in operators
+ * - Functional programming patterns for number manipulation
+ * - Consistent handling of edge cases (division by zero, NaN, etc.)
+ * - Composable operations that work well in pipelines
  *
  * JavaScript's native `number` type (IEEE-754 double-precision) allows modeling
  * of:
@@ -10,50 +30,119 @@
  * - Mathematical concepts requiring irrational values (π, e, √2, etc.)
  * - Scientific calculations with floating-point operations
  *
- * This module provides enhanced functionality for JavaScript numbers with:
+ * ## Advanced Features
  *
- * - Comprehensive **arithmetic operations** ({@link module:Number.sum},
- *   {@link module:Number.subtract}, {@link module:Number.multiply},
- *   {@link module:Number.divide})
- * - **Collection operations** ({@link module:Number.sumAll},
- *   {@link module:Number.multiplyAll})
- * - **Comparison utilities** ({@link module:Number.min}, {@link module:Number.max},
- *   {@link module:Number.clamp}, {@link module:Number.between})
- * - {@link module:Number.sign} and {@link module:Number.remainder} calculations
- * - Special operations ({@link module:Number.nextPow2}, {@link module:Number.round}
- *   with precision)
- * - **Safe division** with Option return types
- * - **Type guards** and parsing utilities
+ * The Number module provides:
  *
- * @remarks
- * Key features include:
+ * - **Safe operations** that handle edge cases by returning `Option` types
+ * - **Unsafe operations** that throw specific errors for invalid operations
+ * - **Collection operations** for working with groups of numbers
+ * - **Comparison utilities** with a rich set of predicates
+ * - **Mathematical functions** for common numerical operations
+ * - **Parsing utilities** for safely converting strings to numbers
  *
- * - Type class instances: {@link Equivalence}, {@link Order}
- * - Error handling: {@link DivisionByZeroError} for unsafe operations
- * - Predicates: lessThan, greaterThan and their inclusive variants
- * - Parsing: converting strings to numbers with proper error handling
- * - Support for both data-first and data-last (pipeable) API styles
+ * ## Operations Reference
  *
- * ## Type Variance and Composition
+ * | Category     | Operation                                  | Description                                             | Domain                         | Co-domain             |
+ * | ------------ | ------------------------------------------ | ------------------------------------------------------- | ------------------------------ | --------------------- |
+ * | constructors | {@link module:Number.parse}                | Safely parses a string to a number                      | `string`                       | `Option<number>`      |
+ * |              |                                            |                                                         |                                |                       |
+ * | math         | {@link module:Number.sum}                  | Adds two numbers                                        | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.sumAll}               | Sums all numbers in a collection                        | `Iterable<number>`             | `number`              |
+ * | math         | {@link module:Number.subtract}             | Subtracts one number from another                       | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.multiply}             | Multiplies two numbers                                  | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.multiplyAll}          | Multiplies all numbers in a collection                  | `Iterable<number>`             | `number`              |
+ * | math         | {@link module:Number.divide}               | Safely divides handling division by zero                | `number`, `number`             | `Option<number>`      |
+ * | math         | {@link module:Number.unsafeDivide}         | Divides but may throw an exception for division by zero | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.remainder}            | Calculates remainder of division                        | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.increment}            | Adds 1 to a number                                      | `number`                       | `number`              |
+ * | math         | {@link module:Number.decrement}            | Subtracts 1 from a number                               | `number`                       | `number`              |
+ * | math         | {@link module:Number.sign}                 | Determines the sign of a number                         | `number`                       | `Ordering`            |
+ * | math         | {@link module:Number.nextPow2}             | Finds the next power of 2                               | `number`                       | `number`              |
+ * | math         | {@link module:Number.round}                | Rounds a number with specified precision                | `number`, `number`             | `number`              |
+ * |              |                                            |                                                         |                                |                       |
+ * | predicates   | {@link module:Number.between}              | Checks if a number is in a range                        | `number`, `{minimum, maximum}` | `boolean`             |
+ * | predicates   | {@link module:Number.lessThan}             | Checks if one number is less than another               | `number`, `number`             | `boolean`             |
+ * | predicates   | {@link module:Number.lessThanOrEqualTo}    | Checks if one number is less than or equal              | `number`, `number`             | `boolean`             |
+ * | predicates   | {@link module:Number.greaterThan}          | Checks if one number is greater than another            | `number`, `number`             | `boolean`             |
+ * | predicates   | {@link module:Number.greaterThanOrEqualTo} | Checks if one number is greater or equal                | `number`, `number`             | `boolean`             |
+ * |              |                                            |                                                         |                                |                       |
+ * | guards       | {@link module:Number.isNumber}             | Type guard for JavaScript numbers                       | `unknown`                      | `boolean`             |
+ * |              |                                            |                                                         |                                |                       |
+ * | comparison   | {@link module:Number.min}                  | Returns the minimum of two numbers                      | `number`, `number`             | `number`              |
+ * | comparison   | {@link module:Number.max}                  | Returns the maximum of two numbers                      | `number`, `number`             | `number`              |
+ * | comparison   | {@link module:Number.clamp}                | Restricts a number to a range                           | `number`, `{minimum, maximum}` | `number`              |
+ * |              |                                            |                                                         |                                |                       |
+ * | instances    | {@link module:Number.Equivalence}          | Equivalence instance for numbers                        |                                | `Equivalence<number>` |
+ * | instances    | {@link module:Number.Order}                | Order instance for numbers                              |                                | `Order<number>`       |
+ * |              |                                            |                                                         |                                |                       |
+ * | errors       | {@link module:Number.DivisionByZeroError}  | Error thrown by unsafeDivide                            |                                |                       |
  *
- * Most operations in this module are _type-preserving_ (`number → number`),
- * making them **easily composable** in pipelines:
+ * ## Composition Patterns and Type Safety
  *
- * - All basic arithmetic operations (`sum`, `subtract`, `multiply`) maintain the
- *   number type
- * - Unsafe operations maintain direct type flow (e.g., `unsafeDivide: number →
- *   number`)
- * - Safe operations wrap results in `Option` for error handling (e.g., `divide:
- *   number → Option<number>`)
- * - No operations narrow to more specific numeric types automatically
+ * When building function pipelines, understanding how types flow through
+ * operations is critical:
  *
- * When composing operations:
+ * ### Composing with type-preserving operations
  *
- * - `pipe(x, increment, multiply(2))` maintains type throughout
- * - Operations returning `Option<number>` should be handled with {@link Option}
- *   combinators
- * - Function composition flows naturally with both data-first and data-last
- *   variants
+ * Most operations in this module are type-preserving (`number → number`),
+ * making them easily composable in pipelines:
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as RealNumber from "effect/Number"
+ *
+ * const result = pipe(
+ *   10,
+ *   RealNumber.increment, // number → number
+ *   RealNumber.multiply(2), // number → number
+ *   RealNumber.round(1) // number → number
+ * ) // Result: number (21)
+ * ```
+ *
+ * ### Working with Option results
+ *
+ * Operations that might fail (like division by zero) return Option types and
+ * require Option combinators:
+ *
+ * ```ts
+ * import { pipe, Option } from "effect"
+ * import * as RealNumber from "effect/Number"
+ *
+ * const result = pipe(
+ *   10,
+ *   RealNumber.divide(0), // number → Option<number>
+ *   Option.getOrElse(() => 0) // Option<number> → number
+ * ) // Result: number (0)
+ * ```
+ *
+ * ### Error handling with unsafe operations
+ *
+ * Unsafe operations throw specific errors that can be caught:
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as RealNumber from "effect/Number"
+ *
+ * try {
+ *   const result = RealNumber.unsafeDivide(10, 0) // Throws DivisionByZeroError
+ *   // do something with result ...
+ * } catch (e) {
+ *   if (e instanceof RealNumber.DivisionByZeroError) {
+ *     console.error("Division by zero occurred")
+ *   }
+ * }
+ * ```
+ *
+ * ### Composition best practices
+ *
+ * - Chain type-preserving operations for maximum composability
+ * - Use Option combinators when working with potentially failing operations
+ * - Consider using Effect for operations that might fail with specific errors
+ * - Remember that all operations maintain JavaScript's floating-point precision
+ *   limitations
+ *
+ * ## Mathematical Properties
  *
  * From an analysis perspective, the JavaScript `number` approximates a field
  * where:
