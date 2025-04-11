@@ -1,13 +1,70 @@
 /**
- * # Integers (ℤ)
+ * Operations on **integers** (`ℤ`), representing whole numbers `{..., -2, -1,
+ * 0, 1, 2, ...}`.
  *
- * This module provides operations for working with integers (`ℤ = {..., -3, -2,
- * -1, 0, 1, 2, 3, ...}`).
+ * Integers extend natural numbers by including negative values, enabling
+ * modeling of:
+ *
+ * - Signed quantities (positive, zero, and negative values)
+ * - Differences between natural numbers
+ * - Positions relative to an origin point
+ * - Direction along with magnitude
+ *
+ * This module provides a **type-safe approach to integer arithmetic** with:
+ *
+ * - Runtime validation ensuring values have no fractional component
+ * - Type class instances for `Equivalence` and `Order`
+ * - Comprehensive comparison predicates (`lessThan`, `greaterThan`, etc.)
+ * - Operations that maintain integer constraints
+ * - Type refinements for special cases (e.g., absolute value converts to
+ *   {@link module:NaturalNumber})
+ *
+ * @remarks
+ * ## Type Variance and Composition
+ *
+ * Operations in this module follow specific variance patterns for type safety:
+ *
+ * - **Type-preserving operations** (`Integer → Integer`):
+ *
+ *   - Basic arithmetic: {@link module:Integer.sum}, {@link module:Integer.subtract},
+ *       {@link module:Integer.multiply}
+ *   - Sign operations: ~negate~
+ * - **Type-narrowing operations** (`Integer → NaturalNumber`):
+ *
+ *   - {@link module:Integer.abs}: Returns a non-negative result, narrowing to
+ *       NaturalNumber
+ *   - {@link module:Integer.square}: Returns a perfect square, always non-negative
+ * - **Type-widening operations** (`Integer → number`):
+ *
+ *   - {@link module:Integer.divideToNumber}: Result may be fractional, widening to
+ *       number
+ * - **Option-returning operations** (`Integer → Option<Integer|NaturalNumber>`):
+ *
+ *   - {@link module:Integer.divideSafe}: Returns Option.none() when division would
+ *       yield a non-integer
+ *
+ * For composition chains, be mindful of:
+ *
+ * - Type narrowing operations can't be followed by operations specific to Integer
+ * - Type widening operations leave the Integer domain and enter number
+ * - Option-returning functions require Option combinators for further
+ *   transformations
+ *
+ * From an algebraic perspective, `Integer` forms a ring under:
+ *
+ * - Addition with identity 0 and inverses (negation)
+ * - Multiplication with identity 1
+ * - Standard associative, commutative, and distributive properties
+ *
+ * In the type system hierarchy:
+ *
+ * - {@link module:NaturalNumber} is a proper subset of `Integer` (`ℕ₀ ⊂ ℤ`)
+ * - `Integer` is a proper subset of JavaScript's native {@link module:Number} (`ℤ
+ *   ⊂ ℝ`)
  *
  * @module Integer
  * @since 3.14.6
  * @experimental
- * @internal
  */
 
 import type * as Brand from "./Brand.js"
