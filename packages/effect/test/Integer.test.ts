@@ -518,7 +518,6 @@ describe("Integer", () => {
     it("pow", () => {
       const two = Integer.of(2)
       const three = Integer.of(3)
-      const four = Integer.of(4)
       const negativeTwo = Integer.of(-2)
 
       // Basic functionality tests

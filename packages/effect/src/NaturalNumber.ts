@@ -1051,9 +1051,9 @@ export const multiplyAll: {
  * @example
  *
  * ```ts
- * import * as assert from "node:assert/strict"
  * import { pipe } from "effect"
  * import * as N from "effect/NaturalNumber"
+ * import * as assert from "node:assert/strict"
  *
  * // Basic usage
  * assert.equal(N.pow(N.of(2), N.of(3)), N.of(8)) // 2³ = 8
@@ -1091,7 +1091,7 @@ export const multiplyAll: {
  * const n = N.of(2)
  *
  * // Exponent addition: a^(m+n) = a^m × a^n
- * const sumExponent = N.pow(a, N.add(m, n)) // 2^(3+2) = 2^5 = 32
+ * const sumExponent = N.pow(a, N.sum(m, n)) // 2^(3+2) = 2^5 = 32
  * const productPowers = N.multiply(
  *   N.pow(a, m), // 2^3 = 8
  *   N.pow(a, n) // 2^2 = 4
@@ -1158,7 +1158,7 @@ export const pow: {
  * const y = N.of(3)
  *
  * // Computing the hypotenuse using the Pythagorean theorem
- * const hypotenuseSquared = N.add(
+ * const hypotenuseSquared = N.sum(
  *   N.square(x), // 16
  *   N.square(y) // 9
  * ) // 25

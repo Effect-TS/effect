@@ -88,8 +88,8 @@ export type Integer = internal.Integer
  * @example
  *
  * ```ts
- * import assert from "node:assert/strict"
  * import * as Integer from "effect/Integer"
+ * import assert from "node:assert/strict"
  *
  * // Successful cases (members of ℤ)
  * const positiveInt = Integer.of(42) // OK: 42 ∈ ℤ
@@ -105,7 +105,7 @@ export type Integer = internal.Integer
  *
  * // Type safety in use
  * function requiresInteger(i: Integer.Integer): Integer.Integer {
- *   return Integer.add(i, Integer.of(1)) // Safe integer operation
+ *   return Integer.sum(i, Integer.of(1)) // Safe integer operation
  * }
  *
  * const result = requiresInteger(Integer.of(5)) // OK
@@ -153,35 +153,35 @@ export const of: {
  * @example
  *
  * ```ts
- * import * as assert from "node:assert/strict"
  * import { Option, pipe } from "effect"
- * import * as Integer from "effect/Integer"
+ * import * as I from "effect/Integer"
  * import * as RealNumber from "effect/Number"
+ * import * as assert from "node:assert/strict"
  *
  * // Members of ℤ return Some<Integer>
- * assert.deepStrictEqual(Integer.option(42), Option.some(Integer.of(42)))
- * assert.deepStrictEqual(Integer.option(0), Option.some(Integer.zero))
- * assert.deepStrictEqual(Integer.option(-7), Option.some(Integer.of(-7)))
+ * assert.deepStrictEqual(I.option(42), Option.some(I.of(42)))
+ * assert.deepStrictEqual(I.option(0), Option.some(I.zero))
+ * assert.deepStrictEqual(I.option(-7), Option.some(I.of(-7)))
  *
  * // Non-integers (not in ℤ) return None
- * assert.deepStrictEqual(Integer.option(3.14), Option.none())
- * assert.deepStrictEqual(Integer.option(NaN), Option.none())
- * assert.deepStrictEqual(Integer.option(Infinity), Option.none())
+ * assert.deepStrictEqual(I.option(3.14), Option.none())
+ * assert.deepStrictEqual(I.option(NaN), Option.none())
+ * assert.deepStrictEqual(I.option(Infinity), Option.none())
  *
  * // Safe operations on values of unknown integer status
- * const safelyDouble = (n: number): Option.Option<Integer.Integer> =>
+ * const safelyDouble = (n: number): Option.Option<I.Integer> =>
  *   pipe(
- *     Integer.option(n),
- *     Option.map((int) => Integer.multiply(int, Integer.of(2)))
+ *     I.option(n),
+ *     Option.map((int) => I.multiply(int, I.of(2)))
  *   )
  *
- * assert.deepStrictEqual(safelyDouble(5), Option.some(Integer.of(10)))
+ * assert.deepStrictEqual(safelyDouble(5), Option.some(I.of(10)))
  * assert.deepStrictEqual(safelyDouble(5.5), Option.none())
  *
  * // Handling integer membership testing with Option.match
  * const classifyNumber = (n: number): string =>
  *   pipe(
- *     Integer.option(n),
+ *     I.option(n),
  *     Option.match({
  *       onNone: () => `${n} is not in the set of integers (ℤ)`,
  *       onSome: (int) => `${int} is a member of the integer set (ℤ)`
@@ -195,13 +195,10 @@ export const of: {
  * )
  *
  * // Converting from string inputs safely
- * const parseIntegerSafely = (s: string): Option.Option<Integer.Integer> =>
- *   pipe(RealNumber.parseFloat(s), Integer.option)
+ * const parseIntegerSafely = (s: string): Option.Option<I.Integer> =>
+ *   pipe(s, RealNumber.parse, Option.flatMap(I.option))
  *
- * assert.deepStrictEqual(
- *   parseIntegerSafely("42"),
- *   Option.some(Integer.of(42))
- * )
+ * assert.deepStrictEqual(parseIntegerSafely("42"), Option.some(I.of(42)))
  * assert.deepStrictEqual(parseIntegerSafely("3.14"), Option.none())
  * assert.deepStrictEqual(parseIntegerSafely("not a number"), Option.none())
  * ```
@@ -243,23 +240,23 @@ export const option: (n: number) => _Option.Option<Integer> = internal.IntegerCo
  * @example
  *
  * ```ts
+ * import { type Brand, Either, Option, pipe } from "effect"
+ * import * as I from "effect/Integer"
  * import * as assert from "node:assert/strict"
- * import { Either, Option, pipe } from "effect"
- * import * as Integer from "effect/Integer"
  *
  * // Members of ℤ return Right<Integer>
- * assert.deepStrictEqual(Integer.either(42), Either.right(Integer.of(42)))
- * assert.deepStrictEqual(Integer.either(0), Either.right(Integer.zero))
- * assert.deepStrictEqual(Integer.either(-7), Either.right(Integer.of(-7)))
+ * assert.deepStrictEqual(I.either(42), Either.right(I.of(42)))
+ * assert.deepStrictEqual(I.either(0), Either.right(I.zero))
+ * assert.deepStrictEqual(I.either(-7), Either.right(I.of(-7)))
  *
  * // Non-integers (not in ℤ) return Left<BrandErrors>
- * assert.equal(Either.isLeft(Integer.either(3.14)), true)
- * assert.equal(Either.isLeft(Integer.either(Number.NaN)), true)
- * assert.equal(Either.isLeft(Integer.either(Infinity)), true)
+ * assert.equal(Either.isLeft(I.either(3.14)), true)
+ * assert.equal(Either.isLeft(I.either(Number.NaN)), true)
+ * assert.equal(Either.isLeft(I.either(Infinity)), true)
  *
  * // Extracting error information for invalid inputs
  * const Pi = 3.14
- * const floatResult = Integer.either(Pi)
+ * const floatResult = I.either(Pi)
  * if (Either.isLeft(floatResult)) {
  *   assert.deepEqual(
  *     pipe(
@@ -267,26 +264,26 @@ export const option: (n: number) => _Option.Option<Integer> = internal.IntegerCo
  *       // Error messages detail the validation failure
  *       Option.map(([{ message }]) => message)
  *     ),
- *     Option.some(`Expected ${Pi} to be an integer`)
+ *     Option.some(`Expected (${Pi}) to be an integer`)
  *   )
  * }
  *
  * // Mapping over valid integers with Either
  * const doubleIfValid = (
  *   n: number
- * ): Either.Either<Integer.Integer, Brand.BrandErrors> =>
+ * ): Either.Either<I.Integer, Brand.Brand.BrandErrors> =>
  *   pipe(
- *     Integer.either(n),
- *     Either.map((int) => Integer.multiply(int, Integer.of(2)))
+ *     I.either(n),
+ *     Either.map((int) => I.multiply(int, I.of(2)))
  *   )
  *
- * assert.deepStrictEqual(doubleIfValid(5), Either.right(Integer.of(10)))
+ * assert.deepStrictEqual(doubleIfValid(5), Either.right(I.of(10)))
  * assert.equal(Either.isLeft(doubleIfValid(5.5)), true)
  *
  * // Handling both cases with Either.match
  * const classifyNumber = (n: number): string =>
  *   pipe(
- *     Integer.either(n),
+ *     I.either(n),
  *     Either.match({
  *       onLeft: ([{ message }]) => `Validation error: ${message}`,
  *       onRight: (int) => `${int} is a valid member of ℤ`
@@ -296,14 +293,14 @@ export const option: (n: number) => _Option.Option<Integer> = internal.IntegerCo
  * assert.equal(classifyNumber(42), "42 is a valid member of ℤ")
  * assert.equal(
  *   classifyNumber(3.14),
- *   "Validation error: Expected 3.14 to be an integer"
+ *   "Validation error: Expected (3.14) to be an integer"
  * )
  *
  * // For form validation and user input processing
  * const processUserInput = (input: string): string =>
  *   pipe(
  *     Number.parseFloat(input),
- *     Integer.either,
+ *     I.either,
  *     Either.match({
  *       onLeft: ([{ message }]) => `Invalid input: ${message}`,
  *       onRight: (int) => `You entered the integer ${int}`
@@ -313,11 +310,11 @@ export const option: (n: number) => _Option.Option<Integer> = internal.IntegerCo
  * assert.equal(processUserInput("42"), "You entered the integer 42")
  * assert.equal(
  *   processUserInput("3.14"),
- *   "Invalid input: Expected 3.14 to be an integer"
+ *   "Invalid input: Expected (3.14) to be an integer"
  * )
  * assert.equal(
  *   processUserInput("not a number"),
- *   "Invalid input: Expected NaN to be an integer"
+ *   "Invalid input: Expected (NaN) to be an integer"
  * )
  * ```
  *
@@ -512,57 +509,55 @@ export const isInteger: _Predicate.Refinement<unknown, Integer> = (input) =>
  * @example
  *
  * ```ts
- * import * as assert from "node:assert/strict"
  * import { pipe } from "effect"
- * import * as Integer from "effect/Integer"
- * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as I from "effect/Integer"
+ * import * as N from "effect/NaturalNumber"
+ * import * as assert from "node:assert/strict"
  *
  * // Basic usage
- * assert.equal(Integer.abs(5), NaturalNumber.of(5))
- * assert.equal(Integer.abs(-5), NaturalNumber.of(5))
- * assert.equal(Integer.abs(0), NaturalNumber.of(0))
+ * assert.equal(I.abs(I.of(5)), N.of(5))
+ * assert.equal(I.abs(I.of(-5)), N.of(5))
+ * assert.equal(I.abs(I.of(0)), N.of(0))
  *
  * // Verify mathematical properties
- * const a = -7
- * const b = 3
+ * const a = I.of(-7)
+ * const b = I.of(3)
  *
  * // Symmetry
- * assert.equal(Integer.abs(-a), Integer.abs(a))
+ * assert.equal(I.abs(I.of(-a)), I.abs(a))
  *
  * // Multiplicative property
- * const absProduct: NaturalNumber.NaturalNumber = Integer.abs(
- *   Integer.multiply(a, b) // -21
+ * const absProduct: N.NaturalNumber = I.abs(
+ *   I.multiply(a, b) // -21
  * ) // 21
- * const productOfAbs: NaturalNumber.NaturalNumber = NaturalNumber.multiply(
- *   Integer.abs(a), // 7
- *   Integer.abs(b) // 3
+ * const productOfAbs: N.NaturalNumber = N.multiply(
+ *   I.abs(a), // 7
+ *   I.abs(b) // 3
  * ) // 21
  * assert.equal(absProduct, productOfAbs)
  *
  * // Using with other Integer operations
- * const result = Integer.subtract(-10, 5) // -5
- * const magnitude = Integer.abs(result) // 5 as NaturalNumber
+ * const _magnitude = I.abs(
+ *   I.subtract(I.of(-10), I.of(5)) // -5
+ * ) // 5 as NaturalNumber
  *
  * // Chaining with other Integer operations (NaturalNumber can be used as an Integer)
  * assert.equal(
  *   pipe(
- *     -42,
- *     Integer.abs, // Returns NaturalNumber 42
- *     Integer.multiply(2) // Works because NaturalNumber can be used as an Integer
+ *     I.of(-42),
+ *     I.abs, // Returns NaturalNumber 42
+ *     I.multiply(I.of(2)) // Works because NaturalNumber can be used as an Integer
  *   ),
  *   84
  * )
  *
  * // Working with potentially negative values
- * function getDistance(
- *   a: Integer,
- *   b: Integer
- * ): NaturalNumber.NaturalNumber {
- *   return Integer.abs(Integer.subtract(b, a))
+ * function getDistance(a: I.Integer, b: I.Integer): N.NaturalNumber {
+ *   return pipe(I.subtract(b, a), I.abs)
  * }
  *
- * assert.deepStrictEqual(getDistance(10, 15), NaturalNumber.of(5)) // 15 - 10 = 5
- * assert.deepStrictEqual(getDistance(15, 10), NaturalNumber.of(5)) // 10 - 15 = -5, abs(-5) = 5
+ * assert.deepStrictEqual(getDistance(I.of(10), I.of(15)), N.of(5)) // 15 - 10 = 5
+ * assert.deepStrictEqual(getDistance(I.of(15), I.of(10)), N.of(5)) // 10 - 15 = -5, abs(-5) = 5
  * ```
  *
  * @param n - The integer whose absolute value is to be computed
@@ -1052,51 +1047,51 @@ export const multiplyAll: {
  * @example
  *
  * ```ts
- * import * as assert from "node:assert/strict"
  * import { pipe } from "effect"
- * import * as Integer from "effect/Integer"
- * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as I from "effect/Integer"
+ * import * as N from "effect/NaturalNumber"
+ * import * as assert from "node:assert/strict"
  *
  * // Basic usage
- * assert.equal(Integer.pow(Integer.of(2), NaturalNumber.of(3)), 8) // 2³ = 8
- * assert.equal(Integer.pow(Integer.of(3), NaturalNumber.of(4)), 81) // 3⁴ = 81
+ * assert.equal(I.pow(I.of(2), N.of(3)), 8) // 2³ = 8
+ * assert.equal(I.pow(I.of(3), N.of(4)), 81) // 3⁴ = 81
  *
  * // Zero exponent case
- * assert.equal(Integer.pow(Integer.of(5), NaturalNumber.of(0)), 1) // 5⁰ = 1
- * assert.equal(Integer.pow(Integer.of(0), NaturalNumber.of(0)), 1) // 0⁰ = 1 (by convention)
+ * assert.equal(I.pow(I.of(5), N.of(0)), 1) // 5⁰ = 1
+ * assert.equal(I.pow(I.of(0), N.of(0)), 1) // 0⁰ = 1 (by convention)
  *
  * // Negative base with even/odd exponents
- * assert.equal(Integer.pow(Integer.of(-2), NaturalNumber.of(2)), 4) // (-2)² = 4
- * assert.equal(Integer.pow(Integer.of(-2), NaturalNumber.of(3)), -8) // (-2)³ = -8
+ * assert.equal(I.pow(I.of(-2), N.of(2)), 4) // (-2)² = 4
+ * assert.equal(I.pow(I.of(-2), N.of(3)), -8) // (-2)³ = -8
  *
  * // Data-last style (pipeable)
  * assert.equal(
  *   pipe(
- *     Integer.of(3),
- *     Integer.pow(NaturalNumber.of(2)) // 3² = 9
+ *     I.of(3),
+ *     I.pow(N.of(2)) // 3² = 9
  *   ),
  *   9
  * )
  *
  * // Chaining operations
  * const result = pipe(
- *   Integer.of(2),
- *   Integer.pow(NaturalNumber.of(3)), // 2³ = 8
- *   Integer.multiply(Integer.of(2)), // 8 * 2 = 16
- *   Integer.pow(NaturalNumber.of(2)) // 16² = 256
+ *   I.of(2),
+ *   I.pow(N.of(3)), // 2³ = 8
+ *   I.multiply(I.of(2)), // 8 * 2 = 16
+ *   I.pow(N.of(2)) // 16² = 256
  * )
  * assert.equal(result, 256)
  *
  * // Verify mathematical properties
- * const a = Integer.of(2)
- * const m = NaturalNumber.of(3)
- * const n = NaturalNumber.of(2)
+ * const a = I.of(2)
+ * const m = N.of(3)
+ * const n = N.of(2)
  *
  * // Exponent addition: a^(m+n) = a^m × a^n
- * const sumExponent = Integer.pow(a, NaturalNumber.add(m, n)) // 2^(3+2) = 2^5 = 32
- * const productPowers = Integer.multiply(
- *   Integer.pow(a, m), // 2^3 = 8
- *   Integer.pow(a, n) // 2^2 = 4
+ * const sumExponent = I.pow(a, N.sum(m, n)) // 2^(3+2) = 2^5 = 32
+ * const productPowers = I.multiply(
+ *   I.pow(a, m), // 2^3 = 8
+ *   I.pow(a, n) // 2^2 = 4
  * ) // 8 * 4 = 32
  * assert.equal(sumExponent, productPowers)
  * ```
@@ -1148,35 +1143,35 @@ export const pow: {
  * @example
  *
  * ```ts
- * import * as assert from "node:assert/strict"
  * import { pipe } from "effect"
- * import * as Integer from "effect/Integer"
- * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as I from "effect/Integer"
+ * import * as N from "effect/NaturalNumber"
+ * import * as assert from "node:assert/strict"
  *
  * // Basic usage
- * assert.equal(Integer.square(Integer.of(5)), NaturalNumber.of(25))
- * assert.equal(Integer.square(Integer.of(-5)), NaturalNumber.of(25))
- * assert.equal(Integer.square(Integer.of(0)), NaturalNumber.of(0))
+ * assert.equal(I.square(I.of(5)), N.of(25))
+ * assert.equal(I.square(I.of(-5)), N.of(25))
+ * assert.equal(I.square(I.of(0)), N.of(0))
  *
  * // Demonstrating symmetry property: (-n)² = n²
- * const n = 7
- * assert.equal(Integer.square(n), Integer.square(-n))
+ * const n = I.of(7)
+ * assert.equal(I.square(n), I.square(I.of(-n)))
  *
  * // Using square with other operations
- * const x = Integer.of(4)
- * const y = Integer.of(3)
+ * const x = I.of(4)
+ * const y = I.of(3)
  *
  * // Computing the hypotenuse using the Pythagorean theorem
- * const hypotenuseSquared = NaturalNumber.add(
- *   Integer.square(x), // 16
- *   Integer.square(y) // 9
+ * const hypotenuseSquared = N.sum(
+ *   I.square(x), // 16
+ *   I.square(y) // 9
  * ) // 25
- * assert.equal(hypotenuseSquared, NaturalNumber.of(25))
+ * assert.equal(hypotenuseSquared, N.of(25))
  *
  * // Compare with direct power function usage
  * assert.deepStrictEqual(
- *   pipe(Integer.of(4), Integer.square),
- *   NaturalNumber.of(pipe(Integer.of(4), Integer.pow(NaturalNumber.of(2))))
+ *   pipe(I.of(4), I.square),
+ *   N.of(pipe(I.of(4), I.pow(N.of(2))))
  * )
  * ```
  *
@@ -1216,32 +1211,29 @@ export const square: (n: Integer) => NaturalNumber.NaturalNumber = internal.squa
  * ```ts
  * import * as assert from "node:assert/strict"
  * import { pipe } from "effect"
- * import * as Integer from "effect/Integer"
- * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as I from "effect/Integer"
+ * import * as N from "effect/NaturalNumber"
  *
  * // Basic usage with positive integers
- * assert.equal(Integer.cube(Integer.of(2)), 8)
- * assert.equal(Integer.cube(Integer.of(3)), 27)
- * assert.equal(Integer.cube(Integer.of(0)), 0)
+ * assert.equal(I.cube(I.of(2)), 8)
+ * assert.equal(I.cube(I.of(3)), 27)
+ * assert.equal(I.cube(I.of(0)), 0)
  *
  * // Sign preservation with negative integers
- * assert.equal(Integer.cube(Integer.of(-2)), -8)
- * assert.equal(Integer.cube(Integer.of(-3)), -27)
+ * assert.equal(I.cube(I.of(-2)), -8)
+ * assert.equal(I.cube(I.of(-3)), -27)
  *
  * // Demonstrating odd function property: (-n)³ = -(n³)
- * const n = Integer.of(4)
- * assert.equal(Integer.cube(-n), -Integer.cube(n))
+ * const n = I.of(4)
+ * assert.equal(I.cube(I.of(-n)), -I.cube(n))
  *
  * // Calculating the volume of a cube with side length 5
- * const sideLength = Integer.of(5)
- * const volume = Integer.cube(sideLength)
+ * const sideLength = I.of(5)
+ * const volume = I.cube(sideLength)
  * assert.equal(volume, 125)
  *
  * // Compare with direct power function usage
- * assert.equal(
- *   Integer.cube(Integer.of(4)),
- *   pipe(Integer.of(4), Integer.pow(NaturalNumber.of(3)))
- * )
+ * assert.equal(I.cube(I.of(4)), pipe(I.of(4), I.pow(N.of(3))))
  * ```
  *
  * @param n - The integer to cube
@@ -1611,33 +1603,33 @@ export const divideSafe: {
  * @example
  *
  * ```ts
- * import * as assert from "node:assert/strict"
  * import { pipe } from "effect"
- * import * as Integer from "effect/Integer"
+ * import * as I from "effect/Integer"
+ * import * as assert from "node:assert/strict"
  *
  * // Basic increment operation
- * assert.strictEqual(Integer.increment(Integer.of(1)), Integer.of(2))
- * assert.strictEqual(Integer.increment(Integer.zero), Integer.of(1))
+ * assert.strictEqual(I.increment(I.of(1)), I.of(2))
+ * assert.strictEqual(I.increment(I.zero), I.of(1))
  *
  * // Incrementing negative numbers
- * assert.strictEqual(Integer.increment(Integer.of(-1)), Integer.zero)
- * assert.strictEqual(Integer.increment(Integer.of(-42)), Integer.of(-41))
+ * assert.strictEqual(I.increment(I.of(-1)), I.zero)
+ * assert.strictEqual(I.increment(I.of(-42)), I.of(-41))
  *
  * // Chaining multiple increments (creating n + 4)
  * assert.strictEqual(
  *   pipe(
- *     Integer.of(1),
- *     Integer.increment, // 1 + 1 = 2
- *     Integer.increment, // 2 + 1 = 3
- *     Integer.increment, // 3 + 1 = 4
- *     Integer.increment // 4 + 1 = 5
+ *     I.one,
+ *     I.increment, // 1 + 1 = 2
+ *     I.increment, // 2 + 1 = 3
+ *     I.increment, // 3 + 1 = 4
+ *     I.increment // 4 + 1 = 5
  *   ),
- *   Integer.of(5)
+ *   I.of(5)
  * )
  *
  * // Equivalent to adding one
- * const n = Integer.of(37)
- * assert.strictEqual(Integer.increment(n), Integer.add(n, Integer.of(1)))
+ * const n = I.of(37)
+ * assert.strictEqual(I.increment(n), I.sum(n, I.one))
  * ```
  *
  * @param n - The integer value to be incremented.
