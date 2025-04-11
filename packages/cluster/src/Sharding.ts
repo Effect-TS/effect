@@ -211,6 +211,7 @@ const make = Effect.gen(function*() {
         }
 
         const acquired = yield* shardStorage.acquire(selfAddress, unacquiredShards)
+        yield* Effect.ignore(storage.resetShards(acquired))
         for (const shardId of acquired) {
           acquiredShards.add(shardId)
         }
