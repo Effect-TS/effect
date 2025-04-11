@@ -59,6 +59,9 @@ export const multiply = <A extends number = number, B extends number = A>(
   multiplicand: A
 ): B => (multiplier * multiplicand) as B
 
+/** @internal */
+export const negate = <A extends number = number, B extends number = A>(n: A) => multiply<A, B>(n, -1 as A)
+
 /**
  * Represents errors that can occur during division operations.
  *

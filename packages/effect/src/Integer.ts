@@ -625,6 +625,41 @@ export const abs: {
 } = flow(Math.abs, NaturalNumber.of)
 
 /**
+ * Returns the additive inverse of an integer, effectively negating it.
+ *
+ * @memberof Integer
+ * @since 3.14.6
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
+ *
+ * assert.equal(
+ *   Integer.negate(Integer.of(5)), //
+ *   Integer.of(-5)
+ * )
+ *
+ * assert.equal(
+ *   Integer.negate(Integer.of(-5)), //
+ *   Integer.of(5)
+ * )
+ *
+ * assert.equal(
+ *   Integer.negate(Integer.of(0)), //
+ *   Integer.of(0)
+ * )
+ * ```
+ *
+ * @param n - The integer value to be negated.
+ * @returns The negated integer value.
+ */
+export const negate: {
+  (n: Integer): Integer
+} = internal.negate<Integer>
+
+/**
  * Performs addition in the set of integers (ℤ), preserving closure within the
  * integer domain.
  *

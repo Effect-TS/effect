@@ -376,6 +376,37 @@ export const zero: NaturalNumber = internal.zero
 export const one: NaturalNumber = internal.one
 
 /**
+ * Returns the additive inverse of an NaturalNumber, effectively negating it.
+ *
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Integer from "effect/Integer"
+ *
+ * assert.equal<Integer.Integer>(
+ *   NaturalNumber.negate(NaturalNumber.of(5)),
+ *   Integer.of(-5)
+ * )
+ *
+ * assert.equal<Integer.Integer>(
+ *   NaturalNumber.negate(NaturalNumber.of(0)),
+ *   Integer.of(0)
+ * )
+ * ```
+ *
+ * @param n - The natural number to be negated.
+ * @returns The negated integer value.
+ */
+export const negate: {
+  (n: NaturalNumber): Integer.Integer
+} = internal.negate<NaturalNumber, Integer.Integer>
+
+/**
  * Type guard to test if a value is a `NaturalNumber`.
  *
  * This function checks if the provided value is a valid non-negative integer

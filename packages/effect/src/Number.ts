@@ -245,6 +245,41 @@ import * as predicate from "./Predicate.js"
 export const isNumber: (input: unknown) => input is number = predicate.isNumber
 
 /**
+ * Returns the additive inverse of a number, effectively negating it.
+ *
+ * @memberof Number
+ * @since 3.14.6
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as RealNumber from "effect/Number"
+ *
+ * assert.equal(
+ *   RealNumber.negate(5), //
+ *   -5
+ * )
+ *
+ * assert.equal(
+ *   RealNumber.negate(-5), //
+ *   5
+ * )
+ *
+ * assert.equal(
+ *   RealNumber.negate(0), //
+ *   0
+ * )
+ * ```
+ *
+ * @param n - The number value to be negated.
+ * @returns The negated number value.
+ */
+export const negate: {
+  (n: number): number
+} = internal.negate
+
+/**
  * Performs addition in the set of JavaScript numbers, approximating addition in
  * the mathematical set of real numbers (ℝ).
  *
