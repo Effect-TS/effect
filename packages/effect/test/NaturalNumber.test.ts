@@ -1279,6 +1279,181 @@ describe("NaturalNumber", () => {
         NaturalNumber.of(3_840)
       )
     })
+
+    it("pow", () => {
+      const two = NaturalNumber.of(2)
+      const three = NaturalNumber.of(3)
+      const four = NaturalNumber.of(4)
+
+      // Basic functionality tests
+      strictEqual(
+        NaturalNumber.pow(two, NaturalNumber.of(3)),
+        NaturalNumber.of(8),
+        "2^3 = 8"
+      )
+      strictEqual(
+        pipe(two, NaturalNumber.pow(NaturalNumber.of(3))),
+        NaturalNumber.of(8),
+        "2^3 = 8 (data-first)"
+      )
+
+      // Boundary conditions
+      strictEqual(
+        NaturalNumber.pow(two, NaturalNumber.zero),
+        NaturalNumber.one,
+        "Any number raised to the power of 0 is 1"
+      )
+      strictEqual(
+        NaturalNumber.pow(NaturalNumber.zero, NaturalNumber.zero),
+        NaturalNumber.one,
+        "0^0 = 1 (mathematical convention)"
+      )
+      strictEqual(
+        NaturalNumber.pow(NaturalNumber.one, NaturalNumber.of(1000)),
+        NaturalNumber.one,
+        "1 raised to any power is 1"
+      )
+      strictEqual(
+        NaturalNumber.pow(NaturalNumber.zero, NaturalNumber.of(5)),
+        NaturalNumber.zero,
+        "0 raised to a positive power is 0"
+      )
+
+      // Mathematical properties
+      strictEqual(
+        NaturalNumber.pow(two, NaturalNumber.zero),
+        NaturalNumber.one,
+        "n^0 = 1 for any n"
+      )
+      strictEqual(
+        NaturalNumber.pow(two, NaturalNumber.one),
+        two,
+        "n^1 = n for any n"
+      )
+
+      // Exponentiation laws
+      const n = two
+      const a = NaturalNumber.of(2)
+      const b = NaturalNumber.of(3)
+
+      strictEqual(
+        pipe(
+          NaturalNumber.pow(n, a),
+          NaturalNumber.multiply(NaturalNumber.pow(n, b))
+        ),
+        NaturalNumber.pow(n, NaturalNumber.sum(a, b)),
+        "n^a * n^b = n^(a+b)"
+      )
+
+      // Composability with other operations
+      strictEqual(
+        pipe(
+          NaturalNumber.pow(two, NaturalNumber.of(3)),
+          NaturalNumber.sum(NaturalNumber.one)
+        ),
+        NaturalNumber.of(9),
+        "2^3 + 1 = 9"
+      )
+
+      strictEqual(
+        pipe(
+          NaturalNumber.pow(two, NaturalNumber.of(3)),
+          NaturalNumber.multiply(three)
+        ),
+        NaturalNumber.of(24),
+        "2^3 * 3 = 24"
+      )
+
+      // Curried version
+      const square = NaturalNumber.pow(NaturalNumber.of(2))
+      strictEqual(
+        square(four),
+        NaturalNumber.of(16),
+        "Curried version works correctly"
+      )
+    })
+
+    it("square", () => {
+      // Basic functionality tests
+      strictEqual(
+        NaturalNumber.square(NaturalNumber.of(5)),
+        NaturalNumber.of(25),
+        "5² = 25"
+      )
+
+      // Boundary conditions
+      strictEqual(
+        NaturalNumber.square(NaturalNumber.zero),
+        NaturalNumber.zero,
+        "0² = 0"
+      )
+      strictEqual(
+        NaturalNumber.square(NaturalNumber.one),
+        NaturalNumber.one,
+        "1² = 1"
+      )
+
+      // Composability with other operations
+      const x = NaturalNumber.of(4)
+      const y = NaturalNumber.of(3)
+
+      // Computing the hypotenuse using the Pythagorean theorem
+      const hypotenuseSquared = NaturalNumber.sum(
+        NaturalNumber.square(x), // 16
+        NaturalNumber.square(y) // 9
+      ) // 25
+      strictEqual(
+        hypotenuseSquared,
+        NaturalNumber.of(25),
+        "4² + 3² = 16 + 9 = 25"
+      )
+
+      // Compare with direct power function usage
+      deepStrictEqual(
+        NaturalNumber.square(NaturalNumber.of(4)),
+        NaturalNumber.pow(NaturalNumber.of(4), NaturalNumber.of(2)),
+        "square(n) = pow(n, 2)"
+      )
+    })
+
+    it("cube", () => {
+      // Basic functionality tests
+      strictEqual(
+        NaturalNumber.cube(NaturalNumber.of(5)),
+        NaturalNumber.of(125),
+        "5³ = 125"
+      )
+
+      // Boundary conditions
+      strictEqual(
+        NaturalNumber.cube(NaturalNumber.zero),
+        NaturalNumber.zero,
+        "0³ = 0"
+      )
+      strictEqual(
+        NaturalNumber.cube(NaturalNumber.one),
+        NaturalNumber.one,
+        "1³ = 1"
+      )
+
+      // Composability with other operations
+      strictEqual(
+        pipe(
+          NaturalNumber.of(2),
+          NaturalNumber.cube,
+          NaturalNumber.sum(NaturalNumber.one)
+        ),
+        NaturalNumber.of(9),
+        "2³ + 1 = 8 + 1 = 9"
+      )
+
+      // Compare with direct power function usage
+      deepStrictEqual(
+        NaturalNumber.cube(NaturalNumber.of(4)),
+        NaturalNumber.pow(NaturalNumber.of(4), NaturalNumber.of(3)),
+        "cube(n) = pow(n, 3)"
+      )
+    })
   })
 
   describe("Instances", () => {

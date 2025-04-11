@@ -23,7 +23,7 @@ import type * as Brand from "./Brand.js"
 import type * as Either from "./Either.js"
 import * as _Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
-import * as Integer from "./Integer.js"
+import type * as Integer from "./Integer.js"
 import * as internal from "./internal/number.js"
 import * as _Option from "./Option.js"
 import * as _Order from "./Order.js"
@@ -1027,6 +1027,217 @@ export const multiplyAll: {
 } = internal.multiplyAll<NaturalNumber>
 
 /**
+ * Computes the power of a natural number raised to a natural number `exponent`.
+ *
+ * For any natural number **base** `b` and **exponent** `n`, this function
+ * computes `b^n`, which represents `b` multiplied by itself `n` times. When `n
+ * = 0`, the result is `1` by convention.
+ *
+ * @remarks
+ * Mathematical properties of exponentiation in ℕ₀:
+ *
+ * - **Zero exponent**: `b^0 = 1` for any `b ≠ 0` (and by convention, `0^0 = 1`)
+ * - **Unit exponent**: `b^1 = b` for any natural number `b`
+ * - **Monotonicity**: If `a > b > 0`, then `a^n > b^n` for any `n > 0`
+ * - **Exponent addition**: `b^(m+n) = b^m × b^n`
+ * - **Exponent multiplication**: `(b^m)^n = b^(m×n)`
+ * - **Product of bases**: `(a×b)^n = a^n × b^n`
+ *
+ * **For natural numbers, the result of exponentiation is always a natural
+ * number, preserving closure within the domain**.
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as N from "effect/NaturalNumber"
+ *
+ * // Basic usage
+ * assert.equal(N.pow(N.of(2), N.of(3)), N.of(8)) // 2³ = 8
+ * assert.equal(N.pow(N.of(3), N.of(4)), N.of(81)) // 3⁴ = 81
+ *
+ * // Zero exponent case
+ * assert.equal(N.pow(N.of(5), N.of(0)), N.of(1)) // 5⁰ = 1
+ * assert.equal(N.pow(N.of(0), N.of(0)), N.of(1)) // 0⁰ = 1 (by convention)
+ *
+ * // Zero base cases
+ * assert.equal(N.pow(N.of(0), N.of(5)), N.of(0)) // 0⁵ = 0
+ * assert.equal(N.pow(N.of(0), N.of(1)), N.of(0)) // 0¹ = 0
+ *
+ * // Data-last style (pipeable)
+ * assert.equal(
+ *   pipe(
+ *     N.of(3),
+ *     N.pow(N.of(2)) // 3² = 9
+ *   ),
+ *   N.of(9)
+ * )
+ *
+ * // Chaining operations
+ * const result = pipe(
+ *   N.of(2),
+ *   N.pow(N.of(3)), // 2³ = 8
+ *   N.multiply(N.of(2)), // 8 * 2 = 16
+ *   N.pow(N.of(2)) // 16² = 256
+ * )
+ * assert.equal(result, N.of(256))
+ *
+ * // Verify mathematical properties
+ * const a = N.of(2)
+ * const m = N.of(3)
+ * const n = N.of(2)
+ *
+ * // Exponent addition: a^(m+n) = a^m × a^n
+ * const sumExponent = N.pow(a, N.add(m, n)) // 2^(3+2) = 2^5 = 32
+ * const productPowers = N.multiply(
+ *   N.pow(a, m), // 2^3 = 8
+ *   N.pow(a, n) // 2^2 = 4
+ * ) // 8 * 4 = 32
+ * assert.deepStrictEqual(sumExponent, productPowers)
+ * ```
+ *
+ * @see {@link module:NaturalNumber.square} - Specialized function for computing the square (`n²`)
+ * @see {@link module:NaturalNumber.cube} - Specialized function for computing the cube (`n³`)
+ */
+export const pow: {
+  /**
+   * Returns a function that raises its input to the specified exponent.
+   *
+   * @param exponent - The natural number exponent
+   * @returns A function that takes a base natural number and returns it raised
+   *   to the exponent
+   */
+  (exponent: NaturalNumber): (base: NaturalNumber) => NaturalNumber
+
+  /**
+   * Raises the base natural number to the specified natural number exponent.
+   *
+   * @param base - The natural number base
+   * @param exponent - The natural number exponent
+   * @returns The result of base raised to the exponent power
+   */
+  (base: NaturalNumber, exponent: NaturalNumber): NaturalNumber
+} = dual(2, internal.pow<NaturalNumber>)
+
+/**
+ * Computes the square of a natural number (`n²`).
+ *
+ * @remarks
+ * For any natural number `n`, the square function computes `n²`, which is
+ * equivalent to `n × n`. The result is always a natural number, as squaring
+ * preserves non-negativity.
+ *
+ * **Mathematical properties**:
+ *
+ * - Non-negativity: `n² ≥ 0` for all `n ∈ ℕ₀`
+ * - Identity for `0` and `1`: `0² = 0`, `1² = 1`
+ * - Monotonicity: If `a < b`, then `a² < b²` for `a, b ∈ ℕ₀` where `a, b > 0`
+ * - Perfect squares: `n²` is a perfect square for all `n ∈ ℕ₀`
+ *
+ * The square function is implemented as a specialized case of the
+ * {@link module:NaturalNumber.pow} function with an exponent of 2.
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import * as N from "effect/NaturalNumber"
+ *
+ * // Basic usage
+ * assert.equal(N.square(N.of(5)), N.of(25))
+ * assert.equal(N.square(N.of(0)), N.of(0))
+ * assert.equal(N.square(N.of(1)), N.of(1))
+ *
+ * // Using square with other operations
+ * const x = N.of(4)
+ * const y = N.of(3)
+ *
+ * // Computing the hypotenuse using the Pythagorean theorem
+ * const hypotenuseSquared = N.add(
+ *   N.square(x), // 16
+ *   N.square(y) // 9
+ * ) // 25
+ * assert.equal(hypotenuseSquared, N.of(25))
+ *
+ * // Area of a square with side length 6
+ * const sideLength = N.of(6)
+ * const area = N.square(sideLength)
+ * assert.equal(area, N.of(36))
+ *
+ * // Compare with direct power function usage
+ * assert.equal(N.square(N.of(4)), N.pow(N.of(4), N.of(2)))
+ * ```
+ *
+ * @param n - The natural number to square
+ * @returns The square of n
+ * @see {@link module:NaturalNumber.pow} - General power function for any natural number exponent
+ * @see {@link module:NaturalNumber.cube} - Function to compute the cube (`n³`)
+ */
+export const square: {
+  (n: NaturalNumber): NaturalNumber
+} = internal.square<NaturalNumber>
+
+/**
+ * Computes the cube of a natural number (`n³`).
+ *
+ * For any natural number `n`, the cube function computes `n³`, which is
+ * equivalent to `n × n × n`. The result is always a natural number, maintaining
+ * closure within the domain of `ℕ₀`.
+ *
+ * @remarks
+ * **Mathematical properties**:
+ *
+ * - **Identity** for `0` and `1`: `0³ = 0`, `1³ = 1`
+ * - **Monotonicity**: If `a < b`, then `a³ < b³` for `a, b ∈ ℕ₀` where `a, b > 0`
+ * - **Perfect cubes**: `n³` is a perfect cube for all `n ∈ ℕ₀`
+ *
+ * The cube function is implemented as a specialized case of the
+ * {@link module:NaturalNumber.pow} function with an exponent of 3.
+ * @memberof NaturalNumber
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import * as N from "effect/NaturalNumber"
+ *
+ * // Basic usage
+ * assert.equal(N.cube(N.of(2)), N.of(8))
+ * assert.equal(N.cube(N.of(3)), N.of(27))
+ * assert.equal(N.cube(N.of(0)), N.of(0))
+ *
+ * // Calculating the volume of a cube with side length 5
+ * const sideLength = N.of(5)
+ * const volume = N.cube(sideLength)
+ * assert.equal(volume, N.of(125))
+ *
+ * // Sequential powers
+ * const n = N.of(2)
+ * const squared = N.square(n) // 2² = 4
+ * const cubed = N.cube(n) // 2³ = 8
+ * assert.equal(squared, N.of(4))
+ * assert.equal(cubed, N.of(8))
+ *
+ * // Compare with direct power function usage
+ * assert.equal(N.cube(N.of(4)), N.pow(N.of(4), N.of(3)))
+ * ```
+ *
+ * @param n - The natural number to cube
+ * @returns The cube of n
+ * @see {@link module:NaturalNumber.pow} - General power function for any natural number exponent
+ * @see {@link module:NaturalNumber.square} - Function to compute the square (n²)
+ */
+export const cube: {
+  (n: NaturalNumber): NaturalNumber
+} = internal.cube<NaturalNumber>
+
+/**
  * Divides one natural number by another, mapping from the domain of `natural
  * numbers` to the codomain of `real numbers` (represented as JavaScript's
  * number type) to accommodate possible fractional results.
@@ -1518,7 +1729,9 @@ export const increment: (n: NaturalNumber) => NaturalNumber = internal.increment
  *   0).
  * @experimental
  */
-export const decrementToInteger: (n: NaturalNumber) => Integer.Integer = Integer.decrement
+export const decrementToInteger: {
+  (n: NaturalNumber): Integer.Integer
+} = internal.decrement<Integer.Integer>
 
 /**
  * Returns the result of decrementing a natural number, ensuring the result
