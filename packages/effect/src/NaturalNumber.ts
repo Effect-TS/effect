@@ -1,24 +1,73 @@
 /**
- * # Natural Numbers (ℕ)
+ * Operations on **natural numbers** (`ℕ₀`), representing non-negative integers
+ * `{0, 1, 2, 3, ...}`.
  *
- * This module provides operations for working with natural numbers ( `ℕ = {0,
- * 1, 2, ...}`).
+ * Natural numbers model quantities that arise from counting and are fundamental
+ * to:
  *
- * Note that not all operations are closed within the set of natural numbers:
+ * - Representing cardinality (size of collections)
+ * - Indexing sequences and arrays
+ * - Modeling discrete quantities that cannot be negative
+ * - Exponentiation and combinatorial operations
  *
- * - Addition and multiplication are closed operations (the result is always a
- *   natural number)
- * - Subtraction is not closed (may produce negative results)
- * - Division is not closed (may produce fractions)
+ * This module provides a _8type-safe way to work with natural numbers_*
+ * through:
  *
- * Operations that cannot guarantee a natural number result will return a more
- * appropriate type and are clearly documented.
+ * - Runtime validation ensuring values are non-negative integers
+ * - Operations that preserve the natural number invariants
+ * - Safety-first approach for operations that might violate the domain
+ *
+ * @remarks
+ * ## Type Variance and Composition
+ *
+ * Operations in this module follow careful type variance patterns for safety:
+ *
+ * - **Type-preserving operations** (`NaturalNumber → NaturalNumber`):
+ *
+ *   - Addition and multiplication: {@link module:NaturalNumber.sum},
+ *       {@link module:NaturalNumber.multiply},
+ *       {@link module:NaturalNumber.increment}
+ *   - Exponentiation: {@link module:NaturalNumber.pow},
+ *       {@link module:NaturalNumber.square}, {@link module:NaturalNumber.cube}
+ *   - Min/max operations: {@link module:NaturalNumber.min},
+ *       {@link module:NaturalNumber.max}, {@link module:NaturalNumber.clamp}
+ * - **Type-widening operations** (`NaturalNumber → Integer/number`):
+ *
+ *   - {@link module:NaturalNumber.decrementToInteger}: May produce negative values
+ *       when decrementing 0
+ *   - {@link module:NaturalNumber.divideToNumber}: Result may be fractional,
+ *       widening to number
+ * - **Option-returning operations** (`NaturalNumber → Option<NaturalNumber>`):
+ *
+ *   - {@link module:NaturalNumber.subtractSafe}: Returns None when result would be
+ *       negative
+ *   - {@link module:NaturalNumber.decrementSafe}: Returns None when applied to 0
+ *   - {@link module:NaturalNumber.divideSafe}: Returns None when division would be
+ *       fractional
+ *
+ * When composing operations:
+ *
+ * - Type-preserving chains maintain NaturalNumber type: `pipe(n, add(1),
+ *   multiply(2))`
+ * - Type-widening operations exit the NaturalNumber domain
+ * - Option-returning operations must be handled with Option combinators
+ * - Domain-violating operations have safe alternatives returning Option types
+ *
+ * From a type-theoretic perspective, `NaturalNumber` forms a semiring with:
+ *
+ * - Addition as the additive operation with identity 0
+ * - Multiplication as the multiplicative operation with identity 1
+ * - Standard distributive and associative properties
+ *
+ * In the type hierarchy:
+ *
+ * - `NaturalNumber` is a proper subset of {@link Integer} (`ℕ₀ ⊂ ℤ`)
  *
  * @module NaturalNumber
  * @since 3.14.6
- * @internal
  * @experimental
  */
+
 import type * as Brand from "./Brand.js"
 import type * as Either from "./Either.js"
 import * as _Equivalence from "./Equivalence.js"
