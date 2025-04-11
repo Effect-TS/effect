@@ -1,8 +1,72 @@
 /**
- * This module provides utility functions and type class instances for working
- * with the `number` type in TypeScript. It includes functions for basic
- * arithmetic operations, as well as type class instances for `Equivalence` and
- * `Order`.
+ * Operations on JavaScript numbers, representing an approximation of **real
+ * numbers** (`ℝ`).
+ *
+ * JavaScript's native `number` type (IEEE-754 double-precision) allows modeling
+ * of:
+ *
+ * - Continuous quantities with fractional parts
+ * - Measurements with arbitrary precision
+ * - Mathematical concepts requiring irrational values (π, e, √2, etc.)
+ * - Scientific calculations with floating-point operations
+ *
+ * This module provides enhanced functionality for JavaScript numbers with:
+ *
+ * - Comprehensive **arithmetic operations** ({@link module:Number.sum},
+ *   {@link module:Number.subtract}, {@link module:Number.multiply},
+ *   {@link module:Number.divide})
+ * - **Collection operations** ({@link module:Number.sumAll},
+ *   {@link module:Number.multiplyAll})
+ * - **Comparison utilities** ({@link module:Number.min}, {@link module:Number.max},
+ *   {@link module:Number.clamp}, {@link module:Number.between})
+ * - {@link module:Number.sign} and {@link module:Number.remainder} calculations
+ * - Special operations ({@link module:Number.nextPow2}, {@link module:Number.round}
+ *   with precision)
+ * - **Safe division** with Option return types
+ * - **Type guards** and parsing utilities
+ *
+ * @remarks
+ * Key features include:
+ *
+ * - Type class instances: {@link Equivalence}, {@link Order}
+ * - Error handling: {@link DivisionByZeroError} for unsafe operations
+ * - Predicates: lessThan, greaterThan and their inclusive variants
+ * - Parsing: converting strings to numbers with proper error handling
+ * - Support for both data-first and data-last (pipeable) API styles
+ *
+ * ## Type Variance and Composition
+ *
+ * Most operations in this module are _type-preserving_ (`number → number`),
+ * making them **easily composable** in pipelines:
+ *
+ * - All basic arithmetic operations (`sum`, `subtract`, `multiply`) maintain the
+ *   number type
+ * - Unsafe operations maintain direct type flow (e.g., `unsafeDivide: number →
+ *   number`)
+ * - Safe operations wrap results in `Option` for error handling (e.g., `divide:
+ *   number → Option<number>`)
+ * - No operations narrow to more specific numeric types automatically
+ *
+ * When composing operations:
+ *
+ * - `pipe(x, increment, multiply(2))` maintains type throughout
+ * - Operations returning `Option<number>` should be handled with {@link Option}
+ *   combinators
+ * - Function composition flows naturally with both data-first and data-last
+ *   variants
+ *
+ * From an analysis perspective, the JavaScript `number` approximates a field
+ * where:
+ *
+ * - Addition and multiplication are closed operations with identities (0 and 1)
+ * - Every value has an additive inverse (negation)
+ * - Every non-zero value has a multiplicative inverse (reciprocal)
+ * - Standard field axioms hold within floating-point limitations
+ *
+ * In the type hierarchy:
+ *
+ * - {@link module:NaturalNumber} is a proper subset of `number` (`ℕ₀ ⊂ ℝ`)
+ * - {@link module:Integer} is a proper subset of `number` (`ℤ ⊂ ℝ`)
  *
  * @module Number
  * @since 2.0.0
