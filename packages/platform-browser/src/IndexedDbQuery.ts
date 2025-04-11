@@ -123,22 +123,25 @@ const Proto = {
 const makeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
 >({
+  IDBKeyRange,
   database,
   source
 }: {
   readonly database: globalThis.IDBDatabase
+  readonly IDBKeyRange: typeof globalThis.IDBKeyRange
   readonly source: Source
 }): IndexedDbQuery<Source> => {
   function IndexedDbQuery() {}
   Object.setPrototypeOf(IndexedDbQuery, Proto)
   IndexedDbQuery.source = source
   IndexedDbQuery.database = database
+  IndexedDbQuery.IDBKeyRange = IDBKeyRange
 
   IndexedDbQuery.from = <
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(table: A) => IndexedDbQueryBuilder.fromMakeProto({ database, source, table })
+  >(table: A) => IndexedDbQueryBuilder.fromMakeProto({ database, IDBKeyRange, source, table })
 
   IndexedDbQuery.insert = (
     table: string,
@@ -230,7 +233,11 @@ export class IndexedDbApi extends Context.Tag(
 /** @internal */
 const makeApi = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
->(database: globalThis.IDBDatabase, source: Source): IndexedDbQuery<Source> => makeProto({ database, source })
+>(
+  database: globalThis.IDBDatabase,
+  IDBKeyRange: typeof globalThis.IDBKeyRange,
+  source: Source
+): IndexedDbQuery<Source> => makeProto({ database, IDBKeyRange, source })
 
 /**
  * @since 1.0.0
@@ -239,9 +246,9 @@ const makeApi = <
 export const layer = Layer.effect(
   IndexedDbApi,
   Effect.gen(function*() {
-    const { database } = yield* IndexedDbDatabase.IndexedDbDatabase
+    const { IDBKeyRange, database } = yield* IndexedDbDatabase.IndexedDbDatabase
     return IndexedDbApi.of({
-      makeApi: (source) => makeApi(database, source),
+      makeApi: (source) => makeApi(database, IDBKeyRange, source),
       use: (f) =>
         Effect.tryPromise({
           try: () => f(database),
