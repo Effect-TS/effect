@@ -11,6 +11,26 @@ import * as IndexedDbQuery from "./IndexedDbQuery.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 
+type ExtractIndexType<
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
+  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+> = Schema.Schema.Type<
+  IndexedDbTable.IndexedDbTable.TableSchema<
+    IndexedDbTable.IndexedDbTable.WithName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+      Table
+    >
+  >
+>[
+  IndexedDbTable.IndexedDbTable.Indexes<
+    IndexedDbTable.IndexedDbTable.WithName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+      Table
+    >
+  >[Index]
+]
+
 /**
  * @since 1.0.0
  * @category type ids
@@ -84,71 +104,36 @@ export declare namespace IndexedDbQueryBuilder {
     readonly [TypeId]: TypeId
     readonly from: From<Source, Table>
     readonly index?: Index
-    readonly only?: Schema.Schema.Type<
-      IndexedDbTable.IndexedDbTable.TableSchema<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >
-    >[
-      IndexedDbTable.IndexedDbTable.Indexes<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >[Index]
-    ]
-    readonly lowerBound?: Schema.Schema.Type<
-      IndexedDbTable.IndexedDbTable.TableSchema<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >
-    >[
-      IndexedDbTable.IndexedDbTable.Indexes<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >[Index]
-    ]
+    readonly only?: ExtractIndexType<Source, Table, Index>
+    readonly lowerBound?: ExtractIndexType<Source, Table, Index>
+    readonly upperBound?: ExtractIndexType<Source, Table, Index>
+    readonly excludeLowerBound?: boolean
+    readonly excludeUpperBound?: boolean
 
     readonly equals: (
-      value: Schema.Schema.Type<
-        IndexedDbTable.IndexedDbTable.TableSchema<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            Table
-          >
-        >
-      >[
-        IndexedDbTable.IndexedDbTable.Indexes<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            Table
-          >
-        >[Index]
-      ]
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gte: (
-      value: Schema.Schema.Type<
-        IndexedDbTable.IndexedDbTable.TableSchema<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            Table
-          >
-        >
-      >[
-        IndexedDbTable.IndexedDbTable.Indexes<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            Table
-          >
-        >[Index]
-      ]
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lte: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gt: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lt: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly between: (
+      lowerBound: ExtractIndexType<Source, Table, Index>,
+      upperBound: ExtractIndexType<Source, Table, Index>,
+      options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
     ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
   }
 }
@@ -165,8 +150,17 @@ const getSelect = (query: IndexedDbQueryBuilder.Select) =>
 
       if (query.only !== undefined) {
         keyRange = IDBKeyRange.only(query.only)
+      } else if (query.lowerBound !== undefined && query.upperBound !== undefined) {
+        keyRange = IDBKeyRange.bound(
+          query.lowerBound,
+          query.upperBound,
+          query.excludeLowerBound,
+          query.excludeUpperBound
+        )
       } else if (query.lowerBound !== undefined) {
-        keyRange = IDBKeyRange.lowerBound(query.lowerBound)
+        keyRange = IDBKeyRange.lowerBound(query.lowerBound, query.excludeLowerBound)
+      } else if (query.upperBound !== undefined) {
+        keyRange = IDBKeyRange.upperBound(query.upperBound, query.excludeUpperBound)
       }
 
       if (query.index !== undefined) {
@@ -249,76 +243,52 @@ const selectMakeProto = <
 >(options: {
   readonly from: IndexedDbQueryBuilder.From<Source, Table>
   readonly index?: Index
-  readonly only?: Schema.Schema.Type<
-    IndexedDbTable.IndexedDbTable.TableSchema<
-      IndexedDbTable.IndexedDbTable.WithName<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >
-  >[
-    IndexedDbTable.IndexedDbTable.Indexes<
-      IndexedDbTable.IndexedDbTable.WithName<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >[Index]
-  ]
-  readonly lowerBound?: Schema.Schema.Type<
-    IndexedDbTable.IndexedDbTable.TableSchema<
-      IndexedDbTable.IndexedDbTable.WithName<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >
-  >[
-    IndexedDbTable.IndexedDbTable.Indexes<
-      IndexedDbTable.IndexedDbTable.WithName<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >[Index]
-  ]
+  readonly only?: ExtractIndexType<Source, Table, Index>
+  readonly lowerBound?: ExtractIndexType<Source, Table, Index>
+  readonly upperBound?: ExtractIndexType<Source, Table, Index>
+  readonly excludeLowerBound?: boolean
+  readonly excludeUpperBound?: boolean
 }): IndexedDbQueryBuilder.Select<Source, Table, Index> => {
   function IndexedDbQueryBuilderImpl() {}
 
   const equals = (
-    value: Schema.Schema.Type<
-      IndexedDbTable.IndexedDbTable.TableSchema<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >
-    >[
-      IndexedDbTable.IndexedDbTable.Indexes<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >[Index]
-    ]
+    value: ExtractIndexType<Source, Table, Index>
   ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
     selectMakeProto({ from: options.from, index: options.index as any, only: value })
 
   const gte = (
-    value: Schema.Schema.Type<
-      IndexedDbTable.IndexedDbTable.TableSchema<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >
-    >[
-      IndexedDbTable.IndexedDbTable.Indexes<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >[Index]
-    ]
+    value: ExtractIndexType<Source, Table, Index>
   ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
-    selectMakeProto({ from: options.from, index: options.index as any, only: undefined, lowerBound: value })
+    selectMakeProto({ from: options.from, index: options.index as any, lowerBound: value, excludeLowerBound: false })
+
+  const lte = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    selectMakeProto({ from: options.from, index: options.index as any, upperBound: value, excludeUpperBound: false })
+
+  const gt = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    selectMakeProto({ from: options.from, index: options.index as any, lowerBound: value, excludeLowerBound: true })
+
+  const lt = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    selectMakeProto({ from: options.from, index: options.index as any, upperBound: value, excludeUpperBound: true })
+
+  const between = (
+    lowerBound: ExtractIndexType<Source, Table, Index>,
+    upperBound: ExtractIndexType<Source, Table, Index>,
+    queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
+  ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    selectMakeProto({
+      from: options.from,
+      index: options.index as any,
+      lowerBound,
+      upperBound,
+      excludeLowerBound: queryOptions?.excludeLowerBound ?? false,
+      excludeUpperBound: queryOptions?.excludeUpperBound ?? false
+    })
 
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
@@ -332,7 +302,14 @@ const selectMakeProto = <
   IndexedDbQueryBuilderImpl.index = options.index
   IndexedDbQueryBuilderImpl.only = options.only
   IndexedDbQueryBuilderImpl.lowerBound = options.lowerBound
+  IndexedDbQueryBuilderImpl.upperBound = options.upperBound
+  IndexedDbQueryBuilderImpl.excludeLowerBound = options.excludeLowerBound
+  IndexedDbQueryBuilderImpl.excludeUpperBound = options.excludeUpperBound
   IndexedDbQueryBuilderImpl.equals = equals
   IndexedDbQueryBuilderImpl.gte = gte
+  IndexedDbQueryBuilderImpl.lte = lte
+  IndexedDbQueryBuilderImpl.gt = gt
+  IndexedDbQueryBuilderImpl.lt = lt
+  IndexedDbQueryBuilderImpl.between = between
   return IndexedDbQueryBuilderImpl as any
 }
