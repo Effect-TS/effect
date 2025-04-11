@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.29.14
+
+### Patch Changes
+
+- [#4712](https://github.com/Effect-TS/effect/pull/4712) [`da21953`](https://github.com/Effect-TS/effect/commit/da21953a3831bf5974ab6add8fcc7fad1c0ba472) Thanks @tim-smart! - attempt to use network for persisted messages where possible
+
 ## 0.29.13
 
 ### Patch Changes
