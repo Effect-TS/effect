@@ -139,7 +139,56 @@ describe("IndexedDbQueryBuilder", () => {
         IndexedDbQuery.layer.pipe(
           Layer.provide(
             IndexedDbDatabase.layer(
-              "db2",
+              "db3",
+              IndexedDbMigration.make({
+                fromVersion: IndexedDbVersion.makeEmpty,
+                toVersion: Db,
+                execute: (_, toQuery) =>
+                  Effect.gen(function*() {
+                    yield* toQuery.createObjectStore("todo")
+                    yield* toQuery.createIndex("todo", "titleIndex")
+                    yield* toQuery.createIndex("todo", "countIndex")
+                    yield* toQuery.insertAll("todo", [
+                      { id: 1, title: "test1", count: 1, completed: false },
+                      { id: 2, title: "test2", count: 2, completed: false },
+                      { id: 3, title: "test3", count: 3, completed: false }
+                    ])
+                  })
+              })
+            ).pipe(Layer.provide(layerFakeIndexedDb))
+          )
+        )
+      )
+    ))
+
+  it.effect("select equals with index", () =>
+    Effect.gen(function*() {
+      {
+        const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+        const api = makeApi(Db)
+        const from = api.from("todo")
+        const select = from.select("titleIndex")
+        const equals = select.equals("test3")
+        const data = yield* equals
+
+        assert.equal(from.table, "todo")
+        assert.deepStrictEqual(from.source, Db)
+        assert.equal(equals.index, "titleIndex")
+        assert.deepStrictEqual(equals.from, from)
+        assert.deepStrictEqual(equals.from.IDBKeyRange, IDBKeyRange)
+        assert.equal(equals.only, "test3")
+        assert.equal(data.length, 1)
+        assert.deepStrictEqual(data, [{ id: 3, title: "test3", count: 3, completed: false }])
+
+        // Close database to avoid errors when running other tests (blocked access)
+        yield* use(async (database) => database.close())
+      }
+    }).pipe(
+      Effect.provide(
+        IndexedDbQuery.layer.pipe(
+          Layer.provide(
+            IndexedDbDatabase.layer(
+              "db4",
               IndexedDbMigration.make({
                 fromVersion: IndexedDbVersion.makeEmpty,
                 toVersion: Db,
