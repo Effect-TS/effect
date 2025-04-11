@@ -358,7 +358,7 @@ export const makeWith: <E2, R2, E, R>(
  */
 export const make: (
   f: (
-    request: ClientRequest.HttpClientRequest,
+    request: Omit<ClientRequest.HttpClientRequest, "timeout">,
     url: URL,
     signal: AbortSignal,
     fiber: RuntimeFiber<ClientResponse.HttpClientResponse, Error.HttpClientError>

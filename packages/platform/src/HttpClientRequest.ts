@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type { Inspectable } from "effect/Inspectable"
 import type * as Option from "effect/Option"
@@ -41,6 +42,7 @@ export interface HttpClientRequest extends Inspectable, Pipeable {
   readonly hash: Option.Option<string>
   readonly headers: Headers.Headers
   readonly body: Body.HttpBody
+  readonly timeout?: Duration.DurationInput
 }
 
 /**
@@ -56,6 +58,7 @@ export interface Options {
   readonly body?: Body.HttpBody | undefined
   readonly accept?: string | undefined
   readonly acceptJson?: boolean | undefined
+  readonly timeout?: Duration.DurationInput
 }
 
 /**
@@ -399,3 +402,18 @@ export const bodyFileWeb: {
   (file: Body.HttpBody.FileLike): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, file: Body.HttpBody.FileLike): HttpClientRequest
 } = internal.bodyFileWeb
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const setTimeout: {
+  (timeout: Duration.DurationInput): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, timeout: Duration.DurationInput): HttpClientRequest
+} = internal.setTimeout
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const removeTimeout: (self: HttpClientRequest) => HttpClientRequest = internal.removeTimeout
