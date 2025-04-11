@@ -1026,6 +1026,232 @@ export const multiplyAll: {
 } = internal.multiplyAll<Integer>
 
 /**
+ * Computes the power of an integer raised to a natural number exponent.
+ *
+ * For any integer base `b` and natural number exponent `n`, this function
+ * computes `b^n`, which represents `b` multiplied by itself `n` times. When `n
+ * = 0`, the result is `1` by convention.
+ *
+ * @remarks
+ * **Mathematical properties of exponentiation**:
+ *
+ * - **Zero exponent**: `b^0 = 1` for any `b ≠ 0` (and by convention, `0^0 = 1`)
+ * - **Unit exponent**: `b^1 = b` for any integer `b`
+ * - **Negative base, even exponent**: produces a **positive result**
+ * - **Negative base, odd exponent**: preserves the negative sign
+ * - **Exponent addition**: `b^(m+n) = b^m × b^n`
+ * - **Exponent multiplication**: `(b^m)^n = b^(m×n)`
+ * - **Product of bases**: `(a×b)^n = a^n × b^n`
+ *
+ * The domain of this function is restricted to "natural number exponents" to
+ * ensure the result always remains an integer. Negative exponents would produce
+ * fractional results that fall outside the integer domain.
+ * @memberof Integer
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * // Basic usage
+ * assert.equal(Integer.pow(Integer.of(2), NaturalNumber.of(3)), 8) // 2³ = 8
+ * assert.equal(Integer.pow(Integer.of(3), NaturalNumber.of(4)), 81) // 3⁴ = 81
+ *
+ * // Zero exponent case
+ * assert.equal(Integer.pow(Integer.of(5), NaturalNumber.of(0)), 1) // 5⁰ = 1
+ * assert.equal(Integer.pow(Integer.of(0), NaturalNumber.of(0)), 1) // 0⁰ = 1 (by convention)
+ *
+ * // Negative base with even/odd exponents
+ * assert.equal(Integer.pow(Integer.of(-2), NaturalNumber.of(2)), 4) // (-2)² = 4
+ * assert.equal(Integer.pow(Integer.of(-2), NaturalNumber.of(3)), -8) // (-2)³ = -8
+ *
+ * // Data-last style (pipeable)
+ * assert.equal(
+ *   pipe(
+ *     Integer.of(3),
+ *     Integer.pow(NaturalNumber.of(2)) // 3² = 9
+ *   ),
+ *   9
+ * )
+ *
+ * // Chaining operations
+ * const result = pipe(
+ *   Integer.of(2),
+ *   Integer.pow(NaturalNumber.of(3)), // 2³ = 8
+ *   Integer.multiply(Integer.of(2)), // 8 * 2 = 16
+ *   Integer.pow(NaturalNumber.of(2)) // 16² = 256
+ * )
+ * assert.equal(result, 256)
+ *
+ * // Verify mathematical properties
+ * const a = Integer.of(2)
+ * const m = NaturalNumber.of(3)
+ * const n = NaturalNumber.of(2)
+ *
+ * // Exponent addition: a^(m+n) = a^m × a^n
+ * const sumExponent = Integer.pow(a, NaturalNumber.add(m, n)) // 2^(3+2) = 2^5 = 32
+ * const productPowers = Integer.multiply(
+ *   Integer.pow(a, m), // 2^3 = 8
+ *   Integer.pow(a, n) // 2^2 = 4
+ * ) // 8 * 4 = 32
+ * assert.equal(sumExponent, productPowers)
+ * ```
+ *
+ * @see {@link module:Integer.square} - Specialized function for computing the square (`n²`)
+ * @see {@link module:Integer.cube} - Specialized function for computing the cube (`n³`)
+ */
+export const pow: {
+  /**
+   * Returns a function that raises its input to the specified exponent.
+   *
+   * @param exponent - The natural number exponent
+   * @returns A function that takes a base integer and returns it raised to the
+   *   exponent
+   */
+  (exponent: NaturalNumber.NaturalNumber): (base: Integer) => Integer
+
+  /**
+   * Raises the base integer to the specified natural number exponent.
+   *
+   * @param base - The integer base
+   * @param exponent - The natural number exponent
+   * @returns The result of base raised to the exponent power
+   */
+  (base: Integer, exponent: NaturalNumber.NaturalNumber): Integer
+} = dual(2, internal.pow)
+
+/**
+ * Computes the square of an integer (`n²`), returning a natural number.
+ *
+ * @remarks
+ * For any integer `n`, the square function computes `n²`, which is equivalent
+ * to `n × n`. Since squaring always produces a non-negative result regardless
+ * of the input's sign, the return type is `NaturalNumber` rather than
+ * `Integer`.
+ *
+ * **Mathematical properties**:
+ *
+ * - Non-negativity: `n² ≥ 0` for all `n ∈ ℤ`
+ * - Symmetry: `(-n)² = n²` for all `n ∈ ℤ`
+ * - Identity for 0 and 1: `0² = 0`, `1² = 1`
+ * - Monotonicity: If `|a| < |b|`, then `a² < b²` for `a, b ∈ ℤ`
+ *
+ * The square function is implemented as a specialized case of the
+ * {@link module:Integer.pow} function with an exponent of 2.
+ * @memberof Integer
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * // Basic usage
+ * assert.equal(Integer.square(Integer.of(5)), NaturalNumber.of(25))
+ * assert.equal(Integer.square(Integer.of(-5)), NaturalNumber.of(25))
+ * assert.equal(Integer.square(Integer.of(0)), NaturalNumber.of(0))
+ *
+ * // Demonstrating symmetry property: (-n)² = n²
+ * const n = 7
+ * assert.equal(Integer.square(n), Integer.square(-n))
+ *
+ * // Using square with other operations
+ * const x = Integer.of(4)
+ * const y = Integer.of(3)
+ *
+ * // Computing the hypotenuse using the Pythagorean theorem
+ * const hypotenuseSquared = NaturalNumber.add(
+ *   Integer.square(x), // 16
+ *   Integer.square(y) // 9
+ * ) // 25
+ * assert.equal(hypotenuseSquared, NaturalNumber.of(25))
+ *
+ * // Compare with direct power function usage
+ * assert.deepStrictEqual(
+ *   pipe(Integer.of(4), Integer.square),
+ *   NaturalNumber.of(pipe(Integer.of(4), Integer.pow(NaturalNumber.of(2))))
+ * )
+ * ```
+ *
+ * @param n - The integer to square
+ * @returns The square of `n` as a natural number
+ * @see {@link module:Integer.pow} - General power function for any natural number exponent
+ * @see {@link module:Integer.cube} - Function to compute the cube (`n³`)
+ */
+export const square: (n: Integer) => NaturalNumber.NaturalNumber = internal.square
+
+/**
+ * Computes the cube of an integer (`n³`).
+ *
+ * For any integer `n`, the cube function computes `n³`, which is equivalent to
+ * `n × n × n`. Unlike squaring, **cubing preserves the sign of the original
+ * number**:
+ *
+ * - **Positive** integers produce **positive** cubes
+ * - **Negative** integers produce **negative** cubes
+ * - **Zero** produces zero
+ *
+ * @remarks
+ * **Mathematical properties**:
+ *
+ * - **Sign preservation**: `sgn(n³) = sgn(n)` for all `n ∈ ℤ`
+ * - **Identity for 0 and 1**: `0³ = 0`, `1³ = 1`
+ * - **Odd function**: `(-n)³ = -(n³)` for all `n ∈ ℤ`
+ * - **Monotonicity**: If `a < b`, then `a³ < b³` for `a, b ∈ ℤ`
+ *
+ * The cube function is implemented as a specialized case of the
+ * {@link module:Integer.pow} function with an exponent of `3`.
+ * @memberof Integer
+ * @since 3.14.6
+ * @category Math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * // Basic usage with positive integers
+ * assert.equal(Integer.cube(Integer.of(2)), 8)
+ * assert.equal(Integer.cube(Integer.of(3)), 27)
+ * assert.equal(Integer.cube(Integer.of(0)), 0)
+ *
+ * // Sign preservation with negative integers
+ * assert.equal(Integer.cube(Integer.of(-2)), -8)
+ * assert.equal(Integer.cube(Integer.of(-3)), -27)
+ *
+ * // Demonstrating odd function property: (-n)³ = -(n³)
+ * const n = Integer.of(4)
+ * assert.equal(Integer.cube(-n), -Integer.cube(n))
+ *
+ * // Calculating the volume of a cube with side length 5
+ * const sideLength = Integer.of(5)
+ * const volume = Integer.cube(sideLength)
+ * assert.equal(volume, 125)
+ *
+ * // Compare with direct power function usage
+ * assert.equal(
+ *   Integer.cube(Integer.of(4)),
+ *   pipe(Integer.of(4), Integer.pow(NaturalNumber.of(3)))
+ * )
+ * ```
+ *
+ * @param n - The integer to cube
+ * @returns The cube of n
+ * @see {@link module:Integer.pow} - General power function for any natural number exponent
+ * @see {@link module:Integer.square} - Function to compute the square (`n²`)
+ */
+export const cube: (n: Integer) => Integer = internal.cube
+
+/**
  * Divides one integer by another, mapping from the domain of `Integers` to the
  * codomain of `real numbers` (represented as JavaScript's number type) to
  * accommodate possible fractional results.

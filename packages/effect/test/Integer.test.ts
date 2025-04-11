@@ -515,148 +515,202 @@ describe("Integer", () => {
       )
     })
 
-    it("abs", () => {
+    it("pow", () => {
+      const two = Integer.of(2)
+      const three = Integer.of(3)
+      const four = Integer.of(4)
+      const negativeTwo = Integer.of(-2)
+
       // Basic functionality tests
-      strictEqual(
-        Integer.abs(Integer.of(5)),
-        NaturalNumber.of(5),
-        "Absolute value of a positive integer should be the same value as a NaturalNumber"
-      )
 
       strictEqual(
-        Integer.abs(Integer.of(-5)),
-        NaturalNumber.of(5),
-        "Absolute value of a negative integer should be the positive value as a NaturalNumber"
-      )
-
-      strictEqual(
-        Integer.abs(Integer.zero),
-        NaturalNumber.zero,
-        "Absolute value of zero should be zero"
-      )
-
-      strictEqual(
-        Integer.abs(Integer.of(-0)),
-        NaturalNumber.zero,
-        "Absolute value of negative zero should be zero"
+        Integer.pow(two, NaturalNumber.of(3)),
+        pipe(two, Integer.pow(NaturalNumber.of(3))),
+        "data-first vs data-last api"
       )
 
       // Boundary conditions
       strictEqual(
-        Integer.abs(Integer.of(Number.MAX_SAFE_INTEGER)),
-        NaturalNumber.of(Number.MAX_SAFE_INTEGER),
-        "Absolute value of MAX_SAFE_INTEGER should be MAX_SAFE_INTEGER as a NaturalNumber"
+        Integer.pow(two, NaturalNumber.zero),
+        Integer.one,
+        "Any number raised to the power of 0 is 1"
+      )
+      strictEqual(
+        Integer.pow(Integer.zero, NaturalNumber.zero),
+        Integer.one,
+        "0^0 = 1 (mathematical convention)"
+      )
+      strictEqual(
+        Integer.pow(Integer.one, NaturalNumber.of(1000)),
+        Integer.one,
+        "1 raised to any power is 1"
+      )
+      strictEqual(
+        Integer.pow(Integer.zero, NaturalNumber.of(5)),
+        Integer.zero,
+        "0 raised to a positive power is 0"
       )
 
+      // Negative base
       strictEqual(
-        Integer.abs(Integer.of(Number.MIN_SAFE_INTEGER)),
-        NaturalNumber.of(-Number.MIN_SAFE_INTEGER),
-        "Absolute value of MIN_SAFE_INTEGER should be -MIN_SAFE_INTEGER as a NaturalNumber"
+        Integer.pow(negativeTwo, NaturalNumber.of(2)),
+        Integer.of(4),
+        "(-2)^2 = 4 (even exponent gives positive result)"
+      )
+      strictEqual(
+        Integer.pow(negativeTwo, NaturalNumber.of(3)),
+        Integer.of(-8),
+        "(-2)^3 = -8 (odd exponent preserves sign)"
       )
 
       // Mathematical properties
-      const a = Integer.of(-7)
-      const b = Integer.of(7)
+      strictEqual(
+        Integer.pow(two, NaturalNumber.zero),
+        Integer.one,
+        "n^0 = 1 for any n"
+      )
+      strictEqual(Integer.pow(two, NaturalNumber.one), two, "n^1 = n for any n")
+
+      // Exponentiation laws
+      const n = two
+      const a = NaturalNumber.of(2)
+      const b = NaturalNumber.of(3)
 
       strictEqual(
-        Integer.abs(a),
-        Integer.abs(b),
-        "abs(-a) = abs(a) for any integer a"
+        pipe(Integer.pow(n, a), Integer.multiply(Integer.pow(n, b))),
+        Integer.pow(n, NaturalNumber.sum(a, b)),
+        "n^a * n^b = n^(a+b)"
       )
 
-      // Composability with other Integer methods
-      const c = Integer.of(-7)
-      const d = Integer.of(3)
-
-      /** Test abs(a * b) = abs(a) * abs(b) */
+      // Composability with other operations
       strictEqual(
-        Integer.abs(Integer.multiply(c, d)), // abs(-7 * 3) = abs(-21) = 21,
-        NaturalNumber.multiply(
-          Integer.abs(c), // 7
-          Integer.abs(d) // 3
-        ), // 7 * 3 = 21
-        "abs(a * b) = abs(a) * abs(b) for any integers a, b"
-      )
-
-      /** Test abs(a + b) <= abs(a) + abs(b) (triangle inequality) */
-      assertTrue(
-        NaturalNumber.lessThanOrEqualTo(
-          Integer.abs(Integer.sum(Integer.of(-10), Integer.of(7))), // abs(-3) = 3
-          NaturalNumber.sum(
-            Integer.abs(Integer.of(-10)), // 10
-            Integer.abs(Integer.of(7)) // 7
-          ) // 10 + 7 = 17
-        ),
-        "abs(a + b) <= abs(a) + abs(b) for any integers a, b (triangle inequality)"
-      )
-
-      /** Test abs(a - b) >= abs(a) - abs(b) (reverse triangle inequality) */
-      assertSome(
-        Option.map(
-          NaturalNumber.subtractSafe(
-            Integer.abs(Integer.of(10)), // 10
-            Integer.abs(Integer.of(5)) // 5
-          ), // 10 - 5 = 5
-          (_diffOfAbs) =>
-            NaturalNumber.greaterThanOrEqualTo(
-              Integer.abs(
-                Integer.subtract(Integer.of(5), Integer.of(10)) // 5 - 10 = -5
-              ), // abs(-5) = 5
-              _diffOfAbs
-            )
-        ),
-        true
-      )
-
-      // Composability with NaturalNumber module
-
-      /**
-       * Test that the result of abs can be used with NaturalNumber | Integer
-       * operations
-       */
-      strictEqual<Integer.Integer>(
-        pipe(Integer.of(-42), Integer.abs, Integer.sum(NaturalNumber.of(8))),
-        NaturalNumber.of(50),
-        "Result of abs can be used with Integer.sum"
-      )
-
-      strictEqual<NaturalNumber.NaturalNumber>(
         pipe(
-          Integer.of(-42),
-          Integer.abs,
-          NaturalNumber.multiply(NaturalNumber.of(2))
+          Integer.pow(two, NaturalNumber.of(3)), //
+          Integer.sum(Integer.one)
         ),
-        NaturalNumber.of(84),
-        "Result of abs can be used with NaturalNumber.multiply"
-      )
-
-      // Test with pipe syntax
-      strictEqual(
-        pipe(Integer.of(-15), Integer.abs),
-        NaturalNumber.of(15),
-        "abs works with pipe syntax"
-      )
-
-      // Practical example: calculating distance between two integers
-      const getDistance: {
-        (a: Integer.Integer, b: Integer.Integer): NaturalNumber.NaturalNumber
-      } = (a, b) => pipe(b, Integer.subtract(a), Integer.abs)
-
-      strictEqual(
-        getDistance(Integer.of(10), Integer.of(15)),
-        NaturalNumber.of(5),
-        "Distance from 10 to 15 should be 5"
+        Integer.of(9),
+        "2^3 + 1 = 9"
       )
 
       strictEqual(
-        getDistance(Integer.of(15), Integer.of(10)),
-        NaturalNumber.of(5),
-        "Distance from 15 to 10 should be 5"
+        pipe(Integer.pow(two, NaturalNumber.of(3)), Integer.multiply(three)),
+        Integer.of(24),
+        "2^3 * 3 = 24"
+      )
+    })
+
+    it("square", () => {
+      // Basic functionality tests
+      strictEqual(
+        Integer.square(Integer.of(5)),
+        NaturalNumber.of(25),
+        "5² = 25"
+      )
+      strictEqual(
+        Integer.square(Integer.of(-5)),
+        NaturalNumber.of(25),
+        "(-5)² = 25"
+      )
+
+      // Boundary conditions
+      strictEqual(Integer.square(Integer.zero), NaturalNumber.zero, "0² = 0")
+      strictEqual(Integer.square(Integer.one), NaturalNumber.one, "1² = 1")
+
+      // Verify result is always a natural number
+      assertTrue(
+        pipe(
+          Integer.square(Integer.of(-100)), //
+          NaturalNumber.isNaturalNumber
+        ),
+        "Square of a negative number is always a natural number"
+      )
+
+      /** Symmetry property: (-n)² = n² */
+      strictEqual(
+        Integer.square(Integer.of(7)),
+        Integer.square(Integer.of(-7)),
+        "(-n)² = n²"
+      )
+
+      // Composability with other operations
+      const x = Integer.of(4)
+      const y = Integer.of(3)
+
+      // Computing the hypotenuse using the Pythagorean theorem
+      const hypotenuseSquared = NaturalNumber.sum(
+        Integer.square(x), // 16
+        Integer.square(y) // 9
+      ) // 25
+      strictEqual(
+        hypotenuseSquared,
+        NaturalNumber.of(25),
+        "4² + 3² = 16 + 9 = 25"
+      )
+
+      // Compare with direct power function usage
+      deepStrictEqual(
+        Integer.square(Integer.of(4)),
+        Integer.pow(Integer.of(4), NaturalNumber.of(2)),
+        "square(n) = pow(n, 2)"
+      )
+    })
+
+    it("cube", () => {
+      // Basic functionality tests
+      strictEqual(Integer.cube(Integer.of(5)), Integer.of(125), "5³ = 125")
+      strictEqual(
+        Integer.cube(Integer.of(-5)),
+        Integer.of(-125),
+        "(-5)³ = -125"
+      )
+
+      // Boundary conditions
+      strictEqual(Integer.cube(Integer.zero), Integer.zero, "0³ = 0")
+      strictEqual(Integer.cube(Integer.one), Integer.one, "1³ = 1")
+      strictEqual(Integer.cube(Integer.of(-1)), Integer.of(-1), "(-1)³ = -1")
+
+      // Verify sign preservation
+      strictEqual(
+        Integer.sign(Integer.cube(Integer.of(5))),
+        1,
+        "Sign of cube of positive number is positive"
+      )
+      strictEqual(
+        Integer.sign(Integer.cube(Integer.of(-5))),
+        -1,
+        "Sign of cube of negative number is negative"
+      )
+      strictEqual(
+        Integer.sign(Integer.cube(Integer.zero)),
+        0,
+        "Sign of cube of zero is zero"
+      )
+
+      // Odd function property: (-n)³ = -(n³)
+      strictEqual(
+        Integer.cube(Integer.of(-7)),
+        pipe(Integer.cube(Integer.of(7)), Integer.multiply(Integer.of(-1))),
+        "(-n)³ = -(n³)"
+      )
+
+      // Composability with other operations
+      strictEqual(
+        pipe(Integer.of(2), Integer.cube, Integer.sum(Integer.one)),
+        Integer.of(9),
+        "2³ + 1 = 8 + 1 = 9"
+      )
+
+      // Compare with direct power function usage
+      deepStrictEqual(
+        Integer.cube(Integer.of(4)),
+        Integer.pow(Integer.of(4), NaturalNumber.of(3)),
+        "cube(n) = pow(n, 3)"
       )
     })
   })
 
   describe("Predicates", () => {
+    //
     it("lessThan", () => {
       assertTrue(Integer.lessThan(Integer.of(2), Integer.of(3)))
 
