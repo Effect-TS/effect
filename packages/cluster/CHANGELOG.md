@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.29.15
+
+### Patch Changes
+
+- [#4714](https://github.com/Effect-TS/effect/pull/4714) [`6966708`](https://github.com/Effect-TS/effect/commit/6966708a3061a3eb4bcfcb4d5877657fb41a019a) Thanks @tim-smart! - reset shard last_read on acquistion
+
 ## 0.29.14
 
 ### Patch Changes
