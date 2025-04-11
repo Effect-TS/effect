@@ -4969,14 +4969,14 @@ export const uninterruptibleMask: <A, E, R>(
  * @category Condition Checking
  * @since 3.4.0
  */
-export const liftPredicate: {
+export const liftPredicate: { // Note: I intentionally avoid using the NoInfer pattern here.
   <A, B extends A, E>(
-    refinement: Refinement<NoInfer<A>, B>,
-    orFailWith: (a: NoInfer<A>) => E
+    refinement: Refinement<A, B>,
+    orFailWith: (a: A) => E
   ): (a: A) => Effect<B, E>
-  <A, E>(predicate: Predicate<NoInfer<A>>, orFailWith: (a: NoInfer<A>) => E): (a: A) => Effect<A, E>
+  <B extends A, E, A = B>(predicate: Predicate<A>, orFailWith: (a: A) => E): (a: B) => Effect<B, E>
   <A, E, B extends A>(self: A, refinement: Refinement<A, B>, orFailWith: (a: A) => E): Effect<B, E>
-  <A, E>(self: A, predicate: Predicate<NoInfer<A>>, orFailWith: (a: NoInfer<A>) => E): Effect<A, E>
+  <B extends A, E, A = B>(self: B, predicate: Predicate<A>, orFailWith: (a: A) => E): Effect<B, E>
 } = effect.liftPredicate
 
 /**
