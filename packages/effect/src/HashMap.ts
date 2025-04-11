@@ -144,8 +144,8 @@ export const isEmpty: <K, V>(self: HashMap<K, V>) => boolean = HM.isEmpty
  * @category elements
  */
 export const get: {
-  <K1>(key: K1): <K, V>(self: HashMap<K, V>) => Option<V>
-  <K, V, K1>(self: HashMap<K, V>, key: K1): Option<V>
+  <K1 extends K, K>(key: K1): <V>(self: HashMap<K, V>) => Option<V>
+  <K1 extends K, K, V>(self: HashMap<K, V>, key: K1): Option<V>
 } = HM.get
 
 /**
@@ -155,8 +155,8 @@ export const get: {
  * @category elements
  */
 export const getHash: {
-  <K1>(key: K1, hash: number): <K, V>(self: HashMap<K, V>) => Option<V>
-  <K, V, K1>(self: HashMap<K, V>, key: K1, hash: number): Option<V>
+  <K1 extends K, K>(key: K1, hash: number): <V>(self: HashMap<K, V>) => Option<V>
+  <K1 extends K, K, V>(self: HashMap<K, V>, key: K1, hash: number): Option<V>
 } = HM.getHash
 
 /**
@@ -167,8 +167,8 @@ export const getHash: {
  * @category unsafe
  */
 export const unsafeGet: {
-  <K1>(key: K1): <K, V>(self: HashMap<K, V>) => V
-  <K, V, K1>(self: HashMap<K, V>, key: K1): V
+  <K1 extends K, K>(key: K1): <V>(self: HashMap<K, V>) => V
+  <K1 extends K, K, V>(self: HashMap<K, V>, key: K1): V
 } = HM.unsafeGet
 
 /**
@@ -178,8 +178,8 @@ export const unsafeGet: {
  * @category elements
  */
 export const has: {
-  <K1>(key: K1): <K, V>(self: HashMap<K, V>) => boolean
-  <K, V, K1>(self: HashMap<K, V>, key: K1): boolean
+  <K1 extends K, K>(key: K1): <K, V>(self: HashMap<K, V>) => boolean
+  <K1 extends K, K, V>(self: HashMap<K, V>, key: K1): boolean
 } = HM.has
 
 /**
@@ -190,8 +190,8 @@ export const has: {
  * @category elements
  */
 export const hasHash: {
-  <K1>(key: K1, hash: number): <K, V>(self: HashMap<K, V>) => boolean
-  <K, V, K1>(self: HashMap<K, V>, key: K1, hash: number): boolean
+  <K1 extends K, K>(key: K1, hash: number): <V>(self: HashMap<K, V>) => boolean
+  <K1 extends K, K, V>(self: HashMap<K, V>, key: K1, hash: number): boolean
 } = HM.hasHash
 
 /**
