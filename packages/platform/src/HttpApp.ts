@@ -140,6 +140,7 @@ export const currentPreResponseHandlers: FiberRef.FiberRef<Option.Option<PreResp
  */
 export const appendPreResponseHandler: (handler: PreResponseHandler) => Effect.Effect<void> =
   internal.appendPreResponseHandler
+
 /**
  * @since 1.0.0
  * @category fiber refs

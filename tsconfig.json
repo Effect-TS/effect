@@ -33,6 +33,7 @@
     { "path": "packages/sql-sqlite-react-native" },
     { "path": "packages/sql-sqlite-wasm" },
     { "path": "packages/typeclass" },
-    { "path": "packages/vitest" }
+    { "path": "packages/vitest" },
+    { "path": "packages/workflow" }
   ]
 }

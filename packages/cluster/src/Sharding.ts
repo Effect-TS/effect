@@ -135,6 +135,11 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   >
 
   /**
+   * Reset the state of a message
+   */
+  readonly reset: (requestId: Snowflake.Snowflake) => Effect.Effect<boolean>
+
+  /**
    * Retrieves the active entity count for the current runner.
    */
   readonly activeEntityCount: Effect.Effect<number>
@@ -384,6 +389,11 @@ const make = Effect.gen(function*() {
 
   let storageAlreadyProcessed = (_message: Message.IncomingRequest<any>) => true
 
+  // keep track of the last sent request ids to avoid duplicates
+  // we only keep the last 30 sets to avoid memory leaks
+  const sentRequestIds = new Set<Snowflake.Snowflake>()
+  const sentRequestIdSets = new Set<Set<Snowflake.Snowflake>>()
+
   if (storageEnabled && Option.isSome(config.runnerAddress)) {
     const selfAddress = config.runnerAddress.value
 
@@ -391,10 +401,8 @@ const make = Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
       yield* Effect.addFinalizer(() => Effect.logDebug("Shutting down"))
 
-      // keep track of the last sent request ids to avoid duplicates
-      // we only keep the last 30 sets to avoid memory leaks
-      const sentRequestIds = new Set<Snowflake.Snowflake>()
-      const sentRequestIdSets = new Set<Set<Snowflake.Snowflake>>()
+      sentRequestIds.clear()
+      sentRequestIdSets.clear()
 
       storageAlreadyProcessed = (message: Message.IncomingRequest<any>) => {
         if (!sentRequestIds.has(message.envelope.requestId)) {
@@ -754,6 +762,17 @@ const make = Effect.gen(function*() {
       }
     )
   }
+
+  const reset: Sharding["Type"]["reset"] = Effect.fnUntraced(
+    function*(requestId) {
+      yield* storage.clearReplies(requestId)
+      sentRequestIds.delete(requestId)
+    },
+    Effect.matchCause({
+      onSuccess: () => true,
+      onFailure: () => false
+    })
+  )
 
   // --- Shard Manager sync ---
 
@@ -1149,7 +1168,8 @@ const make = Effect.gen(function*() {
     makeClient,
     send: sendLocal,
     notify: (message) => notifyLocal(message, false),
-    activeEntityCount
+    activeEntityCount,
+    reset
   })
 
   return sharding

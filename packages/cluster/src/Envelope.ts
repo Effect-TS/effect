@@ -346,7 +346,21 @@ export const primaryKey = <R extends Rpc.Any>(envelope: Envelope<R>): string | n
   if (envelope._tag !== "Request" || !(Predicate.hasProperty(envelope.payload, PrimaryKey.symbol))) {
     return null
   }
-  const value = PrimaryKey.value(envelope.payload)
-  // hash the entity address to save space?
-  return `${envelope.address.entityType}/${envelope.address.entityId}/${envelope.tag}/${value}`
+  return primaryKeyByAddress({
+    address: envelope.address,
+    tag: envelope.tag,
+    id: PrimaryKey.value(envelope.payload)
+  })
 }
+
+/**
+ * @since 1.0.0
+ * @category primary key
+ */
+export const primaryKeyByAddress = (options: {
+  readonly address: EntityAddress
+  readonly tag: string
+  readonly id: string
+}): string =>
+  // hash the entity address to save space?
+  `${options.address.entityType}/${options.address.entityId}/${options.tag}/${options.id}`
