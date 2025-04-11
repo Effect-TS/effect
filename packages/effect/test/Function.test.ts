@@ -7,7 +7,10 @@ const g = (n: number) => n * 2
 
 describe("Function", () => {
   it("apply", () => {
-    deepStrictEqual(Function.pipe(String.length, Function.apply("a")), 1)
+    const countArgs = (...args: Array<unknown>) => args.length
+
+    deepStrictEqual(Function.pipe(countArgs, Function.apply("a")), 1)
+    deepStrictEqual(Function.pipe(countArgs, Function.apply("a", "b", "c")), 3)
   })
 
   it("compose", () => {
