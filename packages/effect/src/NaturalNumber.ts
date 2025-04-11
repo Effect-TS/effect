@@ -1,71 +1,267 @@
 /**
- * Operations on **natural numbers** (`ℕ₀`), representing non-negative integers
- * `{0, 1, 2, 3, ...}`.
+ * # NaturalNumber
  *
- * Natural numbers model quantities that arise from counting and are fundamental
- * to:
+ * ## Mathematical Domain Representation
  *
- * - Representing cardinality (size of collections)
- * - Indexing sequences and arrays
- * - Modeling discrete quantities that cannot be negative
- * - Exponentiation and combinatorial operations
+ * `NaturalNumber` represents the set of non-negative integers (`ℕ₀ = {0, 1, 2,
+ * 3, ...}`).
  *
- * This module provides a _8type-safe way to work with natural numbers_*
- * through:
+ * In mathematics, _natural numbers_ arise from counting and ordering
+ * operations. They form a commutative semiring with operations of addition and
+ * multiplication, with identities 0 and 1 respectively.
  *
- * - Runtime validation ensuring values are non-negative integers
- * - Operations that preserve the natural number invariants
- * - Safety-first approach for operations that might violate the domain
+ * The natural numbers exhibit key mathematical properties:
  *
- * @remarks
- * ## Type Variance and Composition
+ * - **Well-ordering**: Every non-empty subset has a smallest element
+ * - **Discreteness**: Each natural number has a unique successor
+ * - **Closure** under addition and multiplication (but not subtraction or
+ *   division)
  *
- * Operations in this module follow careful type variance patterns for safety:
+ * ## Constraints Imposed
  *
- * - **Type-preserving operations** (`NaturalNumber → NaturalNumber`):
+ * By modeling values as `NaturalNumber`, you accept the following constraints:
  *
- *   - Addition and multiplication: {@link module:NaturalNumber.sum},
- *       {@link module:NaturalNumber.multiply},
- *       {@link module:NaturalNumber.increment}
- *   - Exponentiation: {@link module:NaturalNumber.pow},
- *       {@link module:NaturalNumber.square}, {@link module:NaturalNumber.cube}
- *   - Min/max operations: {@link module:NaturalNumber.min},
- *       {@link module:NaturalNumber.max}, {@link module:NaturalNumber.clamp}
- * - **Type-widening operations** (`NaturalNumber → Integer/number`):
+ * - **Non-negativity**: Values cannot be less than zero
+ * - **Integrity**: Values must be whole numbers (no fractions)
+ * - **Domain preservation**: Some operations (subtraction, division) might leave
+ *   the domain and must be handled specially
  *
- *   - {@link module:NaturalNumber.decrementToInteger}: May produce negative values
- *       when decrementing 0
- *   - {@link module:NaturalNumber.divideToNumber}: Result may be fractional,
- *       widening to number
- * - **Option-returning operations** (`NaturalNumber → Option<NaturalNumber>`):
+ * ## Derived Guarantees and Business Value
  *
- *   - {@link module:NaturalNumber.subtractSafe}: Returns None when result would be
- *       negative
- *   - {@link module:NaturalNumber.decrementSafe}: Returns None when applied to 0
- *   - {@link module:NaturalNumber.divideSafe}: Returns None when division would be
- *       fractional
+ * These constraints unlock powerful guarantees that directly translate to
+ * business value:
  *
- * When composing operations:
+ * | Mathematical Guarantee     | Business Value                                                 | Usage Example                              |
+ * | -------------------------- | -------------------------------------------------------------- | ------------------------------------------ |
+ * | Non-negativity             | Impossible to represent invalid states like negative inventory | Inventory systems, resource counts         |
+ * | Well-ordering              | Always have a minimum value in any collection                  | Auction minimums, service prioritization   |
+ * | Closure under addition     | Combining quantities preserves invariants                      | Merging inventory from multiple warehouses |
+ * | Array indexing safety      | No out-of-bounds errors when used as indices                   | Collection access, pagination              |
+ * | Cardinality representation | Accurately model "how many" concepts                           | User counts, event tracking                |
  *
- * - Type-preserving chains maintain NaturalNumber type: `pipe(n, add(1),
- *   multiply(2))`
- * - Type-widening operations exit the NaturalNumber domain
- * - Option-returning operations must be handled with Option combinators
- * - Domain-violating operations have safe alternatives returning Option types
+ * ## Domain Modeling Applications
  *
- * From a type-theoretic perspective, `NaturalNumber` forms a semiring with:
+ * `NaturalNumber` excels at modeling domains where quantities cannot logically
+ * be negative:
  *
- * - Addition as the additive operation with identity 0
- * - Multiplication as the multiplicative operation with identity 1
- * - Standard distributive and associative properties
+ * ```ts
+ * import { Option, pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
  *
- * In the type hierarchy:
+ * // E-commerce inventory management example
+ * type Product = {
+ *   id: string
+ *   name: string
+ *   stock: NaturalNumber.NaturalNumber // Cannot be negative by construction
+ * }
  *
- * - `NaturalNumber` is a proper subset of {@link Integer} (`ℕ₀ ⊂ ℤ`)
+ * // Safe inventory reduction that handles insufficient stock
+ * const removeFromInventory = (
+ *   product: Product,
+ *   quantity: NaturalNumber.NaturalNumber
+ * ): Option.Option<Product> =>
+ *   pipe(
+ *     product.stock,
+ *     NaturalNumber.subtractSafe(quantity),
+ *     Option.map((remaining) => ({ ...product, stock: remaining }))
+ *   )
+ *
+ * // Type system enforces handling the insufficient stock case
+ * const processOrder = (
+ *   product: Product,
+ *   quantity: NaturalNumber.NaturalNumber
+ * ) =>
+ *   pipe(
+ *     removeFromInventory(product, quantity),
+ *     Option.match({
+ *       onNone: () => "Insufficient stock",
+ *       onSome: (updated) => `Order processed, remaining: ${updated.stock}`
+ *     })
+ *   )
+ * ```
+ *
+ * ### Health tracking application example:
+ *
+ * ```ts
+ * import { flow, Option, pipe } from "effect"
+ * import * as N from "effect/NaturalNumber"
+ *
+ * // Activity tracking with guaranteed non-negative durations
+ * type FitnessActivity = {
+ *   type: "run" | "swim" | "cycle"
+ *   duration: N.NaturalNumber // Minutes spent (always non-negative)
+ *   caloriesBurned: N.NaturalNumber // Always non-negative
+ * }
+ *
+ * // Safely combine two activities of the same type
+ * const combineActivities = (
+ *   a1: FitnessActivity,
+ *   a2: FitnessActivity
+ * ): Option.Option<FitnessActivity> =>
+ *   a1.type === a2.type
+ *     ? Option.some({
+ *         type: a1.type,
+ *         // Addition within NaturalNumber is guaranteed to stay in the domain
+ *         duration: N.sum(a1.duration, a2.duration),
+ *         caloriesBurned: N.sum(a1.caloriesBurned, a2.caloriesBurned)
+ *       })
+ *     : Option.none()
+ *
+ * // Calculate calories per minute with safe division
+ * const caloriesPerMinute = (activity: FitnessActivity): N.NaturalNumber =>
+ *   pipe(
+ *     activity.caloriesBurned,
+ *     N.divideToNumber(activity.duration),
+ *     Option.flatMap(flow(Math.round, N.option)),
+ *     Option.getOrElse(() => N.zero)
+ *   )
+ * ```
+ *
+ * ## When to Use NaturalNumber
+ *
+ * Use the `NaturalNumber` module when you need:
+ *
+ * - To represent quantities that cannot logically be negative
+ * - To work with array indices and collection sizes
+ * - To handle counting or cardinality scenarios
+ * - To perform exponentiation and combinatorial operations safely
+ * - To ensure non-negativity invariants are preserved in your domain
+ *
+ * ## Choosing the Right Numeric Type
+ *
+ * | If your domain concept...         | Then use...                  | Examples                       |
+ * | --------------------------------- | ---------------------------- | ------------------------------ |
+ * | Cannot be negative, must be whole | {@link module:NaturalNumber} | Inventory, age, count, index   |
+ * | Can be negative, must be whole    | {@link module:Integer}       | Temperature, position, balance |
+ * | Can be fractional                 | {@link module:Number}        | Prices, rates, measurements    |
+ * | Needs arbitrary precision         | {@link BigInt}               | Cryptography, financial totals |
+ *
+ * ## Operations Reference
+ *
+ * | Category       | Operation                                         | Description                                                                       | Domain                                | Co-domain                           |
+ * | -------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------- | ----------------------------------- |
+ * | **creation**   | {@link module:NaturalNumber.of}                   | Creates a `NaturalNumber` from a number, throwing on invalid input                | `number`                              | `NaturalNumber`                     |
+ * | **creation**   | {@link module:NaturalNumber.option}               | Creates an `Option<NaturalNumber>`, returning `None` on invalid input             | `number`                              | `Option<NaturalNumber>`             |
+ * | **creation**   | {@link module:NaturalNumber.either}               | Creates an `Either<BrandError, NaturalNumber>`, returning `Left` on invalid input | `number`                              | `Either<BrandError, NaturalNumber>` |
+ * | **creation**   | {@link module:NaturalNumber.Schema}               | Creates a `Schema<NaturalNumber>`, for parsing and validation                     |                                       | `Schema<NaturalNumber>`             |
+ * | **constants**  | {@link module:NaturalNumber.zero}                 | Constant representing the natural number zero                                     |                                       | `NaturalNumber`                     |
+ * | **constants**  | {@link module:NaturalNumber.one}                  | Constant representing the natural number one                                      |                                       | `NaturalNumber`                     |
+ * |                |                                                   |                                                                                   |                                       |                                     |
+ * | **math**       | {@link module:NaturalNumber.sum}                  | Adds two natural numbers                                                          | `NaturalNumber`, `NaturalNumber`      | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.sumAll}               | Adds all numbers in a collection                                                  | `Iterable<NaturalNumber>`             | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.multiply}             | Multiplies two natural numbers                                                    | `NaturalNumber`, `NaturalNumber`      | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.multiplyAll}          | Multiplies all numbers in a collection                                            | `Iterable<NaturalNumber>`             | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.pow}                  | Computes power with natural number exponent                                       | `NaturalNumber`, `NaturalNumber`      | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.square}               | Computes the square of a natural number                                           | `NaturalNumber`                       | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.cube}                 | Computes the cube of a natural number                                             | `NaturalNumber`                       | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.divideToNumber}       | Divides yielding possibly fractional result                                       | `NaturalNumber`, `NaturalNumber`      | `number`                            |
+ * | **math**       | {@link module:NaturalNumber.divideSafe}           | Safely divides returning Option for non-natural                                   | `NaturalNumber`, `NaturalNumber`      | `Option<NaturalNumber>`             |
+ * | **math**       | {@link module:NaturalNumber.increment}            | Adds one to a natural number                                                      | `NaturalNumber`                       | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.decrementToInteger}   | Decrements, widening to Integer type                                              | `NaturalNumber`                       | `Integer`                           |
+ * | **math**       | {@link module:NaturalNumber.decrementSafe}        | Safely decrements, returning None for zero                                        | `NaturalNumber`                       | `Option<NaturalNumber>`             |
+ * | **math**       | {@link module:NaturalNumber.subtractToInteger}    | Subtracts, widening to Integer type                                               | `NaturalNumber`, `NaturalNumber`      | `Integer`                           |
+ * | **math**       | {@link module:NaturalNumber.subtractSafe}         | Safely subtracts, returning None when negative                                    | `NaturalNumber`, `NaturalNumber`      | `Option<NaturalNumber>`             |
+ * | **math**       | {@link module:NaturalNumber.negate}               | Negates a natural number, returning an Integer                                    | `NaturalNumber`                       | `Integer`                           |
+ * |                |                                                   |                                                                                   |                                       |                                     |
+ * | **predicates** | {@link module:NaturalNumber.isNaturalNumber}      | Type guard for `NaturalNumber`                                                    | `unknown`                             | `boolean`                           |
+ * | **predicates** | {@link module:NaturalNumber.between}              | Checks if number is in a range                                                    | `NaturalNumber`, `{minimum, maximum}` | `boolean`                           |
+ * | **predicates** | {@link module:NaturalNumber.lessThan}             | Checks if one natural number is less than another                                 | `NaturalNumber`, `NaturalNumber`      | `boolean`                           |
+ * | **predicates** | {@link module:NaturalNumber.lessThanOrEqualTo}    | Checks if one natural number is less or equal                                     | `NaturalNumber`, `NaturalNumber`      | `boolean`                           |
+ * | **predicates** | {@link module:NaturalNumber.greaterThan}          | Checks if one natural number is greater                                           | `NaturalNumber`, `NaturalNumber`      | `boolean`                           |
+ * | **predicates** | {@link module:NaturalNumber.greaterThanOrEqualTo} | Checks if one natural number is greater or equal                                  | `NaturalNumber`, `NaturalNumber`      | `boolean`                           |
+ * |                |                                                   |                                                                                   |                                       |                                     |
+ * | **comparison** | {@link module:NaturalNumber.min}                  | Returns the minimum of two natural numbers                                        | `NaturalNumber`, `NaturalNumber`      | `NaturalNumber`                     |
+ * | **comparison** | {@link module:NaturalNumber.max}                  | Returns the maximum of two natural numbers                                        | `NaturalNumber`, `NaturalNumber`      | `NaturalNumber`                     |
+ * | **comparison** | {@link module:NaturalNumber.clamp}                | Restricts a natural number to a range                                             | `NaturalNumber`, `{minimum, maximum}` | `NaturalNumber`                     |
+ * |                |                                                   |                                                                                   |                                       |                                     |
+ * | **instances**  | {@link module:NaturalNumber.Equivalence}          | Equivalence instance for natural numbers                                          |                                       | `Equivalence<NaturalNumber>`        |
+ * | **instances**  | {@link module:NaturalNumber.Order}                | Order instance for natural numbers                                                |                                       | `Order<NaturalNumber>`              |
+ *
+ * ## Composition Patterns and Type Safety
+ *
+ * When building function pipelines, understanding how types flow through
+ * operations is critical:
+ *
+ * ### Composing with type-preserving operations
+ *
+ * Operations where domain and co-domain match (NaturalNumber → NaturalNumber)
+ * can be freely chained:
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * const result = pipe(
+ *   NaturalNumber.of(5),
+ *   NaturalNumber.increment, // NaturalNumber → NaturalNumber
+ *   NaturalNumber.multiply(NaturalNumber.of(2)), // NaturalNumber → NaturalNumber
+ *   NaturalNumber.square // NaturalNumber → NaturalNumber
+ * ) // Result: NaturalNumber (144)
+ * ```
+ *
+ * ### Handling type transitions
+ *
+ * When an operation changes the type, subsequent operations must be compatible
+ * with the new type:
+ *
+ * ```ts
+ * import { pipe, flow, Option } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Integer from "effect/Integer"
+ * import * as RealNumber from "effect/Number"
+ *
+ * // Type widening: NaturalNumber → Integer
+ * const integerResult = pipe(
+ *   NaturalNumber.of(0),
+ *   NaturalNumber.decrementToInteger, // NaturalNumber → Integer
+ *   Integer.negate // Integer → Integer
+ *   // Cannot use NaturalNumber operations here!
+ * ) // Result: Integer (1)
+ *
+ * // Type widening: NaturalNumber → number
+ * const fractionResult = pipe(
+ *   NaturalNumber.of(10),
+ *   NaturalNumber.divideToNumber(NaturalNumber.of(3)), // NaturalNumber → Option<number>
+ *   Option.map(
+ *     // Cannot use NaturalNumber operations here!
+ *     RealNumber.multiply(2) // number → number
+ *   )
+ * ) // Result: Option<number> (6.666...)
+ * ```
+ *
+ * ### Working with Option results
+ *
+ * Operations that might violate the natural number domain return Option types:
+ *
+ * ```ts
+ * import { pipe, flow, Option } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * // Handle possibly negative results
+ * const program = flow(
+ *   NaturalNumber.subtractSafe(NaturalNumber.of(10)), // NaturalNumber → Option<NaturalNumber>
+ *   Option.map(NaturalNumber.increment), // Option<NaturalNumber> → Option<NaturalNumber>
+ *   Option.getOrElse(() => NaturalNumber.zero) // Option<NaturalNumber> → NaturalNumber
+ * ) // program: NaturalNumber -> NaturalNumber
+ *
+ * // Handle zero decrement
+ * const decrementResult = pipe(
+ *   NaturalNumber.zero,
+ *   NaturalNumber.decrementSafe, // NaturalNumber → Option<NaturalNumber>
+ *   Option.getOrElse(() => NaturalNumber.zero) // Option<NaturalNumber> → NaturalNumber
+ * ) // Result: NaturalNumber (0)
+ * ```
+ *
+ * ### Composition best practices
+ *
+ * - Chain type-preserving operations for maximum composability
+ * - Handle domain violations with Option-returning operations
+ * - Use type-widening operations deliberately when needed
+ * - Remember that once you leave the NaturalNumber domain, you cannot return
+ *   without validation
  *
  * @module NaturalNumber
  * @since 3.14.6
- * @experimental
  */
 
 import type * as Brand from "./Brand.js"
