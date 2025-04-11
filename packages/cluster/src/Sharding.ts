@@ -26,8 +26,8 @@ import * as PubSub from "effect/PubSub"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type { AlreadyProcessingMessage, MailboxFull, PersistenceError } from "./ClusterError.js"
-import { EntityNotManagedByRunner, RunnerUnavailable } from "./ClusterError.js"
+import type { MailboxFull, PersistenceError } from "./ClusterError.js"
+import { AlreadyProcessingMessage, EntityNotManagedByRunner, RunnerUnavailable } from "./ClusterError.js"
 import { Persisted } from "./ClusterSchema.js"
 import type { CurrentAddress, Entity, HandlersFrom } from "./Entity.js"
 import { EntityAddress } from "./EntityAddress.js"
@@ -118,7 +118,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
    */
   readonly notify: (message: Message.Incoming<any>) => Effect.Effect<
     void,
-    EntityNotManagedByRunner
+    EntityNotManagedByRunner | AlreadyProcessingMessage
   >
 
   /**
@@ -368,6 +368,8 @@ const make = Effect.gen(function*() {
   const storageReadLock = Effect.unsafeMakeSemaphore(1)
   const withStorageReadLock = storageReadLock.withPermits(1)
 
+  let storageAlreadyProcessed = (_message: Message.IncomingRequest<any>) => true
+
   if (storageEnabled && Option.isSome(config.runnerAddress)) {
     const selfAddress = config.runnerAddress.value
 
@@ -379,6 +381,9 @@ const make = Effect.gen(function*() {
       // we only keep the last 30 sets to avoid memory leaks
       const sentRequestIds = new Set<Snowflake.Snowflake>()
       const sentRequestIdSets = new Set<Set<Snowflake.Snowflake>>()
+
+      storageAlreadyProcessed = (message: Message.IncomingRequest<any>) =>
+        sentRequestIds.has(message.envelope.requestId)
 
       while (true) {
         // wait for the next poll interval, or if we get notified of a change
@@ -643,8 +648,11 @@ const make = Effect.gen(function*() {
         })
     })
 
-  const notifyLocal = (message: Message.Outgoing<any> | Message.Incoming<any>, discard: boolean) =>
-    Effect.suspend(() => {
+  const notifyLocal = (
+    message: Message.Outgoing<any> | Message.Incoming<any>,
+    discard: boolean
+  ) =>
+    Effect.suspend((): Effect.Effect<void, EntityNotManagedByRunner | AlreadyProcessingMessage> => {
       const address = message.envelope.address
       if (!isEntityOnLocalShards(address)) {
         return Effect.fail(new EntityNotManagedByRunner({ address }))
@@ -654,9 +662,14 @@ const make = Effect.gen(function*() {
         ? openStorageReadLatch
         : () => Effect.dieMessage("Sharding.notifyLocal: storage is disabled")
 
-      return message._tag === "IncomingRequest" || message._tag === "IncomingEnvelope"
-        ? notify()
-        : runners.notifyLocal({ message, notify, discard })
+      if (message._tag === "IncomingRequest" || message._tag === "IncomingEnvelope") {
+        if (message._tag === "IncomingRequest" && storageAlreadyProcessed(message)) {
+          return Effect.fail(new AlreadyProcessingMessage({ address, envelopeId: message.envelope.requestId }))
+        }
+        return notify()
+      }
+
+      return runners.notifyLocal({ message, notify, discard })
     })
 
   const isTransientError = Predicate.or(RunnerUnavailable.is, EntityNotManagedByRunner.is)

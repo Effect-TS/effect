@@ -375,7 +375,7 @@ export class Rpcs extends RpcGroup.make(
       envelope: Envelope.PartialEncoded
     },
     success: Schema.Void,
-    error: EntityNotManagedByRunner
+    error: Schema.Union(EntityNotManagedByRunner, AlreadyProcessingMessage)
   }),
   Rpc.make("Effect", {
     payload: {
