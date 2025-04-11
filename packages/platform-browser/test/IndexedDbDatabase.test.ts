@@ -31,16 +31,6 @@ describe("IndexedDbDatabase", () => {
       const api = makeApi(Db)
       const todo = yield* api.getAll("todo")
 
-      // const a = api.from("todo").pipe(
-      //   IndexedDbQueryBuilder.select("titleIndex"),
-      //   IndexedDbQueryBuilder.equals("test")
-      // )
-      // api.from("todo").select(/** index */).gte(/** WHERE */)
-      // api.from("todo").select(/** index */).lte(/** WHERE */)
-      // api.from("todo").select(/** index */).gt(/** WHERE */)
-      // api.from("todo").select(/** index */).lt(/** WHERE */)
-      // api.from("todo").select(/** index */).between(/** WHERE */)
-
       // api.from("todo").select(/** index */).gte(/** WHERE */).limit(/** number */)
       // api.from("todo").select(/** index */).gte(/** WHERE */).first()
       // api.from("todo").select(/** index */).gte(/** WHERE */).firstRequired()
