@@ -135,7 +135,7 @@ export class Config extends Context.Tag("@effect/cluster/ShardManager/Config")<C
     rebalanceRate: 2 / 100,
     persistRetryCount: 100,
     persistRetryInterval: Duration.seconds(3),
-    runnerHealthCheckInterval: Duration.seconds(10),
+    runnerHealthCheckInterval: Duration.minutes(1),
     runnerPingTimeout: Duration.seconds(3)
   }
 }

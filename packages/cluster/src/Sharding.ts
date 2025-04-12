@@ -234,7 +234,7 @@ const make = Effect.gen(function*() {
       Effect.forkIn(shardingScope)
     )
 
-    // refresh the shard locks every 20s
+    // refresh the shard locks every 10s
     yield* Effect.suspend(() =>
       shardStorage.refresh(selfAddress, [
         ...acquiredShards,
@@ -264,7 +264,7 @@ const make = Effect.gen(function*() {
           Effect.andThen(clearSelfShards)
         )
       ),
-      Effect.delay("20 seconds"),
+      Effect.delay("10 seconds"),
       Effect.forever,
       Effect.interruptible,
       Effect.forkIn(shardingScope)
@@ -383,8 +383,14 @@ const make = Effect.gen(function*() {
       const sentRequestIds = new Set<Snowflake.Snowflake>()
       const sentRequestIdSets = new Set<Set<Snowflake.Snowflake>>()
 
-      storageAlreadyProcessed = (message: Message.IncomingRequest<any>) =>
-        sentRequestIds.has(message.envelope.requestId)
+      storageAlreadyProcessed = (message: Message.IncomingRequest<any>) => {
+        if (!sentRequestIds.has(message.envelope.requestId)) {
+          return false
+        }
+        const state = entityManagers.get(message.envelope.address.entityType)
+        if (!state) return true
+        return !state.manager.isProcessingFor(message, { excludeReplies: true })
+      }
 
       while (true) {
         // wait for the next poll interval, or if we get notified of a change
