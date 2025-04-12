@@ -11,6 +11,21 @@ import * as IndexedDbQuery from "./IndexedDbQuery.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 
+/**
+ * TODO:
+ * - Type-safe schemas between versions in migrations
+ * - Fix typing for `select`/`equals` without index
+ * - `insertAll`
+ * - `updateAll`
+ * - `clear`
+ * - `count`
+ * - Include `Scope` but make it "optional"
+ *
+ * LATER:
+ * - Transactions
+ * - `modify` (first read, then give function to modify)
+ */
+
 type ExtractIndexType<
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
