@@ -71,6 +71,17 @@ export declare namespace IndexedDbQueryBuilder {
     readonly select: <
       Index extends IndexedDbMigration.IndexFromTable<Source, Table>
     >(index?: Index) => Select<Source, Table, Index>
+
+    readonly insert: (
+      value: Schema.Schema.Type<
+        IndexedDbTable.IndexedDbTable.TableSchema<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            Table
+          >
+        >
+      >
+    ) => Insert<Source, Table>
   }
 
   /**
@@ -173,12 +184,42 @@ export declare namespace IndexedDbQueryBuilder {
     readonly [TypeId]: TypeId
     readonly select: Select<Source, Table, Index>
   }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Insert<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<
+      Effect.Effect<
+        globalThis.IDBValidKey
+      >
+    >
+
+    readonly [TypeId]: TypeId
+    readonly from: From<Source, Table>
+    readonly value: Schema.Schema.Type<
+      IndexedDbTable.IndexedDbTable.TableSchema<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >
+    >
+  }
 }
 
-const getObjectStore = (query: IndexedDbQueryBuilder.Select) => {
+const getReadonlyObjectStore = (query: IndexedDbQueryBuilder.Select) => {
   const database = query.from.database
   const IDBKeyRange = query.from.IDBKeyRange
-  const objectStore = database.transaction([query.from.table]).objectStore(query.from.table)
+  const objectStore = database.transaction([query.from.table], "readonly").objectStore(query.from.table)
 
   let keyRange: globalThis.IDBKeyRange | undefined = undefined
   let store: globalThis.IDBObjectStore | globalThis.IDBIndex
@@ -211,7 +252,7 @@ const getSelect = (query: IndexedDbQueryBuilder.Select) =>
   Effect.gen(function*() {
     const data = yield* Effect.async<any, IndexedDbQuery.IndexedDbQueryError>((resume) => {
       let request: globalThis.IDBRequest
-      const { keyRange, store } = getObjectStore(query)
+      const { keyRange, store } = getReadonlyObjectStore(query)
 
       if (query.limitValue !== undefined) {
         const cursorRequest = store.openCursor()
@@ -277,7 +318,7 @@ const getSelect = (query: IndexedDbQueryBuilder.Select) =>
 const getFirst = (query: IndexedDbQueryBuilder.First) =>
   Effect.gen(function*() {
     const data = yield* Effect.async<any, IndexedDbQuery.IndexedDbQueryError>((resume) => {
-      const { keyRange, store } = getObjectStore(query.select)
+      const { keyRange, store } = getReadonlyObjectStore(query.select)
 
       if (keyRange !== undefined) {
         const request = store.get(keyRange)
@@ -346,6 +387,27 @@ const getFirst = (query: IndexedDbQueryBuilder.First) =>
     )
   })
 
+const applyInsert = (query: IndexedDbQueryBuilder.Insert, value: any) =>
+  Effect.async<any, IndexedDbQuery.IndexedDbQueryError>((resume) => {
+    const database = query.from.database
+    const request = database.transaction([query.from.table], "readwrite").objectStore(query.from.table).add(value)
+
+    request.onerror = (event) => {
+      resume(
+        Effect.fail(
+          new IndexedDbQuery.IndexedDbQueryError({
+            reason: "TransactionError",
+            cause: event
+          })
+        )
+      )
+    }
+
+    request.onsuccess = () => {
+      resume(Effect.succeed(request.result))
+    }
+  })
+
 const Proto = {
   ...Effectable.CommitPrototype,
   [TypeId]: TypeId
@@ -376,10 +438,12 @@ export const fromMakeProto = <
       // @ts-expect-error
       index
     })
+
+  IndexedDbQueryBuilder.insert = (value: any) => insertMakeProto({ from: IndexedDbQueryBuilder as any, value })
+
   return IndexedDbQueryBuilder as any
 }
 
-/** @internal */
 const selectMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
@@ -495,7 +559,6 @@ const selectMakeProto = <
   return IndexedDbQueryBuilderImpl as any
 }
 
-/** @internal */
 const firstMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
@@ -514,5 +577,35 @@ const firstMakeProto = <
     })
   )
   IndexedDbQueryBuilderImpl.select = options.select
+  return IndexedDbQueryBuilderImpl as any
+}
+
+/** @internal */
+const insertMakeProto = <
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
+>(options: {
+  readonly from: IndexedDbQueryBuilder.From<Source, Table>
+  readonly value: Schema.Schema.Type<
+    IndexedDbTable.IndexedDbTable.TableSchema<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    >
+  >
+}): IndexedDbQueryBuilder.Insert<Source, Table> => {
+  function IndexedDbQueryBuilderImpl() {}
+
+  Object.setPrototypeOf(
+    IndexedDbQueryBuilderImpl,
+    Object.assign(Object.create(Proto), {
+      commit(this: IndexedDbQueryBuilder.Insert) {
+        return applyInsert(this, options.value)
+      }
+    })
+  )
+  IndexedDbQueryBuilderImpl.from = options.from
+  IndexedDbQueryBuilderImpl.value = options.value
   return IndexedDbQueryBuilderImpl as any
 }
