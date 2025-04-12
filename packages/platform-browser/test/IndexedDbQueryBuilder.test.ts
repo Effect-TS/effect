@@ -643,5 +643,43 @@ describe("IndexedDbQueryBuilder", () => {
           )
         )
       ))
+
+    it.effect("delete", () =>
+      Effect.gen(function*() {
+        const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+        const api = makeApi(Db)
+        yield* api.from("todo").delete().equals(10)
+        const data = yield* api.from("todo").select()
+
+        assert.equal(data.length, 1)
+        assert.deepStrictEqual(data, [{ id: 11, title: "insert2", count: 11, completed: true }])
+
+        // Close database to avoid errors when running other tests (blocked access)
+        yield* use(async (database) => database.close())
+      }).pipe(
+        Effect.provide(
+          IndexedDbQuery.layer.pipe(
+            Layer.provide(
+              IndexedDbDatabase.layer(
+                "db15",
+                IndexedDbMigration.make({
+                  fromVersion: IndexedDbVersion.makeEmpty,
+                  toVersion: Db,
+                  execute: (_, toQuery) =>
+                    Effect.gen(function*() {
+                      yield* toQuery.createObjectStore("todo")
+                      yield* toQuery.createIndex("todo", "titleIndex")
+                      yield* toQuery.createIndex("todo", "countIndex")
+                      yield* toQuery.insertAll("todo", [
+                        { id: 10, title: "insert1", count: 10, completed: true },
+                        { id: 11, title: "insert2", count: 11, completed: true }
+                      ])
+                    })
+                })
+              ).pipe(Layer.provide(layerFakeIndexedDb))
+            )
+          )
+        )
+      ))
   })
 })
