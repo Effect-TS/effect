@@ -13,8 +13,6 @@ import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 
 /**
  * TODO:
- * - Type-safe schemas between versions in migrations
- * - Fix typing for `select`/`equals` without index
  * - `insertAll`
  * - `updateAll`
  * - `clear`
@@ -26,25 +24,42 @@ import type * as IndexedDbVersion from "./IndexedDbVersion.js"
  * - `modify` (first read, then give function to modify)
  */
 
+type IsNever<T> = [T] extends [never] ? true : false
+
 type ExtractIndexType<
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
   Index extends IndexedDbMigration.IndexFromTable<Source, Table>
-> = Schema.Schema.Type<
-  IndexedDbTable.IndexedDbTable.TableSchema<
-    IndexedDbTable.IndexedDbTable.WithName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-      Table
+> = IsNever<Index> extends true ? Schema.Schema.Type<
+    IndexedDbTable.IndexedDbTable.TableSchema<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
     >
-  >
->[
-  IndexedDbTable.IndexedDbTable.Indexes<
-    IndexedDbTable.IndexedDbTable.WithName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-      Table
+  >[
+    IndexedDbTable.IndexedDbTable.KeyPath<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
     >
-  >[Index]
-]
+  ]
+  : Schema.Schema.Type<
+    IndexedDbTable.IndexedDbTable.TableSchema<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    >
+  >[
+    IndexedDbTable.IndexedDbTable.Indexes<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    >[Index]
+  ]
 
 /**
  * @since 1.0.0
@@ -83,9 +98,10 @@ export declare namespace IndexedDbQueryBuilder {
     readonly database: globalThis.IDBDatabase
     readonly IDBKeyRange: typeof globalThis.IDBKeyRange
 
-    readonly select: <
-      Index extends IndexedDbMigration.IndexFromTable<Source, Table>
-    >(index?: Index) => Select<Source, Table, Index>
+    readonly select: {
+      <Index extends IndexedDbMigration.IndexFromTable<Source, Table>>(index: Index): Select<Source, Table, Index>
+      (): Select<Source, Table, never>
+    }
 
     readonly delete: <
       Index extends IndexedDbMigration.IndexFromTable<Source, Table>

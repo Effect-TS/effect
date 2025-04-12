@@ -41,7 +41,8 @@ export type TypeId = typeof TypeId
 export interface IndexedDbTable<
   out TableName extends string,
   out TableSchema extends Schema.Schema.AnyNoContext = never,
-  out Indexes extends Record<string, KeyPath<TableSchema>> = never
+  out Indexes extends Record<string, KeyPath<TableSchema>> = never,
+  out TableKeyPath extends KeyPath<TableSchema> = never
 > extends Pipeable {
   new(_: never): {}
 
@@ -49,7 +50,7 @@ export interface IndexedDbTable<
   readonly tableName: TableName
   readonly tableSchema: TableSchema
   readonly options?: {
-    keyPath: KeyPath<TableSchema>
+    keyPath: TableKeyPath
     indexes: Indexes
   }
 }
@@ -72,7 +73,7 @@ export declare namespace IndexedDbTable {
    * @since 1.0.0
    * @category models
    */
-  export type AnyWithProps = IndexedDbTable<string, Schema.Schema.AnyNoContext, any>
+  export type AnyWithProps = IndexedDbTable<string, Schema.Schema.AnyNoContext, any, any>
 
   /**
    * @since 1.0.0
@@ -81,8 +82,21 @@ export declare namespace IndexedDbTable {
   export type TableName<Table extends Any> = Table extends IndexedDbTable<
     infer _TableName,
     infer _Schema,
-    infer _Indexes
+    infer _Indexes,
+    infer _TableKeyPath
   > ? _TableName
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type KeyPath<Table extends Any> = Table extends IndexedDbTable<
+    infer _TableName,
+    infer _Schema,
+    infer _Indexes,
+    infer _TableKeyPath
+  > ? _TableKeyPath
     : never
 
   /**
@@ -92,7 +106,8 @@ export declare namespace IndexedDbTable {
   export type TableSchema<Table extends Any> = Table extends IndexedDbTable<
     infer _TableName,
     infer _Schema,
-    infer _Indexes
+    infer _Indexes,
+    infer _TableKeyPath
   > ? _Schema
     : never
 
@@ -103,7 +118,8 @@ export declare namespace IndexedDbTable {
   export type Indexes<Table extends Any> = Table extends IndexedDbTable<
     infer _TableName,
     infer _Schema,
-    infer _Indexes
+    infer _Indexes,
+    infer _TableKeyPath
   > ? _Indexes
     : never
 
@@ -127,15 +143,16 @@ const Proto = {
 const makeProto = <
   TableName extends string,
   TableSchema extends Schema.Schema.AnyNoContext,
-  Indexes extends Record<string, KeyPath<TableSchema>>
+  Indexes extends Record<string, KeyPath<TableSchema>>,
+  TableKeyPath extends KeyPath<TableSchema>
 >(options: {
   readonly tableName: TableName
   readonly tableSchema: TableSchema
   readonly options: Partial<{
-    keyPath: KeyPath<TableSchema>
+    keyPath: TableKeyPath
     indexes: Indexes
   }>
-}): IndexedDbTable<TableName, TableSchema, Indexes> => {
+}): IndexedDbTable<TableName, TableSchema, Indexes, TableKeyPath> => {
   function IndexedDbTable() {}
   Object.setPrototypeOf(IndexedDbTable, Proto)
   IndexedDbTable.tableName = options.tableName
@@ -151,12 +168,14 @@ const makeProto = <
 export const make = <
   TableName extends string,
   TableSchema extends Schema.Schema.AnyNoContext,
-  Indexes extends Record<string, KeyPath<TableSchema>>
+  Indexes extends Record<string, KeyPath<TableSchema>>,
+  TableKeyPath extends KeyPath<TableSchema>
 >(
   tableName: TableName,
   tableSchema: TableSchema,
   options?: Partial<{
-    keyPath: KeyPath<TableSchema>
+    keyPath: TableKeyPath
     indexes: Indexes
   }>
-): IndexedDbTable<TableName, TableSchema, Indexes> => makeProto({ tableName, tableSchema, options: options ?? {} })
+): IndexedDbTable<TableName, TableSchema, Indexes, TableKeyPath> =>
+  makeProto({ tableName, tableSchema, options: options ?? {} })
