@@ -4,7 +4,7 @@
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as HashMap from "effect/HashMap"
-import { type Pipeable } from "effect/Pipeable"
+import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Schema from "effect/Schema"
 import type * as IndexedDbMigration from "./IndexedDbMigration.js"
 import * as IndexedDbQuery from "./IndexedDbQuery.js"
@@ -72,6 +72,10 @@ export declare namespace IndexedDbQueryBuilder {
       Index extends IndexedDbMigration.IndexFromTable<Source, Table>
     >(index?: Index) => Select<Source, Table, Index>
 
+    readonly delete: <
+      Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+    >(index?: Index) => DeletePartial<Source, Table, Index>
+
     readonly insert: (
       value: Schema.Schema.Type<
         IndexedDbTable.IndexedDbTable.TableSchema<
@@ -93,6 +97,110 @@ export declare namespace IndexedDbQueryBuilder {
         >
       >
     ) => Modify<Source, Table>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface DeletePartial<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never,
+    Index extends IndexedDbMigration.IndexFromTable<Source, Table> = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    readonly [TypeId]: TypeId
+    readonly from: From<Source, Table>
+    readonly index?: Index
+
+    readonly equals: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gte: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lte: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gt: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lt: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly between: (
+      lowerBound: ExtractIndexType<Source, Table, Index>,
+      upperBound: ExtractIndexType<Source, Table, Index>,
+      options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly limit: (
+      limit: number
+    ) => Omit<Delete<Source, Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Delete<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never,
+    Index extends IndexedDbMigration.IndexFromTable<Source, Table> = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
+
+    readonly [TypeId]: TypeId
+    readonly delete: DeletePartial<Source, Table, Index>
+    readonly index?: Index
+    readonly limitValue?: number
+    readonly only?: ExtractIndexType<Source, Table, Index>
+    readonly lowerBound?: ExtractIndexType<Source, Table, Index>
+    readonly upperBound?: ExtractIndexType<Source, Table, Index>
+    readonly excludeLowerBound?: boolean
+    readonly excludeUpperBound?: boolean
+
+    readonly equals: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gte: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lte: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gt: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lt: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly between: (
+      lowerBound: ExtractIndexType<Source, Table, Index>,
+      upperBound: ExtractIndexType<Source, Table, Index>,
+      options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly limit: (
+      limit: number
+    ) => Omit<Delete<Source, Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between">
   }
 
   /**
@@ -208,11 +316,7 @@ export declare namespace IndexedDbQueryBuilder {
   > extends Pipeable {
     new(_: never): {}
 
-    [Symbol.iterator](): Effect.EffectGenerator<
-      Effect.Effect<
-        globalThis.IDBValidKey
-      >
-    >
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<globalThis.IDBValidKey>>
 
     readonly [TypeId]: TypeId
     readonly operation: "add" | "put"
@@ -227,6 +331,88 @@ export declare namespace IndexedDbQueryBuilder {
     >
   }
 }
+
+const applyDelete = (query: IndexedDbQueryBuilder.Delete) =>
+  Effect.async<any, IndexedDbQuery.IndexedDbQueryError>((resume) => {
+    const database = query.delete.from.database
+    const IDBKeyRange = query.delete.from.IDBKeyRange
+    const objectStore = database.transaction([query.delete.from.table], "readwrite").objectStore(
+      query.delete.from.table
+    )
+
+    let keyRange: globalThis.IDBKeyRange | undefined = undefined
+
+    if (query.only !== undefined) {
+      keyRange = IDBKeyRange.only(query.only)
+    } else if (query.lowerBound !== undefined && query.upperBound !== undefined) {
+      keyRange = IDBKeyRange.bound(
+        query.lowerBound,
+        query.upperBound,
+        query.excludeLowerBound,
+        query.excludeUpperBound
+      )
+    } else if (query.lowerBound !== undefined) {
+      keyRange = IDBKeyRange.lowerBound(query.lowerBound, query.excludeLowerBound)
+    } else if (query.upperBound !== undefined) {
+      keyRange = IDBKeyRange.upperBound(query.upperBound, query.excludeUpperBound)
+    }
+
+    let request: globalThis.IDBRequest
+
+    if (query.limitValue !== undefined) {
+      const cursorRequest = objectStore.openCursor()
+      let count = 0
+
+      cursorRequest.onerror = () => {
+        resume(
+          Effect.fail(
+            new IndexedDbQuery.IndexedDbQueryError({ reason: "TransactionError", cause: cursorRequest.error })
+          )
+        )
+      }
+
+      cursorRequest.onsuccess = () => {
+        const cursor = cursorRequest.result
+        if (cursor !== null) {
+          const deleteRequest = cursor.delete()
+
+          deleteRequest.onerror = () => {
+            resume(
+              Effect.fail(
+                new IndexedDbQuery.IndexedDbQueryError({ reason: "TransactionError", cause: deleteRequest.error })
+              )
+            )
+          }
+
+          count += 1
+          if (count >= query.limitValue!) {
+            cursor.continue()
+          }
+        }
+
+        resume(Effect.void)
+      }
+    } else if (keyRange !== undefined) {
+      request = objectStore.delete(keyRange)
+
+      request.onerror = (event) => {
+        resume(
+          Effect.fail(
+            new IndexedDbQuery.IndexedDbQueryError({
+              reason: "TransactionError",
+              cause: event
+            })
+          )
+        )
+      }
+
+      request.onsuccess = () => {
+        resume(Effect.succeed(request.result))
+      }
+    } else {
+      resume(Effect.dieMessage("No key range provided for delete operation"))
+    }
+  })
 
 const getReadonlyObjectStore = (query: IndexedDbQueryBuilder.Select) => {
   const database = query.from.database
@@ -430,6 +616,13 @@ const applyModify = (query: IndexedDbQueryBuilder.Modify, value: any) =>
     }
   })
 
+const BasicProto = {
+  [TypeId]: TypeId,
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
 const Proto = {
   ...Effectable.CommitPrototype,
   [TypeId]: TypeId
@@ -461,6 +654,15 @@ export const fromMakeProto = <
       index
     })
 
+  IndexedDbQueryBuilder.delete = <
+    Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+  >(index?: Index) =>
+    deletePartialMakeProto({
+      from: IndexedDbQueryBuilder as any,
+      // @ts-expect-error
+      index
+    })
+
   IndexedDbQueryBuilder.insert = (value: any) =>
     modifyMakeProto({ from: IndexedDbQueryBuilder as any, value, operation: "add" })
 
@@ -468,6 +670,192 @@ export const fromMakeProto = <
     modifyMakeProto({ from: IndexedDbQueryBuilder as any, value, operation: "put" })
 
   return IndexedDbQueryBuilder as any
+}
+
+const deletePartialMakeProto = <
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
+  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+>(options: {
+  readonly from: IndexedDbQueryBuilder.From<Source, Table>
+  readonly index: Index | undefined
+}): IndexedDbQueryBuilder.DeletePartial<Source, Table, Index> => {
+  function IndexedDbQueryBuilderImpl() {}
+
+  const limit = (
+    limit: number
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({ delete: IndexedDbQueryBuilderImpl as any, limitValue: limit })
+
+  const equals = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({ delete: IndexedDbQueryBuilderImpl as any, only: value })
+
+  const gte = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({
+      delete: IndexedDbQueryBuilderImpl as any,
+      lowerBound: value,
+      excludeLowerBound: false
+    })
+
+  const lte = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({
+      delete: IndexedDbQueryBuilderImpl as any,
+      upperBound: value,
+      excludeUpperBound: false
+    })
+
+  const gt = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({
+      delete: IndexedDbQueryBuilderImpl as any,
+      lowerBound: value,
+      excludeLowerBound: true
+    })
+
+  const lt = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({
+      delete: IndexedDbQueryBuilderImpl as any,
+      upperBound: value,
+      excludeUpperBound: true
+    })
+
+  const between = (
+    lowerBound: ExtractIndexType<Source, Table, Index>,
+    upperBound: ExtractIndexType<Source, Table, Index>,
+    queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({
+      delete: IndexedDbQueryBuilderImpl as any,
+      lowerBound,
+      upperBound,
+      excludeLowerBound: queryOptions?.excludeLowerBound ?? false,
+      excludeUpperBound: queryOptions?.excludeUpperBound ?? false
+    })
+
+  Object.setPrototypeOf(IndexedDbQueryBuilderImpl, Object.assign(Object.create(BasicProto)))
+  IndexedDbQueryBuilderImpl.from = options.from
+  IndexedDbQueryBuilderImpl.index = options.index
+  IndexedDbQueryBuilderImpl.equals = equals
+  IndexedDbQueryBuilderImpl.gte = gte
+  IndexedDbQueryBuilderImpl.lte = lte
+  IndexedDbQueryBuilderImpl.gt = gt
+  IndexedDbQueryBuilderImpl.lt = lt
+  IndexedDbQueryBuilderImpl.between = between
+  IndexedDbQueryBuilderImpl.limit = limit
+  return IndexedDbQueryBuilderImpl as any
+}
+
+const deleteMakeProto = <
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
+  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+>(options: {
+  readonly delete: IndexedDbQueryBuilder.DeletePartial<Source, Table, Index>
+  readonly limitValue?: number | undefined
+  readonly only?: ExtractIndexType<Source, Table, Index>
+  readonly lowerBound?: ExtractIndexType<Source, Table, Index>
+  readonly upperBound?: ExtractIndexType<Source, Table, Index>
+  readonly excludeLowerBound?: boolean
+  readonly excludeUpperBound?: boolean
+}): IndexedDbQueryBuilder.Delete<Source, Table, Index> => {
+  function IndexedDbQueryBuilderImpl() {}
+
+  const limit = (
+    limit: number
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({ delete: options.delete, limitValue: limit })
+
+  const equals = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({ delete: options.delete, only: value, limitValue: options.limitValue })
+
+  const gte = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({
+      delete: options.delete,
+      lowerBound: value,
+      excludeLowerBound: false,
+      limitValue: options.limitValue
+    })
+
+  const lte = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({
+      delete: options.delete,
+      upperBound: value,
+      excludeUpperBound: false,
+      limitValue: options.limitValue
+    })
+
+  const gt = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({
+      delete: options.delete,
+      lowerBound: value,
+      excludeLowerBound: true,
+      limitValue: options.limitValue
+    })
+
+  const lt = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({
+      delete: options.delete,
+      upperBound: value,
+      excludeUpperBound: true,
+      limitValue: options.limitValue
+    })
+
+  const between = (
+    lowerBound: ExtractIndexType<Source, Table, Index>,
+    upperBound: ExtractIndexType<Source, Table, Index>,
+    queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
+  ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    deleteMakeProto({
+      delete: options.delete,
+      lowerBound,
+      upperBound,
+      excludeLowerBound: queryOptions?.excludeLowerBound ?? false,
+      excludeUpperBound: queryOptions?.excludeUpperBound ?? false,
+      limitValue: options.limitValue
+    })
+
+  Object.setPrototypeOf(
+    IndexedDbQueryBuilderImpl,
+    Object.assign(Object.create(Proto), {
+      commit(this: IndexedDbQueryBuilder.Delete) {
+        return applyDelete(this)
+      }
+    })
+  )
+  IndexedDbQueryBuilderImpl.delete = options.delete
+  IndexedDbQueryBuilderImpl.limitValue = options.limitValue
+  IndexedDbQueryBuilderImpl.only = options.only
+  IndexedDbQueryBuilderImpl.lowerBound = options.lowerBound
+  IndexedDbQueryBuilderImpl.upperBound = options.upperBound
+  IndexedDbQueryBuilderImpl.excludeLowerBound = options.excludeLowerBound
+  IndexedDbQueryBuilderImpl.excludeUpperBound = options.excludeUpperBound
+  IndexedDbQueryBuilderImpl.equals = equals
+  IndexedDbQueryBuilderImpl.gte = gte
+  IndexedDbQueryBuilderImpl.lte = lte
+  IndexedDbQueryBuilderImpl.gt = gt
+  IndexedDbQueryBuilderImpl.lt = lt
+  IndexedDbQueryBuilderImpl.between = between
+  IndexedDbQueryBuilderImpl.limit = limit
+  return IndexedDbQueryBuilderImpl as any
 }
 
 const selectMakeProto = <
