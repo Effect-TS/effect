@@ -1,5 +1,13 @@
 # @effect/cluster
 
+## 0.29.16
+
+### Patch Changes
+
+- [#4719](https://github.com/Effect-TS/effect/pull/4719) [`a79b732`](https://github.com/Effect-TS/effect/commit/a79b732bddea8bfca091c4fed0dd87aa0b1ab1f0) Thanks @tim-smart! - expire shard locks after 15 seconds
+
+- [#4719](https://github.com/Effect-TS/effect/pull/4719) [`a79b732`](https://github.com/Effect-TS/effect/commit/a79b732bddea8bfca091c4fed0dd87aa0b1ab1f0) Thanks @tim-smart! - ensure more persisted messages are eligible for the fast path
+
 ## 0.29.15
 
 ### Patch Changes
