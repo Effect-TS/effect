@@ -219,10 +219,7 @@ export const migrationApi = <
           }))
       )
 
-      return yield* Effect.async<
-        globalThis.IDBValidKey,
-        IndexedDbMigrationError
-      >((resume) => {
+      return yield* Effect.async<globalThis.IDBValidKey, IndexedDbMigrationError>((resume) => {
         const objectStore = transaction.objectStore(table)
         const request = objectStore.add(data)
 
@@ -395,26 +392,6 @@ export const migrationApi = <
 
 /**
  * @since 1.0.0
- * @category interface
- */
-export interface IndexedDbMigration<
-  in out FromVersion extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
-  in out ToVersion extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
-  out Error = never
-> extends Pipeable {
-  new(_: never): {}
-
-  readonly [TypeId]: TypeId
-  readonly fromVersion: FromVersion
-  readonly toVersion: ToVersion
-  readonly execute: (
-    fromQuery: MigrationApi<FromVersion>,
-    toQuery: MigrationApi<ToVersion>
-  ) => Effect.Effect<void, Error>
-}
-
-/**
- * @since 1.0.0
  * @category models
  */
 export declare namespace IndexedDbMigration {
@@ -422,19 +399,75 @@ export declare namespace IndexedDbMigration {
    * @since 1.0.0
    * @category models
    */
-  export interface Any {
+  export interface Initial<
+    in out InitialVersion extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    in out Error = never
+  > extends Pipeable {
+    new(_: never): {}
+
     readonly [TypeId]: TypeId
+    readonly _tag: "Initial"
+    readonly version: InitialVersion
+    readonly execute: (toQuery: MigrationApi<InitialVersion>) => Effect.Effect<void, Error>
+
+    readonly add: <
+      Version extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+      MigrationError
+    >(
+      version: Version,
+      execute: (
+        fromQuery: MigrationApi<InitialVersion>,
+        toQuery: MigrationApi<Version>
+      ) => Effect.Effect<void, MigrationError>
+    ) => Migration<InitialVersion, Version, MigrationError | Error>
   }
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type AnyWithProps = IndexedDbMigration<
+  export interface Migration<
+    in out FromVersion extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    in out ToVersion extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    out Error = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    readonly [TypeId]: TypeId
+    readonly _tag: "Migration"
+    readonly previous: Migration<FromVersion, ToVersion, Error> | Initial<FromVersion, Error>
+    readonly fromVersion: FromVersion
+    readonly toVersion: ToVersion
+    readonly execute: (
+      fromQuery: MigrationApi<FromVersion>,
+      toQuery: MigrationApi<ToVersion>
+    ) => Effect.Effect<void, Error>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Any {
+    readonly [TypeId]: TypeId
+    readonly _tag: "Initial" | "Migration"
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type AnyMigration = Migration<
     IndexedDbVersion.IndexedDbVersion.AnyWithProps,
     IndexedDbVersion.IndexedDbVersion.AnyWithProps,
     any
   >
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type AnyInitial = Initial<IndexedDbVersion.IndexedDbVersion.AnyWithProps, any>
 }
 
 const Proto = {
@@ -444,23 +477,62 @@ const Proto = {
   }
 }
 
+const makeInitialProto = <
+  InitialVersion extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Error
+>(
+  initialVersion: InitialVersion,
+  init: (
+    toQuery: MigrationApi<InitialVersion>
+  ) => Effect.Effect<void, Error>
+): IndexedDbMigration.Initial<InitialVersion, Error> => {
+  function IndexedDbMigration() {}
+  Object.setPrototypeOf(IndexedDbMigration, Proto)
+  IndexedDbMigration.version = initialVersion
+  IndexedDbMigration.execute = init
+  IndexedDbMigration._tag = "Initial"
+
+  IndexedDbMigration.add = <
+    Version extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
+  >(
+    version: Version,
+    execute: (
+      fromQuery: MigrationApi<InitialVersion>,
+      toQuery: MigrationApi<Version>
+    ) => Effect.Effect<void, Error>
+  ) =>
+    makeProto({
+      fromVersion: initialVersion,
+      toVersion: version,
+      execute,
+      previous: IndexedDbMigration as any
+    })
+
+  return IndexedDbMigration as any
+}
+
 const makeProto = <
   FromVersion extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   ToVersion extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Error
 >(options: {
+  readonly previous:
+    | IndexedDbMigration.Migration<FromVersion, ToVersion, Error>
+    | IndexedDbMigration.Initial<FromVersion, Error>
   readonly fromVersion: FromVersion
   readonly toVersion: ToVersion
   readonly execute: (
     fromQuery: MigrationApi<FromVersion>,
     toQuery: MigrationApi<ToVersion>
   ) => Effect.Effect<void, Error>
-}): IndexedDbMigration<FromVersion, ToVersion, Error> => {
+}): IndexedDbMigration.Migration<FromVersion, ToVersion, Error> => {
   function IndexedDbMigration() {}
   Object.setPrototypeOf(IndexedDbMigration, Proto)
+  IndexedDbMigration.previous = options.previous
   IndexedDbMigration.fromVersion = options.fromVersion
   IndexedDbMigration.toVersion = options.toVersion
   IndexedDbMigration.execute = options.execute
+  IndexedDbMigration._tag = "Migration"
   return IndexedDbMigration as any
 }
 
@@ -468,4 +540,4 @@ const makeProto = <
  * @since 1.0.0
  * @category constructors
  */
-export const make = makeProto
+export const make = makeInitialProto
