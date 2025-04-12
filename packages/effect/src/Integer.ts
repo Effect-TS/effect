@@ -1,17 +1,100 @@
 /**
  * # Integer
  *
- * **Operations on integers** (`ℤ`), **representing whole numbers** `{..., -2,
- * -1, 0, 1, 2, ...}`.
+ * ## Mathematical Domain Representation
  *
- * ## What Problem Does It Solve?
+ * `Integer` represents the set of whole numbers (`ℤ = {..., -2, -1, 0, 1, 2,
+ * ...}`), extending natural numbers to include negative values.
  *
- * The `Integer` module solves the problem of working with whole numbers in a
- * **type-safe**, **functional** manner. It ensures operations maintain integer
- * constraints (no fractional components) while providing a rich set of
- * mathematical operations with proper error handling and type refinements.
+ * In mathematics, integers form a ring structure with operations of addition
+ * and multiplication. They have additive inverses (negatives) but not
+ * multiplicative inverses (reciprocals).
  *
- * ## When to Use
+ * The integers exhibit key mathematical properties:
+ *
+ * - **Discreteness**: There is a distinct successor and predecessor for each
+ *   integer
+ * - **Total ordering**: For any two integers, one is greater than, equal to, or
+ *   less than the other
+ * - **Euclidean property**: For any integers `a` and `b` where `b ≠ 0`, there
+ *   exist unique `q`, `r` such that `a = bq + r` where `0 ≤ r < |b|`
+ * - **Closure** under addition, subtraction, and multiplication (but not
+ *   division)
+ *
+ * ## Constraints Imposed
+ *
+ * By modeling values as `Integer`, you accept the following constraints:
+ *
+ * - **Integrity**: Values must be whole numbers (no fractional components)
+ * - **Domain preservation**: Division operations might leave the domain and must
+ *   be handled specially
+ * - **Bounded range**: JavaScript integers are limited to safe integer range
+ *   (-(2^53-1) to (2^53-1))
+ *
+ * ## Derived Guarantees and Business Value
+ *
+ * These constraints unlock powerful guarantees that directly translate to
+ * business value:
+ *
+ * | Mathematical Guarantee | Business Value                                       | Usage Example                              |
+ * | ---------------------- | ---------------------------------------------------- | ------------------------------------------ |
+ * | Exact arithmetic       | No floating-point errors for whole number operations | Financial calculations, inventory tracking |
+ * | Bidirectional values   | Can represent increases and decreases equally        | Account balances, temperature changes      |
+ * | Ring structure         | Predictable behavior for arithmetic operations       | Coordinate systems, relative positioning   |
+ * | Discrete steps         | Clear predecessor/successor relationships            | Versioning, sequential identifiers         |
+ * | Deterministic ordering | Consistent sorting and comparison                    | Ranked items, priority systems             |
+ *
+ * ## Domain Modeling Applications
+ *
+ * `Integer` excels at modeling domains where quantities need to be whole
+ * numbers but can be positive or negative:
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
+ * import * as N from "effect/NaturalNumber"
+ *
+ * // Banking transaction system example
+ * type Transaction = {
+ *   id: string
+ *   description: string
+ *   amountInCents: Integer.Integer // Whole cents, positive or negative
+ * }
+ *
+ * type Account = {
+ *   id: string
+ *   balanceInCents: Integer.Integer // Can be positive (credit) or negative (debit)
+ *   transactions: Array<Transaction>
+ * }
+ *
+ * // Apply a transaction to an account
+ * export const applyTransaction = (
+ *   account: Account,
+ *   transaction: Transaction
+ * ): Account => ({
+ *   ...account,
+ *   balanceInCents: Integer.sum(
+ *     account.balanceInCents,
+ *     transaction.amountInCents
+ *   ),
+ *   transactions: [...account.transactions, transaction]
+ * })
+ *
+ * // Determine account status based on balance
+ * export const getAccountStatus = (
+ *   account: Account
+ * ): "overdrawn" | "at-risk" | "good" | "excellent" =>
+ *   pipe(account.balanceInCents, Integer.sign, (status) => {
+ *     if (status === -1) return "overdrawn"
+ *     if (Integer.lessThan(account.balanceInCents, N.of(10000)))
+ *       return "at-risk"
+ *     if (Integer.lessThan(account.balanceInCents, N.of(100000)))
+ *       return "good"
+ *     return "excellent"
+ *   })
+ * ```
+ *
+ * ## When to Use Integer
  *
  * Use the `Integer` module when you need:
  *
@@ -21,25 +104,14 @@
  * - Mathematical operations that preserve integer properties
  * - Operations that intelligently return more specific types when appropriate
  *
- * Integers extend natural numbers by including negative values, enabling
- * modeling of:
+ * ## Choosing the Right Numeric Type
  *
- * - Signed quantities (positive, zero, and negative values)
- * - Differences between natural numbers
- * - Positions relative to an origin point
- * - Direction along with magnitude
- *
- * ## Advanced Features
- *
- * The Integer module provides:
- *
- * - **Type refinement** with runtime validation ensuring no fractional components
- * - **Mathematical operations** that preserve integer properties
- * - **Type-narrowing operations** that return more specific types when
- *   appropriate
- * - **Option-returning operations** for potentially invalid operations
- * - **Comparison predicates** for rich relational operations
- * - **Type-class instances** for functional programming patterns
+ * | If your domain concept...         | Then use...                  | Examples                       |
+ * | --------------------------------- | ---------------------------- | ------------------------------ |
+ * | Cannot be negative, must be whole | {@link module:NaturalNumber} | Inventory, age, count, index   |
+ * | Can be negative, must be whole    | {@link module:Integer}       | Temperature, position, balance |
+ * | Can be fractional                 | {@link module:Number}        | Prices, rates, measurements    |
+ * | Needs arbitrary precision         | {@link BigInt}               | Cryptography, financial totals |
  *
  * ## Operations Reference
  *
@@ -86,8 +158,8 @@
  *
  * const result = pipe(
  *   Integer.of(-5),
- *   Integer.add(10), // Integer → Integer
- *   Integer.multiply(2), // Integer → Integer
+ *   Integer.sum(Integer.of(10)), // Integer → Integer
+ *   Integer.multiply(Integer.of(2)), // Integer → Integer
  *   Integer.negate // Integer → Integer
  * ) // Result: Integer (-10)
  * ```
@@ -98,7 +170,7 @@
  * with the new type:
  *
  * ```ts
- * import { pipe, Option } from "effect"
+ * import { Option, pipe } from "effect"
  * import * as Integer from "effect/Integer"
  * import * as NaturalNumber from "effect/NaturalNumber"
  * import * as RealNumber from "effect/Number"
@@ -114,10 +186,10 @@
  * // Type widening: Integer → number
  * const fractionResult = pipe(
  *   Integer.of(10),
- *   Integer.divideToNumber(3), // Integer → Option<number>
+ *   Integer.divideToNumber(NaturalNumber.of(3)), // Integer → Option<number>
  *   Option.map(
  *     // Cannot use Integer operations here!
- *     (n: number) => RealNumber.multiply(2, n) // number → number
+ *     RealNumber.multiply(2) // number → number
  *   )
  * ) // Result: Some(6.666...)
  * ```
@@ -128,13 +200,13 @@
  * processing:
  *
  * ```ts
- * import { pipe, Option } from "effect"
+ * import { Option, pipe } from "effect"
  * import * as Integer from "effect/Integer"
  *
  * const result = pipe(
  *   Integer.of(10),
- *   Integer.divideSafe(3), // Integer → Option<Integer>
- *   Option.map(Integer.add(1)), // Option<Integer> → Option<Integer>
+ *   Integer.divideSafe(Integer.of(3)), // Integer → Option<Integer>
+ *   Option.map(Integer.increment), // Option<Integer> → Option<Integer>
  *   Option.getOrElse(() => Integer.zero)
  * ) // Result: Integer.of(0)
  * ```
@@ -146,28 +218,6 @@
  *   domains
  * - Use Option combinators when working with potentially failing operations
  * - Be aware when operations narrow to NaturalNumber or widen to number
- *
- * ## Mathematical Properties
- *
- * From an algebraic perspective, `Integer` forms a ring under:
- *
- * - Addition with identity 0 and inverses (negation)
- * - Multiplication with identity 1
- * - Standard associative, commutative, and distributive properties
- *
- * Mathematically, `ℤ` is characterized by:
- *
- * - Discreteness: There is a distinct successor and predecessor for each integer
- * - Total ordering: For any two integers, one is greater than, equal to, or less
- *   than the other
- * - Euclidean property: For any integers `a` and `b` where `b ≠ 0`, there exist
- *   unique `q`, `r` such that `a = bq + r` where `0 ≤ r < |b|`
- *
- * In the type system hierarchy:
- *
- * - {@link module:NaturalNumber} is a proper subset of `Integer` (`ℕ₀ ⊂ ℤ`)
- * - `Integer` is a proper subset of JavaScript's native {@link module:Number} (`ℤ
- *   ⊂ ℝ`)
  *
  * @module Integer
  * @since 3.14.6
