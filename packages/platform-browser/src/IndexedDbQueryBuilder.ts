@@ -13,8 +13,6 @@ import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 
 /**
  * TODO:
- * - `insertAll`
- * - `updateAll`
  * - `clear`
  * - `count`
  * - Include `Scope` but make it "optional"
@@ -118,6 +116,19 @@ export declare namespace IndexedDbQueryBuilder {
       >
     ) => Modify<Source, Table>
 
+    readonly insertAll: (
+      values: Array<
+        Schema.Schema.Type<
+          IndexedDbTable.IndexedDbTable.TableSchema<
+            IndexedDbTable.IndexedDbTable.WithName<
+              IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+              Table
+            >
+          >
+        >
+      >
+    ) => ModifyAll<Source, Table>
+
     readonly upsert: (
       value: Schema.Schema.Type<
         IndexedDbTable.IndexedDbTable.TableSchema<
@@ -128,6 +139,19 @@ export declare namespace IndexedDbQueryBuilder {
         >
       >
     ) => Modify<Source, Table>
+
+    readonly upsertAll: (
+      values: Array<
+        Schema.Schema.Type<
+          IndexedDbTable.IndexedDbTable.TableSchema<
+            IndexedDbTable.IndexedDbTable.WithName<
+              IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+              Table
+            >
+          >
+        >
+      >
+    ) => ModifyAll<Source, Table>
   }
 
   /**
@@ -357,6 +381,35 @@ export declare namespace IndexedDbQueryBuilder {
         IndexedDbTable.IndexedDbTable.WithName<
           IndexedDbVersion.IndexedDbVersion.Tables<Source>,
           Table
+        >
+      >
+    >
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface ModifyAll<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<Array<globalThis.IDBValidKey>>>
+
+    readonly [TypeId]: TypeId
+    readonly operation: "add" | "put"
+    readonly from: From<Source, Table>
+    readonly values: Array<
+      Schema.Schema.Type<
+        IndexedDbTable.IndexedDbTable.TableSchema<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            Table
+          >
         >
       >
     >
@@ -647,6 +700,68 @@ const applyModify = (query: IndexedDbQueryBuilder.Modify, value: any) =>
     }
   })
 
+const applyModifyAll = (query: IndexedDbQueryBuilder.ModifyAll, values: Array<any>) =>
+  Effect.async<Array<globalThis.IDBValidKey>, IndexedDbQuery.IndexedDbQueryError>((resume) => {
+    const database = query.from.database
+    const objectStore = database.transaction([query.from.table], "readwrite").objectStore(query.from.table)
+
+    const results: Array<globalThis.IDBValidKey> = []
+
+    if (query.operation === "add") {
+      for (let i = 0; i < values.length; i++) {
+        const request = objectStore.add(values[i])
+
+        request.onerror = () => {
+          resume(
+            Effect.fail(
+              new IndexedDbQuery.IndexedDbQueryError({
+                reason: "TransactionError",
+                cause: request.error
+              })
+            )
+          )
+        }
+
+        request.onsuccess = () => {
+          results.push(request.result)
+        }
+      }
+    } else if (query.operation === "put") {
+      for (let i = 0; i < values.length; i++) {
+        const request = objectStore.put(values[i])
+
+        request.onerror = () => {
+          resume(
+            Effect.fail(
+              new IndexedDbQuery.IndexedDbQueryError({
+                reason: "TransactionError",
+                cause: request.error
+              })
+            )
+          )
+        }
+
+        request.onsuccess = () => {
+          results.push(request.result)
+        }
+      }
+    } else {
+      return resume(Effect.dieMessage("Invalid modify all operation"))
+    }
+
+    objectStore.transaction.onerror = () => {
+      resume(
+        Effect.fail(
+          new IndexedDbQuery.IndexedDbQueryError({ reason: "TransactionError", cause: objectStore.transaction.error })
+        )
+      )
+    }
+
+    objectStore.transaction.oncomplete = () => {
+      resume(Effect.succeed(results))
+    }
+  })
+
 const BasicProto = {
   [TypeId]: TypeId,
   pipe() {
@@ -699,6 +814,12 @@ export const fromMakeProto = <
 
   IndexedDbQueryBuilder.upsert = (value: any) =>
     modifyMakeProto({ from: IndexedDbQueryBuilder as any, value, operation: "put" })
+
+  IndexedDbQueryBuilder.insertAll = (values: Array<any>) =>
+    modifyAllMakeProto({ from: IndexedDbQueryBuilder as any, values, operation: "add" })
+
+  IndexedDbQueryBuilder.upsertAll = (values: Array<any>) =>
+    modifyAllMakeProto({ from: IndexedDbQueryBuilder as any, values, operation: "put" })
 
   return IndexedDbQueryBuilder as any
 }
@@ -1025,7 +1146,6 @@ const firstMakeProto = <
   return IndexedDbQueryBuilderImpl as any
 }
 
-/** @internal */
 const modifyMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
@@ -1053,6 +1173,39 @@ const modifyMakeProto = <
   )
   IndexedDbQueryBuilderImpl.from = options.from
   IndexedDbQueryBuilderImpl.value = options.value
+  IndexedDbQueryBuilderImpl.operation = options.operation
+  return IndexedDbQueryBuilderImpl as any
+}
+
+const modifyAllMakeProto = <
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
+>(options: {
+  readonly from: IndexedDbQueryBuilder.From<Source, Table>
+  readonly values: Array<
+    Schema.Schema.Type<
+      IndexedDbTable.IndexedDbTable.TableSchema<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >
+    >
+  >
+  readonly operation: "add" | "put"
+}): IndexedDbQueryBuilder.Modify<Source, Table> => {
+  function IndexedDbQueryBuilderImpl() {}
+
+  Object.setPrototypeOf(
+    IndexedDbQueryBuilderImpl,
+    Object.assign(Object.create(Proto), {
+      commit(this: IndexedDbQueryBuilder.ModifyAll) {
+        return applyModifyAll(this, options.values)
+      }
+    })
+  )
+  IndexedDbQueryBuilderImpl.from = options.from
+  IndexedDbQueryBuilderImpl.values = options.values
   IndexedDbQueryBuilderImpl.operation = options.operation
   return IndexedDbQueryBuilderImpl as any
 }
