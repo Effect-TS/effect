@@ -619,6 +619,232 @@ export * as HashSet from "./HashSet.js"
 export * as Inspectable from "./Inspectable.js"
 
 /**
+ * # Integer
+ *
+ * ## Mathematical Domain Representation
+ *
+ * `Integer` represents the set of whole numbers (`ℤ = {..., -2, -1, 0, 1, 2,
+ * ...}`), extending natural numbers to include negative values.
+ *
+ * In mathematics, integers form a ring structure with operations of addition
+ * and multiplication. They have additive inverses (negatives) but not
+ * multiplicative inverses (reciprocals).
+ *
+ * The integers exhibit key mathematical properties:
+ *
+ * - **Discreteness**: There is a distinct successor and predecessor for each
+ *   integer
+ * - **Total ordering**: For any two integers, one is greater than, equal to, or
+ *   less than the other
+ * - **Euclidean property**: For any integers `a` and `b` where `b ≠ 0`, there
+ *   exist unique `q`, `r` such that `a = bq + r` where `0 ≤ r < |b|`
+ * - **Closure** under addition, subtraction, and multiplication (but not
+ *   division)
+ *
+ * ## Constraints Imposed
+ *
+ * By modeling values as `Integer`, you accept the following constraints:
+ *
+ * - **Integrity**: Values must be whole numbers (no fractional components)
+ * - **Domain preservation**: Division operations might leave the domain and must
+ *   be handled specially
+ * - **Bounded range**: JavaScript integers are limited to safe integer range
+ *   (-(2^53-1) to (2^53-1))
+ *
+ * ## Derived Guarantees and Business Value
+ *
+ * These constraints unlock powerful guarantees that directly translate to
+ * business value:
+ *
+ * | Mathematical Guarantee | Business Value                                       | Usage Example                              |
+ * | ---------------------- | ---------------------------------------------------- | ------------------------------------------ |
+ * | Exact arithmetic       | No floating-point errors for whole number operations | Financial calculations, inventory tracking |
+ * | Bidirectional values   | Can represent increases and decreases equally        | Account balances, temperature changes      |
+ * | Ring structure         | Predictable behavior for arithmetic operations       | Coordinate systems, relative positioning   |
+ * | Discrete steps         | Clear predecessor/successor relationships            | Versioning, sequential identifiers         |
+ * | Deterministic ordering | Consistent sorting and comparison                    | Ranked items, priority systems             |
+ *
+ * ## Domain Modeling Applications
+ *
+ * `Integer` excels at modeling domains where quantities need to be whole
+ * numbers but can be positive or negative:
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
+ * import * as N from "effect/NaturalNumber"
+ *
+ * // Banking transaction system example
+ * type Transaction = {
+ *   id: string
+ *   description: string
+ *   amountInCents: Integer.Integer // Whole cents, positive or negative
+ * }
+ *
+ * type Account = {
+ *   id: string
+ *   balanceInCents: Integer.Integer // Can be positive (credit) or negative (debit)
+ *   transactions: Array<Transaction>
+ * }
+ *
+ * // Apply a transaction to an account
+ * export const applyTransaction = (
+ *   account: Account,
+ *   transaction: Transaction
+ * ): Account => ({
+ *   ...account,
+ *   balanceInCents: Integer.sum(
+ *     account.balanceInCents,
+ *     transaction.amountInCents
+ *   ),
+ *   transactions: [...account.transactions, transaction]
+ * })
+ *
+ * // Determine account status based on balance
+ * export const getAccountStatus = (
+ *   account: Account
+ * ): "overdrawn" | "at-risk" | "good" | "excellent" =>
+ *   pipe(account.balanceInCents, Integer.sign, (status) => {
+ *     if (status === -1) return "overdrawn"
+ *     if (Integer.lessThan(account.balanceInCents, N.of(10000)))
+ *       return "at-risk"
+ *     if (Integer.lessThan(account.balanceInCents, N.of(100000)))
+ *       return "good"
+ *     return "excellent"
+ *   })
+ * ```
+ *
+ * ## When to Use Integer
+ *
+ * Use the `Integer` module when you need:
+ *
+ * - Strict whole-number arithmetic with no fractional components
+ * - To model quantities that can be negative but must be whole numbers
+ * - Precise control over numeric type flow in function composition
+ * - Mathematical operations that preserve integer properties
+ * - Operations that intelligently return more specific types when appropriate
+ *
+ * ## Choosing the Right Numeric Type
+ *
+ * | If your domain concept...         | Then use...                  | Examples                       |
+ * | --------------------------------- | ---------------------------- | ------------------------------ |
+ * | Cannot be negative, must be whole | {@link module:NaturalNumber} | Inventory, age, count, index   |
+ * | Can be negative, must be whole    | {@link module:Integer}       | Temperature, position, balance |
+ * | Can be fractional                 | {@link module:Number}        | Prices, rates, measurements    |
+ * | Needs arbitrary precision         | {@link BigInt}               | Cryptography, financial totals |
+ *
+ * ## Operations Reference
+ *
+ * | Category   | Operation                                   | Description                                     | Domain                          | Co-domain              |
+ * | ---------- | ------------------------------------------- | ----------------------------------------------- | ------------------------------- | ---------------------- |
+ * | math       | {@link module:Integer.sign}                 | Determines the sign of an integer               | `Integer`                       | `Ordering`             |
+ * | math       | {@link module:Integer.abs}                  | Returns absolute value as a NaturalNumber       | `Integer`                       | `NaturalNumber`        |
+ * | math       | {@link module:Integer.negate}               | Returns the additive inverse                    | `Integer`                       | `Integer`              |
+ * | math       | {@link module:Integer.add}                  | Adds two integers                               | `Integer`, `Integer`            | `Integer`              |
+ * | math       | {@link module:Integer.subtract}             | Subtracts one integer from another              | `Integer`, `Integer`            | `Integer`              |
+ * | math       | {@link module:Integer.multiply}             | Multiplies two integers                         | `Integer`, `Integer`            | `Integer`              |
+ * | math       | {@link module:Integer.square}               | Computes square (returns NaturalNumber)         | `Integer`                       | `NaturalNumber`        |
+ * | math       | {@link module:Integer.cube}                 | Computes cube (preserves sign)                  | `Integer`                       | `Integer`              |
+ * | math       | {@link module:Integer.pow}                  | Integer exponentiation                          | `Integer`, `Integer`            | `Integer`              |
+ * | math       | {@link module:Integer.divideToNumber}       | Divides yielding possibly non-integer result    | `Integer`, `Integer`            | `number`               |
+ * | math       | {@link module:Integer.divideSafe}           | Safely divides returning Option for non-integer | `Integer`, `Integer`            | `Option<Integer>`      |
+ * |            |                                             |                                                 |                                 |                        |
+ * | predicates | {@link module:Integer.between}              | Checks if integer is in a range                 | `Integer`, `{minimum, maximum}` | `boolean`              |
+ * | predicates | {@link module:Integer.lessThan}             | Checks if one integer is less than another      | `Integer`, `Integer`            | `boolean`              |
+ * | predicates | {@link module:Integer.lessThanOrEqualTo}    | Checks if one integer is less than or equal     | `Integer`, `Integer`            | `boolean`              |
+ * | predicates | {@link module:Integer.greaterThan}          | Checks if one integer is greater than another   | `Integer`, `Integer`            | `boolean`              |
+ * | predicates | {@link module:Integer.greaterThanOrEqualTo} | Checks if one integer is greater or equal       | `Integer`, `Integer`            | `boolean`              |
+ * |            |                                             |                                                 |                                 |                        |
+ * | comparison | {@link module:Integer.min}                  | Returns the minimum of two integers             | `Integer`, `Integer`            | `Integer`              |
+ * | comparison | {@link module:Integer.max}                  | Returns the maximum of two integers             | `Integer`, `Integer`            | `Integer`              |
+ * | comparison | {@link module:Integer.clamp}                | Restricts an integer to a range                 | `Integer`, `{minimum, maximum}` | `Integer`              |
+ * |            |                                             |                                                 |                                 |                        |
+ * | instances  | {@link module:Integer.Equivalence}          | Equivalence instance for integers               |                                 | `Equivalence<Integer>` |
+ * | instances  | {@link module:Integer.Order}                | Order instance for integers                     |                                 | `Order<Integer>`       |
+ *
+ * ## Composition Patterns and Type Safety
+ *
+ * When building function pipelines, understanding how types flow through
+ * operations is critical:
+ *
+ * ### Composing with type-preserving operations
+ *
+ * Operations where domain and co-domain match (Integer → Integer) can be freely
+ * chained:
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as Integer from "effect/Integer"
+ *
+ * const result = pipe(
+ *   Integer.of(-5),
+ *   Integer.sum(Integer.of(10)), // Integer → Integer
+ *   Integer.multiply(Integer.of(2)), // Integer → Integer
+ *   Integer.negate // Integer → Integer
+ * ) // Result: Integer (-10)
+ * ```
+ *
+ * ### Handling type transitions
+ *
+ * When an operation changes the type, subsequent operations must be compatible
+ * with the new type:
+ *
+ * ```ts
+ * import { Option, pipe } from "effect"
+ * import * as Integer from "effect/Integer"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as RealNumber from "effect/Number"
+ *
+ * // Type narrowing: Integer → NaturalNumber
+ * const positiveResult = pipe(
+ *   Integer.of(-5),
+ *   Integer.abs, // Integer → NaturalNumber
+ *   NaturalNumber.increment // NaturalNumber → NaturalNumber
+ *   // Cannot use Integer.negate here! (negate requires Integer)
+ * ) // Result: NaturalNumber (6)
+ *
+ * // Type widening: Integer → number
+ * const fractionResult = pipe(
+ *   Integer.of(10),
+ *   Integer.divideToNumber(NaturalNumber.of(3)), // Integer → Option<number>
+ *   Option.map(
+ *     // Cannot use Integer operations here!
+ *     RealNumber.multiply(2) // number → number
+ *   )
+ * ) // Result: Some(6.666...)
+ * ```
+ *
+ * ### Working with Option results
+ *
+ * Operations returning Option types require Option combinators for further
+ * processing:
+ *
+ * ```ts
+ * import { Option, pipe } from "effect"
+ * import * as Integer from "effect/Integer"
+ *
+ * const result = pipe(
+ *   Integer.of(10),
+ *   Integer.divideSafe(Integer.of(3)), // Integer → Option<Integer>
+ *   Option.map(Integer.increment), // Option<Integer> → Option<Integer>
+ *   Option.getOrElse(() => Integer.zero)
+ * ) // Result: Integer.of(0)
+ * ```
+ *
+ * ### Composition best practices
+ *
+ * - Chain type-preserving operations for maximum composability
+ * - Handle type transitions explicitly - don't mix operations from different
+ *   domains
+ * - Use Option combinators when working with potentially failing operations
+ * - Be aware when operations narrow to NaturalNumber or widen to number
+ *
+ * @module Integer
+ * @since 3.14.6
+ */
+export * as Integer from "./Integer.js"
+
+/**
  * This module provides utility functions for working with Iterables in TypeScript.
  *
  * @since 2.0.0
@@ -929,15 +1155,448 @@ export * as MutableQueue from "./MutableQueue.js"
 export * as MutableRef from "./MutableRef.js"
 
 /**
+ * # NaturalNumber
+ *
+ * ## Mathematical Domain Representation
+ *
+ * `NaturalNumber` represents the set of non-negative integers (`ℕ₀ = {0, 1, 2,
+ * 3, ...}`).
+ *
+ * In mathematics, _natural numbers_ arise from counting and ordering
+ * operations. They form a commutative semiring with operations of addition and
+ * multiplication, with identities 0 and 1 respectively.
+ *
+ * The natural numbers exhibit key mathematical properties:
+ *
+ * - **Well-ordering**: Every non-empty subset has a smallest element
+ * - **Discreteness**: Each natural number has a unique successor
+ * - **Closure** under addition and multiplication (but not subtraction or
+ *   division)
+ *
+ * ## Constraints Imposed
+ *
+ * By modeling values as `NaturalNumber`, you accept the following constraints:
+ *
+ * - **Non-negativity**: Values cannot be less than zero
+ * - **Integrity**: Values must be whole numbers (no fractions)
+ * - **Domain preservation**: Some operations (subtraction, division) might leave
+ *   the domain and must be handled specially
+ *
+ * ## Derived Guarantees and Business Value
+ *
+ * These constraints unlock powerful guarantees that directly translate to
+ * business value:
+ *
+ * | Mathematical Guarantee     | Business Value                                                 | Usage Example                              |
+ * | -------------------------- | -------------------------------------------------------------- | ------------------------------------------ |
+ * | Non-negativity             | Impossible to represent invalid states like negative inventory | Inventory systems, resource counts         |
+ * | Well-ordering              | Always have a minimum value in any collection                  | Auction minimums, service prioritization   |
+ * | Closure under addition     | Combining quantities preserves invariants                      | Merging inventory from multiple warehouses |
+ * | Array indexing safety      | No out-of-bounds errors when used as indices                   | Collection access, pagination              |
+ * | Cardinality representation | Accurately model "how many" concepts                           | User counts, event tracking                |
+ *
+ * ## Domain Modeling Applications
+ *
+ * `NaturalNumber` excels at modeling domains where quantities cannot logically
+ * be negative:
+ *
+ * ```ts
+ * import { Option, pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * // E-commerce inventory management example
+ * type Product = {
+ *   id: string
+ *   name: string
+ *   stock: NaturalNumber.NaturalNumber // Cannot be negative by construction
+ * }
+ *
+ * // Safe inventory reduction that handles insufficient stock
+ * const removeFromInventory = (
+ *   product: Product,
+ *   quantity: NaturalNumber.NaturalNumber
+ * ): Option.Option<Product> =>
+ *   pipe(
+ *     product.stock,
+ *     NaturalNumber.subtractSafe(quantity),
+ *     Option.map((remaining) => ({ ...product, stock: remaining }))
+ *   )
+ *
+ * // Type system enforces handling the insufficient stock case
+ * const processOrder = (
+ *   product: Product,
+ *   quantity: NaturalNumber.NaturalNumber
+ * ) =>
+ *   pipe(
+ *     removeFromInventory(product, quantity),
+ *     Option.match({
+ *       onNone: () => "Insufficient stock",
+ *       onSome: (updated) => `Order processed, remaining: ${updated.stock}`
+ *     })
+ *   )
+ * ```
+ *
+ * ### Health tracking application example:
+ *
+ * ```ts
+ * import { flow, Option, pipe } from "effect"
+ * import * as N from "effect/NaturalNumber"
+ *
+ * // Activity tracking with guaranteed non-negative durations
+ * type FitnessActivity = {
+ *   type: "run" | "swim" | "cycle"
+ *   duration: N.NaturalNumber // Minutes spent (always non-negative)
+ *   caloriesBurned: N.NaturalNumber // Always non-negative
+ * }
+ *
+ * // Safely combine two activities of the same type
+ * const combineActivities = (
+ *   a1: FitnessActivity,
+ *   a2: FitnessActivity
+ * ): Option.Option<FitnessActivity> =>
+ *   a1.type === a2.type
+ *     ? Option.some({
+ *         type: a1.type,
+ *         // Addition within NaturalNumber is guaranteed to stay in the domain
+ *         duration: N.sum(a1.duration, a2.duration),
+ *         caloriesBurned: N.sum(a1.caloriesBurned, a2.caloriesBurned)
+ *       })
+ *     : Option.none()
+ *
+ * // Calculate calories per minute with safe division
+ * const caloriesPerMinute = (activity: FitnessActivity): N.NaturalNumber =>
+ *   pipe(
+ *     activity.caloriesBurned,
+ *     N.divideToNumber(activity.duration),
+ *     Option.flatMap(flow(Math.round, N.option)),
+ *     Option.getOrElse(() => N.zero)
+ *   )
+ * ```
+ *
+ * ## When to Use NaturalNumber
+ *
+ * Use the `NaturalNumber` module when you need:
+ *
+ * - To represent quantities that cannot logically be negative
+ * - To work with array indices and collection sizes
+ * - To handle counting or cardinality scenarios
+ * - To perform exponentiation and combinatorial operations safely
+ * - To ensure non-negativity invariants are preserved in your domain
+ *
+ * ## Choosing the Right Numeric Type
+ *
+ * | If your domain concept...         | Then use...                  | Examples                       |
+ * | --------------------------------- | ---------------------------- | ------------------------------ |
+ * | Cannot be negative, must be whole | {@link module:NaturalNumber} | Inventory, age, count, index   |
+ * | Can be negative, must be whole    | {@link module:Integer}       | Temperature, position, balance |
+ * | Can be fractional                 | {@link module:Number}        | Prices, rates, measurements    |
+ * | Needs arbitrary precision         | {@link BigInt}               | Cryptography, financial totals |
+ *
+ * ## Operations Reference
+ *
+ * | Category       | Operation                                         | Description                                                                       | Domain                                | Co-domain                           |
+ * | -------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------- | ----------------------------------- |
+ * | **creation**   | {@link module:NaturalNumber.of}                   | Creates a `NaturalNumber` from a number, throwing on invalid input                | `number`                              | `NaturalNumber`                     |
+ * | **creation**   | {@link module:NaturalNumber.option}               | Creates an `Option<NaturalNumber>`, returning `None` on invalid input             | `number`                              | `Option<NaturalNumber>`             |
+ * | **creation**   | {@link module:NaturalNumber.either}               | Creates an `Either<BrandError, NaturalNumber>`, returning `Left` on invalid input | `number`                              | `Either<BrandError, NaturalNumber>` |
+ * | **creation**   | {@link module:NaturalNumber.Schema}               | Creates a `Schema<NaturalNumber>`, for parsing and validation                     |                                       | `Schema<NaturalNumber>`             |
+ * | **constants**  | {@link module:NaturalNumber.zero}                 | Constant representing the natural number zero                                     |                                       | `NaturalNumber`                     |
+ * | **constants**  | {@link module:NaturalNumber.one}                  | Constant representing the natural number one                                      |                                       | `NaturalNumber`                     |
+ * |                |                                                   |                                                                                   |                                       |                                     |
+ * | **math**       | {@link module:NaturalNumber.sum}                  | Adds two natural numbers                                                          | `NaturalNumber`, `NaturalNumber`      | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.sumAll}               | Adds all numbers in a collection                                                  | `Iterable<NaturalNumber>`             | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.multiply}             | Multiplies two natural numbers                                                    | `NaturalNumber`, `NaturalNumber`      | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.multiplyAll}          | Multiplies all numbers in a collection                                            | `Iterable<NaturalNumber>`             | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.pow}                  | Computes power with natural number exponent                                       | `NaturalNumber`, `NaturalNumber`      | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.square}               | Computes the square of a natural number                                           | `NaturalNumber`                       | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.cube}                 | Computes the cube of a natural number                                             | `NaturalNumber`                       | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.divideToNumber}       | Divides yielding possibly fractional result                                       | `NaturalNumber`, `NaturalNumber`      | `number`                            |
+ * | **math**       | {@link module:NaturalNumber.divideSafe}           | Safely divides returning Option for non-natural                                   | `NaturalNumber`, `NaturalNumber`      | `Option<NaturalNumber>`             |
+ * | **math**       | {@link module:NaturalNumber.increment}            | Adds one to a natural number                                                      | `NaturalNumber`                       | `NaturalNumber`                     |
+ * | **math**       | {@link module:NaturalNumber.decrementToInteger}   | Decrements, widening to Integer type                                              | `NaturalNumber`                       | `Integer`                           |
+ * | **math**       | {@link module:NaturalNumber.decrementSafe}        | Safely decrements, returning None for zero                                        | `NaturalNumber`                       | `Option<NaturalNumber>`             |
+ * | **math**       | {@link module:NaturalNumber.subtractToInteger}    | Subtracts, widening to Integer type                                               | `NaturalNumber`, `NaturalNumber`      | `Integer`                           |
+ * | **math**       | {@link module:NaturalNumber.subtractSafe}         | Safely subtracts, returning None when negative                                    | `NaturalNumber`, `NaturalNumber`      | `Option<NaturalNumber>`             |
+ * | **math**       | {@link module:NaturalNumber.negate}               | Negates a natural number, returning an Integer                                    | `NaturalNumber`                       | `Integer`                           |
+ * |                |                                                   |                                                                                   |                                       |                                     |
+ * | **predicates** | {@link module:NaturalNumber.isNaturalNumber}      | Type guard for `NaturalNumber`                                                    | `unknown`                             | `boolean`                           |
+ * | **predicates** | {@link module:NaturalNumber.between}              | Checks if number is in a range                                                    | `NaturalNumber`, `{minimum, maximum}` | `boolean`                           |
+ * | **predicates** | {@link module:NaturalNumber.lessThan}             | Checks if one natural number is less than another                                 | `NaturalNumber`, `NaturalNumber`      | `boolean`                           |
+ * | **predicates** | {@link module:NaturalNumber.lessThanOrEqualTo}    | Checks if one natural number is less or equal                                     | `NaturalNumber`, `NaturalNumber`      | `boolean`                           |
+ * | **predicates** | {@link module:NaturalNumber.greaterThan}          | Checks if one natural number is greater                                           | `NaturalNumber`, `NaturalNumber`      | `boolean`                           |
+ * | **predicates** | {@link module:NaturalNumber.greaterThanOrEqualTo} | Checks if one natural number is greater or equal                                  | `NaturalNumber`, `NaturalNumber`      | `boolean`                           |
+ * |                |                                                   |                                                                                   |                                       |                                     |
+ * | **comparison** | {@link module:NaturalNumber.min}                  | Returns the minimum of two natural numbers                                        | `NaturalNumber`, `NaturalNumber`      | `NaturalNumber`                     |
+ * | **comparison** | {@link module:NaturalNumber.max}                  | Returns the maximum of two natural numbers                                        | `NaturalNumber`, `NaturalNumber`      | `NaturalNumber`                     |
+ * | **comparison** | {@link module:NaturalNumber.clamp}                | Restricts a natural number to a range                                             | `NaturalNumber`, `{minimum, maximum}` | `NaturalNumber`                     |
+ * |                |                                                   |                                                                                   |                                       |                                     |
+ * | **instances**  | {@link module:NaturalNumber.Equivalence}          | Equivalence instance for natural numbers                                          |                                       | `Equivalence<NaturalNumber>`        |
+ * | **instances**  | {@link module:NaturalNumber.Order}                | Order instance for natural numbers                                                |                                       | `Order<NaturalNumber>`              |
+ *
+ * ## Composition Patterns and Type Safety
+ *
+ * When building function pipelines, understanding how types flow through
+ * operations is critical:
+ *
+ * ### Composing with type-preserving operations
+ *
+ * Operations where domain and co-domain match (NaturalNumber → NaturalNumber)
+ * can be freely chained:
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * const result = pipe(
+ *   NaturalNumber.of(5),
+ *   NaturalNumber.increment, // NaturalNumber → NaturalNumber
+ *   NaturalNumber.multiply(NaturalNumber.of(2)), // NaturalNumber → NaturalNumber
+ *   NaturalNumber.square // NaturalNumber → NaturalNumber
+ * ) // Result: NaturalNumber (144)
+ * ```
+ *
+ * ### Handling type transitions
+ *
+ * When an operation changes the type, subsequent operations must be compatible
+ * with the new type:
+ *
+ * ```ts
+ * import { pipe, flow, Option } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ * import * as Integer from "effect/Integer"
+ * import * as RealNumber from "effect/Number"
+ *
+ * // Type widening: NaturalNumber → Integer
+ * const integerResult = pipe(
+ *   NaturalNumber.of(0),
+ *   NaturalNumber.decrementToInteger, // NaturalNumber → Integer
+ *   Integer.negate // Integer → Integer
+ *   // Cannot use NaturalNumber operations here!
+ * ) // Result: Integer (1)
+ *
+ * // Type widening: NaturalNumber → number
+ * const fractionResult = pipe(
+ *   NaturalNumber.of(10),
+ *   NaturalNumber.divideToNumber(NaturalNumber.of(3)), // NaturalNumber → Option<number>
+ *   Option.map(
+ *     // Cannot use NaturalNumber operations here!
+ *     RealNumber.multiply(2) // number → number
+ *   )
+ * ) // Result: Option<number> (6.666...)
+ * ```
+ *
+ * ### Working with Option results
+ *
+ * Operations that might violate the natural number domain return Option types:
+ *
+ * ```ts
+ * import { pipe, flow, Option } from "effect"
+ * import * as NaturalNumber from "effect/NaturalNumber"
+ *
+ * // Handle possibly negative results
+ * const program = flow(
+ *   NaturalNumber.subtractSafe(NaturalNumber.of(10)), // NaturalNumber → Option<NaturalNumber>
+ *   Option.map(NaturalNumber.increment), // Option<NaturalNumber> → Option<NaturalNumber>
+ *   Option.getOrElse(() => NaturalNumber.zero) // Option<NaturalNumber> → NaturalNumber
+ * ) // program: NaturalNumber -> NaturalNumber
+ *
+ * // Handle zero decrement
+ * const decrementResult = pipe(
+ *   NaturalNumber.zero,
+ *   NaturalNumber.decrementSafe, // NaturalNumber → Option<NaturalNumber>
+ *   Option.getOrElse(() => NaturalNumber.zero) // Option<NaturalNumber> → NaturalNumber
+ * ) // Result: NaturalNumber (0)
+ * ```
+ *
+ * ### Composition best practices
+ *
+ * - Chain type-preserving operations for maximum composability
+ * - Handle domain violations with Option-returning operations
+ * - Use type-widening operations deliberately when needed
+ * - Remember that once you leave the NaturalNumber domain, you cannot return
+ *   without validation
+ *
+ * @module NaturalNumber
+ * @since 3.14.6
+ */
+export * as NaturalNumber from "./NaturalNumber.js"
+
+/**
  * @since 2.0.0
  */
 export * as NonEmptyIterable from "./NonEmptyIterable.js"
 
 /**
- * This module provides utility functions and type class instances for working with the `number` type in TypeScript.
- * It includes functions for basic arithmetic operations, as well as type class instances for
- * `Equivalence` and `Order`.
+ * # Number
  *
+ * ## Mathematical Domain Representation
+ *
+ * `Number` represents JavaScript's approximation of real numbers (`ℝ`),
+ * supporting both integer and fractional values.
+ *
+ * In mathematics, the real numbers form a continuous, ordered field that
+ * includes rational numbers, irrational numbers, and transcendental numbers.
+ * JavaScript's `number` type (IEEE-754 double-precision) approximates this
+ * mathematical domain with finite precision.
+ *
+ * Real numbers exhibit key mathematical properties:
+ *
+ * - **Continuity**: Between any two real numbers, there exists another real
+ *   number
+ * - **Completeness**: There are no "gaps" in the real number line
+ * - **Field structure**: Closed under addition, subtraction, multiplication, and
+ *   division (except by zero)
+ * - **Total ordering**: For any two real numbers, one is greater than, equal to,
+ *   or less than the other
+ *
+ * ## Constraints Imposed
+ *
+ * By modeling values as JavaScript `number`, you accept the following
+ * constraints:
+ *
+ * - **Limited precision**: Only ~15-17 significant decimal digits of precision
+ * - **Bounded range**: Values between ±1.7976931348623157e+308
+ * - **Special values**: Includes NaN, Infinity, and -Infinity
+ * - **IEEE-754 quirks**: Subject to floating-point arithmetic limitations (e.g.,
+ *   0.1 + 0.2 ≠ 0.3 exactly)
+ *
+ * ## Derived Guarantees and Business Value
+ *
+ * Despite its constraints, `number` provides valuable guarantees for many
+ * domains:
+ *
+ * | Mathematical Guarantee    | Business Value                                 | Usage Example                      |
+ * | ------------------------- | ---------------------------------------------- | ---------------------------------- |
+ * | Continuous values         | Representation of measurements and quantities  | Scientific data, physical measures |
+ * | Fractional representation | Accurate modeling of non-discrete quantities   | Financial calculations, ratios     |
+ * | Decimal arithmetic        | Standard arithmetic operations on measurements | Engineering calculations           |
+ * | Transcendental functions  | Support for complex mathematical operations    | Statistical analysis, physics      |
+ * | Floating-point standards  | Consistent behavior across systems             | Cross-platform applications        |
+ *
+ * ## When to Use
+ *
+ * Use the `Number` module when you need:
+ *
+ * - Type-safe arithmetic operations with proper error handling
+ * - Mathematical operations beyond JavaScript's built-in operators
+ * - Functional programming patterns for number manipulation
+ * - Consistent handling of edge cases (division by zero, NaN, etc.)
+ * - Composable operations that work well in pipelines
+ * - To represent continuous quantities with fractional parts
+ * - To handle measurements with decimal precision
+ * - To model mathematical concepts requiring irrational values
+ *
+ * ## Choosing the Right Numeric Type
+ *
+ * | If your domain concept...         | Then use...                  | Examples                       |
+ * | --------------------------------- | ---------------------------- | ------------------------------ |
+ * | Cannot be negative, must be whole | {@link module:NaturalNumber} | Inventory, age, count, index   |
+ * | Can be negative, must be whole    | {@link module:Integer}       | Temperature, position, balance |
+ * | Can be fractional                 | {@link module:Number}        | Prices, rates, measurements    |
+ * | Needs arbitrary precision         | {@link BigInt}               | Cryptography, financial totals |
+ *
+ * ## Operations Reference
+ *
+ * | Category     | Operation                                  | Description                                             | Domain                         | Co-domain             |
+ * | ------------ | ------------------------------------------ | ------------------------------------------------------- | ------------------------------ | --------------------- |
+ * | constructors | {@link module:Number.parse}                | Safely parses a string to a number                      | `string`                       | `Option<number>`      |
+ * |              |                                            |                                                         |                                |                       |
+ * | math         | {@link module:Number.sum}                  | Adds two numbers                                        | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.sumAll}               | Sums all numbers in a collection                        | `Iterable<number>`             | `number`              |
+ * | math         | {@link module:Number.subtract}             | Subtracts one number from another                       | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.multiply}             | Multiplies two numbers                                  | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.multiplyAll}          | Multiplies all numbers in a collection                  | `Iterable<number>`             | `number`              |
+ * | math         | {@link module:Number.divide}               | Safely divides handling division by zero                | `number`, `number`             | `Option<number>`      |
+ * | math         | {@link module:Number.unsafeDivide}         | Divides but may throw an exception for division by zero | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.remainder}            | Calculates remainder of division                        | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.increment}            | Adds 1 to a number                                      | `number`                       | `number`              |
+ * | math         | {@link module:Number.decrement}            | Subtracts 1 from a number                               | `number`                       | `number`              |
+ * | math         | {@link module:Number.sign}                 | Determines the sign of a number                         | `number`                       | `Ordering`            |
+ * | math         | {@link module:Number.nextPow2}             | Finds the next power of 2                               | `number`                       | `number`              |
+ * | math         | {@link module:Number.round}                | Rounds a number with specified precision                | `number`, `number`             | `number`              |
+ * |              |                                            |                                                         |                                |                       |
+ * | predicates   | {@link module:Number.between}              | Checks if a number is in a range                        | `number`, `{minimum, maximum}` | `boolean`             |
+ * | predicates   | {@link module:Number.lessThan}             | Checks if one number is less than another               | `number`, `number`             | `boolean`             |
+ * | predicates   | {@link module:Number.lessThanOrEqualTo}    | Checks if one number is less than or equal              | `number`, `number`             | `boolean`             |
+ * | predicates   | {@link module:Number.greaterThan}          | Checks if one number is greater than another            | `number`, `number`             | `boolean`             |
+ * | predicates   | {@link module:Number.greaterThanOrEqualTo} | Checks if one number is greater or equal                | `number`, `number`             | `boolean`             |
+ * |              |                                            |                                                         |                                |                       |
+ * | guards       | {@link module:Number.isNumber}             | Type guard for JavaScript numbers                       | `unknown`                      | `boolean`             |
+ * |              |                                            |                                                         |                                |                       |
+ * | comparison   | {@link module:Number.min}                  | Returns the minimum of two numbers                      | `number`, `number`             | `number`              |
+ * | comparison   | {@link module:Number.max}                  | Returns the maximum of two numbers                      | `number`, `number`             | `number`              |
+ * | comparison   | {@link module:Number.clamp}                | Restricts a number to a range                           | `number`, `{minimum, maximum}` | `number`              |
+ * |              |                                            |                                                         |                                |                       |
+ * | instances    | {@link module:Number.Equivalence}          | Equivalence instance for numbers                        |                                | `Equivalence<number>` |
+ * | instances    | {@link module:Number.Order}                | Order instance for numbers                              |                                | `Order<number>`       |
+ * |              |                                            |                                                         |                                |                       |
+ * | errors       | {@link module:Number.DivisionByZeroError}  | Error thrown by unsafeDivide                            |                                |                       |
+ *
+ * ## Composition Patterns and Type Safety
+ *
+ * When building function pipelines, understanding how types flow through
+ * operations is critical:
+ *
+ * ### Composing with type-preserving operations
+ *
+ * Most operations in this module are type-preserving (`number → number`),
+ * making them easily composable in pipelines:
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as RealNumber from "effect/Number"
+ *
+ * const result = pipe(
+ *   10,
+ *   RealNumber.increment, // number → number
+ *   RealNumber.multiply(2), // number → number
+ *   RealNumber.round(1) // number → number
+ * ) // Result: number (21)
+ * ```
+ *
+ * ### Working with Option results
+ *
+ * Operations that might fail (like division by zero) return Option types and
+ * require Option combinators:
+ *
+ * ```ts
+ * import { pipe, Option } from "effect"
+ * import * as RealNumber from "effect/Number"
+ *
+ * const result = pipe(
+ *   10,
+ *   RealNumber.divide(0), // number → Option<number>
+ *   Option.getOrElse(() => 0) // Option<number> → number
+ * ) // Result: number (0)
+ * ```
+ *
+ * ### Error handling with unsafe operations
+ *
+ * Unsafe operations throw specific errors that can be caught:
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as RealNumber from "effect/Number"
+ *
+ * try {
+ *   const result = RealNumber.unsafeDivide(10, 0) // Throws DivisionByZeroError
+ *   // do something with result ...
+ * } catch (e) {
+ *   if (e instanceof RealNumber.DivisionByZeroError) {
+ *     console.error("Division by zero occurred")
+ *   }
+ * }
+ * ```
+ *
+ * ### Composition best practices
+ *
+ * - Chain type-preserving operations for maximum composability
+ * - Use Option combinators when working with potentially failing operations
+ * - Consider using Effect for operations that might fail with specific errors
+ * - Remember that all operations maintain JavaScript's floating-point precision
+ *   limitations
+ *
+ * @module Number
  * @since 2.0.0
  */
 export * as Number from "./Number.js"
