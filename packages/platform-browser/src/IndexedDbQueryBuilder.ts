@@ -81,7 +81,18 @@ export declare namespace IndexedDbQueryBuilder {
           >
         >
       >
-    ) => Insert<Source, Table>
+    ) => Modify<Source, Table>
+
+    readonly upsert: (
+      value: Schema.Schema.Type<
+        IndexedDbTable.IndexedDbTable.TableSchema<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            Table
+          >
+        >
+      >
+    ) => Modify<Source, Table>
   }
 
   /**
@@ -189,7 +200,7 @@ export declare namespace IndexedDbQueryBuilder {
    * @since 1.0.0
    * @category models
    */
-  export interface Insert<
+  export interface Modify<
     Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
@@ -204,6 +215,7 @@ export declare namespace IndexedDbQueryBuilder {
     >
 
     readonly [TypeId]: TypeId
+    readonly operation: "add" | "put"
     readonly from: From<Source, Table>
     readonly value: Schema.Schema.Type<
       IndexedDbTable.IndexedDbTable.TableSchema<
@@ -387,10 +399,20 @@ const getFirst = (query: IndexedDbQueryBuilder.First) =>
     )
   })
 
-const applyInsert = (query: IndexedDbQueryBuilder.Insert, value: any) =>
+const applyModify = (query: IndexedDbQueryBuilder.Modify, value: any) =>
   Effect.async<any, IndexedDbQuery.IndexedDbQueryError>((resume) => {
     const database = query.from.database
-    const request = database.transaction([query.from.table], "readwrite").objectStore(query.from.table).add(value)
+    const objectStore = database.transaction([query.from.table], "readwrite").objectStore(query.from.table)
+
+    let request: globalThis.IDBRequest<IDBValidKey>
+
+    if (query.operation === "add") {
+      request = objectStore.add(value)
+    } else if (query.operation === "put") {
+      request = objectStore.put(value)
+    } else {
+      return resume(Effect.dieMessage("Invalid modify operation"))
+    }
 
     request.onerror = (event) => {
       resume(
@@ -439,7 +461,11 @@ export const fromMakeProto = <
       index
     })
 
-  IndexedDbQueryBuilder.insert = (value: any) => insertMakeProto({ from: IndexedDbQueryBuilder as any, value })
+  IndexedDbQueryBuilder.insert = (value: any) =>
+    modifyMakeProto({ from: IndexedDbQueryBuilder as any, value, operation: "add" })
+
+  IndexedDbQueryBuilder.upsert = (value: any) =>
+    modifyMakeProto({ from: IndexedDbQueryBuilder as any, value, operation: "put" })
 
   return IndexedDbQueryBuilder as any
 }
@@ -581,7 +607,7 @@ const firstMakeProto = <
 }
 
 /** @internal */
-const insertMakeProto = <
+const modifyMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
 >(options: {
@@ -594,18 +620,20 @@ const insertMakeProto = <
       >
     >
   >
-}): IndexedDbQueryBuilder.Insert<Source, Table> => {
+  readonly operation: "add" | "put"
+}): IndexedDbQueryBuilder.Modify<Source, Table> => {
   function IndexedDbQueryBuilderImpl() {}
 
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
     Object.assign(Object.create(Proto), {
-      commit(this: IndexedDbQueryBuilder.Insert) {
-        return applyInsert(this, options.value)
+      commit(this: IndexedDbQueryBuilder.Modify) {
+        return applyModify(this, options.value)
       }
     })
   )
   IndexedDbQueryBuilderImpl.from = options.from
   IndexedDbQueryBuilderImpl.value = options.value
+  IndexedDbQueryBuilderImpl.operation = options.operation
   return IndexedDbQueryBuilderImpl as any
 }
