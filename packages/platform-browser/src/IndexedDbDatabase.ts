@@ -130,24 +130,27 @@ const makeProto = <Id extends string>(options: {
  */
 export const layer = <
   Id extends string,
-  Migrations extends ReadonlyArray<IndexedDbMigration.IndexedDbMigration.Any>
->(
-  identifier: Id,
-  ...migrations: Migrations & {
-    0: IndexedDbMigration.IndexedDbMigration.Any
-  }
-) =>
+  Migration extends IndexedDbMigration.IndexedDbMigration.Any
+>(identifier: Id, migration: Migration) =>
   Layer.effect(
     IndexedDbDatabase,
     Effect.gen(function*() {
       const { IDBKeyRange, indexedDB } = yield* IndexedDb.IndexedDb
 
       let oldVersion = 0
+      let current = migration
+      const migrations: Array<IndexedDbMigration.IndexedDbMigration.Any> = []
+
+      while (current._tag === "Migration") {
+        migrations.unshift(current)
+        current = (current as unknown as IndexedDbMigration.IndexedDbMigration.AnyMigration).previous as any
+      }
+
+      // Add the initial migration
+      migrations.unshift(current)
+
       const version = migrations.length
-      const database = yield* Effect.async<
-        globalThis.IDBDatabase,
-        IndexedDbDatabaseError
-      >((resume) => {
+      const database = yield* Effect.async<globalThis.IDBDatabase, IndexedDbDatabaseError>((resume) => {
         const request = indexedDB.open(identifier, version)
 
         request.onblocked = (event) => {
@@ -210,32 +213,59 @@ export const layer = <
             }
 
             migrations.slice(oldVersion).reduce((prev, untypedMigration) => {
-              const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyWithProps
-              const fromApi = IndexedDbMigration.migrationApi(
-                database,
-                transaction,
-                migration.fromVersion
-              )
-              const toApi = IndexedDbMigration.migrationApi(
-                database,
-                transaction,
-                migration.toVersion
-              )
-
-              return prev.then(() =>
-                Effect.runPromise(migration.execute(fromApi, toApi)).catch(
-                  (cause) => {
-                    resume(
-                      Effect.fail(
-                        new IndexedDbDatabaseError({
-                          reason: "UpgradeError",
-                          cause
-                        })
-                      )
-                    )
-                  }
+              if (untypedMigration._tag === "Migration") {
+                const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyMigration
+                const fromApi = IndexedDbMigration.migrationApi(
+                  database,
+                  transaction,
+                  migration.fromVersion
                 )
-              )
+                const toApi = IndexedDbMigration.migrationApi(
+                  database,
+                  transaction,
+                  migration.toVersion
+                )
+
+                return prev.then(() =>
+                  Effect.runPromise(migration.execute(fromApi, toApi)).catch(
+                    (cause) => {
+                      resume(
+                        Effect.fail(
+                          new IndexedDbDatabaseError({
+                            reason: "UpgradeError",
+                            cause
+                          })
+                        )
+                      )
+                    }
+                  )
+                )
+              } else if (untypedMigration._tag === "Initial") {
+                const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyInitial
+                const api = IndexedDbMigration.migrationApi(
+                  database,
+                  transaction,
+                  migration.version
+                )
+
+                return prev.then(() =>
+                  Effect.runPromise(migration.execute(api)).catch(
+                    (cause) => {
+                      resume(
+                        Effect.fail(
+                          new IndexedDbDatabaseError({
+                            reason: "UpgradeError",
+                            cause
+                          })
+                        )
+                      )
+                    }
+                  )
+                )
+              } else {
+                resume(Effect.dieMessage("Invalid migration"))
+                return Promise.resolve()
+              }
             }, Promise.resolve())
           }
         }

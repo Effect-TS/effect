@@ -16,11 +16,10 @@ const Db = IndexedDbVersion.make(Table)
 
 describe("IndexedDbMigration", () => {
   it("make", () => {
-    const Migration = IndexedDbMigration.make({
-      fromVersion: IndexedDbVersion.makeEmpty,
-      toVersion: Db,
-      execute: () => Effect.gen(function*() {})
-    })
+    class Migration extends IndexedDbMigration.make(IndexedDbVersion.makeEmpty, () => Effect.gen(function*() {})).add(
+      Db,
+      () => Effect.gen(function*() {})
+    ) {}
 
     assert.equal(Migration.fromVersion, IndexedDbVersion.makeEmpty)
     assert.equal(Migration.toVersion, Db)
