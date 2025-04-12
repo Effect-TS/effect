@@ -1,16 +1,49 @@
 /**
  * # Number
  *
- * Operations on JavaScript numbers, representing an approximation of **real
- * numbers** (`ℝ`).
+ * ## Mathematical Domain Representation
  *
- * ## What Problem Does It Solve?
+ * `Number` represents JavaScript's approximation of real numbers (`ℝ`),
+ * supporting both integer and fractional values.
  *
- * The `Number` module solves the problem of working with JavaScript's native
- * number type in a **functional**, **type-safe manner**. It provides a
- * comprehensive set of operations that handle edge cases (like division by
- * zero), maintain type safety, and support both data-first and data-last
- * programming styles.
+ * In mathematics, the real numbers form a continuous, ordered field that
+ * includes rational numbers, irrational numbers, and transcendental numbers.
+ * JavaScript's `number` type (IEEE-754 double-precision) approximates this
+ * mathematical domain with finite precision.
+ *
+ * Real numbers exhibit key mathematical properties:
+ *
+ * - **Continuity**: Between any two real numbers, there exists another real
+ *   number
+ * - **Completeness**: There are no "gaps" in the real number line
+ * - **Field structure**: Closed under addition, subtraction, multiplication, and
+ *   division (except by zero)
+ * - **Total ordering**: For any two real numbers, one is greater than, equal to,
+ *   or less than the other
+ *
+ * ## Constraints Imposed
+ *
+ * By modeling values as JavaScript `number`, you accept the following
+ * constraints:
+ *
+ * - **Limited precision**: Only ~15-17 significant decimal digits of precision
+ * - **Bounded range**: Values between ±1.7976931348623157e+308
+ * - **Special values**: Includes NaN, Infinity, and -Infinity
+ * - **IEEE-754 quirks**: Subject to floating-point arithmetic limitations (e.g.,
+ *   0.1 + 0.2 ≠ 0.3 exactly)
+ *
+ * ## Derived Guarantees and Business Value
+ *
+ * Despite its constraints, `number` provides valuable guarantees for many
+ * domains:
+ *
+ * | Mathematical Guarantee    | Business Value                                 | Usage Example                      |
+ * | ------------------------- | ---------------------------------------------- | ---------------------------------- |
+ * | Continuous values         | Representation of measurements and quantities  | Scientific data, physical measures |
+ * | Fractional representation | Accurate modeling of non-discrete quantities   | Financial calculations, ratios     |
+ * | Decimal arithmetic        | Standard arithmetic operations on measurements | Engineering calculations           |
+ * | Transcendental functions  | Support for complex mathematical operations    | Statistical analysis, physics      |
+ * | Floating-point standards  | Consistent behavior across systems             | Cross-platform applications        |
  *
  * ## When to Use
  *
@@ -21,25 +54,18 @@
  * - Functional programming patterns for number manipulation
  * - Consistent handling of edge cases (division by zero, NaN, etc.)
  * - Composable operations that work well in pipelines
+ * - To represent continuous quantities with fractional parts
+ * - To handle measurements with decimal precision
+ * - To model mathematical concepts requiring irrational values
  *
- * JavaScript's native `number` type (IEEE-754 double-precision) allows modeling
- * of:
+ * ## Choosing the Right Numeric Type
  *
- * - Continuous quantities with fractional parts
- * - Measurements with arbitrary precision
- * - Mathematical concepts requiring irrational values (π, e, √2, etc.)
- * - Scientific calculations with floating-point operations
- *
- * ## Advanced Features
- *
- * The Number module provides:
- *
- * - **Safe operations** that handle edge cases by returning `Option` types
- * - **Unsafe operations** that throw specific errors for invalid operations
- * - **Collection operations** for working with groups of numbers
- * - **Comparison utilities** with a rich set of predicates
- * - **Mathematical functions** for common numerical operations
- * - **Parsing utilities** for safely converting strings to numbers
+ * | If your domain concept...         | Then use...                  | Examples                       |
+ * | --------------------------------- | ---------------------------- | ------------------------------ |
+ * | Cannot be negative, must be whole | {@link module:NaturalNumber} | Inventory, age, count, index   |
+ * | Can be negative, must be whole    | {@link module:Integer}       | Temperature, position, balance |
+ * | Can be fractional                 | {@link module:Number}        | Prices, rates, measurements    |
+ * | Needs arbitrary precision         | {@link BigInt}               | Cryptography, financial totals |
  *
  * ## Operations Reference
  *
@@ -141,21 +167,6 @@
  * - Consider using Effect for operations that might fail with specific errors
  * - Remember that all operations maintain JavaScript's floating-point precision
  *   limitations
- *
- * ## Mathematical Properties
- *
- * From an analysis perspective, the JavaScript `number` approximates a field
- * where:
- *
- * - Addition and multiplication are closed operations with identities (0 and 1)
- * - Every value has an additive inverse (negation)
- * - Every non-zero value has a multiplicative inverse (reciprocal)
- * - Standard field axioms hold within floating-point limitations
- *
- * In the type hierarchy:
- *
- * - {@link module:NaturalNumber} is a proper subset of `number` (`ℕ₀ ⊂ ℝ`)
- * - {@link module:Integer} is a proper subset of `number` (`ℤ ⊂ ℝ`)
  *
  * @module Number
  * @since 2.0.0
