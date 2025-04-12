@@ -47,7 +47,9 @@ export interface EntityManager {
     message: Message.Incoming<any>
   ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
 
-  readonly isProcessingFor: (message: Message.Incoming<any>) => boolean
+  readonly isProcessingFor: (message: Message.Incoming<any>, options?: {
+    readonly excludeReplies?: boolean
+  }) => boolean
 
   readonly interruptShard: (shardId: ShardId) => Effect.Effect<void>
 
@@ -62,6 +64,7 @@ export type EntityState = {
   readonly activeRequests: Map<bigint, {
     readonly rpc: Rpc.AnyWithProps
     readonly message: Message.IncomingRequestLocal<any>
+    sentReply: boolean
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
   }>
@@ -143,6 +146,8 @@ export const make = Effect.fnUntraced(function*<
                 const request = activeRequests.get(response.requestId)
                 if (!request) return Effect.void
 
+                request.sentReply = true
+
                 // For durable messages, ignore interrupts during shutdown.
                 // They will be retried when the entity is restarted.
                 if (
@@ -184,6 +189,9 @@ export const make = Effect.fnUntraced(function*<
                 if (!request) return Effect.void
                 const sequence = request.sequence
                 request.sequence++
+                if (!request.sentReply) {
+                  request.sentReply = true
+                }
                 return Effect.orDie(retryRespond(
                   4,
                   Effect.suspend(() => {
@@ -336,6 +344,7 @@ export const make = Effect.fnUntraced(function*<
               entry = {
                 rpc: entity.protocol.requests.get(message.envelope.tag)! as any as Rpc.AnyWithProps,
                 message,
+                sentReply: false,
                 lastSentChunk: message.lastSentReply as any,
                 sequence: Option.match(message.lastSentReply, {
                   onNone: () => 0,
@@ -402,10 +411,16 @@ export const make = Effect.fnUntraced(function*<
 
   return identity<EntityManager>({
     interruptShard,
-    isProcessingFor(message) {
+    isProcessingFor(message, options) {
       const state = activeServers.get(message.envelope.address.entityId)
       if (!state) return false
-      return state.activeRequests.has(message.envelope.requestId)
+      const request = state.activeRequests.get(message.envelope.requestId)
+      if (request === undefined) {
+        return false
+      } else if (options?.excludeReplies && request.sentReply) {
+        return false
+      }
+      return true
     },
     sendLocal,
     send: (message) =>
