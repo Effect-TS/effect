@@ -1,6 +1,3 @@
-/**
- * @since 1.0.0
- */
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as HashMap from "effect/HashMap"
