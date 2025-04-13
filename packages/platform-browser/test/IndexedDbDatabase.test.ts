@@ -37,7 +37,7 @@ describe("IndexedDbDatabase", () => {
     return Effect.gen(function*() {
       const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
       const api = makeApi(Db)
-      const todo = yield* api.getAll("todo")
+      const todo = yield* api.from("todo").select()
 
       const name = yield* use(async (database) => database.name)
       const version = yield* use(async (database) => database.version)
@@ -111,7 +111,7 @@ describe("IndexedDbDatabase", () => {
     return Effect.gen(function*() {
       const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
       const api = makeApi(Db2)
-      const todo = yield* api.getAll("todo")
+      const todo = yield* api.from("todo").select()
       const name = yield* use(async (database) => database.name)
       const version = yield* use(async (database) => database.version)
       const objectStoreNames = yield* use(async (database) => database.objectStoreNames)
@@ -173,7 +173,7 @@ describe("IndexedDbDatabase", () => {
     return Effect.gen(function*() {
       const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
       const api = makeApi(Db2)
-      const user = yield* api.getAll("user")
+      const user = yield* api.from("user").select()
       const name = yield* use(async (database) => database.name)
       const version = yield* use(async (database) => database.version)
       const objectStoreNames = yield* use(async (database) => database.objectStoreNames)
