@@ -13,8 +13,6 @@ import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 
 /**
  * TODO:
- * - `clear`
- * - `count`
  * - Include `Scope` but make it "optional"
  *
  * LATER:
@@ -152,6 +150,42 @@ export declare namespace IndexedDbQueryBuilder {
         >
       >
     ) => ModifyAll<Source, Table>
+
+    readonly clear: Clear<Source, Table>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface ClearAll<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
+
+    readonly [TypeId]: TypeId
+    readonly source: Source
+    readonly database: globalThis.IDBDatabase
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Clear<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
+
+    readonly [TypeId]: TypeId
+    readonly from: From<Source, Table>
   }
 
   /**
@@ -762,6 +796,60 @@ const applyModifyAll = (query: IndexedDbQueryBuilder.ModifyAll, values: Array<an
     }
   })
 
+const applyClear = (query: IndexedDbQueryBuilder.Clear) =>
+  Effect.async<void, IndexedDbQuery.IndexedDbQueryError>((resume) => {
+    const database = query.from.database
+    const objectStore = database.transaction([query.from.table], "readwrite").objectStore(query.from.table)
+
+    const request = objectStore.clear()
+
+    request.onerror = (event) => {
+      resume(
+        Effect.fail(
+          new IndexedDbQuery.IndexedDbQueryError({
+            reason: "TransactionError",
+            cause: event
+          })
+        )
+      )
+    }
+
+    request.onsuccess = () => {
+      resume(Effect.void)
+    }
+  })
+
+const applyClearAll = (query: IndexedDbQueryBuilder.ClearAll) =>
+  Effect.async<void, IndexedDbQuery.IndexedDbQueryError>((resume) => {
+    const database = query.database
+    const tables = Array.from(HashMap.keys((query.source as IndexedDbVersion.IndexedDbVersion.AnyWithProps).tables))
+
+    const transaction = database.transaction(tables, "readwrite")
+
+    for (let t = 0; t < tables.length; t++) {
+      const objectStore = transaction.objectStore(tables[t])
+      const request = objectStore.clear()
+
+      request.onerror = () => {
+        resume(
+          Effect.fail(new IndexedDbQuery.IndexedDbQueryError({ reason: "TransactionError", cause: request.error }))
+        )
+      }
+    }
+
+    transaction.onerror = () => {
+      resume(
+        Effect.fail(
+          new IndexedDbQuery.IndexedDbQueryError({ reason: "TransactionError", cause: transaction.error })
+        )
+      )
+    }
+
+    transaction.oncomplete = () => {
+      resume(Effect.void)
+    }
+  })
+
 const BasicProto = {
   [TypeId]: TypeId,
   pipe() {
@@ -820,6 +908,8 @@ export const fromMakeProto = <
 
   IndexedDbQueryBuilder.upsertAll = (values: Array<any>) =>
     modifyAllMakeProto({ from: IndexedDbQueryBuilder as any, values, operation: "put" })
+
+  IndexedDbQueryBuilder.clear = clearMakeProto({ from: IndexedDbQueryBuilder as any })
 
   return IndexedDbQueryBuilder as any
 }
@@ -1207,5 +1297,47 @@ const modifyAllMakeProto = <
   IndexedDbQueryBuilderImpl.from = options.from
   IndexedDbQueryBuilderImpl.values = options.values
   IndexedDbQueryBuilderImpl.operation = options.operation
+  return IndexedDbQueryBuilderImpl as any
+}
+
+const clearMakeProto = <
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
+>(options: {
+  readonly from: IndexedDbQueryBuilder.From<Source, Table>
+}): IndexedDbQueryBuilder.Clear<Source, Table> => {
+  function IndexedDbQueryBuilderImpl() {}
+
+  Object.setPrototypeOf(
+    IndexedDbQueryBuilderImpl,
+    Object.assign(Object.create(Proto), {
+      commit(this: IndexedDbQueryBuilder.Clear) {
+        return applyClear(this)
+      }
+    })
+  )
+  IndexedDbQueryBuilderImpl.from = options.from
+  return IndexedDbQueryBuilderImpl as any
+}
+
+/** @internal */
+export const clearAllMakeProto = <
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
+>(options: {
+  readonly source: Source
+  readonly database: globalThis.IDBDatabase
+}): IndexedDbQueryBuilder.ClearAll<Source> => {
+  function IndexedDbQueryBuilderImpl() {}
+
+  Object.setPrototypeOf(
+    IndexedDbQueryBuilderImpl,
+    Object.assign(Object.create(Proto), {
+      commit(this: IndexedDbQueryBuilder.ClearAll) {
+        return applyClearAll(this)
+      }
+    })
+  )
+  IndexedDbQueryBuilderImpl.database = options.database
+  IndexedDbQueryBuilderImpl.source = options.source
   return IndexedDbQueryBuilderImpl as any
 }
