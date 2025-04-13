@@ -4,7 +4,7 @@ import { Schema } from "effect"
 
 describe("IndexedDbTable", () => {
   it("make", () => {
-    const Table = IndexedDbTable.make(
+    class Table extends IndexedDbTable.make(
       "todo",
       Schema.Struct({
         id: Schema.Number,
@@ -12,7 +12,7 @@ describe("IndexedDbTable", () => {
         completed: Schema.Boolean
       }),
       { keyPath: "id" }
-    )
+    ) {}
 
     assert.equal(Table.tableName, "todo")
     assert.deepStrictEqual(Table.tableSchema.fields.id, Schema.Number)

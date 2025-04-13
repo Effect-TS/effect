@@ -3,40 +3,8 @@
  */
 import type * as Effect from "effect/Effect"
 import { type Pipeable } from "effect/Pipeable"
-import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 import * as internal from "./internal/indexedDbMigration.js"
-
-type IsStringLiteral<T> = T extends string ? string extends T ? false
-  : true
-  : false
-
-/** @internal */
-export type IndexFromTable<
-  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.IndexedDbTable.TableName<
-    IndexedDbVersion.IndexedDbVersion.Tables<Source>
-  >
-> = IsStringLiteral<
-  Extract<
-    keyof IndexedDbTable.IndexedDbTable.Indexes<
-      IndexedDbTable.IndexedDbTable.WithName<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >,
-    string
-  >
-> extends true ? Extract<
-    keyof IndexedDbTable.IndexedDbTable.Indexes<
-      IndexedDbTable.IndexedDbTable.WithName<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >,
-    string
-  > :
-  never
 
 /**
  * @since 1.0.0

@@ -3,19 +3,10 @@
  */
 import type * as Effect from "effect/Effect"
 import { type Pipeable } from "effect/Pipeable"
-import type * as IndexedDbMigration from "./IndexedDbMigration.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
+import { type IndexFromTable } from "./internal/indexedDbMigration.js"
 import * as internal from "./internal/indexedDbQueryBuilder.js"
-
-/**
- * TODO:
- * - Include `Scope` but make it "optional"
- *
- * LATER:
- * - Transactions
- * - `modify` (first read, then give function to modify)
- */
 
 /**
  * @since 1.0.0
@@ -53,17 +44,17 @@ export declare namespace IndexedDbQueryBuilder {
     readonly IDBKeyRange: typeof globalThis.IDBKeyRange
 
     readonly select: {
-      <Index extends IndexedDbMigration.IndexFromTable<Source, Table>>(index: Index): Select<Source, Table, Index>
+      <Index extends IndexFromTable<Source, Table>>(index: Index): Select<Source, Table, Index>
       (): Select<Source, Table, never>
     }
 
     readonly count: {
-      <Index extends IndexedDbMigration.IndexFromTable<Source, Table>>(index: Index): Count<Source, Table, Index>
+      <Index extends IndexFromTable<Source, Table>>(index: Index): Count<Source, Table, Index>
       (): Count<Source, Table, never>
     }
 
     readonly delete: {
-      <Index extends IndexedDbMigration.IndexFromTable<Source, Table>>(index: Index): Delete<Source, Table, Index>
+      <Index extends IndexFromTable<Source, Table>>(index: Index): Delete<Source, Table, Index>
       (): Delete<Source, Table, never>
     }
 
@@ -117,7 +108,7 @@ export declare namespace IndexedDbQueryBuilder {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
-    Index extends IndexedDbMigration.IndexFromTable<Source, Table> = never
+    Index extends IndexFromTable<Source, Table> = never
   > extends Pipeable {
     new(_: never): {}
 
@@ -168,7 +159,7 @@ export declare namespace IndexedDbQueryBuilder {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
-    Index extends IndexedDbMigration.IndexFromTable<Source, Table> = never
+    Index extends IndexFromTable<Source, Table> = never
   > extends Pipeable {
     new(_: never): {}
 
@@ -216,7 +207,7 @@ export declare namespace IndexedDbQueryBuilder {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
-    Index extends IndexedDbMigration.IndexFromTable<Source, Table> = never
+    Index extends IndexFromTable<Source, Table> = never
   > extends Pipeable {
     new(_: never): {}
 
@@ -272,7 +263,7 @@ export declare namespace IndexedDbQueryBuilder {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
-    Index extends IndexedDbMigration.IndexFromTable<Source, Table> = never
+    Index extends IndexFromTable<Source, Table> = never
   > extends Pipeable {
     new(_: never): {}
 
@@ -330,7 +321,7 @@ export declare namespace IndexedDbQueryBuilder {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
-    Index extends IndexedDbMigration.IndexFromTable<Source, Table> = never
+    Index extends IndexFromTable<Source, Table> = never
   > extends Pipeable {
     new(_: never): {}
 

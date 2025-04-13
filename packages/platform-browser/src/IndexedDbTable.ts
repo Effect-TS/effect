@@ -3,22 +3,7 @@
  */
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type * as Schema from "effect/Schema"
-
-type IsValidIndexedDbKeyType<T> = T extends number | string | Date | ArrayBuffer | ArrayBufferView ? true :
-  T extends Array<infer U> ? IsValidIndexedDbKeyType<U>
-  : false
-
-type IndexedDbValidKeys<TableSchema extends Schema.Schema.AnyNoContext> = {
-  [K in keyof Schema.Schema.Encoded<TableSchema>]: K extends string
-    ? IsValidIndexedDbKeyType<Schema.Schema.Encoded<TableSchema>[K]> extends true ? K
-    : never
-    : never
-}[keyof Schema.Schema.Encoded<TableSchema>]
-
-/** @internal */
-export type KeyPath<TableSchema extends Schema.Schema.AnyNoContext> =
-  | IndexedDbValidKeys<TableSchema>
-  | Array<IndexedDbValidKeys<TableSchema>>
+import { type KeyPath } from "./internal/indexedDbQueryBuilder.js"
 
 /**
  * @since 1.0.0
@@ -49,10 +34,7 @@ export interface IndexedDbTable<
   readonly [TypeId]: TypeId
   readonly tableName: TableName
   readonly tableSchema: TableSchema
-  readonly options?: {
-    keyPath: TableKeyPath
-    indexes: Indexes
-  }
+  readonly options?: { keyPath: TableKeyPath; indexes: Indexes }
 }
 
 /**

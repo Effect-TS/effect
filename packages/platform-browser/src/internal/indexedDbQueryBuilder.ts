@@ -3,19 +3,30 @@ import * as Effectable from "effect/Effectable"
 import * as HashMap from "effect/HashMap"
 import { pipeArguments } from "effect/Pipeable"
 import * as Schema from "effect/Schema"
-import type * as IndexedDbMigration from "../IndexedDbMigration.js"
 import * as IndexedDbQuery from "../IndexedDbQuery.js"
 import type { IndexedDbQueryBuilder, TypeId as IndexedDbQueryBuilderTypeId } from "../IndexedDbQueryBuilder.js"
 import type * as IndexedDbTable from "../IndexedDbTable.js"
 import type * as IndexedDbVersion from "../IndexedDbVersion.js"
+import { type IndexFromTable } from "./indexedDbMigration.js"
 
 type IsNever<T> = [T] extends [never] ? true : false
+
+type IsValidIndexedDbKeyType<T> = T extends number | string | Date | ArrayBuffer | ArrayBufferView ? true :
+  T extends Array<infer U> ? IsValidIndexedDbKeyType<U>
+  : false
+
+type IndexedDbValidKeys<TableSchema extends Schema.Schema.AnyNoContext> = {
+  [K in keyof Schema.Schema.Encoded<TableSchema>]: K extends string
+    ? IsValidIndexedDbKeyType<Schema.Schema.Encoded<TableSchema>[K]> extends true ? K
+    : never
+    : never
+}[keyof Schema.Schema.Encoded<TableSchema>]
 
 /** @internal */
 export type ExtractIndexType<
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+  Index extends IndexFromTable<Source, Table>
 > = IsNever<Index> extends true ? Schema.Schema.Type<
     IndexedDbTable.IndexedDbTable.TableSchema<
       IndexedDbTable.IndexedDbTable.WithName<
@@ -59,6 +70,11 @@ export type SourceTableSchemaType<
     >
   >
 >
+
+/** @internal */
+export type KeyPath<TableSchema extends Schema.Schema.AnyNoContext> =
+  | IndexedDbValidKeys<TableSchema>
+  | Array<IndexedDbValidKeys<TableSchema>>
 
 /** @internal */
 export const TypeId: IndexedDbQueryBuilderTypeId = Symbol.for(
@@ -528,7 +544,7 @@ export const fromMakeProto = <
   IndexedDbQueryBuilder.IDBKeyRange = options.IDBKeyRange
 
   IndexedDbQueryBuilder.select = <
-    Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+    Index extends IndexFromTable<Source, Table>
   >(index?: Index) =>
     selectMakeProto({
       from: IndexedDbQueryBuilder as any,
@@ -537,7 +553,7 @@ export const fromMakeProto = <
     })
 
   IndexedDbQueryBuilder.delete = <
-    Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+    Index extends IndexFromTable<Source, Table>
   >(index?: Index) =>
     deletePartialMakeProto({
       from: IndexedDbQueryBuilder as any,
@@ -546,7 +562,7 @@ export const fromMakeProto = <
     })
 
   IndexedDbQueryBuilder.count = <
-    Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+    Index extends IndexFromTable<Source, Table>
   >(index?: Index) =>
     countMakeProto({
       from: IndexedDbQueryBuilder as any,
@@ -575,7 +591,7 @@ export const fromMakeProto = <
 export const deletePartialMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+  Index extends IndexFromTable<Source, Table>
 >(options: {
   readonly from: IndexedDbQueryBuilder.From<Source, Table>
   readonly index: Index | undefined
@@ -658,7 +674,7 @@ export const deletePartialMakeProto = <
 export const deleteMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+  Index extends IndexFromTable<Source, Table>
 >(options: {
   readonly delete: IndexedDbQueryBuilder.DeletePartial<Source, Table, Index>
   readonly limitValue?: number | undefined
@@ -771,7 +787,7 @@ export const deleteMakeProto = <
 export const countMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+  Index extends IndexFromTable<Source, Table>
 >(options: {
   readonly from: IndexedDbQueryBuilder.From<Source, Table>
   readonly index: Index | undefined
@@ -892,7 +908,7 @@ export const countMakeProto = <
 export const selectMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+  Index extends IndexFromTable<Source, Table>
 >(options: {
   readonly from: IndexedDbQueryBuilder.From<Source, Table>
   readonly index: Index | undefined
@@ -1017,7 +1033,7 @@ export const selectMakeProto = <
 export const firstMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+  Index extends IndexFromTable<Source, Table>
 >(options: {
   readonly select: IndexedDbQueryBuilder.Select<Source, Table, Index>
 }): IndexedDbQueryBuilder.First<Source, Table, Index> => {

@@ -92,13 +92,3 @@ export const make = <
     )
   })
 }
-
-/**
- * Empty instance used for initial database creation (no tables).
- *
- * @since 1.0.0
- * @category constructors
- */
-export const makeEmpty: IndexedDbVersion = makeProto({
-  tables: HashMap.empty()
-})

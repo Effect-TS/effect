@@ -4,7 +4,7 @@ import { HashMap, Schema } from "effect"
 
 describe("IndexedDbVersion", () => {
   it("make", () => {
-    const Table = IndexedDbTable.make(
+    class Table extends IndexedDbTable.make(
       "todo",
       Schema.Struct({
         id: Schema.Number,
@@ -12,16 +12,11 @@ describe("IndexedDbVersion", () => {
         completed: Schema.Boolean
       }),
       { keyPath: "id" }
-    )
+    ) {}
 
-    const Db = IndexedDbVersion.make(Table)
+    class Db extends IndexedDbVersion.make(Table) {}
 
     assert.equal(HashMap.size(Db.tables), 1)
     assert.equal(HashMap.unsafeGet(Db.tables, "todo"), Table)
-  })
-
-  it("makeEmpty", () => {
-    const Db = IndexedDbVersion.makeEmpty
-    assert.equal(HashMap.size(Db.tables), 0)
   })
 })
