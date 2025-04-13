@@ -47,6 +47,7 @@
     "coverage": "vitest --coverage"
   },
   "peerDependencies": {
+    "@effect/platform": "workspace:^",
     "@opentelemetry/api": "^1.9",
     "@opentelemetry/resources": "^2.0.0",
     "@opentelemetry/sdk-metrics": "^2.0.0",
@@ -74,6 +75,7 @@
     }
   },
   "devDependencies": {
+    "@effect/platform": "workspace:^",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/context-async-hooks": "^2.0.0",
     "@opentelemetry/exporter-metrics-otlp-http": "0.200.0",

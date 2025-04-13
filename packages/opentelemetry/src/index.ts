@@ -16,6 +16,11 @@ export * as NodeSdk from "./NodeSdk.js"
 /**
  * @since 1.0.0
  */
+export * as OtlpTracer from "./OtlpTracer.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Resource from "./Resource.js"
 
 /**
