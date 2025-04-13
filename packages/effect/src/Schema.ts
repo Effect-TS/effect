@@ -42,10 +42,11 @@ import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 import type * as pretty_ from "./Pretty.js"
+import * as record from "./Record.js"
 import * as redacted_ from "./Redacted.js"
 import * as Request from "./Request.js"
 import * as scheduler_ from "./Scheduler.js"
-import type { ParseOptions } from "./SchemaAST.js"
+import type { ParseOptions, LiteralValue } from "./SchemaAST.js"
 import * as AST from "./SchemaAST.js"
 import * as sortedSet_ from "./SortedSet.js"
 import * as string_ from "./String.js"
@@ -8911,7 +8912,6 @@ const makeClass = <Fields extends Struct.Fields>(
 
   const [typeAnnotations, transformationAnnotations, encodedAnnotations] = getClassAnnotations(annotations)
 
-  const typeSchema_ = typeSchema(schema)
 
   const declarationSurrogate = typeSchema_.annotations({
     identifier,
@@ -10883,3 +10883,51 @@ export class ArrayFormatterIssue extends Struct({
   identifier: "ArrayFormatterIssue",
   description: "Represents an issue returned by the ArrayFormatter formatter"
 }) {}
+
+/**
+ * Defines a schema for a union of tagged structs.
+ *
+ * @example
+ * ```ts
+ * import { Schema } from "effect"
+ * 
+ * const schema = Schema.taggedUnion({
+ *   Circle: { radius: Schema.Number },
+ *   Square: { sideLength: Schema.Number },
+ * })
+ *
+ * Schema.decodeUnknownSync(schema)({ _tag: "Circle", radius: 10 })
+ * ```
+ *
+ * @category combinators
+ * @since 3.15.0
+ */
+export function taggedUnion<
+  Cases extends Record<string, Fields>,
+  Fields extends Struct.Fields,
+>(
+  definitions: Cases,
+): Union<
+  {
+    [K in keyof Cases]: K extends LiteralValue
+      ? TaggedStruct<K, Cases[K]>
+      : never
+  }[keyof Cases][]
+> & {
+  [K in keyof Cases]: K extends LiteralValue
+    ? TaggedStruct<K, Cases[K]>
+    : never
+} {
+  const members = record.map(definitions, (fields, key) => TaggedStruct(key, fields))
+  const schema = Union(...record.values(members))
+
+  return new Proxy(schema, {
+    get(target, key) {
+      if (key in members) {
+        return Reflect.get(members, key)
+      } else {
+        return Reflect.get(target, key)
+      }
+    },
+  }) as any
+}
