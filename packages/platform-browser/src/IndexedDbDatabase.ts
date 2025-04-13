@@ -9,7 +9,8 @@ import { Layer } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipeArguments } from "effect/Pipeable"
-import * as IndexedDbMigration from "./IndexedDbMigration.js"
+import type * as IndexedDbMigration from "./IndexedDbMigration.js"
+import * as internal from "./internal/indexedDbMigration.js"
 
 /**
  * @since 1.0.0
@@ -215,12 +216,12 @@ export const layer = <
             migrations.slice(oldVersion).reduce((prev, untypedMigration) => {
               if (untypedMigration._tag === "Migration") {
                 const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyMigration
-                const fromApi = IndexedDbMigration.migrationApi(
+                const fromApi = internal.migrationApi(
                   database,
                   transaction,
                   migration.fromVersion
                 )
-                const toApi = IndexedDbMigration.migrationApi(
+                const toApi = internal.migrationApi(
                   database,
                   transaction,
                   migration.toVersion
@@ -242,7 +243,7 @@ export const layer = <
                 )
               } else if (untypedMigration._tag === "Initial") {
                 const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyInitial
-                const api = IndexedDbMigration.migrationApi(
+                const api = internal.migrationApi(
                   database,
                   transaction,
                   migration.version
