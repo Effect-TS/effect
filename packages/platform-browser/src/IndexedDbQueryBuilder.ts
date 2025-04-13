@@ -560,7 +560,7 @@ const applyDelete = (query: IndexedDbQueryBuilder.Delete) =>
           }
 
           count += 1
-          if (count >= query.limitValue!) {
+          if (count > query.limitValue!) {
             cursor.continue()
           }
         }
@@ -628,7 +628,7 @@ const getSelect = (query: IndexedDbQueryBuilder.Select) =>
       const { keyRange, store } = getReadonlyObjectStore(query)
 
       if (query.limitValue !== undefined) {
-        const cursorRequest = store.openCursor()
+        const cursorRequest = store.openCursor(keyRange)
         const results: Array<any> = []
         let count = 0
 
@@ -645,12 +645,14 @@ const getSelect = (query: IndexedDbQueryBuilder.Select) =>
           if (cursor !== null) {
             results.push(cursor.value)
             count += 1
-            if (count >= query.limitValue!) {
+            if (count < query.limitValue!) {
               cursor.continue()
+            } else {
+              resume(Effect.succeed(results))
             }
+          } else {
+            resume(Effect.succeed(results))
           }
-
-          resume(Effect.succeed(results))
         }
       } else {
         request = store.getAll(keyRange)
@@ -1102,7 +1104,15 @@ const deleteMakeProto = <
   const limit = (
     limit: number
   ): IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
-    deleteMakeProto({ delete: options.delete, limitValue: limit })
+    deleteMakeProto({
+      delete: options.delete,
+      only: options.only,
+      lowerBound: options.lowerBound,
+      upperBound: options.upperBound,
+      excludeLowerBound: options.excludeLowerBound ?? false,
+      excludeUpperBound: options.excludeUpperBound ?? false,
+      limitValue: limit
+    })
 
   const equals = (
     value: ExtractIndexType<Source, Table, Index>
@@ -1207,7 +1217,16 @@ const countMakeProto = <
   const limit = (
     limit: number
   ): IndexedDbQueryBuilder.Count<Source, Table, Index> =>
-    countMakeProto({ from: options.from, index: options.index, limitValue: limit })
+    countMakeProto({
+      from: options.from,
+      index: options.index,
+      only: options.only,
+      lowerBound: options.lowerBound,
+      upperBound: options.upperBound,
+      excludeLowerBound: options.excludeLowerBound ?? false,
+      excludeUpperBound: options.excludeUpperBound ?? false,
+      limitValue: limit
+    })
 
   const equals = (
     value: ExtractIndexType<Source, Table, Index>
@@ -1318,7 +1337,16 @@ const selectMakeProto = <
   const limit = (
     limit: number
   ): IndexedDbQueryBuilder.Select<Source, Table, Index> =>
-    selectMakeProto({ from: options.from, index: options.index, limitValue: limit })
+    selectMakeProto({
+      from: options.from,
+      index: options.index,
+      only: options.only,
+      lowerBound: options.lowerBound,
+      upperBound: options.upperBound,
+      excludeLowerBound: options.excludeLowerBound ?? false,
+      excludeUpperBound: options.excludeUpperBound ?? false,
+      limitValue: limit
+    })
 
   const equals = (
     value: ExtractIndexType<Source, Table, Index>
