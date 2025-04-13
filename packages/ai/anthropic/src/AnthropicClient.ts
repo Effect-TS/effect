@@ -228,7 +228,7 @@ export const layerConfig = (
       client: HttpClient.HttpClient
     ) => HttpClient.HttpClient
   }>
-): Layer.Layer<AnthropicClient, ConfigError, HttpClient.HttpClient> =>
+): Layer.Layer<AiModels.AiModels | AnthropicClient, ConfigError, HttpClient.HttpClient> =>
   Config.unwrap(options).pipe(
     Effect.flatMap(make),
     Layer.effect(AnthropicClient),
