@@ -7,9 +7,10 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as IndexedDbDatabase from "./IndexedDbDatabase.js"
-import * as IndexedDbQueryBuilder from "./IndexedDbQueryBuilder.js"
+import type * as IndexedDbQueryBuilder from "./IndexedDbQueryBuilder.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
+import * as internal from "./internal/indexedDbQueryBuilder.js"
 
 /**
  * @since 1.0.0
@@ -105,9 +106,9 @@ const makeProto = <
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(table: A) => IndexedDbQueryBuilder.fromMakeProto({ database, IDBKeyRange, source, table })
+  >(table: A) => internal.fromMakeProto({ database, IDBKeyRange, source, table })
 
-  IndexedDbQuery.clearAll = IndexedDbQueryBuilder.clearAllMakeProto({ database, source })
+  IndexedDbQuery.clearAll = internal.clearAllMakeProto({ database, source })
 
   return IndexedDbQuery as any
 }
