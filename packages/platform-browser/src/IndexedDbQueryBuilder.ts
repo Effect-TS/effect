@@ -99,9 +99,15 @@ export declare namespace IndexedDbQueryBuilder {
       (): Select<Source, Table, never>
     }
 
-    readonly delete: <
-      Index extends IndexedDbMigration.IndexFromTable<Source, Table>
-    >(index?: Index) => DeletePartial<Source, Table, Index>
+    readonly count: {
+      <Index extends IndexedDbMigration.IndexFromTable<Source, Table>>(index: Index): Count<Source, Table, Index>
+      (): Count<Source, Table, never>
+    }
+
+    readonly delete: {
+      <Index extends IndexedDbMigration.IndexFromTable<Source, Table>>(index: Index): Delete<Source, Table, Index>
+      (): Delete<Source, Table, never>
+    }
 
     readonly insert: (
       value: Schema.Schema.Type<
@@ -186,6 +192,57 @@ export declare namespace IndexedDbQueryBuilder {
 
     readonly [TypeId]: TypeId
     readonly from: From<Source, Table>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Count<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never,
+    Index extends IndexedDbMigration.IndexFromTable<Source, Table> = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<number>>
+
+    readonly [TypeId]: TypeId
+    readonly from: From<Source, Table>
+    readonly index?: Index
+    readonly only?: ExtractIndexType<Source, Table, Index>
+    readonly lowerBound?: ExtractIndexType<Source, Table, Index>
+    readonly upperBound?: ExtractIndexType<Source, Table, Index>
+    readonly excludeLowerBound?: boolean
+    readonly excludeUpperBound?: boolean
+
+    readonly equals: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gte: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lte: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gt: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lt: (
+      value: ExtractIndexType<Source, Table, Index>
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly between: (
+      lowerBound: ExtractIndexType<Source, Table, Index>,
+      upperBound: ExtractIndexType<Source, Table, Index>,
+      options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
   }
 
   /**
@@ -532,7 +589,7 @@ const applyDelete = (query: IndexedDbQueryBuilder.Delete) =>
     }
   })
 
-const getReadonlyObjectStore = (query: IndexedDbQueryBuilder.Select) => {
+const getReadonlyObjectStore = (query: IndexedDbQueryBuilder.Select | IndexedDbQueryBuilder.Count) => {
   const database = query.from.database
   const IDBKeyRange = query.from.IDBKeyRange
   const objectStore = database.transaction([query.from.table], "readonly").objectStore(query.from.table)
@@ -850,6 +907,28 @@ const applyClearAll = (query: IndexedDbQueryBuilder.ClearAll) =>
     }
   })
 
+const getCount = (query: IndexedDbQueryBuilder.Count) =>
+  Effect.async<number, IndexedDbQuery.IndexedDbQueryError>((resume) => {
+    const { keyRange, store } = getReadonlyObjectStore(query)
+
+    const request = store.count(keyRange)
+
+    request.onerror = (event) => {
+      resume(
+        Effect.fail(
+          new IndexedDbQuery.IndexedDbQueryError({
+            reason: "TransactionError",
+            cause: event
+          })
+        )
+      )
+    }
+
+    request.onsuccess = () => {
+      resume(Effect.succeed(request.result))
+    }
+  })
+
 const BasicProto = {
   [TypeId]: TypeId,
   pipe() {
@@ -892,6 +971,15 @@ export const fromMakeProto = <
     Index extends IndexedDbMigration.IndexFromTable<Source, Table>
   >(index?: Index) =>
     deletePartialMakeProto({
+      from: IndexedDbQueryBuilder as any,
+      // @ts-expect-error
+      index
+    })
+
+  IndexedDbQueryBuilder.count = <
+    Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+  >(index?: Index) =>
+    countMakeProto({
       from: IndexedDbQueryBuilder as any,
       // @ts-expect-error
       index
@@ -1086,6 +1174,117 @@ const deleteMakeProto = <
   IndexedDbQueryBuilderImpl.delete = options.delete
   IndexedDbQueryBuilderImpl.limitValue = options.limitValue
   IndexedDbQueryBuilderImpl.only = options.only
+  IndexedDbQueryBuilderImpl.lowerBound = options.lowerBound
+  IndexedDbQueryBuilderImpl.upperBound = options.upperBound
+  IndexedDbQueryBuilderImpl.excludeLowerBound = options.excludeLowerBound
+  IndexedDbQueryBuilderImpl.excludeUpperBound = options.excludeUpperBound
+  IndexedDbQueryBuilderImpl.equals = equals
+  IndexedDbQueryBuilderImpl.gte = gte
+  IndexedDbQueryBuilderImpl.lte = lte
+  IndexedDbQueryBuilderImpl.gt = gt
+  IndexedDbQueryBuilderImpl.lt = lt
+  IndexedDbQueryBuilderImpl.between = between
+  IndexedDbQueryBuilderImpl.limit = limit
+  return IndexedDbQueryBuilderImpl as any
+}
+
+const countMakeProto = <
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
+  Index extends IndexedDbMigration.IndexFromTable<Source, Table>
+>(options: {
+  readonly from: IndexedDbQueryBuilder.From<Source, Table>
+  readonly index: Index | undefined
+  readonly limitValue: number | undefined
+  readonly only?: ExtractIndexType<Source, Table, Index>
+  readonly lowerBound?: ExtractIndexType<Source, Table, Index>
+  readonly upperBound?: ExtractIndexType<Source, Table, Index>
+  readonly excludeLowerBound?: boolean
+  readonly excludeUpperBound?: boolean
+}): IndexedDbQueryBuilder.Count<Source, Table, Index> => {
+  function IndexedDbQueryBuilderImpl() {}
+
+  const limit = (
+    limit: number
+  ): IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    countMakeProto({ from: options.from, index: options.index, limitValue: limit })
+
+  const equals = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    countMakeProto({ from: options.from, index: options.index, only: value, limitValue: options.limitValue })
+
+  const gte = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    countMakeProto({
+      from: options.from,
+      index: options.index,
+      lowerBound: value,
+      excludeLowerBound: false,
+      limitValue: options.limitValue
+    })
+
+  const lte = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    countMakeProto({
+      from: options.from,
+      index: options.index,
+      upperBound: value,
+      excludeUpperBound: false,
+      limitValue: options.limitValue
+    })
+
+  const gt = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    countMakeProto({
+      from: options.from,
+      index: options.index,
+      lowerBound: value,
+      excludeLowerBound: true,
+      limitValue: options.limitValue
+    })
+
+  const lt = (
+    value: ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    countMakeProto({
+      from: options.from,
+      index: options.index,
+      upperBound: value,
+      excludeUpperBound: true,
+      limitValue: options.limitValue
+    })
+
+  const between = (
+    lowerBound: ExtractIndexType<Source, Table, Index>,
+    upperBound: ExtractIndexType<Source, Table, Index>,
+    queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
+  ): IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    countMakeProto({
+      from: options.from,
+      index: options.index,
+      lowerBound,
+      upperBound,
+      excludeLowerBound: queryOptions?.excludeLowerBound ?? false,
+      excludeUpperBound: queryOptions?.excludeUpperBound ?? false,
+      limitValue: options.limitValue
+    })
+
+  Object.setPrototypeOf(
+    IndexedDbQueryBuilderImpl,
+    Object.assign(Object.create(Proto), {
+      commit(this: IndexedDbQueryBuilder.Count) {
+        return getCount(this)
+      }
+    })
+  )
+  IndexedDbQueryBuilderImpl.from = options.from
+  IndexedDbQueryBuilderImpl.index = options.index
+  IndexedDbQueryBuilderImpl.only = options.only
+  IndexedDbQueryBuilderImpl.limitValue = options.limitValue
   IndexedDbQueryBuilderImpl.lowerBound = options.lowerBound
   IndexedDbQueryBuilderImpl.upperBound = options.upperBound
   IndexedDbQueryBuilderImpl.excludeLowerBound = options.excludeLowerBound
