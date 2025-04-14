@@ -98,12 +98,13 @@ describe("IndexedDbDatabase", () => {
     return Effect.gen(function*() {
       const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
       const api = makeApi(Db)
+
       yield* api.transaction(
         ["todo"],
         "readwrite",
         (api) =>
           Effect.gen(function*() {
-            return yield* api.from("todo").insert({ id: 2, title: "test2", completed: false })
+            api.from("todo").insert({ id: 2, title: "test2", completed: false })
           })
       )
 
