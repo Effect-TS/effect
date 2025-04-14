@@ -78,16 +78,23 @@ export interface IndexedDbQuery<
       IndexedDbTable.IndexedDbTable.TableName<
         IndexedDbVersion.IndexedDbVersion.Tables<Source>
       >
-    >
+    >,
+    Mode extends "readonly" | "readwrite" = "readonly"
   >(
     tables: Tables & {
       0: IndexedDbTable.IndexedDbTable.TableName<
         IndexedDbVersion.IndexedDbVersion.Tables<Source>
       >
     },
-    mode: globalThis.IDBTransactionMode,
+    mode: Mode,
     callback: (api: {
-      readonly from: <A extends Tables[number]>(table: A) => IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, A>
+      readonly from: <A extends Tables[number]>(
+        table: A
+      ) => Mode extends "readwrite" ? IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, A> :
+        Omit<
+          IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, A>,
+          "insert" | "insertAll" | "upsert" | "upsertAll" | "clear" | "delete"
+        >
     }) => Effect.Effect<void>,
     options?: globalThis.IDBTransactionOptions
   ) => Effect.Effect<void>
