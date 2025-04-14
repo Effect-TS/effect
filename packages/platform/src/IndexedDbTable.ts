@@ -3,14 +3,14 @@
  */
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type * as Schema from "effect/Schema"
-import { type KeyPath } from "./internal/indexedDbQueryBuilder.js"
+import { type KeyPath } from "./internal/indexedDbQuery.js"
 
 /**
  * @since 1.0.0
  * @category type ids
  */
 export const TypeId: unique symbol = Symbol.for(
-  "@effect/platform-browser/IndexedDbTable"
+  "@effect/platform/IndexedDbTable"
 )
 
 /**
@@ -155,9 +155,6 @@ export const make = <
 >(
   tableName: TableName,
   tableSchema: TableSchema,
-  options?: Partial<{
-    keyPath: TableKeyPath
-    indexes: Indexes
-  }>
+  options?: Partial<{ keyPath: TableKeyPath; indexes: Indexes }>
 ): IndexedDbTable<TableName, TableSchema, Indexes, TableKeyPath> =>
   makeProto({ tableName, tableSchema, options: options ?? {} })
