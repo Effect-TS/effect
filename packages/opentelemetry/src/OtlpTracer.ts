@@ -262,10 +262,10 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
     const errors = Cause.prettyErrors(status.exit.cause)
     const firstError = errors[0]
     otelStatus = {
-      code: StatusCode.Error,
-      message: firstError && firstError.message
+      code: StatusCode.Error
     }
-    for (const error of errors) {
+    if (firstError) {
+      otelStatus.message = firstError.message
       events.push({
         name: "exception",
         timeUnixNano: String(status.endTime),
@@ -274,19 +274,19 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
           {
             "key": "exception.type",
             "value": {
-              "stringValue": error.name
+              "stringValue": firstError.name
             }
           },
           {
             "key": "exception.message",
             "value": {
-              "stringValue": error.message
+              "stringValue": firstError.message
             }
           },
           {
             "key": "exception.stacktrace",
             "value": {
-              "stringValue": error.stack ?? ""
+              "stringValue": Cause.pretty(status.exit.cause, { renderErrorCause: true })
             }
           }
         ]
@@ -436,7 +436,7 @@ interface Link {
 
 interface Status {
   readonly code: StatusCode
-  readonly message?: string
+  message?: string
 }
 
 const enum StatusCode {
