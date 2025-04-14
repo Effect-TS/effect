@@ -17,7 +17,7 @@ import * as internal from "./internal/indexedDbMigration.js"
  * @category type ids
  */
 export const TypeId: unique symbol = Symbol.for(
-  "@effect/platform-browser/IndexedDbDatabase"
+  "@effect/platform/IndexedDbDatabase"
 )
 
 /**
@@ -31,7 +31,7 @@ export type TypeId = typeof TypeId
  * @category type ids
  */
 export const ErrorTypeId: unique symbol = Symbol.for(
-  "@effect/platform-browser/IndexedDb/IndexedDbDatabaseError"
+  "@effect/platform/IndexedDbDatabase/IndexedDbDatabaseError"
 )
 
 /**
@@ -66,7 +66,7 @@ export class IndexedDbDatabaseError extends TypeIdError(
  * @category tags
  */
 export class IndexedDbDatabase extends Context.Tag(
-  "@effect/platform-browser/IndexedDbDatabase"
+  "@effect/platform/IndexedDbDatabase"
 )<IndexedDbDatabase, IndexedDbDatabase.AnyWithProps>() {}
 
 /**
