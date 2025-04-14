@@ -5,20 +5,18 @@ import { TypeIdError } from "@effect/platform/Error"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import { type Pipeable } from "effect/Pipeable"
 import * as IndexedDbDatabase from "./IndexedDbDatabase.js"
 import type * as IndexedDbQueryBuilder from "./IndexedDbQueryBuilder.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
-import * as internal from "./internal/indexedDbQueryBuilder.js"
+import * as internal from "./internal/indexedDbQuery.js"
 
 /**
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId: unique symbol = Symbol.for(
-  "@effect/platform-browser/IndexedDbQuery"
-)
+export const TypeId: unique symbol = internal.TypeId
 
 /**
  * @since 1.0.0
@@ -30,9 +28,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category type ids
  */
-export const ErrorTypeId: unique symbol = Symbol.for(
-  "@effect/platform-browser/IndexedDbQuery/IndexedDbQueryError"
-)
+export const ErrorTypeId: unique symbol = internal.ErrorTypeId
 
 /**
  * @since 1.0.0
@@ -78,41 +74,6 @@ export interface IndexedDbQuery<
   readonly clearAll: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ClearAll<Source>
 }
 
-const Proto = {
-  [TypeId]: TypeId,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-const makeProto = <
-  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
->({
-  IDBKeyRange,
-  database,
-  source
-}: {
-  readonly database: globalThis.IDBDatabase
-  readonly IDBKeyRange: typeof globalThis.IDBKeyRange
-  readonly source: Source
-}): IndexedDbQuery<Source> => {
-  function IndexedDbQuery() {}
-  Object.setPrototypeOf(IndexedDbQuery, Proto)
-  IndexedDbQuery.source = source
-  IndexedDbQuery.database = database
-  IndexedDbQuery.IDBKeyRange = IDBKeyRange
-
-  IndexedDbQuery.from = <
-    A extends IndexedDbTable.IndexedDbTable.TableName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>
-    >
-  >(table: A) => internal.fromMakeProto({ database, IDBKeyRange, source, table })
-
-  IndexedDbQuery.clearAll = internal.clearAllMakeProto({ database, source })
-
-  return IndexedDbQuery as any
-}
-
 /**
  * @since 1.0.0
  * @category tags
@@ -132,15 +93,6 @@ export class IndexedDbApi extends Context.Tag(
   }
 >() {}
 
-/** @internal */
-const makeApi = <
-  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
->(
-  database: globalThis.IDBDatabase,
-  IDBKeyRange: typeof globalThis.IDBKeyRange,
-  source: Source
-): IndexedDbQuery<Source> => makeProto({ database, IDBKeyRange, source })
-
 /**
  * @since 1.0.0
  * @category layers
@@ -150,7 +102,7 @@ export const layer = Layer.effect(
   Effect.gen(function*() {
     const { IDBKeyRange, database } = yield* IndexedDbDatabase.IndexedDbDatabase
     return IndexedDbApi.of({
-      makeApi: (source) => makeApi(database, IDBKeyRange, source),
+      makeApi: (source) => internal.makeApi(database, IDBKeyRange, source),
       use: (f) =>
         Effect.tryPromise({
           try: () => f(database),
