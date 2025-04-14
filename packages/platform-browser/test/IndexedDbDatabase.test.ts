@@ -30,7 +30,7 @@ describe("IndexedDbDatabase", () => {
       Effect.gen(function*() {
         yield* api.createObjectStore("todo")
         yield* api.createIndex("todo", "titleIndex")
-        yield* api.insert("todo", { id: 1, title: "test", completed: false })
+        yield* api.from("todo").insert({ id: 1, title: "test", completed: false })
       }))
     {}
 
@@ -94,15 +94,14 @@ describe("IndexedDbDatabase", () => {
       Effect.gen(function*() {
         yield* api.createObjectStore("todo")
         yield* api.createIndex("todo", "titleIndex")
-        yield* api.insert("todo", { id: 1, title: "test", completed: false })
+        yield* api.from("todo").insert({ id: 1, title: "test", completed: false })
       })).add(Db2, (from, to) =>
         Effect.gen(function*() {
-          const todo = yield* from.getAll("todo")
+          const todo = yield* from.from("todo").select()
           yield* from.deleteIndex("todo", "titleIndex")
           yield* from.deleteObjectStore("todo")
           yield* to.createObjectStore("todo")
-          yield* to.insertAll(
-            "todo",
+          yield* to.from("todo").insertAll(
             todo.map((t) => ({ uuid, title: t.title, completed: t.completed }))
           )
         }))
@@ -166,7 +165,7 @@ describe("IndexedDbDatabase", () => {
         Effect.gen(function*() {
           yield* from.deleteObjectStore("todo")
           yield* to.createObjectStore("user")
-          yield* to.insert("user", { userId: 1, name: "John Doe", email: "john.doe@example.com" })
+          yield* to.from("user").insert({ userId: 1, name: "John Doe", email: "john.doe@example.com" })
         })
     ) {}
 
