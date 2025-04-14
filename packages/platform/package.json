@@ -56,6 +56,7 @@
   },
   "devDependencies": {
     "ajv": "^8.17.1",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "fake-indexeddb": "^6.0.0"
   }
 }
