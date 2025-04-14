@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.46.4
+
+### Patch Changes
+
+- [#4732](https://github.com/Effect-TS/effect/pull/4732) [`049f0ec`](https://github.com/Effect-TS/effect/commit/049f0ec78e9e9333daaeab67e6182632684e5310) Thanks @tim-smart! - include cause in otel exceptions
+
 ## 0.46.3
 
 ### Patch Changes
