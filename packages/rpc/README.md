@@ -162,7 +162,7 @@ Let's now move to the client-side code and embrace the power of end-to-end types
 // client.ts
 import { FetchHttpClient } from "@effect/platform"
 import { RpcClient, RpcSerialization } from "@effect/rpc"
-import { Chunk, Effect, Layer, Stream } from "effect"
+import { Chunk, Effect, Layer, Option, Stream } from "effect"
 import { UserRpcs } from "./request.js"
 
 // Choose which protocol to use
@@ -181,7 +181,7 @@ const ProtocolLive = RpcClient.layerProtocolHttp({
 const program = Effect.gen(function* () {
   const client = yield* RpcClient.make(UserRpcs)
   let users = yield* Stream.runCollect(client.UserList({}))
-  if (!Chunk.findFirst(users, (user) => user.id === "3")) {
+  if (Option.isNone(Chunk.findFirst(users, (user) => user.id === "3"))) {
     console.log(`Creating user "Charlie"`)
     yield* client.UserCreate({ name: "Charlie" })
     users = yield* Stream.runCollect(client.UserList({}))
