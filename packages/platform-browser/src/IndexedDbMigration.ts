@@ -3,6 +3,8 @@
  */
 import type * as Effect from "effect/Effect"
 import { type Pipeable } from "effect/Pipeable"
+import type * as IndexedDbQuery from "./IndexedDbQuery.js"
+import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 import * as internal from "./internal/indexedDbMigration.js"
 
@@ -45,6 +47,47 @@ export declare namespace IndexedDbMigration {
    * @since 1.0.0
    * @category models
    */
+  export interface Transaction<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
+  > extends Pipeable, IndexedDbQuery.IndexedDbQuery<Source> {
+    readonly transaction: globalThis.IDBTransaction
+
+    readonly createObjectStore: <
+      A extends IndexedDbTable.IndexedDbTable.TableName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>
+      >
+    >(table: A) => Effect.Effect<globalThis.IDBObjectStore, internal.IndexedDbMigrationError>
+
+    readonly deleteObjectStore: <
+      A extends IndexedDbTable.IndexedDbTable.TableName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>
+      >
+    >(table: A) => Effect.Effect<void, internal.IndexedDbMigrationError>
+
+    readonly createIndex: <
+      A extends IndexedDbTable.IndexedDbTable.TableName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>
+      >
+    >(
+      table: A,
+      indexName: internal.IndexFromTable<Source, A>,
+      options?: IDBIndexParameters
+    ) => Effect.Effect<globalThis.IDBIndex, internal.IndexedDbMigrationError>
+
+    readonly deleteIndex: <
+      A extends IndexedDbTable.IndexedDbTable.TableName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>
+      >
+    >(
+      table: A,
+      indexName: internal.IndexFromTable<Source, A>
+    ) => Effect.Effect<void, internal.IndexedDbMigrationError>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export interface Initial<
     in out InitialVersion extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
     in out Error = never
@@ -54,7 +97,7 @@ export declare namespace IndexedDbMigration {
     readonly [TypeId]: TypeId
     readonly _tag: "Initial"
     readonly version: InitialVersion
-    readonly execute: (toQuery: internal.MigrationApi<InitialVersion>) => Effect.Effect<void, Error>
+    readonly execute: (toQuery: Transaction<InitialVersion>) => Effect.Effect<void, Error>
 
     readonly add: <
       Version extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
@@ -62,8 +105,8 @@ export declare namespace IndexedDbMigration {
     >(
       version: Version,
       execute: (
-        fromQuery: internal.MigrationApi<InitialVersion>,
-        toQuery: internal.MigrationApi<Version>
+        fromQuery: Transaction<InitialVersion>,
+        toQuery: Transaction<Version>
       ) => Effect.Effect<void, MigrationError>
     ) => Migration<InitialVersion, Version, MigrationError | Error>
   }
@@ -85,8 +128,8 @@ export declare namespace IndexedDbMigration {
     readonly fromVersion: FromVersion
     readonly toVersion: ToVersion
     readonly execute: (
-      fromQuery: internal.MigrationApi<FromVersion>,
-      toQuery: internal.MigrationApi<ToVersion>
+      fromQuery: Transaction<FromVersion>,
+      toQuery: Transaction<ToVersion>
     ) => Effect.Effect<void, Error>
   }
 

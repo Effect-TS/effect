@@ -42,6 +42,7 @@ export declare namespace IndexedDbQueryBuilder {
     readonly table: Table
     readonly database: globalThis.IDBDatabase
     readonly IDBKeyRange: typeof globalThis.IDBKeyRange
+    readonly transaction?: globalThis.IDBTransaction
 
     readonly select: {
       <Index extends IndexFromTable<Source, Table>>(index: Index): Select<Source, Table, Index>
@@ -79,6 +80,7 @@ export declare namespace IndexedDbQueryBuilder {
     readonly [TypeId]: TypeId
     readonly source: Source
     readonly database: globalThis.IDBDatabase
+    readonly transaction?: globalThis.IDBTransaction
   }
 
   /**

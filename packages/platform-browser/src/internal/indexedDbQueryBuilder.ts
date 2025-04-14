@@ -98,7 +98,8 @@ export const applyDelete = (query: IndexedDbQueryBuilder.Delete) =>
   Effect.async<any, IndexedDbQuery.IndexedDbQueryError>((resume) => {
     const database = query.delete.from.database
     const IDBKeyRange = query.delete.from.IDBKeyRange
-    const objectStore = database.transaction([query.delete.from.table], "readwrite").objectStore(
+    const transaction = query.delete.from.transaction
+    const objectStore = (transaction ?? database.transaction([query.delete.from.table], "readwrite")).objectStore(
       query.delete.from.table
     )
 
@@ -180,7 +181,10 @@ export const applyDelete = (query: IndexedDbQueryBuilder.Delete) =>
 export const getReadonlyObjectStore = (query: IndexedDbQueryBuilder.Select | IndexedDbQueryBuilder.Count) => {
   const database = query.from.database
   const IDBKeyRange = query.from.IDBKeyRange
-  const objectStore = database.transaction([query.from.table], "readonly").objectStore(query.from.table)
+  const transaction = query.from.transaction
+  const objectStore = (transaction ?? database.transaction([query.from.table], "readonly")).objectStore(
+    query.from.table
+  )
 
   let keyRange: globalThis.IDBKeyRange | undefined = undefined
   let store: globalThis.IDBObjectStore | globalThis.IDBIndex
@@ -356,7 +360,10 @@ export const getFirst = (query: IndexedDbQueryBuilder.First) =>
 export const applyModify = (query: IndexedDbQueryBuilder.Modify, value: any) =>
   Effect.async<any, IndexedDbQuery.IndexedDbQueryError>((resume) => {
     const database = query.from.database
-    const objectStore = database.transaction([query.from.table], "readwrite").objectStore(query.from.table)
+    const transaction = query.from.transaction
+    const objectStore = (transaction ?? database.transaction([query.from.table], "readwrite")).objectStore(
+      query.from.table
+    )
 
     let request: globalThis.IDBRequest<IDBValidKey>
 
@@ -388,7 +395,10 @@ export const applyModify = (query: IndexedDbQueryBuilder.Modify, value: any) =>
 export const applyModifyAll = (query: IndexedDbQueryBuilder.ModifyAll, values: Array<any>) =>
   Effect.async<Array<globalThis.IDBValidKey>, IndexedDbQuery.IndexedDbQueryError>((resume) => {
     const database = query.from.database
-    const objectStore = database.transaction([query.from.table], "readwrite").objectStore(query.from.table)
+    const transaction = query.from.transaction
+    const objectStore = (transaction ?? database.transaction([query.from.table], "readwrite")).objectStore(
+      query.from.table
+    )
 
     const results: Array<globalThis.IDBValidKey> = []
 
@@ -451,7 +461,10 @@ export const applyModifyAll = (query: IndexedDbQueryBuilder.ModifyAll, values: A
 export const applyClear = (query: IndexedDbQueryBuilder.Clear) =>
   Effect.async<void, IndexedDbQuery.IndexedDbQueryError>((resume) => {
     const database = query.from.database
-    const objectStore = database.transaction([query.from.table], "readwrite").objectStore(query.from.table)
+    const transaction = query.from.transaction
+    const objectStore = (transaction ?? database.transaction([query.from.table], "readwrite")).objectStore(
+      query.from.table
+    )
 
     const request = objectStore.clear()
 
@@ -477,7 +490,7 @@ export const applyClearAll = (query: IndexedDbQueryBuilder.ClearAll) =>
     const database = query.database
     const tables = Array.from(HashMap.keys((query.source as IndexedDbVersion.IndexedDbVersion.AnyWithProps).tables))
 
-    const transaction = database.transaction(tables, "readwrite")
+    const transaction = query.transaction ?? database.transaction(tables, "readwrite")
 
     for (let t = 0; t < tables.length; t++) {
       const objectStore = transaction.objectStore(tables[t])
@@ -535,6 +548,7 @@ export const fromMakeProto = <
   readonly table: Table
   readonly database: globalThis.IDBDatabase
   readonly IDBKeyRange: typeof globalThis.IDBKeyRange
+  readonly transaction: globalThis.IDBTransaction | undefined
 }): IndexedDbQueryBuilder.From<Source, Table> => {
   function IndexedDbQueryBuilder() {}
   Object.setPrototypeOf(IndexedDbQueryBuilder, Proto)
@@ -542,7 +556,7 @@ export const fromMakeProto = <
   IndexedDbQueryBuilder.table = options.table
   IndexedDbQueryBuilder.database = options.database
   IndexedDbQueryBuilder.IDBKeyRange = options.IDBKeyRange
-
+  IndexedDbQueryBuilder.transaction = options.transaction
   IndexedDbQueryBuilder.select = <
     Index extends IndexFromTable<Source, Table>
   >(index?: Index) =>
@@ -1144,6 +1158,7 @@ export const clearAllMakeProto = <
 >(options: {
   readonly source: Source
   readonly database: globalThis.IDBDatabase
+  readonly transaction: globalThis.IDBTransaction | undefined
 }): IndexedDbQueryBuilder.ClearAll<Source> => {
   function IndexedDbQueryBuilderImpl() {}
 
@@ -1156,6 +1171,7 @@ export const clearAllMakeProto = <
     })
   )
   IndexedDbQueryBuilderImpl.database = options.database
+  IndexedDbQueryBuilderImpl.transaction = options.transaction
   IndexedDbQueryBuilderImpl.source = options.source
   return IndexedDbQueryBuilderImpl as any
 }

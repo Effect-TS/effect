@@ -12,7 +12,7 @@ import { IDBKeyRange, indexedDB } from "fake-indexeddb"
 
 const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB, IDBKeyRange }))
 
-const Table = IndexedDbTable.make(
+class Table extends IndexedDbTable.make(
   "todo",
   Schema.Struct({
     id: Schema.Number,
@@ -21,9 +21,9 @@ const Table = IndexedDbTable.make(
     completed: Schema.Boolean
   }),
   { keyPath: "id", indexes: { titleIndex: "title", countIndex: "count" } }
-)
+) {}
 
-const Db = IndexedDbVersion.make(Table)
+class Db extends IndexedDbVersion.make(Table) {}
 
 describe("IndexedDbQueryBuilder", () => {
   describe("select", () => {
@@ -58,7 +58,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insert("todo", { id: 1, title: "test", count: 1, completed: false })
+                    yield* api.from("todo").insert({ id: 1, title: "test", count: 1, completed: false })
                   }))
               ).pipe(Layer.provide(layerFakeIndexedDb))
             )
@@ -97,7 +97,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insert("todo", { id: 2, title: "test2", count: 2, completed: false })
+                    yield* api.from("todo").insert({ id: 2, title: "test2", count: 2, completed: false })
                   }))
               ).pipe(Layer.provide(layerFakeIndexedDb))
             )
@@ -138,9 +138,11 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insert("todo", { id: 1, title: "test1", count: 1, completed: false })
-                    yield* api.insert("todo", { id: 2, title: "test2", count: 2, completed: false })
-                    yield* api.insert("todo", { id: 3, title: "test3", count: 3, completed: false })
+                    yield* api.from("todo").insertAll([
+                      { id: 1, title: "test1", count: 1, completed: false },
+                      { id: 2, title: "test2", count: 2, completed: false },
+                      { id: 3, title: "test3", count: 3, completed: false }
+                    ])
                   }))
               ).pipe(Layer.provide(layerFakeIndexedDb))
             )
@@ -181,7 +183,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false }
@@ -220,7 +222,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false }
@@ -258,7 +260,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false }
@@ -295,7 +297,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false }
@@ -329,7 +331,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false }
@@ -363,7 +365,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false }
@@ -400,7 +402,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false },
@@ -439,7 +441,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false },
@@ -478,7 +480,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false },
@@ -517,7 +519,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false },
@@ -552,7 +554,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false }
@@ -585,7 +587,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 1, title: "test1", count: 1, completed: false },
                       { id: 2, title: "test2", count: 2, completed: false },
                       { id: 3, title: "test3", count: 3, completed: false }
@@ -654,7 +656,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insert("todo", { id: 10, title: "insert1", count: 10, completed: true })
+                    yield* api.from("todo").insert({ id: 10, title: "insert1", count: 10, completed: true })
                   }))
               ).pipe(Layer.provide(layerFakeIndexedDb))
             )
@@ -685,7 +687,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 10, title: "insert1", count: 10, completed: true },
                       { id: 11, title: "insert2", count: 11, completed: true }
                     ])
@@ -719,7 +721,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 10, title: "insert1", count: 10, completed: true },
                       { id: 11, title: "insert2", count: 11, completed: true }
                     ])
@@ -752,7 +754,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 10, title: "insert1", count: 10, completed: true },
                       { id: 11, title: "insert2", count: 11, completed: true }
                     ])
@@ -832,7 +834,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insertAll("todo", [
+                    yield* api.from("todo").insertAll([
                       { id: 10, title: "insert1", count: 10, completed: true },
                       { id: 11, title: "insert2", count: 11, completed: true }
                     ])
@@ -872,7 +874,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insert("todo", { id: 10, title: "insert1", count: 10, completed: true })
+                    yield* api.from("todo").insert({ id: 10, title: "insert1", count: 10, completed: true })
                   }))
               ).pipe(Layer.provide(layerFakeIndexedDb))
             )
@@ -902,7 +904,7 @@ describe("IndexedDbQueryBuilder", () => {
                     yield* api.createObjectStore("todo")
                     yield* api.createIndex("todo", "titleIndex")
                     yield* api.createIndex("todo", "countIndex")
-                    yield* api.insert("todo", { id: 10, title: "insert1", count: 10, completed: true })
+                    yield* api.from("todo").insert({ id: 10, title: "insert1", count: 10, completed: true })
                   }))
               ).pipe(Layer.provide(layerFakeIndexedDb))
             )
@@ -932,7 +934,7 @@ describe("IndexedDbQueryBuilder", () => {
                   yield* api.createObjectStore("todo")
                   yield* api.createIndex("todo", "titleIndex")
                   yield* api.createIndex("todo", "countIndex")
-                  yield* api.insertAll("todo", [
+                  yield* api.from("todo").insertAll([
                     { id: 1, title: "test1", count: 1, completed: false },
                     { id: 2, title: "test2", count: 2, completed: false },
                     { id: 3, title: "test3", count: 3, completed: false }
@@ -965,7 +967,7 @@ describe("IndexedDbQueryBuilder", () => {
                   yield* api.createObjectStore("todo")
                   yield* api.createIndex("todo", "titleIndex")
                   yield* api.createIndex("todo", "countIndex")
-                  yield* api.insertAll("todo", [
+                  yield* api.from("todo").insertAll([
                     { id: 1, title: "test1", count: 1, completed: false },
                     { id: 2, title: "test2", count: 2, completed: false },
                     { id: 3, title: "test3", count: 3, completed: false }

@@ -216,16 +216,18 @@ export const layer = <
             migrations.slice(oldVersion).reduce((prev, untypedMigration) => {
               if (untypedMigration._tag === "Migration") {
                 const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyMigration
-                const fromApi = internal.migrationApi(
+                const fromApi = internal.makeTransactionProto({
                   database,
-                  transaction,
-                  migration.fromVersion
-                )
-                const toApi = internal.migrationApi(
+                  IDBKeyRange,
+                  source: migration.fromVersion,
+                  transaction
+                })
+                const toApi = internal.makeTransactionProto({
                   database,
-                  transaction,
-                  migration.toVersion
-                )
+                  IDBKeyRange,
+                  source: migration.toVersion,
+                  transaction
+                })
 
                 return prev.then(() =>
                   Effect.runPromise(migration.execute(fromApi, toApi)).catch(
@@ -243,11 +245,12 @@ export const layer = <
                 )
               } else if (untypedMigration._tag === "Initial") {
                 const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyInitial
-                const api = internal.migrationApi(
+                const api = internal.makeTransactionProto({
                   database,
-                  transaction,
-                  migration.version
-                )
+                  IDBKeyRange,
+                  source: migration.version,
+                  transaction
+                })
 
                 return prev.then(() =>
                   Effect.runPromise(migration.execute(api)).catch(

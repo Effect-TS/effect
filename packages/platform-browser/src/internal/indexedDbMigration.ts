@@ -3,14 +3,10 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as HashMap from "effect/HashMap"
 import { pipeArguments } from "effect/Pipeable"
-import * as Schema from "effect/Schema"
-import type {
-  ErrorTypeId as IndexedDbMigrationErrorTypeId,
-  IndexedDbMigration,
-  TypeId as IndexedDbMigrationTypeId
-} from "../IndexedDbMigration.js"
+import type * as IndexedDbMigration from "../IndexedDbMigration.js"
 import type * as IndexedDbTable from "../IndexedDbTable.js"
 import type * as IndexedDbVersion from "../IndexedDbVersion.js"
+import * as internalIndexedDbQuery from "./indexedDbQuery.js"
 
 type IsStringLiteral<T> = T extends string ? string extends T ? false
   : true
@@ -44,14 +40,14 @@ export type IndexFromTable<
   never
 
 /** @internal */
-export const TypeId: IndexedDbMigrationTypeId = Symbol.for(
+export const TypeId: IndexedDbMigration.TypeId = Symbol.for(
   "@effect/platform-browser/IndexedDbMigration"
-) as IndexedDbMigrationTypeId
+) as IndexedDbMigration.TypeId
 
 /** @internal */
-export const ErrorTypeId: IndexedDbMigrationErrorTypeId = Symbol.for(
+export const ErrorTypeId: IndexedDbMigration.ErrorTypeId = Symbol.for(
   "@effect/platform-browser/IndexedDbMigration/IndexedDbMigrationError"
-) as IndexedDbMigrationErrorTypeId
+) as IndexedDbMigration.ErrorTypeId
 
 /** @internal */
 export class IndexedDbMigrationError extends TypeIdError(
@@ -73,116 +69,37 @@ export class IndexedDbMigrationError extends TypeIdError(
   }
 }
 
-/** @internal */
-export interface MigrationApi<
-  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
-> {
-  readonly createObjectStore: <
-    A extends IndexedDbTable.IndexedDbTable.TableName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>
-    >
-  >(table: A) => Effect.Effect<globalThis.IDBObjectStore, IndexedDbMigrationError>
-
-  readonly deleteObjectStore: <
-    A extends IndexedDbTable.IndexedDbTable.TableName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>
-    >
-  >(table: A) => Effect.Effect<void, IndexedDbMigrationError>
-
-  readonly createIndex: <
-    A extends IndexedDbTable.IndexedDbTable.TableName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>
-    >
-  >(
-    table: A,
-    indexName: IndexFromTable<Source, A>,
-    options?: IDBIndexParameters
-  ) => Effect.Effect<globalThis.IDBIndex, IndexedDbMigrationError>
-
-  readonly deleteIndex: <
-    A extends IndexedDbTable.IndexedDbTable.TableName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>
-    >
-  >(table: A, indexName: IndexFromTable<Source, A>) => Effect.Effect<void, IndexedDbMigrationError>
-
-  readonly getAll: <
-    A extends IndexedDbTable.IndexedDbTable.TableName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>
-    >
-  >(table: A) => Effect.Effect<
-    Array<
-      Schema.Schema.Type<
-        IndexedDbTable.IndexedDbTable.TableSchema<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            A
-          >
-        >
-      >
-    >,
-    IndexedDbMigrationError
-  >
-
-  readonly insert: <
-    A extends IndexedDbTable.IndexedDbTable.TableName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>
-    >
-  >(
-    table: A,
-    data: Schema.Schema.Encoded<
-      IndexedDbTable.IndexedDbTable.TableSchema<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          A
-        >
-      >
-    >
-  ) => Effect.Effect<globalThis.IDBValidKey, IndexedDbMigrationError>
-
-  readonly insertAll: <
-    A extends IndexedDbTable.IndexedDbTable.TableName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>
-    >
-  >(
-    table: A,
-    dataList: ReadonlyArray<
-      Schema.Schema.Encoded<
-        IndexedDbTable.IndexedDbTable.TableSchema<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            A
-          >
-        >
-      >
-    >
-  ) => Effect.Effect<globalThis.IDBValidKey, IndexedDbMigrationError>
+const Proto = {
+  [TypeId]: TypeId,
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
 }
 
 /** @internal */
-export const migrationApi = <
+export const makeTransactionProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
->(
-  database: IDBDatabase,
-  transaction: IDBTransaction,
-  source: Source
-): MigrationApi<Source> => {
-  const insert = <
-    A extends IndexedDbTable.IndexedDbTable.TableName<
-      IndexedDbVersion.IndexedDbVersion.Tables<Source>
-    >
-  >(
-    table: A,
-    data: Schema.Schema.Encoded<
-      IndexedDbTable.IndexedDbTable.TableSchema<
-        IndexedDbTable.IndexedDbTable.WithName<
-          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-          A
-        >
-      >
-    >
-  ) =>
+>({
+  IDBKeyRange,
+  database,
+  source,
+  transaction
+}: {
+  readonly database: globalThis.IDBDatabase
+  readonly IDBKeyRange: typeof globalThis.IDBKeyRange
+  readonly source: Source
+  readonly transaction: globalThis.IDBTransaction
+}): IndexedDbMigration.IndexedDbMigration.Transaction<Source> => {
+  const IndexedDbMigration = internalIndexedDbQuery.makeProto({
+    database,
+    IDBKeyRange,
+    source,
+    transaction
+  }) as any
+  IndexedDbMigration.transaction = transaction
+  IndexedDbMigration.createObjectStore = (table: string) =>
     Effect.gen(function*() {
-      const { tableSchema } = yield* HashMap.get(source.tables, table).pipe(
+      const createTable = yield* HashMap.get(source.tables, table).pipe(
         Effect.catchTag(
           "NoSuchElementException",
           (cause) =>
@@ -193,190 +110,82 @@ export const migrationApi = <
         )
       )
 
-      yield* Schema.decodeUnknown(tableSchema)(data).pipe(
-        Effect.catchTag("ParseError", (cause) =>
+      return yield* Effect.try({
+        try: () =>
+          database.createObjectStore(
+            createTable.tableName,
+            createTable.options
+          ),
+        catch: (cause) =>
           new IndexedDbMigrationError({
-            reason: "DecodeError",
+            reason: "TransactionError",
             cause
-          }))
-      )
-
-      return yield* Effect.async<globalThis.IDBValidKey, IndexedDbMigrationError>((resume) => {
-        const objectStore = transaction.objectStore(table)
-        const request = objectStore.add(data)
-
-        request.onerror = () => {
-          resume(
-            Effect.fail(
-              new IndexedDbMigrationError({
-                reason: "TransactionError",
-                cause: request.error
-              })
-            )
-          )
-        }
-
-        request.onsuccess = () => {
-          resume(Effect.succeed(request.result))
-        }
+          })
       })
     })
 
-  return {
-    insert,
-    insertAll: (table, dataList) => Effect.all(dataList.map((data) => insert(table, data))),
-
-    createObjectStore: (table) =>
-      Effect.gen(function*() {
-        const createTable = yield* HashMap.get(source.tables, table).pipe(
-          Effect.catchTag(
-            "NoSuchElementException",
-            (cause) =>
-              new IndexedDbMigrationError({
-                reason: "MissingTable",
-                cause
-              })
-          )
-        )
-
-        return yield* Effect.try({
-          try: () =>
-            database.createObjectStore(
-              createTable.tableName,
-              createTable.options
-            ),
-          catch: (cause) =>
+  IndexedDbMigration.deleteObjectStore = (table: string) =>
+    Effect.gen(function*() {
+      const createTable = yield* HashMap.get(source.tables, table).pipe(
+        Effect.catchTag(
+          "NoSuchElementException",
+          (cause) =>
             new IndexedDbMigrationError({
-              reason: "TransactionError",
+              reason: "MissingTable",
               cause
             })
-        })
-      }),
-
-    deleteObjectStore: (table) =>
-      Effect.gen(function*() {
-        const createTable = yield* HashMap.get(source.tables, table).pipe(
-          Effect.catchTag(
-            "NoSuchElementException",
-            (cause) =>
-              new IndexedDbMigrationError({
-                reason: "MissingTable",
-                cause
-              })
-          )
         )
+      )
 
-        return yield* Effect.try({
-          try: () => database.deleteObjectStore(createTable.tableName),
-          catch: (cause) =>
-            new IndexedDbMigrationError({
-              reason: "TransactionError",
-              cause
-            })
-        })
-      }),
-
-    createIndex: (table, indexName, options) =>
-      Effect.gen(function*() {
-        const store = transaction.objectStore(table)
-        const sourceTable = HashMap.unsafeGet(source.tables, table)
-
-        const keyPath = yield* Effect.fromNullable(
-          sourceTable.options?.indexes[indexName] ?? undefined
-        ).pipe(
-          Effect.catchTag("NoSuchElementException", (error) =>
-            new IndexedDbMigrationError({
-              reason: "MissingIndex",
-              cause: Cause.fail(error)
-            }))
-        )
-
-        return yield* Effect.try({
-          try: () => store.createIndex(indexName, keyPath, options),
-          catch: (cause) =>
-            new IndexedDbMigrationError({
-              reason: "TransactionError",
-              cause
-            })
-        })
-      }),
-
-    deleteIndex: (table, indexName) =>
-      Effect.gen(function*() {
-        const store = transaction.objectStore(table)
-        return yield* Effect.try({
-          try: () => store.deleteIndex(indexName),
-          catch: (cause) =>
-            new IndexedDbMigrationError({
-              reason: "TransactionError",
-              cause
-            })
-        })
-      }),
-
-    getAll: (table) =>
-      Effect.gen(function*() {
-        const { tableName, tableSchema } = yield* HashMap.get(
-          source.tables,
-          table
-        ).pipe(
-          Effect.catchTag(
-            "NoSuchElementException",
-            (cause) =>
-              new IndexedDbMigrationError({
-                reason: "MissingTable",
-                cause
-              })
-          )
-        )
-
-        const data = yield* Effect.async<any, IndexedDbMigrationError>(
-          (resume) => {
-            const store = transaction.objectStore(tableName)
-            const request = store.getAll()
-
-            request.onerror = () => {
-              resume(
-                Effect.fail(
-                  new IndexedDbMigrationError({
-                    reason: "TransactionError",
-                    cause: request.error
-                  })
-                )
-              )
-            }
-
-            request.onsuccess = () => {
-              resume(Effect.succeed(request.result))
-            }
-          }
-        )
-
-        const tableSchemaArray = Schema.Array(
-          tableSchema
-        ) as unknown as IndexedDbTable.IndexedDbTable.TableSchema<
-          IndexedDbTable.IndexedDbTable.WithName<
-            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-            typeof tableName
-          >
-        >
-
-        return yield* Schema.decodeUnknown(tableSchemaArray)(data).pipe(
-          Effect.catchTag("ParseError", (cause) =>
-            new IndexedDbMigrationError({
-              reason: "DecodeError",
-              cause
-            }))
-        )
+      return yield* Effect.try({
+        try: () => database.deleteObjectStore(createTable.tableName),
+        catch: (cause) =>
+          new IndexedDbMigrationError({
+            reason: "TransactionError",
+            cause
+          })
       })
-  }
-}
+    })
 
-const Proto = {
-  [TypeId]: TypeId,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
+  IndexedDbMigration.createIndex = (table: string, indexName: string, options?: IDBIndexParameters) =>
+    Effect.gen(function*() {
+      const store = transaction.objectStore(table)
+      const sourceTable = HashMap.unsafeGet(source.tables, table)
+
+      const keyPath = yield* Effect.fromNullable(
+        sourceTable.options?.indexes[indexName] ?? undefined
+      ).pipe(
+        Effect.catchTag("NoSuchElementException", (error) =>
+          new IndexedDbMigrationError({
+            reason: "MissingIndex",
+            cause: Cause.fail(error)
+          }))
+      )
+
+      return yield* Effect.try({
+        try: () => store.createIndex(indexName, keyPath, options),
+        catch: (cause) =>
+          new IndexedDbMigrationError({
+            reason: "TransactionError",
+            cause
+          })
+      })
+    })
+
+  IndexedDbMigration.deleteIndex = (table: string, indexName: string) =>
+    Effect.gen(function*() {
+      const store = transaction.objectStore(table)
+      return yield* Effect.try({
+        try: () => store.deleteIndex(indexName),
+        catch: (cause) =>
+          new IndexedDbMigrationError({
+            reason: "TransactionError",
+            cause
+          })
+      })
+    })
+
+  return IndexedDbMigration as any
 }
 
 /** @internal */
@@ -386,9 +195,9 @@ export const makeInitialProto = <
 >(
   initialVersion: InitialVersion,
   init: (
-    toQuery: MigrationApi<InitialVersion>
+    toQuery: IndexedDbMigration.IndexedDbMigration.Transaction<InitialVersion>
   ) => Effect.Effect<void, Error>
-): IndexedDbMigration.Initial<InitialVersion, Error> => {
+): IndexedDbMigration.IndexedDbMigration.Initial<InitialVersion, Error> => {
   function IndexedDbMigration() {}
   Object.setPrototypeOf(IndexedDbMigration, Proto)
   IndexedDbMigration.version = initialVersion
@@ -400,8 +209,8 @@ export const makeInitialProto = <
   >(
     version: Version,
     execute: (
-      fromQuery: MigrationApi<InitialVersion>,
-      toQuery: MigrationApi<Version>
+      fromQuery: IndexedDbMigration.IndexedDbMigration.Transaction<InitialVersion>,
+      toQuery: IndexedDbMigration.IndexedDbMigration.Transaction<Version>
     ) => Effect.Effect<void, Error>
   ) =>
     makeProto({
@@ -421,15 +230,15 @@ export const makeProto = <
   Error
 >(options: {
   readonly previous:
-    | IndexedDbMigration.Migration<FromVersion, ToVersion, Error>
-    | IndexedDbMigration.Initial<FromVersion, Error>
+    | IndexedDbMigration.IndexedDbMigration.Migration<FromVersion, ToVersion, Error>
+    | IndexedDbMigration.IndexedDbMigration.Initial<FromVersion, Error>
   readonly fromVersion: FromVersion
   readonly toVersion: ToVersion
   readonly execute: (
-    fromQuery: MigrationApi<FromVersion>,
-    toQuery: MigrationApi<ToVersion>
+    fromQuery: IndexedDbMigration.IndexedDbMigration.Transaction<FromVersion>,
+    toQuery: IndexedDbMigration.IndexedDbMigration.Transaction<ToVersion>
   ) => Effect.Effect<void, Error>
-}): IndexedDbMigration.Migration<FromVersion, ToVersion, Error> => {
+}): IndexedDbMigration.IndexedDbMigration.Migration<FromVersion, ToVersion, Error> => {
   function IndexedDbMigration() {}
   Object.setPrototypeOf(IndexedDbMigration, Proto)
   IndexedDbMigration.previous = options.previous
