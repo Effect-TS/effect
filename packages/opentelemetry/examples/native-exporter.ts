@@ -1,14 +1,13 @@
-import { OtlpTracer, Resource } from "@effect/opentelemetry"
+import * as OtlpTracer from "@effect/opentelemetry/OtlpTracer"
 import { NodeHttpClient, NodeRuntime } from "@effect/platform-node"
 import { Effect, Layer } from "effect"
 
-const ResourceLayer = Resource.layer({
-  serviceName: "example"
-})
-
 const Tracing = OtlpTracer.layer({
-  url: "http://localhost:4318/v1/traces"
-}).pipe(Layer.provide([ResourceLayer, NodeHttpClient.layerUndici]))
+  url: "http://localhost:4318/v1/traces",
+  resource: {
+    serviceName: "my-service"
+  }
+}).pipe(Layer.provide(NodeHttpClient.layerUndici))
 
 const program = Effect.log("Hello").pipe(
   Effect.withSpan("c"),
