@@ -934,10 +934,110 @@ export * as MutableRef from "./MutableRef.js"
 export * as NonEmptyIterable from "./NonEmptyIterable.js"
 
 /**
- * This module provides utility functions and type class instances for working with the `number` type in TypeScript.
- * It includes functions for basic arithmetic operations, as well as type class instances for
- * `Equivalence` and `Order`.
+ * # Number
  *
+ * This module provides utility functions and type class instances for working
+ * with the `number` type in TypeScript. It includes functions for basic
+ * arithmetic operations, as well as type class instances for `Equivalence` and
+ * `Order`.
+ *
+ * ## When to Use
+ *
+ * Use the `Number` module when you need:
+ *
+ * - Type-safe arithmetic operations with proper error handling
+ * - Mathematical operations beyond JavaScript's built-in operators
+ * - Functional programming patterns for number manipulation
+ * - Consistent handling of edge cases (division by zero, NaN, etc.)
+ * - Composable operations that work well in pipelines
+ * - To represent continuous quantities with fractional parts
+ * - To handle measurements with decimal precision
+ * - To model mathematical concepts requiring irrational values
+ *
+ * ## Operations Reference
+ *
+ * | Category     | Operation                                  | Description                                             | Domain                         | Co-domain             |
+ * | ------------ | ------------------------------------------ | ------------------------------------------------------- | ------------------------------ | --------------------- |
+ * | constructors | {@link module:Number.parse}                | Safely parses a string to a number                      | `string`                       | `Option<number>`      |
+ * |              |                                            |                                                         |                                |                       |
+ * | math         | {@link module:Number.sum}                  | Adds two numbers                                        | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.sumAll}               | Sums all numbers in a collection                        | `Iterable<number>`             | `number`              |
+ * | math         | {@link module:Number.subtract}             | Subtracts one number from another                       | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.multiply}             | Multiplies two numbers                                  | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.multiplyAll}          | Multiplies all numbers in a collection                  | `Iterable<number>`             | `number`              |
+ * | math         | {@link module:Number.divide}               | Safely divides handling division by zero                | `number`, `number`             | `Option<number>`      |
+ * | math         | {@link module:Number.unsafeDivide}         | Divides but misbehaves for division by zero             | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.remainder}            | Calculates remainder of division                        | `number`, `number`             | `number`              |
+ * | math         | {@link module:Number.increment}            | Adds 1 to a number                                      | `number`                       | `number`              |
+ * | math         | {@link module:Number.decrement}            | Subtracts 1 from a number                               | `number`                       | `number`              |
+ * | math         | {@link module:Number.sign}                 | Determines the sign of a number                         | `number`                       | `Ordering`            |
+ * | math         | {@link module:Number.nextPow2}             | Finds the next power of 2                               | `number`                       | `number`              |
+ * | math         | {@link module:Number.round}                | Rounds a number with specified precision                | `number`, `number`             | `number`              |
+ * |              |                                            |                                                         |                                |                       |
+ * | predicates   | {@link module:Number.between}              | Checks if a number is in a range                        | `number`, `{minimum, maximum}` | `boolean`             |
+ * | predicates   | {@link module:Number.lessThan}             | Checks if one number is less than another               | `number`, `number`             | `boolean`             |
+ * | predicates   | {@link module:Number.lessThanOrEqualTo}    | Checks if one number is less than or equal              | `number`, `number`             | `boolean`             |
+ * | predicates   | {@link module:Number.greaterThan}          | Checks if one number is greater than another            | `number`, `number`             | `boolean`             |
+ * | predicates   | {@link module:Number.greaterThanOrEqualTo} | Checks if one number is greater or equal                | `number`, `number`             | `boolean`             |
+ * |              |                                            |                                                         |                                |                       |
+ * | guards       | {@link module:Number.isNumber}             | Type guard for JavaScript numbers                       | `unknown`                      | `boolean`             |
+ * |              |                                            |                                                         |                                |                       |
+ * | comparison   | {@link module:Number.min}                  | Returns the minimum of two numbers                      | `number`, `number`             | `number`              |
+ * | comparison   | {@link module:Number.max}                  | Returns the maximum of two numbers                      | `number`, `number`             | `number`              |
+ * | comparison   | {@link module:Number.clamp}                | Restricts a number to a range                           | `number`, `{minimum, maximum}` | `number`              |
+ * |              |                                            |                                                         |                                |                       |
+ * | instances    | {@link module:Number.Equivalence}          | Equivalence instance for numbers                        |                                | `Equivalence<number>` |
+ * | instances    | {@link module:Number.Order}                | Order instance for numbers                              |                                | `Order<number>`       |
+ * |              |                                            |                                                         |                                |                       |
+ * | errors       | {@link module:Number.DivisionByZeroError}  | Error thrown by unsafeDivide                            |                                |                       |
+ *
+ * ## Composition Patterns and Type Safety
+ *
+ * When building function pipelines, understanding how types flow through
+ * operations is critical:
+ *
+ * ### Composing with type-preserving operations
+ *
+ * Most operations in this module are type-preserving (`number → number`),
+ * making them easily composable in pipelines:
+ *
+ * ```ts
+ * import { pipe } from "effect"
+ * import * as Number from "effect/Number"
+ *
+ * const result = pipe(
+ *   10,
+ *   Number.increment, // number → number
+ *   Number.multiply(2), // number → number
+ *   Number.round(1) // number → number
+ * ) // Result: number (21)
+ * ```
+ *
+ * ### Working with Option results
+ *
+ * Operations that might fail (like division by zero) return Option types and
+ * require Option combinators:
+ *
+ * ```ts
+ * import { pipe, Option } from "effect"
+ * import * as Number from "effect/Number"
+ *
+ * const result = pipe(
+ *   10,
+ *   Number.divide(0), // number → Option<number>
+ *   Option.getOrElse(() => 0) // Option<number> → number
+ * ) // Result: number (0)
+ * ```
+ *
+ * ### Composition best practices
+ *
+ * - Chain type-preserving operations for maximum composability
+ * - Use Option combinators when working with potentially failing operations
+ * - Consider using Effect for operations that might fail with specific errors
+ * - Remember that all operations maintain JavaScript's floating-point precision
+ *   limitations
+ *
+ * @module Number
  * @since 2.0.0
  */
 export * as Number from "./Number.js"
