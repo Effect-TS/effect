@@ -49,7 +49,7 @@ export declare namespace IndexedDbMigration {
    */
   export interface Transaction<
     Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
-  > extends Pipeable, IndexedDbQuery.IndexedDbQuery<Source> {
+  > extends Pipeable, Omit<IndexedDbQuery.IndexedDbQuery<Source>, "transaction"> {
     readonly transaction: globalThis.IDBTransaction
 
     readonly createObjectStore: <

@@ -72,6 +72,25 @@ export interface IndexedDbQuery<
   >(table: A) => IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, A>
 
   readonly clearAll: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ClearAll<Source>
+
+  readonly transaction: <
+    Tables extends ReadonlyArray<
+      IndexedDbTable.IndexedDbTable.TableName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>
+      >
+    >
+  >(
+    tables: Tables & {
+      0: IndexedDbTable.IndexedDbTable.TableName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>
+      >
+    },
+    mode: globalThis.IDBTransactionMode,
+    callback: (api: {
+      readonly from: <A extends Tables[number]>(table: A) => IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, A>
+    }) => Effect.Effect<void>,
+    options?: globalThis.IDBTransactionOptions
+  ) => Effect.Effect<void>
 }
 
 /**
@@ -102,7 +121,7 @@ export const layer = Layer.effect(
   Effect.gen(function*() {
     const { IDBKeyRange, database } = yield* IndexedDbDatabase.IndexedDbDatabase
     return IndexedDbApi.of({
-      makeApi: (source) => internal.makeApi(database, IDBKeyRange, source),
+      makeApi: (source) => internal.makeProto({ database, IDBKeyRange, source, transaction: undefined }),
       use: (f) =>
         Effect.tryPromise({
           try: () => f(database),

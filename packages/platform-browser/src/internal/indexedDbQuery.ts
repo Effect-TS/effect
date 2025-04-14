@@ -2,8 +2,10 @@
  * @since 1.0.0
  */
 import { TypeIdError } from "@effect/platform/Error"
+import * as Effect from "effect/Effect"
 import { pipeArguments } from "effect/Pipeable"
 import type * as IndexedDbQuery from "../IndexedDbQuery.js"
+import type * as IndexedDbQueryBuilder from "../IndexedDbQueryBuilder.js"
 import type * as IndexedDbTable from "../IndexedDbTable.js"
 import type * as IndexedDbVersion from "../IndexedDbVersion.js"
 import * as internal from "./indexedDbQueryBuilder.js"
@@ -75,14 +77,24 @@ export const makeProto = <
 
   IndexedDbQuery.clearAll = internal.clearAllMakeProto({ database, source, transaction })
 
+  IndexedDbQuery.transaction = (
+    tables: Array<IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>>,
+    mode: globalThis.IDBTransactionMode,
+    callback: (api: {
+      readonly from: <
+        A extends IndexedDbTable.IndexedDbTable.TableName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>
+        >
+      >(table: A) => IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, A>
+    }) => Effect.Effect<void>,
+    options?: globalThis.IDBTransactionOptions
+  ) =>
+    Effect.gen(function*() {
+      const transaction = database.transaction(tables, mode, options)
+      return yield* callback({
+        from: (table) => internal.fromMakeProto({ database, IDBKeyRange, source, table, transaction })
+      })
+    })
+
   return IndexedDbQuery as any
 }
-
-/** @internal */
-export const makeApi = <
-  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
->(
-  database: globalThis.IDBDatabase,
-  IDBKeyRange: typeof globalThis.IDBKeyRange,
-  source: Source
-): IndexedDbQuery.IndexedDbQuery<Source> => makeProto({ database, IDBKeyRange, source, transaction: undefined })
