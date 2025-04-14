@@ -1,15 +1,14 @@
 /**
  * @since 1.0.0
  */
-import { TypeIdError } from "@effect/platform/Error"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { type Pipeable } from "effect/Pipeable"
 import * as IndexedDbDatabase from "./IndexedDbDatabase.js"
-import type * as IndexedDbQueryBuilder from "./IndexedDbQueryBuilder.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
+import { type IndexFromTable } from "./internal/indexedDbMigration.js"
 import * as internal from "./internal/indexedDbQuery.js"
 
 /**
@@ -38,22 +37,6 @@ export type ErrorTypeId = typeof ErrorTypeId
 
 /**
  * @since 1.0.0
- * @category errors
- */
-export class IndexedDbQueryError extends TypeIdError(
-  ErrorTypeId,
-  "IndexedDbQueryError"
-)<{
-  readonly reason: "TransactionError" | "DecodeError" | "UnknownError" | "NotFoundError"
-  readonly cause: unknown
-}> {
-  get message() {
-    return this.reason
-  }
-}
-
-/**
- * @since 1.0.0
  * @category models
  */
 export interface IndexedDbQuery<
@@ -69,9 +52,9 @@ export interface IndexedDbQuery<
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(table: A) => IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, A>
+  >(table: A) => IndexedDbQueryBuilder.From<Source, A>
 
-  readonly clearAll: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ClearAll<Source>
+  readonly clearAll: IndexedDbQueryBuilder.ClearAll<Source>
 
   readonly transaction: <
     Tables extends ReadonlyArray<
@@ -90,14 +73,368 @@ export interface IndexedDbQuery<
     callback: (api: {
       readonly from: <A extends Tables[number]>(
         table: A
-      ) => Mode extends "readwrite" ? IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, A> :
+      ) => Mode extends "readwrite" ? IndexedDbQueryBuilder.From<Source, A> :
         Omit<
-          IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, A>,
+          IndexedDbQueryBuilder.From<Source, A>,
           "insert" | "insertAll" | "upsert" | "upsertAll" | "clear" | "delete"
         >
     }) => Effect.Effect<void>,
     options?: globalThis.IDBTransactionOptions
   ) => Effect.Effect<void>
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export declare namespace IndexedDbQueryBuilder {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface From<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    readonly [TypeId]: TypeId
+    readonly source: Source
+    readonly table: Table
+    readonly database: globalThis.IDBDatabase
+    readonly IDBKeyRange: typeof globalThis.IDBKeyRange
+    readonly transaction?: globalThis.IDBTransaction
+
+    readonly select: {
+      <Index extends IndexFromTable<Source, Table>>(index: Index): Select<Source, Table, Index>
+      (): Select<Source, Table, never>
+    }
+
+    readonly count: {
+      <Index extends IndexFromTable<Source, Table>>(index: Index): Count<Source, Table, Index>
+      (): Count<Source, Table, never>
+    }
+
+    readonly delete: {
+      <Index extends IndexFromTable<Source, Table>>(index: Index): Delete<Source, Table, Index>
+      (): Delete<Source, Table, never>
+    }
+
+    readonly insert: (value: internal.SourceTableSchemaType<Source, Table>) => Modify<Source, Table>
+    readonly insertAll: (values: Array<internal.SourceTableSchemaType<Source, Table>>) => ModifyAll<Source, Table>
+    readonly upsert: (value: internal.SourceTableSchemaType<Source, Table>) => Modify<Source, Table>
+    readonly upsertAll: (values: Array<internal.SourceTableSchemaType<Source, Table>>) => ModifyAll<Source, Table>
+    readonly clear: Clear<Source, Table>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface ClearAll<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
+
+    readonly [TypeId]: TypeId
+    readonly source: Source
+    readonly database: globalThis.IDBDatabase
+    readonly transaction?: globalThis.IDBTransaction
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Clear<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
+
+    readonly [TypeId]: TypeId
+    readonly from: From<Source, Table>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Count<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never,
+    Index extends IndexFromTable<Source, Table> = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<number>>
+
+    readonly [TypeId]: TypeId
+    readonly from: From<Source, Table>
+    readonly index?: Index
+    readonly only?: internal.ExtractIndexType<Source, Table, Index>
+    readonly lowerBound?: internal.ExtractIndexType<Source, Table, Index>
+    readonly upperBound?: internal.ExtractIndexType<Source, Table, Index>
+    readonly excludeLowerBound?: boolean
+    readonly excludeUpperBound?: boolean
+
+    readonly equals: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gte: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lte: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gt: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lt: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly between: (
+      lowerBound: internal.ExtractIndexType<Source, Table, Index>,
+      upperBound: internal.ExtractIndexType<Source, Table, Index>,
+      options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
+    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface DeletePartial<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never,
+    Index extends IndexFromTable<Source, Table> = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    readonly [TypeId]: TypeId
+    readonly from: From<Source, Table>
+    readonly index?: Index
+
+    readonly equals: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gte: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lte: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gt: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lt: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly between: (
+      lowerBound: internal.ExtractIndexType<Source, Table, Index>,
+      upperBound: internal.ExtractIndexType<Source, Table, Index>,
+      options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly limit: (
+      limit: number
+    ) => Omit<Delete<Source, Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Delete<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never,
+    Index extends IndexFromTable<Source, Table> = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
+
+    readonly [TypeId]: TypeId
+    readonly delete: DeletePartial<Source, Table, Index>
+    readonly index?: Index
+    readonly limitValue?: number
+    readonly only?: internal.ExtractIndexType<Source, Table, Index>
+    readonly lowerBound?: internal.ExtractIndexType<Source, Table, Index>
+    readonly upperBound?: internal.ExtractIndexType<Source, Table, Index>
+    readonly excludeLowerBound?: boolean
+    readonly excludeUpperBound?: boolean
+
+    readonly equals: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gte: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lte: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gt: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lt: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly between: (
+      lowerBound: internal.ExtractIndexType<Source, Table, Index>,
+      upperBound: internal.ExtractIndexType<Source, Table, Index>,
+      options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
+    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly limit: (
+      limit: number
+    ) => Omit<Delete<Source, Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Select<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never,
+    Index extends IndexFromTable<Source, Table> = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<Array<internal.SourceTableSchemaType<Source, Table>>>>
+
+    readonly [TypeId]: TypeId
+    readonly from: From<Source, Table>
+    readonly index?: Index
+    readonly limitValue?: number
+    readonly only?: internal.ExtractIndexType<Source, Table, Index>
+    readonly lowerBound?: internal.ExtractIndexType<Source, Table, Index>
+    readonly upperBound?: internal.ExtractIndexType<Source, Table, Index>
+    readonly excludeLowerBound?: boolean
+    readonly excludeUpperBound?: boolean
+
+    readonly equals: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gte: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lte: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly gt: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly lt: (
+      value: internal.ExtractIndexType<Source, Table, Index>
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly between: (
+      lowerBound: internal.ExtractIndexType<Source, Table, Index>,
+      upperBound: internal.ExtractIndexType<Source, Table, Index>,
+      options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
+    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+
+    readonly limit: (
+      limit: number
+    ) => Omit<Select<Source, Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between" | "first">
+
+    readonly first: () => First<Source, Table, Index>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface First<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never,
+    Index extends IndexFromTable<Source, Table> = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<internal.SourceTableSchemaType<Source, Table>>>
+
+    readonly [TypeId]: TypeId
+    readonly select: Select<Source, Table, Index>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Modify<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<globalThis.IDBValidKey>>
+
+    readonly [TypeId]: TypeId
+    readonly operation: "add" | "put"
+    readonly from: From<Source, Table>
+    readonly value: internal.SourceTableSchemaType<Source, Table>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface ModifyAll<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    > = never
+  > extends Pipeable {
+    new(_: never): {}
+
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<Array<globalThis.IDBValidKey>>>
+
+    readonly [TypeId]: TypeId
+    readonly operation: "add" | "put"
+    readonly from: From<Source, Table>
+    readonly values: Array<internal.SourceTableSchemaType<Source, Table>>
+  }
 }
 
 /**
@@ -111,7 +448,7 @@ export class IndexedDbApi extends Context.Tag(
   {
     readonly use: <A>(
       f: (database: globalThis.IDBDatabase) => Promise<A>
-    ) => Effect.Effect<A, IndexedDbQueryError>
+    ) => Effect.Effect<A, internal.IndexedDbQueryError>
 
     readonly makeApi: <
       Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
@@ -133,7 +470,7 @@ export const layer = Layer.effect(
         Effect.tryPromise({
           try: () => f(database),
           catch: (error) =>
-            new IndexedDbQueryError({
+            new internal.IndexedDbQueryError({
               reason: "UnknownError",
               cause: error
             })
