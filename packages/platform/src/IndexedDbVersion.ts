@@ -10,7 +10,7 @@ import type * as IndexedDbTable from "./IndexedDbTable.js"
  * @category type ids
  */
 export const TypeId: unique symbol = Symbol.for(
-  "@effect/platform-browser/IndexedDbVersion"
+  "@effect/platform/IndexedDbVersion"
 )
 
 /**

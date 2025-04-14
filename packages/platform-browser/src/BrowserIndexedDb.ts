@@ -1,47 +1,9 @@
 /**
  * @since 1.0.0
  */
+import * as IndexedDb from "@effect/platform/IndexedDb"
 import { Cause, ConfigError, Layer } from "effect"
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export const TypeId: unique symbol = Symbol.for(
-  "@effect/platform/IndexedDb"
-)
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export type TypeId = typeof TypeId
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface IndexedDb {
-  readonly [TypeId]: TypeId
-  readonly indexedDB: globalThis.IDBFactory
-  readonly IDBKeyRange: typeof globalThis.IDBKeyRange
-}
-
-/**
- * @since 1.0.0
- * @category tag
- */
-export const IndexedDb: Context.Tag<IndexedDb, IndexedDb> = Context.GenericTag<IndexedDb>(
-  "@effect/platform/IndexedDb"
-)
-
-/**
- * @since 1.0.0
- * @category constructor
- */
-export const make = (impl: Omit<IndexedDb, TypeId>): IndexedDb => IndexedDb.of({ ...impl, [TypeId]: TypeId })
 
 /**
  * Instance of IndexedDb from the `window` object.
@@ -49,8 +11,8 @@ export const make = (impl: Omit<IndexedDb, TypeId>): IndexedDb => IndexedDb.of({
  * @since 1.0.0
  * @category constructors
  */
-export const layerWindow = Layer.effect(
-  IndexedDb,
+export const layerWindow: Layer.Layer<IndexedDb.IndexedDb, ConfigError.ConfigError> = Layer.effect(
+  IndexedDb.IndexedDb,
   Effect.fromNullable(window).pipe(
     Effect.flatMap((window) =>
       Effect.all({
@@ -58,7 +20,7 @@ export const layerWindow = Layer.effect(
         IDBKeyRange: Effect.fromNullable(window.IDBKeyRange)
       })
     ),
-    Effect.map(({ IDBKeyRange, indexedDB }) => make({ indexedDB, IDBKeyRange })),
+    Effect.map(({ IDBKeyRange, indexedDB }) => IndexedDb.make({ indexedDB, IDBKeyRange })),
     Effect.mapError((cause) =>
       ConfigError.SourceUnavailable(
         ["window"],
