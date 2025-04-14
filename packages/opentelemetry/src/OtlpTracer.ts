@@ -17,7 +17,6 @@ import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import type { ExtractTag } from "effect/Types"
-import { Resource } from "./Resource.js"
 
 /**
  * @since 1.0.0
@@ -26,7 +25,11 @@ import { Resource } from "./Resource.js"
 export const make: (
   options: {
     readonly url: string
-    readonly name?: string | undefined
+    readonly resource: {
+      readonly serviceName: string
+      readonly serviceVersion?: string | undefined
+      readonly attributes?: Record<string, unknown>
+    }
     readonly headers?: Headers.Input | undefined
     readonly exportInterval?: Duration.DurationInput | undefined
     readonly maxBatchSize?: number | undefined
@@ -34,7 +37,7 @@ export const make: (
 ) => Effect.Effect<
   Tracer.Tracer,
   never,
-  HttpClient.HttpClient | Scope.Scope | Resource
+  HttpClient.HttpClient | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const exporterScope = yield* Effect.scope
   const exportInterval = options.exportInterval ? Duration.decode(options.exportInterval) : Duration.seconds(5)
@@ -55,19 +58,36 @@ export const make: (
   )
 
   let headers = Headers.unsafeFromRecord({
-    "user-agent": "effect-opentelemetry/0.0.0"
+    "user-agent": "@effect-opentelemetry-OtlpExporter"
   })
   if (options.headers) {
     headers = Headers.merge(Headers.fromInput(options.headers), headers)
   }
 
-  const resource = yield* Resource
+  const resourceAttributes = options.resource.attributes
+    ? entriesToAttributes(Object.entries(options.resource.attributes))
+    : []
+  resourceAttributes.push({
+    key: "service.name",
+    value: {
+      stringValue: options.resource.serviceName
+    }
+  })
+  if (options.resource.serviceVersion) {
+    resourceAttributes.push({
+      key: "service.version",
+      value: {
+        stringValue: options.resource.serviceVersion
+      }
+    })
+  }
+
   const otelResource: OtlpResource = {
-    attributes: entriesToAttributes(Object.entries(resource.attributes)),
+    attributes: resourceAttributes,
     droppedAttributesCount: 0
   }
   const scope: Scope = {
-    name: options.name ?? resource.attributes["service.name"] as string ?? "unknown"
+    name: options.resource.serviceName
   }
 
   let spanBuffer: Array<OtlpSpan> = []
@@ -150,11 +170,14 @@ export const make: (
  */
 export const layer = (options: {
   readonly url: string
-  readonly name?: string | undefined
+  readonly resource: {
+    readonly serviceName: string
+    readonly serviceVersion?: string | undefined
+    readonly attributes?: Record<string, unknown>
+  }
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient | Resource> =>
-  Layer.unwrapScoped(Effect.map(make(options), Layer.setTracer))
+}): Layer.Layer<never, never, HttpClient.HttpClient> => Layer.unwrapScoped(Effect.map(make(options), Layer.setTracer))
 
 // internal
 

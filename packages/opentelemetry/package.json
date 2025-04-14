@@ -58,6 +58,12 @@
     "effect": "workspace:^"
   },
   "peerDependenciesMeta": {
+    "@opentelemetry/api": {
+      "optional": true
+    },
+    "@opentelemetry/resources": {
+      "optional": true
+    },
     "@opentelemetry/sdk-metrics": {
       "optional": true
     },
