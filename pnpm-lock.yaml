@@ -332,6 +332,9 @@ importers:
         specifier: workspace:^
         version: link:../effect/dist
     devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0

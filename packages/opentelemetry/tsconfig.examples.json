@@ -3,7 +3,8 @@
   "include": ["examples"],
   "references": [
     { "path": "tsconfig.src.json" },
-    { "path": "../effect" }
+    { "path": "../effect" },
+    { "path": "../platform-node" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/examples.tsbuildinfo",
