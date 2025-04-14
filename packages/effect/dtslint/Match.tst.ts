@@ -389,7 +389,28 @@ describe("Match", () => {
       })(value)
     ).type.toBe<string | number>()
 
+    expect(
+      Match.typeTags<Value, string | number>()({
+        A: (A) => {
+          expect(A).type.toBe<{ _tag: "A"; a: number }>()
+          return A.a
+        },
+        B: (B) => {
+          expect(B).type.toBe<{ _tag: "B"; b: number }>()
+          return "B"
+        }
+      })(value)
+    ).type.toBe<string | number>()
+
     Match.typeTags<Value>()({
+      A: (_) => _.a,
+      B: () => "B",
+      // @ts-expect-error: Type '() => boolean' is not assignable to type 'never'
+      C: () => false
+    })(value)
+
+    Match.typeTags<Value, string>()({
+      // @ts-expect-error: Type 'number' is not assignable to type 'string'
       A: (_) => _.a,
       B: () => "B",
       // @ts-expect-error: Type '() => boolean' is not assignable to type 'never'

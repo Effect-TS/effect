@@ -259,15 +259,26 @@ export const valueTags: {
  * @category Creating a matcher
  * @since 1.0.0
  */
-export const typeTags: <I>() => <
-  P extends
-    & {
-      readonly [Tag in Types.Tags<"_tag", I> & string]: (
-        _: Extract<I, { readonly _tag: Tag }>
-      ) => any
-    }
-    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
->(fields: P) => (input: I) => Unify<ReturnType<P[keyof P]>> = internal.typeTags
+export const typeTags: {
+  <I, Ret>(): <
+    P extends
+      & {
+        readonly [Tag in Types.Tags<"_tag", I> & string]: (
+          _: Extract<I, { readonly _tag: Tag }>
+        ) => Ret
+      }
+      & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
+  >(fields: P) => (input: I) => Ret
+  <I>(): <
+    P extends
+      & {
+        readonly [Tag in Types.Tags<"_tag", I> & string]: (
+          _: Extract<I, { readonly _tag: Tag }>
+        ) => any
+      }
+      & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
+  >(fields: P) => (input: I) => Unify<ReturnType<P[keyof P]>>
+} = internal.typeTags
 
 /**
  * Ensures that all branches of a matcher return a specific type.
