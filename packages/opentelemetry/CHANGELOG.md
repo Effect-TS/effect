@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.46.3
+
+### Patch Changes
+
+- [#4730](https://github.com/Effect-TS/effect/pull/4730) [`d36ccc0`](https://github.com/Effect-TS/effect/commit/d36ccc0c3ce79d2f4214fc5341272812aefaca0e) Thanks @tim-smart! - adjust otel export when max batch size is reached
+
 ## 0.46.2
 
 ### Patch Changes
