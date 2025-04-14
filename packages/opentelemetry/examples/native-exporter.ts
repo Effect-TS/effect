@@ -1,5 +1,5 @@
 import * as OtlpTracer from "@effect/opentelemetry/OtlpTracer"
-import { NodeHttpClient, NodeRuntime } from "@effect/platform-node"
+import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import { Effect, Layer } from "effect"
 
 const Tracing = OtlpTracer.layer({
@@ -7,7 +7,7 @@ const Tracing = OtlpTracer.layer({
   resource: {
     serviceName: "my-service"
   }
-}).pipe(Layer.provide(NodeHttpClient.layerUndici))
+}).pipe(Layer.provide(FetchHttpClient.layer))
 
 const program = Effect.log("Hello").pipe(
   Effect.withSpan("c"),
@@ -25,5 +25,5 @@ program.pipe(
   Effect.andThen(failingProgram),
   Effect.provide(Tracing),
   Effect.catchAllCause(Effect.logError),
-  NodeRuntime.runMain
+  Effect.runFork
 )
