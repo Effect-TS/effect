@@ -1,4 +1,4 @@
-import { IndexedDbTable } from "@effect/platform-browser"
+import { IndexedDbTable } from "@effect/platform"
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
 
