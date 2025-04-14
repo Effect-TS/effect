@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.55.12
+
+### Patch Changes
+
+- [#4725](https://github.com/Effect-TS/effect/pull/4725) [`58eaca9`](https://github.com/Effect-TS/effect/commit/58eaca9ef14032fc310f4a0e3c09513bac1cb50a) Thanks @leonitousconforti! - Update RPC README.md example
+
 ## 0.55.11
 
 ### Patch Changes

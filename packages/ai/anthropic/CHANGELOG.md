@@ -1,5 +1,11 @@
 # @effect/ai-anthropic
 
+## 0.3.9
+
+### Patch Changes
+
+- [#4726](https://github.com/Effect-TS/effect/pull/4726) [`b8b0703`](https://github.com/Effect-TS/effect/commit/b8b070382b3290eff922b76125f0d06732b74155) Thanks @dearlordylord! - AnthropicClient.layerConfig has the same ROut as AnthropicClient.layer - specifically, AiModels.AiModels was missing
+
 ## 0.3.8
 
 ### Patch Changes
