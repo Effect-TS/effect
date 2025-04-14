@@ -41,12 +41,12 @@ export type IndexFromTable<
 
 /** @internal */
 export const TypeId: IndexedDbMigration.TypeId = Symbol.for(
-  "@effect/platform-browser/IndexedDbMigration"
+  "@effect/platform/IndexedDbMigration"
 ) as IndexedDbMigration.TypeId
 
 /** @internal */
 export const ErrorTypeId: IndexedDbMigration.ErrorTypeId = Symbol.for(
-  "@effect/platform-browser/IndexedDbMigration/IndexedDbMigrationError"
+  "@effect/platform/IndexedDbMigration/IndexedDbMigrationError"
 ) as IndexedDbMigration.ErrorTypeId
 
 /** @internal */

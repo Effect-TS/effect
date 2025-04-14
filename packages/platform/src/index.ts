@@ -222,11 +222,6 @@ export * as IndexedDbQuery from "./IndexedDbQuery.js"
 /**
  * @since 1.0.0
  */
-export * as IndexedDbQueryBuilder from "./IndexedDbQueryBuilder.js"
-
-/**
- * @since 1.0.0
- */
 export * as IndexedDbTable from "./IndexedDbTable.js"
 
 /**
