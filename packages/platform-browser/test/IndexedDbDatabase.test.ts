@@ -65,6 +65,69 @@ describe("IndexedDbDatabase", () => {
     )
   })
 
+  it.effect("transaction", () => {
+    const Table = IndexedDbTable.make(
+      "todo",
+      Schema.Struct({
+        id: Schema.Number,
+        title: Schema.String,
+        completed: Schema.Boolean
+      }),
+      { keyPath: "id", indexes: { titleIndex: "title" } }
+    )
+
+    const Table2 = IndexedDbTable.make(
+      "user",
+      Schema.Struct({
+        id: Schema.Number,
+        name: Schema.String
+      }),
+      { keyPath: "id" }
+    )
+
+    const Db = IndexedDbVersion.make(Table, Table2)
+
+    class Migration extends IndexedDbMigration.make(Db, (api) =>
+      Effect.gen(function*() {
+        yield* api.createObjectStore("todo")
+        yield* api.createIndex("todo", "titleIndex")
+        yield* api.from("todo").insert({ id: 1, title: "test", completed: false })
+      }))
+    {}
+
+    return Effect.gen(function*() {
+      const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+      const api = makeApi(Db)
+      yield* api.transaction(
+        ["todo"],
+        "readwrite",
+        (api) =>
+          Effect.gen(function*() {
+            return yield* api.from("todo").insert({ id: 2, title: "test2", completed: false })
+          })
+      )
+
+      const todo = yield* api.from("todo").select()
+
+      assert.deepStrictEqual(todo, [{ id: 1, title: "test", completed: false }, {
+        id: 2,
+        title: "test2",
+        completed: false
+      }])
+
+      // Close database to avoid errors when running other tests (blocked access)
+      yield* use(async (database) => database.close())
+    }).pipe(
+      Effect.provide(
+        IndexedDbQuery.layer.pipe(
+          Layer.provide(
+            IndexedDbDatabase.layer("db12", Migration).pipe(Layer.provide(layerFakeIndexedDb))
+          )
+        )
+      )
+    )
+  })
+
   it.effect("migration sequence", () => {
     const Table1 = IndexedDbTable.make(
       "todo",
@@ -157,7 +220,7 @@ describe("IndexedDbDatabase", () => {
     )
 
     const Db1 = IndexedDbVersion.make(Table1)
-    const Db2 = IndexedDbVersion.make(Table2)
+    const Db2 = IndexedDbVersion.make(Table2, Table1)
 
     class Migration extends IndexedDbMigration.make(Db1, (api) => api.createObjectStore("todo")).add(
       Db2,
@@ -173,6 +236,7 @@ describe("IndexedDbDatabase", () => {
       const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
       const api = makeApi(Db2)
       const user = yield* api.from("user").select()
+
       const name = yield* use(async (database) => database.name)
       const version = yield* use(async (database) => database.version)
       const objectStoreNames = yield* use(async (database) => database.objectStoreNames)
