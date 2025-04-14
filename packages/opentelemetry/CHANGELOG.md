@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.46.2
+
+### Patch Changes
+
+- [#4727](https://github.com/Effect-TS/effect/pull/4727) [`46a64bd`](https://github.com/Effect-TS/effect/commit/46a64bd30b69176d6d2ca99823a4de02b3dcf40c) Thanks @tim-smart! - add effect native otlp exporter
+
 ## 0.46.1
 
 ### Patch Changes
