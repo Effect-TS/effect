@@ -1,11 +1,11 @@
-import { IndexedDb } from "@effect/platform"
 import {
+  IndexedDb,
   IndexedDbDatabase,
   IndexedDbMigration,
   IndexedDbQuery,
   IndexedDbTable,
   IndexedDbVersion
-} from "@effect/platform-browser"
+} from "@effect/platform"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
 import { IDBKeyRange, indexedDB } from "fake-indexeddb"
@@ -104,7 +104,7 @@ describe("IndexedDbDatabase", () => {
         "readwrite",
         (api) =>
           Effect.gen(function*() {
-            api.from("todo").insert({ id: 2, title: "test2", completed: false })
+            return yield* api.from("todo").insert({ id: 2, title: "test2", completed: false })
           })
       )
 

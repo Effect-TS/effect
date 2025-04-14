@@ -1,7 +1,9 @@
 /**
  * @since 1.0.0
  */
+import { Cause, ConfigError, Layer } from "effect"
 import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
 
 /**
  * @since 1.0.0
@@ -40,3 +42,29 @@ export const IndexedDb: Context.Tag<IndexedDb, IndexedDb> = Context.GenericTag<I
  * @category constructor
  */
 export const make = (impl: Omit<IndexedDb, TypeId>): IndexedDb => IndexedDb.of({ ...impl, [TypeId]: TypeId })
+
+/**
+ * Instance of IndexedDb from the `window` object.
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const layerWindow = Layer.effect(
+  IndexedDb,
+  Effect.fromNullable(window).pipe(
+    Effect.flatMap((window) =>
+      Effect.all({
+        indexedDB: Effect.fromNullable(window.indexedDB),
+        IDBKeyRange: Effect.fromNullable(window.IDBKeyRange)
+      })
+    ),
+    Effect.map(({ IDBKeyRange, indexedDB }) => make({ indexedDB, IDBKeyRange })),
+    Effect.mapError((cause) =>
+      ConfigError.SourceUnavailable(
+        ["window"],
+        "window.indexedDB is not available",
+        Cause.fail(cause)
+      )
+    )
+  )
+)
