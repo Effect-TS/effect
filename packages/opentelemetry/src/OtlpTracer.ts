@@ -10,6 +10,7 @@ import type * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
+import * as FiberSet from "effect/FiberSet"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -92,11 +93,7 @@ export const make: (
 
   let spanBuffer: Array<OtlpSpan> = []
 
-  const exportLatch = Effect.unsafeMakeLatch(false)
-
   const runExport = Effect.suspend(() => {
-    exportLatch.unsafeClose()
-
     if (spanBuffer.length === 0) {
       return Effect.void
     }
@@ -117,27 +114,30 @@ export const make: (
         headers
       })
     ))
-  })
-
-  yield* Scope.addFinalizer(exporterScope, Effect.ignore(runExport))
-
-  yield* Effect.sleep(exportInterval).pipe(
-    Effect.race(exportLatch.await),
-    Effect.zipRight(runExport),
-    Effect.catchAllCause((cause) => Effect.logInfo("Failed to export spans", cause)),
-    Effect.forever,
-    Effect.forkScoped,
-    Effect.interruptible,
+  }).pipe(
+    Effect.catchAllCause((cause) => Effect.logWarning("Failed to export spans", cause)),
     Effect.annotateLogs({
       package: "@effect/opentelemetry",
       module: "OtlpExporter"
     })
   )
 
+  yield* Scope.addFinalizer(exporterScope, runExport)
+
+  yield* Effect.sleep(exportInterval).pipe(
+    Effect.zipRight(runExport),
+    Effect.forever,
+    Effect.forkScoped,
+    Effect.interruptible
+  )
+
+  const runFork = yield* FiberSet.makeRuntime().pipe(
+    Effect.interruptible
+  )
   const addSpan = (span: SpanImpl) => {
     spanBuffer.push(makeOtlpSpan(span))
     if (spanBuffer.length >= maxBatchSize) {
-      exportLatch.unsafeOpen()
+      runFork(runExport)
     }
   }
 
