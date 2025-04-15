@@ -141,28 +141,13 @@ describe("Record", () => {
   it("has", () => {
     expect(Record.has(string$numbers, "a")).type.toBe<boolean>()
     expect(pipe(string$numbers, Record.has("a"))).type.toBe<boolean>()
-    expect(Record.has).type.not.toBeCallableWith(
-      string$numbers,
-      symA
-    )
+    expect(Record.has).type.not.toBeCallableWith(string$numbers, symA)
     expect(Record.has(template$numbers, "a")).type.toBe<boolean>()
-    expect(Record.has).type.not.toBeCallableWith(
-      template$numbers,
-      "b"
-    )
+    expect(Record.has).type.not.toBeCallableWith(template$numbers, "b")
     expect(Record.has(symbol$numbers, symA)).type.toBe<boolean>()
-    expect(Record.has).type.not.toBeCallableWith(
-      symbol$numbers,
-      "a"
-    )
-    expect(Record.has).type.not.toBeCallableWith(
-      string$structAB,
-      "c"
-    )
-    expect(Record.has).type.not.toBeCallableWith(
-      string$structAB,
-      symA
-    )
+    expect(Record.has).type.not.toBeCallableWith(symbol$numbers, "a")
+    expect(Record.has).type.not.toBeCallableWith(string$structAB, "c")
+    expect(Record.has).type.not.toBeCallableWith(string$structAB, symA)
   })
 
   it("get", () => {
