@@ -46,7 +46,7 @@ import * as record from "./Record.js"
 import * as redacted_ from "./Redacted.js"
 import * as Request from "./Request.js"
 import * as scheduler_ from "./Scheduler.js"
-import type { ParseOptions, LiteralValue } from "./SchemaAST.js"
+import type { LiteralValue, ParseOptions } from "./SchemaAST.js"
 import * as AST from "./SchemaAST.js"
 import * as sortedSet_ from "./SortedSet.js"
 import * as string_ from "./String.js"
@@ -8912,7 +8912,6 @@ const makeClass = <Fields extends Struct.Fields>(
 
   const [typeAnnotations, transformationAnnotations, encodedAnnotations] = getClassAnnotations(annotations)
 
-
   const declarationSurrogate = typeSchema_.annotations({
     identifier,
     ...typeAnnotations
@@ -10890,7 +10889,7 @@ export class ArrayFormatterIssue extends Struct({
  * @example
  * ```ts
  * import { Schema } from "effect"
- * 
+ *
  * const schema = Schema.taggedUnion({
  *   Circle: { radius: Schema.Number },
  *   Square: { sideLength: Schema.Number },
@@ -10904,21 +10903,12 @@ export class ArrayFormatterIssue extends Struct({
  */
 export function taggedUnion<
   Cases extends Record<string, Fields>,
-  Fields extends Struct.Fields,
->(
-  definitions: Cases,
-): Union<
-  {
-    [K in keyof Cases]: K extends LiteralValue
-      ? TaggedStruct<K, Cases[K]>
-      : never
-  }[keyof Cases][]
-> & {
-  [K in keyof Cases]: K extends LiteralValue
-    ? TaggedStruct<K, Cases[K]>
-    : never
-} {
-  const members = record.map(definitions, (fields, key) => TaggedStruct(key, fields))
+  Fields extends Struct.Fields
+>(cases: Cases):
+  & Union<Array<{ [K in keyof Cases]: K extends LiteralValue ? TaggedStruct<K, Cases[K]> : never }[keyof Cases]>>
+  & { [K in keyof Cases]: K extends LiteralValue ? TaggedStruct<K, Cases[K]> : never }
+{
+  const members = record.map(cases, (fields, key) => TaggedStruct(key, fields))
   const schema = Union(...record.values(members))
 
   return new Proxy(schema, {
@@ -10928,6 +10918,6 @@ export function taggedUnion<
       } else {
         return Reflect.get(target, key)
       }
-    },
+    }
   }) as any
 }
