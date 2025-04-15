@@ -6,11 +6,24 @@ import {
   IndexedDbTable,
   IndexedDbVersion
 } from "@effect/platform"
-import { assert, describe, it } from "@effect/vitest"
+import { afterEach, assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
 import { IDBKeyRange, indexedDB } from "fake-indexeddb"
 
 const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB, IDBKeyRange }))
+
+const provideMigration = (name: string, migration: IndexedDbMigration.IndexedDbMigration.Any) =>
+  Effect.provide(
+    IndexedDbQuery.layer.pipe(
+      Layer.provide(
+        IndexedDbDatabase.layer(name, migration).pipe(Layer.provide(layerFakeIndexedDb))
+      )
+    )
+  )
+
+afterEach(() => {
+  indexedDB.deleteDatabase("db")
+})
 
 describe("IndexedDbDatabase", () => {
   it.effect("insert and read todos", () => {
@@ -51,18 +64,7 @@ describe("IndexedDbDatabase", () => {
       assert.deepStrictEqual(Array.from(objectStoreNames), ["todo"])
       assert.deepStrictEqual(Array.from(indexNames), ["titleIndex"])
       assert.deepStrictEqual(index.keyPath, "title")
-
-      // Close database to avoid errors when running other tests (blocked access)
-      yield* use(async (database) => database.close())
-    }).pipe(
-      Effect.provide(
-        IndexedDbQuery.layer.pipe(
-          Layer.provide(
-            IndexedDbDatabase.layer("db", Migration).pipe(Layer.provide(layerFakeIndexedDb))
-          )
-        )
-      )
-    )
+    }).pipe(provideMigration("db", Migration))
   })
 
   it.effect("transaction", () => {
@@ -96,7 +98,7 @@ describe("IndexedDbDatabase", () => {
     {}
 
     return Effect.gen(function*() {
-      const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+      const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
       const api = makeApi(Db)
 
       yield* api.transaction(
@@ -115,18 +117,7 @@ describe("IndexedDbDatabase", () => {
         title: "test2",
         completed: false
       }])
-
-      // Close database to avoid errors when running other tests (blocked access)
-      yield* use(async (database) => database.close())
-    }).pipe(
-      Effect.provide(
-        IndexedDbQuery.layer.pipe(
-          Layer.provide(
-            IndexedDbDatabase.layer("db12", Migration).pipe(Layer.provide(layerFakeIndexedDb))
-          )
-        )
-      )
-    )
+    }).pipe(provideMigration("db", Migration))
   })
 
   it.effect("migration sequence", () => {
@@ -180,23 +171,12 @@ describe("IndexedDbDatabase", () => {
       const objectStoreNames = yield* use(async (database) => database.objectStoreNames)
       const indexNames = yield* use(async (database) => database.transaction("todo").objectStore("todo").indexNames)
 
-      assert.equal(name, "db1")
+      assert.equal(name, "db")
       assert.equal(version, 2)
       assert.deepStrictEqual(todo, [{ uuid, title: "test", completed: false }])
       assert.deepStrictEqual(Array.from(objectStoreNames), ["todo"])
       assert.deepStrictEqual(Array.from(indexNames), [])
-
-      // Close database to avoid errors when running other tests (blocked access)
-      yield* use(async (database) => database.close())
-    }).pipe(
-      Effect.provide(
-        IndexedDbQuery.layer.pipe(
-          Layer.provide(
-            IndexedDbDatabase.layer("db1", Migration).pipe(Layer.provide(layerFakeIndexedDb))
-          )
-        )
-      )
-    )
+    }).pipe(provideMigration("db", Migration))
   })
 
   it.effect("delete object store migration", () => {
@@ -241,21 +221,10 @@ describe("IndexedDbDatabase", () => {
       const name = yield* use(async (database) => database.name)
       const version = yield* use(async (database) => database.version)
       const objectStoreNames = yield* use(async (database) => database.objectStoreNames)
-      assert.equal(name, "db2")
+      assert.equal(name, "db")
       assert.equal(version, 2)
       assert.deepStrictEqual(user, [{ userId: 1, name: "John Doe", email: "john.doe@example.com" }])
       assert.deepStrictEqual(Array.from(objectStoreNames), ["user"])
-
-      // Close database to avoid errors when running other tests (blocked access)
-      yield* use(async (database) => database.close())
-    }).pipe(
-      Effect.provide(
-        IndexedDbQuery.layer.pipe(
-          Layer.provide(
-            IndexedDbDatabase.layer("db2", Migration).pipe(Layer.provide(layerFakeIndexedDb))
-          )
-        )
-      )
-    )
+    }).pipe(provideMigration("db", Migration))
   })
 })
