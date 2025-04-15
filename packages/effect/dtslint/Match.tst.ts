@@ -1,5 +1,4 @@
-import type { Option } from "effect"
-import { Either, hole, Match, pipe, Predicate } from "effect"
+import { Either, hole, Match, Option, pipe, Predicate } from "effect"
 import { describe, expect, it } from "tstyche"
 
 type Value = { _tag: "A"; a: number } | { _tag: "B"; b: number }
@@ -558,5 +557,21 @@ describe("Match", () => {
         })
       )(value)
     ).type.toBe<string | number>()
+  })
+
+  it("Option.isSome", () => {
+    expect(
+      pipe(
+        Match.type<{ maybeNumber: Option.Option<number> }>(),
+        Match.when({ maybeNumber: Option.isSome }, (v) => {
+          expect(v).type.toBe<{ maybeNumber: Option.Some<number> }>()
+          return v.maybeNumber.value
+        }),
+        Match.orElse((B) => {
+          expect(B).type.toBe<{ maybeNumber: Option.Option<number> }>()
+          return undefined
+        })
+      )({ maybeNumber: Option.some(1) })
+    ).type.toBe<number | undefined>()
   })
 })
