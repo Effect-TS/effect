@@ -6,19 +6,6 @@
  * arithmetic operations, as well as type class instances for `Equivalence` and
  * `Order`.
  *
- * ## When to Use
- *
- * Use the `Number` module when you need:
- *
- * - Type-safe arithmetic operations with proper error handling
- * - Mathematical operations beyond JavaScript's built-in operators
- * - Functional programming patterns for number manipulation
- * - Consistent handling of edge cases (division by zero, NaN, etc.)
- * - Composable operations that work well in pipelines
- * - To represent continuous quantities with fractional parts
- * - To handle measurements with decimal precision
- * - To model mathematical concepts requiring irrational values
- *
  * ## Operations Reference
  *
  * | Category     | Operation                                  | Description                                             | Domain                         | Co-domain             |
