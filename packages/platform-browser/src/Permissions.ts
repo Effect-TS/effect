@@ -94,7 +94,14 @@ export const layer: Layer.Layer<Permissions> = Layer.succeed(
             cause
           })
       }).pipe(
-        Effect.map((status) => ({ ...status, name }))
+        Effect.map((status) => ({
+          state: status.state,
+          name,
+          onchange: status.onchange,
+          addEventListener: status.addEventListener.bind(status),
+          removeEventListener: status.removeEventListener.bind(status),
+          dispatchEvent: status.dispatchEvent.bind(status)
+        }))
       )
   })
 )
