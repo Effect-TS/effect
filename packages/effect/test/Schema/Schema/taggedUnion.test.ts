@@ -7,13 +7,13 @@ describe("taggedUnion", () => {
     const schema = S.taggedUnion({
       A: {},
       B: { value: S.String },
-      C: { otherValue: S.Number },
+      C: { otherValue: S.Number }
     })
 
     const expected = S.Union(
       S.TaggedStruct("A", {}),
       S.TaggedStruct("B", { value: S.String }),
-      S.TaggedStruct("C", { otherValue: S.Number }),
+      S.TaggedStruct("C", { otherValue: S.Number })
     )
 
     Util.assertions.ast.equals(schema, expected)
