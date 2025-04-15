@@ -34,7 +34,7 @@ export interface IndexedDbTable<
   readonly [TypeId]: TypeId
   readonly tableName: TableName
   readonly tableSchema: TableSchema
-  readonly options?: { keyPath: TableKeyPath; indexes: Indexes }
+  readonly options?: { keyPath: TableKeyPath; indexes: Indexes; autoIncrement: boolean }
 }
 
 /**
@@ -133,6 +133,7 @@ const makeProto = <
   readonly options: Partial<{
     keyPath: TableKeyPath
     indexes: Indexes
+    autoIncrement: boolean
   }>
 }): IndexedDbTable<TableName, TableSchema, Indexes, TableKeyPath> => {
   function IndexedDbTable() {}
@@ -155,6 +156,6 @@ export const make = <
 >(
   tableName: TableName,
   tableSchema: TableSchema,
-  options?: Partial<{ keyPath: TableKeyPath; indexes: Indexes }>
+  options?: Partial<{ keyPath: TableKeyPath; indexes: Indexes; autoIncrement: boolean }>
 ): IndexedDbTable<TableName, TableSchema, Indexes, TableKeyPath> =>
   makeProto({ tableName, tableSchema, options: options ?? {} })

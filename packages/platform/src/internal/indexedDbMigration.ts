@@ -111,11 +111,7 @@ export const makeTransactionProto = <
       )
 
       return yield* Effect.try({
-        try: () =>
-          database.createObjectStore(
-            createTable.tableName,
-            createTable.options
-          ),
+        try: () => database.createObjectStore(createTable.tableName, createTable.options),
         catch: (cause) =>
           new IndexedDbMigrationError({
             reason: "TransactionError",
