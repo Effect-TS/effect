@@ -1,11 +1,32 @@
 import * as Headers from "@effect/platform/Headers"
 import * as HttpClient from "@effect/platform/HttpClient"
+import * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FiberSet from "effect/FiberSet"
+import * as Num from "effect/Number"
+import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
+
+const policy = Schedule.forever.pipe(
+  Schedule.passthrough,
+  Schedule.addDelay((error) => {
+    if (
+      HttpClientError.isHttpClientError(error)
+      && error._tag === "ResponseError"
+      && error.response.status === 429
+    ) {
+      const retryAfter = Option.fromNullable(error.response.headers["retry-after"]).pipe(
+        Option.flatMap(Num.parse),
+        Option.getOrElse(() => 5)
+      )
+      return Duration.seconds(retryAfter)
+    }
+    return Duration.seconds(1)
+  })
+)
 
 /** @internal */
 export const make: (
@@ -34,9 +55,7 @@ export const make: (
       const retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : 5
       return Effect.sleep(Duration.seconds(retryAfterSeconds))
     }),
-    HttpClient.retryTransient({
-      schedule: Schedule.spaced(1000)
-    })
+    HttpClient.retryTransient({ schedule: policy })
   )
 
   let headers = Headers.unsafeFromRecord({
