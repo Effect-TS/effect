@@ -3483,7 +3483,7 @@ export const catchAll: {
  * // Recover from all errors by examining the cause
  * const recovered = program.pipe(
  *   Effect.catchAllCause((cause) =>
- *     Cause.isFailType(cause)
+ *     Cause.isFailure(cause)
  *       ? Effect.succeed("Recovered from a regular error")
  *       : Effect.succeed("Recovered from a defect")
  *   )
