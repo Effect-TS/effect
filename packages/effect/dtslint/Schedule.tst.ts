@@ -24,7 +24,7 @@ describe("Schedule", () => {
       (x: string | number) => Console.log(x)
     )).type.toBe<Schedule.Schedule<number, unknown, never>>()
 
-    expect(Schedule.tapOutput).type.not.toBeCallableWith(
+    expect(Schedule.tapOutput<void, never, string | number>).type.not.toBeCallableWith(
       (s: string) => Console.log(s.trim())
     )
   })
