@@ -33,6 +33,7 @@ export const make: (
     readonly headers?: Headers.Input | undefined
     readonly exportInterval?: Duration.DurationInput | undefined
     readonly maxBatchSize?: number | undefined
+    readonly context?: (<X>(f: () => X, span: Tracer.AnySpan) => X) | undefined
   }
 ) => Effect.Effect<
   Tracer.Tracer,
@@ -83,9 +84,14 @@ export const make: (
         }
       })
     },
-    context(f, _fiber) {
-      return f()
-    }
+    context: options.context ?
+      function(f, fiber) {
+        if (fiber.currentSpan === undefined) {
+          return f()
+        }
+        return options.context!(f, fiber.currentSpan)
+      } :
+      defaultContext
   })
 })
 
@@ -103,9 +109,14 @@ export const layer = (options: {
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
   readonly maxBatchSize?: number | undefined
+  readonly context?: (<X>(f: () => X, span: Tracer.AnySpan) => X) | undefined
 }): Layer.Layer<never, never, HttpClient.HttpClient> => Layer.unwrapScoped(Effect.map(make(options), Layer.setTracer))
 
 // internal
+
+function defaultContext<X>(f: () => X, _: any): X {
+  return f()
+}
 
 interface SpanImpl extends Tracer.Span {
   readonly export: (span: SpanImpl) => void

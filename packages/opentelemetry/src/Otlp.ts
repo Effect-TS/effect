@@ -6,6 +6,7 @@ import type * as HttpClient from "@effect/platform/HttpClient"
 import type * as Duration from "effect/Duration"
 import * as Layer from "effect/Layer"
 import type * as Logger from "effect/Logger"
+import type * as Tracer from "effect/Tracer"
 import * as OtlpLogger from "./OtlpLogger.js"
 import * as OtlpMetrics from "./OtlpMetrics.js"
 import * as OtlpTracer from "./OtlpTracer.js"
@@ -24,6 +25,7 @@ export const layer = (options: {
   readonly headers?: Headers.Input | undefined
   readonly maxBatchSize?: number | undefined
   readonly replaceLogger?: Logger.Logger<any, any> | undefined
+  readonly tracerContext?: (<X>(f: () => X, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExportInterval?: Duration.DurationInput | undefined
   readonly metricsExportInterval?: Duration.DurationInput | undefined
   readonly tracerExportInterval?: Duration.DurationInput | undefined
@@ -48,6 +50,7 @@ export const layer = (options: {
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.tracerExportInterval,
-      maxBatchSize: options.maxBatchSize
+      maxBatchSize: options.maxBatchSize,
+      context: options.tracerContext
     })
   )
