@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as Headers from "@effect/platform/Headers"
-import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as Cause from "effect/Cause"
@@ -11,13 +10,15 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import * as FiberSet from "effect/FiberSet"
-import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import type { ExtractTag } from "effect/Types"
+import type { KeyValue, Resource } from "./OtlpResource.js"
+import { entriesToAttributes } from "./OtlpResource.js"
+import * as OtlpResource from "./OtlpResource.js"
 
 /**
  * @since 1.0.0
@@ -59,40 +60,22 @@ export const make: (
   )
 
   let headers = Headers.unsafeFromRecord({
-    "user-agent": "@effect-opentelemetry-OtlpExporter"
+    "user-agent": "effect-opentelemetry-OtlpTracer/0.0.0"
   })
   if (options.headers) {
     headers = Headers.merge(Headers.fromInput(options.headers), headers)
   }
 
-  const resourceAttributes = options.resource.attributes
-    ? entriesToAttributes(Object.entries(options.resource.attributes))
-    : []
-  resourceAttributes.push({
-    key: "service.name",
-    value: {
-      stringValue: options.resource.serviceName
-    }
-  })
-  if (options.resource.serviceVersion) {
-    resourceAttributes.push({
-      key: "service.version",
-      value: {
-        stringValue: options.resource.serviceVersion
-      }
-    })
-  }
-
-  const otelResource: OtlpResource = {
-    attributes: resourceAttributes,
-    droppedAttributesCount: 0
-  }
+  const otelResource = OtlpResource.make(options.resource)
   const scope: Scope = {
     name: options.resource.serviceName
   }
 
   let spanBuffer: Array<OtlpSpan> = []
 
+  const request = HttpClientRequest.post(options.url, {
+    headers
+  })
   const runExport = Effect.suspend(() => {
     if (spanBuffer.length === 0) {
       return Effect.void
@@ -109,25 +92,23 @@ export const make: (
       }]
     }
     return Effect.asVoid(client.execute(
-      HttpClientRequest.post(options.url, {
-        body: HttpBody.unsafeJson(data),
-        headers
-      })
+      HttpClientRequest.bodyUnsafeJson(request, data)
     ))
   }).pipe(
-    Effect.catchAllCause((cause) => Effect.logWarning("Failed to export spans", cause)),
+    Effect.tapErrorCause((cause) => Effect.logWarning("Failed to export spans", cause)),
     Effect.annotateLogs({
       package: "@effect/opentelemetry",
-      module: "OtlpExporter"
+      module: "OtlpTracer"
     })
   )
 
-  yield* Scope.addFinalizer(exporterScope, runExport)
+  yield* Scope.addFinalizer(exporterScope, Effect.ignore(runExport))
 
   yield* Effect.sleep(exportInterval).pipe(
     Effect.zipRight(runExport),
     Effect.forever,
-    Effect.forkScoped,
+    Effect.retry(Schedule.spaced("1 minute")),
+    Effect.forkIn(exporterScope),
     Effect.interruptible
   )
 
@@ -177,6 +158,7 @@ export const layer = (options: {
   }
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
+  readonly maxBatchSize?: number | undefined
 }): Layer.Layer<never, never, HttpClient.HttpClient> => Layer.unwrapScoped(Effect.map(make(options), Layer.setTracer))
 
 // internal
@@ -317,81 +299,13 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
   }
 }
 
-const unknownToAttributeValue = (value: unknown): AttributeValue => {
-  switch (typeof value) {
-    case "string":
-      return {
-        stringValue: value
-      }
-    case "bigint":
-      return {
-        intValue: Number(value)
-      }
-    case "number":
-      return Number.isInteger(value)
-        ? {
-          intValue: value
-        }
-        : {
-          doubleValue: value
-        }
-    case "boolean":
-      return {
-        boolValue: value
-      }
-    default:
-      return {
-        stringValue: Inspectable.toStringUnknown(value)
-      }
-  }
-}
-
-const entriesToAttributes = (entries: Iterable<[string, unknown]>): Array<Attribute> => {
-  const attributes: Array<Attribute> = []
-  for (const [key, value] of entries) {
-    attributes.push({
-      key,
-      value: unknownToAttributeValue(value)
-    })
-  }
-  return attributes
-}
-
 interface TraceData {
   readonly resourceSpans: Array<ResourceSpan>
 }
 
 interface ResourceSpan {
-  readonly resource: OtlpResource
+  readonly resource: Resource
   readonly scopeSpans: Array<ScopeSpan>
-}
-
-interface OtlpResource {
-  readonly attributes: Array<Attribute>
-  readonly droppedAttributesCount: number
-}
-
-interface Attribute {
-  readonly key: string
-  readonly value: AttributeValue
-}
-
-type AttributeValue = IntValue | DoubleValue | BoolValue | StringValue
-
-interface IntValue {
-  readonly intValue: number
-}
-
-interface DoubleValue {
-  readonly doubleValue: number
-}
-
-interface BoolValue {
-  readonly boolValue: boolean
-}
-
-interface StringValue {
-  readonly stringValue: string
 }
 
 interface ScopeSpan {
@@ -411,7 +325,7 @@ interface OtlpSpan {
   readonly kind: number
   readonly startTimeUnixNano: string
   readonly endTimeUnixNano: string
-  readonly attributes: Array<Attribute>
+  readonly attributes: Array<KeyValue>
   readonly droppedAttributesCount: number
   readonly events: Array<Event>
   readonly droppedEventsCount: number
@@ -421,14 +335,14 @@ interface OtlpSpan {
 }
 
 interface Event {
-  readonly attributes: Array<Attribute>
+  readonly attributes: Array<KeyValue>
   readonly name: string
   readonly timeUnixNano: string
   readonly droppedAttributesCount: number
 }
 
 interface Link {
-  readonly attributes: Array<Attribute>
+  readonly attributes: Array<KeyValue>
   readonly spanId: string
   readonly traceId: string
   readonly droppedAttributesCount: number
