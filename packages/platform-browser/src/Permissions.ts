@@ -87,14 +87,12 @@ export const layer: Layer.Layer<Permissions> = Layer.succeed(
     [TypeId]: TypeId,
     query: (name) =>
       Effect.tryPromise({
-        try: () => navigator.permissions.query({ name }),
+        try: () => navigator.permissions.query({ name }) as Promise<any>,
         catch: (cause) =>
           new PermissionsError({
             reason: cause instanceof DOMException ? "InvalidStateError" : "TypeError",
             cause
           })
-      }).pipe(
-        Effect.map((status) => ({ ...status, name }))
-      )
+      })
   })
 )
