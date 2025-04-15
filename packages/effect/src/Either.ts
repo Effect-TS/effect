@@ -1026,7 +1026,7 @@ export const transposeOption = <A = never, E = never>(
  * // Output: { _id: 'Either', _tag: 'Right', right: { _id: 'Option', _tag: 'Some', value: 84 } }
  * ```
  *
- * @since 3.14.0
+ * @since 3.15.0
  * @category Optional Wrapping & Unwrapping
  */
 export const transposeMapOption = dual<
