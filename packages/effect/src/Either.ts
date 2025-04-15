@@ -994,3 +994,47 @@ export const transposeOption = <A = never, E = never>(
 ): Either<Option<A>, E> => {
   return option_.isNone(self) ? right(option_.none) : map(self.value, option_.some)
 }
+
+/**
+ * Applies an `Either` on an `Option` and transposes the result.
+ *
+ * **Details**
+ *
+ * If the `Option` is `None`, the resulting `Either` will immediately succeed with a `Right` value of `None`.
+ * If the `Option` is `Some`, the transformation function will be applied to the inner value, and its result wrapped in a `Some`.
+ *
+ * @example
+ * ```ts
+ * import { Either, Option, pipe } from "effect"
+ *
+ * //          ┌─── Either<Option<number>, never>>
+ * //          ▼
+ * const noneResult = pipe(
+ *   Option.none(),
+ *   Either.transposeMapOption(() => Either.right(42)) // will not be executed
+ * )
+ * console.log(noneResult)
+ * // Output: { _id: 'Either', _tag: 'Right', right: { _id: 'Option', _tag: 'None' } }
+ *
+ * //          ┌─── Either<Option<number>, never>>
+ * //          ▼
+ * const someRightResult = pipe(
+ *   Option.some(42),
+ *   Either.transposeMapOption((value) => Either.right(value * 2))
+ * )
+ * console.log(someRightResult)
+ * // Output: { _id: 'Either', _tag: 'Right', right: { _id: 'Option', _tag: 'Some', value: 84 } }
+ * ```
+ *
+ * @since 3.14.0
+ * @category Optional Wrapping & Unwrapping
+ */
+export const transposeMapOption = dual<
+  <A, B, E = never>(
+    f: (self: A) => Either<B, E>
+  ) => (self: Option<A>) => Either<Option<B>, E>,
+  <A, B, E = never>(
+    self: Option<A>,
+    f: (self: A) => Either<B, E>
+  ) => Either<Option<B>, E>
+>(2, (self, f) => option_.isNone(self) ? right(option_.none) : map(f(self.value), option_.some))
