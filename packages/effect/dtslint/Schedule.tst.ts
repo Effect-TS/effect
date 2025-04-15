@@ -24,12 +24,8 @@ describe("Schedule", () => {
       (x: string | number) => Console.log(x)
     )).type.toBe<Schedule.Schedule<number, unknown, never>>()
 
-    Schedule.once.pipe(
-      Schedule.as<number | string>(1),
-      Schedule.tapOutput(
-        // @ts-expect-error: Type 'number' is not assignable to type 'string'
-        (s: string) => Console.log(s.trim())
-      )
+    expect(Schedule.tapOutput).type.not.toBeCallableWith(
+      (s: string) => Console.log(s.trim())
     )
   })
 })
