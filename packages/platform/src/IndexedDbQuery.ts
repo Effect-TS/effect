@@ -4,7 +4,6 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { type Pipeable } from "effect/Pipeable"
 import * as IndexedDbDatabase from "./IndexedDbDatabase.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
@@ -41,9 +40,7 @@ export type ErrorTypeId = typeof ErrorTypeId
  */
 export interface IndexedDbQuery<
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
-> extends Pipeable {
-  new(_: never): {}
-
+> {
   readonly [TypeId]: TypeId
   readonly source: Source
   readonly database: globalThis.IDBDatabase
@@ -97,9 +94,7 @@ export declare namespace IndexedDbQueryBuilder {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never
-  > extends Pipeable {
-    new(_: never): {}
-
+  > {
     readonly [TypeId]: TypeId
     readonly source: Source
     readonly table: Table
@@ -135,9 +130,7 @@ export declare namespace IndexedDbQueryBuilder {
    */
   export interface ClearAll<
     Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
-  > extends Pipeable {
-    new(_: never): {}
-
+  > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
 
     readonly [TypeId]: TypeId
@@ -155,9 +148,7 @@ export declare namespace IndexedDbQueryBuilder {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never
-  > extends Pipeable {
-    new(_: never): {}
-
+  > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
 
     readonly [TypeId]: TypeId
@@ -174,9 +165,7 @@ export declare namespace IndexedDbQueryBuilder {
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
     Index extends IndexFromTable<Source, Table> = never
-  > extends Pipeable {
-    new(_: never): {}
-
+  > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<number>>
 
     readonly [TypeId]: TypeId
@@ -225,9 +214,7 @@ export declare namespace IndexedDbQueryBuilder {
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
     Index extends IndexFromTable<Source, Table> = never
-  > extends Pipeable {
-    new(_: never): {}
-
+  > {
     readonly [TypeId]: TypeId
     readonly from: From<Source, Table>
     readonly index?: Index
@@ -273,9 +260,7 @@ export declare namespace IndexedDbQueryBuilder {
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
     Index extends IndexFromTable<Source, Table> = never
-  > extends Pipeable {
-    new(_: never): {}
-
+  > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
 
     readonly [TypeId]: TypeId
@@ -329,9 +314,7 @@ export declare namespace IndexedDbQueryBuilder {
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
     Index extends IndexFromTable<Source, Table> = never
-  > extends Pipeable {
-    new(_: never): {}
-
+  > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<Array<internal.SourceTableSchemaType<Source, Table>>>>
 
     readonly [TypeId]: TypeId
@@ -387,9 +370,7 @@ export declare namespace IndexedDbQueryBuilder {
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
     Index extends IndexFromTable<Source, Table> = never
-  > extends Pipeable {
-    new(_: never): {}
-
+  > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<internal.SourceTableSchemaType<Source, Table>>>
 
     readonly [TypeId]: TypeId
@@ -405,9 +386,7 @@ export declare namespace IndexedDbQueryBuilder {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never
-  > extends Pipeable {
-    new(_: never): {}
-
+  > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<globalThis.IDBValidKey>>
 
     readonly [TypeId]: TypeId
@@ -425,9 +404,7 @@ export declare namespace IndexedDbQueryBuilder {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never
-  > extends Pipeable {
-    new(_: never): {}
-
+  > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<Array<globalThis.IDBValidKey>>>
 
     readonly [TypeId]: TypeId
