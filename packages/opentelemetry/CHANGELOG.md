@@ -1,5 +1,37 @@
 # @effect/opentelemetry
 
+## 0.46.5
+
+### Patch Changes
+
+- [#4740](https://github.com/Effect-TS/effect/pull/4740) [`b7a64c9`](https://github.com/Effect-TS/effect/commit/b7a64c90bbd7fcdedb56a2bcb1e080a3323d7699) Thanks @tim-smart! - add Otlp module to @effect/opentelemetry
+
+  This module allows you to setup an exporter for Traces, Metrics & Logs with one
+  Layer.
+
+  It also has no dependency on the @opentelemetry libraries, so you don't need to
+  add any additional deps to your package.json.
+
+  ```ts
+  import * as Otlp from "@effect/opentelemetry/Otlp"
+  import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
+  import { Effect, Layer, Schedule } from "effect"
+
+  // Includes an Effect Tracer, Logger & Metric exporter
+  const Observability = Otlp.layer({
+    baseUrl: "http://localhost:4318",
+    resource: {
+      serviceName: "my-service"
+    }
+  }).pipe(Layer.provide(FetchHttpClient.layer))
+  ```
+
+- [#4740](https://github.com/Effect-TS/effect/pull/4740) [`b7a64c9`](https://github.com/Effect-TS/effect/commit/b7a64c90bbd7fcdedb56a2bcb1e080a3323d7699) Thanks @tim-smart! - add Effect native OtlpMetrics & OtlpLogger
+
+- Updated dependencies [[`d78249f`](https://github.com/Effect-TS/effect/commit/d78249f0b67f63cf4baf806ff090cba33293daf0)]:
+  - effect@3.14.9
+  - @effect/platform@0.80.9
+
 ## 0.46.4
 
 ### Patch Changes

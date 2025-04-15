@@ -1,5 +1,11 @@
 # effect
 
+## 3.14.9
+
+### Patch Changes
+
+- [#4734](https://github.com/Effect-TS/effect/pull/4734) [`d78249f`](https://github.com/Effect-TS/effect/commit/d78249f0b67f63cf4baf806ff090cba33293daf0) Thanks @thewilkybarkid! - Allow Match.typeTags to specify a return type
+
 ## 3.14.8
 
 ### Patch Changes

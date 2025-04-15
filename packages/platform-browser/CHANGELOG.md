@@ -1,5 +1,17 @@
 # @effect/platform-browser
 
+## 0.60.0
+
+### Minor Changes
+
+- [#4747](https://github.com/Effect-TS/effect/pull/4747) [`e857e9a`](https://github.com/Effect-TS/effect/commit/e857e9ad5d59972387b14c39ea0b253e6f659b3e) Thanks @titouancreach! - Clone PermissionStatus properties explicitly
+
+### Patch Changes
+
+- Updated dependencies [[`d78249f`](https://github.com/Effect-TS/effect/commit/d78249f0b67f63cf4baf806ff090cba33293daf0)]:
+  - effect@3.14.9
+  - @effect/platform@0.80.9
+
 ## 0.59.8
 
 ### Patch Changes
