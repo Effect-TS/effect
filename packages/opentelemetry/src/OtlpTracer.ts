@@ -1,21 +1,19 @@
 /**
  * @since 1.0.0
  */
-import * as Headers from "@effect/platform/Headers"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
+import type * as Headers from "@effect/platform/Headers"
+import type * as HttpClient from "@effect/platform/HttpClient"
 import * as Cause from "effect/Cause"
 import type * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
-import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Schedule from "effect/Schedule"
-import * as Scope from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import type { ExtractTag } from "effect/Types"
+import * as Exporter from "./internal/otlpExporter.js"
 import type { KeyValue, Resource } from "./OtlpResource.js"
 import { entriesToAttributes } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
@@ -41,86 +39,30 @@ export const make: (
   never,
   HttpClient.HttpClient | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
-  const exporterScope = yield* Effect.scope
-  const exportInterval = options.exportInterval ? Duration.decode(options.exportInterval) : Duration.seconds(5)
-  const maxBatchSize = options.maxBatchSize ?? 1000
-
-  const client = HttpClient.filterStatusOk(yield* HttpClient.HttpClient).pipe(
-    HttpClient.tapError((error) => {
-      if (error._tag !== "ResponseError" || error.response.status !== 429) {
-        return Effect.void
-      }
-      const retryAfter = error.response.headers["retry-after"]
-      const retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : 5
-      return Effect.sleep(Duration.seconds(retryAfterSeconds))
-    }),
-    HttpClient.retryTransient({
-      schedule: Schedule.spaced(1000)
-    })
-  )
-
-  let headers = Headers.unsafeFromRecord({
-    "user-agent": "effect-opentelemetry-OtlpTracer/0.0.0"
-  })
-  if (options.headers) {
-    headers = Headers.merge(Headers.fromInput(options.headers), headers)
-  }
-
   const otelResource = OtlpResource.make(options.resource)
   const scope: Scope = {
     name: options.resource.serviceName
   }
 
-  let spanBuffer: Array<OtlpSpan> = []
-
-  const request = HttpClientRequest.post(options.url, {
-    headers
-  })
-  const runExport = Effect.suspend(() => {
-    if (spanBuffer.length === 0) {
-      return Effect.void
-    }
-    const spans = spanBuffer
-    spanBuffer = []
-    const data: TraceData = {
-      resourceSpans: [{
-        resource: otelResource,
-        scopeSpans: [{
-          scope,
-          spans
+  const exporter = yield* Exporter.make({
+    label: "OtlpTracer",
+    url: options.url,
+    headers: options.headers,
+    exportInterval: options.exportInterval ?? Duration.seconds(5),
+    maxBatchSize: options.maxBatchSize ?? 1000,
+    body(spans) {
+      const data: TraceData = {
+        resourceSpans: [{
+          resource: otelResource,
+          scopeSpans: [{
+            scope,
+            spans
+          }]
         }]
-      }]
+      }
+      return data
     }
-    return Effect.asVoid(client.execute(
-      HttpClientRequest.bodyUnsafeJson(request, data)
-    ))
-  }).pipe(
-    Effect.tapErrorCause((cause) => Effect.logWarning("Failed to export spans", cause)),
-    Effect.annotateLogs({
-      package: "@effect/opentelemetry",
-      module: "OtlpTracer"
-    })
-  )
-
-  yield* Scope.addFinalizer(exporterScope, Effect.ignore(runExport))
-
-  yield* Effect.sleep(exportInterval).pipe(
-    Effect.zipRight(runExport),
-    Effect.forever,
-    Effect.retry(Schedule.spaced("1 minute")),
-    Effect.forkIn(exporterScope),
-    Effect.interruptible
-  )
-
-  const runFork = yield* FiberSet.makeRuntime().pipe(
-    Effect.interruptible
-  )
-  const addSpan = (span: SpanImpl) => {
-    spanBuffer.push(makeOtlpSpan(span))
-    if (spanBuffer.length >= maxBatchSize) {
-      runFork(runExport)
-    }
-  }
+  })
 
   return Tracer.make({
     span(name, parent, context, links, startTime, kind) {
@@ -136,7 +78,9 @@ export const make: (
         links,
         sampled: true,
         kind,
-        export: addSpan
+        export(span) {
+          exporter.push(makeOtlpSpan(span))
+        }
       })
     },
     context(f, _fiber) {

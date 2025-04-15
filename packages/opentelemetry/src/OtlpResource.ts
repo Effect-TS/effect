@@ -67,6 +67,13 @@ export const entriesToAttributes = (entries: Iterable<[string, unknown]>): Array
  * @category Attributes
  */
 export const unknownToAttributeValue = (value: unknown): AnyValue => {
+  if (Array.isArray(value)) {
+    return {
+      arrayValue: {
+        values: value.map(unknownToAttributeValue)
+      }
+    }
+  }
   switch (typeof value) {
     case "string":
       return {
