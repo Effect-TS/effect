@@ -2,7 +2,6 @@ import { TypeIdError } from "@effect/platform/Error"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as HashMap from "effect/HashMap"
-import { pipeArguments } from "effect/Pipeable"
 import * as Schema from "effect/Schema"
 import type * as IndexedDbQuery from "../IndexedDbQuery.js"
 import type * as IndexedDbTable from "../IndexedDbTable.js"
@@ -102,17 +101,8 @@ export class IndexedDbQueryError extends TypeIdError(
   }
 }
 
-const BasicProto = {
-  [TypeId]: TypeId,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-const CommitProto = {
-  ...Effectable.CommitPrototype,
-  [TypeId]: TypeId
-}
+const BasicProto = { [TypeId]: TypeId }
+const CommitProto = { ...Effectable.CommitPrototype, [TypeId]: TypeId }
 
 /** @internal */
 export const applyDelete = (query: IndexedDbQuery.IndexedDbQueryBuilder.Delete) =>
