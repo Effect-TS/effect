@@ -1,6 +1,4 @@
 /**
- * https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB
- *
  * @since 1.0.0
  */
 import { TypeIdError } from "@effect/platform/Error"
@@ -63,14 +61,6 @@ export class IndexedDbDatabaseError extends TypeIdError(
 
 /**
  * @since 1.0.0
- * @category tags
- */
-export class IndexedDbDatabase extends Context.Tag(
-  "@effect/platform/IndexedDbDatabase"
-)<IndexedDbDatabase, IndexedDbDatabase.AnyWithProps>() {}
-
-/**
- * @since 1.0.0
  * @category models
  */
 export declare namespace IndexedDbDatabase {
@@ -79,7 +69,6 @@ export declare namespace IndexedDbDatabase {
    * @category model
    */
   export interface Service<out Id extends string = string> {
-    new(_: never): {}
     readonly [TypeId]: TypeId
     readonly identifier: Id
     readonly version: number
@@ -102,6 +91,10 @@ export declare namespace IndexedDbDatabase {
    */
   export type AnyWithProps = IndexedDbDatabase.Service
 }
+
+export class IndexedDbDatabase extends Context.Tag(
+  "@effect/platform/IndexedDbDatabase"
+)<IndexedDbDatabase, IndexedDbDatabase.AnyWithProps>() {}
 
 const Proto = {
   [TypeId]: TypeId,
