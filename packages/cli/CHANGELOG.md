@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.59.10
+
+### Patch Changes
+
+- Updated dependencies [[`bc7efa3`](https://github.com/Effect-TS/effect/commit/bc7efa3b031bb25e1ed3c8f2d3fb5e8da166cadc)]:
+  - effect@3.14.10
+  - @effect/platform@0.80.10
+  - @effect/printer@0.42.10
+  - @effect/printer-ansi@0.42.10
+
 ## 0.59.9
 
 ### Patch Changes
