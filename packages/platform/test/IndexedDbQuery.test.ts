@@ -6,11 +6,26 @@ import {
   IndexedDbTable,
   IndexedDbVersion
 } from "@effect/platform"
-import { assert, describe, it } from "@effect/vitest"
+import { afterEach, assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
 import { IDBKeyRange, indexedDB } from "fake-indexeddb"
 
+const databaseName = "db"
+
 const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB, IDBKeyRange }))
+
+const provideMigration = (migration: IndexedDbMigration.IndexedDbMigration.Any) =>
+  Effect.provide(
+    IndexedDbQuery.layer.pipe(
+      Layer.provide(
+        IndexedDbDatabase.layer(databaseName, migration).pipe(Layer.provide(layerFakeIndexedDb))
+      )
+    )
+  )
+
+afterEach(() => {
+  indexedDB.deleteDatabase(databaseName)
+})
 
 class Table1 extends IndexedDbTable.make(
   "todo",
@@ -49,14 +64,24 @@ const Table4 = IndexedDbTable.make(
   { keyPath: "id", autoIncrement: true }
 )
 
-class Db extends IndexedDbVersion.make(Table1, Table2, Table3, Table4) {}
+const Table5 = IndexedDbTable.make(
+  "person",
+  Schema.Struct({
+    firstName: Schema.String,
+    lastName: Schema.String,
+    age: Schema.Number
+  }),
+  { keyPath: ["firstName", "lastName"] }
+)
+
+class Db extends IndexedDbVersion.make(Table1, Table2, Table3, Table4, Table5) {}
 
 describe("IndexedDbQueryBuilder", () => {
   describe("select", () => {
     it.effect("select", () =>
       Effect.gen(function*() {
         {
-          const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
           const api = makeApi(Db)
           const from = api.from("todo")
           const select = from.select()
@@ -69,33 +94,21 @@ describe("IndexedDbQueryBuilder", () => {
           assert.deepStrictEqual(select.from.IDBKeyRange, IDBKeyRange)
           assert.equal(data.length, 1)
           assert.deepStrictEqual(data, [{ id: 1, title: "test", count: 1, completed: false }])
-
-          // Close database to avoid errors when running other tests (blocked access)
-          yield* use(async (database) => database.close())
         }
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insert({ id: 1, title: "test", count: 1, completed: false })
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insert({ id: 1, title: "test", count: 1, completed: false })
+          })))
       ))
 
     it.effect("select with index", () =>
       Effect.gen(function*() {
         {
-          const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
           const api = makeApi(Db)
           const from = api.from("todo")
           const select = from.select("titleIndex")
@@ -108,33 +121,21 @@ describe("IndexedDbQueryBuilder", () => {
           assert.deepStrictEqual(select.from.IDBKeyRange, IDBKeyRange)
           assert.equal(data.length, 1)
           assert.deepStrictEqual(data, [{ id: 2, title: "test2", count: 2, completed: false }])
-
-          // Close database to avoid errors when running other tests (blocked access)
-          yield* use(async (database) => database.close())
         }
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db2",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insert({ id: 2, title: "test2", count: 2, completed: false })
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insert({ id: 2, title: "test2", count: 2, completed: false })
+          })))
       ))
 
     it.effect("select equals", () =>
       Effect.gen(function*() {
         {
-          const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
           const api = makeApi(Db)
           const from = api.from("todo")
           const select = from.select()
@@ -149,37 +150,23 @@ describe("IndexedDbQueryBuilder", () => {
           assert.equal(equals.only, 2)
           assert.equal(data.length, 1)
           assert.deepStrictEqual(data, [{ id: 2, title: "test2", count: 2, completed: false }])
-
-          // Close database to avoid errors when running other tests (blocked access)
-          yield* use(async (database) => database.close())
         }
-      }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db3",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
-      ))
+      }).pipe(provideMigration(IndexedDbMigration.make(Db, (api) =>
+        Effect.gen(function*() {
+          yield* api.createObjectStore("todo")
+          yield* api.createIndex("todo", "titleIndex")
+          yield* api.createIndex("todo", "countIndex")
+          yield* api.from("todo").insertAll([
+            { id: 1, title: "test1", count: 1, completed: false },
+            { id: 2, title: "test2", count: 2, completed: false },
+            { id: 3, title: "test3", count: 3, completed: false }
+          ])
+        })))))
 
     it.effect("select equals with index", () =>
       Effect.gen(function*() {
         {
-          const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
           const api = makeApi(Db)
           const from = api.from("todo")
           const select = from.select("titleIndex")
@@ -194,37 +181,25 @@ describe("IndexedDbQueryBuilder", () => {
           assert.equal(equals.only, "test3")
           assert.equal(data.length, 1)
           assert.deepStrictEqual(data, [{ id: 3, title: "test3", count: 3, completed: false }])
-
-          // Close database to avoid errors when running other tests (blocked access)
-          yield* use(async (database) => database.close())
         }
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db4",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false }
+            ])
+          })))
       ))
 
     it.effect("select gte", () =>
       Effect.gen(function*() {
         {
-          const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
           const api = makeApi(Db)
           const data = yield* api.from("todo").select().gte(2)
 
@@ -233,37 +208,25 @@ describe("IndexedDbQueryBuilder", () => {
             { id: 2, title: "test2", count: 2, completed: false },
             { id: 3, title: "test3", count: 3, completed: false }
           ])
-
-          // Close database to avoid errors when running other tests (blocked access)
-          yield* use(async (database) => database.close())
         }
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db5",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false }
+            ])
+          })))
       ))
 
     it.effect("select gte with index", () =>
       Effect.gen(function*() {
         {
-          const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
           const api = makeApi(Db)
           const data = yield* api.from("todo").select("countIndex").gte(3)
 
@@ -271,31 +234,19 @@ describe("IndexedDbQueryBuilder", () => {
           assert.deepStrictEqual(data, [
             { id: 3, title: "test3", count: 3, completed: false }
           ])
-
-          // Close database to avoid errors when running other tests (blocked access)
-          yield* use(async (database) => database.close())
         }
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db5-4",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false }
+            ])
+          })))
       ))
 
     it.effect("select lte", () =>
@@ -310,26 +261,17 @@ describe("IndexedDbQueryBuilder", () => {
           { id: 2, title: "test2", count: 2, completed: false }
         ])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db6",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false }
+            ])
+          })))
       ))
 
     it.effect("select gt", () =>
@@ -341,26 +283,17 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ id: 3, title: "test3", count: 3, completed: false }])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db7",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false }
+            ])
+          })))
       ))
 
     it.effect("select lt", () =>
@@ -372,26 +305,17 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ id: 1, title: "test1", count: 1, completed: false }])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db8",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false }
+            ])
+          })))
       ))
 
     it.effect("select between", () =>
@@ -406,28 +330,19 @@ describe("IndexedDbQueryBuilder", () => {
           { id: 3, title: "test3", count: 3, completed: false }
         ])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db9",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false },
-                      { id: 4, title: "test4", count: 4, completed: false },
-                      { id: 5, title: "test5", count: 5, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false },
+              { id: 4, title: "test4", count: 4, completed: false },
+              { id: 5, title: "test5", count: 5, completed: false }
+            ])
+          })))
       ))
 
     it.effect("select between with exclude", () =>
@@ -442,28 +357,19 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ id: 3, title: "test3", count: 3, completed: false }])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db10",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false },
-                      { id: 4, title: "test4", count: 4, completed: false },
-                      { id: 5, title: "test5", count: 5, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false },
+              { id: 4, title: "test4", count: 4, completed: false },
+              { id: 5, title: "test5", count: 5, completed: false }
+            ])
+          })))
       ))
 
     it.effect("select limit", () =>
@@ -478,28 +384,19 @@ describe("IndexedDbQueryBuilder", () => {
           { id: 2, title: "test2", count: 2, completed: false }
         ])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db11",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false },
-                      { id: 4, title: "test4", count: 4, completed: false },
-                      { id: 5, title: "test5", count: 5, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false },
+              { id: 4, title: "test4", count: 4, completed: false },
+              { id: 5, title: "test5", count: 5, completed: false }
+            ])
+          })))
       ))
 
     it.effect("select limit with filters", () =>
@@ -514,28 +411,19 @@ describe("IndexedDbQueryBuilder", () => {
           { id: 3, title: "test3", count: 3, completed: false }
         ])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db11-8",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false },
-                      { id: 4, title: "test4", count: 4, completed: false },
-                      { id: 5, title: "test5", count: 5, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false },
+              { id: 4, title: "test4", count: 4, completed: false },
+              { id: 5, title: "test5", count: 5, completed: false }
+            ])
+          })))
       ))
 
     it.effect("select first", () =>
@@ -546,26 +434,17 @@ describe("IndexedDbQueryBuilder", () => {
 
         assert.deepStrictEqual(data, { id: 1, title: "test1", count: 1, completed: false })
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db12",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false }
+            ])
+          })))
       ))
 
     it.effect("select first with filters", () =>
@@ -576,26 +455,17 @@ describe("IndexedDbQueryBuilder", () => {
 
         assert.deepStrictEqual(data, { id: 2, title: "test2", count: 2, completed: false })
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db13",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 1, title: "test1", count: 1, completed: false },
-                      { id: 2, title: "test2", count: 2, completed: false },
-                      { id: 3, title: "test3", count: 3, completed: false }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 1, title: "test1", count: 1, completed: false },
+              { id: 2, title: "test2", count: 2, completed: false },
+              { id: 3, title: "test3", count: 3, completed: false }
+            ])
+          })))
       ))
   })
 
@@ -611,21 +481,12 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ id: 10, title: "insert1", count: 10, completed: true }])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db14",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+          })))
       ))
 
     it.effect("insert with manual key required", () =>
@@ -643,22 +504,38 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ name: "insert1", email: "insert1@example.com" }])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db112",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createObjectStore("user")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createObjectStore("user")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+          })))
+      ))
+
+    it.effect("insert with manual multiple keys required", () =>
+      Effect.gen(function*() {
+        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const api = makeApi(Db)
+        const addedKey = yield* api.from("person").insert({
+          firstName: "John",
+          lastName: "Doe",
+          age: 30
+        })
+        const data = yield* api.from("person").select()
+
+        assert.deepStrictEqual(addedKey, ["John", "Doe"])
+        assert.equal(data.length, 1)
+        assert.deepStrictEqual(data, [{ firstName: "John", lastName: "Doe", age: 30 }])
+      }).pipe(
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createObjectStore("user")
+            yield* api.createObjectStore("person")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+          })))
       ))
 
     it.effect("insert with manual key optional", () =>
@@ -676,23 +553,14 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ name: "insert1", price: 10 }])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db1121",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createObjectStore("user")
-                    yield* api.createObjectStore("product")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createObjectStore("user")
+            yield* api.createObjectStore("product")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+          })))
       ))
 
     it.effect("insert with auto-increment", () =>
@@ -714,24 +582,15 @@ describe("IndexedDbQueryBuilder", () => {
           { id: "uuid", amount: 20 }
         ])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db11211",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createObjectStore("user")
-                    yield* api.createObjectStore("product")
-                    yield* api.createObjectStore("price")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createObjectStore("user")
+            yield* api.createObjectStore("product")
+            yield* api.createObjectStore("price")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+          })))
       ))
 
     it.effect("insert with auto-increment and get first", () =>
@@ -746,24 +605,15 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(addedKey, 1)
         assert.deepStrictEqual(data, { id: 1, amount: 10 })
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db112112",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createObjectStore("user")
-                    yield* api.createObjectStore("product")
-                    yield* api.createObjectStore("price")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createObjectStore("user")
+            yield* api.createObjectStore("product")
+            yield* api.createObjectStore("price")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+          })))
       ))
 
     it.effect("upsert", () =>
@@ -777,22 +627,13 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ id: 10, title: "update1", count: -10, completed: false }])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db14",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insert({ id: 10, title: "insert1", count: 10, completed: true })
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insert({ id: 10, title: "insert1", count: 10, completed: true })
+          })))
       ))
 
     it.effect("delete", () =>
@@ -805,25 +646,16 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ id: 11, title: "insert2", count: 11, completed: true }])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db15",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 10, title: "insert1", count: 10, completed: true },
-                      { id: 11, title: "insert2", count: 11, completed: true }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 10, title: "insert1", count: 10, completed: true },
+              { id: 11, title: "insert2", count: 11, completed: true }
+            ])
+          })))
       ))
 
     it.effect("delete with limit", () =>
@@ -836,25 +668,16 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ id: 11, title: "insert2", count: 11, completed: true }])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db15-2",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 10, title: "insert1", count: 10, completed: true },
-                      { id: 11, title: "insert2", count: 11, completed: true }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 10, title: "insert1", count: 10, completed: true },
+              { id: 11, title: "insert2", count: 11, completed: true }
+            ])
+          })))
       ))
 
     it.effect("clear", () =>
@@ -866,25 +689,16 @@ describe("IndexedDbQueryBuilder", () => {
 
         assert.equal(data.length, 0)
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db16",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 10, title: "insert1", count: 10, completed: true },
-                      { id: 11, title: "insert2", count: 11, completed: true }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 10, title: "insert1", count: 10, completed: true },
+              { id: 11, title: "insert2", count: 11, completed: true }
+            ])
+          })))
       ))
   })
 
@@ -906,21 +720,12 @@ describe("IndexedDbQueryBuilder", () => {
           { id: 11, title: "insert2", count: 11, completed: true }
         ])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db17",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+          })))
       ))
 
     it.effect("upsertAll", () =>
@@ -940,25 +745,16 @@ describe("IndexedDbQueryBuilder", () => {
           { id: 11, title: "update2", count: -11, completed: false }
         ])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db18",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insertAll([
-                      { id: 10, title: "insert1", count: 10, completed: true },
-                      { id: 11, title: "insert2", count: 11, completed: true }
-                    ])
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insertAll([
+              { id: 10, title: "insert1", count: 10, completed: true },
+              { id: 11, title: "insert2", count: 11, completed: true }
+            ])
+          })))
       ))
 
     it.effect("upsertAll same key", () =>
@@ -977,22 +773,13 @@ describe("IndexedDbQueryBuilder", () => {
           { id: 10, title: "update2", count: -11, completed: false }
         ])
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db19",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insert({ id: 10, title: "insert1", count: 10, completed: true })
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insert({ id: 10, title: "insert1", count: 10, completed: true })
+          })))
       ))
 
     it.effect("clearAll", () =>
@@ -1004,88 +791,55 @@ describe("IndexedDbQueryBuilder", () => {
 
         assert.equal(data.length, 0)
       }).pipe(
-        Effect.provide(
-          IndexedDbQuery.layer.pipe(
-            Layer.provide(
-              IndexedDbDatabase.layer(
-                "db20",
-                IndexedDbMigration.make(Db, (api) =>
-                  Effect.gen(function*() {
-                    yield* api.createObjectStore("todo")
-                    yield* api.createIndex("todo", "titleIndex")
-                    yield* api.createIndex("todo", "countIndex")
-                    yield* api.from("todo").insert({ id: 10, title: "insert1", count: 10, completed: true })
-                  }))
-              ).pipe(Layer.provide(layerFakeIndexedDb))
-            )
-          )
-        )
+        provideMigration(IndexedDbMigration.make(Db, (api) =>
+          Effect.gen(function*() {
+            yield* api.createObjectStore("todo")
+            yield* api.createIndex("todo", "titleIndex")
+            yield* api.createIndex("todo", "countIndex")
+            yield* api.from("todo").insert({ id: 10, title: "insert1", count: 10, completed: true })
+          })))
       ))
   })
 
   it.effect("count", () =>
     Effect.gen(function*() {
-      const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+      const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
       const api = makeApi(Db)
       const data = yield* api.from("todo").count()
 
       assert.equal(data, 3)
-
-      // Close database to avoid errors when running other tests (blocked access)
-      yield* use(async (database) => database.close())
     }).pipe(
-      Effect.provide(
-        IndexedDbQuery.layer.pipe(
-          Layer.provide(
-            IndexedDbDatabase.layer(
-              "db13-2",
-              IndexedDbMigration.make(Db, (api) =>
-                Effect.gen(function*() {
-                  yield* api.createObjectStore("todo")
-                  yield* api.createIndex("todo", "titleIndex")
-                  yield* api.createIndex("todo", "countIndex")
-                  yield* api.from("todo").insertAll([
-                    { id: 1, title: "test1", count: 1, completed: false },
-                    { id: 2, title: "test2", count: 2, completed: false },
-                    { id: 3, title: "test3", count: 3, completed: false }
-                  ])
-                }))
-            ).pipe(Layer.provide(layerFakeIndexedDb))
-          )
-        )
-      )
+      provideMigration(IndexedDbMigration.make(Db, (api) =>
+        Effect.gen(function*() {
+          yield* api.createObjectStore("todo")
+          yield* api.createIndex("todo", "titleIndex")
+          yield* api.createIndex("todo", "countIndex")
+          yield* api.from("todo").insertAll([
+            { id: 1, title: "test1", count: 1, completed: false },
+            { id: 2, title: "test2", count: 2, completed: false },
+            { id: 3, title: "test3", count: 3, completed: false }
+          ])
+        })))
     ))
 
   it.effect("count with filters", () =>
     Effect.gen(function*() {
-      const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+      const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
       const api = makeApi(Db)
       const data = yield* api.from("todo").count("titleIndex").equals("test2")
 
       assert.equal(data, 1)
-
-      // Close database to avoid errors when running other tests (blocked access)
-      yield* use(async (database) => database.close())
     }).pipe(
-      Effect.provide(
-        IndexedDbQuery.layer.pipe(
-          Layer.provide(
-            IndexedDbDatabase.layer(
-              "db13-1",
-              IndexedDbMigration.make(Db, (api) =>
-                Effect.gen(function*() {
-                  yield* api.createObjectStore("todo")
-                  yield* api.createIndex("todo", "titleIndex")
-                  yield* api.createIndex("todo", "countIndex")
-                  yield* api.from("todo").insertAll([
-                    { id: 1, title: "test1", count: 1, completed: false },
-                    { id: 2, title: "test2", count: 2, completed: false },
-                    { id: 3, title: "test3", count: 3, completed: false }
-                  ])
-                }))
-            ).pipe(Layer.provide(layerFakeIndexedDb))
-          )
-        )
-      )
+      provideMigration(IndexedDbMigration.make(Db, (api) =>
+        Effect.gen(function*() {
+          yield* api.createObjectStore("todo")
+          yield* api.createIndex("todo", "titleIndex")
+          yield* api.createIndex("todo", "countIndex")
+          yield* api.from("todo").insertAll([
+            { id: 1, title: "test1", count: 1, completed: false },
+            { id: 2, title: "test2", count: 2, completed: false },
+            { id: 3, title: "test3", count: 3, completed: false }
+          ])
+        })))
     ))
 })

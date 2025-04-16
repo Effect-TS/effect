@@ -10,19 +10,21 @@ import { afterEach, assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
 import { IDBKeyRange, indexedDB } from "fake-indexeddb"
 
+const databaseName = "db"
+
 const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB, IDBKeyRange }))
 
-const provideMigration = (name: string, migration: IndexedDbMigration.IndexedDbMigration.Any) =>
+const provideMigration = (migration: IndexedDbMigration.IndexedDbMigration.Any) =>
   Effect.provide(
     IndexedDbQuery.layer.pipe(
       Layer.provide(
-        IndexedDbDatabase.layer(name, migration).pipe(Layer.provide(layerFakeIndexedDb))
+        IndexedDbDatabase.layer(databaseName, migration).pipe(Layer.provide(layerFakeIndexedDb))
       )
     )
   )
 
 afterEach(() => {
-  indexedDB.deleteDatabase("db")
+  indexedDB.deleteDatabase(databaseName)
 })
 
 describe("IndexedDbDatabase", () => {
@@ -64,7 +66,7 @@ describe("IndexedDbDatabase", () => {
       assert.deepStrictEqual(Array.from(objectStoreNames), ["todo"])
       assert.deepStrictEqual(Array.from(indexNames), ["titleIndex"])
       assert.deepStrictEqual(index.keyPath, "title")
-    }).pipe(provideMigration("db", Migration))
+    }).pipe(provideMigration(Migration))
   })
 
   it.effect("transaction", () => {
@@ -117,7 +119,7 @@ describe("IndexedDbDatabase", () => {
         title: "test2",
         completed: false
       }])
-    }).pipe(provideMigration("db", Migration))
+    }).pipe(provideMigration(Migration))
   })
 
   it.effect("migration sequence", () => {
@@ -176,7 +178,7 @@ describe("IndexedDbDatabase", () => {
       assert.deepStrictEqual(todo, [{ uuid, title: "test", completed: false }])
       assert.deepStrictEqual(Array.from(objectStoreNames), ["todo"])
       assert.deepStrictEqual(Array.from(indexNames), [])
-    }).pipe(provideMigration("db", Migration))
+    }).pipe(provideMigration(Migration))
   })
 
   it.effect("delete object store migration", () => {
@@ -225,6 +227,6 @@ describe("IndexedDbDatabase", () => {
       assert.equal(version, 2)
       assert.deepStrictEqual(user, [{ userId: 1, name: "John Doe", email: "john.doe@example.com" }])
       assert.deepStrictEqual(Array.from(objectStoreNames), ["user"])
-    }).pipe(provideMigration("db", Migration))
+    }).pipe(provideMigration(Migration))
   })
 })
