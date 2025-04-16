@@ -27,14 +27,15 @@ export interface IndexedDbTable<
   out TableName extends string,
   out TableSchema extends Schema.Schema.AnyNoContext = never,
   out Indexes extends Record<string, KeyPath<TableSchema>> = never,
-  out TableKeyPath extends KeyPath<TableSchema> = never
+  out TableKeyPath extends KeyPath<TableSchema> = never,
+  out TableAutoIncrement extends boolean = never
 > extends Pipeable {
   new(_: never): {}
 
   readonly [TypeId]: TypeId
   readonly tableName: TableName
   readonly tableSchema: TableSchema
-  readonly options?: { keyPath: TableKeyPath; indexes: Indexes; autoIncrement: boolean }
+  readonly options?: { keyPath: TableKeyPath; indexes: Indexes; autoIncrement: TableAutoIncrement }
 }
 
 /**
@@ -55,7 +56,7 @@ export declare namespace IndexedDbTable {
    * @since 1.0.0
    * @category models
    */
-  export type AnyWithProps = IndexedDbTable<string, Schema.Schema.AnyNoContext, any, any>
+  export type AnyWithProps = IndexedDbTable<string, Schema.Schema.AnyNoContext, any, any, boolean>
 
   /**
    * @since 1.0.0
@@ -65,7 +66,8 @@ export declare namespace IndexedDbTable {
     infer _TableName,
     infer _Schema,
     infer _Indexes,
-    infer _TableKeyPath
+    infer _TableKeyPath,
+    infer _TableAutoIncrement
   > ? _TableName
     : never
 
@@ -77,7 +79,8 @@ export declare namespace IndexedDbTable {
     infer _TableName,
     infer _Schema,
     infer _Indexes,
-    infer _TableKeyPath
+    infer _TableKeyPath,
+    infer _TableAutoIncrement
   > ? _TableKeyPath
     : never
 
@@ -85,11 +88,21 @@ export declare namespace IndexedDbTable {
    * @since 1.0.0
    * @category models
    */
+  export type AutoIncrement<Table extends Any> = Table extends IndexedDbTable<
+    infer _TableName,
+    infer _Schema,
+    infer _Indexes,
+    infer _TableKeyPath,
+    infer _TableAutoIncrement
+  > ? _TableAutoIncrement :
+    never
+
   export type TableSchema<Table extends Any> = Table extends IndexedDbTable<
     infer _TableName,
     infer _Schema,
     infer _Indexes,
-    infer _TableKeyPath
+    infer _TableKeyPath,
+    infer _TableAutoIncrement
   > ? _Schema
     : never
 
@@ -101,7 +114,8 @@ export declare namespace IndexedDbTable {
     infer _TableName,
     infer _Schema,
     infer _Indexes,
-    infer _TableKeyPath
+    infer _TableKeyPath,
+    infer _TableAutoIncrement
   > ? _Indexes
     : never
 
@@ -126,16 +140,17 @@ const makeProto = <
   TableName extends string,
   TableSchema extends Schema.Schema.AnyNoContext,
   Indexes extends Record<string, KeyPath<TableSchema>>,
-  TableKeyPath extends KeyPath<TableSchema>
+  TableKeyPath extends KeyPath<TableSchema>,
+  TableAutoIncrement extends boolean
 >(options: {
   readonly tableName: TableName
   readonly tableSchema: TableSchema
   readonly options: Partial<{
     keyPath: TableKeyPath
     indexes: Indexes
-    autoIncrement: boolean
+    autoIncrement: TableAutoIncrement
   }>
-}): IndexedDbTable<TableName, TableSchema, Indexes, TableKeyPath> => {
+}): IndexedDbTable<TableName, TableSchema, Indexes, TableKeyPath, TableAutoIncrement> => {
   function IndexedDbTable() {}
   Object.setPrototypeOf(IndexedDbTable, Proto)
   IndexedDbTable.tableName = options.tableName
@@ -145,6 +160,11 @@ const makeProto = <
 }
 
 /**
+ * - `keyPath: null`, `autoIncrement: false`: `key` is required
+ * - `keyPath: null`, `autoIncrement: true`: `key` is optional
+ * - `keyPath: string`, `autoIncrement: false`: `key` corresponds to `keyPath` and is required
+ * - `keyPath: string`, `autoIncrement: true`: `key` corresponds to `keyPath` but is optional, when not provided an auto-generated key is assigned
+ *
  * @since 1.0.0
  * @category constructors
  */
@@ -152,10 +172,11 @@ export const make = <
   TableName extends string,
   TableSchema extends Schema.Schema.AnyNoContext,
   Indexes extends Record<string, KeyPath<TableSchema>>,
-  TableKeyPath extends KeyPath<TableSchema>
+  TableKeyPath extends KeyPath<TableSchema> = never,
+  TableAutoIncrement extends boolean = false
 >(
   tableName: TableName,
   tableSchema: TableSchema,
-  options?: Partial<{ keyPath: TableKeyPath; indexes: Indexes; autoIncrement: boolean }>
-): IndexedDbTable<TableName, TableSchema, Indexes, TableKeyPath> =>
+  options?: Partial<{ keyPath: TableKeyPath; indexes: Indexes; autoIncrement: TableAutoIncrement }>
+): IndexedDbTable<TableName, TableSchema, Indexes, TableKeyPath, TableAutoIncrement> =>
   makeProto({ tableName, tableSchema, options: options ?? {} })

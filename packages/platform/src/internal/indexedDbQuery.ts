@@ -21,6 +21,18 @@ type IndexedDbValidKeys<TableSchema extends Schema.Schema.AnyNoContext> = {
     : never
 }[keyof Schema.Schema.Encoded<TableSchema>]
 
+type IsKeyPathMissing<
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
+> = IsNever<
+  IndexedDbTable.IndexedDbTable.KeyPath<
+    IndexedDbTable.IndexedDbTable.WithName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+      Table
+    >
+  >
+>
+
 /** @internal */
 export type ExtractIndexType<
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
@@ -61,14 +73,101 @@ export type ExtractIndexType<
 export type SourceTableSchemaType<
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
-> = Schema.Schema.Type<
-  IndexedDbTable.IndexedDbTable.TableSchema<
+> = IsKeyPathMissing<Source, Table> extends false ? IndexedDbTable.IndexedDbTable.AutoIncrement<
     IndexedDbTable.IndexedDbTable.WithName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>,
       Table
     >
+  > extends true ?
+      & /** keyPath when omitted becomes a `number` */ Omit<
+        Schema.Schema.Type<
+          IndexedDbVersion.IndexedDbVersion.SchemaWithName<Source, Table>
+        >,
+        IndexedDbTable.IndexedDbTable.KeyPath<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            Table
+          >
+        >
+      >
+      & {
+        [
+          K in IndexedDbTable.IndexedDbTable.KeyPath<
+            IndexedDbTable.IndexedDbTable.WithName<
+              IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+              Table
+            >
+          >
+        ]:
+          | Pick<
+            Schema.Schema.Type<
+              IndexedDbVersion.IndexedDbVersion.SchemaWithName<Source, Table>
+            >,
+            IndexedDbTable.IndexedDbTable.KeyPath<
+              IndexedDbTable.IndexedDbTable.WithName<
+                IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+                Table
+              >
+            >
+          >[K]
+          | number
+      } :
+  Schema.Schema.Type<
+    IndexedDbVersion.IndexedDbVersion.SchemaWithName<Source, Table>
+  > :
+  Schema.Schema.Type<
+    IndexedDbVersion.IndexedDbVersion.SchemaWithName<Source, Table>
   >
->
+
+/** @internal */
+export type ModifyWithKey<
+  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
+> = IsKeyPathMissing<Source, Table> extends true ? IndexedDbTable.IndexedDbTable.AutoIncrement<
+    IndexedDbTable.IndexedDbTable.WithName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+      Table
+    >
+  > extends false ? /** keyPath: null, autoIncrement: false */
+      & SourceTableSchemaType<Source, Table>
+      & { readonly key: globalThis.IDBValidKey } :
+  /** keyPath: null, autoIncrement: true */
+  SourceTableSchemaType<Source, Table> & { readonly key?: globalThis.IDBValidKey } :
+  IndexedDbTable.IndexedDbTable.AutoIncrement<
+    IndexedDbTable.IndexedDbTable.WithName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+      Table
+    >
+  > extends false ? /** keyPath: string, autoIncrement: false */ SourceTableSchemaType<Source, Table> :
+  & /** keyPath: string, autoIncrement: true */ Omit<
+    SourceTableSchemaType<Source, Table>,
+    IndexedDbTable.IndexedDbTable.KeyPath<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    >
+  >
+  & {
+    [
+      K in IndexedDbTable.IndexedDbTable.KeyPath<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >
+    ]?: Pick<
+      Schema.Schema.Type<
+        IndexedDbVersion.IndexedDbVersion.SchemaWithName<Source, Table>
+      >,
+      IndexedDbTable.IndexedDbTable.KeyPath<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >
+    >[K]
+  }
 
 /** @internal */
 export type KeyPath<TableSchema extends Schema.Schema.AnyNoContext> =
@@ -188,8 +287,7 @@ export const applyDelete = (query: IndexedDbQuery.IndexedDbQueryBuilder.Delete) 
     }
   })
 
-/** @internal */
-export const getReadonlyObjectStore = (
+const getReadonlyObjectStore = (
   query: IndexedDbQuery.IndexedDbQueryBuilder.Select | IndexedDbQuery.IndexedDbQueryBuilder.Count
 ) => {
   const database = query.from.database
@@ -224,6 +322,30 @@ export const getReadonlyObjectStore = (
   }
 
   return { store, keyRange }
+}
+
+const getReadSchema = (
+  from: IndexedDbQuery.IndexedDbQueryBuilder.From
+) => {
+  const table = HashMap.unsafeGet(
+    (from.source as IndexedDbVersion.IndexedDbVersion.AnyWithProps).tables,
+    from.table
+  )
+  const keyPath = table.options?.keyPath
+  const autoIncrement = table.options?.autoIncrement
+
+  return keyPath !== undefined && autoIncrement ?
+    table.tableSchema.pipe(
+      Schema.omit(keyPath),
+      Schema.extend(Schema.Struct({
+        [keyPath]: Schema.Union(
+          Schema.Number,
+          // @ts-expect-error
+          table.tableSchema.fields[keyPath]
+        )
+      }))
+    ) :
+    table.tableSchema
 }
 
 /** @internal */
@@ -281,8 +403,7 @@ export const getSelect = (query: IndexedDbQuery.IndexedDbQueryBuilder.Select) =>
     })
 
     const tableSchema = Schema.Array(
-      // @ts-expect-error
-      query.from.source.tables.pipe(HashMap.unsafeGet(query.from.table), (_) => _.tableSchema)
+      getReadSchema(query.from)
     )
 
     return yield* Schema.decodeUnknown(tableSchema)(data).pipe(
@@ -352,13 +473,7 @@ export const getFirst = (query: IndexedDbQuery.IndexedDbQueryBuilder.First) =>
       }
     })
 
-    // @ts-expect-error
-    const tableSchema = query.select.from.source.tables.pipe(
-      HashMap.unsafeGet(query.select.from.table),
-      (_: any) => _.tableSchema
-    )
-
-    return yield* Schema.decodeUnknown(tableSchema)(data).pipe(
+    return yield* Schema.decodeUnknown(getReadSchema(query.select.from))(data).pipe(
       Effect.mapError(
         (error) =>
           new IndexedDbQueryError({
@@ -370,7 +485,10 @@ export const getFirst = (query: IndexedDbQuery.IndexedDbQueryBuilder.First) =>
   })
 
 /** @internal */
-export const applyModify = (query: IndexedDbQuery.IndexedDbQueryBuilder.Modify, value: any) =>
+export const applyModify = (
+  query: IndexedDbQuery.IndexedDbQueryBuilder.Modify,
+  { key, ...value }: { key: IDBValidKey | undefined }
+) =>
   Effect.async<any, IndexedDbQueryError>((resume) => {
     const database = query.from.database
     const transaction = query.from.transaction
@@ -381,9 +499,9 @@ export const applyModify = (query: IndexedDbQuery.IndexedDbQueryBuilder.Modify, 
     let request: globalThis.IDBRequest<IDBValidKey>
 
     if (query.operation === "add") {
-      request = objectStore.add(value)
+      request = objectStore.add(value, key)
     } else if (query.operation === "put") {
-      request = objectStore.put(value)
+      request = objectStore.put(value, key)
     } else {
       return resume(Effect.dieMessage("Invalid modify operation"))
     }
@@ -501,7 +619,7 @@ export const applyClear = (query: IndexedDbQuery.IndexedDbQueryBuilder.Clear) =>
 export const applyClearAll = (query: IndexedDbQuery.IndexedDbQueryBuilder.ClearAll) =>
   Effect.async<void, IndexedDbQueryError>((resume) => {
     const database = query.database
-    const tables = Array.from(HashMap.keys((query.source as IndexedDbVersion.IndexedDbVersion.AnyWithProps).tables))
+    const tables = database.objectStoreNames
 
     const transaction = query.transaction ?? database.transaction(tables, "readwrite")
 
