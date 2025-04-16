@@ -258,7 +258,7 @@ describe("Match", () => {
         pipe(
           Match.value(hole<{ readonly a: string | Array<number> }>()),
           Match.when({ a: isArray }, (v) => {
-            expect(v).type.toBe<{ a: ReadonlyArray<number> }>()
+            expect(v).type.toBe<{ a: Array<number> }>()
             return "array"
           }),
           Match.orElse((v) => {
@@ -573,5 +573,31 @@ describe("Match", () => {
         })
       )({ maybeNumber: Option.some(1) })
     ).type.toBe<number | undefined>()
+  })
+
+  it("whenOr refinement with pattern", () => {
+    class Person {
+      get contactable() {
+        return true
+      }
+    }
+    expect(
+      pipe(
+        Match.type<{ maybeNumber: Option.Option<number>; person: Person }>(),
+        Match.whenOr({
+          maybeNumber: {
+            _tag: Match.is("Some", "None")
+          },
+          person: { contactable: true }
+        }, ({ person }) => {
+          expect(person.contactable).type.toBe<true>()
+          return person.contactable
+        }),
+        Match.orElse(({ person }) => {
+          expect(person).type.toBe<Person>()
+          return false
+        })
+      )({ maybeNumber: Option.some(1), person: new Person() })
+    ).type.toBe<boolean>()
   })
 })

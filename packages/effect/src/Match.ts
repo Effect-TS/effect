@@ -956,7 +956,7 @@ export const nonEmptyString: SafeRefinement<string, never> = internal.nonEmptySt
  */
 export const is: <
   Literals extends ReadonlyArray<string | number | bigint | boolean | null>
->(...literals: Literals) => Predicate.Refinement<unknown, Literals[number]> = internal.is
+>(...literals: Literals) => SafeRefinement<Literals[number]> = internal.is
 
 /**
  * Matches values of type `string`.
@@ -1275,8 +1275,8 @@ export declare namespace Types {
    */
   export type WhenMatch<R, P> =
     // check for any
-    [0] extends [1 & R] ? ResolvePred<P>
-      : P extends SafeRefinement<infer SP, never> ? SP
+    [0] extends [1 & R] ? ResolvePred<P> :
+      P extends SafeRefinement<infer SP, never> ? SP
       : P extends Predicate.Refinement<infer _R, infer RP>
       // try to narrow refinement
         ? [Extract<R, RP>] extends [infer X] ? [X] extends [never]
@@ -1431,10 +1431,10 @@ export declare namespace Types {
   type Simplify<A> = { [K in keyof A]: A[K] } & {}
 
   type ExtractAndNarrow<Input, P> = Input extends infer I ?
-    [P] extends [SafeRefinement<infer _In, infer _R> | Predicate.Refinement<infer _In, infer _R>] ?
-      [P] extends [SafeRefinement<I & {}, infer _R> | Predicate.Refinement<I & {}, infer _R>] ?
+    P extends SafeRefinement<infer _In, infer _R> | Predicate.Refinement<infer _In, infer _R> ?
+      P extends SafeRefinement<I & {}, infer _R> | Predicate.Refinement<I & {}, infer _R> ?
         [0] extends [1 & _R] ? I : _R
-      : ExtractAndNarrow<I, _R> :
+      : Extract<I, _R> :
     P extends Predicate.Predicate<infer _In> ? P extends Predicate.Predicate<I & {}> ? _In : never :
     Exclude<
       I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? {
