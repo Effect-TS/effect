@@ -99,6 +99,7 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
       readonly maxIdleTime?: DurationInput | undefined
       readonly concurrency?: number | "unbounded" | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
+      readonly fatalDefects?: boolean | undefined
     }
   ): Layer.Layer<
     never,
@@ -203,6 +204,8 @@ const Proto = {
     options?: {
       readonly maxIdleTime?: DurationInput | undefined
       readonly concurrency?: number | "unbounded" | undefined
+      readonly mailboxCapacity?: number | "unbounded" | undefined
+      readonly fatalDefects?: boolean | undefined
     }
   ): Layer.Layer<
     never,
