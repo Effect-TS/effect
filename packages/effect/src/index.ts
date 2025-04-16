@@ -54,7 +54,10 @@ export * as Array from "./Array.js"
  * It is not recommended to convert a floating point number to a decimal directly, as the floating point representation
  * may be unexpected.
  *
+ * @module BigDecimal
  * @since 2.0.0
+ * @see {@link module:BigInt} for more similar operations on `bigint` types
+ * @see {@link module:Number} for more similar operations on `number` types
  */
 export * as BigDecimal from "./BigDecimal.js"
 
@@ -63,7 +66,10 @@ export * as BigDecimal from "./BigDecimal.js"
  * It includes functions for basic arithmetic operations, as well as type class instances for
  * `Equivalence` and `Order`.
  *
+ * @module BigInt
  * @since 2.0.0
+ * @see {@link module:BigDecimal} for more similar operations on `BigDecimal` types
+ * @see {@link module:Number} for more similar operations on `number` types
  */
 export * as BigInt from "./BigInt.js"
 
@@ -1026,6 +1032,8 @@ export * as NonEmptyIterable from "./NonEmptyIterable.js"
  *
  * @module Number
  * @since 2.0.0
+ * @see {@link module:BigInt} for more similar operations on `bigint` types
+ * @see {@link module:BigDecimal} for more similar operations on `BigDecimal` types
  */
 export * as Number from "./Number.js"
 
