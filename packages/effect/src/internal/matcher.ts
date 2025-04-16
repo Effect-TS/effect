@@ -509,7 +509,7 @@ export const is: <
   Literals extends ReadonlyArray<string | number | boolean | null | bigint>
 >(
   ...literals: Literals
-) => Predicate.Refinement<unknown, Literals[number]> = (...literals): any => {
+) => SafeRefinement<Literals[number]> = (...literals): any => {
   const len = literals.length
   return (u: unknown) => {
     for (let i = 0; i < len; i++) {

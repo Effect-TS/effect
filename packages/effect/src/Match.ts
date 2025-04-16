@@ -925,7 +925,7 @@ export const not: <
   R,
   const P extends Types.PatternPrimitive<R> | Types.PatternBase<R>,
   Ret,
-  Fn extends (_: Exclude<R, Types.ExtractMatch<R, Types.PForExclude<P>>>) => Ret
+  Fn extends (_: Types.NotMatch<R, P>) => Ret
 >(
   pattern: P,
   f: Fn
@@ -956,7 +956,7 @@ export const nonEmptyString: SafeRefinement<string, never> = internal.nonEmptySt
  */
 export const is: <
   Literals extends ReadonlyArray<string | number | bigint | boolean | null>
->(...literals: Literals) => Predicate.Refinement<unknown, Literals[number]> = internal.is
+>(...literals: Literals) => SafeRefinement<Literals[number]> = internal.is
 
 /**
  * Matches values of type `string`.
@@ -1275,8 +1275,8 @@ export declare namespace Types {
    */
   export type WhenMatch<R, P> =
     // check for any
-    [0] extends [1 & R] ? PForMatch<P>
-      : P extends SafeRefinement<infer SP, never> ? SP
+    [0] extends [1 & R] ? ResolvePred<P> :
+      P extends SafeRefinement<infer SP, never> ? SP
       : P extends Predicate.Refinement<infer _R, infer RP>
       // try to narrow refinement
         ? [Extract<R, RP>] extends [infer X] ? [X] extends [never]
@@ -1285,17 +1285,20 @@ export declare namespace Types {
           : X
         : never
       : P extends PredicateA<infer PP> ? PP
-      : ExtractMatch<R, PForMatch<P>>
+      : ExtractMatch<R, P>
 
   /**
    * @since 1.0.0
    */
-  export type NotMatch<R, P> = Exclude<R, ExtractMatch<R, PForExclude<P>>>
+  export type NotMatch<R, P> = Exclude<R, ExtractMatch<R, PForNotMatch<P>>>
+
+  type PForNotMatch<P> = [ToSafeRefinement<P>] extends [infer X] ? X
+    : never
 
   /**
    * @since 1.0.0
    */
-  export type PForMatch<P> = [SafeRefinementP<ResolvePred<P>>] extends [infer X] ? X
+  export type PForMatch<P> = [ResolvePred<P>] extends [infer X] ? X
     : never
 
   /**
@@ -1307,12 +1310,6 @@ export declare namespace Types {
   // utilities
   type PredicateA<A> = Predicate.Predicate<A> | Predicate.Refinement<A, A>
 
-  type SafeRefinementP<A> = A extends never ? never
-    : A extends SafeRefinement<infer S, infer _> ? S
-    : A extends Function ? A
-    : A extends Record<string, any> ? { [K in keyof A]: SafeRefinementP<A[K]> }
-    : A
-
   type SafeRefinementR<A> = A extends never ? never
     : A extends SafeRefinement<infer _, infer R> ? R
     : A extends Function ? A
@@ -1320,9 +1317,9 @@ export declare namespace Types {
     : A
 
   type ResolvePred<A> = A extends never ? never
+    : A extends SafeRefinement<infer _A, infer _R> ? _R
     : A extends Predicate.Refinement<any, infer P> ? P
     : A extends Predicate.Predicate<infer P> ? P
-    : A extends SafeRefinement<any> ? A
     : A extends Record<string, any> ? { [K in keyof A]: ResolvePred<A[K]> }
     : A
 
@@ -1433,33 +1430,36 @@ export declare namespace Types {
 
   type Simplify<A> = { [K in keyof A]: A[K] } & {}
 
-  type ExtractAndNarrow<Input, P> =
-    // unknown is a wildcard pattern
-    unknown extends P ? Input
-      : Input extends infer I ? Exclude<
-          I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? {
-                readonly [K in keyof I]: K extends keyof P ? ExtractAndNarrow<I[K], P[K]>
-                  : I[K]
-              } extends infer R ? Fail extends R[keyof R] ? never
-                : R
-              : never
+  type ExtractAndNarrow<Input, P> = Input extends infer I ?
+    P extends SafeRefinement<infer _In, infer _R> | Predicate.Refinement<infer _In, infer _R> ?
+      P extends SafeRefinement<I & {}, infer _R> | Predicate.Refinement<I & {}, infer _R> ?
+        [0] extends [1 & _R] ? I : _R
+      : Extract<I, _R> :
+    P extends Predicate.Predicate<infer _In> ? P extends Predicate.Predicate<I & {}> ? _In : never :
+    Exclude<
+      I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? {
+            readonly [K in keyof I]: K extends keyof P ? ExtractAndNarrow<I[K], P[K]>
+              : I[K]
+          } extends infer R ? Fail extends R[keyof R] ? never
+            : R
+          : never
+        : never
+        : IsPlainObject<I> extends true ? string extends keyof I ? I extends P ? I
             : never
-            : IsPlainObject<I> extends true ? string extends keyof I ? I extends P ? I
-                : never
-              : symbol extends keyof I ? I extends P ? I
-                : never
-              : Simplify<
-                & { [RK in Extract<keyof I, keyof P>]-?: ExtractAndNarrow<I[RK], P[RK]> }
-                & Omit<I, keyof P>
-              > extends infer R ? keyof P extends NonFailKeys<R> ? R
-                : never
-              : never
-            : MaybeReplace<I, P> extends infer R ? [I] extends [R] ? I
-              : R
-            : never,
-          Fail
-        > :
-      never
+          : symbol extends keyof I ? I extends P ? I
+            : never
+          : Simplify<
+            & { [RK in Extract<keyof I, keyof P>]-?: ExtractAndNarrow<I[RK], P[RK]> }
+            & Omit<I, keyof P>
+          > extends infer R ? keyof P extends NonFailKeys<R> ? R
+            : never
+          : never
+        : MaybeReplace<I, P> extends infer R ? [I] extends [R] ? I
+          : R
+        : never,
+      Fail
+    > :
+    never
 
   type NonFailKeys<A> = keyof A & {} extends infer K ? K extends keyof A ? A[K] extends Fail ? never : K
     : never :
