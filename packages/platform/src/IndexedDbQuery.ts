@@ -117,10 +117,10 @@ export declare namespace IndexedDbQueryBuilder {
       (): Delete<Source, Table, never>
     }
 
-    readonly insert: (value: internal.SourceTableSchemaType<Source, Table>) => Modify<Source, Table>
-    readonly insertAll: (values: Array<internal.SourceTableSchemaType<Source, Table>>) => ModifyAll<Source, Table>
-    readonly upsert: (value: internal.SourceTableSchemaType<Source, Table>) => Modify<Source, Table>
-    readonly upsertAll: (values: Array<internal.SourceTableSchemaType<Source, Table>>) => ModifyAll<Source, Table>
+    readonly insert: (value: internal.ModifyWithKey<Source, Table>) => Modify<Source, Table>
+    readonly insertAll: (values: Array<internal.ModifyWithKey<Source, Table>>) => ModifyAll<Source, Table>
+    readonly upsert: (value: internal.ModifyWithKey<Source, Table>) => Modify<Source, Table>
+    readonly upsertAll: (values: Array<internal.ModifyWithKey<Source, Table>>) => ModifyAll<Source, Table>
     readonly clear: Clear<Source, Table>
   }
 
@@ -392,7 +392,7 @@ export declare namespace IndexedDbQueryBuilder {
     readonly [TypeId]: TypeId
     readonly operation: "add" | "put"
     readonly from: From<Source, Table>
-    readonly value: internal.SourceTableSchemaType<Source, Table>
+    readonly value: internal.ModifyWithKey<Source, Table>
   }
 
   /**
@@ -410,7 +410,7 @@ export declare namespace IndexedDbQueryBuilder {
     readonly [TypeId]: TypeId
     readonly operation: "add" | "put"
     readonly from: From<Source, Table>
-    readonly values: Array<internal.SourceTableSchemaType<Source, Table>>
+    readonly values: Array<internal.ModifyWithKey<Source, Table>>
   }
 }
 
