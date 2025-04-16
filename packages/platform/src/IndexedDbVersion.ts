@@ -2,7 +2,8 @@
  * @since 1.0.0
  */
 import * as HashMap from "effect/HashMap"
-import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import type { Pipeable } from "effect/Pipeable"
+import { pipeArguments } from "effect/Pipeable"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 
 /**
@@ -59,6 +60,17 @@ export declare namespace IndexedDbVersion {
     infer _Tables
   > ? _Tables
     : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type SchemaWithName<Db extends Any, TableName extends string> = IndexedDbTable.IndexedDbTable.TableSchema<
+    IndexedDbTable.IndexedDbTable.WithName<
+      Tables<Db>,
+      TableName
+    >
+  >
 }
 
 const Proto = {
