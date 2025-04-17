@@ -97,9 +97,9 @@
 
 import * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
-
+import * as option from "./internal/option.js"
 import * as _Iterable from "./Iterable.js"
-import * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import * as order from "./Order.js"
 import type { Ordering } from "./Ordering.js"
 import * as predicate from "./Predicate.js"
@@ -586,7 +586,7 @@ export const divide: {
    * @returns A function that takes a dividend and returns the quotient wrapped
    *   in an Option (Option.none() if divisor is 0)
    */
-  (divisor: number): (dividend: number) => Option.Option<number>
+  (divisor: number): (dividend: number) => Option<number>
 
   /**
    * Divides the dividend by the divisor and returns the quotient wrapped in an
@@ -597,8 +597,8 @@ export const divide: {
    *
    * @returns Some(quotient) if the divisor is not 0, None otherwise
    */
-  (dividend: number, divisor: number): Option.Option<number>
-} = dual(2, (dividend: number, divisor: number) => divisor === 0 ? Option.none() : Option.some(dividend / divisor))
+  (dividend: number, divisor: number): Option<number>
+} = dual(2, (dividend: number, divisor: number) => divisor === 0 ? option.none : option.some(dividend / divisor))
 
 /**
  * Performs division in the set of JavaScript numbers, but misbehaves for
@@ -1019,22 +1019,22 @@ export const nextPow2 = (n: number): number => {
  * @category constructors
  */
 export const parse: {
-  (s: "NaN" | "Infinity" | "-Infinity" | (string & {})): Option.Option<number>
+  (s: "NaN" | "Infinity" | "-Infinity" | (string & {})): Option<number>
 } = (s) => {
   if (s === "NaN") {
-    return Option.some(NaN)
+    return option.some(NaN)
   }
   if (s === "Infinity") {
-    return Option.some(Infinity)
+    return option.some(Infinity)
   }
   if (s === "-Infinity") {
-    return Option.some(-Infinity)
+    return option.some(-Infinity)
   }
   if (s.trim() === "") {
-    return Option.none()
+    return option.none
   }
   const n = Number(s)
-  return Number.isNaN(n) ? Option.none() : Option.some(n)
+  return Number.isNaN(n) ? option.none : option.some(n)
 }
 
 /**
