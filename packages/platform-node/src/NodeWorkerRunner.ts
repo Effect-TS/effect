@@ -18,3 +18,9 @@ export {
  * @category layers
  */
 export const layer: Layer.Layer<Runner.PlatformRunner> = internal.layer
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerChildProcess: Layer.Layer<Runner.PlatformRunner> = internal.layerChildProcess

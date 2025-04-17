@@ -62,5 +62,52 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
   }
 })
 
+const platformRunnerImplCP = Runner.PlatformRunner.of({
+  [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
+  start<I, O>(closeLatch: Deferred.Deferred<void, WorkerError>) {
+    return Effect.gen(function*() {
+      if (!process.send) {
+        return yield* new WorkerError({ reason: "spawn", cause: new Error("not in a child process") })
+      }
+      const send = (_portId: number, message: O, _transfers?: ReadonlyArray<unknown>) =>
+        Effect.sync(() => process.send!([1, message]))
+
+      const run = Effect.fnUntraced(function*<A, E, R>(
+        handler: (portId: number, message: I) => Effect.Effect<A, E, R> | void
+      ) {
+        const runtime = (yield* Effect.interruptible(Effect.runtime<R | Scope.Scope>())).pipe(
+          Runtime.updateContext(Context.omit(Scope.Scope))
+        ) as Runtime.Runtime<R>
+        const fiberSet = yield* FiberSet.make<any, WorkerError | E>()
+        const runFork = Runtime.runFork(runtime)
+        const onExit = (exit: Exit.Exit<any, E>) => {
+          if (exit._tag === "Failure" && !Cause.isInterruptedOnly(exit.cause)) {
+            Deferred.unsafeDone(closeLatch, Exit.die(Cause.squash(exit.cause)))
+          }
+        }
+        process.on("message", (message: Runner.BackingRunner.Message<I>) => {
+          if (message[0] === 0) {
+            const result = handler(0, message[1])
+            if (Effect.isEffect(result)) {
+              const fiber = runFork(result)
+              fiber.addObserver(onExit)
+              FiberSet.unsafeAdd(fiberSet, fiber)
+            }
+          } else {
+            process.channel?.unref()
+            Deferred.unsafeDone(closeLatch, Exit.void)
+          }
+        })
+        process.send!([0])
+      })
+
+      return { run, send }
+    })
+  }
+})
+
 /** @internal */
 export const layer = Layer.succeed(Runner.PlatformRunner, platformRunnerImpl)
+
+/** @internal */
+export const layerChildProcess = Layer.succeed(Runner.PlatformRunner, platformRunnerImplCP)
