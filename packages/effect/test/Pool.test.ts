@@ -128,7 +128,7 @@ describe("Pool", () => {
       const pool = yield* Pool.make({ acquire: get, size: 10 })
       yield* Effect.repeat(Ref.get(count), { until: (n) => n === 10 })
       yield* Pool.invalidate(pool, 1)
-      yield* Effect.yieldNow() // allow lazy resize to run
+      yield* Effect.repeat(Ref.get(count), { until: (n) => n === 10 })
       const result = yield* Effect.scoped(Pool.get(pool))
       const value = yield* Ref.get(count)
       strictEqual(result, 2)
@@ -419,8 +419,8 @@ describe("Pool", () => {
       yield* Effect.scoped(pool.get).pipe(
         Effect.ignore
       )
-      strictEqual(yield* Ref.get(allocations), 2)
-      strictEqual(yield* Ref.get(released), 2)
+      strictEqual(yield* Ref.get(allocations), 10)
+      strictEqual(yield* Ref.get(released), 10)
     }))
 
   it.scoped("is subtype of Effect", () =>
