@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.55.15
+
+### Patch Changes
+
+- [#4754](https://github.com/Effect-TS/effect/pull/4754) [`d3df84e`](https://github.com/Effect-TS/effect/commit/d3df84e8af8e00a297e2329faeae625de0a95a71) Thanks @tim-smart! - fix RpcClient worker protocol scopes
+
 ## 0.55.14
 
 ### Patch Changes
