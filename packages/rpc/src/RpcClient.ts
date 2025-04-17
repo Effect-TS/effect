@@ -867,17 +867,8 @@ export const makeProtocolWorker = (
 
     const entries = new Map<string | bigint, {
       readonly worker: Worker.BackingWorker<FromClientEncoded | RpcWorker.InitialMessage.Encoded, FromServerEncoded>
-      readonly scope: Scope.CloseableScope
+      readonly latch: Effect.Latch
     }>()
-
-    yield* Scope.addFinalizerExit(
-      scope,
-      (exit) =>
-        Effect.forEach(entries, ([_, entry]) => Scope.close(entry.scope, exit), {
-          discard: true,
-          concurrency: "unbounded"
-        })
-    )
 
     const acquire = Effect.gen(function*() {
       const id = workerId++
@@ -893,16 +884,15 @@ export const makeProtocolWorker = (
           const entry = entries.get(response.requestId)
           if (entry) {
             entries.delete(response.requestId)
-            return Effect.ensuring(writeResponse(response), Scope.close(entry.scope, Exit.void))
+            entry.latch.unsafeOpen()
+            return writeResponse(response)
           }
         } else if (response._tag === "Defect") {
-          return Effect.zipRight(
-            Effect.forEach(entries, ([requestId, entry]) => {
-              entries.delete(requestId)
-              return Scope.close(entry.scope, Exit.die(response.defect))
-            }, { discard: true }),
-            writeResponse(response)
-          )
+          for (const [requestId, entry] of entries) {
+            entries.delete(requestId)
+            entry.latch.unsafeOpen()
+          }
+          return writeResponse(response)
         }
         return writeResponse(response)
       }).pipe(
@@ -942,16 +932,26 @@ export const makeProtocolWorker = (
         targetUtilization: options.targetUtilization
       })
 
+    yield* Scope.addFinalizer(
+      scope,
+      Effect.sync(() => {
+        for (const entry of entries.values()) {
+          entry.latch.unsafeOpen()
+        }
+        entries.clear()
+      })
+    )
+
     const send = (request: FromClientEncoded, transferables?: ReadonlyArray<globalThis.Transferable>) => {
       switch (request._tag) {
         case "Request": {
-          return Scope.make().pipe(
-            Effect.flatMap((scope) =>
-              Effect.flatMap(Scope.extend(pool.get, scope), (worker) => {
-                entries.set(request.id, { worker, scope })
-                return Effect.orDie(worker.send(request, transferables))
-              })
-            ),
+          return pool.get.pipe(
+            Effect.flatMap((worker) => {
+              const latch = Effect.unsafeMakeLatch(false)
+              entries.set(request.id, { worker, latch })
+              return Effect.zipRight(worker.send(request, transferables), latch.await)
+            }),
+            Effect.scoped,
             Effect.orDie
           )
         }
@@ -959,10 +959,8 @@ export const makeProtocolWorker = (
           const entry = entries.get(request.requestId)
           if (!entry) return Effect.void
           entries.delete(request.requestId)
-          return Effect.ensuring(
-            Effect.orDie(entry.worker.send(request)),
-            Scope.close(entry.scope, Exit.void)
-          )
+          entry.latch.unsafeOpen()
+          return Effect.orDie(entry.worker.send(request))
         }
         case "Ack": {
           const entry = entries.get(request.requestId)
