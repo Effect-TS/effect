@@ -519,7 +519,16 @@ export const multiply: {
  * @returns The product of all numbers in the collection, or 1 if the collection
  *   is empty
  */
-export const multiplyAll = (collection: Iterable<number>): number => _Iterable.reduce(collection, 1, multiply)
+export const multiplyAll = (collection: Iterable<number>): number => {
+  let out = 1
+  for (const n of collection) {
+    if (n === 0) {
+      return 0
+    }
+    out *= n
+  }
+  return out
+}
 
 /**
  * Performs division in the set of JavaScript numbers, returning the result
