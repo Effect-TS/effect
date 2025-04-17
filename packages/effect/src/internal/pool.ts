@@ -198,13 +198,15 @@ class PoolImpl<A, E> extends Effectable.Class<A, E, Scope> implements Pool<A, E>
     if (this.activeSize >= this.targetSize) {
       return core.void
     }
+    const toAcquire = this.targetSize - this.activeSize
     return this.strategy.reclaim(this).pipe(
       core.flatMap(Option.match({
         onNone: () => this.allocate,
         onSome: core.succeed
       })),
+      fiberRuntime.replicateEffect(toAcquire, { concurrency: toAcquire }),
       core.zipLeft(this.availableLatch.open),
-      core.flatMap((item) => item.exit._tag === "Success" ? this.resizeLoop : core.void)
+      core.flatMap((items) => items.some((_) => _.exit._tag === "Failure") ? core.void : this.resizeLoop)
     )
   })
   readonly resizeSemaphore = circular.unsafeMakeSemaphore(1)
