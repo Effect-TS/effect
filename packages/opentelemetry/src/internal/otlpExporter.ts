@@ -75,10 +75,13 @@ export const make: (
       }
       buffer = []
     }
-    return Effect.asVoid(client.execute(
+    return client.execute(
       HttpClientRequest.bodyUnsafeJson(request, options.body(items))
-    ))
-  })
+    )
+  }).pipe(
+    Effect.asVoid,
+    Effect.withTracerEnabled(false)
+  )
 
   yield* Scope.addFinalizer(scope, Effect.ignore(runExport))
 
