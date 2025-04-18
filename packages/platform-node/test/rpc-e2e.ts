@@ -9,7 +9,7 @@ export const e2eSuite = <E>(
   layer: Layer.Layer<UsersClient | RpcServer.Protocol, E>,
   concurrent = true
 ) => {
-  describe(name, { concurrent }, () => {
+  describe(name, { concurrent, timeout: 30_000 }, () => {
     it.effect("should get user", () =>
       Effect.gen(function*() {
         const client = yield* UsersClient

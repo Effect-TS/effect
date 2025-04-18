@@ -18,7 +18,7 @@ export type FromClient<A extends Rpc.Any> = Request<A> | Ack | Interrupt | Eof
  * @since 1.0.0
  * @category request
  */
-export type FromClientEncoded = RequestEncoded | Ack | InterruptEncoded | Ping | Eof
+export type FromClientEncoded = RequestEncoded | AckEncoded | InterruptEncoded | Ping | Eof
 
 /**
  * @since 1.0.0
@@ -51,7 +51,7 @@ export const RequestId = (id: bigint | string): RequestId =>
  */
 export interface RequestEncoded {
   readonly _tag: "Request"
-  readonly id: bigint | string
+  readonly id: string
   readonly tag: string
   readonly payload: unknown
   readonly traceId: string
@@ -98,9 +98,18 @@ export interface Interrupt {
  * @since 1.0.0
  * @category request
  */
+export interface AckEncoded {
+  readonly _tag: "Ack"
+  readonly requestId: string
+}
+
+/**
+ * @since 1.0.0
+ * @category request
+ */
 export interface InterruptEncoded {
   readonly _tag: "Interrupt"
-  readonly requestId: RequestId
+  readonly requestId: string
 }
 
 /**
@@ -171,7 +180,7 @@ export type ResponseId = Branded<number, ResponseIdTypeId>
  */
 export interface ResponseChunkEncoded {
   readonly _tag: "Chunk"
-  readonly requestId: bigint | string
+  readonly requestId: string
   readonly values: NonEmptyReadonlyArray<unknown>
 }
 
@@ -192,7 +201,7 @@ export interface ResponseChunk<A extends Rpc.Any> {
  */
 export interface ResponseExitEncoded {
   readonly _tag: "Exit"
-  readonly requestId: bigint | string
+  readonly requestId: string
   readonly exit: Schema.ExitEncoded<unknown, unknown, unknown>
 }
 

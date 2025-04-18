@@ -3,6 +3,7 @@
  */
 import type * as Worker from "@effect/platform/Worker"
 import type * as Layer from "effect/Layer"
+import type * as ChildProcess from "node:child_process"
 import type * as WorkerThreads from "node:worker_threads"
 import * as internal from "./internal/worker.js"
 
@@ -23,7 +24,7 @@ export const layerWorker: Layer.Layer<Worker.PlatformWorker> = internal.layerWor
  * @category layers
  */
 export const layer: (
-  spawn: (id: number) => WorkerThreads.Worker
+  spawn: (id: number) => WorkerThreads.Worker | ChildProcess.ChildProcess
 ) => Layer.Layer<Worker.WorkerManager | Worker.Spawner> = internal.layer
 
 /**
@@ -31,5 +32,5 @@ export const layer: (
  * @category layers
  */
 export const layerPlatform: (
-  spawn: (id: number) => WorkerThreads.Worker
+  spawn: (id: number) => WorkerThreads.Worker | ChildProcess.ChildProcess
 ) => Layer.Layer<Worker.PlatformWorker | Worker.Spawner> = internal.layerPlatform
