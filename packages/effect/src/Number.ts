@@ -1028,7 +1028,7 @@ export const nextPow2 = (n: number): number => {
  * @category constructors
  */
 export const parse: {
-  (s: "NaN" | "Infinity" | "-Infinity" | (string & {})): Option<number>
+  (s: string): Option<number>
 } = (s) => {
   if (s === "NaN") {
     return option.some(NaN)
