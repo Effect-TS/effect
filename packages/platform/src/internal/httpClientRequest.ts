@@ -1,3 +1,4 @@
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
@@ -44,7 +45,8 @@ function makeInternal(
   urlParams: UrlParams.UrlParams,
   hash: Option.Option<string>,
   headers: Headers.Headers,
-  body: Body.HttpBody
+  body: Body.HttpBody,
+  timeout: Duration.DurationInput | undefined
 ): ClientRequest.HttpClientRequest {
   const self = Object.create(Proto)
   self.method = method
@@ -53,6 +55,7 @@ function makeInternal(
   self.hash = hash
   self.headers = headers
   self.body = body
+  self.timeout = timeout
   return self
 }
 
@@ -67,7 +70,8 @@ export const empty: ClientRequest.HttpClientRequest = makeInternal(
   UrlParams.empty,
   Option.none(),
   Headers.empty,
-  internalBody.empty
+  internalBody.empty,
+  undefined
 )
 
 /** @internal */
@@ -134,6 +138,9 @@ export const modify = dual<
   if (options.acceptJson) {
     result = acceptJson(result)
   }
+  if (options.timeout) {
+    result = setTimeout(result, options.timeout)
+  }
 
   return result
 })
@@ -149,7 +156,8 @@ export const setHeader = dual<
     self.urlParams,
     self.hash,
     Headers.set(self.headers, key, value),
-    self.body
+    self.body,
+    self.timeout
   ))
 
 /** @internal */
@@ -163,7 +171,8 @@ export const setHeaders = dual<
     self.urlParams,
     self.hash,
     Headers.setAll(self.headers, input),
-    self.body
+    self.body,
+    self.timeout
   ))
 
 const stringOrRedacted = (value: string | Redacted.Redacted): string =>
@@ -212,7 +221,8 @@ export const setMethod = dual<
     self.urlParams,
     self.hash,
     self.headers,
-    self.body
+    self.body,
+    self.timeout
   ))
 
 /** @internal */
@@ -227,7 +237,8 @@ export const setUrl = dual<
       self.urlParams,
       self.hash,
       self.headers,
-      self.body
+      self.body,
+      self.timeout
     )
   }
   const clone = new URL(url.toString())
@@ -241,7 +252,8 @@ export const setUrl = dual<
     urlParams,
     hash,
     self.headers,
-    self.body
+    self.body,
+    self.timeout
   )
 })
 
@@ -258,7 +270,8 @@ export const appendUrl = dual<
     self.urlParams,
     self.hash,
     self.headers,
-    self.body
+    self.body,
+    self.timeout
   ))
 
 /** @internal */
@@ -274,7 +287,8 @@ export const prependUrl = dual<
     self.urlParams,
     self.hash,
     self.headers,
-    self.body
+    self.body,
+    self.timeout
   ))
 
 /** @internal */
@@ -288,7 +302,8 @@ export const updateUrl = dual<
     self.urlParams,
     self.hash,
     self.headers,
-    self.body
+    self.body,
+    self.timeout
   ))
 
 /** @internal */
@@ -302,7 +317,8 @@ export const appendUrlParam = dual<
     UrlParams.append(self.urlParams, key, value),
     self.hash,
     self.headers,
-    self.body
+    self.body,
+    self.timeout
   ))
 
 /** @internal */
@@ -316,7 +332,8 @@ export const appendUrlParams = dual<
     UrlParams.appendAll(self.urlParams, input),
     self.hash,
     self.headers,
-    self.body
+    self.body,
+    self.timeout
   ))
 
 /** @internal */
@@ -330,7 +347,8 @@ export const setUrlParam = dual<
     UrlParams.set(self.urlParams, key, value),
     self.hash,
     self.headers,
-    self.body
+    self.body,
+    self.timeout
   ))
 
 /** @internal */
@@ -344,7 +362,8 @@ export const setUrlParams = dual<
     UrlParams.setAll(self.urlParams, input),
     self.hash,
     self.headers,
-    self.body
+    self.body,
+    self.timeout
   ))
 
 /** @internal */
@@ -358,7 +377,8 @@ export const setHash = dual<
     self.urlParams,
     Option.some(hash),
     self.headers,
-    self.body
+    self.body,
+    self.timeout
   ))
 
 /** @internal */
@@ -369,7 +389,8 @@ export const removeHash = (self: ClientRequest.HttpClientRequest): ClientRequest
     self.urlParams,
     Option.none(),
     self.headers,
-    self.body
+    self.body,
+    self.timeout
   )
 
 /** @internal */
@@ -397,7 +418,8 @@ export const setBody = dual<
     self.urlParams,
     self.hash,
     headers,
-    body
+    body,
+    self.timeout
   )
 })
 
@@ -528,3 +550,29 @@ export const bodyStream = dual<
   (self, body, { contentLength, contentType = "application/octet-stream" } = {}) =>
     setBody(self, internalBody.stream(body, contentType, contentLength))
 )
+
+export const setTimeout = dual<
+  (timeout: Duration.DurationInput) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
+  (self: ClientRequest.HttpClientRequest, timeout: Duration.DurationInput) => ClientRequest.HttpClientRequest
+>(2, (self, timeout) =>
+  makeInternal(
+    self.method,
+    self.url,
+    self.urlParams,
+    self.hash,
+    self.headers,
+    self.body,
+    timeout
+  ))
+
+/** @internal */
+export const removeTimeout = (self: ClientRequest.HttpClientRequest): ClientRequest.HttpClientRequest =>
+  makeInternal(
+    self.method,
+    self.url,
+    self.urlParams,
+    self.hash,
+    self.headers,
+    self.body,
+    undefined
+  )

@@ -23,7 +23,7 @@ import {
   Stream,
   Struct
 } from "effect"
-import { assertInclude, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertEquals, assertInclude, deepStrictEqual, strictEqual } from "effect/test/util"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,
@@ -102,6 +102,14 @@ describe("HttpClient", () => {
         Stream.runFold("", (a, b) => a + new TextDecoder().decode(b))
       )
       assertInclude(response, "Google")
+    }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
+
+  it("google timeout", () =>
+    Effect.gen(function*() {
+      const error = yield* Effect.flip(HttpClient.get("https://www.google.com/", { timeout: "1 milli" }))
+      assertEquals(error._tag, "RequestError")
+      assertEquals(error.reason, "Transport")
+      assertEquals(error.cause!.toString(), "TimeoutException: Request timed out after '1ms'")
     }).pipe(Effect.provide(FetchHttpClient.layer), Effect.runPromise))
 
   it("jsonplaceholder", () =>
