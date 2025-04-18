@@ -1,5 +1,15 @@
 # @effect/opentelemetry
 
+## 0.46.7
+
+### Patch Changes
+
+- [#4760](https://github.com/Effect-TS/effect/pull/4760) [`43b22df`](https://github.com/Effect-TS/effect/commit/43b22df02f9504ef17b3462c2305f4e89e190763) Thanks @tim-smart! - disable tracer for Otlp http client
+
+- Updated dependencies [[`e536127`](https://github.com/Effect-TS/effect/commit/e536127c1e6f2fb3a542c73ae919435a629a346b)]:
+  - effect@3.14.11
+  - @effect/platform@0.80.11
+
 ## 0.46.6
 
 ### Patch Changes

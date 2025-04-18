@@ -1,5 +1,12 @@
 # @effect/platform
 
+## 0.80.11
+
+### Patch Changes
+
+- Updated dependencies [[`e536127`](https://github.com/Effect-TS/effect/commit/e536127c1e6f2fb3a542c73ae919435a629a346b)]:
+  - effect@3.14.11
+
 ## 0.80.10
 
 ### Patch Changes

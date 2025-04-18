@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-pg",
-  "version": "0.34.10",
+  "version": "0.34.11",
   "type": "module",
   "license": "MIT",
   "description": "A PostgreSQL toolkit for Effect",
