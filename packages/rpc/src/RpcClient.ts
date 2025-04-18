@@ -36,8 +36,8 @@ import type { Mutable } from "effect/Types"
 import { withRun } from "./internal/utils.js"
 import * as Rpc from "./Rpc.js"
 import type * as RpcGroup from "./RpcGroup.js"
-import type { FromClient, FromClientEncoded, FromServer, FromServerEncoded, Request, RequestId } from "./RpcMessage.js"
-import { constPing } from "./RpcMessage.js"
+import type { FromClient, FromClientEncoded, FromServer, FromServerEncoded, Request } from "./RpcMessage.js"
+import { constPing, RequestId } from "./RpcMessage.js"
 import type * as RpcMiddleware from "./RpcMiddleware.js"
 import * as RpcSchema from "./RpcSchema.js"
 import * as RpcSerialization from "./RpcSerialization.js"
@@ -429,7 +429,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
   const write = (message: FromServer<Rpcs>): Effect.Effect<void> => {
     switch (message._tag) {
       case "Chunk": {
-        const requestId = parseRequestId(message.requestId)
+        const requestId = message.requestId
         const entry = entries.get(requestId)
         if (!entry || entry._tag !== "Mailbox") return Effect.void
         return entry.mailbox.offerAll(message.values).pipe(
@@ -446,7 +446,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
         )
       }
       case "Exit": {
-        const requestId = parseRequestId(message.requestId)
+        const requestId = message.requestId
         const entry = entries.get(requestId)
         if (!entry) return Effect.void
         entries.delete(requestId)
@@ -539,6 +539,7 @@ export const make: <Rpcs extends Rpc.Any>(
             Effect.flatMap((payload) =>
               send({
                 ...message,
+                id: String(message.id),
                 payload,
                 headers: Object.entries(message.headers)
               }, collector && collector.unsafeClear())
@@ -548,7 +549,10 @@ export const make: <Rpcs extends Rpc.Any>(
         case "Ack": {
           const entry = entries.get(message.requestId)
           if (!entry) return Effect.void
-          return send(message) as Effect.Effect<void>
+          return send({
+            _tag: "Ack",
+            requestId: String(message.requestId)
+          }) as Effect.Effect<void>
         }
         case "Interrupt": {
           const entry = entries.get(message.requestId)
@@ -556,7 +560,7 @@ export const make: <Rpcs extends Rpc.Any>(
           entries.delete(message.requestId)
           return send({
             _tag: "Interrupt",
-            requestId: message.requestId
+            requestId: String(message.requestId)
           }) as Effect.Effect<void>
         }
         case "Eof": {
@@ -569,27 +573,27 @@ export const make: <Rpcs extends Rpc.Any>(
   yield* run((message) => {
     switch (message._tag) {
       case "Chunk": {
-        const requestId = parseRequestId(message.requestId)
+        const requestId = RequestId(message.requestId)
         const entry = entries.get(requestId)
         if (!entry || !entry.decodeChunk) return Effect.void
         return entry.decodeChunk(message.values).pipe(
           Effect.locally(FiberRef.currentContext, entry.context),
           Effect.orDie,
           Effect.flatMap((chunk) =>
-            write({ _tag: "Chunk", clientId: 0, requestId: parseRequestId(message.requestId), values: chunk })
+            write({ _tag: "Chunk", clientId: 0, requestId: RequestId(message.requestId), values: chunk })
           ),
           Effect.onError((cause) =>
             write({
               _tag: "Exit",
               clientId: 0,
-              requestId: parseRequestId(message.requestId),
+              requestId: RequestId(message.requestId),
               exit: Exit.failCause(cause)
             })
           )
         ) as Effect.Effect<void>
       }
       case "Exit": {
-        const requestId = parseRequestId(message.requestId)
+        const requestId = RequestId(message.requestId)
         const entry = entries.get(requestId)
         if (!entry) return Effect.void
         entries.delete(requestId)
@@ -618,7 +622,7 @@ export const make: <Rpcs extends Rpc.Any>(
   return client
 })
 
-const parseRequestId = (input: string | bigint): RequestId => typeof input === "string" ? BigInt(input) : input as any
+// const parseRequestId = (input: string | bigint): RequestId => typeof input === "string" ? BigInt(input) : input as any
 
 /**
  * @since 1.0.0
@@ -702,7 +706,6 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
       }
 
       const parser = serialization.unsafeMake()
-      if (!serialization.supportsBigInt) transformBigInt(request)
 
       const encoded = parser.encode(request)
       const body = typeof encoded === "string" ?
@@ -830,7 +833,6 @@ export const makeProtocolSocket: Effect.Effect<
 
   return {
     send(request) {
-      if (!serialization.supportsBigInt) transformBigInt(request)
       return Effect.orDie(write(parser.encode(request)))
     },
     supportsAck: true,
@@ -865,7 +867,7 @@ export const makeProtocolWorker = (
     let workerId = 0
     const initialMessage = yield* Effect.serviceOption(RpcWorker.InitialMessage)
 
-    const entries = new Map<string | bigint, {
+    const entries = new Map<string, {
       readonly worker: Worker.BackingWorker<FromClientEncoded | RpcWorker.InitialMessage.Encoded, FromServerEncoded>
       readonly latch: Effect.Latch
     }>()
@@ -1009,11 +1011,3 @@ export const layerProtocolSocket: Layer.Layer<Protocol, never, Socket.Socket | R
 // internal
 
 const decodeDefect = Schema.decodeSync(Schema.Defect)
-
-const transformBigInt = (request: FromClientEncoded) => {
-  if (request._tag === "Request") {
-    ;(request as any).id = request.id.toString()
-  } else if ("requestId" in request) {
-    ;(request as any).requestId = request.requestId.toString()
-  }
-}

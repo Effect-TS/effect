@@ -17,48 +17,20 @@ export const layerManager: Layer.Layer<Worker.WorkerManager> = internal.layerMan
  * @since 1.0.0
  * @category layers
  */
-export const layerManagerChildProcess: Layer.Layer<Worker.WorkerManager> = internal.layerManagerChildProcess
-
-/**
- * @since 1.0.0
- * @category layers
- */
 export const layerWorker: Layer.Layer<Worker.PlatformWorker> = internal.layerWorker
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerWorkerChildProcess: Layer.Layer<Worker.PlatformWorker> = internal.layerWorkerChildProcess
-
-/**
- * @since 1.0.0
- * @category layers
- */
 export const layer: (
-  spawn: (id: number) => WorkerThreads.Worker
+  spawn: (id: number) => WorkerThreads.Worker | ChildProcess.ChildProcess
 ) => Layer.Layer<Worker.WorkerManager | Worker.Spawner> = internal.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerChildProcess: (
-  spawn: (id: number) => ChildProcess.ChildProcess
-) => Layer.Layer<Worker.WorkerManager | Worker.Spawner> = internal.layerChildProcess
-
-/**
- * @since 1.0.0
- * @category layers
- */
 export const layerPlatform: (
-  spawn: (id: number) => WorkerThreads.Worker
+  spawn: (id: number) => WorkerThreads.Worker | ChildProcess.ChildProcess
 ) => Layer.Layer<Worker.PlatformWorker | Worker.Spawner> = internal.layerPlatform
-
-/**
- * @since 1.0.0
- * @category layers
- */
-export const layerPlatformChildProcess: (
-  spawn: (id: number) => ChildProcess.ChildProcess
-) => Layer.Layer<Worker.PlatformWorker | Worker.Spawner> = internal.layerPlatformChildProcess
