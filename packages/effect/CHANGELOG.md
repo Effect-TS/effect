@@ -1,5 +1,11 @@
 # effect
 
+## 3.14.11
+
+### Patch Changes
+
+- [#4756](https://github.com/Effect-TS/effect/pull/4756) [`e536127`](https://github.com/Effect-TS/effect/commit/e536127c1e6f2fb3a542c73ae919435a629a346b) Thanks @tim-smart! - allow Pool to acquire multiple items at once
+
 ## 3.14.10
 
 ### Patch Changes

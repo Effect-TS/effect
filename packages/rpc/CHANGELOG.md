@@ -1,5 +1,15 @@
 # @effect/rpc
 
+## 0.55.16
+
+### Patch Changes
+
+- [#4758](https://github.com/Effect-TS/effect/pull/4758) [`b5ad11e`](https://github.com/Effect-TS/effect/commit/b5ad11e511424c6d5c32e34e7ee9d04f0110617d) Thanks @tim-smart! - convert encoded request ids to strings
+
+- Updated dependencies [[`e536127`](https://github.com/Effect-TS/effect/commit/e536127c1e6f2fb3a542c73ae919435a629a346b)]:
+  - effect@3.14.11
+  - @effect/platform@0.80.11
+
 ## 0.55.15
 
 ### Patch Changes
