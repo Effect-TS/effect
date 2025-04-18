@@ -622,8 +622,6 @@ export const make: <Rpcs extends Rpc.Any>(
   return client
 })
 
-// const parseRequestId = (input: string | bigint): RequestId => typeof input === "string" ? BigInt(input) : input as any
-
 /**
  * @since 1.0.0
  * @category headers

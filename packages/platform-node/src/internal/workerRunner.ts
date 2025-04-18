@@ -19,11 +19,11 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
         return yield* new WorkerError({ reason: "spawn", cause: new Error("not in a worker") })
       }
 
-      const sendSync = WorkerThreads.parentPort
+      const unsafeSend = WorkerThreads.parentPort
         ? (message: any, transfers?: any) => WorkerThreads.parentPort!.postMessage(message, transfers)
         : (message: any, _transfers?: any) => process.send!(message)
       const send = (_portId: number, message: O, transfers?: ReadonlyArray<unknown>) =>
-        Effect.sync(() => sendSync([1, message], transfers as any))
+        Effect.sync(() => unsafeSend([1, message], transfers as any))
 
       const run = Effect.fnUntraced(function*<A, E, R>(
         handler: (portId: number, message: I) => Effect.Effect<A, E, R> | void
@@ -65,7 +65,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           })
         }
 
-        sendSync([0])
+        unsafeSend([0])
       })
 
       return { run, send }
