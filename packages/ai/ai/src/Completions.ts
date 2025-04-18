@@ -61,7 +61,21 @@ export declare namespace Completions {
    * @category models
    */
   export interface Service {
-    readonly create: (input: AiInput.Input) => Effect.Effect<AiResponse, AiError>
+    readonly create: {
+      (input: AiInput.Input): Effect.Effect<AiResponse, AiError>
+      <Tools extends AiToolkit.Tool.AnySchema>(
+        options: {
+          readonly input: AiInput.Input
+          readonly tools: AiToolkit.Handlers<Tools>
+          readonly required?: Tools["_tag"] | boolean | undefined
+          readonly concurrency?: Concurrency | undefined
+        }
+      ): Effect.Effect<
+        WithResolved<AiToolkit.Tool.Success<Tools>>,
+        AiError | AiToolkit.Tool.Failure<Tools>,
+        AiToolkit.Tool.Context<Tools>
+      >
+    }
     readonly stream: (input: AiInput.Input) => Stream.Stream<AiResponse, AiError>
     readonly structured: {
       <A, I, R>(options: {
@@ -74,18 +88,6 @@ export declare namespace Completions {
         readonly toolCallId: string
       }): Effect.Effect<WithResolved<A>, AiError, R>
     }
-    readonly toolkit: <Tools extends AiToolkit.Tool.AnySchema>(
-      options: {
-        readonly input: AiInput.Input
-        readonly tools: AiToolkit.Handlers<Tools>
-        readonly required?: Tools["_tag"] | boolean | undefined
-        readonly concurrency?: Concurrency | undefined
-      }
-    ) => Effect.Effect<
-      WithResolved<AiToolkit.Tool.Success<Tools>>,
-      AiError | AiToolkit.Tool.Failure<Tools>,
-      AiToolkit.Tool.Context<Tools>
-    >
     readonly toolkitStream: <Tools extends AiToolkit.Tool.AnySchema>(
       options: {
         readonly input: AiInput.Input
@@ -151,7 +153,44 @@ export const make = (options: {
 }): Effect.Effect<Completions.Service> =>
   Effect.map(Effect.serviceOption(AiInput.SystemInstruction), (parentSystem) => {
     return Completions.of({
-      create(input) {
+      create(
+        opts: AiInput.Input | {
+          readonly input: AiInput.Input
+          readonly tools: AiToolkit.Handlers<AiToolkit.Tool.AnySchema>
+          readonly required?: AiToolkit.Tool.AnySchema["_tag"] | boolean | undefined
+          readonly concurrency?: Concurrency | undefined
+        }
+      ): any {
+        if (typeof opts === "object" && "input" in opts) {
+          const { concurrency, input: inputInput, required = false, tools } = opts
+          const input = AiInput.make(inputInput)
+          const toolArr: Array<{
+            name: string
+            description: string
+            parameters: JsonSchema.JsonSchema7
+            structured: boolean
+          }> = []
+          for (const [, tool] of tools.toolkit.tools) {
+            toolArr.push(convertTool(tool._tag, tool as any))
+          }
+          return Effect.useSpan(
+            "Completions.toolkit",
+            { attributes: { concurrency, required }, captureStackTrace: false },
+            (span) =>
+              Effect.serviceOption(AiInput.SystemInstruction).pipe(
+                Effect.flatMap((system) =>
+                  options.create({
+                    input: input as Chunk.NonEmptyChunk<Message>,
+                    system: Option.orElse(system, () => parentSystem),
+                    tools: toolArr,
+                    required: required as any,
+                    span
+                  })
+                ),
+                Effect.flatMap((response) => resolveParts({ response, tools, concurrency, method: "toolkit" }))
+              ) as any
+          )
+        }
         return Effect.useSpan(
           "Completions.create",
           { captureStackTrace: false },
@@ -159,7 +198,7 @@ export const make = (options: {
             Effect.serviceOption(AiInput.SystemInstruction).pipe(
               Effect.flatMap((system) =>
                 options.create({
-                  input: AiInput.make(input) as Chunk.NonEmptyChunk<Message>,
+                  input: AiInput.make(opts) as Chunk.NonEmptyChunk<Message>,
                   system: Option.orElse(system, () => parentSystem),
                   tools: [],
                   required: false,
@@ -243,35 +282,6 @@ export const make = (options: {
                 )
               )
             )
-        )
-      },
-      toolkit({ concurrency, input: inputInput, required = false, tools }) {
-        const input = AiInput.make(inputInput)
-        const toolArr: Array<{
-          name: string
-          description: string
-          parameters: JsonSchema.JsonSchema7
-          structured: boolean
-        }> = []
-        for (const [, tool] of tools.toolkit.tools) {
-          toolArr.push(convertTool(tool._tag, tool as any))
-        }
-        return Effect.useSpan(
-          "Completions.toolkit",
-          { attributes: { concurrency, required }, captureStackTrace: false },
-          (span) =>
-            Effect.serviceOption(AiInput.SystemInstruction).pipe(
-              Effect.flatMap((system) =>
-                options.create({
-                  input: input as Chunk.NonEmptyChunk<Message>,
-                  system: Option.orElse(system, () => parentSystem),
-                  tools: toolArr,
-                  required: required as any,
-                  span
-                })
-              ),
-              Effect.flatMap((response) => resolveParts({ response, tools, concurrency, method: "toolkit" }))
-            ) as any
         )
       },
       toolkitStream({ concurrency, input, required = false, tools }) {
