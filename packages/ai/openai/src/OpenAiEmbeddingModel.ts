@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
+import * as AiEmbeddingModel from "@effect/ai/AiEmbeddingModel"
 import { AiError } from "@effect/ai/AiError"
 import * as AiModel from "@effect/ai/AiModel"
-import * as Embeddings from "@effect/ai/Embeddings"
 import * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
@@ -18,7 +18,7 @@ import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
 
 /**
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export type Model = typeof Generated.CreateEmbeddingRequestModelEnum.Encoded
 
@@ -28,9 +28,9 @@ export type Model = typeof Generated.CreateEmbeddingRequestModelEnum.Encoded
 
 /**
  * @since 1.0.0
- * @category tags
+ * @category Context
  */
-export class Config extends Context.Tag("@effect/ai-openai/OpenAiEmbeddings/Config")<
+export class Config extends Context.Tag("@effect/ai-openai/OpenAiEmbeddingModel/Config")<
   Config,
   Config.Service
 >() {
@@ -49,7 +49,7 @@ export class Config extends Context.Tag("@effect/ai-openai/OpenAiEmbeddings/Conf
 export declare namespace Config {
   /**
    * @since 1.0.
-   * @category configuration
+   * @category Configuration
    */
   export interface Service extends
     Simplify<
@@ -64,7 +64,7 @@ export declare namespace Config {
 
   /**
    * @since 1.0.
-   * @category configuration
+   * @category Configuration
    */
   export interface Batched extends Omit<Config.Service, "model"> {
     readonly maxBatchSize?: number
@@ -76,7 +76,7 @@ export declare namespace Config {
 
   /**
    * @since 1.0.
-   * @category configuration
+   * @category Configuration
    */
   export interface DataLoader extends Omit<Config.Service, "model"> {
     readonly window: Duration.DurationInput
@@ -85,15 +85,15 @@ export declare namespace Config {
 }
 
 // =============================================================================
-// OpenAi Embeddings
+// OpenAi Embedding Model
 // =============================================================================
 
-const batchedModelCacheKey = Symbol.for("@effect/ai-openai/OpenAiEmbeddings/Batched/AiModel")
-const dataLoaderModelCacheKey = Symbol.for("@effect/ai-openai/OpenAiEmbeddings/DataLoader/AiModel")
+const batchedModelCacheKey = Symbol.for("@effect/ai-openai/OpenAiEmbeddingModel/Batched/AiModel")
+const dataLoaderModelCacheKey = Symbol.for("@effect/ai-openai/OpenAiEmbeddingModel/DataLoader/AiModel")
 
 /**
  * @since 1.0.0
- * @category ai models
+ * @category Models
  */
 export const model = (
   model: (string & {}) | Model,
@@ -103,7 +103,7 @@ export const model = (
       | ({ readonly mode: "data-loader" } & Config.DataLoader)
     )
   >
-): AiModel.AiModel<Embeddings.Embeddings | Tokenizer.Tokenizer, OpenAiClient> =>
+): AiModel.AiModel<AiEmbeddingModel.AiEmbeddingModel | Tokenizer.Tokenizer, OpenAiClient> =>
   AiModel.make({
     model,
     cacheKey: config.mode === "batched" ? batchedModelCacheKey : dataLoaderModelCacheKey,
@@ -112,8 +112,8 @@ export const model = (
       config.mode === "batched"
         ? makeBatched({ model, config })
         : makeDataLoader({ model, config }),
-      (embeddings) => Context.make(Embeddings.Embeddings, embeddings)
-    ) as Effect.Effect<Context.Context<Embeddings.Embeddings | Tokenizer.Tokenizer>>,
+      (embeddings) => Context.make(AiEmbeddingModel.AiEmbeddingModel, embeddings)
+    ) as Effect.Effect<Context.Context<AiEmbeddingModel.AiEmbeddingModel | Tokenizer.Tokenizer>>,
     updateContext: (context) => {
       const outerConfig = config.mode === "batched"
         ? Struct.omit("mode", "maxBatchSize", "cache")(config)
@@ -149,7 +149,7 @@ const makeRequest = (
     ),
     Effect.mapError((cause) => {
       const common = {
-        module: "OpenAiEmbeddings",
+        module: "OpenAiEmbeddingModel",
         method: "embed",
         cause
       }
@@ -172,7 +172,7 @@ const makeBatched = Effect.fnUntraced(function*(options: {
 }) {
   const client = yield* OpenAiClient
   const { cache, maxBatchSize = 2048, ...parentConfig } = options.config
-  return yield* Embeddings.make({
+  return yield* AiEmbeddingModel.make({
     cache,
     maxBatchSize,
     embedMany(input) {
@@ -187,7 +187,7 @@ const makeDataLoader = Effect.fnUntraced(function*(options: {
 }) {
   const client = yield* OpenAiClient
   const { maxBatchSize = 2048, window, ...parentConfig } = options.config
-  return yield* Embeddings.makeDataLoader({
+  return yield* AiEmbeddingModel.makeDataLoader({
     window,
     maxBatchSize,
     embedMany(input) {
@@ -198,7 +198,7 @@ const makeDataLoader = Effect.fnUntraced(function*(options: {
 
 /**
  * @since 1.0.0
- * @category layers
+ * @category Layers
  */
 export const layer = (options: {
   readonly model: (string & {}) | Model
@@ -208,9 +208,9 @@ export const layer = (options: {
     readonly timeToLive: Duration.DurationInput
   }
   readonly config?: Config.Service
-}): Layer.Layer<Embeddings.Embeddings, never, OpenAiClient> =>
+}): Layer.Layer<AiEmbeddingModel.AiEmbeddingModel, never, OpenAiClient> =>
   Layer.effect(
-    Embeddings.Embeddings,
+    AiEmbeddingModel.AiEmbeddingModel,
     makeBatched({
       model: options.model,
       config: {
@@ -223,16 +223,16 @@ export const layer = (options: {
 
 /**
  * @since 1.0.0
- * @category layers
+ * @category Layers
  */
 export const layerDataLoader = (options: {
   readonly model: (string & {}) | Model
   readonly window: Duration.DurationInput
   readonly maxBatchSize?: number
   readonly config?: Config.Service
-}): Layer.Layer<Embeddings.Embeddings, never, OpenAiClient> =>
+}): Layer.Layer<AiEmbeddingModel.AiEmbeddingModel, never, OpenAiClient> =>
   Layer.scoped(
-    Embeddings.Embeddings,
+    AiEmbeddingModel.AiEmbeddingModel,
     makeDataLoader({
       model: options.model,
       config: {
@@ -245,7 +245,7 @@ export const layerDataLoader = (options: {
 
 /**
  * @since 1.0.0
- * @category configuration
+ * @category Configuration
  */
 export const withConfigOverride: {
   (config: Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
