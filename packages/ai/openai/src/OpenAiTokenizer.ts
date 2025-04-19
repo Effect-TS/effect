@@ -2,17 +2,18 @@
  * @since 1.0.0
  */
 import { AiError } from "@effect/ai/AiError"
+import type * as AiInput from "@effect/ai/AiInput"
 import * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
-import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as GptTokenizer from "gpt-tokenizer"
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const make = (options: { readonly model: string }) =>
   Tokenizer.make({
@@ -20,32 +21,31 @@ export const make = (options: { readonly model: string }) =>
       return Effect.try({
         try: () =>
           GptTokenizer.encodeChat(
-            content.pipe(
-              Chunk.toReadonlyArray,
-              Arr.flatMap((message) =>
-                message.parts.pipe(
-                  Arr.filterMap((part) => {
-                    if (part._tag === "Image" || part._tag === "ImageUrl") {
-                      return Option.none()
-                    }
-                    return Option.some(
-                      {
-                        role: message.role.kind === "user" ? "user" : "assistant",
-                        name: message.role._tag === "UserWithName" ? message.role.name : undefined,
-                        content: part._tag === "Text"
-                          ? part.content
-                          : JSON.stringify(part._tag === "ToolCall" ? part.params : part.value)
-                      } as const
-                    )
-                  })
+            Arr.flatMap(content, (message) =>
+              Arr.filterMap(message.parts as Array<AiInput.Part>, (part) => {
+                if (
+                  part._tag === "File" ||
+                  part._tag === "Image" ||
+                  part._tag === "Reasoning" ||
+                  part._tag === "RedactedReasoning"
+                ) return Option.none()
+                return Option.some(
+                  {
+                    role: message.role === "user" ? "user" : "assistant",
+                    name: message.role === "user" && Predicate.isNotUndefined(message.userName)
+                      ? message.userName
+                      : undefined,
+                    content: part._tag === "Text"
+                      ? part.content
+                      : JSON.stringify(part._tag === "ToolCall" ? part.params : part.result)
+                  } as const
                 )
-              )
-            ),
+              })),
             options.model as any
           ),
         catch: (cause) =>
           new AiError({
-            module: "OpenAiCompletions",
+            module: "OpenAiTokenizer",
             method: "tokenize",
             description: "Could not tokenize",
             cause
@@ -56,7 +56,7 @@ export const make = (options: { readonly model: string }) =>
 
 /**
  * @since 1.0.0
- * @category layers
+ * @category Layers
  */
 export const layer = (options: { readonly model: string }): Layer.Layer<Tokenizer.Tokenizer> =>
   Layer.succeed(Tokenizer.Tokenizer, make(options))

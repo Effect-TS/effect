@@ -14,21 +14,20 @@ import { AiError } from "./AiError.js"
 
 /**
  * @since 1.0.0
- * @category tags
+ * @category Context
  */
-export class Embeddings extends Context.Tag("@effect/ai/Embeddings")<
-  Embeddings,
-  Embeddings.Service
+export class AiEmbeddingModel extends Context.Tag("@effect/ai/AiEmbeddingModel")<
+  AiEmbeddingModel,
+  AiEmbeddingModel.Service
 >() {}
 
 /**
  * @since 1.0.0
- * @category models
  */
-export declare namespace Embeddings {
+export declare namespace AiEmbeddingModel {
   /**
    * @since 1.0.0
-   * @category models
+   * @category Models
    */
   export interface Service {
     readonly embed: (input: string) => Effect.Effect<Array<number>, AiError>
@@ -36,7 +35,7 @@ export declare namespace Embeddings {
 
   /**
    * @since 1.0.0
-   * @category models
+   * @category Models
    */
   export interface Result {
     readonly index: number
@@ -44,14 +43,16 @@ export declare namespace Embeddings {
   }
 }
 
-class EmbeddingRequest extends Schema.TaggedRequest<EmbeddingRequest>()("EmbeddingRequest", {
+class EmbeddingRequest extends Schema.TaggedRequest<EmbeddingRequest>(
+  "@effect/ai/AiEmbeddingModel/Request"
+)("EmbeddingRequest", {
   failure: AiError,
   success: Schema.mutable(Schema.Array(Schema.Number)),
   payload: { input: Schema.String }
 }) {}
 
 const makeBatchedResolver = (
-  embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<Embeddings.Result>, AiError>
+  embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<AiEmbeddingModel.Result>, AiError>
 ) =>
   RequestResolver.makeBatched(
     (requests: ReadonlyArray<EmbeddingRequest>) =>
@@ -74,10 +75,10 @@ const makeBatchedResolver = (
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const make = (options: {
-  readonly embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<Embeddings.Result>, AiError>
+  readonly embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<AiEmbeddingModel.Result>, AiError>
   readonly maxBatchSize?: number
   readonly cache?: {
     readonly capacity: number
@@ -103,10 +104,10 @@ export const make = (options: {
             Effect.withRequestCaching(true),
             Effect.withRequestCache(cache)
           )
-      }).pipe(Effect.withSpan("Embeddings.embed", { captureStackTrace: false }))
+      }).pipe(Effect.withSpan("AiEmbeddingModel.embed", { captureStackTrace: false }))
     }
 
-    return Embeddings.of({
+    return AiEmbeddingModel.of({
       embed
     })
   })
@@ -117,10 +118,10 @@ export const make = (options: {
  * requests, if specified) and execute them as a single batch.
  *
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const makeDataLoader = (options: {
-  readonly embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<Embeddings.Result>, AiError>
+  readonly embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<AiEmbeddingModel.Result>, AiError>
   readonly window: Duration.DurationInput
   readonly maxBatchSize?: number
 }) =>
@@ -133,11 +134,11 @@ export const makeDataLoader = (options: {
 
     function embed(input: string) {
       return Effect.request(new EmbeddingRequest({ input }), resolverDelayed).pipe(
-        Effect.withSpan("Embeddings.embed", { captureStackTrace: false })
+        Effect.withSpan("AiEmbeddingModel.embed", { captureStackTrace: false })
       )
     }
 
-    return Embeddings.of({
+    return AiEmbeddingModel.of({
       embed
     })
   })

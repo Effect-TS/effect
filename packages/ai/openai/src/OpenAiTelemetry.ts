@@ -15,7 +15,7 @@ import type { Simplify } from "effect/Types"
  * {@see https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/}
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export type OpenAiTelemetryAttributes = Simplify<
   & AiTelemetry.GenAITelemetryAttributes
@@ -32,7 +32,7 @@ export declare namespace OpenAiTelemetry {
    * including the OpenAi-specific attributes.
    *
    * @since 1.0.0
-   * @category models
+   * @category Models
    */
   export type AllAttributes = AiTelemetry.GenAI.AllAttributes & RequestAttributes & ResponseAttributes
 
@@ -41,7 +41,7 @@ export declare namespace OpenAiTelemetry {
    * namespaced by `gen_ai.openai.request`.
    *
    * @since 1.0.0
-   * @category models
+   * @category Models
    */
   export interface RequestAttributes {
     /**
@@ -59,7 +59,7 @@ export declare namespace OpenAiTelemetry {
    * namespaced by `gen_ai.openai.response`.
    *
    * @since 1.0.0
-   * @category models
+   * @category Models
    */
   export interface ResponseAttributes {
     /**
@@ -81,7 +81,7 @@ export declare namespace OpenAiTelemetry {
    * otherwise, a custom value **MAY** be used.
    *
    * @since 1.0.0
-   * @category models
+   * @category Models
    */
   export type WellKnownResponseFormat = "json_object" | "json_schema" | "text"
 
@@ -93,14 +93,14 @@ export declare namespace OpenAiTelemetry {
    * otherwise, a custom value **MAY** be used.
    *
    * @since 1.0.0
-   * @category models
+   * @category Models
    */
   export type WellKnownServiceTier = "auto" | "default"
 }
 
 /**
  * @since 1.0.0
- * @since models
+ * @since Models
  */
 export type OpenAiTelemetryAttributeOptions = AiTelemetry.GenAITelemetryAttributeOptions & {
   openai?: {
@@ -123,7 +123,7 @@ const addOpenAiResponseAttributes = AiTelemetry.addSpanAttributes("gen_ai.openai
  * **NOTE**: This method will mutate the `Span` **in-place**.
  *
  * @since 1.0.0
- * @since utilities
+ * @since Utilities
  */
 export const addGenAIAnnotations = dual<
   (options: OpenAiTelemetryAttributeOptions) => (span: Span) => void,

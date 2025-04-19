@@ -2,78 +2,103 @@
  * @since 1.0.0
  */
 import * as Channel from "effect/Channel"
-import * as Chunk from "effect/Chunk"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type { ParseError } from "effect/ParseResult"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import type { Concurrency } from "effect/Types"
 import type { AiError } from "./AiError.js"
 import * as AiInput from "./AiInput.js"
-import { AiResponse, WithResolved } from "./AiResponse.js"
-import type * as AiToolkit from "./AiToolkit.js"
-import { Completions } from "./Completions.js"
+import { AiLanguageModel } from "./AiLanguageModel.js"
+import * as AiResponse from "./AiResponse.js"
+import type * as AiTool from "./AiTool.js"
 
 /**
  * @since 1.0.0
- * @category tags
+ * @category Context
  */
-export class AiChat extends Effect.Tag("@effect/ai/AiChat")<
+export class AiChat extends Context.Tag("@effect/ai/AiChat")<
   AiChat,
   AiChat.Service
 >() {}
 
 /**
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export declare namespace AiChat {
   /**
    * @since 1.0.0
-   * @category models
+   * @category Models
    */
   export interface Service {
+    /**
+     * The chat history.
+     */
     readonly history: Effect.Effect<AiInput.AiInput>
+    /**
+     * Exports the chat into a structured format.
+     */
     readonly export: Effect.Effect<unknown>
+    /**
+     * Exports the chat as a JSON string.
+     */
     readonly exportJson: Effect.Effect<string>
-    readonly send: (input: AiInput.Input) => Effect.Effect<AiResponse, AiError>
-    readonly stream: (input: AiInput.Input) => Stream.Stream<AiResponse, AiError>
-    readonly structured: {
-      <A, I, R>(options: {
-        readonly input: AiInput.Input
-        readonly schema: Completions.StructuredSchema<A, I, R>
-      }): Effect.Effect<A, AiError, R>
-      <A, I, R>(options: {
-        readonly input: AiInput.Input
-        readonly schema: Schema.Schema<A, I, R>
-        readonly toolCallId: string
-      }): Effect.Effect<A, AiError, R>
-    }
-    readonly toolkit: <Tools extends AiToolkit.Tool.AnySchema>(
-      options: {
-        readonly input: AiInput.Input
-        readonly tools: AiToolkit.Handlers<Tools>
-        readonly required?: Tools["_tag"] | boolean | undefined
-        readonly concurrency?: Concurrency | undefined
-      }
-    ) => Effect.Effect<
-      WithResolved<AiToolkit.Tool.Success<Tools>>,
-      AiError | AiToolkit.Tool.Failure<Tools>,
-      AiToolkit.Tool.Context<Tools>
+    /**
+     * Generate text using a large language model for the specified `prompt`.
+     *
+     * If a `toolkit` is specified, the large language model will additionally
+     * be able to perform tool calls to augment its response.
+     *
+     * Both input and output messages will be added to the chat history.
+     */
+    readonly generateText: <
+      Options extends Omit<
+        AiLanguageModel.GenerateTextOptions | AiLanguageModel.GenerateTextWithToolsOptions<AiTool.Any>,
+        "system"
+      >
+    >(options: Options) => Effect.Effect<
+      AiLanguageModel.ExtractSuccess<Options>,
+      AiLanguageModel.ExtractError<Options>,
+      AiLanguageModel.ExtractContext<Options>
     >
-    readonly toolkitStream: <Tools extends AiToolkit.Tool.AnySchema>(
-      options: {
-        readonly input: AiInput.Input
-        readonly tools: AiToolkit.Handlers<Tools>
-        readonly required?: Tools["_tag"] | boolean | undefined
-        readonly concurrency?: Concurrency | undefined
-      }
-    ) => Stream.Stream<
-      WithResolved<AiToolkit.Tool.Success<Tools>>,
-      AiError | AiToolkit.Tool.Failure<Tools>,
-      AiToolkit.Tool.Context<Tools>
+    /**
+     * Generate text using a large language model for the specified `prompt`,
+     * streaming output from the model as soon as it is available.
+     *
+     * If a `toolkit` is specified, the large language model will additionally
+     * be able to perform tool calls to augment its response.
+     *
+     * Both input and output messages will be added to the chat history.
+     */
+    readonly streamText: <
+      Options extends Omit<
+        AiLanguageModel.GenerateTextOptions | AiLanguageModel.GenerateTextWithToolsOptions<AiTool.Any>,
+        "system"
+      >
+    >(options: Options) => Stream.Stream<
+      AiLanguageModel.ExtractSuccess<Options>,
+      AiLanguageModel.ExtractError<Options>,
+      AiLanguageModel.ExtractContext<Options>
     >
+
+    /**
+     * Generate a structured object for the specified prompt and schema using a
+     * large language model.
+     *
+     * When using a `Schema` that does not have an `identifier` or `_tag`
+     * property, you must specify a `toolCallId` to properly associate the
+     * output of the model.
+     *
+     * Both input and output messages will be added to the chat history.
+     */
+    readonly generateObject: <A, I, R>(
+      options: Omit<
+        AiLanguageModel.GenerateObjectOptions<A, I, R> | AiLanguageModel.GenerateObjectWithToolCallIdOptions<A, I, R>,
+        "system"
+      >
+    ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R>
   }
 }
 
@@ -81,82 +106,87 @@ export declare namespace AiChat {
  * @since 1.0.0
  * @category constructors
  */
-export const fromInput = Effect.fnUntraced(
-  function*(input: AiInput.Input) {
-    const completions = yield* Completions
-    const history = yield* Ref.make(AiInput.make(input))
+export const fromPrompt = Effect.fnUntraced(
+  function*(options: {
+    readonly prompt: AiInput.AiInput.Raw
+    readonly system?: string
+  }) {
+    const languageModel = yield* AiLanguageModel
+    const history = yield* Ref.make<AiInput.AiInput>(AiInput.make(options.prompt))
     const semaphore = yield* Effect.makeSemaphore(1)
 
     return AiChat.of({
       history: Ref.get(history),
       export: Ref.get(history).pipe(
-        Effect.flatMap(Schema.encode(AiInput.Schema)),
+        Effect.flatMap(Schema.encode(AiInput.AiInput)),
         Effect.orDie
       ),
       exportJson: Ref.get(history).pipe(
-        Effect.flatMap(Schema.encode(AiInput.SchemaJson)),
+        Effect.flatMap(Schema.encode(AiInput.AiInputFromJson)),
         Effect.orDie
       ),
-      send(input) {
-        const newParts = AiInput.make(input)
+      generateText(options) {
+        const newParts = AiInput.make(options.prompt)
         return Ref.get(history).pipe(
           Effect.flatMap((parts) => {
-            const allParts = Chunk.appendAll(parts, newParts)
-            return completions.create(allParts).pipe(
+            const allParts = [...parts, ...newParts]
+            return languageModel.generateText({
+              ...options,
+              prompt: allParts
+            }).pipe(
               Effect.tap((response) => {
                 const responseParts = AiInput.make(response)
-                return Ref.set(history, Chunk.appendAll(allParts, responseParts))
+                return Ref.set(history, [...allParts, ...responseParts])
               })
             )
           }),
           semaphore.withPermits(1),
-          Effect.withSpan("AiChat.send", {
-            attributes: { input },
-            captureStackTrace: false
-          })
+          Effect.withSpan("AiChat.send", { captureStackTrace: false })
         )
       },
-      stream(input) {
+      streamText(options) {
         return Stream.suspend(() => {
-          let combined = AiResponse.empty
+          let combined = AiResponse.AiResponse.empty
           return Stream.fromChannel(Channel.acquireUseRelease(
             semaphore.take(1).pipe(
               Effect.zipRight(Ref.get(history)),
-              Effect.map(Chunk.appendAll(AiInput.make(input)))
+              Effect.map((history) => [...history, ...AiInput.make(options.prompt)])
             ),
             (parts) =>
-              completions.stream(parts).pipe(
+              languageModel.streamText({
+                ...options,
+                prompt: parts
+              }).pipe(
                 Stream.map((chunk) => {
-                  combined = combined.concat(chunk)
+                  combined = combined.merge(chunk)
                   return chunk
                 }),
                 Stream.toChannel
               ),
             (parts) =>
               Effect.zipRight(
-                Ref.set(history, Chunk.appendAll(parts, AiInput.make(combined))),
+                Ref.set(history, [...parts, ...AiInput.make(combined)]),
                 semaphore.release(1)
               )
           ))
         }).pipe(Stream.withSpan("AiChat.stream", {
-          attributes: { input },
           captureStackTrace: false
         }))
       },
-      structured(options) {
-        const newParts = AiInput.make(options.input)
+      generateObject(options) {
+        const newParts = AiInput.make(options.prompt)
         return Ref.get(history).pipe(
           Effect.flatMap((parts) => {
-            const allParts = Chunk.appendAll(parts, newParts)
-            return completions.structured({
+            const allParts = [...parts, ...newParts]
+            return languageModel.generateObject({
               ...options,
-              input: allParts
+              prompt: allParts
             } as any).pipe(
               Effect.flatMap((response) => {
                 const responseParts = AiInput.make(response)
                 return Effect.as(
-                  Ref.set(history, Chunk.appendAll(allParts, responseParts)),
-                  response.unsafeValue
+                  Ref.set(history, [...allParts, ...responseParts]),
+                  response.value
                 )
               })
             )
@@ -164,77 +194,15 @@ export const fromInput = Effect.fnUntraced(
           semaphore.withPermits(1),
           Effect.withSpan("AiChat.structured", {
             attributes: {
-              input: options.input,
-              schema: "toolCallId" in options
+              toolCallId: "toolCallId" in options
                 ? options.toolCallId
                 : "_tag" in options.schema
                 ? options.schema._tag
-                : options.schema.identifier
+                : (options.schema as any).identifier
             },
             captureStackTrace: false
           })
-        )
-      },
-      toolkit(options) {
-        const newParts = AiInput.make(options.input)
-        return Ref.get(history).pipe(
-          Effect.flatMap((parts) => {
-            const allParts = Chunk.appendAll(parts, newParts)
-            return completions.toolkit({
-              ...options,
-              input: allParts
-            }).pipe(
-              Effect.tap((response) => {
-                const responseParts = AiInput.make(response)
-                return Ref.set(history, Chunk.appendAll(allParts, responseParts))
-              })
-            )
-          }),
-          semaphore.withPermits(1),
-          Effect.withSpan("AiChat.toolkit", {
-            attributes: { input: options.input },
-            captureStackTrace: false
-          })
-        )
-      },
-      toolkitStream<Tools extends AiToolkit.Tool.AnySchema>(options: {
-        readonly input: AiInput.Input
-        readonly tools: AiToolkit.Handlers<Tools>
-        readonly required?: Tools["_tag"] | boolean | undefined
-        readonly concurrency?: Concurrency | undefined
-      }): Stream.Stream<
-        WithResolved<AiToolkit.Tool.Success<Tools>>,
-        AiError | AiToolkit.Tool.Failure<Tools>,
-        AiToolkit.Tool.Context<Tools>
-      > {
-        return Stream.suspend(() => {
-          let combined = WithResolved.empty as WithResolved<AiToolkit.Tool.Success<Tools>>
-          return Stream.fromChannel(Channel.acquireUseRelease(
-            semaphore.take(1).pipe(
-              Effect.zipRight(Ref.get(history)),
-              Effect.map(Chunk.appendAll(AiInput.make(options.input)))
-            ),
-            (parts) =>
-              completions.toolkitStream({
-                ...options,
-                input: parts
-              }).pipe(
-                Stream.map((chunk) => {
-                  combined = combined.concat(chunk)
-                  return chunk
-                }),
-                Stream.toChannel
-              ),
-            (parts) =>
-              Effect.zipRight(
-                Ref.set(history, Chunk.appendAll(parts, AiInput.make(combined))),
-                semaphore.release(1)
-              )
-          ))
-        }).pipe(Stream.withSpan("AiChat.toolkitStream", {
-          attributes: { input: options.input },
-          captureStackTrace: false
-        }))
+        ) as any
       }
     })
   }
@@ -244,22 +212,22 @@ export const fromInput = Effect.fnUntraced(
  * @since 1.0.0
  * @category constructors
  */
-export const empty: Effect.Effect<AiChat.Service, never, Completions> = fromInput(AiInput.empty)
+export const empty: Effect.Effect<AiChat.Service, never, AiLanguageModel> = fromPrompt({ prompt: [] })
+
+const decodeUnknown = Schema.decodeUnknown(AiInput.AiInput)
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const fromExport = (data: unknown): Effect.Effect<AiChat.Service, ParseError, Completions> =>
-  Schema.decodeUnknown(AiInput.Schema)(data).pipe(
-    Effect.flatMap(fromInput)
-  )
+export const fromExport = (data: unknown): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel> =>
+  Effect.flatMap(decodeUnknown(data), (prompt) => fromPrompt({ prompt }))
+
+const decodeJson = Schema.decode(AiInput.AiInputFromJson)
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const fromJson = (data: string): Effect.Effect<AiChat.Service, ParseError, Completions> =>
-  Schema.decode(AiInput.SchemaJson)(data).pipe(
-    Effect.flatMap(fromInput)
-  )
+export const fromJson = (data: string): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel> =>
+  Effect.flatMap(decodeJson(data), (prompt) => fromPrompt({ prompt }))

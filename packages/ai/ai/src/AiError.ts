@@ -7,7 +7,7 @@ import * as Schema from "effect/Schema"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId: unique symbol = Symbol("@effect/ai/AiError")
+export const TypeId: unique symbol = Symbol.for("@effect/ai/AiError")
 
 /**
  * @since 1.0.0
