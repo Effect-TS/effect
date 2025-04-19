@@ -6,7 +6,7 @@ import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as RpcMiddleware from "@effect/rpc/RpcMiddleware"
 import * as RpcSchema from "@effect/rpc/RpcSchema"
 import * as RpcServer from "@effect/rpc/RpcServer"
-import { Context, Effect, Layer, Mailbox, Option, Schema } from "effect"
+import { Context, Effect, Layer, Mailbox, Metric, Option, Schema } from "effect"
 
 export class User extends Schema.Class<User>("User")({
   id: Schema.String,
@@ -31,6 +31,10 @@ class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware
   requiredForClient: true
 }) {}
 
+class TimingMiddleware extends RpcMiddleware.Tag<TimingMiddleware>()("TimingMiddleware", {
+  wrap: true
+}) {}
+
 export const UserRpcs = RpcGroup.make(
   Rpc.make("GetUser", {
     success: User,
@@ -48,7 +52,20 @@ export const UserRpcs = RpcGroup.make(
     success: Schema.Number
   }),
   Rpc.make("ProduceDefect"),
-  Rpc.make("Never")
+  Rpc.make("Never"),
+  Rpc.make("TimedMethod", {
+    payload: {
+      shouldFail: Schema.Boolean
+    },
+    success: Schema.Number
+  }).middleware(TimingMiddleware),
+  Rpc.make("GetTimingMiddlewareMetrics", {
+    success: Schema.Struct({
+      success: Schema.Number,
+      defect: Schema.Number,
+      count: Schema.Number
+    })
+  })
 ).middleware(AuthMiddleware)
 
 const AuthLive = Layer.succeed(
@@ -56,6 +73,20 @@ const AuthLive = Layer.succeed(
   AuthMiddleware.of((options) =>
     Effect.succeed(
       new User({ id: options.headers.userid ?? "1", name: options.headers.name ?? "Fallback name" })
+    )
+  )
+)
+
+const rpcSuccesses = Metric.counter("rpc_middleware_success")
+const rpcDefects = Metric.counter("rpc_middleware_defects")
+const rpcCount = Metric.counter("rpc_middleware_count")
+const TimingLive = Layer.succeed(
+  TimingMiddleware,
+  TimingMiddleware.of((options) =>
+    options.next.pipe(
+      Metric.trackSuccess(rpcSuccesses),
+      Effect.tapDefect(() => Metric.increment(rpcDefects)),
+      Effect.ensuring(Metric.increment(rpcCount))
     )
   )
 )
@@ -94,14 +125,22 @@ const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
     GetInterrupts: () => Effect.sync(() => interrupts),
     GetEmits: () => Effect.sync(() => emits),
     ProduceDefect: () => Effect.die("boom"),
-    Never: () => Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => interrupts++)))
+    Never: () => Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => interrupts++))),
+    TimedMethod: (_) => _.shouldFail ? Effect.die("boom") : Effect.succeed(1),
+    GetTimingMiddlewareMetrics: () =>
+      Effect.all({
+        defect: Metric.value(rpcDefects).pipe(Effect.map((_) => _.count)),
+        success: Metric.value(rpcSuccesses).pipe(Effect.map((_) => _.count)),
+        count: Metric.value(rpcCount).pipe(Effect.map((_) => _.count))
+      })
   }
 }))
 
 export const RpcLive = RpcServer.layer(UserRpcs).pipe(
   Layer.provide([
     UsersLive,
-    AuthLive
+    AuthLive,
+    TimingLive
   ])
 )
 
@@ -119,6 +158,6 @@ export class UsersClient extends Context.Tag("UsersClient")<
     Layer.provide(AuthClient)
   )
   static layerTest = Layer.scoped(UsersClient, RpcTest.makeClient(UserRpcs)).pipe(
-    Layer.provide([UsersLive, AuthLive, AuthClient])
+    Layer.provide([UsersLive, AuthLive, TimingLive, AuthClient])
   )
 }
