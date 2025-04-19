@@ -3,30 +3,29 @@
  */
 import { AiError } from "@effect/ai/AiError"
 import type * as AiInput from "@effect/ai/AiInput"
+import * as AiLanguageModel from "@effect/ai/AiLanguageModel"
 import * as AiModel from "@effect/ai/AiModel"
 import * as AiResponse from "@effect/ai/AiResponse"
-import * as AiRole from "@effect/ai/AiRole"
-import * as Completions from "@effect/ai/Completions"
 import * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
-import type * as Option from "effect/Option"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
-import type { StreamChunk } from "./OpenAiClient.js"
 import { OpenAiClient } from "./OpenAiClient.js"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.js"
 import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
 
 /**
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export type Model = typeof Generated.ModelIdsSharedEnum.Encoded
 
@@ -36,9 +35,9 @@ export type Model = typeof Generated.ModelIdsSharedEnum.Encoded
 
 /**
  * @since 1.0.0
- * @category tags
+ * @category Context
  */
-export class Config extends Context.Tag("@effect/ai-openai/OpenAiCompletions/Config")<
+export class Config extends Context.Tag("@effect/ai-openai/OpenAiLanguageModel/Config")<
   Config,
   Config.Service
 >() {
@@ -57,7 +56,7 @@ export class Config extends Context.Tag("@effect/ai-openai/OpenAiCompletions/Con
 export declare namespace Config {
   /**
    * @since 1.0.0
-   * @category configuration
+   * @category Models
    */
   export interface Service extends
     Simplify<
@@ -75,24 +74,24 @@ export declare namespace Config {
 // OpenAi Completions
 // =============================================================================
 
-const modelCacheKey = Symbol.for("@effect/ai-openai/OpenAiCompletions/AiModel")
+const modelCacheKey = Symbol.for("@effect/ai-openai/OpenAiLanguageModel/AiModel")
 
 /**
  * @since 1.0.0
- * @category ai models
+ * @category AI Models
  */
 export const model = (
   model: (string & {}) | Model,
   config?: Omit<Config.Service, "model">
-): AiModel.AiModel<Completions.Completions | Tokenizer.Tokenizer, OpenAiClient> =>
+): AiModel.AiModel<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, OpenAiClient> =>
   AiModel.make({
     model,
     cacheKey: modelCacheKey,
     requires: OpenAiClient,
     provides: Effect.map(
       make({ model, config }),
-      (completions) => Context.make(Completions.Completions, completions)
-    ) as Effect.Effect<Context.Context<Completions.Completions | Tokenizer.Tokenizer>>,
+      (completions) => Context.make(AiLanguageModel.AiLanguageModel, completions)
+    ) as Effect.Effect<Context.Context<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer>>,
     updateContext: (context) => {
       const innerConfig = context.unsafeMap.get(Config.key) as Config.Service | undefined
       return Context.mergeAll(
@@ -109,15 +108,23 @@ const make = Effect.fnUntraced(function*(options: {
 }) {
   const client = yield* OpenAiClient
 
-  const makeRequest = ({ input, required, system, tools }: Completions.CompletionOptions) => {
+  const makeRequest = ({ prompt, required, system, tools }: AiLanguageModel.AiLanguageModelOptions) => {
     const useStructured = tools.length === 1 && tools[0].structured
+    let toolChoice: typeof Generated.ChatCompletionToolChoiceOption.Encoded | undefined = undefined
+    if (Predicate.isNotUndefined(required)) {
+      if (Predicate.isBoolean(required)) {
+        toolChoice = required ? "required" : "auto"
+      } else {
+        toolChoice = { type: "function", function: { name: required } }
+      }
+    }
     return Effect.map(
       Effect.context<never>(),
       (context): typeof Generated.CreateChatCompletionRequest.Encoded => ({
         model: options.model,
         ...options.config,
         ...context.unsafeMap.get(Config.key),
-        messages: makeMessages(input, system),
+        messages: makeMessages(prompt, system),
         response_format: useStructured ?
           {
             type: "json_schema",
@@ -140,22 +147,17 @@ const make = Effect.fnUntraced(function*(options: {
             }
           })) :
           undefined,
-        tool_choice: !useStructured && tools.length > 0 ?
-          typeof required === "boolean" ? (required ? "required" : "auto") : {
-            type: "function",
-            function: { name: required }
-          } :
-          undefined
+        tool_choice: !useStructured && tools.length > 0 ? toolChoice : undefined
       })
     )
   }
 
-  return yield* Completions.make({
-    create({ span, ...options }) {
+  return AiLanguageModel.make({
+    generateText(options) {
       return makeRequest(options).pipe(
-        Effect.tap((request) => annotateRequest(span, request)),
+        Effect.tap((request) => annotateRequest(options.span, request)),
         Effect.flatMap(client.client.createChatCompletion),
-        Effect.tap((response) => annotateChatResponse(span, response)),
+        Effect.tap((response) => annotateChatResponse(options.span, response)),
         Effect.flatMap((response) =>
           makeResponse(
             response,
@@ -168,7 +170,7 @@ const make = Effect.fnUntraced(function*(options: {
         Effect.catchAll((cause) =>
           Effect.fail(
             new AiError({
-              module: "OpenAiCompletions",
+              module: "OpenAiLanguageModel",
               method: "create",
               description: "An error occurred",
               cause
@@ -177,20 +179,19 @@ const make = Effect.fnUntraced(function*(options: {
         )
       )
     },
-    stream({ span, ...options }) {
+    streamText(options) {
       return makeRequest(options).pipe(
-        Effect.tap((request) => annotateRequest(span, request)),
+        Effect.tap((request) => annotateRequest(options.span, request)),
         Effect.map(client.stream),
         Stream.unwrap,
         Stream.tap((response) => {
-          annotateStreamResponse(span, response)
+          annotateStreamResponse(options.span, response)
           return Effect.void
         }),
-        Stream.map((response) => response.asAiResponse),
         Stream.catchAll((cause) =>
           Effect.fail(
             new AiError({
-              module: "OpenAiCompletions",
+              module: "OpenAiLanguageModel",
               method: "stream",
               description: "An error occurred",
               cause
@@ -204,30 +205,30 @@ const make = Effect.fnUntraced(function*(options: {
 
 /**
  * @since 1.0.0
- * @category layers
+ * @category Layers
  */
 export const layerCompletions = (options: {
   readonly model: (string & {}) | Model
   readonly config?: Omit<Config.Service, "model">
-}): Layer.Layer<Completions.Completions, never, OpenAiClient> =>
+}): Layer.Layer<AiLanguageModel.AiLanguageModel, never, OpenAiClient> =>
   Layer.effect(
-    Completions.Completions,
+    AiLanguageModel.AiLanguageModel,
     make({ model: options.model, config: options.config })
   )
 
 /**
  * @since 1.0.0
- * @category layers
+ * @category Layers
  */
 export const layer = (options: {
   readonly model: (string & {}) | Model
   readonly config?: Omit<Config.Service, "model">
-}): Layer.Layer<Completions.Completions | Tokenizer.Tokenizer, never, OpenAiClient> =>
+}): Layer.Layer<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, never, OpenAiClient> =>
   Layer.merge(layerCompletions(options), OpenAiTokenizer.layer(options))
 
 /**
  * @since 1.0.0
- * @category configuration
+ * @category Configuration
  */
 export const withConfigOverride: {
   (overrides: Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
@@ -242,115 +243,134 @@ export const withConfigOverride: {
   ))
 
 const makeMessages = (
-  input: AiInput.AiInput,
+  prompt: AiInput.AiInput,
   system: Option.Option<string>
 ): Arr.NonEmptyReadonlyArray<typeof Generated.ChatCompletionRequestMessage.Encoded> => {
-  const messages: Array<typeof Generated.ChatCompletionRequestMessage.Encoded> = system._tag === "Some" ?
-    [makeSystemMessage(system.value)] :
-    []
-  for (const message of input) {
-    // eslint-disable-next-line no-restricted-syntax
-    messages.push(...convertMessage(message))
-  }
-  return messages as any
-}
+  type Messages = Array<typeof Generated.ChatCompletionRequestMessage.Encoded>
+  type UserPart = typeof Generated.ChatCompletionRequestUserMessageContentPart.Encoded
 
-const formatRole = (role: AiRole.AiRole) => {
-  switch (role._tag) {
-    case "UserWithName":
-      return {
-        role: "user",
-        name: safeName(role.name)
-      } as const
-    case "User":
-      return {
-        role: "user"
-      } as const
-    case "Model":
-      return {
-        role: "assistant"
-      } as const
-  }
-}
+  const messages: Messages = Option.match(system, {
+    onNone: () => [],
+    onSome: (content) => [{ role: "system", content }]
+  })
 
-const convertMessage = (
-  message: AiInput.Message
-): Array<typeof Generated.ChatCompletionRequestMessage.Encoded> => {
-  const messages: Array<typeof Generated.ChatCompletionRequestMessage.Encoded> = []
-  let parts: Array<typeof Generated.ChatCompletionRequestUserMessageContentPart.Encoded> = []
-  let toolCalls: Array<typeof Generated.ChatCompletionMessageToolCall.Encoded> = []
-  function flushContent() {
-    if (parts.length === 0) return
-    messages.push({
-      ...formatRole(message.role),
-      content: parts as any
-    })
-    parts = []
-  }
-  function flushToolCalls() {
-    if (toolCalls.length === 0) return
-    messages.push({
-      role: "assistant",
-      content: null,
-      tool_calls: toolCalls
-    })
-    toolCalls = []
-  }
-  for (const part of message.parts) {
-    if (part._tag === "ToolCall") {
-      flushContent()
-      toolCalls.push({
-        id: part.id,
-        type: "function",
-        function: {
-          name: part.name,
-          arguments: JSON.stringify(part.params)
+  for (const message of prompt) {
+    switch (message.role) {
+      case "assistant": {
+        let text = ""
+        const toolCalls: Array<typeof Generated.ChatCompletionMessageToolCall.Encoded> = []
+
+        for (const part of message.parts) {
+          switch (part._tag) {
+            case "Text": {
+              text += part.content
+              break
+            }
+            case "ToolCall": {
+              toolCalls.push({
+                id: part.id,
+                type: "function",
+                function: {
+                  name: part.name,
+                  arguments: JSON.stringify(part.params)
+                }
+              })
+              break
+            }
+          }
         }
-      })
-    } else if (part._tag === "ToolCallResolved") {
-      flushContent()
-      flushToolCalls()
-      messages.push({
-        role: "tool",
-        tool_call_id: part.toolCallId,
-        content: JSON.stringify(part.value)
-      })
-    } else {
-      flushToolCalls()
-      parts.push(makeContentPart(part))
+
+        messages.push({
+          role: "assistant",
+          content: text,
+          tool_calls: toolCalls.length > 0 ? toolCalls : undefined
+        })
+
+        break
+      }
+      case "tool": {
+        for (const part of message.parts) {
+          messages.push({
+            role: "tool",
+            tool_call_id: part.id,
+            content: JSON.stringify(part.result)
+          })
+        }
+        break
+      }
+      case "user": {
+        // Handle the case where the message content is just a single piece of text
+        if (message.parts.length === 1 && message.parts[0]._tag === "Text") {
+          messages.push({ role: "user", content: message.parts[0].content })
+        }
+
+        const content = message.parts.map((part, index): UserPart => {
+          switch (part._tag) {
+            case "File": {
+              if (part.fileContent instanceof URL) {
+                throw new AiError({
+                  module: "OpenAiLanguageModel",
+                  method: "",
+                  description: `OpenAi does not support file content parts with URL data`
+                })
+              }
+              switch (part.mediaType) {
+                case "audio/wav": {
+                  return {
+                    type: "input_audio",
+                    input_audio: { data: part.fileContent, format: "wav" }
+                  }
+                }
+                case "audio/mp3":
+                case "audio/mpeg": {
+                  return {
+                    type: "input_audio",
+                    input_audio: { data: part.fileContent, format: "mp3" }
+                  }
+                }
+                case "application/pdf": {
+                  return {
+                    type: "file",
+                    file: {
+                      filename: part.fileName ?? `part-${index}.pdf`,
+                      file_data: `data:application/pdf;base64,${part.fileContent}`
+                    }
+                  }
+                }
+              }
+              throw new AiError({
+                module: "OpenAiLanguageModel",
+                method: "",
+                description: `OpenAi does not support file inputs of type "${part.mediaType}"`
+              })
+            }
+            case "Text": {
+              return { type: "text", text: part.content }
+            }
+            case "Image": {
+              const url = part.url instanceof URL
+                ? part.url.toString()
+                : `data:${part.mediaType ?? "image/jpeg"};base64,${Encoding.encodeBase64(part.url)}`
+              const detail = part.providerOptions?.openai?.imageDetail as any
+              return { type: "image_url", image_url: { url, detail } }
+            }
+          }
+        })
+
+        if (Arr.isNonEmptyArray(content)) {
+          messages.push({
+            role: message.role,
+            name: message.userName,
+            content
+          })
+        }
+
+        break
+      }
     }
   }
-  flushContent()
-  flushToolCalls()
-  return messages
-}
 
-const makeContentPart = (
-  part: AiInput.TextPart | AiInput.ImagePart | AiInput.ImageUrlPart
-): typeof Generated.ChatCompletionRequestUserMessageContentPart.Encoded => {
-  switch (part._tag) {
-    case "Image":
-      return {
-        type: "image_url",
-        image_url: {
-          url: part.asDataUri,
-          detail: part.quality
-        }
-      }
-    case "ImageUrl":
-      return {
-        type: "image_url",
-        image_url: {
-          url: part.url,
-          detail: part.quality
-        }
-      }
-    case "Text":
-      return {
-        type: "text",
-        text: part.content
-      }
-  }
+  return messages as any
 }
 
 const makeResponse = (
@@ -364,7 +384,7 @@ const makeResponse = (
   Arr.head(response.choices).pipe(
     Effect.mapError(() =>
       new AiError({
-        module: "OpenAiCompletions",
+        module: "OpenAiLanguageModel",
         method,
         description: "Could not get response"
       })
@@ -380,12 +400,9 @@ const makeResponse = (
         ])
       }
 
-      const res = typeof choice.message.content === "string" ?
-        AiResponse.AiResponse.fromText({
-          role: AiRole.model,
-          content: choice.message.content!
-        }) :
-        AiResponse.AiResponse.empty
+      const res = typeof choice.message.content === "string"
+        ? AiResponse.AiResponse.fromText(choice.message.content!)
+        : AiResponse.AiResponse.empty
 
       if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
         return res.withToolCallsJson(choice.message.tool_calls.map((toolCall) => ({
@@ -398,15 +415,6 @@ const makeResponse = (
       return Effect.succeed(res)
     })
   )
-
-const makeSystemMessage = (content: string): typeof Generated.ChatCompletionRequestSystemMessage.Encoded => {
-  return {
-    role: "system",
-    content
-  }
-}
-
-const safeName = (name: string) => name.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/, "_")
 
 const annotateRequest = (
   span: Span,
@@ -459,26 +467,25 @@ const annotateChatResponse = (
 
 const annotateStreamResponse = (
   span: Span,
-  response: StreamChunk
+  response: AiResponse.AiResponse
 ) => {
-  const usage = response.parts.find((part) => part._tag === "Usage")
-  if (Predicate.isNotNullable(usage)) {
-    addGenAIAnnotations(span, {
+  const responseMetadataPart = response.parts.find((part) => part._tag === "ResponseMetadata")
+  const finishPart = response.parts.find((part) => part._tag === "Finish")
+  addGenAIAnnotations(span, {
+    response: {
+      id: responseMetadataPart?.id,
+      model: responseMetadataPart?.model,
+      finishReasons: finishPart?.reason ? [finishPart.reason] : undefined
+    },
+    usage: {
+      inputTokens: finishPart?.usage.inputTokens,
+      outputTokens: finishPart?.usage.outputTokens
+    },
+    openai: {
       response: {
-        id: usage.id,
-        model: usage.model,
-        finishReasons: usage.finishReasons
-      },
-      usage: {
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens
-      },
-      openai: {
-        response: {
-          systemFingerprint: usage.systemFingerprint,
-          serviceTier: usage.serviceTier
-        }
+        serviceTier: finishPart?.providerMetadata?.openai?.serviceTier as any,
+        systemFingerprint: finishPart?.providerMetadata?.openai?.systemFingerprint as any
       }
-    })
-  }
+    }
+  })
 }
