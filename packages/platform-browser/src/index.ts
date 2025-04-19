@@ -6,6 +6,11 @@ export * as BrowserHttpClient from "./BrowserHttpClient.js"
 /**
  * @since 1.0.0
  */
+export * as BrowserIndexedDb from "./BrowserIndexedDb.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as BrowserKeyValueStore from "./BrowserKeyValueStore.js"
 
 /**
