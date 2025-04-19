@@ -100,5 +100,17 @@ export const e2eSuite = <E>(
         RpcClient.withHeaders({ userId: "123" }),
         Effect.provide(layer)
       ))
+
+    it.effect("server wrap middleware", () =>
+      Effect.gen(function*() {
+        const client = yield* UsersClient
+        const result = yield* client.TimedMethod({ shouldFail: false })
+        assert.equal(result, 1)
+        yield* client.TimedMethod({ shouldFail: true }).pipe(Effect.exit)
+        const { count, defect, success } = yield* client.GetTimingMiddlewareMetrics()
+        assert.notEqual(count, 0)
+        assert.notEqual(defect, 0)
+        assert.notEqual(success, 0)
+      }).pipe(Effect.provide(layer)))
   })
 }
