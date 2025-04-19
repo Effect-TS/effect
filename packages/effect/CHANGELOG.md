@@ -1,5 +1,11 @@
 # effect
 
+## 3.14.12
+
+### Patch Changes
+
+- [#4735](https://github.com/Effect-TS/effect/pull/4735) [`9c68654`](https://github.com/Effect-TS/effect/commit/9c686542b6eb3ea188cb70673ef2e41223633e89) Thanks @suddenlyGiovanni! - Improve `Number` module with comprehensive TsDocs and type-level tests
+
 ## 3.14.11
 
 ### Patch Changes
