@@ -1,17 +1,15 @@
 /**
  * @since 1.0.0
  */
-import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import type { AiError } from "./AiError.js"
-import type { Message } from "./AiInput.js"
 import * as AiInput from "./AiInput.js"
 
 /**
  * @since 1.0.0
- * @category tags
+ * @category Tags
  */
 export class Tokenizer extends Context.Tag("@effect/ai/Tokenizer")<
   Tokenizer,
@@ -20,22 +18,21 @@ export class Tokenizer extends Context.Tag("@effect/ai/Tokenizer")<
 
 /**
  * @since 1.0.0
- * @category models
  */
 export declare namespace Tokenizer {
   /**
    * @since 1.0.0
-   * @models
+   * @category Models
    */
   export interface Service {
-    readonly tokenize: (content: AiInput.Input) => Effect.Effect<Array<number>, AiError>
-    readonly truncate: (content: AiInput.Input, tokens: number) => Effect.Effect<AiInput.Input, AiError>
+    readonly tokenize: (content: AiInput.AiInput.Raw) => Effect.Effect<Array<number>, AiError>
+    readonly truncate: (content: AiInput.AiInput.Raw, tokens: number) => Effect.Effect<AiInput.AiInput.Raw, AiError>
   }
 }
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const make = (options: {
   readonly tokenize: (content: AiInput.AiInput) => Effect.Effect<Array<number>, AiError>
@@ -57,20 +54,19 @@ const truncate = (
   Effect.suspend(() => {
     let count = 0
     let inParts = self
-    let outParts: Chunk.Chunk<Message> = Chunk.empty()
+    let outParts: Array<AiInput.Message> = []
     const loop: Effect.Effect<AiInput.AiInput, AiError> = Effect.suspend(() => {
-      const o = Chunk.last(inParts)
-      if (Option.isNone(o)) {
+      const part = inParts[inParts.length - 1]
+      if (Predicate.isUndefined(part)) {
         return Effect.succeed(AiInput.make(outParts))
       }
-      const part = o.value
-      inParts = Chunk.dropRight(inParts, 1)
-      return Effect.flatMap(tokenize(Chunk.of(part)), (tokens) => {
+      inParts = inParts.slice(0, inParts.length - 1)
+      return Effect.flatMap(tokenize([part]), (tokens) => {
         count += tokens.length
         if (count > maxTokens) {
           return Effect.succeed(AiInput.make(outParts))
         }
-        outParts = Chunk.prepend(outParts, part)
+        outParts = [part, ...outParts]
         return loop
       })
     })

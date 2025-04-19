@@ -1,28 +1,157 @@
 /**
  * @since 1.0.0
  */
-import type { PlatformError } from "@effect/platform/Error"
-import * as FileSystem from "@effect/platform/FileSystem"
-import * as Path from "@effect/platform/Path"
-import * as Chunk from "effect/Chunk"
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Encoding from "effect/Encoding"
-import { dual } from "effect/Function"
-import * as Option from "effect/Option"
-import * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
-import * as Schema_ from "effect/Schema"
-import { AiResponse, ToolCallId, WithResolved } from "./AiResponse.js"
-import * as AiRole from "./AiRole.js"
+import * as Schema from "effect/Schema"
+import * as AiResponse from "./AiResponse.js"
+import * as InternalCommon from "./internal/common.js"
 
 const constDisableValidation = { disableValidation: true } as const
 
 /**
  * @since 1.0.0
+ * @category Models
+ */
+export const AiInput: Schema.Array$<Schema.suspend<Message, typeof Message.Encoded, never>> = Schema.Array(
+  Schema.suspend(() => Message)
+).pipe(Schema.annotations({ identifier: "@effect/ai/AiInput" }))
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export const AiInputFromJson: Schema.Schema<ReadonlyArray<Message>, string> = Schema.parseJson(AiInput)
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export type AiInput = typeof AiInput.Type
+
+/**
+ * @since 1.0.0
+ */
+export declare namespace AiInput {
+  /**
+   * @since 1.0.0
+   * @category Models
+   */
+  export type Raw =
+    | string
+    | Message
+    | Iterable<Message>
+    | AiResponse.AiResponse
+    | AiResponse.WithStructuredOutput<unknown>
+    | AiResponse.WithToolCallResults<unknown>
+}
+
+/**
+ * Represents additional provider-specific options that can be provided to the
+ * model.
+ *
+ * The outer record is keyed by provider name, while the inner record is keyed
+ * by the names of the provider-specific input properties.
+ *
+ * ```ts
+ * {
+ *   "amazon-bedrock": {
+ *     trace: { ... }
+ *   }
+ * }
+ * ```
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export const ProviderOptions: Schema.Record$<
+  typeof Schema.String,
+  Schema.Record$<typeof Schema.String, typeof Schema.Unknown>
+> = InternalCommon.ProviderMetadata
+
+/**
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const make = (input: AiInput.Raw): AiInput => {
+  if (typeof input === "string") {
+    const textPart = TextPart.fromContent(input)
+    return [UserMessage.make({ parts: [textPart] })]
+  }
+  if (isMessage(input)) {
+    return [input]
+  }
+  if (Predicate.isIterable(input)) {
+    return Array.from(input)
+  }
+  return fromResponse(input)
+}
+
+const excludedResponseParts: Array<AiResponse.Part["_tag"]> = [
+  "Finish",
+  "Reasoning",
+  "RedactedReasoning",
+  "ResponseMetadata"
+]
+
+const filterResponseParts = (part: AiResponse.Part): part is AiResponse.TextPart | AiResponse.ToolCallPart =>
+  !excludedResponseParts.includes(part._tag)
+
+const fromAiResponse = (response: AiResponse.AiResponse): AiInput => {
+  if (response.parts.length === 0) {
+    return []
+  }
+  const parts = response.parts.filter(filterResponseParts).map((part) => {
+    switch (part._tag) {
+      case "Text": {
+        return TextPart.fromContent(part.content)
+      }
+      case "ToolCall": {
+        return ToolCallPart.make({
+          id: part.id,
+          name: part.name,
+          params: part.params
+        }, constDisableValidation)
+      }
+    }
+  })
+  return [AssistantMessage.make({ parts }, constDisableValidation)]
+}
+
+/**
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const fromResponse = (
+  response: AiResponse.AiResponse | AiResponse.WithStructuredOutput<unknown> | AiResponse.WithToolCallResults<unknown>
+): AiInput => {
+  if (AiResponse.AiResponse.is(response)) {
+    return fromAiResponse(response)
+  }
+  if (AiResponse.WithStructuredOutput.is(response)) {
+    const parts = [
+      ToolCallResultPart.make({
+        id: response.toolCallId,
+        result: response.value
+      }, constDisableValidation)
+    ]
+    return [...fromAiResponse(response.response), ToolMessage.make({ parts }, constDisableValidation)]
+  }
+  const parts: Array<ToolCallResultPart> = []
+  for (const [id, result] of response.encodedResults) {
+    parts.push(ToolCallResultPart.make({ id, result }, constDisableValidation))
+  }
+  return [...fromAiResponse(response.response), ToolMessage.make({ parts }, constDisableValidation)]
+}
+
+// =============================================================================
+// Ai Input Parts
+// =============================================================================
+
+/**
+ * @since 1.0.0
  * @category parts
  */
-export const PartTypeId: unique symbol = Symbol("@effect/ai/AiInput/Part")
+export const PartTypeId: unique symbol = Symbol.for("@effect/ai/AiInput/Part")
 
 /**
  * @since 1.0.0
@@ -31,16 +160,29 @@ export const PartTypeId: unique symbol = Symbol("@effect/ai/AiInput/Part")
 export type PartTypeId = typeof PartTypeId
 
 /**
+ * Represents the text part of a message.
+ *
  * @since 1.0.0
- * @category parts
+ * @category Models
  */
-export class TextPart extends Schema_.TaggedClass<TextPart>("@effect/ai/AiInput/TextPart")("Text", {
-  content: Schema_.String
+export class TextPart extends Schema.TaggedClass<TextPart>(
+  "@effect/ai/AiInput/TextPart"
+)("Text", {
+  /**
+   * The text content.
+   */
+  content: Schema.String,
+  /**
+   * Additional provider-specific options that are passed through to the model
+   * to enable provider-specific functionality.
+   */
+  providerOptions: Schema.optional(ProviderOptions)
 }) {
   /**
    * @since 1.0.0
    */
   readonly [PartTypeId]: PartTypeId = PartTypeId
+
   /**
    * @since 1.0.0
    */
@@ -51,26 +193,25 @@ export class TextPart extends Schema_.TaggedClass<TextPart>("@effect/ai/AiInput/
 
 /**
  * @since 1.0.0
- * @category parts
+ * @category Models
  */
-export const ImageQuality = Schema_.Literal("low", "high", "auto")
-
-/**
- * @since 1.0.0
- * @category parts
- */
-export type ImageQuality = typeof ImageQuality.Type
-
-/**
- * @since 1.0.0
- * @category parts
- */
-export class ImageUrlPart extends Schema_.TaggedClass<ImageUrlPart>("@effect/ai/AiInput/ImageUrlPart")("ImageUrl", {
-  url: Schema_.String,
-  quality: ImageQuality.pipe(
-    Schema_.propertySignature,
-    Schema_.withConstructorDefault(() => "auto" as const)
-  )
+export class ReasoningPart extends Schema.TaggedClass<ReasoningPart>(
+  "@effect/ai/AiInput/ReasoningPart"
+)("Reasoning", {
+  /**
+   * The reasoning content that the model used to return the output.
+   */
+  reasoning: Schema.String,
+  /**
+   * An optional signature which verifies that the reasoning text was generated
+   * by the model.
+   */
+  signature: Schema.optional(Schema.String),
+  /**
+   * Additional provider-specific options that are passed through to the model
+   * to enable provider-specific functionality.
+   */
+  providerOptions: Schema.optional(ProviderOptions)
 }) {
   /**
    * @since 1.0.0
@@ -78,150 +219,129 @@ export class ImageUrlPart extends Schema_.TaggedClass<ImageUrlPart>("@effect/ai/
   readonly [PartTypeId]: PartTypeId = PartTypeId
 }
 
-const base64ContentTypeRegex = /^data:(.*?);base64$/
-
 /**
  * @since 1.0.0
- * @category base64
+ * @category Models
  */
-export interface Base64DataUrl extends
-  Schema_.transformOrFail<
-    typeof Schema_.String,
-    Schema_.Struct<{
-      data: Schema_.Schema<Uint8Array>
-      contentType: typeof Schema_.String
-    }>
-  >
-{}
-
-/**
- * @since 1.0.0
- * @category base64
- */
-export const Base64DataUrl: Base64DataUrl = Schema_.transformOrFail(
-  Schema_.String.annotations({
-    title: "Base64 Data URL",
-    description: "A base64 data URL"
-  }),
-  Schema_.Struct({
-    data: Schema_.Uint8ArrayFromSelf,
-    contentType: Schema_.String
-  }),
-  {
-    decode(base64Url, _, ast) {
-      const commaIndex = base64Url.indexOf(",")
-      if (commaIndex === -1) {
-        return ParseResult.fail(new ParseResult.Type(ast, base64Url))
-      }
-      const header = base64Url.slice(0, commaIndex)
-      const data = base64Url.slice(commaIndex + 1)
-      const contentType = base64ContentTypeRegex.exec(header)
-      if (contentType === null) {
-        return ParseResult.fail(new ParseResult.Type(ast, base64Url))
-      }
-      return Encoding.decodeBase64(data).pipe(
-        ParseResult.mapError((_) => new ParseResult.Type(ast, base64Url)),
-        ParseResult.map((data) => ({ data, contentType: contentType[1] }))
-      )
-    },
-    encode({ contentType, data }) {
-      const base64 = Encoding.encodeBase64(data)
-      return ParseResult.succeed(`data:${contentType};base64,${base64}`)
-    }
-  }
-)
-
-/**
- * @since 1.0.0
- * @category parts
- */
-export class ImagePart extends Schema_.TaggedClass<ImagePart>("@effect/ai/AiInput/ImagePart")("Image", {
-  image: Base64DataUrl,
-  quality: ImageQuality.pipe(
-    Schema_.propertySignature,
-    Schema_.withConstructorDefault(() => "auto" as const)
-  )
+export class RedactedReasoningPart extends Schema.TaggedClass<RedactedReasoningPart>(
+  "@effect/ai/AiInput/RedactedReasoningPart"
+)("RedactedReasoning", {
+  /**
+   * The content in the reasoning that was encrypted by the model provider for
+   * safety reasons.
+   */
+  redactedContent: Schema.String,
+  /**
+   * Additional provider-specific options that are passed through to the model
+   * to enable provider-specific functionality.
+   */
+  providerOptions: Schema.optional(ProviderOptions)
 }) {
   /**
    * @since 1.0.0
    */
   readonly [PartTypeId]: PartTypeId = PartTypeId
-
-  /**
-   * @since 1.0.0
-   */
-  static fromPath(
-    path: string,
-    quality: ImageQuality = "auto"
-  ): Effect.Effect<
-    ImagePart,
-    PlatformError,
-    FileSystem.FileSystem | Path.Path
-  > {
-    return FileSystem.FileSystem.pipe(
-      Effect.bindTo("fs"),
-      Effect.bind("Path", () => Path.Path),
-      Effect.bind("data", ({ fs }) => fs.readFile(path)),
-      Effect.map(({ Path, data }) => {
-        const ext = Path.extname(path)
-        let contentType: string
-        switch (ext) {
-          case ".jpg":
-          case ".jpeg": {
-            contentType = "image/jpeg"
-            break
-          }
-          default: {
-            if (ext.startsWith(".")) {
-              contentType = `image/${ext.slice(1)}`
-            } else {
-              contentType = "image/png"
-            }
-            break
-          }
-        }
-        return new ImagePart({
-          image: { data, contentType },
-          quality
-        }, constDisableValidation)
-      })
-    )
-  }
-
-  /**
-   * @since 1.0.0
-   */
-  static fromBlob(blob: Blob, quality: ImageQuality = "auto"): Effect.Effect<ImagePart> {
-    return Effect.promise(() => blob.arrayBuffer()).pipe(
-      Effect.map((buffer) =>
-        new ImagePart({
-          image: {
-            contentType: blob.type,
-            data: new Uint8Array(buffer)
-          },
-          quality
-        })
-      )
-    )
-  }
-
-  get asBase64(): string {
-    return Encoding.encodeBase64(this.image.data)
-  }
-
-  get asDataUri(): string {
-    return `data:${this.image.contentType};base64,${this.asBase64}`
-  }
 }
 
 /**
  * @since 1.0.0
- * @category parts
+ * @category Models
  */
-export class ToolCallPart extends Schema_.TaggedClass<ToolCallPart>("@effect/ai/AiInput/ToolCallPart")("ToolCall", {
+export class ImagePart extends Schema.TaggedClass<ImagePart>(
+  "@effect/ai/AiInput/ImagePart"
+)("Image", {
+  /**
+   * The binary image data as a `Uint8Array` or a `URL` to the image source.
+   */
+  url: Schema.Union(Schema.Uint8ArrayFromSelf, Schema.URLFromSelf),
+  /**
+   * An optional MIME type for the image.
+   */
+  mediaType: Schema.optional(Schema.String),
+  /**
+   * Additional provider-specific options that are passed through to the model
+   * to enable provider-specific functionality.
+   */
+  providerOptions: Schema.optional(ProviderOptions)
+}) {
+  /**
+   * @since 1.0.0
+   */
+  readonly [PartTypeId]: PartTypeId = PartTypeId
+}
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export class FilePart extends Schema.TaggedClass<FilePart>(
+  "@effect/ai/AiInput/FilePart"
+)("File", {
+  /**
+   * The file content as either a base64 encoded string or as a `URL` to the
+   * file source.
+   */
+  fileContent: Schema.Union(Schema.String, Schema.URLFromSelf),
+  /**
+   * An optional filename for the file.
+   */
+  fileName: Schema.optional(Schema.String),
+  /**
+   * An optional MIME type for the file.
+   */
+  mediaType: Schema.optional(Schema.String),
+  /**
+   * Additional provider-specific options that are passed through to the model
+   * to enable provider-specific functionality.
+   */
+  providerOptions: Schema.optional(ProviderOptions)
+}) {
+  /**
+   * @since 1.0.0
+   */
+  readonly [PartTypeId]: PartTypeId = PartTypeId
+}
+
+/**
+ * Represents the identifier generated by a model when a tool call is requested.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export const ToolCallId: Schema.brand<typeof Schema.String, "ToolCallId"> = InternalCommon.ToolCallId
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export type ToolCallId = typeof ToolCallId.Type
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export class ToolCallPart extends Schema.TaggedClass<ToolCallPart>(
+  "@effect/ai/AiInput/ToolCallPart"
+)("ToolCall", {
+  /**
+   * The identifier for the tool call, used to match the tool call with the
+   * tool result.
+   */
   id: ToolCallId,
-  name: Schema_.String,
-  params: Schema_.Unknown
+  /**
+   * The name of the tool to call.
+   */
+  name: Schema.String,
+  /**
+   * The arguments to call the tool with as a JSON-serializable object that
+   * matches the tool call input schema.
+   */
+  params: Schema.Unknown,
+  /**
+   * Additional provider-specific options that are passed through to the model
+   * to enable provider-specific functionality.
+   */
+  providerOptions: Schema.optional(ProviderOptions)
 }) {
   /**
    * @since 1.0.0
@@ -231,14 +351,26 @@ export class ToolCallPart extends Schema_.TaggedClass<ToolCallPart>("@effect/ai/
 
 /**
  * @since 1.0.0
- * @category parts
+ * @category Models
  */
-export class ToolCallResolvedPart
-  extends Schema_.TaggedClass<ToolCallResolvedPart>("@effect/ai/AiInput/ToolCallResolvedPart")("ToolCallResolved", {
-    toolCallId: ToolCallId,
-    value: Schema_.Unknown
-  })
-{
+export class ToolCallResultPart extends Schema.TaggedClass<ToolCallResultPart>(
+  "@effect/ai/AiInput/ToolCallResultPart"
+)("ToolCallResult", {
+  /**
+   * The identifier for the tool call, used to match the tool result with the
+   * tool call.
+   */
+  id: ToolCallId,
+  /**
+   * The result of the tool call as a JSON-serializable object.
+   */
+  result: Schema.Unknown,
+  /**
+   * Additional provider-specific options that are passed through to the model
+   * to enable provider-specific functionality.
+   */
+  providerOptions: Schema.optional(ProviderOptions)
+}) {
   /**
    * @since 1.0.0
    */
@@ -247,222 +379,144 @@ export class ToolCallResolvedPart
 
 /**
  * @since 1.0.0
- * @category parts
+ * @category Models
  */
-export type Part = TextPart | ToolCallPart | ToolCallResolvedPart | ImagePart | ImageUrlPart
+export type Part =
+  | TextPart
+  | ImagePart
+  | FilePart
+  | ReasoningPart
+  | RedactedReasoningPart
+  | ToolCallPart
+  | ToolCallResultPart
 
 /**
  * @since 1.0.0
- * @category parts
+ * @category Models
+ */
+export const Part: Schema.Union<[
+  typeof TextPart,
+  typeof ImagePart,
+  typeof FilePart,
+  typeof ReasoningPart,
+  typeof RedactedReasoningPart,
+  typeof ToolCallPart,
+  typeof ToolCallResultPart
+]> = Schema.Union(
+  TextPart,
+  ImagePart,
+  FilePart,
+  ReasoningPart,
+  RedactedReasoningPart,
+  ToolCallPart,
+  ToolCallResultPart
+).annotations({ identifier: "@effect/ai/AiInput/Part" })
+
+/**
+ * @since 1.0.0
+ * @category Guards
  */
 export const isPart = (u: unknown): u is Part => Predicate.hasProperty(u, PartTypeId)
 
-/**
- * @since 1.0.0
- * @category parts
- */
-export declare namespace Part {
-  /**
-   * @since 1.0.0
-   * @category parts
-   */
-  export type Schema = Schema_.Union<[
-    typeof TextPart,
-    typeof ToolCallPart,
-    typeof ToolCallResolvedPart,
-    typeof ImagePart,
-    typeof ImageUrlPart
-  ]>
-}
+// =============================================================================
+// Message
+// =============================================================================
 
 /**
  * @since 1.0.0
- * @category parts
+ * @category Type Ids
  */
-export const Part: Part.Schema = Schema_.Union(TextPart, ToolCallPart, ToolCallResolvedPart, ImagePart, ImageUrlPart)
+export const MessageTypeId: unique symbol = Symbol.for("@effect/ai/AiInput/Message")
 
 /**
  * @since 1.0.0
- * @category message
- */
-export const MessageTypeId: unique symbol = Symbol("@effect/ai/AiInput/Message")
-
-/**
- * @since 1.0.0
- * @category message
+ * @category Type Ids
  */
 export type MessageTypeId = typeof MessageTypeId
 
 /**
+ * Messages sent by an end user, containing prompts or additional context
+ * information.
+ *
  * @since 1.0.0
- * @category message
+ * @category Models
  */
-export class Message extends Schema_.Class<Message>("@effect/ai/AiInput/Message")({
-  role: AiRole.AiRole,
-  parts: Schema_.Chunk(Part)
+export class UserMessage extends Schema.Class<UserMessage>(
+  "@effect/ai/AiInput/UserMessage"
+)({
+  role: Schema.Literal("user").pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => "user" as const)
+  ),
+  userName: Schema.optional(Schema.String),
+  parts: Schema.Array(Schema.Union(FilePart, ImagePart, TextPart))
 }) {
   /**
    * @since 1.0.0
    */
   readonly [MessageTypeId]: MessageTypeId = MessageTypeId
-  /**
-   * @since 1.0.0
-   */
-  static is(u: unknown): u is Message {
-    return Predicate.hasProperty(u, MessageTypeId)
-  }
-  /**
-   * @since 1.0.0
-   */
-  static fromInput(input: Message.Input, role: AiRole.AiRole = AiRole.user): Message {
-    if (typeof input === "string") {
-      return new Message({ role, parts: Chunk.of(TextPart.fromContent(input)) }, constDisableValidation)
-    } else if (isPart(input)) {
-      return new Message({ role, parts: Chunk.of(input) }, constDisableValidation)
-    }
-    return new Message({ role, parts: Chunk.fromIterable(input) }, constDisableValidation)
-  }
-  /**
-   * @since 1.0.0
-   */
-  static fromResponse(response: AiResponse): Option.Option<Message> {
-    if (Chunk.isEmpty(response.parts)) {
-      return Option.none()
-    }
-    return Option.some(
-      new Message({
-        role: response.role,
-        parts: Chunk.map(response.parts, (part) => {
-          switch (part._tag) {
-            case "Text": {
-              return TextPart.fromContent(part.content)
-            }
-            case "ToolCall": {
-              return new ToolCallPart(part, constDisableValidation)
-            }
-            case "ImageUrl": {
-              return new ImageUrlPart(part, constDisableValidation)
-            }
-          }
-        })
-      }, constDisableValidation)
-    )
-  }
-  /**
-   * @since 1.0.0
-   */
-  static fromWithResolved<A>(response: WithResolved<A>): Message {
-    const toolParts: Array<ToolCallResolvedPart> = []
-    for (const [toolCallId, value] of response.encoded) {
-      toolParts.push(new ToolCallResolvedPart({ toolCallId, value }, constDisableValidation))
-    }
-    const toolPartsChunk = Chunk.unsafeFromArray(toolParts)
-    return Option.match(Message.fromResponse(response.response), {
-      onNone: () => new Message({ role: AiRole.model, parts: toolPartsChunk }, constDisableValidation),
-      onSome: (message) =>
-        new Message({
-          role: message.role,
-          parts: Chunk.appendAll(message.parts, toolPartsChunk)
-        }, constDisableValidation)
-    })
-  }
 }
 
 /**
  * @since 1.0.0
- * @category message
+ * @category Models
  */
-export declare namespace Message {
+export class AssistantMessage extends Schema.Class<AssistantMessage>(
+  "@effect/ai/AiInput/AssistantMessage"
+)({
+  role: Schema.Literal("assistant").pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => "assistant" as const)
+  ),
+  parts: Schema.Array(Schema.Union(FilePart, ReasoningPart, RedactedReasoningPart, TextPart, ToolCallPart))
+}) {
   /**
    * @since 1.0.0
-   * @category message
    */
-  export type Input = string | Part | Iterable<Part>
+  readonly [MessageTypeId]: MessageTypeId = MessageTypeId
 }
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category Models
  */
-export const make = (input: Input, options?: {
-  readonly role?: AiRole.AiRole
-}): AiInput => {
-  if (typeof input !== "string" && Predicate.isIterable(input)) {
-    const chunk = Chunk.fromIterable(input as any)
-    if (Chunk.isEmpty(chunk)) {
-      return chunk as AiInput
-    } else if (Message.is(Chunk.unsafeHead(chunk))) {
-      return chunk as AiInput
-    }
-    return Chunk.of(Message.fromInput(chunk as any, options?.role))
-  } else if (AiResponse.is(input)) {
-    return Option.match(Message.fromResponse(input), {
-      onNone: Chunk.empty,
-      onSome: Chunk.of
-    })
-  } else if (WithResolved.is(input)) {
-    return Chunk.of(Message.fromWithResolved(input))
-  } else if (Message.is(input)) {
-    return Chunk.of(input)
-  }
-  return Chunk.of(Message.fromInput(input, options?.role))
+export class ToolMessage extends Schema.Class<ToolMessage>(
+  "@effect/ai/AiInput/ToolMessage"
+)({
+  role: Schema.Literal("tool").pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => "tool" as const)
+  ),
+  parts: Schema.Array(ToolCallResultPart)
+}) {
+  /**
+   * @since 1.0.0
+   */
+  readonly [MessageTypeId]: MessageTypeId = MessageTypeId
 }
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category Models
  */
-export const empty: AiInput = Chunk.empty()
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const Schema: Schema_.Chunk<typeof Message> = Schema_.Chunk(Message)
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const SchemaJson: Schema_.Schema<Chunk.Chunk<Message>, string> = Schema_.parseJson(Schema)
-
-/**
- * @since 1.0.0
- * @category models
- */
-export type Input =
-  | string
-  | Part
-  | Iterable<Part>
-  | Message
-  | Iterable<Message>
-  | AiResponse
-  | WithResolved<unknown>
-
-/**
- * @since 1.0.0
- * @category models
- */
-export type AiInput = Chunk.Chunk<Message>
-
-/**
- * @since 1.0.0
- * @category system
- */
-export class SystemInstruction extends Context.Tag("@effect/ai/AiInput/SystemInstruction")<
-  SystemInstruction,
-  string
->() {}
-
-/**
- * @since 1.0.0
- * @category system
- */
-export const provideSystem: {
-  (input: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, SystemInstruction>>
-  <A, E, R>(effect: Effect.Effect<A, E, R>, input: string): Effect.Effect<A, E, Exclude<R, SystemInstruction>>
-} = dual(
-  2,
-  <A, E, R>(effect: Effect.Effect<A, E, R>, input: string): Effect.Effect<A, E, Exclude<R, SystemInstruction>> =>
-    Effect.provideService(effect, SystemInstruction, input)
+export const Message: Schema.Union<[
+  typeof AssistantMessage,
+  typeof ToolMessage,
+  typeof UserMessage
+]> = Schema.Union(
+  AssistantMessage,
+  ToolMessage,
+  UserMessage
 )
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export type Message = typeof Message.Type
+
+/**
+ * @since 1.0.0
+ * @category Guards
+ */
+export const isMessage = (u: unknown): u is Message => Predicate.hasProperty(u, MessageTypeId)
