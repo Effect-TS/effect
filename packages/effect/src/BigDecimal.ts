@@ -11,7 +11,10 @@
  * It is not recommended to convert a floating point number to a decimal directly, as the floating point representation
  * may be unexpected.
  *
+ * @module BigDecimal
  * @since 2.0.0
+ * @see {@link module:BigInt} for more similar operations on `bigint` types
+ * @see {@link module:Number} for more similar operations on `number` types
  */
 
 import * as Equal from "./Equal.js"
