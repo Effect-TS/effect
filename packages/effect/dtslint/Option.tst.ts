@@ -184,12 +184,10 @@ describe("Option", () => {
 
   describe("firstSomeOf", () => {
     it("should error for invalid type parameter", () => {
-      Option.firstSomeOf<number>(
-        // @ts-expect-error: Type 'string' is not assignable to type 'number'
+      expect(Option.firstSomeOf<number>).type.not.toBeCallableWith(
         [number, string]
       )
-      pipe(
-        // @ts-expect-error: Type 'string' is not assignable to type 'number'
+      expect(pipe).type.not.toBeCallableWith(
         [number, string],
         Option.firstSomeOf<number>
       )
