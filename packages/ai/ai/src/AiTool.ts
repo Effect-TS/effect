@@ -104,6 +104,10 @@ export interface AiTool<
   >
 }
 
+/**
+ * @since 1.0.0
+ * @category Guards
+ */
 export const isAiTool = (u: unknown): u is AiTool<any, any, any, any> => Predicate.hasProperty(u, TypeId)
 
 /**
