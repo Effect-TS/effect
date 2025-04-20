@@ -6,12 +6,12 @@ export * as AnthropicClient from "./AnthropicClient.js"
 /**
  * @since 1.0.0
  */
-export * as AnthropicCompletions from "./AnthropicCompletions.js"
+export * as AnthropicConfig from "./AnthropicConfig.js"
 
 /**
  * @since 1.0.0
  */
-export * as AnthropicConfig from "./AnthropicConfig.js"
+export * as AnthropicLanguageModel from "./AnthropicLanguageModel.js"
 
 /**
  * @since 1.0.0

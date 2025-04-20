@@ -20,6 +20,7 @@ import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import * as Stream from "effect/Stream"
 import * as Generated from "./Generated.js"
+import { resolveFinishReason } from "./internal/utilities.js"
 import { OpenAiConfig } from "./OpenAiConfig.js"
 
 const constDisableValidation = { disableValidation: true } as const
@@ -108,9 +109,10 @@ export const make = (options: {
         let isFirstChunk = false
         let toolCallIndex: number | undefined = undefined
         let finishReason: AiResponse.FinishReason = "unknown"
-        let usage: Omit<AiResponse.Usage, "totalTokens"> = {
+        let usage: AiResponse.Usage = {
           inputTokens: 0,
           outputTokens: 0,
+          totalTokens: 0,
           reasoningTokens: 0,
           cacheReadInputTokens: 0,
           cacheWriteInputTokens: 0
@@ -143,11 +145,11 @@ export const make = (options: {
               usage = {
                 inputTokens: chunk.usage.prompt_tokens,
                 outputTokens: chunk.usage.completion_tokens,
+                totalTokens: chunk.usage.prompt_tokens + chunk.usage.completion_tokens,
                 reasoningTokens: chunk.usage.completion_tokens_details.reasoning_tokens,
                 cacheReadInputTokens: chunk.usage.prompt_tokens_details.cached_tokens,
                 cacheWriteInputTokens: usage.cacheWriteInputTokens
               }
-              chunk.usage.prompt_tokens_details.audio_tokens
               metadata = {
                 ...metadata,
                 serviceTier: chunk.service_tier,
@@ -309,20 +311,10 @@ type RawToolDelta = RawToolCall | {
 // Utilities
 // =============================================================================
 
-const finishReasonMap: Record<string, AiResponse.FinishReason> = {
-  content_filter: "content-filter",
-  function_call: "tool-calls",
-  length: "length",
-  stop: "stop",
-  tool_calls: "tool-calls"
-}
-
-function resolveFinishReason(finishReason: string): AiResponse.FinishReason {
-  const reason = finishReasonMap[finishReason]
-  return Predicate.isUndefined(reason) ? "unknown" : reason
-}
-
-function finishToolCall(toolCall: RawToolCall & { isFinished: boolean }, parts: Array<AiResponse.Part>) {
+const finishToolCall = (
+  toolCall: RawToolCall & { isFinished: boolean },
+  parts: Array<AiResponse.Part>
+) => {
   // Don't emit the tool call if it's already been emitted
   if (toolCall.isFinished) {
     return

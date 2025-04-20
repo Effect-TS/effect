@@ -19,9 +19,12 @@ import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
+import { resolveFinishReason } from "./internal/utilities.js"
 import { OpenAiClient } from "./OpenAiClient.js"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.js"
 import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
+
+const constDisableValidation = { disableValidation: true } as const
 
 /**
  * @since 1.0.0
@@ -108,23 +111,24 @@ const make = Effect.fnUntraced(function*(options: {
 }) {
   const client = yield* OpenAiClient
 
-  const makeRequest = ({ prompt, required, system, tools }: AiLanguageModel.AiLanguageModelOptions) => {
-    const useStructured = tools.length === 1 && tools[0].structured
-    let toolChoice: typeof Generated.ChatCompletionToolChoiceOption.Encoded | undefined = undefined
-    if (Predicate.isNotUndefined(required)) {
-      if (Predicate.isBoolean(required)) {
-        toolChoice = required ? "required" : "auto"
-      } else {
-        toolChoice = { type: "function", function: { name: required } }
+  const makeRequest = Effect.fnUntraced(
+    function*(method: string, { prompt, required, system, tools }: AiLanguageModel.AiLanguageModelOptions) {
+      const useStructured = tools.length === 1 && tools[0].structured
+      let toolChoice: typeof Generated.ChatCompletionToolChoiceOption.Encoded | undefined = undefined
+      if (Predicate.isNotUndefined(required)) {
+        if (Predicate.isBoolean(required)) {
+          toolChoice = required ? "required" : "auto"
+        } else {
+          toolChoice = { type: "function", function: { name: required } }
+        }
       }
-    }
-    return Effect.map(
-      Effect.context<never>(),
-      (context): typeof Generated.CreateChatCompletionRequest.Encoded => ({
+      const context = yield* Effect.context<never>()
+      const messages = yield* makeMessages(method, system, prompt)
+      return {
         model: options.model,
         ...options.config,
         ...context.unsafeMap.get(Config.key),
-        messages: makeMessages(prompt, system),
+        messages,
         response_format: useStructured ?
           {
             type: "json_schema",
@@ -148,30 +152,31 @@ const make = Effect.fnUntraced(function*(options: {
           })) :
           undefined,
         tool_choice: !useStructured && tools.length > 0 ? toolChoice : undefined
-      })
-    )
-  }
+      } satisfies typeof Generated.CreateChatCompletionRequest.Encoded
+    }
+  )
 
   return AiLanguageModel.make({
     generateText(options) {
-      return makeRequest(options).pipe(
+      const method = "generateText"
+      return makeRequest(method, options).pipe(
         Effect.tap((request) => annotateRequest(options.span, request)),
         Effect.flatMap(client.client.createChatCompletion),
         Effect.tap((response) => annotateChatResponse(options.span, response)),
         Effect.flatMap((response) =>
           makeResponse(
             response,
-            "create",
-            options.tools.length === 1 && options.tools[0].structured
-              ? options.tools[0]
-              : undefined
+            method
+            // options.tools.length === 1 && options.tools[0].structured
+            //   ? options.tools[0]
+            //   : undefined
           )
         ),
         Effect.catchAll((cause) =>
           Effect.fail(
             new AiError({
               module: "OpenAiLanguageModel",
-              method: "create",
+              method,
               description: "An error occurred",
               cause
             })
@@ -180,7 +185,8 @@ const make = Effect.fnUntraced(function*(options: {
       )
     },
     streamText(options) {
-      return makeRequest(options).pipe(
+      const method = "streamText"
+      return makeRequest(method, options).pipe(
         Effect.tap((request) => annotateRequest(options.span, request)),
         Effect.map(client.stream),
         Stream.unwrap,
@@ -192,7 +198,7 @@ const make = Effect.fnUntraced(function*(options: {
           Effect.fail(
             new AiError({
               module: "OpenAiLanguageModel",
-              method: "stream",
+              method,
               description: "An error occurred",
               cause
             })
@@ -242,24 +248,22 @@ export const withConfigOverride: {
     (config) => Effect.provideService(self, Config, { ...config, ...overrides })
   ))
 
-const makeMessages = (
-  prompt: AiInput.AiInput,
-  system: Option.Option<string>
-): Arr.NonEmptyReadonlyArray<typeof Generated.ChatCompletionRequestMessage.Encoded> => {
+const makeMessages = Effect.fnUntraced(function*(
+  method: string,
+  system: Option.Option<string>,
+  prompt: AiInput.AiInput
+) {
   type Messages = Array<typeof Generated.ChatCompletionRequestMessage.Encoded>
   type UserPart = typeof Generated.ChatCompletionRequestUserMessageContentPart.Encoded
-
   const messages: Messages = Option.match(system, {
     onNone: () => [],
     onSome: (content) => [{ role: "system", content }]
   })
-
   for (const message of prompt) {
     switch (message.role) {
       case "assistant": {
         let text = ""
         const toolCalls: Array<typeof Generated.ChatCompletionMessageToolCall.Encoded> = []
-
         for (const part of message.parts) {
           switch (part._tag) {
             case "Text": {
@@ -279,7 +283,6 @@ const makeMessages = (
             }
           }
         }
-
         messages.push({
           role: "assistant",
           content: text,
@@ -302,61 +305,67 @@ const makeMessages = (
         // Handle the case where the message content is just a single piece of text
         if (message.parts.length === 1 && message.parts[0]._tag === "Text") {
           messages.push({ role: "user", content: message.parts[0].content })
+          break
         }
-
-        const content = message.parts.map((part, index): UserPart => {
+        const content: Array<UserPart> = []
+        for (let index = 0; index < message.parts.length; index++) {
+          const part = message.parts[index]
           switch (part._tag) {
             case "File": {
               if (part.fileContent instanceof URL) {
-                throw new AiError({
+                return yield* new AiError({
                   module: "OpenAiLanguageModel",
-                  method: "",
-                  description: `OpenAi does not support file content parts with URL data`
+                  method,
+                  description: "OpenAi does not support file content parts with URL data"
                 })
               }
               switch (part.mediaType) {
                 case "audio/wav": {
-                  return {
+                  content.push({
                     type: "input_audio",
                     input_audio: { data: part.fileContent, format: "wav" }
-                  }
+                  })
+                  break
                 }
                 case "audio/mp3":
                 case "audio/mpeg": {
-                  return {
+                  content.push({
                     type: "input_audio",
                     input_audio: { data: part.fileContent, format: "mp3" }
-                  }
+                  })
+                  break
                 }
                 case "application/pdf": {
-                  return {
+                  content.push({
                     type: "file",
                     file: {
                       filename: part.fileName ?? `part-${index}.pdf`,
                       file_data: `data:application/pdf;base64,${part.fileContent}`
                     }
-                  }
+                  })
+                  break
                 }
               }
-              throw new AiError({
+              return yield* new AiError({
                 module: "OpenAiLanguageModel",
                 method: "",
                 description: `OpenAi does not support file inputs of type "${part.mediaType}"`
               })
             }
             case "Text": {
-              return { type: "text", text: part.content }
+              content.push({ type: "text", text: part.content })
+              break
             }
             case "Image": {
               const url = part.url instanceof URL
                 ? part.url.toString()
                 : `data:${part.mediaType ?? "image/jpeg"};base64,${Encoding.encodeBase64(part.url)}`
               const detail = part.providerOptions?.openai?.imageDetail as any
-              return { type: "image_url", image_url: { url, detail } }
+              content.push({ type: "image_url", image_url: { url, detail } })
+              break
             }
           }
-        })
-
+        }
         if (Arr.isNonEmptyArray(content)) {
           messages.push({
             role: message.role,
@@ -364,57 +373,97 @@ const makeMessages = (
             content
           })
         }
-
         break
       }
     }
   }
-
-  return messages as any
-}
-
-const makeResponse = (
-  response: typeof Generated.CreateChatCompletionResponse.Type,
-  method: string,
-  structuredTool?: {
-    readonly name: string
-    readonly description: string
+  if (Arr.isNonEmptyReadonlyArray(messages)) {
+    return messages
   }
-) =>
-  Arr.head(response.choices).pipe(
-    Effect.mapError(() =>
-      new AiError({
-        module: "OpenAiLanguageModel",
-        method,
-        description: "Could not get response"
-      })
-    ),
-    Effect.flatMap((choice) => {
-      if (structuredTool) {
-        return AiResponse.AiResponse.empty.withToolCallsJson([
-          {
-            id: response.id,
-            name: structuredTool.name,
-            params: choice.message.content!
-          }
-        ])
-      }
+  return yield* new AiError({
+    module: "OpenAiLanguageModel",
+    method,
+    description: "Prompt contained no messages"
+  })
+})
 
-      const res = typeof choice.message.content === "string"
-        ? AiResponse.AiResponse.fromText(choice.message.content!)
-        : AiResponse.AiResponse.empty
-
-      if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
-        return res.withToolCallsJson(choice.message.tool_calls.map((toolCall) => ({
-          id: toolCall.id,
-          name: toolCall.function.name,
-          params: toolCall.function.arguments
-        })))
-      }
-
-      return Effect.succeed(res)
+const makeResponse = Effect.fnUntraced(function*(
+  response: typeof Generated.CreateChatCompletionResponse.Type,
+  method: string
+) {
+  const choice = response.choices[0]
+  if (Predicate.isUndefined(choice)) {
+    return yield* new AiError({
+      module: "OpenAiLanguageModel",
+      method,
+      description: "Could not get response"
     })
+  }
+  const parts: Array<AiResponse.Part> = []
+  parts.push(
+    new AiResponse.ResponseMetadataPart({
+      id: response.id,
+      model: response.model,
+      // OpenAi returns the `created` time in seconds
+      timestamp: new Date(response.created * 1000)
+    }, constDisableValidation)
   )
+  const finishReason = resolveFinishReason(choice.finish_reason)
+  const inputTokens = response.usage?.prompt_tokens ?? 0
+  const outputTokens = response.usage?.completion_tokens ?? 0
+  const totalTokens = inputTokens + outputTokens
+  const metadata: Record<string, unknown> = {}
+  if (Predicate.isNotUndefined(response.service_tier)) {
+    metadata.serviceTier = response.service_tier
+  }
+  if (Predicate.isNotUndefined(response.system_fingerprint)) {
+    metadata.systemFingerprint = response.system_fingerprint
+  }
+  if (Predicate.isNotUndefined(response.usage?.completion_tokens_details?.accepted_prediction_tokens)) {
+    metadata.acceptedPredictionTokens = response.usage?.completion_tokens_details?.accepted_prediction_tokens
+  }
+  if (Predicate.isNotUndefined(response.usage?.completion_tokens_details?.rejected_prediction_tokens)) {
+    metadata.rejectedPredictionTokens = response.usage?.completion_tokens_details?.rejected_prediction_tokens
+  }
+  if (Predicate.isNotUndefined(response.usage?.prompt_tokens_details?.audio_tokens)) {
+    metadata.inputAudioTokens = response.usage?.prompt_tokens_details?.audio_tokens
+  }
+  if (Predicate.isNotUndefined(response.usage?.completion_tokens_details?.audio_tokens)) {
+    metadata.outputAudioTokens = response.usage?.completion_tokens_details?.audio_tokens
+  }
+  parts.push(
+    new AiResponse.FinishPart({
+      reason: finishReason,
+      usage: new AiResponse.Usage({
+        inputTokens,
+        outputTokens,
+        totalTokens,
+        reasoningTokens: response.usage?.completion_tokens_details?.reasoning_tokens ?? 0,
+        cacheReadInputTokens: response.usage?.prompt_tokens_details?.cached_tokens ?? 0,
+        cacheWriteInputTokens: 0
+      }, constDisableValidation),
+      providerMetadata: {
+        openai: metadata
+      }
+    }, constDisableValidation)
+  )
+  const res = typeof choice.message.content === "string"
+    ? AiResponse.AiResponse.fromText(choice.message.content)
+    : AiResponse.AiResponse.empty
+  if (
+    Predicate.isNotUndefined(choice.message.tool_calls) &&
+    choice.message.tool_calls.length > 0
+  ) {
+    return yield* res.withToolCallsJson(
+      choice.message.tool_calls.map((tool) => ({
+        id: tool.id,
+        name: tool.function.name,
+        params: tool.function.arguments
+      }))
+    )
+  }
+  return res
+})
 
 const annotateRequest = (
   span: Span,
