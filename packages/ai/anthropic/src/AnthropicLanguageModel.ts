@@ -69,7 +69,8 @@ export declare namespace Config {
           "messages" | "tools" | "tool_choice" | "stream"
         >
       >
-    > { }
+    >
+  {}
 }
 
 // =============================================================================
@@ -141,8 +142,8 @@ const make = Effect.fnUntraced(function*(options: {
           ? toolChoice
           // For structured outputs, ensure the json output tool is used
           : useStructured
-            ? { type: "tool", name: tools[0].name }
-            : undefined
+          ? { type: "tool", name: tools[0].name }
+          : undefined
       } satisfies typeof Generated.CreateMessageParams.Encoded
     }
   )
