@@ -131,6 +131,7 @@ const mockResponse = AiResponse.AiResponse.make({
       usage: AiResponse.Usage.make({
         inputTokens: 0,
         outputTokens: 0,
+        totalTokens: 0,
         reasoningTokens: 0,
         cacheReadInputTokens: 0,
         cacheWriteInputTokens: 0

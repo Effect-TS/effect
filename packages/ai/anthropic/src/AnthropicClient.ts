@@ -2,32 +2,33 @@
  * @since 1.0.0
  */
 import * as AiError from "@effect/ai/AiError"
+import * as AiInput from "@effect/ai/AiInput"
 import * as AiModels from "@effect/ai/AiModels"
 import * as AiResponse from "@effect/ai/AiResponse"
-import * as AiRole from "@effect/ai/AiRole"
 import * as Sse from "@effect/experimental/Sse"
 import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
 import type * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
-import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import * as Stream from "effect/Stream"
-import type { Mutable } from "effect/Types"
 import { AnthropicConfig } from "./AnthropicConfig.js"
 import * as Generated from "./Generated.js"
+import { resolveFinishReason } from "./internal/utilities.js"
+
+const constDisableValidation = { disableValidation: true } as const
 
 /**
  * @since 1.0.0
- * @category tags
+ * @category Context
  */
 export class AnthropicClient extends Context.Tag(
   "@effect/ai-openai/AnthropicClient"
@@ -35,12 +36,11 @@ export class AnthropicClient extends Context.Tag(
 
 /**
  * @since 1.0.0
- * @category models
  */
 export declare namespace AnthropicClient {
   /**
    * @since 1.0.0
-   * @category models
+   * @category Models
    */
   export interface Service {
     readonly client: Generated.Client
@@ -49,13 +49,13 @@ export declare namespace AnthropicClient {
     ) => Stream.Stream<A, HttpClientError.HttpClientError>
     readonly stream: (
       request: StreamCompletionRequest
-    ) => Stream.Stream<StreamChunk, HttpClientError.HttpClientError>
+    ) => Stream.Stream<AiResponse.AiResponse, HttpClientError.HttpClientError>
   }
 }
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const make = (options: {
   readonly apiKey?: Redacted.Redacted | undefined
@@ -99,100 +99,173 @@ export const make = (options: {
       )
     const stream = (request: StreamCompletionRequest) =>
       Stream.suspend(() => {
-        const usage: Mutable<Partial<UsagePart>> = { _tag: "Usage" }
+        const toolCalls = {} as Record<number, RawToolCall>
+        let finishReason: AiResponse.FinishReason = "unknown"
+        let reasoning: {
+          readonly content: Array<string>
+          readonly signature?: string
+        } | undefined = undefined
+        let usage: AiResponse.Usage = {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          reasoningTokens: 0,
+          cacheReadInputTokens: 0,
+          cacheWriteInputTokens: 0
+        }
         return streamRequest<MessageStreamEvent>(
           HttpClientRequest.post("/v1/messages", {
             body: HttpBody.unsafeJson({ ...request, stream: true })
           })
         ).pipe(
-          Stream.mapAccumEffect(new Map<number, ContentPart | ToolCallPart>(), (acc, chunk) => {
-            const parts: Array<StreamChunkPart> = []
+          Stream.filterMapEffect((chunk) => {
+            const parts: Array<AiResponse.Part> = []
             switch (chunk.type) {
               case "message_start": {
-                usage.id = chunk.message.id
-                usage.model = chunk.message.model
-                usage.inputTokens = chunk.message.usage.input_tokens
+                usage = {
+                  inputTokens: chunk.message.usage.input_tokens,
+                  outputTokens: chunk.message.usage.output_tokens,
+                  totalTokens: chunk.message.usage.input_tokens + chunk.message.usage.output_tokens,
+                  reasoningTokens: 0,
+                  cacheWriteInputTokens: chunk.message.usage.cache_creation_input_tokens ?? 0,
+                  cacheReadInputTokens: chunk.message.usage.cache_read_input_tokens ?? 0
+                }
+                parts.push(
+                  new AiResponse.ResponseMetadataPart({
+                    id: chunk.message.id,
+                    model: chunk.message.model
+                  }, constDisableValidation)
+                )
                 break
               }
               case "message_delta": {
-                usage.finishReasons = [chunk.delta.stop_reason]
-                usage.outputTokens = chunk.usage.output_tokens
-                parts.push(usage as UsagePart)
+                usage = {
+                  ...usage,
+                  outputTokens: chunk.usage.output_tokens
+                }
+                finishReason = resolveFinishReason(chunk.delta.stop_reason)
                 break
               }
               case "message_stop": {
+                parts.push(
+                  new AiResponse.FinishPart({
+                    reason: finishReason,
+                    usage
+                  }, constDisableValidation)
+                )
                 break
               }
               case "content_block_start": {
                 const content = chunk.content_block
-                if (content.type === "tool_use") {
-                  acc.set(chunk.index, {
-                    _tag: "ToolCall",
-                    id: content.id,
-                    name: content.name,
-                    arguments: ""
-                  })
+                switch (content.type) {
+                  case "text": {
+                    break
+                  }
+                  case "thinking": {
+                    reasoning = { content: [content.thinking] }
+                    break
+                  }
+                  case "tool_use": {
+                    toolCalls[chunk.index] = {
+                      id: content.id,
+                      name: content.name,
+                      params: ""
+                    }
+                    break
+                  }
+                  case "redacted_thinking": {
+                    parts.push(
+                      new AiResponse.RedactedReasoningPart({
+                        redactedContent: content.data
+                      }, constDisableValidation)
+                    )
+                    break
+                  }
                 }
                 break
               }
               case "content_block_delta": {
                 switch (chunk.delta.type) {
-                  // TODO: add support for citations (?)
-                  case "citations_delta": {
+                  case "text_delta": {
+                    parts.push(
+                      new AiResponse.TextPart({
+                        content: chunk.delta.text
+                      }, constDisableValidation)
+                    )
+                    break
+                  }
+                  case "thinking_delta": {
+                    if (Predicate.isNotUndefined(reasoning)) {
+                      reasoning.content.push(chunk.delta.thinking)
+                    }
+                    break
+                  }
+                  case "signature_delta": {
+                    if (Predicate.isNotUndefined(reasoning)) {
+                      reasoning = {
+                        ...reasoning,
+                        signature: chunk.delta.signature
+                      }
+                    }
                     break
                   }
                   case "input_json_delta": {
-                    const toolCall = acc.get(chunk.index) as ToolCallPart
-                    acc.set(chunk.index, {
-                      ...toolCall,
-                      arguments: toolCall.arguments + chunk.delta.partial_json
-                    })
+                    const tool = toolCalls[chunk.index]
+                    if (Predicate.isNotUndefined(tool)) {
+                      tool.params += chunk.delta.partial_json
+                    }
                     break
                   }
-                  case "text_delta": {
-                    parts.push({
-                      _tag: "Content",
-                      content: chunk.delta.text
-                    })
+                  // TODO: add support for citations (?)
+                  case "citations_delta": {
                     break
                   }
                 }
                 break
               }
               case "content_block_stop": {
-                if (acc.has(chunk.index)) {
-                  const toolCall = acc.get(chunk.index) as ToolCallPart
+                if (Predicate.isNotUndefined(toolCalls[chunk.index])) {
+                  const tool = toolCalls[chunk.index]
                   try {
-                    const args = JSON.parse(toolCall.arguments as string)
-                    parts.push({
-                      _tag: "ToolCall",
-                      id: toolCall.id,
-                      name: toolCall.name,
-                      arguments: args
-                    })
+                    const params = JSON.parse(tool.params)
+                    parts.push(
+                      new AiResponse.ToolCallPart({
+                        id: AiInput.ToolCallId.make(tool.id),
+                        name: tool.name,
+                        params
+                      }, constDisableValidation)
+                    )
+                    delete toolCalls[chunk.index]
                     // eslint-disable-next-line no-empty
                   } catch {}
+                }
+                if (Predicate.isNotUndefined(reasoning)) {
+                  parts.push(
+                    new AiResponse.ReasoningPart({
+                      reasoning: reasoning.content.join(""),
+                      signature: reasoning.signature
+                    }, constDisableValidation)
+                  )
+                  reasoning = undefined
                 }
                 break
               }
               case "error": {
-                return Effect.die(
+                return Option.some(Effect.die(
                   new AiError.AiError({
                     module: "AnthropicClient",
                     method: "stream",
                     description: `${chunk.error.type}: ${chunk.error.message}`
                   })
-                )
+                ))
               }
             }
-            return Effect.succeed([
-              acc,
-              parts.length === 0
-                ? Option.none()
-                : Option.some(new StreamChunk({ parts }))
-            ])
-          }),
-          Stream.filterMap(identity)
+            return parts.length === 0 ? Option.none() : Option.some(
+              Effect.succeed(AiResponse.AiResponse.make({
+                parts
+              }, constDisableValidation))
+            )
+          })
         )
       })
     return AnthropicClient.of({ client, streamRequest, stream })
@@ -200,7 +273,7 @@ export const make = (options: {
 
 /**
  * @since 1.0.0
- * @category layers
+ * @category Layers
  */
 export const layer = (options: {
   readonly apiKey?: Redacted.Redacted | undefined
@@ -217,7 +290,7 @@ export const layer = (options: {
 
 /**
  * @since 1.0.0
- * @category layers
+ * @category Layers
  */
 export const layerConfig = (
   options: Config.Config.Wrap<{
@@ -237,7 +310,7 @@ export const layerConfig = (
 
 /**
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export type StreamCompletionRequest = Omit<
   typeof Generated.CreateMessageParams.Encoded,
@@ -280,9 +353,7 @@ interface MessageStopEvent {
 interface ContentBlockStartEvent {
   readonly type: "content_block_start"
   readonly index: number
-  readonly content_block:
-    | typeof Generated.ResponseTextBlock.Encoded
-    | typeof Generated.ResponseToolUseBlock.Encoded
+  readonly content_block: typeof Generated.ContentBlock.Encoded
 }
 
 interface ContentBlockDeltaEvent {
@@ -291,7 +362,9 @@ interface ContentBlockDeltaEvent {
   readonly delta:
     | CitationsDelta
     | InputJsonContentBlockDelta
+    | SignatureDelta
     | TextContentBlockDelta
+    | ThinkingDelta
 }
 
 interface CitationsDelta {
@@ -306,9 +379,19 @@ interface InputJsonContentBlockDelta {
   readonly partial_json: string
 }
 
+interface SignatureDelta {
+  readonly type: "signature_delta"
+  readonly signature: string
+}
+
 interface TextContentBlockDelta {
   readonly type: "text_delta"
   readonly text: string
+}
+
+interface ThinkingDelta {
+  readonly type: "thinking_delta"
+  readonly thinking: string
 }
 
 interface ContentBlockStopEvent {
@@ -332,90 +415,8 @@ interface ErrorEvent {
   }
 }
 
-/**
- * @since 1.0.0
- * @category models
- */
-export class StreamChunk extends Data.Class<{
-  readonly parts: Array<StreamChunkPart>
-}> {
-  /**
-   * @since 1.0.0
-   */
-  get text(): Option.Option<string> {
-    return this.parts[0]?._tag === "Content"
-      ? Option.some(this.parts[0].content)
-      : Option.none()
-  }
-  /**
-   * @since 1.0.0
-   */
-  get asAiResponse(): AiResponse.AiResponse {
-    if (this.parts.length === 0) {
-      return AiResponse.AiResponse.fromText({
-        role: AiRole.model,
-        content: ""
-      })
-    }
-    const part = this.parts[0]
-    switch (part._tag) {
-      case "Content":
-        return AiResponse.AiResponse.fromText({
-          role: AiRole.model,
-          content: part.content
-        })
-      case "ToolCall":
-        return new AiResponse.AiResponse({
-          role: AiRole.model,
-          parts: Chunk.of(
-            AiResponse.ToolCallPart.fromUnknown({
-              id: part.id,
-              name: part.name,
-              params: part.arguments
-            })
-          )
-        })
-      case "Usage":
-        return AiResponse.AiResponse.empty
-    }
-  }
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export type StreamChunkPart = ContentPart | ToolCallPart | UsagePart
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface ContentPart {
-  readonly _tag: "Content"
-  readonly content: string
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface ToolCallPart {
-  readonly _tag: "ToolCall"
+type RawToolCall = {
   readonly id: string
   readonly name: string
-  readonly arguments: unknown
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface UsagePart {
-  readonly _tag: "Usage"
-  readonly id: string
-  readonly model: string
-  readonly inputTokens: number
-  readonly outputTokens: number
-  readonly finishReasons: ReadonlyArray<string>
+  params: string
 }
