@@ -52,10 +52,12 @@ export declare namespace AiInput {
  * The outer record is keyed by provider name, while the inner record is keyed
  * by the names of the provider-specific input properties.
  *
+ * For example:
+ *
  * ```ts
- * {
+ * const providerMetadata = {
  *   "amazon-bedrock": {
- *     trace: { ... }
+ *     // Provider specific metadata
  *   }
  * }
  * ```
