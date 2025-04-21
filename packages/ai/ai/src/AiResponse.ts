@@ -533,10 +533,12 @@ export class Usage extends Schema.Class<Usage>(
  * The outer record is keyed by provider name, while the inner record is keyed
  * by the names of the provider-specific metadata properties.
  *
+ * For example:
+ *
  * ```ts
- * {
+ * const providerMeta = {
  *   "amazon-bedrock": {
- *     trace: { ... }
+ *     // Provider specific metadata
  *   }
  * }
  * ```
