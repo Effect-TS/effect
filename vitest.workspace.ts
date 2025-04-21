@@ -1,6 +1,6 @@
 import { defineWorkspace } from "vitest/config"
 
 export default defineWorkspace([
-  "packages/*",
-  "packages/ai/*"
+  "packages/*/vitest.config.ts",
+  "packages/ai/*/vitest.config.ts"
 ])
