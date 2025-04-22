@@ -105,14 +105,13 @@ export class OtelSpan implements EffectTracer.Span {
         this.span.setAttribute("span.label", "⚠︎ Interrupted")
         this.span.setAttribute("status.interrupted", true)
       } else {
-        const errors = Cause.prettyErrors(exit.cause)
-        if (errors.length > 0) {
-          for (const error of errors) {
-            this.span.recordException(error, hrTime)
-          }
+        const firstError = Cause.prettyErrors(exit.cause)[0]
+        if (firstError) {
+          firstError.stack = Cause.pretty(exit.cause, { renderErrorCause: true })
+          this.span.recordException(firstError, hrTime)
           this.span.setStatus({
             code: OtelApi.SpanStatusCode.ERROR,
-            message: errors[0].message
+            message: firstError.message
           })
         } else {
           // empty cause means no error

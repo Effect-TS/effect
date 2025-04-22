@@ -195,12 +195,24 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
 
   if (status.exit._tag === "Success") {
     otelStatus = constOtelStatusSuccess
+  } else if (Cause.isInterruptedOnly(status.exit.cause)) {
+    otelStatus = {
+      code: StatusCode.Ok,
+      message: Cause.pretty(status.exit.cause)
+    }
   } else {
     const errors = Cause.prettyErrors(status.exit.cause)
     const firstError = errors[0]
     otelStatus = {
       code: StatusCode.Error
     }
+    attributes.push({
+      key: "span.label",
+      value: { stringValue: "⚠︎ Interrupted" }
+    }, {
+      key: "status.interrupted",
+      value: { boolValue: true }
+    })
     if (firstError) {
       otelStatus.message = firstError.message
       events.push({
