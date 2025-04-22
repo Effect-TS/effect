@@ -76,6 +76,7 @@ export interface And extends ConfigError.Proto {
   readonly _op: "And"
   readonly left: ConfigError
   readonly right: ConfigError
+  readonly message: string
 }
 
 /**
@@ -86,6 +87,7 @@ export interface Or extends ConfigError.Proto {
   readonly _op: "Or"
   readonly left: ConfigError
   readonly right: ConfigError
+  readonly message: string
 }
 
 /**

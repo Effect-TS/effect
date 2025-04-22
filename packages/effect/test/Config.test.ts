@@ -632,4 +632,20 @@ describe("Config", () => {
     )
     deepStrictEqual(result, [1, 2, 3])
   })
+
+  it("ConfigError message", () => {
+    const missingData = ConfigError.MissingData(["PATH"], "missing PATH")
+    const invalidData = ConfigError.InvalidData(["PATH1"], "invalid PATH1")
+    const andError = ConfigError.And(missingData, invalidData)
+    const orError = ConfigError.Or(missingData, invalidData)
+
+    strictEqual(
+      andError.message,
+      "(Missing data at PATH: \"missing PATH\") and (Invalid data at PATH1: \"invalid PATH1\")"
+    )
+    strictEqual(
+      orError.message,
+      "(Missing data at PATH: \"missing PATH\") or (Invalid data at PATH1: \"invalid PATH1\")"
+    )
+  })
 })
