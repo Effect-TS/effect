@@ -45,7 +45,7 @@ const buildPlan = <Error, Provides, Requires>(
   Effect.map(Effect.context<AiModels | Requires>(), (context) => {
     const models = Context.get(context, AiModels)
     return {
-      provide: Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
+      use: Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
         let result: Either.Either<A, E> | undefined = undefined
         for (const step of plan.steps) {
           if (result !== undefined && Either.isLeft(result) && Option.isSome(step.check)) {

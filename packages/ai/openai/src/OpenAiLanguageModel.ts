@@ -163,15 +163,7 @@ const make = Effect.fnUntraced(function*(options: {
         Effect.tap((request) => annotateRequest(options.span, request)),
         Effect.flatMap(client.client.createChatCompletion),
         Effect.tap((response) => annotateChatResponse(options.span, response)),
-        Effect.flatMap((response) =>
-          makeResponse(
-            response,
-            method
-            // options.tools.length === 1 && options.tools[0].structured
-            //   ? options.tools[0]
-            //   : undefined
-          )
-        ),
+        Effect.flatMap((response) => makeResponse(response, method)),
         Effect.catchAll((cause) =>
           Effect.fail(
             new AiError({
