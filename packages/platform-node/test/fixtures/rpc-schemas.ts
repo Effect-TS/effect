@@ -84,7 +84,7 @@ const TimingLive = Layer.succeed(
   TimingMiddleware,
   TimingMiddleware.of((options) =>
     options.next.pipe(
-      Metric.trackSuccess(rpcSuccesses),
+      Effect.tap(Metric.increment(rpcSuccesses)),
       Effect.tapDefect(() => Metric.increment(rpcDefects)),
       Effect.ensuring(Metric.increment(rpcCount))
     )

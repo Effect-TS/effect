@@ -39,14 +39,26 @@ export interface RpcMiddleware<Provides, E> {
  * @since 1.0.0
  * @category models
  */
-export interface RpcMiddlewareWrap {
+export interface RpcMiddlewareWrap<Provides, E> {
   (options: {
     readonly rpc: Rpc.AnyWithProps
     readonly payload: unknown
     readonly headers: Headers
-    readonly next: Effect.Effect<any, any, any>
-  }): Effect.Effect<any, any, any>
+    readonly next: Effect.Effect<SuccessValue, E, Provides>
+  }): Effect.Effect<SuccessValue, E>
 }
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export const SuccessValue: unique symbol = Symbol.for("@effect/rpc/RpcMiddleware/SuccessValue")
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type SuccessValue = typeof SuccessValue
 
 /**
  * @since 1.0.0
@@ -94,10 +106,14 @@ export interface TagClass<
     Self,
     Name,
     Options,
-    TagClass.Wrap<Options> extends true ? RpcMiddlewareWrap : RpcMiddleware<
-      TagClass.Service<Options>,
-      TagClass.FailureService<Options>
-    >
+    TagClass.Wrap<Options> extends true ? RpcMiddlewareWrap<
+        TagClass.Provides<Options>,
+        TagClass.Failure<Options>
+      > :
+      RpcMiddleware<
+        TagClass.Service<Options>,
+        TagClass.FailureService<Options>
+      >
   >
 {}
 
@@ -203,7 +219,7 @@ export interface TagClassAny extends Context.Tag<any, any> {
  * @since 1.0.0
  * @category models
  */
-export interface TagClassAnyWithProps extends Context.Tag<any, RpcMiddleware<any, any> | RpcMiddlewareWrap> {
+export interface TagClassAnyWithProps extends Context.Tag<any, RpcMiddleware<any, any> | RpcMiddlewareWrap<any, any>> {
   readonly [TypeId]: TypeId
   readonly optional: boolean
   readonly provides?: Context.Tag<any, any>
@@ -219,17 +235,11 @@ export interface TagClassAnyWithProps extends Context.Tag<any, RpcMiddleware<any
 export const Tag = <Self>(): <
   const Name extends string,
   const Options extends {
-    readonly wrap?: never
+    readonly wrap?: boolean
     readonly optional?: boolean
     readonly failure?: Schema.Schema.All
     readonly provides?: Context.Tag<any, any>
     readonly requiredForClient?: boolean
-  } | {
-    readonly wrap: true
-    readonly failure?: Schema.Schema.All
-    readonly optional?: never
-    readonly provides?: never
-    readonly requiredForClient?: never
   }
 >(
   id: Name,

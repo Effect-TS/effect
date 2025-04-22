@@ -417,7 +417,7 @@ const applyMiddleware = <A, E, R>(
   for (const tag of rpc.middlewares) {
     if (tag.wrap) {
       const middleware = Context.unsafeGet(context, tag)
-      handler = middleware({ ...options, next: handler })
+      handler = middleware({ ...options, next: handler as any })
     } else if (tag.optional) {
       const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any>
       const previous = handler
