@@ -26,7 +26,7 @@ export const layerClientProtocol: Layer.Layer<
         host: address.host,
         port: address.port
       })
-      return yield* RpcClient.makeProtocolSocket.pipe(
+      return yield* RpcClient.makeProtocolSocket().pipe(
         Effect.provideService(Socket, socket),
         Effect.provideService(RpcSerialization.RpcSerialization, serialization)
       )

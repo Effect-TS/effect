@@ -776,67 +776,79 @@ export const layerProtocolHttp = (options: {
  * @since 1.0.0
  * @category protocol
  */
-export const makeProtocolSocket: Effect.Effect<
+export const makeProtocolSocket = (options?: {
+  readonly retryTransientErrors?: boolean | undefined
+}): Effect.Effect<
   Protocol["Type"],
   never,
   Scope.Scope | RpcSerialization.RpcSerialization | Socket.Socket
-> = Protocol.make(Effect.fnUntraced(function*(writeResponse) {
-  const socket = yield* Socket.Socket
-  const serialization = yield* RpcSerialization.RpcSerialization
+> =>
+  Protocol.make(Effect.fnUntraced(function*(writeResponse) {
+    const socket = yield* Socket.Socket
+    const serialization = yield* RpcSerialization.RpcSerialization
 
-  const write = yield* socket.writer
+    const write = yield* socket.writer
 
-  let parser = serialization.unsafeMake()
+    let parser = serialization.unsafeMake()
 
-  yield* Effect.suspend(() => {
-    parser = serialization.unsafeMake()
-    return socket.runRaw((message) => {
-      try {
-        const responses = parser.decode(message) as Array<FromServerEncoded>
-        if (responses.length === 0) return
-        let i = 0
-        return Effect.whileLoop({
-          while: () => i < responses.length,
-          body: () => writeResponse(responses[i++]),
-          step: constVoid
-        })
-      } catch (defect) {
-        return writeResponse({ _tag: "Defect", defect })
-      }
-    })
-  }).pipe(
-    Effect.zipRight(Effect.fail(
-      new Socket.SocketCloseError({
-        reason: "Close",
-        code: 1000
+    yield* Effect.suspend(() => {
+      parser = serialization.unsafeMake()
+      return socket.runRaw((message) => {
+        try {
+          const responses = parser.decode(message) as Array<FromServerEncoded>
+          if (responses.length === 0) return
+          let i = 0
+          return Effect.whileLoop({
+            while: () => i < responses.length,
+            body: () => writeResponse(responses[i++]),
+            step: constVoid
+          })
+        } catch (defect) {
+          return writeResponse({ _tag: "Defect", defect })
+        }
       })
-    )),
-    Effect.tapErrorCause((cause) => writeResponse({ _tag: "Defect", defect: Cause.squash(cause) })),
-    Effect.retry(Schedule.spaced(1000)),
-    Effect.annotateLogs({
-      module: "RpcClient",
-      method: "makeProtocolSocket"
-    }),
-    Effect.interruptible,
-    Effect.forkScoped
-  )
+    }).pipe(
+      Effect.zipRight(Effect.fail(
+        new Socket.SocketCloseError({
+          reason: "Close",
+          code: 1000
+        })
+      )),
+      Effect.tapErrorCause((cause) => {
+        const error = Cause.failureOption(cause)
+        if (
+          options?.retryTransientErrors && Option.isSome(error) &&
+          (error.value.reason === "Open" || error.value.reason === "OpenTimeout")
+        ) {
+          return Effect.void
+        }
+        return writeResponse({ _tag: "Defect", defect: Cause.squash(cause) })
+      }),
+      Effect.retry(Schedule.spaced(1000)),
+      Effect.annotateLogs({
+        module: "RpcClient",
+        method: "makeProtocolSocket"
+      }),
+      Effect.interruptible,
+      Effect.forkScoped
+    )
 
-  yield* Effect.suspend(() => write(parser.encode(constPing))).pipe(
-    Effect.delay("30 seconds"),
-    Effect.ignore,
-    Effect.forever,
-    Effect.interruptible,
-    Effect.forkScoped
-  )
+    yield* Effect.suspend(() => write(parser.encode(constPing))).pipe(
+      Effect.delay("30 seconds"),
+      Effect.ignore,
+      Effect.forever,
+      Effect.interruptible,
+      Effect.forkScoped
+    )
 
-  return {
-    send(request) {
-      return Effect.orDie(write(parser.encode(request)))
-    },
-    supportsAck: true,
-    supportsTransferables: false
-  }
-}))
+    return {
+      send(request) {
+        return Effect.orDie(write(parser.encode(request)))
+      },
+      supportsAck: true,
+      supportsTransferables: false
+    }
+  }))
 
 /**
  * @since 1.0.0
@@ -1003,8 +1015,13 @@ export const layerProtocolWorker = (
  * @since 1.0.0
  * @category protocol
  */
-export const layerProtocolSocket: Layer.Layer<Protocol, never, Socket.Socket | RpcSerialization.RpcSerialization> =
-  Layer.scoped(Protocol, makeProtocolSocket)
+export const layerProtocolSocket = (options?: {
+  readonly retryTransientErrors?: boolean | undefined
+}): Layer.Layer<
+  Protocol,
+  never,
+  Socket.Socket | RpcSerialization.RpcSerialization
+> => Layer.scoped(Protocol, makeProtocolSocket(options))
 
 // internal
 

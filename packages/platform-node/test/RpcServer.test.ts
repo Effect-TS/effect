@@ -42,7 +42,7 @@ describe("RpcServer", () => {
     Layer.provideMerge(RpcServer.layerProtocolWebsocket({ path: "/rpc" }))
   )
   const HttpWsClient = UsersClient.layer.pipe(
-    Layer.provide(RpcClient.layerProtocolSocket),
+    Layer.provide(RpcClient.layerProtocolSocket()),
     Layer.provide(
       Effect.gen(function*() {
         const server = yield* HttpServer.HttpServer
@@ -79,7 +79,7 @@ describe("RpcServer", () => {
     Layer.provideMerge(NodeSocketServer.layer({ port: 0 }))
   )
   const TcpClient = UsersClient.layer.pipe(
-    Layer.provide(RpcClient.layerProtocolSocket),
+    Layer.provide(RpcClient.layerProtocolSocket()),
     Layer.provide(
       Effect.gen(function*() {
         const server = yield* SocketServer.SocketServer
