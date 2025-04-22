@@ -64,7 +64,7 @@ export const layerClientProtocolWebsocket = (options: {
         ).pipe(
           Effect.provideService(Socket.WebSocketConstructor, constructor)
         )
-        return yield* RpcClient.makeProtocolSocket.pipe(
+        return yield* RpcClient.makeProtocolSocket().pipe(
           Effect.provideService(Socket.Socket, socket),
           Effect.provideService(RpcSerialization.RpcSerialization, serialization)
         )
