@@ -73,6 +73,8 @@ export const makeRemoteCallback = Effect.gen(function*() {
       : statement.withoutTransform
     if (method === "get") {
       effect = Effect.map(effect, (rows) => rows[0] ?? [])
+    } else if (method === "execute") {
+      effect = Effect.map(effect, (rows) => rows.length ? rows : [{}])
     }
     return runPromise(Effect.map(effect, (rows) => ({ rows })))
   }
