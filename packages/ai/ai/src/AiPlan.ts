@@ -68,7 +68,7 @@ export declare namespace AiPlan {
    * @category AiPlan
    */
   export interface Provider<Provides> {
-    readonly provide: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>
+    readonly use: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>
   }
 
   /**

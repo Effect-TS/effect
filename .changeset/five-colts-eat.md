@@ -6,23 +6,28 @@ This release includes a complete refactor of the internals of the base `@effect/
 
 ## Notable Changes
 
-- `Completions` has been renamed to `AiLanguageModel`
+### `AiLanguageModel` and `AiEmbeddingModel`
 
-- `Embeddings` has been renamed to `AiEmbeddingModel`
+The `Completions` service from `@effect/ai` has been renamed to `AiLanguageModel`, and the `Embeddings` service has similarly been renamed to `AiEmbeddingModel`. In addition, `Completions.create` and `Completions.toolkit` have been unified into `AiLanguageModel.generateText`. Similarly, `Completions.stream` and `Completions.toolkitStream` have been unified into `AiLanguageModel.streamText`.
 
-- `Completions.create` and `Completions.toolkit` have been merged into `AiLanguageModel.generateText`
+### Structured Outputs
 
-- `Completions.stream` and `Completions.toolkitStream` have been merged into `AiLanguageModel.streamText`
+`Completions.structured` has been renamed to `AiLanguageModel.generateObject`, and this method now returns a specialized `AiResponse.WithStructuredOutput` type, which contains a `value` property with the result of the structured output call. This enhancement prevents the end user from having to unnecessarily unwrap an `Option`.
 
-- `Completions.structured` has been renamed to `AiLanguageModel.generateObject` 
+### `AiModel` and `AiPlan`
 
-- To avoid unnecessarily having to unwrap an `Option`, `AiLanguageModel.generateObject` now returns an `AiInput.WithStructuredOutput` which contains a `value` property with the generated value
+The `.provide` method on a built `AiModel` / `AiPlan` has been renamed to `.use` to improve clarity given that a user is _using_ the services provided by the model / plan to run a particular piece of code.
 
-- `AiToolkit` has been completely refactored to simplify creating a collection of tools
-  - `AiTool` has been introduced to simplify defining tools for a toolkit
-  - `AiToolkit.implement` has been renamed to `AiToolkit.toLayer` 
+### `AiInput` and `AiResponse`
+
+The `AiInput` and `AiResponse` types have been refactored to allow inclusion of more information and metadata from model providers where possible, such as reasoning output and prompt cache token utilization.
+
+### `AiTool` and `AiToolkit`
+
+The `AiToolkit` has been completely refactored to simplify creating a collection of tools and using those tools in requests to model providers. A new `AiTool` data type has also been introduced to simplify defining tools for a toolkit. `AiToolkit.implement` has been renamed to `AiToolkit.toLayer` for clarity, and defining handlers is now very similar to the way handlers are defined in the `@effect/rpc` library.
 
 A complete example of an `AiToolkit` implementation and usage can be found below:
+
 
 ```ts
 import { AiLanguageModel, AiTool, AiToolkit } from "@effect/ai"
