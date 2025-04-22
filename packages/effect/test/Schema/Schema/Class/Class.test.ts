@@ -553,7 +553,7 @@ details: Duplicate key "a"`)
 
       Util.assertions.make.fail(
         ctor,
-        null,
+        null as any,
         `TypeID
 └─ ["a"]
    └─ is missing`

@@ -268,7 +268,7 @@ describe("TaggedRequest", () => {
 
       Util.assertions.make.fail(
         ctor,
-        null,
+        null as any,
         `TypeID
 └─ ["a"]
    └─ is missing`

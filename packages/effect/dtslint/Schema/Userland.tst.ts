@@ -38,7 +38,6 @@ describe("Schema Userland", () => {
       return clazz.create(2).update(3)
     }
 
-    expect(f1(Person))
-      .type.toBe<Person>()
+    expect(f1(Person)).type.toBe<Person>()
   })
 })
