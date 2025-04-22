@@ -1,5 +1,29 @@
 # effect
 
+## 3.14.12
+
+### Patch Changes
+
+- [#4770](https://github.com/Effect-TS/effect/pull/4770) [`c2ad9ee`](https://github.com/Effect-TS/effect/commit/c2ad9ee9f3c4c743390edf35ed9e85a20be33811) Thanks @gcanti! - Fixes a bug where non existing properties were allowed in the `make` constructor of a `Schema.Class`, closes #4767.
+
+  **Example**
+
+  ```ts
+  import { Schema } from "effect"
+
+  class A extends Schema.Class<A>("A")({
+    a: Schema.String
+  }) {}
+
+  A.make({
+    a: "a",
+    // @ts-expect-error: Object literal may only specify known properties, and 'b' does not exist in type '{ readonly a: string; }'.ts(2353)
+    b: "b"
+  })
+  ```
+
+- [#4735](https://github.com/Effect-TS/effect/pull/4735) [`9c68654`](https://github.com/Effect-TS/effect/commit/9c686542b6eb3ea188cb70673ef2e41223633e89) Thanks @suddenlyGiovanni! - Improve `Number` module with comprehensive TsDocs and type-level tests
+
 ## 3.14.11
 
 ### Patch Changes
