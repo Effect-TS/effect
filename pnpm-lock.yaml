@@ -643,7 +643,7 @@ importers:
         version: 10.18.0
       drizzle-orm:
         specifier: ^0.31.0
-        version: 0.31.4(@cloudflare/workers-types@4.20250204.0)(@libsql/client@0.14.0)(@op-engineering/op-sqlite@11.4.7(react-native@0.77.1(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@react-native-community/cli-server-api@15.1.3)(react@19.0.0))(react@19.0.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.12)(better-sqlite3@11.8.1)(bun-types@1.2.2)(kysely@0.27.5)(mysql2@3.12.0)(postgres@3.4.5)(react@19.0.0)
+        version: 0.31.4(@cloudflare/workers-types@4.20250204.0)(@electric-sql/pglite@0.2.17)(@libsql/client@0.14.0)(@op-engineering/op-sqlite@11.4.7(react-native@0.77.1(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@react-native-community/cli-server-api@15.1.3)(react@19.0.0))(react@19.0.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.12)(better-sqlite3@11.8.1)(bun-types@1.2.2)(kysely@0.27.5)(mysql2@3.12.0)(postgres@3.4.5)(react@19.0.0)
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -760,10 +760,39 @@ importers:
     dependencies:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.25.1
-        version: 1.25.1
+        version: 1.28.0
       postgres:
         specifier: ^3.4.4
         version: 3.4.4
+    devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
+      '@effect/sql':
+        specifier: workspace:^
+        version: link:../sql/dist
+      '@testcontainers/postgresql':
+        specifier: ^10.18.0
+        version: 10.18.0
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
+  packages/sql-pglite:
+    dependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.2.17
+        version: 0.2.17
+      '@electric-sql/pglite-tools':
+        specifier: ^0.2.3
+        version: 0.2.3
+      '@opentelemetry/semantic-conventions':
+        specifier: ^1.25.1
+        version: 1.28.0
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
@@ -1984,6 +2013,12 @@ packages:
 
   '@effect/wa-sqlite@0.1.2':
     resolution: {integrity: sha512-2JvJ9BDkBOwfeY/gXsC0XwEKC0AwisP2W5ABJ6mx14QyXTK12MGDIybDlHieuZt1TEFSMiKfpg7yyqyRWRooJQ==}
+
+  '@electric-sql/pglite-tools@0.2.3':
+    resolution: {integrity: sha512-VfpV6++PnOPJw5mTrb2qSEEokZgNwmBOvQ6u5jmETrv7WQ3tzBYB6A786CiMfMpflKSnN/7NW9ZX/sP0REI17A==}
+
+  '@electric-sql/pglite@0.2.17':
+    resolution: {integrity: sha512-qEpKRT2oUaWDH6tjRxLHjdzMqRUGYDnGZlKrnL4dJ77JVMcP2Hpo3NYnOSPKdZdeec57B6QPprCUFg0picx5Pw==}
 
   '@esbuild/aix-ppc64@0.23.0':
     resolution: {integrity: sha512-3sG8Zwa5fMcA9bgqB8AfWPQ+HFke6uD3h1s3RIwUNK8EG7a4buxvuFTs3j1IMs2NXAk9F30C/FF4vxRgQCcmoQ==}
@@ -9616,6 +9651,10 @@ snapshots:
 
   '@effect/wa-sqlite@0.1.2': {}
 
+  '@electric-sql/pglite-tools@0.2.3': {}
+
+  '@electric-sql/pglite@0.2.17': {}
+
   '@esbuild/aix-ppc64@0.23.0':
     optional: true
 
@@ -11950,9 +11989,10 @@ snapshots:
 
   dotenv@8.6.0: {}
 
-  drizzle-orm@0.31.4(@cloudflare/workers-types@4.20250204.0)(@libsql/client@0.14.0)(@op-engineering/op-sqlite@11.4.7(react-native@0.77.1(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@react-native-community/cli-server-api@15.1.3)(react@19.0.0))(react@19.0.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.12)(better-sqlite3@11.8.1)(bun-types@1.2.2)(kysely@0.27.5)(mysql2@3.12.0)(postgres@3.4.5)(react@19.0.0):
+  drizzle-orm@0.31.4(@cloudflare/workers-types@4.20250204.0)(@electric-sql/pglite@0.2.17)(@libsql/client@0.14.0)(@op-engineering/op-sqlite@11.4.7(react-native@0.77.1(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@react-native-community/cli-server-api@15.1.3)(react@19.0.0))(react@19.0.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.12)(better-sqlite3@11.8.1)(bun-types@1.2.2)(kysely@0.27.5)(mysql2@3.12.0)(postgres@3.4.5)(react@19.0.0):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20250204.0
+      '@electric-sql/pglite': 0.2.17
       '@libsql/client': 0.14.0
       '@op-engineering/op-sqlite': 11.4.7(react-native@0.77.1(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@react-native-community/cli-server-api@15.1.3)(react@19.0.0))(react@19.0.0)
       '@opentelemetry/api': 1.9.0
