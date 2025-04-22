@@ -32,6 +32,12 @@ export const And = (self: ConfigError.ConfigError, that: ConfigError.ConfigError
       return `${this.left} and ${this.right}`
     }
   })
+  Object.defineProperty(error, "message", {
+    enumerable: false,
+    get(this: ConfigError.And) {
+      return this.toString()
+    }
+  })
   return error
 }
 
@@ -45,6 +51,12 @@ export const Or = (self: ConfigError.ConfigError, that: ConfigError.ConfigError)
     enumerable: false,
     value(this: ConfigError.Or) {
       return `${this.left} or ${this.right}`
+    }
+  })
+  Object.defineProperty(error, "message", {
+    enumerable: false,
+    get(this: ConfigError.Or) {
+      return this.toString()
     }
   })
   return error
