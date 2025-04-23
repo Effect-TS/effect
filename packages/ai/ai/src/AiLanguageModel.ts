@@ -61,7 +61,7 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
   /**
    * The prompt input to use to generate text.
    */
-  readonly prompt: AiInput.AiInput.Raw
+  readonly prompt: AiInput.Raw
 
   /**
    * An optional system message that will be part of the prompt.
@@ -96,7 +96,7 @@ export interface GenerateObjectOptions<A, I, R> {
   /**
    * The prompt input to use to generate text.
    */
-  readonly prompt: AiInput.AiInput.Raw
+  readonly prompt: AiInput.Raw
 
   /**
    * An optional system message that will be part of the prompt.
@@ -120,7 +120,7 @@ export interface GenerateObjectWithToolCallIdOptions<A, I, R> {
   /**
    * The prompt input to use to generate text.
    */
-  readonly prompt: AiInput.AiInput.Raw
+  readonly prompt: AiInput.Raw
 
   /**
    * An optional system message that will be part of the prompt.

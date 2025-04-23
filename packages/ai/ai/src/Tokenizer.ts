@@ -25,8 +25,8 @@ export declare namespace Tokenizer {
    * @category Models
    */
   export interface Service {
-    readonly tokenize: (content: AiInput.AiInput.Raw) => Effect.Effect<Array<number>, AiError>
-    readonly truncate: (content: AiInput.AiInput.Raw, tokens: number) => Effect.Effect<AiInput.AiInput.Raw, AiError>
+    readonly tokenize: (content: AiInput.Raw) => Effect.Effect<Array<number>, AiError>
+    readonly truncate: (content: AiInput.Raw, tokens: number) => Effect.Effect<AiInput.Raw, AiError>
   }
 }
 

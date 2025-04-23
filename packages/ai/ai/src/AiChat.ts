@@ -107,7 +107,7 @@ export declare namespace AiChat {
  */
 export const fromPrompt = Effect.fnUntraced(
   function*(options: {
-    readonly prompt: AiInput.AiInput.Raw
+    readonly prompt: AiInput.Raw
     readonly system?: string
   }) {
     const languageModel = yield* AiLanguageModel.AiLanguageModel
