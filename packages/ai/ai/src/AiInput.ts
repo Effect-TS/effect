@@ -441,8 +441,7 @@ export type MessageTypeId = typeof MessageTypeId
 export class UserMessage extends Schema.Class<UserMessage>(
   "@effect/ai/AiInput/UserMessage"
 )({
-  role: Schema.Literal("user").pipe(
-    Schema.propertySignature,
+  role: Schema.tag("user").pipe(
     Schema.withConstructorDefault(() => "user" as const)
   ),
   userName: Schema.optional(Schema.String),
@@ -461,8 +460,7 @@ export class UserMessage extends Schema.Class<UserMessage>(
 export class AssistantMessage extends Schema.Class<AssistantMessage>(
   "@effect/ai/AiInput/AssistantMessage"
 )({
-  role: Schema.Literal("assistant").pipe(
-    Schema.propertySignature,
+  role: Schema.tag("assistant").pipe(
     Schema.withConstructorDefault(() => "assistant" as const)
   ),
   parts: Schema.Array(Schema.Union(FilePart, ReasoningPart, RedactedReasoningPart, TextPart, ToolCallPart))
@@ -480,8 +478,7 @@ export class AssistantMessage extends Schema.Class<AssistantMessage>(
 export class ToolMessage extends Schema.Class<ToolMessage>(
   "@effect/ai/AiInput/ToolMessage"
 )({
-  role: Schema.Literal("tool").pipe(
-    Schema.propertySignature,
+  role: Schema.tag("tool").pipe(
     Schema.withConstructorDefault(() => "tool" as const)
   ),
   parts: Schema.Array(ToolCallResultPart)
