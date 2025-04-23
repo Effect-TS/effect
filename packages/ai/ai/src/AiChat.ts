@@ -8,11 +8,11 @@ import type { ParseError } from "effect/ParseResult"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import type { NoExcessProperties } from "effect/Types"
 import type { AiError } from "./AiError.js"
 import * as AiInput from "./AiInput.js"
-import { AiLanguageModel } from "./AiLanguageModel.js"
+import * as AiLanguageModel from "./AiLanguageModel.js"
 import * as AiResponse from "./AiResponse.js"
-import type * as AiTool from "./AiTool.js"
 
 /**
  * @since 1.0.0
@@ -37,14 +37,17 @@ export declare namespace AiChat {
      * The chat history.
      */
     readonly history: Effect.Effect<AiInput.AiInput>
+
     /**
      * Exports the chat into a structured format.
      */
     readonly export: Effect.Effect<unknown>
+
     /**
      * Exports the chat as a JSON string.
      */
     readonly exportJson: Effect.Effect<string>
+
     /**
      * Generate text using a large language model for the specified `prompt`.
      *
@@ -54,15 +57,13 @@ export declare namespace AiChat {
      * Both input and output messages will be added to the chat history.
      */
     readonly generateText: <
-      Options extends Omit<
-        AiLanguageModel.GenerateTextOptions | AiLanguageModel.GenerateTextWithToolsOptions<AiTool.Any>,
-        "system"
-      >
+      Options extends NoExcessProperties<Omit<AiLanguageModel.GenerateTextOptions<any>, "system">, Options>
     >(options: Options) => Effect.Effect<
-      AiLanguageModel.ExtractSuccess<Options>,
+      AiResponse.AiResponse,
       AiLanguageModel.ExtractError<Options>,
       AiLanguageModel.ExtractContext<Options>
     >
+
     /**
      * Generate text using a large language model for the specified `prompt`,
      * streaming output from the model as soon as it is available.
@@ -73,12 +74,9 @@ export declare namespace AiChat {
      * Both input and output messages will be added to the chat history.
      */
     readonly streamText: <
-      Options extends Omit<
-        AiLanguageModel.GenerateTextOptions | AiLanguageModel.GenerateTextWithToolsOptions<AiTool.Any>,
-        "system"
-      >
+      Options extends NoExcessProperties<Omit<AiLanguageModel.GenerateTextOptions<any>, "system">, Options>
     >(options: Options) => Stream.Stream<
-      AiLanguageModel.ExtractSuccess<Options>,
+      AiResponse.AiResponse,
       AiLanguageModel.ExtractError<Options>,
       AiLanguageModel.ExtractContext<Options>
     >
@@ -95,7 +93,8 @@ export declare namespace AiChat {
      */
     readonly generateObject: <A, I, R>(
       options: Omit<
-        AiLanguageModel.GenerateObjectOptions<A, I, R> | AiLanguageModel.GenerateObjectWithToolCallIdOptions<A, I, R>,
+        | AiLanguageModel.GenerateObjectOptions<A, I, R>
+        | AiLanguageModel.GenerateObjectWithToolCallIdOptions<A, I, R>,
         "system"
       >
     ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R>
@@ -111,7 +110,7 @@ export const fromPrompt = Effect.fnUntraced(
     readonly prompt: AiInput.AiInput.Raw
     readonly system?: string
   }) {
-    const languageModel = yield* AiLanguageModel
+    const languageModel = yield* AiLanguageModel.AiLanguageModel
     const history = yield* Ref.make<AiInput.AiInput>(AiInput.make(options.prompt))
     const semaphore = yield* Effect.makeSemaphore(1)
 
@@ -212,7 +211,7 @@ export const fromPrompt = Effect.fnUntraced(
  * @since 1.0.0
  * @category constructors
  */
-export const empty: Effect.Effect<AiChat.Service, never, AiLanguageModel> = fromPrompt({ prompt: [] })
+export const empty: Effect.Effect<AiChat.Service, never, AiLanguageModel.AiLanguageModel> = fromPrompt({ prompt: [] })
 
 const decodeUnknown = Schema.decodeUnknown(AiInput.AiInput)
 
@@ -220,7 +219,7 @@ const decodeUnknown = Schema.decodeUnknown(AiInput.AiInput)
  * @since 1.0.0
  * @category constructors
  */
-export const fromExport = (data: unknown): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel> =>
+export const fromExport = (data: unknown): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel.AiLanguageModel> =>
   Effect.flatMap(decodeUnknown(data), (prompt) => fromPrompt({ prompt }))
 
 const decodeJson = Schema.decode(AiInput.AiInputFromJson)
@@ -229,5 +228,5 @@ const decodeJson = Schema.decode(AiInput.AiInputFromJson)
  * @since 1.0.0
  * @category constructors
  */
-export const fromJson = (data: string): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel> =>
+export const fromJson = (data: string): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel.AiLanguageModel> =>
   Effect.flatMap(decodeJson(data), (prompt) => fromPrompt({ prompt }))
