@@ -3959,7 +3959,7 @@ export const catchTags: {
       & (unknown extends E ? {} : { [K in Exclude<keyof Cases, Extract<E, { _tag: string }>['_tag']>]: never })
   >(
     cases: Cases,
-    onOther: (errors: Array<Exclude<E, { _tag: keyof Cases }>>) => Effect<any, any, any>
+    onOther: (error: Exclude<E, { _tag: keyof Cases }>) => Effect<any, any, any>
   ): <A, R>(
     self: Effect<A, E, R>
   ) => Effect<
@@ -4004,7 +4004,7 @@ export const catchTags: {
   >(
     self: Effect<A, E, R>,
     cases: Cases,
-    onOther: (errors: Array<Exclude<E, { _tag: keyof Cases }>>) => Effect<any, any, any>
+    onOther: (error: Exclude<E, { _tag: keyof Cases }>) => Effect<any, any, any>
   ): Effect<
     | A
     | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect<infer A1, any, any> ? A1 : never }[keyof Cases],

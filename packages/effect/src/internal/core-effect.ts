@@ -266,7 +266,7 @@ export const catchTags: {
     } : {})
   >(
     cases: Cases,
-    onOther?: (errors: Array<Exclude<E, { _tag: keyof Cases }>>) => Effect.Effect<any, any, any>
+    onOther?: (error: Exclude<E, { _tag: keyof Cases }>) => Effect.Effect<any, any, any>
   ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<
     | A
     | {
@@ -294,7 +294,7 @@ export const catchTags: {
   >(
     self: Effect.Effect<A, E, R>,
     cases: Cases,
-    onOther?: (errors: Array<Exclude<E, { _tag: keyof Cases }>>) => Effect.Effect<any, any, any>
+    onOther?: (error: Exclude<E, { _tag: keyof Cases }>) => Effect.Effect<any, any, any>
   ): Effect.Effect<
     | A
     | {
@@ -322,7 +322,7 @@ export const catchTags: {
         return cases[e["_tag"]](e)
       }
       // Remaining error
-      return onOther([e] as any)
+      return onOther(e)
     })
   }
   // Default behavior: catch only specified tags
