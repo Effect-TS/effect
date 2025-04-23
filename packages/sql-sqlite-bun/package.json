@@ -52,6 +52,7 @@
   "devDependencies": {
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
+    "@effect/platform-bun": "workspace:^",
     "@effect/sql": "workspace:^",
     "@types/bun": "^1.2.2",
     "effect": "workspace:^"

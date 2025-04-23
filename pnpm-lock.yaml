@@ -266,6 +266,12 @@ importers:
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql
+      '@effect/sql-mysql2':
+        specifier: workspace:^
+        version: link:../sql-mysql2
+      '@effect/sql-pg':
+        specifier: workspace:^
+        version: link:../sql-pg
       '@effect/sql-sqlite-node':
         specifier: workspace:^
         version: link:../sql-sqlite-node
@@ -318,6 +324,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20240806.0
         version: 4.20241022.0
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node
       '@types/ws':
         specifier: ^8.5.12
         version: 8.5.12
@@ -638,12 +647,27 @@ importers:
 
   packages/sql-drizzle:
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql
       '@effect/sql-mysql2':
         specifier: workspace:^
         version: link:../sql-mysql2
+      '@effect/sql-pg':
+        specifier: workspace:^
+        version: link:../sql-pg
+      '@effect/sql-sqlite-node':
+        specifier: workspace:^
+        version: link:../sql-sqlite-node
       '@testcontainers/mysql':
         specifier: ^10.18.0
         version: 10.18.0
@@ -743,6 +767,9 @@ importers:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql
@@ -815,6 +842,9 @@ importers:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform
+      '@effect/platform-bun':
+        specifier: workspace:^
+        version: link:../platform-bun
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql

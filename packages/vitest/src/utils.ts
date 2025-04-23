@@ -1,4 +1,4 @@
-import type Cause from "effect/Cause"
+import type * as Cause from "effect/Cause"
 import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"

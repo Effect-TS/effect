@@ -77,6 +77,8 @@
     "@effect/platform-node": "workspace:^",
     "@effect/rpc": "workspace:^",
     "@effect/sql": "workspace:^",
+    "@effect/sql-mysql2": "workspace:^",
+    "@effect/sql-pg": "workspace:^",
     "@effect/sql-sqlite-node": "workspace:^",
     "@testcontainers/mysql": "^10.18.0",
     "@testcontainers/postgresql": "^10.18.0",

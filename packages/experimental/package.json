@@ -87,6 +87,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240806.0",
+    "@effect/platform-node": "workspace:^",
     "@types/ws": "^8.5.12",
     "ioredis": "^5.4.1",
     "lmdb": "^3.0.13"

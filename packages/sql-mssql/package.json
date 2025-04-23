@@ -51,6 +51,7 @@
   "devDependencies": {
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^"
   },
