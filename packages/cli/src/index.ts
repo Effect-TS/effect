@@ -1,11 +1,6 @@
 /**
  * @since 1.0.0
  */
-export * as Span from "./HelpDoc/Span.js"
-
-/**
- * @since 1.0.0
- */
 export * as Args from "./Args.js"
 
 /**
@@ -52,6 +47,11 @@ export * as ConfigFile from "./ConfigFile.js"
  * @since 1.0.0
  */
 export * as HelpDoc from "./HelpDoc.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Span from "./HelpDoc/Span.js"
 
 /**
  * @since 1.0.0
