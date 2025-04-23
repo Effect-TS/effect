@@ -2791,10 +2791,38 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       describe("fromKey", () => {
-        it("base", () => {
+        it("a <- b", () => {
           expectJSONSchemaProperty(
             Schema.Struct({
               a: Schema.NonEmptyString.pipe(Schema.propertySignature, Schema.fromKey("b"))
+            }),
+            {
+              "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "title": "nonEmptyString",
+                  "description": "a non empty string",
+                  "minLength": 1
+                }
+              },
+              "type": "object",
+              "required": [
+                "b"
+              ],
+              "properties": {
+                "b": {
+                  "$ref": "#/$defs/NonEmptyString"
+                }
+              },
+              "additionalProperties": false
+            }
+          )
+        })
+
+        it("a <- b & annotations", () => {
+          expectJSONSchemaProperty(
+            Schema.Struct({
+              a: Schema.NonEmptyString.pipe(Schema.propertySignature, Schema.fromKey("b")).annotations({})
             }),
             {
               "$defs": {

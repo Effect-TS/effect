@@ -1830,7 +1830,8 @@ const mergeSignatureAnnotations = (
           ast.from.type,
           ast.from.isOptional,
           ast.from.isReadonly,
-          ast.from.annotations
+          ast.from.annotations,
+          ast.from.fromKey
         ),
         new ToPropertySignature(ast.to.type, ast.to.isOptional, ast.to.isReadonly, {
           ...ast.to.annotations,
