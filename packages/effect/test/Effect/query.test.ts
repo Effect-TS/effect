@@ -8,12 +8,12 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
 import * as TestClock from "effect/TestClock"
 import type { Concurrency } from "effect/Types"
-import { pipe } from "../../src/index.js"
 
 interface Counter {
   readonly _: unique symbol

@@ -1,6 +1,6 @@
+import { LibsqlClient } from "@effect/sql-libsql"
 import { Context, Effect, Layer } from "effect"
 import { GenericContainer, type StartedTestContainer } from "testcontainers"
-import { LibsqlClient } from "../src/index.js"
 
 export class LibsqlContainer extends Context.Tag("test/LibsqlContainer")<
   LibsqlContainer,
