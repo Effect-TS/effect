@@ -6,11 +6,6 @@ export * as Migrator from "./Migrator.js"
 /**
  * @since 1.0.0
  */
-export * as FileSystem from "./Migrator/FileSystem.js"
-
-/**
- * @since 1.0.0
- */
 export * as Model from "./Model.js"
 
 /**

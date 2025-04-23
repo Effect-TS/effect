@@ -36,11 +36,6 @@ export * as BunFileSystem from "./BunFileSystem.js"
 /**
  * @since 1.0.0
  */
-export * as ParcelWatcher from "./BunFileSystem/ParcelWatcher.js"
-
-/**
- * @since 1.0.0
- */
 export * as BunHttpPlatform from "./BunHttpPlatform.js"
 
 /**

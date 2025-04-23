@@ -50,8 +50,8 @@ importers:
         specifier: ^4.0.0
         version: 4.0.1
       '@effect/build-utils':
-        specifier: ^0.8.0
-        version: 0.8.0
+        specifier: ^0.8.1
+        version: 0.8.1
       '@effect/docgen':
         specifier: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738
         version: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738(tsx@4.17.0)(typescript@5.7.2)
@@ -2037,8 +2037,8 @@ packages:
     resolution: {integrity: sha512-NKBGBSIKUG584qrS1tyxVpX/AKJKQw5HgjYEnPLC0QsTw79JrGn+qUr8CXFb955Iy7GUdiiUv1rJ6JBGvaKb6w==}
     engines: {node: '>=18'}
 
-  '@effect/build-utils@0.8.0':
-    resolution: {integrity: sha512-Prnu1w0CdxEClKtcpRX/rSG1W7Pr5kTMonOfGIoEHn+x0MP0I4yk1nmC6bv5SJEOMNqr2RGj4HXQNL0rIR+wug==}
+  '@effect/build-utils@0.8.1':
+    resolution: {integrity: sha512-AEWk1ZfP1TTpQOqZOGf2DSixayoERB7F/6a2eBdGG+XPN5WurNarJ58lZEMBX0G/B8u7ju1OxvjMmS2Al1b1Qw==}
     engines: {node: '>=16.17.1'}
     hasBin: true
 
@@ -9714,7 +9714,7 @@ snapshots:
       '@edge-runtime/primitives': 6.0.0
     optional: true
 
-  '@effect/build-utils@0.8.0': {}
+  '@effect/build-utils@0.8.1': {}
 
   '@effect/docgen@https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738(tsx@4.17.0)(typescript@5.7.2)':
     dependencies:
