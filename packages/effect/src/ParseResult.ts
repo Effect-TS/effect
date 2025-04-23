@@ -443,7 +443,8 @@ const getSync = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) 
     Either.getOrThrowWith(parser(input, overrideOptions), parseError)
 }
 
-const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
+/** @internal */
+export const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = getEither(ast, isDecoding, options)
   return (input: unknown, overrideOptions?: AST.ParseOptions): Option.Option<any> =>
     Option.getRight(parser(input, overrideOptions))
