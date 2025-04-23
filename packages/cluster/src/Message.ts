@@ -2,10 +2,10 @@
  * @since 1.0.0
  */
 import type * as Rpc from "@effect/rpc/Rpc"
-import { FiberRef } from "effect"
 import type { Context } from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import type { PersistenceError } from "./ClusterError.js"
