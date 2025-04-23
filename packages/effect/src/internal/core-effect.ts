@@ -262,7 +262,8 @@ export const catchTags: {
       } :
       {})
   >(
-    cases: Cases
+    cases: Cases,
+    onOther?: (error: Exclude<E, { _tag: keyof Cases }>) => Effect.Effect<any, any, any>
   ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<
     | A
     | {
@@ -287,7 +288,8 @@ export const catchTags: {
       {})
   >(
     self: Effect.Effect<A, E, R>,
-    cases: Cases
+    cases: Cases,
+    onOther?: (error: Exclude<E, { _tag: keyof Cases }>) => Effect.Effect<any, any, any>
   ): Effect.Effect<
     | A
     | {
@@ -302,8 +304,21 @@ export const catchTags: {
       [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, any, infer R>) ? R : never
     }[keyof Cases]
   >
-} = dual(2, (self, cases) => {
+} = dual(3, (self, cases, onOther) => {
   let keys: Array<string>
+
+  // If onOther handler provided, catch all errors and dispatch
+  if (onOther) {
+    return core.catchAll(self, (e) => {
+      keys ??= Object.keys(cases)
+      if (Predicate.hasProperty(e, "_tag") && Predicate.isString(e["_tag"]) && keys.includes(e["_tag"])) {
+        return cases[e["_tag"]](e)
+      }
+      // Remaining error
+      return onOther(e)
+    })
+  }
+
   return core.catchIf(
     self,
     (e): e is { readonly _tag: string } => {
