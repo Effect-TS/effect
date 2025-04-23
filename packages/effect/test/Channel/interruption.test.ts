@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertLeft, assertTrue, strictEqual } from "effect/test/util"
+import { assertLeft, assertTrue, strictEqual } from "@effect/vitest/utils"
 
 describe("Channel", () => {
   it.effect("interruptWhen - interrupts the current element", () =>

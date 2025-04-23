@@ -8,7 +8,7 @@ import {
   assertTrue,
   deepStrictEqual,
   strictEqual
-} from "effect/test/util"
+} from "@effect/vitest/utils"
 
 export const waitForValue = <A>(ref: Effect.Effect<A>, value: A): Effect.Effect<A> => {
   return ref.pipe(Effect.zipLeft(Effect.yieldNow()), Effect.repeat({ until: (a) => value === a }))

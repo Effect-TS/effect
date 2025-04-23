@@ -25,8 +25,18 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./MssqlClient": "./src/MssqlClient.ts",
+    "./MssqlMigrator": "./src/MssqlMigrator.ts",
+    "./Parameter": "./src/Parameter.ts",
+    "./Procedure": "./src/Procedure.ts"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",

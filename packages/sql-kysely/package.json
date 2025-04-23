@@ -25,8 +25,9 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
   },
   "sideEffects": [
     "./src/Kysely.ts",
@@ -34,6 +35,15 @@
     "./src/Pg.ts",
     "./src/Sqlite.ts"
   ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./Kysely": "./src/Kysely.ts",
+    "./Mssql": "./src/Mssql.ts",
+    "./Mysql": "./src/Mysql.ts",
+    "./Pg": "./src/Pg.ts",
+    "./Sqlite": "./src/Sqlite.ts",
+    "./patch.types": "./src/patch.types.ts"
+  },
   "scripts": {
     "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-esm": "tsc -b tsconfig.build.json",
@@ -48,6 +58,10 @@
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
+    "@effect/sql-mssql": "workspace:^",
+    "@effect/sql-mysql2": "workspace:^",
+    "@effect/sql-pg": "workspace:^",
+    "@effect/sql-sqlite-node": "workspace:^",
     "@testcontainers/mssqlserver": "^10.18.0",
     "@testcontainers/mysql": "^10.18.0",
     "@testcontainers/postgresql": "^10.18.0",

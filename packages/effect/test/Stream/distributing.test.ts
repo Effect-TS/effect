@@ -5,7 +5,7 @@ import * as Exit from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
-import { strictEqual } from "effect/test/util"
+import { strictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("distributedWithDynamic - ensures no race between subscription and stream end", () =>

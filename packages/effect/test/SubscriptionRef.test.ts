@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Chunk, Deferred, Effect, Equal, Exit, Fiber, Number, pipe, Random, Stream, SubscriptionRef } from "effect"
-import { assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 
 describe("SubscriptionRef", () => {
   it.effect("multiple subscribers can receive changes", () =>

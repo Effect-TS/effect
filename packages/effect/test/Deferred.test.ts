@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Option, pipe, Ref } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Deferred", () => {
   it.effect("complete a deferred using succeed", () =>

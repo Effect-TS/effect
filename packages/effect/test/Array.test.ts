@@ -11,7 +11,7 @@ import {
   type Predicate,
   String as Str
 } from "effect"
-import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")

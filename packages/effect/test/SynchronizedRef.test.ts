@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Fiber, Option, pipe, SynchronizedRef } from "effect"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const current = "value"
 const update = "new value"

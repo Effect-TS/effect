@@ -15,8 +15,16 @@
   },
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./internal": "./src/internal.ts",
+    "./utils": "./src/utils.ts"
   },
   "scripts": {
     "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v2",

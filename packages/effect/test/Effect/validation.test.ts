@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Effect", () => {
   it.effect("validate - fails", () =>

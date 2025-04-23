@@ -10,7 +10,7 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertFalse, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("async", () =>

@@ -7,7 +7,7 @@ import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("partitionEither - allows repeated runs without hanging", () =>

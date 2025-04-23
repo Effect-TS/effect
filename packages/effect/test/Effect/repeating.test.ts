@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Effect", () => {
   it.effect("succeeds eventually", () =>

@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Effect, pipe, Ref } from "effect"
-import { deepStrictEqual, notDeepStrictEqual } from "effect/test/util"
+import { deepStrictEqual, notDeepStrictEqual } from "@effect/vitest/utils"
 
 describe("Effect", () => {
   describe("all", () => {

@@ -27,8 +27,26 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./Migrator": "./src/Migrator.ts",
+    "./Migrator/FileSystem": "./src/Migrator/FileSystem.ts",
+    "./Model": "./src/Model.ts",
+    "./SqlClient": "./src/SqlClient.ts",
+    "./SqlConnection": "./src/SqlConnection.ts",
+    "./SqlError": "./src/SqlError.ts",
+    "./SqlEventJournal": "./src/SqlEventJournal.ts",
+    "./SqlEventLogServer": "./src/SqlEventLogServer.ts",
+    "./SqlResolver": "./src/SqlResolver.ts",
+    "./SqlSchema": "./src/SqlSchema.ts",
+    "./SqlStream": "./src/SqlStream.ts",
+    "./Statement": "./src/Statement.ts"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -53,13 +71,5 @@
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "effect": "workspace:^"
-  },
-  "effect": {
-    "generateExports": {
-      "include": [
-        "*.ts",
-        "Migrator/*.ts"
-      ]
-    }
   }
 }

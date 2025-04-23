@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
-import * as Util from "effect/test/util"
+import * as Util from "@effect/vitest/utils"
 
 const expectRight = <R, L>(s: Stream.Stream<R, L>, expected: R) => {
   Util.deepStrictEqual(Chunk.toArray(Effect.runSync(Stream.runCollect(Stream.either(s)))), [Either.right(expected)])

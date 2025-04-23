@@ -5,7 +5,7 @@ import * as Exit from "effect/Exit"
 import { constFalse, constTrue, constVoid, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("when - returns the stream if the condition is satisfied", () =>

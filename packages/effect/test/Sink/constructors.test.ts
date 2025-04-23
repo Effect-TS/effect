@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import type * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -6,7 +7,6 @@ import * as Effectable from "effect/Effectable"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
-import * as internalQueue from "effect/internal/queue"
 import type * as MutableQueue from "effect/MutableQueue"
 import type * as MutableRef from "effect/MutableRef"
 import type * as Option from "effect/Option"
@@ -15,7 +15,7 @@ import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertTrue, deepStrictEqual } from "effect/test/util"
+import * as internalQueue from "../../src/internal/queue.js"
 
 describe("Sink", () => {
   it.effect("drain - fails if upstream fails", () =>

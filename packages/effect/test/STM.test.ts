@@ -27,7 +27,7 @@ import {
   assertTrue,
   deepStrictEqual,
   strictEqual
-} from "effect/test/util"
+} from "@effect/vitest/utils"
 
 interface STMEnv {
   readonly ref: TRef.TRef<number>

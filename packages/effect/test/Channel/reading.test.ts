@@ -11,7 +11,7 @@ import * as MergeDecision from "effect/MergeDecision"
 import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Ref from "effect/Ref"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 export const mapper = <A, B>(
   f: (a: A) => B

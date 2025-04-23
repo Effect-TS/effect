@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Chunk, NonEmptyIterable } from "effect"
-import { deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 
 describe("NonEmptyIterable", () => {
   it("should get head and rest", () => {

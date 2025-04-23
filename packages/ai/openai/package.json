@@ -25,8 +25,21 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./Generated": "./src/Generated.ts",
+    "./OpenAiClient": "./src/OpenAiClient.ts",
+    "./OpenAiCompletions": "./src/OpenAiCompletions.ts",
+    "./OpenAiConfig": "./src/OpenAiConfig.ts",
+    "./OpenAiEmbeddings": "./src/OpenAiEmbeddings.ts",
+    "./OpenAiTelemetry": "./src/OpenAiTelemetry.ts",
+    "./OpenAiTokenizer": "./src/OpenAiTokenizer.ts"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",

@@ -10,7 +10,7 @@ import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import { isUnknown } from "effect/Predicate"
 import * as S from "effect/Schema"
-import { assertFalse, assertTrue, strictEqual, throws } from "effect/test/util"
+import { assertFalse, assertTrue, strictEqual, throws } from "@effect/vitest/utils"
 
 /**
  * Tests that the generated Eq is a valid Eq

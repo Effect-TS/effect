@@ -10,7 +10,7 @@ import {
   deepStrictEqual,
   strictEqual,
   throws
-} from "effect/test/util"
+} from "@effect/vitest/utils"
 
 describe("Either", () => {
   it("void", () => {

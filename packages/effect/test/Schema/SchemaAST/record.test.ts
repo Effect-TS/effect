@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import * as AST from "effect/SchemaAST"
-import { deepStrictEqual, throws } from "effect/test/util"
+import { deepStrictEqual, throws } from "@effect/vitest/utils"
 
 describe("record", () => {
   it("should throw on unsupported keys", () => {

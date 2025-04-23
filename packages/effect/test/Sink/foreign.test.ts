@@ -8,7 +8,7 @@ import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import type * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import { unify } from "effect/Unify"
 
 const runSink = <A, E, R>(sink: Sink.Sink<A, unknown, unknown, E, R>) => Stream.run(Effect.void, sink)

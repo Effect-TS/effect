@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, FiberId } from "effect"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import * as Util from "../../TestUtils.js"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Cause", () => {
   it("test roundtrip consistency", () => {

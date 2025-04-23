@@ -16,7 +16,7 @@ import {
   pipe,
   Schedule
 } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const labels = [MetricLabel.make("x", "a"), MetricLabel.make("y", "b")]
 

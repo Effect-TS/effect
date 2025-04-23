@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertInstanceOf, deepStrictEqual, strictEqual } from "effect/test/util"
+import * as Util from "../../TestUtils.js"
+import { assertInstanceOf, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Defect", () => {
   describe("decoding", () => {

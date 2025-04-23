@@ -7,7 +7,7 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import type * as Tracer from "effect/Tracer"
 
 interface StringService {

@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Effect, Option } from "effect"
-import { assertLeft, assertSuccess, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, assertSuccess, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Effect", () => {
   it("tryPromise - success, no catch, no AbortSignal", async () => {

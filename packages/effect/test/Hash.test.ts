@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { absurd, Equal, Hash, HashSet, identity, Option, Utils } from "effect"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue, strictEqual } from "@effect/vitest/utils"
 
 describe("Hash", () => {
   it("structural", () => {

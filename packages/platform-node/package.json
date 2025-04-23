@@ -27,11 +27,41 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./NodeClusterRunnerHttp": "./src/NodeClusterRunnerHttp.ts",
+    "./NodeClusterRunnerSocket": "./src/NodeClusterRunnerSocket.ts",
+    "./NodeClusterShardManagerHttp": "./src/NodeClusterShardManagerHttp.ts",
+    "./NodeClusterShardManagerSocket": "./src/NodeClusterShardManagerSocket.ts",
+    "./NodeCommandExecutor": "./src/NodeCommandExecutor.ts",
+    "./NodeContext": "./src/NodeContext.ts",
+    "./NodeFileSystem": "./src/NodeFileSystem.ts",
+    "./NodeFileSystem/ParcelWatcher": "./src/NodeFileSystem/ParcelWatcher.ts",
+    "./NodeHttpClient": "./src/NodeHttpClient.ts",
+    "./NodeHttpPlatform": "./src/NodeHttpPlatform.ts",
+    "./NodeHttpServer": "./src/NodeHttpServer.ts",
+    "./NodeHttpServerRequest": "./src/NodeHttpServerRequest.ts",
+    "./NodeKeyValueStore": "./src/NodeKeyValueStore.ts",
+    "./NodeMultipart": "./src/NodeMultipart.ts",
+    "./NodePath": "./src/NodePath.ts",
+    "./NodeRuntime": "./src/NodeRuntime.ts",
+    "./NodeSink": "./src/NodeSink.ts",
+    "./NodeSocket": "./src/NodeSocket.ts",
+    "./NodeSocketServer": "./src/NodeSocketServer.ts",
+    "./NodeStream": "./src/NodeStream.ts",
+    "./NodeTerminal": "./src/NodeTerminal.ts",
+    "./NodeWorker": "./src/NodeWorker.ts",
+    "./NodeWorkerRunner": "./src/NodeWorkerRunner.ts",
+    "./Undici": "./src/Undici.ts"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -65,13 +95,5 @@
     "@types/ws": "^8.5.12",
     "effect": "workspace:^",
     "vitest-websocket-mock": "^0.4.0"
-  },
-  "effect": {
-    "generateExports": {
-      "include": [
-        "*.ts",
-        "NodeFileSystem/*.ts"
-      ]
-    }
   }
 }

@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
+import * as Util from "../../TestUtils.js"
 
 describe("greaterThanDate", () => {
   const schema = S.DateFromSelf.pipe(S.greaterThanDate(new Date(0)))

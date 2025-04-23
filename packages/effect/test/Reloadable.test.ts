@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import { Context, Effect, Layer, pipe, Reloadable } from "effect"
-import { strictEqual } from "effect/test/util"
-import * as Counter from "effect/test/utils/counter"
+import * as Counter from "./utils/counter.js"
 
 const DummyServiceTypeId = Symbol.for("effect/test/Reloadable/DummyService")
 type DummyServiceTypeId = typeof DummyServiceTypeId

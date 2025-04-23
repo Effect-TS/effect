@@ -2,8 +2,8 @@ import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { strictEqual } from "effect/test/util"
+import * as Util from "../TestUtils.js"
+import { strictEqual } from "@effect/vitest/utils"
 
 describe("filterEffect", () => {
   it("should expose the original schema as `from`", () => {

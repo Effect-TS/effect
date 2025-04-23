@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Effect, Exit, FiberRef, Layer, pipe, Runtime } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual, throwsAsync } from "effect/test/util"
+import { assertTrue, deepStrictEqual, strictEqual, throwsAsync } from "@effect/vitest/utils"
 
 describe("Runtime", () => {
   it.effect("setFiberRef", () =>

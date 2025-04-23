@@ -8,7 +8,7 @@ import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-import { assertLeft, assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertLeft, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("absolve - happy path", () =>

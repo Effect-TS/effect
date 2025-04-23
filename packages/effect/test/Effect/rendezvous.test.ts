@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Queue from "effect/Queue"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import * as TestClock from "effect/TestClock"
 
 describe("Effect", () => {

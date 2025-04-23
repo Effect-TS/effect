@@ -63,7 +63,7 @@ importers:
         version: 0.1.0
       '@effect/vitest':
         specifier: workspace:^
-        version: link:packages/vitest/dist
+        version: link:packages/vitest
       '@eslint/compat':
         specifier: ^1.1.1
         version: 1.1.1
@@ -159,13 +159,13 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../../experimental/dist
+        version: link:../../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../../platform/dist
+        version: link:../../platform
       effect:
         specifier: workspace:^
-        version: link:../../effect/dist
+        version: link:../../effect
     publishDirectory: dist
 
   packages/ai/anthropic:
@@ -176,22 +176,22 @@ importers:
     devDependencies:
       '@effect/ai':
         specifier: workspace:^
-        version: link:../ai/dist
+        version: link:../ai
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../../experimental/dist
+        version: link:../../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../../platform/dist
+        version: link:../../platform
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node/dist
+        version: link:../../platform-node
       '@tim-smart/openapi-gen':
         specifier: ^0.3.11
         version: 0.3.11
       effect:
         specifier: workspace:^
-        version: link:../../effect/dist
+        version: link:../../effect
     publishDirectory: dist
 
   packages/ai/openai:
@@ -202,22 +202,22 @@ importers:
     devDependencies:
       '@effect/ai':
         specifier: workspace:^
-        version: link:../ai/dist
+        version: link:../ai
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../../experimental/dist
+        version: link:../../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../../platform/dist
+        version: link:../../platform
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node/dist
+        version: link:../../platform-node
       '@tim-smart/openapi-gen':
         specifier: ^0.3.11
         version: 0.3.11
       effect:
         specifier: workspace:^
-        version: link:../../effect/dist
+        version: link:../../effect
     publishDirectory: dist
 
   packages/cli:
@@ -234,38 +234,41 @@ importers:
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../platform-node/dist
+        version: link:../platform-node
       '@effect/printer':
         specifier: workspace:^
-        version: link:../printer/dist
+        version: link:../printer
       '@effect/printer-ansi':
         specifier: workspace:^
-        version: link:../printer-ansi/dist
+        version: link:../printer-ansi
       '@types/ini':
         specifier: ^4.1.1
         version: 4.1.1
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/cluster:
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node
       '@effect/rpc':
         specifier: workspace:^
-        version: link:../rpc/dist
+        version: link:../rpc
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       '@effect/sql-sqlite-node':
         specifier: workspace:^
-        version: link:../sql-sqlite-node/dist
+        version: link:../sql-sqlite-node
       '@testcontainers/mysql':
         specifier: ^10.18.0
         version: 10.18.0
@@ -274,7 +277,7 @@ importers:
         version: 10.18.0
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/effect:
@@ -304,10 +307,10 @@ importers:
     dependencies:
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
       uuid:
         specifier: ^11.0.3
         version: 11.0.3
@@ -330,11 +333,11 @@ importers:
     dependencies:
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -393,7 +396,7 @@ importers:
         version: 8.17.1
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/platform-browser:
@@ -404,10 +407,13 @@ importers:
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
+      '@effect/rpc':
+        specifier: workspace:^
+        version: link:../rpc
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
       happy-dom:
         specifier: ^14.12.3
         version: 14.12.3
@@ -420,36 +426,36 @@ importers:
     dependencies:
       '@effect/platform-node-shared':
         specifier: workspace:^
-        version: link:../platform-node-shared/dist
+        version: link:../platform-node-shared
       multipasta:
         specifier: ^0.2.5
         version: 0.2.5
     devDependencies:
       '@effect/cluster':
         specifier: workspace:^
-        version: link:../cluster/dist
+        version: link:../cluster
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@effect/rpc':
         specifier: workspace:^
-        version: link:../rpc/dist
+        version: link:../rpc
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       '@types/bun':
         specifier: ^1.2.2
         version: 1.2.2
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/platform-node:
     dependencies:
       '@effect/platform-node-shared':
         specifier: workspace:^
-        version: link:../platform-node-shared/dist
+        version: link:../platform-node-shared
       mime:
         specifier: ^3.0.0
         version: 3.0.0
@@ -462,16 +468,16 @@ importers:
     devDependencies:
       '@effect/cluster':
         specifier: workspace:^
-        version: link:../cluster/dist
+        version: link:../cluster
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@effect/rpc':
         specifier: workspace:^
-        version: link:../rpc/dist
+        version: link:../rpc
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       '@types/mime':
         specifier: ^3.0.4
         version: 3.0.4
@@ -480,7 +486,7 @@ importers:
         version: 8.5.12
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
       vitest-websocket-mock:
         specifier: ^0.4.0
         version: 0.4.0(vitest@3.0.6)
@@ -500,16 +506,16 @@ importers:
     devDependencies:
       '@effect/cluster':
         specifier: workspace:^
-        version: link:../cluster/dist
+        version: link:../cluster
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@effect/rpc':
         specifier: workspace:^
-        version: link:../rpc/dist
+        version: link:../rpc
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       '@types/tar':
         specifier: ^6.1.12
         version: 6.1.13
@@ -518,7 +524,7 @@ importers:
         version: 8.5.14
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
       tar:
         specifier: ^6
         version: 6.2.1
@@ -528,34 +534,34 @@ importers:
     devDependencies:
       '@effect/typeclass':
         specifier: workspace:^
-        version: link:../typeclass/dist
+        version: link:../typeclass
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/printer-ansi:
     dependencies:
       '@effect/printer':
         specifier: workspace:^
-        version: link:../printer/dist
+        version: link:../printer
     devDependencies:
       '@effect/typeclass':
         specifier: workspace:^
-        version: link:../typeclass/dist
+        version: link:../typeclass
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/rpc:
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/sql:
@@ -569,13 +575,13 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/sql-clickhouse:
@@ -589,19 +595,19 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../platform-node/dist
+        version: link:../platform-node
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/sql-d1:
@@ -615,16 +621,16 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
       miniflare:
         specifier: ^3.20240806.0
         version: 3.20240806.0
@@ -634,7 +640,10 @@ importers:
     devDependencies:
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
+      '@effect/sql-mysql2':
+        specifier: workspace:^
+        version: link:../sql-mysql2
       '@testcontainers/mysql':
         specifier: ^10.18.0
         version: 10.18.0
@@ -646,7 +655,7 @@ importers:
         version: 0.31.4(@cloudflare/workers-types@4.20250204.0)(@libsql/client@0.14.0)(@op-engineering/op-sqlite@11.4.7(react-native@0.77.1(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@react-native-community/cli-server-api@15.1.3)(react@19.0.0))(react@19.0.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.12)(better-sqlite3@11.8.1)(bun-types@1.2.2)(kysely@0.27.5)(mysql2@3.12.0)(postgres@3.4.5)(react@19.0.0)
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/sql-kysely:
@@ -657,7 +666,19 @@ importers:
     devDependencies:
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
+      '@effect/sql-mssql':
+        specifier: workspace:^
+        version: link:../sql-mssql
+      '@effect/sql-mysql2':
+        specifier: workspace:^
+        version: link:../sql-mysql2
+      '@effect/sql-pg':
+        specifier: workspace:^
+        version: link:../sql-pg
+      '@effect/sql-sqlite-node':
+        specifier: workspace:^
+        version: link:../sql-sqlite-node
       '@testcontainers/mssqlserver':
         specifier: ^10.18.0
         version: 10.18.0
@@ -675,7 +696,7 @@ importers:
         version: 11.8.1
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
       kysely:
         specifier: ^0.27.4
         version: 0.27.4
@@ -692,16 +713,16 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
       testcontainers:
         specifier: ^10.18.0
         version: 10.18.0
@@ -718,16 +739,16 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/sql-mysql2:
@@ -741,19 +762,19 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       '@testcontainers/mysql':
         specifier: ^10.18.0
         version: 10.18.0
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/sql-pg:
@@ -767,19 +788,19 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       '@testcontainers/postgresql':
         specifier: ^10.18.0
         version: 10.18.0
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/sql-sqlite-bun:
@@ -790,19 +811,19 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       '@types/bun':
         specifier: ^1.2.2
         version: 1.2.2
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/sql-sqlite-do:
@@ -816,13 +837,13 @@ importers:
         version: 4.20241022.0
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/sql-sqlite-node:
@@ -836,19 +857,22 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/platform':
         specifier: workspace:^
-        version: link:../platform/dist
+        version: link:../platform
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       '@types/better-sqlite3':
         specifier: ^7.6.12
         version: 7.6.12
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/sql-sqlite-react-native:
@@ -859,16 +883,16 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       '@op-engineering/op-sqlite':
         specifier: 7.1.0
         version: 7.1.0(react-native@0.77.1(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@react-native-community/cli-server-api@15.1.3)(react@19.0.0))(react@19.0.0)
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/sql-sqlite-wasm:
@@ -879,30 +903,30 @@ importers:
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
-        version: link:../experimental/dist
+        version: link:../experimental
       '@effect/sql':
         specifier: workspace:^
-        version: link:../sql/dist
+        version: link:../sql
       '@effect/wa-sqlite':
         specifier: ^0.1.2
         version: 0.1.2
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/typeclass:
     devDependencies:
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
     publishDirectory: dist
 
   packages/vitest:
     devDependencies:
       effect:
         specifier: workspace:^
-        version: link:../effect/dist
+        version: link:../effect
       vitest:
         specifier: ^3.0.6
         version: 3.0.6(@edge-runtime/vm@5.0.0)(@types/node@22.13.11)(@vitest/browser@3.0.6)(happy-dom@17.1.0)(msw@2.7.1(@types/node@22.13.11)(typescript@5.7.3))(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0)

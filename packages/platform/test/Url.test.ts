@@ -2,7 +2,7 @@ import * as Url from "@effect/platform/Url"
 import * as UrlParams from "@effect/platform/UrlParams"
 import { describe, it } from "@effect/vitest"
 import { Cause, Either } from "effect"
-import { assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Url", () => {
   const testURL = new URL("https://example.com/test")

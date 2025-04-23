@@ -7,7 +7,7 @@ import { pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("toQueue", () =>

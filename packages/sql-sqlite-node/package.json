@@ -25,8 +25,16 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./SqliteClient": "./src/SqliteClient.ts",
+    "./SqliteMigrator": "./src/SqliteMigrator.ts"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -41,6 +49,7 @@
   "devDependencies": {
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
     "@effect/sql": "workspace:^",
     "@types/better-sqlite3": "^7.6.12",
     "effect": "workspace:^"

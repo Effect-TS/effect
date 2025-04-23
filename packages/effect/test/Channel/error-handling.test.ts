@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Channel", () => {
   it.effect("catchAll - structure confusion", () =>

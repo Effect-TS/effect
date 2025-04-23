@@ -2,8 +2,8 @@ import { describe, it } from "@effect/vitest"
 import * as C from "effect/Chunk"
 import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue } from "effect/test/util"
+import * as Util from "../../TestUtils.js"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 describe("ChunkFromSelf", () => {
   it("test roundtrip consistency", () => {

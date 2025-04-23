@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
-import { assertLeft, deepStrictEqual } from "effect/test/util"
+import { assertLeft, deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("some", () =>

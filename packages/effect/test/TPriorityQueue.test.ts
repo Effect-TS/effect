@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import {
   Array as Arr,
   Effect,
@@ -10,8 +11,7 @@ import {
   STM,
   TPriorityQueue
 } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { equivalentElements } from "effect/test/utils/equals"
+import { equivalentElements } from "./utils/equals.js"
 
 interface Event {
   readonly time: number

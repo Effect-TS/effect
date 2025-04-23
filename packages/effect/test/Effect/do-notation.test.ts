@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import * as Util from "effect/test/util"
+import * as Util from "@effect/vitest/utils"
 import type { NoExcessProperties } from "effect/Types"
 
 const expectRight = <R, L>(e: Effect.Effect<R, L>, expected: R) => {

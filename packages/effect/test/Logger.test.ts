@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, it, vi } from "@effect/vitest"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import {
   Cause,
   Chunk,
@@ -13,8 +14,7 @@ import {
   LogSpan,
   pipe
 } from "effect"
-import { logLevelInfo } from "effect/internal/core"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { logLevelInfo } from "../src/internal/core.js"
 
 describe("Logger", () => {
   it("isLogger", () => {

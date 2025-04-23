@@ -8,7 +8,7 @@ import * as Exit from "effect/Exit"
 import { constVoid, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as UpstreamPullRequest from "effect/UpstreamPullRequest"
 import * as UpstreamPullStrategy from "effect/UpstreamPullStrategy"
 

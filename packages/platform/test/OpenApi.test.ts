@@ -11,7 +11,7 @@ import {
 } from "@effect/platform"
 import { describe, it } from "@effect/vitest"
 import { Context, Schema } from "effect"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 
 const HttpApiDecodeError = {
   "description": "The request did not match the expected schema",

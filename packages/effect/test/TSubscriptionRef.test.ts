@@ -13,7 +13,7 @@ import {
   Stream,
   TSubscriptionRef
 } from "effect"
-import { assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 
 describe.concurrent("TSubscriptionRef", () => {
   it.effect("only emits comitted values", () =>

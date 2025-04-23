@@ -25,8 +25,38 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./DevTools": "./src/DevTools.ts",
+    "./DevTools/Client": "./src/DevTools/Client.ts",
+    "./DevTools/Domain": "./src/DevTools/Domain.ts",
+    "./DevTools/Server": "./src/DevTools/Server.ts",
+    "./Event": "./src/Event.ts",
+    "./EventGroup": "./src/EventGroup.ts",
+    "./EventJournal": "./src/EventJournal.ts",
+    "./EventLog": "./src/EventLog.ts",
+    "./EventLogEncryption": "./src/EventLogEncryption.ts",
+    "./EventLogRemote": "./src/EventLogRemote.ts",
+    "./EventLogServer": "./src/EventLogServer.ts",
+    "./EventLogServer/Cloudflare": "./src/EventLogServer/Cloudflare.ts",
+    "./Machine": "./src/Machine.ts",
+    "./Machine/Procedure": "./src/Machine/Procedure.ts",
+    "./Machine/ProcedureList": "./src/Machine/ProcedureList.ts",
+    "./Machine/SerializableProcedureList": "./src/Machine/SerializableProcedureList.ts",
+    "./PersistedCache": "./src/PersistedCache.ts",
+    "./Persistence": "./src/Persistence.ts",
+    "./Persistence/Lmdb": "./src/Persistence/Lmdb.ts",
+    "./Persistence/Redis": "./src/Persistence/Redis.ts",
+    "./Reactivity": "./src/Reactivity.ts",
+    "./RequestResolver": "./src/RequestResolver.ts",
+    "./Sse": "./src/Sse.ts",
+    "./VariantSchema": "./src/VariantSchema.ts"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -60,18 +90,5 @@
     "@types/ws": "^8.5.12",
     "ioredis": "^5.4.1",
     "lmdb": "^3.0.13"
-  },
-  "effect": {
-    "generateExports": {
-      "include": [
-        "*.ts",
-        "DevTools/*.ts",
-        "EventLogRemote/*.ts",
-        "EventLogServer/*.ts",
-        "Machine/*.ts",
-        "Persistence/*.ts",
-        "SocketServer/*.ts"
-      ]
-    }
   }
 }

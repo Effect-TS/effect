@@ -6,7 +6,7 @@ import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 
 const ref = FiberRef.unsafeMake(List.empty<string>())
 const env = GenericTag<"context", number>("context")

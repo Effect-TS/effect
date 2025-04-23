@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
 import * as Streamable from "effect/Streamable"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Streamable", () => {
   it.effect(

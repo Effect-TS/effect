@@ -1,3 +1,4 @@
+import { assertTrue } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -7,9 +8,8 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
-import { assertTrue } from "effect/test/util"
-import * as ObservableResource from "effect/test/utils/cache/ObservableResource"
 import * as TestServices from "effect/TestServices"
+import * as ObservableResource from "./ObservableResource.js"
 
 export interface WatchableLookup<Key, Value, Error = never> {
   (key: Key): Effect.Effect<Value, Error, Scope.Scope>

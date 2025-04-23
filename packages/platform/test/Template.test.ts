@@ -1,7 +1,7 @@
 import { Template } from "@effect/platform"
 import { describe, test } from "@effect/vitest"
 import { Effect, Option, Stream } from "effect"
-import { strictEqual } from "effect/test/util"
+import { strictEqual } from "@effect/vitest/utils"
 
 describe("Template", () => {
   test("it consolidates Effects", () =>

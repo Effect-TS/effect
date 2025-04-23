@@ -6,7 +6,7 @@ import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import * as TestClock from "effect/TestClock"
 
 describe("Stream", () => {

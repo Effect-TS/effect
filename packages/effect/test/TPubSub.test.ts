@@ -11,7 +11,7 @@ import {
   TPubSub,
   TQueue
 } from "effect"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 
 const sort: (array: ReadonlyArray<number>) => ReadonlyArray<number> = Arr.sort(number.Order)
 

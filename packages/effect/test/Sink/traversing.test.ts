@@ -6,7 +6,7 @@ import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Sink", () => {
   it.effect("findEffect - with head sink", () =>

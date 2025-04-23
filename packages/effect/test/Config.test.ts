@@ -15,7 +15,7 @@ import {
   Redacted,
   Secret
 } from "effect"
-import { assertFailure, assertSuccess, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFailure, assertSuccess, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const assertConfigError = <A>(
   config: Config.Config<A>,

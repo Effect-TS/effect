@@ -1,5 +1,5 @@
 import { Context, Effect, ParseResult, Schema as S, SchemaAST as AST } from "effect"
-import { deepStrictEqual, fail, strictEqual, throws } from "effect/test/util"
+import { deepStrictEqual, fail, strictEqual, throws } from "@effect/vitest/utils"
 import * as SchemaTest from "./SchemaTest.js"
 
 export const assertions = Effect.runSync(

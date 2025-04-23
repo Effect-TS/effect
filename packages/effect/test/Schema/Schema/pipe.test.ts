@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import * as S from "effect/Schema"
-import { assertFalse, assertTrue } from "effect/test/util"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 describe("pipe", () => {
   it("schemas should be pipeable", () => {

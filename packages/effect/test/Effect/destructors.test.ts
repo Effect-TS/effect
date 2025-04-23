@@ -9,7 +9,7 @@ import {
   assertSome,
   assertTrue,
   strictEqual
-} from "effect/test/util"
+} from "@effect/vitest/utils"
 
 const ExampleError = new Error("Oh noes!")
 

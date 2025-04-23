@@ -3,7 +3,7 @@ import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { constTrue, pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
-import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
+import { assertLeft, assertRight, deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("drop - simple example", () =>

@@ -25,8 +25,16 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./PgClient": "./src/PgClient.ts",
+    "./PgMigrator": "./src/PgMigrator.ts"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",

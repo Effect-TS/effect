@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { constVoid, identity, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const deepMapEffect = (n: number): Effect.Effect<number> => {
   const loop = (n: number, acc: Effect.Effect<number>): Effect.Effect<number> => {

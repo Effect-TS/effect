@@ -15,7 +15,7 @@ import {
   Option,
   Secret
 } from "effect"
-import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 interface HostPort {
   readonly host: string

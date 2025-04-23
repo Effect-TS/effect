@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import * as Exit from "effect/Exit"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
+import * as Util from "../TestUtils.js"
 
 const isBun = "Bun" in globalThis
 
@@ -50,7 +50,7 @@ describe("parseJson", () => {
     └─ JSON Parse error: Expected '}'`
           : `parseJson
 └─ Transformation process failure
-   └─ Expected property name or '}' in JSON at position 1 (line 1 column 2)`
+   └─ Expected property name or '}' in JSON at position 1`
       )
     })
 
@@ -94,7 +94,7 @@ describe("parseJson", () => {
 └─ Encoded side transformation failure
    └─ parseJson
       └─ Transformation process failure
-         └─ Expected ':' after property name in JSON at position 4 (line 1 column 5)`
+         └─ Expected ':' after property name in JSON at position 4`
       )
       await Util.assertions.decoding.fail(
         schema,

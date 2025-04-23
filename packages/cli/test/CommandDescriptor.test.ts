@@ -5,14 +5,14 @@ import * as Descriptor from "@effect/cli/CommandDescriptor"
 import * as CommandDirective from "@effect/cli/CommandDirective"
 import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as Options from "@effect/cli/Options"
-import * as Grep from "@effect/cli/test/utils/grep"
-import * as Tail from "@effect/cli/test/utils/tail"
-import * as WordCount from "@effect/cli/test/utils/wc"
 import * as ValidationError from "@effect/cli/ValidationError"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as Doc from "@effect/printer/Doc"
 import { describe, expect, it } from "@effect/vitest"
 import { Array, Effect, Option, String } from "effect"
+import * as Grep from "./utils/grep.js"
+import * as Tail from "./utils/tail.js"
+import * as WordCount from "./utils/wc.js"
 
 const runEffect = <E, A>(
   self: Effect.Effect<A, E, NodeContext.NodeContext>

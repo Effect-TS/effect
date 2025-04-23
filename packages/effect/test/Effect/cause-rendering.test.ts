@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import { Cause, Effect, Option, pipe } from "effect"
-import { assertFalse, assertInclude, assertInstanceOf, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertInclude, assertInstanceOf, assertTrue, strictEqual } from "@effect/vitest/utils"
 
 describe("Effect", () => {
   it.effect("Cause should include span data", () =>

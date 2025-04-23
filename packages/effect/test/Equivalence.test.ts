@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Equivalence, pipe } from "effect"
-import { assertFalse, assertTrue } from "effect/test/util"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 describe("Equivalence", () => {
   it("array", () => {

@@ -11,7 +11,7 @@ import {
   deepStrictEqual,
   strictEqual,
   throws
-} from "effect/test/util"
+} from "@effect/vitest/utils"
 
 interface A {
   a: number

@@ -8,7 +8,7 @@ import { constVoid, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
-import { assertLeft, assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertLeft, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import * as TestClock from "effect/TestClock"
 import * as TestServices from "effect/TestServices"
 

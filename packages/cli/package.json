@@ -27,8 +27,30 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./Args": "./src/Args.ts",
+    "./AutoCorrect": "./src/AutoCorrect.ts",
+    "./BuiltInOptions": "./src/BuiltInOptions.ts",
+    "./CliApp": "./src/CliApp.ts",
+    "./CliConfig": "./src/CliConfig.ts",
+    "./Command": "./src/Command.ts",
+    "./CommandDescriptor": "./src/CommandDescriptor.ts",
+    "./CommandDirective": "./src/CommandDirective.ts",
+    "./ConfigFile": "./src/ConfigFile.ts",
+    "./HelpDoc": "./src/HelpDoc.ts",
+    "./HelpDoc/Span": "./src/HelpDoc/Span.ts",
+    "./Options": "./src/Options.ts",
+    "./Primitive": "./src/Primitive.ts",
+    "./Prompt": "./src/Prompt.ts",
+    "./Usage": "./src/Usage.ts",
+    "./ValidationError": "./src/ValidationError.ts"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -53,18 +75,6 @@
     "@effect/printer-ansi": "workspace:^",
     "@types/ini": "^4.1.1",
     "effect": "workspace:^"
-  },
-  "effect": {
-    "generateExports": {
-      "include": [
-        "**/*.ts"
-      ]
-    },
-    "generateIndex": {
-      "include": [
-        "**/*.ts"
-      ]
-    }
   },
   "dependencies": {
     "ini": "^4.1.3",

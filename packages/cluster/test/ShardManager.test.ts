@@ -9,14 +9,14 @@ import {
   ShardManager,
   ShardStorage
 } from "@effect/cluster"
+import { describe, expect, it } from "@effect/vitest"
+import { Array, Data, Effect, Iterable, Layer, MutableHashMap, Option, pipe, TestClock } from "effect"
 import {
   decideAssignmentsForUnassignedShards,
   decideAssignmentsForUnbalancedShards,
   RunnerWithMetadata,
   State
-} from "@effect/cluster/internal/shardManager"
-import { describe, expect, it } from "@effect/vitest"
-import { Array, Data, Effect, Iterable, Layer, MutableHashMap, Option, pipe, TestClock } from "effect"
+} from "../src/internal/shardManager.js"
 
 const runner1 = RunnerWithMetadata({
   runner: Runner.make({ address: RunnerAddress.make("1", 1), version: 1 }),

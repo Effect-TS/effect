@@ -9,7 +9,7 @@ import { constFalse, constTrue, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
-import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertLeft, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Effect", () => {
   it.effect("andThen", () =>

@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constFalse, pipe } from "effect/Function"
-import { assertNone, assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertNone, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import * as TestClock from "effect/TestClock"
 
 describe("Effect", () => {

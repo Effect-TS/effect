@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Chunk, Effect, Stream } from "effect"
-import { assertEquals, assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertEquals, assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Effect.fn", () => {
   it.effect("catches defects in the function", () =>

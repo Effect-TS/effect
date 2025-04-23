@@ -10,7 +10,7 @@ import {
   deepStrictEqual,
   strictEqual,
   throws
-} from "effect/test/util"
+} from "@effect/vitest/utils"
 
 declare const IntTypeId: unique symbol
 type Int = number & Brand.Brand<typeof IntTypeId>

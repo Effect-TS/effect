@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Schema as S, SchemaAST as AST } from "effect"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertTrue, deepStrictEqual, doesNotThrow, strictEqual } from "effect/test/util"
+import * as Util from "../TestUtils.js"
+import { assertTrue, deepStrictEqual, doesNotThrow, strictEqual } from "@effect/vitest/utils"
 
 describe("pick", () => {
   it("Refinement", () => {

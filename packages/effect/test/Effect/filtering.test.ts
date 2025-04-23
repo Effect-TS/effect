@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
+import { assertLeft, assertRight, deepStrictEqual } from "@effect/vitest/utils"
 import { strictEqual } from "node:assert"
 
 const exactlyOnce = <R, A, A1>(

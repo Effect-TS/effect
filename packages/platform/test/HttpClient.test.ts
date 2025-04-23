@@ -23,7 +23,7 @@ import {
   Stream,
   Struct
 } from "effect"
-import { assertInclude, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertInclude, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,

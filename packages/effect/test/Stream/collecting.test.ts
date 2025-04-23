@@ -5,7 +5,7 @@ import * as Either from "effect/Either"
 import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
-import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
+import { assertLeft, assertRight, deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("collect", () =>

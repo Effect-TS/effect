@@ -11,7 +11,7 @@ import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
-import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const withPermitsScoped = (permits: number) => (semaphore: Effect.Semaphore) =>
   Effect.acquireRelease(

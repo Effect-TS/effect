@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Chunk, MutableRef } from "effect"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("MutableRef", () => {
   it("toString", () => {

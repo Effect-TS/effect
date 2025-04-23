@@ -10,7 +10,7 @@ import * as FiberId from "effect/FiberId"
 import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import { assertFalse, assertLeft, assertSome, assertTrue, deepStrictEqual } from "effect/test/util"
+import { assertFalse, assertLeft, assertSome, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("acquireRelease - simple example", () =>

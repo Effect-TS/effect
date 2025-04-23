@@ -2,7 +2,7 @@ import type { HttpApiEndpoint } from "@effect/platform"
 import { HttpApiBuilder } from "@effect/platform"
 import { describe, it } from "@effect/vitest"
 import { identity, Schema } from "effect"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 
 const assertNormalizedUrlParams = <UrlParams extends Schema.Schema.Any>(
   schema: UrlParams & HttpApiEndpoint.HttpApiEndpoint.ValidateUrlParams<UrlParams>,

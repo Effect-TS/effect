@@ -10,7 +10,7 @@ import {
   deepStrictEqual,
   strictEqual,
   throws
-} from "effect/test/util"
+} from "@effect/vitest/utils"
 import { inspect } from "node:util"
 
 const asEffect = <A, E>(either: Either.Either<A, E>): Effect.Effect<A, E> => either

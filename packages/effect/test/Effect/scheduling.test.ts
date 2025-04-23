@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import * as TestClock from "effect/TestClock"
 
 describe("Effect", () => {

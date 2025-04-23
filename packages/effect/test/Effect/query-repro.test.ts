@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
-import { strictEqual } from "effect/test/util"
+import { strictEqual } from "@effect/vitest/utils"
 
 export class FindIntraday extends Request.TaggedClass("FindIntraday")<string | null, never, { symbol: string }> {}
 

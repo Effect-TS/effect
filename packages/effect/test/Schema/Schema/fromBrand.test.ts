@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
 import * as Brand from "effect/Brand"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { strictEqual } from "effect/test/util"
+import * as Util from "../TestUtils.js"
+import { strictEqual } from "@effect/vitest/utils"
 
 type Int = number & Brand.Brand<"Int">
 const Int = Brand.refined<Int>(

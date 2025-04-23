@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import * as Either from "effect/Either"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
+import * as Util from "../TestUtils.js"
 
 describe("encodeUnknownEither", () => {
   it("should return Left on async", async () => {

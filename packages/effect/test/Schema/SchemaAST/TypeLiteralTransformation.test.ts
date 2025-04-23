@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { identity } from "effect/Function"
 import * as AST from "effect/SchemaAST"
-import { throws } from "effect/test/util"
+import { throws } from "@effect/vitest/utils"
 
 describe("AST.TypeLiteralTransformation", () => {
   it("Duplicate property signature transformation", () => {

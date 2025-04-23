@@ -9,7 +9,7 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Stream from "effect/Stream"
-import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
+import { assertLeft, assertRight, deepStrictEqual } from "@effect/vitest/utils"
 import { unify } from "effect/Unify"
 
 describe("Stream.Foreign", () => {

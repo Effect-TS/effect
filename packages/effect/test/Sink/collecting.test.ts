@@ -5,7 +5,7 @@ import { constTrue, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Sink", () => {
   it.effect("collectAllN - respects the given limit", () =>

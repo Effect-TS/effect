@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertLeft, deepStrictEqual } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
@@ -10,9 +11,8 @@ import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-import { assertFalse, assertLeft, deepStrictEqual } from "effect/test/util"
-import { chunkCoordination } from "effect/test/utils/coordination"
 import * as TestClock from "effect/TestClock"
+import { chunkCoordination } from "../utils/coordination.js"
 
 describe("Stream", () => {
   it.effect("haltWhen - halts after the current element", () =>

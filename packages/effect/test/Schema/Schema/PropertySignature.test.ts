@@ -3,8 +3,8 @@ import { identity } from "effect/Function"
 import * as Option from "effect/Option"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import * as Util from "effect/test/Schema/TestUtils"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import * as Util from "../TestUtils.js"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("PropertySignature", () => {
   it("should expose a from property", () => {

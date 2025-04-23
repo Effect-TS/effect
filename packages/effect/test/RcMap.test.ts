@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Data, Effect, Exit, RcMap, Scope, TestClock } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("RcMap", () => {
   it.effect("deallocation", () =>

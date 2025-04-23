@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { strictEqual } from "effect/test/util"
+import { strictEqual } from "@effect/vitest/utils"
 
 describe("Sink", () => {
   it.effect("contextWithSink", () =>

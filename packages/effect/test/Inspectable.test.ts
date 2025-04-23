@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Inspectable } from "effect"
-import { strictEqual } from "effect/test/util"
+import { strictEqual } from "@effect/vitest/utils"
 
 describe("Inspectable", () => {
   describe("toString", () => {

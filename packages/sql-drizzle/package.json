@@ -25,14 +25,21 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
   },
   "sideEffects": [
     "./src/Mysql.ts",
     "./src/Pg.ts",
     "./src/Sqlite.ts"
   ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./Mysql": "./src/Mysql.ts",
+    "./Pg": "./src/Pg.ts",
+    "./Sqlite": "./src/Sqlite.ts"
+  },
   "scripts": {
     "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v2",
     "build-esm": "tsc -b tsconfig.build.json",
@@ -44,6 +51,7 @@
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
+    "@effect/sql-mysql2": "workspace:^",
     "@testcontainers/mysql": "^10.18.0",
     "@testcontainers/postgresql": "^10.18.0",
     "drizzle-orm": "^0.31.0",

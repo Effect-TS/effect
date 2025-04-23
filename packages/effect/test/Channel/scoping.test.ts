@@ -7,7 +7,7 @@ import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertLeft, strictEqual } from "effect/test/util"
+import { assertLeft, strictEqual } from "@effect/vitest/utils"
 
 describe("Channel", () => {
   it("acquireUseReleaseOut - acquire is executed uninterruptibly", async () => {

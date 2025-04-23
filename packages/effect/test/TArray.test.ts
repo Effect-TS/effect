@@ -9,7 +9,7 @@ import {
   assertTrue,
   deepStrictEqual,
   strictEqual
-} from "effect/test/util"
+} from "@effect/vitest/utils"
 
 const largePrime = 223
 

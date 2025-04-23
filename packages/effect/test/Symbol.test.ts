@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Symbol as Sym } from "effect"
-import { assertFalse, assertTrue } from "effect/test/util"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 describe("Symbol", () => {
   it("isSymbol", () => {

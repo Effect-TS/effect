@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const NumberServiceSymbolKey = "effect/test/NumberService"
 

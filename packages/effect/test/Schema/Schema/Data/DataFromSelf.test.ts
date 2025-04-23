@@ -2,8 +2,8 @@ import { describe, it } from "@effect/vitest"
 import * as Data from "effect/Data"
 import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue } from "effect/test/util"
+import * as Util from "../../TestUtils.js"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 describe("DataFromSelf", () => {
   it("test roundtrip consistency", () => {

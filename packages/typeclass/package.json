@@ -27,8 +27,53 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./Alternative": "./src/Alternative.ts",
+    "./Applicative": "./src/Applicative.ts",
+    "./Bicovariant": "./src/Bicovariant.ts",
+    "./Bounded": "./src/Bounded.ts",
+    "./Chainable": "./src/Chainable.ts",
+    "./Contravariant": "./src/Contravariant.ts",
+    "./Coproduct": "./src/Coproduct.ts",
+    "./Covariant": "./src/Covariant.ts",
+    "./Filterable": "./src/Filterable.ts",
+    "./FlatMap": "./src/FlatMap.ts",
+    "./Foldable": "./src/Foldable.ts",
+    "./Invariant": "./src/Invariant.ts",
+    "./Monad": "./src/Monad.ts",
+    "./Monoid": "./src/Monoid.ts",
+    "./Of": "./src/Of.ts",
+    "./Pointed": "./src/Pointed.ts",
+    "./Product": "./src/Product.ts",
+    "./SemiAlternative": "./src/SemiAlternative.ts",
+    "./SemiApplicative": "./src/SemiApplicative.ts",
+    "./SemiCoproduct": "./src/SemiCoproduct.ts",
+    "./SemiProduct": "./src/SemiProduct.ts",
+    "./Semigroup": "./src/Semigroup.ts",
+    "./Traversable": "./src/Traversable.ts",
+    "./TraversableFilterable": "./src/TraversableFilterable.ts",
+    "./data/Array": "./src/data/Array.ts",
+    "./data/BigInt": "./src/data/BigInt.ts",
+    "./data/Boolean": "./src/data/Boolean.ts",
+    "./data/Duration": "./src/data/Duration.ts",
+    "./data/Effect": "./src/data/Effect.ts",
+    "./data/Either": "./src/data/Either.ts",
+    "./data/Identity": "./src/data/Identity.ts",
+    "./data/Micro": "./src/data/Micro.ts",
+    "./data/Number": "./src/data/Number.ts",
+    "./data/Option": "./src/data/Option.ts",
+    "./data/Ordering": "./src/data/Ordering.ts",
+    "./data/Predicate": "./src/data/Predicate.ts",
+    "./data/Record": "./src/data/Record.ts",
+    "./data/String": "./src/data/String.ts",
+    "./data/Tuple": "./src/data/Tuple.ts"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -46,13 +91,5 @@
   },
   "devDependencies": {
     "effect": "workspace:^"
-  },
-  "effect": {
-    "generateExports": {
-      "include": [
-        "*.ts",
-        "data/*.ts"
-      ]
-    }
   }
 }

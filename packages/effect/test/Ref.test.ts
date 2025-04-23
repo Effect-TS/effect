@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Effect, Option, pipe, Readable, Ref } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const current = "value"
 const update = "new value"

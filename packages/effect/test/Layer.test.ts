@@ -15,7 +15,7 @@ import {
   Schedule,
   Scope
 } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const acquire1 = "Acquiring Module 1"
 const acquire2 = "Acquiring Module 2"

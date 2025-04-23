@@ -22,7 +22,7 @@ import {
   doesNotThrow,
   strictEqual,
   throws
-} from "effect/test/util"
+} from "@effect/vitest/utils"
 
 const assertTuple = <A, B>(
   actual: [Chunk.Chunk<A>, Chunk.Chunk<B>],

@@ -2,8 +2,8 @@ import { describe, it } from "@effect/vitest"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import * as Util from "../../TestUtils.js"
+import { assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,

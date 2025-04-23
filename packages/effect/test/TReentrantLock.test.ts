@@ -8,7 +8,7 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as STM from "effect/STM"
-import { assertNone, strictEqual } from "effect/test/util"
+import { assertNone, strictEqual } from "@effect/vitest/utils"
 import * as TReentrantLock from "effect/TReentrantLock"
 
 const pollSchedule = <E, A>(): Schedule.Schedule<Option.Option<Exit.Exit<E, A>>, Option.Option<Exit.Exit<E, A>>> =>

@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import * as C from "effect/Chunk"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
+import * as Util from "../../TestUtils.js"
 
 describe("NonEmptyChunk", () => {
   it("test roundtrip consistency", () => {

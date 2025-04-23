@@ -3,7 +3,7 @@ import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("decodeText/encodeText round trip", () =>

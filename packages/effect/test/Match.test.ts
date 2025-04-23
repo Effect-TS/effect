@@ -1,5 +1,4 @@
 import { describe, it } from "@effect/vitest"
-import { Either, Match as M, Option, pipe, Predicate } from "effect"
 import {
   assertFalse,
   assertLeft,
@@ -10,8 +9,9 @@ import {
   doesNotThrow,
   strictEqual,
   throws
-} from "effect/test/util"
-import { assertType } from "effect/test/utils/types"
+} from "@effect/vitest/utils"
+import { Either, Match as M, Option, pipe, Predicate } from "effect"
+import { assertType } from "./utils/types.js"
 
 describe("Match", () => {
   it("TypeMatcher.pipe() method", () => {

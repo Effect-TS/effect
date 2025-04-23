@@ -7,7 +7,7 @@ import {
   assertTrue,
   deepStrictEqual,
   strictEqual
-} from "effect/test/util"
+} from "@effect/vitest/utils"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
 class TestError extends Micro.TaggedError("TestError") {}

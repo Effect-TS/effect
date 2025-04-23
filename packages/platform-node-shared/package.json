@@ -25,11 +25,30 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    "./NodeClusterRunnerSocket": "./src/NodeClusterRunnerSocket.ts",
+    "./NodeClusterShardManagerSocket": "./src/NodeClusterShardManagerSocket.ts",
+    "./NodeClusterSocketCommon": "./src/NodeClusterSocketCommon.ts",
+    "./NodeCommandExecutor": "./src/NodeCommandExecutor.ts",
+    "./NodeFileSystem": "./src/NodeFileSystem.ts",
+    "./NodeFileSystem/ParcelWatcher": "./src/NodeFileSystem/ParcelWatcher.ts",
+    "./NodeKeyValueStore": "./src/NodeKeyValueStore.ts",
+    "./NodeMultipart": "./src/NodeMultipart.ts",
+    "./NodePath": "./src/NodePath.ts",
+    "./NodeRuntime": "./src/NodeRuntime.ts",
+    "./NodeSink": "./src/NodeSink.ts",
+    "./NodeSocket": "./src/NodeSocket.ts",
+    "./NodeSocketServer": "./src/NodeSocketServer.ts",
+    "./NodeStream": "./src/NodeStream.ts",
+    "./NodeTerminal": "./src/NodeTerminal.ts"
   },
   "scripts": {
     "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v2",
@@ -61,13 +80,5 @@
     "@types/ws": "^8.5.12",
     "effect": "workspace:^",
     "tar": "^6"
-  },
-  "effect": {
-    "generateExports": {
-      "include": [
-        "*.ts",
-        "NodeFileSystem/*.ts"
-      ]
-    }
   }
 }

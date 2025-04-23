@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -7,8 +8,7 @@ import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertTrue } from "effect/test/util"
-import { unfoldEffect } from "effect/test/utils/unfoldEffect"
+import { unfoldEffect } from "../utils/unfoldEffect.js"
 
 const findSink = <A>(a: A): Sink.Sink<A, A, A, void> =>
   pipe(

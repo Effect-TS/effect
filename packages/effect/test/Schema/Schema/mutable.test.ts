@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { identity } from "effect"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { deepStrictEqual } from "effect/test/util"
+import { deepStrictEqual } from "@effect/vitest/utils"
 
 describe("mutable", () => {
   it("string", () => {

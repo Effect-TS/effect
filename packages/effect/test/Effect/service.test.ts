@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import { assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 class Prefix extends Effect.Service<Prefix>()("Prefix", {
   sync: () => ({

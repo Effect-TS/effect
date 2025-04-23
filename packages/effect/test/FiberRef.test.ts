@@ -13,7 +13,7 @@ import {
   pipe,
   Runtime
 } from "effect"
-import { assertInclude, assertTrue, strictEqual } from "effect/test/util"
+import { assertInclude, assertTrue, strictEqual } from "@effect/vitest/utils"
 
 const initial = "initial"
 const update = "update"

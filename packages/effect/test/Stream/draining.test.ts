@@ -7,7 +7,7 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("drain - simple example", () =>

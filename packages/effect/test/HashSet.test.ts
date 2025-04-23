@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Equal, Hash, HashSet, pipe } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 class Value implements Equal.Equal {
   constructor(readonly n: number) {}

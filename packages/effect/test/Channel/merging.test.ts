@@ -7,7 +7,7 @@ import * as Exit from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
 import * as MergeDecision from "effect/MergeDecision"
 import * as Ref from "effect/Ref"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Channel", () => {
   it.effect("mergeWith - simple merge", () =>

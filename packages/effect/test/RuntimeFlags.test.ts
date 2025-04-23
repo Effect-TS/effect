@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { FastCheck as fc, pipe, RuntimeFlags, RuntimeFlagsPatch } from "effect"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import { assertFalse, assertTrue, strictEqual } from "@effect/vitest/utils"
 
 const arbRuntimeFlag = fc.constantFrom(
   RuntimeFlags.None,

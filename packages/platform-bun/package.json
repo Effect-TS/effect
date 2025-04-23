@@ -27,8 +27,36 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./BunClusterRunnerHttp": "./src/BunClusterRunnerHttp.ts",
+    "./BunClusterRunnerSocket": "./src/BunClusterRunnerSocket.ts",
+    "./BunClusterShardManagerHttp": "./src/BunClusterShardManagerHttp.ts",
+    "./BunClusterShardManagerSocket": "./src/BunClusterShardManagerSocket.ts",
+    "./BunCommandExecutor": "./src/BunCommandExecutor.ts",
+    "./BunContext": "./src/BunContext.ts",
+    "./BunFileSystem": "./src/BunFileSystem.ts",
+    "./BunFileSystem/ParcelWatcher": "./src/BunFileSystem/ParcelWatcher.ts",
+    "./BunHttpPlatform": "./src/BunHttpPlatform.ts",
+    "./BunHttpServer": "./src/BunHttpServer.ts",
+    "./BunHttpServerRequest": "./src/BunHttpServerRequest.ts",
+    "./BunKeyValueStore": "./src/BunKeyValueStore.ts",
+    "./BunMultipart": "./src/BunMultipart.ts",
+    "./BunPath": "./src/BunPath.ts",
+    "./BunRuntime": "./src/BunRuntime.ts",
+    "./BunSink": "./src/BunSink.ts",
+    "./BunSocket": "./src/BunSocket.ts",
+    "./BunSocketServer": "./src/BunSocketServer.ts",
+    "./BunStream": "./src/BunStream.ts",
+    "./BunTerminal": "./src/BunTerminal.ts",
+    "./BunWorker": "./src/BunWorker.ts",
+    "./BunWorkerRunner": "./src/BunWorkerRunner.ts"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -58,13 +86,5 @@
     "@effect/sql": "workspace:^",
     "@types/bun": "^1.2.2",
     "effect": "workspace:^"
-  },
-  "effect": {
-    "generateExports": {
-      "include": [
-        "*.ts",
-        "BunFileSystem/*.ts"
-      ]
-    }
   }
 }

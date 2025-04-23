@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Function as Fun, pipe, Predicate } from "effect"
-import { assertFalse, assertTrue } from "effect/test/util"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 const isPositive: Predicate.Predicate<number> = (n) => n > 0
 const isNegative: Predicate.Predicate<number> = (n) => n < 0

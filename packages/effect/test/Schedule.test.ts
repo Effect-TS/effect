@@ -17,7 +17,7 @@ import {
   ScheduleIntervals
 } from "effect"
 import { constVoid } from "effect/Function"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as TestClock from "effect/TestClock"
 
 describe("Schedule", () => {
