@@ -1,5 +1,402 @@
 # effect
 
+## 3.14.13
+
+### Patch Changes
+
+- [#4777](https://github.com/Effect-TS/effect/pull/4777) [`ee77788`](https://github.com/Effect-TS/effect/commit/ee77788747e7ebbde6bfa88256cde49dbbad3608) Thanks @gcanti! - JSONSchema: apply `encodeOption` to each example and retain successful results.
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.propertySignature(Schema.BigInt).annotations({
+      examples: [1n, 2n]
+    })
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$defs": {
+      "BigInt": {
+        "type": "string",
+        "description": "a string to be decoded into a bigint"
+      }
+    },
+    "type": "object",
+    "required": [
+      "a"
+    ],
+    "properties": {
+      "a": {
+        "$ref": "#/$defs/BigInt",
+        "examples": [
+          "1",
+          "2"
+        ]
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
+- [#4701](https://github.com/Effect-TS/effect/pull/4701) [`5fce6ba`](https://github.com/Effect-TS/effect/commit/5fce6ba19c3cc63cc0104e737e581ad989dedbf0) Thanks @gcanti! - Fix `JSONSchema.make` for `Exit` schemas.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Exit({
+    failure: Schema.String,
+    success: Schema.Number,
+    defect: Schema.Defect
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  throws
+  Error: Missing annotation
+  at path: ["cause"]["left"]
+  details: Generating a JSON Schema for this schema requires an "identifier" annotation
+  schema (Suspend): CauseEncoded<string>
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Exit({
+    failure: Schema.String,
+    success: Schema.Number,
+    defect: Schema.Defect
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$defs": {
+      "CauseEncoded0": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "_tag"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Empty"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "_tag",
+              "error"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Fail"
+                ]
+              },
+              "error": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "_tag",
+              "defect"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Die"
+                ]
+              },
+              "defect": {
+                "$ref": "#/$defs/Defect"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "_tag",
+              "fiberId"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Interrupt"
+                ]
+              },
+              "fiberId": {
+                "$ref": "#/$defs/FiberIdEncoded"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "_tag",
+              "left",
+              "right"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Sequential"
+                ]
+              },
+              "left": {
+                "$ref": "#/$defs/CauseEncoded0"
+              },
+              "right": {
+                "$ref": "#/$defs/CauseEncoded0"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "_tag",
+              "left",
+              "right"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Parallel"
+                ]
+              },
+              "left": {
+                "$ref": "#/$defs/CauseEncoded0"
+              },
+              "right": {
+                "$ref": "#/$defs/CauseEncoded0"
+              }
+            },
+            "additionalProperties": false
+          }
+        ],
+        "title": "CauseEncoded<string>"
+      },
+      "Defect": {
+        "$id": "/schemas/unknown",
+        "title": "unknown"
+      },
+      "FiberIdEncoded": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/FiberIdNoneEncoded"
+          },
+          {
+            "$ref": "#/$defs/FiberIdRuntimeEncoded"
+          },
+          {
+            "$ref": "#/$defs/FiberIdCompositeEncoded"
+          }
+        ]
+      },
+      "FiberIdNoneEncoded": {
+        "type": "object",
+        "required": [
+          "_tag"
+        ],
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": [
+              "None"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "FiberIdRuntimeEncoded": {
+        "type": "object",
+        "required": [
+          "_tag",
+          "id",
+          "startTimeMillis"
+        ],
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": [
+              "Runtime"
+            ]
+          },
+          "id": {
+            "$ref": "#/$defs/Int"
+          },
+          "startTimeMillis": {
+            "$ref": "#/$defs/Int"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Int": {
+        "type": "integer",
+        "description": "an integer",
+        "title": "int"
+      },
+      "FiberIdCompositeEncoded": {
+        "type": "object",
+        "required": [
+          "_tag",
+          "left",
+          "right"
+        ],
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": [
+              "Composite"
+            ]
+          },
+          "left": {
+            "$ref": "#/$defs/FiberIdEncoded"
+          },
+          "right": {
+            "$ref": "#/$defs/FiberIdEncoded"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "anyOf": [
+      {
+        "type": "object",
+        "required": [
+          "_tag",
+          "cause"
+        ],
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": [
+              "Failure"
+            ]
+          },
+          "cause": {
+            "$ref": "#/$defs/CauseEncoded0"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "_tag",
+          "value"
+        ],
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": [
+              "Success"
+            ]
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "title": "ExitEncoded<number, string, Defect>"
+  }
+  */
+  ```
+
+- [#4775](https://github.com/Effect-TS/effect/pull/4775) [`570e45f`](https://github.com/Effect-TS/effect/commit/570e45f8cb936e42ec48f67f21bb2b7252f36c0c) Thanks @gcanti! - JSONSchema: preserve original key name when using `fromKey` followed by `annotations`, closes #4774.
+
+  Before:
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.propertySignature(Schema.String)
+      .pipe(Schema.fromKey("b"))
+      .annotations({})
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+      "a"
+    ],
+    "properties": {
+      "a": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
+  After:
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.propertySignature(Schema.String)
+      .pipe(Schema.fromKey("b"))
+      .annotations({})
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+      "b"
+    ],
+    "properties": {
+      "b": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
 ## 3.14.12
 
 ### Patch Changes
