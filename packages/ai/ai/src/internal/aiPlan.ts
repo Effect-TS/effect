@@ -88,16 +88,16 @@ const getRetryOptions = <Error, Provides, Requires>(
 }
 
 /** @internal */
-export const fromModel = <Provides, Requires, EW, Out, ES, RW = never, RS = never>(
-  model: AiModel.AiModel<Provides, Requires>,
-  options?: {
+export const make = <Provides, Requires, EW, Out, ES, RW = never, RS = never>(
+  options: {
+    readonly model: AiModel.AiModel<Provides, Requires>
     readonly attempts?: number | undefined
     readonly while?: ((error: EW) => boolean | Effect.Effect<boolean, never, RW>) | undefined
     readonly schedule?: Schedule.Schedule<Out, ES, RS> | undefined
   }
 ): AiPlan.AiPlan<EW & ES, Provides, RW | RS | Requires> =>
   makePlan([{
-    model,
+    model: options.model,
     check: Option.fromNullable(options?.while) as any,
     schedule: resolveSchedule(options ?? {})
   }])
