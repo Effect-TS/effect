@@ -86,14 +86,14 @@ export declare namespace AiPlan {
  * @since 1.0.0
  * @category constructors
  */
-export const fromModel: <Provides, Requires, EW, Out, ES, RW = never, RS = never>(
-  model: AiModel.AiModel<Provides, Requires>,
-  options?: {
+export const make: <Provides, Requires, EW, Out, ES, RW = never, RS = never>(
+  options: {
+    readonly model: AiModel.AiModel<Provides, Requires>
     readonly attempts?: number | undefined
     readonly while?: ((error: EW) => boolean | Effect.Effect<boolean, never, RW>) | undefined
     readonly schedule?: Schedule.Schedule<Out, ES, RS> | undefined
   }
-) => AiPlan<EW & ES, Provides, RW | RS | Requires> = Internal.fromModel
+) => AiPlan<EW & ES, Provides, RW | RS | Requires> = Internal.make
 
 /**
  * @since 1.0.0
