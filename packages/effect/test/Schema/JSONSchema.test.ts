@@ -3175,6 +3175,39 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       "type": "string",
       "examples": ["a", "b"]
     })
+    expectJSONSchemaProperty(Schema.BigInt.annotations({ examples: [1n, 2n] }), {
+      "$defs": {
+        "BigInt": {
+          "type": "string",
+          "description": "a string to be decoded into a bigint"
+        }
+      },
+      "$ref": "#/$defs/BigInt"
+    })
+    expectJSONSchemaProperty(
+      Schema.Struct({
+        a: Schema.propertySignature(Schema.BigInt).annotations({ examples: [1n, 2n] })
+      }),
+      {
+        "$defs": {
+          "BigInt": {
+            "type": "string",
+            "description": "a string to be decoded into a bigint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a"
+        ],
+        "properties": {
+          "a": {
+            "$ref": "#/$defs/BigInt",
+            "examples": ["1", "2"]
+          }
+        },
+        "additionalProperties": false
+      }
+    )
   })
 
   it("default JSON Schema annotation support", () => {
