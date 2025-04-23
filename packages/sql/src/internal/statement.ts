@@ -23,9 +23,7 @@ export const isFragment = (u: unknown): u is Statement.Fragment =>
   typeof u === "object" && u !== null && FragmentId in u
 
 /** @internal */
-export const isParameter = (
-  u: Statement.Segment
-): u is Statement.Parameter => Predicate.isTagged(u, "Parameter")
+export const isParameter: Predicate.Refinement<Statement.Segment, Statement.Parameter> = Predicate.isTagged("Parameter")
 
 /** @internal */
 export const isCustom = <A extends Statement.Custom<any, any, any, any>>(
