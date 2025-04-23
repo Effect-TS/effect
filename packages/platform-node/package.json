@@ -34,7 +34,6 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "main": "./src/index.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",

@@ -16,7 +16,6 @@
   },
   "homepage": "https://effect.website",
   "license": "MIT",
-  "main": "./src/index.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
