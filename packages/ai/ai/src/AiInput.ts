@@ -126,8 +126,12 @@ const fromAiResponse = (response: AiResponse.AiResponse): AiInput => {
 export const fromResponse = (
   response: AiResponse.AiResponse | AiResponse.WithStructuredOutput<unknown> | AiResponse.WithToolCallResults<unknown>
 ): AiInput => {
-  if (AiResponse.AiResponse.is(response)) {
-    return fromAiResponse(response)
+  if (AiResponse.WithToolCallResults.is(response)) {
+    const parts: Array<ToolCallResultPart> = []
+    for (const [id, result] of response.encodedResults) {
+      parts.push(ToolCallResultPart.make({ id, result }, constDisableValidation))
+    }
+    return [...fromAiResponse(response), ToolMessage.make({ parts }, constDisableValidation)]
   }
   if (AiResponse.WithStructuredOutput.is(response)) {
     const parts = [
@@ -136,13 +140,9 @@ export const fromResponse = (
         result: response.value
       }, constDisableValidation)
     ]
-    return [...fromAiResponse(response.response), ToolMessage.make({ parts }, constDisableValidation)]
+    return [...fromAiResponse(response), ToolMessage.make({ parts }, constDisableValidation)]
   }
-  const parts: Array<ToolCallResultPart> = []
-  for (const [id, result] of response.encodedResults) {
-    parts.push(ToolCallResultPart.make({ id, result }, constDisableValidation))
-  }
-  return [...fromAiResponse(response.response), ToolMessage.make({ parts }, constDisableValidation)]
+  return fromAiResponse(response)
 }
 
 // =============================================================================

@@ -439,14 +439,19 @@ const makeResponse = Effect.fnUntraced(function*(
       }
     }, constDisableValidation)
   )
-  const res = typeof choice.message.content === "string"
-    ? AiResponse.AiResponse.fromText(choice.message.content)
-    : AiResponse.AiResponse.empty
+  if (Predicate.isNotNullable(choice.message.content)) {
+    parts.push(
+      new AiResponse.TextPart({
+        content: choice.message.content
+      }, constDisableValidation)
+    )
+  }
+  const output = new AiResponse.AiResponse({ parts }, constDisableValidation)
   if (
     Predicate.isNotUndefined(choice.message.tool_calls) &&
     choice.message.tool_calls.length > 0
   ) {
-    return yield* res.withToolCallsJson(
+    return yield* output.withToolCallsJson(
       choice.message.tool_calls.map((tool) => ({
         id: tool.id,
         name: tool.function.name,
@@ -454,7 +459,7 @@ const makeResponse = Effect.fnUntraced(function*(
       }))
     )
   }
-  return res
+  return output
 })
 
 const annotateRequest = (
