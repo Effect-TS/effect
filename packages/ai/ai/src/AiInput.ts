@@ -30,20 +30,15 @@ export type AiInput = typeof AiInput.Type
 
 /**
  * @since 1.0.0
+ * @category Models
  */
-export declare namespace AiInput {
-  /**
-   * @since 1.0.0
-   * @category Models
-   */
-  export type Raw =
-    | string
-    | Message
-    | Iterable<Message>
-    | AiResponse.AiResponse
-    | AiResponse.WithStructuredOutput<unknown>
-    | AiResponse.WithToolCallResults<unknown>
-}
+export type Raw =
+  | string
+  | Message
+  | Iterable<Message>
+  | AiResponse.AiResponse
+  | AiResponse.WithStructuredOutput<unknown>
+  | AiResponse.WithToolCallResults<unknown>
 
 /**
  * Represents additional provider-specific options that can be provided to the
@@ -74,7 +69,7 @@ export const ProviderOptions: Schema.Record$<
  * @since 1.0.0
  * @category Constructors
  */
-export const make = (input: AiInput.Raw): AiInput => {
+export const make = (input: Raw): AiInput => {
   if (typeof input === "string") {
     const textPart = TextPart.fromContent(input)
     return [UserMessage.make({ parts: [textPart] })]
