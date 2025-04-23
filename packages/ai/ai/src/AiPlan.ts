@@ -27,14 +27,12 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category AiPlan
  */
-export interface AiPlan<in Error, in out Provides, in out Requires>
-  extends Pipeable, AiPlan.Builder<Provides, Requires>
-{
+export interface AiPlan<in Error, in out Provides, in out Requires> extends Pipeable, Builder<Provides, Requires> {
   readonly [TypeId]: TypeId
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: AiPlanUnify<this>
   readonly [Unify.ignoreSymbol]?: AiPlanUnifyIgnore
-  readonly steps: NonEmptyReadonlyArray<AiPlan.Step<Error, Provides, Requires>>
+  readonly steps: NonEmptyReadonlyArray<Step<Error, Provides, Requires>>
 }
 
 /**
@@ -55,31 +53,26 @@ export interface AiPlanUnifyIgnore extends Effect.EffectUnifyIgnore {
 
 /**
  * @since 1.0.0
+ * @category AiPlan
  */
-export declare namespace AiPlan {
-  /**
-   * @since 1.0.0
-   * @category AiPlan
-   */
-  export type Builder<Provides, Requires> = Effect.Effect<Provider<Provides>, never, AiModels | Requires>
+export type Builder<Provides, Requires> = Effect.Effect<Provider<Provides>, never, AiModels | Requires>
 
-  /**
-   * @since 1.0.0
-   * @category AiPlan
-   */
-  export interface Provider<Provides> {
-    readonly use: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>
-  }
+/**
+ * @since 1.0.0
+ * @category AiPlan
+ */
+export interface Provider<Provides> {
+  readonly use: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>
+}
 
-  /**
-   * @since 1.0.0
-   * @category AiPlan
-   */
-  export interface Step<Error, Provides, Requires> {
-    readonly model: AiModel.AiModel<Provides, Requires>
-    readonly check: Option.Option<(error: Error) => boolean | Effect.Effect<boolean>>
-    readonly schedule: Option.Option<Schedule.Schedule<any, Error, Requires>>
-  }
+/**
+ * @since 1.0.0
+ * @category AiPlan
+ */
+export interface Step<Error, Provides, Requires> {
+  readonly model: AiModel.AiModel<Provides, Requires>
+  readonly check: Option.Option<(error: Error) => boolean | Effect.Effect<boolean>>
+  readonly schedule: Option.Option<Schedule.Schedule<any, Error, Requires>>
 }
 
 /**
