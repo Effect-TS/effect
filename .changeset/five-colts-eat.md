@@ -18,6 +18,32 @@ The `Completions` service from `@effect/ai` has been renamed to `AiLanguageModel
 
 The `.provide` method on a built `AiModel` / `AiPlan` has been renamed to `.use` to improve clarity given that a user is _using_ the services provided by the model / plan to run a particular piece of code.
 
+In addition, the `AiPlan.fromModel` constructor has been simplified into `AiPlan.make`, which allows you to create an initial `AiPlan` with multiple steps incorporated.
+
+For example:
+
+```ts
+import { AiPlan } from "@effect/ai"
+import { OpenAiLanguageModel } from "@effect/ai-openai"
+import { AnthropicLanguageModel } from "@effect/ai-anthropic"
+import { Effect } from "effect"
+
+const main = Effect.gen(function*() {
+  const plan = yield* AiPlan.make({
+    model: OpenAiLanguageModel.model("gpt-4"),
+    attempts: 1
+  }, {
+    model: AnthropicLanguageModel.model("claude-3-7-sonnet-latest"),
+    attempts: 1
+  }, {
+    model: AnthropicLanguageModel.model("claude-3-5-sonnet-latest"),
+    attempts: 1
+  })
+
+  yield* plan.use(program)
+})
+```
+
 ### `AiInput` and `AiResponse`
 
 The `AiInput` and `AiResponse` types have been refactored to allow inclusion of more information and metadata from model providers where possible, such as reasoning output and prompt cache token utilization.

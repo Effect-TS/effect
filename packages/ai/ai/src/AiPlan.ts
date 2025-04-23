@@ -6,6 +6,7 @@ import type * as Effect from "effect/Effect"
 import type * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Schedule from "effect/Schedule"
+import type * as Types from "effect/Types"
 import type * as Unify from "effect/Unify"
 import type * as AiModel from "./AiModel.js"
 import type { AiModels } from "./AiModels.js"
@@ -13,19 +14,19 @@ import * as Internal from "./internal/aiPlan.js"
 
 /**
  * @since 1.0.0
- * @category type ids
+ * @category Type Ids
  */
 export const TypeId: unique symbol = Internal.TypeId
 
 /**
  * @since 1.0.0
- * @category type ids
+ * @category Type Ids
  */
 export type TypeId = typeof TypeId
 
 /**
  * @since 1.0.0
- * @category AiPlan
+ * @category Models
  */
 export interface AiPlan<in Error, in out Provides, in out Requires> extends Pipeable, Builder<Provides, Requires> {
   readonly [TypeId]: TypeId
@@ -37,7 +38,7 @@ export interface AiPlan<in Error, in out Provides, in out Requires> extends Pipe
 
 /**
  * @since 1.0.0
- * @category Plan
+ * @category Models
  */
 export interface AiPlanUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
   AiPlan?: () => Extract<A[Unify.typeSymbol], AiPlan<any, any, any>>
@@ -45,7 +46,7 @@ export interface AiPlanUnify<A extends { [Unify.typeSymbol]?: any }> extends Eff
 
 /**
  * @since 1.0.0
- * @category Plan
+ * @category Models
  */
 export interface AiPlanUnifyIgnore extends Effect.EffectUnifyIgnore {
   Effect?: true
@@ -53,13 +54,13 @@ export interface AiPlanUnifyIgnore extends Effect.EffectUnifyIgnore {
 
 /**
  * @since 1.0.0
- * @category AiPlan
+ * @category Models
  */
 export type Builder<Provides, Requires> = Effect.Effect<Provider<Provides>, never, AiModels | Requires>
 
 /**
  * @since 1.0.0
- * @category AiPlan
+ * @category Models
  */
 export interface Provider<Provides> {
   readonly use: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Provides>>
@@ -67,7 +68,7 @@ export interface Provider<Provides> {
 
 /**
  * @since 1.0.0
- * @category AiPlan
+ * @category Models
  */
 export interface Step<Error, Provides, Requires> {
   readonly model: AiModel.AiModel<Provides, Requires>
@@ -77,16 +78,95 @@ export interface Step<Error, Provides, Requires> {
 
 /**
  * @since 1.0.0
+ */
+export declare namespace Make {
+  /**
+   * @since 1.0.0
+   * @category Models
+   */
+  export type Base = {
+    readonly model: AiModel.AiModel<any, any>
+    readonly attempts?: number | undefined
+    readonly while?: ((error: any) => boolean | Effect.Effect<boolean, never, any>) | undefined
+    readonly schedule?: Schedule.Schedule<any, any, any> | undefined
+  }
+
+  /**
+   * @since 1.0.0
+   * @category Models
+   */
+  export type EW<Plan extends Base> = Plan extends { readonly while: (error: infer X) => any } ? X : never
+
+  /**
+   * @since 1.0.0
+   * @category Models
+   */
+  export type ES<Plan extends Base> = Plan extends { readonly schedule: Schedule.Schedule<any, infer X, any> } ? X
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category Models
+   */
+  export type Provides<Plan extends Base> = Plan extends { readonly model: AiModel.AiModel<infer X, any> } ? X : never
+
+  /**
+   * @since 1.0.0
+   * @category Models
+   */
+  export type Requires<Plan extends Base> = Plan extends { readonly model: AiModel.AiModel<any, infer X> } ? X : never
+
+  /**
+   * @since 1.0.0
+   * @category Models
+   */
+  export type RW<Plan extends Base> = Plan extends
+    { readonly while: (error: any) => Effect.Effect<any, any, infer X> } ? X
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category Models
+   */
+  export type RS<Plan extends Base> = Plan extends { readonly schedule: Schedule.Schedule<any, any, infer X> } ? X
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category Models
+   */
+  export type MakePlan<Plan extends Base> = AiPlan<
+    EW<Plan> & ES<Plan>,
+    Provides<Plan>,
+    RW<Plan> | RS<Plan> | Requires<Plan>
+  > extends infer X ? X : never
+
+  /**
+   * @since 1.0.0
+   * @category Models
+   */
+  export type MergePlan<Plans extends ReadonlyArray<Base>> = AiPlan<
+    Types.UnionToIntersection<
+      { [K in keyof Plans]: MakePlan<Plans[K]> extends AiPlan<infer X, any, any> ? X : never }[number]
+    >,
+    { [K in keyof Plans]: MakePlan<Plans[K]> extends AiPlan<any, infer X, any> ? X : never }[number],
+    { [K in keyof Plans]: MakePlan<Plans[K]> extends AiPlan<any, any, infer X> ? X : never }[number]
+  > extends infer K ? K : never
+}
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
-export const fromModel: <Provides, Requires, EW, Out, ES, RW = never, RS = never>(
-  model: AiModel.AiModel<Provides, Requires>,
-  options?: {
-    readonly attempts?: number | undefined
-    readonly while?: ((error: EW) => boolean | Effect.Effect<boolean, never, RW>) | undefined
-    readonly schedule?: Schedule.Schedule<Out, ES, RS> | undefined
+export const make: <Plans extends readonly [Make.Base, ...ReadonlyArray<Make.Base>]>(
+  ...plans: Plans
+) => Make.MergePlan<Plans> = (function() {
+  let plan = Internal.make(arguments[0])
+  for (let i = 1; i < arguments.length; i++) {
+    plan = withFallback(plan, arguments[i])
   }
-) => AiPlan<EW & ES, Provides, RW | RS | Requires> = Internal.fromModel
+  return plan
+}) as any
 
 /**
  * @since 1.0.0
