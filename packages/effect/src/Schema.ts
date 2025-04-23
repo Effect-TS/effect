@@ -1826,13 +1826,7 @@ const mergeSignatureAnnotations = (
     }
     case "PropertySignatureTransformation": {
       return new PropertySignatureTransformation(
-        new FromPropertySignature(
-          ast.from.type,
-          ast.from.isOptional,
-          ast.from.isReadonly,
-          ast.from.annotations,
-          ast.from.fromKey
-        ),
+        ast.from,
         new ToPropertySignature(ast.to.type, ast.to.isOptional, ast.to.isReadonly, {
           ...ast.to.annotations,
           ...annotations
