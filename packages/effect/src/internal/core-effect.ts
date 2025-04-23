@@ -254,15 +254,19 @@ export const catchTag = dual<
   core.catchIf(self, Predicate.isTagged(k) as Predicate.Refinement<E, Extract<E, { _tag: K }>>, f) as any)
 
 /** @internal */
+/** @internal */
 export const catchTags: {
+  /**
+   * Catch specific tagged errors, with optional handler for remaining errors.
+   */
   <
     E,
     Cases extends (E extends { _tag: string } ? {
-        [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>
-      } :
-      {})
+      [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>
+    } : {})
   >(
-    cases: Cases
+    cases: Cases,
+    onOther?: (errors: Array<Exclude<E, { _tag: keyof Cases }>>) => Effect.Effect<any, any, any>
   ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<
     | A
     | {
@@ -277,17 +281,20 @@ export const catchTags: {
       [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, any, infer R>) ? R : never
     }[keyof Cases]
   >
+  /**
+   * Uncurried version: pass effect first, cases and optional onOther next.
+   */
   <
     R,
     E,
     A,
     Cases extends (E extends { _tag: string } ? {
-        [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>
-      } :
-      {})
+      [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>
+    } : {})
   >(
     self: Effect.Effect<A, E, R>,
-    cases: Cases
+    cases: Cases,
+    onOther?: (errors: Array<Exclude<E, { _tag: keyof Cases }>>) => Effect.Effect<any, any, any>
   ): Effect.Effect<
     | A
     | {
@@ -302,13 +309,32 @@ export const catchTags: {
       [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, any, infer R>) ? R : never
     }[keyof Cases]
   >
-} = dual(2, (self, cases) => {
+} = dual(
+  // Determine uncurried vs curried by detecting Effect as first argument
+  (args) => core.isEffect(args[0]),
+  (self, cases, onOther) => {
   let keys: Array<string>
+  // If onOther handler provided, catch all errors and dispatch
+  if (onOther) {
+    return core.catchAll(self, (e) => {
+      keys ??= Object.keys(cases)
+      if (Predicate.hasProperty(e, "_tag") && Predicate.isString(e["_tag"]) && keys.includes(e["_tag"])) {
+        return cases[e["_tag"]](e)
+      }
+      // Remaining error
+      return onOther([e] as any)
+    })
+  }
+  // Default behavior: catch only specified tags
   return core.catchIf(
     self,
     (e): e is { readonly _tag: string } => {
       keys ??= Object.keys(cases)
-      return Predicate.hasProperty(e, "_tag") && Predicate.isString(e["_tag"]) && keys.includes(e["_tag"])
+      return (
+        Predicate.hasProperty(e, "_tag") &&
+        Predicate.isString(e["_tag"]) &&
+        keys.includes(e["_tag"])
+      )
     },
     (e) => cases[e["_tag"]](e)
   )
