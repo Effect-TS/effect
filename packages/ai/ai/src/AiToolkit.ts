@@ -36,7 +36,7 @@ export type TypeId = typeof TypeId
  * @category Models
  */
 export interface AiToolkit<in out Tool extends AiTool.Any>
-  extends Effect.Effect<WithHandler<Tool>, never, AiTool.ToHandler<Tool>>, Inspectable, Pipeable
+  extends Effect.Effect<ToHandler<Tool>, never, AiTool.ToHandler<Tool>>, Inspectable, Pipeable
 {
   new(_: never): {}
 
@@ -46,20 +46,6 @@ export interface AiToolkit<in out Tool extends AiTool.Any>
    * A map containing the tools that are part of this toolkit.
    */
   readonly tools: ReadonlyMap<string, Tool>
-
-  /**
-   * Adds one or more additional tools to the toolkit.
-   */
-  add<const Tools extends ReadonlyArray<AiTool.Any>>(
-    ...tools: Tools
-  ): AiToolkit<Tool | Tools[number]>
-
-  /**
-   * Merges this toolkit with one or more other toolkits.
-   */
-  merge<const Toolkits extends ReadonlyArray<Any>>(
-    ...toolkits: Toolkits
-  ): AiToolkit<Tool | Tools<Toolkits[number]>>
 
   /**
    * Converts this toolkit into a `Context` object containing the handlers for
@@ -84,6 +70,7 @@ export interface AiToolkit<in out Tool extends AiTool.Any>
  */
 export interface Any {
   readonly [TypeId]: TypeId
+  readonly tools: ReadonlyMap<string, AiTool.Any>
 }
 
 /**
@@ -93,8 +80,9 @@ export interface Any {
  * @since 1.0.0
  * @category Models
  */
-export interface WithHandler<in out Tool extends AiTool.Any> extends AiToolkit<Tool> {
-  handle: (toolName: AiTool.Name<Tool>, toolParams: AiTool.Parameters<Tool>) => Effect.Effect<
+export interface ToHandler<in out Tool extends AiTool.Any> {
+  readonly tools: ReadonlyArray<Tool>
+  readonly handle: (toolName: AiTool.Name<Tool>, toolParams: AiTool.Parameters<Tool>) => Effect.Effect<
     AiTool.HandlerResult<Tool>,
     AiError | AiTool.Failure<Tool>,
     AiTool.Context<Tool>
@@ -136,18 +124,6 @@ const Proto = {
   ...CommitPrototype,
   ...InspectableProto,
   [TypeId]: TypeId,
-  add(this: AiToolkit<any>, ...tools: ReadonlyArray<any>) {
-    return makeProto(resolveInput(...this.tools.values(), ...tools))
-  },
-  merge(this: AiToolkit<any>, ...toolkits: ReadonlyArray<AiToolkit<any>>) {
-    const tools = new Map(this.tools)
-    for (const toolkit of toolkits) {
-      for (const [name, tool] of toolkit.tools) {
-        tools.set(name, tool)
-      }
-    }
-    return makeProto(tools)
-  },
   toContext(this: AiToolkit<any>, build: Effect.Effect<Record<string, (params: any) => any>>) {
     return Effect.gen(this, function*() {
       const context = yield* Effect.context<never>()
@@ -236,10 +212,16 @@ const Proto = {
                 cause
               })
           )
-          return { result, encodedResult } satisfies AiTool.HandlerResult<any>
+          return {
+            result,
+            encodedResult
+          } satisfies AiTool.HandlerResult<any>
         }
       )
-      return Object.assign(makeProto(this.tools), { handle })
+      return {
+        tools: Array.from(tools.values()),
+        handle
+      }
     })
   },
   toJSON(this: AiToolkit<any>): unknown {
@@ -271,8 +253,26 @@ const resolveInput = <Tools extends ReadonlyArray<AiTool.Any>>(
  * Constructs a new `AiToolkit` from the specified tools.
  *
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const make = <const Tools extends ReadonlyArray<AiTool.Any>>(
   ...tools: Tools
 ): AiToolkit<Tools[number]> => makeProto(resolveInput(...tools))
+
+/**
+ * Merges this toolkit with one or more other toolkits.
+ *
+ * @since 1.0.0
+ * @category Merging
+ */
+export const merge = <const Toolkits extends ReadonlyArray<Any>>(
+  ...toolkits: Toolkits
+): AiToolkit<Tools<Toolkits[number]>> => {
+  const tools = new Map()
+  for (const toolkit of toolkits) {
+    for (const [name, tool] of toolkit.tools) {
+      tools.set(name, tool)
+    }
+  }
+  return makeProto(tools)
+}
