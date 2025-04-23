@@ -72,7 +72,7 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
    * A toolkit containing both the tools and the tool call handler to use to
    * augment text generation.
    */
-  readonly toolkit?: AiToolkit.WithHandler<Tools>
+  readonly toolkit?: AiToolkit.ToHandler<Tools>
 
   /**
    * Specifies whether a particular tool is required, or a boolean indicating
@@ -149,7 +149,7 @@ export interface GenerateObjectWithToolCallIdOptions<A, I, R> {
 export type ExtractError<
   Options extends GenerateTextOptions<AiTool.Any>
 > = Options extends {
-  toolkit: AiToolkit.WithHandler<infer _Tools>
+  toolkit: AiToolkit.ToHandler<infer _Tools>
 } ? AiError | AiTool.Failure<_Tools>
   : AiError
 
@@ -163,7 +163,7 @@ export type ExtractError<
 export type ExtractContext<
   Options extends GenerateTextOptions<AiTool.Any>
 > = Options extends {
-  toolkit: AiToolkit.WithHandler<infer _Tools>
+  toolkit: AiToolkit.ToHandler<infer _Tools>
 } ? AiTool.Context<_Tools>
   : never
 
@@ -268,7 +268,7 @@ export const make = (opts: {
           parameters: JsonSchema.JsonSchema7
           structured: boolean
         }> = []
-        for (const tool of toolkit.tools.values()) {
+        for (const tool of toolkit.tools) {
           tools.push(convertTool(tool))
         }
         let response = yield* opts.generateText({ prompt, system, tools, required, span })
@@ -425,7 +425,7 @@ const getDescription = (ast: AST.AST): string => {
 
 const resolveParts = <Tool extends AiTool.Any>(options: {
   readonly response: AiResponse
-  readonly toolkit: AiToolkit.WithHandler<Tool>
+  readonly toolkit: AiToolkit.ToHandler<Tool>
   readonly concurrency: Concurrency | undefined
   readonly method: string
 }) =>
