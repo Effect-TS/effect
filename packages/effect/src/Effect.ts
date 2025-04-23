@@ -3925,13 +3925,47 @@ export const catchTag: {
  * )
  * ```
  *
+ * **Example** (Handling Remaining Errors)
+ *
+ * ```ts
+ * import { Effect, Random } from "effect"
+ *
+ * class HttpError {
+ *   readonly _tag = "HttpError"
+ * }
+ *
+ * class ValidationError {
+ *   readonly _tag = "ValidationError"
+ * }
+ *
+ * //      ┌─── Effect<string, HttpError | ValidationError, never>
+ * //      ▼
+ * const program = Effect.gen(function* () {
+ *   const n1 = yield* Random.next
+ *   const n2 = yield* Random.next
+ *   if (n1 < 0.5) {
+ *     yield* Effect.fail(new HttpError())
+ *   }
+ *   if (n2 < 0.5) {
+ *     yield* Effect.fail(new ValidationError())
+ *   }
+ *   return "some result"
+ * })
+ *
+ * //      ┌─── Effect<string, never, never>
+ * //      ▼
+ * const recovered = program.pipe(
+ *   Effect.catchTags({
+ *     HttpError: (_HttpError) =>
+ *       Effect.succeed(`Recovering from HttpError`),
+ *   }, remaining => Effect.succeed(`Recovering from a remaining error that was not handled explicitly.`)
+ * )
+ * ```
+ *
  * @since 2.0.0
  * @category Error handling
  */
 export const catchTags: {
-  /**
-   * 1) Curried, without onOther: only handle specific tags
-   */
   <
     E,
     Cases extends
@@ -3949,9 +3983,6 @@ export const catchTags: {
     | R
     | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect<any, any, infer R1> ? R1 : never }[keyof Cases]
   >
-  /**
-   * 2) Curried, with onOther: handle specific tags + remaining errors
-   */
   <
     E,
     Cases extends
@@ -3970,9 +4001,6 @@ export const catchTags: {
     | R
     | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect<any, any, infer R1> ? R1 : never }[keyof Cases]
   >
-  /**
-   * 3) Uncurried, without onOther: only handle specific tags
-   */
   <
     E,
     A,
@@ -3991,9 +4019,6 @@ export const catchTags: {
     | R
     | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect<any, any, infer R1> ? R1 : never }[keyof Cases]
   >
-  /**
-   * 4) Uncurried, with onOther: handle specific tags + remaining errors
-   */
   <
     E,
     A,
