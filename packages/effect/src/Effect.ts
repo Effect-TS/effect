@@ -4000,23 +4000,25 @@ export const catchTags: {
       [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, any, infer R> ? R : never
     }[keyof Cases]
   >
-  <
-    E,
-    Cases extends
-      { [K in Extract<E, { _tag: string }>["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Effect<any, any, any>) }
-      & (unknown extends E ? {} : { [K in Exclude<keyof Cases, Extract<E, { _tag: string }>['_tag']>]: never })
+  <E,
+   Cases extends
+     { [K in Extract<E, { _tag: string }>['_tag']]?: (error: Extract<E, { _tag: K }>) => Effect<any, any, any> }
+     & (unknown extends E ? {} : { [K in Exclude<keyof Cases, Extract<E, { _tag: string }>['_tag']>]: never }),
+   OnOther extends (error: Exclude<E, { _tag: keyof Cases }>) => Effect<any, any, any>
   >(
     cases: Cases,
-    onOther: (error: Exclude<E, { _tag: keyof Cases }>) => Effect<any, any, any>
+    onOther: OnOther
   ): <A, R>(
     self: Effect<A, E, R>
   ) => Effect<
     | A
-    | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<infer A1, any, any> ? A1 : never }[keyof Cases],
-    | Exclude<E, { _tag: keyof Cases }>
-    | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, infer E1, any> ? E1 : never }[keyof Cases],
+    | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<infer A1, any, any> ? A1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<infer A2, any, any> ? A2 : never),
+    | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, infer E1, any> ? E1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<any, infer E2, any> ? E2 : never),
     | R
     | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, any, infer R1> ? R1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<any, any, infer R2> ? R2 : never)
   >
   <
     R,
@@ -4042,13 +4044,13 @@ export const catchTags: {
       [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, any, infer R> ? R : never
     }[keyof Cases]
   >
-  <
-    E,
-    A,
-    R,
-    Cases extends
-      { [K in Extract<E, { _tag: string }>['_tag']]?: (error: Extract<E, { _tag: K }>) => Effect<any, any, any> }
-      & (unknown extends E ? {} : { [K in Exclude<keyof Cases, Extract<E, { _tag: string }>['_tag']>]: never })
+  <E,
+   A,
+   R,
+   Cases extends
+     { [K in Extract<E, { _tag: string }>['_tag']]?: (error: Extract<E, { _tag: K }>) => Effect<any, any, any> }
+     & (unknown extends E ? {} : { [K in Exclude<keyof Cases, Extract<E, { _tag: string }>['_tag']>]: never }),
+   OnOther extends (error: Exclude<E, { _tag: keyof Cases }>) => Effect<any, any, any>
   >(
     self: Effect<A, E, R>,
     cases: Cases,

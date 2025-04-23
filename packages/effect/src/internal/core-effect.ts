@@ -255,66 +255,76 @@ export const catchTag = dual<
 
 /** @internal */
 export const catchTags: {
-  <
-    E,
-    Cases extends (E extends { _tag: string } ? {
-        [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>
-      } :
-      {})
-  >(
-    cases: Cases,
-    onOther?: (error: Exclude<E, { _tag: keyof Cases }>) => Effect.Effect<any, any, any>
+  <E, Cases extends (E extends { _tag: string }
+    ? { [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any> }
+    : {}
+  )>(
+    cases: Cases
   ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<
     | A
-    | {
-      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<infer A, any, any>) ? A : never
-    }[keyof Cases],
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<infer A1, any, any> ? A1 : never }[keyof Cases],
     | Exclude<E, { _tag: keyof Cases }>
-    | {
-      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, infer E, any>) ? E : never
-    }[keyof Cases],
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<any, infer E1, any> ? E1 : never }[keyof Cases],
     | R
-    | {
-      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, any, infer R>) ? R : never
-    }[keyof Cases]
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<any, any, infer R1> ? R1 : never }[keyof Cases]
   >
-  <
-    R,
-    E,
-    A,
-    Cases extends (E extends { _tag: string } ? {
-        [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>
-      } :
-      {})
+  <E, Cases extends (E extends { _tag: string }
+    ? { [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any> }
+    : {}), OnOther extends (error: Exclude<E, { _tag: keyof Cases }>) => Effect.Effect<any, any, any>
+  >(
+    cases: Cases,
+    onOther: OnOther
+  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<
+    | A
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<infer A1, any, any> ? A1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect.Effect<infer A2, any, any> ? A2 : never),
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<any, infer E1, any> ? E1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect.Effect<any, infer E2, any> ? E2 : never),
+    | R
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<any, any, infer R1> ? R1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect.Effect<any, any, infer R2> ? R2 : never)
+  >
+  <R, E, A, Cases extends (E extends { _tag: string }
+    ? { [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any> }
+    : {}
+  )>(
+    self: Effect.Effect<A, E, R>,
+    cases: Cases
+  ): Effect.Effect<
+    | A
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<infer A1, any, any> ? A1 : never }[keyof Cases],
+    | Exclude<E, { _tag: keyof Cases }>
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<any, infer E1, any> ? E1 : never }[keyof Cases],
+    | R
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<any, any, infer R1> ? R1 : never }[keyof Cases]
+  >
+  <R, E, A, Cases extends (E extends { _tag: string }
+    ? { [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any> }
+    : {}), OnOther extends (error: Exclude<E, { _tag: keyof Cases }>) => Effect.Effect<any, any, any>
   >(
     self: Effect.Effect<A, E, R>,
     cases: Cases,
-    onOther?: (error: Exclude<E, { _tag: keyof Cases }>) => Effect.Effect<any, any, any>
+    onOther: OnOther
   ): Effect.Effect<
     | A
-    | {
-      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<infer A, any, any>) ? A : never
-    }[keyof Cases],
-    | Exclude<E, { _tag: keyof Cases }>
-    | {
-      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, infer E, any>) ? E : never
-    }[keyof Cases],
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<infer A1, any, any> ? A1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect.Effect<infer A2, any, any> ? A2 : never),
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<any, infer E1, any> ? E1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect.Effect<any, infer E2, any> ? E2 : never),
     | R
-    | {
-      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, any, infer R>) ? R : never
-    }[keyof Cases]
+    | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<any, any, infer R1> ? R1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect.Effect<any, any, infer R2> ? R2 : never)
   >
 } = dual(3, (self, cases, onOther) => {
   let keys: Array<string>
 
-  // If onOther handler provided, catch all errors and dispatch
   if (onOther) {
     return core.catchAll(self, (e) => {
       keys ??= Object.keys(cases)
       if (Predicate.hasProperty(e, "_tag") && Predicate.isString(e["_tag"]) && keys.includes(e["_tag"])) {
         return cases[e["_tag"]](e)
       }
-      // Remaining error
+
       return onOther(e)
     })
   }
