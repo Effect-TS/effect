@@ -962,6 +962,105 @@ importers:
         version: 3.0.6(@edge-runtime/vm@5.0.0)(@types/node@22.14.1)(@vitest/browser@3.0.6)(happy-dom@17.1.0)(msw@2.7.1(@types/node@22.14.1)(typescript@5.7.3))(terser@5.39.0)(tsx@4.17.0)(yaml@2.7.0)
     publishDirectory: dist
 
+  scratchpad:
+    dependencies:
+      '@effect/ai':
+        specifier: workspace:*
+        version: link:../packages/ai/ai
+      '@effect/ai-anthropic':
+        specifier: workspace:*
+        version: link:../packages/ai/anthropic
+      '@effect/ai-openai':
+        specifier: workspace:*
+        version: link:../packages/ai/openai
+      '@effect/cli':
+        specifier: workspace:*
+        version: link:../packages/cli
+      '@effect/cluster':
+        specifier: workspace:*
+        version: link:../packages/cluster
+      '@effect/experimental':
+        specifier: workspace:*
+        version: link:../packages/experimental
+      '@effect/opentelemetry':
+        specifier: workspace:*
+        version: link:../packages/opentelemetry
+      '@effect/platform':
+        specifier: workspace:*
+        version: link:../packages/platform
+      '@effect/platform-browser':
+        specifier: workspace:*
+        version: link:../packages/platform-browser
+      '@effect/platform-bun':
+        specifier: workspace:*
+        version: link:../packages/platform-bun
+      '@effect/platform-node':
+        specifier: workspace:*
+        version: link:../packages/platform-node
+      '@effect/platform-node-shared':
+        specifier: workspace:*
+        version: link:../packages/platform-node-shared
+      '@effect/printer':
+        specifier: workspace:*
+        version: link:../packages/printer
+      '@effect/printer-ansi':
+        specifier: workspace:*
+        version: link:../packages/printer-ansi
+      '@effect/rpc':
+        specifier: workspace:*
+        version: link:../packages/rpc
+      '@effect/sql':
+        specifier: workspace:*
+        version: link:../packages/sql
+      '@effect/sql-clickhouse':
+        specifier: workspace:*
+        version: link:../packages/sql-clickhouse
+      '@effect/sql-d1':
+        specifier: workspace:*
+        version: link:../packages/sql-d1
+      '@effect/sql-drizzle':
+        specifier: workspace:*
+        version: link:../packages/sql-drizzle
+      '@effect/sql-kysely':
+        specifier: workspace:*
+        version: link:../packages/sql-kysely
+      '@effect/sql-libsql':
+        specifier: workspace:*
+        version: link:../packages/sql-libsql
+      '@effect/sql-mssql':
+        specifier: workspace:*
+        version: link:../packages/sql-mssql
+      '@effect/sql-mysql2':
+        specifier: workspace:*
+        version: link:../packages/sql-mysql2
+      '@effect/sql-pg':
+        specifier: workspace:*
+        version: link:../packages/sql-pg
+      '@effect/sql-sqlite-bun':
+        specifier: workspace:*
+        version: link:../packages/sql-sqlite-bun
+      '@effect/sql-sqlite-do':
+        specifier: workspace:*
+        version: link:../packages/sql-sqlite-do
+      '@effect/sql-sqlite-node':
+        specifier: workspace:*
+        version: link:../packages/sql-sqlite-node
+      '@effect/sql-sqlite-react-native':
+        specifier: workspace:*
+        version: link:../packages/sql-sqlite-react-native
+      '@effect/sql-sqlite-wasm':
+        specifier: workspace:*
+        version: link:../packages/sql-sqlite-wasm
+      '@effect/typeclass':
+        specifier: workspace:*
+        version: link:../packages/typeclass
+      '@effect/vitest':
+        specifier: workspace:*
+        version: link:../packages/vitest
+      effect:
+        specifier: workspace:*
+        version: link:../packages/effect
+
 packages:
 
   '@ampproject/remapping@2.3.0':
