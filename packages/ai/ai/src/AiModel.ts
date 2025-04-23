@@ -41,24 +41,19 @@ export interface AiModel<in out Provides, in out Requires> extends AiPlan.AiPlan
   readonly model: string
   readonly cacheKey: symbol
   readonly requires: Context.Tag<Requires, any>
-  readonly provides: AiModel.ContextBuilder<Provides, Requires>
+  readonly provides: ContextBuilder<Provides, Requires>
   readonly updateContext: (context: Context.Context<Provides>) => Context.Context<Provides>
 }
 
 /**
  * @since 1.0.0
+ * @category AiModel
  */
-export declare namespace AiModel {
-  /**
-   * @since 1.0.0
-   * @category AiModel
-   */
-  export type ContextBuilder<Provides, Requires> = Effect.Effect<
-    Context.Context<Provides>,
-    never,
-    Requires | Scope.Scope
-  >
-}
+export type ContextBuilder<Provides, Requires> = Effect.Effect<
+  Context.Context<Provides>,
+  never,
+  Requires | Scope.Scope
+>
 
 const AiModelProto = {
   ...InternalAiPlan.PlanPrototype,
@@ -73,7 +68,7 @@ export const make = <Provides, Requires>(options: {
   readonly model: string
   readonly cacheKey: symbol
   readonly requires: Context.Tag<Requires, any>
-  readonly provides: AiModel.ContextBuilder<Provides, Requires>
+  readonly provides: ContextBuilder<Provides, Requires>
   readonly updateContext: (context: Context.Context<Provides>) => Context.Context<Provides>
 }): AiModel<Provides, Requires> => {
   const self = Object.create(AiModelProto)

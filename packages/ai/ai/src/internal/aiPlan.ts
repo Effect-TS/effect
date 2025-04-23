@@ -28,7 +28,7 @@ export const PlanPrototype = {
 } as any
 
 const makePlan = <
-  Steps extends ReadonlyArray<AiPlan.AiPlan.Step<any, any, any>>
+  Steps extends ReadonlyArray<AiPlan.Step<any, any, any>>
 >(steps: Steps): AiPlan.AiPlan<any, any, any> => {
   const self = Object.create(PlanPrototype)
   self.steps = steps
@@ -38,7 +38,7 @@ const makePlan = <
 const buildPlan = <Error, Provides, Requires>(
   plan: AiPlan.AiPlan<Error, Provides, Requires>
 ): Effect.Effect<
-  AiPlan.AiPlan.Provider<Provides>,
+  AiPlan.Provider<Provides>,
   never,
   Requires | AiModels
 > =>
@@ -76,7 +76,7 @@ const buildPlan = <Error, Provides, Requires>(
   })
 
 const getRetryOptions = <Error, Provides, Requires>(
-  step: AiPlan.AiPlan.Step<Error, Provides, Requires>
+  step: AiPlan.Step<Error, Provides, Requires>
 ): Option.Option<Effect.Retry.Options<any>> => {
   if (Option.isNone(step.schedule) && Option.isNone(step.check)) {
     return Option.none()
