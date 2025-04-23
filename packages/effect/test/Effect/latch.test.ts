@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Effect, Exit } from "effect"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Effect, Exit } from "effect"
 
 describe("Latch", () => {
   it.effect("open works", () =>

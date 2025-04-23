@@ -1,5 +1,4 @@
 import { describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Either, Exit, Fiber, Micro, Option, pipe } from "effect"
 import {
   assertFalse,
   assertInclude,
@@ -8,6 +7,7 @@ import {
   deepStrictEqual,
   strictEqual
 } from "@effect/vitest/utils"
+import { Cause, Context, Effect, Either, Exit, Fiber, Micro, Option, pipe } from "effect"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
 class TestError extends Micro.TaggedError("TestError") {}

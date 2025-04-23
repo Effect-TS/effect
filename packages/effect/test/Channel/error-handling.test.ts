@@ -1,11 +1,11 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import * as Channel from "effect/Channel"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Channel", () => {
   it.effect("catchAll - structure confusion", () =>

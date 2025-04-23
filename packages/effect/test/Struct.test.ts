@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Number, pipe, String, Struct } from "effect"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Number, pipe, String, Struct } from "effect"
 
 describe("Struct", () => {
   it("pick", () => {

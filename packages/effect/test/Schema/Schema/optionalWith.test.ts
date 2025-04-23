@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as O from "effect/Option"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "../TestUtils.js"
-import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("optionalWith", () => {
   it("annotations", async () => {

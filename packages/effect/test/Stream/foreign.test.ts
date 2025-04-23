@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, assertRight, deepStrictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -9,7 +10,6 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Stream from "effect/Stream"
-import { assertLeft, assertRight, deepStrictEqual } from "@effect/vitest/utils"
 import { unify } from "effect/Unify"
 
 describe("Stream.Foreign", () => {

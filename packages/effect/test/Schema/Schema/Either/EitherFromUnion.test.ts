@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue } from "@effect/vitest/utils"
 import * as E from "effect/Either"
 import * as S from "effect/Schema"
 import * as Util from "../../TestUtils.js"
-import { assertTrue } from "@effect/vitest/utils"
 
 describe("EitherFromUnion", () => {
   it("test roundtrip consistency", () => {

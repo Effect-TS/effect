@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, assertRight, deepStrictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertLeft, assertRight, deepStrictEqual } from "@effect/vitest/utils"
 import { strictEqual } from "node:assert"
 
 const exactlyOnce = <R, A, A1>(

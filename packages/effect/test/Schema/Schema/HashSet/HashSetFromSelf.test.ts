@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 import * as HashSet from "effect/HashSet"
 import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as Util from "../../TestUtils.js"
-import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 describe("HashSetFromSelf", () => {
   it("test roundtrip consistency", () => {

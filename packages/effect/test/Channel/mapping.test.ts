@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Array from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as ChildExecutorDecision from "effect/ChildExecutorDecision"
@@ -8,7 +9,6 @@ import * as Exit from "effect/Exit"
 import { constVoid, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
-import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as UpstreamPullRequest from "effect/UpstreamPullRequest"
 import * as UpstreamPullStrategy from "effect/UpstreamPullStrategy"
 

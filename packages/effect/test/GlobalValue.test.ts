@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { GlobalValue as G } from "effect"
 import { strictEqual } from "@effect/vitest/utils"
+import { GlobalValue as G } from "effect"
 
 const a = G.globalValue("id", () => ({}))
 const b = G.globalValue("id", () => ({}))

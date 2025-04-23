@@ -10,8 +10,8 @@ import {
   OpenApi
 } from "@effect/platform"
 import { describe, it } from "@effect/vitest"
-import { Context, Schema } from "effect"
 import { deepStrictEqual } from "@effect/vitest/utils"
+import { Context, Schema } from "effect"
 
 const HttpApiDecodeError = {
   "description": "The request did not match the expected schema",

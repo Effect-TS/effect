@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Boolean, pipe } from "effect"
 import { assertFalse, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
+import { Boolean, pipe } from "effect"
 
 describe("Boolean", () => {
   it("isBoolean", () => {

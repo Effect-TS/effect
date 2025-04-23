@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import * as Schema from "effect/Schema"
 import { strictEqual } from "@effect/vitest/utils"
+import * as Schema from "effect/Schema"
 
 describe("PropertyKey", () => {
   it("should handle symbol, string, and number", () => {

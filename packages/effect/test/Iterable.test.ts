@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Iterable as Iter, Number, Option, pipe } from "effect"
 import type { Predicate } from "effect/Predicate"
-import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")

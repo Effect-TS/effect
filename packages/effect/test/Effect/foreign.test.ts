@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, deepStrictEqual } from "@effect/vitest/utils"
 import { Cause, Context, Effect, Either, Exit, Option, pipe } from "effect"
 import { nextInt } from "effect/Random"
-import { assertLeft, deepStrictEqual } from "@effect/vitest/utils"
 import { unify } from "effect/Unify"
 
 describe("Foreign", () => {

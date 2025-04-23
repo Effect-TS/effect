@@ -1,11 +1,11 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as Channel from "effect/Channel"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertLeft, assertTrue, strictEqual } from "@effect/vitest/utils"
 
 describe("Channel", () => {
   it.effect("interruptWhen - interrupts the current element", () =>

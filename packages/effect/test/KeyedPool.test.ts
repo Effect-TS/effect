@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Array, Duration, Effect, Fiber, KeyedPool, pipe, Random, Ref } from "effect"
 import { strictEqual } from "@effect/vitest/utils"
+import { Array, Duration, Effect, Fiber, KeyedPool, pipe, Random, Ref } from "effect"
 import * as TestClock from "effect/TestClock"
 
 describe("KeyedPool", () => {

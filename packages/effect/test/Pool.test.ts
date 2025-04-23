@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Scope, TestClock, TestServices } from "effect"
 import { assertNone, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Scope, TestClock, TestServices } from "effect"
 
 describe("Pool", () => {
   it.scoped("preallocates pool items", () =>

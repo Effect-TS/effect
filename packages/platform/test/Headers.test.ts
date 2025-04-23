@@ -1,7 +1,7 @@
 import * as Headers from "@effect/platform/Headers"
 import { describe, it } from "@effect/vitest"
-import { Effect, FiberId, FiberRef, FiberRefs, HashSet, Inspectable, Logger, Redacted } from "effect"
 import { assertFalse, assertInclude, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Effect, FiberId, FiberRef, FiberRefs, HashSet, Inspectable, Logger, Redacted } from "effect"
 
 describe("Headers", () => {
   describe("Redactable", () => {

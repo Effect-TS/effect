@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
@@ -8,7 +9,6 @@ import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as RuntimeFlags from "effect/RuntimeFlags"
 import * as Scope from "effect/Scope"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 interface A {
   readonly value: number

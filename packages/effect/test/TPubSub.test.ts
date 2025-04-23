@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import {
   Array as Arr,
   Deferred,
@@ -11,7 +12,6 @@ import {
   TPubSub,
   TQueue
 } from "effect"
-import { deepStrictEqual } from "@effect/vitest/utils"
 
 const sort: (array: ReadonlyArray<number>) => ReadonlyArray<number> = Arr.sort(number.Order)
 

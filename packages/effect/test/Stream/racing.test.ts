@@ -1,11 +1,11 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "@effect/vitest/utils"
 import * as TestClock from "effect/TestClock"
 
 describe("Stream", () => {

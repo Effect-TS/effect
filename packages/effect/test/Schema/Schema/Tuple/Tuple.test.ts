@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "../../TestUtils.js"
-import { deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Tuple", () => {
   it("annotations()", () => {

@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 import { Option, Predicate } from "effect"
 import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "../../TestUtils.js"
-import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 describe("Trimmed", () => {
   const schema = S.Trimmed

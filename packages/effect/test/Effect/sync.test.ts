@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@effect/vitest"
+import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
-import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const sum = (n: number): number => {
   if (n < 0) {

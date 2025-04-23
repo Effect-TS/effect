@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertInclude, assertTrue, strictEqual } from "@effect/vitest/utils"
 import {
   Chunk,
   Clock,
@@ -13,7 +14,6 @@ import {
   pipe,
   Runtime
 } from "effect"
-import { assertInclude, assertTrue, strictEqual } from "@effect/vitest/utils"
 
 const initial = "initial"
 const update = "update"

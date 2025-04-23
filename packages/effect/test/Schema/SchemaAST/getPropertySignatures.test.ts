@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { deepStrictEqual } from "@effect/vitest/utils"
 
 describe("getPropertySignatures", () => {
   it("Struct", () => {

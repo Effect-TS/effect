@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { assertFailure, assertSuccess } from "@effect/vitest/utils"
 import type { Config } from "effect"
 import { Cause, ConfigError, ConfigProvider, Effect, Schema } from "effect"
-import { assertFailure, assertSuccess } from "@effect/vitest/utils"
 
 /**
  * Asserts that loading a configuration with invalid data fails with the expected error.

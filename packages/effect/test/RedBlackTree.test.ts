@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Equal, Hash, Number as Num, Option, Order, pipe, RedBlackTree } from "effect"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Equal, Hash, Number as Num, Option, Order, pipe, RedBlackTree } from "effect"
 
 describe("RedBlackTree", () => {
   it("toString", () => {

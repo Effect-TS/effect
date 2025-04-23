@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { assertNone, assertSome } from "@effect/vitest/utils"
 import { Schema as S } from "effect"
 import * as Util from "../TestUtils.js"
-import { assertNone, assertSome } from "@effect/vitest/utils"
 
 describe("decodeOption", () => {
   it("should return none on async", () => {

@@ -1,11 +1,11 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 import * as N from "effect/Number"
 import * as P from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import * as SortedSet from "effect/SortedSet"
 import * as S from "effect/String"
 import * as Util from "../../TestUtils.js"
-import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 describe("SortedSetFromSelf", () => {
   it("test roundtrip consistency", () => {

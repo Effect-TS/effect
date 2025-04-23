@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Ordering } from "effect"
 import { strictEqual } from "@effect/vitest/utils"
+import { Ordering } from "effect"
 
 describe("Ordering", () => {
   it("match", () => {

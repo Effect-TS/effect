@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue } from "@effect/vitest/utils"
 import * as O from "effect/Option"
 import * as S from "effect/Schema"
 import * as Util from "../../TestUtils.js"
-import { assertTrue } from "@effect/vitest/utils"
 
 describe("OptionFromNullOr", () => {
   it("test roundtrip consistency", () => {

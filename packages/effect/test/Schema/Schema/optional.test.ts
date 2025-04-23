@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
 import * as Util from "../TestUtils.js"
-import { strictEqual } from "@effect/vitest/utils"
 
 describe("optional", () => {
   it("should expose a from property", () => {

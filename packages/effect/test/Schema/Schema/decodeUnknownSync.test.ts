@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { assertInclude, assertInstanceOf, strictEqual, throws } from "@effect/vitest/utils"
 import { Effect, ParseResult, Predicate, Schema as S } from "effect"
 import * as Util from "../TestUtils.js"
-import { assertInclude, assertInstanceOf, strictEqual, throws } from "@effect/vitest/utils"
 
 const SyncEffectfulString = S.declare([], {
   decode: () => (u, _, ast) =>

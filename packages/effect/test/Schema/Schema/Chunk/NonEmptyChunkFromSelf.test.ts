@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 import * as Arbitrary from "effect/Arbitrary"
 import * as C from "effect/Chunk"
 import * as FastCheck from "effect/FastCheck"
 import * as S from "effect/Schema"
 import * as Util from "../../TestUtils.js"
-import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 describe("NonEmptyChunkFromSelf", () => {
   it("test roundtrip consistency", () => {

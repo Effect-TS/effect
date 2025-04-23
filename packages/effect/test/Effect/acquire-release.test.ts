@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -6,7 +7,6 @@ import { equals } from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertTrue, strictEqual } from "@effect/vitest/utils"
 
 describe("Effect", () => {
   it.effect("acquireUseRelease - happy path", () =>

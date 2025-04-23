@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Cause, Data, Effect, pipe } from "effect"
 import { assertInclude, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
+import { Cause, Data, Effect, pipe } from "effect"
 
 class TestError extends Data.TaggedError("TestError")<{}> {}
 

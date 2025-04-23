@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Either, Encoding } from "effect"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Either, Encoding } from "effect"
 
 describe("Base64", () => {
   const valid: Array<[string, string]> = [

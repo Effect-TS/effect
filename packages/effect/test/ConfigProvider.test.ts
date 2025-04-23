@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import {
   Cause,
   Chunk,
@@ -15,7 +16,6 @@ import {
   Option,
   Secret
 } from "effect"
-import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 interface HostPort {
   readonly host: string

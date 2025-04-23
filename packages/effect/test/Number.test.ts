@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Number, pipe } from "effect"
 import { assertFalse, assertNone, assertSome, assertTrue, strictEqual } from "@effect/vitest/utils"
+import { Number, pipe } from "effect"
 
 describe("Number", () => {
   it("isNumber", () => {

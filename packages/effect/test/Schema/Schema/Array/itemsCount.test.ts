@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { throws } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
 import * as Util from "../../TestUtils.js"
-import { throws } from "@effect/vitest/utils"
 
 describe("itemsCount", () => {
   it("should throw for invalid argument", () => {

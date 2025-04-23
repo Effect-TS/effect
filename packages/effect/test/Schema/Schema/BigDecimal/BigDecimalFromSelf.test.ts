@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 import { BigDecimal } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "../../TestUtils.js"
-import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 describe("BigDecimalFromSelf", () => {
   const schema = S.BigDecimalFromSelf

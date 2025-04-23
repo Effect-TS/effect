@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as Util from "../../TestUtils.js"
-import { assertFalse, assertTrue } from "@effect/vitest/utils"
 
 describe("ReadonlySetFromSelf", () => {
   it("test roundtrip consistency", () => {

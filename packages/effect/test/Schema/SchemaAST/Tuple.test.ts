@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual, throws } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { strictEqual, throws } from "@effect/vitest/utils"
 
 describe("AST.Tuple", () => {
   it("toString", () => {

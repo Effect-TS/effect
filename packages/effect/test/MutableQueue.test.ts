@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { MutableQueue } from "effect"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { MutableQueue } from "effect"
 
 describe("MutableQueue", () => {
   it("toString", () => {

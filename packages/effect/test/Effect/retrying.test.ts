@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
-import { strictEqual } from "@effect/vitest/utils"
 
 describe("Effect", () => {
   it.effect("retry/until - retries until condition is true", () =>

@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("Sink", () => {
   it.effect("filterInput", () =>

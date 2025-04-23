@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { MutableList, pipe } from "effect"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { MutableList, pipe } from "effect"
 
 describe("MutableList", () => {
   it("toString", () => {

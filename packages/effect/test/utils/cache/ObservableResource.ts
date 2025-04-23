@@ -1,9 +1,9 @@
+import { strictEqual } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
 import * as ExecutionStrategy from "effect/ExecutionStrategy"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
-import { strictEqual } from "@effect/vitest/utils"
 
 export interface ObservableResource<E, V> {
   readonly scoped: Effect.Effect<V, E, Scope.Scope>

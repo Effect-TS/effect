@@ -1,10 +1,10 @@
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as PlatformConfigProvider from "@effect/platform/PlatformConfigProvider"
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { strictEqual } from "@effect/vitest/utils"
 
 const ConfigProviderLive = Layer.unwrapEffect(
   PlatformConfigProvider.fromDotEnv(".env").pipe(

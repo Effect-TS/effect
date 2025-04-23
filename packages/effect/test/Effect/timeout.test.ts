@@ -1,11 +1,11 @@
 import { describe, it } from "@effect/vitest"
+import { assertNone, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constFalse, pipe } from "effect/Function"
-import { assertNone, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import * as TestClock from "effect/TestClock"
 
 describe("Effect", () => {

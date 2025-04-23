@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -7,7 +8,6 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("buffer - maintains elements and ordering", () =>

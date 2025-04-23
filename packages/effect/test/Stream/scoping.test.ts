@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertLeft, assertSome, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -10,7 +11,6 @@ import * as FiberId from "effect/FiberId"
 import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import { assertFalse, assertLeft, assertSome, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Stream", () => {
   it.effect("acquireRelease - simple example", () =>

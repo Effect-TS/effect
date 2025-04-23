@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { assertInclude, assertInstanceOf, assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Effect, Inspectable, JSONSchema, Schema, SchemaAST as AST } from "effect"
 import * as S from "effect/Schema"
 import * as Util from "../../TestUtils.js"
-import { assertInclude, assertInstanceOf, assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 describe("TaggedError", () => {
   it("should expose the fields and the tag", () => {

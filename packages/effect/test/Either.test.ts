@@ -1,5 +1,4 @@
 import { describe, it } from "@effect/vitest"
-import { Chunk, Either, flow, Number as Num, Option, pipe, String as Str } from "effect"
 import {
   assertFalse,
   assertLeft,
@@ -11,6 +10,7 @@ import {
   strictEqual,
   throws
 } from "@effect/vitest/utils"
+import { Chunk, Either, flow, Number as Num, Option, pipe, String as Str } from "effect"
 
 describe("Either", () => {
   it("void", () => {

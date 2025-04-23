@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import * as S from "effect/Schema"
 import { strictEqual } from "@effect/vitest/utils"
+import * as S from "effect/Schema"
 
 describe("MapFromSelf", () => {
   it("description", () => {

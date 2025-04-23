@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -13,7 +14,6 @@ import * as Order from "effect/Order"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
-import { assertLeft, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const chunkArb = <A>(
   arb: fc.Arbitrary<A>,

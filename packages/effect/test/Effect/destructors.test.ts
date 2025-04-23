@@ -1,5 +1,4 @@
 import { describe, it } from "@effect/vitest"
-import { Cause, Effect, Option, pipe } from "effect"
 import {
   assertFailure,
   assertFalse,
@@ -10,6 +9,7 @@ import {
   assertTrue,
   strictEqual
 } from "@effect/vitest/utils"
+import { Cause, Effect, Option, pipe } from "effect"
 
 const ExampleError = new Error("Oh noes!")
 

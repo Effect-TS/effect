@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { DateTime, Effect, TestClock } from "effect"
 import { deepStrictEqual } from "@effect/vitest/utils"
+import { DateTime, Effect, TestClock } from "effect"
 
 describe("TestClock", () => {
   describe("setTime", () => {

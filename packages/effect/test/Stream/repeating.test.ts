@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -11,7 +12,6 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as TestClock from "effect/TestClock"
 import * as TestEnvironment from "effect/TestContext"
 

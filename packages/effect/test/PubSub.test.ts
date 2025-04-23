@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Array, Chunk, Deferred, Effect, Fiber, pipe, PubSub, Queue } from "effect"
 import { assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Array, Chunk, Deferred, Effect, Fiber, pipe, PubSub, Queue } from "effect"
 
 describe("PubSub", () => {
   it.effect("publishAll - capacity 2 (BoundedPubSubPow2)", () => {

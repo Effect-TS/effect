@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import * as S from "effect/Schema"
 import { strictEqual } from "@effect/vitest/utils"
+import * as S from "effect/Schema"
 
 describe("withConstructorDefault", () => {
   it("annotating a PropertySignatureDeclaration should repect existing defaultValues", () => {

@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
 import * as Util from "../TestUtils.js"
-import { deepStrictEqual } from "@effect/vitest/utils"
 
 describe("decodePromise", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })

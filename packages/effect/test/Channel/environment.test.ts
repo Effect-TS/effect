@@ -1,11 +1,11 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
-import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 
 const NumberServiceSymbolKey = "effect/test/NumberService"
 

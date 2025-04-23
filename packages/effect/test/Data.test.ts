@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Data, Equal, pipe } from "effect"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Data, Equal, pipe } from "effect"
 
 describe("Data", () => {
   it("struct", () => {

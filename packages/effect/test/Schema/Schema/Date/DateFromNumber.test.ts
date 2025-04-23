@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
 import * as Util from "../../TestUtils.js"
-import { assertTrue, strictEqual } from "@effect/vitest/utils"
 
 describe("DateFromNumber", () => {
   it("decoding", async () => {

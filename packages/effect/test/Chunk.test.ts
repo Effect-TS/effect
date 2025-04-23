@@ -1,5 +1,16 @@
 import { describe, it } from "@effect/vitest"
 import {
+  assertEquals,
+  assertFalse,
+  assertNone,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  doesNotThrow,
+  strictEqual,
+  throws
+} from "@effect/vitest/utils"
+import {
   Array as Arr,
   Chunk,
   Either,
@@ -12,17 +23,6 @@ import {
   pipe,
   type Predicate
 } from "effect"
-import {
-  assertEquals,
-  assertFalse,
-  assertNone,
-  assertSome,
-  assertTrue,
-  deepStrictEqual,
-  doesNotThrow,
-  strictEqual,
-  throws
-} from "@effect/vitest/utils"
 
 const assertTuple = <A, B>(
   actual: [Chunk.Chunk<A>, Chunk.Chunk<B>],

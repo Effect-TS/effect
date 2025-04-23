@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { deepStrictEqual } from "@effect/vitest/utils"
 
 describe("Sink", () => {
   it.effect("propagates errors", () =>

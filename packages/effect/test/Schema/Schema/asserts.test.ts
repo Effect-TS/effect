@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as Util from "../TestUtils.js"
-import { assertTrue, strictEqual } from "@effect/vitest/utils"
 
 describe("asserts", () => {
   it("the returned error should be a ParseError", () => {

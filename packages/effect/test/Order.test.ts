@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Array as Arr, Order, pipe } from "effect"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Array as Arr, Order, pipe } from "effect"
 
 describe("Order", () => {
   it("struct", () => {

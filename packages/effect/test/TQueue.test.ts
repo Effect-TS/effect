@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Effect, pipe, STM, TQueue } from "effect"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Effect, pipe, STM, TQueue } from "effect"
 
 describe("TQueue", () => {
   it.effect("bounded", () =>

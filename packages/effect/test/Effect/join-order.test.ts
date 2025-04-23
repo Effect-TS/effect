@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
-import { strictEqual } from "@effect/vitest/utils"
 import * as TestClock from "effect/TestClock"
 
 describe("Effect", () => {

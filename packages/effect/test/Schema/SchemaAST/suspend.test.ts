@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
 import * as Util from "../TestUtils.js"
-import { assertTrue, strictEqual } from "@effect/vitest/utils"
 
 describe("AST.Suspend", () => {
   it("should memoize the thunk", async () => {
