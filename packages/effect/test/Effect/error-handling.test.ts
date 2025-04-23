@@ -316,6 +316,26 @@ describe("Effect", () => {
       }))
       deepStrictEqual(result, { _tag: "ErrorB" })
     }))
+  it.effect("catchTags - recovers from tagged errors and remaining errors", () =>
+    Effect.gen(function*() {
+      interface ErrorA {
+        readonly _tag: "ErrorA"
+      }
+      interface ErrorB {
+        readonly _tag: "ErrorB"
+      }
+      interface ErrorC {
+        readonly _tag: "ErrorC"
+      }
+
+      const effect: Effect.Effect<never, ErrorA | ErrorB | ErrorC, never> = Effect.fail({ _tag: "ErrorC" })
+
+      const result = yield* (Effect.catchTags(effect, {
+        ErrorA: (e) => Effect.succeed(e),
+        ErrorB: (e) => Effect.succeed(e)
+      }, remaining => Effect.succeed(remaining)))
+      deepStrictEqual(result, { _tag: "ErrorC" })
+    }))
   it.effect("fold - sandbox -> terminate", () =>
     Effect.gen(function*() {
       const result = yield* pipe(
