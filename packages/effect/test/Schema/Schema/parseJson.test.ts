@@ -50,7 +50,7 @@ describe("parseJson", () => {
     └─ JSON Parse error: Expected '}'`
           : `parseJson
 └─ Transformation process failure
-   └─ Expected property name or '}' in JSON at position 1`
+   └─ Expected property name or '}' in JSON at position 1 (line 1 column 2)`
       )
     })
 
@@ -94,7 +94,7 @@ describe("parseJson", () => {
 └─ Encoded side transformation failure
    └─ parseJson
       └─ Transformation process failure
-         └─ Expected ':' after property name in JSON at position 4`
+         └─ Expected ':' after property name in JSON at position 4 (line 1 column 5)`
       )
       await Util.assertions.decoding.fail(
         schema,
