@@ -4054,14 +4054,16 @@ export const catchTags: {
   >(
     self: Effect<A, E, R>,
     cases: Cases,
-    onOther: (error: Exclude<E, { _tag: keyof Cases }>) => Effect<any, any, any>
+    onOther: OnOther
   ): Effect<
     | A
-    | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<infer A1, any, any> ? A1 : never }[keyof Cases],
-    | Exclude<E, { _tag: keyof Cases }>
-    | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, infer E1, any> ? E1 : never }[keyof Cases],
+    | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<infer A1, any, any> ? A1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<infer A2, any, any> ? A2 : never),
+    | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, infer E1, any> ? E1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<any, infer E2, any> ? E2 : never),
     | R
     | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, any, infer R1> ? R1 : never }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<any, any, infer R2> ? R2 : never)
   >
 } = effect.catchTags
 

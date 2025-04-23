@@ -283,6 +283,7 @@ describe("Effect", () => {
       const result = yield* (Effect.catchTags(effect, {
         ErrorA: (e) => Effect.succeed(e)
       }))
+
       deepStrictEqual(result, { _tag: "ErrorA" })
     }))
   it.effect("catchTags - does not recover from one of several tagged errors", () =>

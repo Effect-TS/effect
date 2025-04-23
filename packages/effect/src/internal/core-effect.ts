@@ -315,7 +315,9 @@ export const catchTags: {
     | { [K in keyof Cases]: Cases[K] extends (...args: any[]) => Effect.Effect<any, any, infer R1> ? R1 : never }[keyof Cases]
     | (ReturnType<OnOther> extends Effect.Effect<any, any, infer R2> ? R2 : never)
   >
-} = dual(3, (self, cases, onOther) => {
+} = dual(
+  (args) => core.isEffect(args[0]),
+  (self, cases, onOther?) => {
   let keys: Array<string>
 
   if (onOther) {
