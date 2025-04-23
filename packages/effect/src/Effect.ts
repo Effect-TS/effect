@@ -3904,9 +3904,11 @@ export const catchTag: {
  * const program = Effect.gen(function* () {
  *   const n1 = yield* Random.next
  *   const n2 = yield* Random.next
+ *
  *   if (n1 < 0.5) {
  *     yield* Effect.fail(new HttpError())
  *   }
+ *
  *   if (n2 < 0.5) {
  *     yield* Effect.fail(new ValidationError())
  *   }
@@ -3922,6 +3924,52 @@ export const catchTag: {
  *     ValidationError: (_ValidationError) =>
  *       Effect.succeed(`Recovering from ValidationError`)
  *   })
+ * )
+ * ```
+ *
+ * **Example** (Handling Tagged Error Types and Remaining Errors)
+ *
+ * ```ts
+ * import { Effect, Random } from "effect"
+ *
+ * class HttpError {
+ *   readonly _tag = "HttpError"
+ * }
+ *
+ * class ValidationError {
+ *   readonly _tag = "ValidationError"
+ * }
+ *
+ * class AnotherValidationError {
+ *   readonly _tag = "ValidationError"
+ * }
+ *
+ * //      ┌─── Effect<string, HttpError | ValidationError | AnotherValidationError, never>
+ * //      ▼
+ * const program = Effect.gen(function* () {
+ *   const n1 = yield* Random.next
+ *   const n2 = yield* Random.next
+ *   const n3 = yield* Random.next
+ *
+ *   if (n1 < 0.5) {
+ *     yield* Effect.fail(new HttpError())
+ *   }
+ *   if (n2 < 0.5) {
+ *     yield* Effect.fail(new ValidationError())
+ *   }
+ *
+ *   return "some result"
+ * })
+ *
+ * //      ┌─── Effect<string, never, never>
+ * //      ▼
+ * const recovered = program.pipe(
+ *   Effect.catchTags({
+ *     HttpError: (_HttpError) =>
+ *       Effect.succeed(`Recovering from HttpError`),
+ *     ValidationError: (_ValidationError) =>
+ *       Effect.succeed(`Recovering from ValidationError`)
+ *   }, remaining => Effect.succeed(remaining._tag)) // AnotherValidationError
  * )
  * ```
  *
