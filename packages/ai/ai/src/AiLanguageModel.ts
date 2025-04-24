@@ -483,3 +483,40 @@ const resolveParts = <Tool extends AiTool.Any>(options: {
       encodedResults
     })
   })
+
+/**
+ * Generate text using a large language model for the specified `prompt`.
+ *
+ * If a `toolkit` is specified, the large language model will additionally
+ * be able to perform tool calls to augment its response.
+ *
+ * @since 1.0.0
+ * @category functions
+ */
+export const generateText = Effect.serviceFunctionEffect(AiLanguageModel, (_) => _.generateText)
+
+/**
+ * Generate a structured object for the specified prompt and schema using a
+ * large language model.
+ *
+ * When using a `Schema` that does not have an `identifier` or `_tag`
+ * property, you must specify a `toolCallId` to properly associate the
+ * output of the model.
+ *
+ * @since 1.0.0
+ * @category functions
+ */
+export const generateObject = Effect.serviceFunctionEffect(AiLanguageModel, (_) => _.generateObject)
+
+/**
+ * Generate text using a large language model for the specified `prompt`,
+ * streaming output from the model as soon as it is available.
+ *
+ * If a `toolkit` is specified, the large language model will additionally
+ * be able to perform tool calls to augment its response.
+ *
+ * @since 1.0.0
+ * @category functions
+ */
+export const streamText = <Options extends NoExcessProperties<GenerateTextOptions<any>, Options>>(options: Options) =>
+  Stream.unwrap(AiLanguageModel.pipe(Effect.map((_) => _.streamText(options))))
