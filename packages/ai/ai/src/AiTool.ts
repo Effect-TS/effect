@@ -384,7 +384,7 @@ const constEmptyStruct = Schema.Struct({})
  */
 export const make = <
   const Name extends string,
-  Parameters extends AnyStructSchema | Schema.Struct.Fields = Schema.Struct<{}>,
+  Parameters extends Schema.Struct.Fields = {},
   Success extends Schema.Schema.Any = typeof Schema.Void,
   Failure extends Schema.Schema.All = typeof Schema.Never
 >(name: Name, options?: {
@@ -409,7 +409,7 @@ export const make = <
   readonly failure?: Failure
 }): AiTool<
   Name,
-  Parameters extends Schema.Struct.Fields ? Schema.Struct<Parameters> : Parameters,
+  Schema.Struct<Parameters>,
   Success,
   Failure
 > => {
@@ -418,9 +418,7 @@ export const make = <
   return makeProto({
     name,
     description: options?.description,
-    parametersSchema: Schema.isSchema(options?.parameters)
-      ? options?.parameters as any
-      : options?.parameters
+    parametersSchema: options?.parameters
       ? Schema.Struct(options?.parameters as any)
       : constEmptyStruct,
     successSchema,
