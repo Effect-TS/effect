@@ -50,8 +50,8 @@ importers:
         specifier: ^4.0.0
         version: 4.0.1
       '@effect/build-utils':
-        specifier: ^0.8.1
-        version: 0.8.1
+        specifier: ^0.8.3
+        version: 0.8.3
       '@effect/docgen':
         specifier: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738
         version: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738(tsx@4.17.0)(typescript@5.7.2)
@@ -2136,8 +2136,8 @@ packages:
     resolution: {integrity: sha512-NKBGBSIKUG584qrS1tyxVpX/AKJKQw5HgjYEnPLC0QsTw79JrGn+qUr8CXFb955Iy7GUdiiUv1rJ6JBGvaKb6w==}
     engines: {node: '>=18'}
 
-  '@effect/build-utils@0.8.1':
-    resolution: {integrity: sha512-AEWk1ZfP1TTpQOqZOGf2DSixayoERB7F/6a2eBdGG+XPN5WurNarJ58lZEMBX0G/B8u7ju1OxvjMmS2Al1b1Qw==}
+  '@effect/build-utils@0.8.3':
+    resolution: {integrity: sha512-mKv6muX1puZ+bdf7XBLCBS6G8wX2ZASoKZ1Um0dNivAgDKZuQwzEWYGlVURSXDEIwQSbY5RTu9NQkeA6bFk8kA==}
     engines: {node: '>=16.17.1'}
     hasBin: true
 
@@ -5557,7 +5557,6 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.7:
@@ -6301,6 +6300,9 @@ packages:
   pkg-dir@4.2.0:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
+
+  pkg-entry-points@1.1.1:
+    resolution: {integrity: sha512-BhZa7iaPmB4b3vKIACoppyUoYn8/sFs17VJJtzrzPZvEnN2nqrgg911tdL65lA2m1ml6UI3iPeYbZQ4VXpn1mA==}
 
   playwright-core@1.46.0:
     resolution: {integrity: sha512-9Y/d5UIwuJk8t3+lhmMSAJyNP1BUC/DqP3cQJDQQL/oWqAiuPTLgy7Q5dzglmTLwcBRdetzgNM/gni7ckfTr6A==}
@@ -9814,7 +9816,10 @@ snapshots:
       '@edge-runtime/primitives': 6.0.0
     optional: true
 
-  '@effect/build-utils@0.8.1': {}
+  '@effect/build-utils@0.8.3':
+    dependencies:
+      micromatch: 4.0.8
+      pkg-entry-points: 1.1.1
 
   '@effect/docgen@https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738(tsx@4.17.0)(typescript@5.7.2)':
     dependencies:
@@ -12744,7 +12749,7 @@ snapshots:
 
   find-yarn-workspace-root2@1.2.16:
     dependencies:
-      micromatch: 4.0.7
+      micromatch: 4.0.8
       pkg-dir: 4.2.0
 
   flat-cache@4.0.1:
@@ -13364,7 +13369,7 @@ snapshots:
       '@types/stack-utils': 2.0.3
       chalk: 4.1.2
       graceful-fs: 4.2.11
-      micromatch: 4.0.7
+      micromatch: 4.0.8
       pretty-format: 29.7.0
       slash: 3.0.0
       stack-utils: 2.0.6
@@ -14479,6 +14484,8 @@ snapshots:
   pkg-dir@4.2.0:
     dependencies:
       find-up: 4.1.0
+
+  pkg-entry-points@1.1.1: {}
 
   playwright-core@1.46.0: {}
 
