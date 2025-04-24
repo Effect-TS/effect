@@ -38,35 +38,16 @@ export type TypeId = typeof TypeId
 export interface AiToolkit<in out Tool extends AiTool.Any>
   extends Effect.Effect<ToHandler<Tool>, never, AiTool.ToHandler<Tool>>, Inspectable, Pipeable
 {
-  new(_: never):
-    & {
-      [T in Tool as T["name"]]: {
-        Parameters: Schema.Schema.Type<T["parametersSchema"]>
-      }
-    }
-    & {
-      [T in Tool as T["name"]]: T extends {
-        readonly successSchema: infer S extends Schema.Schema.Any
-      } ? {
-          Success: Schema.Schema.Type<S>
-        } :
-        unknown
-    }
-    & {
-      [T in Tool as T["name"]]: T extends {
-        readonly failureSchema: infer S extends Schema.Schema.All
-      } ? {
-          Failure: Schema.Schema.Type<S>
-        } :
-        unknown
-    }
+  new(_: never): {}
 
   readonly [TypeId]: TypeId
 
   /**
    * A map containing the tools that are part of this toolkit.
    */
-  readonly tools: ReadonlyMap<string, Tool>
+  readonly tools: {
+    [T in Tool as T["name"]]: Tool
+  }
 
   /**
    * Converts this toolkit into a `Context` object containing the handlers for
@@ -178,7 +159,7 @@ const Proto = {
             tool: toolName,
             parameters: toolParams
           })
-          const tool = tools.get(toolName)!
+          const tool = tools[toolName]!
           const schemas = getSchemas(tool)
           const decodedParams = yield* Effect.mapError(
             schemas.decodeParameters(toolParams),
@@ -223,7 +204,7 @@ const Proto = {
         }
       )
       return {
-        tools: Array.from(tools.values()),
+        tools: Array.from(Object.values(tools)),
         handle
       }
     })
@@ -231,7 +212,7 @@ const Proto = {
   toJSON(this: AiToolkit<any>): unknown {
     return {
       _id: "@effect/ai/AiToolkit",
-      tools: Array.from(this.tools.values()).map((tool) => tool.name)
+      tools: Array.from(Object.values(this.tools)).map((tool) => tool.name)
     }
   },
   pipe() {
