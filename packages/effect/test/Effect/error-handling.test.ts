@@ -334,7 +334,7 @@ describe("Effect", () => {
       const result = yield* (Effect.catchTags(effect, {
         ErrorA: (e) => Effect.succeed(e),
         ErrorB: (e) => Effect.succeed(e)
-      }, remaining => Effect.succeed(remaining)))
+      }, (remaining) => Effect.succeed(remaining)))
       deepStrictEqual(result, { _tag: "ErrorC" })
     }))
   it.effect("fold - sandbox -> terminate", () =>
