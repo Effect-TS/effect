@@ -102,7 +102,7 @@ class BucketIterator<K, V> implements Iterator<[K, V]> {
  * @since 2.0.0
  * @category constructors
  */
-export const empty = <K, V>(): MutableHashMap<K, V> => {
+export const empty = <K = never, V = never>(): MutableHashMap<K, V> => {
   const self = Object.create(MutableHashMapProto)
   self.referential = new Map()
   self.buckets = new Map()

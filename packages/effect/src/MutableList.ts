@@ -97,7 +97,7 @@ const makeNode = <T>(value: T): LinkedListNode<T> => ({
  * @since 2.0.0
  * @category constructors
  */
-export const empty = <A>(): MutableList<A> => {
+export const empty = <A = never>(): MutableList<A> => {
   const list = Object.create(MutableListProto)
   list.head = undefined
   list.tail = undefined
