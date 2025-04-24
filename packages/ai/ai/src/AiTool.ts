@@ -8,6 +8,7 @@ import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
+import type { AiError } from "./AiError.js"
 
 /**
  * @since 1.0.0
@@ -143,6 +144,27 @@ export interface Handler<Name extends string> {
   readonly handler: (params: any) => Effect.Effect<any, any>
   readonly context: Context_.Context<never>
 }
+
+/**
+ * A utility type which returns the type of the `Effect` that will be used to
+ * resolve a tool call.
+ *
+ * @since 1.0.0
+ * @category Utility Types
+ */
+export type HandlerEffect<Tool extends Any> = [Tool] extends [
+  AiTool<
+    infer _Name,
+    infer _Parameters,
+    infer _Success,
+    infer _Failure
+  >
+] ? Effect.Effect<
+    _Success["Type"],
+    AiError | _Failure["Type"],
+    _Parameters["Context"] | _Success["Context"] | _Failure["Context"]
+  >
+  : never
 
 /**
  * Represents the result of calling the handler for a particular tool.

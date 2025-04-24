@@ -82,11 +82,7 @@ export interface Any {
  */
 export interface ToHandler<in out Tool extends AiTool.Any> {
   readonly tools: ReadonlyArray<Tool>
-  readonly handle: (toolName: AiTool.Name<Tool>, toolParams: AiTool.Parameters<Tool>) => Effect.Effect<
-    AiTool.HandlerResult<Tool>,
-    AiError | AiTool.Failure<Tool>,
-    AiTool.Context<Tool>
-  >
+  readonly handle: (toolName: AiTool.Name<Tool>, toolParams: AiTool.Parameters<Tool>) => AiTool.HandlerEffect<Tool>
 }
 
 /**
@@ -96,21 +92,14 @@ export interface ToHandler<in out Tool extends AiTool.Any> {
  * @category Utility Types
  */
 export type HandlersFrom<Tool extends AiTool.Any> = {
-  [Name in Tool as Tool["name"]]: (params: AiTool.Parameters<Tool>) => ResultFrom<Tool>
+  [Name in Tool as Tool["name"]]: (params: AiTool.Parameters<Tool>) => Tool extends AiTool.AiTool<
+    infer _Name,
+    infer _Parameters,
+    infer _Success,
+    infer _Failure
+  > ? Effect.Effect<_Success["Type"], _Failure["Type"], any> :
+    never
 }
-
-/**
- * A utility type which returns the result type of a tool call.
- *
- * @since 1.0.0
- * @category Utility Types
- */
-export type ResultFrom<Tool extends AiTool.Any> = Tool extends AiTool.AiTool<
-  infer _Name,
-  infer _Parameters,
-  infer _Output
-> ? Effect.Effect<_Output["Type"], AiError, any> :
-  never
 
 /**
  * A utility type which returns the tools in an `AiToolkit`.
