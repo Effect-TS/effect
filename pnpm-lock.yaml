@@ -56,8 +56,8 @@ importers:
         specifier: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738
         version: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738(tsx@4.17.0)(typescript@5.7.2)
       '@effect/eslint-plugin':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.3.2
+        version: 0.3.2
       '@effect/language-service':
         specifier: ^0.1.0
         version: 0.1.0
@@ -1971,8 +1971,8 @@ packages:
       tsx: ^4.19.3
       typescript: ^5.8.2
 
-  '@effect/eslint-plugin@0.2.0':
-    resolution: {integrity: sha512-PC/hEDGctYGYIjZyhM6kbD4FyHxLgoYNoQNjGkCXcFEzi71vQc3PJKe2JnCgzcUDvr/Nc2qgTVU4ONYwjHzQGA==}
+  '@effect/eslint-plugin@0.3.2':
+    resolution: {integrity: sha512-c4Vs9t3r54A4Zpl+wo8+PGzZz3JWYsip41H+UrebRLjQ2Hk/ap63IeCgN/HWcYtxtyhRopjp7gW9nOQ2Snbl+g==}
 
   '@effect/language-service@0.1.0':
     resolution: {integrity: sha512-BnlM8LlaqCAYgdRfxlbR7gXGh/FD1scL1fPgNVJEPoOM08od1jtJz+iKhwfaud8TPnnhZR+TED2h5ynjanLeCQ==}
@@ -9591,7 +9591,7 @@ snapshots:
       tsx: 4.17.0
       typescript: 5.7.2
 
-  '@effect/eslint-plugin@0.2.0':
+  '@effect/eslint-plugin@0.3.2':
     dependencies:
       '@dprint/formatter': 0.4.1
       '@dprint/typescript': 0.91.4
