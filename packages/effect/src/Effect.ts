@@ -4969,7 +4969,7 @@ export const uninterruptibleMask: <A, E, R>(
  * @category Condition Checking
  * @since 3.4.0
  */
-export const liftPredicate: { // Note: I intentionally avoid using the NoInfer pattern here.
+export const liftPredicate: {
   <A, B extends A, E>(
     refinement: Refinement<A, B>,
     orFailWith: (a: A) => E

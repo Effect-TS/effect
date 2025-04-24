@@ -436,7 +436,7 @@ export const match: {
  * @category lifting
  * @since 3.4.0
  */
-export const liftPredicate: { // Note: I intentionally avoid using the NoInfer pattern here.
+export const liftPredicate: {
   <A, B extends A, E>(refinement: Refinement<A, B>, orLeftWith: (a: A) => E): (a: A) => Either<B, E>
   <B extends A, E, A = B>(
     predicate: Predicate<A>,
