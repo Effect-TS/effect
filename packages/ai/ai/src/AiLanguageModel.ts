@@ -81,7 +81,21 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
   readonly required?: Tools["name"] | boolean | undefined
 
   /**
-   * The concurrency level for generating text.
+   * The maximum number of sequential calls to the large language model that
+   * will be made during resolution of the request, for example when tool calls
+   * are specified.
+   *
+   * Specifying a maximum number of steps is required to prevent infinite loops
+   * between your application and the large language model.
+   *
+   * By default, the value of `maxSteps` is `1`, which means that only a single
+   * request to the large language model will be made.
+By default, it's set to 1, which means that only a single LLM call is made.
+   */
+  readonly maxSteps?: number
+
+  /**
+   * The concurrency level for resolving tool calls.
    */
   readonly concurrency?: Concurrency | undefined
 }
@@ -272,12 +286,15 @@ export const make = (opts: {
           tools.push(convertTool(tool))
         }
         let response = yield* opts.generateText({ prompt, system, tools, required, span })
-        while (response.finishReason === "tool-calls") {
+        let stepCount = 1
+        const maxSteps = options.maxSteps ?? 1
+        while (response.finishReason === "tool-calls" && stepCount < maxSteps) {
           const parts = yield* resolveParts({ method: "generateText", response, toolkit, concurrency })
           prompt = [...prompt, ...AiInput.make(parts)] as Arr.NonEmptyArray<Message>
           // Tool calls should not be required after the first call, otherwise
           // we may enter an infinite loop with the model provider
           response = yield* opts.generateText({ prompt, system, tools, required: false, span })
+          stepCount += 1
         }
         return response
       }, (effect, span) => Effect.withParentSpan(effect, span))
