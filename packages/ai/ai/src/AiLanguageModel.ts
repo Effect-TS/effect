@@ -280,7 +280,7 @@ export const make = (opts: {
           response = yield* opts.generateText({ prompt, system, tools, required: false, span })
         }
         return response
-      })
+      }, (effect, span) => Effect.withParentSpan(effect, span))
     )
 
   const streamText = <
