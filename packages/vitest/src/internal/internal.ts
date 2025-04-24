@@ -151,6 +151,7 @@ const makeTester = <R>(
   return Object.assign(f, { skip, skipIf, runIf, only, each, fails, prop })
 }
 
+/** @internal */
 export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, timeout) => {
   if (Array.isArray(arbitraries)) {
     const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
@@ -295,6 +296,7 @@ export const makeMethods = (it: V.TestAPI): Vitest.Vitest.Methods =>
     prop
   })
 
+/** @internal */
 export const {
   /** @internal */
   effect,
