@@ -72,7 +72,7 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
    * A toolkit containing both the tools and the tool call handler to use to
    * augment text generation.
    */
-  readonly toolkit?: AiToolkit.ToHandler<Tools>
+  readonly toolkit?: AiToolkit.ToHandler<Tools> | Effect.Effect<AiToolkit.ToHandler<Tools>, any, any>
 
   /**
    * Specifies whether a particular tool is required, or a boolean indicating
@@ -165,6 +165,9 @@ export type ExtractError<
 > = Options extends {
   toolkit: AiToolkit.ToHandler<infer _Tools>
 } ? AiError | AiTool.Failure<_Tools>
+  : Options extends {
+    toolkit: Effect.Effect<AiToolkit.ToHandler<infer _Tools>, infer _E, infer _R>
+  } ? AiError | AiTool.Failure<_Tools> | _E
   : AiError
 
 /**
@@ -179,6 +182,9 @@ export type ExtractContext<
 > = Options extends {
   toolkit: AiToolkit.ToHandler<infer _Tools>
 } ? AiTool.Context<_Tools>
+  : Options extends {
+    toolkit: Effect.Effect<AiToolkit.ToHandler<infer _Tools>, infer _E, infer _R>
+  } ? AiTool.Context<_Tools> | _R
   : never
 
 /**
@@ -276,20 +282,21 @@ export const make = (opts: {
         if (Predicate.isUndefined(toolkit)) {
           return yield* opts.generateText({ prompt, system, tools: [], required: false, span })
         }
+        const actualToolkit = Effect.isEffect(toolkit) ? yield* toolkit : toolkit
         const tools: Array<{
           name: string
           description: string
           parameters: JsonSchema.JsonSchema7
           structured: boolean
         }> = []
-        for (const tool of toolkit.tools) {
+        for (const tool of actualToolkit.tools) {
           tools.push(convertTool(tool))
         }
         let response = yield* opts.generateText({ prompt, system, tools, required, span })
         let stepCount = 1
         const maxSteps = options.maxSteps ?? 1
         while (response.finishReason === "tool-calls" && stepCount < maxSteps) {
-          const parts = yield* resolveParts({ method: "generateText", response, toolkit, concurrency })
+          const parts = yield* resolveParts({ method: "generateText", response, toolkit: actualToolkit, concurrency })
           prompt = [...prompt, ...AiInput.make(parts)] as Arr.NonEmptyArray<Message>
           // Tool calls should not be required after the first call, otherwise
           // we may enter an infinite loop with the model provider
@@ -306,49 +313,51 @@ export const make = (opts: {
     AiResponse,
     ExtractError<Options>,
     ExtractContext<Options>
-  > => {
-    const makeScopedSpan = Effect.makeSpanScoped("AiLanguageModel.streamText", {
-      captureStackTrace: false,
-      attributes: { concurrency, required }
-    })
-    const prompt = AiInput.make(options.prompt) as Arr.NonEmptyArray<Message>
-    const system = Option.fromNullable(options.system)
-    if (Predicate.isUndefined(toolkit)) {
+  > =>
+    Stream.unwrap(Effect.gen(function*() {
+      const makeScopedSpan = Effect.makeSpanScoped("AiLanguageModel.streamText", {
+        captureStackTrace: false,
+        attributes: { concurrency, required }
+      })
+      const prompt = AiInput.make(options.prompt) as Arr.NonEmptyArray<Message>
+      const system = Option.fromNullable(options.system)
+      if (Predicate.isUndefined(toolkit)) {
+        return makeScopedSpan.pipe(
+          Effect.map((span) => opts.streamText({ prompt, system, tools: [], required: false, span })),
+          Stream.unwrapScoped
+        ) as any
+      }
+      const actualToolkit = Effect.isEffect(toolkit) ? yield* toolkit : toolkit
+      const tools: Array<{
+        name: string
+        description: string
+        parameters: JsonSchema.JsonSchema7
+        structured: boolean
+      }> = []
+      for (const tool of actualToolkit.tools.values()) {
+        tools.push(convertTool(tool))
+      }
+
+      // TODO: figure out how this logic makes sense in a streaming scenario
+      // let response = yield* opts.generateText({ prompt, system, tools, required, span })
+      // while (response.finishReason === "tool-calls") {
+      //   const parts = yield* resolveParts({ method: "generateText", response, toolkit, concurrency })
+      //   const prompt = AiInput.make(parts) as Arr.NonEmptyArray<Message>
+      //   // Tool calls should not continuously be required otherwise we may enter
+      //   // an infinite loop with the model provider
+      //   response = yield* opts.generateText({ prompt, system, tools, required: false, span })
+      // }
+      // return response
+
       return makeScopedSpan.pipe(
-        Effect.map((span) => opts.streamText({ prompt, system, tools: [], required: false, span })),
-        Stream.unwrapScoped
-      ) as any
-    }
-    const tools: Array<{
-      name: string
-      description: string
-      parameters: JsonSchema.JsonSchema7
-      structured: boolean
-    }> = []
-    for (const tool of toolkit.tools.values()) {
-      tools.push(convertTool(tool))
-    }
-
-    // TODO: figure out how this logic makes sense in a streaming scenario
-    // let response = yield* opts.generateText({ prompt, system, tools, required, span })
-    // while (response.finishReason === "tool-calls") {
-    //   const parts = yield* resolveParts({ method: "generateText", response, toolkit, concurrency })
-    //   const prompt = AiInput.make(parts) as Arr.NonEmptyArray<Message>
-    //   // Tool calls should not continuously be required otherwise we may enter
-    //   // an infinite loop with the model provider
-    //   response = yield* opts.generateText({ prompt, system, tools, required: false, span })
-    // }
-    // return response
-
-    return makeScopedSpan.pipe(
-      Effect.map((span) => opts.streamText({ prompt, system, tools, required, span })),
-      Stream.unwrapScoped,
-      Stream.mapEffect(
-        (response) => resolveParts({ method: "streamText", response, toolkit, concurrency }),
-        { concurrency: "unbounded" }
+        Effect.map((span) => opts.streamText({ prompt, system, tools, required, span })),
+        Stream.unwrapScoped,
+        Stream.mapEffect(
+          (response) => resolveParts({ method: "streamText", response, toolkit: actualToolkit, concurrency }),
+          { concurrency: "unbounded" }
+        )
       )
-    )
-  }
+    }))
 
   const generateObject = <A, I, R>(
     options: GenerateObjectOptions<A, I, R> | GenerateObjectWithToolCallIdOptions<A, I, R>
