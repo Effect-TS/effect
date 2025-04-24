@@ -92,13 +92,7 @@ export interface ToHandler<in out Tool extends AiTool.Any> {
  * @category Utility Types
  */
 export type HandlersFrom<Tool extends AiTool.Any> = {
-  [Name in Tool as Tool["name"]]: (params: AiTool.Parameters<Tool>) => Tool extends AiTool.AiTool<
-    infer _Name,
-    infer _Parameters,
-    infer _Success,
-    infer _Failure
-  > ? Effect.Effect<_Success["Type"], _Failure["Type"], any> :
-    never
+  [Name in Tool as Tool["name"]]: (params: AiTool.Parameters<Tool>) => AiTool.HandlerEffect<Tool>
 }
 
 /**
