@@ -1,5 +1,11 @@
 # effect
 
+## 3.14.14
+
+### Patch Changes
+
+- [#4786](https://github.com/Effect-TS/effect/pull/4786) [`6ed8d15`](https://github.com/Effect-TS/effect/commit/6ed8d1589beb181d30abc79afebdaabc1d101538) Thanks @tim-smart! - drop use of performance.timeOrigin in clock
+
 ## 3.14.13
 
 ### Patch Changes
