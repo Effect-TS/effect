@@ -37,12 +37,9 @@
   ],
   "exports": {
     "./package.json": "./package.json",
-    "./Kysely": "./src/Kysely.ts",
-    "./Mssql": "./src/Mssql.ts",
-    "./Mysql": "./src/Mysql.ts",
-    "./Pg": "./src/Pg.ts",
-    "./Sqlite": "./src/Sqlite.ts",
-    "./patch.types": "./src/patch.types.ts"
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v3",

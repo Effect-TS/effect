@@ -32,8 +32,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./ClickhouseClient": "./src/ClickhouseClient.ts",
-    "./ClickhouseMigrator": "./src/ClickhouseMigrator.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

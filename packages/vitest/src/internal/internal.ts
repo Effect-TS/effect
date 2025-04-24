@@ -21,7 +21,7 @@ import * as TestEnvironment from "effect/TestContext"
 import type * as TestServices from "effect/TestServices"
 import * as Utils from "effect/Utils"
 import * as V from "vitest"
-import type * as Vitest from "./index.js"
+import type * as Vitest from "../index.js"
 
 const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function*() {

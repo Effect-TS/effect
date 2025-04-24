@@ -32,11 +32,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./AnthropicClient": "./src/AnthropicClient.ts",
-    "./AnthropicCompletions": "./src/AnthropicCompletions.ts",
-    "./AnthropicConfig": "./src/AnthropicConfig.ts",
-    "./AnthropicTokenizer": "./src/AnthropicTokenizer.ts",
-    "./Generated": "./src/Generated.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

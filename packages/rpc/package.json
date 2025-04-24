@@ -32,16 +32,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./Rpc": "./src/Rpc.ts",
-    "./RpcClient": "./src/RpcClient.ts",
-    "./RpcGroup": "./src/RpcGroup.ts",
-    "./RpcMessage": "./src/RpcMessage.ts",
-    "./RpcMiddleware": "./src/RpcMiddleware.ts",
-    "./RpcSchema": "./src/RpcSchema.ts",
-    "./RpcSerialization": "./src/RpcSerialization.ts",
-    "./RpcServer": "./src/RpcServer.ts",
-    "./RpcTest": "./src/RpcTest.ts",
-    "./RpcWorker": "./src/RpcWorker.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

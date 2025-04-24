@@ -32,8 +32,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./MysqlClient": "./src/MysqlClient.ts",
-    "./MysqlMigrator": "./src/MysqlMigrator.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

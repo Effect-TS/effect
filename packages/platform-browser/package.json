@@ -34,16 +34,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./BrowserHttpClient": "./src/BrowserHttpClient.ts",
-    "./BrowserKeyValueStore": "./src/BrowserKeyValueStore.ts",
-    "./BrowserRuntime": "./src/BrowserRuntime.ts",
-    "./BrowserSocket": "./src/BrowserSocket.ts",
-    "./BrowserStream": "./src/BrowserStream.ts",
-    "./BrowserWorker": "./src/BrowserWorker.ts",
-    "./BrowserWorkerRunner": "./src/BrowserWorkerRunner.ts",
-    "./Clipboard": "./src/Clipboard.ts",
-    "./Geolocation": "./src/Geolocation.ts",
-    "./Permissions": "./src/Permissions.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

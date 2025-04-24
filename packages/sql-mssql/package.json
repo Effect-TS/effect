@@ -32,10 +32,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./MssqlClient": "./src/MssqlClient.ts",
-    "./MssqlMigrator": "./src/MssqlMigrator.ts",
-    "./Parameter": "./src/Parameter.ts",
-    "./Procedure": "./src/Procedure.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

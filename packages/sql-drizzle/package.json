@@ -36,9 +36,9 @@
   ],
   "exports": {
     "./package.json": "./package.json",
-    "./Mysql": "./src/Mysql.ts",
-    "./Pg": "./src/Pg.ts",
-    "./Sqlite": "./src/Sqlite.ts"
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v3",

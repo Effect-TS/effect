@@ -32,8 +32,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./SqliteClient": "./src/SqliteClient.ts",
-    "./SqliteMigrator": "./src/SqliteMigrator.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

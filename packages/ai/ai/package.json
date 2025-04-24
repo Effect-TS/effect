@@ -32,19 +32,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./AiChat": "./src/AiChat.ts",
-    "./AiError": "./src/AiError.ts",
-    "./AiInput": "./src/AiInput.ts",
-    "./AiModel": "./src/AiModel.ts",
-    "./AiModels": "./src/AiModels.ts",
-    "./AiPlan": "./src/AiPlan.ts",
-    "./AiResponse": "./src/AiResponse.ts",
-    "./AiRole": "./src/AiRole.ts",
-    "./AiTelemetry": "./src/AiTelemetry.ts",
-    "./AiToolkit": "./src/AiToolkit.ts",
-    "./Completions": "./src/Completions.ts",
-    "./Embeddings": "./src/Embeddings.ts",
-    "./Tokenizer": "./src/Tokenizer.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

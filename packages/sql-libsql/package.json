@@ -34,8 +34,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./LibsqlClient": "./src/LibsqlClient.ts",
-    "./LibsqlMigrator": "./src/LibsqlMigrator.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

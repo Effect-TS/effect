@@ -34,22 +34,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./Args": "./src/Args.ts",
-    "./AutoCorrect": "./src/AutoCorrect.ts",
-    "./BuiltInOptions": "./src/BuiltInOptions.ts",
-    "./CliApp": "./src/CliApp.ts",
-    "./CliConfig": "./src/CliConfig.ts",
-    "./Command": "./src/Command.ts",
-    "./CommandDescriptor": "./src/CommandDescriptor.ts",
-    "./CommandDirective": "./src/CommandDirective.ts",
-    "./ConfigFile": "./src/ConfigFile.ts",
-    "./HelpDoc": "./src/HelpDoc.ts",
-    "./HelpDoc/Span": "./src/HelpDoc/Span.ts",
-    "./Options": "./src/Options.ts",
-    "./Primitive": "./src/Primitive.ts",
-    "./Prompt": "./src/Prompt.ts",
-    "./Usage": "./src/Usage.ts",
-    "./ValidationError": "./src/ValidationError.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

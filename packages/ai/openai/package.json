@@ -32,13 +32,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./Generated": "./src/Generated.ts",
-    "./OpenAiClient": "./src/OpenAiClient.ts",
-    "./OpenAiCompletions": "./src/OpenAiCompletions.ts",
-    "./OpenAiConfig": "./src/OpenAiConfig.ts",
-    "./OpenAiEmbeddings": "./src/OpenAiEmbeddings.ts",
-    "./OpenAiTelemetry": "./src/OpenAiTelemetry.ts",
-    "./OpenAiTokenizer": "./src/OpenAiTokenizer.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

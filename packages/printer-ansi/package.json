@@ -36,9 +36,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./Ansi": "./src/Ansi.ts",
-    "./AnsiDoc": "./src/AnsiDoc.ts",
-    "./Color": "./src/Color.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

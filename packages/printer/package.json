@@ -32,13 +32,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./Doc": "./src/Doc.ts",
-    "./DocStream": "./src/DocStream.ts",
-    "./DocTree": "./src/DocTree.ts",
-    "./Flatten": "./src/Flatten.ts",
-    "./Layout": "./src/Layout.ts",
-    "./Optimize": "./src/Optimize.ts",
-    "./PageWidth": "./src/PageWidth.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",

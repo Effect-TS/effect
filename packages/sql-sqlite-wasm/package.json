@@ -32,10 +32,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./OpfsWorker": "./src/OpfsWorker.ts",
-    "./SqliteClient": "./src/SqliteClient.ts",
-    "./SqliteMigrator": "./src/SqliteMigrator.ts",
-    "./sqlite-wasm.d": "./src/sqlite-wasm.d.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v3",

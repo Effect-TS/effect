@@ -40,17 +40,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./Logger": "./src/Logger.ts",
-    "./Metrics": "./src/Metrics.ts",
-    "./NodeSdk": "./src/NodeSdk.ts",
-    "./Otlp": "./src/Otlp.ts",
-    "./OtlpLogger": "./src/OtlpLogger.ts",
-    "./OtlpMetrics": "./src/OtlpMetrics.ts",
-    "./OtlpResource": "./src/OtlpResource.ts",
-    "./OtlpTracer": "./src/OtlpTracer.ts",
-    "./Resource": "./src/Resource.ts",
-    "./Tracer": "./src/Tracer.ts",
-    "./WebSdk": "./src/WebSdk.ts"
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "scripts": {
     "codegen": "build-utils prepare-v3",
