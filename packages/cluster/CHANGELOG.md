@@ -1,5 +1,17 @@
 # @effect/cluster
 
+## 0.30.2
+
+### Patch Changes
+
+- [#4779](https://github.com/Effect-TS/effect/pull/4779) [`664293f`](https://github.com/Effect-TS/effect/commit/664293f975a282920a7208e966adaf4634c42ef4) Thanks @fubhy! - Fix `FiberRef` module import
+
+- Updated dependencies [[`6ed8d15`](https://github.com/Effect-TS/effect/commit/6ed8d1589beb181d30abc79afebdaabc1d101538)]:
+  - effect@3.14.14
+  - @effect/platform@0.80.14
+  - @effect/rpc@0.56.2
+  - @effect/sql@0.33.14
+
 ## 0.30.1
 
 ### Patch Changes
