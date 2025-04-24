@@ -38,7 +38,28 @@ export type TypeId = typeof TypeId
 export interface AiToolkit<in out Tool extends AiTool.Any>
   extends Effect.Effect<ToHandler<Tool>, never, AiTool.ToHandler<Tool>>, Inspectable, Pipeable
 {
-  new(_: never): {}
+  new(_: never):
+    & {
+      [T in Tool as T["name"]]: {
+        Parameters: Schema.Schema.Type<T["parametersSchema"]>
+      }
+    }
+    & {
+      [T in Tool as T["name"]]: T extends {
+        readonly successSchema: infer S extends Schema.Schema.Any
+      } ? {
+          Success: Schema.Schema.Type<S>
+        } :
+        unknown
+    }
+    & {
+      [T in Tool as T["name"]]: T extends {
+        readonly failureSchema: infer S extends Schema.Schema.All
+      } ? {
+          Failure: Schema.Schema.Type<S>
+        } :
+        unknown
+    }
 
   readonly [TypeId]: TypeId
 
