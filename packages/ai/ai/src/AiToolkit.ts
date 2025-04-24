@@ -46,7 +46,7 @@ export interface AiToolkit<in out Tool extends AiTool.Any>
    * A map containing the tools that are part of this toolkit.
    */
   readonly tools: {
-    [T in Tool as T["name"]]: Tool
+    [T in Tool as T["name"]]: T
   }
 
   /**
