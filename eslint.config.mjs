@@ -1,3 +1,4 @@
+import * as effectEslint from "@effect/eslint-plugin"
 import { fixupPluginRules } from "@eslint/compat"
 import { FlatCompat } from "@eslint/eslintrc"
 import js from "@eslint/js"
@@ -24,9 +25,9 @@ export default [
   ...compat.extends(
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended",
-    "plugin:@effect/recommended"
+    "plugin:@typescript-eslint/recommended"
   ),
+  ...effectEslint.configs.dprint,
   {
     plugins: {
       import: fixupPluginRules(_import),
@@ -134,6 +135,21 @@ export default [
     files: ["packages/*/src/**/*", "packages/*/test/**/*"],
     rules: {
       "no-console": "error"
+    }
+  },
+  {
+    files: ["packages/*/src/**/*"],
+    rules: {
+      "@effect/no-import-from-barrel-package": [
+        "error",
+        {
+          packageNames: [
+            "effect",
+            "@effect/platform",
+            "@effect/sql"
+          ]
+        }
+      ]
     }
   }
 ]
