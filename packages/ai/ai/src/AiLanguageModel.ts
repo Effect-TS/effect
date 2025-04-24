@@ -334,7 +334,7 @@ export const make = (opts: {
         parameters: JsonSchema.JsonSchema7
         structured: boolean
       }> = []
-      for (const tool of actualToolkit.tools.values()) {
+      for (const tool of Object.values(actualToolkit.tools)) {
         tools.push(convertTool(tool))
       }
 

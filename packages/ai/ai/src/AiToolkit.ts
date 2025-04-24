@@ -115,7 +115,7 @@ const Proto = {
       const handlers = Effect.isEffect(build) ? yield* build : build
       const contextMap = new Map<string, unknown>()
       for (const [name, handler] of Object.entries(handlers)) {
-        const tool = this.tools.get(name)!
+        const tool = this.tools[name]!
         contextMap.set(tool.key, { handler, context })
       }
       return Context.unsafeMake(contextMap)
@@ -220,16 +220,16 @@ const Proto = {
   }
 }
 
-const makeProto = <Tools extends AiTool.Any>(tools: ReadonlyMap<string, Tools>): AiToolkit<Tools> =>
-  Object.assign(function() {}, Proto, { tools: new Map(tools) }) as any
+const makeProto = <Tools extends AiTool.Any>(tools: Record<string, Tools>): AiToolkit<Tools> =>
+  Object.assign(function() {}, Proto, { tools }) as any
 
 const resolveInput = <Tools extends ReadonlyArray<AiTool.Any>>(
   ...tools: Tools
-): ReadonlyMap<string, Tools[number]> => {
-  const output = new Map<string, Tools[number]>()
+): Record<string, Tools[number]> => {
+  const output = {} as Record<string, Tools[number]>
   for (const tool of tools) {
     const value = (Schema.isSchema(tool) ? AiTool.fromTaggedRequest(tool as any) : tool) as any
-    output.set(tool.name, value)
+    output[tool.name] = value
   }
   return output
 }
@@ -253,10 +253,10 @@ export const make = <const Tools extends ReadonlyArray<AiTool.Any>>(
 export const merge = <const Toolkits extends ReadonlyArray<Any>>(
   ...toolkits: Toolkits
 ): AiToolkit<Tools<Toolkits[number]>> => {
-  const tools = new Map()
+  const tools = {} as Record<string, any>
   for (const toolkit of toolkits) {
     for (const [name, tool] of toolkit.tools) {
-      tools.set(name, tool)
+      tools[name] = tool
     }
   }
   return makeProto(tools)
