@@ -52,7 +52,7 @@ The `AiInput` and `AiResponse` types have been refactored to allow inclusion of 
 
 The `AiToolkit` has been completely refactored to simplify creating a collection of tools and using those tools in requests to model providers. A new `AiTool` data type has also been introduced to simplify defining tools for a toolkit. `AiToolkit.implement` has been renamed to `AiToolkit.toLayer` for clarity, and defining handlers is now very similar to the way handlers are defined in the `@effect/rpc` library.
 
-In addition, if a `toolkit` is provided to `AiLanguageModel.generateText` and `AiLanguageModel.streamText`, these methods will auto-resolve any tool calls requested by the large language model, returning the results to the model and generating a new response.
+In addition, you can now control how many sequential steps are performed by `AiLanguageModel.generateText` and `AiLanguageModel.streamText` via the `maxSteps` option. For example, if `maxSteps` is set to `> 1` and any tools are invoked by the language model, these methods will take care of resolving the tool call and returning the results to the language model for subsequent generation (up to the maximum number of steps specified).
 
 A complete example of an `AiToolkit` implementation and usage can be found below:
 
@@ -156,7 +156,10 @@ const makeDadJoke = Effect.gen(function*() {
 
   const response = yield* languageModel.generateText({
     prompt: "Come up with a dad joke about pirates",
-    toolkit
+    toolkit,
+    // Allow a maximum of two sequential interactions with the language model
+    // before returning the response
+    maxSteps: 2
   })
 
   return yield* languageModel.generateText({
