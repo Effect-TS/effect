@@ -42,11 +42,14 @@ const performanceNowNanos = (function() {
   const bigint1e6 = BigInt(1_000_000)
   if (typeof performance === "undefined") {
     return () => BigInt(Date.now()) * bigint1e6
-  } else if (typeof performance.timeOrigin === "number" && performance.timeOrigin === 0) {
-    return () => BigInt(Math.round(performance.now() * 1_000_000))
   }
-  const origin = (BigInt(Date.now()) * bigint1e6) - BigInt(Math.round(performance.now() * 1_000_000))
-  return () => origin + BigInt(Math.round(performance.now() * 1_000_000))
+  let origin: bigint
+  return () => {
+    if (origin === undefined) {
+      origin = (BigInt(Date.now()) * bigint1e6) - BigInt(Math.round(performance.now() * 1_000_000))
+    }
+    return origin + BigInt(Math.round(performance.now() * 1000000))
+  }
 })()
 const processOrPerformanceNow = (function() {
   const processHrtime =
