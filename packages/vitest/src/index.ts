@@ -91,18 +91,23 @@ export namespace Vitest {
   /**
    * @since 1.0.0
    */
-  export interface MethodsNonLive<R = never> extends API {
-    readonly effect: Vitest.Tester<TestServices.TestServices | R>
+  export interface MethodsNonLive<R = never, WithTestServices extends boolean = true> extends API {
+    readonly effect: Vitest.Tester<(WithTestServices extends true ? TestServices.TestServices : never) | R>
     readonly flakyTest: <A, E, R2>(
       self: Effect.Effect<A, E, R2>,
       timeout?: Duration.DurationInput
     ) => Effect.Effect<A, never, R2>
-    readonly scoped: Vitest.Tester<TestServices.TestServices | Scope.Scope | R>
+    readonly scoped: Vitest.Tester<
+      (WithTestServices extends true ? TestServices.TestServices : never) | Scope.Scope | R
+    >
     readonly layer: <R2, E>(layer: Layer.Layer<R2, E, R>, options?: {
       readonly timeout?: Duration.DurationInput
     }) => {
-      (f: (it: Vitest.MethodsNonLive<R | R2>) => void): void
-      (name: string, f: (it: Vitest.MethodsNonLive<R | R2>) => void): void
+      (f: (it: Vitest.MethodsNonLive<R | R2, WithTestServices>) => void): void
+      (
+        name: string,
+        f: (it: Vitest.MethodsNonLive<R | R2, WithTestServices>) => void
+      ): void
     }
 
     /**
@@ -201,12 +206,16 @@ export const scopedLive: Vitest.Tester<Scope.Scope> = internal.scopedLive
  * })
  * ```
  */
-export const layer: <R, E>(
+export const layer: <R, E, const ExcludeTestServices extends boolean = false>(
   layer_: Layer.Layer<R, E>,
-  options?: { readonly memoMap?: Layer.MemoMap; readonly timeout?: Duration.DurationInput }
+  options?: {
+    readonly memoMap?: Layer.MemoMap
+    readonly timeout?: Duration.DurationInput
+    readonly excludeTestServices?: ExcludeTestServices
+  }
 ) => {
-  (f: (it: Vitest.MethodsNonLive<R>) => void): void
-  (name: string, f: (it: Vitest.MethodsNonLive<R>) => void): void
+  (f: (it: Vitest.MethodsNonLive<R, ExcludeTestServices extends true ? false : true>) => void): void
+  (name: string, f: (it: Vitest.MethodsNonLive<R, ExcludeTestServices extends true ? false : true>) => void): void
 } = internal.layer
 
 /**

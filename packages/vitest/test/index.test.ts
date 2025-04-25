@@ -197,6 +197,14 @@ describe("layer", () => {
         expect(foo).toEqual("foo")
       }))
   })
+
+  layer(Sleeper.Default, { excludeTestServices: true })("live services", (it) => {
+    it.effect("Clock", () =>
+      Effect.gen(function*() {
+        const sleeper = yield* Sleeper
+        yield* sleeper.sleep(1)
+      }))
+  })
 })
 
 // property testing
