@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it, layer } from "@effect/vitest"
-import { Context, Duration, Effect, FastCheck, Fiber, Layer, Schema, TestClock } from "effect"
+import { Context, Duration, Effect, FastCheck, Fiber, Layer, Schema, TestClock, TestConfig } from "effect"
 
 it.live(
   "live %s",
@@ -175,6 +175,7 @@ describe("layer", () => {
   layer(Sleeper.Default)("test services", (it) => {
     it.effect("TestClock", () =>
       Effect.gen(function*() {
+        yield* TestConfig.TestConfig
         const sleeper = yield* Sleeper
         const fiber = yield* Effect.fork(sleeper.sleep(100_000))
         yield* Effect.yieldNow()

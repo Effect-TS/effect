@@ -186,23 +186,20 @@ export const layer = <R, E, const ExcludeTestServices extends boolean = false>(
     readonly excludeTestServices?: ExcludeTestServices
   }
 ): {
-  (f: (it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices extends true ? false : true>) => void): void
+  (f: (it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices>) => void): void
   (
     name: string,
-    f: (it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices extends true ? false : true>) => void
+    f: (it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices>) => void
   ): void
 } =>
 (
   ...args: [
     name: string,
     f: (
-      it: Vitest.Vitest.MethodsNonLive<
-        R,
-        ExcludeTestServices extends true ? false : true
-      >
+      it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices>
     ) => void
   ] | [
-    f: (it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices extends true ? false : true>) => void
+    f: (it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices>) => void
   ]
 ) => {
   const excludeTestServices = options?.excludeTestServices ?? false
@@ -218,7 +215,7 @@ export const layer = <R, E, const ExcludeTestServices extends boolean = false>(
     Effect.runSync
   )
 
-  const makeIt = (it: V.TestAPI): Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices extends true ? false : true> =>
+  const makeIt = (it: V.TestAPI): Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices> =>
     Object.assign(it, {
       effect: makeTester<TestServices.TestServices | R>(
         (effect) => Effect.flatMap(runtimeEffect, (runtime) => effect.pipe(Effect.provide(runtime))),

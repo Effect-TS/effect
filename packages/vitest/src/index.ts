@@ -91,22 +91,22 @@ export namespace Vitest {
   /**
    * @since 1.0.0
    */
-  export interface MethodsNonLive<R = never, WithTestServices extends boolean = true> extends API {
-    readonly effect: Vitest.Tester<(WithTestServices extends true ? TestServices.TestServices : never) | R>
+  export interface MethodsNonLive<R = never, ExcludeTestServices extends boolean = false> extends API {
+    readonly effect: Vitest.Tester<(ExcludeTestServices extends true ? never : TestServices.TestServices) | R>
     readonly flakyTest: <A, E, R2>(
       self: Effect.Effect<A, E, R2>,
       timeout?: Duration.DurationInput
     ) => Effect.Effect<A, never, R2>
     readonly scoped: Vitest.Tester<
-      (WithTestServices extends true ? TestServices.TestServices : never) | Scope.Scope | R
+      (ExcludeTestServices extends true ? never : TestServices.TestServices) | Scope.Scope | R
     >
     readonly layer: <R2, E>(layer: Layer.Layer<R2, E, R>, options?: {
       readonly timeout?: Duration.DurationInput
     }) => {
-      (f: (it: Vitest.MethodsNonLive<R | R2, WithTestServices>) => void): void
+      (f: (it: Vitest.MethodsNonLive<R | R2, ExcludeTestServices>) => void): void
       (
         name: string,
-        f: (it: Vitest.MethodsNonLive<R | R2, WithTestServices>) => void
+        f: (it: Vitest.MethodsNonLive<R | R2, ExcludeTestServices>) => void
       ): void
     }
 
@@ -214,8 +214,8 @@ export const layer: <R, E, const ExcludeTestServices extends boolean = false>(
     readonly excludeTestServices?: ExcludeTestServices
   }
 ) => {
-  (f: (it: Vitest.MethodsNonLive<R, ExcludeTestServices extends true ? false : true>) => void): void
-  (name: string, f: (it: Vitest.MethodsNonLive<R, ExcludeTestServices extends true ? false : true>) => void): void
+  (f: (it: Vitest.MethodsNonLive<R, ExcludeTestServices>) => void): void
+  (name: string, f: (it: Vitest.MethodsNonLive<R, ExcludeTestServices>) => void): void
 } = internal.layer
 
 /**
