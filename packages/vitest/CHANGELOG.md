@@ -1,5 +1,11 @@
 # @effect/vitest
 
+## 0.20.15
+
+### Patch Changes
+
+- [#4791](https://github.com/Effect-TS/effect/pull/4791) [`a7ef0e6`](https://github.com/Effect-TS/effect/commit/a7ef0e6579eb7cc12949b14531289d8e014476be) Thanks @tim-smart! - add excludeTestServices option to it.layer
+
 ## 0.20.14
 
 ### Patch Changes
