@@ -237,21 +237,36 @@ export const catchSomeDefect = dual<
 
 /* @internal */
 export const catchTag = dual<
-  <K extends (E extends { _tag: string } ? E["_tag"] : never), E, A1, E1, R1>(
-    k: K,
-    f: (e: Extract<E, { _tag: K }>) => Effect.Effect<A1, E1, R1>
-  ) => <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | A1, Exclude<E, { _tag: K }> | E1, R | R1>,
-  <A, E, R, K extends (E extends { _tag: string } ? E["_tag"] : never), R1, E1, A1>(
+  <E, const K extends ReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>, A1, E1, R1>(
+    ...args: [...tags: K, f: (e: Extract<E, { _tag: K[number] }>) => Effect.Effect<A1, E1, R1>]
+  ) => <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | A1, Exclude<E, { _tag: K[number] }> | E1, R | R1>,
+  <A, E, R, const K extends ReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>, R1, E1, A1>(
     self: Effect.Effect<A, E, R>,
-    k: K,
-    f: (e: Extract<E, { _tag: K }>) => Effect.Effect<A1, E1, R1>
-  ) => Effect.Effect<A | A1, Exclude<E, { _tag: K }> | E1, R | R1>
->(3, <A, E, R, K extends (E extends { _tag: string } ? E["_tag"] : never), R1, E1, A1>(
-  self: Effect.Effect<A, E, R>,
-  k: K,
-  f: (e: Extract<E, { _tag: K }>) => Effect.Effect<A1, E1, R1>
-): Effect.Effect<A | A1, Exclude<E, { _tag: K }> | E1, R | R1> =>
-  core.catchIf(self, Predicate.isTagged(k) as Predicate.Refinement<E, Extract<E, { _tag: K }>>, f) as any)
+    ...args: [...tags: K, f: (e: Extract<E, { _tag: K[number] }>) => Effect.Effect<A1, E1, R1>]
+  ) => Effect.Effect<A | A1, Exclude<E, { _tag: K[number] }> | E1, R | R1>
+>(
+  (args: any) => core.isEffect(args[0]),
+  <A, E, R, const K extends ReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>, R1, E1, A1>(
+    self: Effect.Effect<A, E, R>,
+    ...args: [...tags: K, f: (e: Extract<E, { _tag: K[number] }>) => Effect.Effect<A1, E1, R1>]
+  ): Effect.Effect<A | A1, Exclude<E, { _tag: K[number] }> | E1, R | R1> => {
+    const f = args[args.length - 1] as any
+    let predicate: Predicate.Predicate<E>
+    if (args.length === 2) {
+      predicate = Predicate.isTagged(args[0] as string)
+    } else {
+      predicate = (e) => {
+        const tag = Predicate.hasProperty(e, "_tag") ? e["_tag"] : undefined
+        if (!tag) return false
+        for (let i = 0; i < args.length - 1; i++) {
+          if (args[i] === tag) return true
+        }
+        return false
+      }
+    }
+    return core.catchIf(self, predicate as Predicate.Refinement<E, Extract<E, { _tag: K[number] }>>, f) as any
+  }
+)
 
 /** @internal */
 export const catchTags: {
