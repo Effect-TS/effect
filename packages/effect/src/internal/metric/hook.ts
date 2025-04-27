@@ -391,7 +391,8 @@ const resolveQuantile = (
     }
     // Split into two chunks - the first chunk contains all elements of the same
     // value as the chunk head
-    const sameHead = Arr.span(rest_1, (n) => n <= rest_1[0])
+    const headValue = Arr.headNonEmpty(rest_1) // Get head value since rest_1 is non-empty
+    const sameHead = Arr.span(rest_1, (n) => n === headValue)
     // How many elements do we want to accept for this quantile
     const desired = quantile_1 * sampleCount_1
     // The error margin
@@ -417,12 +418,14 @@ const resolveQuantile = (
       rest_1 = rest_2
       continue
     }
-    // If we have too many elements, select the previous value and hand back the
-    // the rest as leftover
+    // If consuming this chunk leads to too many elements (rank is too high)
     if (candConsumed > desired + allowedError) {
+      const valueToReturn = Option.isNone(current_1)
+        ? Option.some(headValue)
+        : current_1
       return {
         quantile: quantile_1,
-        value: current_1,
+        value: valueToReturn,
         consumed: consumed_1,
         rest: rest_1
       }
