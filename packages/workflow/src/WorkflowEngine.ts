@@ -81,13 +81,5 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
      * The workflow definition.
      */
     readonly workflow: Workflow.Workflow<{}, Schema.Schema.Any, Schema.Schema.All, never>
-
-    /**
-     * Execute an Activity within the workflow.
-     */
-    readonly activity: (
-      activity: Activity.Activity<Schema.Schema.Any, Schema.Schema.All, never>,
-      attempt: number
-    ) => Effect.Effect<unknown, unknown>
   }
 >() {}
