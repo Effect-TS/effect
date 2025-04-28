@@ -18,7 +18,7 @@
  */
 import * as Arr from "./Array.js"
 import * as Either from "./Either.js"
-import { identity } from "./Function.js"
+import { identity, unsafeCoerce } from "./Function.js"
 import * as Option from "./Option.js"
 import type { Predicate } from "./Predicate.js"
 import type * as Types from "./Types.js"
@@ -350,3 +350,11 @@ export const all: <Brands extends readonly [Brand.Constructor<any>, ...Array<Bra
     is: (args: any): args is any => Either.isRight(either(args))
   })
 }
+
+/**
+ * Retrieves the unbranded value from a `Brand` instance.
+ *
+ * @since 3.15.0
+ * @category getters
+ */
+export const unbranded: <A extends Brand<any>>(branded: A) => Brand.Unbranded<A> = unsafeCoerce
