@@ -1,10 +1,11 @@
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
-import { constFalse, dual } from "effect/Function"
+import { constFalse, dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
@@ -160,7 +161,7 @@ const responseRegistry = globalValue(
 /** @internal */
 export const make = (
   f: (
-    request: ClientRequest.HttpClientRequest,
+    request: Omit<ClientRequest.HttpClientRequest, "timeout">,
     url: URL,
     signal: AbortSignal,
     fiber: Fiber.RuntimeFiber<ClientResponse.HttpClientResponse, Error.HttpClientError>
@@ -179,18 +180,35 @@ export const make = (
           fiber.getFiberRef(currentTracerDisabledWhen)(request)
         if (tracerDisabled) {
           return Effect.uninterruptibleMask((restore) =>
-            Effect.matchCauseEffect(restore(f(request, url, controller.signal, fiber)), {
-              onSuccess(response) {
-                responseRegistry.register(response, controller)
-                return Effect.succeed(new InterruptibleResponse(response, controller))
-              },
-              onFailure(cause) {
-                if (Cause.isInterrupted(cause)) {
-                  controller.abort()
+            Effect.matchCauseEffect(
+              restore(f(request, url, controller.signal, fiber)),
+              {
+                onSuccess(response) {
+                  responseRegistry.register(response, controller)
+                  return Effect.succeed(new InterruptibleResponse(response, controller))
+                },
+                onFailure(cause) {
+                  if (Cause.isInterrupted(cause)) {
+                    controller.abort()
+                  }
+                  return Effect.failCause(cause)
                 }
-                return Effect.failCause(cause)
               }
-            })
+            ).pipe(
+              request.timeout ?
+                Effect.timeoutFail({
+                  duration: request.timeout,
+                  onTimeout: () =>
+                    new Error.RequestError({
+                      request,
+                      reason: "Transport",
+                      cause: new Cause.TimeoutException(
+                        `Request timed out after '${Duration.format(request.timeout!)}'`
+                      )
+                    })
+                }) :
+                identity
+            )
           )
         }
         return Effect.useSpan(
@@ -237,7 +255,20 @@ export const make = (
                     }
                     return Effect.failCause(cause)
                   }
-                })
+                }),
+                request.timeout ?
+                  Effect.timeoutFail({
+                    duration: request.timeout,
+                    onTimeout: () =>
+                      new Error.RequestError({
+                        request,
+                        reason: "Transport",
+                        cause: new Cause.TimeoutException(
+                          `Request timed out after '${Duration.format(request.timeout!)}'`
+                        )
+                      })
+                  }) :
+                  identity
               )
             )
           }
