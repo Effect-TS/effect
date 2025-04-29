@@ -3,8 +3,8 @@
   "include": ["examples"],
   "references": [
     { "path": "tsconfig.build.json" },
-    { "path": "../effect" },
-    { "path": "../typeclass" }
+    { "path": "../effect/tsconfig.build.json" },
+    { "path": "../typeclass/tsconfig.build.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/examples.tsbuildinfo",
