@@ -12,7 +12,7 @@ import type { NoExcessProperties } from "effect/Types"
 import type { AiError } from "./AiError.js"
 import * as AiInput from "./AiInput.js"
 import * as AiLanguageModel from "./AiLanguageModel.js"
-import * as AiResponse from "./AiResponse.js"
+import * as AiResponse from "./AiResponse_old.js"
 
 /**
  * @since 1.0.0
@@ -21,7 +21,7 @@ import * as AiResponse from "./AiResponse.js"
 export class AiChat extends Context.Tag("@effect/ai/AiChat")<
   AiChat,
   AiChat.Service
->() {}
+>() { }
 
 /**
  * @since 1.0.0
@@ -196,8 +196,8 @@ export const fromPrompt = Effect.fnUntraced(
               toolCallId: "toolCallId" in options
                 ? options.toolCallId
                 : "_tag" in options.schema
-                ? options.schema._tag
-                : (options.schema as any).identifier
+                  ? options.schema._tag
+                  : (options.schema as any).identifier
             },
             captureStackTrace: false
           })

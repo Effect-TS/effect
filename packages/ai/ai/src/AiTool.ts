@@ -186,6 +186,16 @@ export interface HandlerResult<Tool extends Any> {
 }
 
 /**
+ * A utility mapped type which associates tool names with tools.
+ *
+ * @since 1.0.0
+ * @category Utility Types
+ */
+export type ByName<Tools extends Any> = {
+  readonly [Tool in Tools as Tool["name"]]: Tool
+}
+
+/**
  * A utility type to extract the `Name` type from an `AiTool`.
  *
  * @since 1.0.0

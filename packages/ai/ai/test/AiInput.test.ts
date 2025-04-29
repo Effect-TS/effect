@@ -1,5 +1,5 @@
 import * as AiInput from "@effect/ai/AiInput"
-import * as AiResponse from "@effect/ai/AiResponse"
+import * as AiResponse from "@effect/ai/AiResponse_old"
 import { assert, describe, it } from "@effect/vitest"
 
 describe("AiInput", () => {

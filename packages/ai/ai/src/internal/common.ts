@@ -2,8 +2,7 @@ import * as Schema from "effect/Schema"
 
 /** @internal */
 export const ToolCallId = Schema.String.pipe(
-  Schema.brand("ToolCallId"),
-  Schema.annotations({ identifier: "@effect/ai/ToolCallId" })
+  Schema.brand("@effect/ai/ToolCallId")
 )
 
 /** @internal */

@@ -35,8 +35,8 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category Models
  */
-export interface AiToolkit<in out Tool extends AiTool.Any>
-  extends Effect.Effect<ToHandler<Tool>, never, AiTool.ToHandler<Tool>>, Inspectable, Pipeable
+export interface AiToolkit<in out Tools extends AiTool.Any>
+  extends Effect.Effect<ToHandler<Tools>, never, AiTool.ToHandler<Tools>>, Inspectable, Pipeable
 {
   new(_: never): {}
 
@@ -45,25 +45,23 @@ export interface AiToolkit<in out Tool extends AiTool.Any>
   /**
    * A map containing the tools that are part of this toolkit.
    */
-  readonly tools: {
-    [T in Tool as T["name"]]: T
-  }
+  readonly tools: AiTool.ByName<Tools>
 
   /**
    * Converts this toolkit into a `Context` object containing the handlers for
    * all tools in the toolkit.
    */
-  toContext<Handlers extends HandlersFrom<Tool>, EX = never, RX = never>(
+  toContext<Handlers extends HandlersFrom<Tools>, EX = never, RX = never>(
     build: Handlers | Effect.Effect<Handlers, EX, RX>
-  ): Effect.Effect<Context.Context<AiTool.ToHandler<Tool>>, EX, RX>
+  ): Effect.Effect<Context.Context<AiTool.ToHandler<Tools>>, EX, RX>
 
   /**
    * Converts this toolkit into a `Layer` containing the handlers for all tools
    * in the toolkit.
    */
-  toLayer<Handlers extends HandlersFrom<Tool>, EX = never, RX = never>(
+  toLayer<Handlers extends HandlersFrom<Tools>, EX = never, RX = never>(
     build: Handlers | Effect.Effect<Handlers, EX, RX>
-  ): Layer.Layer<AiTool.ToHandler<Tool>, EX, Exclude<RX, Scope.Scope>>
+  ): Layer.Layer<AiTool.ToHandler<Tools>, EX, Exclude<RX, Scope.Scope>>
 }
 
 /**

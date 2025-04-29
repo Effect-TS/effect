@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as JsonSchema from "effect/JSONSchema"
@@ -13,12 +12,12 @@ import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { Concurrency, NoExcessProperties } from "effect/Types"
 import { AiError } from "./AiError.js"
-import type { Message } from "./AiInput.js"
 import * as AiInput from "./AiInput.js"
-import type { AiResponse, ToolCallId, ToolCallPart } from "./AiResponse.js"
-import { WithStructuredOutput, WithToolCallResults } from "./AiResponse.js"
+import * as AiResponse from "./AiResponse.js"
 import type * as AiTool from "./AiTool.js"
 import type * as AiToolkit from "./AiToolkit.js"
+
+const constDisableValidation = { disableValidation: true }
 
 /**
  * @since 1.0.0
@@ -52,6 +51,22 @@ export interface IdentifiedSchema<A, I, R> extends Schema.Schema<A, I, R> {
 }
 
 /**
+ * The tool choice mode for the language model.
+ *
+ * - `auto` (default): The model can decide whether or not to call tools, as well as which tools to call.
+ * - `required`: The model **must** call a tool but can decide which tool will be called.
+ * - `none`: The model **must not** call a tool.
+ * - `{ type: "tool", name: <tool_name> }`: The model must call the specified tool.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export type ToolChoice<Tool extends AiTool.Any> = "auto" | "none" | "required" | {
+  readonly type: "tool"
+  readonly name: Tool["name"]
+}
+
+/**
  * Options for generating text using a large language model.
  *
  * @since 1.0.0
@@ -75,10 +90,14 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
   readonly toolkit?: AiToolkit.ToHandler<Tools> | Effect.Effect<AiToolkit.ToHandler<Tools>, any, any>
 
   /**
-   * Specifies whether a particular tool is required, or a boolean indicating
-   * if any tool is required.
+   * The tool choice mode for the language model.
+   *
+   * - `auto` (default): The model can decide whether or not to call tools, as well as which tools to call.
+   * - `required`: The model **must** call a tool but can decide which tool will be called.
+   * - `none`: The model **must not** call a tool.
+   * - `{ type: "tool", name: <tool_name> }`: The model must call the specified tool.
    */
-  readonly required?: Tools["name"] | boolean | undefined
+  readonly toolChoice?: ToolChoice<Tools>
 
   /**
    * The maximum number of sequential calls to the large language model that
@@ -90,7 +109,6 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
    *
    * By default, the value of `maxSteps` is `1`, which means that only a single
    * request to the large language model will be made.
-By default, it's set to 1, which means that only a single LLM call is made.
    */
   readonly maxSteps?: number
 
@@ -206,7 +224,7 @@ export declare namespace AiLanguageModel {
     readonly generateText: <
       Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
     >(options: Options) => Effect.Effect<
-      AiResponse,
+      AiResponse.AiResponse,
       ExtractError<Options>,
       ExtractContext<Options>
     >
@@ -220,7 +238,7 @@ export declare namespace AiLanguageModel {
     readonly streamText: <
       Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
     >(options: Options) => Stream.Stream<
-      AiResponse,
+      AiResponse.AiResponse,
       ExtractError<Options>,
       ExtractContext<Options>
     >
@@ -235,7 +253,7 @@ export declare namespace AiLanguageModel {
      */
     readonly generateObject: <A, I, R>(
       options: GenerateObjectOptions<A, I, R> | GenerateObjectWithToolCallIdOptions<A, I, R>
-    ) => Effect.Effect<WithStructuredOutput<A>, AiError, R>
+    ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R>
   }
 }
 
@@ -246,15 +264,36 @@ const constEmptyMap = new Map<never, never>()
  * @category Models
  */
 export interface AiLanguageModelOptions {
-  readonly prompt: Arr.NonEmptyArray<Message>
+  /**
+   * The prompt messages to use to generate text.
+   */
+  readonly prompt: AiInput.AiInput
+  /**
+   * An optional system message that will be part of the prompt.
+   */
   readonly system: Option.Option<string>
+  /**
+   * The tools to use to generate text in an encoded format suitable for
+   * incorporation into requests to the large language model.
+   */
   readonly tools: Array<{
     readonly name: string
     readonly description: string
     readonly parameters: JsonSchema.JsonSchema7
     readonly structured: boolean
   }>
-  readonly required: boolean | string
+  /**
+   * The tool choice mode for the language model.
+   *
+   * - `auto` (default): The model can decide whether or not to call tools, as well as which tools to call.
+   * - `required`: The model **must** call a tool but can decide which tool will be called.
+   * - `none`: The model **must not** call a tool.
+   * - `{ type: "tool", name: <tool_name> }`: The model must call the specified tool.
+   */
+  readonly toolChoice: ToolChoice<any>
+  /**
+   * The span to use to trace interations with the large language model.
+   */
   readonly span: Span
 }
 
@@ -263,26 +302,28 @@ export interface AiLanguageModelOptions {
  * @category Constructors
  */
 export const make = (opts: {
-  readonly generateText: (options: AiLanguageModelOptions) => Effect.Effect<AiResponse, AiError>
-  readonly streamText: (options: AiLanguageModelOptions) => Stream.Stream<AiResponse, AiError>
+  readonly generateText: (options: AiLanguageModelOptions) => Effect.Effect<AiResponse.AiResponse, AiError>
+  readonly streamText: (options: AiLanguageModelOptions) => Stream.Stream<AiResponse.AiResponse, AiError>
 }): AiLanguageModel.Service => {
   const generateText = <
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
-  >({ concurrency, required, toolkit, ...options }: Options): Effect.Effect<
-    AiResponse,
+  >({ concurrency, toolChoice = "auto", toolkit, ...options }: Options): Effect.Effect<
+    AiResponse.AiResponse,
     ExtractError<Options>,
     ExtractContext<Options>
   > =>
     Effect.useSpan(
       "AiLanguageModel.generateText",
-      { captureStackTrace: false, attributes: { concurrency, required } },
+      { captureStackTrace: false, attributes: { concurrency, toolChoice } },
       Effect.fnUntraced(function*(span) {
-        let prompt = AiInput.make(options.prompt) as Arr.NonEmptyArray<Message>
+        let prompt = AiInput.make(options.prompt)
         const system = Option.fromNullable(options.system)
         if (Predicate.isUndefined(toolkit)) {
-          return yield* opts.generateText({ prompt, system, tools: [], required: false, span })
+          return yield* opts.generateText({ prompt, system, tools: [], toolChoice: "none", span })
         }
         const actualToolkit = Effect.isEffect(toolkit) ? yield* toolkit : toolkit
+        const maxSteps = options.maxSteps ?? 1
+        let stepCount = 0
         const tools: Array<{
           name: string
           description: string
@@ -292,38 +333,35 @@ export const make = (opts: {
         for (const tool of actualToolkit.tools) {
           tools.push(convertTool(tool))
         }
-        let response = yield* opts.generateText({ prompt, system, tools, required, span })
-        let stepCount = 1
-        const maxSteps = options.maxSteps ?? 1
+        let response = yield* opts.generateText({ prompt, system, tools, toolChoice, span })
+        stepCount++
         while (response.finishReason === "tool-calls" && stepCount < maxSteps) {
           const parts = yield* resolveParts({ method: "generateText", response, toolkit: actualToolkit, concurrency })
-          prompt = [...prompt, ...AiInput.make(parts)] as Arr.NonEmptyArray<Message>
-          // Tool calls should not be required after the first call, otherwise
-          // we may enter an infinite loop with the model provider
-          response = yield* opts.generateText({ prompt, system, tools, required: false, span })
-          stepCount += 1
+          prompt = AiInput.concat(prompt, AiInput.make(parts))
+          response = yield* opts.generateText({ prompt, system, tools, toolChoice, span })
+          stepCount++
         }
         return response
       }, (effect, span) => Effect.withParentSpan(effect, span))
-    )
+    ) as any
 
   const streamText = <
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
-  >({ concurrency, required, toolkit, ...options }: Options): Stream.Stream<
-    AiResponse,
+  >({ concurrency, toolChoice = "auto", toolkit, ...options }: Options): Stream.Stream<
+    AiResponse.AiResponse,
     ExtractError<Options>,
     ExtractContext<Options>
   > =>
     Stream.unwrap(Effect.gen(function*() {
       const makeScopedSpan = Effect.makeSpanScoped("AiLanguageModel.streamText", {
         captureStackTrace: false,
-        attributes: { concurrency, required }
+        attributes: { concurrency, toolChoice }
       })
-      const prompt = AiInput.make(options.prompt) as Arr.NonEmptyArray<Message>
+      const prompt = AiInput.make(options.prompt)
       const system = Option.fromNullable(options.system)
       if (Predicate.isUndefined(toolkit)) {
         return makeScopedSpan.pipe(
-          Effect.map((span) => opts.streamText({ prompt, system, tools: [], required: false, span })),
+          Effect.map((span) => opts.streamText({ prompt, system, tools: [], toolChoice: "none", span })),
           Stream.unwrapScoped
         ) as any
       }
@@ -350,7 +388,7 @@ export const make = (opts: {
       // return response
 
       return makeScopedSpan.pipe(
-        Effect.map((span) => opts.streamText({ prompt, system, tools, required, span })),
+        Effect.map((span) => opts.streamText({ prompt, system, tools, toolChoice, span })),
         Stream.unwrapScoped,
         Stream.mapEffect(
           (response) => resolveParts({ method: "streamText", response, toolkit: actualToolkit, concurrency }),
@@ -361,7 +399,7 @@ export const make = (opts: {
 
   const generateObject = <A, I, R>(
     options: GenerateObjectOptions<A, I, R> | GenerateObjectWithToolCallIdOptions<A, I, R>
-  ): Effect.Effect<WithStructuredOutput<A>, AiError, R> => {
+  ): Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R> => {
     const toolCallId = "toolCallId" in options
       ? options.toolCallId
       : "_tag" in options.schema
@@ -374,13 +412,19 @@ export const make = (opts: {
         attributes: { toolCallId }
       },
       Effect.fnUntraced(function*(span) {
-        const prompt = AiInput.make(options.prompt) as Arr.NonEmptyArray<Message>
+        const prompt = AiInput.make(options.prompt)
         const system = Option.fromNullable(options.system)
         const decode = Schema.decodeUnknown(options.schema)
         const tool = convertStructured(toolCallId, options.schema)
-        const response = yield* opts.generateText({ prompt, system, tools: [tool], required: true, span })
-        const toolCallPart = response.parts.find((part): part is ToolCallPart =>
-          part._tag === "ToolCall" && part.name === toolCallId
+        const response = yield* opts.generateText({
+          prompt,
+          system,
+          tools: [tool],
+          toolChoice: { type: "tool", name: tool.name },
+          span
+        })
+        const toolCallPart = response.parts.find((part): part is AiResponse.ToolCallPart =>
+          part._tag === "ToolCallPart" && part.name === toolCallId
         )
         if (Predicate.isUndefined(toolCallPart)) {
           return yield* new AiError({
@@ -399,12 +443,12 @@ export const make = (opts: {
             }),
           onSuccess: (output) =>
             Effect.succeed(
-              new WithStructuredOutput({
-                response,
-                toolCallId: toolCallPart.id,
-                toolName: toolCallPart.name,
+              new AiResponse.WithStructuredOutput({
+                parts: response.parts,
+                id: toolCallPart.id,
+                name: toolCallPart.name,
                 value: output
-              })
+              }, constDisableValidation)
             )
         })
       })
@@ -449,17 +493,17 @@ const getDescription = (ast: AST.AST): string => {
   return AST.DescriptionAnnotationId in annotations ? annotations[AST.DescriptionAnnotationId] as string : ""
 }
 
-const resolveParts = <Tool extends AiTool.Any>(options: {
-  readonly response: AiResponse
-  readonly toolkit: AiToolkit.ToHandler<Tool>
+const resolveParts = <Tools extends AiTool.Any>(options: {
+  readonly response: AiResponse.AiResponse
+  readonly toolkit: AiToolkit.ToHandler<Tools>
   readonly concurrency: Concurrency | undefined
   readonly method: string
 }) =>
   Effect.gen(function*() {
     const toolNames: Array<string> = []
     const toolParts = options.response.parts.filter(
-      (part): part is ToolCallPart => {
-        if (part._tag === "ToolCall") {
+      (part): part is AiResponse.ToolCallPart => {
+        if (part._tag === "ToolCallPart") {
           toolNames.push(part.name)
           return true
         }
@@ -467,30 +511,30 @@ const resolveParts = <Tool extends AiTool.Any>(options: {
       }
     )
     if (toolParts.length === 0) {
-      return new WithToolCallResults({
-        response: options.response,
+      return new AiResponse.WithToolCallResults({
+        parts: options.response.parts,
         results: constEmptyMap,
         encodedResults: constEmptyMap
-      })
+      }, constDisableValidation)
     }
     yield* Effect.annotateCurrentSpan("toolCalls", toolNames)
-    const results = new Map<ToolCallId, AiTool.Success<Tool>>()
-    const encodedResults = new Map<ToolCallId, unknown>()
+    const results = new Map<AiResponse.ToolCallId, AiTool.Success<Tools>>()
+    const encodedResults = new Map<AiResponse.ToolCallId, unknown>()
     yield* Effect.forEach(toolParts, (part) => {
-      const id = part.id as AiInput.ToolCallId
-      const name = part.name as AiTool.Name<Tool>
-      const params = part.params as AiTool.Parameters<Tool>
+      const id = part.id as AiResponse.ToolCallId
+      const name = part.name as AiTool.Name<Tools>
+      const params = part.params as AiTool.Parameters<Tools>
       const toolCall = options.toolkit.handle(name, params)
       return Effect.map(toolCall, ({ encodedResult, result }) => {
         results.set(id, result)
         encodedResults.set(id, encodedResult)
       })
     }, { concurrency: options.concurrency, discard: true })
-    return new WithToolCallResults({
-      response: options.response,
+    return new AiResponse.WithToolCallResults({
+      parts: options.response.parts,
       results,
       encodedResults
-    })
+    }, constDisableValidation)
   })
 
 /**
