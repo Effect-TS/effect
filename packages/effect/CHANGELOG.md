@@ -1,5 +1,53 @@
 # effect
 
+## 3.14.15
+
+### Patch Changes
+
+- [#4798](https://github.com/Effect-TS/effect/pull/4798) [`239cc99`](https://github.com/Effect-TS/effect/commit/239cc995ce645946210a3c3d2cb52bd3547c0687) Thanks @gcanti! - Schema: respect custom constructors in `make` for `Schema.Class`, closes #4797
+
+  Previously, the `make` method did not support custom constructors defined using `Schema.Class` or `Schema.TaggedError`, resulting in type errors when passing custom constructor arguments.
+
+  This update ensures that `make` now correctly uses the class constructor, allowing custom parameters and initialization logic.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  class MyError extends Schema.TaggedError<MyError>()("MyError", {
+    message: Schema.String
+  }) {
+    constructor({ a, b }: { a: string; b: string }) {
+      super({ message: `${a}:${b}` })
+    }
+  }
+
+  // @ts-expect-error: Object literal may only specify known properties, and 'a' does not exist in type '{ readonly message: string; }'.ts(2353)
+  MyError.make({ a: "1", b: "2" })
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  class MyError extends Schema.TaggedError<MyError>()("MyError", {
+    message: Schema.String
+  }) {
+    constructor({ a, b }: { a: string; b: string }) {
+      super({ message: `${a}:${b}` })
+    }
+  }
+
+  console.log(MyError.make({ a: "1", b: "2" }).message)
+  // Output: "1:2"
+  ```
+
+- [#4687](https://github.com/Effect-TS/effect/pull/4687) [`8b6c947`](https://github.com/Effect-TS/effect/commit/8b6c947eaa8e45a67ecb3c37d45cd27f3e41d165) Thanks @KhraksMamtsov! - Modify the signatures of `Either.liftPredicate` and `Effect.predicate` to make them reusable.
+
+- [#4794](https://github.com/Effect-TS/effect/pull/4794) [`c50a63b`](https://github.com/Effect-TS/effect/commit/c50a63bbecb9f560b9cae349c447eed877d1b9b6) Thanks @IGassmann! - Fix summary metric’s quantile value calculation
+
 ## 3.14.14
 
 ### Patch Changes
