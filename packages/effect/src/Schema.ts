@@ -8484,10 +8484,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
   /** @since 3.10.0 */
   readonly ast: AST.Transformation
 
-  make(
-    props: RequiredKeys<C> extends never ? void | Simplify<C> : Simplify<C>,
-    options?: MakeOptions
-  ): Self
+  make<C extends new(...args: Array<any>) => any>(this: C, ...args: ConstructorParameters<C>): InstanceType<C>
 
   annotations(annotations: Annotations.Schema<Self>): SchemaClass<Self, Simplify<I>, R>
 

@@ -12,6 +12,20 @@ describe("TaggedError", () => {
     strictEqual(TE._tag, "TE")
   })
 
+  it("make should respect custom constructors", () => {
+    class MyError extends Schema.TaggedError<MyError>()(
+      "MyError",
+      { message: Schema.String }
+    ) {
+      constructor({ a, b }: { a: string; b: string }) {
+        super({ message: `${a}:${b}` })
+      }
+    }
+
+    strictEqual(MyError.make({ a: "a", b: "b" }).message, "a:b")
+    strictEqual(new MyError({ a: "a", b: "b" }).message, "a:b")
+  })
+
   it("should accept a Struct as argument", () => {
     const fields = { a: S.String, b: S.Number }
     class A extends S.TaggedError<A>()("A", S.Struct(fields)) {}
