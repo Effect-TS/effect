@@ -1667,6 +1667,24 @@ export const filterMapEffect: {
 } = internal.filterMapEffect
 
 /**
+ * Performs an effectful filter and map in a single step. Effects that
+ * succeed with `Some` will yield the value in the resulting stream, effects that
+ * succeed with `None` will be filtered out.
+ *
+ * @since 2.0.0
+ * @category mapping
+ */
+export const filterMapEffectOption: {
+  <A, A2, E2, R2>(
+    f: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
+  ): <E, R>(self: Stream<A, E, R>) => Stream<A2, E | E2, R | R2>
+  <A, E, R, A2, E2, R2>(
+    self: Stream<A, E, R>,
+    f: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
+  ): Stream<A2, E | E2, R | R2>
+} = internal.filterMapEffectOption
+
+/**
  * Transforms all elements of the stream for as long as the specified partial
  * function is defined.
  *
