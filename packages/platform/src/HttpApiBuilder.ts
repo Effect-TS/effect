@@ -219,7 +219,8 @@ export interface Handlers<
    */
   handle<Name extends HttpApiEndpoint.HttpApiEndpoint.Name<Endpoints>, R1>(
     name: Name,
-    handler: HttpApiEndpoint.HttpApiEndpoint.HandlerWithName<Endpoints, Name, E, R1>
+    handler: HttpApiEndpoint.HttpApiEndpoint.HandlerWithName<Endpoints, Name, E, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): Handlers<
     E,
     Provides,
@@ -241,7 +242,8 @@ export interface Handlers<
    */
   handleRaw<Name extends HttpApiEndpoint.HttpApiEndpoint.Name<Endpoints>, R1>(
     name: Name,
-    handler: HttpApiEndpoint.HttpApiEndpoint.HandlerResponseWithName<Endpoints, Name, E, R1>
+    handler: HttpApiEndpoint.HttpApiEndpoint.HandlerResponseWithName<Endpoints, Name, E, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): Handlers<
     E,
     Provides,
@@ -285,6 +287,7 @@ export declare namespace Handlers {
     readonly endpoint: HttpApiEndpoint.HttpApiEndpoint.Any
     readonly handler: HttpApiEndpoint.HttpApiEndpoint.Handler<any, E, R>
     readonly withFullResponse: boolean
+    readonly uninterruptible: boolean
   }
 
   /**
@@ -378,7 +381,8 @@ const HandlersProto = {
   handle(
     this: Handlers<any, any, any, HttpApiEndpoint.HttpApiEndpoint.Any>,
     name: string,
-    handler: HttpApiEndpoint.HttpApiEndpoint.Handler<any, any, any>
+    handler: HttpApiEndpoint.HttpApiEndpoint.Handler<any, any, any>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ) {
     const endpoint = this.group.endpoints[name]
     return makeHandlers({
@@ -386,14 +390,16 @@ const HandlersProto = {
       handlers: Chunk.append(this.handlers, {
         endpoint,
         handler,
-        withFullResponse: false
+        withFullResponse: false,
+        uninterruptible: options?.uninterruptible ?? false
       }) as any
     })
   },
   handleRaw(
     this: Handlers<any, any, any, HttpApiEndpoint.HttpApiEndpoint.Any>,
     name: string,
-    handler: HttpApiEndpoint.HttpApiEndpoint.Handler<any, any, any>
+    handler: HttpApiEndpoint.HttpApiEndpoint.Handler<any, any, any>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ) {
     const endpoint = this.group.endpoints[name]
     return makeHandlers({
@@ -401,7 +407,8 @@ const HandlersProto = {
       handlers: Chunk.append(this.handlers, {
         endpoint,
         handler,
-        withFullResponse: true
+        withFullResponse: true,
+        uninterruptible: options?.uninterruptible ?? false
       }) as any
     })
   }
@@ -473,7 +480,8 @@ export const group = <
               (input) => Context.merge(context, input)
             )
           },
-          item.withFullResponse
+          item.withFullResponse,
+          item.uninterruptible
         ))
       }
       yield* router.concat(HttpRouter.fromIterable(routes))
@@ -615,7 +623,8 @@ const handlerToRoute = (
   endpoint_: HttpApiEndpoint.HttpApiEndpoint.Any,
   middleware: MiddlewareMap,
   handler: HttpApiEndpoint.HttpApiEndpoint.Handler<any, any, any>,
-  isFullResponse: boolean
+  isFullResponse: boolean,
+  uninterruptible: boolean
 ): HttpRouter.Route<any, any> => {
   const endpoint = endpoint_ as HttpApiEndpoint.HttpApiEndpoint.AnyWithProps
   const decodePath = Option.map(endpoint.pathSchema, Schema.decodeUnknown)
@@ -657,7 +666,8 @@ const handlerToRoute = (
       }).pipe(
         Effect.catchIf(ParseResult.isParseError, HttpApiDecodeError.refailParseError)
       )
-    )
+    ),
+    { uninterruptible }
   )
 }
 
