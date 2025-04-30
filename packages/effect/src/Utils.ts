@@ -774,23 +774,31 @@ export const structuralRegion = <A>(body: () => A, tester?: (a: unknown, b: unkn
   }
 }
 
-const tracingFunction = (name: string) => {
-  const wrap = {
-    [name]<A>(body: () => A) {
-      return body()
-    }
-  }
-  return function<A>(fn: () => A): A {
-    return wrap[name](fn)
+const standard = {
+  effect_internal_function: <A>(body: () => A) => {
+    return body()
   }
 }
+
+const forced = {
+  effect_internal_function: <A>(body: () => A) => {
+    try {
+      return body()
+    } finally {
+      //
+    }
+  }
+}
+
+const isNotOptimizedAway =
+  standard.effect_internal_function(() => new Error().stack)?.includes("effect_internal_function") === true
 
 /**
  * @since 3.2.2
  * @status experimental
  * @category tracing
  */
-export const internalCall = tracingFunction("effect_internal_function")
+export const internalCall = isNotOptimizedAway ? standard.effect_internal_function : forced.effect_internal_function
 
 const genConstructor = (function*() {}).constructor
 
