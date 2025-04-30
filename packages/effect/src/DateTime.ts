@@ -1445,7 +1445,7 @@ export const format: {
   (
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): (self: DateTime) => string
@@ -1453,7 +1453,7 @@ export const format: {
     self: DateTime,
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): string
@@ -1471,7 +1471,7 @@ export const formatLocal: {
   (
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): (self: DateTime) => string
@@ -1479,7 +1479,7 @@ export const formatLocal: {
     self: DateTime,
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): string
@@ -1497,7 +1497,7 @@ export const formatUtc: {
   (
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): (self: DateTime) => string
@@ -1505,7 +1505,7 @@ export const formatUtc: {
     self: DateTime,
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): string
