@@ -29,6 +29,7 @@ export const make: (options: {
   }
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
+  readonly shutdownTimeout?: Duration.DurationInput | undefined
 }) => Effect.Effect<
   void,
   never,
@@ -270,7 +271,8 @@ export const make: (options: {
     headers: options.headers,
     maxBatchSize: "disabled",
     exportInterval: options.exportInterval ?? Duration.seconds(10),
-    body: snapshot
+    body: snapshot,
+    shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
 })
 
@@ -287,6 +289,7 @@ export const layer = (options: {
   }
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
+  readonly shutdownTimeout?: Duration.DurationInput | undefined
 }): Layer.Layer<never, never, HttpClient.HttpClient> => Layer.scopedDiscard(make(options))
 
 // internal

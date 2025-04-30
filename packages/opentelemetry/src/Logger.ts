@@ -5,6 +5,7 @@ import * as Otel from "@opentelemetry/sdk-logs"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
+import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FiberId from "effect/FiberId"
 import * as Layer from "effect/Layer"
@@ -85,7 +86,9 @@ export const layerLoggerReplace: Layer.Layer<
  */
 export const layerLoggerProvider = (
   processor: Otel.LogRecordProcessor | NonEmptyReadonlyArray<Otel.LogRecordProcessor>,
-  config?: Omit<Otel.LoggerProviderConfig, "resource">
+  config?: Omit<Otel.LoggerProviderConfig, "resource"> & {
+    readonly shutdownTimeout?: DurationInput | undefined
+  }
 ): Layer.Layer<OtelLoggerProvider, never, Resource> =>
   Layer.scoped(
     OtelLoggerProvider,
@@ -104,8 +107,12 @@ export const layerLoggerProvider = (
           return provider
         }),
         (provider) =>
-          Effect.ignoreLogged(Effect.promise(
+          Effect.promise(
             () => provider.forceFlush().then(() => provider.shutdown())
-          ))
+          ).pipe(
+            Effect.ignoreLogged,
+            Effect.interruptible,
+            Effect.timeoutOption(config?.shutdownTimeout ?? 3000)
+          )
       ))
   )

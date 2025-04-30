@@ -33,6 +33,7 @@ export const make: (
     readonly headers?: Headers.Input | undefined
     readonly exportInterval?: Duration.DurationInput | undefined
     readonly maxBatchSize?: number | undefined
+    readonly shutdownTimeout?: Duration.DurationInput | undefined
   }
 ) => Effect.Effect<
   Logger.Logger<unknown, void>,
@@ -58,7 +59,8 @@ export const make: (
           logRecords: data
         }]
       }]
-    })
+    }),
+    shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
 
   return Logger.make((options) => {
@@ -81,6 +83,7 @@ export const layer = (options: {
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
   readonly maxBatchSize?: number | undefined
+  readonly shutdownTimeout?: Duration.DurationInput | undefined
 }): Layer.Layer<never, never, HttpClient.HttpClient> =>
   options.replaceLogger ? Logger.replaceScoped(options.replaceLogger, make(options)) : Logger.addScoped(make(options))
 

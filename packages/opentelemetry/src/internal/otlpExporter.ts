@@ -37,6 +37,7 @@ export const make: (
     readonly exportInterval: Duration.DurationInput
     readonly maxBatchSize: number | "disabled"
     readonly body: (data: Array<any>) => unknown
+    readonly shutdownTimeout: Duration.DurationInput
   }
 ) => Effect.Effect<
   { readonly push: (data: unknown) => void },
@@ -83,7 +84,14 @@ export const make: (
     )
   })
 
-  yield* Scope.addFinalizer(scope, Effect.ignore(runExport))
+  yield* Scope.addFinalizer(
+    scope,
+    runExport.pipe(
+      Effect.ignore,
+      Effect.interruptible,
+      Effect.timeoutOption(options.shutdownTimeout)
+    )
+  )
 
   let disabled = false
 
