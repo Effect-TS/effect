@@ -421,7 +421,7 @@ export const lastIndexOf = (searchString: string) => (self: string): Option.Opti
  * @since 2.0.0
  */
 export const localeCompare =
-  (that: string, locales?: Array<string>, options?: Intl.CollatorOptions) => (self: string): Ordering.Ordering =>
+  (that: string, locales?: Intl.LocalesArgument, options?: Intl.CollatorOptions) => (self: string): Ordering.Ordering =>
     number.sign(self.localeCompare(that, locales, options))
 
 /**
@@ -549,7 +549,7 @@ export const search: {
  *
  * @since 2.0.0
  */
-export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: string): string =>
+export const toLocaleLowerCase = (locale?: Intl.LocalesArgument) => (self: string): string =>
   self.toLocaleLowerCase(locale)
 
 /**
@@ -564,7 +564,7 @@ export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: str
  *
  * @since 2.0.0
  */
-export const toLocaleUpperCase = (locale?: string | Array<string>) => (self: string): string =>
+export const toLocaleUpperCase = (locale?: Intl.LocalesArgument) => (self: string): string =>
   self.toLocaleUpperCase(locale)
 
 /**
