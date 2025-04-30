@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import { Exit } from "effect"
-import { deepStrictEqual } from "effect/test/util"
 
 describe("Exit", () => {
   describe("toJSON", () => {

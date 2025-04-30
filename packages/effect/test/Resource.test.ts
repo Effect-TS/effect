@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import { Duration, Effect, Either, identity, pipe, Ref, Resource, Schedule } from "effect"
-import { strictEqual } from "effect/test/util"
 import * as TestClock from "effect/TestClock"
 
 describe("Resource", () => {

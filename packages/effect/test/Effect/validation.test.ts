@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Effect", () => {
   it.effect("validate - fails", () =>

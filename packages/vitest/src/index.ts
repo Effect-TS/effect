@@ -9,7 +9,7 @@ import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as TestServices from "effect/TestServices"
 import * as V from "vitest"
-import * as internal from "./internal.js"
+import * as internal from "./internal/internal.js"
 
 /**
  * @since 1.0.0

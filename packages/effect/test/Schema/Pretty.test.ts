@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual, throws } from "@effect/vitest/utils"
 import { isUnknown } from "effect/Predicate"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import * as Util from "effect/test/Schema/TestUtils"
-import { strictEqual, throws } from "effect/test/util"
+import * as Util from "./TestUtils.js"
 
 describe("Pretty", () => {
   it("make", () => {

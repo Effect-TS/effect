@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { assertInstanceOf, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Context, Effect, Equal, Exit, JSONSchema, ParseResult, Request, Schema as S, SchemaAST as AST } from "effect"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertInstanceOf, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import * as Util from "../../TestUtils.js"
 
 const Name = Context.GenericTag<"Name", string>("Name")
 const NameString = S.String.pipe(

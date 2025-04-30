@@ -1,9 +1,9 @@
-import * as internal from "@effect/opentelemetry/internal/metrics"
 import { assert, describe, it } from "@effect/vitest"
 import { ValueType } from "@opentelemetry/api"
 import { resourceFromAttributes } from "@opentelemetry/resources"
 import * as Effect from "effect/Effect"
 import * as Metric from "effect/Metric"
+import * as internal from "../src/internal/metrics.js"
 
 const findMetric = (metrics: any, name: string) =>
   metrics.resourceMetrics.scopeMetrics[0].metrics.find((_: any) => _.descriptor.name === name)

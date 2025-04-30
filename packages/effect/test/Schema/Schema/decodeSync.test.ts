@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { deepStrictEqual } from "effect/test/util"
+import * as Util from "../TestUtils.js"
 
 describe("decodeSync", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })

@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Chunk, Effect, Equal, Exit, FastCheck as fc, Hash, Option, pipe, STM, TMap } from "effect"
-import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { equivalentElements } from "effect/test/utils/equals"
+import { equivalentElements } from "./utils/equals.js"
 
 class HashContainer implements Equal.Equal {
   constructor(readonly i: number) {}

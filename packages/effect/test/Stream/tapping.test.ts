@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -6,7 +7,6 @@ import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Stream", () => {
   it.effect("tap", () =>

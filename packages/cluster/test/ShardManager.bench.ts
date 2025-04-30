@@ -9,9 +9,9 @@ import {
   ShardManager,
   ShardStorage
 } from "@effect/cluster"
-import { decideAssignmentsForUnassignedShards, RunnerWithMetadata, State } from "@effect/cluster/internal/shardManager"
 import { bench, describe, expect } from "@effect/vitest"
 import { Array, Data, Effect, Layer, Logger, MutableHashMap, Option, TestClock, TestContext } from "effect"
+import { decideAssignmentsForUnassignedShards, RunnerWithMetadata, State } from "../src/internal/shardManager.js"
 
 describe("ShardManager", () => {
   const shards300 = Array.makeBy(

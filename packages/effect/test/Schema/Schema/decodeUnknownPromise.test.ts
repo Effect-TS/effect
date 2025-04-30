@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import { ParseResult, Schema } from "effect"
-import * as Util from "effect/test/Schema/TestUtils"
-import { deepStrictEqual } from "effect/test/util"
+import * as Util from "../TestUtils.js"
 
 describe("decodeUnknownPromise", () => {
   const schema = Schema.String

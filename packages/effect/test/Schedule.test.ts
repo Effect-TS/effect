@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import {
   Array,
   Cause,
@@ -17,7 +18,6 @@ import {
   ScheduleIntervals
 } from "effect"
 import { constVoid } from "effect/Function"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as TestClock from "effect/TestClock"
 
 describe("Schedule", () => {

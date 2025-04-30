@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import type { FastCheck } from "effect"
 import { Arbitrary, FastCheck as fc, Order, Predicate, Schema as S, SchemaAST } from "effect"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import * as Util from "../TestUtils.js"
 
 describe("Arb", () => {
   describe("getDescription", () => {

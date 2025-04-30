@@ -1,5 +1,4 @@
 import { describe, it } from "@effect/vitest"
-import { Array, Cause, Chunk, Deferred, Effect, Exit, Fiber, identity, pipe, Queue, Ref } from "effect"
 import {
   assertFalse,
   assertLeft,
@@ -8,7 +7,8 @@ import {
   assertTrue,
   deepStrictEqual,
   strictEqual
-} from "effect/test/util"
+} from "@effect/vitest/utils"
+import { Array, Cause, Chunk, Deferred, Effect, Exit, Fiber, identity, pipe, Queue, Ref } from "effect"
 
 export const waitForValue = <A>(ref: Effect.Effect<A>, value: A): Effect.Effect<A> => {
   return ref.pipe(Effect.zipLeft(Effect.yieldNow()), Effect.repeat({ until: (a) => value === a }))

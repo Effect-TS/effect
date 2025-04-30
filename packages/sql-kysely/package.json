@@ -25,8 +25,9 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "directory": "dist",
-    "provenance": true
+    "linkDirectory": false
   },
   "sideEffects": [
     "./src/Kysely.ts",
@@ -34,8 +35,14 @@
     "./src/Pg.ts",
     "./src/Sqlite.ts"
   ],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  },
   "scripts": {
-    "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v3",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
@@ -48,6 +55,10 @@
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
+    "@effect/sql-mssql": "workspace:^",
+    "@effect/sql-mysql2": "workspace:^",
+    "@effect/sql-pg": "workspace:^",
+    "@effect/sql-sqlite-node": "workspace:^",
     "@testcontainers/mssqlserver": "^10.18.0",
     "@testcontainers/mysql": "^10.18.0",
     "@testcontainers/postgresql": "^10.18.0",

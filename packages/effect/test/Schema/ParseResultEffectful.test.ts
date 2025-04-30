@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Effect, ParseResult, Schema } from "effect"
-import * as Util from "effect/test/Schema/TestUtils"
+import * as Util from "./TestUtils.js"
 
 const EffectfulStringFailure = Schema.transformOrFail(Schema.String, Schema.String, {
   strict: true,

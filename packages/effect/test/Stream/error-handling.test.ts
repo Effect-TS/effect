@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -8,7 +9,6 @@ import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-import { assertLeft, assertTrue, deepStrictEqual } from "effect/test/util"
 
 describe("Stream", () => {
   it.effect("absolve - happy path", () =>

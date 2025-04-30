@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { assertNone, assertSome } from "@effect/vitest/utils"
 import { Schema as S } from "effect"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertNone, assertSome } from "effect/test/util"
+import * as Util from "../TestUtils.js"
 
 describe("validateOption", () => {
   it("should return none on async", () => {

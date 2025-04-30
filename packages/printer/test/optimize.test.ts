@@ -1,8 +1,8 @@
 import * as Doc from "@effect/printer/Doc"
 import * as Optimize from "@effect/printer/Optimize"
-import { arbDoc } from "@effect/printer/test/utils/DocArbitrary"
 import { describe, expect, it } from "@effect/vitest"
 import * as fc from "effect/FastCheck"
+import { arbDoc } from "./utils/DocArbitrary.js"
 
 const arbFusionDepth: fc.Arbitrary<Optimize.Optimize.Depth> = fc.oneof(
   fc.constant(Optimize.Shallow),

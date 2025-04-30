@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -8,7 +9,6 @@ import { constVoid, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
-import { assertLeft, assertTrue, deepStrictEqual } from "effect/test/util"
 import * as TestClock from "effect/TestClock"
 import * as TestServices from "effect/TestServices"
 

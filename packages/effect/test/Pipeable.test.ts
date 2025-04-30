@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { assertSome } from "@effect/vitest/utils"
 import { Option } from "effect"
-import { assertSome } from "effect/test/util"
 
 describe("Pipeable", () => {
   it("pipeArguments", () => {

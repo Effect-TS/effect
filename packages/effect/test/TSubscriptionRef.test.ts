@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import {
   Chunk,
   Deferred,
@@ -13,7 +14,6 @@ import {
   Stream,
   TSubscriptionRef
 } from "effect"
-import { assertTrue, deepStrictEqual } from "effect/test/util"
 
 describe.concurrent("TSubscriptionRef", () => {
   it.effect("only emits comitted values", () =>

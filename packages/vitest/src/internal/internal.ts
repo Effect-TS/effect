@@ -21,7 +21,7 @@ import * as TestEnvironment from "effect/TestContext"
 import type * as TestServices from "effect/TestServices"
 import * as Utils from "effect/Utils"
 import * as V from "vitest"
-import type * as Vitest from "./index.js"
+import type * as Vitest from "../index.js"
 
 const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function*() {
@@ -151,6 +151,7 @@ const makeTester = <R>(
   return Object.assign(f, { skip, skipIf, runIf, only, each, fails, prop })
 }
 
+/** @internal */
 export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, timeout) => {
   if (Array.isArray(arbitraries)) {
     const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
@@ -295,6 +296,7 @@ export const makeMethods = (it: V.TestAPI): Vitest.Vitest.Methods =>
     prop
   })
 
+/** @internal */
 export const {
   /** @internal */
   effect,

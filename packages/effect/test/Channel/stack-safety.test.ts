@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Channel", () => {
   it.effect("mapOut is stack safe", () =>

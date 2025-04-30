@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { BigDecimal } from "effect"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
+import * as Util from "../../TestUtils.js"
 
 describe("NonNegativeBigDecimalFromSelf", () => {
   const schema = S.NonNegativeBigDecimalFromSelf

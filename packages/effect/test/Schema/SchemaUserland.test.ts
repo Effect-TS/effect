@@ -2,9 +2,9 @@
  * It contains a collection of user-defined APIs to keep track of what might break in the event of breaking changes.
  */
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Record, Schema, SchemaAST as AST } from "effect"
-import * as Util from "effect/test/Schema/TestUtils"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import * as Util from "./TestUtils.js"
 
 const structTypeSchema = <Fields extends Schema.Struct.Fields>(
   schema: Schema.Struct<Fields>

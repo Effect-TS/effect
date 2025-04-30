@@ -30,125 +30,14 @@
     "noImplicitThis": true,
     "noUncheckedIndexedAccess": false,
     "strictNullChecks": true,
-    "baseUrl": ".",
     "target": "ES2022",
     "module": "NodeNext",
     "incremental": true,
     "removeComments": false,
-    "plugins": [{ "name": "@effect/language-service" }],
-    "paths": {
-      "effect": ["./packages/effect/src/index.js"],
-      "effect/*": ["./packages/effect/src/*.js"],
-      "effect/test/*": ["./packages/effect/test/*.js"],
-      "@effect/ai": ["./packages/ai/ai/src/index.js"],
-      "@effect/ai/*": ["./packages/ai/ai/src/*.js"],
-      "@effect/ai/test/*": ["./packages/ai/ai/test/*.js"],
-      "@effect/ai-anthropic": ["./packages/ai/anthropic/src/index.js"],
-      "@effect/ai-anthropic/*": ["./packages/ai/anthropic/src/*.js"],
-      "@effect/ai-anthropic/test/*": ["./packages/ai/anthropic/test/*.js"],
-      "@effect/ai-openai": ["./packages/ai/openai/src/index.js"],
-      "@effect/ai-openai/*": ["./packages/ai/openai/src/*.js"],
-      "@effect/ai-openai/test/*": ["./packages/ai/openai/test/*.js"],
-      "@effect/cli": ["./packages/cli/src/index.js"],
-      "@effect/cli/*": ["./packages/cli/src/*.js"],
-      "@effect/cli/test/*": ["./packages/cli/test/*.js"],
-      "@effect/cluster": ["./packages/cluster/src/index.js"],
-      "@effect/cluster/*": ["./packages/cluster/src/*.js"],
-      "@effect/cluster/test/*": ["./packages/cluster/test/*.js"],
-      "@effect/experimental": ["./packages/experimental/src/index.js"],
-      "@effect/experimental/*": ["./packages/experimental/src/*.js"],
-      "@effect/experimental/test/*": ["./packages/experimental/test/*.js"],
-      "@effect/opentelemetry": ["./packages/opentelemetry/src/index.js"],
-      "@effect/opentelemetry/*": ["./packages/opentelemetry/src/*.js"],
-      "@effect/opentelemetry/test/*": ["./packages/opentelemetry/test/*.js"],
-      "@effect/platform": ["./packages/platform/src/index.js"],
-      "@effect/platform/*": ["./packages/platform/src/*.js"],
-      "@effect/platform/test/*": ["./packages/platform/test/*.js"],
-      "@effect/platform-browser": ["./packages/platform-browser/src/index.js"],
-      "@effect/platform-browser/*": ["./packages/platform-browser/src/*.js"],
-      "@effect/platform-browser/test/*": [
-        "./packages/platform-browser/test/*.js"
-      ],
-      "@effect/platform-bun": ["./packages/platform-bun/src/index.js"],
-      "@effect/platform-bun/*": ["./packages/platform-bun/src/*.js"],
-      "@effect/platform-bun/test/*": ["./packages/platform-bun/test/*.js"],
-      "@effect/platform-node": ["./packages/platform-node/src/index.js"],
-      "@effect/platform-node/*": ["./packages/platform-node/src/*.js"],
-      "@effect/platform-node/test/*": ["./packages/platform-node/test/*.js"],
-      "@effect/platform-node-shared": [
-        "./packages/platform-node-shared/src/index.js"
-      ],
-      "@effect/platform-node-shared/*": [
-        "./packages/platform-node-shared/src/*.js"
-      ],
-      "@effect/platform-node-shared/test/*": [
-        "./packages/platform-node-shared/test/*.js"
-      ],
-      "@effect/printer": ["./packages/printer/src/index.js"],
-      "@effect/printer/*": ["./packages/printer/src/*.js"],
-      "@effect/printer/test/*": ["./packages/printer/test/*.js"],
-      "@effect/printer-ansi": ["./packages/printer-ansi/src/index.js"],
-      "@effect/printer-ansi/*": ["./packages/printer-ansi/src/*.js"],
-      "@effect/printer-ansi/test/*": ["./packages/printer-ansi/test/*.js"],
-      "@effect/rpc": ["./packages/rpc/src/index.js"],
-      "@effect/rpc/*": ["./packages/rpc/src/*.js"],
-      "@effect/rpc/test/*": ["./packages/rpc/test/*.js"],
-      "@effect/sql": ["./packages/sql/src/index.js"],
-      "@effect/sql/*": ["./packages/sql/src/*.js"],
-      "@effect/sql/test/*": ["./packages/sql/test/*.js"],
-      "@effect/sql-clickhouse": ["./packages/sql-clickhouse/src/index.js"],
-      "@effect/sql-clickhouse/*": ["./packages/sql-clickhouse/src/*.js"],
-      "@effect/sql-clickhouse/test/*": ["./packages/sql-clickhouse/test/*.js"],
-      "@effect/sql-d1": ["./packages/sql-d1/src/index.js"],
-      "@effect/sql-d1/*": ["./packages/sql-d1/src/*.js"],
-      "@effect/sql-d1/test/*": ["./packages/sql-d1/test/*.js"],
-      "@effect/sql-drizzle": ["./packages/sql-drizzle/src/index.js"],
-      "@effect/sql-drizzle/*": ["./packages/sql-drizzle/src/*.js"],
-      "@effect/sql-drizzle/test/*": ["./packages/sql-drizzle/test/*.js"],
-      "@effect/sql-kysely": ["./packages/sql-kysely/src/index.js"],
-      "@effect/sql-kysely/*": ["./packages/sql-kysely/src/*.js"],
-      "@effect/sql-kysely/test/*": ["./packages/sql-kysely/test/*.js"],
-      "@effect/sql-libsql": ["./packages/sql-libsql/src/index.js"],
-      "@effect/sql-libsql/*": ["./packages/sql-libsql/src/*.js"],
-      "@effect/sql-libsql/test/*": ["./packages/sql-libsql/test/*.js"],
-      "@effect/sql-mssql": ["./packages/sql-mssql/src/index.js"],
-      "@effect/sql-mssql/*": ["./packages/sql-mssql/src/*.js"],
-      "@effect/sql-mssql/test/*": ["./packages/sql-mssql/test/*.js"],
-      "@effect/sql-mysql2": ["./packages/sql-mysql2/src/index.js"],
-      "@effect/sql-mysql2/*": ["./packages/sql-mysql2/src/*.js"],
-      "@effect/sql-mysql2/test/*": ["./packages/sql-mysql2/test/*.js"],
-      "@effect/sql-pg": ["./packages/sql-pg/src/index.js"],
-      "@effect/sql-pg/*": ["./packages/sql-pg/src/*.js"],
-      "@effect/sql-pg/test/*": ["./packages/sql-pg/test/*.js"],
-      "@effect/sql-sqlite-bun": ["./packages/sql-sqlite-bun/src/index.js"],
-      "@effect/sql-sqlite-bun/*": ["./packages/sql-sqlite-bun/src/*.js"],
-      "@effect/sql-sqlite-bun/test/*": ["./packages/sql-sqlite-bun/test/*.js"],
-      "@effect/sql-sqlite-do": ["./packages/sql-sqlite-do/src/index.js"],
-      "@effect/sql-sqlite-do/*": ["./packages/sql-sqlite-do/src/*.js"],
-      "@effect/sql-sqlite-do/test/*": ["./packages/sql-sqlite-do/test/*.js"],
-      "@effect/sql-sqlite-node": ["./packages/sql-sqlite-node/src/index.js"],
-      "@effect/sql-sqlite-node/*": ["./packages/sql-sqlite-node/src/*.js"],
-      "@effect/sql-sqlite-node/test/*": [
-        "./packages/sql-sqlite-node/test/*.js"
-      ],
-      "@effect/sql-sqlite-react-native": [
-        "./packages/sql-sqlite-react-native/src/index.js"
-      ],
-      "@effect/sql-sqlite-react-native/*": [
-        "./packages/sql-sqlite-react-native/src/*.js"
-      ],
-      "@effect/sql-sqlite-react-native/test/*": [
-        "./packages/sql-sqlite-react-native/test/*.js"
-      ],
-      "@effect/sql-sqlite-wasm": ["./packages/sql-sqlite-wasm/src/index.js"],
-      "@effect/sql-sqlite-wasm/*": ["./packages/sql-sqlite-wasm/src/*.js"],
-      "@effect/sql-sqlite-wasm/test/*": [
-        "./packages/sql-sqlite-wasm/test/*.js"
-      ],
-      "@effect/typeclass": ["./packages/typeclass/src/index.js"],
-      "@effect/typeclass/*": ["./packages/typeclass/src/*.js"],
-      "@effect/typeclass/test/*": ["./packages/typeclass/test/*.js"],
-      "@effect/vitest": ["./packages/vitest/src/index.js"]
-    }
+    "plugins": [
+      {
+        "name": "@effect/language-service"
+      }
+    ]
   }
 }

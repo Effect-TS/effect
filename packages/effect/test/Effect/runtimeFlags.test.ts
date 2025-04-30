@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Flags from "effect/RuntimeFlags"
 import * as Patch from "effect/RuntimeFlagsPatch"
-import { assertFalse, assertTrue } from "effect/test/util"
 
 describe("Effect", () => {
   it("should enable flags in the current fiber", () =>

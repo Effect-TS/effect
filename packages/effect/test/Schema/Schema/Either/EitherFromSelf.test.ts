@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 import * as E from "effect/Either"
 import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue } from "effect/test/util"
+import * as Util from "../../TestUtils.js"
 
 describe("EitherFromSelf", () => {
   it("arbitrary", () => {

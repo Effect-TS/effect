@@ -1,6 +1,6 @@
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import type { StandardSchemaV1 } from "@standard-schema/spec"
 import { Context, Effect, ParseResult, Predicate, Schema } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
 import { AsyncString } from "../TestUtils.js"
 

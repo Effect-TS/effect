@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import { strictEqual } from "effect/test/util"
 
 class TestError1 {
   readonly _tag = "TestError1"

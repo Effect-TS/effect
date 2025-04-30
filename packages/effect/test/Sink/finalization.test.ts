@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertTrue } from "effect/test/util"
 
 describe("Sink", () => {
   it.effect("ensuring - happy path", () =>

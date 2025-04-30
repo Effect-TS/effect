@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
+import * as Util from "../../TestUtils.js"
 
 describe("pattern", () => {
   it("is", () => {

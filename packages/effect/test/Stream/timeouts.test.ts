@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, deepStrictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
@@ -9,9 +10,8 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
-import { assertLeft, deepStrictEqual } from "effect/test/util"
-import { chunkCoordination } from "effect/test/utils/coordination"
 import * as TestClock from "effect/TestClock"
+import { chunkCoordination } from "../utils/coordination.js"
 
 describe("Stream", () => {
   it.effect("timeout - succeed", () =>

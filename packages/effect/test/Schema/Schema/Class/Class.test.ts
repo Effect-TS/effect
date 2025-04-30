@@ -1,6 +1,4 @@
 import { describe, it } from "@effect/vitest"
-import { Context, Data, Effect, Equal, JSONSchema, ParseResult, Schema as S, SchemaAST as AST } from "effect"
-import * as Util from "effect/test/Schema/TestUtils"
 import {
   assertFalse,
   assertInstanceOf,
@@ -9,7 +7,9 @@ import {
   deepStrictEqual,
   strictEqual,
   throws
-} from "effect/test/util"
+} from "@effect/vitest/utils"
+import { Context, Data, Effect, Equal, JSONSchema, ParseResult, Schema as S, SchemaAST as AST } from "effect"
+import * as Util from "../../TestUtils.js"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,

@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -6,14 +7,13 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as GroupBy from "effect/GroupBy"
-import * as Handoff from "effect/internal/stream/handoff"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertLeft, deepStrictEqual, strictEqual } from "effect/test/util"
-import { chunkCoordination } from "effect/test/utils/coordination"
 import * as TestClock from "effect/TestClock"
+import * as Handoff from "../../src/internal/stream/handoff.js"
+import { chunkCoordination } from "../utils/coordination.js"
 
 describe("Stream", () => {
   it.effect("groupBy - values", () =>

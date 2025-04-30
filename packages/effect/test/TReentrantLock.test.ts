@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertNone, strictEqual } from "@effect/vitest/utils"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
@@ -8,7 +9,6 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as STM from "effect/STM"
-import { assertNone, strictEqual } from "effect/test/util"
 import * as TReentrantLock from "effect/TReentrantLock"
 
 const pollSchedule = <E, A>(): Schedule.Schedule<Option.Option<Exit.Exit<E, A>>, Option.Option<Exit.Exit<E, A>>> =>

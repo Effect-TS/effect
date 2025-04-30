@@ -1,5 +1,16 @@
 import { describe, it } from "@effect/vitest"
 import {
+  assertFailure,
+  assertFalse,
+  assertLeft,
+  assertNone,
+  assertRight,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual
+} from "@effect/vitest/utils"
+import {
   Cause,
   Chunk,
   Context,
@@ -17,17 +28,6 @@ import {
   TRef
 } from "effect"
 import { constFalse, constTrue, constVoid } from "effect/Function"
-import {
-  assertFailure,
-  assertFalse,
-  assertLeft,
-  assertNone,
-  assertRight,
-  assertSome,
-  assertTrue,
-  deepStrictEqual,
-  strictEqual
-} from "effect/test/util"
 
 interface STMEnv {
   readonly ref: TRef.TRef<number>

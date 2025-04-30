@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import * as Util from "../TestUtils.js"
 
 describe("instanceOf", () => {
   it("is", () => {

@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Chunk } from "effect"
-import * as util from "effect/internal/schema/util"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
+import * as util from "../../src/internal/schema/util.js"
 
 describe("effect/internal/schema/util", () => {
   it("ownKeys", () => {

@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { assertInstanceOf, deepStrictEqual } from "@effect/vitest/utils"
 import * as AST from "effect/SchemaAST"
-import { assertInstanceOf, deepStrictEqual } from "effect/test/util"
 
 describe("annotations", () => {
   it("should add annotations", () => {
