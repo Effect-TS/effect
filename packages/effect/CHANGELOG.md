@@ -1,5 +1,11 @@
 # effect
 
+## 3.14.16
+
+### Patch Changes
+
+- [#4800](https://github.com/Effect-TS/effect/pull/4800) [`ee14444`](https://github.com/Effect-TS/effect/commit/ee144441021ec77039e43396eaf90714687bb495) Thanks @tim-smart! - improve Match refinement resolution
+
 ## 3.14.15
 
 ### Patch Changes
