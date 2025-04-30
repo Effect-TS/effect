@@ -14573,7 +14573,11 @@ function fnApply(options: {
     if (options.errorCall.stack) {
       const stackDef = options.errorDef.stack!.trim().split("\n")
       const stackCall = options.errorCall.stack.trim().split("\n")
-      cache = `${stackDef.slice(2).join("\n").trim()}\n${stackCall.slice(2).join("\n").trim()}`
+      let endStack = stackDef.slice(2).join("\n").trim()
+      if (!endStack.includes(`(`)) {
+        endStack = endStack.replace(/at (.*)/, "at ($1)")
+      }
+      cache = `${endStack}\n${stackCall.slice(2).join("\n").trim()}`
       return cache
     }
   }

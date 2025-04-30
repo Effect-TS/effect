@@ -983,11 +983,14 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
   const lines = stack.startsWith(message) ? stack.slice(message.length).split("\n") : stack.split("\n")
 
   for (let i = 1; i < lines.length; i++) {
+    if (lines[i].includes(" at new BaseEffectError") || lines[i].includes(" at new YieldableError")) {
+      i++
+      continue
+    }
     if (lines[i].includes("Generator.next")) {
       break
     }
     if (lines[i].includes("effect_internal_function")) {
-      out.pop()
       break
     }
     out.push(
