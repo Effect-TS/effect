@@ -235,6 +235,23 @@ describe("Match", () => {
       ).type.toBe<number>()
     })
 
+    it("instanceOf prop", () => {
+      class Test {}
+      expect(
+        pipe(
+          Match.value<{ test: Test | null }>({ test: new Test() }),
+          Match.when({ test: Match.instanceOf(Test) }, ({ test }) => {
+            expect(test).type.toBe<Test>()
+            return 1
+          }),
+          Match.orElse(({ test }) => {
+            expect(test).type.toBe<Test | null>()
+            return 0
+          })
+        )
+      ).type.toBe<number>()
+    })
+
     it("refinement with unknown", () => {
       const isArray = (_: unknown): _ is ReadonlyArray<unknown> => Array.isArray(_)
       expect(

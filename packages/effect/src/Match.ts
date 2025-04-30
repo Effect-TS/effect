@@ -1292,7 +1292,7 @@ export declare namespace Types {
    */
   export type NotMatch<R, P> = Exclude<R, ExtractMatch<R, PForNotMatch<P>>>
 
-  type PForNotMatch<P> = [ToSafeRefinement<P>] extends [infer X] ? X
+  type PForNotMatch<P> = [ToInvertedRefinement<P>] extends [infer X] ? X
     : never
 
   /**
@@ -1316,9 +1316,9 @@ export declare namespace Types {
     : A extends Record<string, any> ? { [K in keyof A]: SafeRefinementR<A[K]> }
     : A
 
-  type ResolvePred<A> = A extends never ? never
-    : A extends SafeRefinement<infer _A, infer _R> ? _R
-    : A extends Predicate.Refinement<any, infer P> ? P
+  type ResolvePred<A, Input = any> = A extends never ? never
+    : A extends SafeRefinement<infer _A, infer _R> ? _A
+    : A extends Predicate.Refinement<Input, infer P> ? P
     : A extends Predicate.Predicate<infer P> ? P
     : A extends Record<string, any> ? { [K in keyof A]: ResolvePred<A[K]> }
     : A
@@ -1328,6 +1328,13 @@ export declare namespace Types {
     : A extends Predicate.Predicate<infer P> ? SafeRefinement<P, never>
     : A extends SafeRefinement<any> ? A
     : A extends Record<string, any> ? { [K in keyof A]: ToSafeRefinement<A[K]> }
+    : NonLiteralsTo<A, never>
+
+  type ToInvertedRefinement<A> = A extends never ? never
+    : A extends Predicate.Refinement<any, infer P> ? SafeRefinement<P>
+    : A extends Predicate.Predicate<infer _P> ? SafeRefinement<never>
+    : A extends SafeRefinement<infer _A, infer _R> ? SafeRefinement<_R>
+    : A extends Record<string, any> ? { [K in keyof A]: ToInvertedRefinement<A[K]> }
     : NonLiteralsTo<A, never>
 
   type NonLiteralsTo<A, T> = [A] extends [string | number | boolean | bigint] ? [string] extends [A] ? T
@@ -1430,35 +1437,32 @@ export declare namespace Types {
 
   type Simplify<A> = { [K in keyof A]: A[K] } & {}
 
-  type ExtractAndNarrow<Input, P> = Input extends infer I ?
-    P extends SafeRefinement<infer _In, infer _R> | Predicate.Refinement<infer _In, infer _R> ?
-      P extends SafeRefinement<I & {}, infer _R> | Predicate.Refinement<I & {}, infer _R> ?
-        [0] extends [1 & _R] ? I : _R
-      : Extract<I, _R> :
-    P extends Predicate.Predicate<infer _In> ? P extends Predicate.Predicate<I & {}> ? _In : never :
-    Exclude<
-      I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? {
-            readonly [K in keyof I]: K extends keyof P ? ExtractAndNarrow<I[K], P[K]>
-              : I[K]
-          } extends infer R ? Fail extends R[keyof R] ? never
+  type ExtractAndNarrow<Input, P> = P extends Predicate.Refinement<infer _In, infer _Out> ? Extract<Input, _Out> :
+    P extends SafeRefinement<infer _In, infer _R> ? [0] extends [1 & _R] ? Input : Extract<Input, _In> :
+    P extends Predicate.Predicate<infer _In> ? Extract<Input, _In>
+    : Input extends infer I ? Exclude<
+        I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? {
+              readonly [K in keyof I]: K extends keyof P ? ExtractAndNarrow<I[K], P[K]>
+                : I[K]
+            } extends infer R ? Fail extends R[keyof R] ? never
+              : R
+            : never
+          : never
+          : IsPlainObject<I> extends true ? string extends keyof I ? I extends P ? I
+              : never
+            : symbol extends keyof I ? I extends P ? I
+              : never
+            : Simplify<
+              & { [RK in Extract<keyof I, keyof P>]-?: ExtractAndNarrow<I[RK], P[RK]> }
+              & Omit<I, keyof P>
+            > extends infer R ? keyof P extends NonFailKeys<R> ? R
+              : never
+            : never
+          : MaybeReplace<I, P> extends infer R ? [I] extends [R] ? I
             : R
-          : never
-        : never
-        : IsPlainObject<I> extends true ? string extends keyof I ? I extends P ? I
-            : never
-          : symbol extends keyof I ? I extends P ? I
-            : never
-          : Simplify<
-            & { [RK in Extract<keyof I, keyof P>]-?: ExtractAndNarrow<I[RK], P[RK]> }
-            & Omit<I, keyof P>
-          > extends infer R ? keyof P extends NonFailKeys<R> ? R
-            : never
-          : never
-        : MaybeReplace<I, P> extends infer R ? [I] extends [R] ? I
-          : R
-        : never,
-      Fail
-    > :
+          : never,
+        Fail
+      > :
     never
 
   type NonFailKeys<A> = keyof A & {} extends infer K ? K extends keyof A ? A[K] extends Fail ? never : K
