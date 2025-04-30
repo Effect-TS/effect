@@ -13,6 +13,7 @@ import type {
 import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
 import type { InstrumentDescriptor } from "@opentelemetry/sdk-metrics/build/src/InstrumentDescriptor.js"
 import * as Arr from "effect/Array"
+import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -297,7 +298,10 @@ export const makeProducer = Effect.map(
 /** @internal */
 export const registerProducer = (
   self: MetricProducer,
-  metricReader: LazyArg<MetricReader | Arr.NonEmptyReadonlyArray<MetricReader>>
+  metricReader: LazyArg<MetricReader | Arr.NonEmptyReadonlyArray<MetricReader>>,
+  options?: {
+    readonly shutdownTimeout?: DurationInput | undefined
+  }
 ) =>
   Effect.acquireRelease(
     Effect.sync(() => {
@@ -307,16 +311,22 @@ export const registerProducer = (
       return readers
     }),
     (readers) =>
-      Effect.ignoreLogged(Effect.promise(() =>
+      Effect.promise(() =>
         Promise.all(
           readers.map((reader) => reader.shutdown())
         )
-      ))
+      ).pipe(
+        Effect.ignoreLogged,
+        Effect.interruptible,
+        Effect.timeoutOption(options?.shutdownTimeout ?? 3000)
+      )
   )
 
 /** @internal */
-export const layer = (evaluate: LazyArg<MetricReader | Arr.NonEmptyReadonlyArray<MetricReader>>) =>
+export const layer = (evaluate: LazyArg<MetricReader | Arr.NonEmptyReadonlyArray<MetricReader>>, options?: {
+  readonly shutdownTimeout?: DurationInput | undefined
+}) =>
   Layer.scopedDiscard(Effect.flatMap(
     makeProducer,
-    (producer) => registerProducer(producer, evaluate)
+    (producer) => registerProducer(producer, evaluate, options)
   ))

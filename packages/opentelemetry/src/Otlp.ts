@@ -29,6 +29,7 @@ export const layer = (options: {
   readonly loggerExportInterval?: Duration.DurationInput | undefined
   readonly metricsExportInterval?: Duration.DurationInput | undefined
   readonly tracerExportInterval?: Duration.DurationInput | undefined
+  readonly shutdownTimeout?: Duration.DurationInput | undefined
 }): Layer.Layer<never, never, HttpClient.HttpClient> =>
   Layer.mergeAll(
     OtlpLogger.layer({
@@ -37,13 +38,15 @@ export const layer = (options: {
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.loggerExportInterval,
-      maxBatchSize: options.maxBatchSize
+      maxBatchSize: options.maxBatchSize,
+      shutdownTimeout: options.shutdownTimeout
     }),
     OtlpMetrics.layer({
       url: `${options.baseUrl}/v1/metrics`,
       resource: options.resource,
       headers: options.headers,
-      exportInterval: options.metricsExportInterval
+      exportInterval: options.metricsExportInterval,
+      shutdownTimeout: options.shutdownTimeout
     }),
     OtlpTracer.layer({
       url: `${options.baseUrl}/v1/traces`,
@@ -51,6 +54,7 @@ export const layer = (options: {
       headers: options.headers,
       exportInterval: options.tracerExportInterval,
       maxBatchSize: options.maxBatchSize,
-      context: options.tracerContext
+      context: options.tracerContext,
+      shutdownTimeout: options.shutdownTimeout
     })
   )

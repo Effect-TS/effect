@@ -34,6 +34,7 @@ export const make: (
     readonly exportInterval?: Duration.DurationInput | undefined
     readonly maxBatchSize?: number | undefined
     readonly context?: (<X>(f: () => X, span: Tracer.AnySpan) => X) | undefined
+    readonly shutdownTimeout?: Duration.DurationInput | undefined
   }
 ) => Effect.Effect<
   Tracer.Tracer,
@@ -62,7 +63,8 @@ export const make: (
         }]
       }
       return data
-    }
+    },
+    shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
 
   return Tracer.make({
@@ -110,6 +112,7 @@ export const layer = (options: {
   readonly exportInterval?: Duration.DurationInput | undefined
   readonly maxBatchSize?: number | undefined
   readonly context?: (<X>(f: () => X, span: Tracer.AnySpan) => X) | undefined
+  readonly shutdownTimeout?: Duration.DurationInput | undefined
 }): Layer.Layer<never, never, HttpClient.HttpClient> => Layer.unwrapScoped(Effect.map(make(options), Layer.setTracer))
 
 // internal
