@@ -984,6 +984,7 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
 
   for (let i = 1; i < lines.length; i++) {
     if (lines[i].includes(" at new BaseEffectError") || lines[i].includes(" at new YieldableError")) {
+      i++
       continue
     }
     if (lines[i].includes("Generator.next")) {
