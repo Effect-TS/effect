@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.80.16
+
+### Patch Changes
+
+- [#4803](https://github.com/Effect-TS/effect/pull/4803) [`f1c8583`](https://github.com/Effect-TS/effect/commit/f1c8583f8c3ea9415f813795ca2940a897c9ba9a) Thanks @tim-smart! - expose uninteruptible option to HttpApiBuilder .handle apis
+
+- Updated dependencies [[`ee14444`](https://github.com/Effect-TS/effect/commit/ee144441021ec77039e43396eaf90714687bb495)]:
+  - effect@3.14.16
+
 ## 0.80.15
 
 ### Patch Changes
