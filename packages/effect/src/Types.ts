@@ -336,3 +336,8 @@ export type NotFunction<T> = T extends Function ? never : T
  * @since 3.9.0
  */
 export type NoExcessProperties<T, U> = T & { readonly [K in Exclude<keyof U, keyof T>]: never }
+
+/**
+ * @since 3.15.0
+ */
+export type Ctor<T = {}> = new(...args: Array<any>) => T
