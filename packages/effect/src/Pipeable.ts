@@ -2,9 +2,11 @@
  * @since 2.0.0
  */
 
+import type { Ctor } from "./Types.js"
+
 /**
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface Pipeable {
   pipe<A>(this: A): A
@@ -522,3 +524,43 @@ export const pipeArguments = <A>(self: A, args: IArguments): unknown => {
     }
   }
 }
+
+/**
+ * @since 3.15.0
+ * @category Models
+ */
+export interface PipeableConstructor {
+  new(...args: Array<any>): Pipeable
+}
+
+/**
+ * @since 3.15.0
+ * @category Prototypes
+ */
+export const Prototype: Pipeable = {
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+const Base: PipeableConstructor = (function() {
+  function PipeableBase() {}
+  PipeableBase.prototype = Prototype
+  return PipeableBase as any
+})()
+
+/**
+ * @since 3.15.0
+ * @category Constructors
+ */
+export const Class: {
+  (): PipeableConstructor
+  <TBase extends Ctor>(klass: TBase): TBase & PipeableConstructor
+} = (klass?: Ctor) =>
+  klass ?
+    class extends klass {
+      pipe() {
+        return pipeArguments(this, arguments)
+      }
+    }
+    : Base
