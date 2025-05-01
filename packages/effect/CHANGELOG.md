@@ -1,5 +1,11 @@
 # effect
 
+## 3.14.18
+
+### Patch Changes
+
+- [#4809](https://github.com/Effect-TS/effect/pull/4809) [`b1164d4`](https://github.com/Effect-TS/effect/commit/b1164d49a1dfdf299e9971367b6fc6be4df0ddff) Thanks @tim-smart! - fix refinement narrowing in Match
+
 ## 3.14.17
 
 ### Patch Changes
