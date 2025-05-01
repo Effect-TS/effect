@@ -566,20 +566,20 @@ export const liftPredicate = dual<
   <T extends A, E, B extends T = T, A = T>(
     predicate: Predicate.Refinement<T, B> | Predicate.Predicate<T>,
     orFailWith: (a: Types.EqualsWith<T, B, A, Exclude<A, B>>) => E
-  ) => (a: A) => Effect.Effect<Types.EqualsWith<A, B, A, B>, E>,
+  ) => (a: A) => Effect.Effect<Types.EqualsWith<T, B, A, B>, E>,
   <A, E, B extends A = A>(
     self: A,
     predicate: Predicate.Refinement<A, B> | Predicate.Predicate<A>,
     orFailWith: (a: Types.EqualsWith<A, B, A, Exclude<A, B>>) => E
-  ) => Effect.Effect<Types.EqualsWith<A, B, A, B>, E>
+  ) => Effect.Effect<B, E>
 >(
   3,
   <A, E, B extends A = A>(
     self: A,
     predicate: Predicate.Refinement<A, B> | Predicate.Predicate<A>,
     orFailWith: (a: Types.EqualsWith<A, B, A, Exclude<A, B>>) => E
-  ): Effect.Effect<Types.EqualsWith<A, B, A, B>, E> =>
-    core.suspend(() => predicate(self) ? core.succeed(self as any) : core.fail(orFailWith(self as any)))
+  ): Effect.Effect<B, E> =>
+    core.suspend(() => predicate(self) ? core.succeed(self as B) : core.fail(orFailWith(self as any)))
 )
 
 /* @internal */
