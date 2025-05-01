@@ -6,7 +6,8 @@
   "publishConfig": {
     "access": "public",
     "directory": "dist",
-    "provenance": true
+    "provenance": true,
+    "linkDirectory": false
   },
   "repository": {
     "type": "git",
@@ -24,6 +25,12 @@
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
   },
   "peerDependencies": {
     "@effect/rpc": "workspace:^",

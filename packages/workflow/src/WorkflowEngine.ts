@@ -20,7 +20,7 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
      * Register a workflow with the engine.
      */
     readonly register: (
-      workflow: Workflow.Workflow<{}, Schema.Schema.Any, Schema.Schema.All, never>,
+      workflow: Workflow.Any,
       execute: (payload: object) => Effect.Effect<unknown, unknown, WorkflowInstance>
     ) => Effect.Effect<void>
 
@@ -28,7 +28,7 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
      * Execute a registered workflow.
      */
     readonly execute: (
-      workflow: Workflow.Workflow<{}, Schema.Schema.Any, Schema.Schema.All, never>,
+      workflow: Workflow.Any,
       executionId: string,
       payload: object
     ) => Effect.Effect<unknown, unknown>
@@ -37,7 +37,7 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
      * Tell a workflow to resume execution.
      */
     readonly resume: (
-      workflow: Workflow.Workflow<{}, Schema.Schema.Any, Schema.Schema.All, never>,
+      workflow: Workflow.Any,
       executionId: string
     ) => Effect.Effect<void>
 
@@ -46,7 +46,7 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
      */
     readonly activityResult: (
       options: {
-        readonly workflow: Workflow.Workflow<{}, Schema.Schema.Any, Schema.Schema.All, never>
+        readonly workflow: Workflow.Any
         readonly executionId: string
         readonly activity: Activity.Activity<Schema.Schema.Any, Schema.Schema.All, never>
         readonly attempt: number
@@ -58,7 +58,7 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
      */
     readonly activityExecute: (
       options: {
-        readonly workflow: Workflow.Workflow<{}, Schema.Schema.Any, Schema.Schema.All, never>
+        readonly workflow: Workflow.Any
         readonly executionId: string
         readonly activity: Activity.Activity<Schema.Schema.Any, Schema.Schema.All, never>
         readonly attempt: number
@@ -74,12 +74,19 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
 export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngine/WorkflowInstance")<
   WorkflowInstance,
   {
+    /**
+     * The workflow execution ID.
+     */
     readonly executionId: string
+
+    /**
+     * The payload of the workflow.
+     */
     readonly payload: object
 
     /**
      * The workflow definition.
      */
-    readonly workflow: Workflow.Workflow<{}, Schema.Schema.Any, Schema.Schema.All, never>
+    readonly workflow: Workflow.Any
   }
 >() {}

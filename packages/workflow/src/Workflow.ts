@@ -50,6 +50,22 @@ export interface Workflow<
   >
 }
 
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export interface Any {
+  readonly [TypeId]: TypeId
+  readonly name: string
+  readonly payloadSchema: Schema.Schema.Any
+  readonly successSchema: Schema.Schema.Any
+  readonly errorSchema: Schema.Schema.All
+  readonly execute: (
+    executionId: string,
+    payload: any
+  ) => Effect.Effect<any, any, any>
+}
+
 const EngineTag = Context.GenericTag<WorkflowEngine, WorkflowEngine["Type"]>("@effect/workflow/WorkflowEngine")
 
 /**
