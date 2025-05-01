@@ -145,6 +145,17 @@ export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
   : false
 
 /**
+ * Determines if two types are equal, allowing to specify the return types.
+ *
+ * @since 3.15.0
+ * @category models
+ */
+export type EqualsWith<A, B, Y, N> = (<T>() => T extends A ? 1 : 2) extends <
+  T
+>() => T extends B ? 1 : 2 ? Y
+  : N
+
+/**
  * Determines if a record contains any of the given keys.
  *
  * @example
