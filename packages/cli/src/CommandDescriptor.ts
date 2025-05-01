@@ -166,8 +166,10 @@ export const map: {
  * @category combinators
  */
 export const mapEffect: {
-  <A, B>(f: (a: A) => Effect<B, ValidationError, FileSystem | Path | Terminal>): (self: Command<A>) => Command<B>
-  <A, B>(self: Command<A>, f: (a: A) => Effect<B, ValidationError, FileSystem | Path | Terminal>): Command<B>
+  <A, B>(
+    f: (a: A) => Effect<B, ValidationError | never, FileSystem | Path | Terminal>
+  ): (self: Command<A>) => Command<B>
+  <A, B>(self: Command<A>, f: (a: A) => Effect<B, ValidationError | never, FileSystem | Path | Terminal>): Command<B>
 } = Internal.mapEffect
 
 /**

@@ -471,13 +471,21 @@ export const mapEffect = dual<
   <A, B>(
     f: (
       a: A
-    ) => Effect.Effect<B, ValidationError.ValidationError, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
+    ) => Effect.Effect<
+      B,
+      ValidationError.ValidationError | never,
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal
+    >
   ) => (self: Options.Options<A>) => Options.Options<B>,
   <A, B>(
     self: Options.Options<A>,
     f: (
       a: A
-    ) => Effect.Effect<B, ValidationError.ValidationError, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
+    ) => Effect.Effect<
+      B,
+      ValidationError.ValidationError | never,
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal
+    >
   ) => Options.Options<B>
 >(2, (self, f) => makeMap(self, f))
 

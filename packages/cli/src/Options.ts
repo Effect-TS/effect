@@ -401,8 +401,10 @@ export const map: {
  * @category combinators
  */
 export const mapEffect: {
-  <A, B>(f: (a: A) => Effect<B, ValidationError, FileSystem | Path | Terminal>): (self: Options<A>) => Options<B>
-  <A, B>(self: Options<A>, f: (a: A) => Effect<B, ValidationError, FileSystem | Path | Terminal>): Options<B>
+  <A, B>(
+    f: (a: A) => Effect<B, ValidationError | never, FileSystem | Path | Terminal>
+  ): (self: Options<A>) => Options<B>
+  <A, B>(self: Options<A>, f: (a: A) => Effect<B, ValidationError | never, FileSystem | Path | Terminal>): Options<B>
 } = InternalOptions.mapEffect
 
 /**

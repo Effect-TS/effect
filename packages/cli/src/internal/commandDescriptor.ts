@@ -209,7 +209,7 @@ export const mapEffect = dual<
   <A, B>(
     f: (a: A) => Effect.Effect<
       B,
-      ValidationError.ValidationError,
+      ValidationError.ValidationError | never,
       FileSystem.FileSystem | Path.Path | Terminal.Terminal
     >
   ) => (self: Descriptor.Command<A>) => Descriptor.Command<B>,
@@ -217,7 +217,7 @@ export const mapEffect = dual<
     self: Descriptor.Command<A>,
     f: (a: A) => Effect.Effect<
       B,
-      ValidationError.ValidationError,
+      ValidationError.ValidationError | never,
       FileSystem.FileSystem | Path.Path | Terminal.Terminal
     >
   ) => Descriptor.Command<B>

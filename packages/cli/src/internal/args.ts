@@ -350,11 +350,11 @@ export const map = dual<
 /** @internal */
 export const mapEffect = dual<
   <A, B>(
-    f: (a: A) => Effect.Effect<B, HelpDoc.HelpDoc, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
+    f: (a: A) => Effect.Effect<B, HelpDoc.HelpDoc | never, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
   ) => (self: Args.Args<A>) => Args.Args<B>,
   <A, B>(
     self: Args.Args<A>,
-    f: (a: A) => Effect.Effect<B, HelpDoc.HelpDoc, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
+    f: (a: A) => Effect.Effect<B, HelpDoc.HelpDoc | never, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
   ) => Args.Args<B>
 >(2, (self, f) => makeMap(self, f))
 

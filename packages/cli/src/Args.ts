@@ -334,8 +334,8 @@ export const map: {
  * @category mapping
  */
 export const mapEffect: {
-  <A, B>(f: (a: A) => Effect<B, HelpDoc, FileSystem | Path | Terminal>): (self: Args<A>) => Args<B>
-  <A, B>(self: Args<A>, f: (a: A) => Effect<B, HelpDoc, FileSystem | Path | Terminal>): Args<B>
+  <A, B>(f: (a: A) => Effect<B, HelpDoc | never, FileSystem | Path | Terminal>): (self: Args<A>) => Args<B>
+  <A, B>(self: Args<A>, f: (a: A) => Effect<B, HelpDoc | never, FileSystem | Path | Terminal>): Args<B>
 } = InternalArgs.mapEffect
 
 /**
