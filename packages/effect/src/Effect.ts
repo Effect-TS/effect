@@ -11180,7 +11180,7 @@ export const withUnhandledErrorLogLevel: {
  * // timestamp=... level=DEBUG fiber=#0 message=message2
  * ```
  *
- * @see {@link FiberRef.minimumLogLevel} to retrieve the current minimum log level.
+ * @see {@link FiberRef.currentMinimumLogLevel} to retrieve the current minimum log level.
  *
  * @since 3.13.0
  * @category Logging
