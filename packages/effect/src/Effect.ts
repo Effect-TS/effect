@@ -4979,12 +4979,12 @@ export const uninterruptibleMask: <A, E, R>(
  */
 export const liftPredicate: {
   <T extends A, E, B extends T = T, A = T>(
-    refinement: Refinement<T, B> | Predicate<T>,
+    predicate: Refinement<T, B> | Predicate<T>,
     orFailWith: (a: EqualsWith<T, B, A, Exclude<A, B>>) => E
   ): (a: A) => Effect<EqualsWith<A, B, A, B>, E>
   <A, E, B extends A = A>(
     self: A,
-    refinement: Refinement<A, B> | Predicate<A>,
+    predicate: Refinement<A, B> | Predicate<A>,
     orFailWith: (a: EqualsWith<A, B, A, Exclude<A, B>>) => E
   ): Effect<EqualsWith<A, B, A, B>, E>
 } = effect.liftPredicate
@@ -8347,13 +8347,15 @@ export const filterOrDie: {
  * @category Filtering
  */
 export const filterOrDieMessage: {
-  <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>,
+  <A, B extends A = A>(
+    predicate: Predicate<NoInfer<A>> | Refinement<NoInfer<A>, B>,
     message: string
   ): <E, R>(self: Effect<A, E, R>) => Effect<B, E, R>
-  <A>(predicate: Predicate<NoInfer<A>>, message: string): <E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
-  <A, E, R, B extends A>(self: Effect<A, E, R>, refinement: Refinement<A, B>, message: string): Effect<B, E, R>
-  <A, E, R>(self: Effect<A, E, R>, predicate: Predicate<A>, message: string): Effect<A, E, R>
+  <A, E, R, B extends A = A>(
+    self: Effect<A, E, R>,
+    predicate: Predicate<A> | Refinement<A, B>,
+    message: string
+  ): Effect<B, E, R>
 } = effect.filterOrDieMessage
 
 /**
@@ -8371,12 +8373,12 @@ export const filterOrDieMessage: {
  */
 export const filterOrElse: {
   <A, C, E2, R2, B extends A = A>(
-    refinement: Predicate<NoInfer<A>> | Refinement<NoInfer<A>, B>,
+    predicate: Predicate<NoInfer<A>> | Refinement<NoInfer<A>, B>,
     orElse: (a: EqualsWith<A, B, NoInfer<A>, Exclude<NoInfer<A>, B>>) => Effect<C, E2, R2>
   ): <E, R>(self: Effect<A, E, R>) => Effect<B | C, E2 | E, R2 | R>
   <A, E, R, C, E2, R2, B extends A = A>(
     self: Effect<A, E, R>,
-    refinement: Predicate<A> | Refinement<A, B>,
+    predicate: Predicate<A> | Refinement<A, B>,
     orElse: (a: EqualsWith<A, B, A, Exclude<A, B>>) => Effect<C, E2, R2>
   ): Effect<B | C, E | E2, R | R2>
 } = effect.filterOrElse
