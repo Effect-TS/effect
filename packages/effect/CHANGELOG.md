@@ -1,5 +1,13 @@
 # effect
 
+## 3.14.17
+
+### Patch Changes
+
+- [#4806](https://github.com/Effect-TS/effect/pull/4806) [`0b54681`](https://github.com/Effect-TS/effect/commit/0b54681cd89245e211d8f49272be0f1bf2f81813) Thanks @thewilkybarkid! - Match the JS API for locale arguments
+
+- [#4805](https://github.com/Effect-TS/effect/pull/4805) [`41a59d5`](https://github.com/Effect-TS/effect/commit/41a59d5916a296b12b0d5ead9e859e05f40b4cce) Thanks @mikearnaldi! - Implement stack cleaning for Bun
+
 ## 3.14.16
 
 ### Patch Changes
