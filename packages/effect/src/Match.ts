@@ -1437,9 +1437,13 @@ export declare namespace Types {
 
   type Simplify<A> = { [K in keyof A]: A[K] } & {}
 
-  type ExtractAndNarrow<Input, P> = P extends Predicate.Refinement<infer _In, infer _Out> ? Extract<Input, _Out> :
-    P extends SafeRefinement<infer _In, infer _R> ? [0] extends [1 & _R] ? Input : Extract<Input, _In> :
-    P extends Predicate.Predicate<infer _In> ? Extract<Input, _In>
+  type ExtractAndNarrow<Input, P> = P extends Predicate.Refinement<infer _In, infer _Out> ?
+    _Out extends Input ? Extract<_Out, Input>
+    : Extract<Input, _Out> :
+    P extends SafeRefinement<infer _In, infer _R> ? [0] extends [1 & _R] ? Input
+      : _In extends Input ? Extract<_In, Input>
+      : Extract<Input, _In>
+    : P extends Predicate.Predicate<infer _In> ? Extract<Input, _In>
     : Input extends infer I ? Exclude<
         I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? {
               readonly [K in keyof I]: K extends keyof P ? ExtractAndNarrow<I[K], P[K]>

@@ -617,4 +617,21 @@ describe("Match", () => {
       )({ maybeNumber: Option.some(1), person: new Person() })
     ).type.toBe<boolean>()
   })
+
+  it(".is prop", () => {
+    Match.value<{ foo: string }>({ foo: "bar" }).pipe(
+      Match.when({ foo: Match.is("baz") }, (_) => {
+        expect(_).type.toBe<{ foo: "baz" }>()
+        return true
+      }),
+      Match.when({ foo: (s): s is "baz" => s === "baz" }, (_) => {
+        expect(_).type.toBe<{ foo: "baz" }>()
+        return true
+      }),
+      Match.orElse((_) => {
+        expect(_).type.toBe<{ foo: string }>()
+        return true
+      })
+    )
+  })
 })
