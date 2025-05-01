@@ -624,7 +624,7 @@ describe("Match", () => {
         expect(_).type.toBe<{ foo: "baz" }>()
         return true
       }),
-      Match.when({ foo: (s) => s === "baz" }, (_) => {
+      Match.when({ foo: (s): s is "baz" => s === "baz" }, (_) => {
         expect(_).type.toBe<{ foo: "baz" }>()
         return true
       }),
