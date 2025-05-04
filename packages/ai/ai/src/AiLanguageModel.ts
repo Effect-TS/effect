@@ -25,7 +25,7 @@ const constDisableValidation = { disableValidation: true }
  */
 export class AiLanguageModel extends Context.Tag("@effect/ai/AiLanguageModel")<
   AiLanguageModel,
-  AiLanguageModel.Service
+  AiLanguageModel.Service<never>
 >() {}
 
 /**
@@ -100,19 +100,6 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
   readonly toolChoice?: ToolChoice<Tools>
 
   /**
-   * The maximum number of sequential calls to the large language model that
-   * will be made during resolution of the request, for example when tool calls
-   * are specified.
-   *
-   * Specifying a maximum number of steps is required to prevent infinite loops
-   * between your application and the large language model.
-   *
-   * By default, the value of `maxSteps` is `1`, which means that only a single
-   * request to the large language model will be made.
-   */
-  readonly maxSteps?: number
-
-  /**
    * The concurrency level for resolving tool calls.
    */
   readonly concurrency?: Concurrency | undefined
@@ -172,6 +159,23 @@ export interface GenerateObjectWithToolCallIdOptions<A, I, R> {
 }
 
 /**
+ * A utility type to extract the success type for the text generation methods
+ * of `AiLanguageModel` from the provided options.
+ *
+ * @since 1.0.0
+ * @category Utility Types
+ */
+export type ExtractSuccess<
+  Options extends GenerateTextOptions<AiTool.Any>
+> = Options extends {
+  toolkit: AiToolkit.ToHandler<infer _Tools>
+} ? AiResponse.WithToolCallResults<_Tools>
+  : Options extends {
+    toolkit: Effect.Effect<AiToolkit.ToHandler<infer _Tools>, infer _E, infer _R>
+  } ? AiResponse.WithToolCallResults<_Tools>
+  : AiResponse.AiResponse
+
+/**
  * A utility type to extract the error type for the text generation methods
  * of `AiLanguageModel` from the provided options.
  *
@@ -214,7 +218,7 @@ export declare namespace AiLanguageModel {
    * @since 1.0.0
    * @category Models
    */
-  export interface Service {
+  export interface Service<Config> {
     /**
      * Generate text using a large language model for the specified `prompt`.
      *
@@ -224,9 +228,9 @@ export declare namespace AiLanguageModel {
     readonly generateText: <
       Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
     >(options: Options) => Effect.Effect<
-      AiResponse.AiResponse,
+      ExtractSuccess<Options>,
       ExtractError<Options>,
-      ExtractContext<Options>
+      ExtractContext<Options> | Config
     >
     /**
      * Generate text using a large language model for the specified `prompt`,
@@ -240,7 +244,7 @@ export declare namespace AiLanguageModel {
     >(options: Options) => Stream.Stream<
       AiResponse.AiResponse,
       ExtractError<Options>,
-      ExtractContext<Options>
+      ExtractContext<Options> | Config
     >
 
     /**
@@ -253,7 +257,7 @@ export declare namespace AiLanguageModel {
      */
     readonly generateObject: <A, I, R>(
       options: GenerateObjectOptions<A, I, R> | GenerateObjectWithToolCallIdOptions<A, I, R>
-    ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R>
+    ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R | Config>
   }
 }
 
@@ -301,56 +305,42 @@ export interface AiLanguageModelOptions {
  * @since 1.0.0
  * @category Constructors
  */
-export const make = (opts: {
-  readonly generateText: (options: AiLanguageModelOptions) => Effect.Effect<AiResponse.AiResponse, AiError>
-  readonly streamText: (options: AiLanguageModelOptions) => Stream.Stream<AiResponse.AiResponse, AiError>
-}): AiLanguageModel.Service => {
+export const make = <Config>(opts: {
+  readonly generateText: (options: AiLanguageModelOptions) => Effect.Effect<AiResponse.AiResponse, AiError, Config>
+  readonly streamText: (options: AiLanguageModelOptions) => Stream.Stream<AiResponse.AiResponse, AiError, Config>
+}): AiLanguageModel.Service<Config> => {
   const generateText = <
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
   >({ concurrency, toolChoice = "auto", toolkit, ...options }: Options): Effect.Effect<
-    AiResponse.AiResponse,
+    ExtractSuccess<Options>,
     ExtractError<Options>,
-    ExtractContext<Options>
+    ExtractContext<Options> | Config
   > =>
     Effect.useSpan(
       "AiLanguageModel.generateText",
       { captureStackTrace: false, attributes: { concurrency, toolChoice } },
       Effect.fnUntraced(function*(span) {
-        let prompt = AiInput.make(options.prompt)
+        const prompt = AiInput.make(options.prompt)
         const system = Option.fromNullable(options.system)
         if (Predicate.isUndefined(toolkit)) {
           return yield* opts.generateText({ prompt, system, tools: [], toolChoice: "none", span })
         }
         const actualToolkit = Effect.isEffect(toolkit) ? yield* toolkit : toolkit
-        const maxSteps = options.maxSteps ?? 1
-        let stepCount = 0
-        const tools: Array<{
-          name: string
-          description: string
-          parameters: JsonSchema.JsonSchema7
-          structured: boolean
-        }> = []
+        const tools: AiLanguageModelOptions["tools"] = []
         for (const tool of actualToolkit.tools) {
           tools.push(convertTool(tool))
         }
-        let response = yield* opts.generateText({ prompt, system, tools, toolChoice, span })
-        stepCount++
-        while (response.finishReason === "tool-calls" && stepCount < maxSteps) {
-          const parts = yield* resolveParts({ method: "generateText", response, toolkit: actualToolkit, concurrency })
-          prompt = AiInput.concat(prompt, AiInput.make(parts))
-          response = yield* opts.generateText({ prompt, system, tools, toolChoice, span })
-          stepCount++
-        }
-        return response
+        const response = yield* opts.generateText({ prompt, system, tools, toolChoice, span })
+        return yield* resolveParts({ response, toolkit: actualToolkit, concurrency, method: "generateText" })
       }, (effect, span) => Effect.withParentSpan(effect, span))
     ) as any
 
   const streamText = <
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
   >({ concurrency, toolChoice = "auto", toolkit, ...options }: Options): Stream.Stream<
-    AiResponse.AiResponse,
+    ExtractSuccess<Options>,
     ExtractError<Options>,
-    ExtractContext<Options>
+    ExtractContext<Options> | Config
   > =>
     Stream.unwrap(Effect.gen(function*() {
       const makeScopedSpan = Effect.makeSpanScoped("AiLanguageModel.streamText", {
@@ -366,32 +356,15 @@ export const make = (opts: {
         ) as any
       }
       const actualToolkit = Effect.isEffect(toolkit) ? yield* toolkit : toolkit
-      const tools: Array<{
-        name: string
-        description: string
-        parameters: JsonSchema.JsonSchema7
-        structured: boolean
-      }> = []
-      for (const tool of Object.values(actualToolkit.tools)) {
+      const tools: AiLanguageModelOptions["tools"] = []
+      for (const tool of actualToolkit.tools) {
         tools.push(convertTool(tool))
       }
-
-      // TODO: figure out how this logic makes sense in a streaming scenario
-      // let response = yield* opts.generateText({ prompt, system, tools, required, span })
-      // while (response.finishReason === "tool-calls") {
-      //   const parts = yield* resolveParts({ method: "generateText", response, toolkit, concurrency })
-      //   const prompt = AiInput.make(parts) as Arr.NonEmptyArray<Message>
-      //   // Tool calls should not continuously be required otherwise we may enter
-      //   // an infinite loop with the model provider
-      //   response = yield* opts.generateText({ prompt, system, tools, required: false, span })
-      // }
-      // return response
-
       return makeScopedSpan.pipe(
         Effect.map((span) => opts.streamText({ prompt, system, tools, toolChoice, span })),
         Stream.unwrapScoped,
         Stream.mapEffect(
-          (response) => resolveParts({ method: "streamText", response, toolkit: actualToolkit, concurrency }),
+          (response) => resolveParts({ response, toolkit: actualToolkit, concurrency, method: "streamText" }),
           { concurrency: "unbounded" }
         )
       )
@@ -399,7 +372,7 @@ export const make = (opts: {
 
   const generateObject = <A, I, R>(
     options: GenerateObjectOptions<A, I, R> | GenerateObjectWithToolCallIdOptions<A, I, R>
-  ): Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R> => {
+  ): Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R | Config> => {
     const toolCallId = "toolCallId" in options
       ? options.toolCallId
       : "_tag" in options.schema
@@ -416,13 +389,8 @@ export const make = (opts: {
         const system = Option.fromNullable(options.system)
         const decode = Schema.decodeUnknown(options.schema)
         const tool = convertStructured(toolCallId, options.schema)
-        const response = yield* opts.generateText({
-          prompt,
-          system,
-          tools: [tool],
-          toolChoice: { type: "tool", name: tool.name },
-          span
-        })
+        const toolChoice = { type: "tool", name: tool.name } as const
+        const response = yield* opts.generateText({ prompt, system, tools: [tool], toolChoice, span })
         const toolCallPart = response.parts.find((part): part is AiResponse.ToolCallPart =>
           part._tag === "ToolCallPart" && part.name === toolCallId
         )
@@ -455,7 +423,7 @@ export const make = (opts: {
     )
   }
 
-  return AiLanguageModel.of({ generateText, streamText, generateObject })
+  return { generateText, streamText, generateObject } as const
 }
 
 const convertTool = <Tool extends AiTool.Any>(tool: Tool) => ({

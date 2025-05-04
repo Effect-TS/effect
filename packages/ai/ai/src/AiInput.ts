@@ -37,6 +37,12 @@ export class AiInput extends Schema.Class<AiInput>(
 }
 
 /**
+ * @since 1.0.0
+ * @category Models
+ */
+export const FromJson = Schema.parseJson(AiInput)
+
+/**
  * Represents raw input types that can be converted into an `AiInput`.
  *
  * @since 1.0.0
@@ -46,6 +52,7 @@ export type Raw =
   | string
   | Message
   | Iterable<Message>
+  | AiInput
   | AiResponse.AiResponse
   | AiResponse.WithStructuredOutput<any>
   | AiResponse.WithToolCallResults<any>
@@ -73,7 +80,8 @@ export type MessageTypeId = typeof MessageTypeId
 export class UserMessage extends Schema.TaggedClass<UserMessage>(
   "@effect/ai/AiInput/Message/UserMessage"
 )("UserMessage", {
-  parts: Schema.Array(Schema.suspend(() => UserMessagePart))
+  parts: Schema.Array(Schema.suspend(() => UserMessagePart)),
+  userName: Schema.optional(Schema.String)
 }) {
   /**
    * @since 1.0.0
@@ -87,7 +95,7 @@ export class UserMessage extends Schema.TaggedClass<UserMessage>(
  */
 export class AssistantMessage extends Schema.TaggedClass<AssistantMessage>(
   "@effect/ai/AiInput/Message/AssistantMessage"
-)("UserMessage", {
+)("AssistantMessage", {
   parts: Schema.Array(Schema.suspend(() => AssistantMessagePart))
 }) {
   /**
@@ -349,6 +357,11 @@ export class ToolCallPart extends Schema.TaggedClass<ToolCallPart>(
    * @since 1.0.0
    */
   readonly [PartTypeId]: PartTypeId = PartTypeId
+
+  constructor(props: any, options?: Schema.MakeOptions) {
+    console.log(props)
+    super(props, options)
+  }
 }
 
 /**
@@ -479,6 +492,9 @@ export const make = (input: Raw): AiInput => {
   if (Predicate.isIterable(input)) {
     return new AiInput({ messages: Array.from(input) })
   }
+  if (is(input)) {
+    return input
+  }
   if (AiResponse.isStructured(input)) {
     const assistantMessages = fromResponse(input).messages
     const toolPart = new ToolCallResultPart({
@@ -501,6 +517,7 @@ export const make = (input: Raw): AiInput => {
 }
 
 const EXCLUDED_RESPONSE_PARTS: Array<AiResponse.Part["_tag"]> = [
+  "MetadataPart",
   "ReasoningPart",
   "RedactedReasoningPart",
   "FinishPart"
@@ -535,7 +552,7 @@ const fromResponse = (
  * creating a new `AiInput` with the messages from both.
  *
  * @since 1.0.0
- * @category Concatenation
+ * @category Combination
  */
 export const concat: {
   (other: AiInput): (self: AiInput) => AiInput

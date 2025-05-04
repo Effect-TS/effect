@@ -1,4 +1,3 @@
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { CommitPrototype } from "effect/Effectable"
 import * as Either from "effect/Either"
@@ -9,7 +8,6 @@ import * as Predicate from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import type * as AiModel from "../AiModel.js"
-import { AiModels } from "../AiModels.js"
 import type * as AiPlan from "../AiPlan.js"
 
 /** @internal */
@@ -40,10 +38,9 @@ const buildPlan = <Error, Provides, Requires>(
 ): Effect.Effect<
   AiPlan.Provider<Provides>,
   never,
-  Requires | AiModels
+  Requires
 > =>
-  Effect.map(Effect.context<AiModels | Requires>(), (context) => {
-    const models = Context.get(context, AiModels)
+  Effect.map(Effect.context<Requires>(), (context) => {
     return {
       use: Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
         let result: Either.Either<A, E> | undefined = undefined
@@ -55,7 +52,7 @@ const buildPlan = <Error, Provides, Requires>(
           }
           const retryOptions = getRetryOptions(step)
           result = yield* Effect.scopedWith((scope) =>
-            models.build(step.model, context).pipe(
+            step.model.buildContext.pipe(
               Scope.extend(scope),
               Effect.flatMap((context) =>
                 effect.pipe(
@@ -65,6 +62,7 @@ const buildPlan = <Error, Provides, Requires>(
                   Effect.provide(context)
                 )
               ),
+              Effect.provide(context),
               Effect.either
             )
           )

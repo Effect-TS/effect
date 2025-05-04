@@ -94,6 +94,7 @@ export const make = (options: {
           Effect.map((config) => config?.transformClient ? config.transformClient(client) : client)
         )
     })
+
     const streamRequest = <A = unknown>(request: HttpClientRequest.HttpClientRequest) =>
       httpClientOk.execute(request).pipe(
         Effect.map((r) => r.stream),
@@ -103,6 +104,7 @@ export const make = (options: {
         Stream.takeWhile((event) => event.data !== "[DONE]"),
         Stream.map((event) => JSON.parse(event.data) as A)
       )
+
     const stream = (request: StreamCompletionRequest) =>
       Stream.suspend(() => {
         const toolCalls = {} as Record<number, RawToolCall & { isFinished: boolean }>
@@ -132,7 +134,7 @@ export const make = (options: {
             if (isFirstChunk) {
               isFirstChunk = false
               parts.push(
-                new AiResponse.ResponseMetadataPart({
+                new AiResponse.MetadataPart({
                   id: chunk.id,
                   model: chunk.model,
                   timestamp: new Date(chunk.created * 1000)
@@ -176,7 +178,7 @@ export const make = (options: {
               if (Predicate.isNotNullable(choice.delta.content)) {
                 parts.push(
                   new AiResponse.TextPart({
-                    content: choice.delta.content
+                    text: choice.delta.content
                   }, constDisableValidation)
                 )
               }
@@ -208,6 +210,7 @@ export const make = (options: {
           })
         )
       })
+
     return OpenAiClient.of({ client, streamRequest, stream })
   })
 

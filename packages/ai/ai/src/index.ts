@@ -31,17 +31,12 @@ export * as AiModel from "./AiModel.js"
 /**
  * @since 1.0.0
  */
-export * as AiModels from "./AiModels.js"
-
-/**
- * @since 1.0.0
- */
 export * as AiPlan from "./AiPlan.js"
 
 /**
  * @since 1.0.0
  */
-export * as AiResponse from "./AiResponse_old.js"
+export * as AiResponse from "./AiResponse.js"
 
 /**
  * @since 1.0.0

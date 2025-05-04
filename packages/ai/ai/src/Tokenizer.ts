@@ -25,8 +25,8 @@ export declare namespace Tokenizer {
    * @category Models
    */
   export interface Service {
-    readonly tokenize: (content: AiInput.Raw) => Effect.Effect<Array<number>, AiError>
-    readonly truncate: (content: AiInput.Raw, tokens: number) => Effect.Effect<AiInput.Raw, AiError>
+    readonly tokenize: (input: AiInput.Raw) => Effect.Effect<Array<number>, AiError>
+    readonly truncate: (input: AiInput.Raw, tokens: number) => Effect.Effect<AiInput.AiInput, AiError>
   }
 }
 
@@ -41,32 +41,32 @@ export const make = (options: {
     tokenize(input) {
       return options.tokenize(AiInput.make(input))
     },
-    truncate(content, tokens) {
-      return truncate(AiInput.make(content), options.tokenize, tokens)
+    truncate(input, tokens) {
+      return truncate(AiInput.make(input), options.tokenize, tokens)
     }
   })
 
 const truncate = (
   self: AiInput.AiInput,
-  tokenize: (content: AiInput.AiInput) => Effect.Effect<Array<number>, AiError>,
+  tokenize: (input: AiInput.AiInput) => Effect.Effect<Array<number>, AiError>,
   maxTokens: number
 ): Effect.Effect<AiInput.AiInput, AiError> =>
   Effect.suspend(() => {
     let count = 0
-    let inParts = self
-    let outParts: Array<AiInput.Message> = []
+    let inputMessages = self.messages
+    let outputMessages: Array<AiInput.Message> = []
     const loop: Effect.Effect<AiInput.AiInput, AiError> = Effect.suspend(() => {
-      const part = inParts[inParts.length - 1]
-      if (Predicate.isUndefined(part)) {
-        return Effect.succeed(AiInput.make(outParts))
+      const message = inputMessages[inputMessages.length - 1]
+      if (Predicate.isUndefined(message)) {
+        return Effect.succeed(AiInput.make(outputMessages))
       }
-      inParts = inParts.slice(0, inParts.length - 1)
-      return Effect.flatMap(tokenize([part]), (tokens) => {
+      inputMessages = inputMessages.slice(0, inputMessages.length - 1)
+      return Effect.flatMap(tokenize(AiInput.make(message)), (tokens) => {
         count += tokens.length
         if (count > maxTokens) {
-          return Effect.succeed(AiInput.make(outParts))
+          return Effect.succeed(AiInput.make(outputMessages))
         }
-        outParts = [part, ...outParts]
+        outputMessages = [message, ...outputMessages]
         return loop
       })
     })

@@ -1,10 +1,17 @@
 /**
  * @since 1.0.0
  */
+import type * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import { AiError } from "./AiError.js"
 import type * as AiTool from "./AiTool.js"
 import * as InternalCommon from "./internal/common.js"
+
+const constDisableValidation = { disableValidation: true }
 
 /**
  * @since 1.0.0
@@ -60,7 +67,24 @@ export class AiResponse extends Schema.Class<AiResponse>(
     const finishPart = this.parts.find((part) => part._tag === "FinishPart")
     return finishPart?.reason ?? "unknown"
   }
+
+  /**
+   * Attempts to retrieve provider-specific response metadata.
+   */
+  getProviderMetadata<I, S>(tag: Context.Tag<I, S>): Option.Option<S> {
+    const finishPart = this.parts.find((part) => part._tag === "FinishPart")
+    return Option.fromNullable(finishPart?.providerMetadata[tag.key] as S)
+  }
 }
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export const FromJson: Schema.transform<
+  Schema.SchemaClass<unknown, string, never>,
+  typeof AiResponse
+> = Schema.parseJson(AiResponse)
 
 /**
  * @since 1.0.0
@@ -439,6 +463,55 @@ export class ToolCallPart extends Schema.TaggedClass<ToolCallPart>(
    * @since 1.0.0
    */
   readonly [PartTypeId]: PartTypeId = PartTypeId
+
+  /**
+   * Converts a raw tool call into a `ToolCallPart` by parsing tool call
+   * parameters as a JSON string. If your tool call parameters are already
+   * parsed, use `ToolCallPart.fromUnknown`.
+   *
+   * @since 1.0.0
+   */
+  static fromJson({ id, name, params }: {
+    readonly id: string
+    readonly name: string
+    readonly params: string
+  }): Effect.Effect<ToolCallPart, AiError> {
+    return Effect.try({
+      try() {
+        return new ToolCallPart({
+          id: ToolCallId.make(id, constDisableValidation),
+          name,
+          params: JSON.parse(params)
+        }, constDisableValidation)
+      },
+      catch: (cause) =>
+        new AiError({
+          module: "AiResponse",
+          method: "ToolCall.fromJson",
+          description: `Failed to parse parameters from JSON:\n${params}`,
+          cause
+        })
+    })
+  }
+
+  /**
+   * Converts a raw tool call into a `ToolCallPart` assuming that the tool call
+   * parameters have already been parsed. If your tool call parameters have not
+   * already been parsed, use `ToolCallPart.fromJson`.
+   *
+   * @since 1.0.0
+   */
+  static fromUnknown({ id, name, params }: {
+    readonly id: string
+    readonly name: string
+    readonly params: unknown
+  }): ToolCallPart {
+    return new ToolCallPart({
+      id: ToolCallId.make(id, constDisableValidation),
+      name,
+      params
+    }, constDisableValidation)
+  }
 }
 
 /**
@@ -594,10 +667,13 @@ export class FinishPart extends Schema.TaggedClass<FinishPart>(
   /**
    * Provider-specific metadata associated with the response.
    */
-  providerMetadata: Schema.Record({
-    key: Schema.String,
-    value: Schema.Record({ key: Schema.String, value: Schema.Unknown })
-  })
+  providerMetadata: Schema.optionalWith(
+    Schema.Record({
+      key: Schema.String,
+      value: Schema.Record({ key: Schema.String, value: Schema.Unknown })
+    }),
+    { default: () => ({}) }
+  )
 }) {
   /**
    * @since 1.0.0
@@ -639,6 +715,10 @@ export type Part = typeof Part.Type
  */
 export const is = (u: unknown): u is AiResponse => Predicate.hasProperty(u, TypeId)
 
+/**
+ * @since 1.0.0
+ * @category Guards
+ */
 export const isPart = (u: unknown): u is Part => Predicate.hasProperty(u, PartTypeId)
 
 /**
@@ -659,4 +739,97 @@ export const hasToolCallResults = (u: unknown): u is WithToolCallResults<any> =>
  * @since 1.0.0
  * @category Constructors
  */
-export const empty: AiResponse = new AiResponse({ parts: [] })
+export const empty: AiResponse = new AiResponse(
+  { parts: [] },
+  constDisableValidation
+)
+
+/**
+ * Combines two responses into a single response.
+ *
+ * @since 1.0.0
+ * @category Combination
+ */
+export const merge: {
+  (other: AiResponse): (self: AiResponse) => AiResponse
+  (self: AiResponse, other: AiResponse): AiResponse
+} = dual<
+  (other: AiResponse) => (self: AiResponse) => AiResponse,
+  (self: AiResponse, other: AiResponse) => AiResponse
+>(2, (self, other) => {
+  if (other.parts.length === 0) {
+    return new AiResponse({
+      parts: self.parts
+    }, constDisableValidation)
+  }
+  if (self.parts.length === 0) {
+    return new AiResponse({
+      parts: other.parts
+    }, constDisableValidation)
+  }
+  const lastPart = self.parts[self.parts.length - 1]
+  const newParts: Array<Part> = []
+  let text = lastPart._tag === "TextPart" ? lastPart.text : ""
+  for (const part of other.parts) {
+    if (part._tag === "TextPart") {
+      text += part.text
+    }
+  }
+  if (text.length > 0) {
+    newParts.push(new TextPart({ text }, constDisableValidation))
+  }
+  return newParts.length === 0 ? self : new AiResponse({
+    parts: [...self.parts.slice(0, self.parts.length - 1), ...newParts]
+  }, constDisableValidation)
+})
+
+/**
+ * Adds the specified tool calls to the provided `AiResponse`.
+ *
+ * **NOTE**: With this method, the tool call parameters will be parsed as a
+ * JSON string. If your tool call parameters are already parsed, use
+ * `AiResponse.withToolCallsUnknown`.
+ *
+ * @since 1.0.0
+ * @category Combination
+ */
+export const withToolCallsJson: {
+  (
+    toolCalls: Iterable<{
+      readonly id: string
+      readonly name: string
+      readonly params: string
+    }>
+  ): (self: AiResponse) => Effect.Effect<AiResponse, AiError>
+  (
+    self: AiResponse,
+    toolCalls: Iterable<{
+      readonly id: string
+      readonly name: string
+      readonly params: string
+    }>
+  ): Effect.Effect<AiResponse, AiError>
+} = dual<
+  (
+    toolCalls: Iterable<{
+      readonly id: string
+      readonly name: string
+      readonly params: string
+    }>
+  ) => (self: AiResponse) => Effect.Effect<AiResponse, AiError>,
+  (
+    self: AiResponse,
+    toolCalls: Iterable<{
+      readonly id: string
+      readonly name: string
+      readonly params: string
+    }>
+  ) => Effect.Effect<AiResponse, AiError>
+>(2, (self, toolCalls) =>
+  Effect.forEach(toolCalls, (toolCall) => ToolCallPart.fromJson(toolCall)).pipe(
+    Effect.map((parts) =>
+      new AiResponse({
+        parts: [...self.parts, ...parts]
+      }, constDisableValidation)
+    )
+  ))

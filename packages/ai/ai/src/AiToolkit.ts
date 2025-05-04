@@ -257,5 +257,5 @@ export const merge = <const Toolkits extends ReadonlyArray<Any>>(
       tools[name] = tool
     }
   }
-  return makeProto(tools)
+  return makeProto(tools) as any
 }

@@ -12,7 +12,7 @@ import type { NoExcessProperties } from "effect/Types"
 import type { AiError } from "./AiError.js"
 import * as AiInput from "./AiInput.js"
 import * as AiLanguageModel from "./AiLanguageModel.js"
-import * as AiResponse from "./AiResponse_old.js"
+import * as AiResponse from "./AiResponse.js"
 
 /**
  * @since 1.0.0
@@ -21,7 +21,7 @@ import * as AiResponse from "./AiResponse_old.js"
 export class AiChat extends Context.Tag("@effect/ai/AiChat")<
   AiChat,
   AiChat.Service
->() { }
+>() {}
 
 /**
  * @since 1.0.0
@@ -59,7 +59,7 @@ export declare namespace AiChat {
     readonly generateText: <
       Options extends NoExcessProperties<Omit<AiLanguageModel.GenerateTextOptions<any>, "system">, Options>
     >(options: Options) => Effect.Effect<
-      AiResponse.AiResponse,
+      AiLanguageModel.ExtractSuccess<Options>,
       AiLanguageModel.ExtractError<Options>,
       AiLanguageModel.ExtractContext<Options>
     >
@@ -76,7 +76,7 @@ export declare namespace AiChat {
     readonly streamText: <
       Options extends NoExcessProperties<Omit<AiLanguageModel.GenerateTextOptions<any>, "system">, Options>
     >(options: Options) => Stream.Stream<
-      AiResponse.AiResponse,
+      AiLanguageModel.ExtractSuccess<Options>,
       AiLanguageModel.ExtractError<Options>,
       AiLanguageModel.ExtractContext<Options>
     >
@@ -105,107 +105,105 @@ export declare namespace AiChat {
  * @since 1.0.0
  * @category constructors
  */
-export const fromPrompt = Effect.fnUntraced(
-  function*(options: {
-    readonly prompt: AiInput.Raw
-    readonly system?: string
-  }) {
-    const languageModel = yield* AiLanguageModel.AiLanguageModel
-    const history = yield* Ref.make<AiInput.AiInput>(AiInput.make(options.prompt))
-    const semaphore = yield* Effect.makeSemaphore(1)
+export const fromPrompt = Effect.fnUntraced(function*(options: {
+  readonly prompt: AiInput.Raw
+  readonly system?: string
+}) {
+  const languageModel = yield* AiLanguageModel.AiLanguageModel
+  const history = yield* Ref.make<AiInput.AiInput>(AiInput.make(options.prompt))
+  const semaphore = yield* Effect.makeSemaphore(1)
 
-    return AiChat.of({
-      history: Ref.get(history),
-      export: Ref.get(history).pipe(
-        Effect.flatMap(Schema.encode(AiInput.AiInput)),
-        Effect.orDie
-      ),
-      exportJson: Ref.get(history).pipe(
-        Effect.flatMap(Schema.encode(AiInput.AiInputFromJson)),
-        Effect.orDie
-      ),
-      generateText(options) {
-        const newParts = AiInput.make(options.prompt)
-        return Ref.get(history).pipe(
-          Effect.flatMap((parts) => {
-            const allParts = [...parts, ...newParts]
-            return languageModel.generateText({
+  return AiChat.of({
+    history: Ref.get(history),
+    export: Ref.get(history).pipe(
+      Effect.flatMap(Schema.encode(AiInput.AiInput)),
+      Effect.orDie
+    ),
+    exportJson: Ref.get(history).pipe(
+      Effect.flatMap(Schema.encode(AiInput.FromJson)),
+      Effect.orDie
+    ),
+    generateText(options) {
+      const newInput = AiInput.make(options.prompt)
+      return Ref.get(history).pipe(
+        Effect.flatMap((oldInput) => {
+          const input = AiInput.concat(oldInput, newInput)
+          return languageModel.generateText({
+            ...options,
+            prompt: input
+          }).pipe(
+            Effect.tap((response) => {
+              const modelInput = AiInput.make(response)
+              return Ref.set(history, AiInput.concat(input, modelInput))
+            })
+          )
+        }),
+        semaphore.withPermits(1),
+        Effect.withSpan("AiChat.send", { captureStackTrace: false })
+      )
+    },
+    streamText(options) {
+      return Stream.suspend(() => {
+        let combined = AiResponse.empty
+        return Stream.fromChannel(Channel.acquireUseRelease(
+          semaphore.take(1).pipe(
+            Effect.zipRight(Ref.get(history)),
+            Effect.map((history) => AiInput.concat(history, AiInput.make(options.prompt)))
+          ),
+          (parts) =>
+            languageModel.streamText({
               ...options,
-              prompt: allParts
+              prompt: parts
             }).pipe(
-              Effect.tap((response) => {
-                const responseParts = AiInput.make(response)
-                return Ref.set(history, [...allParts, ...responseParts])
-              })
-            )
-          }),
-          semaphore.withPermits(1),
-          Effect.withSpan("AiChat.send", { captureStackTrace: false })
-        )
-      },
-      streamText(options) {
-        return Stream.suspend(() => {
-          let combined = AiResponse.AiResponse.empty
-          return Stream.fromChannel(Channel.acquireUseRelease(
-            semaphore.take(1).pipe(
-              Effect.zipRight(Ref.get(history)),
-              Effect.map((history) => [...history, ...AiInput.make(options.prompt)])
+              Stream.map((chunk) => {
+                combined = AiResponse.merge(combined, chunk)
+                return chunk
+              }),
+              Stream.toChannel
             ),
-            (parts) =>
-              languageModel.streamText({
-                ...options,
-                prompt: parts
-              }).pipe(
-                Stream.map((chunk) => {
-                  combined = combined.merge(chunk)
-                  return chunk
-                }),
-                Stream.toChannel
-              ),
-            (parts) =>
-              Effect.zipRight(
-                Ref.set(history, [...parts, ...AiInput.make(combined)]),
-                semaphore.release(1)
-              )
-          ))
-        }).pipe(Stream.withSpan("AiChat.stream", {
-          captureStackTrace: false
-        }))
-      },
-      generateObject(options) {
-        const newParts = AiInput.make(options.prompt)
-        return Ref.get(history).pipe(
-          Effect.flatMap((parts) => {
-            const allParts = [...parts, ...newParts]
-            return languageModel.generateObject({
-              ...options,
-              prompt: allParts
-            } as any).pipe(
-              Effect.flatMap((response) => {
-                const responseParts = AiInput.make(response)
-                return Effect.as(
-                  Ref.set(history, [...allParts, ...responseParts]),
-                  response.value
-                )
-              })
+          (parts) =>
+            Effect.zipRight(
+              Ref.set(history, AiInput.concat(parts, AiInput.make(combined))),
+              semaphore.release(1)
             )
-          }),
-          semaphore.withPermits(1),
-          Effect.withSpan("AiChat.structured", {
-            attributes: {
-              toolCallId: "toolCallId" in options
-                ? options.toolCallId
-                : "_tag" in options.schema
-                  ? options.schema._tag
-                  : (options.schema as any).identifier
-            },
-            captureStackTrace: false
-          })
-        ) as any
-      }
-    })
-  }
-)
+        ))
+      }).pipe(Stream.withSpan("AiChat.stream", {
+        captureStackTrace: false
+      })) as any
+    },
+    generateObject(options) {
+      const newInput = AiInput.make(options.prompt)
+      return Ref.get(history).pipe(
+        Effect.flatMap((oldInput) => {
+          const input = AiInput.concat(oldInput, newInput)
+          return languageModel.generateObject({
+            ...options,
+            prompt: input
+          } as any).pipe(
+            Effect.flatMap((response) => {
+              const modelInput = AiInput.make(response)
+              return Effect.as(
+                Ref.set(history, AiInput.concat(input, modelInput)),
+                response.value
+              )
+            })
+          )
+        }),
+        semaphore.withPermits(1),
+        Effect.withSpan("AiChat.structured", {
+          attributes: {
+            toolCallId: "toolCallId" in options
+              ? options.toolCallId
+              : "_tag" in options.schema
+              ? options.schema._tag
+              : (options.schema as any).identifier
+          },
+          captureStackTrace: false
+        })
+      ) as any
+    }
+  })
+})
 
 /**
  * @since 1.0.0
@@ -222,7 +220,7 @@ const decodeUnknown = Schema.decodeUnknown(AiInput.AiInput)
 export const fromExport = (data: unknown): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel.AiLanguageModel> =>
   Effect.flatMap(decodeUnknown(data), (prompt) => fromPrompt({ prompt }))
 
-const decodeJson = Schema.decode(AiInput.AiInputFromJson)
+const decodeJson = Schema.decode(AiInput.FromJson)
 
 /**
  * @since 1.0.0

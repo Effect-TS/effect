@@ -13,12 +13,11 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
-import type { Simplify } from "effect/Types"
+import type { Mutable, Simplify } from "effect/Types"
 import { AnthropicClient } from "./AnthropicClient.js"
 import * as AnthropicTokenizer from "./AnthropicTokenizer.js"
 import type * as Generated from "./Generated.js"
@@ -74,10 +73,36 @@ export declare namespace Config {
 }
 
 // =============================================================================
-// Anthropic Completions
+// Anthropic Provider Metadata
 // =============================================================================
 
-const modelCacheKey = Symbol.for("@effect/ai-anthropic/AnthropicLanguageModel/AiModel")
+/**
+ * @since 1.0.0
+ * @category Context
+ */
+export class ProviderMetadata extends Context.Tag("@effect/ai-anthropic/AnthropicLanguageModel/ProviderMetadata")<
+  ProviderMetadata,
+  ProviderMetadata.Service
+>() {}
+
+/**
+ * @since 1.0.0
+ */
+export declare namespace ProviderMetadata {
+  /**
+   * @since 1.0.0
+   * @category Provider Metadata
+   */
+  export interface Service {
+    readonly stopSequence?: string
+  }
+}
+
+// =============================================================================
+// Anthropic Language Model
+// =============================================================================
+
+const cacheKey = "@effect/ai-anthropic/AnthropicLanguageModel"
 
 /**
  * @since 1.0.0
@@ -88,48 +113,53 @@ export const model = (
   config?: Omit<Config.Service, "model">
 ): AiModel.AiModel<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, AnthropicClient> =>
   AiModel.make({
-    model,
-    cacheKey: modelCacheKey,
-    requires: AnthropicClient,
-    provides: make({ model, config }).pipe(
-      Effect.map((completions) =>
-        Context.merge(
-          Context.make(AiLanguageModel.AiLanguageModel, completions),
-          Context.make(Tokenizer.Tokenizer, AnthropicTokenizer.make)
-        )
+    cacheKey,
+    cachedContext: Effect.map(make, (model) => Context.make(AiLanguageModel.AiLanguageModel, model)),
+    updateRequestContext: Effect.fnUntraced(function*(context: Context.Context<AiLanguageModel.AiLanguageModel>) {
+      const perRequestConfig = yield* Config.getOrUndefined
+      return Context.mergeAll(
+        context,
+        Context.make(Config, { model, ...config, ...perRequestConfig }),
+        Context.make(Tokenizer.Tokenizer, AnthropicTokenizer.make)
       )
-    ),
-    updateContext: (context) => {
-      const innerConfig = context.unsafeMap.get(Config.key) as Config.Service | undefined
-      return Context.merge(context, Context.make(Config, { model, ...config, ...innerConfig }))
-    }
+    })
   })
 
-const make = Effect.fnUntraced(function*(options: {
-  readonly model: (string & {}) | Model
-  readonly config?: Omit<Config.Service, "model">
-}) {
+const make = Effect.gen(function*() {
   const client = yield* AnthropicClient
 
   const makeRequest = Effect.fnUntraced(
-    function*(method: string, { prompt, required, system, tools }: AiLanguageModel.AiLanguageModelOptions) {
+    function*(method: string, { prompt, system, tools, ...options }: AiLanguageModel.AiLanguageModelOptions) {
+      const config = yield* Config
+      const model = config.model
+      if (Predicate.isUndefined(model)) {
+        return yield* Effect.die(
+          new AiError({
+            module: "OpenAiLanguageModel",
+            method,
+            description: "No `model` specified for request"
+          })
+        )
+      }
       const useStructured = tools.length === 1 && tools[0].structured
       let toolChoice: typeof Generated.ToolChoice.Encoded | undefined = undefined
-      if (Predicate.isNotUndefined(required)) {
-        if (Predicate.isBoolean(required)) {
-          toolChoice = required ? { type: "any" } : { type: "auto" }
+      if (useStructured) {
+        toolChoice = { type: "tool", name: tools[0].name }
+      } else if (Predicate.isNotUndefined(toolChoice) && tools.length > 0) {
+        if (options.toolChoice === "required") {
+          toolChoice = { type: "any" }
+        } else if (typeof options.toolChoice === "string") {
+          toolChoice = { type: options.toolChoice }
         } else {
-          toolChoice = { type: "tool", name: required }
+          toolChoice = options.toolChoice
         }
       }
-      const context = yield* Effect.context<never>()
       const messages = yield* makeMessages(method, prompt)
       return {
-        model: options.model,
+        model,
         // TODO: re-evaluate a better way to do this
         max_tokens: 4096,
-        ...options.config,
-        ...context.unsafeMap.get(Config.key),
+        ...config,
         system: Option.getOrUndefined(system),
         messages,
         tools: tools.length === 0 ? undefined : tools.map((tool) => ({
@@ -137,13 +167,7 @@ const make = Effect.fnUntraced(function*(options: {
           description: tool.description,
           input_schema: tool.parameters as any
         })),
-        tool_choice: !useStructured && tools.length > 0
-          // For non-structured outputs, ensure tools are used if required
-          ? toolChoice
-          // For structured outputs, ensure the json output tool is used
-          : useStructured
-          ? { type: "tool", name: tools[0].name }
-          : undefined
+        tool_choice: toolChoice
       } satisfies typeof Generated.CreateMessageParams.Encoded
     }
   )
@@ -195,29 +219,6 @@ const make = Effect.fnUntraced(function*(options: {
 
 /**
  * @since 1.0.0
- * @category Layers
- */
-export const layerCompletions = (options: {
-  readonly model: (string & {}) | Model
-  readonly config?: Omit<Config.Service, "model">
-}): Layer.Layer<AiLanguageModel.AiLanguageModel, never, AnthropicClient> =>
-  Layer.effect(
-    AiLanguageModel.AiLanguageModel,
-    make({ model: options.model, config: options.config })
-  )
-
-/**
- * @since 1.0.0
- * @category Layers
- */
-export const layer = (options: {
-  readonly model: (string & {}) | Model
-  readonly config?: Omit<Config.Service, "model">
-}): Layer.Layer<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, never, AnthropicClient> =>
-  Layer.merge(layerCompletions(options), AnthropicTokenizer.layer)
-
-/**
- * @since 1.0.0
  * @category Configuration
  */
 export const withConfigOverride: {
@@ -251,9 +252,9 @@ interface UserMessageGroup {
 const groupMessages = (prompt: AiInput.AiInput): Array<MessageGroup> => {
   const messages: Array<MessageGroup> = []
   let current: MessageGroup | undefined = undefined
-  for (const message of prompt) {
-    switch (message.role) {
-      case "assistant": {
+  for (const message of prompt.messages) {
+    switch (message._tag) {
+      case "AssistantMessage": {
         if (current?.type !== "assistant") {
           current = { type: "assistant", messages: [] }
           messages.push(current)
@@ -261,7 +262,7 @@ const groupMessages = (prompt: AiInput.AiInput): Array<MessageGroup> => {
         current.messages.push(message)
         break
       }
-      case "tool": {
+      case "ToolMessage": {
         if (current?.type !== "user") {
           current = { type: "user", messages: [] }
           messages.push(current)
@@ -269,7 +270,7 @@ const groupMessages = (prompt: AiInput.AiInput): Array<MessageGroup> => {
         current.messages.push(message)
         break
       }
-      case "user": {
+      case "UserMessage": {
         if (current?.type !== "user") {
           current = { type: "user", messages: [] }
           messages.push(current)
@@ -299,38 +300,34 @@ const makeMessages = Effect.fnUntraced(
               const part = message.parts[k]
               const isLastPart = k === message.parts.length - 1
               switch (part._tag) {
-                case "File": {
-                  // TODO: figure out if this makes any sense in an assistant block
-                  break
-                }
-                case "Reasoning": {
+                case "ReasoningPart": {
                   content.push({
                     type: "thinking",
-                    thinking: part.reasoning,
+                    thinking: part.reasoningText,
                     signature: part.signature!
                   })
                   break
                 }
-                case "RedactedReasoning": {
+                case "RedactedReasoningPart": {
                   content.push({
                     type: "redacted_thinking",
-                    data: part.redactedContent
+                    data: part.redactedText
                   })
                   break
                 }
-                case "Text": {
+                case "TextPart": {
                   content.push({
                     type: "text",
                     text:
                       // Anthropic does not allow trailing whitespace in assistant
                       // content blocks
                       isLastGroup && isLastMessage && isLastPart
-                        ? part.content.trim()
-                        : part.content
+                        ? part.text.trim()
+                        : part.text
                   })
                   break
                 }
-                case "ToolCall": {
+                case "ToolCallPart": {
                   content.push({
                     type: "tool_use",
                     id: part.id,
@@ -349,8 +346,8 @@ const makeMessages = Effect.fnUntraced(
           const content: Array<typeof Generated.InputContentBlock.Encoded> = []
           for (let j = 0; j < group.messages.length; j++) {
             const message = group.messages[j]
-            switch (message.role) {
-              case "tool": {
+            switch (message._tag) {
+              case "ToolMessage": {
                 for (let k = 0; k < message.parts.length; k++) {
                   const part = message.parts[k]
                   // TODO: support advanced tool result content parts
@@ -362,11 +359,11 @@ const makeMessages = Effect.fnUntraced(
                 }
                 break
               }
-              case "user": {
+              case "UserMessage": {
                 for (let k = 0; k < message.parts.length; k++) {
                   const part = message.parts[k]
                   switch (part._tag) {
-                    case "File": {
+                    case "FilePart": {
                       if (Predicate.isUndefined(part.mediaType) || part.mediaType !== "application/pdf") {
                         return yield* new AiError({
                           module: "AnthropicLanguageModel",
@@ -376,39 +373,49 @@ const makeMessages = Effect.fnUntraced(
                       }
                       content.push({
                         type: "document",
-                        source: part.fileContent instanceof URL
-                          ? {
-                            type: "url",
-                            url: part.fileContent.toString()
-                          }
-                          : {
-                            type: "base64",
-                            media_type: "application/pdf",
-                            data: part.fileContent
-                          }
+                        source: {
+                          type: "base64",
+                          media_type: "application/pdf",
+                          data: Encoding.encodeBase64(part.data)
+                        }
                       })
                       break
                     }
-                    case "Text": {
+                    case "FileUrlPart": {
+                      content.push({
+                        type: "document",
+                        source: {
+                          type: "url",
+                          url: part.url.toString()
+                        }
+                      })
+                      break
+                    }
+                    case "TextPart": {
                       content.push({
                         type: "text",
-                        text: part.content
+                        text: part.text
                       })
                       break
                     }
-                    case "Image": {
+                    case "ImagePart": {
                       content.push({
                         type: "image",
-                        source: part.url instanceof URL
-                          ? {
-                            type: "url",
-                            url: part.url.toString()
-                          }
-                          : {
-                            type: "base64",
-                            media_type: part.mediaType ?? "image/jpeg" as any,
-                            data: Encoding.encodeBase64(part.url)
-                          }
+                        source: {
+                          type: "base64",
+                          media_type: part.mediaType ?? "image/jpeg" as any,
+                          data: Encoding.encodeBase64(part.data)
+                        }
+                      })
+                      break
+                    }
+                    case "ImageUrlPart": {
+                      content.push({
+                        type: "image",
+                        source: {
+                          type: "url",
+                          url: part.url.toString()
+                        }
                       })
                       break
                     }
@@ -438,7 +445,7 @@ const makeResponse = Effect.fnUntraced(
   function*(response: Generated.Message) {
     const parts: Array<AiResponse.Part> = []
     parts.push(
-      new AiResponse.ResponseMetadataPart({
+      new AiResponse.MetadataPart({
         id: response.id,
         model: response.model
       }, constDisableValidation)
@@ -448,7 +455,7 @@ const makeResponse = Effect.fnUntraced(
         case "text": {
           parts.push(
             new AiResponse.TextPart({
-              content: part.text
+              text: part.text
             }, constDisableValidation)
           )
           break
@@ -466,7 +473,7 @@ const makeResponse = Effect.fnUntraced(
         case "thinking": {
           parts.push(
             new AiResponse.ReasoningPart({
-              reasoning: part.thinking,
+              reasoningText: part.thinking,
               signature: part.signature
             }, constDisableValidation)
           )
@@ -475,12 +482,16 @@ const makeResponse = Effect.fnUntraced(
         case "redacted_thinking": {
           parts.push(
             new AiResponse.RedactedReasoningPart({
-              redactedContent: part.data
+              redactedText: part.data
             }, constDisableValidation)
           )
           break
         }
       }
+    }
+    const metadata: Mutable<ProviderMetadata.Service> = {}
+    if (response.stop_sequence !== null) {
+      metadata.stopSequence = response.stop_sequence
     }
     parts.push(
       new AiResponse.FinishPart({
@@ -493,7 +504,10 @@ const makeResponse = Effect.fnUntraced(
           reasoningTokens: 0,
           cacheReadInputTokens: response.usage.cache_read_input_tokens ?? 0,
           cacheWriteInputTokens: response.usage.cache_creation_input_tokens ?? 0
-        })
+        }),
+        providerMetadata: {
+          [ProviderMetadata.key]: metadata
+        }
       }, constDisableValidation)
     )
     return new AiResponse.AiResponse({
@@ -543,12 +557,12 @@ const annotateStreamResponse = (
   span: Span,
   response: AiResponse.AiResponse
 ) => {
-  const responseMetadataPart = response.parts.find((part) => part._tag === "ResponseMetadata")
-  const finishPart = response.parts.find((part) => part._tag === "Finish")
+  const metadataPart = response.parts.find((part) => part._tag === "MetadataPart")
+  const finishPart = response.parts.find((part) => part._tag === "FinishPart")
   addGenAIAnnotations(span, {
     response: {
-      id: responseMetadataPart?.id,
-      model: responseMetadataPart?.model,
+      id: metadataPart?.id,
+      model: metadataPart?.model,
       finishReasons: finishPart?.reason ? [finishPart.reason] : undefined
     },
     usage: {

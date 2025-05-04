@@ -9,7 +9,6 @@ import type * as Schedule from "effect/Schedule"
 import type * as Types from "effect/Types"
 import type * as Unify from "effect/Unify"
 import type * as AiModel from "./AiModel.js"
-import type { AiModels } from "./AiModels.js"
 import * as Internal from "./internal/aiPlan.js"
 
 /**
@@ -56,7 +55,7 @@ export interface AiPlanUnifyIgnore extends Effect.EffectUnifyIgnore {
  * @since 1.0.0
  * @category Models
  */
-export type Builder<Provides, Requires> = Effect.Effect<Provider<Provides>, never, AiModels | Requires>
+export type Builder<Provides, Requires> = Effect.Effect<Provider<Provides>, never, Requires>
 
 /**
  * @since 1.0.0

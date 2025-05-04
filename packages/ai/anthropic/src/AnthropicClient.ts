@@ -71,9 +71,19 @@ export const make = (options: {
     const httpClient = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((request) =>
         request.pipe(
-          HttpClientRequest.prependUrl(options.apiUrl ?? "https://api.anthropic.com"),
-          options.apiKey ? HttpClientRequest.setHeader("x-api-key", Redacted.value(options.apiKey)) : identity,
-          HttpClientRequest.setHeader("anthropic-version", options.anthropicVersion ?? "2023-06-01"),
+          HttpClientRequest.prependUrl(
+            options.apiUrl ?? "https://api.anthropic.com"
+          ),
+          options.apiKey
+            ? HttpClientRequest.setHeader(
+              "x-api-key",
+              Redacted.value(options.apiKey)
+            )
+            : identity,
+          HttpClientRequest.setHeader(
+            "anthropic-version",
+            options.anthropicVersion ?? "2023-06-01"
+          ),
           HttpClientRequest.acceptJson
         )
       ),
@@ -101,10 +111,12 @@ export const make = (options: {
       Stream.suspend(() => {
         const toolCalls = {} as Record<number, RawToolCall>
         let finishReason: AiResponse.FinishReason = "unknown"
-        let reasoning: {
-          readonly content: Array<string>
-          readonly signature?: string
-        } | undefined = undefined
+        let reasoning:
+          | {
+            readonly content: Array<string>
+            readonly signature?: string
+          }
+          | undefined = undefined
         let usage: AiResponse.Usage = {
           inputTokens: 0,
           outputTokens: 0,
@@ -125,16 +137,20 @@ export const make = (options: {
                 usage = {
                   inputTokens: chunk.message.usage.input_tokens,
                   outputTokens: chunk.message.usage.output_tokens,
-                  totalTokens: chunk.message.usage.input_tokens + chunk.message.usage.output_tokens,
+                  totalTokens: chunk.message.usage.input_tokens +
+                    chunk.message.usage.output_tokens,
                   reasoningTokens: 0,
                   cacheWriteInputTokens: chunk.message.usage.cache_creation_input_tokens ?? 0,
                   cacheReadInputTokens: chunk.message.usage.cache_read_input_tokens ?? 0
                 }
                 parts.push(
-                  new AiResponse.ResponseMetadataPart({
-                    id: chunk.message.id,
-                    model: chunk.message.model
-                  }, constDisableValidation)
+                  new AiResponse.MetadataPart(
+                    {
+                      id: chunk.message.id,
+                      model: chunk.message.model
+                    },
+                    constDisableValidation
+                  )
                 )
                 break
               }
@@ -148,10 +164,13 @@ export const make = (options: {
               }
               case "message_stop": {
                 parts.push(
-                  new AiResponse.FinishPart({
-                    reason: finishReason,
-                    usage
-                  }, constDisableValidation)
+                  new AiResponse.FinishPart(
+                    {
+                      reason: finishReason,
+                      usage
+                    },
+                    constDisableValidation
+                  )
                 )
                 break
               }
@@ -175,9 +194,10 @@ export const make = (options: {
                   }
                   case "redacted_thinking": {
                     parts.push(
-                      new AiResponse.RedactedReasoningPart({
-                        redactedContent: content.data
-                      }, constDisableValidation)
+                      new AiResponse.RedactedReasoningPart(
+                        { redactedText: content.data },
+                        constDisableValidation
+                      )
                     )
                     break
                   }
@@ -188,9 +208,10 @@ export const make = (options: {
                 switch (chunk.delta.type) {
                   case "text_delta": {
                     parts.push(
-                      new AiResponse.TextPart({
-                        content: chunk.delta.text
-                      }, constDisableValidation)
+                      new AiResponse.TextPart(
+                        { text: chunk.delta.text },
+                        constDisableValidation
+                      )
                     )
                     break
                   }
@@ -242,7 +263,7 @@ export const make = (options: {
                 if (Predicate.isNotUndefined(reasoning)) {
                   parts.push(
                     new AiResponse.ReasoningPart({
-                      reasoning: reasoning.content.join(""),
+                      reasoningText: reasoning.content.join(""),
                       signature: reasoning.signature
                     }, constDisableValidation)
                   )
@@ -251,20 +272,29 @@ export const make = (options: {
                 break
               }
               case "error": {
-                return Option.some(Effect.die(
-                  new AiError.AiError({
-                    module: "AnthropicClient",
-                    method: "stream",
-                    description: `${chunk.error.type}: ${chunk.error.message}`
-                  })
-                ))
+                return Option.some(
+                  Effect.die(
+                    new AiError.AiError({
+                      module: "AnthropicClient",
+                      method: "stream",
+                      description: `${chunk.error.type}: ${chunk.error.message}`
+                    })
+                  )
+                )
               }
             }
-            return parts.length === 0 ? Option.none() : Option.some(
-              Effect.succeed(AiResponse.AiResponse.make({
-                parts
-              }, constDisableValidation))
-            )
+            return parts.length === 0
+              ? Option.none()
+              : Option.some(
+                Effect.succeed(
+                  AiResponse.AiResponse.make(
+                    {
+                      parts
+                    },
+                    constDisableValidation
+                  )
+                )
+              )
           })
         )
       })
@@ -282,11 +312,11 @@ export const layer = (options: {
   readonly transformClient?: (
     client: HttpClient.HttpClient
   ) => HttpClient.HttpClient
-}): Layer.Layer<AiModels.AiModels | AnthropicClient, never, HttpClient.HttpClient> =>
-  Layer.merge(
-    AiModels.layer,
-    Layer.effect(AnthropicClient, make(options))
-  )
+}): Layer.Layer<
+  AiModels.AiModels | AnthropicClient,
+  never,
+  HttpClient.HttpClient
+> => Layer.merge(AiModels.layer, Layer.effect(AnthropicClient, make(options)))
 
 /**
  * @since 1.0.0
@@ -301,7 +331,11 @@ export const layerConfig = (
       client: HttpClient.HttpClient
     ) => HttpClient.HttpClient
   }>
-): Layer.Layer<AiModels.AiModels | AnthropicClient, ConfigError, HttpClient.HttpClient> =>
+): Layer.Layer<
+  AiModels.AiModels | AnthropicClient,
+  ConfigError,
+  HttpClient.HttpClient
+> =>
   Config.unwrap(options).pipe(
     Effect.flatMap(make),
     Layer.effect(AnthropicClient),
