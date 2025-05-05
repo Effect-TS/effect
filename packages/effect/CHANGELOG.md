@@ -1,5 +1,13 @@
 # effect
 
+## 3.14.19
+
+### Patch Changes
+
+- [#4822](https://github.com/Effect-TS/effect/pull/4822) [`056a910`](https://github.com/Effect-TS/effect/commit/056a910d0a0b8b00b0dc9df4a070466b2b5c2f6c) Thanks @KhraksMamtsov! - fix `Layer.discard` jsdoc
+
+- [#4816](https://github.com/Effect-TS/effect/pull/4816) [`3273d57`](https://github.com/Effect-TS/effect/commit/3273d572c2b3175a842677f19efeea4cd65ab016) Thanks @mikearnaldi! - Fix captureStackTrace for bun
+
 ## 3.14.18
 
 ### Patch Changes
