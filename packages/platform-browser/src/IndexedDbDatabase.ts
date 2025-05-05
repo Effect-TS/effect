@@ -224,17 +224,19 @@ export const layer = <
                   })
 
                   return prev.then(() =>
-                    Effect.runPromise(migration.execute(fromApi, toApi)).catch(
-                      (cause) => {
-                        resume(
-                          Effect.fail(
-                            new IndexedDbDatabaseError({
-                              reason: "UpgradeError",
-                              cause
-                            })
+                    Effect.runPromise(
+                      migration.execute(fromApi, toApi).pipe(
+                        Effect.mapError((cause) =>
+                          resume(
+                            Effect.fail(
+                              new IndexedDbDatabaseError({
+                                reason: "UpgradeError",
+                                cause
+                              })
+                            )
                           )
                         )
-                      }
+                      )
                     )
                   )
                 } else if (untypedMigration._tag === "Initial") {
