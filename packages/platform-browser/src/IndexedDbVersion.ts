@@ -1,10 +1,16 @@
 /**
  * @since 1.0.0
  */
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
 import * as HashMap from "effect/HashMap"
+import * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
+import * as IndexedDbDatabase from "./IndexedDbDatabase.js"
+import type * as IndexedDbQuery from "./IndexedDbQuery.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
+import * as internal from "./internal/indexedDbQuery.js"
 
 /**
  * @since 1.0.0
@@ -73,6 +79,25 @@ export declare namespace IndexedDbVersion {
   >
 }
 
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export class IndexedDbApi extends Context.Tag(
+  "@effect/platform-browser/IndexedDbApi"
+)<
+  IndexedDbApi,
+  {
+    readonly use: <A>(
+      f: (database: globalThis.IDBDatabase) => Promise<A>
+    ) => Effect.Effect<A, internal.IndexedDbQueryError>
+
+    readonly makeApi: <
+      Source extends IndexedDbVersion.AnyWithProps = never
+    >(source: Source) => IndexedDbQuery.IndexedDbQuery<Source>
+  }
+>() {}
+
 const Proto = {
   [TypeId]: TypeId,
   pipe() {
@@ -104,3 +129,26 @@ export const make = <
     )
   })
 }
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layer = Layer.effect(
+  IndexedDbApi,
+  Effect.gen(function*() {
+    const { IDBKeyRange, database } = yield* IndexedDbDatabase.IndexedDbDatabase
+    return IndexedDbApi.of({
+      makeApi: (source) => internal.makeProto({ database, IDBKeyRange, source, transaction: undefined }),
+      use: (f) =>
+        Effect.tryPromise({
+          try: () => f(database),
+          catch: (error) =>
+            new internal.IndexedDbQueryError({
+              reason: "UnknownError",
+              cause: error
+            })
+        })
+    })
+  })
+)

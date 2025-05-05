@@ -2,7 +2,6 @@ import {
   IndexedDb,
   IndexedDbDatabase,
   IndexedDbMigration,
-  IndexedDbQuery,
   IndexedDbTable,
   IndexedDbVersion
 } from "@effect/platform-browser"
@@ -58,12 +57,12 @@ class Migration extends IndexedDbMigration.make(DatabaseVersion1, (api) =>
 const DatabaseLayer = IndexedDbDatabase.layer("database", Migration).pipe(
   Layer.provide(IndexedDb.layerWindow)
 )
-const MainLayer = IndexedDbQuery.layer.pipe(Layer.provide(DatabaseLayer))
+const MainLayer = IndexedDbVersion.layer.pipe(Layer.provide(DatabaseLayer))
 
 export class IndexedDbService extends Effect.Service<IndexedDbService>()("IndexedDbService", {
   dependencies: [MainLayer],
   effect: Effect.gen(function*() {
-    const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+    const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
     return makeApi(CurrentDatabaseVersion)
   })
 }) {}
