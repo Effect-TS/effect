@@ -21,7 +21,7 @@ import * as Redacted from "effect/Redacted"
 import * as Stream from "effect/Stream"
 import { AnthropicConfig } from "./AnthropicConfig.js"
 import * as Generated from "./Generated.js"
-import { resolveFinishReason } from "./internal/utilities.js"
+import * as InternalUtilities from "./internal/utilities.js"
 
 const constDisableValidation = { disableValidation: true } as const
 
@@ -124,6 +124,7 @@ export const make = (options: {
           cacheReadInputTokens: 0,
           cacheWriteInputTokens: 0
         }
+        const metadata: Record<string, unknown> = {}
         return streamRequest<MessageStreamEvent>(
           HttpClientRequest.post("/v1/messages", {
             body: HttpBody.unsafeJson({ ...request, stream: true })
@@ -158,18 +159,19 @@ export const make = (options: {
                   ...usage,
                   outputTokens: chunk.usage.output_tokens
                 }
-                finishReason = resolveFinishReason(chunk.delta.stop_reason)
+                if (Predicate.isNotNullable(chunk.delta.stop_sequence)) {
+                  metadata.stopSequence = chunk.delta.stop_sequence
+                }
+                finishReason = InternalUtilities.resolveFinishReason(chunk.delta.stop_reason)
                 break
               }
               case "message_stop": {
                 parts.push(
-                  new AiResponse.FinishPart(
-                    {
-                      reason: finishReason,
-                      usage
-                    },
-                    constDisableValidation
-                  )
+                  new AiResponse.FinishPart({
+                    usage,
+                    reason: finishReason,
+                    providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
+                  }, constDisableValidation)
                 )
                 break
               }

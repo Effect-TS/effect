@@ -19,7 +19,7 @@ import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import * as Stream from "effect/Stream"
 import * as Generated from "./Generated.js"
-import { resolveFinishReason } from "./internal/utilities.js"
+import * as InternalUtilities from "./internal/utilities.js"
 import { OpenAiConfig } from "./OpenAiConfig.js"
 
 const constDisableValidation = { disableValidation: true } as const
@@ -167,9 +167,18 @@ export const make = (options: {
 
               // Track the finish reason for the response
               if (Predicate.isNotNullable(choice.finish_reason)) {
-                finishReason = resolveFinishReason(choice.finish_reason)
+                finishReason = InternalUtilities.resolveFinishReason(choice.finish_reason)
                 if (finishReason === "tool-calls" && Predicate.isNotUndefined(toolCallIndex)) {
                   finishToolCall(toolCalls[toolCallIndex], parts)
+                }
+                if (finishReason === "stop") {
+                  parts.push(
+                    new AiResponse.FinishPart({
+                      usage,
+                      reason: finishReason,
+                      providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
+                    }, constDisableValidation)
+                  )
                 }
               }
 

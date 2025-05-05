@@ -1,6 +1,9 @@
 import type * as AiResponse from "@effect/ai/AiResponse"
 import * as Predicate from "effect/Predicate"
 
+/** @internal */
+export const ProviderMetadataKey = "@effect/ai-anthropic/AnthropicLanguageModel/ProviderMetadata"
+
 const finishReasonMap: Record<string, AiResponse.FinishReason> = {
   end_turn: "stop",
   max_tokens: "length",

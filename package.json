@@ -6,7 +6,7 @@
     "clean": "node scripts/clean.mjs",
     "codegen": "pnpm --recursive --parallel --filter \"./packages/**/*\" run codegen",
     "codemod": "node scripts/codemod.mjs",
-    "build": "tsc -b tsconfig.build.json && pnpm --recursive --parallel run build",
+    "build": "tsc -b tsconfig.build.json && pnpm --recursive --parallel --filter \"./packages/**/*\" run build",
     "circular": "node scripts/circular.mjs",
     "test": "vitest",
     "coverage": "vitest --coverage",

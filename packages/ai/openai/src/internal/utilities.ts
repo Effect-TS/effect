@@ -1,6 +1,9 @@
 import type * as AiResponse from "@effect/ai/AiResponse"
 import * as Predicate from "effect/Predicate"
 
+/** @internal */
+export const ProviderMetadataKey = "@effect/ai-openai/OpenAiLanguageModel/ProviderMetadata"
+
 const finishReasonMap: Record<string, AiResponse.FinishReason> = {
   content_filter: "content-filter",
   function_call: "tool-calls",

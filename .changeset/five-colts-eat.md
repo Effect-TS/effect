@@ -48,11 +48,30 @@ const main = Effect.gen(function*() {
 
 The `AiInput` and `AiResponse` types have been refactored to allow inclusion of more information and metadata from model providers where possible, such as reasoning output and prompt cache token utilization.
 
+In addition, for an `AiResponse` you can now access metadata that is specific to a given provider. For example, when using OpenAi to generate audio, you can check the input and output audio tokens used:
+
+```ts
+import { OpenAiLanguageModel } from "@effect/ai-openai"
+import { Effect, Option } from "effect"
+
+const getDadJoke = OpenAiLanguageModel.generateText({
+  prompt: "Generate a hilarious dad joke"
+})
+
+Effect.gen(function*() {
+  const model = yield* OpenAiLanguageModel.model("gpt-4o")
+  const response = yield* model.use(getDadJoke)
+  const metadata = response.getProviderMetadata(OpenAiLanguageModel.ProviderMetadata)
+  if (Option.isSome(metadata)) {
+    console.log(metadata.value)
+  }
+})
+
+```
+
 ### `AiTool` and `AiToolkit`
 
 The `AiToolkit` has been completely refactored to simplify creating a collection of tools and using those tools in requests to model providers. A new `AiTool` data type has also been introduced to simplify defining tools for a toolkit. `AiToolkit.implement` has been renamed to `AiToolkit.toLayer` for clarity, and defining handlers is now very similar to the way handlers are defined in the `@effect/rpc` library.
-
-In addition, you can now control how many sequential steps are performed by `AiLanguageModel.generateText` and `AiLanguageModel.streamText` via the `maxSteps` option. For example, if `maxSteps` is set to `> 1` and any tools are invoked by the language model, these methods will take care of resolving the tool call and returning the results to the language model for subsequent generation (up to the maximum number of steps specified).
 
 A complete example of an `AiToolkit` implementation and usage can be found below:
 
@@ -156,10 +175,7 @@ const makeDadJoke = Effect.gen(function*() {
 
   const response = yield* languageModel.generateText({
     prompt: "Come up with a dad joke about pirates",
-    toolkit,
-    // Allow a maximum of two sequential interactions with the language model
-    // before returning the response
-    maxSteps: 2
+    toolkit
   })
 
   return yield* languageModel.generateText({

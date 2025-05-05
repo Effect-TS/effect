@@ -21,7 +21,7 @@ import type { Mutable, Simplify } from "effect/Types"
 import { AnthropicClient } from "./AnthropicClient.js"
 import * as AnthropicTokenizer from "./AnthropicTokenizer.js"
 import type * as Generated from "./Generated.js"
-import { resolveFinishReason } from "./internal/utilities.js"
+import * as InternalUtilities from "./internal/utilities.js"
 
 const constDisableValidation = { disableValidation: true } as const
 
@@ -80,7 +80,7 @@ export declare namespace Config {
  * @since 1.0.0
  * @category Context
  */
-export class ProviderMetadata extends Context.Tag("@effect/ai-anthropic/AnthropicLanguageModel/ProviderMetadata")<
+export class ProviderMetadata extends Context.Tag(InternalUtilities.ProviderMetadataKey)<
   ProviderMetadata,
   ProviderMetadata.Service
 >() {}
@@ -94,6 +94,12 @@ export declare namespace ProviderMetadata {
    * @category Provider Metadata
    */
   export interface Service {
+    /**
+     * Which custom stop sequence was generated, if any.
+     *
+     * Will be a non-null string if one of your custom stop sequences was
+     * generated.
+     */
     readonly stopSequence?: string
   }
 }
@@ -496,7 +502,7 @@ const makeResponse = Effect.fnUntraced(
     parts.push(
       new AiResponse.FinishPart({
         // Anthropic always returns a non-null `stop_reason` for non-streaming responses
-        reason: resolveFinishReason(response.stop_reason!),
+        reason: InternalUtilities.resolveFinishReason(response.stop_reason!),
         usage: new AiResponse.Usage({
           inputTokens: response.usage.input_tokens,
           outputTokens: response.usage.output_tokens,
@@ -505,9 +511,7 @@ const makeResponse = Effect.fnUntraced(
           cacheReadInputTokens: response.usage.cache_read_input_tokens ?? 0,
           cacheWriteInputTokens: response.usage.cache_creation_input_tokens ?? 0
         }),
-        providerMetadata: {
-          [ProviderMetadata.key]: metadata
-        }
+        providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
       }, constDisableValidation)
     )
     return new AiResponse.AiResponse({
