@@ -40,7 +40,7 @@ export const causeResponse = <E>(
           return Option.some([Respondable.toResponseOrElse(cause.error, internalServerError), cause] as const)
         }
         case "Die": {
-          return Option.some([Respondable.toResponseOrElse(cause.defect, internalServerError), cause] as const)
+          return Option.some([Effect.succeed(internalServerError), cause] as const)
         }
         case "Interrupt": {
           if (acc[1]._tag !== "Empty") {
