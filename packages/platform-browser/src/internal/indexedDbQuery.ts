@@ -176,12 +176,12 @@ export type KeyPath<TableSchema extends Schema.Schema.AnyNoContext> =
 
 /** @internal */
 export const TypeId: IndexedDbQuery.TypeId = Symbol.for(
-  "@effect/platform/IndexedDbQuery"
+  "@effect/platform-browser/IndexedDbQuery"
 ) as IndexedDbQuery.TypeId
 
 /** @internal */
 export const ErrorTypeId: IndexedDbQuery.ErrorTypeId = Symbol.for(
-  "@effect/platform/IndexedDbQuery/IndexedDbQueryError"
+  "@effect/platform-browser/IndexedDbQuery/IndexedDbQueryError"
 ) as IndexedDbQuery.ErrorTypeId
 
 /**

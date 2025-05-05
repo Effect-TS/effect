@@ -10,7 +10,7 @@ import { type KeyPath } from "./internal/indexedDbQuery.js"
  * @category type ids
  */
 export const TypeId: unique symbol = Symbol.for(
-  "@effect/platform/IndexedDbTable"
+  "@effect/platform-browser/IndexedDbTable"
 )
 
 /**
