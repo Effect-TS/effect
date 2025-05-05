@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import type { ToolCallId } from "@effect/ai/AiInput"
-import * as AiModels from "@effect/ai/AiModels"
 import * as AiResponse from "@effect/ai/AiResponse"
 import * as Sse from "@effect/experimental/Sse"
 import * as HttpBody from "@effect/platform/HttpBody"
@@ -224,11 +223,7 @@ export const layer = (options: {
   readonly organizationId?: Redacted.Redacted | undefined
   readonly projectId?: Redacted.Redacted | undefined
   readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
-}): Layer.Layer<AiModels.AiModels | OpenAiClient, never, HttpClient.HttpClient> =>
-  Layer.merge(
-    AiModels.layer,
-    Layer.effect(OpenAiClient, make(options))
-  )
+}): Layer.Layer<OpenAiClient, never, HttpClient.HttpClient> => Layer.effect(OpenAiClient, make(options))
 
 /**
  * @since 1.0.0
@@ -242,11 +237,10 @@ export const layerConfig = (
     readonly projectId?: Redacted.Redacted | undefined
     readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
   }>
-): Layer.Layer<AiModels.AiModels | OpenAiClient, ConfigError, HttpClient.HttpClient> =>
+): Layer.Layer<OpenAiClient, ConfigError, HttpClient.HttpClient> =>
   Config.unwrap(options).pipe(
     Effect.flatMap(make),
-    Layer.effect(OpenAiClient),
-    Layer.merge(AiModels.layer)
+    Layer.effect(OpenAiClient)
   )
 
 interface RawCompletionChunk {

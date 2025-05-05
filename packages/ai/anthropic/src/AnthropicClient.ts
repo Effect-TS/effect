@@ -3,7 +3,6 @@
  */
 import * as AiError from "@effect/ai/AiError"
 import * as AiInput from "@effect/ai/AiInput"
-import * as AiModels from "@effect/ai/AiModels"
 import * as AiResponse from "@effect/ai/AiResponse"
 import * as Sse from "@effect/experimental/Sse"
 import * as HttpBody from "@effect/platform/HttpBody"
@@ -313,10 +312,10 @@ export const layer = (options: {
     client: HttpClient.HttpClient
   ) => HttpClient.HttpClient
 }): Layer.Layer<
-  AiModels.AiModels | AnthropicClient,
+  AnthropicClient,
   never,
   HttpClient.HttpClient
-> => Layer.merge(AiModels.layer, Layer.effect(AnthropicClient, make(options)))
+> => Layer.effect(AnthropicClient, make(options))
 
 /**
  * @since 1.0.0
@@ -332,14 +331,13 @@ export const layerConfig = (
     ) => HttpClient.HttpClient
   }>
 ): Layer.Layer<
-  AiModels.AiModels | AnthropicClient,
+  AnthropicClient,
   ConfigError,
   HttpClient.HttpClient
 > =>
   Config.unwrap(options).pipe(
     Effect.flatMap(make),
-    Layer.effect(AnthropicClient),
-    Layer.merge(AiModels.layer)
+    Layer.effect(AnthropicClient)
   )
 
 /**
