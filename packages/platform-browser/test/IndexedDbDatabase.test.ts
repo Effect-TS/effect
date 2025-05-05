@@ -2,7 +2,6 @@ import {
   IndexedDb,
   IndexedDbDatabase,
   IndexedDbMigration,
-  IndexedDbQuery,
   IndexedDbTable,
   IndexedDbVersion
 } from "@effect/platform-browser"
@@ -16,7 +15,7 @@ const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ i
 
 const provideMigration = (migration: IndexedDbMigration.IndexedDbMigration.Any) =>
   Effect.provide(
-    IndexedDbQuery.layer.pipe(
+    IndexedDbVersion.layer.pipe(
       Layer.provide(
         IndexedDbDatabase.layer(databaseName, migration).pipe(Layer.provide(layerFakeIndexedDb))
       )
@@ -50,7 +49,7 @@ describe("IndexedDbDatabase", () => {
     {}
 
     return Effect.gen(function*() {
-      const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+      const { makeApi, use } = yield* IndexedDbVersion.IndexedDbApi
       const api = makeApi(Db)
       const todo = yield* api.from("todo").select()
 
@@ -100,7 +99,7 @@ describe("IndexedDbDatabase", () => {
     {}
 
     return Effect.gen(function*() {
-      const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+      const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
       const api = makeApi(Db)
 
       yield* api.transaction(
@@ -165,7 +164,7 @@ describe("IndexedDbDatabase", () => {
     {}
 
     return Effect.gen(function*() {
-      const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+      const { makeApi, use } = yield* IndexedDbVersion.IndexedDbApi
       const api = makeApi(Db2)
       const todo = yield* api.from("todo").select()
       const name = yield* use(async (database) => database.name)
@@ -216,7 +215,7 @@ describe("IndexedDbDatabase", () => {
     ) {}
 
     return Effect.gen(function*() {
-      const { makeApi, use } = yield* IndexedDbQuery.IndexedDbApi
+      const { makeApi, use } = yield* IndexedDbVersion.IndexedDbApi
       const api = makeApi(Db2)
       const user = yield* api.from("user").select()
 

@@ -2,7 +2,6 @@ import {
   IndexedDb,
   IndexedDbDatabase,
   IndexedDbMigration,
-  IndexedDbQuery,
   IndexedDbTable,
   IndexedDbVersion
 } from "@effect/platform-browser"
@@ -16,7 +15,7 @@ const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ i
 
 const provideMigration = (migration: IndexedDbMigration.IndexedDbMigration.Any) =>
   Effect.provide(
-    IndexedDbQuery.layer.pipe(
+    IndexedDbVersion.layer.pipe(
       Layer.provide(
         IndexedDbDatabase.layer(databaseName, migration).pipe(Layer.provide(layerFakeIndexedDb))
       )
@@ -81,7 +80,7 @@ describe("IndexedDbQueryBuilder", () => {
     it.effect("select", () =>
       Effect.gen(function*() {
         {
-          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
           const api = makeApi(Db)
           const from = api.from("todo")
           const select = from.select()
@@ -108,7 +107,7 @@ describe("IndexedDbQueryBuilder", () => {
     it.effect("select with index", () =>
       Effect.gen(function*() {
         {
-          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
           const api = makeApi(Db)
           const from = api.from("todo")
           const select = from.select("titleIndex")
@@ -135,7 +134,7 @@ describe("IndexedDbQueryBuilder", () => {
     it.effect("select equals", () =>
       Effect.gen(function*() {
         {
-          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
           const api = makeApi(Db)
           const from = api.from("todo")
           const select = from.select()
@@ -166,7 +165,7 @@ describe("IndexedDbQueryBuilder", () => {
     it.effect("select equals with index", () =>
       Effect.gen(function*() {
         {
-          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
           const api = makeApi(Db)
           const from = api.from("todo")
           const select = from.select("titleIndex")
@@ -199,7 +198,7 @@ describe("IndexedDbQueryBuilder", () => {
     it.effect("select gte", () =>
       Effect.gen(function*() {
         {
-          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
           const api = makeApi(Db)
           const data = yield* api.from("todo").select().gte(2)
 
@@ -226,7 +225,7 @@ describe("IndexedDbQueryBuilder", () => {
     it.effect("select gte with index", () =>
       Effect.gen(function*() {
         {
-          const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+          const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
           const api = makeApi(Db)
           const data = yield* api.from("todo").select("countIndex").gte(3)
 
@@ -251,7 +250,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("select lte", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const data = yield* api.from("todo").select().lte(2)
 
@@ -276,7 +275,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("select gt", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const data = yield* api.from("todo").select().gt(2)
 
@@ -298,7 +297,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("select lt", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const data = yield* api.from("todo").select().lt(2)
 
@@ -320,7 +319,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("select between", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const data = yield* api.from("todo").select().between(2, 3)
 
@@ -347,7 +346,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("select between with exclude", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const data = yield* api.from("todo").select().between(2, 4, {
           excludeLowerBound: true,
@@ -374,7 +373,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("select limit", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const data = yield* api.from("todo").select().limit(2)
 
@@ -401,7 +400,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("select limit with filters", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const data = yield* api.from("todo").select("countIndex").gte(2).limit(2)
 
@@ -428,7 +427,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("select first", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const data = yield* api.from("todo").select().first()
 
@@ -449,7 +448,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("select first with filters", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const data = yield* api.from("todo").select("titleIndex").equals("test2").first()
 
@@ -472,7 +471,7 @@ describe("IndexedDbQueryBuilder", () => {
   describe("modify", () => {
     it.effect("insert", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const addedKey = yield* api.from("todo").insert({ id: 10, title: "insert1", count: 10, completed: true })
         const data = yield* api.from("todo").select()
@@ -491,7 +490,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("insert with manual key required", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const addedKey = yield* api.from("user").insert({
           key: 10,
@@ -515,7 +514,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("insert with manual multiple keys required", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const addedKey = yield* api.from("person").insert({
           firstName: "John",
@@ -540,7 +539,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("insert with manual key optional", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const addedKey = yield* api.from("product").insert({
           key: "10",
@@ -565,7 +564,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("insert with auto-increment", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const addedKey = yield* api.from("price").insertAll([
           { amount: 10 },
@@ -595,7 +594,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("insert with auto-increment and get first", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const addedKey = yield* api.from("price").insert(
           { amount: 10 }
@@ -618,7 +617,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("upsert", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const addedKey = yield* api.from("todo").upsert({ id: 10, title: "update1", count: -10, completed: false })
         const data = yield* api.from("todo").select()
@@ -638,7 +637,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("delete", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         yield* api.from("todo").delete().equals(10)
         const data = yield* api.from("todo").select()
@@ -660,7 +659,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("delete with limit", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         yield* api.from("todo").delete().limit(1)
         const data = yield* api.from("todo").select()
@@ -682,7 +681,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("clear", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         yield* api.from("todo").clear
         const data = yield* api.from("todo").select()
@@ -705,7 +704,7 @@ describe("IndexedDbQueryBuilder", () => {
   describe("modify all", () => {
     it.effect("insertAll", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const addedKeys = yield* api.from("todo").insertAll([
           { id: 10, title: "insert1", count: 10, completed: true },
@@ -730,7 +729,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("upsertAll", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const addedKeys = yield* api.from("todo").upsertAll([
           { id: 10, title: "update1", count: -10, completed: false },
@@ -759,7 +758,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("upsertAll same key", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         const addedKeys = yield* api.from("todo").upsertAll([
           { id: 10, title: "update1", count: -10, completed: false },
@@ -784,7 +783,7 @@ describe("IndexedDbQueryBuilder", () => {
 
     it.effect("clearAll", () =>
       Effect.gen(function*() {
-        const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+        const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
         const api = makeApi(Db)
         yield* api.clearAll
         const data = yield* api.from("todo").select()
@@ -803,7 +802,7 @@ describe("IndexedDbQueryBuilder", () => {
 
   it.effect("count", () =>
     Effect.gen(function*() {
-      const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+      const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
       const api = makeApi(Db)
       const data = yield* api.from("todo").count()
 
@@ -824,7 +823,7 @@ describe("IndexedDbQueryBuilder", () => {
 
   it.effect("count with filters", () =>
     Effect.gen(function*() {
-      const { makeApi } = yield* IndexedDbQuery.IndexedDbApi
+      const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
       const api = makeApi(Db)
       const data = yield* api.from("todo").count("titleIndex").equals("test2")
 

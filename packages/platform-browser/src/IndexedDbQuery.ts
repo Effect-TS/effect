@@ -1,10 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as IndexedDbDatabase from "./IndexedDbDatabase.js"
+import type * as Effect from "effect/Effect"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 import { type IndexFromTable } from "./internal/indexedDbMigration.js"
@@ -413,45 +410,3 @@ export declare namespace IndexedDbQueryBuilder {
     readonly values: Array<internal.ModifyWithKey<Source, Table>>
   }
 }
-
-/**
- * @since 1.0.0
- * @category tags
- */
-export class IndexedDbApi extends Context.Tag(
-  "@effect/platform-browser/IndexedDbApi"
-)<
-  IndexedDbApi,
-  {
-    readonly use: <A>(
-      f: (database: globalThis.IDBDatabase) => Promise<A>
-    ) => Effect.Effect<A, internal.IndexedDbQueryError>
-
-    readonly makeApi: <
-      Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
-    >(source: Source) => IndexedDbQuery<Source>
-  }
->() {}
-
-/**
- * @since 1.0.0
- * @category layers
- */
-export const layer = Layer.effect(
-  IndexedDbApi,
-  Effect.gen(function*() {
-    const { IDBKeyRange, database } = yield* IndexedDbDatabase.IndexedDbDatabase
-    return IndexedDbApi.of({
-      makeApi: (source) => internal.makeProto({ database, IDBKeyRange, source, transaction: undefined }),
-      use: (f) =>
-        Effect.tryPromise({
-          try: () => f(database),
-          catch: (error) =>
-            new internal.IndexedDbQueryError({
-              reason: "UnknownError",
-              cause: error
-            })
-        })
-    })
-  })
-)
