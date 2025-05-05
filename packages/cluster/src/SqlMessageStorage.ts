@@ -681,7 +681,7 @@ export const make = Effect.fnUntraced(function*(options?: {
       `.unprepared.pipe(
         Effect.provideService(SqlClient.SafeIntegers, true),
         Effect.map(Arr.map((row): Reply.ReplyEncoded<any> =>
-          row.kind === replyKind.WithExit ?
+          Number(row.kind) === replyKind.WithExit ?
             ({
               _tag: "WithExit",
               id: String(row.id),
