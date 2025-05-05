@@ -436,6 +436,17 @@ describe("Effect", () => {
         )
       )
     ).type.toBe<Effect.Effect<"a", "a">>()
+    expect(
+      Effect.succeed<"a" | "b">("a").pipe(
+        Effect.filterOrFail(
+          (s): s is "a" => s === "a",
+          (x) => {
+            expect(x).type.toBe<"b">()
+            return "a" as const
+          }
+        )
+      )
+    ).type.toBe<Effect.Effect<"a", "a">>()
   })
 
   it("filterOrDie", () => {
@@ -445,6 +456,18 @@ describe("Effect", () => {
           tacitStringPredicate,
           (x) => {
             expect(x).type.toBe<"a">()
+            return "fail"
+          }
+        )
+      )
+    ).type.toBe<Effect.Effect<"a">>()
+
+    expect(
+      Effect.succeed<"a" | "b">("a").pipe(
+        Effect.filterOrDie(
+          (s): s is "a" => s === "a",
+          (x) => {
+            expect(x).type.toBe<"b">()
             return "fail"
           }
         )
@@ -1256,17 +1279,17 @@ describe("Effect", () => {
     expect(pipe(
       primitiveNumberOrString,
       Effect.liftPredicate(Predicate.isString, (sn) => {
-        expect(sn).type.toBe<unknown>()
+        expect(sn).type.toBe<number>()
         return "b" as const
       })
     )).type.toBe<Effect.Effect<string, "b">>()
     expect(Effect.liftPredicate(primitiveNumberOrString, Predicate.isString, (sn) => {
-      expect(sn).type.toBe<string | number>()
+      expect(sn).type.toBe<number>()
       return "b" as const
     })).type.toBe<Effect.Effect<string, "b">>()
 
     expect(Effect.liftPredicate(hole<Predicate.Refinement<string | number, number>>(), (sn) => {
-      expect(sn).type.toBe<string | number>()
+      expect(sn).type.toBe<string>()
       return "b" as const
     })).type.toBe<(a: string | number) => Effect.Effect<number, "b">>()
     expect(Effect.liftPredicate(Predicate.isString, (sn) => {
@@ -1282,7 +1305,7 @@ describe("Effect", () => {
           return typeof sn === "number"
         },
         (sn) => {
-          expect(sn).type.toBe<string | number>()
+          expect(sn).type.toBe<string>()
           return "b" as const
         }
       )
@@ -1291,7 +1314,7 @@ describe("Effect", () => {
       expect(sn).type.toBe<string | number>()
       return typeof sn === "number"
     }, (sn) => {
-      expect(sn).type.toBe<string | number>()
+      expect(sn).type.toBe<string>()
       return "b" as const
     })).type.toBe<Effect.Effect<number, "b">>()
 
@@ -1310,12 +1333,12 @@ describe("Effect", () => {
     expect(pipe(
       primitiveNumber,
       Effect.liftPredicate(predicateNumbersOrStrings, (n) => {
-        expect(n).type.toBe<string | number>()
+        expect(n).type.toBe<number>()
         return "b" as const
       })
     )).type.toBe<Effect.Effect<number, "b">>()
     expect(Effect.liftPredicate(primitiveNumber, predicateNumbersOrStrings, (n) => {
-      expect(n).type.toBe<string | number>()
+      expect(n).type.toBe<number>()
       return "b" as const
     })).type.toBe<Effect.Effect<number, "b">>()
 
