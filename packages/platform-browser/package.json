@@ -56,7 +56,8 @@
     "@effect/rpc": "workspace:^",
     "effect": "workspace:^",
     "happy-dom": "^14.12.3",
-    "mock-xmlhttprequest": "^8.3.0"
+    "mock-xmlhttprequest": "^8.3.0",
+    "fake-indexeddb": "^6.0.0"
   },
   "dependencies": {
     "multipasta": "^0.2.5"

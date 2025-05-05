@@ -6,11 +6,6 @@ export * as BrowserHttpClient from "./BrowserHttpClient.js"
 /**
  * @since 1.0.0
  */
-export * as BrowserIndexedDb from "./BrowserIndexedDb.js"
-
-/**
- * @since 1.0.0
- */
 export * as BrowserKeyValueStore from "./BrowserKeyValueStore.js"
 
 /**
@@ -47,6 +42,36 @@ export * as Clipboard from "./Clipboard.js"
  * @since 1.0.0
  */
 export * as Geolocation from "./Geolocation.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as IndexedDb from "./IndexedDb.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as IndexedDbDatabase from "./IndexedDbDatabase.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as IndexedDbMigration from "./IndexedDbMigration.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as IndexedDbQuery from "./IndexedDbQuery.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as IndexedDbTable from "./IndexedDbTable.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as IndexedDbVersion from "./IndexedDbVersion.js"
 
 /**
  * @since 1.0.0
