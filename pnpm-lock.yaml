@@ -493,9 +493,6 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect
-      fake-indexeddb:
-        specifier: ^6.0.0
-        version: 6.0.0
     publishDirectory: dist
 
   packages/platform-browser:
@@ -513,6 +510,9 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect
+      fake-indexeddb:
+        specifier: ^6.0.0
+        version: 6.0.0
       happy-dom:
         specifier: ^17.4.7
         version: 17.6.3

@@ -1,11 +1,11 @@
 import {
+  IndexedDb,
   IndexedDbDatabase,
   IndexedDbMigration,
   IndexedDbQuery,
   IndexedDbTable,
   IndexedDbVersion
-} from "@effect/platform"
-import { BrowserIndexedDb } from "@effect/platform-browser"
+} from "@effect/platform-browser"
 import { Effect, Layer, Schema } from "effect"
 
 class UserTable1 extends IndexedDbTable.make(
@@ -56,7 +56,7 @@ class Migration extends IndexedDbMigration.make(DatabaseVersion1, (api) =>
 {}
 
 const DatabaseLayer = IndexedDbDatabase.layer("database", Migration).pipe(
-  Layer.provide(BrowserIndexedDb.layerWindow)
+  Layer.provide(IndexedDb.layerWindow)
 )
 const MainLayer = IndexedDbQuery.layer.pipe(Layer.provide(DatabaseLayer))
 

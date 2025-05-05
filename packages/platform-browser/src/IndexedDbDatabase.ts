@@ -2,11 +2,11 @@
  * @since 1.0.0
  */
 import { TypeIdError } from "@effect/platform/Error"
-import * as IndexedDb from "@effect/platform/IndexedDb"
 import { Layer } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipeArguments } from "effect/Pipeable"
+import * as IndexedDb from "./IndexedDb.js"
 import type * as IndexedDbMigration from "./IndexedDbMigration.js"
 import * as internal from "./internal/indexedDbMigration.js"
 
@@ -15,7 +15,7 @@ import * as internal from "./internal/indexedDbMigration.js"
  * @category type ids
  */
 export const TypeId: unique symbol = Symbol.for(
-  "@effect/platform/IndexedDbDatabase"
+  "@effect/platform-browser/IndexedDbDatabase"
 )
 
 /**
@@ -29,7 +29,7 @@ export type TypeId = typeof TypeId
  * @category type ids
  */
 export const ErrorTypeId: unique symbol = Symbol.for(
-  "@effect/platform/IndexedDbDatabase/IndexedDbDatabaseError"
+  "@effect/platform-browser/IndexedDbDatabase/IndexedDbDatabaseError"
 )
 
 /**
@@ -93,7 +93,7 @@ export declare namespace IndexedDbDatabase {
 }
 
 export class IndexedDbDatabase extends Context.Tag(
-  "@effect/platform/IndexedDbDatabase"
+  "@effect/platform-browser/IndexedDbDatabase"
 )<IndexedDbDatabase, IndexedDbDatabase.AnyWithProps>() {}
 
 const Proto = {
@@ -247,17 +247,19 @@ export const layer = <
                   })
 
                   return prev.then(() =>
-                    Effect.runPromise(migration.execute(api)).catch(
-                      (cause) => {
-                        resume(
-                          Effect.fail(
-                            new IndexedDbDatabaseError({
-                              reason: "UpgradeError",
-                              cause
-                            })
+                    Effect.runPromise(
+                      migration.execute(api).pipe(
+                        Effect.mapError((cause) =>
+                          resume(
+                            Effect.fail(
+                              new IndexedDbDatabaseError({
+                                reason: "UpgradeError",
+                                cause
+                              })
+                            )
                           )
                         )
-                      }
+                      )
                     )
                   )
                 } else {

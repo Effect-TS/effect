@@ -5,7 +5,7 @@ import {
   IndexedDbQuery,
   IndexedDbTable,
   IndexedDbVersion
-} from "@effect/platform"
+} from "@effect/platform-browser"
 import { afterEach, assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
 import { IDBKeyRange, indexedDB } from "fake-indexeddb"
