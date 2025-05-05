@@ -60,7 +60,15 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, Contravariant, Covariant, NoExcessProperties, NoInfer, NotFunction } from "./Types.js"
+import type {
+  Concurrency,
+  Contravariant,
+  Covariant,
+  EqualsWith,
+  NoExcessProperties,
+  NoInfer,
+  NotFunction
+} from "./Types.js"
 import type * as Unify from "./Unify.js"
 import { isGeneratorFunction, type YieldWrap } from "./Utils.js"
 
@@ -4968,13 +4976,15 @@ export const uninterruptibleMask: <A, E, R>(
  * @since 3.4.0
  */
 export const liftPredicate: {
-  <A, B extends A, E>(
-    refinement: Refinement<A, B>,
-    orFailWith: (a: A) => E
-  ): (a: A) => Effect<B, E>
-  <B extends A, E, A = B>(predicate: Predicate<A>, orFailWith: (a: A) => E): (a: B) => Effect<B, E>
-  <A, E, B extends A>(self: A, refinement: Refinement<A, B>, orFailWith: (a: A) => E): Effect<B, E>
-  <B extends A, E, A = B>(self: B, predicate: Predicate<A>, orFailWith: (a: A) => E): Effect<B, E>
+  <T extends A, E, B extends T = T, A = T>(
+    predicate: Refinement<T, B> | Predicate<T>,
+    orFailWith: (a: EqualsWith<T, B, A, Exclude<A, B>>) => E
+  ): (a: A) => Effect<EqualsWith<T, B, A, B>, E>
+  <A, E, B extends A = A>(
+    self: A,
+    predicate: Refinement<A, B> | Predicate<A>,
+    orFailWith: (a: EqualsWith<A, B, A, Exclude<A, B>>) => E
+  ): Effect<B, E>
 } = effect.liftPredicate
 
 /**
@@ -8311,20 +8321,15 @@ export {
  * @category Filtering
  */
 export const filterOrDie: {
-  <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>,
-    orDieWith: (a: NoInfer<A>) => unknown
+  <A, B extends A = A>(
+    predicate: Predicate<NoInfer<A>> | Refinement<NoInfer<A>, B>,
+    orDieWith: (a: EqualsWith<A, B, A, Exclude<A, B>>) => unknown
   ): <E, R>(self: Effect<A, E, R>) => Effect<B, E, R>
-  <A>(
-    predicate: Predicate<NoInfer<A>>,
-    orDieWith: (a: NoInfer<A>) => unknown
-  ): <E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
   <A, E, R, B extends A>(
     self: Effect<A, E, R>,
-    refinement: Refinement<A, B>,
-    orDieWith: (a: A) => unknown
+    predicate: Predicate<A> | Refinement<A, B>,
+    orDieWith: (a: EqualsWith<A, B, A, Exclude<A, B>>) => unknown
   ): Effect<B, E, R>
-  <A, E, R>(self: Effect<A, E, R>, predicate: Predicate<A>, orDieWith: (a: A) => unknown): Effect<A, E, R>
 } = effect.filterOrDie
 
 /**
@@ -8340,13 +8345,15 @@ export const filterOrDie: {
  * @category Filtering
  */
 export const filterOrDieMessage: {
-  <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>,
+  <A, B extends A = A>(
+    predicate: Predicate<NoInfer<A>> | Refinement<NoInfer<A>, B>,
     message: string
   ): <E, R>(self: Effect<A, E, R>) => Effect<B, E, R>
-  <A>(predicate: Predicate<NoInfer<A>>, message: string): <E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
-  <A, E, R, B extends A>(self: Effect<A, E, R>, refinement: Refinement<A, B>, message: string): Effect<B, E, R>
-  <A, E, R>(self: Effect<A, E, R>, predicate: Predicate<A>, message: string): Effect<A, E, R>
+  <A, E, R, B extends A = A>(
+    self: Effect<A, E, R>,
+    predicate: Predicate<A> | Refinement<A, B>,
+    message: string
+  ): Effect<B, E, R>
 } = effect.filterOrDieMessage
 
 /**
@@ -8363,24 +8370,15 @@ export const filterOrDieMessage: {
  * @category Filtering
  */
 export const filterOrElse: {
-  <A, B extends A, C, E2, R2>(
-    refinement: Refinement<NoInfer<A>, B>,
-    orElse: (a: NoInfer<A>) => Effect<C, E2, R2>
+  <A, C, E2, R2, B extends A = A>(
+    predicate: Predicate<NoInfer<A>> | Refinement<NoInfer<A>, B>,
+    orElse: (a: EqualsWith<A, B, NoInfer<A>, Exclude<NoInfer<A>, B>>) => Effect<C, E2, R2>
   ): <E, R>(self: Effect<A, E, R>) => Effect<B | C, E2 | E, R2 | R>
-  <A, B, E2, R2>(
-    predicate: Predicate<NoInfer<A>>,
-    orElse: (a: NoInfer<A>) => Effect<B, E2, R2>
-  ): <E, R>(self: Effect<A, E, R>) => Effect<A | B, E2 | E, R2 | R>
-  <A, E, R, B extends A, C, E2, R2>(
+  <A, E, R, C, E2, R2, B extends A = A>(
     self: Effect<A, E, R>,
-    refinement: Refinement<A, B>,
-    orElse: (a: A) => Effect<C, E2, R2>
+    predicate: Predicate<A> | Refinement<A, B>,
+    orElse: (a: EqualsWith<A, B, A, Exclude<A, B>>) => Effect<C, E2, R2>
   ): Effect<B | C, E | E2, R | R2>
-  <A, E, R, B, E2, R2>(
-    self: Effect<A, E, R>,
-    predicate: Predicate<A>,
-    orElse: (a: A) => Effect<B, E2, R2>
-  ): Effect<A | B, E | E2, R | R2>
 } = effect.filterOrElse
 
 /**
@@ -8434,29 +8432,22 @@ export const filterOrElse: {
  * @category Filtering
  */
 export const filterOrFail: {
-  <A, B extends A, E2>(
-    refinement: Refinement<NoInfer<A>, B>,
-    orFailWith: (a: NoInfer<A>) => E2
+  <A, E2, B extends A = A>(
+    predicate: Predicate<NoInfer<A>> | Refinement<NoInfer<A>, B>,
+    orFailWith: (a: EqualsWith<A, B, NoInfer<A>, Exclude<NoInfer<A>, B>>) => E2
   ): <E, R>(self: Effect<A, E, R>) => Effect<B, E2 | E, R>
-  <A, E2>(
-    predicate: Predicate<NoInfer<A>>,
-    orFailWith: (a: NoInfer<A>) => E2
-  ): <E, R>(self: Effect<A, E, R>) => Effect<A, E2 | E, R>
-  <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>
+  <A, E, R, E2, B extends A = A>(
+    self: Effect<A, E, R>,
+    predicate: Predicate<A> | Refinement<A, B>,
+    orFailWith: (a: EqualsWith<A, B, A, Exclude<A, B>>) => E2
+  ): Effect<B, E2 | E, R>
+  <A, B extends A = A>(
+    predicate: Predicate<NoInfer<A>> | Refinement<NoInfer<A>, B>
   ): <E, R>(self: Effect<A, E, R>) => Effect<B, Cause.NoSuchElementException | E, R>
-  <A>(predicate: Predicate<NoInfer<A>>): <E, R>(self: Effect<A, E, R>) => Effect<A, Cause.NoSuchElementException | E, R>
-  <A, E, R, B extends A, E2>(
+  <A, E, R, B extends A = A>(
     self: Effect<A, E, R>,
-    refinement: Refinement<A, B>,
-    orFailWith: (a: A) => E2
-  ): Effect<B, E | E2, R>
-  <A, E, R, E2>(self: Effect<A, E, R>, predicate: Predicate<A>, orFailWith: (a: A) => E2): Effect<A, E | E2, R>
-  <A, E, R, B extends A>(
-    self: Effect<A, E, R>,
-    refinement: Refinement<A, B>
+    predicate: Predicate<A> | Refinement<A, B>
   ): Effect<B, E | Cause.NoSuchElementException, R>
-  <A, E, R>(self: Effect<A, E, R>, predicate: Predicate<A>): Effect<A, E | Cause.NoSuchElementException, R>
 } = effect.filterOrFail
 
 /**
