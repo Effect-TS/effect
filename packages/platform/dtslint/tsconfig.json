@@ -7,6 +7,12 @@
   "compilerOptions": {
     "incremental": false,
     "composite": false,
-    "noUnusedLocals": false
+    "noUnusedLocals": false,
+    "plugins": [
+      {
+        "name": "@effect/language-server",
+        "diagnostics": false
+      }
+    ]
   }
 }
