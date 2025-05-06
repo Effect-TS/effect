@@ -337,12 +337,19 @@ export const make = Effect.fnUntraced(function*<
                 )
               }
 
+              const rpc = entity.protocol.requests.get(message.envelope.tag)! as any as Rpc.AnyWithProps
+              if (!storageEnabled && Context.get(rpc.annotations, Persisted)) {
+                return Effect.dieMessage(
+                  "EntityManager.sendLocal: Cannot process a persisted message without MessageStorage"
+                )
+              }
+
               if (mailboxCapacity !== "unbounded" && server.activeRequests.size >= mailboxCapacity) {
                 return Effect.fail(new MailboxFull({ address: message.envelope.address }))
               }
 
               entry = {
-                rpc: entity.protocol.requests.get(message.envelope.tag)! as any as Rpc.AnyWithProps,
+                rpc,
                 message,
                 sentReply: false,
                 lastSentChunk: message.lastSentReply as any,

@@ -430,7 +430,6 @@ export const makeRpc: Effect.Effect<
 > = Effect.gen(function*() {
   const makeClientProtocol = yield* RpcClientProtocol
   const snowflakeGen = yield* Snowflake.Generator
-  const storageEnabled = (yield* MessageStorage.MessageStorage) !== MessageStorage.noop
 
   const clients = yield* RcMap.make({
     lookup: (address: RunnerAddress) =>
@@ -451,7 +450,7 @@ export const makeRpc: Effect.Effect<
     },
     send({ address, message }) {
       const rpc = message.rpc as any as Rpc.AnyWithProps
-      const isPersisted = storageEnabled && Context.get(rpc.annotations, Persisted)
+      const isPersisted = Context.get(rpc.annotations, Persisted)
       if (message._tag === "OutgoingEnvelope") {
         return RcMap.get(clients, address).pipe(
           Effect.flatMap((client) =>
