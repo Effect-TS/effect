@@ -6,6 +6,7 @@ import { Layer } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipeArguments } from "effect/Pipeable"
+import * as Runtime from "effect/Runtime"
 import * as IndexedDb from "./IndexedDb.js"
 import type * as IndexedDbMigration from "./IndexedDbMigration.js"
 import * as internal from "./internal/indexedDbMigration.js"
@@ -130,6 +131,7 @@ export const layer = <
     IndexedDbDatabase,
     Effect.gen(function*() {
       const { IDBKeyRange, indexedDB } = yield* IndexedDb.IndexedDb
+      const runtime = yield* Effect.runtime()
 
       let oldVersion = 0
       let current = migration
@@ -237,7 +239,7 @@ export const layer = <
               return Effect.dieMessage("Invalid migration")
             }, { discard: true })
 
-            Effect.runPromise(effect.pipe(
+            Runtime.runPromise(runtime)(effect.pipe(
               Effect.mapError((cause) =>
                 new IndexedDbDatabaseError({
                   reason: "UpgradeError",
