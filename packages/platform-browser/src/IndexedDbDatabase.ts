@@ -176,7 +176,7 @@ export const layer = <
             oldVersion = event.oldVersion
 
             if (transaction === null) {
-              resume(
+              return resume(
                 Effect.fail(
                   new IndexedDbDatabaseError({
                     reason: "TransactionError",
@@ -184,92 +184,67 @@ export const layer = <
                   })
                 )
               )
-            } else {
-              transaction.onabort = (event) => {
-                resume(
-                  Effect.fail(
-                    new IndexedDbDatabaseError({
-                      reason: "Aborted",
-                      cause: event
-                    })
-                  )
-                )
-              }
-
-              transaction.onerror = (event) => {
-                resume(
-                  Effect.fail(
-                    new IndexedDbDatabaseError({
-                      reason: "TransactionError",
-                      cause: event
-                    })
-                  )
-                )
-              }
-
-              migrations.slice(oldVersion).reduce((prev, untypedMigration) => {
-                if (untypedMigration._tag === "Migration") {
-                  const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyMigration
-                  const fromApi = internal.makeTransactionProto({
-                    database,
-                    IDBKeyRange,
-                    source: migration.fromVersion,
-                    transaction
-                  })
-                  const toApi = internal.makeTransactionProto({
-                    database,
-                    IDBKeyRange,
-                    source: migration.toVersion,
-                    transaction
-                  })
-
-                  return prev.then(() =>
-                    Effect.runPromise(
-                      migration.execute(fromApi, toApi).pipe(
-                        Effect.mapError((cause) =>
-                          resume(
-                            Effect.fail(
-                              new IndexedDbDatabaseError({
-                                reason: "UpgradeError",
-                                cause
-                              })
-                            )
-                          )
-                        )
-                      )
-                    )
-                  )
-                } else if (untypedMigration._tag === "Initial") {
-                  const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyInitial
-                  const api = internal.makeTransactionProto({
-                    database,
-                    IDBKeyRange,
-                    source: migration.version,
-                    transaction
-                  })
-
-                  return prev.then(() =>
-                    Effect.runPromise(
-                      migration.execute(api).pipe(
-                        Effect.mapError((cause) =>
-                          resume(
-                            Effect.fail(
-                              new IndexedDbDatabaseError({
-                                reason: "UpgradeError",
-                                cause
-                              })
-                            )
-                          )
-                        )
-                      )
-                    )
-                  )
-                } else {
-                  resume(Effect.dieMessage("Invalid migration"))
-                  return Promise.resolve()
-                }
-              }, Promise.resolve())
             }
+
+            transaction.onabort = (event) => {
+              resume(
+                Effect.fail(
+                  new IndexedDbDatabaseError({
+                    reason: "Aborted",
+                    cause: event
+                  })
+                )
+              )
+            }
+
+            transaction.onerror = (event) => {
+              resume(
+                Effect.fail(
+                  new IndexedDbDatabaseError({
+                    reason: "TransactionError",
+                    cause: event
+                  })
+                )
+              )
+            }
+
+            const effect = Effect.forEach(migrations.slice(oldVersion), (untypedMigration) => {
+              if (untypedMigration._tag === "Migration") {
+                const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyMigration
+                const fromApi = internal.makeTransactionProto({
+                  database,
+                  IDBKeyRange,
+                  source: migration.fromVersion,
+                  transaction
+                })
+                const toApi = internal.makeTransactionProto({
+                  database,
+                  IDBKeyRange,
+                  source: migration.toVersion,
+                  transaction
+                })
+                return migration.execute(fromApi, toApi)
+              } else if (untypedMigration._tag === "Initial") {
+                const migration = untypedMigration as IndexedDbMigration.IndexedDbMigration.AnyInitial
+                const api = internal.makeTransactionProto({
+                  database,
+                  IDBKeyRange,
+                  source: migration.version,
+                  transaction
+                })
+                return migration.execute(api)
+              }
+              return Effect.dieMessage("Invalid migration")
+            }, { discard: true })
+
+            Effect.runPromise(effect.pipe(
+              Effect.mapError((cause) =>
+                new IndexedDbDatabaseError({
+                  reason: "UpgradeError",
+                  cause
+                })
+              )
+            ))
           }
 
           request.onsuccess = (event) => {
