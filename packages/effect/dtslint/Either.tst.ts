@@ -1,4 +1,4 @@
-import { Array, Either, hole, pipe, Predicate } from "effect"
+import { Array, Either, hole, Option, pipe, Predicate } from "effect"
 import { describe, expect, it } from "tstyche"
 
 declare const string$string: Either.Either<string, string>
@@ -316,4 +316,37 @@ describe("Either", () => {
       )
     ).type.toBe<Either.Either<{ a: number; b: string; c: boolean }, never>>()
   })
+})
+
+it("transposeMapOption", () => {
+  expect(Either.transposeMapOption(Option.none(), (value) => {
+    expect(value).type.toBe<never>()
+    return string$string
+  })).type.toBe<
+    Either.Either<Option.Option<string>, string>
+  >()
+  expect(pipe(
+    Option.none(),
+    Either.transposeMapOption((value) => {
+      expect(value).type.toBe<never>()
+      return string$string
+    })
+  )).type.toBe<
+    Either.Either<Option.Option<string>, string>
+  >()
+  expect(Either.transposeMapOption(Option.some(42), (value) => {
+    expect(value).type.toBe<number>()
+    return string$string
+  })).type.toBe<
+    Either.Either<Option.Option<string>, string>
+  >()
+  expect(pipe(
+    Option.some(42),
+    Either.transposeMapOption((value) => {
+      expect(value).type.toBe<number>()
+      return string$string
+    })
+  )).type.toBe<
+    Either.Either<Option.Option<string>, string>
+  >()
 })
