@@ -179,7 +179,7 @@ const make = Effect.gen(function*() {
         if (options.toolChoice === "auto" || options.toolChoice === "required") {
           toolChoice = options.toolChoice
         } else if (typeof options.toolChoice === "object") {
-          toolChoice = { type: "function", function: { name: options.toolChoice.name } }
+          toolChoice = { type: "function", function: { name: options.toolChoice.tool } }
         }
       }
       const messages = yield* makeMessages(method, system, prompt)

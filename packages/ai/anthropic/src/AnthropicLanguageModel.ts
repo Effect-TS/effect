@@ -157,7 +157,7 @@ const make = Effect.gen(function*() {
         } else if (typeof options.toolChoice === "string") {
           toolChoice = { type: options.toolChoice }
         } else {
-          toolChoice = options.toolChoice
+          toolChoice = { type: "tool", name: options.toolChoice.tool }
         }
       }
       const messages = yield* makeMessages(method, prompt)

@@ -56,14 +56,13 @@ export interface IdentifiedSchema<A, I, R> extends Schema.Schema<A, I, R> {
  * - `auto` (default): The model can decide whether or not to call tools, as well as which tools to call.
  * - `required`: The model **must** call a tool but can decide which tool will be called.
  * - `none`: The model **must not** call a tool.
- * - `{ type: "tool", name: <tool_name> }`: The model must call the specified tool.
+ * - `{ tool: <tool_name> }`: The model must call the specified tool.
  *
  * @since 1.0.0
  * @category Models
  */
 export type ToolChoice<Tool extends AiTool.Any> = "auto" | "none" | "required" | {
-  readonly type: "tool"
-  readonly name: Tool["name"]
+  readonly tool: Tool["name"]
 }
 
 /**
@@ -95,7 +94,7 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
    * - `auto` (default): The model can decide whether or not to call tools, as well as which tools to call.
    * - `required`: The model **must** call a tool but can decide which tool will be called.
    * - `none`: The model **must not** call a tool.
-   * - `{ type: "tool", name: <tool_name> }`: The model must call the specified tool.
+   * - `{ tool: <tool_name> }`: The model must call the specified tool.
    */
   readonly toolChoice?: ToolChoice<Tools>
 
@@ -286,7 +285,7 @@ export interface AiLanguageModelOptions {
    * - `auto` (default): The model can decide whether or not to call tools, as well as which tools to call.
    * - `required`: The model **must** call a tool but can decide which tool will be called.
    * - `none`: The model **must not** call a tool.
-   * - `{ type: "tool", name: <tool_name> }`: The model must call the specified tool.
+   * - `{ tool: <tool_name> }`: The model must call the specified tool.
    */
   readonly toolChoice: ToolChoice<any>
   /**
@@ -383,7 +382,7 @@ export const make = <Config>(opts: {
         const system = Option.fromNullable(options.system)
         const decode = Schema.decodeUnknown(options.schema)
         const tool = convertStructured(toolCallId, options.schema)
-        const toolChoice = { type: "tool", name: tool.name } as const
+        const toolChoice = { tool: tool.name } as const
         const response = yield* opts.generateText({ prompt, system, tools: [tool], toolChoice, span })
         const toolCallPart = response.parts.find((part): part is AiResponse.ToolCallPart =>
           part._tag === "ToolCallPart" && part.name === toolCallId
