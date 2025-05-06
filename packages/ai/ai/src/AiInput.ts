@@ -433,6 +433,10 @@ export const AssistantMessagePart: Schema.Union<[
   ToolCallPart
 )
 
+/**
+ * @since 1.0.0
+ * @category Models
+ */
 export type AssistantMessagePart = typeof AssistantMessagePart.Type
 
 /**
