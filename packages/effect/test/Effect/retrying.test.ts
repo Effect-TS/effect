@@ -100,7 +100,7 @@ describe("Effect", () => {
       const result = yield* (Ref.get(ref))
       strictEqual(result, 4)
     }))
-  it.effect("retry/schedule - ", () =>
+  it.effect("retry/schedule - LastIterationInfo", () =>
     Effect.gen(function*() {
       const ref = yield* Ref.make<Array<Option.Option<Schedule.IterationInfo>>>([])
       yield* pipe(
