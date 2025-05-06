@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.30.9
+
+### Patch Changes
+
+- [#4829](https://github.com/Effect-TS/effect/pull/4829) [`2d55bc5`](https://github.com/Effect-TS/effect/commit/2d55bc52c596afd8381f8ad1badc69efa0be8a78) Thanks @tim-smart! - sending persisted messages without MessageStorage is now a defect
+
 ## 0.30.8
 
 ### Patch Changes
