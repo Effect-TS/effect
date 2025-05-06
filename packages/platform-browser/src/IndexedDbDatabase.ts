@@ -214,13 +214,13 @@ export const layer = <
                 const fromApi = internal.makeTransactionProto({
                   database,
                   IDBKeyRange,
-                  source: migration.fromVersion,
+                  tables: migration.fromVersion.tables,
                   transaction
                 })
                 const toApi = internal.makeTransactionProto({
                   database,
                   IDBKeyRange,
-                  source: migration.toVersion,
+                  tables: migration.toVersion.tables,
                   transaction
                 })
                 return migration.execute(fromApi, toApi)
@@ -229,7 +229,7 @@ export const layer = <
                 const api = internal.makeTransactionProto({
                   database,
                   IDBKeyRange,
-                  source: migration.version,
+                  tables: migration.version.tables,
                   transaction
                 })
                 return migration.execute(api)
