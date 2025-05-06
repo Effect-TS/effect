@@ -1,6 +1,6 @@
 import * as NodeStream from "@effect/platform-node-shared/NodeStream"
 import { assert, describe, it } from "@effect/vitest"
-import { Array, identity, Channel, Chunk, Either, Stream } from "effect"
+import { Array, Channel, Chunk, identity, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import { Duplex, Readable, Transform } from "stream"
 import { createGzip, createUnzip } from "zlib"
@@ -166,17 +166,17 @@ describe("Stream", () => {
       assert.strictEqual(Chunk.join(items, ""), Array.range(0, 10000).join(""))
     }).pipe(Effect.runPromise))
 
-  it("toReadable with error", () =>
-    Effect.gen(function*(_) {
+  it.effect("toReadable with error", () =>
+    Effect.gen(function*() {
       const stream = Stream.fail("error")
-      const readable = yield* _(NodeStream.toReadable(stream))
-      const outStream = NodeStream.fromReadable<unknown, Uint8Array>(() => readable, identity)
-      const items = yield* _(
-        outStream,
-        Stream.runCollect,
-        Effect.either,
+      const readable = yield* NodeStream.toReadable(stream)
+      const error = yield* NodeStream.fromReadable<unknown, Uint8Array>(
+        () => readable,
+        identity
+      ).pipe(
+        Stream.runDrain,
+        Effect.flip
       )
-      assert.deepEqual(items, Either.left("error" as const))
-    }
-    ).pipe(Effect.runPromise))
+      assert.deepEqual(error, "error")
+    }))
 })
