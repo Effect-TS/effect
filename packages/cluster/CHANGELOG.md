@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.30.8
+
+### Patch Changes
+
+- [#4825](https://github.com/Effect-TS/effect/pull/4825) [`1b30f61`](https://github.com/Effect-TS/effect/commit/1b30f616e75580933284657cb2cefab5a7903323) Thanks @tim-smart! - ensure clientOnly mode without storage falls back to network messaging
+
 ## 0.30.7
 
 ### Patch Changes
