@@ -1085,6 +1085,9 @@ importers:
       '@effect/vitest':
         specifier: workspace:*
         version: link:../packages/vitest
+      '@effect/workflow':
+        specifier: workspace:*
+        version: link:../packages/workflow
       effect:
         specifier: workspace:*
         version: link:../packages/effect

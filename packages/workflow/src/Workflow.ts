@@ -66,7 +66,9 @@ export interface Any {
   ) => Effect.Effect<any, any, any>
 }
 
-const EngineTag = Context.GenericTag<WorkflowEngine, WorkflowEngine["Type"]>("@effect/workflow/WorkflowEngine")
+const EngineTag = Context.GenericTag<WorkflowEngine, WorkflowEngine["Type"]>(
+  "@effect/workflow/WorkflowEngine" satisfies typeof WorkflowEngine.key
+)
 
 /**
  * @since 1.0.0

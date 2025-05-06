@@ -35,6 +35,7 @@
     "@effect/sql-sqlite-wasm": "workspace:*",
     "@effect/typeclass": "workspace:*",
     "@effect/vitest": "workspace:*",
+    "@effect/workflow": "workspace:*",
     "effect": "workspace:*"
   }
 }
