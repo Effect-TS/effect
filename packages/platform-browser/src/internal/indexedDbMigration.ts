@@ -82,24 +82,24 @@ export const makeTransactionProto = <
 >({
   IDBKeyRange,
   database,
-  source,
+  tables,
   transaction
 }: {
   readonly database: globalThis.IDBDatabase
   readonly IDBKeyRange: typeof globalThis.IDBKeyRange
-  readonly source: Source
+  readonly tables: HashMap.HashMap<string, IndexedDbVersion.IndexedDbVersion.Tables<Source>>
   readonly transaction: globalThis.IDBTransaction
 }): IndexedDbMigration.IndexedDbMigration.Transaction<Source> => {
   const IndexedDbMigration = internalIndexedDbQuery.makeProto({
     database,
     IDBKeyRange,
-    source,
+    tables,
     transaction
   }) as any
   IndexedDbMigration.transaction = transaction
   IndexedDbMigration.createObjectStore = (table: string) =>
     Effect.gen(function*() {
-      const createTable = yield* HashMap.get(source.tables, table).pipe(
+      const createTable = yield* HashMap.get(tables, table).pipe(
         Effect.catchTag(
           "NoSuchElementException",
           (cause) =>
@@ -122,7 +122,7 @@ export const makeTransactionProto = <
 
   IndexedDbMigration.deleteObjectStore = (table: string) =>
     Effect.gen(function*() {
-      const createTable = yield* HashMap.get(source.tables, table).pipe(
+      const createTable = yield* HashMap.get(tables, table).pipe(
         Effect.catchTag(
           "NoSuchElementException",
           (cause) =>
@@ -146,7 +146,7 @@ export const makeTransactionProto = <
   IndexedDbMigration.createIndex = (table: string, indexName: string, options?: IDBIndexParameters) =>
     Effect.gen(function*() {
       const store = transaction.objectStore(table)
-      const sourceTable = HashMap.unsafeGet(source.tables, table)
+      const sourceTable = HashMap.unsafeGet(tables, table)
 
       const keyPath = yield* Effect.fromNullable(
         sourceTable.options?.indexes[indexName] ?? undefined
