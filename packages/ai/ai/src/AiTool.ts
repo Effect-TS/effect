@@ -8,6 +8,7 @@ import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
+import type * as Types from "effect/Types"
 import type { AiError } from "./AiError.js"
 
 /**
@@ -34,9 +35,12 @@ export interface AiTool<
   out Name extends string,
   out Parameters extends AnyStructSchema = Schema.Struct<{}>,
   out Success extends Schema.Schema.Any = typeof Schema.Void,
-  out Failure extends Schema.Schema.All = typeof Schema.Never
+  out Failure extends Schema.Schema.All = typeof Schema.Never,
+  out Requirements = never
 > extends Pipeable {
-  readonly [TypeId]: TypeId
+  readonly [TypeId]: {
+    readonly _Requirements: Types.Covariant<Requirements>
+  }
 
   /**
    * The name of the tool.
@@ -70,6 +74,12 @@ export interface AiTool<
    * if it fails.
    */
   readonly failureSchema: Failure
+
+  /**
+   * Adds a requirement on a particular service for the tool call to be able to
+   * be executed.
+   */
+  addRequirement<Requirement>(): AiTool<Name, Parameters, Success, Failure, Requirements | Requirement>
 
   /**
    * Set the schema to use for tool handler success.
@@ -109,14 +119,16 @@ export interface AiTool<
  * @since 1.0.0
  * @category Guards
  */
-export const isAiTool = (u: unknown): u is AiTool<any, any, any, any> => Predicate.hasProperty(u, TypeId)
+export const isAiTool = (u: unknown): u is AiTool<any, any, any, any, any> => Predicate.hasProperty(u, TypeId)
 
 /**
  * @since 1.0.0
  * @category Models
  */
 export interface Any extends Pipeable {
-  readonly [TypeId]: TypeId
+  readonly [TypeId]: {
+    readonly _Requirements: Types.Covariant<any>
+  }
   readonly name: string
   readonly description?: string | undefined
   readonly key: string
@@ -157,12 +169,13 @@ export type HandlerEffect<Tool extends Any> = [Tool] extends [
     infer _Name,
     infer _Parameters,
     infer _Success,
-    infer _Failure
+    infer _Failure,
+    infer _Requirements
   >
 ] ? Effect.Effect<
     _Success["Type"],
     AiError | _Failure["Type"],
-    _Parameters["Context"] | _Success["Context"] | _Failure["Context"]
+    _Parameters["Context"] | _Success["Context"] | _Failure["Context"] | _Requirements
   >
   : never
 
@@ -205,7 +218,8 @@ export type Name<Tool> = Tool extends AiTool<
   infer _Name,
   infer _Parameters,
   infer _Success,
-  infer _Failure
+  infer _Failure,
+  infer _Requirements
 > ? _Name :
   never
 
@@ -220,7 +234,8 @@ export type Parameters<Tool> = Tool extends AiTool<
   infer _Name,
   infer _Parameters,
   infer _Success,
-  infer _Failure
+  infer _Failure,
+  infer _Requirements
 > ? _Parameters["Type"] :
   never
 
@@ -235,7 +250,8 @@ export type ParametersSchema<Tool> = Tool extends AiTool<
   infer _Name,
   infer _Parameters,
   infer _Success,
-  infer _Failure
+  infer _Failure,
+  infer _Requirements
 > ? _Parameters :
   never
 
@@ -250,7 +266,8 @@ export type Success<Tool> = Tool extends AiTool<
   infer _Name,
   infer _Parameters,
   infer _Success,
-  infer _Failure
+  infer _Failure,
+  infer _Requirements
 > ? _Success["Type"] :
   never
 
@@ -265,7 +282,8 @@ export type SuccessSchema<Tool> = Tool extends AiTool<
   infer _Name,
   infer _Parameters,
   infer _Success,
-  infer _Failure
+  infer _Failure,
+  infer _Requirements
 > ? _Success :
   never
 
@@ -280,7 +298,8 @@ export type Failure<Tool> = Tool extends AiTool<
   infer _Name,
   infer _Parameters,
   infer _Success,
-  infer _Failure
+  infer _Failure,
+  infer _Requirements
 > ? _Failure["Type"] :
   never
 
@@ -295,7 +314,8 @@ export type FailureSchema<Tool> = Tool extends AiTool<
   infer _Name,
   infer _Parameters,
   infer _Success,
-  infer _Failure
+  infer _Failure,
+  infer _Requirements
 > ? _Failure :
   never
 
@@ -309,8 +329,9 @@ export type Context<Tool> = Tool extends AiTool<
   infer _Name,
   infer _Parameters,
   infer _Success,
-  infer _Failure
-> ? _Parameters["Context"] | _Success["Context"] | _Failure["Context"] :
+  infer _Failure,
+  infer _Requirements
+> ? _Parameters["Context"] | _Success["Context"] | _Failure["Context"] | _Requirements :
   never
 
 /**
@@ -357,7 +378,8 @@ export type ToHandler<Tool extends Any> = Tool extends AiTool<
   infer _Name,
   infer _Parameters,
   infer _Success,
-  infer _Failure
+  infer _Failure,
+  infer _Requirements
 > ? Handler<_Name> :
   never
 
@@ -365,6 +387,9 @@ const Proto = {
   [TypeId]: TypeId,
   pipe() {
     return pipeArguments(this, arguments)
+  },
+  addRequirement(this: AnyWithProtocol) {
+    return makeProto({ ...this })
   },
   setSuccess(this: AnyWithProtocol, successSchema: Schema.Schema.Any) {
     return makeProto({
@@ -439,12 +464,7 @@ export const make = <
    * it fails.
    */
   readonly failure?: Failure
-}): AiTool<
-  Name,
-  Schema.Struct<Parameters>,
-  Success,
-  Failure
-> => {
+}): AiTool<Name, Schema.Struct<Parameters>, Success, Failure> => {
   const successSchema = options?.success ?? Schema.Void
   const failureSchema = options?.failure ?? Schema.Never
   return makeProto({
