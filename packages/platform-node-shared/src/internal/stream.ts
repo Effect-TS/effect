@@ -345,7 +345,7 @@ class StreamAdapter<E, R> extends Readable {
       if (Exit.isSuccess(exit)) {
         this.push(null)
       } else {
-        this._destroy(Cause.squash(exit.cause) as any, constVoid)
+        this.destroy(Cause.squash(exit.cause) as any)
       }
     })
   }
@@ -355,9 +355,9 @@ class StreamAdapter<E, R> extends Readable {
     Effect.runSync(this.readLatch.open)
   }
 
-  _destroy(_error: Error | null, callback: (error?: Error | null | undefined) => void): void {
+  _destroy(error: Error | null, callback: (error?: Error | null | undefined) => void): void {
     if (!this.fiber) {
-      return callback(null)
+      return callback(error)
     }
     Effect.runFork(Fiber.interrupt(this.fiber)).addObserver((exit) => {
       callback(exit._tag === "Failure" ? Cause.squash(exit.cause) as any : null)
