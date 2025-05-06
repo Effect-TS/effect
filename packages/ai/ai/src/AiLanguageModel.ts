@@ -165,9 +165,7 @@ export interface GenerateObjectWithToolCallIdOptions<A, I, R> {
  * @since 1.0.0
  * @category Utility Types
  */
-export type ExtractSuccess<
-  Options extends GenerateTextOptions<AiTool.Any>
-> = Options extends {
+export type ExtractSuccess<Options> = Options extends {
   toolkit: AiToolkit.ToHandler<infer _Tools>
 } ? AiResponse.WithToolCallResults<_Tools>
   : Options extends {
@@ -182,9 +180,7 @@ export type ExtractSuccess<
  * @since 1.0.0
  * @category Utility Types
  */
-export type ExtractError<
-  Options extends GenerateTextOptions<AiTool.Any>
-> = Options extends {
+export type ExtractError<Options> = Options extends {
   toolkit: AiToolkit.ToHandler<infer _Tools>
 } ? AiError | AiTool.Failure<_Tools>
   : Options extends {
@@ -199,9 +195,7 @@ export type ExtractError<
  * @since 1.0.0
  * @category Utility Types
  */
-export type ExtractContext<
-  Options extends GenerateTextOptions<AiTool.Any>
-> = Options extends {
+export type ExtractContext<Options> = Options extends {
   toolkit: AiToolkit.ToHandler<infer _Tools>
 } ? AiTool.Context<_Tools>
   : Options extends {
@@ -225,9 +219,9 @@ export declare namespace AiLanguageModel {
      * If a `toolkit` is specified, the large language model will additionally
      * be able to perform tool calls to augment its response.
      */
-    readonly generateText: <
-      Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
-    >(options: Options) => Effect.Effect<
+    readonly generateText: <Tools extends AiTool.Any, Options>(
+      options: Options & GenerateTextOptions<Tools>
+    ) => Effect.Effect<
       ExtractSuccess<Options>,
       ExtractError<Options>,
       ExtractContext<Options> | Config
@@ -423,7 +417,7 @@ export const make = <Config>(opts: {
     )
   }
 
-  return { generateText, streamText, generateObject } as const
+  return { generateText, streamText, generateObject } as any
 }
 
 const convertTool = <Tool extends AiTool.Any>(tool: Tool) => ({
