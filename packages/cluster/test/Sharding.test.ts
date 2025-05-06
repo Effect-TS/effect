@@ -472,6 +472,19 @@ describe.concurrent("Sharding", () => {
       // should still be processing
       expect(driver.unprocessed.size).toEqual(1)
     }).pipe(Effect.provide(TestSharding)))
+
+  it.scoped("defect when no MessageStorage", () =>
+    Effect.gen(function*() {
+      const makeClient = yield* TestEntity.client
+      const client = makeClient("1")
+      const cause = yield* client.Never().pipe(
+        Effect.sandbox,
+        Effect.flip
+      )
+      assert(Cause.isDie(cause))
+    }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
+      Layer.provide(MessageStorage.layerNoop)
+    ))))
 })
 
 const TestShardingConfig = ShardingConfig.layer({

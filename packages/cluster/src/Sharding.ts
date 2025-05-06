@@ -691,7 +691,10 @@ const make = Effect.gen(function*() {
       Effect.suspend(() => {
         const address = message.envelope.address
         const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
-        const isPersisted = storageEnabled && Context.get(message.rpc.annotations, Persisted)
+        const isPersisted = Context.get(message.rpc.annotations, Persisted)
+        if (isPersisted && !storageEnabled) {
+          return Effect.dieMessage("Sharding.sendOutgoing: Persisted messages require MessageStorage")
+        }
         const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
         if (isPersisted) {
           return runnerIsLocal
@@ -925,7 +928,7 @@ const make = Effect.gen(function*() {
             // result of a shard being resassigned
             const isTransientInterrupt = MutableRef.get(isShutdown) ||
               options.message.interruptors.some((id) => internalInterruptors.has(id))
-            if (isTransientInterrupt && storageEnabled && Context.get(entry.rpc.annotations, Persisted)) {
+            if (isTransientInterrupt && Context.get(entry.rpc.annotations, Persisted)) {
               return Effect.void
             }
             return Effect.ignore(sendOutgoing(
