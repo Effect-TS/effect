@@ -1,5 +1,14 @@
 # @effect/platform-node-shared
 
+## 0.31.9
+
+### Patch Changes
+
+- [#4827](https://github.com/Effect-TS/effect/pull/4827) [`114dad9`](https://github.com/Effect-TS/effect/commit/114dad9a93613986eb5d306cbcfda3fb37ec1a1b) Thanks @mlegenhausen! - Fix `StreamAdapter` error forwarding
+
+- Updated dependencies [[`2d55bc5`](https://github.com/Effect-TS/effect/commit/2d55bc52c596afd8381f8ad1badc69efa0be8a78)]:
+  - @effect/cluster@0.30.9
+
 ## 0.31.8
 
 ### Patch Changes
