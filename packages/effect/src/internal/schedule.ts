@@ -45,6 +45,12 @@ export const ScheduleDriverTypeId: Schedule.ScheduleDriverTypeId = Symbol.for(
   ScheduleDriverSymbolKey
 ) as Schedule.ScheduleDriverTypeId
 
+/** @internal */
+export const LastIterationInfo = Context.Reference<Schedule.LastIterationInfo>()(
+  "effect/Schedule/LastIterationInfo",
+  { defaultValue: () => Option.none<Schedule.IterationInfo>() }
+)
+
 const scheduleVariance = {
   /* c8 ignore next */
   _Out: (_: never) => _,
@@ -80,6 +86,22 @@ class ScheduleImpl<S, Out, In, R> implements Schedule.Schedule<Out, In, R> {
   }
 }
 
+const updateInfo = (
+  lastIterationInfo: Ref.Ref<Option.Option<Schedule.IterationInfo>>,
+  duration: Duration.Duration
+) =>
+  ref.update(lastIterationInfo, (lastOptionsValue) => {
+    const iteration = lastOptionsValue.pipe(
+      Option.map((x) => x.iteration + 1),
+      Option.getOrElse(() => 1)
+    )
+
+    return Option.some({
+      duration,
+      iteration
+    })
+  })
+
 /** @internal */
 class ScheduleDriverImpl<Out, In, R> implements Schedule.ScheduleDriver<Out, In, R> {
   [ScheduleDriverTypeId] = scheduleDriverVariance
@@ -106,8 +128,12 @@ class ScheduleDriverImpl<Out, In, R> implements Schedule.ScheduleDriver<Out, In,
     })
   }
 
+  lastIterationInfo: Ref.Ref<Option.Option<Schedule.IterationInfo>> = ref.unsafeMake(Option.none())
+
   get reset(): Effect.Effect<void> {
-    return ref.set(this.ref, [Option.none(), this.schedule.initial])
+    return ref.set(this.ref, [Option.none(), this.schedule.initial]).pipe(
+      core.zipLeft(ref.set(this.lastIterationInfo, Option.none()))
+    )
   }
 
   next(input: In): Effect.Effect<Out, Option.Option<never>, R> {
@@ -122,15 +148,22 @@ class ScheduleDriverImpl<Out, In, R> implements Schedule.ScheduleDriver<Out, In,
               core.flatMap(([state, out, decision]) => {
                 const setState = ref.set(this.ref, [Option.some(out), state] as const)
                 if (ScheduleDecision.isDone(decision)) {
-                  return core.zipRight(setState, core.fail(Option.none()))
+                  return setState.pipe(
+                    core.zipRight(core.fail(Option.none()))
+                  )
                 }
                 const millis = Intervals.start(decision.intervals) - now
                 if (millis <= 0) {
-                  return core.as(setState, out)
+                  return setState.pipe(
+                    core.zipRight(updateInfo(this.lastIterationInfo, Duration.zero)),
+                    core.as(out)
+                  )
                 }
+                const duration = Duration.millis(millis)
                 return pipe(
                   setState,
-                  core.zipRight(effect.sleep(Duration.millis(millis))),
+                  core.zipRight(updateInfo(this.lastIterationInfo, duration)),
+                  core.zipRight(effect.sleep(duration)),
                   core.as(out)
                 )
               })
@@ -1886,11 +1919,14 @@ const repeatOrElseEffectLoop = <A, E, R, R1, B, C, E2, R2>(
 ): Effect.Effect<B | C, E2, R | R1 | R2> => {
   return core.matchEffect(driver.next(value), {
     onFailure: () => core.orDie(driver.last),
-    onSuccess: (b) =>
-      core.matchEffect(self, {
-        onFailure: (error) => orElse(error, Option.some(b)),
-        onSuccess: (value) => repeatOrElseEffectLoop(self, driver, orElse, value)
+    onSuccess: (b) => {
+      const provideLastIterationInfo = effect.provideServiceEffect(LastIterationInfo, ref.get(driver.lastIterationInfo))
+      const selfWithLastDuration = provideLastIterationInfo(self)
+      return core.matchEffect(selfWithLastDuration, {
+        onFailure: (error) => provideLastIterationInfo(orElse(error, Option.some(b))),
+        onSuccess: (value) => repeatOrElseEffectLoop(selfWithLastDuration, driver, orElse, value)
       })
+    }
   })
 }
 
@@ -1981,16 +2017,22 @@ const retryOrElse_EffectLoop = <A, E, R, R1, A1, A2, E2, R2>(
 ): Effect.Effect<A | A2, E2, R | R1 | R2> => {
   return core.catchAll(
     self,
-    (e) =>
-      core.matchEffect(driver.next(e), {
+    (e) => {
+      const provideLastIterationInfo = effect.provideServiceEffect(
+        LastIterationInfo,
+        ref.get(driver.lastIterationInfo)
+      )
+
+      return core.matchEffect(driver.next(e), {
         onFailure: () =>
           pipe(
             driver.last,
             core.orDie,
-            core.flatMap((out) => orElse(e, out))
+            core.flatMap((out) => provideLastIterationInfo(orElse(e, out)))
           ),
-        onSuccess: () => retryOrElse_EffectLoop(self, driver, orElse)
+        onSuccess: () => retryOrElse_EffectLoop(provideLastIterationInfo(self), driver, orElse)
       })
+    }
   )
 }
 
@@ -2030,11 +2072,16 @@ const scheduleFrom_EffectLoop = <In, E, R, R2, Out>(
   self: Effect.Effect<In, E, R>,
   initial: In,
   driver: Schedule.ScheduleDriver<Out, In, R2>
-): Effect.Effect<Out, E, R | R2> =>
-  core.matchEffect(driver.next(initial), {
-    onFailure: () => core.orDie(driver.last),
-    onSuccess: () => core.flatMap(self, (a) => scheduleFrom_EffectLoop(self, a, driver))
+): Effect.Effect<Out, E, R | R2> => {
+  const provideLastIterationInfo = effect.provideServiceEffect(LastIterationInfo, ref.get(driver.lastIterationInfo))
+  return core.matchEffect(driver.next(initial), {
+    onFailure: () => core.orDie(provideLastIterationInfo(driver.last)),
+    onSuccess: () => {
+      const selfWithLastOptions = provideLastIterationInfo(self)
+      return core.flatMap(selfWithLastOptions, (a) => scheduleFrom_EffectLoop(selfWithLastOptions, a, driver))
+    }
   })
+}
 
 /** @internal */
 export const count: Schedule.Schedule<number> = unfold(0, (n) => n + 1)

@@ -1,7 +1,9 @@
 import { describe, it } from "@effect/vitest"
-import { strictEqual } from "@effect/vitest/utils"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
+import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 
@@ -97,6 +99,33 @@ describe("Effect", () => {
       )
       const result = yield* (Ref.get(ref))
       strictEqual(result, 4)
+    }))
+  it.effect("retry/schedule - ", () =>
+    Effect.gen(function*() {
+      const ref = yield* Ref.make<Array<Option.Option<Schedule.IterationInfo>>>([])
+      yield* pipe(
+        Effect.gen(function*() {
+          const iterationInfo = yield* Schedule.LastIterationInfo
+          yield* Ref.update(ref, (infos) => [...infos, iterationInfo])
+        }),
+        Effect.flipWith(Effect.retry(Schedule.recurs(3)))
+      )
+      const result = yield* (Ref.get(ref))
+      deepStrictEqual(result, [
+        Option.none(),
+        Option.some({
+          duration: Duration.zero,
+          iteration: 1
+        }),
+        Option.some({
+          duration: Duration.zero,
+          iteration: 2
+        }),
+        Option.some({
+          duration: Duration.zero,
+          iteration: 3
+        })
+      ])
     }))
 
   it.effect("retry/schedule + until", () =>
