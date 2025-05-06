@@ -7,9 +7,11 @@ import { type FromServer, RequestId } from "@effect/rpc/RpcMessage"
 import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberHandle from "effect/FiberHandle"
 import * as FiberMap from "effect/FiberMap"
@@ -740,7 +742,7 @@ const make = Effect.gen(function*() {
 
     yield* Effect.logDebug("Subscribing to sharding events")
     const mailbox = yield* shardManager.shardingEvents
-    const startedLatch = yield* Effect.makeLatch(false)
+    const startedLatch = yield* Deferred.make<void>()
 
     const eventsFiber = yield* Effect.gen(function*() {
       while (true) {
@@ -750,7 +752,7 @@ const make = Effect.gen(function*() {
 
           switch (event._tag) {
             case "StreamStarted": {
-              yield* startedLatch.open
+              yield* Deferred.done(startedLatch, Exit.void)
               break
             }
             case "ShardsAssigned": {
@@ -781,10 +783,13 @@ const make = Effect.gen(function*() {
           }
         }
       }
-    }).pipe(Effect.forkScoped)
+    }).pipe(
+      Effect.intoDeferred(startedLatch),
+      Effect.forkScoped
+    )
 
     // Wait for the stream to be established
-    yield* startedLatch.await
+    yield* Deferred.await(startedLatch)
 
     // perform a full sync every config.refreshAssignmentsInterval
     const syncFiber = yield* syncAssignments.pipe(
