@@ -327,10 +327,7 @@ const getReadonlyObjectStore = (
 const getReadSchema = (
   from: IndexedDbQuery.IndexedDbQueryBuilder.From
 ) => {
-  const table = HashMap.unsafeGet(
-    (from.source as IndexedDbVersion.IndexedDbVersion.AnyWithProps).tables,
-    from.table
-  )
+  const table = HashMap.unsafeGet(from.tables, from.table) as IndexedDbTable.IndexedDbTable.AnyWithProps
   const keyPath = table.options?.keyPath
   const autoIncrement = table.options?.autoIncrement
 
@@ -675,7 +672,7 @@ export const fromMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
 >(options: {
-  readonly source: Source
+  readonly tables: HashMap.HashMap<string, IndexedDbVersion.IndexedDbVersion.Tables<Source>>
   readonly table: Table
   readonly database: globalThis.IDBDatabase
   readonly IDBKeyRange: typeof globalThis.IDBKeyRange
@@ -683,7 +680,7 @@ export const fromMakeProto = <
 }): IndexedDbQuery.IndexedDbQueryBuilder.From<Source, Table> => {
   function IndexedDbQueryBuilder() {}
   Object.setPrototypeOf(IndexedDbQueryBuilder, CommitProto)
-  IndexedDbQueryBuilder.source = options.source
+  IndexedDbQueryBuilder.tables = options.tables
   IndexedDbQueryBuilder.table = options.table
   IndexedDbQueryBuilder.database = options.database
   IndexedDbQueryBuilder.IDBKeyRange = options.IDBKeyRange
@@ -1287,7 +1284,7 @@ export const clearMakeProto = <
 export const clearAllMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
 >(options: {
-  readonly source: Source
+  readonly tables: HashMap.HashMap<string, IndexedDbVersion.IndexedDbVersion.Tables<Source>>
   readonly database: globalThis.IDBDatabase
   readonly transaction: globalThis.IDBTransaction | undefined
 }): IndexedDbQuery.IndexedDbQueryBuilder.ClearAll<Source> => {
@@ -1303,7 +1300,7 @@ export const clearAllMakeProto = <
   )
   IndexedDbQueryBuilderImpl.database = options.database
   IndexedDbQueryBuilderImpl.transaction = options.transaction
-  IndexedDbQueryBuilderImpl.source = options.source
+  IndexedDbQueryBuilderImpl.tables = options.tables
   return IndexedDbQueryBuilderImpl as any
 }
 
@@ -1313,30 +1310,40 @@ export const makeProto = <
 >({
   IDBKeyRange,
   database,
-  source,
+  tables,
   transaction
 }: {
   readonly database: globalThis.IDBDatabase
   readonly IDBKeyRange: typeof globalThis.IDBKeyRange
-  readonly source: Source
+  readonly tables: HashMap.HashMap<string, IndexedDbVersion.IndexedDbVersion.Tables<Source>>
   readonly transaction: globalThis.IDBTransaction | undefined
 }): IndexedDbQuery.IndexedDbQuery<Source> => {
   function IndexedDbQuery() {}
   Object.setPrototypeOf(IndexedDbQuery, BasicProto)
-  IndexedDbQuery.source = source
+  IndexedDbQuery.tables = tables
   IndexedDbQuery.database = database
   IndexedDbQuery.IDBKeyRange = IDBKeyRange
+
+  IndexedDbQuery.use = <A>(f: (database: globalThis.IDBDatabase) => Promise<A>) =>
+    Effect.tryPromise({
+      try: () => f(database),
+      catch: (error) =>
+        new IndexedDbQueryError({
+          reason: "UnknownError",
+          cause: error
+        })
+    })
 
   IndexedDbQuery.from = <
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(table: A) => fromMakeProto({ database, IDBKeyRange, source, table, transaction })
+  >(table: A) => fromMakeProto({ database, IDBKeyRange, tables, table, transaction })
 
-  IndexedDbQuery.clearAll = clearAllMakeProto({ database, source, transaction })
+  IndexedDbQuery.clearAll = clearAllMakeProto({ database, tables, transaction })
 
   IndexedDbQuery.transaction = (
-    tables: Array<IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>>,
+    transactionTables: Array<IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>>,
     mode: globalThis.IDBTransactionMode,
     callback: (api: {
       readonly from: <
@@ -1348,9 +1355,9 @@ export const makeProto = <
     options?: globalThis.IDBTransactionOptions
   ) =>
     Effect.gen(function*() {
-      const transaction = database.transaction(tables, mode, options)
+      const transaction = database.transaction(transactionTables, mode, options)
       return yield* callback({
-        from: (table) => fromMakeProto({ database, IDBKeyRange, source, table, transaction })
+        from: (table) => fromMakeProto({ database, IDBKeyRange, tables, table, transaction })
       })
     })
 

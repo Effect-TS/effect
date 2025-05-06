@@ -15,11 +15,7 @@ const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ i
 
 const provideMigration = (migration: IndexedDbMigration.IndexedDbMigration.Any) =>
   Effect.provide(
-    IndexedDbVersion.layer.pipe(
-      Layer.provide(
-        IndexedDbDatabase.layer(databaseName, migration).pipe(Layer.provide(layerFakeIndexedDb))
-      )
-    )
+    IndexedDbDatabase.layer(databaseName, migration).pipe(Layer.provide(layerFakeIndexedDb))
   )
 
 afterEach(() => {
@@ -49,15 +45,16 @@ describe("IndexedDbDatabase", () => {
     {}
 
     return Effect.gen(function*() {
-      const { makeApi, use } = yield* IndexedDbVersion.IndexedDbApi
-      const api = makeApi(Db)
+      const api = yield* Db.api
       const todo = yield* api.from("todo").select()
 
-      const name = yield* use(async (database) => database.name)
-      const version = yield* use(async (database) => database.version)
-      const objectStoreNames = yield* use(async (database) => database.objectStoreNames)
-      const indexNames = yield* use(async (database) => database.transaction("todo").objectStore("todo").indexNames)
-      const index = yield* use(async (database) => database.transaction("todo").objectStore("todo").index("titleIndex"))
+      const name = yield* api.use(async (database) => database.name)
+      const version = yield* api.use(async (database) => database.version)
+      const objectStoreNames = yield* api.use(async (database) => database.objectStoreNames)
+      const indexNames = yield* api.use(async (database) => database.transaction("todo").objectStore("todo").indexNames)
+      const index = yield* api.use(async (database) =>
+        database.transaction("todo").objectStore("todo").index("titleIndex")
+      )
 
       assert.equal(name, "db")
       assert.equal(version, 1)
@@ -99,8 +96,7 @@ describe("IndexedDbDatabase", () => {
     {}
 
     return Effect.gen(function*() {
-      const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
-      const api = makeApi(Db)
+      const api = yield* Db.api
 
       yield* api.transaction(
         ["todo"],
@@ -158,19 +154,22 @@ describe("IndexedDbDatabase", () => {
           yield* from.deleteObjectStore("todo")
           yield* to.createObjectStore("todo")
           yield* to.from("todo").insertAll(
-            todo.map((t) => ({ uuid, title: t.title, completed: t.completed }))
+            todo.map((t) => ({
+              uuid,
+              title: t.title,
+              completed: t.completed
+            }))
           )
         }))
     {}
 
     return Effect.gen(function*() {
-      const { makeApi, use } = yield* IndexedDbVersion.IndexedDbApi
-      const api = makeApi(Db2)
+      const api = yield* Db2.api
       const todo = yield* api.from("todo").select()
-      const name = yield* use(async (database) => database.name)
-      const version = yield* use(async (database) => database.version)
-      const objectStoreNames = yield* use(async (database) => database.objectStoreNames)
-      const indexNames = yield* use(async (database) => database.transaction("todo").objectStore("todo").indexNames)
+      const name = yield* api.use(async (database) => database.name)
+      const version = yield* api.use(async (database) => database.version)
+      const objectStoreNames = yield* api.use(async (database) => database.objectStoreNames)
+      const indexNames = yield* api.use(async (database) => database.transaction("todo").objectStore("todo").indexNames)
 
       assert.equal(name, "db")
       assert.equal(version, 2)
@@ -215,13 +214,12 @@ describe("IndexedDbDatabase", () => {
     ) {}
 
     return Effect.gen(function*() {
-      const { makeApi, use } = yield* IndexedDbVersion.IndexedDbApi
-      const api = makeApi(Db2)
+      const api = yield* Db2.api
       const user = yield* api.from("user").select()
 
-      const name = yield* use(async (database) => database.name)
-      const version = yield* use(async (database) => database.version)
-      const objectStoreNames = yield* use(async (database) => database.objectStoreNames)
+      const name = yield* api.use(async (database) => database.name)
+      const version = yield* api.use(async (database) => database.version)
+      const objectStoreNames = yield* api.use(async (database) => database.objectStoreNames)
       assert.equal(name, "db")
       assert.equal(version, 2)
       assert.deepStrictEqual(user, [{ userId: 1, name: "John Doe", email: "john.doe@example.com" }])

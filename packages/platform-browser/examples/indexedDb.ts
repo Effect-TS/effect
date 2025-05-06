@@ -54,15 +54,14 @@ class Migration extends IndexedDbMigration.make(DatabaseVersion1, (api) =>
     }))
 {}
 
-const DatabaseLayer = IndexedDbDatabase.layer("database", Migration).pipe(
+const MainLayer = IndexedDbDatabase.layer("database", Migration).pipe(
   Layer.provide(IndexedDb.layerWindow)
 )
-const MainLayer = IndexedDbVersion.layer.pipe(Layer.provide(DatabaseLayer))
 
 export class IndexedDbService extends Effect.Service<IndexedDbService>()("IndexedDbService", {
   dependencies: [MainLayer],
   effect: Effect.gen(function*() {
-    const { makeApi } = yield* IndexedDbVersion.IndexedDbApi
-    return makeApi(CurrentDatabaseVersion)
+    const api = yield* CurrentDatabaseVersion.api
+    return api
   })
 }) {}
