@@ -27,29 +27,34 @@ describe("Effect", () => {
 
   it.effect("schedule - Schedule.LastIterationInfo", () =>
     Effect.gen(function*() {
-      const ref = yield* Ref.make<ReadonlyArray<Schedule.IterationInfo>>([])
+      const ref = yield* Ref.make<Array<Option.Option<Schedule.IterationInfo>>>([])
       const effect = Effect.gen(function*() {
-        const lastIterationOptions = yield* Schedule.LastIterationInfo
+        const lastIterationInfo = yield* Schedule.LastIterationInfo
 
-        yield* Ref.updateSome(ref, (array) => Option.map(lastIterationOptions, (value) => [...array, value]))
+        yield* Ref.update(ref, (array) => [...array, lastIterationInfo])
       })
-      const schedule = pipe(Schedule.fibonacci(Duration.seconds(1)), Schedule.intersect(Schedule.recurs(4)))
+      const schedule = pipe(Schedule.fibonacci("1 second"), Schedule.intersect(Schedule.recurs(4)))
       yield* pipe(effect, Effect.schedule(schedule), Effect.fork)
       yield* TestClock.adjust(Duration.seconds(50))
       const value = yield* Ref.get(ref)
 
-      deepStrictEqual(value, [{
-        duration: Duration.millis(1000),
-        iteration: 1
-      }, {
-        duration: Duration.millis(1000),
-        iteration: 2
-      }, {
-        duration: Duration.millis(2000),
-        iteration: 3
-      }, {
-        duration: Duration.millis(3000),
-        iteration: 4
-      }])
+      deepStrictEqual(value, [
+        Option.some({
+          duration: Duration.millis(1000),
+          iteration: 1
+        }),
+        Option.some({
+          duration: Duration.millis(1000),
+          iteration: 2
+        }),
+        Option.some({
+          duration: Duration.millis(2000),
+          iteration: 3
+        }),
+        Option.some({
+          duration: Duration.millis(3000),
+          iteration: 4
+        })
+      ])
     }))
 })

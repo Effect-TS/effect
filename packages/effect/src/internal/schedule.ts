@@ -1921,10 +1921,10 @@ const repeatOrElseEffectLoop = <A, E, R, R1, B, C, E2, R2>(
     onFailure: () => core.orDie(driver.last),
     onSuccess: (b) => {
       const provideLastIterationInfo = effect.provideServiceEffect(LastIterationInfo, ref.get(driver.lastIterationInfo))
-      const selfWithLastDuration = provideLastIterationInfo(self)
-      return core.matchEffect(selfWithLastDuration, {
+      const selfWithLastIterationInfo = provideLastIterationInfo(self)
+      return core.matchEffect(selfWithLastIterationInfo, {
         onFailure: (error) => provideLastIterationInfo(orElse(error, Option.some(b))),
-        onSuccess: (value) => repeatOrElseEffectLoop(selfWithLastDuration, driver, orElse, value)
+        onSuccess: (value) => repeatOrElseEffectLoop(selfWithLastIterationInfo, driver, orElse, value)
       })
     }
   })
