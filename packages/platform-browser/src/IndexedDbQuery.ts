@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type * as Effect from "effect/Effect"
+import type * as HashMap from "effect/HashMap"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 import { type IndexFromTable } from "./internal/indexedDbMigration.js"
@@ -39,8 +40,13 @@ export interface IndexedDbQuery<
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
 > {
   readonly [TypeId]: TypeId
-  readonly source: Source
+
+  readonly tables: HashMap.HashMap<string, IndexedDbVersion.IndexedDbVersion.Tables<Source>>
   readonly database: globalThis.IDBDatabase
+
+  readonly use: <A>(
+    f: (database: globalThis.IDBDatabase) => Promise<A>
+  ) => Effect.Effect<A, internal.IndexedDbQueryError>
 
   readonly from: <
     A extends IndexedDbTable.IndexedDbTable.TableName<
@@ -93,7 +99,7 @@ export declare namespace IndexedDbQueryBuilder {
     > = never
   > {
     readonly [TypeId]: TypeId
-    readonly source: Source
+    readonly tables: HashMap.HashMap<string, IndexedDbVersion.IndexedDbVersion.Tables<Source>>
     readonly table: Table
     readonly database: globalThis.IDBDatabase
     readonly IDBKeyRange: typeof globalThis.IDBKeyRange
@@ -131,7 +137,7 @@ export declare namespace IndexedDbQueryBuilder {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
 
     readonly [TypeId]: TypeId
-    readonly source: Source
+    readonly tables: HashMap.HashMap<string, IndexedDbVersion.IndexedDbVersion.Tables<Source>>
     readonly database: globalThis.IDBDatabase
     readonly transaction?: globalThis.IDBTransaction
   }

@@ -1,10 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as HashMap from "effect/HashMap"
-import * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import * as IndexedDbDatabase from "./IndexedDbDatabase.js"
@@ -31,12 +29,17 @@ export type TypeId = typeof TypeId
  * @category interface
  */
 export interface IndexedDbVersion<
-  out Tables extends IndexedDbTable.IndexedDbTable.Any = never
+  out Tables extends IndexedDbTable.IndexedDbTable.AnyWithProps = never
 > extends Pipeable {
   new(_: never): {}
 
   readonly [TypeId]: TypeId
   readonly tables: HashMap.HashMap<string, Tables>
+  readonly api: Effect.Effect<
+    IndexedDbQuery.IndexedDbQuery<IndexedDbVersion<Tables>>,
+    never,
+    IndexedDbDatabase.IndexedDbDatabase
+  >
 }
 
 /**
@@ -79,25 +82,6 @@ export declare namespace IndexedDbVersion {
   >
 }
 
-/**
- * @since 1.0.0
- * @category tags
- */
-export class IndexedDbApi extends Context.Tag(
-  "@effect/platform-browser/IndexedDbApi"
-)<
-  IndexedDbApi,
-  {
-    readonly use: <A>(
-      f: (database: globalThis.IDBDatabase) => Promise<A>
-    ) => Effect.Effect<A, internal.IndexedDbQueryError>
-
-    readonly makeApi: <
-      Source extends IndexedDbVersion.AnyWithProps = never
-    >(source: Source) => IndexedDbQuery.IndexedDbQuery<Source>
-  }
->() {}
-
 const Proto = {
   [TypeId]: TypeId,
   pipe() {
@@ -105,12 +89,16 @@ const Proto = {
   }
 }
 
-const makeProto = <Tables extends IndexedDbTable.IndexedDbTable.Any>(options: {
+const makeProto = <Tables extends IndexedDbTable.IndexedDbTable.AnyWithProps>(options: {
   readonly tables: HashMap.HashMap<string, Tables>
 }): IndexedDbVersion<Tables> => {
   function IndexedDbVersion() {}
   Object.setPrototypeOf(IndexedDbVersion, Proto)
   IndexedDbVersion.tables = options.tables
+  IndexedDbVersion.api = Effect.gen(function*() {
+    const { IDBKeyRange, database } = yield* IndexedDbDatabase.IndexedDbDatabase
+    return internal.makeProto({ database, IDBKeyRange, tables: options.tables, transaction: undefined })
+  })
   return IndexedDbVersion as any
 }
 
@@ -119,9 +107,9 @@ const makeProto = <Tables extends IndexedDbTable.IndexedDbTable.Any>(options: {
  * @category constructors
  */
 export const make = <
-  Tables extends ReadonlyArray<IndexedDbTable.IndexedDbTable.Any>
+  Tables extends ReadonlyArray<IndexedDbTable.IndexedDbTable.AnyWithProps>
 >(
-  ...tables: Tables & { 0: IndexedDbTable.IndexedDbTable.Any }
+  ...tables: Tables & { 0: IndexedDbTable.IndexedDbTable.AnyWithProps }
 ): IndexedDbVersion<Tables[number]> => {
   return makeProto({
     tables: HashMap.fromIterable(
@@ -129,26 +117,3 @@ export const make = <
     )
   })
 }
-
-/**
- * @since 1.0.0
- * @category layers
- */
-export const layer = Layer.effect(
-  IndexedDbApi,
-  Effect.gen(function*() {
-    const { IDBKeyRange, database } = yield* IndexedDbDatabase.IndexedDbDatabase
-    return IndexedDbApi.of({
-      makeApi: (source) => internal.makeProto({ database, IDBKeyRange, source, transaction: undefined }),
-      use: (f) =>
-        Effect.tryPromise({
-          try: () => f(database),
-          catch: (error) =>
-            new internal.IndexedDbQueryError({
-              reason: "UnknownError",
-              cause: error
-            })
-        })
-    })
-  })
-)
