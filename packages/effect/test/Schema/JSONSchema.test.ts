@@ -3682,6 +3682,25 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
     })
 
+    it("Declaration", () => {
+      class MyType {}
+      const schema = Schema.declare<MyType>((x) => x instanceof MyType, {
+        jsonSchema: {
+          type: "my-type",
+          title: "default-title",
+          description: "default-description"
+        }
+      }).annotations({
+        title: "My Title",
+        description: "My Description"
+      })
+      expectJSONSchema(schema, {
+        "type": "my-type",
+        "title": "My Title",
+        "description": "My Description"
+      })
+    })
+
     it("Void", () => {
       expectJSONSchema(Schema.Void.annotations({ jsonSchema: { "type": "custom" } }), {
         "type": "custom"

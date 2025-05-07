@@ -578,6 +578,9 @@ const go = (
         return go(t, $defs, handleIdentifier, path, options)
       }
     }
+    if (AST.isDeclaration(ast)) {
+      return { ...handler, ...getJsonSchemaAnnotations(ast) }
+    }
     return handler
   }
   const surrogate = AST.getSurrogateAnnotation(ast)
