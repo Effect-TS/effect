@@ -1,5 +1,65 @@
 # effect
 
+## 3.14.20
+
+### Patch Changes
+
+- [#4832](https://github.com/Effect-TS/effect/pull/4832) [`17e2f30`](https://github.com/Effect-TS/effect/commit/17e2f3091408cf0fca9414d4af3bdf7b2765b378) Thanks @gcanti! - JSONSchema: respect annotations on declarations.
+
+  Previously, annotations added with `.annotations(...)` on `Schema.declare(...)` were not included in the generated JSON Schema output.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  class MyType {}
+
+  const schema = Schema.declare<MyType>((x) => x instanceof MyType, {
+    jsonSchema: {
+      type: "my-type"
+    }
+  }).annotations({
+    title: "My Title",
+    description: "My Description"
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "my-type"
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  class MyType {}
+
+  const schema = Schema.declare<MyType>((x) => x instanceof MyType, {
+    jsonSchema: {
+      type: "my-type"
+    }
+  }).annotations({
+    title: "My Title",
+    description: "My Description"
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "My Description",
+    "title": "My Title",
+    "type": "my-type"
+  }
+  */
+  ```
+
 ## 3.14.19
 
 ### Patch Changes

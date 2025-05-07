@@ -1,5 +1,13 @@
 # @effect/sql-drizzle
 
+## 0.32.20
+
+### Patch Changes
+
+- Updated dependencies [[`17e2f30`](https://github.com/Effect-TS/effect/commit/17e2f3091408cf0fca9414d4af3bdf7b2765b378)]:
+  - effect@3.14.20
+  - @effect/sql@0.33.20
+
 ## 0.32.19
 
 ### Patch Changes
