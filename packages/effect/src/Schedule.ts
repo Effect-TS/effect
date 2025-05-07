@@ -2214,5 +2214,5 @@ export interface IterationMetadata {
  */
 export const CurrentIterationMetadata: Context.Reference<
   CurrentIterationMetadata,
-  Array<IterationMetadata>
+  Chunk.Chunk<IterationMetadata>
 > = internal.LastIterationInfo

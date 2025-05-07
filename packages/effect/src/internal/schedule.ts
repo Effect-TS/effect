@@ -1,4 +1,4 @@
-import * as Array from "../Array.js"
+import type * as Array from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Clock from "../Clock.js"
@@ -49,7 +49,7 @@ export const ScheduleDriverTypeId: Schedule.ScheduleDriverTypeId = Symbol.for(
 /** @internal */
 export const LastIterationInfo = Context.Reference<Schedule.CurrentIterationMetadata>()(
   "effect/Schedule/LastIterationInfo",
-  { defaultValue: () => Array.empty<Schedule.IterationMetadata>() }
+  { defaultValue: () => Chunk.empty<Schedule.IterationMetadata>() }
 )
 
 const scheduleVariance = {
@@ -1937,7 +1937,7 @@ const repeatOrElseEffectLoop = <A, E, R, R1, B, C, E2, R2>(
     onSuccess: (b) => {
       const provideLastIterationInfo = effect.provideServiceEffect(
         LastIterationInfo,
-        core.map(ref.get(driver.iterationMeta), Chunk.toArray)
+        ref.get(driver.iterationMeta)
       )
       const selfWithLastIterationInfo = provideLastIterationInfo(self)
       return core.matchEffect(selfWithLastIterationInfo, {
@@ -2038,7 +2038,7 @@ const retryOrElse_EffectLoop = <A, E, R, R1, A1, A2, E2, R2>(
     (e) => {
       const provideLastIterationInfo = effect.provideServiceEffect(
         LastIterationInfo,
-        core.map(ref.get(driver.iterationMeta), Chunk.toArray)
+        ref.get(driver.iterationMeta)
       )
 
       return core.matchEffect(driver.next(e), {
@@ -2093,7 +2093,7 @@ const scheduleFrom_EffectLoop = <In, E, R, R2, Out>(
 ): Effect.Effect<Out, E, R | R2> => {
   const provideLastIterationInfo = effect.provideServiceEffect(
     LastIterationInfo,
-    core.map(ref.get(driver.iterationMeta), Chunk.toArray)
+    ref.get(driver.iterationMeta)
   )
   return core.matchEffect(driver.next(initial), {
     onFailure: () => core.orDie(provideLastIterationInfo(driver.last)),

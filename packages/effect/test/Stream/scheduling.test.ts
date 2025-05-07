@@ -1,10 +1,12 @@
 import { describe, it } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
+import * as Chunk from "effect/Chunk"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
+import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/TestClock"
@@ -51,5 +53,30 @@ describe("Stream", () => {
         Stream.runCollect
       )
       deepStrictEqual(Array.from(result), ["a", "b", "c", "Done", "a", "b", "c", "Done"])
+    }))
+
+  it.effect("scheduleWith - Schedule.CurrentIterationMetadata", () =>
+    Effect.gen(function*() {
+      const result = yield* Ref.make(Chunk.empty<undefined | Schedule.IterationMetadata>())
+      const schedule = pipe(
+        Schedule.recurs(2),
+        Schedule.zipRight(Schedule.fromFunction<string, string>(() => "Done"))
+      )
+
+      yield* Stream.make("A", "B", "C", "A", "B", "C").pipe(
+        Stream.tap(() =>
+          Effect.gen(function*() {
+            const [lastIterationMetadata] = yield* Schedule.CurrentIterationMetadata
+
+            yield* Ref.update(result, Chunk.append(lastIterationMetadata))
+          })
+        ),
+        Stream.scheduleWith(schedule, {
+          onElement: (s) => s.toLowerCase(),
+          onSchedule: identity
+        }),
+        Stream.runCollect
+      )
+      deepStrictEqual(Array.from(yield* Ref.get(result)), [])
     }))
 })
