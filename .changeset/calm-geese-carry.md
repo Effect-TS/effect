@@ -8,30 +8,60 @@
 import { Effect, Schedule } from "effect"
 
 Effect.gen(function* () {
-  const iterationInfo = yield* Schedule.LastIterationInfo
-  //    ^? Option<Schedule.IterationInfo>
+  const [iterationMetadata] = yield* Schedule.CurrentIterationMetadata
+  //    ^? Chunk<Schedule.IterationInfo>
 
-  console.log(iterationInfo)
-}).pipe(
-  Effect.repeat(Schedule.recurs(2)) // <-- Effect.repeat
-)
-// Option.none()
-// Option.some({ duration: Duration.zero, iteration: 1 })
-// Option.some({ duration: Duration.zero, iteration: 2 })
+  console.log(iterationMetadata)
+}).pipe(Effect.repeat(Schedule.recurs(2)))
+// undefined
+// {
+//   elapsed: Duration.zero,
+//   elapsedSincePrevious: Duration.zero,
+//   input: undefined,
+//   now: 0,
+//   recurrence: 1,
+//   start: 0
+// }
+// {
+//   elapsed: Duration.zero,
+//   elapsedSincePrevious: Duration.zero,
+//   input: undefined,
+//   now: 0,
+//   recurrence: 2,
+//   start: 0
+// }
 
 Effect.gen(function* () {
   const iterationInfo = yield* Schedule.LastIterationInfo
 
   console.log(iterationInfo)
 }).pipe(
-  // Effect.schedule( // <-- Effect.schedule
-    Schedule.intersect(
-      Schedule.fibonacci("1 second"),
-      Schedule.recurs(3)
-    )
+  Effect.schedule(
+    Schedule.intersect(Schedule.fibonacci("1 second"), Schedule.recurs(3))
   )
 )
-// Option.some({ duration: Duration.seconds(1), iteration: 1 })
-// Option.some({ duration: Duration.seconds(1), iteration: 2 })
-// Option.some({ duration: Duration.seconds(2), iteration: 3 })
+// {
+//   elapsed: Duration.zero,
+//   elapsedSincePrevious: Duration.zero,
+//   recurrence: 1,
+//   input: undefined,
+//   now: 0,
+//   start: 0
+// },
+// {
+//   elapsed: Duration.seconds(1),
+//   elapsedSincePrevious: Duration.seconds(1),
+//   recurrence: 2,
+//   input: undefined,
+//   now: 1000,
+//   start: 0
+// },
+// {
+//   elapsed: Duration.seconds(2),
+//   elapsedSincePrevious: Duration.seconds(1),
+//   recurrence: 3,
+//   input: undefined,
+//   now: 2000,
+//   start: 0
+// }
 ```
