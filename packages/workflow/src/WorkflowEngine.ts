@@ -5,7 +5,6 @@ import * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import type * as Option from "effect/Option"
-import type * as Schema from "effect/Schema"
 import type * as Activity from "./Activity.js"
 import type { DurableClock } from "./DurableClock.js"
 import type * as DurableDeferred from "./DurableDeferred.js"
@@ -33,7 +32,7 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
       workflow: Workflow.Any,
       executionId: string,
       payload: object
-    ) => Effect.Effect<unknown, unknown>
+    ) => Effect.Effect<Workflow.Result<unknown, unknown>>
 
     /**
      * Tell a workflow to resume execution.
@@ -44,28 +43,14 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
     ) => Effect.Effect<void>
 
     /**
-     * Try to retrieve the result of an activity execution.
-     */
-    readonly activityResult: (
-      options: {
-        readonly workflow: Workflow.Any
-        readonly executionId: string
-        readonly activity: Activity.Activity<Schema.Schema.Any, Schema.Schema.All, never>
-        readonly attempt: number
-      }
-    ) => Effect.Effect<Option.Option<Exit.Exit<unknown, unknown>>>
-
-    /**
      * Execute an activity from a workflow.
      */
     readonly activityExecute: (
       options: {
-        readonly workflow: Workflow.Any
-        readonly executionId: string
-        readonly activity: Activity.Activity<Schema.Schema.Any, Schema.Schema.All, never>
+        readonly activity: Activity.Any
         readonly attempt: number
       }
-    ) => Effect.Effect<unknown, unknown>
+    ) => Effect.Effect<unknown, unknown, WorkflowInstance>
 
     /**
      * Try to retrieve the result of an DurableDeferred
