@@ -289,7 +289,7 @@ export interface AiLanguageModelOptions {
    */
   readonly toolChoice: ToolChoice<any>
   /**
-   * The span to use to trace interations with the large language model.
+   * The span to use to trace interactions with the large language model.
    */
   readonly span: Span
 }
@@ -412,7 +412,7 @@ export const make = <Config>(opts: {
               }, constDisableValidation)
             )
         })
-      })
+      }, (effect, span) => Effect.withParentSpan(effect, span))
     )
   }
 

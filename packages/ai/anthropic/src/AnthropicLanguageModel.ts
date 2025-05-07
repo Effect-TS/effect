@@ -6,6 +6,7 @@ import type * as AiInput from "@effect/ai/AiInput"
 import * as AiLanguageModel from "@effect/ai/AiLanguageModel"
 import * as AiModel from "@effect/ai/AiModel"
 import * as AiResponse from "@effect/ai/AiResponse"
+import * as AiTelemetry from "@effect/ai/AiTelemetry"
 import { addGenAIAnnotations } from "@effect/ai/AiTelemetry"
 import * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
@@ -179,40 +180,42 @@ const make = Effect.gen(function*() {
   )
 
   return AiLanguageModel.make({
-    generateText(options) {
-      const method = "generateText"
-      return makeRequest(method, options).pipe(
-        Effect.tap((request) => annotateRequest(options.span, request)),
-        Effect.flatMap((payload) => client.client.messagesPost({ params: {}, payload })),
-        Effect.tap((response) => annotateChatResponse(options.span, response)),
-        Effect.flatMap(makeResponse),
-        Effect.catchAll((cause) =>
-          AiError.is(cause) ? Effect.fail(cause) : Effect.fail(
-            new AiError({
-              module: "AnthropicLanguageModel",
-              method,
-              description: "An error occurred",
-              cause
-            })
-          )
-        )
+    generateText: Effect.fnUntraced(
+      function*(options) {
+        const spanTransformer = yield* AiTelemetry.CurrentSpanTransformer
+        const request = yield* makeRequest("generateText", options)
+        annotateRequest(options.span, request)
+        const rawResponse = yield* client.client.messagesPost({ params: {}, payload: request })
+        annotateChatResponse(options.span, rawResponse)
+        const response = yield* makeResponse(rawResponse)
+        spanTransformer({ ...options, response })
+        return response
+      },
+      Effect.catchAll((cause) =>
+        AiError.is(cause) ? cause : new AiError({
+          module: "AnthropicLanguageModel",
+          method: "generateText",
+          description: "An error occurred",
+          cause
+        })
       )
-    },
+    ),
     streamText(options) {
-      const method = "streamText"
-      return makeRequest(method, options).pipe(
+      return makeRequest("streamText", options).pipe(
         Effect.tap((request) => annotateRequest(options.span, request)),
         Effect.map(client.stream),
         Stream.unwrap,
-        Stream.tap((response) => {
+        Stream.tap(Effect.fnUntraced(function*(response) {
+          const spanTransformer = yield* AiTelemetry.CurrentSpanTransformer
           annotateStreamResponse(options.span, response)
-          return Effect.void
-        }),
+          spanTransformer({ ...options, response })
+          return
+        })),
         Stream.catchAll((cause) =>
           AiError.is(cause) ? Effect.fail(cause) : Effect.fail(
             new AiError({
               module: "AnthropicLanguageModel",
-              method,
+              method: "streamText",
               description: "An error occurred",
               cause
             })

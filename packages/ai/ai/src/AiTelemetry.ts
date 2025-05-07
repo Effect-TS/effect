@@ -1,12 +1,14 @@
 /**
  * @since 1.0.0
  */
-
-import { dual } from "effect/Function"
+import * as Context from "effect/Context"
+import { constVoid, dual } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import * as String from "effect/String"
 import type { Span } from "effect/Tracer"
 import type { Simplify } from "effect/Types"
+import type { AiLanguageModelOptions } from "./AiLanguageModel.js"
+import type { AiResponse } from "./AiResponse.js"
 
 /**
  * The attributes used to describe telemetry in the context of Generative
@@ -15,7 +17,7 @@ import type { Simplify } from "effect/Types"
  * {@see https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/}
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export type GenAITelemetryAttributes = Simplify<
   & AttributesWithPrefix<BaseAttributes, "gen_ai">
@@ -30,7 +32,7 @@ export type GenAITelemetryAttributes = Simplify<
  * All telemetry attributes which are part of the GenAI specification.
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export type AllAttributes =
   & BaseAttributes
@@ -45,7 +47,7 @@ export type AllAttributes =
  * namespaced by `gen_ai`.
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export interface BaseAttributes {
   /**
@@ -60,7 +62,7 @@ export interface BaseAttributes {
  * namespaced by `gen_ai.operation`.
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export interface OperationAttributes {
   readonly name?: (string & {}) | WellKnownOperationName | null | undefined
@@ -71,7 +73,7 @@ export interface OperationAttributes {
  * namespaced by `gen_ai.token`.
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export interface TokenAttributes {
   readonly type?: string | null | undefined
@@ -82,7 +84,7 @@ export interface TokenAttributes {
  * namespaced by `gen_ai.usage`.
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export interface UsageAttributes {
   readonly inputTokens?: number | null | undefined
@@ -94,7 +96,7 @@ export interface UsageAttributes {
  * namespaced by `gen_ai.request`.
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export interface RequestAttributes {
   /**
@@ -146,7 +148,7 @@ export interface RequestAttributes {
  * namespaced by `gen_ai.response`.
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export interface ResponseAttributes {
   /**
@@ -172,7 +174,7 @@ export interface ResponseAttributes {
  * otherwise, a custom value **MAY** be used.
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export type WellKnownOperationName = "chat" | "embeddings" | "text_completion"
 
@@ -183,7 +185,7 @@ export type WellKnownOperationName = "chat" | "embeddings" | "text_completion"
  * otherwise, a custom value **MAY** be used.
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export type WellKnownSystem =
   | "anthropic"
@@ -203,7 +205,7 @@ export type WellKnownSystem =
 
 /**
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export type AttributesWithPrefix<Attributes extends Record<string, any>, Prefix extends string> = {
   [Name in keyof Attributes as `${Prefix}.${FormatAttributeName<Name>}`]: Attributes[Name]
@@ -211,7 +213,7 @@ export type AttributesWithPrefix<Attributes extends Record<string, any>, Prefix 
 
 /**
  * @since 1.0.0
- * @category models
+ * @category Utility Types
  */
 export type FormatAttributeName<T extends string | number | symbol> = T extends string ?
   T extends `${infer First}${infer Rest}`
@@ -221,7 +223,7 @@ export type FormatAttributeName<T extends string | number | symbol> = T extends 
 
 /**
  * @since 1.0.0
- * @category utilities
+ * @category Utilities
  */
 export const addSpanAttributes = (
   keyPrefix: string,
@@ -244,7 +246,7 @@ const addSpanUsageAttributes = addSpanAttributes("gen_ai.usage", String.camelToS
 
 /**
  * @since 1.0.0
- * @since models
+ * @since Models
  */
 export type GenAITelemetryAttributeOptions = BaseAttributes & {
   readonly operation?: OperationAttributes | undefined
@@ -260,7 +262,7 @@ export type GenAITelemetryAttributeOptions = BaseAttributes & {
  * **NOTE**: This method will mutate the `Span` **in-place**.
  *
  * @since 1.0.0
- * @since utilities
+ * @since Utilities
  */
 export const addGenAIAnnotations: {
   (options: GenAITelemetryAttributeOptions): (span: Span) => void
@@ -276,3 +278,26 @@ export const addGenAIAnnotations: {
   if (Predicate.isNotNullable(options.token)) addSpanTokenAttributes(span, options.token)
   if (Predicate.isNotNullable(options.usage)) addSpanUsageAttributes(span, options.usage)
 })
+
+/**
+ * Represents a method which receives the elements of the request / response to
+ * a large language model and can be used to modify the span used to trace the
+ * API call.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export interface SpanTransformer {
+  (options: AiLanguageModelOptions & { readonly response: AiResponse }): void
+}
+
+/**
+ * @since 1.0.0
+ * @category Context
+ */
+export class CurrentSpanTransformer extends Context.Reference<
+  CurrentSpanTransformer
+>()(
+  "@effect/ai/AiTelemetry/CurrentSpanTransformer",
+  { defaultValue: (): SpanTransformer => constVoid }
+) {}

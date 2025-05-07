@@ -63,11 +63,29 @@ export type StreamCompletionRequest = Omit<typeof Generated.CreateChatCompletion
  * @category Constructors
  */
 export const make = (options: {
+  /**
+   * The API key to use to communicate with the OpenAi API.
+   */
   readonly apiKey?: Redacted.Redacted | undefined
+  /**
+   * The URL to use to communicate with the OpenAi API.
+   */
   readonly apiUrl?: string | undefined
+  /**
+   * The OpenAi organization identifier to use when communicating with the
+   * OpenAi API.
+   */
   readonly organizationId?: Redacted.Redacted | undefined
+  /**
+   * The OpenAi project identifier to use when communicating with the OpenAi
+   * API.
+   */
   readonly projectId?: Redacted.Redacted | undefined
-  readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
+  /**
+   * A method which can be used to transform the underlying `HttpClient` which
+   * will be used to communicate with the OpenAi API.
+   */
+  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
 }): Effect.Effect<OpenAiClient.Service, never, HttpClient.HttpClient> =>
   Effect.gen(function*() {
     const httpClient = (yield* HttpClient.HttpClient).pipe(
