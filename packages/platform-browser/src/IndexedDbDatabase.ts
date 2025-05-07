@@ -5,7 +5,6 @@ import { TypeIdError } from "@effect/platform/Error"
 import { Layer } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { pipeArguments } from "effect/Pipeable"
 import * as Runtime from "effect/Runtime"
 import * as IndexedDb from "./IndexedDb.js"
 import type * as IndexedDbMigration from "./IndexedDbMigration.js"
@@ -97,27 +96,18 @@ export class IndexedDbDatabase extends Context.Tag(
   "@effect/platform-browser/IndexedDbDatabase"
 )<IndexedDbDatabase, IndexedDbDatabase.AnyWithProps>() {}
 
-const Proto = {
-  [TypeId]: TypeId,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
 const makeProto = <Id extends string>(options: {
   readonly identifier: Id
   readonly version: number
   readonly database: globalThis.IDBDatabase
   readonly IDBKeyRange: typeof globalThis.IDBKeyRange
-}): IndexedDbDatabase.Service<Id> => {
-  function IndexedDb() {}
-  Object.setPrototypeOf(IndexedDb, Proto)
-  IndexedDb.identifier = options.identifier
-  IndexedDb.version = options.version
-  IndexedDb.database = options.database
-  IndexedDb.IDBKeyRange = options.IDBKeyRange
-  return IndexedDb as any
-}
+}): IndexedDbDatabase.Service<Id> => ({
+  [TypeId]: TypeId,
+  database: options.database,
+  IDBKeyRange: options.IDBKeyRange,
+  identifier: options.identifier,
+  version: options.version
+})
 
 /**
  * @since 1.0.0

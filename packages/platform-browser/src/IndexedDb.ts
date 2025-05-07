@@ -53,20 +53,20 @@ export const make = (impl: Omit<IndexedDb, TypeId>): IndexedDb => IndexedDb.of({
  */
 export const layerWindow: Layer.Layer<IndexedDb, ConfigError.ConfigError> = Layer.effect(
   IndexedDb,
-  Effect.fromNullable(window).pipe(
-    Effect.flatMap((window) =>
-      Effect.all({
-        indexedDB: Effect.fromNullable(window.indexedDB),
-        IDBKeyRange: Effect.fromNullable(window.IDBKeyRange)
-      })
-    ),
-    Effect.map(({ IDBKeyRange, indexedDB }) => make({ indexedDB, IDBKeyRange })),
-    Effect.mapError((cause) =>
-      ConfigError.SourceUnavailable(
-        ["window"],
-        "window.indexedDB is not available",
-        Cause.fail(cause)
+  Effect.suspend(() => {
+    if (window.indexedDB && window.IDBKeyRange) {
+      return Effect.succeed(make({
+        indexedDB: window.indexedDB,
+        IDBKeyRange: window.IDBKeyRange
+      }))
+    } else {
+      return Effect.fail(
+        ConfigError.SourceUnavailable(
+          ["window"],
+          "window.indexedDB is not available",
+          Cause.fail(new Error("window.indexedDB is not available"))
+        )
       )
-    )
-  )
+    }
+  })
 )
