@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
-import { constVoid, dual } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import * as String from "effect/String"
 import type { Span } from "effect/Tracer"
@@ -295,9 +295,7 @@ export interface SpanTransformer {
  * @since 1.0.0
  * @category Context
  */
-export class CurrentSpanTransformer extends Context.Reference<
-  CurrentSpanTransformer
->()(
-  "@effect/ai/AiTelemetry/CurrentSpanTransformer",
-  { defaultValue: (): SpanTransformer => constVoid }
-) {}
+export class CurrentSpanTransformer extends Context.Tag("@effect/ai/AiTelemetry/CurrentSpanTransformer")<
+  CurrentSpanTransformer,
+  SpanTransformer
+>() {}
