@@ -3,6 +3,7 @@ import { describe, expect, it } from "tstyche"
 
 type Value = { _tag: "A"; a: number } | { _tag: "B"; b: number }
 declare const value: Value
+declare const valueOrLiteral: Value | string
 declare const handlerA: (_: { _tag: "A"; a: number }) => string
 const isArray = (_: unknown): _ is ReadonlyArray<unknown> => Array.isArray(_)
 
@@ -389,6 +390,23 @@ describe("Match", () => {
       // @ts-expect-error: Type '() => boolean' is not assignable to type 'never'
       C: () => false
     })
+
+    pipe(
+      // @ts-expect-error Type 'string' is not assignable to type '{ readonly _tag: string; }'
+      valueOrLiteral,
+      Match.valueTags({
+        // @ts-expect-error Property 'a' does not exist on type '{ readonly _tag: string; }'
+        A: (_A) => _A.a,
+        B: () => "B"
+      })
+    )
+
+    // @ts-expect-error Type 'string' is not assignable to type '{ readonly _tag: string; }'
+    Match.valueTags(valueOrLiteral, {
+      // @ts-expect-error Property 'a' does not exist on type '{ readonly _tag: string; }'
+      A: (_A) => _A.a,
+      B: () => "B"
+    })
   })
 
   it("typeTags", () => {
@@ -431,6 +449,19 @@ describe("Match", () => {
       B: () => "B",
       // @ts-expect-error: Type '() => boolean' is not assignable to type 'never'
       C: () => false
+    })(value)
+
+    // @ts-expect-error Type 'string' is not assignable to type '{ readonly _tag: string; }'
+    Match.typeTags<Value | string>()({
+      A: (_) => _.a,
+      B: () => "B"
+    })(value)
+
+    // @ts-expect-error Type 'string' is not assignable to type '{ readonly _tag: string; }'
+    Match.typeTags<Value | string, string>()({
+      // @ts-expect-error: Type 'number' is not assignable to type 'string'
+      A: (_) => _.a,
+      B: () => "B"
     })(value)
   })
 

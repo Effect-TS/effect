@@ -211,13 +211,13 @@ export const value = <const I>(
 /** @internal */
 export const valueTags: {
   <
-    const I,
+    const I extends { readonly _tag: string },
     P extends
       & { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
       & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
   >(fields: P): (input: I) => Unify<ReturnType<P[keyof P]>>
   <
-    const I,
+    const I extends { readonly _tag: string },
     P extends
       & { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
       & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
@@ -225,7 +225,7 @@ export const valueTags: {
 } = dual(
   2,
   <
-    const I,
+    const I extends { readonly _tag: string },
     P extends
       & { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
       & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
@@ -236,7 +236,7 @@ export const valueTags: {
 )
 
 /** @internal */
-export const typeTags = <I>() =>
+export const typeTags = <I extends { readonly _tag: string }>() =>
 <
   P extends {
     readonly [Tag in Types.Tags<"_tag", I> & string]: (
