@@ -38,9 +38,7 @@ const make = (options: {
   [TypeId]: TypeId,
   name: options.name,
   duration: Duration.decode(options.duration),
-  deferred: DurableDeferred.make({
-    name: `DurableClock/${options.name}`
-  })
+  deferred: DurableDeferred.make(`DurableClock/${options.name}`)
 })
 
 const EngineTag = Context.GenericTag<WorkflowEngine, WorkflowEngine["Type"]>(
@@ -71,11 +69,9 @@ export const sleep: (
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
   const clock = make(options)
-  const token = yield* DurableDeferred.token(clock.deferred)
   yield* engine.scheduleClock({
     workflow: instance.workflow,
     executionId: instance.executionId,
-    token,
     clock
   })
   return yield* DurableDeferred.await(clock.deferred)

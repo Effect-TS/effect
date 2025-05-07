@@ -86,7 +86,6 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
         readonly workflowName: string
         readonly executionId: string
         readonly deferred: DurableDeferred.Any
-        readonly token: DurableDeferred.Token
         readonly exit: Exit.Exit<unknown, unknown>
       }
     ) => Effect.Effect<void>
@@ -97,7 +96,6 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
     readonly scheduleClock: (options: {
       readonly workflow: Workflow.Any
       readonly executionId: string
-      readonly token: DurableDeferred.Token
       readonly clock: DurableClock
     }) => Effect.Effect<void>
   }

@@ -6,7 +6,8 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as Schema from "effect/Schema"
-import type { WorkflowEngine } from "./WorkflowEngine.js"
+import type { Scope } from "effect/Scope"
+import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
 /**
  * @since 1.0.0
@@ -85,7 +86,7 @@ export const make = <
   readonly payload?: Payload
   readonly error?: Error
   readonly execute: (payload: Schema.Struct<Payload>["Type"]) => Effect.Effect<Success["Type"], Error["Type"], R>
-}): Workflow<Payload, Success, Error, R> => {
+}): Workflow<Payload, Success, Error, Exclude<R, Scope | WorkflowEngine | WorkflowInstance>> => {
   class Request extends Schema.Class<Request>(`@effect/workflow/${options.name}/Request`)(options.payload ?? {}) {
     [PrimaryKey.symbol]() {
       return ""

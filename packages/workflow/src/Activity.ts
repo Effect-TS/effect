@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type * as Effect from "effect/Effect"
+import * as Effectable from "effect/Effectable"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as Schema from "effect/Schema"
 
@@ -25,12 +26,11 @@ export interface Activity<
   Success extends Schema.Schema.Any,
   Error extends Schema.Schema.All,
   R
-> {
+> extends Effect.Effect<Success["Type"], Error["Type"], R> {
   readonly [TypeId]: TypeId
   readonly name: string
   readonly successSchema: Success
   readonly errorSchema: Error
-  readonly execute: Effect.Effect<Success["Type"], Error["Type"], R>
 }
 
 /**
@@ -47,12 +47,15 @@ export const make = <
   readonly error?: Error
   readonly execute: Effect.Effect<Success["Type"], Error["Type"], R>
 }): Activity<Success, Error, R> => ({
+  ...Effectable.CommitPrototype,
   [TypeId]: TypeId,
   name: options.name,
   successSchema: options.success ?? Schema.Void as any,
   errorSchema: options.error ?? Schema.Never as any,
-  execute: options.execute
-})
+  commit() {
+    return options.execute
+  }
+} as any)
 
 /**
  * @since 1.0.0
