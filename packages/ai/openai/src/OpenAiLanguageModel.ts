@@ -6,7 +6,6 @@ import type * as AiInput from "@effect/ai/AiInput"
 import * as AiLanguageModel from "@effect/ai/AiLanguageModel"
 import * as AiModel from "@effect/ai/AiModel"
 import * as AiResponse from "@effect/ai/AiResponse"
-import * as AiTelemetry from "@effect/ai/AiTelemetry"
 import * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
@@ -215,19 +214,17 @@ const make = Effect.gen(function*() {
     }
   )
 
-  return AiLanguageModel.make({
+  return yield* AiLanguageModel.make({
     generateText: Effect.fnUntraced(
       function*(options) {
         const structuredTool = options.tools.length === 1 && options.tools[0].structured
           ? options.tools[0]
           : undefined
-        const spanTransformer = yield* AiTelemetry.CurrentSpanTransformer
         const request = yield* makeRequest("generateText", options)
         annotateRequest(options.span, request)
         const rawResponse = yield* client.client.createChatCompletion(request)
         annotateChatResponse(options.span, rawResponse)
         const response = yield* makeResponse(rawResponse, "generateText", structuredTool)
-        spanTransformer({ ...options, response })
         return response
       },
       Effect.catchAll((cause) =>
@@ -245,10 +242,7 @@ const make = Effect.gen(function*() {
         Effect.map(client.stream),
         Stream.unwrap,
         Stream.tap(Effect.fnUntraced(function*(response) {
-          const spanTransformer = yield* AiTelemetry.CurrentSpanTransformer
           annotateStreamResponse(options.span, response)
-          spanTransformer({ ...options, response })
-          return
         })),
         Stream.catchAll((cause) =>
           AiError.is(cause) ? cause : new AiError({

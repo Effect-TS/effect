@@ -10,10 +10,11 @@ import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
-import type { Concurrency, NoExcessProperties } from "effect/Types"
+import type { Concurrency, Mutable, NoExcessProperties } from "effect/Types"
 import { AiError } from "./AiError.js"
 import * as AiInput from "./AiInput.js"
 import * as AiResponse from "./AiResponse.js"
+import { CurrentSpanTransformer } from "./AiTelemetry.js"
 import type * as AiTool from "./AiTool.js"
 import type * as AiToolkit from "./AiToolkit.js"
 
@@ -298,10 +299,22 @@ export interface AiLanguageModelOptions {
  * @since 1.0.0
  * @category Constructors
  */
-export const make = <Config>(opts: {
+export const make: <Config>(
+  opts: {
+    readonly generateText: (options: AiLanguageModelOptions) => Effect.Effect<AiResponse.AiResponse, AiError, Config>
+    readonly streamText: (options: AiLanguageModelOptions) => Stream.Stream<AiResponse.AiResponse, AiError, Config>
+  }
+) => Effect.Effect<
+  AiLanguageModel.Service<Config>
+> = Effect.fnUntraced(function*<Config>(opts: {
   readonly generateText: (options: AiLanguageModelOptions) => Effect.Effect<AiResponse.AiResponse, AiError, Config>
   readonly streamText: (options: AiLanguageModelOptions) => Stream.Stream<AiResponse.AiResponse, AiError, Config>
-}): AiLanguageModel.Service<Config> => {
+}) {
+  const parentSpanTransformer = yield* Effect.serviceOption(CurrentSpanTransformer)
+  const getSpanTransformer = Effect.serviceOption(CurrentSpanTransformer).pipe(
+    Effect.map(Option.orElse(() => parentSpanTransformer))
+  )
+
   const generateText = <
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
   >({ concurrency, toolChoice = "auto", toolkit, ...options }: Options): Effect.Effect<
@@ -315,53 +328,77 @@ export const make = <Config>(opts: {
       Effect.fnUntraced(function*(span) {
         const prompt = AiInput.make(options.prompt)
         const system = Option.fromNullable(options.system)
+        const spanTransformer = yield* getSpanTransformer
+        const modelOptions: Mutable<AiLanguageModelOptions> = { prompt, system, tools: [], toolChoice: "none", span }
         if (Predicate.isUndefined(toolkit)) {
-          return yield* opts.generateText({ prompt, system, tools: [], toolChoice: "none", span })
+          const response = yield* opts.generateText(modelOptions)
+          if (Option.isSome(spanTransformer)) {
+            spanTransformer.value({ ...modelOptions, response })
+          }
+          return response
         }
+        modelOptions.toolChoice = toolChoice
         const actualToolkit = Effect.isEffect(toolkit) ? yield* toolkit : toolkit
-        const tools: AiLanguageModelOptions["tools"] = []
         for (const tool of actualToolkit.tools) {
-          tools.push(convertTool(tool))
+          modelOptions.tools.push(convertTool(tool))
         }
-        const response = yield* opts.generateText({ prompt, system, tools, toolChoice, span })
+        const response = yield* opts.generateText(modelOptions)
+        if (Option.isSome(spanTransformer)) {
+          spanTransformer.value({ ...modelOptions, response })
+        }
         return yield* resolveParts({ response, toolkit: actualToolkit, concurrency, method: "generateText" })
       }, (effect, span) => Effect.withParentSpan(effect, span))
     ) as any
 
-  const streamText = <
-    Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
-  >({ concurrency, toolChoice = "auto", toolkit, ...options }: Options): Stream.Stream<
-    ExtractSuccess<Options>,
-    ExtractError<Options>,
-    ExtractContext<Options> | Config
-  > =>
-    Stream.unwrap(Effect.gen(function*() {
-      const makeScopedSpan = Effect.makeSpanScoped("AiLanguageModel.streamText", {
+  const streamText = Effect.fnUntraced(
+    function*<
+      Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
+    >({ concurrency, toolChoice = "auto", toolkit, ...options }: Options) {
+      const span = yield* Effect.makeSpanScoped("AiLanguageModel.streamText", {
         captureStackTrace: false,
         attributes: { concurrency, toolChoice }
       })
       const prompt = AiInput.make(options.prompt)
       const system = Option.fromNullable(options.system)
+      const modelOptions: Mutable<AiLanguageModelOptions> = { prompt, system, tools: [], toolChoice: "none", span }
       if (Predicate.isUndefined(toolkit)) {
-        return makeScopedSpan.pipe(
-          Effect.map((span) => opts.streamText({ prompt, system, tools: [], toolChoice: "none", span })),
-          Stream.unwrapScoped
-        ) as any
+        return [opts.streamText(modelOptions), modelOptions] as const
       }
-      const actualToolkit = Effect.isEffect(toolkit) ? yield* toolkit : toolkit
-      const tools: AiLanguageModelOptions["tools"] = []
+      modelOptions.toolChoice = toolChoice
+      const actualToolkit = Effect.isEffect(toolkit)
+        ? yield* (toolkit as Effect.Effect<AiToolkit.ToHandler<any>>)
+        : toolkit
       for (const tool of actualToolkit.tools) {
-        tools.push(convertTool(tool))
+        modelOptions.tools.push(convertTool(tool))
       }
-      return makeScopedSpan.pipe(
-        Effect.map((span) => opts.streamText({ prompt, system, tools, toolChoice, span })),
-        Stream.unwrapScoped,
-        Stream.mapEffect(
-          (response) => resolveParts({ response, toolkit: actualToolkit, concurrency, method: "streamText" }),
-          { concurrency: "unbounded" }
-        )
+      return [
+        opts.streamText(modelOptions).pipe(
+          Stream.mapEffect(
+            (response) => resolveParts({ response, toolkit: actualToolkit, concurrency, method: "streamText" }),
+            { concurrency: "unbounded" }
+          )
+        ) as Stream.Stream<AiResponse.AiResponse, AiError, Config>,
+        modelOptions
+      ] as const
+    },
+    Effect.flatMap(Effect.fnUntraced(function*([stream, options]) {
+      const spanTransformer = yield* getSpanTransformer
+      if (Option.isNone(spanTransformer)) {
+        return stream
+      }
+      let lastResponse: AiResponse.AiResponse | undefined
+      return stream.pipe(
+        Stream.map((response) => {
+          lastResponse = response
+          return response
+        }),
+        Stream.ensuring(Effect.sync(() => {
+          spanTransformer.value({ ...options, response: lastResponse! })
+        }))
       )
-    }))
+    })),
+    Stream.unwrapScoped
+  )
 
   const generateObject = <A, I, R>(
     options: GenerateObjectOptions<A, I, R> | GenerateObjectWithToolCallIdOptions<A, I, R>
@@ -380,10 +417,15 @@ export const make = <Config>(opts: {
       Effect.fnUntraced(function*(span) {
         const prompt = AiInput.make(options.prompt)
         const system = Option.fromNullable(options.system)
+        const spanTransformer = yield* getSpanTransformer
         const decode = Schema.decodeUnknown(options.schema)
         const tool = convertStructured(toolCallId, options.schema)
         const toolChoice = { tool: tool.name } as const
-        const response = yield* opts.generateText({ prompt, system, tools: [tool], toolChoice, span })
+        const modelOptions: AiLanguageModelOptions = { prompt, system, tools: [tool], toolChoice, span }
+        const response = yield* opts.generateText(modelOptions)
+        if (Option.isSome(spanTransformer)) {
+          spanTransformer.value({ ...modelOptions, response })
+        }
         const toolCallPart = response.parts.find((part): part is AiResponse.ToolCallPart =>
           part._tag === "ToolCallPart" && part.name === toolCallId
         )
@@ -416,8 +458,8 @@ export const make = <Config>(opts: {
     )
   }
 
-  return { generateText, streamText, generateObject } as any
-}
+  return AiLanguageModel.of({ generateText, streamText, generateObject } as any)
+})
 
 const convertTool = <Tool extends AiTool.Any>(tool: Tool) => ({
   name: tool.name,
