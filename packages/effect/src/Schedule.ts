@@ -141,7 +141,7 @@ export declare namespace Schedule {
  */
 export interface ScheduleDriver<out Out, in In = unknown, out R = never> extends Schedule.DriverVariance<Out, In, R> {
   readonly state: Effect.Effect<unknown>
-  readonly lastIterationInfo: Ref.Ref<Option.Option<IterationInfo>>
+  readonly iterationMeta: Ref.Ref<Chunk.Chunk<IterationMetadata>>
   readonly last: Effect.Effect<Out, Cause.NoSuchElementException>
   readonly reset: Effect.Effect<void>
   next(input: In): Effect.Effect<Out, Option.Option<never>, R>
@@ -2191,7 +2191,7 @@ export const zipWith: {
  * @since 3.15.0
  * @category models
  */
-export interface LastIterationInfo {
+export interface CurrentIterationMetadata {
   readonly _: unique symbol
 }
 
@@ -2199,16 +2199,20 @@ export interface LastIterationInfo {
  * @since 3.15.0
  * @category models
  */
-export interface IterationInfo {
-  readonly duration: Duration.Duration
-  readonly iteration: number
+export interface IterationMetadata {
+  readonly input: unknown
+  readonly recurrence: number
+  readonly start: number
+  readonly now: number
+  readonly elapsed: Duration.Duration
+  readonly elapsedSincePrevious: Duration.Duration
 }
 
 /**
  * @since 3.15.0
  * @category models
  */
-export const LastIterationInfo: Context.Reference<
-  LastIterationInfo,
-  Option.Option<IterationInfo>
+export const CurrentIterationMetadata: Context.Reference<
+  CurrentIterationMetadata,
+  Array<IterationMetadata>
 > = internal.LastIterationInfo

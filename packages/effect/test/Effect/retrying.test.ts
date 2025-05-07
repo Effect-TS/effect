@@ -3,7 +3,6 @@ import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
-import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 
@@ -102,29 +101,41 @@ describe("Effect", () => {
     }))
   it.effect("retry/schedule - LastIterationInfo", () =>
     Effect.gen(function*() {
-      const ref = yield* Ref.make<Array<Option.Option<Schedule.IterationInfo>>>([])
+      const ref = yield* Ref.make<Array<undefined | Schedule.IterationMetadata>>([])
       yield* pipe(
         Effect.gen(function*() {
-          const iterationInfo = yield* Schedule.LastIterationInfo
-          yield* Ref.update(ref, (infos) => [...infos, iterationInfo])
+          const [lastIterationInfo] = yield* Schedule.CurrentIterationMetadata
+          yield* Ref.update(ref, (infos) => [...infos, lastIterationInfo])
         }),
         Effect.flipWith(Effect.retry(Schedule.recurs(3)))
       )
       const result = yield* (Ref.get(ref))
       deepStrictEqual(result, [
-        Option.none(),
-        Option.some({
-          duration: Duration.zero,
-          iteration: 1
-        }),
-        Option.some({
-          duration: Duration.zero,
-          iteration: 2
-        }),
-        Option.some({
-          duration: Duration.zero,
-          iteration: 3
-        })
+        undefined,
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          recurrence: 1,
+          input: undefined,
+          now: 0,
+          start: 0
+        },
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          recurrence: 2,
+          input: undefined,
+          now: 0,
+          start: 0
+        },
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          recurrence: 3,
+          input: undefined,
+          now: 0,
+          start: 0
+        }
       ])
     }))
 

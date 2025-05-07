@@ -3,9 +3,9 @@ import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
-import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
+import * as TestClock from "effect/TestClock"
 
 describe("Effect", () => {
   it.effect("succeeds eventually", () =>
@@ -121,24 +121,38 @@ describe("Effect", () => {
       strictEqual(result, 4)
     }))
 
-  it.effect("repeat/schedule - ", () =>
+  it.effect("repeat/schedule - IterationMetadata", () =>
     Effect.gen(function*() {
-      const ref = yield* Ref.make<Array<Option.Option<Schedule.IterationInfo>>>([])
+      const ref = yield* Ref.make<Array<undefined | Schedule.IterationMetadata>>([])
       yield* Effect.gen(function*() {
-        const iterationInfo = yield* Schedule.LastIterationInfo
-        yield* Ref.update(ref, (infos) => [...infos, iterationInfo])
-      }).pipe(Effect.repeat(Schedule.recurs(2)))
+        const [lastIterationInfo] = yield* Schedule.CurrentIterationMetadata
+        yield* Ref.update(ref, (infos) => [...infos, lastIterationInfo])
+      }).pipe(
+        Effect.repeat(
+          Schedule.intersect(Schedule.fixed("1 second"), Schedule.recurs(2))
+        ),
+        Effect.fork
+      )
+      yield* TestClock.adjust(Duration.seconds(50))
       const result = yield* (Ref.get(ref))
       deepStrictEqual(result, [
-        Option.none(),
-        Option.some({
-          duration: Duration.zero,
-          iteration: 1
-        }),
-        Option.some({
-          duration: Duration.zero,
-          iteration: 2
-        })
+        undefined,
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          recurrence: 1,
+          input: undefined,
+          now: 0,
+          start: 0
+        },
+        {
+          elapsed: Duration.seconds(1),
+          elapsedSincePrevious: Duration.seconds(1),
+          recurrence: 2,
+          input: undefined,
+          now: 1000,
+          start: 0
+        }
       ])
     }))
 

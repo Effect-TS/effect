@@ -1,3 +1,4 @@
+import * as Array from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Clock from "../Clock.js"
@@ -46,9 +47,9 @@ export const ScheduleDriverTypeId: Schedule.ScheduleDriverTypeId = Symbol.for(
 ) as Schedule.ScheduleDriverTypeId
 
 /** @internal */
-export const LastIterationInfo = Context.Reference<Schedule.LastIterationInfo>()(
+export const LastIterationInfo = Context.Reference<Schedule.CurrentIterationMetadata>()(
   "effect/Schedule/LastIterationInfo",
-  { defaultValue: () => Option.none<Schedule.IterationInfo>() }
+  { defaultValue: () => Array.empty<Schedule.IterationMetadata>() }
 )
 
 const scheduleVariance = {
@@ -87,19 +88,33 @@ class ScheduleImpl<S, Out, In, R> implements Schedule.Schedule<Out, In, R> {
 }
 
 const updateInfo = (
-  lastIterationInfo: Ref.Ref<Option.Option<Schedule.IterationInfo>>,
-  duration: Duration.Duration
+  iterationMetaRef: Ref.Ref<Chunk.Chunk<Schedule.IterationMetadata>>,
+  now: number,
+  input: unknown
 ) =>
-  ref.update(lastIterationInfo, (lastOptionsValue) => {
-    const iteration = lastOptionsValue.pipe(
-      Option.map((x) => x.iteration + 1),
-      Option.getOrElse(() => 1)
-    )
+  ref.update(iterationMetaRef, (iterationMeta) => {
+    if (Chunk.isNonEmpty(iterationMeta)) {
+      const prev = Chunk.headNonEmpty(iterationMeta)
+      const newIterationMeta: Schedule.IterationMetadata = {
+        now,
+        input,
+        elapsed: Duration.millis(now - prev.start),
+        elapsedSincePrevious: Duration.millis(now - prev.now),
+        start: prev.start,
+        recurrence: prev.recurrence + 1
+      }
 
-    return Option.some({
-      duration,
-      iteration
-    })
+      return Chunk.prepend(iterationMeta, newIterationMeta)
+    } else {
+      return Chunk.of<Schedule.IterationMetadata>({
+        start: now,
+        now,
+        input,
+        elapsed: Duration.zero,
+        elapsedSincePrevious: Duration.zero,
+        recurrence: 1
+      })
+    }
   })
 
 /** @internal */
@@ -128,11 +143,11 @@ class ScheduleDriverImpl<Out, In, R> implements Schedule.ScheduleDriver<Out, In,
     })
   }
 
-  lastIterationInfo: Ref.Ref<Option.Option<Schedule.IterationInfo>> = ref.unsafeMake(Option.none())
+  iterationMeta = ref.unsafeMake(Chunk.empty<Schedule.IterationMetadata>())
 
   get reset(): Effect.Effect<void> {
     return ref.set(this.ref, [Option.none(), this.schedule.initial]).pipe(
-      core.zipLeft(ref.set(this.lastIterationInfo, Option.none()))
+      core.zipLeft(ref.set(this.iterationMeta, Chunk.empty()))
     )
   }
 
@@ -155,14 +170,14 @@ class ScheduleDriverImpl<Out, In, R> implements Schedule.ScheduleDriver<Out, In,
                 const millis = Intervals.start(decision.intervals) - now
                 if (millis <= 0) {
                   return setState.pipe(
-                    core.zipRight(updateInfo(this.lastIterationInfo, Duration.zero)),
+                    core.zipRight(updateInfo(this.iterationMeta, now, input)),
                     core.as(out)
                   )
                 }
                 const duration = Duration.millis(millis)
                 return pipe(
                   setState,
-                  core.zipRight(updateInfo(this.lastIterationInfo, duration)),
+                  core.zipRight(updateInfo(this.iterationMeta, now, input)),
                   core.zipRight(effect.sleep(duration)),
                   core.as(out)
                 )
@@ -1920,7 +1935,10 @@ const repeatOrElseEffectLoop = <A, E, R, R1, B, C, E2, R2>(
   return core.matchEffect(driver.next(value), {
     onFailure: () => core.orDie(driver.last),
     onSuccess: (b) => {
-      const provideLastIterationInfo = effect.provideServiceEffect(LastIterationInfo, ref.get(driver.lastIterationInfo))
+      const provideLastIterationInfo = effect.provideServiceEffect(
+        LastIterationInfo,
+        core.map(ref.get(driver.iterationMeta), Chunk.toArray)
+      )
       const selfWithLastIterationInfo = provideLastIterationInfo(self)
       return core.matchEffect(selfWithLastIterationInfo, {
         onFailure: (error) => provideLastIterationInfo(orElse(error, Option.some(b))),
@@ -2020,7 +2038,7 @@ const retryOrElse_EffectLoop = <A, E, R, R1, A1, A2, E2, R2>(
     (e) => {
       const provideLastIterationInfo = effect.provideServiceEffect(
         LastIterationInfo,
-        ref.get(driver.lastIterationInfo)
+        core.map(ref.get(driver.iterationMeta), Chunk.toArray)
       )
 
       return core.matchEffect(driver.next(e), {
@@ -2073,7 +2091,10 @@ const scheduleFrom_EffectLoop = <In, E, R, R2, Out>(
   initial: In,
   driver: Schedule.ScheduleDriver<Out, In, R2>
 ): Effect.Effect<Out, E, R | R2> => {
-  const provideLastIterationInfo = effect.provideServiceEffect(LastIterationInfo, ref.get(driver.lastIterationInfo))
+  const provideLastIterationInfo = effect.provideServiceEffect(
+    LastIterationInfo,
+    core.map(ref.get(driver.iterationMeta), Chunk.toArray)
+  )
   return core.matchEffect(driver.next(initial), {
     onFailure: () => core.orDie(provideLastIterationInfo(driver.last)),
     onSuccess: () => {
