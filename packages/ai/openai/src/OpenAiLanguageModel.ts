@@ -241,9 +241,10 @@ const make = Effect.gen(function*() {
         Effect.tap((request) => annotateRequest(options.span, request)),
         Effect.map(client.stream),
         Stream.unwrap,
-        Stream.tap(Effect.fnUntraced(function*(response) {
+        Stream.map((response) => {
           annotateStreamResponse(options.span, response)
-        })),
+          return response
+        }),
         Stream.catchAll((cause) =>
           AiError.is(cause) ? cause : new AiError({
             module: "OpenAiLanguageModel",
