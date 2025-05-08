@@ -31,9 +31,34 @@ describe.sequential("Mysql", () => {
       const sql = yield* SqlClient.SqlClient
       const db = yield* MysqlDrizzle
       yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
-      yield* Effect.promise(() => db.insert(users).values({ name: "Alice", snakeCase: "snake" }))
+      const rows = yield* Effect.promise(() =>
+        db.insert(users).values({ name: "Alice", snakeCase: "snake" }).$returningId()
+      )
       const results = yield* Effect.promise(() => db.select().from(users))
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "snake" }])
+      assert.deepStrictEqual(rows, [{ id: 1 }])
+    }).pipe(
+      Effect.provide(DrizzleMysqlLive),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), { timeout: 60000 })
+
+  it.effect("remote callback multiple values", () =>
+    Effect.gen(function*(_) {
+      const sql = yield* SqlClient.SqlClient
+      const db = yield* MysqlDrizzle
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
+      const rows = yield* Effect.promise(() =>
+        db.insert(users).values([
+          { name: "Alice", snakeCase: "snake" },
+          { name: "Bob", snakeCase: "snake" }
+        ]).$returningId()
+      )
+      const results = yield* Effect.promise(() => db.select().from(users))
+      assert.deepStrictEqual(results, [
+        { id: 1, name: "Alice", snakeCase: "snake" },
+        { id: 2, name: "Bob", snakeCase: "snake" }
+      ])
+      assert.deepStrictEqual(rows, [{ id: 1 }, { id: 2 }])
     }).pipe(
       Effect.provide(DrizzleMysqlLive),
       Effect.catchTag("ContainerError", () => Effect.void)
