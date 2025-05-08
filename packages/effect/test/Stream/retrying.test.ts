@@ -122,8 +122,8 @@ describe("Stream", () => {
         Stream.fail(1),
         Stream.catchAll((x) =>
           Effect.gen(function*() {
-            const [lastIterationMetadata] = yield* Schedule.CurrentIterationMetadata
-            yield* Ref.update(iterationMetadata, Chunk.append(lastIterationMetadata))
+            const currentIterationMetadata = yield* Schedule.CurrentIterationMetadata
+            yield* Ref.update(iterationMetadata, Chunk.append(currentIterationMetadata))
             return yield* Effect.fail(x)
           })
         ),
@@ -135,7 +135,14 @@ describe("Stream", () => {
       yield* Fiber.interrupt(fiber)
       const result = yield* Ref.get(iterationMetadata)
       deepStrictEqual(Array.fromIterable(result), [
-        undefined,
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          input: undefined,
+          now: 0,
+          recurrence: 0,
+          start: 0
+        },
         {
           elapsed: Duration.zero,
           elapsedSincePrevious: Duration.zero,

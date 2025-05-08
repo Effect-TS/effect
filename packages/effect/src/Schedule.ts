@@ -141,7 +141,7 @@ export declare namespace Schedule {
  */
 export interface ScheduleDriver<out Out, in In = unknown, out R = never> extends Schedule.DriverVariance<Out, In, R> {
   readonly state: Effect.Effect<unknown>
-  readonly iterationMeta: Ref.Ref<Chunk.Chunk<IterationMetadata>>
+  readonly iterationMeta: Ref.Ref<IterationMetadata>
   readonly last: Effect.Effect<Out, Cause.NoSuchElementException>
   readonly reset: Effect.Effect<void>
   next(input: In): Effect.Effect<Out, Option.Option<never>, R>
@@ -2214,5 +2214,5 @@ export interface IterationMetadata {
  */
 export const CurrentIterationMetadata: Context.Reference<
   CurrentIterationMetadata,
-  Chunk.Chunk<IterationMetadata>
+  IterationMetadata
 > = internal.CurrentIterationMetadata

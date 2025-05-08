@@ -66,9 +66,9 @@ describe("Stream", () => {
       yield* Stream.make("A", "B", "C", "A", "B", "C").pipe(
         Stream.tap(() =>
           Effect.gen(function*() {
-            const [lastIterationMetadata] = yield* Schedule.CurrentIterationMetadata
+            const currentIterationMetadata = yield* Schedule.CurrentIterationMetadata
 
-            yield* Ref.update(result, Chunk.append(lastIterationMetadata))
+            yield* Ref.update(result, Chunk.append(currentIterationMetadata))
           })
         ),
         Stream.scheduleWith(schedule, {

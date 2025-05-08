@@ -73,7 +73,7 @@ describe("Stream", () => {
       const fiber = yield* pipe(
         Stream.fromEffect(
           Schedule.CurrentIterationMetadata.pipe(
-            Effect.flatMap(([lastIterationMetadata]) => Ref.update(ref, Chunk.append(lastIterationMetadata)))
+            Effect.flatMap((currentIterationMetadata) => Ref.update(ref, Chunk.append(currentIterationMetadata)))
           )
         ),
         Stream.repeat(Schedule.exponential(Duration.millis(10))),
@@ -85,7 +85,14 @@ describe("Stream", () => {
       yield* (Fiber.interrupt(fiber))
       const result = yield* (Ref.get(ref))
       deepStrictEqual(Array.from(result), [
-        undefined,
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          input: undefined,
+          now: 0,
+          recurrence: 0,
+          start: 0
+        },
         {
           elapsed: Duration.zero,
           elapsedSincePrevious: Duration.zero,

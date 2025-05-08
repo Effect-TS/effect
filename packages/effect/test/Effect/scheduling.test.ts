@@ -28,7 +28,7 @@ describe("Effect", () => {
     Effect.gen(function*() {
       const ref = yield* Ref.make<Array<undefined | Schedule.IterationMetadata>>([])
       const effect = Effect.gen(function*() {
-        const [lastIterationInfo] = yield* Schedule.CurrentIterationMetadata
+        const lastIterationInfo = yield* Schedule.CurrentIterationMetadata
 
         yield* Ref.update(ref, (array) => [...array, lastIterationInfo])
       })

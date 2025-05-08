@@ -1,4 +1,3 @@
-import type * as Array from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Clock from "../Clock.js"
@@ -47,9 +46,19 @@ export const ScheduleDriverTypeId: Schedule.ScheduleDriverTypeId = Symbol.for(
 ) as Schedule.ScheduleDriverTypeId
 
 /** @internal */
+const defaultIterationMetadata: Schedule.IterationMetadata = {
+  start: 0,
+  now: 0,
+  input: undefined,
+  elapsed: Duration.zero,
+  elapsedSincePrevious: Duration.zero,
+  recurrence: 0
+}
+
+/** @internal */
 export const CurrentIterationMetadata = Context.Reference<Schedule.CurrentIterationMetadata>()(
   "effect/Schedule/CurrentIterationMetadata",
-  { defaultValue: () => Chunk.empty<Schedule.IterationMetadata>() }
+  { defaultValue: () => defaultIterationMetadata }
 )
 
 const scheduleVariance = {
@@ -87,35 +96,30 @@ class ScheduleImpl<S, Out, In, R> implements Schedule.Schedule<Out, In, R> {
   }
 }
 
+/** @internal */
 const updateInfo = (
-  iterationMetaRef: Ref.Ref<Chunk.Chunk<Schedule.IterationMetadata>>,
+  iterationMetaRef: Ref.Ref<Schedule.IterationMetadata>,
   now: number,
   input: unknown
 ) =>
-  ref.update(iterationMetaRef, (iterationMeta) => {
-    if (Chunk.isNonEmpty(iterationMeta)) {
-      const prev = Chunk.headNonEmpty(iterationMeta)
-      const newIterationMeta: Schedule.IterationMetadata = {
+  ref.update(iterationMetaRef, (prev) =>
+    (prev.recurrence === 0) ?
+      {
         now,
         input,
-        elapsed: Duration.millis(now - prev.start),
-        elapsedSincePrevious: Duration.millis(now - prev.now),
-        start: prev.start,
-        recurrence: prev.recurrence + 1
-      }
-
-      return Chunk.prepend(iterationMeta, newIterationMeta)
-    } else {
-      return Chunk.of<Schedule.IterationMetadata>({
-        start: now,
-        now,
-        input,
+        recurrence: prev.recurrence + 1,
         elapsed: Duration.zero,
         elapsedSincePrevious: Duration.zero,
-        recurrence: 1
+        start: now
+      } :
+      {
+        now,
+        input,
+        recurrence: prev.recurrence + 1,
+        elapsed: Duration.millis(now - prev.start),
+        elapsedSincePrevious: Duration.millis(now - prev.now),
+        start: prev.start
       })
-    }
-  })
 
 /** @internal */
 class ScheduleDriverImpl<Out, In, R> implements Schedule.ScheduleDriver<Out, In, R> {
@@ -143,11 +147,11 @@ class ScheduleDriverImpl<Out, In, R> implements Schedule.ScheduleDriver<Out, In,
     })
   }
 
-  iterationMeta = ref.unsafeMake(Chunk.empty<Schedule.IterationMetadata>())
+  iterationMeta = ref.unsafeMake(defaultIterationMetadata)
 
   get reset(): Effect.Effect<void> {
     return ref.set(this.ref, [Option.none(), this.schedule.initial]).pipe(
-      core.zipLeft(ref.set(this.iterationMeta, Chunk.empty()))
+      core.zipLeft(ref.set(this.iterationMeta, defaultIterationMetadata))
     )
   }
 

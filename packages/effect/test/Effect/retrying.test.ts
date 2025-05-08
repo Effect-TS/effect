@@ -104,14 +104,21 @@ describe("Effect", () => {
       const ref = yield* Ref.make<Array<undefined | Schedule.IterationMetadata>>([])
       yield* pipe(
         Effect.gen(function*() {
-          const [lastIterationInfo] = yield* Schedule.CurrentIterationMetadata
-          yield* Ref.update(ref, (infos) => [...infos, lastIterationInfo])
+          const currentIterationMeta = yield* Schedule.CurrentIterationMetadata
+          yield* Ref.update(ref, (infos) => [...infos, currentIterationMeta])
         }),
         Effect.flipWith(Effect.retry(Schedule.recurs(3)))
       )
       const result = yield* (Ref.get(ref))
       deepStrictEqual(result, [
-        undefined,
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          recurrence: 0,
+          input: undefined,
+          now: 0,
+          start: 0
+        },
         {
           elapsed: Duration.zero,
           elapsedSincePrevious: Duration.zero,
