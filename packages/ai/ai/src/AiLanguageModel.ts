@@ -233,10 +233,10 @@ export declare namespace AiLanguageModel {
      * If a `toolkit` is specified, the large language model will additionally
      * be able to perform tool calls to augment its response.
      */
-    readonly streamText: <
-      Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
-    >(options: Options) => Stream.Stream<
-      AiResponse.AiResponse,
+    readonly streamText: <Tools extends AiTool.Any, Options>(
+      options: Options & GenerateTextOptions<Tools>
+    ) => Stream.Stream<
+      ExtractSuccess<Options>,
       ExtractError<Options>,
       ExtractContext<Options> | Config
     >
@@ -547,9 +547,15 @@ const resolveParts = <Tools extends AiTool.Any>(options: {
  * be able to perform tool calls to augment its response.
  *
  * @since 1.0.0
- * @category functions
+ * @category Functions
  */
-export const generateText = Effect.serviceFunctionEffect(AiLanguageModel, (_) => _.generateText)
+export const generateText: <Tools extends AiTool.Any, Options>(
+  options: Options & GenerateTextOptions<Tools>
+) => Effect.Effect<
+  ExtractSuccess<Options>,
+  ExtractError<Options>,
+  AiLanguageModel | ExtractContext<Options>
+> = Effect.serviceFunctionEffect(AiLanguageModel, (_) => _.generateText)
 
 /**
  * Generate a structured object for the specified prompt and schema using a
@@ -560,9 +566,15 @@ export const generateText = Effect.serviceFunctionEffect(AiLanguageModel, (_) =>
  * output of the model.
  *
  * @since 1.0.0
- * @category functions
+ * @category Functions
  */
-export const generateObject = Effect.serviceFunctionEffect(AiLanguageModel, (_) => _.generateObject)
+export const generateObject: <A, I, R>(
+  options: GenerateObjectOptions<A, I, R> | GenerateObjectWithToolCallIdOptions<A, I, R>
+) => Effect.Effect<
+  AiResponse.WithStructuredOutput<A>,
+  AiError,
+  AiLanguageModel | R
+> = Effect.serviceFunctionEffect(AiLanguageModel, (_) => _.generateObject)
 
 /**
  * Generate text using a large language model for the specified `prompt`,
@@ -572,7 +584,12 @@ export const generateObject = Effect.serviceFunctionEffect(AiLanguageModel, (_) 
  * be able to perform tool calls to augment its response.
  *
  * @since 1.0.0
- * @category functions
+ * @category Functions
  */
-export const streamText = <Options extends NoExcessProperties<GenerateTextOptions<any>, Options>>(options: Options) =>
-  Stream.unwrap(AiLanguageModel.pipe(Effect.map((_) => _.streamText(options))))
+export const streamText = <Tools extends AiTool.Any, Options>(
+  options: Options & GenerateTextOptions<Tools>
+): Stream.Stream<
+  ExtractSuccess<Options>,
+  ExtractError<Options>,
+  AiLanguageModel | ExtractContext<Options>
+> => Stream.unwrap(AiLanguageModel.pipe(Effect.map((_) => _.streamText(options))))

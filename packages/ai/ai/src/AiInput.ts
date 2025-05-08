@@ -359,7 +359,6 @@ export class ToolCallPart extends Schema.TaggedClass<ToolCallPart>(
   readonly [PartTypeId]: PartTypeId = PartTypeId
 
   constructor(props: any, options?: Schema.MakeOptions) {
-    console.log(props)
     super(props, options)
   }
 }
