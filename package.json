@@ -29,7 +29,8 @@
     "detective-sass": "^5.0.3",
     "detective-scss": "^4.0.3",
     "detective-stylus": "^4.0.0",
-    "detective-typescript": "^11.1.0"
+    "detective-typescript": "^11.1.0",
+    "drizzle-orm": "^0.43.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.24.8",
