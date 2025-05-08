@@ -1,5 +1,11 @@
 # effect
 
+## 3.14.21
+
+### Patch Changes
+
+- [#4837](https://github.com/Effect-TS/effect/pull/4837) [`2f3b7d4`](https://github.com/Effect-TS/effect/commit/2f3b7d4e1fa1ef8790b0ca4da22eb88872ee31df) Thanks @tim-smart! - fix Mailbox.fromStream
+
 ## 3.14.20
 
 ### Patch Changes

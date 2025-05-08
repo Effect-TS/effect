@@ -1,6 +1,6 @@
 {
   "name": "effect",
-  "version": "3.14.20",
+  "version": "3.14.21",
   "type": "module",
   "license": "MIT",
   "description": "The missing standard library for TypeScript, for writing production-grade software.",
