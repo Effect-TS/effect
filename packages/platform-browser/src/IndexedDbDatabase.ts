@@ -2,10 +2,12 @@
  * @since 1.0.0
  */
 import { TypeIdError } from "@effect/platform/Error"
-import { Layer } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
+import * as Layer from "effect/Layer"
 import * as Runtime from "effect/Runtime"
+import { SyncScheduler } from "effect/Scheduler"
 import * as IndexedDb from "./IndexedDb.js"
 import type * as IndexedDbMigration from "./IndexedDbMigration.js"
 import * as internal from "./internal/indexedDbMigration.js"
@@ -92,6 +94,10 @@ export declare namespace IndexedDbDatabase {
   export type AnyWithProps = IndexedDbDatabase.Service
 }
 
+/**
+ * @since 1.0.0
+ * @category tags
+ */
 export class IndexedDbDatabase extends Context.Tag(
   "@effect/platform-browser/IndexedDbDatabase"
 )<IndexedDbDatabase, IndexedDbDatabase.AnyWithProps>() {}
@@ -161,6 +167,7 @@ export const layer = <
             )
           }
 
+          let fiber: Fiber.RuntimeFiber<void, IndexedDbDatabaseError> | undefined
           request.onupgradeneeded = (event) => {
             const idbRequest = event.target as IDBRequest<IDBDatabase>
             const database = idbRequest.result
@@ -227,22 +234,28 @@ export const layer = <
                 return migration.execute(api)
               }
               return Effect.dieMessage("Invalid migration")
-            }, { discard: true })
-
-            Runtime.runPromise(runtime)(effect.pipe(
+            }, { discard: true }).pipe(
               Effect.mapError((cause) =>
                 new IndexedDbDatabaseError({
                   reason: "UpgradeError",
                   cause
                 })
               )
-            ))
+            )
+            const scheduler = new SyncScheduler()
+            fiber = Runtime.runFork(runtime, effect, { scheduler })
+            scheduler.flush()
           }
 
           request.onsuccess = (event) => {
             const idbRequest = event.target as IDBRequest<IDBDatabase>
             const database = idbRequest.result
-            resume(Effect.succeed(database))
+            if (fiber) {
+              // ensure migration errors are propagated
+              resume(Effect.as(Fiber.join(fiber), database))
+            } else {
+              resume(Effect.succeed(database))
+            }
           }
         }),
         (database) => Effect.sync(() => database.close())
