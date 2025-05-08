@@ -2,7 +2,7 @@
 "effect": minor
 ---
 
-`Schedule.LastIterationInfo` has been added
+`Schedule.CurrentIterationMetadata` has been added
 
 ```ts
 import { Effect, Schedule } from "effect"
