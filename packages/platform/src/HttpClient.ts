@@ -674,6 +674,25 @@ export const SpanNameGenerator: Context.Reference<
 > = internal.SpanNameGenerator
 
 /**
+ * Customizes the span names for tracing.
+ *
+ * ```ts
+ * import { FetchHttpClient, HttpClient } from "@effect/platform"
+ * import { NodeRuntime } from "@effect/platform-node"
+ * import { Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const client = (yield* HttpClient.HttpClient).pipe(
+ *     // Customize the span names for this HttpClient
+ *     HttpClient.withSpanNameGenerator(
+ *       (request) => `http.client ${request.method} ${request.url}`
+ *     )
+ *   )
+ *
+ *   yield* client.get("https://jsonplaceholder.typicode.com/posts/1")
+ * }).pipe(Effect.provide(FetchHttpClient.layer), NodeRuntime.runMain)
+ * ```
+ *
  * @since 1.0.0
  * @category Tracing
  */

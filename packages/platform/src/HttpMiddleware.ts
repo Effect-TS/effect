@@ -149,6 +149,30 @@ export const SpanNameGenerator: Context.Reference<
 > = internal.SpanNameGenerator
 
 /**
+ * Customizes the span name for the http app.
+ *
+ * ```ts
+ * import {
+ *   HttpMiddleware,
+ *   HttpRouter,
+ *   HttpServer,
+ *   HttpServerResponse
+ * } from "@effect/platform"
+ * import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+ * import { Layer } from "effect"
+ * import { createServer } from "http"
+ *
+ * HttpRouter.empty.pipe(
+ *   HttpRouter.get("/", HttpServerResponse.empty()),
+ *   HttpServer.serve(),
+ *   // Customize the span names for this HttpApp
+ *   HttpMiddleware.withSpanNameGenerator((request) => `GET ${request.url}`),
+ *   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
+ *   Layer.launch,
+ *   NodeRuntime.runMain
+ * )
+ * ```
+ *
  * @since 1.0.0
  * @category Tracing
  */
