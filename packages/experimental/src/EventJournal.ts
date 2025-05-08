@@ -526,7 +526,9 @@ export const makeIndexedDb = (options?: {
               const cursor = entryCursor.result
               if (!cursor) return
               const entry = decodeEntryIdb(cursor.value)
-              remotesStore.get([remoteId as Uint8Array<ArrayBuffer>, entry.id as Uint8Array<ArrayBuffer>]).onsuccess = (event) => {
+              remotesStore.get([remoteId as Uint8Array<ArrayBuffer>, entry.id as Uint8Array<ArrayBuffer>]).onsuccess = (
+                event
+              ) => {
                 if (!(event.target as any).result) entries.push(entry)
                 cursor.continue()
               }
