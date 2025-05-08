@@ -64,7 +64,7 @@
   },
   "peerDependencies": {
     "@effect/sql": "workspace:^",
-    "drizzle-orm": ">=0.31 <0.50",
+    "drizzle-orm": ">=0.43.1 <0.50",
     "effect": "workspace:^"
   }
 }

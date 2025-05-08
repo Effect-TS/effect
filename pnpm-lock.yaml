@@ -15,7 +15,6 @@ overrides:
   detective-scss: ^4.0.3
   detective-stylus: ^4.0.0
   detective-typescript: ^11.1.0
-  drizzle-orm: ^0.43.1
 
 patchedDependencies:
   '@changesets/assemble-release-plan@6.0.3':

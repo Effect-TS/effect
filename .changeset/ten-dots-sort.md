@@ -1,5 +1,5 @@
 ---
-"@effect/sql-drizzle": patch
+"@effect/sql-drizzle": minor
 ---
 
-Widen sql-drizzle peer dependency range
+Widen sql-drizzle to latest
