@@ -8,12 +8,19 @@
 import { Effect, Schedule } from "effect"
 
 Effect.gen(function* () {
-  const [iterationMetadata] = yield* Schedule.CurrentIterationMetadata
-  //    ^? Chunk<Schedule.IterationInfo>
+  const currentIterationMetadata = yield* Schedule.CurrentIterationMetadata
+  //     ^? Schedule.IterationMetadata
 
-  console.log(iterationMetadata)
+  console.log(currentIterationMetadata)
 }).pipe(Effect.repeat(Schedule.recurs(2)))
-// undefined
+// {
+//   elapsed: Duration.zero,
+//   elapsedSincePrevious: Duration.zero,
+//   input: undefined,
+//   now: 0,
+//   recurrence: 0,
+//   start: 0
+// }
 // {
 //   elapsed: Duration.zero,
 //   elapsedSincePrevious: Duration.zero,
@@ -32,9 +39,9 @@ Effect.gen(function* () {
 // }
 
 Effect.gen(function* () {
-  const iterationInfo = yield* Schedule.LastIterationInfo
+  const currentIterationMetadata = yield* Schedule.CurrentIterationMetadata
 
-  console.log(iterationInfo)
+  console.log(currentIterationMetadata)
 }).pipe(
   Effect.schedule(
     Schedule.intersect(Schedule.fibonacci("1 second"), Schedule.recurs(3))
