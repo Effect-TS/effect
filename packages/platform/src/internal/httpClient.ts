@@ -44,12 +44,12 @@ export const currentTracerDisabledWhen = globalValue(
 export const withTracerDisabledWhen = dual<
   (
     predicate: Predicate.Predicate<ClientRequest.HttpClientRequest>
-  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <A, E, R>(
-    effect: Effect.Effect<A, E, R>,
+  ) => <E, R>(self: Client.HttpClient.With<E, R>) => Client.HttpClient.With<E, R>,
+  <E, R>(
+    self: Client.HttpClient.With<E, R>,
     predicate: Predicate.Predicate<ClientRequest.HttpClientRequest>
-  ) => Effect.Effect<A, E, R>
->(2, (self, pred) => Effect.locally(self, currentTracerDisabledWhen, pred))
+  ) => Client.HttpClient.With<E, R>
+>(2, (self, pred) => transformResponse(self, Effect.locally(currentTracerDisabledWhen, pred)))
 
 /** @internal */
 export const currentTracerPropagation = globalValue(
@@ -61,12 +61,31 @@ export const currentTracerPropagation = globalValue(
 export const withTracerPropagation = dual<
   (
     enabled: boolean
-  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <A, E, R>(
-    effect: Effect.Effect<A, E, R>,
+  ) => <E, R>(self: Client.HttpClient.With<E, R>) => Client.HttpClient.With<E, R>,
+  <E, R>(
+    self: Client.HttpClient.With<E, R>,
     enabled: boolean
-  ) => Effect.Effect<A, E, R>
->(2, (self, enabled) => Effect.locally(self, currentTracerPropagation, enabled))
+  ) => Client.HttpClient.With<E, R>
+>(2, (self, enabled) => transformResponse(self, Effect.locally(currentTracerPropagation, enabled)))
+
+/** @internal */
+export const SpanNameGenerator = Context.Reference<Client.SpanNameGenerator>()(
+  "@effect/platform/HttpClient/SpanNameGenerator",
+  {
+    defaultValue: () => (request: ClientRequest.HttpClientRequest) => `http.client ${request.method}`
+  }
+)
+
+/** @internal */
+export const withSpanNameGenerator = dual<
+  (
+    f: (request: ClientRequest.HttpClientRequest) => string
+  ) => <E, R>(self: Client.HttpClient.With<E, R>) => Client.HttpClient.With<E, R>,
+  <E, R>(
+    self: Client.HttpClient.With<E, R>,
+    f: (request: ClientRequest.HttpClientRequest) => string
+  ) => Client.HttpClient.With<E, R>
+>(2, (self, f) => transformResponse(self, Effect.provideService(SpanNameGenerator, f)))
 
 const ClientProto = {
   [TypeId]: TypeId,
@@ -193,8 +212,9 @@ export const make = (
             })
           )
         }
+        const nameGenerator = Context.get(fiber.currentContext, SpanNameGenerator)
         return Effect.useSpan(
-          `http.client ${request.method}`,
+          nameGenerator(request),
           { kind: "client", captureStackTrace: false },
           (span) => {
             span.attribute("http.request.method", request.method)

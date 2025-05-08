@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
 import type * as Layer from "effect/Layer"
@@ -129,3 +130,55 @@ export const cors: (
     readonly credentials?: boolean | undefined
   } | undefined
 ) => <E, R>(httpApp: App.Default<E, R>) => App.Default<E, R> = internal.cors
+
+/**
+ * @since 1.0.0
+ * @category Tracing
+ */
+export interface SpanNameGenerator {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category Tracing
+ */
+export const SpanNameGenerator: Context.Reference<
+  SpanNameGenerator,
+  (request: ServerRequest.HttpServerRequest) => string
+> = internal.SpanNameGenerator
+
+/**
+ * Customizes the span name for the http app.
+ *
+ * ```ts
+ * import {
+ *   HttpMiddleware,
+ *   HttpRouter,
+ *   HttpServer,
+ *   HttpServerResponse
+ * } from "@effect/platform"
+ * import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+ * import { Layer } from "effect"
+ * import { createServer } from "http"
+ *
+ * HttpRouter.empty.pipe(
+ *   HttpRouter.get("/", HttpServerResponse.empty()),
+ *   HttpServer.serve(),
+ *   // Customize the span names for this HttpApp
+ *   HttpMiddleware.withSpanNameGenerator((request) => `GET ${request.url}`),
+ *   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
+ *   Layer.launch,
+ *   NodeRuntime.runMain
+ * )
+ * ```
+ *
+ * @since 1.0.0
+ * @category Tracing
+ */
+export const withSpanNameGenerator: {
+  (
+    f: (request: ServerRequest.HttpServerRequest) => string
+  ): <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+  <A, E, R>(layer: Layer.Layer<A, E, R>, f: (request: ServerRequest.HttpServerRequest) => string): Layer.Layer<A, E, R>
+} = internal.withSpanNameGenerator

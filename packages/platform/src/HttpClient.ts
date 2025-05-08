@@ -611,7 +611,7 @@ export const followRedirects: {
 
 /**
  * @since 1.0.0
- * @category fiber refs
+ * @category Tracing
  */
 export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<ClientRequest.HttpClientRequest>> =
   internal.currentTracerDisabledWhen
@@ -620,21 +620,21 @@ export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<Cl
  * Disables tracing for specific requests based on a provided predicate.
  *
  * @since 1.0.0
- * @category fiber refs
+ * @category Tracing
  */
 export const withTracerDisabledWhen: {
   (
     predicate: Predicate.Predicate<ClientRequest.HttpClientRequest>
-  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(
-    effect: Effect.Effect<A, E, R>,
+  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  <E, R>(
+    self: HttpClient.With<E, R>,
     predicate: Predicate.Predicate<ClientRequest.HttpClientRequest>
-  ): Effect.Effect<A, E, R>
+  ): HttpClient.With<E, R>
 } = internal.withTracerDisabledWhen
 
 /**
  * @since 1.0.0
- * @category fiber refs
+ * @category Tracing
  */
 export const currentTracerPropagation: FiberRef.FiberRef<boolean> = internal.currentTracerPropagation
 
@@ -642,11 +642,11 @@ export const currentTracerPropagation: FiberRef.FiberRef<boolean> = internal.cur
  * Enables or disables tracing propagation for the request.
  *
  * @since 1.0.0
- * @category fiber refs
+ * @category Tracing
  */
 export const withTracerPropagation: {
-  (enabled: boolean): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(effect: Effect.Effect<A, E, R>, enabled: boolean): Effect.Effect<A, E, R>
+  (enabled: boolean): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  <E, R>(self: HttpClient.With<E, R>, enabled: boolean): HttpClient.With<E, R>
 } = internal.withTracerPropagation
 
 /**
@@ -655,3 +655,50 @@ export const withTracerPropagation: {
 export const layerMergedContext: <E, R>(
   effect: Effect.Effect<HttpClient, E, R>
 ) => Layer<HttpClient, E, R> = internal.layerMergedContext
+
+/**
+ * @since 1.0.0
+ * @category Tracing
+ */
+export interface SpanNameGenerator {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category Tracing
+ */
+export const SpanNameGenerator: Context.Reference<
+  SpanNameGenerator,
+  (request: ClientRequest.HttpClientRequest) => string
+> = internal.SpanNameGenerator
+
+/**
+ * Customizes the span names for tracing.
+ *
+ * ```ts
+ * import { FetchHttpClient, HttpClient } from "@effect/platform"
+ * import { NodeRuntime } from "@effect/platform-node"
+ * import { Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const client = (yield* HttpClient.HttpClient).pipe(
+ *     // Customize the span names for this HttpClient
+ *     HttpClient.withSpanNameGenerator(
+ *       (request) => `http.client ${request.method} ${request.url}`
+ *     )
+ *   )
+ *
+ *   yield* client.get("https://jsonplaceholder.typicode.com/posts/1")
+ * }).pipe(Effect.provide(FetchHttpClient.layer), NodeRuntime.runMain)
+ * ```
+ *
+ * @since 1.0.0
+ * @category Tracing
+ */
+export const withSpanNameGenerator: {
+  (
+    f: (request: ClientRequest.HttpClientRequest) => string
+  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  <E, R>(self: HttpClient.With<E, R>, f: (request: ClientRequest.HttpClientRequest) => string): HttpClient.With<E, R>
+} = internal.withSpanNameGenerator
