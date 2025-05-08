@@ -42,7 +42,7 @@ describe.sequential("Mysql", () => {
       Effect.catchTag("ContainerError", () => Effect.void)
     ), { timeout: 60000 })
 
-  it.effect.only("remote callback multiple values", () =>
+  it.effect("remote callback multiple values", () =>
     Effect.gen(function*(_) {
       const sql = yield* SqlClient.SqlClient
       const db = yield* MysqlDrizzle
