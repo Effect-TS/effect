@@ -93,7 +93,9 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<typeof Event
           const iv = crypto.getRandomValues(new Uint8Array(12))
           const encryptedEntries = yield* Effect.promise(() =>
             Promise.all(
-              data.map((entry) => crypto.subtle.encrypt({ name: "AES-GCM", iv, tagLength: 128 }, key, entry as Uint8Array<ArrayBuffer>))
+              data.map((entry) =>
+                crypto.subtle.encrypt({ name: "AES-GCM", iv, tagLength: 128 }, key, entry as Uint8Array<ArrayBuffer>)
+              )
             )
           )
           return {
