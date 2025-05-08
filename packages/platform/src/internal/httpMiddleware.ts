@@ -73,6 +73,25 @@ export const withTracerDisabledForUrls = dual<
 >(2, (self, urls) => Layer.locally(self, currentTracerDisabledWhen, (req) => urls.includes(req.url)))
 
 /** @internal */
+export const SpanNameGenerator = Context.Reference<Middleware.SpanNameGenerator>()(
+  "@effect/platform/HttpMiddleware/SpanNameGenerator",
+  {
+    defaultValue: () => (request: ServerRequest.HttpServerRequest) => `http.server ${request.method}`
+  }
+)
+
+/** @internal */
+export const withSpanNameGenerator = dual<
+  (
+    f: (request: ServerRequest.HttpServerRequest) => string
+  ) => <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
+  <A, E, R>(
+    layer: Layer.Layer<A, E, R>,
+    f: (request: ServerRequest.HttpServerRequest) => string
+  ) => Layer.Layer<A, E, R>
+>(2, (self, f) => Layer.provide(self, Layer.succeed(SpanNameGenerator, f)))
+
+/** @internal */
 export const logger = make((httpApp) => {
   let counter = 0
   return Effect.withFiberRuntime((fiber) => {
@@ -121,8 +140,9 @@ export const tracer = make((httpApp) =>
     }
     const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
     const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
+    const nameGenerator = Context.get(fiber.currentContext, SpanNameGenerator)
     return Effect.useSpan(
-      `http.server ${request.method}`,
+      nameGenerator(request),
       {
         parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)),
         kind: "server",
