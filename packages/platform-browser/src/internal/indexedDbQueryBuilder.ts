@@ -70,7 +70,7 @@ const BasicProto = { [TypeId]: TypeId }
 const CommitProto = { ...Effectable.CommitPrototype, [TypeId]: TypeId }
 
 /** @internal */
-export const applyDelete = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete) =>
+export const applyDelete = (query: IndexedDbQueryBuilder.IndexedDbQuery.Delete) =>
   Effect.async<any, IndexedDbQueryError>((resume) => {
     const database = query.delete.from.database
     const IDBKeyRange = query.delete.from.IDBKeyRange
@@ -154,7 +154,7 @@ export const applyDelete = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.D
   })
 
 const getReadonlyObjectStore = (
-  query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select | IndexedDbQueryBuilder.IndexedDbQueryBuilder.Count
+  query: IndexedDbQueryBuilder.IndexedDbQuery.Select | IndexedDbQueryBuilder.IndexedDbQuery.Count
 ) => {
   const database = query.from.database
   const IDBKeyRange = query.from.IDBKeyRange
@@ -191,7 +191,7 @@ const getReadonlyObjectStore = (
 }
 
 const getReadSchema = (
-  from: IndexedDbQueryBuilder.IndexedDbQueryBuilder.From
+  from: IndexedDbQueryBuilder.IndexedDbQuery.From
 ) => {
   const table = HashMap.unsafeGet(from.tables, from.table) as IndexedDbTable.IndexedDbTable.AnyWithProps
   const keyPath = table.options?.keyPath
@@ -212,7 +212,7 @@ const getReadSchema = (
 }
 
 /** @internal */
-export const getSelect = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select) =>
+export const getSelect = (query: IndexedDbQueryBuilder.IndexedDbQuery.Select) =>
   Effect.gen(function*() {
     const data = yield* Effect.async<any, IndexedDbQueryError>((resume) => {
       let request: globalThis.IDBRequest
@@ -281,7 +281,7 @@ export const getSelect = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Sel
   })
 
 /** @internal */
-export const getFirst = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.First) =>
+export const getFirst = (query: IndexedDbQueryBuilder.IndexedDbQuery.First) =>
   Effect.gen(function*() {
     const data = yield* Effect.async<any, IndexedDbQueryError>((resume) => {
       const { keyRange, store } = getReadonlyObjectStore(query.select)
@@ -349,7 +349,7 @@ export const getFirst = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Firs
 
 /** @internal */
 export const applyModify = (
-  query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Modify,
+  query: IndexedDbQueryBuilder.IndexedDbQuery.Modify,
   { key, ...value }: { key: IDBValidKey | undefined }
 ) =>
   Effect.async<any, IndexedDbQueryError>((resume) => {
@@ -386,7 +386,7 @@ export const applyModify = (
   })
 
 /** @internal */
-export const applyModifyAll = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ModifyAll, values: Array<any>) =>
+export const applyModifyAll = (query: IndexedDbQueryBuilder.IndexedDbQuery.ModifyAll, values: Array<any>) =>
   Effect.async<Array<globalThis.IDBValidKey>, IndexedDbQueryError>((resume) => {
     const database = query.from.database
     const transaction = query.from.transaction
@@ -452,7 +452,7 @@ export const applyModifyAll = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilde
   })
 
 /** @internal */
-export const applyClear = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Clear) =>
+export const applyClear = (query: IndexedDbQueryBuilder.IndexedDbQuery.Clear) =>
   Effect.async<void, IndexedDbQueryError>((resume) => {
     const database = query.from.database
     const transaction = query.from.transaction
@@ -479,7 +479,7 @@ export const applyClear = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Cl
   })
 
 /** @internal */
-export const applyClearAll = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ClearAll) =>
+export const applyClearAll = (query: IndexedDbQueryBuilder.IndexedDbQuery.ClearAll) =>
   Effect.async<void, IndexedDbQueryError>((resume) => {
     const database = query.database
     const tables = database.objectStoreNames
@@ -511,7 +511,7 @@ export const applyClearAll = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder
   })
 
 /** @internal */
-export const getCount = (query: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Count) =>
+export const getCount = (query: IndexedDbQueryBuilder.IndexedDbQuery.Count) =>
   Effect.async<number, IndexedDbQueryError>((resume) => {
     const { keyRange, store } = getReadonlyObjectStore(query)
 
@@ -543,7 +543,7 @@ export const fromMakeProto = <
   readonly database: globalThis.IDBDatabase
   readonly IDBKeyRange: typeof globalThis.IDBKeyRange
   readonly transaction: globalThis.IDBTransaction | undefined
-}): IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, Table> => {
+}): IndexedDbQueryBuilder.IndexedDbQuery.From<Source, Table> => {
   function IndexedDbQueryBuilder() {}
   Object.setPrototypeOf(IndexedDbQueryBuilder, CommitProto)
   IndexedDbQueryBuilder.tables = options.tables
@@ -601,24 +601,24 @@ export const deletePartialMakeProto = <
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
   Index extends IndexFromTable<Source, Table>
 >(options: {
-  readonly from: IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, Table>
+  readonly from: IndexedDbQueryBuilder.IndexedDbQuery.From<Source, Table>
   readonly index: Index | undefined
-}): IndexedDbQueryBuilder.IndexedDbQueryBuilder.DeletePartial<Source, Table, Index> => {
+}): IndexedDbQueryBuilder.IndexedDbQuery.DeletePartial<Source, Table, Index> => {
   function IndexedDbQueryBuilderImpl() {}
 
   const limit = (
     limit: number
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({ delete: IndexedDbQueryBuilderImpl as any, limitValue: limit })
 
   const equals = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({ delete: IndexedDbQueryBuilderImpl as any, only: value })
 
   const gte = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({
       delete: IndexedDbQueryBuilderImpl as any,
       lowerBound: value,
@@ -626,8 +626,8 @@ export const deletePartialMakeProto = <
     })
 
   const lte = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({
       delete: IndexedDbQueryBuilderImpl as any,
       upperBound: value,
@@ -635,8 +635,8 @@ export const deletePartialMakeProto = <
     })
 
   const gt = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({
       delete: IndexedDbQueryBuilderImpl as any,
       lowerBound: value,
@@ -644,8 +644,8 @@ export const deletePartialMakeProto = <
     })
 
   const lt = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({
       delete: IndexedDbQueryBuilderImpl as any,
       upperBound: value,
@@ -653,10 +653,10 @@ export const deletePartialMakeProto = <
     })
 
   const between = (
-    lowerBound: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>,
-    upperBound: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>,
+    lowerBound: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
+    upperBound: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
     queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({
       delete: IndexedDbQueryBuilderImpl as any,
       lowerBound,
@@ -684,19 +684,19 @@ export const deleteMakeProto = <
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
   Index extends IndexFromTable<Source, Table>
 >(options: {
-  readonly delete: IndexedDbQueryBuilder.IndexedDbQueryBuilder.DeletePartial<Source, Table, Index>
+  readonly delete: IndexedDbQueryBuilder.IndexedDbQuery.DeletePartial<Source, Table, Index>
   readonly limitValue?: number | undefined
-  readonly only?: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  readonly lowerBound?: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  readonly upperBound?: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
+  readonly only?: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  readonly lowerBound?: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  readonly upperBound?: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
   readonly excludeLowerBound?: boolean
   readonly excludeUpperBound?: boolean
-}): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> => {
+}): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> => {
   function IndexedDbQueryBuilderImpl() {}
 
   const limit = (
     limit: number
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       only: options.only,
@@ -708,13 +708,13 @@ export const deleteMakeProto = <
     })
 
   const equals = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({ delete: options.delete, only: value, limitValue: options.limitValue })
 
   const gte = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       lowerBound: value,
@@ -723,8 +723,8 @@ export const deleteMakeProto = <
     })
 
   const lte = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       upperBound: value,
@@ -733,8 +733,8 @@ export const deleteMakeProto = <
     })
 
   const gt = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       lowerBound: value,
@@ -743,8 +743,8 @@ export const deleteMakeProto = <
     })
 
   const lt = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       upperBound: value,
@@ -753,10 +753,10 @@ export const deleteMakeProto = <
     })
 
   const between = (
-    lowerBound: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>,
-    upperBound: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>,
+    lowerBound: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
+    upperBound: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
     queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete<Source, Table, Index> =>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Delete<Source, Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       lowerBound,
@@ -769,7 +769,7 @@ export const deleteMakeProto = <
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
     Object.assign(Object.create(CommitProto), {
-      commit(this: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Delete) {
+      commit(this: IndexedDbQueryBuilder.IndexedDbQuery.Delete) {
         return applyDelete(this)
       }
     })
@@ -797,20 +797,20 @@ export const countMakeProto = <
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
   Index extends IndexFromTable<Source, Table>
 >(options: {
-  readonly from: IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, Table>
+  readonly from: IndexedDbQueryBuilder.IndexedDbQuery.From<Source, Table>
   readonly index: Index | undefined
   readonly limitValue: number | undefined
-  readonly only?: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  readonly lowerBound?: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  readonly upperBound?: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
+  readonly only?: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  readonly lowerBound?: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  readonly upperBound?: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
   readonly excludeLowerBound?: boolean
   readonly excludeUpperBound?: boolean
-}): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Count<Source, Table, Index> => {
+}): IndexedDbQueryBuilder.IndexedDbQuery.Count<Source, Table, Index> => {
   function IndexedDbQueryBuilderImpl() {}
 
   const limit = (
     limit: number
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Count<Source, Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -823,13 +823,13 @@ export const countMakeProto = <
     })
 
   const equals = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Count<Source, Table, Index> =>
     countMakeProto({ from: options.from, index: options.index, only: value, limitValue: options.limitValue })
 
   const gte = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Count<Source, Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -839,8 +839,8 @@ export const countMakeProto = <
     })
 
   const lte = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Count<Source, Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -850,8 +850,8 @@ export const countMakeProto = <
     })
 
   const gt = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Count<Source, Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -861,8 +861,8 @@ export const countMakeProto = <
     })
 
   const lt = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Count<Source, Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -872,10 +872,10 @@ export const countMakeProto = <
     })
 
   const between = (
-    lowerBound: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>,
-    upperBound: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>,
+    lowerBound: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
+    upperBound: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
     queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Count<Source, Table, Index> =>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Count<Source, Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -889,7 +889,7 @@ export const countMakeProto = <
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
     Object.assign(Object.create(CommitProto), {
-      commit(this: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Count) {
+      commit(this: IndexedDbQueryBuilder.IndexedDbQuery.Count) {
         return getCount(this)
       }
     })
@@ -918,20 +918,20 @@ export const selectMakeProto = <
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
   Index extends IndexFromTable<Source, Table>
 >(options: {
-  readonly from: IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, Table>
+  readonly from: IndexedDbQueryBuilder.IndexedDbQuery.From<Source, Table>
   readonly index: Index | undefined
   readonly limitValue: number | undefined
-  readonly only?: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  readonly lowerBound?: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  readonly upperBound?: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
+  readonly only?: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  readonly lowerBound?: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  readonly upperBound?: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
   readonly excludeLowerBound?: boolean
   readonly excludeUpperBound?: boolean
-}): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select<Source, Table, Index> => {
+}): IndexedDbQueryBuilder.IndexedDbQuery.Select<Source, Table, Index> => {
   function IndexedDbQueryBuilderImpl() {}
 
   const limit = (
     limit: number
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Select<Source, Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -944,13 +944,13 @@ export const selectMakeProto = <
     })
 
   const equals = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Select<Source, Table, Index> =>
     selectMakeProto({ from: options.from, index: options.index, only: value, limitValue: options.limitValue })
 
   const gte = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Select<Source, Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -960,8 +960,8 @@ export const selectMakeProto = <
     })
 
   const lte = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Select<Source, Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -971,8 +971,8 @@ export const selectMakeProto = <
     })
 
   const gt = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Select<Source, Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -982,8 +982,8 @@ export const selectMakeProto = <
     })
 
   const lt = (
-    value: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+    value: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Select<Source, Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -993,10 +993,10 @@ export const selectMakeProto = <
     })
 
   const between = (
-    lowerBound: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>,
-    upperBound: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ExtractIndexType<Source, Table, Index>,
+    lowerBound: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
+    upperBound: IndexedDbQueryBuilder.IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
     queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-  ): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select<Source, Table, Index> =>
+  ): IndexedDbQueryBuilder.IndexedDbQuery.Select<Source, Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -1007,13 +1007,13 @@ export const selectMakeProto = <
       limitValue: options.limitValue
     })
 
-  const first = (): IndexedDbQueryBuilder.IndexedDbQueryBuilder.First<Source, Table, Index> =>
+  const first = (): IndexedDbQueryBuilder.IndexedDbQuery.First<Source, Table, Index> =>
     firstMakeProto({ select: IndexedDbQueryBuilderImpl as any })
 
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
     Object.assign(Object.create(CommitProto), {
-      commit(this: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select) {
+      commit(this: IndexedDbQueryBuilder.IndexedDbQuery.Select) {
         return getSelect(this)
       }
     })
@@ -1043,14 +1043,14 @@ export const firstMakeProto = <
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
   Index extends IndexFromTable<Source, Table>
 >(options: {
-  readonly select: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Select<Source, Table, Index>
-}): IndexedDbQueryBuilder.IndexedDbQueryBuilder.First<Source, Table, Index> => {
+  readonly select: IndexedDbQueryBuilder.IndexedDbQuery.Select<Source, Table, Index>
+}): IndexedDbQueryBuilder.IndexedDbQuery.First<Source, Table, Index> => {
   function IndexedDbQueryBuilderImpl() {}
 
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
     Object.assign(Object.create(CommitProto), {
-      commit(this: IndexedDbQueryBuilder.IndexedDbQueryBuilder.First) {
+      commit(this: IndexedDbQueryBuilder.IndexedDbQuery.First) {
         return getFirst(this)
       }
     })
@@ -1064,7 +1064,7 @@ export const modifyMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
 >(options: {
-  readonly from: IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, Table>
+  readonly from: IndexedDbQueryBuilder.IndexedDbQuery.From<Source, Table>
   readonly value: Schema.Schema.Type<
     IndexedDbTable.IndexedDbTable.TableSchema<
       IndexedDbTable.IndexedDbTable.WithName<
@@ -1074,13 +1074,13 @@ export const modifyMakeProto = <
     >
   >
   readonly operation: "add" | "put"
-}): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Modify<Source, Table> => {
+}): IndexedDbQueryBuilder.IndexedDbQuery.Modify<Source, Table> => {
   function IndexedDbQueryBuilderImpl() {}
 
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
     Object.assign(Object.create(CommitProto), {
-      commit(this: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Modify) {
+      commit(this: IndexedDbQueryBuilder.IndexedDbQuery.Modify) {
         return applyModify(this, options.value)
       }
     })
@@ -1096,7 +1096,7 @@ export const modifyAllMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
 >(options: {
-  readonly from: IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, Table>
+  readonly from: IndexedDbQueryBuilder.IndexedDbQuery.From<Source, Table>
   readonly values: Array<
     Schema.Schema.Type<
       IndexedDbTable.IndexedDbTable.TableSchema<
@@ -1108,13 +1108,13 @@ export const modifyAllMakeProto = <
     >
   >
   readonly operation: "add" | "put"
-}): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Modify<Source, Table> => {
+}): IndexedDbQueryBuilder.IndexedDbQuery.Modify<Source, Table> => {
   function IndexedDbQueryBuilderImpl() {}
 
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
     Object.assign(Object.create(CommitProto), {
-      commit(this: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ModifyAll) {
+      commit(this: IndexedDbQueryBuilder.IndexedDbQuery.ModifyAll) {
         return applyModifyAll(this, options.values)
       }
     })
@@ -1130,14 +1130,14 @@ export const clearMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
 >(options: {
-  readonly from: IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, Table>
-}): IndexedDbQueryBuilder.IndexedDbQueryBuilder.Clear<Source, Table> => {
+  readonly from: IndexedDbQueryBuilder.IndexedDbQuery.From<Source, Table>
+}): IndexedDbQueryBuilder.IndexedDbQuery.Clear<Source, Table> => {
   function IndexedDbQueryBuilderImpl() {}
 
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
     Object.assign(Object.create(CommitProto), {
-      commit(this: IndexedDbQueryBuilder.IndexedDbQueryBuilder.Clear) {
+      commit(this: IndexedDbQueryBuilder.IndexedDbQuery.Clear) {
         return applyClear(this)
       }
     })
@@ -1153,13 +1153,13 @@ export const clearAllMakeProto = <
   readonly tables: HashMap.HashMap<string, IndexedDbVersion.IndexedDbVersion.Tables<Source>>
   readonly database: globalThis.IDBDatabase
   readonly transaction: globalThis.IDBTransaction | undefined
-}): IndexedDbQueryBuilder.IndexedDbQueryBuilder.ClearAll<Source> => {
+}): IndexedDbQueryBuilder.IndexedDbQuery.ClearAll<Source> => {
   function IndexedDbQueryBuilderImpl() {}
 
   Object.setPrototypeOf(
     IndexedDbQueryBuilderImpl,
     Object.assign(Object.create(CommitProto), {
-      commit(this: IndexedDbQueryBuilder.IndexedDbQueryBuilder.ClearAll) {
+      commit(this: IndexedDbQueryBuilder.IndexedDbQuery.ClearAll) {
         return applyClearAll(this)
       }
     })
@@ -1216,7 +1216,7 @@ export const makeProto = <
         A extends IndexedDbTable.IndexedDbTable.TableName<
           IndexedDbVersion.IndexedDbVersion.Tables<Source>
         >
-      >(table: A) => IndexedDbQueryBuilder.IndexedDbQueryBuilder.From<Source, A>
+      >(table: A) => IndexedDbQueryBuilder.IndexedDbQuery.From<Source, A>
     }) => Effect.Effect<void>,
     options?: globalThis.IDBTransactionOptions
   ) =>
