@@ -48,7 +48,12 @@ const PatchProto = {
     }
     return Effect.map(
       statement.values,
-      (rows) => rows.map((row) => mapResultRow(prepared.fields, row, prepared.joinsNotNullableMap))
+      (rows) => {
+        if (prepared.customResultMapper) {
+          return prepared.customResultMapper(rows)
+        }
+        return rows.map((row) => mapResultRow(prepared.fields, row, prepared.joinsNotNullableMap))
+      }
     )
   }
 }
