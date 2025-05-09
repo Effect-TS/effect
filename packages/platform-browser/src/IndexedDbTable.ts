@@ -3,7 +3,7 @@
  */
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type * as Schema from "effect/Schema"
-import { type KeyPath } from "./internal/indexedDbQuery.js"
+import { type KeyPath } from "./internal/indexedDbQueryBuilder.js"
 
 /**
  * @since 1.0.0

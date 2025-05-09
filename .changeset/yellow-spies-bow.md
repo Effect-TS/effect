@@ -2,4 +2,4 @@
 "@effect/platform-browser": patch
 ---
 
-Added `IndexedDb` modules (`IndexedDbDatabase`, `IndexedDbMigration`, `IndexedDbQuery`, `IndexedDbTable`, `IndexedDbVersion`) inside `platform-browser`.
+Added `IndexedDb` modules (`IndexedDbDatabase`, `IndexedDbQuery`, `IndexedDbTable`, `IndexedDbVersion`) inside `platform-browser`.

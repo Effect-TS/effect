@@ -1,10 +1,4 @@
-import {
-  IndexedDb,
-  IndexedDbDatabase,
-  IndexedDbMigration,
-  IndexedDbTable,
-  IndexedDbVersion
-} from "@effect/platform-browser"
+import { IndexedDb, IndexedDbDatabase, IndexedDbTable, IndexedDbVersion } from "@effect/platform-browser"
 import { afterEach, assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
 import { IDBKeyRange, indexedDB } from "fake-indexeddb"
@@ -13,9 +7,9 @@ const databaseName = "db"
 
 const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB, IDBKeyRange }))
 
-const provideMigration = (migration: IndexedDbMigration.IndexedDbMigration.Any) =>
+const provideMigration = (database: IndexedDbDatabase.IndexedDbDatabase.Any) =>
   Effect.provide(
-    IndexedDbDatabase.layer(databaseName, migration).pipe(Layer.provide(layerFakeIndexedDb))
+    database.layer(databaseName).pipe(Layer.provide(layerFakeIndexedDb))
   )
 
 afterEach(() => {
@@ -36,7 +30,7 @@ describe.sequential("IndexedDbDatabase", () => {
 
     const Db = IndexedDbVersion.make(Table)
 
-    class Migration extends IndexedDbMigration.make(Db, (api) =>
+    class Migration extends IndexedDbDatabase.make(Db, (api) =>
       Effect.gen(function*() {
         yield* api.createObjectStore("todo")
         yield* api.createIndex("todo", "titleIndex")
@@ -45,7 +39,7 @@ describe.sequential("IndexedDbDatabase", () => {
     {}
 
     return Effect.gen(function*() {
-      const api = yield* Db.api
+      const api = yield* Migration.getQueryBuilder
       const todo = yield* api.from("todo").select()
 
       const name = yield* api.use(async (database) => database.name)
@@ -87,7 +81,7 @@ describe.sequential("IndexedDbDatabase", () => {
 
     const Db = IndexedDbVersion.make(Table, Table2)
 
-    class Migration extends IndexedDbMigration.make(Db, (api) =>
+    class Migration extends IndexedDbDatabase.make(Db, (api) =>
       Effect.gen(function*() {
         yield* api.createObjectStore("todo")
         yield* api.createIndex("todo", "titleIndex")
@@ -96,7 +90,7 @@ describe.sequential("IndexedDbDatabase", () => {
     {}
 
     return Effect.gen(function*() {
-      const api = yield* Db.api
+      const api = yield* Migration.getQueryBuilder
 
       yield* api.transaction(
         ["todo"],
@@ -142,7 +136,7 @@ describe.sequential("IndexedDbDatabase", () => {
     const Db2 = IndexedDbVersion.make(Table2)
     const uuid = "9535a059-a61f-42e1-a2e0-35ec87203c24"
 
-    class Migration extends IndexedDbMigration.make(Db1, (api) =>
+    class Migration extends IndexedDbDatabase.make(Db1, (api) =>
       Effect.gen(function*() {
         yield* api.createObjectStore("todo")
         yield* api.createIndex("todo", "titleIndex")
@@ -164,7 +158,7 @@ describe.sequential("IndexedDbDatabase", () => {
     {}
 
     return Effect.gen(function*() {
-      const api = yield* Db2.api
+      const api = yield* Migration.getQueryBuilder
       const todo = yield* api.from("todo").select()
       const name = yield* api.use(async (database) => database.name)
       const version = yield* api.use(async (database) => database.version)
@@ -203,7 +197,7 @@ describe.sequential("IndexedDbDatabase", () => {
     const Db1 = IndexedDbVersion.make(Table1)
     const Db2 = IndexedDbVersion.make(Table2, Table1)
 
-    class Migration extends IndexedDbMigration.make(Db1, (api) => api.createObjectStore("todo")).add(
+    class Migration extends IndexedDbDatabase.make(Db1, (api) => api.createObjectStore("todo")).add(
       Db2,
       (from, to) =>
         Effect.gen(function*() {
@@ -214,7 +208,7 @@ describe.sequential("IndexedDbDatabase", () => {
     ) {}
 
     return Effect.gen(function*() {
-      const api = yield* Db2.api
+      const api = yield* Migration.getQueryBuilder
       const user = yield* api.from("user").select()
 
       const name = yield* api.use(async (database) => database.name)

@@ -56,12 +56,7 @@ export * as IndexedDbDatabase from "./IndexedDbDatabase.js"
 /**
  * @since 1.0.0
  */
-export * as IndexedDbMigration from "./IndexedDbMigration.js"
-
-/**
- * @since 1.0.0
- */
-export * as IndexedDbQuery from "./IndexedDbQuery.js"
+export * as IndexedDbQueryBuilder from "./IndexedDbQueryBuilder.js"
 
 /**
  * @since 1.0.0
