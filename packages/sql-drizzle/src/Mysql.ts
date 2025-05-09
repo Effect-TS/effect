@@ -17,12 +17,15 @@ import { makeRemoteCallback, patch, registerDialect } from "./internal/patch.js"
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<MySqlRemoteDatabase, never, Client.SqlClient> = Effect.gen(function*() {
-  const client = yield* Client.SqlClient
-  const db = drizzle(yield* makeRemoteCallback)
-  registerDialect((db as any).dialect, client)
-  return db
-})
+export const make = <TSchema extends Record<string, unknown> = Record<string, never>>(
+  config?: Omit<DrizzleConfig<TSchema>, "logger">
+): Effect.Effect<MySqlRemoteDatabase<TSchema>, never, Client.SqlClient> =>
+  Effect.gen(function*() {
+    const client = yield* Client.SqlClient
+    const db = drizzle(yield* makeRemoteCallback, config)
+    registerDialect((db as any).dialect, client)
+    return db
+  })
 
 /**
  * @since 1.0.0
@@ -51,7 +54,7 @@ export class MysqlDrizzle extends Context.Tag("@effect/sql-drizzle/Mysql")<
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<MysqlDrizzle, never, Client.SqlClient> = Layer.effect(MysqlDrizzle, make)
+export const layer: Layer.Layer<MysqlDrizzle, never, Client.SqlClient> = Layer.effect(MysqlDrizzle, make())
 
 /**
  * @since 1.0.0
