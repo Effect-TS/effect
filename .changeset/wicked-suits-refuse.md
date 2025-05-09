@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
 Expose `Cause.isTimeoutException`
