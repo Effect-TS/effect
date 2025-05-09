@@ -1,14 +1,10 @@
 /**
  * @since 1.0.0
  */
-import * as Effect from "effect/Effect"
 import * as HashMap from "effect/HashMap"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
-import * as IndexedDbDatabase from "./IndexedDbDatabase.js"
-import type * as IndexedDbQuery from "./IndexedDbQuery.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
-import * as internal from "./internal/indexedDbQuery.js"
 
 /**
  * @since 1.0.0
@@ -35,11 +31,6 @@ export interface IndexedDbVersion<
 
   readonly [TypeId]: TypeId
   readonly tables: HashMap.HashMap<string, Tables>
-  readonly api: Effect.Effect<
-    IndexedDbQuery.IndexedDbQuery<IndexedDbVersion<Tables>>,
-    never,
-    IndexedDbDatabase.IndexedDbDatabase
-  >
 }
 
 /**
@@ -95,10 +86,6 @@ const makeProto = <Tables extends IndexedDbTable.IndexedDbTable.AnyWithProps>(op
   function IndexedDbVersion() {}
   Object.setPrototypeOf(IndexedDbVersion, Proto)
   IndexedDbVersion.tables = options.tables
-  IndexedDbVersion.api = Effect.gen(function*() {
-    const { IDBKeyRange, database } = yield* IndexedDbDatabase.IndexedDbDatabase
-    return internal.makeProto({ database, IDBKeyRange, tables: options.tables, transaction: undefined })
-  })
   return IndexedDbVersion as any
 }
 

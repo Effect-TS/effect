@@ -5,8 +5,8 @@ import type * as Effect from "effect/Effect"
 import type * as HashMap from "effect/HashMap"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
-import { type IndexFromTable } from "./internal/indexedDbMigration.js"
-import * as internal from "./internal/indexedDbQuery.js"
+import { type IndexFromTable } from "./internal/indexedDbDatabase.js"
+import * as internal from "./internal/indexedDbQueryBuilder.js"
 
 /**
  * @since 1.0.0
