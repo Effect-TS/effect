@@ -42,16 +42,16 @@ import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 import type * as pretty_ from "./Pretty.js"
-import * as record from "./Record.js"
 import * as redacted_ from "./Redacted.js"
 import * as Request from "./Request.js"
 import * as scheduler_ from "./Scheduler.js"
-import type { LiteralValue, ParseOptions } from "./SchemaAST.js"
+import type { ParseOptions } from "./SchemaAST.js"
 import * as AST from "./SchemaAST.js"
 import * as sortedSet_ from "./SortedSet.js"
 import * as string_ from "./String.js"
 import * as struct_ from "./Struct.js"
 import type * as Types from "./Types.js"
+import type { Unify } from "./Unify.js"
 
 /**
  * @since 3.10.0
@@ -8912,6 +8912,8 @@ const makeClass = <Fields extends Struct.Fields>(
 
   const [typeAnnotations, transformationAnnotations, encodedAnnotations] = getClassAnnotations(annotations)
 
+  const typeSchema_ = typeSchema(schema)
+
   const declarationSurrogate = typeSchema_.annotations({
     identifier,
     ...typeAnnotations
@@ -10884,6 +10886,64 @@ export class ArrayFormatterIssue extends Struct({
 }) {}
 
 /**
+ * @category taggedUnion
+ * @since 3.15.0
+ */
+export interface taggedUnion<Cases extends Record<string, Struct.Fields>> extends
+  AnnotableClass<
+    taggedUnion<Cases>,
+    taggedUnion.Members<Cases>["Type"],
+    taggedUnion.Members<Cases>["Encoded"],
+    taggedUnion.Members<Cases>["Context"]
+  >
+{
+  readonly members: {
+    readonly [K in keyof Cases]: K extends string ? taggedUnion.Member<K, Cases[K]> : never
+  }
+
+  readonly $match: {
+    <
+      C extends {
+        readonly [Tag in keyof Cases]: (
+          args: Extract<taggedUnion.Members<Cases>["Type"], { readonly _tag: Tag }>
+        ) => any
+      }
+    >(cases: C): (value: taggedUnion.Members<Cases>["Type"]) => Unify<ReturnType<C[keyof C]>>
+    <
+      C extends {
+        readonly [Tag in keyof Cases]: (
+          args: Extract<taggedUnion.Members<Cases>["Type"], { readonly _tag: Tag }>
+        ) => any
+      }
+    >(value: taggedUnion.Members<Cases>["Type"], cases: C): Unify<ReturnType<C[keyof C]>>
+  }
+}
+
+/**
+ * @category taggedUnion
+ * @since 3.15.0
+ */
+export declare namespace taggedUnion {
+  /**
+   * @category taggedUnion
+   * @since 3.15.0
+   */
+  export interface Member<Tag extends string, Fields extends Struct.Fields> extends Data<TaggedStruct<Tag, Fields>> {
+    readonly make: TaggedStruct<Tag, Fields>["make"]
+  }
+
+  /**
+   * @category taggedUnion
+   * @since 3.15.0
+   */
+  export type Members<Cases extends Record<string, Struct.Fields>> = keyof Cases extends infer K
+    ? K extends string ? Member<K, Cases[K]> : never
+    : never
+}
+
+const constDataEnum$Match = data_.taggedEnum().$match
+
+/**
  * Defines a schema for a union of tagged structs.
  *
  * @example
@@ -10898,26 +10958,26 @@ export class ArrayFormatterIssue extends Struct({
  * Schema.decodeUnknownSync(schema)({ _tag: "Circle", radius: 10 })
  * ```
  *
- * @category combinators
+ * @category taggedUnion
  * @since 3.15.0
  */
 export function taggedUnion<
-  Cases extends Record<string, Fields>,
-  Fields extends Struct.Fields
->(cases: Cases):
-  & Union<Array<{ [K in keyof Cases]: K extends LiteralValue ? TaggedStruct<K, Cases[K]> : never }[keyof Cases]>>
-  & { [K in keyof Cases]: K extends LiteralValue ? TaggedStruct<K, Cases[K]> : never }
-{
-  const members = record.map(cases, (fields, key) => TaggedStruct(key, fields))
-  const schema = Union(...record.values(members))
+  Cases extends Record<string, Struct.Fields>
+>(cases: Cases): taggedUnion<Cases> {
+  const members: Record<string, taggedUnion.Member<any, any>> = {}
+  const unionArr = []
+  for (const [key, fields] of Object.entries(cases)) {
+    const taggedStruct = TaggedStruct(key, fields)
+    const dataTaggedStruct = Data(taggedStruct) as unknown as taggedUnion.Member<any, any>
+    ;(dataTaggedStruct as any).make = (props: any, options?: {}) =>
+      data_.unsafeStruct(taggedStruct.make(props, options))
+    members[key] = dataTaggedStruct
+    unionArr.push(dataTaggedStruct)
+  }
 
-  return new Proxy(schema, {
-    get(target, key) {
-      if (key in members) {
-        return Reflect.get(members, key)
-      } else {
-        return Reflect.get(target, key)
-      }
-    }
-  }) as any
+  const schema = Union(...unionArr) as Types.Mutable<taggedUnion<any>>
+  schema.members = members
+  schema.$match = constDataEnum$Match as any
+
+  return schema as any
 }
