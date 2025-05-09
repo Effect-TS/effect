@@ -125,37 +125,13 @@ export interface GenerateObjectOptions<A, I, R> {
   /**
    * The schema to be used to specify the structure of the object to generate.
    */
-  readonly schema: StructuredSchema<A, I, R>
-}
-
-/**
- * Options for generating a structured object with an associated tool call
- * identifier using a large language model.
- *
- * @since 1.0.0
- * @category Models
- */
-export interface GenerateObjectWithToolCallIdOptions<A, I, R> {
-  /**
-   * The prompt input to use to generate text.
-   */
-  readonly prompt: AiInput.Raw
-
-  /**
-   * An optional system message that will be part of the prompt.
-   */
-  readonly system?: string | undefined
-
-  /**
-   * The schema to be used to specify the structure of the object to generate.
-   */
   readonly schema: Schema.Schema<A, I, R>
 
   /**
    * The identifier to use to associating the underlying tool call with the
    * generated output.
    */
-  readonly toolCallId: string
+  readonly toolCallId?: string | "structured"
 }
 
 /**
@@ -244,13 +220,9 @@ export declare namespace AiLanguageModel {
     /**
      * Generate a structured object for the specified prompt and schema using a
      * large language model.
-     *
-     * When using a `Schema` that does not have an `identifier` or `_tag`
-     * property, you must specify a `toolCallId` to properly associate the
-     * output of the model.
      */
     readonly generateObject: <A, I, R>(
-      options: GenerateObjectOptions<A, I, R> | GenerateObjectWithToolCallIdOptions<A, I, R>
+      options: GenerateObjectOptions<A, I, R>
     ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R | Config>
   }
 }
@@ -401,13 +373,15 @@ export const make: <Config>(
   )
 
   const generateObject = <A, I, R>(
-    options: GenerateObjectOptions<A, I, R> | GenerateObjectWithToolCallIdOptions<A, I, R>
+    options: GenerateObjectOptions<A, I, R>
   ): Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R | Config> => {
-    const toolCallId = "toolCallId" in options
+    const toolCallId: string = options.toolCallId
       ? options.toolCallId
       : "_tag" in options.schema
-      ? options.schema._tag
-      : options.schema.identifier
+      ? options.schema._tag as string
+      : "identifier" in options.schema
+      ? options.schema.identifier as string
+      : "structured"
     return Effect.useSpan(
       "AiLanguageModel.generateObject",
       {
@@ -569,7 +543,7 @@ export const generateText: <Tools extends AiTool.Any, Options>(
  * @category Functions
  */
 export const generateObject: <A, I, R>(
-  options: GenerateObjectOptions<A, I, R> | GenerateObjectWithToolCallIdOptions<A, I, R>
+  options: GenerateObjectOptions<A, I, R>
 ) => Effect.Effect<
   AiResponse.WithStructuredOutput<A>,
   AiError,

@@ -110,8 +110,14 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
   readonly system?: string
 }) {
   const languageModel = yield* AiLanguageModel.AiLanguageModel
+  const context = yield* Effect.context<never>()
+  const provideContext = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.mapInputContext(effect, (input) => Context.merge(context, input))
+  const provideContextStream = <A, E, R>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
+    Stream.mapInputContext(stream, (input) => Context.merge(context, input))
   const history = yield* Ref.make<AiInput.AiInput>(AiInput.make(options.prompt))
   const semaphore = yield* Effect.makeSemaphore(1)
+  const system = options.system
 
   return AiChat.of({
     history: Ref.get(history),
@@ -130,12 +136,14 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
           const input = AiInput.concat(oldInput, newInput)
           return languageModel.generateText({
             ...options,
+            system,
             prompt: input
           }).pipe(
             Effect.tap((response) => {
               const modelInput = AiInput.make(response)
               return Ref.set(history, AiInput.concat(input, modelInput))
-            })
+            }),
+            provideContext
           )
         }),
         semaphore.withPermits(1),
@@ -153,6 +161,7 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
           (parts) =>
             languageModel.streamText({
               ...options,
+              system,
               prompt: parts
             }).pipe(
               Stream.map((chunk) => {
@@ -167,9 +176,12 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
               semaphore.release(1)
             )
         ))
-      }).pipe(Stream.withSpan("AiChat.streamText", {
-        captureStackTrace: false
-      })) as any
+      }).pipe(
+        provideContextStream,
+        Stream.withSpan("AiChat.streamText", {
+          captureStackTrace: false
+        })
+      ) as any
     },
     generateObject(options) {
       const newInput = AiInput.make(options.prompt)
@@ -178,17 +190,19 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
           const input = AiInput.concat(oldInput, newInput)
           return languageModel.generateObject({
             ...options,
+            system,
             prompt: input
           } as any).pipe(
             Effect.flatMap((response) => {
               const modelInput = AiInput.make(response)
               return Effect.as(
                 Ref.set(history, AiInput.concat(input, modelInput)),
-                response.value
+                response
               )
             })
           )
         }),
+        provideContext,
         semaphore.withPermits(1),
         Effect.withSpan("AiChat.generateObject", {
           attributes: {
@@ -196,7 +210,7 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
               ? options.toolCallId
               : "_tag" in options.schema
               ? options.schema._tag
-              : (options.schema as any).identifier
+              : (options.schema as any).identifier ?? "structured"
           },
           captureStackTrace: false
         })
