@@ -8,7 +8,7 @@ import { dual } from "effect/Function"
 
 /**
  * @since 1.0.0
- * @category tags
+ * @category Context
  */
 export class AnthropicConfig extends Context.Tag("@effect/ai-openai/AnthropicConfig")<
   AnthropicConfig,
@@ -25,12 +25,11 @@ export class AnthropicConfig extends Context.Tag("@effect/ai-openai/AnthropicCon
 
 /**
  * @since 1.0.0
- * @category models
  */
 export declare namespace AnthropicConfig {
   /**
    * @since 1.0.0
-   * @category models
+   * @category Models
    */
   export interface Service {
     readonly transformClient?: (client: HttpClient) => HttpClient
@@ -39,7 +38,7 @@ export declare namespace AnthropicConfig {
 
 /**
  * @since 1.0.0
- * @category configuration
+ * @category Configuration
  */
 export const withClientTransform: {
   (transform: (client: HttpClient) => HttpClient): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>

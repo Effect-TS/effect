@@ -15,105 +15,100 @@ import type { Simplify } from "effect/Types"
  * {@see https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/}
  *
  * @since 1.0.0
- * @category models
+ * @category Models
  */
 export type OpenAiTelemetryAttributes = Simplify<
   & AiTelemetry.GenAITelemetryAttributes
-  & AiTelemetry.GenAI.AttributesWithPrefix<OpenAiTelemetry.RequestAttributes, "gen_ai.openai.request">
-  & AiTelemetry.GenAI.AttributesWithPrefix<OpenAiTelemetry.ResponseAttributes, "gen_ai.openai.request">
+  & AiTelemetry.AttributesWithPrefix<RequestAttributes, "gen_ai.openai.request">
+  & AiTelemetry.AttributesWithPrefix<ResponseAttributes, "gen_ai.openai.request">
 >
 
 /**
+ * All telemetry attributes which are part of the GenAI specification,
+ * including the OpenAi-specific attributes.
+ *
  * @since 1.0.0
+ * @category Models
  */
-export declare namespace OpenAiTelemetry {
-  /**
-   * All telemetry attributes which are part of the GenAI specification,
-   * including the OpenAi-specific attributes.
-   *
-   * @since 1.0.0
-   * @category models
-   */
-  export type AllAttributes = AiTelemetry.GenAI.AllAttributes & RequestAttributes & ResponseAttributes
+export type AllAttributes = AiTelemetry.AllAttributes & RequestAttributes & ResponseAttributes
 
+/**
+ * Telemetry attributes which are part of the GenAI specification and are
+ * namespaced by `gen_ai.openai.request`.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export interface RequestAttributes {
   /**
-   * Telemetry attributes which are part of the GenAI specification and are
-   * namespaced by `gen_ai.openai.request`.
-   *
-   * @since 1.0.0
-   * @category models
+   * The response format that is requested.
    */
-  export interface RequestAttributes {
-    /**
-     * The response format that is requested.
-     */
-    readonly responseFormat?: (string & {}) | WellKnownResponseFormat | null | undefined
-    /**
-     * The service tier requested. May be a specific tier, `default`, or `auto`.
-     */
-    readonly serviceTier?: (string & {}) | WellKnownServiceTier | null | undefined
-  }
-
+  readonly responseFormat?: (string & {}) | WellKnownResponseFormat | null | undefined
   /**
-   * Telemetry attributes which are part of the GenAI specification and are
-   * namespaced by `gen_ai.openai.response`.
-   *
-   * @since 1.0.0
-   * @category models
+   * The service tier requested. May be a specific tier, `default`, or `auto`.
    */
-  export interface ResponseAttributes {
-    /**
-     * The service tier used for the response.
-     */
-    readonly serviceTier?: string | null | undefined
-    /**
-     * A fingerprint to track any eventual change in the Generative AI
-     * environment.
-     */
-    readonly systemFingerprint?: string | null | undefined
-  }
-
-  /**
-   * The `gen_ai.openai.request.response_format` attribute has the following
-   * list of well-known values.
-   *
-   * If one of them applies, then the respective value **MUST** be used;
-   * otherwise, a custom value **MAY** be used.
-   *
-   * @since 1.0.0
-   * @category models
-   */
-  export type WellKnownResponseFormat = "json_object" | "json_schema" | "text"
-
-  /**
-   * The `gen_ai.openai.request.service_tier` attribute has the following
-   * list of well-known values.
-   *
-   * If one of them applies, then the respective value **MUST** be used;
-   * otherwise, a custom value **MAY** be used.
-   *
-   * @since 1.0.0
-   * @category models
-   */
-  export type WellKnownServiceTier = "auto" | "default"
+  readonly serviceTier?: (string & {}) | WellKnownServiceTier | null | undefined
 }
 
 /**
+ * Telemetry attributes which are part of the GenAI specification and are
+ * namespaced by `gen_ai.openai.response`.
+ *
  * @since 1.0.0
- * @since models
+ * @category Models
+ */
+export interface ResponseAttributes {
+  /**
+   * The service tier used for the response.
+   */
+  readonly serviceTier?: string | null | undefined
+  /**
+   * A fingerprint to track any eventual change in the Generative AI
+   * environment.
+   */
+  readonly systemFingerprint?: string | null | undefined
+}
+
+/**
+ * The `gen_ai.openai.request.response_format` attribute has the following
+ * list of well-known values.
+ *
+ * If one of them applies, then the respective value **MUST** be used;
+ * otherwise, a custom value **MAY** be used.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export type WellKnownResponseFormat = "json_object" | "json_schema" | "text"
+
+/**
+ * The `gen_ai.openai.request.service_tier` attribute has the following
+ * list of well-known values.
+ *
+ * If one of them applies, then the respective value **MUST** be used;
+ * otherwise, a custom value **MAY** be used.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export type WellKnownServiceTier = "auto" | "default"
+
+/**
+ * @since 1.0.0
+ * @since Models
  */
 export type OpenAiTelemetryAttributeOptions = AiTelemetry.GenAITelemetryAttributeOptions & {
   openai?: {
-    request?: OpenAiTelemetry.RequestAttributes | undefined
-    response?: OpenAiTelemetry.ResponseAttributes | undefined
+    request?: RequestAttributes | undefined
+    response?: ResponseAttributes | undefined
   } | undefined
 }
 
 const addOpenAiRequestAttributes = AiTelemetry.addSpanAttributes("gen_ai.openai.request", String.camelToSnake)<
-  OpenAiTelemetry.RequestAttributes
+  RequestAttributes
 >
 const addOpenAiResponseAttributes = AiTelemetry.addSpanAttributes("gen_ai.openai.response", String.camelToSnake)<
-  OpenAiTelemetry.ResponseAttributes
+  ResponseAttributes
 >
 
 /**
@@ -123,7 +118,7 @@ const addOpenAiResponseAttributes = AiTelemetry.addSpanAttributes("gen_ai.openai
  * **NOTE**: This method will mutate the `Span` **in-place**.
  *
  * @since 1.0.0
- * @since utilities
+ * @since Utilities
  */
 export const addGenAIAnnotations = dual<
   (options: OpenAiTelemetryAttributeOptions) => (span: Span) => void,

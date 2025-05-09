@@ -1,13 +1,14 @@
 /**
  * @since 1.0.0
  */
+import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 
 /**
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId: unique symbol = Symbol("@effect/ai/AiError")
+export const TypeId: unique symbol = Symbol.for("@effect/ai/AiError")
 
 /**
  * @since 1.0.0
@@ -25,6 +26,12 @@ export class AiError extends Schema.TaggedError<AiError>("@effect/ai/AiError")("
   description: Schema.String,
   cause: Schema.optional(Schema.Defect)
 }) {
+  /**
+   * @since 1.0.0
+   */
+  static is(u: unknown): u is AiError {
+    return Predicate.hasProperty(u, TypeId)
+  }
   /**
    * @since 1.0.0
    */

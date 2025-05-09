@@ -1,17 +1,15 @@
 /**
  * @since 1.0.0
  */
-import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import type { AiError } from "./AiError.js"
-import type { Message } from "./AiInput.js"
 import * as AiInput from "./AiInput.js"
 
 /**
  * @since 1.0.0
- * @category tags
+ * @category Tags
  */
 export class Tokenizer extends Context.Tag("@effect/ai/Tokenizer")<
   Tokenizer,
@@ -20,22 +18,21 @@ export class Tokenizer extends Context.Tag("@effect/ai/Tokenizer")<
 
 /**
  * @since 1.0.0
- * @category models
  */
 export declare namespace Tokenizer {
   /**
    * @since 1.0.0
-   * @models
+   * @category Models
    */
   export interface Service {
-    readonly tokenize: (content: AiInput.Input) => Effect.Effect<Array<number>, AiError>
-    readonly truncate: (content: AiInput.Input, tokens: number) => Effect.Effect<AiInput.Input, AiError>
+    readonly tokenize: (input: AiInput.Raw) => Effect.Effect<Array<number>, AiError>
+    readonly truncate: (input: AiInput.Raw, tokens: number) => Effect.Effect<AiInput.AiInput, AiError>
   }
 }
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const make = (options: {
   readonly tokenize: (content: AiInput.AiInput) => Effect.Effect<Array<number>, AiError>
@@ -44,33 +41,32 @@ export const make = (options: {
     tokenize(input) {
       return options.tokenize(AiInput.make(input))
     },
-    truncate(content, tokens) {
-      return truncate(AiInput.make(content), options.tokenize, tokens)
+    truncate(input, tokens) {
+      return truncate(AiInput.make(input), options.tokenize, tokens)
     }
   })
 
 const truncate = (
   self: AiInput.AiInput,
-  tokenize: (content: AiInput.AiInput) => Effect.Effect<Array<number>, AiError>,
+  tokenize: (input: AiInput.AiInput) => Effect.Effect<Array<number>, AiError>,
   maxTokens: number
 ): Effect.Effect<AiInput.AiInput, AiError> =>
   Effect.suspend(() => {
     let count = 0
-    let inParts = self
-    let outParts: Chunk.Chunk<Message> = Chunk.empty()
+    let inputMessages = self.messages
+    let outputMessages: Array<AiInput.Message> = []
     const loop: Effect.Effect<AiInput.AiInput, AiError> = Effect.suspend(() => {
-      const o = Chunk.last(inParts)
-      if (Option.isNone(o)) {
-        return Effect.succeed(AiInput.make(outParts))
+      const message = inputMessages[inputMessages.length - 1]
+      if (Predicate.isUndefined(message)) {
+        return Effect.succeed(AiInput.make(outputMessages))
       }
-      const part = o.value
-      inParts = Chunk.dropRight(inParts, 1)
-      return Effect.flatMap(tokenize(Chunk.of(part)), (tokens) => {
+      inputMessages = inputMessages.slice(0, inputMessages.length - 1)
+      return Effect.flatMap(tokenize(AiInput.make(message)), (tokens) => {
         count += tokens.length
         if (count > maxTokens) {
-          return Effect.succeed(AiInput.make(outParts))
+          return Effect.succeed(AiInput.make(outputMessages))
         }
-        outParts = Chunk.prepend(outParts, part)
+        outputMessages = [message, ...outputMessages]
         return loop
       })
     })

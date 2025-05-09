@@ -1,31 +1,32 @@
 /**
  * @since 1.0.0
  */
-import * as AiModels from "@effect/ai/AiModels"
+import type { ToolCallId } from "@effect/ai/AiInput"
 import * as AiResponse from "@effect/ai/AiResponse"
-import * as AiRole from "@effect/ai/AiRole"
 import * as Sse from "@effect/experimental/Sse"
 import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
 import type * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
-import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import * as Stream from "effect/Stream"
 import * as Generated from "./Generated.js"
+import * as InternalUtilities from "./internal/utilities.js"
 import { OpenAiConfig } from "./OpenAiConfig.js"
+
+const constDisableValidation = { disableValidation: true } as const
 
 /**
  * @since 1.0.0
- * @category tags
+ * @category Context
  */
 export class OpenAiClient extends Context.Tag("@effect/ai-openai/OpenAiClient")<
   OpenAiClient,
@@ -34,12 +35,11 @@ export class OpenAiClient extends Context.Tag("@effect/ai-openai/OpenAiClient")<
 
 /**
  * @since 1.0.0
- * @category models
  */
 export declare namespace OpenAiClient {
   /**
    * @since 1.0.0
-   * @category models
+   * @category Models
    */
   export interface Service {
     readonly client: Generated.Client
@@ -48,20 +48,44 @@ export declare namespace OpenAiClient {
     ) => Stream.Stream<A, HttpClientError.HttpClientError>
     readonly stream: (
       request: StreamCompletionRequest
-    ) => Stream.Stream<StreamChunk, HttpClientError.HttpClientError>
+    ) => Stream.Stream<AiResponse.AiResponse, HttpClientError.HttpClientError>
   }
 }
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category Models
+ */
+export type StreamCompletionRequest = Omit<typeof Generated.CreateChatCompletionRequest.Encoded, "stream">
+
+/**
+ * @since 1.0.0
+ * @category Constructors
  */
 export const make = (options: {
+  /**
+   * The API key to use to communicate with the OpenAi API.
+   */
   readonly apiKey?: Redacted.Redacted | undefined
+  /**
+   * The URL to use to communicate with the OpenAi API.
+   */
   readonly apiUrl?: string | undefined
+  /**
+   * The OpenAi organization identifier to use when communicating with the
+   * OpenAi API.
+   */
   readonly organizationId?: Redacted.Redacted | undefined
+  /**
+   * The OpenAi project identifier to use when communicating with the OpenAi
+   * API.
+   */
   readonly projectId?: Redacted.Redacted | undefined
-  readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
+  /**
+   * A method which can be used to transform the underlying `HttpClient` which
+   * will be used to communicate with the OpenAi API.
+   */
+  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
 }): Effect.Effect<OpenAiClient.Service, never, HttpClient.HttpClient> =>
   Effect.gen(function*() {
     const httpClient = (yield* HttpClient.HttpClient).pipe(
@@ -87,6 +111,7 @@ export const make = (options: {
           Effect.map((config) => config?.transformClient ? config.transformClient(client) : client)
         )
     })
+
     const streamRequest = <A = unknown>(request: HttpClientRequest.HttpClientRequest) =>
       httpClientOk.execute(request).pipe(
         Effect.map((r) => r.stream),
@@ -96,9 +121,22 @@ export const make = (options: {
         Stream.takeWhile((event) => event.data !== "[DONE]"),
         Stream.map((event) => JSON.parse(event.data) as A)
       )
+
     const stream = (request: StreamCompletionRequest) =>
       Stream.suspend(() => {
-        const finishReasons: Array<string> = []
+        const toolCalls = {} as Record<number, RawToolCall & { isFinished: boolean }>
+        let isFirstChunk = false
+        let toolCallIndex: number | undefined = undefined
+        let finishReason: AiResponse.FinishReason = "unknown"
+        let usage: AiResponse.Usage = {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          reasoningTokens: 0,
+          cacheReadInputTokens: 0,
+          cacheWriteInputTokens: 0
+        }
+        let metadata: Record<string, unknown> = {}
         return streamRequest<RawCompletionChunk>(HttpClientRequest.post("/chat/completions", {
           body: HttpBody.unsafeJson({
             ...request,
@@ -106,83 +144,105 @@ export const make = (options: {
             stream_options: { include_usage: true }
           })
         })).pipe(
-          Stream.mapAccum(new Map<number, ContentPart | Array<ToolCallPart>>(), (acc, chunk) => {
-            const parts: Array<StreamChunkPart> = []
-            if (chunk.usage !== null) {
-              parts.push({
-                _tag: "Usage",
-                id: chunk.id,
-                model: chunk.model,
+          Stream.filterMap((chunk) => {
+            const parts: Array<AiResponse.Part> = []
+
+            // Add response metadata immediately once available
+            if (isFirstChunk) {
+              isFirstChunk = false
+              parts.push(
+                new AiResponse.MetadataPart({
+                  id: chunk.id,
+                  model: chunk.model,
+                  timestamp: new Date(chunk.created * 1000)
+                }, constDisableValidation)
+              )
+            }
+
+            // Track usage information
+            if (Predicate.isNotNullable(chunk.usage)) {
+              usage = {
                 inputTokens: chunk.usage.prompt_tokens,
                 outputTokens: chunk.usage.completion_tokens,
-                finishReasons,
+                totalTokens: chunk.usage.prompt_tokens + chunk.usage.completion_tokens,
+                reasoningTokens: chunk.usage.completion_tokens_details.reasoning_tokens,
+                cacheReadInputTokens: chunk.usage.prompt_tokens_details.cached_tokens,
+                cacheWriteInputTokens: usage.cacheWriteInputTokens
+              }
+              metadata = {
+                ...metadata,
+                serviceTier: chunk.service_tier,
                 systemFingerprint: chunk.system_fingerprint,
-                serviceTier: chunk.service_tier
-              })
+                acceptedPredictionTokens: chunk.usage.completion_tokens_details.accepted_prediction_tokens,
+                rejectedPredictionTokens: chunk.usage.completion_tokens_details.rejected_prediction_tokens,
+                inputAudioTokens: chunk.usage.prompt_tokens_details.audio_tokens,
+                outputAudioTokens: chunk.usage.completion_tokens_details.audio_tokens
+              }
             }
+
             for (let i = 0; i < chunk.choices.length; i++) {
               const choice = chunk.choices[i]
-              if (choice.finish_reason !== null) {
-                finishReasons.push(choice.finish_reason)
+
+              // Track the finish reason for the response
+              if (Predicate.isNotNullable(choice.finish_reason)) {
+                finishReason = InternalUtilities.resolveFinishReason(choice.finish_reason)
+                if (finishReason === "tool-calls" && Predicate.isNotUndefined(toolCallIndex)) {
+                  finishToolCall(toolCalls[toolCallIndex], parts)
+                }
+                if (finishReason === "stop") {
+                  parts.push(
+                    new AiResponse.FinishPart({
+                      usage,
+                      reason: finishReason,
+                      providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
+                    }, constDisableValidation)
+                  )
+                }
               }
-              if ("content" in choice.delta && typeof choice.delta.content === "string") {
-                let part = acc.get(choice.index) as ContentPart | undefined
-                part = {
-                  _tag: "Content",
-                  content: choice.delta.content
-                }
-                acc.set(choice.index, part)
-                parts.push(part)
-              } else if ("tool_calls" in choice.delta && Array.isArray(choice.delta.tool_calls)) {
-                const parts = (acc.get(choice.index) ?? []) as Array<ToolCallPart>
-                for (const toolCall of choice.delta.tool_calls) {
-                  const part = parts[toolCall.index]
-                  const toolPart = part?._tag === "ToolCall" ?
-                    {
-                      ...part,
-                      arguments: part.arguments + toolCall.function.arguments
-                    } :
-                    {
-                      _tag: "ToolCall",
-                      ...toolCall,
-                      ...toolCall.function,
-                      role: choice.delta.role!
-                    } as any
-                  parts[toolCall.index] = toolPart
-                }
-                acc.set(choice.index, parts)
-              } else if (choice.finish_reason === "tool_calls") {
-                const toolParts = acc.get(choice.index) as Array<ToolCallPart>
-                for (const part of toolParts) {
-                  try {
-                    const args = JSON.parse(part.arguments as string)
-                    parts.push({
-                      _tag: "ToolCall",
-                      id: part.id,
-                      name: part.name,
-                      arguments: args
-                    })
-                    // eslint-disable-next-line no-empty
-                  } catch {}
+
+              // Handle text deltas
+              if (Predicate.isNotNullable(choice.delta.content)) {
+                parts.push(
+                  new AiResponse.TextPart({
+                    text: choice.delta.content
+                  }, constDisableValidation)
+                )
+              }
+
+              // Handle tool call deltas
+              if (Predicate.hasProperty(choice.delta, "tool_calls") && Array.isArray(choice.delta.tool_calls)) {
+                for (const delta of choice.delta.tool_calls) {
+                  // Make sure to emit any previous tool calls before starting a new one
+                  if (Predicate.isNotUndefined(toolCallIndex) && toolCallIndex !== delta.index) {
+                    finishToolCall(toolCalls[toolCallIndex], parts)
+                    toolCallIndex = delta.index
+                  }
+
+                  if (Predicate.isUndefined(toolCallIndex)) {
+                    const toolCall = delta as unknown as RawToolCall
+                    // All information except arguments are returned with the first tool call delta
+                    toolCalls[delta.index] = { ...toolCall, isFinished: false }
+                    toolCallIndex = delta.index
+                  } else {
+                    toolCalls[delta.index].function.arguments += delta.function.arguments
+                  }
                 }
               }
             }
-            return [
-              acc,
-              parts.length === 0
-                ? Option.none()
-                : Option.some(new StreamChunk({ parts }))
-            ]
-          }),
-          Stream.filterMap(identity)
+
+            return parts.length === 0
+              ? Option.none()
+              : Option.some(AiResponse.AiResponse.make({ parts }, constDisableValidation))
+          })
         )
       })
+
     return OpenAiClient.of({ client, streamRequest, stream })
   })
 
 /**
  * @since 1.0.0
- * @category layers
+ * @category Layers
  */
 export const layer = (options: {
   readonly apiKey?: Redacted.Redacted | undefined
@@ -190,15 +250,11 @@ export const layer = (options: {
   readonly organizationId?: Redacted.Redacted | undefined
   readonly projectId?: Redacted.Redacted | undefined
   readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
-}): Layer.Layer<AiModels.AiModels | OpenAiClient, never, HttpClient.HttpClient> =>
-  Layer.merge(
-    AiModels.layer,
-    Layer.effect(OpenAiClient, make(options))
-  )
+}): Layer.Layer<OpenAiClient, never, HttpClient.HttpClient> => Layer.effect(OpenAiClient, make(options))
 
 /**
  * @since 1.0.0
- * @category layers
+ * @category Layers
  */
 export const layerConfig = (
   options: Config.Config.Wrap<{
@@ -208,43 +264,27 @@ export const layerConfig = (
     readonly projectId?: Redacted.Redacted | undefined
     readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
   }>
-): Layer.Layer<AiModels.AiModels | OpenAiClient, ConfigError, HttpClient.HttpClient> =>
+): Layer.Layer<OpenAiClient, ConfigError, HttpClient.HttpClient> =>
   Config.unwrap(options).pipe(
     Effect.flatMap(make),
-    Layer.effect(OpenAiClient),
-    Layer.merge(AiModels.layer)
+    Layer.effect(OpenAiClient)
   )
-
-/**
- * @since 1.0.0
- * @category models
- */
-export type StreamCompletionRequest = Omit<typeof Generated.CreateChatCompletionRequest.Encoded, "stream">
 
 interface RawCompletionChunk {
   readonly id: string
   readonly object: "chat.completion.chunk"
   readonly created: number
   readonly model: string
-  readonly choices: Array<
-    {
-      readonly index: number
-      readonly finish_reason: null
-      readonly delta: RawDelta
-    } | {
-      readonly index: number
-      readonly finish_reason: string
-      readonly delta: {}
-    }
-  >
+  readonly choices: ReadonlyArray<RawChoice>
   readonly system_fingerprint: string
-  readonly service_tier: string
+  readonly service_tier: string | null
   readonly usage: RawUsage | null
 }
 
-interface RawUsage {
-  readonly prompt_tokens: number
-  readonly completion_tokens: number
+interface RawChoice {
+  readonly index: number
+  readonly finish_reason: "stop" | "length" | "content_filter" | "function_call" | "tool_calls" | null
+  readonly delta: RawDelta
 }
 
 type RawDelta = {
@@ -255,7 +295,23 @@ type RawDelta = {
   readonly index?: number
   readonly role?: string
   readonly content?: null
-  readonly tool_calls: Array<RawToolCall>
+  readonly tool_calls: Array<RawToolDelta>
+}
+
+interface RawUsage {
+  readonly prompt_tokens: number
+  readonly completion_tokens: number
+  readonly total_tokens: number
+  readonly completion_tokens_details: {
+    readonly accepted_prediction_tokens: number
+    readonly audio_tokens: number
+    readonly reasoning_tokens: number
+    readonly rejected_prediction_tokens: number
+  }
+  readonly prompt_tokens_details: {
+    readonly audio_tokens: number
+    readonly cached_tokens: number
+  }
 }
 
 type RawToolCall = {
@@ -264,103 +320,40 @@ type RawToolCall = {
   readonly type: "function"
   readonly function: {
     readonly name: string
-    readonly arguments: string
+    arguments: string
   }
-} | {
+}
+
+type RawToolDelta = RawToolCall | {
   readonly index: number
   readonly function: {
     readonly arguments: string
   }
 }
 
-/**
- * @since 1.0.0
- * @category models
- */
-export class StreamChunk extends Data.Class<{
-  readonly parts: Array<StreamChunkPart>
-}> {
-  /**
-   * @since 1.0.0
-   */
-  get text(): Option.Option<string> {
-    const firstContentPart = this.parts.find((part) => part._tag === "Content")
-    return firstContentPart ? Option.some(firstContentPart.content) : Option.none()
+// =============================================================================
+// Utilities
+// =============================================================================
+
+const finishToolCall = (
+  toolCall: RawToolCall & { isFinished: boolean },
+  parts: Array<AiResponse.Part>
+) => {
+  // Don't emit the tool call if it's already been emitted
+  if (toolCall.isFinished) {
+    return
   }
-  /**
-   * @since 1.0.0
-   */
-  get asAiResponse(): AiResponse.AiResponse {
-    const aiResponseParts: Array<AiResponse.Part> = []
-
-    for (let i = 0; i < this.parts.length; i++) {
-      const part = this.parts[i]
-      switch (part._tag) {
-        case "Content":
-          aiResponseParts.push(AiResponse.TextPart.fromContent(part.content))
-          break
-        case "ToolCall":
-          aiResponseParts.push(AiResponse.ToolCallPart.fromUnknown({
-            id: part.id,
-            name: part.name,
-            params: part.arguments
-          }))
-          break
-      }
-    }
-
-    if (aiResponseParts.length === 0) {
-      return AiResponse.AiResponse.fromText({
-        role: AiRole.model,
-        content: ""
+  try {
+    const params = JSON.parse(toolCall.function.arguments)
+    parts.push(
+      new AiResponse.ToolCallPart({
+        id: toolCall.id as ToolCallId,
+        name: toolCall.function.name,
+        params
       })
-    }
-
-    return new AiResponse.AiResponse({
-      role: AiRole.model,
-      parts: Chunk.unsafeFromArray(aiResponseParts)
-    })
-  }
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export type StreamChunkPart = ContentPart | ToolCallPart | UsagePart
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface ContentPart {
-  readonly _tag: "Content"
-  readonly name?: string
-  readonly content: string
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface ToolCallPart {
-  readonly _tag: "ToolCall"
-  readonly id: string
-  readonly name: string
-  readonly arguments: unknown
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface UsagePart {
-  readonly _tag: "Usage"
-  readonly id: string
-  readonly model: string
-  readonly inputTokens: number
-  readonly outputTokens: number
-  readonly finishReasons: ReadonlyArray<string>
-  readonly systemFingerprint: string
-  readonly serviceTier: string | null
+    )
+    toolCall.isFinished = true
+    // TODO:
+    // eslint-disable-next-line no-empty
+  } catch (e) {}
 }
