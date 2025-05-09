@@ -1,8 +1,9 @@
 import { SqlClient } from "@effect/sql"
-import { PgDrizzle } from "@effect/sql-drizzle/Pg"
+import * as Pg from "@effect/sql-drizzle/Pg"
 import { assert, describe, it } from "@effect/vitest"
 import * as D from "drizzle-orm/pg-core"
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
+import { PgContainer } from "./utils-pg.js"
 import { DrizzlePgLive } from "./utils.js"
 
 const users = D.pgTable("users", {
@@ -11,11 +12,15 @@ const users = D.pgTable("users", {
   snakeCase: D.text("snake_case").notNull()
 })
 
+class ORM extends Effect.Service<ORM>()("ORM", { effect: Pg.make({ schema: { users } }) }) {
+  static Client = this.Default.pipe(Layer.provideMerge(PgContainer.ClientLive))
+}
+
 describe.sequential("Pg", () => {
   it.effect("works", () =>
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
-      const db = yield* PgDrizzle
+      const db = yield* Pg.PgDrizzle
 
       yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
       yield* db.insert(users).values({ name: "Alice", snakeCase: "alice" })
@@ -28,10 +33,26 @@ describe.sequential("Pg", () => {
     timeout: 60000
   })
 
+  it.effect("orm", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const db = yield* ORM
+
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
+      yield* db.insert(users).values({ name: "Alice", snakeCase: "alice" })
+      const results = yield* db.query.users.findMany()
+      assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice" }])
+    }).pipe(
+      Effect.provide(ORM.Client),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), {
+    timeout: 60000
+  })
+
   it.effect("remote callback", () =>
     Effect.gen(function*(_) {
       const sql = yield* SqlClient.SqlClient
-      const db = yield* PgDrizzle
+      const db = yield* Pg.PgDrizzle
       yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
       yield* Effect.promise(() => db.insert(users).values({ name: "Alice", snakeCase: "snake" }))
       const results = yield* Effect.promise(() => db.select().from(users))
