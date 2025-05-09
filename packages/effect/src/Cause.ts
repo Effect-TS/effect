@@ -1420,6 +1420,7 @@ export const TimeoutException: new(message?: string | undefined) => TimeoutExcep
 /**
  * Checks if a given unknown value is a `TimeoutException`.
  *
+ * @since 3.15.0
  * @category Guards
  */
 export const isTimeoutException: (u: unknown) => u is TimeoutException = core.isTimeoutException
