@@ -8821,7 +8821,8 @@ export const TaggedError = <Self = never>(identifier?: string) =>
   const schema = getSchemaFromFieldsOr(fieldsOr)
   const newFields = { _tag: getClassTag(tag) }
   const taggedFields = extendFields(newFields, fields)
-  return class TaggedErrorClass extends makeClass({
+  const hasMessageField = "message" in taggedFields
+  class TaggedErrorClass extends makeClass({
     kind: "TaggedError",
     identifier: identifier ?? tag,
     schema: extend(schema, Struct(newFields)),
@@ -8831,13 +8832,23 @@ export const TaggedError = <Self = never>(identifier?: string) =>
     disableToString: true
   }) {
     static _tag = tag
-    get message(): string {
-      return `{ ${
-        util_.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
-          .join(", ")
-      } }`
-    }
-  } as any
+  }
+
+  if (!hasMessageField) {
+    Object.defineProperty(TaggedErrorClass.prototype, "message", {
+      get() {
+        return `{ ${
+          util_.ownKeys(fields)
+            .map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown((this)[p])}`)
+            .join(", ")
+        } }`
+      },
+      enumerable: false, // mirrors the built-in Error.prototype.message, whose descriptor is also non-enumerable
+      configurable: true
+    })
+  }
+
+  return TaggedErrorClass as any
 }
 
 const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
