@@ -1,5 +1,12 @@
 # @effect/rpc
 
+## 0.57.0
+
+### Patch Changes
+
+- Updated dependencies [[`672920f`](https://github.com/Effect-TS/effect/commit/672920f85da8abd5f9d4ad85e29248a2aca57ed8)]:
+  - @effect/platform@0.81.0
+
 ## 0.56.9
 
 ### Patch Changes

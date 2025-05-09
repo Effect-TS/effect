@@ -1,5 +1,52 @@
 # @effect/platform
 
+## 0.81.0
+
+### Minor Changes
+
+- [#4842](https://github.com/Effect-TS/effect/pull/4842) [`672920f`](https://github.com/Effect-TS/effect/commit/672920f85da8abd5f9d4ad85e29248a2aca57ed8) Thanks @tim-smart! - allow overriding http span names
+
+  ```ts
+  import { FetchHttpClient, HttpClient } from "@effect/platform"
+  import { NodeRuntime } from "@effect/platform-node"
+  import { Effect } from "effect"
+
+  Effect.gen(function* () {
+    const client = (yield* HttpClient.HttpClient).pipe(
+      // Customize the span names for this HttpClient
+      HttpClient.withSpanNameGenerator(
+        (request) => `http.client ${request.method} ${request.url}`
+      )
+    )
+
+    yield* client.get("https://jsonplaceholder.typicode.com/posts/1")
+  }).pipe(Effect.provide(FetchHttpClient.layer), NodeRuntime.runMain)
+  ```
+
+  And for a server:
+
+  ```ts
+  import {
+    HttpMiddleware,
+    HttpRouter,
+    HttpServer,
+    HttpServerResponse
+  } from "@effect/platform"
+  import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+  import { Layer } from "effect"
+  import { createServer } from "http"
+
+  HttpRouter.empty.pipe(
+    HttpRouter.get("/", HttpServerResponse.empty()),
+    HttpServer.serve(),
+    // Customize the span names for this HttpApp
+    HttpMiddleware.withSpanNameGenerator((request) => `GET ${request.url}`),
+    Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
+    Layer.launch,
+    NodeRuntime.runMain
+  )
+  ```
+
 ## 0.80.21
 
 ### Patch Changes
