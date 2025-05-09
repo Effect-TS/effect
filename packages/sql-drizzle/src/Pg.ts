@@ -3,6 +3,7 @@
  */
 import * as Client from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
+import type { DrizzleConfig } from "drizzle-orm"
 import { PgSelectBase } from "drizzle-orm/pg-core"
 import { drizzle } from "drizzle-orm/pg-proxy"
 import type { PgRemoteDatabase } from "drizzle-orm/pg-proxy"
@@ -16,12 +17,29 @@ import { makeRemoteCallback, patch, registerDialect } from "./internal/patch.js"
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<PgRemoteDatabase, never, Client.SqlClient> = Effect.gen(function*() {
-  const client = yield* Client.SqlClient
-  const db = drizzle(yield* makeRemoteCallback)
-  registerDialect((db as any).dialect, client)
-  return db
-})
+export const make = <TSchema extends Record<string, unknown> = Record<string, never>>(
+  config?: Omit<DrizzleConfig<TSchema>, "logger">
+): Effect.Effect<PgRemoteDatabase<TSchema>, never, Client.SqlClient> =>
+  Effect.gen(function*() {
+    const client = yield* Client.SqlClient
+    const db = drizzle(yield* makeRemoteCallback, config)
+    registerDialect((db as any).dialect, client)
+    return db
+  })
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeWithConfig: (config: DrizzleConfig) => Effect.Effect<PgRemoteDatabase, never, Client.SqlClient> = (
+  config
+) =>
+  Effect.gen(function*() {
+    const client = yield* Client.SqlClient
+    const db = drizzle(yield* makeRemoteCallback, config)
+    registerDialect((db as any).dialect, client)
+    return db
+  })
 
 /**
  * @since 1.0.0
@@ -36,7 +54,14 @@ export class PgDrizzle extends Context.Tag("@effect/sql-drizzle/Pg")<
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<PgDrizzle, never, Client.SqlClient> = Layer.effect(PgDrizzle, make)
+export const layer: Layer.Layer<PgDrizzle, never, Client.SqlClient> = Layer.effect(PgDrizzle, make())
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerWithConfig: (config: DrizzleConfig) => Layer.Layer<PgDrizzle, never, Client.SqlClient> = (config) =>
+  Layer.effect(PgDrizzle, makeWithConfig(config))
 
 // patch
 

@@ -48,7 +48,12 @@ const PatchProto = {
     }
     return Effect.map(
       statement.values,
-      (rows) => rows.map((row) => mapResultRow(prepared.fields, row, prepared.joinsNotNullableMap))
+      (rows) => {
+        if (prepared.customResultMapper) {
+          return prepared.customResultMapper(rows)
+        }
+        return rows.map((row) => mapResultRow(prepared.fields, row, prepared.joinsNotNullableMap))
+      }
     )
   }
 }
@@ -68,6 +73,9 @@ export const makeRemoteCallback = Effect.gen(function*() {
   const runPromise = Runtime.runPromise(runtime)
   return (sql: string, params: Array<any>, method: "all" | "execute" | "get" | "values" | "run") => {
     const statement = client.unsafe(sql, params)
+    if (method === "execute") {
+      return runPromise(Effect.map(statement.raw, (header) => ({ rows: [header] })))
+    }
     let effect: Effect.Effect<any, SqlError> = method === "all" || method === "values"
       ? statement.values
       : statement.withoutTransform

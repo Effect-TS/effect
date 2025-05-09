@@ -1418,6 +1418,14 @@ export const isRuntimeException: (u: unknown) => u is RuntimeException = core.is
 export const TimeoutException: new(message?: string | undefined) => TimeoutException = core.TimeoutException
 
 /**
+ * Checks if a given unknown value is a `TimeoutException`.
+ *
+ * @since 3.15.0
+ * @category Guards
+ */
+export const isTimeoutException: (u: unknown) => u is TimeoutException = core.isTimeoutException
+
+/**
  * Creates an instance of `UnknownException`, an error object used to handle
  * unknown errors such as those from rejected promises.
  *
