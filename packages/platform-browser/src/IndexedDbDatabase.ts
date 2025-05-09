@@ -51,7 +51,7 @@ export declare namespace IndexedDbDatabase {
    */
   export interface Transaction<
     Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
-  > extends Pipeable, Omit<IndexedDbQueryBuilder.IndexedDbQuery<Source>, "transaction"> {
+  > extends Pipeable, Omit<IndexedDbQueryBuilder.IndexedDbQueryBuilder<Source>, "transaction"> {
     readonly transaction: globalThis.IDBTransaction
 
     readonly createObjectStore: <
@@ -113,7 +113,7 @@ export declare namespace IndexedDbDatabase {
     ) => Migration<InitialVersion, Version, MigrationError | Error>
 
     readonly getQueryBuilder: Effect.Effect<
-      IndexedDbQueryBuilder.IndexedDbQuery<InitialVersion>,
+      IndexedDbQueryBuilder.IndexedDbQueryBuilder<InitialVersion>,
       never,
       internal.IndexedDbMigration
     >
@@ -145,7 +145,7 @@ export declare namespace IndexedDbDatabase {
     ) => Effect.Effect<void, Error>
 
     readonly getQueryBuilder: Effect.Effect<
-      IndexedDbQueryBuilder.IndexedDbQuery<ToVersion>,
+      IndexedDbQueryBuilder.IndexedDbQueryBuilder<ToVersion>,
       never,
       internal.IndexedDbMigration
     >

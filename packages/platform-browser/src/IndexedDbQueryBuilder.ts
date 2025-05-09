@@ -3,6 +3,7 @@
  */
 import type * as Effect from "effect/Effect"
 import type * as HashMap from "effect/HashMap"
+import type * as Schema from "effect/Schema"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
 import { type IndexFromTable } from "./internal/indexedDbDatabase.js"
@@ -34,9 +35,15 @@ export type ErrorTypeId = typeof ErrorTypeId
 
 /**
  * @since 1.0.0
+ * @category errors
+ */
+export type IndexedDbQueryError = typeof internal.IndexedDbQueryError
+
+/**
+ * @since 1.0.0
  * @category models
  */
-export interface IndexedDbQuery<
+export interface IndexedDbQueryBuilder<
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
 > {
   readonly [TypeId]: TypeId
@@ -46,7 +53,7 @@ export interface IndexedDbQuery<
 
   readonly use: <A>(
     f: (database: globalThis.IDBDatabase) => Promise<A>
-  ) => Effect.Effect<A, internal.IndexedDbQueryError>
+  ) => Effect.Effect<A, IndexedDbQueryError>
 
   readonly from: <
     A extends IndexedDbTable.IndexedDbTable.TableName<
@@ -92,6 +99,151 @@ export declare namespace IndexedDbQueryBuilder {
    * @since 1.0.0
    * @category models
    */
+  export type SourceTableSchemaType<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
+  > = internal.IsKeyPathMissing<Source, Table> extends false ? IndexedDbTable.IndexedDbTable.AutoIncrement<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    > extends true ?
+        & /** keyPath when omitted becomes a `number` */ Omit<
+          Schema.Schema.Type<
+            IndexedDbVersion.IndexedDbVersion.SchemaWithName<Source, Table>
+          >,
+          IndexedDbTable.IndexedDbTable.KeyPath<
+            IndexedDbTable.IndexedDbTable.WithName<
+              IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+              Table
+            >
+          >
+        >
+        & {
+          [
+            K in IndexedDbTable.IndexedDbTable.KeyPath<
+              IndexedDbTable.IndexedDbTable.WithName<
+                IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+                Table
+              >
+            >
+          ]:
+            | Pick<
+              Schema.Schema.Type<
+                IndexedDbVersion.IndexedDbVersion.SchemaWithName<Source, Table>
+              >,
+              IndexedDbTable.IndexedDbTable.KeyPath<
+                IndexedDbTable.IndexedDbTable.WithName<
+                  IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+                  Table
+                >
+              >
+            >[K]
+            | number
+        } :
+    Schema.Schema.Type<
+      IndexedDbVersion.IndexedDbVersion.SchemaWithName<Source, Table>
+    > :
+    Schema.Schema.Type<
+      IndexedDbVersion.IndexedDbVersion.SchemaWithName<Source, Table>
+    >
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ExtractIndexType<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
+    Index extends IndexFromTable<Source, Table>
+  > = internal.IsNever<Index> extends true ? Schema.Schema.Type<
+      IndexedDbTable.IndexedDbTable.TableSchema<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >
+    >[
+      IndexedDbTable.IndexedDbTable.KeyPath<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >
+    ]
+    : Schema.Schema.Type<
+      IndexedDbTable.IndexedDbTable.TableSchema<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >
+    >[
+      IndexedDbTable.IndexedDbTable.Indexes<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >[Index]
+    ]
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ModifyWithKey<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
+  > = internal.IsKeyPathMissing<Source, Table> extends true ? IndexedDbTable.IndexedDbTable.AutoIncrement<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    > extends false ? /** keyPath: null, autoIncrement: false */
+        & SourceTableSchemaType<Source, Table>
+        & { readonly key: globalThis.IDBValidKey } :
+    /** keyPath: null, autoIncrement: true */
+    SourceTableSchemaType<Source, Table> & { readonly key?: globalThis.IDBValidKey } :
+    IndexedDbTable.IndexedDbTable.AutoIncrement<
+      IndexedDbTable.IndexedDbTable.WithName<
+        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+        Table
+      >
+    > extends false ? /** keyPath: string, autoIncrement: false */ SourceTableSchemaType<Source, Table> :
+    & /** keyPath: string, autoIncrement: true */ Omit<
+      SourceTableSchemaType<Source, Table>,
+      IndexedDbTable.IndexedDbTable.KeyPath<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >
+    >
+    & {
+      [
+        K in IndexedDbTable.IndexedDbTable.KeyPath<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            Table
+          >
+        >
+      ]?: Pick<
+        Schema.Schema.Type<
+          IndexedDbVersion.IndexedDbVersion.SchemaWithName<Source, Table>
+        >,
+        IndexedDbTable.IndexedDbTable.KeyPath<
+          IndexedDbTable.IndexedDbTable.WithName<
+            IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+            Table
+          >
+        >
+      >[K]
+    }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export interface From<
     Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never,
     Table extends IndexedDbTable.IndexedDbTable.TableName<
@@ -120,10 +272,10 @@ export declare namespace IndexedDbQueryBuilder {
       (): Delete<Source, Table, never>
     }
 
-    readonly insert: (value: internal.ModifyWithKey<Source, Table>) => Modify<Source, Table>
-    readonly insertAll: (values: Array<internal.ModifyWithKey<Source, Table>>) => ModifyAll<Source, Table>
-    readonly upsert: (value: internal.ModifyWithKey<Source, Table>) => Modify<Source, Table>
-    readonly upsertAll: (values: Array<internal.ModifyWithKey<Source, Table>>) => ModifyAll<Source, Table>
+    readonly insert: (value: ModifyWithKey<Source, Table>) => Modify<Source, Table>
+    readonly insertAll: (values: Array<ModifyWithKey<Source, Table>>) => ModifyAll<Source, Table>
+    readonly upsert: (value: ModifyWithKey<Source, Table>) => Modify<Source, Table>
+    readonly upsertAll: (values: Array<ModifyWithKey<Source, Table>>) => ModifyAll<Source, Table>
     readonly clear: Clear<Source, Table>
   }
 
@@ -174,35 +326,35 @@ export declare namespace IndexedDbQueryBuilder {
     readonly [TypeId]: TypeId
     readonly from: From<Source, Table>
     readonly index?: Index
-    readonly only?: internal.ExtractIndexType<Source, Table, Index>
-    readonly lowerBound?: internal.ExtractIndexType<Source, Table, Index>
-    readonly upperBound?: internal.ExtractIndexType<Source, Table, Index>
+    readonly only?: ExtractIndexType<Source, Table, Index>
+    readonly lowerBound?: ExtractIndexType<Source, Table, Index>
+    readonly upperBound?: ExtractIndexType<Source, Table, Index>
     readonly excludeLowerBound?: boolean
     readonly excludeUpperBound?: boolean
 
     readonly equals: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gte: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lte: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gt: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lt: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly between: (
-      lowerBound: internal.ExtractIndexType<Source, Table, Index>,
-      upperBound: internal.ExtractIndexType<Source, Table, Index>,
+      lowerBound: ExtractIndexType<Source, Table, Index>,
+      upperBound: ExtractIndexType<Source, Table, Index>,
       options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
     ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
   }
@@ -223,28 +375,28 @@ export declare namespace IndexedDbQueryBuilder {
     readonly index?: Index
 
     readonly equals: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gte: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lte: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gt: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lt: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly between: (
-      lowerBound: internal.ExtractIndexType<Source, Table, Index>,
-      upperBound: internal.ExtractIndexType<Source, Table, Index>,
+      lowerBound: ExtractIndexType<Source, Table, Index>,
+      upperBound: ExtractIndexType<Source, Table, Index>,
       options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
@@ -270,35 +422,35 @@ export declare namespace IndexedDbQueryBuilder {
     readonly delete: DeletePartial<Source, Table, Index>
     readonly index?: Index
     readonly limitValue?: number
-    readonly only?: internal.ExtractIndexType<Source, Table, Index>
-    readonly lowerBound?: internal.ExtractIndexType<Source, Table, Index>
-    readonly upperBound?: internal.ExtractIndexType<Source, Table, Index>
+    readonly only?: ExtractIndexType<Source, Table, Index>
+    readonly lowerBound?: ExtractIndexType<Source, Table, Index>
+    readonly upperBound?: ExtractIndexType<Source, Table, Index>
     readonly excludeLowerBound?: boolean
     readonly excludeUpperBound?: boolean
 
     readonly equals: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gte: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lte: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gt: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lt: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly between: (
-      lowerBound: internal.ExtractIndexType<Source, Table, Index>,
-      upperBound: internal.ExtractIndexType<Source, Table, Index>,
+      lowerBound: ExtractIndexType<Source, Table, Index>,
+      upperBound: ExtractIndexType<Source, Table, Index>,
       options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
     ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
@@ -318,41 +470,41 @@ export declare namespace IndexedDbQueryBuilder {
     > = never,
     Index extends IndexFromTable<Source, Table> = never
   > {
-    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<Array<internal.SourceTableSchemaType<Source, Table>>>>
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<Array<SourceTableSchemaType<Source, Table>>>>
 
     readonly [TypeId]: TypeId
     readonly from: From<Source, Table>
     readonly index?: Index
     readonly limitValue?: number
-    readonly only?: internal.ExtractIndexType<Source, Table, Index>
-    readonly lowerBound?: internal.ExtractIndexType<Source, Table, Index>
-    readonly upperBound?: internal.ExtractIndexType<Source, Table, Index>
+    readonly only?: ExtractIndexType<Source, Table, Index>
+    readonly lowerBound?: ExtractIndexType<Source, Table, Index>
+    readonly upperBound?: ExtractIndexType<Source, Table, Index>
     readonly excludeLowerBound?: boolean
     readonly excludeUpperBound?: boolean
 
     readonly equals: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gte: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lte: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gt: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lt: (
-      value: internal.ExtractIndexType<Source, Table, Index>
+      value: ExtractIndexType<Source, Table, Index>
     ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly between: (
-      lowerBound: internal.ExtractIndexType<Source, Table, Index>,
-      upperBound: internal.ExtractIndexType<Source, Table, Index>,
+      lowerBound: ExtractIndexType<Source, Table, Index>,
+      upperBound: ExtractIndexType<Source, Table, Index>,
       options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
     ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
@@ -374,7 +526,7 @@ export declare namespace IndexedDbQueryBuilder {
     > = never,
     Index extends IndexFromTable<Source, Table> = never
   > {
-    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<internal.SourceTableSchemaType<Source, Table>>>
+    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<SourceTableSchemaType<Source, Table>>>
 
     readonly [TypeId]: TypeId
     readonly select: Select<Source, Table, Index>
@@ -395,7 +547,7 @@ export declare namespace IndexedDbQueryBuilder {
     readonly [TypeId]: TypeId
     readonly operation: "add" | "put"
     readonly from: From<Source, Table>
-    readonly value: internal.ModifyWithKey<Source, Table>
+    readonly value: ModifyWithKey<Source, Table>
   }
 
   /**
@@ -413,6 +565,6 @@ export declare namespace IndexedDbQueryBuilder {
     readonly [TypeId]: TypeId
     readonly operation: "add" | "put"
     readonly from: From<Source, Table>
-    readonly values: Array<internal.ModifyWithKey<Source, Table>>
+    readonly values: Array<ModifyWithKey<Source, Table>>
   }
 }
