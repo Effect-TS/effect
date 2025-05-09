@@ -59,9 +59,9 @@ export interface IndexedDbQueryBuilder<
     A extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     >
-  >(table: A) => IndexedDbQueryBuilder.From<Source, A>
+  >(table: A) => IndexedDbQuery.From<Source, A>
 
-  readonly clearAll: IndexedDbQueryBuilder.ClearAll<Source>
+  readonly clearAll: IndexedDbQuery.ClearAll<Source>
 
   readonly transaction: <
     Tables extends ReadonlyArray<
@@ -80,9 +80,9 @@ export interface IndexedDbQueryBuilder<
     callback: (api: {
       readonly from: <A extends Tables[number]>(
         table: A
-      ) => Mode extends "readwrite" ? IndexedDbQueryBuilder.From<Source, A> :
+      ) => Mode extends "readwrite" ? IndexedDbQuery.From<Source, A> :
         Omit<
-          IndexedDbQueryBuilder.From<Source, A>,
+          IndexedDbQuery.From<Source, A>,
           "insert" | "insertAll" | "upsert" | "upsertAll" | "clear" | "delete"
         >
     }) => Effect.Effect<void>,
@@ -94,7 +94,7 @@ export interface IndexedDbQueryBuilder<
  * @since 1.0.0
  * @category models
  */
-export declare namespace IndexedDbQueryBuilder {
+export declare namespace IndexedDbQuery {
   /**
    * @since 1.0.0
    * @category models
