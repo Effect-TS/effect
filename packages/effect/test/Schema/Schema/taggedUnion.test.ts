@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
 import * as Equal from "effect/Equal"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
 import { strictEqual } from "node:assert"
+import * as Util from "../TestUtils.js"
 
 describe("taggedUnion", () => {
   const schema = S.taggedUnion({
