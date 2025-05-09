@@ -4,8 +4,8 @@ import * as S from "effect/Schema"
 import { strictEqual } from "node:assert"
 import * as Util from "../TestUtils.js"
 
-describe("taggedUnion", () => {
-  const schema = S.taggedUnion({
+describe("TaggedUnion", () => {
+  const schema = S.TaggedUnion({
     A: {},
     B: { value: S.String },
     C: { otherValue: S.Number }

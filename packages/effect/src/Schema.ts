@@ -10886,46 +10886,46 @@ export class ArrayFormatterIssue extends Struct({
 }) {}
 
 /**
- * @category taggedUnion
+ * @category TaggedUnion
  * @since 3.15.0
  */
-export interface taggedUnion<Cases extends Record<string, Struct.Fields>> extends
+export interface TaggedUnion<Cases extends Record<string, Struct.Fields>> extends
   AnnotableClass<
-    taggedUnion<Cases>,
-    taggedUnion.Members<Cases>["Type"],
-    taggedUnion.Members<Cases>["Encoded"],
-    taggedUnion.Members<Cases>["Context"]
+    TaggedUnion<Cases>,
+    TaggedUnion.Members<Cases>["Type"],
+    TaggedUnion.Members<Cases>["Encoded"],
+    TaggedUnion.Members<Cases>["Context"]
   >
 {
   readonly members: {
-    readonly [K in keyof Cases]: K extends string ? taggedUnion.Member<K, Cases[K]> : never
+    readonly [K in keyof Cases]: K extends string ? TaggedUnion.Member<K, Cases[K]> : never
   }
 
   readonly $match: {
     <
       C extends {
         readonly [Tag in keyof Cases]: (
-          args: Extract<taggedUnion.Members<Cases>["Type"], { readonly _tag: Tag }>
+          args: Extract<TaggedUnion.Members<Cases>["Type"], { readonly _tag: Tag }>
         ) => any
       }
-    >(cases: C): (value: taggedUnion.Members<Cases>["Type"]) => Unify<ReturnType<C[keyof C]>>
+    >(cases: C): (value: TaggedUnion.Members<Cases>["Type"]) => Unify<ReturnType<C[keyof C]>>
     <
       C extends {
         readonly [Tag in keyof Cases]: (
-          args: Extract<taggedUnion.Members<Cases>["Type"], { readonly _tag: Tag }>
+          args: Extract<TaggedUnion.Members<Cases>["Type"], { readonly _tag: Tag }>
         ) => any
       }
-    >(value: taggedUnion.Members<Cases>["Type"], cases: C): Unify<ReturnType<C[keyof C]>>
+    >(value: TaggedUnion.Members<Cases>["Type"], cases: C): Unify<ReturnType<C[keyof C]>>
   }
 }
 
 /**
- * @category taggedUnion
+ * @category TaggedUnion
  * @since 3.15.0
  */
-export declare namespace taggedUnion {
+export declare namespace TaggedUnion {
   /**
-   * @category taggedUnion
+   * @category TaggedUnion
    * @since 3.15.0
    */
   export interface Member<Tag extends string, Fields extends Struct.Fields> extends Data<TaggedStruct<Tag, Fields>> {
@@ -10933,7 +10933,7 @@ export declare namespace taggedUnion {
   }
 
   /**
-   * @category taggedUnion
+   * @category TaggedUnion
    * @since 3.15.0
    */
   export type Members<Cases extends Record<string, Struct.Fields>> = keyof Cases extends infer K
@@ -10950,7 +10950,7 @@ const constDataEnum$Match = data_.taggedEnum().$match
  * ```ts
  * import { Schema } from "effect"
  *
- * const schema = Schema.taggedUnion({
+ * const schema = Schema.TaggedUnion({
  *   Circle: { radius: Schema.Number },
  *   Square: { sideLength: Schema.Number },
  * })
@@ -10958,24 +10958,24 @@ const constDataEnum$Match = data_.taggedEnum().$match
  * Schema.decodeUnknownSync(schema)({ _tag: "Circle", radius: 10 })
  * ```
  *
- * @category taggedUnion
+ * @category TaggedUnion
  * @since 3.15.0
  */
-export function taggedUnion<
+export function TaggedUnion<
   Cases extends Record<string, Struct.Fields>
->(cases: Cases): taggedUnion<Cases> {
-  const members: Record<string, taggedUnion.Member<any, any>> = {}
+>(cases: Cases): TaggedUnion<Cases> {
+  const members: Record<string, TaggedUnion.Member<any, any>> = {}
   const unionArr = []
   for (const [key, fields] of Object.entries(cases)) {
     const taggedStruct = TaggedStruct(key, fields)
-    const dataTaggedStruct = Data(taggedStruct) as unknown as taggedUnion.Member<any, any>
+    const dataTaggedStruct = Data(taggedStruct) as unknown as TaggedUnion.Member<any, any>
     ;(dataTaggedStruct as any).make = (props: any, options?: {}) =>
       data_.unsafeStruct(taggedStruct.make(props, options))
     members[key] = dataTaggedStruct
     unionArr.push(dataTaggedStruct)
   }
 
-  const schema = Union(...unionArr) as Types.Mutable<taggedUnion<any>>
+  const schema = Union(...unionArr) as Types.Mutable<TaggedUnion<any>>
   schema.members = members
   schema.$match = constDataEnum$Match as any
 
