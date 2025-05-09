@@ -5,7 +5,7 @@ import { identity } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import type { Kind, TypeLambda } from "./HKT.js"
 import { getBugErrorMessage } from "./internal/errors.js"
-import { isNullable, isObject } from "./Predicate.js"
+import { hasProperty, isFunction, isNullable, isObject } from "./Predicate.js"
 import type * as Types from "./Types.js"
 
 /*
@@ -807,3 +807,10 @@ const genConstructor = (function*() {}).constructor
  */
 export const isGeneratorFunction = (u: unknown): u is (...args: Array<any>) => Generator<any, any, any> =>
   isObject(u) && u.constructor === genConstructor
+
+/**
+ * @since 3.14.21
+ */
+export const isGeneratorIterator = (u: unknown): u is Generator<any, any, any> =>
+  isObject(u) && hasProperty(u, "return") && hasProperty(u, "throw") &&
+  hasProperty(u, Symbol.iterator) && isFunction(u[Symbol.iterator])

@@ -62,7 +62,7 @@ import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
 import type { Concurrency, Contravariant, Covariant, NoExcessProperties, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
-import { isGeneratorFunction, type YieldWrap } from "./Utils.js"
+import { isGeneratorFunction, isGeneratorIterator, type YieldWrap } from "./Utils.js"
 
 /**
  * @since 2.0.0
@@ -14545,6 +14545,10 @@ function fnApply(options: {
   } else {
     try {
       effect = options.body.apply(options.self, options.args)
+      if (isGeneratorIterator(effect)) {
+        const iterator = effect
+        effect = core.fromIterator(() => iterator)
+      }
     } catch (error) {
       fnError = error
       effect = die(error)

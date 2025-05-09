@@ -76,6 +76,13 @@ describe("Effect.fn", () => {
     strictEqual(fn2.length, 1)
     strictEqual(Effect.runSync(fn2(2)), 2)
   })
+  it("should work with introduced functions", () => {
+    const f = function*(n: number) {
+      return n
+    }
+    const fn1 = Effect.fn("fn1")((n: number) => f(n))
+    strictEqual(Effect.runSync(fn1(2)), 2)
+  })
 })
 
 describe("Effect.fnUntraced", () => {
