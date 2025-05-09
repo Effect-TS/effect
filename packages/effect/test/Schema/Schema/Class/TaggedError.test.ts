@@ -261,4 +261,13 @@ describe("TaggedError", () => {
       })
     })
   })
+
+  it("should allow an optional `message` field", () => {
+    class MyError extends S.TaggedError<MyError>()("MyError", {
+      message: S.optional(S.String)
+    }) {}
+
+    const err = new MyError({})
+    strictEqual(err.message, "")
+  })
 })
