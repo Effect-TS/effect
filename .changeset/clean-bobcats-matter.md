@@ -4,7 +4,7 @@
 
 add `Schema.TaggedUnion` to create discriminiated unions
 
-This allows you to quickly create a serialiable discriminated union with
+This allows you to quickly create a serializable discriminated union with
 `_tag`'s for each case.
 
 ```ts
