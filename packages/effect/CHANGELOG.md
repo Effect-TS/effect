@@ -1,5 +1,33 @@
 # effect
 
+## 3.14.22
+
+### Patch Changes
+
+- [#4847](https://github.com/Effect-TS/effect/pull/4847) [`24a9ebb`](https://github.com/Effect-TS/effect/commit/24a9ebbb5af598f0bfd6ecc45307e528043fe011) Thanks @gcanti! - Schema: TaggedError no longer crashes when the `message` field is explicitly defined.
+
+  If you define a `message` field in your schema, `TaggedError` will no longer add its own `message` getter. This avoids a stack overflow caused by infinite recursion.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  class Todo extends Schema.TaggedError<Todo>()("Todo", {
+    message: Schema.optional(Schema.String)
+  }) {}
+
+  // ❌ Throws "Maximum call stack size exceeded"
+  console.log(Todo.make({}))
+  ```
+
+  After
+
+  ```ts
+  // ✅ Works correctly
+  console.log(Todo.make({}))
+  ```
+
 ## 3.14.21
 
 ### Patch Changes
