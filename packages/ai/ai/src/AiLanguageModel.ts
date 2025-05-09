@@ -131,7 +131,7 @@ export interface GenerateObjectOptions<A, I, R> {
    * The identifier to use to associating the underlying tool call with the
    * generated output.
    */
-  readonly toolCallId?: string | "structured"
+  readonly toolCallId?: string | undefined
 }
 
 /**
@@ -381,7 +381,7 @@ export const make: <Config>(
       ? options.schema._tag as string
       : "identifier" in options.schema
       ? options.schema.identifier as string
-      : "structured"
+      : "generateObject"
     return Effect.useSpan(
       "AiLanguageModel.generateObject",
       {

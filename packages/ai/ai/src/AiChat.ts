@@ -210,7 +210,7 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
               ? options.toolCallId
               : "_tag" in options.schema
               ? options.schema._tag
-              : (options.schema as any).identifier ?? "structured"
+              : (options.schema as any).identifier ?? "generateObject"
           },
           captureStackTrace: false
         })
