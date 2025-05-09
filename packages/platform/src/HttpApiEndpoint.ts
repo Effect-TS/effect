@@ -417,7 +417,9 @@ export declare namespace HttpApiEndpoint {
   > ?
       & ([_Path] extends [never] ? {} : { readonly path: _Path })
       & ([_UrlParams] extends [never] ? {} : { readonly urlParams: _UrlParams })
-      & ([_Payload] extends [never] ? {} : { readonly payload: _Payload })
+      & ([_Payload] extends [never] ? {} :
+        [_Payload] extends [{ readonly stream: true }] ? { readonly payload: Stream<Uint8Array, never, never> } :
+        { readonly payload: _Payload })
       & ([_Headers] extends [never] ? {} : { readonly headers: _Headers })
     : {}
 

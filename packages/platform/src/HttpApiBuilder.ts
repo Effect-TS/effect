@@ -525,7 +525,8 @@ export const handler = <
 
 const requestPayload = (
   request: HttpServerRequest.HttpServerRequest,
-  urlParams: ReadonlyRecord<string, string | Array<string>>
+  urlParams: ReadonlyRecord<string, string | Array<string>>,
+  stream: boolean
 ): Effect.Effect<
   unknown,
   never,
@@ -535,6 +536,9 @@ const requestPayload = (
 > => {
   if (!HttpMethod.hasBody(request.method)) {
     return Effect.succeed(urlParams)
+  }
+  if (stream) {
+    return Effect.succeed(request.stream)
   }
   const contentType = request.headers["content-type"]
     ? request.headers["content-type"].toLowerCase().trim()
@@ -630,7 +634,7 @@ const handlerToRoute = (
   const decodePath = Option.map(endpoint.pathSchema, Schema.decodeUnknown)
   const decodePayload = Option.map(
     endpoint.payloadSchema,
-    (x) => Schema.isSchema(x) ? Schema.decodeUnknown(x) : (() => Effect.succeed(x))
+    (x) => Schema.isSchema(x) ? Schema.decodeUnknown(x) : ((y) => Effect.succeed(y))
   )
   const decodeHeaders = Option.map(endpoint.headersSchema, Schema.decodeUnknown)
   const encodeSuccess = Schema.encode(makeSuccessSchema(endpoint.successSchema))
@@ -649,9 +653,10 @@ const handlerToRoute = (
         if (decodePath._tag === "Some") {
           request.path = yield* decodePath.value(routeContext.params)
         }
+        const isStream = endpoint.payloadSchema._tag === "Some" && "stream" in endpoint.payloadSchema.value
         if (decodePayload._tag === "Some") {
           request.payload = yield* Effect.flatMap(
-            requestPayload(httpRequest, urlParams),
+            requestPayload(httpRequest, urlParams, isStream),
             decodePayload.value
           )
         }

@@ -6,7 +6,7 @@ import * as Context from "effect/Context"
 import { constFalse } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
-import type * as Schema from "effect/Schema"
+import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
 import * as HttpApi from "./HttpApi.js"
 import type { HttpApiGroup } from "./HttpApiGroup.js"
@@ -402,9 +402,9 @@ export const fromApi = <Id extends string, Groups extends HttpApiGroup.Any, E, R
       const hasBody = HttpMethod.hasBody(endpoint.method)
       if (hasBody && payloads.size > 0) {
         const content: OpenApiSpecContent = {}
-        payloads.forEach(({ ast }, contentType) => {
+        payloads.forEach((schema, contentType) => {
           content[contentType as OpenApiSpecContentType] = {
-            schema: processAST(ast)
+            schema: "stream" in schema ? JsonSchema.fromAST(Schema.Void.ast, { defs: {} }) : processAST(schema.ast)
           }
         })
         op.requestBody = { content, required: true }

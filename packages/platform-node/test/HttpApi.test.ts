@@ -12,12 +12,13 @@ import {
   HttpClient,
   HttpClientRequest,
   HttpServerRequest,
+  HttpServerResponse,
   Multipart,
   OpenApi
 } from "@effect/platform"
 import { NodeHttpServer } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, DateTime, Effect, Layer, Redacted, Ref, Schema, Struct } from "effect"
+import { Context, DateTime, Effect, Layer, Redacted, Ref, Schedule, Schema, Stream, Struct } from "effect"
 import OpenApiFixture from "./fixtures/openapi.json" with { type: "json" }
 
 describe("HttpApi", () => {
@@ -73,6 +74,17 @@ describe("HttpApi", () => {
           contentType: "text/plain",
           length: 5
         })
+      }).pipe(Effect.provide(HttpLive)))
+
+    it.live("echo stream", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpApiClient.make(Api)
+        const stream = Stream.make("a", "b", "c").pipe(
+          Stream.schedule(Schedule.spaced("500 millis")),
+          Stream.map((s) => new TextEncoder().encode(s))
+        )
+        const result = yield* client.echo({ payload: stream })
+        assert.deepStrictEqual(result, new TextEncoder().encode("abc"))
       }).pipe(Effect.provide(HttpLive)))
   })
 
@@ -360,6 +372,22 @@ class TopLevelApi extends HttpApiGroup.make("root", { topLevel: true })
     HttpApiEndpoint.get("healthz")`/healthz`
       .addSuccess(HttpApiSchema.NoContent.annotations({ description: "Empty" }))
   )
+  // Add an echo endpoint that echos the request body as a stream
+  .add(
+    HttpApiEndpoint.post("echo")`/echo`
+      .setPayload({
+        stream: true,
+        contentType: "application/octet-stream"
+      })
+      .addSuccess(
+        Schema.Uint8ArrayFromSelf.pipe(
+          HttpApiSchema.withEncoding({
+            kind: "Uint8Array",
+            contentType: "application/octet-stream"
+          })
+        )
+      )
+  )
 {}
 
 class AnotherApi extends HttpApi.make("another").add(GroupsApi) {}
@@ -484,7 +512,10 @@ const HttpGroupsLive = HttpApiBuilder.group(
 const TopLevelLive = HttpApiBuilder.group(
   Api,
   "root",
-  (handlers) => handlers.handle("healthz", (_) => Effect.void)
+  (handlers) =>
+    handlers
+      .handle("healthz", (_) => Effect.void)
+      .handleRaw("echo", ({ payload }) => HttpServerResponse.stream(payload))
 )
 
 const HttpApiLive = Layer.provide(HttpApiBuilder.api(Api), [
