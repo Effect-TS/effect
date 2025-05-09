@@ -292,10 +292,15 @@ export const reflect = <Id extends string, Groups extends HttpApiGroup.HttpApiGr
       readonly endpoint: HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>
       readonly mergedAnnotations: Context.Context<never>
       readonly middleware: ReadonlySet<HttpApiMiddleware.TagClassAny>
-      readonly payloads: ReadonlyMap<string, {
-        readonly encoding: HttpApiSchema.Encoding
-        readonly ast: AST.AST
-      }>
+      readonly payloads: ReadonlyMap<
+        string,
+        { readonly encoding: HttpApiSchema.Encoding; readonly ast: AST.AST } | {
+          readonly stream: true
+          readonly contentType: string
+          readonly contentLength?: number | undefined
+          readonly etag?: string | undefined
+        }
+      >
       readonly successes: ReadonlyMap<number, {
         readonly ast: Option.Option<AST.AST>
         readonly description: Option.Option<string>
@@ -331,7 +336,11 @@ export const reflect = <Id extends string, Groups extends HttpApiGroup.HttpApiGr
         endpoint,
         middleware: new Set([...group.middlewares, ...endpoint.middlewares]),
         mergedAnnotations: Context.merge(groupAnnotations, endpoint.annotations),
-        payloads: endpoint.payloadSchema._tag === "Some" ? extractPayloads(endpoint.payloadSchema.value.ast) : emptyMap,
+        payloads: endpoint.payloadSchema._tag === "Some"
+          ? "stream" in endpoint.payloadSchema.value
+            ? new Map([[endpoint.payloadSchema.value.contentType, endpoint.payloadSchema.value]])
+            : extractPayloads(endpoint.payloadSchema.value.ast)
+          : emptyMap,
         successes: extractMembers(endpoint.successSchema.ast, new Map(), HttpApiSchema.getStatusSuccessAST),
         errors
       })

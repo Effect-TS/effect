@@ -8,6 +8,7 @@ import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import type { Stream } from "effect/Stream"
 import type * as Types from "effect/Types"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
@@ -67,7 +68,14 @@ export interface HttpApiEndpoint<
   readonly method: Method
   readonly pathSchema: Option.Option<Schema.Schema<Path, unknown, R>>
   readonly urlParamsSchema: Option.Option<Schema.Schema<UrlParams, unknown, R>>
-  readonly payloadSchema: Option.Option<Schema.Schema<Payload, unknown, R>>
+  readonly payloadSchema: Option.Option<
+    Schema.Schema<Payload, unknown, R> | {
+      readonly stream: true
+      readonly contentType: string
+      readonly contentLength?: number | undefined
+      readonly etag?: string | undefined
+    }
+  >
   readonly headersSchema: Option.Option<Schema.Schema<Headers, unknown, R>>
   readonly successSchema: Schema.Schema<Success, unknown, R>
   readonly errorSchema: Schema.Schema<Error, unknown, RE>
@@ -128,18 +136,25 @@ export interface HttpApiEndpoint<
    * You can set a multipart schema to handle file uploads by using the
    * `HttpApiSchema.Multipart` combinator.
    */
-  setPayload<P extends Schema.Schema.Any>(
-    schema: P & HttpApiEndpoint.ValidatePayload<Method, P>
+  setPayload<
+    P extends Schema.Schema.Any | {
+      readonly stream: true
+      readonly contentType: string
+      readonly contentLength?: number | undefined
+      readonly etag?: string | undefined
+    }
+  >(
+    payload: P & HttpApiEndpoint.ValidatePayload<Method, P>
   ): HttpApiEndpoint<
     Name,
     Method,
     Path,
     UrlParams,
-    Schema.Schema.Type<P>,
+    P extends Schema.Schema.Any ? Schema.Schema.Type<P> : P,
     Headers,
     Success,
     Error,
-    R | Schema.Schema.Context<P>,
+    R | (P extends Schema.Schema.Any ? Schema.Schema.Context<P> : never),
     RE
   >
 
@@ -410,13 +425,22 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type ClientRequest<Path, UrlParams, Payload, Headers, WithResponse extends boolean> = (
+  export type ClientRequest<
+    Path,
+    UrlParams,
+    Payload,
+    Headers,
+    WithResponse extends boolean,
+    StreamError,
+    StreamContext
+  > = (
     & ([Path] extends [void] ? {} : { readonly path: Path })
     & ([UrlParams] extends [never] ? {} : { readonly urlParams: UrlParams })
     & ([Headers] extends [never] ? {} : { readonly headers: Headers })
     & ([Payload] extends [never] ? {}
-      : Payload extends infer P ?
-        P extends Brand<HttpApiSchema.MultipartTypeId> ? { readonly payload: FormData } : { readonly payload: P }
+      : Payload extends infer P ? P extends Brand<HttpApiSchema.MultipartTypeId> ? { readonly payload: FormData }
+        : P extends { readonly stream: true } ? { readonly payload: Stream<Uint8Array, StreamError, StreamContext> }
+        : { readonly payload: P }
       : { readonly payload: Payload })
   ) extends infer Req ? keyof Req extends never ? (void | { readonly withResponse?: WithResponse }) :
     Req & { readonly withResponse?: WithResponse } :
@@ -572,8 +596,15 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type ValidatePayload<Method extends HttpMethod, P extends Schema.Schema.Any> = Method extends
-    HttpMethod.NoBody ?
+  export type ValidatePayload<
+    Method extends HttpMethod,
+    P extends Schema.Schema.Any | {
+      readonly stream: true
+      readonly contentType: string
+      readonly contentLength?: number | undefined
+      readonly etag?: string | undefined
+    }
+  > = Method extends HttpMethod.NoBody ?
     P extends Schema.Schema<infer _A, infer _I, infer _R>
       ? [_I] extends [Readonly<Record<string, string | ReadonlyArray<string> | undefined>>] ? {}
       : `'${Method}' payload must be encodeable to strings`
@@ -728,10 +759,18 @@ const Proto = {
       )
     })
   },
-  setPayload(this: HttpApiEndpoint.AnyWithProps, schema: Schema.Schema.Any) {
+  setPayload(
+    this: HttpApiEndpoint.AnyWithProps,
+    payload: Schema.Schema.Any | {
+      readonly stream: true
+      readonly contentType: string
+      readonly contentLength?: number | undefined
+      readonly etag?: string | undefined
+    }
+  ) {
     return makeProto({
       ...this,
-      payloadSchema: Option.some(schema)
+      payloadSchema: Option.some(payload)
     })
   },
   setPath(this: HttpApiEndpoint.AnyWithProps, schema: Schema.Schema.Any) {
@@ -796,7 +835,14 @@ const makeProto = <
   readonly method: Method
   readonly pathSchema: Option.Option<Schema.Schema<Path, unknown, R>>
   readonly urlParamsSchema: Option.Option<Schema.Schema<UrlParams, unknown, R>>
-  readonly payloadSchema: Option.Option<Schema.Schema<Payload, unknown, R>>
+  readonly payloadSchema: Option.Option<
+    Schema.Schema<Payload, unknown, R> | {
+      readonly stream: true
+      readonly contentType: string
+      readonly contentLength?: number | undefined
+      readonly etag?: string | undefined
+    }
+  >
   readonly headersSchema: Option.Option<Schema.Schema<Headers, unknown, R>>
   readonly successSchema: Schema.Schema<Success, unknown, R>
   readonly errorSchema: Schema.Schema<Error, unknown, RE>

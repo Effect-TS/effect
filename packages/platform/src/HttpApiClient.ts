@@ -10,6 +10,7 @@ import * as ParseResult from "effect/ParseResult"
 import type * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
+import * as Stream from "effect/Stream"
 import type { Simplify } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
 import type { HttpApiEndpoint } from "./HttpApiEndpoint.js"
@@ -78,11 +79,14 @@ export declare namespace Client {
       infer _R,
       infer _RE
     >
-  ] ? <WithResponse extends boolean = false>(
-      request: Simplify<HttpApiEndpoint.ClientRequest<_Path, _UrlParams, _Payload, _Headers, WithResponse>>
+  ] ? <WithResponse extends boolean = false, StreamError = never, StreamContext = never>(
+      request: Simplify<
+        HttpApiEndpoint.ClientRequest<_Path, _UrlParams, _Payload, _Headers, WithResponse, StreamError, StreamContext>
+      >
     ) => Effect.Effect<
       WithResponse extends true ? [_Success, HttpClientResponse.HttpClientResponse] : _Success,
-      _Error | GroupError | ApiError | HttpClientError.HttpClientError | ParseResult.ParseError
+      _Error | StreamError | GroupError | ApiError | HttpClientError.HttpClientError | ParseResult.ParseError,
+      StreamContext
     > :
     never
 
@@ -174,6 +178,17 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
         })
         const encodePayloadBody = endpoint.payloadSchema.pipe(
           Option.map((schema) => {
+            if ("stream" in schema) {
+              return (body: Stream.Stream<any, any, any>) =>
+                Effect.succeed(
+                  HttpBody.stream(
+                    Stream.provideContext(body, context),
+                    schema.contentType,
+                    schema.contentLength,
+                    schema.etag
+                  )
+                )
+            }
             if (HttpMethod.hasBody(endpoint.method)) {
               return Schema.encodeUnknown(payloadSchemaBody(schema as any))
             }

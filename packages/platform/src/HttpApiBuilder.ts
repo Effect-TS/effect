@@ -628,7 +628,10 @@ const handlerToRoute = (
 ): HttpRouter.Route<any, any> => {
   const endpoint = endpoint_ as HttpApiEndpoint.HttpApiEndpoint.AnyWithProps
   const decodePath = Option.map(endpoint.pathSchema, Schema.decodeUnknown)
-  const decodePayload = Option.map(endpoint.payloadSchema, Schema.decodeUnknown)
+  const decodePayload = Option.map(
+    endpoint.payloadSchema,
+    (x) => Schema.isSchema(x) ? Schema.decodeUnknown(x) : (() => Effect.succeed(x))
+  )
   const decodeHeaders = Option.map(endpoint.headersSchema, Schema.decodeUnknown)
   const encodeSuccess = Schema.encode(makeSuccessSchema(endpoint.successSchema))
   return HttpRouter.makeRoute(
