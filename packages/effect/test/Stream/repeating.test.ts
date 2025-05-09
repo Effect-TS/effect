@@ -67,6 +67,59 @@ describe("Stream", () => {
       deepStrictEqual(Array.from(result), [1, 1])
     }))
 
+  it.effect("repeat - Schedule.CurrentIterationMetadata", () =>
+    Effect.gen(function*() {
+      const ref = yield* (Ref.make(Chunk.empty<undefined | Schedule.IterationMetadata>()))
+      const fiber = yield* pipe(
+        Stream.fromEffect(
+          Schedule.CurrentIterationMetadata.pipe(
+            Effect.flatMap((currentIterationMetadata) => Ref.update(ref, Chunk.append(currentIterationMetadata)))
+          )
+        ),
+        Stream.repeat(Schedule.exponential(Duration.millis(10))),
+        Stream.runDrain,
+        Effect.fork
+      )
+
+      yield* (TestClock.adjust(Duration.millis(70)))
+      yield* (Fiber.interrupt(fiber))
+      const result = yield* (Ref.get(ref))
+      deepStrictEqual(Array.from(result), [
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          input: undefined,
+          now: 0,
+          recurrence: 0,
+          start: 0
+        },
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          input: undefined,
+          now: 0,
+          recurrence: 1,
+          start: 0
+        },
+        {
+          elapsed: Duration.millis(10),
+          elapsedSincePrevious: Duration.millis(10),
+          input: undefined,
+          now: 10,
+          recurrence: 2,
+          start: 0
+        },
+        {
+          elapsed: Duration.millis(30),
+          elapsedSincePrevious: Duration.millis(20),
+          input: undefined,
+          now: 30,
+          recurrence: 3,
+          start: 0
+        }
+      ])
+    }))
+
   it.effect("repeat - does not swallow errors on a repetition", () =>
     Effect.gen(function*() {
       const ref = yield* (Ref.make(0))

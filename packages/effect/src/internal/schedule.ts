@@ -45,6 +45,22 @@ export const ScheduleDriverTypeId: Schedule.ScheduleDriverTypeId = Symbol.for(
   ScheduleDriverSymbolKey
 ) as Schedule.ScheduleDriverTypeId
 
+/** @internal */
+const defaultIterationMetadata: Schedule.IterationMetadata = {
+  start: 0,
+  now: 0,
+  input: undefined,
+  elapsed: Duration.zero,
+  elapsedSincePrevious: Duration.zero,
+  recurrence: 0
+}
+
+/** @internal */
+export const CurrentIterationMetadata = Context.Reference<Schedule.CurrentIterationMetadata>()(
+  "effect/Schedule/CurrentIterationMetadata",
+  { defaultValue: () => defaultIterationMetadata }
+)
+
 const scheduleVariance = {
   /* c8 ignore next */
   _Out: (_: never) => _,
@@ -81,6 +97,31 @@ class ScheduleImpl<S, Out, In, R> implements Schedule.Schedule<Out, In, R> {
 }
 
 /** @internal */
+const updateInfo = (
+  iterationMetaRef: Ref.Ref<Schedule.IterationMetadata>,
+  now: number,
+  input: unknown
+) =>
+  ref.update(iterationMetaRef, (prev) =>
+    (prev.recurrence === 0) ?
+      {
+        now,
+        input,
+        recurrence: prev.recurrence + 1,
+        elapsed: Duration.zero,
+        elapsedSincePrevious: Duration.zero,
+        start: now
+      } :
+      {
+        now,
+        input,
+        recurrence: prev.recurrence + 1,
+        elapsed: Duration.millis(now - prev.start),
+        elapsedSincePrevious: Duration.millis(now - prev.now),
+        start: prev.start
+      })
+
+/** @internal */
 class ScheduleDriverImpl<Out, In, R> implements Schedule.ScheduleDriver<Out, In, R> {
   [ScheduleDriverTypeId] = scheduleDriverVariance
 
@@ -106,8 +147,12 @@ class ScheduleDriverImpl<Out, In, R> implements Schedule.ScheduleDriver<Out, In,
     })
   }
 
+  iterationMeta = ref.unsafeMake(defaultIterationMetadata)
+
   get reset(): Effect.Effect<void> {
-    return ref.set(this.ref, [Option.none(), this.schedule.initial])
+    return ref.set(this.ref, [Option.none(), this.schedule.initial]).pipe(
+      core.zipLeft(ref.set(this.iterationMeta, defaultIterationMetadata))
+    )
   }
 
   next(input: In): Effect.Effect<Out, Option.Option<never>, R> {
@@ -122,15 +167,22 @@ class ScheduleDriverImpl<Out, In, R> implements Schedule.ScheduleDriver<Out, In,
               core.flatMap(([state, out, decision]) => {
                 const setState = ref.set(this.ref, [Option.some(out), state] as const)
                 if (ScheduleDecision.isDone(decision)) {
-                  return core.zipRight(setState, core.fail(Option.none()))
+                  return setState.pipe(
+                    core.zipRight(core.fail(Option.none()))
+                  )
                 }
                 const millis = Intervals.start(decision.intervals) - now
                 if (millis <= 0) {
-                  return core.as(setState, out)
+                  return setState.pipe(
+                    core.zipRight(updateInfo(this.iterationMeta, now, input)),
+                    core.as(out)
+                  )
                 }
+                const duration = Duration.millis(millis)
                 return pipe(
                   setState,
-                  core.zipRight(effect.sleep(Duration.millis(millis))),
+                  core.zipRight(updateInfo(this.iterationMeta, now, input)),
+                  core.zipRight(effect.sleep(duration)),
                   core.as(out)
                 )
               })
@@ -1886,11 +1938,17 @@ const repeatOrElseEffectLoop = <A, E, R, R1, B, C, E2, R2>(
 ): Effect.Effect<B | C, E2, R | R1 | R2> => {
   return core.matchEffect(driver.next(value), {
     onFailure: () => core.orDie(driver.last),
-    onSuccess: (b) =>
-      core.matchEffect(self, {
-        onFailure: (error) => orElse(error, Option.some(b)),
-        onSuccess: (value) => repeatOrElseEffectLoop(self, driver, orElse, value)
+    onSuccess: (b) => {
+      const provideLastIterationInfo = effect.provideServiceEffect(
+        CurrentIterationMetadata,
+        ref.get(driver.iterationMeta)
+      )
+      const selfWithLastIterationInfo = provideLastIterationInfo(self)
+      return core.matchEffect(selfWithLastIterationInfo, {
+        onFailure: (error) => provideLastIterationInfo(orElse(error, Option.some(b))),
+        onSuccess: (value) => repeatOrElseEffectLoop(selfWithLastIterationInfo, driver, orElse, value)
       })
+    }
   })
 }
 
@@ -1981,16 +2039,22 @@ const retryOrElse_EffectLoop = <A, E, R, R1, A1, A2, E2, R2>(
 ): Effect.Effect<A | A2, E2, R | R1 | R2> => {
   return core.catchAll(
     self,
-    (e) =>
-      core.matchEffect(driver.next(e), {
+    (e) => {
+      const provideLastIterationInfo = effect.provideServiceEffect(
+        CurrentIterationMetadata,
+        ref.get(driver.iterationMeta)
+      )
+
+      return core.matchEffect(driver.next(e), {
         onFailure: () =>
           pipe(
             driver.last,
             core.orDie,
-            core.flatMap((out) => orElse(e, out))
+            core.flatMap((out) => provideLastIterationInfo(orElse(e, out)))
           ),
-        onSuccess: () => retryOrElse_EffectLoop(self, driver, orElse)
+        onSuccess: () => retryOrElse_EffectLoop(provideLastIterationInfo(self), driver, orElse)
       })
+    }
   )
 }
 
@@ -2030,11 +2094,19 @@ const scheduleFrom_EffectLoop = <In, E, R, R2, Out>(
   self: Effect.Effect<In, E, R>,
   initial: In,
   driver: Schedule.ScheduleDriver<Out, In, R2>
-): Effect.Effect<Out, E, R | R2> =>
-  core.matchEffect(driver.next(initial), {
-    onFailure: () => core.orDie(driver.last),
-    onSuccess: () => core.flatMap(self, (a) => scheduleFrom_EffectLoop(self, a, driver))
+): Effect.Effect<Out, E, R | R2> => {
+  const provideLastIterationInfo = effect.provideServiceEffect(
+    CurrentIterationMetadata,
+    ref.get(driver.iterationMeta)
+  )
+  return core.matchEffect(driver.next(initial), {
+    onFailure: () => core.orDie(provideLastIterationInfo(driver.last)),
+    onSuccess: () => {
+      const selfWithLastOptions = provideLastIterationInfo(self)
+      return core.flatMap(selfWithLastOptions, (a) => scheduleFrom_EffectLoop(selfWithLastOptions, a, driver))
+    }
   })
+}
 
 /** @internal */
 export const count: Schedule.Schedule<number> = unfold(0, (n) => n + 1)
