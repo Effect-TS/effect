@@ -59,33 +59,31 @@ describe("Struct", () => {
     })
 
     it("errors", () => {
-      const evolve = Struct.evolve
-
-      expect(evolve).type.not.toBeCallableWith(
+      expect(Struct.evolve).type.not.toBeCallableWith(
         { a: "a", b: 1 },
         { a: (n: number) => n }
       )
-      expect(evolve).type.not.toBeCallableWith(
+      expect(Struct.evolve).type.not.toBeCallableWith(
         hole<{ a: "a"; b: 1 }>(),
         hole<Record<string, string>>()
       )
-      expect(evolve).type.not.toBeCallableWith(
+      expect(Struct.evolve).type.not.toBeCallableWith(
         hole<{ a: "a"; b: 1 }>(),
         hole<Record<string, (s: string) => null>>()
       )
-      expect(pipe).type.not.toBeCallableWith(
+      when(pipe).isCalledWith(
         { a: "a", b: 1 },
-        Struct.evolve({ a: (n: number) => n })
+        expect(Struct.evolve).type.not.toBeCallableWith({ a: (n: number) => n })
       )
 
       when(pipe).isCalledWith(
         hole<{ a: "a"; b: 1 }>(),
-        expect(evolve).type.not.toBeCallableWith(hole<Record<string, string>>())
+        expect(Struct.evolve).type.not.toBeCallableWith(hole<Record<string, string>>())
       )
 
-      expect(pipe).type.not.toBeCallableWith(
+      when(pipe).isCalledWith(
         hole<{ a: "a"; b: 1 }>(),
-        Struct.evolve(hole<Record<string, (s: string) => null>>())
+        expect(Struct.evolve).type.not.toBeCallableWith(hole<Record<string, (s: string) => null>>())
       )
     })
   })
@@ -145,34 +143,34 @@ describe("Struct", () => {
     it("struct + record", () => {
       expect(pipe(hole<Record<string, number> & { a: boolean }>(), Struct.get("a")))
         .type.toBe<boolean>()
-      expect(pipe).type.not.toBeCallableWith(
+      when(pipe).isCalledWith(
         hole<Record<string, number> & { a: boolean }>(),
-        Struct.get("b")
+        expect(Struct.get).type.not.toBeCallableWith("b")
       )
     })
   })
 
   describe("pick", () => {
     it("errors when picking a non-existent key", () => {
-      expect(pipe).type.not.toBeCallableWith(
+      when(pipe).isCalledWith(
         stringStruct,
-        Struct.pick("d")
+        expect(Struct.pick).type.not.toBeCallableWith("d")
       )
       expect(Struct.pick("d")).type.not.toBeCallableWith(
         stringStruct
       )
 
-      expect(pipe).type.not.toBeCallableWith(
+      when(pipe).isCalledWith(
         symbolStruct,
-        Struct.pick(dsym)
+        expect(Struct.pick).type.not.toBeCallableWith(dsym)
       )
       expect(Struct.pick(dsym)).type.not.toBeCallableWith(
         symbolStruct
       )
 
-      expect(pipe).type.not.toBeCallableWith(
+      when(pipe).isCalledWith(
         numberStruct,
-        Struct.pick(4)
+        expect(Struct.pick).type.not.toBeCallableWith(4)
       )
       expect(Struct.pick(4)).type.not.toBeCallableWith(
         numberStruct
@@ -250,9 +248,9 @@ describe("Struct", () => {
       // TODO: this doesn't work but it should
       expect.fail(Struct.pick).type.not.toBeCallableWith(sr, "b")
 
-      expect(pipe).type.not.toBeCallableWith(
+      when(pipe).isCalledWith(
         sr,
-        Struct.pick("b")
+        expect(Struct.pick).type.not.toBeCallableWith("b")
       )
     })
 
@@ -266,25 +264,25 @@ describe("Struct", () => {
 
   describe("omit", () => {
     it("errors when omitting a non-existent key", () => {
-      expect(pipe).type.not.toBeCallableWith(
+      when(pipe).isCalledWith(
         stringStruct,
-        Struct.omit("d")
+        expect(Struct.omit).type.not.toBeCallableWith("d")
       )
       expect(Struct.omit("d")).type.not.toBeCallableWith(
         stringStruct
       )
 
-      expect(pipe).type.not.toBeCallableWith(
+      when(pipe).isCalledWith(
         symbolStruct,
-        Struct.omit(dsym)
+        expect(Struct.omit).type.not.toBeCallableWith(dsym)
       )
       expect(Struct.omit(dsym)).type.not.toBeCallableWith(
         symbolStruct
       )
 
-      expect(pipe).type.not.toBeCallableWith(
+      when(pipe).isCalledWith(
         numberStruct,
-        Struct.omit(4)
+        expect(Struct.omit).type.not.toBeCallableWith(4)
       )
       expect(Struct.omit(4)).type.not.toBeCallableWith(
         numberStruct
