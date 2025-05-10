@@ -33,7 +33,7 @@ import {
   Schema as S,
   String as Str
 } from "effect"
-import { describe, expect, it } from "tstyche"
+import { describe, expect, it, when } from "tstyche"
 
 class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
 declare const anyNever: S.Schema<any>
@@ -586,11 +586,9 @@ describe("Schema", () => {
     })
 
     it("pick", () => {
-      // @ts-expect-error
-      S.Struct({ a: S.String }).pick("c")
-      S.Struct({ a: S.propertySignature(S.String).pipe(S.fromKey("c")) })
-        // @ts-expect-error
-        .pick("c")
+      expect(S.Struct({ a: S.String }).pick).type.not.toBeCallableWith("c")
+      expect(S.Struct({ a: S.propertySignature(S.String).pipe(S.fromKey("c")) }).pick)
+        .type.not.toBeCallableWith("c")
 
       expect(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pick("a", "b"))
         .type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
@@ -610,19 +608,14 @@ describe("Schema", () => {
         return picked
       }
 
-      // @ts-expect-error
-      f(S.Struct({ b: S.String }))
+      expect(f).type.not.toBeCallableWith(S.Struct({ b: S.String }))
 
-      // @ts-expect-error
-      f(S.Struct({ a: S.Number }))
+      expect(f).type.not.toBeCallableWith(S.Struct({ a: S.Number }))
     })
 
     it("omit", () => {
-      // @ts-expect-error
-      S.Struct({ a: S.String }).omit("c")
-      S.Struct({ a: S.propertySignature(S.String).pipe(S.fromKey("c")) })
-        // @ts-expect-error
-        .omit("c")
+      expect(S.Struct({ a: S.String }).omit).type.not.toBeCallableWith("c")
+      expect(S.Struct({ a: S.propertySignature(S.String).pipe(S.fromKey("c")) }).omit).type.not.toBeCallableWith("c")
 
       expect(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).omit("c"))
         .type.toBe<S.Struct<{ a: typeof S.String; b: typeof S.Number }>>()
@@ -644,11 +637,9 @@ describe("Schema", () => {
         return omitted
       }
 
-      // @ts-expect-error
-      f(S.Struct({ b: S.String }))
+      expect(f).type.not.toBeCallableWith(S.Struct({ b: S.String }))
 
-      // @ts-expect-error
-      f(S.Struct({ a: S.Number }))
+      expect(f).type.not.toBeCallableWith(S.Struct({ a: S.Number }))
     })
   })
 
@@ -935,28 +926,39 @@ describe("Schema", () => {
     })
 
     it("Type Level Errors", () => {
-      // @ts-expect-error
-      S.optionalWith(S.String, { as: "Option", default: () => "" })
-      // @ts-expect-error
-      S.optionalWith(S.String, { as: "Option", exact: true, onNoneEncoding: () => Option.some(null) })
-      // @ts-expect-error
-      S.String.pipe(S.optionalWith({ as: "Option", exact: true, onNoneEncoding: () => Option.some(null) }))
-      // @ts-expect-error
-      S.optionalWith(S.String, { as: "Option", exact: true, nullable: true, onNoneEncoding: () => Option.some(1) })
-      // @ts-expect-error
-      S.optionalWith(S.String, { as: "Option", onNoneEncoding: () => Option.some(null) })
-      // @ts-expect-error
-      S.String.pipe(S.optionalWith({ as: "Option", onNoneEncoding: () => Option.some(null) }))
-      // @ts-expect-error
-      S.String.pipe(S.optionalWith({ as: "Option", exact: true, nullable: true, onNoneEncoding: () => Option.some(1) }))
-      // @ts-expect-error
-      S.optionalWith(S.String, { as: "Option", nullable: true, onNoneEncoding: () => Option.some(1) })
-      // @ts-expect-error
-      S.String.pipe(S.optionalWith({ as: "Option", nullable: true, onNoneEncoding: () => Option.some(1) }))
-      // @ts-expect-error
-      S.optionalWith(S.String, { as: null })
-      // @ts-expect-error
-      S.optionalWith(S.String, { default: null })
+      expect(S.optionalWith).type.not.toBeCallableWith(S.String, { as: "Option", default: () => "" })
+      expect(S.optionalWith).type.not.toBeCallableWith(S.String, {
+        as: "Option",
+        exact: true,
+        onNoneEncoding: () => Option.some(null)
+      })
+      expect(S.optionalWith).type.not.toBeCallableWith(
+        { as: "Option", exact: true, onNoneEncoding: () => Option.some(null) }
+      )
+      expect(S.optionalWith).type.not.toBeCallableWith(S.String, {
+        as: "Option",
+        exact: true,
+        nullable: true,
+        onNoneEncoding: () => Option.some(1)
+      })
+      expect(S.optionalWith).type.not.toBeCallableWith(S.String, {
+        as: "Option",
+        onNoneEncoding: () => Option.some(null)
+      })
+      expect(S.optionalWith).type.not.toBeCallableWith({ as: "Option", onNoneEncoding: () => Option.some(null) })
+      expect(S.optionalWith).type.not.toBeCallableWith(
+        { as: "Option", exact: true, nullable: true, onNoneEncoding: () => Option.some(1) }
+      )
+      expect(S.optionalWith).type.not.toBeCallableWith(S.String, {
+        as: "Option",
+        nullable: true,
+        onNoneEncoding: () => Option.some(1)
+      })
+      expect(S.optionalWith).type.not.toBeCallableWith(
+        { as: "Option", nullable: true, onNoneEncoding: () => Option.some(1) }
+      )
+      expect(S.optionalWith).type.not.toBeCallableWith(S.String, { as: null })
+      expect(S.optionalWith).type.not.toBeCallableWith(S.String, { default: null })
     })
 
     it("used in a generic context", () => {
@@ -1471,8 +1473,10 @@ describe("Schema", () => {
 
   describe("omit", () => {
     it("required fields", () => {
-      // @ts-expect-error
-      pipe(S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }), S.omit("a"))
+      when(pipe).isCalledWith(
+        S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }),
+        expect(S.omit).type.not.toBeCallableWith("a")
+      )
       expect(
         pipe(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }), S.omit("c"))
       ).type.toBe<
@@ -2740,8 +2744,7 @@ describe("Schema", () => {
 
     describe("String Filters", () => {
       it("maxLength", () => {
-        // @ts-expect-error: The intersection 'typeof Null & Schema<string, null, never>' was reduced to 'never' because property 'Type' has conflicting types in some constituents
-        pipe(S.Null, S.maxLength(5))
+        when(pipe).isCalledWith(S.Null, expect(S.maxLength).type.not.toBeCallableWith(5))
         // should allow generic context
         const _f1 = <A extends string>(schema: S.Schema<A>) => schema.pipe(S.maxLength(5))
         const _f2 = <A extends string>(schema: S.Schema<A>) =>
@@ -2776,8 +2779,7 @@ describe("Schema", () => {
       })
 
       it("minLength", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.minLength(5))
+        when(pipe).isCalledWith(S.Null, expect(S.minLength).type.not.toBeCallableWith(5))
 
         const schema = pipe(S.String, S.minLength(5))
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2787,8 +2789,7 @@ describe("Schema", () => {
       })
 
       it("length", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.length(5))
+        when(pipe).isCalledWith(S.Null, expect(S.length).type.not.toBeCallableWith(5))
 
         const schema = pipe(S.String, S.length(5))
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2798,8 +2799,7 @@ describe("Schema", () => {
       })
 
       it("pattern", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.pattern(/a/))
+        when(pipe).isCalledWith(S.Null, expect(S.pattern).type.not.toBeCallableWith(/a/))
 
         const schema = pipe(S.String, S.pattern(/a/))
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2809,8 +2809,7 @@ describe("Schema", () => {
       })
 
       it("startsWith", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.startsWith("a"))
+        when(pipe).isCalledWith(S.Null, expect(S.startsWith).type.not.toBeCallableWith("a"))
 
         const schema = pipe(S.String, S.startsWith("a"))
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2820,8 +2819,7 @@ describe("Schema", () => {
       })
 
       it("endsWith", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.endsWith("a"))
+        when(pipe).isCalledWith(S.Null, expect(S.endsWith).type.not.toBeCallableWith("a"))
 
         const schema = pipe(S.String, S.endsWith("a"))
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2831,8 +2829,7 @@ describe("Schema", () => {
       })
 
       it("includes", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.includes("a"))
+        when(pipe).isCalledWith(S.Null, expect(S.includes).type.not.toBeCallableWith("a"))
 
         const schema = pipe(S.String, S.includes("a"))
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2842,8 +2839,7 @@ describe("Schema", () => {
       })
 
       it("lowercased", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.lowercased())
+        when(pipe).isCalledWith(S.Null, expect(S.lowercased).type.not.toBeCallableWith())
 
         const schema = pipe(S.String, S.lowercased())
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2853,8 +2849,7 @@ describe("Schema", () => {
       })
 
       it("uppercased", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.uppercased())
+        when(pipe).isCalledWith(S.Null, expect(S.uppercased).type.not.toBeCallableWith())
 
         const schema = pipe(S.String, S.uppercased())
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2864,8 +2859,7 @@ describe("Schema", () => {
       })
 
       it("capitalized", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.capitalized())
+        when(pipe).isCalledWith(S.Null, expect(S.capitalized).type.not.toBeCallableWith())
 
         const schema = pipe(S.String, S.capitalized())
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2875,8 +2869,7 @@ describe("Schema", () => {
       })
 
       it("uncapitalized", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.uncapitalized())
+        when(pipe).isCalledWith(S.Null, expect(S.uncapitalized).type.not.toBeCallableWith())
 
         const schema = pipe(S.String, S.uncapitalized())
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2886,8 +2879,7 @@ describe("Schema", () => {
       })
 
       it("nonEmptyString", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.nonEmptyString())
+        when(pipe).isCalledWith(S.Null, expect(S.nonEmptyString).type.not.toBeCallableWith())
 
         const schema = pipe(S.String, S.nonEmptyString())
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2897,8 +2889,7 @@ describe("Schema", () => {
       })
 
       it("trimmed", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.trimmed())
+        when(pipe).isCalledWith(S.Null, expect(S.trimmed).type.not.toBeCallableWith())
 
         const schema = pipe(S.String, S.trimmed())
         expect(S.asSchema(schema)).type.toBe<S.Schema<string>>()
@@ -2910,8 +2901,7 @@ describe("Schema", () => {
 
     describe("Number Filters", () => {
       it("finite", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.finite())
+        when(pipe).isCalledWith(S.Null, expect(S.finite).type.not.toBeCallableWith())
 
         const schema = pipe(S.Number, S.finite())
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -2921,8 +2911,7 @@ describe("Schema", () => {
       })
 
       it("greaterThan", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.greaterThan(5))
+        when(pipe).isCalledWith(S.Null, expect(S.greaterThan).type.not.toBeCallableWith(5))
 
         const schema = pipe(S.Number, S.greaterThan(5))
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -2932,8 +2921,7 @@ describe("Schema", () => {
       })
 
       it("greaterThanOrEqualTo", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.greaterThanOrEqualTo(5))
+        when(pipe).isCalledWith(S.Null, expect(S.greaterThanOrEqualTo).type.not.toBeCallableWith(5))
 
         const schema = pipe(S.Number, S.greaterThanOrEqualTo(5))
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -2943,8 +2931,7 @@ describe("Schema", () => {
       })
 
       it("lessThan", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.lessThan(5))
+        when(pipe).isCalledWith(S.Null, expect(S.lessThan).type.not.toBeCallableWith(5))
 
         const schema = pipe(S.Number, S.lessThan(5))
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -2954,8 +2941,7 @@ describe("Schema", () => {
       })
 
       it("lessThanOrEqualTo", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.lessThanOrEqualTo(5))
+        when(pipe).isCalledWith(S.Null, expect(S.lessThanOrEqualTo).type.not.toBeCallableWith(5))
 
         const schema = pipe(S.Number, S.lessThanOrEqualTo(5))
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -2965,8 +2951,7 @@ describe("Schema", () => {
       })
 
       it("int", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.int())
+        when(pipe).isCalledWith(S.Null, expect(S.int).type.not.toBeCallableWith())
 
         const schema = pipe(S.Number, S.int())
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -2976,8 +2961,7 @@ describe("Schema", () => {
       })
 
       it("multipleOf", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.multipleOf(5))
+        when(pipe).isCalledWith(S.Null, expect(S.multipleOf).type.not.toBeCallableWith(5))
 
         const schema = pipe(S.Number, S.multipleOf(5))
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -2987,8 +2971,7 @@ describe("Schema", () => {
       })
 
       it("between", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.between(1, 5))
+        when(pipe).isCalledWith(S.Null, expect(S.between).type.not.toBeCallableWith(1, 5))
 
         const schema = pipe(S.Number, S.between(1, 5))
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -2998,8 +2981,7 @@ describe("Schema", () => {
       })
 
       it("nonNaN", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.nonNaN())
+        when(pipe).isCalledWith(S.Null, expect(S.nonNaN).type.not.toBeCallableWith())
 
         const schema = pipe(S.Number, S.nonNaN())
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -3009,8 +2991,7 @@ describe("Schema", () => {
       })
 
       it("positive", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.positive())
+        when(pipe).isCalledWith(S.Null, expect(S.positive).type.not.toBeCallableWith())
 
         const schema = pipe(S.Number, S.positive())
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -3020,8 +3001,7 @@ describe("Schema", () => {
       })
 
       it("negative", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.negative())
+        when(pipe).isCalledWith(S.Null, expect(S.negative).type.not.toBeCallableWith())
 
         const schema = pipe(S.Number, S.negative())
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -3031,8 +3011,7 @@ describe("Schema", () => {
       })
 
       it("nonPositive", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.nonPositive())
+        when(pipe).isCalledWith(S.Null, expect(S.nonPositive).type.not.toBeCallableWith())
 
         const schema = pipe(S.Number, S.nonPositive())
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -3042,8 +3021,7 @@ describe("Schema", () => {
       })
 
       it("nonNegative", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.nonNegative())
+        when(pipe).isCalledWith(S.Null, expect(S.nonNegative).type.not.toBeCallableWith())
 
         const schema = pipe(S.Number, S.nonNegative())
         expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -3055,8 +3033,7 @@ describe("Schema", () => {
 
     describe("BigInt Filters", () => {
       it("greaterThanBigInt", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.greaterThanBigInt(5n))
+        when(pipe).isCalledWith(S.Null, expect(S.greaterThanBigInt).type.not.toBeCallableWith(5n))
 
         const schema = pipe(S.BigIntFromSelf, S.greaterThanBigInt(5n))
         expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
@@ -3066,8 +3043,7 @@ describe("Schema", () => {
       })
 
       it("greaterThanOrEqualToBigInt", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.greaterThanOrEqualToBigInt(5n))
+        when(pipe).isCalledWith(S.Null, expect(S.greaterThanOrEqualToBigInt).type.not.toBeCallableWith(5n))
 
         const schema = pipe(S.BigIntFromSelf, S.greaterThanOrEqualToBigInt(5n))
         expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
@@ -3077,8 +3053,7 @@ describe("Schema", () => {
       })
 
       it("lessThanBigInt", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.lessThanBigInt(5n))
+        when(pipe).isCalledWith(S.Null, expect(S.lessThanBigInt).type.not.toBeCallableWith(5n))
 
         const schema = pipe(S.BigIntFromSelf, S.lessThanBigInt(5n))
         expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
@@ -3088,8 +3063,7 @@ describe("Schema", () => {
       })
 
       it("lessThanOrEqualToBigInt", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.lessThanOrEqualToBigInt(5n))
+        when(pipe).isCalledWith(S.Null, expect(S.lessThanOrEqualToBigInt).type.not.toBeCallableWith(5n))
 
         const schema = pipe(S.BigIntFromSelf, S.lessThanOrEqualToBigInt(5n))
         expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
@@ -3099,8 +3073,7 @@ describe("Schema", () => {
       })
 
       it("betweenBigInt", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.betweenBigInt(1n, 5n))
+        when(pipe).isCalledWith(S.Null, expect(S.betweenBigInt).type.not.toBeCallableWith(1n, 5n))
 
         const schema = pipe(S.BigIntFromSelf, S.betweenBigInt(1n, 5n))
         expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
@@ -3110,8 +3083,7 @@ describe("Schema", () => {
       })
 
       it("positiveBigInt", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.positiveBigInt())
+        when(pipe).isCalledWith(S.Null, expect(S.positiveBigInt).type.not.toBeCallableWith())
 
         const schema = pipe(S.BigIntFromSelf, S.positiveBigInt())
         expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
@@ -3121,8 +3093,7 @@ describe("Schema", () => {
       })
 
       it("negativeBigInt", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.negativeBigInt())
+        when(pipe).isCalledWith(S.Null, expect(S.negativeBigInt).type.not.toBeCallableWith())
 
         const schema = pipe(S.BigIntFromSelf, S.negativeBigInt())
         expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
@@ -3132,8 +3103,7 @@ describe("Schema", () => {
       })
 
       it("nonNegativeBigInt", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.nonNegativeBigInt())
+        expect(pipe).type.not.toBeCallableWith(S.Null, S.nonNegativeBigInt())
 
         const schema = pipe(S.BigIntFromSelf, S.nonNegativeBigInt())
         expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
@@ -3143,8 +3113,7 @@ describe("Schema", () => {
       })
 
       it("nonPositiveBigInt", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.negativeBigInt())
+        expect(pipe).type.not.toBeCallableWith(S.Null, S.negativeBigInt())
 
         const schema = pipe(S.BigIntFromSelf, S.nonPositiveBigInt())
         expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
@@ -3156,8 +3125,7 @@ describe("Schema", () => {
 
     describe("Duration filters", () => {
       it("lessThanDuration", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.lessThanDuration("10 millis"))
+        when(pipe).isCalledWith(S.Null, expect(S.lessThanDuration).type.not.toBeCallableWith("10 millis"))
 
         const schema = pipe(S.DurationFromSelf, S.lessThanDuration("10 millis"))
         expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
@@ -3167,8 +3135,7 @@ describe("Schema", () => {
       })
 
       it("lessThanOrEqualToDuration", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.lessThanOrEqualToDuration("10 millis"))
+        when(pipe).isCalledWith(S.Null, expect(S.lessThanOrEqualToDuration).type.not.toBeCallableWith("10 millis"))
 
         const schema = pipe(S.DurationFromSelf, S.lessThanOrEqualToDuration("10 millis"))
         expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
@@ -3178,8 +3145,7 @@ describe("Schema", () => {
       })
 
       it("greaterThanDuration", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.greaterThanDuration("10 millis"))
+        when(pipe).isCalledWith(S.Null, expect(S.greaterThanDuration).type.not.toBeCallableWith("10 millis"))
 
         const schema = pipe(S.DurationFromSelf, S.greaterThanDuration("10 millis"))
         expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
@@ -3189,8 +3155,7 @@ describe("Schema", () => {
       })
 
       it("greaterThanOrEqualToDuration", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.greaterThanOrEqualToDuration("10 millis"))
+        when(pipe).isCalledWith(S.Null, expect(S.greaterThanOrEqualToDuration).type.not.toBeCallableWith("10 millis"))
 
         const schema = pipe(S.DurationFromSelf, S.greaterThanOrEqualToDuration("10 millis"))
         expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
@@ -3200,8 +3165,7 @@ describe("Schema", () => {
       })
 
       it("betweenDuration", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.betweenDuration("10 millis", "50 millis"))
+        when(pipe).isCalledWith(S.Null, expect(S.betweenDuration).type.not.toBeCallableWith("10 millis", "50 millis"))
 
         const schema = pipe(S.DurationFromSelf, S.betweenDuration("10 millis", "50 millis"))
         expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
@@ -3214,8 +3178,7 @@ describe("Schema", () => {
     describe("Array Filters", () => {
       describe("Array", () => {
         it("minItems", () => {
-          // @ts-expect-error
-          pipe(S.Null, S.minItems(2))
+          when(pipe).isCalledWith(S.Null, expect(S.minItems).type.not.toBeCallableWith(2))
 
           const schema = S.Array(S.String).pipe(S.minItems(2))
           expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyArray<string>>>()
@@ -3225,8 +3188,7 @@ describe("Schema", () => {
         })
 
         it("maxItems", () => {
-          // @ts-expect-error
-          pipe(S.Null, S.maxItems(2))
+          when(pipe).isCalledWith(S.Null, expect(S.maxItems).type.not.toBeCallableWith(2))
 
           const schema = S.Array(S.String).pipe(S.maxItems(2))
           expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyArray<string>>>()
@@ -3236,8 +3198,7 @@ describe("Schema", () => {
         })
 
         it("itemsCount", () => {
-          // @ts-expect-error
-          pipe(S.Null, S.itemsCount(2))
+          when(pipe).isCalledWith(S.Null, expect(S.itemsCount).type.not.toBeCallableWith(2))
 
           const schema = S.Array(S.String).pipe(S.itemsCount(2))
           expect(S.asSchema(schema)).type.toBe<S.Schema<ReadonlyArray<string>>>()
@@ -3276,8 +3237,7 @@ describe("Schema", () => {
 
     describe("Date Filters", () => {
       it("validDate", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.validDate())
+        when(pipe).isCalledWith(S.Null, expect(S.validDate).type.not.toBeCallableWith())
 
         const schema = pipe(S.DateFromSelf, S.validDate())
         expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
@@ -3287,8 +3247,7 @@ describe("Schema", () => {
       })
 
       it("lessThanDate", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.lessThanDate(new Date()))
+        when(pipe).isCalledWith(S.Null, expect(S.lessThanDate).type.not.toBeCallableWith(new Date()))
 
         const schema = pipe(S.DateFromSelf, S.lessThanDate(new Date()))
         expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
@@ -3298,8 +3257,7 @@ describe("Schema", () => {
       })
 
       it("lessThanOrEqualToDate", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.lessThanOrEqualToDate(new Date()))
+        when(pipe).isCalledWith(S.Null, expect(S.lessThanOrEqualToDate).type.not.toBeCallableWith(new Date()))
 
         const schema = pipe(S.DateFromSelf, S.lessThanOrEqualToDate(new Date()))
         expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
@@ -3309,8 +3267,7 @@ describe("Schema", () => {
       })
 
       it("greaterThanDate", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.greaterThanDate(new Date()))
+        when(pipe).isCalledWith(S.Null, expect(S.greaterThanDate).type.not.toBeCallableWith(new Date()))
 
         const schema = pipe(S.DateFromSelf, S.greaterThanDate(new Date()))
         expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
@@ -3320,8 +3277,7 @@ describe("Schema", () => {
       })
 
       it("greaterThanOrEqualToDate", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.greaterThanOrEqualToDate(new Date()))
+        when(pipe).isCalledWith(S.Null, expect(S.greaterThanOrEqualToDate).type.not.toBeCallableWith(new Date()))
 
         const schema = pipe(S.DateFromSelf, S.greaterThanOrEqualToDate(new Date()))
         expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
@@ -3331,8 +3287,7 @@ describe("Schema", () => {
       })
 
       it("betweenDate", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.betweenDate(new Date(0), new Date(100)))
+        when(pipe).isCalledWith(S.Null, expect(S.betweenDate).type.not.toBeCallableWith(new Date(0), new Date(100)))
 
         const schema = pipe(S.DateFromSelf, S.betweenDate(new Date(0), new Date(100)))
         expect(S.asSchema(schema)).type.toBe<S.Schema<Date>>()
@@ -3346,8 +3301,7 @@ describe("Schema", () => {
       const bd = hole<BigDecimal.BigDecimal>()
 
       it("greaterThanBigDecimal", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.greaterThanBigDecimal(bd))
+        when(pipe).isCalledWith(S.Null, expect(S.greaterThanBigDecimal).type.not.toBeCallableWith(bd))
 
         const schema = pipe(S.BigDecimalFromSelf, S.greaterThanBigDecimal(bd))
         expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
@@ -3357,8 +3311,7 @@ describe("Schema", () => {
       })
 
       it("greaterThanOrEqualToBigDecimal", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.greaterThanOrEqualToBigDecimal(bd))
+        when(pipe).isCalledWith(S.Null, expect(S.greaterThanOrEqualToBigDecimal).type.not.toBeCallableWith(bd))
 
         const schema = pipe(S.BigDecimalFromSelf, S.greaterThanOrEqualToBigDecimal(bd))
         expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
@@ -3368,8 +3321,7 @@ describe("Schema", () => {
       })
 
       it("lessThanBigDecimal", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.lessThanBigDecimal(bd))
+        when(pipe).isCalledWith(S.Null, expect(S.lessThanBigDecimal).type.not.toBeCallableWith(bd))
 
         const schema = pipe(S.BigDecimalFromSelf, S.lessThanBigDecimal(bd))
         expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
@@ -3379,8 +3331,7 @@ describe("Schema", () => {
       })
 
       it("lessThanOrEqualToBigDecimal", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.lessThanOrEqualToBigDecimal(bd))
+        when(pipe).isCalledWith(S.Null, expect(S.lessThanOrEqualToBigDecimal).type.not.toBeCallableWith(bd))
 
         const schema = pipe(S.BigDecimalFromSelf, S.lessThanOrEqualToBigDecimal(bd))
         expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
@@ -3390,8 +3341,7 @@ describe("Schema", () => {
       })
 
       it("positiveBigDecimal", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.positiveBigDecimal())
+        when(pipe).isCalledWith(S.Null, expect(S.positiveBigDecimal).type.not.toBeCallableWith())
 
         const schema = pipe(S.BigDecimalFromSelf, S.positiveBigDecimal())
         expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
@@ -3401,8 +3351,7 @@ describe("Schema", () => {
       })
 
       it("nonNegativeBigDecimal", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.nonNegativeBigDecimal())
+        when(pipe).isCalledWith(S.Null, expect(S.nonNegativeBigDecimal).type.not.toBeCallableWith())
 
         const schema = pipe(S.BigDecimalFromSelf, S.nonNegativeBigDecimal())
         expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
@@ -3412,8 +3361,7 @@ describe("Schema", () => {
       })
 
       it("negativeBigDecimal", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.negativeBigDecimal())
+        when(pipe).isCalledWith(S.Null, expect(S.negativeBigDecimal).type.not.toBeCallableWith())
 
         const schema = pipe(S.BigDecimalFromSelf, S.negativeBigDecimal())
         expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
@@ -3423,8 +3371,7 @@ describe("Schema", () => {
       })
 
       it("nonPositiveBigDecimal", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.nonPositiveBigDecimal())
+        when(pipe).isCalledWith(S.Null, expect(S.nonPositiveBigDecimal).type.not.toBeCallableWith())
 
         const schema = pipe(S.BigDecimalFromSelf, S.nonPositiveBigDecimal())
         expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
@@ -3434,8 +3381,7 @@ describe("Schema", () => {
       })
 
       it("betweenBigDecimal", () => {
-        // @ts-expect-error
-        pipe(S.Null, S.betweenBigDecimal(bd, bd))
+        when(pipe).isCalledWith(S.Null, expect(S.betweenBigDecimal).type.not.toBeCallableWith(bd, bd))
 
         const schema = pipe(S.BigDecimalFromSelf, S.betweenBigDecimal(bd, bd))
         expect(S.asSchema(schema)).type.toBe<S.Schema<BigDecimal.BigDecimal>>()
@@ -3577,10 +3523,8 @@ describe("Schema", () => {
     })
 
     it("DataFromSelf", () => {
-      // @ts-expect-error
-      S.DataFromSelf(hole<S.Schema<string>>())
-      // @ts-expect-error
-      S.DataFromSelf(hole<S.Schema<{}, number>>())
+      expect(S.DataFromSelf).type.not.toBeCallableWith(hole<S.Schema<string>>())
+      expect(S.DataFromSelf).type.not.toBeCallableWith(hole<S.Schema<{}, number>>())
 
       // should allow generic context
       const _f1 = <A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>>(schema: S.Schema<A>) =>
@@ -3629,10 +3573,8 @@ describe("Schema", () => {
     })
 
     it("Data", () => {
-      // @ts-expect-error
-      S.Data(hole<S.Schema<string>>())
-      // @ts-expect-error
-      S.Data(hole<S.Schema<{}, number>>())
+      expect(S.Data).type.not.toBeCallableWith(hole<S.Schema<string>>())
+      expect(S.Data).type.not.toBeCallableWith(hole<S.Schema<{}, number>>())
 
       const schema = S.Data(S.Struct({ a: S.NumberFromString }))
       expect(schema)
@@ -4036,8 +3978,7 @@ describe("Schema", () => {
         .type.toBe<Config.Config<`a${string}`>>()
 
       // passed schemas must be encodable to string
-      // @ts-expect-error
-      S.Config("A", S.Boolean)
+      expect(S.Config).type.not.toBeCallableWith("A", S.Boolean)
     })
 
     it("Defect", () => {
@@ -4105,8 +4046,7 @@ describe("Schema", () => {
 
   describe("Transformations", () => {
     it("clamp", () => {
-      // @ts-expect-error: Type 'string' is not assignable to type 'number'
-      S.String.pipe(S.clamp(-1, 1))
+      when(S.String.pipe).isCalledWith(expect(S.clamp).type.not.toBeCallableWith(-1, 1))
 
       const schema = S.Number.pipe(S.clamp(-1, 1))
       expect(S.asSchema(schema)).type.toBe<S.Schema<number>>()
@@ -4117,8 +4057,7 @@ describe("Schema", () => {
     })
 
     it("clampBigInt", () => {
-      // @ts-expect-error: Type 'string' is not assignable to type 'bigint'
-      S.String.pipe(S.clampBigInt(-1, 1))
+      when(S.String.pipe).isCalledWith(expect(S.clampBigInt).type.not.toBeCallableWith(-1, 1))
 
       const schema = S.BigIntFromSelf.pipe(S.clampBigInt(-1n, 1n))
       expect(S.asSchema(schema)).type.toBe<S.Schema<bigint>>()
@@ -4131,8 +4070,7 @@ describe("Schema", () => {
     })
 
     it("clampDuration", () => {
-      // @ts-expect-error: Type 'string' is not assignable to type 'Duration'
-      S.String.pipe(S.clampDuration(-1, 1))
+      when(S.String.pipe).isCalledWith(expect(S.clampDuration).type.not.toBeCallableWith(-1, 1))
 
       const schema = S.DurationFromSelf.pipe(S.clampDuration(-1, 1))
       expect(S.asSchema(schema)).type.toBe<S.Schema<Duration.Duration>>()
@@ -4145,8 +4083,7 @@ describe("Schema", () => {
     })
 
     it("clampBigDecimal", () => {
-      // @ts-expect-error: Type 'string' is not assignable to type 'BigDecimal'
-      S.String.pipe(S.clampBigDecimal(-1, 1))
+      when(S.String.pipe).isCalledWith(expect(S.clampBigDecimal).type.not.toBeCallableWith(-1, 1))
 
       const schema = S.BigDecimalFromSelf.pipe(
         S.clampBigDecimal(hole<BigDecimal.BigDecimal>(), hole<BigDecimal.BigDecimal>())
@@ -4194,15 +4131,8 @@ describe("Schema", () => {
     it("headOrElse", () => {
       // @ts-expect-error: Type 'string' is not assignable to type 'readonly unknown[]'
       S.String.pipe(S.headOrElse())
-      S.headOrElse(
-        S.Array(S.Number),
-        // @ts-expect-error: Type 'string' is not assignable to type 'number'
-        () => "a"
-      )
-      S.Array(S.Number).pipe(S.headOrElse(
-        // @ts-expect-error: Type 'number' is not assignable to type 'string'
-        () => "a"
-      ))
+      expect(S.headOrElse).type.not.toBeCallableWith(S.Array(S.Number), () => "a")
+      when(S.Array(S.Number).pipe).isCalledWith(expect(S.headOrElse).type.not.toBeCallableWith(() => "a"))
 
       const schema = S.headOrElse(S.Array(S.Number))
       expect(S.asSchema(schema)).type.toBe<S.Schema<number, ReadonlyArray<number>>>()
@@ -4213,9 +4143,8 @@ describe("Schema", () => {
     })
 
     it("pluck", () => {
-      S.pluck(
+      expect(S.pluck).type.not.toBeCallableWith(
         S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }),
-        // @ts-expect-error: Argument of type '"a"' is not assignable to parameter of type 'never'
         "a"
       )
 
@@ -4237,8 +4166,7 @@ describe("Schema", () => {
     })
 
     it("parseNumber", () => {
-      // @ts-expect-error: Type 'null' is not assignable to type 'string'
-      S.parseNumber(S.Null)
+      expect(S.parseNumber).type.not.toBeCallableWith(S.Null)
 
       const schema = S.parseNumber(S.String)
       expect(S.asSchema(schema)).type.toBe<S.Schema<number, string>>()

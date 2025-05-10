@@ -1,6 +1,6 @@
 import type { Brand } from "effect"
 import { Either, hole, Option, pipe, Predicate, Record } from "effect"
-import { describe, expect, it } from "tstyche"
+import { describe, expect, it, when } from "tstyche"
 
 declare const string$numbers: Record<string, number>
 declare const string$numbersOrStrings: Record<string, number | string>
@@ -153,13 +153,13 @@ describe("Record", () => {
   it("get", () => {
     expect(Record.get(string$numbers, "a")).type.toBe<Option.Option<number>>()
     expect(pipe(string$numbers, Record.get("a"))).type.toBe<Option.Option<number>>()
-    expect(pipe).type.not.toBeCallableWith(string$numbers, Record.get(symA))
+    when(pipe).isCalledWith(string$numbers, expect(Record.get).type.not.toBeCallableWith(symA))
     expect(pipe(template$numbers, Record.get("a"))).type.toBe<Option.Option<number>>()
-    expect(pipe).type.not.toBeCallableWith(template$numbers, Record.get("b"))
+    when(pipe).isCalledWith(template$numbers, expect(Record.get).type.not.toBeCallableWith("b"))
     expect(pipe(symbol$numbers, Record.get(symA))).type.toBe<Option.Option<number>>()
-    expect(pipe).type.not.toBeCallableWith(symbol$numbers, Record.get("a"))
+    when(pipe).isCalledWith(symbol$numbers, expect(Record.get).type.not.toBeCallableWith("a"))
     expect(pipe(string$structAB, Record.get("a"))).type.toBe<Option.Option<number>>()
-    expect(pipe).type.not.toBeCallableWith(string$structAB, Record.get("c"))
+    when(pipe).isCalledWith(string$structAB, expect(Record.get).type.not.toBeCallableWith("c"))
   })
 
   it("modify, modifyOption, and replaceOption", () => {
@@ -169,7 +169,7 @@ describe("Record", () => {
     expect(pipe(template$numbers, Record.modify("a", () => true))).type.toBe<
       Record<`a${string}`, number | boolean>
     >()
-    expect(pipe).type.not.toBeCallableWith(template$numbers, Record.modify("b", () => true))
+    when(pipe).isCalledWith(template$numbers, expect(Record.modify).type.not.toBeCallableWith("b", () => true))
     expect(pipe(symbol$numbers, Record.modify(symA, () => 2))).type.toBe<Record<symbol, number>>()
     expect(pipe(symbol$numbers, Record.modify(symA, () => true))).type.toBe<Record<symbol, number | boolean>>()
     expect(pipe(string$structAB, Record.modify("a", () => 2))).type.toBe<Record<"a" | "b", number>>()
@@ -187,9 +187,9 @@ describe("Record", () => {
       .type.toBe<Option.Option<Record<`a${string}`, number>>>()
     expect(pipe(template$numbers, Record.modifyOption("a", () => true)))
       .type.toBe<Option.Option<Record<`a${string}`, number | boolean>>>()
-    expect(pipe).type.not.toBeCallableWith(
+    when(pipe).isCalledWith(
       template$numbers,
-      Record.modifyOption("b", () => true)
+      expect(Record.modifyOption).type.not.toBeCallableWith("b", () => true)
     )
     expect(pipe(symbol$numbers, Record.modifyOption(symA, () => 2)))
       .type.toBe<Option.Option<Record<symbol, number>>>()
@@ -210,7 +210,7 @@ describe("Record", () => {
       .type.toBe<Option.Option<Record<`a${string}`, number>>>()
     expect(pipe(template$numbers, Record.replaceOption("a", true)))
       .type.toBe<Option.Option<Record<`a${string}`, number | boolean>>>()
-    expect(pipe).type.not.toBeCallableWith(template$numbers, Record.replaceOption("b", true))
+    when(pipe).isCalledWith(template$numbers, expect(Record.replaceOption).type.not.toBeCallableWith("b", true))
     expect(pipe(symbol$numbers, Record.replaceOption(symA, 2)))
       .type.toBe<Option.Option<Record<symbol, number>>>()
     expect(pipe(symbol$numbers, Record.replaceOption(symA, true)))
@@ -224,7 +224,7 @@ describe("Record", () => {
   it("remove", () => {
     expect(pipe(string$numbers, Record.remove("a"))).type.toBe<Record<string, number>>()
     expect(pipe(template$numbers, Record.remove("a"))).type.toBe<Record<`a${string}`, number>>()
-    expect(pipe).type.not.toBeCallableWith(template$numbers, Record.remove("b"))
+    when(pipe).isCalledWith(template$numbers, expect(Record.remove).type.not.toBeCallableWith("b"))
     expect(pipe(symbol$numbers, Record.remove(symA))).type.toBe<Record<symbol, number>>()
     expect(pipe(string$structAB, Record.remove("a"))).type.toBe<Record<"b", number>>()
   })
@@ -234,7 +234,7 @@ describe("Record", () => {
     expect(pipe(template$numbers, Record.pop("a"))).type.toBe<
       Option.Option<[number, Record<`a${string}`, number>]>
     >()
-    expect(pipe).type.not.toBeCallableWith(template$numbers, Record.pop("b"))
+    when(pipe).isCalledWith(template$numbers, expect(Record.pop).type.not.toBeCallableWith("b"))
     expect(pipe(symbol$numbers, Record.pop(symA))).type.toBe<Option.Option<[number, Record<symbol, number>]>>()
     expect(pipe(string$structAB, Record.pop("a"))).type.toBe<Option.Option<[number, Record<"b", number>]>>()
   })

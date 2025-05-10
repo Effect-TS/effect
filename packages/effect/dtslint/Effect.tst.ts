@@ -2,7 +2,7 @@ import type { Either, Types } from "effect"
 import { Effect, hole, Option, pipe, Predicate, Schedule } from "effect"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import type { Cause, UnknownException } from "effect/Cause"
-import { describe, expect, it } from "tstyche"
+import { describe, expect, it, when } from "tstyche"
 
 class TestError1 {
   readonly _tag = "TestError1"
@@ -489,10 +489,12 @@ describe("Effect", () => {
   })
 
   it("tap", () => {
-    // @ts-expect-error: No overload matches this call
-    Effect.succeed("a" as const).pipe(Effect.tap(tacitStringError, { onlyEffect: true }))
-    // @ts-expect-error: No overload matches this call
-    Effect.succeed("a" as const).pipe(Effect.tap("a", { onlyEffect: true }))
+    when(Effect.succeed("a" as const).pipe).isCalledWith(
+      expect(Effect.tap).type.not.toBeCallableWith(tacitStringError, { onlyEffect: true })
+    )
+    when(Effect.succeed("a" as const).pipe).isCalledWith(
+      expect(Effect.tap).type.not.toBeCallableWith("a", { onlyEffect: true })
+    )
 
     expect(Effect.succeed("a" as const).pipe(Effect.tap(tacitString))).type.toBe<Effect.Effect<"a">>()
 
@@ -594,15 +596,25 @@ describe("Effect", () => {
   })
 
   it("catchTag", () => {
-    // @ts-expect-error: Argument of type '"wrong"' is not assignable to parameter of type '"TestError1"'
-    Effect.catchTag(hole<Effect.Effect<number, TestError1>>(), "wrong", () => Effect.succeed(1))
-    // @ts-expect-error: Argument of type '"wrong"' is not assignable to parameter of type '"TestError1"'
-    pipe(hole<Effect.Effect<number, TestError1>>(), Effect.catchTag("wrong", () => Effect.succeed(1)))
+    expect(Effect.catchTag).type.not.toBeCallableWith(
+      hole<Effect.Effect<number, TestError1>>(),
+      "wrong",
+      () => Effect.succeed(1)
+    )
+    when(pipe).isCalledWith(
+      hole<Effect.Effect<number, TestError1>>(),
+      expect(Effect.catchTag).type.not.toBeCallableWith("wrong", () => Effect.succeed(1))
+    )
 
-    // @ts-expect-error: Argument of type '"wrong"' is not assignable to parameter of type '"TestError1"'
-    Effect.catchTag(hole<Effect.Effect<number, Error | TestError1>>(), "wrong", () => Effect.succeed(1))
-    // @ts-expect-error: Argument of type '"wrong"' is not assignable to parameter of type '"TestError1"'
-    pipe(hole<Effect.Effect<number, Error | TestError1>>(), Effect.catchTag("wrong", () => Effect.succeed(1)))
+    expect(Effect.catchTag).type.not.toBeCallableWith(
+      hole<Effect.Effect<number, Error | TestError1>>(),
+      "wrong",
+      () => Effect.succeed(1)
+    )
+    when(pipe).isCalledWith(
+      hole<Effect.Effect<number, Error | TestError1>>(),
+      expect(Effect.catchTag).type.not.toBeCallableWith("wrong", () => Effect.succeed(1))
+    )
 
     expect(Effect.catchTag(
       hole<Effect.Effect<number, Error | TestError1 | TestError2>>(),
@@ -678,33 +690,29 @@ describe("Effect", () => {
       })
     )).type.toBe<Effect.Effect<number, Error>>()
 
-    pipe(
+    when(pipe).isCalledWith(
       Effect.fail(new TestError1()),
-      Effect.catchTags({
+      expect(Effect.catchTags).type.not.toBeCallableWith({
         TestError1: () => Effect.succeed(1),
-        // @ts-expect-error: Type '() => Effect.Effect<number, never, never>' is not assignable to type 'never'
         Other: () => Effect.succeed(1)
       })
     )
 
-    Effect.catchTags(Effect.fail(new TestError1()), {
+    expect(Effect.catchTags).type.not.toBeCallableWith(Effect.fail(new TestError1()), {
       TestError1: () => Effect.succeed(1),
-      // @ts-expect-error: Type '() => Effect.Effect<number, never, never>' is not assignable to type 'never'
       Other: () => Effect.succeed(1)
     })
 
-    pipe(
+    when(pipe).isCalledWith(
       Effect.fail(new TestError1() as TestError1 | string),
-      Effect.catchTags({
+      expect(Effect.catchTags).type.not.toBeCallableWith({
         TestError1: () => Effect.succeed(1),
-        // @ts-expect-error: Type '() => Effect.Effect<number, never, never>' is not assignable to type 'never'
         Other: () => Effect.succeed(1)
       })
     )
 
-    Effect.catchTags(Effect.fail(new TestError1() as TestError1 | string), {
+    expect(Effect.catchTags).type.not.toBeCallableWith(Effect.fail(new TestError1() as TestError1 | string), {
       TestError1: () => Effect.succeed(1),
-      // @ts-expect-error: Type '() => Effect.Effect<number, never, never>' is not assignable to type 'never'
       Other: () => Effect.succeed(1)
     })
 

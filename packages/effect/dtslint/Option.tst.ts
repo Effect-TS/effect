@@ -187,7 +187,8 @@ describe("Option", () => {
       expect(Option.firstSomeOf<number>).type.not.toBeCallableWith(
         [number, string]
       )
-      expect(pipe).type.not.toBeCallableWith(
+      pipe(
+        // @ts-expect-error: Type 'string' is not assignable to type 'number'
         [number, string],
         Option.firstSomeOf<number>
       )
