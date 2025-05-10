@@ -1,3 +1,6 @@
+/**
+ * @since 1.0.0
+ */
 import type * as ClientResponse from "@effect/platform/HttpClientResponse"
 import type * as Http from "node:http"
 import * as internal from "./internal/httpClient.js"
