@@ -15,7 +15,6 @@ overrides:
   detective-scss: ^4.0.3
   detective-stylus: ^4.0.0
   detective-typescript: ^11.1.0
-  tstyche: link:../tstyche
 
 patchedDependencies:
   '@changesets/assemble-release-plan@6.0.3':
@@ -141,8 +140,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1
       tstyche:
-        specifier: link:../tstyche
-        version: link:../tstyche
+        specifier: ^4.0.0-beta.9
+        version: 4.0.0-beta.9(typescript@5.7.2)
       tsx:
         specifier: ^4.17.0
         version: 4.17.0
@@ -5558,7 +5557,6 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.7:
@@ -7160,6 +7158,16 @@ packages:
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
+
+  tstyche@4.0.0-beta.9:
+    resolution: {integrity: sha512-a1KLT7SWTsmhHKqNRQrEPXxPotPd9cwVqogJdHPzd3dz+o4Olo/r0VAcVqG4M6Ww84teHpx8xBD3JZTjJnbljg==}
+    engines: {node: '>=20.9'}
+    hasBin: true
+    peerDependencies:
+      typescript: '>=4.7'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   tsutils@3.21.0:
     resolution: {integrity: sha512-mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==}
@@ -15488,6 +15496,10 @@ snapshots:
   tslib@2.8.0: {}
 
   tslib@2.8.1: {}
+
+  tstyche@4.0.0-beta.9(typescript@5.7.2):
+    optionalDependencies:
+      typescript: 5.7.2
 
   tsutils@3.21.0(typescript@5.7.2):
     dependencies:
