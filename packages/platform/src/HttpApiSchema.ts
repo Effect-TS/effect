@@ -16,6 +16,14 @@ import * as Struct from "effect/Struct"
  * @since 1.0.0
  * @category annotations
  */
+export const AnnotationStream: unique symbol = Symbol.for(
+  "@effect/platform/HttpApiSchema/AnnotationStream"
+)
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
 export const AnnotationMultipart: unique symbol = Symbol.for(
   "@effect/platform/HttpApiSchema/AnnotationMultipart"
 )
@@ -348,6 +356,44 @@ export const NoContent: NoContent = Empty(204) as any
 
 /**
  * @since 1.0.0
+ * @category stream
+ */
+export const StreamTypeId: unique symbol = Symbol.for("@effect/platform/HttpApiSchema/Stream")
+
+/**
+ * @since 1.0.0
+ * @category stream
+ */
+export type StreamTypeId = typeof StreamTypeId
+
+/**
+ * @since 1.0.0
+ * @category stream
+ */
+export interface Stream extends
+  Schema.Schema<
+    Schema.Schema.Type<Schema.Uint8ArrayFromSelf> & Brand<StreamTypeId>,
+    Schema.Schema.Encoded<Schema.Uint8ArrayFromSelf>,
+    Schema.Schema.Context<Schema.Uint8ArrayFromSelf>
+  >
+{}
+
+/**
+ * @since 1.0.0
+ * @category encoding
+ */
+export const Stream = (options?: {
+  readonly contentType?: string
+}): Stream =>
+  withEncoding(
+    Schema.Uint8ArrayFromSelf.annotations({
+      [AnnotationStream]: true
+    }),
+    { kind: "Stream", ...options }
+  ) as any
+
+/**
+ * @since 1.0.0
  * @category multipart
  */
 export const MultipartTypeId: unique symbol = Symbol.for("@effect/platform/HttpApiSchema/Multipart")
@@ -384,6 +430,7 @@ const defaultContentType = (encoding: Encoding["kind"]) => {
     case "UrlParams": {
       return "application/x-www-form-urlencoded"
     }
+    case "Stream":
     case "Uint8Array": {
       return "application/octet-stream"
     }
@@ -398,7 +445,7 @@ const defaultContentType = (encoding: Encoding["kind"]) => {
  * @category encoding
  */
 export interface Encoding {
-  readonly kind: "Json" | "UrlParams" | "Uint8Array" | "Text"
+  readonly kind: "Json" | "UrlParams" | "Uint8Array" | "Text" | "Stream"
   readonly contentType: string
 }
 
@@ -417,6 +464,8 @@ export declare namespace Encoding {
     : Kind extends "Uint8Array" ?
       [A["Encoded"]] extends [Uint8Array] ? {} : `'Uint8Array' kind can only be encoded to 'Uint8Array'`
     : Kind extends "Text" ? [A["Encoded"]] extends [string] ? {} : `'Text' kind can only be encoded to 'string'`
+    : Kind extends "Stream" ?
+      [A["Encoded"]] extends [Uint8Array] ? {} : `'Stream' kind can only be encoded to 'Uint8Array'`
     : never
 }
 
@@ -447,7 +496,7 @@ export const withEncoding: {
       kind: options.kind,
       contentType: options.contentType ?? defaultContentType(options.kind)
     },
-    ...(options.kind === "Uint8Array" ?
+    ...(options.kind === "Uint8Array" || options.kind === "Stream" ?
       {
         jsonSchema: {
           type: "string",

@@ -76,7 +76,7 @@ describe("HttpApi", () => {
         })
       }).pipe(Effect.provide(HttpLive)))
 
-    it.live("echo stream", () =>
+    it.live.only("echo stream", () =>
       Effect.gen(function*() {
         const client = yield* HttpApiClient.make(Api)
         const stream = Stream.make("a", "b", "c").pipe(
@@ -375,10 +375,7 @@ class TopLevelApi extends HttpApiGroup.make("root", { topLevel: true })
   // Add an echo endpoint that echos the request body as a stream
   .add(
     HttpApiEndpoint.post("echo")`/echo`
-      .setPayload({
-        stream: true,
-        contentType: "application/octet-stream"
-      })
+      .setPayload(HttpApiSchema.Stream())
       .addSuccess(
         Schema.Uint8ArrayFromSelf.pipe(
           HttpApiSchema.withEncoding({

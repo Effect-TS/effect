@@ -7,7 +7,7 @@ import { identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
-import type * as Predicate from "effect/Predicate"
+import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
@@ -178,17 +178,6 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
         })
         const encodePayloadBody = endpoint.payloadSchema.pipe(
           Option.map((schema) => {
-            if ("stream" in schema) {
-              return (body: Stream.Stream<any, any, any>) =>
-                Effect.succeed(
-                  HttpBody.stream(
-                    Stream.provideContext(body, context),
-                    schema.contentType,
-                    schema.contentLength,
-                    schema.etag
-                  )
-                )
-            }
             if (HttpMethod.hasBody(endpoint.method)) {
               return Schema.encodeUnknown(payloadSchemaBody(schema as any))
             }
@@ -400,6 +389,9 @@ const schemaToResponse = (
   const encoding = HttpApiSchema.getEncoding(ast)
   const decode = Schema.decodeUnknown(schema)
   switch (encoding.kind) {
+    case "Stream": {
+      return (response: HttpClientResponse.HttpClientResponse) => Effect.sync(() => response.stream)
+    }
     case "Json": {
       return (response) => Effect.flatMap(responseJson(response), decode)
     }
@@ -479,6 +471,14 @@ const bodyFromPayload = (ast: AST.AST) => {
       },
       encode(toI, _, ast) {
         switch (encoding.kind) {
+          case "Stream": {
+            if (!Predicate.hasProperty(toI, Stream.StreamTypeId)) {
+              return ParseResult.fail(new ParseResult.Type(ast, toI, "Expected a Stream"))
+            }
+            return ParseResult.succeed(
+              HttpBody.stream(toI as Stream.Stream<Uint8Array, unknown, never>, encoding.contentType)
+            )
+          }
           case "Json": {
             return HttpBody.json(toI).pipe(
               ParseResult.mapError((error) => new ParseResult.Type(ast, toI, `Could not encode as JSON: ${error}`))
