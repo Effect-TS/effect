@@ -1425,8 +1425,10 @@ describe("Schema", () => {
 
   describe("pick", () => {
     it("required fields", () => {
-      // @ts-expect-error
-      pipe(S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }), S.pick("a"))
+      when(pipe).isCalledWith(
+        S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }),
+        expect(S.pick).type.not.toBeCallableWith("a")
+      )
       expect(
         pipe(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }), S.pick("a", "b"))
       ).type.toBe<
@@ -1763,10 +1765,8 @@ describe("Schema", () => {
         never
       >
     >()
-    // @ts-expect-error
-    S.rename(S.Struct({ a: S.String, b: S.Number }), { c: "d" })
-    // @ts-expect-error
-    S.rename(S.Struct({ a: S.String, b: S.Number }), { a: "c", d: "e" })
+    expect(S.rename).type.not.toBeCallableWith(S.Struct({ a: S.String, b: S.Number }), { c: "d" })
+    expect(S.rename).type.not.toBeCallableWith(S.Struct({ a: S.String, b: S.Number }), { a: "c", d: "e" })
     expect(S.Struct({ a: S.String, b: S.Number }).pipe(S.rename({})))
       .type.toBe<
       S.SchemaClass<
@@ -1783,10 +1783,12 @@ describe("Schema", () => {
         never
       >
     >()
-    // @ts-expect-error
-    S.Struct({ a: S.String, b: S.Number }).pipe(S.rename({ c: "d" }))
-    // @ts-expect-error
-    S.Struct({ a: S.String, b: S.Number }).pipe(S.rename({ a: "c", d: "e" }))
+    when(S.Struct({ a: S.String, b: S.Number }).pipe).isCalledWith(
+      expect(S.rename).type.not.toBeCallableWith({ c: "d" })
+    )
+    when(S.Struct({ a: S.String, b: S.Number }).pipe).isCalledWith(
+      expect(S.rename).type.not.toBeCallableWith({ a: "c", d: "e" })
+    )
   })
 
   describe("declare", () => {
@@ -1968,20 +1970,17 @@ describe("Schema", () => {
 
   describe("compose", () => {
     it("{ strict: true } should not allow incompatible types", () => {
-      S.compose(
-        // @ts-expect-error: Type 'string' is not assignable to type 'number'
+      expect(S.compose).type.not.toBeCallableWith(
         S.String,
         S.Number
       )
-      // @ts-expect-error: Type 'true' is not assignable to type 'false'
-      S.compose(
+      expect(S.compose).type.not.toBeCallableWith(
         S.String,
         S.Number,
         { strict: true }
       )
-      S.String.pipe(
-        // @ts-expect-error: Type 'string' is not assignable to type 'number'
-        S.compose(S.Number, { strict: true })
+      when(S.String.pipe).isCalledWith(
+        expect(S.compose).type.not.toBeCallableWith(S.Number, { strict: true })
       )
     })
 
@@ -2177,10 +2176,12 @@ describe("Schema", () => {
       )
     ).type.toBe<S.Schema<number, string>>()
     S.String.pipe(S.transform(S.Number, { strict: false, decode: (s) => s, encode: (n) => n }))
-    // @ts-expect-error
-    S.String.pipe(S.transform(S.Number, (s) => s, (n) => String(n)))
-    // @ts-expect-error
-    S.String.pipe(S.transform(S.Number, (s) => s.length, (n) => n))
+    when(S.String.pipe).isCalledWith(
+      expect(S.transform).type.not.toBeCallableWith(S.Number, (s: any) => s, (n: any) => String(n))
+    )
+    when(S.String.pipe).isCalledWith(
+      expect(S.transform).type.not.toBeCallableWith(S.Number, (s: any) => s.length, (n: any) => n)
+    )
 
     // should receive the fromI value other than the fromA value
     S.transform(
@@ -2236,13 +2237,19 @@ describe("Schema", () => {
         { strict: false, decode: (s) => ParseResult.succeed(s), encode: (n) => ParseResult.succeed(String(n)) }
       )
     )
-    S.String.pipe(
-      // @ts-expect-error
-      S.transformOrFail(S.Number, (s) => ParseResult.succeed(s), (n) => ParseResult.succeed(String(n)))
+    when(S.String.pipe).isCalledWith(
+      expect(S.transformOrFail).type.not.toBeCallableWith(
+        S.Number,
+        (s: any) => ParseResult.succeed(s),
+        (n: any) => ParseResult.succeed(String(n))
+      )
     )
-    S.String.pipe(
-      // @ts-expect-error
-      S.transformOrFail(S.Number, (s) => ParseResult.succeed(s.length), (n) => ParseResult.succeed(n))
+    when(S.String.pipe).isCalledWith(
+      expect(S.transformOrFail).type.not.toBeCallableWith(
+        S.Number,
+        (s: any) => ParseResult.succeed(s.length),
+        (n: any) => ParseResult.succeed(n)
+      )
     )
 
     // should receive the fromI value other than the fromA value
@@ -2398,8 +2405,9 @@ describe("Schema", () => {
   })
 
   it("withConstructorDefault", () => {
-    // @ts-expect-error
-    S.propertySignature(S.String).pipe(S.withConstructorDefault(() => 1))
+    when(S.propertySignature(S.String).pipe).isCalledWith(
+      expect(S.withConstructorDefault).type.not.toBeCallableWith(() => 1)
+    )
     expect(S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "a")))
       .type.toBe<S.PropertySignature<":", string, never, ":", string, true>>()
     expect(S.withConstructorDefault(S.propertySignature(S.String), () => "a"))
