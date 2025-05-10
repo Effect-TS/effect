@@ -258,3 +258,7 @@ export const layerWithoutAgent = Client.layerMergedContext(make)
 
 /** @internal */
 export const layer = Layer.provide(layerWithoutAgent, agentLayer)
+
+/** @internal */
+export const toIncomingMessage = (self: ClientResponse.HttpClientResponse): Http.IncomingMessage =>
+  (self as ClientResponseImpl).source
