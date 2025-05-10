@@ -82,16 +82,8 @@ describe("Schema.Class", () => {
       a: S.String
     }) {}
 
-    new A({
-      a: "a",
-      // @ts-expect-error: Object literal may only specify known properties, and 'b' does not exist in type '{ readonly a: string; }'.ts(2353)
-      b: "b"
-    })
-    A.make({
-      a: "a",
-      // @ts-expect-error: Object literal may only specify known properties, and 'b' does not exist in type '{ readonly a: string; }'.ts(2353)
-      b: "b"
-    })
+    expect(A).type.not.toBeConstructableWith({ a: "a", b: "b" })
+    expect(A.make).type.not.toBeCallableWith({ a: "a", b: "b" })
   })
 
   it("A class with all fields with a default should permit an empty argument in the constructor.", () => {
