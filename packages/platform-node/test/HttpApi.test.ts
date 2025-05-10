@@ -17,6 +17,8 @@ import {
   OpenApi
 } from "@effect/platform"
 import { NodeHttpServer } from "@effect/platform-node"
+import type { HttpApiDecodeError } from "@effect/platform/HttpApiError"
+import type { HttpClientError } from "@effect/platform/HttpClientError"
 import { assert, describe, it } from "@effect/vitest"
 import { Chunk, Context, DateTime, Effect, Layer, Redacted, Ref, Schedule, Schema, Stream, Struct } from "effect"
 import OpenApiFixture from "./fixtures/openapi.json" with { type: "json" }
@@ -91,10 +93,16 @@ describe("HttpApi", () => {
           Stream.encodeText
         )
 
-        const responseStream = yield* Effect.provide(
+        const requestEffect: Effect.Effect<
+          Stream.Stream<Uint8Array<ArrayBufferLike>, never, never>,
+          HttpApiDecodeError | GlobalError | HttpClientError | Error,
+          never
+        > = Effect.provide(
           client.echo({ payload: { stream: payloadStream } }),
           TestService.Default
         )
+
+        const responseStream: Stream.Stream<Uint8Array<ArrayBufferLike>> = yield* requestEffect
         const result = yield* responseStream.pipe(Stream.decodeText()).pipe(Stream.runCollect)
         assert.deepStrictEqual(Chunk.join(result, ""), "abc")
       }).pipe(Effect.provide(HttpLive)))
