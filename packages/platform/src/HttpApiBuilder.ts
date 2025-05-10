@@ -646,7 +646,7 @@ const handlerToRoute = (
         if (decodePath._tag === "Some") {
           request.path = yield* decodePath.value(routeContext.params)
         }
-        if (decodePayload._tag === "Some") {
+        if (decodePayload._tag === "Some" && endpoint.payloadSchema._tag === "Some") {
           request.payload = HttpApiSchema.getStream(endpoint.payloadSchema.value.ast) ?
             (httpRequest.stream) :
             (yield* Effect.flatMap(
