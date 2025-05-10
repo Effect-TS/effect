@@ -78,7 +78,7 @@ describe("HttpApi", () => {
         })
       }).pipe(Effect.provide(HttpLive)))
 
-    it.live.only("echo stream", () =>
+    it.live("echo stream", () =>
       Effect.gen(function*() {
         class TestService extends Effect.Service<TestService>()("TestService", {
           accessors: true,

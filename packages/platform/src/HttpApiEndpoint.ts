@@ -12,6 +12,7 @@ import type * as Stream from "effect/Stream"
 import type * as Types from "effect/Types"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
+import type { RequestError } from "./HttpClientError.js"
 import type { HttpMethod } from "./HttpMethod.js"
 import * as HttpRouter from "./HttpRouter.js"
 import type { HttpServerResponse } from "./HttpServerResponse.js"
@@ -130,17 +131,17 @@ export interface HttpApiEndpoint<
    * `HttpApiSchema.Multipart` combinator.
    */
   setPayload<P extends Schema.Schema.Any>(
-    payload: P & HttpApiEndpoint.ValidatePayload<Method, P>
+    schema: P & HttpApiEndpoint.ValidatePayload<Method, P>
   ): HttpApiEndpoint<
     Name,
     Method,
     Path,
     UrlParams,
-    P extends Schema.Schema.Any ? Schema.Schema.Type<P> : P,
+    Schema.Schema.Type<P>,
     Headers,
     Success,
     Error,
-    R | (P extends Schema.Schema.Any ? Schema.Schema.Context<P> : never),
+    R | Schema.Schema.Context<P>,
     RE
   >
 
@@ -405,7 +406,7 @@ export declare namespace HttpApiEndpoint {
       & ([_UrlParams] extends [never] ? {} : { readonly urlParams: _UrlParams })
       & ([_Payload] extends [never] ? {}
         : [_Payload] extends [Brand<HttpApiSchema.StreamTypeId>]
-          ? { readonly payload: Stream.Stream<Uint8Array, never, never> }
+          ? { readonly payload: Stream.Stream<Uint8Array, RequestError, never> }
         : { readonly payload: _Payload })
       & ([_Headers] extends [never] ? {} : { readonly headers: _Headers })
     : {}
