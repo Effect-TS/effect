@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { assertFailure, assertSuccess, assertTrue } from "@effect/vitest/utils"
 import { Cause, Effect, Option } from "effect"
-import { assertFailure, assertSuccess, assertTrue } from "effect/test/util"
 
 const succeedPromiseLike: PromiseLike<string> = {
   // @ts-ignore

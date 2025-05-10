@@ -1,5 +1,4 @@
-import type { Option } from "effect"
-import { Either, hole, Match, pipe, Predicate } from "effect"
+import { Either, hole, Match, Option, pipe, Predicate } from "effect"
 import { describe, expect, it } from "tstyche"
 
 type Value = { _tag: "A"; a: number } | { _tag: "B"; b: number }
@@ -236,6 +235,23 @@ describe("Match", () => {
       ).type.toBe<number>()
     })
 
+    it("instanceOf prop", () => {
+      class Test {}
+      expect(
+        pipe(
+          Match.value<{ test: Test | null }>({ test: new Test() }),
+          Match.when({ test: Match.instanceOf(Test) }, ({ test }) => {
+            expect(test).type.toBe<Test>()
+            return 1
+          }),
+          Match.orElse(({ test }) => {
+            expect(test).type.toBe<Test | null>()
+            return 0
+          })
+        )
+      ).type.toBe<number>()
+    })
+
     it("refinement with unknown", () => {
       const isArray = (_: unknown): _ is ReadonlyArray<unknown> => Array.isArray(_)
       expect(
@@ -259,7 +275,7 @@ describe("Match", () => {
         pipe(
           Match.value(hole<{ readonly a: string | Array<number> }>()),
           Match.when({ a: isArray }, (v) => {
-            expect(v).type.toBe<{ a: ReadonlyArray<number> }>()
+            expect(v).type.toBe<{ a: Array<number> }>()
             return "array"
           }),
           Match.orElse((v) => {
@@ -558,5 +574,64 @@ describe("Match", () => {
         })
       )(value)
     ).type.toBe<string | number>()
+  })
+
+  it("Option.isSome", () => {
+    expect(
+      pipe(
+        Match.type<{ maybeNumber: Option.Option<number> }>(),
+        Match.when({ maybeNumber: Option.isSome }, (v) => {
+          expect(v).type.toBe<{ maybeNumber: Option.Some<number> }>()
+          return v.maybeNumber.value
+        }),
+        Match.orElse((B) => {
+          expect(B).type.toBe<{ maybeNumber: Option.Option<number> }>()
+          return undefined
+        })
+      )({ maybeNumber: Option.some(1) })
+    ).type.toBe<number | undefined>()
+  })
+
+  it("whenOr refinement with pattern", () => {
+    class Person {
+      get contactable() {
+        return true
+      }
+    }
+    expect(
+      pipe(
+        Match.type<{ maybeNumber: Option.Option<number>; person: Person }>(),
+        Match.whenOr({
+          maybeNumber: {
+            _tag: Match.is("Some", "None")
+          },
+          person: { contactable: true }
+        }, ({ person }) => {
+          expect(person.contactable).type.toBe<true>()
+          return person.contactable
+        }),
+        Match.orElse(({ person }) => {
+          expect(person).type.toBe<Person>()
+          return false
+        })
+      )({ maybeNumber: Option.some(1), person: new Person() })
+    ).type.toBe<boolean>()
+  })
+
+  it(".is prop", () => {
+    Match.value<{ foo: string }>({ foo: "bar" }).pipe(
+      Match.when({ foo: Match.is("baz") }, (_) => {
+        expect(_).type.toBe<{ foo: "baz" }>()
+        return true
+      }),
+      Match.when({ foo: (s): s is "baz" => s === "baz" }, (_) => {
+        expect(_).type.toBe<{ foo: "baz" }>()
+        return true
+      }),
+      Match.orElse((_) => {
+        expect(_).type.toBe<{ foo: string }>()
+        return true
+      })
+    )
   })
 })

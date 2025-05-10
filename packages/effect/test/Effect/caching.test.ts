@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertTrue, strictEqual } from "effect/test/util"
 import * as TestClock from "effect/TestClock"
 
 describe("Effect", () => {

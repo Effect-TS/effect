@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import { notStrictEqual } from "assert"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Random from "effect/Random"
 import * as Ref from "effect/Ref"
-import { strictEqual } from "effect/test/util"
 
 describe("Effect", () => {
   it.effect("non-memoized returns new instances on repeated calls", () =>

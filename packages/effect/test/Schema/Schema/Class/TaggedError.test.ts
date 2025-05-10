@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { assertInclude, assertInstanceOf, assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Effect, Inspectable, JSONSchema, Schema, SchemaAST as AST } from "effect"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertInclude, assertInstanceOf, assertSome, deepStrictEqual, strictEqual } from "effect/test/util"
+import * as Util from "../../TestUtils.js"
 
 describe("TaggedError", () => {
   it("should expose the fields and the tag", () => {
@@ -10,6 +10,20 @@ describe("TaggedError", () => {
     Util.expectFields(TE.fields, { _tag: S.getClassTag("TE"), a: S.String })
     deepStrictEqual(S.Struct(TE.fields).make({ a: "a" }), { _tag: "TE", a: "a" })
     strictEqual(TE._tag, "TE")
+  })
+
+  it("make should respect custom constructors", () => {
+    class MyError extends Schema.TaggedError<MyError>()(
+      "MyError",
+      { message: Schema.String }
+    ) {
+      constructor({ a, b }: { a: string; b: string }) {
+        super({ message: `${a}:${b}` })
+      }
+    }
+
+    strictEqual(MyError.make({ a: "a", b: "b" }).message, "a:b")
+    strictEqual(new MyError({ a: "a", b: "b" }).message, "a:b")
   })
 
   it("should accept a Struct as argument", () => {
@@ -180,7 +194,7 @@ describe("TaggedError", () => {
 
       Util.assertions.make.fail(
         ctor,
-        null,
+        null as any,
         `TypeID
 └─ ["a"]
    └─ is missing`
@@ -246,5 +260,14 @@ describe("TaggedError", () => {
         "$schema": "http://json-schema.org/draft-07/schema#"
       })
     })
+  })
+
+  it("should allow an optional `message` field", () => {
+    class MyError extends S.TaggedError<MyError>()("MyError", {
+      message: S.optional(S.String)
+    }) {}
+
+    const err = new MyError({})
+    strictEqual(err.message, "")
   })
 })

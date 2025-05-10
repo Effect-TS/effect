@@ -48,6 +48,7 @@ import {
   RequestId,
   ResponseDefectEncoded
 } from "./RpcMessage.js"
+import type { RpcMiddleware } from "./RpcMiddleware.js"
 import * as RpcSchema from "./RpcSchema.js"
 import * as RpcSerialization from "./RpcSerialization.js"
 import type { InitialMessage } from "./RpcWorker.js"
@@ -414,8 +415,11 @@ const applyMiddleware = <A, E, R>(
   }
 
   for (const tag of rpc.middlewares) {
-    const middleware = Context.unsafeGet(context, tag)
-    if (tag.optional) {
+    if (tag.wrap) {
+      const middleware = Context.unsafeGet(context, tag)
+      handler = middleware({ ...options, next: handler as any })
+    } else if (tag.optional) {
+      const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any>
       const previous = handler
       handler = Effect.matchEffect(middleware(options), {
         onFailure: () => previous,
@@ -424,6 +428,7 @@ const applyMiddleware = <A, E, R>(
           : (_) => previous
       })
     } else {
+      const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any>
       handler = tag.provides !== undefined
         ? Effect.provideServiceEffect(handler, tag.provides as any, middleware(options))
         : Effect.zipRight(middleware(options), handler)
@@ -478,7 +483,7 @@ export const make: <Rpcs extends Rpc.Any>(
             response.requestId,
             schemas.collector,
             Effect.provide(schemas.encodeChunk(response.values), schemas.context),
-            (values) => ({ _tag: "Chunk", requestId: response.requestId, values })
+            (values) => ({ _tag: "Chunk", requestId: String(response.requestId), values })
           )
         }
         case "Exit": {
@@ -490,7 +495,7 @@ export const make: <Rpcs extends Rpc.Any>(
             response.requestId,
             schemas.collector,
             Effect.provide(schemas.encodeExit(response.exit), schemas.context),
-            (exit) => ({ _tag: "Exit", requestId: response.requestId, exit })
+            (exit) => ({ _tag: "Exit", requestId: String(response.requestId), exit })
           )
         }
         case "Defect": {
@@ -577,7 +582,7 @@ export const make: <Rpcs extends Rpc.Any>(
     Effect.catchAllCause(
       send(client.id, {
         _tag: "Exit",
-        requestId,
+        requestId: String(requestId),
         exit: {
           _tag: "Failure",
           cause: {
@@ -659,21 +664,21 @@ export const make: <Rpcs extends Rpc.Any>(
           (cause) => sendDefect(client, Cause.squash(cause))
         )
       }
-      case "Ack":
-      case "Eof":
+      case "Eof": {
+        return server.write(clientId, request)
+      }
+      case "Ack": {
+        return server.write(clientId, {
+          ...request,
+          requestId: RequestId(request.requestId)
+        })
+      }
       case "Interrupt": {
-        if ("requestId" in request && typeof request.requestId === "string") {
-          ;(request as any).requestId = BigInt(request.requestId)
-        }
-        return server.write(
-          clientId,
-          request._tag === "Interrupt" ?
-            {
-              ...request,
-              interruptors: []
-            } :
-            request
-        )
+        return server.write(clientId, {
+          ...request,
+          requestId: RequestId(request.requestId),
+          interruptors: []
+        })
       }
       default: {
         return sendDefect(client, `Unknown request tag: ${(request as any)._tag}`)
@@ -860,9 +865,6 @@ export const makeProtocolWithHttpApp: Effect.Effect<
     clients.set(id, {
       write: (response) => {
         try {
-          if (!serialization.supportsBigInt) {
-            transformBigInt(response)
-          }
           return isJson ? mailbox.offer(response) : offer(parser.encode(response))
         } catch (cause) {
           return isJson
@@ -897,7 +899,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         if (done) return Effect.void
         return Effect.forEach(
           requestIds,
-          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId }),
+          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
           { discard: true }
         )
       })
@@ -919,7 +921,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         if (!Exit.isInterrupted(exit)) return Effect.void
         return Effect.forEach(
           requestIds,
-          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId }),
+          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
           { discard: true }
         )
       }),
@@ -1177,9 +1179,6 @@ const makeSocketProtocol = Effect.gen(function*() {
     const writeRaw = yield* socket.writer
     const write = (response: FromServerEncoded) => {
       try {
-        if (!serialization.supportsBigInt) {
-          transformBigInt(response)
-        }
         return Effect.orDie(writeRaw(parser.encode(response)))
       } catch (cause) {
         return Effect.orDie(
@@ -1226,9 +1225,3 @@ const makeSocketProtocol = Effect.gen(function*() {
 
   return { protocol, onSocket } as const
 })
-
-const transformBigInt = (response: FromServerEncoded) => {
-  if ("requestId" in response) {
-    ;(response as any).requestId = response.requestId.toString()
-  }
-}

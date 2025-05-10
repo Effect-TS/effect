@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import * as Array from "effect/Array"
 import * as Context from "effect/Context"
 import { seconds } from "effect/Duration"
@@ -6,7 +7,6 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
-import { strictEqual } from "effect/test/util"
 
 interface Counter {
   readonly _: unique symbol

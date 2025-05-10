@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import * as Arbitrary from "effect/Arbitrary"
 import * as FastCheck from "effect/FastCheck"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import * as Util from "effect/test/Schema/TestUtils"
-import { assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import * as Util from "../TestUtils.js"
 
 const assertExtend = (A: Schema.Schema.Any, B: Schema.Schema.Any, expected: readonly [string, string], options?: {
   readonly skipFastCheck?: boolean | undefined

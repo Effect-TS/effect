@@ -2,11 +2,11 @@ import type * as CliApp from "@effect/cli/CliApp"
 import * as CliConfig from "@effect/cli/CliConfig"
 import * as Command from "@effect/cli/Command"
 import * as HelpDoc from "@effect/cli/HelpDoc"
-import * as MockConsole from "@effect/cli/test/services/MockConsole"
 import * as ValidationError from "@effect/cli/ValidationError"
 import { NodeContext } from "@effect/platform-node"
 import { describe, expect, it } from "@effect/vitest"
 import { Array, Console, Effect, FiberRef, Layer, LogLevel } from "effect"
+import * as MockConsole from "./services/MockConsole.js"
 
 const MainLive = Effect.gen(function*(_) {
   const console = yield* _(MockConsole.make)

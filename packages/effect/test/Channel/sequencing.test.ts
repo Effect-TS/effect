@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Channel", () => {
   it.effect("flatMap - simple", () =>

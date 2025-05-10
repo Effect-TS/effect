@@ -1,7 +1,7 @@
 import { FileSystem, PlatformLogger } from "@effect/platform"
 import { describe, test } from "@effect/vitest"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Effect, Logger, pipe } from "effect"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
 
 const fileLogger = Logger.simple((_: unknown) => String(_)).pipe(
   PlatformLogger.toFile("./tmp.txt", { flag: "a+" })

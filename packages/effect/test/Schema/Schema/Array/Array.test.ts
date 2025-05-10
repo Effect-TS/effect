@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Either from "effect/Either"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Array", () => {
   it("annotations()", () => {

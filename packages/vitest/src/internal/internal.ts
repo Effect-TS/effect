@@ -21,7 +21,7 @@ import * as TestEnvironment from "effect/TestContext"
 import type * as TestServices from "effect/TestServices"
 import * as Utils from "effect/Utils"
 import * as V from "vitest"
-import type * as Vitest from "./index.js"
+import type * as Vitest from "../index.js"
 
 const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function*() {
@@ -151,6 +151,7 @@ const makeTester = <R>(
   return Object.assign(f, { skip, skipIf, runIf, only, each, fails, prop })
 }
 
+/** @internal */
 export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, timeout) => {
   if (Array.isArray(arbitraries)) {
     const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
@@ -178,19 +179,34 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, tim
 }
 
 /** @internal */
-export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
-  readonly memoMap?: Layer.MemoMap
-  readonly timeout?: Duration.DurationInput
-}): {
-  (f: (it: Vitest.Vitest.MethodsNonLive<R>) => void): void
-  (name: string, f: (it: Vitest.Vitest.MethodsNonLive<R>) => void): void
+export const layer = <R, E, const ExcludeTestServices extends boolean = false>(
+  layer_: Layer.Layer<R, E>,
+  options?: {
+    readonly memoMap?: Layer.MemoMap
+    readonly timeout?: Duration.DurationInput
+    readonly excludeTestServices?: ExcludeTestServices
+  }
+): {
+  (f: (it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices>) => void): void
+  (
+    name: string,
+    f: (it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices>) => void
+  ): void
 } =>
 (
-  ...args: [name: string, f: (it: Vitest.Vitest.MethodsNonLive<R>) => void] | [
-    f: (it: Vitest.Vitest.MethodsNonLive<R>) => void
+  ...args: [
+    name: string,
+    f: (
+      it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices>
+    ) => void
+  ] | [
+    f: (it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices>) => void
   ]
 ) => {
-  const withTestEnv = Layer.provideMerge(layer_, TestEnv)
+  const excludeTestServices = options?.excludeTestServices ?? false
+  const withTestEnv = excludeTestServices
+    ? layer_ as Layer.Layer<R | TestServices.TestServices, E>
+    : Layer.provideMerge(layer_, TestEnv)
   const memoMap = options?.memoMap ?? Effect.runSync(Layer.makeMemoMap)
   const scope = Effect.runSync(Scope.make())
   const runtimeEffect = Layer.toRuntimeWithMemoMap(withTestEnv, memoMap).pipe(
@@ -200,7 +216,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
     Effect.runSync
   )
 
-  const makeIt = (it: V.TestAPI): Vitest.Vitest.MethodsNonLive<R> =>
+  const makeIt = (it: V.TestAPI): Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices> =>
     Object.assign(it, {
       effect: makeTester<TestServices.TestServices | R>(
         (effect) => Effect.flatMap(runtimeEffect, (runtime) => effect.pipe(Effect.provide(runtime))),
@@ -209,17 +225,20 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
 
       prop,
 
-      scoped: makeTester<TestServices.TestServices | Scope.Scope | R>((effect) =>
-        Effect.flatMap(runtimeEffect, (runtime) =>
-          effect.pipe(
-            Effect.scoped,
-            Effect.provide(runtime)
-          )), it),
+      scoped: makeTester<TestServices.TestServices | Scope.Scope | R>(
+        (effect) =>
+          Effect.flatMap(runtimeEffect, (runtime) =>
+            effect.pipe(
+              Effect.scoped,
+              Effect.provide(runtime)
+            )),
+        it
+      ),
       flakyTest,
       layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, options?: {
         readonly timeout?: Duration.DurationInput
       }) {
-        return layer(Layer.provideMerge(nestedLayer, withTestEnv), { ...options, memoMap })
+        return layer(Layer.provideMerge(nestedLayer, withTestEnv), { ...options, memoMap, excludeTestServices })
       }
     })
 
@@ -277,6 +296,7 @@ export const makeMethods = (it: V.TestAPI): Vitest.Vitest.Methods =>
     prop
   })
 
+/** @internal */
 export const {
   /** @internal */
   effect,

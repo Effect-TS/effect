@@ -36,8 +36,8 @@ import type { Mutable } from "effect/Types"
 import { withRun } from "./internal/utils.js"
 import * as Rpc from "./Rpc.js"
 import type * as RpcGroup from "./RpcGroup.js"
-import type { FromClient, FromClientEncoded, FromServer, FromServerEncoded, Request, RequestId } from "./RpcMessage.js"
-import { constPing } from "./RpcMessage.js"
+import type { FromClient, FromClientEncoded, FromServer, FromServerEncoded, Request } from "./RpcMessage.js"
+import { constPing, RequestId } from "./RpcMessage.js"
 import type * as RpcMiddleware from "./RpcMiddleware.js"
 import * as RpcSchema from "./RpcSchema.js"
 import * as RpcSerialization from "./RpcSerialization.js"
@@ -429,7 +429,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
   const write = (message: FromServer<Rpcs>): Effect.Effect<void> => {
     switch (message._tag) {
       case "Chunk": {
-        const requestId = parseRequestId(message.requestId)
+        const requestId = message.requestId
         const entry = entries.get(requestId)
         if (!entry || entry._tag !== "Mailbox") return Effect.void
         return entry.mailbox.offerAll(message.values).pipe(
@@ -446,7 +446,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
         )
       }
       case "Exit": {
-        const requestId = parseRequestId(message.requestId)
+        const requestId = message.requestId
         const entry = entries.get(requestId)
         if (!entry) return Effect.void
         entries.delete(requestId)
@@ -539,6 +539,7 @@ export const make: <Rpcs extends Rpc.Any>(
             Effect.flatMap((payload) =>
               send({
                 ...message,
+                id: String(message.id),
                 payload,
                 headers: Object.entries(message.headers)
               }, collector && collector.unsafeClear())
@@ -548,7 +549,10 @@ export const make: <Rpcs extends Rpc.Any>(
         case "Ack": {
           const entry = entries.get(message.requestId)
           if (!entry) return Effect.void
-          return send(message) as Effect.Effect<void>
+          return send({
+            _tag: "Ack",
+            requestId: String(message.requestId)
+          }) as Effect.Effect<void>
         }
         case "Interrupt": {
           const entry = entries.get(message.requestId)
@@ -556,7 +560,7 @@ export const make: <Rpcs extends Rpc.Any>(
           entries.delete(message.requestId)
           return send({
             _tag: "Interrupt",
-            requestId: message.requestId
+            requestId: String(message.requestId)
           }) as Effect.Effect<void>
         }
         case "Eof": {
@@ -569,27 +573,27 @@ export const make: <Rpcs extends Rpc.Any>(
   yield* run((message) => {
     switch (message._tag) {
       case "Chunk": {
-        const requestId = parseRequestId(message.requestId)
+        const requestId = RequestId(message.requestId)
         const entry = entries.get(requestId)
         if (!entry || !entry.decodeChunk) return Effect.void
         return entry.decodeChunk(message.values).pipe(
           Effect.locally(FiberRef.currentContext, entry.context),
           Effect.orDie,
           Effect.flatMap((chunk) =>
-            write({ _tag: "Chunk", clientId: 0, requestId: parseRequestId(message.requestId), values: chunk })
+            write({ _tag: "Chunk", clientId: 0, requestId: RequestId(message.requestId), values: chunk })
           ),
           Effect.onError((cause) =>
             write({
               _tag: "Exit",
               clientId: 0,
-              requestId: parseRequestId(message.requestId),
+              requestId: RequestId(message.requestId),
               exit: Exit.failCause(cause)
             })
           )
         ) as Effect.Effect<void>
       }
       case "Exit": {
-        const requestId = parseRequestId(message.requestId)
+        const requestId = RequestId(message.requestId)
         const entry = entries.get(requestId)
         if (!entry) return Effect.void
         entries.delete(requestId)
@@ -617,8 +621,6 @@ export const make: <Rpcs extends Rpc.Any>(
 
   return client
 })
-
-const parseRequestId = (input: string | bigint): RequestId => typeof input === "string" ? BigInt(input) : input as any
 
 /**
  * @since 1.0.0
@@ -702,7 +704,6 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
       }
 
       const parser = serialization.unsafeMake()
-      if (!serialization.supportsBigInt) transformBigInt(request)
 
       const encoded = parser.encode(request)
       const body = typeof encoded === "string" ?
@@ -775,68 +776,79 @@ export const layerProtocolHttp = (options: {
  * @since 1.0.0
  * @category protocol
  */
-export const makeProtocolSocket: Effect.Effect<
+export const makeProtocolSocket = (options?: {
+  readonly retryTransientErrors?: boolean | undefined
+}): Effect.Effect<
   Protocol["Type"],
   never,
   Scope.Scope | RpcSerialization.RpcSerialization | Socket.Socket
-> = Protocol.make(Effect.fnUntraced(function*(writeResponse) {
-  const socket = yield* Socket.Socket
-  const serialization = yield* RpcSerialization.RpcSerialization
+> =>
+  Protocol.make(Effect.fnUntraced(function*(writeResponse) {
+    const socket = yield* Socket.Socket
+    const serialization = yield* RpcSerialization.RpcSerialization
 
-  const write = yield* socket.writer
+    const write = yield* socket.writer
 
-  let parser = serialization.unsafeMake()
+    let parser = serialization.unsafeMake()
 
-  yield* Effect.suspend(() => {
-    parser = serialization.unsafeMake()
-    return socket.runRaw((message) => {
-      try {
-        const responses = parser.decode(message) as Array<FromServerEncoded>
-        if (responses.length === 0) return
-        let i = 0
-        return Effect.whileLoop({
-          while: () => i < responses.length,
-          body: () => writeResponse(responses[i++]),
-          step: constVoid
-        })
-      } catch (defect) {
-        return writeResponse({ _tag: "Defect", defect })
-      }
-    })
-  }).pipe(
-    Effect.zipRight(Effect.fail(
-      new Socket.SocketCloseError({
-        reason: "Close",
-        code: 1000
+    yield* Effect.suspend(() => {
+      parser = serialization.unsafeMake()
+      return socket.runRaw((message) => {
+        try {
+          const responses = parser.decode(message) as Array<FromServerEncoded>
+          if (responses.length === 0) return
+          let i = 0
+          return Effect.whileLoop({
+            while: () => i < responses.length,
+            body: () => writeResponse(responses[i++]),
+            step: constVoid
+          })
+        } catch (defect) {
+          return writeResponse({ _tag: "Defect", defect })
+        }
       })
-    )),
-    Effect.tapErrorCause((cause) => writeResponse({ _tag: "Defect", defect: Cause.squash(cause) })),
-    Effect.retry(Schedule.spaced(1000)),
-    Effect.annotateLogs({
-      module: "RpcClient",
-      method: "makeProtocolSocket"
-    }),
-    Effect.interruptible,
-    Effect.forkScoped
-  )
+    }).pipe(
+      Effect.zipRight(Effect.fail(
+        new Socket.SocketCloseError({
+          reason: "Close",
+          code: 1000
+        })
+      )),
+      Effect.tapErrorCause((cause) => {
+        const error = Cause.failureOption(cause)
+        if (
+          options?.retryTransientErrors && Option.isSome(error) &&
+          (error.value.reason === "Open" || error.value.reason === "OpenTimeout")
+        ) {
+          return Effect.void
+        }
+        return writeResponse({ _tag: "Defect", defect: Cause.squash(cause) })
+      }),
+      Effect.retry(Schedule.spaced(1000)),
+      Effect.annotateLogs({
+        module: "RpcClient",
+        method: "makeProtocolSocket"
+      }),
+      Effect.interruptible,
+      Effect.forkScoped
+    )
 
-  yield* Effect.suspend(() => write(parser.encode(constPing))).pipe(
-    Effect.delay("30 seconds"),
-    Effect.ignore,
-    Effect.forever,
-    Effect.interruptible,
-    Effect.forkScoped
-  )
+    yield* Effect.suspend(() => write(parser.encode(constPing))).pipe(
+      Effect.delay("30 seconds"),
+      Effect.ignore,
+      Effect.forever,
+      Effect.interruptible,
+      Effect.forkScoped
+    )
 
-  return {
-    send(request) {
-      if (!serialization.supportsBigInt) transformBigInt(request)
-      return Effect.orDie(write(parser.encode(request)))
-    },
-    supportsAck: true,
-    supportsTransferables: false
-  }
-}))
+    return {
+      send(request) {
+        return Effect.orDie(write(parser.encode(request)))
+      },
+      supportsAck: true,
+      supportsTransferables: false
+    }
+  }))
 
 /**
  * @since 1.0.0
@@ -865,19 +877,10 @@ export const makeProtocolWorker = (
     let workerId = 0
     const initialMessage = yield* Effect.serviceOption(RpcWorker.InitialMessage)
 
-    const entries = new Map<string | bigint, {
+    const entries = new Map<string, {
       readonly worker: Worker.BackingWorker<FromClientEncoded | RpcWorker.InitialMessage.Encoded, FromServerEncoded>
-      readonly scope: Scope.CloseableScope
+      readonly latch: Effect.Latch
     }>()
-
-    yield* Scope.addFinalizerExit(
-      scope,
-      (exit) =>
-        Effect.forEach(entries, ([_, entry]) => Scope.close(entry.scope, exit), {
-          discard: true,
-          concurrency: "unbounded"
-        })
-    )
 
     const acquire = Effect.gen(function*() {
       const id = workerId++
@@ -893,16 +896,15 @@ export const makeProtocolWorker = (
           const entry = entries.get(response.requestId)
           if (entry) {
             entries.delete(response.requestId)
-            return Effect.ensuring(writeResponse(response), Scope.close(entry.scope, Exit.void))
+            entry.latch.unsafeOpen()
+            return writeResponse(response)
           }
         } else if (response._tag === "Defect") {
-          return Effect.zipRight(
-            Effect.forEach(entries, ([requestId, entry]) => {
-              entries.delete(requestId)
-              return Scope.close(entry.scope, Exit.die(response.defect))
-            }, { discard: true }),
-            writeResponse(response)
-          )
+          for (const [requestId, entry] of entries) {
+            entries.delete(requestId)
+            entry.latch.unsafeOpen()
+          }
+          return writeResponse(response)
         }
         return writeResponse(response)
       }).pipe(
@@ -942,16 +944,26 @@ export const makeProtocolWorker = (
         targetUtilization: options.targetUtilization
       })
 
+    yield* Scope.addFinalizer(
+      scope,
+      Effect.sync(() => {
+        for (const entry of entries.values()) {
+          entry.latch.unsafeOpen()
+        }
+        entries.clear()
+      })
+    )
+
     const send = (request: FromClientEncoded, transferables?: ReadonlyArray<globalThis.Transferable>) => {
       switch (request._tag) {
         case "Request": {
-          return Scope.make().pipe(
-            Effect.flatMap((scope) =>
-              Effect.flatMap(Scope.extend(pool.get, scope), (worker) => {
-                entries.set(request.id, { worker, scope })
-                return Effect.orDie(worker.send(request, transferables))
-              })
-            ),
+          return pool.get.pipe(
+            Effect.flatMap((worker) => {
+              const latch = Effect.unsafeMakeLatch(false)
+              entries.set(request.id, { worker, latch })
+              return Effect.zipRight(worker.send(request, transferables), latch.await)
+            }),
+            Effect.scoped,
             Effect.orDie
           )
         }
@@ -959,10 +971,8 @@ export const makeProtocolWorker = (
           const entry = entries.get(request.requestId)
           if (!entry) return Effect.void
           entries.delete(request.requestId)
-          return Effect.ensuring(
-            Effect.orDie(entry.worker.send(request)),
-            Scope.close(entry.scope, Exit.void)
-          )
+          entry.latch.unsafeOpen()
+          return Effect.orDie(entry.worker.send(request))
         }
         case "Ack": {
           const entry = entries.get(request.requestId)
@@ -1005,17 +1015,14 @@ export const layerProtocolWorker = (
  * @since 1.0.0
  * @category protocol
  */
-export const layerProtocolSocket: Layer.Layer<Protocol, never, Socket.Socket | RpcSerialization.RpcSerialization> =
-  Layer.scoped(Protocol, makeProtocolSocket)
+export const layerProtocolSocket = (options?: {
+  readonly retryTransientErrors?: boolean | undefined
+}): Layer.Layer<
+  Protocol,
+  never,
+  Socket.Socket | RpcSerialization.RpcSerialization
+> => Layer.scoped(Protocol, makeProtocolSocket(options))
 
 // internal
 
 const decodeDefect = Schema.decodeSync(Schema.Defect)
-
-const transformBigInt = (request: FromClientEncoded) => {
-  if (request._tag === "Request") {
-    ;(request as any).id = request.id.toString()
-  } else if ("requestId" in request) {
-    ;(request as any).requestId = request.requestId.toString()
-  }
-}

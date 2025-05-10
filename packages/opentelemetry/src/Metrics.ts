@@ -3,6 +3,7 @@
  */
 import type { MetricProducer, MetricReader } from "@opentelemetry/sdk-metrics"
 import type { NonEmptyReadonlyArray } from "effect/Array"
+import type { DurationInput } from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import type { Layer } from "effect/Layer"
@@ -30,5 +31,10 @@ export const registerProducer: (
  * @category layers
  */
 export const layer: (
-  evaluate: LazyArg<MetricReader | NonEmptyReadonlyArray<MetricReader>>
+  evaluate: LazyArg<MetricReader | NonEmptyReadonlyArray<MetricReader>>,
+  options?: {
+    readonly shutdownTimeout?:
+      | DurationInput
+      | undefined
+  }
 ) => Layer<never, never, Resource> = internal.layer

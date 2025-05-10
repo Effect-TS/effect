@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import {
   Array,
   Clock,
@@ -16,7 +17,6 @@ import {
   pipe,
   Schedule
 } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 const labels = [MetricLabel.make("x", "a"), MetricLabel.make("y", "b")]
 
@@ -576,6 +576,30 @@ describe("Metric", () => {
         strictEqual(result1.count, 0)
         strictEqual(result2.count, 1)
         strictEqual(result3.count, 1)
+      }))
+    it.effect("should return correct quantile when first chunk overshoots", () =>
+      Effect.gen(function*() {
+        const name = nextName()
+        // Samples: [10 (x6), 20, 30, 40, 50] (10 samples)
+        // Target rank for 0.5 quantile = 0.5 * 10 = 5
+        // Allowed error = (0.01 / 2) * 5 = 0.025. Range [4.975, 5.025]
+        // First chunk: 6 * 10. candConsumed = 6. 6 > 5.025
+        const samples = [10, 10, 10, 10, 10, 10, 20, 30, 40, 50]
+        const summary = Metric.summary({
+          name,
+          maxAge: Duration.minutes(1),
+          maxSize: 15,
+          error: 0.01,
+          quantiles: [0.5]
+        })
+
+        yield* Effect.forEach(samples, (value) => Metric.update(summary, value), { discard: true })
+
+        const result = yield* Metric.value(summary)
+
+        const medianQuantileValue = result.quantiles[0][1]
+
+        strictEqual(Option.getOrNull(medianQuantileValue), 10)
       }))
   })
   describe("Polling", () => {

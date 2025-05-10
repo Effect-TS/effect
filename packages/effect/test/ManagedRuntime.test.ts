@@ -1,6 +1,6 @@
 import { describe, it, test } from "@effect/vitest"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Context, Effect, FiberRef, FiberRefs, Layer, List, ManagedRuntime } from "effect"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("ManagedRuntime", () => {
   test("memoizes the layer build", async () => {

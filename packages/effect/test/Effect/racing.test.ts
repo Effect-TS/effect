@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import { strictEqual } from "effect/test/util"
 
 describe("Effect", () => {
   it.effect("returns first success", () =>

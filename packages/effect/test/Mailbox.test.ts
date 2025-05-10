@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertNone, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Chunk, Effect, Exit, Fiber, Mailbox, Stream } from "effect"
-import { assertFalse, assertNone, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Mailbox", () => {
   it.effect("offerAll with capacity", () =>

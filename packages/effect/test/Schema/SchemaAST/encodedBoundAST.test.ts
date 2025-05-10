@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { assertFalse, assertTrue } from "effect/test/util"
 
 describe("encodedBoundAST", () => {
   it("refinements", () => {

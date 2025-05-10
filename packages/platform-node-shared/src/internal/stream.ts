@@ -7,7 +7,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import type { LazyArg } from "effect/Function"
-import { constVoid, dual } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Mailbox from "effect/Mailbox"
 import * as Runtime from "effect/Runtime"
 import type * as AsyncInput from "effect/SingleProducerAsyncInput"
@@ -317,8 +317,8 @@ const readChunkChannel = <A>(
   })
 
 class StreamAdapter<E, R> extends Readable {
-  private readonly readLatch: Effect.Latch
-  private fiber: Fiber.RuntimeFiber<void, E> | undefined = undefined
+  readonly readLatch: Effect.Latch
+  fiber: Fiber.RuntimeFiber<void, E> | undefined = undefined
 
   constructor(
     runtime: Runtime.Runtime<R>,
@@ -327,40 +327,41 @@ class StreamAdapter<E, R> extends Readable {
     super({})
     this.readLatch = Effect.unsafeMakeLatch(false)
     this.fiber = Runtime.runFork(runtime)(
-      Stream.runForEachChunk(stream, (chunk) =>
-        this.readLatch.whenOpen(Effect.sync(() => {
-          if (chunk.length === 0) return
-          this.readLatch.unsafeClose()
-          for (const item of chunk) {
-            if (typeof item === "string") {
-              this.push(item, "utf8")
-            } else {
-              this.push(item)
+      this.readLatch.whenOpen(
+        Stream.runForEachChunk(stream, (chunk) =>
+          this.readLatch.whenOpen(Effect.sync(() => {
+            if (chunk.length === 0) return
+            this.readLatch.unsafeClose()
+            for (const item of chunk) {
+              if (typeof item === "string") {
+                this.push(item, "utf8")
+              } else {
+                this.push(item)
+              }
             }
-          }
-        })))
+          })))
+      )
     )
     this.fiber.addObserver((exit) => {
       this.fiber = undefined
       if (Exit.isSuccess(exit)) {
         this.push(null)
       } else {
-        this._destroy(Cause.squash(exit.cause) as any, constVoid)
+        this.destroy(Cause.squash(exit.cause) as any)
       }
     })
   }
 
   _read(_size: number): void {
-    // TODO: refactor to use unsafeOpen when added to Effect
-    Effect.runSync(this.readLatch.open)
+    this.readLatch.unsafeOpen()
   }
 
-  _destroy(_error: Error | null, callback: (error?: Error | null | undefined) => void): void {
+  _destroy(error: Error | null, callback: (error?: Error | null | undefined) => void): void {
     if (!this.fiber) {
-      return callback(null)
+      return callback(error)
     }
     Effect.runFork(Fiber.interrupt(this.fiber)).addObserver((exit) => {
-      callback(exit._tag === "Failure" ? Cause.squash(exit.cause) as any : null)
+      callback(exit._tag === "Failure" ? Cause.squash(exit.cause) as any : error)
     })
   }
 }

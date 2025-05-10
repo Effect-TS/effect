@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Deferred, Effect, identity, pipe, Ref, Scope } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 type Action = Acquire | Use | Release
 

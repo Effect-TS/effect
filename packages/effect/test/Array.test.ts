@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import {
   Array as Arr,
   Either,
@@ -11,7 +12,6 @@ import {
   type Predicate,
   String as Str
 } from "effect"
-import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "effect/test/util"
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")

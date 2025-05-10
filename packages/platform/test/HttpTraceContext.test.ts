@@ -1,7 +1,7 @@
 import { Headers } from "@effect/platform"
 import * as TraceContext from "@effect/platform/HttpTraceContext"
+import { assertNone, assertTrue } from "@effect/vitest/utils"
 import { Option } from "effect"
-import { assertNone, assertTrue } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("HttpTraceContext", () => {

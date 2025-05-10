@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import { LogLevel } from "effect"
-import { strictEqual } from "effect/test/util"
 
 describe("LogLevel", () => {
   it("fromLiteral", () => {

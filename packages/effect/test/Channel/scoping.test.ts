@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, strictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Deferred from "effect/Deferred"
@@ -7,7 +8,6 @@ import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import { assertLeft, strictEqual } from "effect/test/util"
 
 describe("Channel", () => {
   it("acquireUseReleaseOut - acquire is executed uninterruptibly", async () => {

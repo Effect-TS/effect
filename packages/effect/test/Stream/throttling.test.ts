@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertFailure, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Clock from "effect/Clock"
@@ -12,9 +13,8 @@ import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
-import { assertFailure, assertTrue, deepStrictEqual } from "effect/test/util"
-import { chunkCoordination } from "effect/test/utils/coordination"
 import * as TestClock from "effect/TestClock"
+import { chunkCoordination } from "../utils/coordination.js"
 
 describe("Stream", () => {
   it.effect("throttleEnforce - free elements", () =>

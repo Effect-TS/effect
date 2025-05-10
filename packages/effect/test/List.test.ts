@@ -1,7 +1,15 @@
 import { describe, it } from "@effect/vitest"
+import {
+  assertFalse,
+  assertNone,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual,
+  throws
+} from "@effect/vitest/utils"
 import { Array, Chunk, Duration, Either, List, Option } from "effect"
 import { equals, symbol } from "effect/Equal"
-import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
 
 const testStructuralSharing = <A>(a: List.List<A>, b: List.List<A>, n = 0): number | undefined => {
   if (a === b) {

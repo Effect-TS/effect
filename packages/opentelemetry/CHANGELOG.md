@@ -1,5 +1,158 @@
 # @effect/opentelemetry
 
+## 0.47.1
+
+### Patch Changes
+
+- Updated dependencies [[`24a9ebb`](https://github.com/Effect-TS/effect/commit/24a9ebbb5af598f0bfd6ecc45307e528043fe011)]:
+  - effect@3.14.22
+  - @effect/platform@0.81.1
+
+## 0.47.0
+
+### Patch Changes
+
+- Updated dependencies [[`672920f`](https://github.com/Effect-TS/effect/commit/672920f85da8abd5f9d4ad85e29248a2aca57ed8)]:
+  - @effect/platform@0.81.0
+
+## 0.46.18
+
+### Patch Changes
+
+- Updated dependencies [[`2f3b7d4`](https://github.com/Effect-TS/effect/commit/2f3b7d4e1fa1ef8790b0ca4da22eb88872ee31df)]:
+  - effect@3.14.21
+  - @effect/platform@0.80.21
+
+## 0.46.17
+
+### Patch Changes
+
+- Updated dependencies [[`17e2f30`](https://github.com/Effect-TS/effect/commit/17e2f3091408cf0fca9414d4af3bdf7b2765b378)]:
+  - effect@3.14.20
+  - @effect/platform@0.80.20
+
+## 0.46.16
+
+### Patch Changes
+
+- Updated dependencies [[`056a910`](https://github.com/Effect-TS/effect/commit/056a910d0a0b8b00b0dc9df4a070466b2b5c2f6c), [`e25e7bb`](https://github.com/Effect-TS/effect/commit/e25e7bbc1797733916f48f501425d9f2ef310d9f), [`3273d57`](https://github.com/Effect-TS/effect/commit/3273d572c2b3175a842677f19efeea4cd65ab016)]:
+  - effect@3.14.19
+  - @effect/platform@0.80.19
+
+## 0.46.15
+
+### Patch Changes
+
+- Updated dependencies [[`b1164d4`](https://github.com/Effect-TS/effect/commit/b1164d49a1dfdf299e9971367b6fc6be4df0ddff)]:
+  - effect@3.14.18
+  - @effect/platform@0.80.18
+
+## 0.46.14
+
+### Patch Changes
+
+- [#4808](https://github.com/Effect-TS/effect/pull/4808) [`b5b7da3`](https://github.com/Effect-TS/effect/commit/b5b7da31998dac258677fb51225800f313a87c86) Thanks @tim-smart! - add a shutdownTimeout option to the @effect/opentelemetry exporters
+
+- Updated dependencies [[`0b54681`](https://github.com/Effect-TS/effect/commit/0b54681cd89245e211d8f49272be0f1bf2f81813), [`41a59d5`](https://github.com/Effect-TS/effect/commit/41a59d5916a296b12b0d5ead9e859e05f40b4cce)]:
+  - effect@3.14.17
+  - @effect/platform@0.80.17
+
+## 0.46.13
+
+### Patch Changes
+
+- Updated dependencies [[`ee14444`](https://github.com/Effect-TS/effect/commit/ee144441021ec77039e43396eaf90714687bb495), [`f1c8583`](https://github.com/Effect-TS/effect/commit/f1c8583f8c3ea9415f813795ca2940a897c9ba9a)]:
+  - effect@3.14.16
+  - @effect/platform@0.80.16
+
+## 0.46.12
+
+### Patch Changes
+
+- Updated dependencies [[`239cc99`](https://github.com/Effect-TS/effect/commit/239cc995ce645946210a3c3d2cb52bd3547c0687), [`8b6c947`](https://github.com/Effect-TS/effect/commit/8b6c947eaa8e45a67ecb3c37d45cd27f3e41d165), [`c50a63b`](https://github.com/Effect-TS/effect/commit/c50a63bbecb9f560b9cae349c447eed877d1b9b6)]:
+  - effect@3.14.15
+  - @effect/platform@0.80.15
+
+## 0.46.11
+
+### Patch Changes
+
+- Updated dependencies [[`6ed8d15`](https://github.com/Effect-TS/effect/commit/6ed8d1589beb181d30abc79afebdaabc1d101538)]:
+  - effect@3.14.14
+  - @effect/platform@0.80.14
+
+## 0.46.10
+
+### Patch Changes
+
+- Updated dependencies [[`ee77788`](https://github.com/Effect-TS/effect/commit/ee77788747e7ebbde6bfa88256cde49dbbad3608), [`5fce6ba`](https://github.com/Effect-TS/effect/commit/5fce6ba19c3cc63cc0104e737e581ad989dedbf0), [`570e45f`](https://github.com/Effect-TS/effect/commit/570e45f8cb936e42ec48f67f21bb2b7252f36c0c)]:
+  - effect@3.14.13
+  - @effect/platform@0.80.13
+
+## 0.46.9
+
+### Patch Changes
+
+- [#4772](https://github.com/Effect-TS/effect/pull/4772) [`082e615`](https://github.com/Effect-TS/effect/commit/082e6157493f2ba4c943620cdaf858cbfefd7df6) Thanks @tim-smart! - include error cause in otel exception.stacktrace
+
+## 0.46.8
+
+### Patch Changes
+
+- Updated dependencies [[`c2ad9ee`](https://github.com/Effect-TS/effect/commit/c2ad9ee9f3c4c743390edf35ed9e85a20be33811), [`9c68654`](https://github.com/Effect-TS/effect/commit/9c686542b6eb3ea188cb70673ef2e41223633e89)]:
+  - effect@3.14.12
+  - @effect/platform@0.80.12
+
+## 0.46.7
+
+### Patch Changes
+
+- [#4760](https://github.com/Effect-TS/effect/pull/4760) [`43b22df`](https://github.com/Effect-TS/effect/commit/43b22df02f9504ef17b3462c2305f4e89e190763) Thanks @tim-smart! - disable tracer for Otlp http client
+
+- Updated dependencies [[`e536127`](https://github.com/Effect-TS/effect/commit/e536127c1e6f2fb3a542c73ae919435a629a346b)]:
+  - effect@3.14.11
+  - @effect/platform@0.80.11
+
+## 0.46.6
+
+### Patch Changes
+
+- Updated dependencies [[`bc7efa3`](https://github.com/Effect-TS/effect/commit/bc7efa3b031bb25e1ed3c8f2d3fb5e8da166cadc)]:
+  - effect@3.14.10
+  - @effect/platform@0.80.10
+
+## 0.46.5
+
+### Patch Changes
+
+- [#4740](https://github.com/Effect-TS/effect/pull/4740) [`b7a64c9`](https://github.com/Effect-TS/effect/commit/b7a64c90bbd7fcdedb56a2bcb1e080a3323d7699) Thanks @tim-smart! - add Otlp module to @effect/opentelemetry
+
+  This module allows you to setup an exporter for Traces, Metrics & Logs with one
+  Layer.
+
+  It also has no dependency on the @opentelemetry libraries, so you don't need to
+  add any additional deps to your package.json.
+
+  ```ts
+  import * as Otlp from "@effect/opentelemetry/Otlp"
+  import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
+  import { Effect, Layer, Schedule } from "effect"
+
+  // Includes an Effect Tracer, Logger & Metric exporter
+  const Observability = Otlp.layer({
+    baseUrl: "http://localhost:4318",
+    resource: {
+      serviceName: "my-service"
+    }
+  }).pipe(Layer.provide(FetchHttpClient.layer))
+  ```
+
+- [#4740](https://github.com/Effect-TS/effect/pull/4740) [`b7a64c9`](https://github.com/Effect-TS/effect/commit/b7a64c90bbd7fcdedb56a2bcb1e080a3323d7699) Thanks @tim-smart! - add Effect native OtlpMetrics & OtlpLogger
+
+- Updated dependencies [[`d78249f`](https://github.com/Effect-TS/effect/commit/d78249f0b67f63cf4baf806ff090cba33293daf0)]:
+  - effect@3.14.9
+  - @effect/platform@0.80.9
+
 ## 0.46.4
 
 ### Patch Changes

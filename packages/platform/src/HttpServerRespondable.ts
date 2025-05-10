@@ -59,3 +59,14 @@ export const toResponseOrElse = (u: unknown, orElse: HttpServerResponse): Effect
   }
   return Effect.succeed(orElse)
 }
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const toResponseOrElseDefect = (u: unknown, orElse: HttpServerResponse): Effect.Effect<HttpServerResponse> => {
+  if (ServerResponse.isServerResponse(u)) {
+    return Effect.succeed(u)
+  }
+  return Effect.succeed(orElse)
+}

@@ -3483,7 +3483,7 @@ export const catchAll: {
  * // Recover from all errors by examining the cause
  * const recovered = program.pipe(
  *   Effect.catchAllCause((cause) =>
- *     Cause.isFailType(cause)
+ *     Cause.isFailure(cause)
  *       ? Effect.succeed("Recovered from a regular error")
  *       : Effect.succeed("Recovered from a defect")
  *   )
@@ -4971,12 +4971,12 @@ export const uninterruptibleMask: <A, E, R>(
  */
 export const liftPredicate: {
   <A, B extends A, E>(
-    refinement: Refinement<NoInfer<A>, B>,
-    orFailWith: (a: NoInfer<A>) => E
+    refinement: Refinement<A, B>,
+    orFailWith: (a: A) => E
   ): (a: A) => Effect<B, E>
-  <A, E>(predicate: Predicate<NoInfer<A>>, orFailWith: (a: NoInfer<A>) => E): (a: A) => Effect<A, E>
+  <B extends A, E, A = B>(predicate: Predicate<A>, orFailWith: (a: A) => E): (a: B) => Effect<B, E>
   <A, E, B extends A>(self: A, refinement: Refinement<A, B>, orFailWith: (a: A) => E): Effect<B, E>
-  <A, E>(self: A, predicate: Predicate<NoInfer<A>>, orFailWith: (a: NoInfer<A>) => E): Effect<A, E>
+  <B extends A, E, A = B>(self: B, predicate: Predicate<A>, orFailWith: (a: A) => E): Effect<B, E>
 } = effect.liftPredicate
 
 /**
@@ -11180,7 +11180,7 @@ export const withUnhandledErrorLogLevel: {
  * // timestamp=... level=DEBUG fiber=#0 message=message2
  * ```
  *
- * @see {@link FiberRef.minimumLogLevel} to retrieve the current minimum log level.
+ * @see {@link FiberRef.currentMinimumLogLevel} to retrieve the current minimum log level.
  *
  * @since 3.13.0
  * @category Logging
@@ -14573,7 +14573,15 @@ function fnApply(options: {
     if (options.errorCall.stack) {
       const stackDef = options.errorDef.stack!.trim().split("\n")
       const stackCall = options.errorCall.stack.trim().split("\n")
-      cache = `${stackDef.slice(2).join("\n").trim()}\n${stackCall.slice(2).join("\n").trim()}`
+      let endStackDef = stackDef.slice(2).join("\n").trim()
+      if (!endStackDef.includes(`(`)) {
+        endStackDef = endStackDef.replace(/at (.*)/, "at ($1)")
+      }
+      let endStackCall = stackCall.slice(2).join("\n").trim()
+      if (!endStackCall.includes(`(`)) {
+        endStackCall = endStackCall.replace(/at (.*)/, "at ($1)")
+      }
+      cache = `${endStackDef}\n${endStackCall}`
       return cache
     }
   }

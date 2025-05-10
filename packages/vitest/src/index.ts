@@ -9,7 +9,7 @@ import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as TestServices from "effect/TestServices"
 import * as V from "vitest"
-import * as internal from "./internal.js"
+import * as internal from "./internal/internal.js"
 
 /**
  * @since 1.0.0
@@ -91,18 +91,23 @@ export namespace Vitest {
   /**
    * @since 1.0.0
    */
-  export interface MethodsNonLive<R = never> extends API {
-    readonly effect: Vitest.Tester<TestServices.TestServices | R>
+  export interface MethodsNonLive<R = never, ExcludeTestServices extends boolean = false> extends API {
+    readonly effect: Vitest.Tester<(ExcludeTestServices extends true ? never : TestServices.TestServices) | R>
     readonly flakyTest: <A, E, R2>(
       self: Effect.Effect<A, E, R2>,
       timeout?: Duration.DurationInput
     ) => Effect.Effect<A, never, R2>
-    readonly scoped: Vitest.Tester<TestServices.TestServices | Scope.Scope | R>
+    readonly scoped: Vitest.Tester<
+      (ExcludeTestServices extends true ? never : TestServices.TestServices) | Scope.Scope | R
+    >
     readonly layer: <R2, E>(layer: Layer.Layer<R2, E, R>, options?: {
       readonly timeout?: Duration.DurationInput
     }) => {
-      (f: (it: Vitest.MethodsNonLive<R | R2>) => void): void
-      (name: string, f: (it: Vitest.MethodsNonLive<R | R2>) => void): void
+      (f: (it: Vitest.MethodsNonLive<R | R2, ExcludeTestServices>) => void): void
+      (
+        name: string,
+        f: (it: Vitest.MethodsNonLive<R | R2, ExcludeTestServices>) => void
+      ): void
     }
 
     /**
@@ -201,12 +206,16 @@ export const scopedLive: Vitest.Tester<Scope.Scope> = internal.scopedLive
  * })
  * ```
  */
-export const layer: <R, E>(
+export const layer: <R, E, const ExcludeTestServices extends boolean = false>(
   layer_: Layer.Layer<R, E>,
-  options?: { readonly memoMap?: Layer.MemoMap; readonly timeout?: Duration.DurationInput }
+  options?: {
+    readonly memoMap?: Layer.MemoMap
+    readonly timeout?: Duration.DurationInput
+    readonly excludeTestServices?: ExcludeTestServices
+  }
 ) => {
-  (f: (it: Vitest.MethodsNonLive<R>) => void): void
-  (name: string, f: (it: Vitest.MethodsNonLive<R>) => void): void
+  (f: (it: Vitest.MethodsNonLive<R, ExcludeTestServices>) => void): void
+  (name: string, f: (it: Vitest.MethodsNonLive<R, ExcludeTestServices>) => void): void
 } = internal.layer
 
 /**

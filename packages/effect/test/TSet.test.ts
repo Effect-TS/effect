@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as STM from "effect/STM"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as TSet from "effect/TSet"
 
 describe("TSet", () => {

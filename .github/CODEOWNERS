@@ -9,14 +9,11 @@
 /packages/effect/src/internal/schema/ @gcanti
 /packages/effect/test/Schema/ @gcanti
 
-/packages/ai/ @tim-smart
+/packages/ai/ @IMax153
 
 /packages/cli/ @IMax153
 
-/packages/cluster/ @IMax153 @mattiamanzati
-/packages/cluster-browser/ @IMax153 @mattiamanzati
-/packages/cluster-node/ @IMax153 @mattiamanzati
-/packages/cluster-workflow/ @IMax153 @mattiamanzati
+/packages/cluster/ @tim-smart
 
 /packages/experimental/ @tim-smart
 
@@ -32,7 +29,6 @@
 /packages/printer-ansi/ @IMax153
 
 /packages/rpc/ @tim-smart
-/packages/rpc-http/ @tim-smart
 
 /packages/sql/ @tim-smart
 /packages/sql-clickhouse/ @tim-smart

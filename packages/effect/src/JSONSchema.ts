@@ -2,8 +2,10 @@
  * @since 3.10.0
  */
 
+import * as Arr from "./Array.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as Option from "./Option.js"
+import * as ParseResult from "./ParseResult.js"
 import * as Predicate from "./Predicate.js"
 import * as Record from "./Record.js"
 import type * as Schema from "./Schema.js"
@@ -355,13 +357,23 @@ const constEmpty: JsonSchema7 = {
 
 const $schema = "http://json-schema.org/draft-07/schema#"
 
-const getJsonSchemaAnnotations = (annotated: AST.Annotated): JsonSchemaAnnotations =>
-  Record.getSomes({
+const getJsonSchemaAnnotations = (ast: AST.AST, annotated?: AST.Annotated): JsonSchemaAnnotations => {
+  annotated ??= ast
+  const out: JsonSchemaAnnotations = Record.getSomes({
     description: AST.getDescriptionAnnotation(annotated),
     title: AST.getTitleAnnotation(annotated),
-    examples: AST.getExamplesAnnotation(annotated),
     default: AST.getDefaultAnnotation(annotated)
   })
+  const oexamples = AST.getExamplesAnnotation(annotated)
+  if (Option.isSome(oexamples) && oexamples.value.length > 0) {
+    const getOption = ParseResult.getOption(ast, false)
+    const examples = Arr.filterMap(oexamples.value, (e) => getOption(e))
+    if (examples.length > 0) {
+      out.examples = examples
+    }
+  }
+  return out
+}
 
 const removeDefaultJsonSchemaAnnotations = (
   jsonSchemaAnnotations: JsonSchemaAnnotations,
@@ -566,6 +578,9 @@ const go = (
         return go(t, $defs, handleIdentifier, path, options)
       }
     }
+    if (AST.isDeclaration(ast)) {
+      return { ...handler, ...getJsonSchemaAnnotations(ast) }
+    }
     return handler
   }
   const surrogate = AST.getSurrogateAnnotation(ast)
@@ -627,11 +642,11 @@ const go = (
     case "TupleType": {
       const elements = ast.elements.map((e, i) => ({
         ...go(e.type, $defs, true, path.concat(i), options),
-        ...getJsonSchemaAnnotations(e)
+        ...getJsonSchemaAnnotations(e.type, e)
       }))
       const rest = ast.rest.map((annotatedAST) => ({
         ...go(annotatedAST.type, $defs, true, path, options),
-        ...getJsonSchemaAnnotations(annotatedAST)
+        ...getJsonSchemaAnnotations(annotatedAST.type, annotatedAST)
       }))
       const output: JsonSchema7Array = { type: "array" }
       // ---------------------------------------------
@@ -720,9 +735,10 @@ const go = (
         const name = ps.name
         if (Predicate.isString(name)) {
           const pruned = pruneUndefined(ps.type)
+          const type = pruned ?? ps.type
           output.properties[name] = {
-            ...go(pruned ?? ps.type, $defs, true, path.concat(ps.name), options),
-            ...getJsonSchemaAnnotations(ps)
+            ...go(type, $defs, true, path.concat(ps.name), options),
+            ...getJsonSchemaAnnotations(type, ps)
           }
           // ---------------------------------------------
           // handle optional property signatures

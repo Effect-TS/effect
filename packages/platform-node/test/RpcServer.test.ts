@@ -1,8 +1,9 @@
 import { HttpClient, HttpClientRequest, HttpRouter, HttpServer, SocketServer } from "@effect/platform"
-import { NodeHttpServer, NodeSocket, NodeSocketServer } from "@effect/platform-node"
+import { NodeHttpServer, NodeSocket, NodeSocketServer, NodeWorker } from "@effect/platform-node"
 import { RpcClient, RpcSerialization, RpcServer } from "@effect/rpc"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
+import * as CP from "node:child_process"
 import { RpcLive, User, UsersClient } from "./fixtures/rpc-schemas.js"
 import { e2eSuite } from "./rpc-e2e.js"
 
@@ -41,7 +42,7 @@ describe("RpcServer", () => {
     Layer.provideMerge(RpcServer.layerProtocolWebsocket({ path: "/rpc" }))
   )
   const HttpWsClient = UsersClient.layer.pipe(
-    Layer.provide(RpcClient.layerProtocolSocket),
+    Layer.provide(RpcClient.layerProtocolSocket()),
     Layer.provide(
       Effect.gen(function*() {
         const server = yield* HttpServer.HttpServer
@@ -78,7 +79,7 @@ describe("RpcServer", () => {
     Layer.provideMerge(NodeSocketServer.layer({ port: 0 }))
   )
   const TcpClient = UsersClient.layer.pipe(
-    Layer.provide(RpcClient.layerProtocolSocket),
+    Layer.provide(RpcClient.layerProtocolSocket()),
     Layer.provide(
       Effect.gen(function*() {
         const server = yield* SocketServer.SocketServer
@@ -101,6 +102,22 @@ describe("RpcServer", () => {
       Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack])
     )
   )
+
+  // worker
+  const WorkerClient = UsersClient.layer.pipe(
+    Layer.provide(RpcClient.layerProtocolWorker({ size: 1 })),
+    Layer.provide(
+      NodeWorker.layerPlatform(() =>
+        CP.fork(new URL("./fixtures/rpc-worker.ts", import.meta.url), {
+          execPath: "tsx"
+        })
+      )
+    ),
+    Layer.merge(Layer.succeed(RpcServer.Protocol, {
+      supportsAck: true
+    } as any))
+  )
+  e2eSuite("e2e worker", WorkerClient)
 
   describe("RpcTest", () => {
     it.effect("works", () =>

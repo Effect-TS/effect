@@ -547,7 +547,7 @@ export const fromStream: {
         onFailure: (cause: Cause<E>) => mailbox.failCause(cause),
         onDone: () => mailbox.end
       })
-      return channel.unwrapScopedWith((scope) =>
+      return fiberRuntime.scopeWith((scope) =>
         stream.toChannel(self).pipe(
           coreChannel.pipeTo(writer),
           channelExecutor.runIn(scope),

@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, deepStrictEqual } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -8,7 +9,6 @@ import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertLeft, deepStrictEqual } from "effect/test/util"
 import * as TestClock from "effect/TestClock"
 
 describe("Stream", () => {

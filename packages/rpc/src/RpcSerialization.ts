@@ -13,7 +13,6 @@ import * as Layer from "effect/Layer"
 export class RpcSerialization extends Context.Tag("@effect/rpc/RpcSerialization")<RpcSerialization, {
   unsafeMake(): Parser
   readonly contentType: string
-  readonly supportsBigInt: boolean
 }>() {}
 
 /**
@@ -33,7 +32,6 @@ export const json: Effect.Effect<RpcSerialization["Type"]> = Effect.sync(() => {
   const decoder = new TextDecoder()
   return RpcSerialization.of({
     contentType: "application/json",
-    supportsBigInt: false,
     unsafeMake: () => ({
       decode: (bytes) => [JSON.parse(typeof bytes === "string" ? bytes : decoder.decode(bytes))],
       encode: (response) => JSON.stringify(response)
@@ -49,7 +47,6 @@ export const ndjson: Effect.Effect<RpcSerialization["Type"]> = Effect.sync(() =>
   const decoder = new TextDecoder()
   return RpcSerialization.of({
     contentType: "application/ndjson",
-    supportsBigInt: false,
     unsafeMake: () => {
       let buffer = ""
       return ({
@@ -79,7 +76,6 @@ export const ndjson: Effect.Effect<RpcSerialization["Type"]> = Effect.sync(() =>
  */
 export const msgPack: RpcSerialization["Type"] = RpcSerialization.of({
   contentType: "application/msgpack",
-  supportsBigInt: true,
   unsafeMake: () => {
     const unpackr = new Msgpackr.Unpackr()
     const packr = new Msgpackr.Packr()

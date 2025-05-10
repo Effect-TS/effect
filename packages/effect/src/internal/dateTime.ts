@@ -1051,7 +1051,7 @@ export const format: {
   (
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): (self: DateTime.DateTime) => string
@@ -1059,7 +1059,7 @@ export const format: {
     self: DateTime.DateTime,
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): string
@@ -1067,7 +1067,7 @@ export const format: {
   self: DateTime.DateTime,
   options?:
     | Intl.DateTimeFormatOptions & {
-      readonly locale?: string | undefined
+      readonly locale?: Intl.LocalesArgument
     }
     | undefined
 ): string => {
@@ -1089,7 +1089,7 @@ export const formatLocal: {
   (
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): (self: DateTime.DateTime) => string
@@ -1097,7 +1097,7 @@ export const formatLocal: {
     self: DateTime.DateTime,
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): string
@@ -1105,7 +1105,7 @@ export const formatLocal: {
   self: DateTime.DateTime,
   options?:
     | Intl.DateTimeFormatOptions & {
-      readonly locale?: string | undefined
+      readonly locale?: Intl.LocalesArgument
     }
     | undefined
 ): string => new Intl.DateTimeFormat(options?.locale, options).format(self.epochMillis))
@@ -1115,7 +1115,7 @@ export const formatUtc: {
   (
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): (self: DateTime.DateTime) => string
@@ -1123,7 +1123,7 @@ export const formatUtc: {
     self: DateTime.DateTime,
     options?:
       | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
+        readonly locale?: Intl.LocalesArgument
       }
       | undefined
   ): string
@@ -1131,7 +1131,7 @@ export const formatUtc: {
   self: DateTime.DateTime,
   options?:
     | Intl.DateTimeFormatOptions & {
-      readonly locale?: string | undefined
+      readonly locale?: Intl.LocalesArgument
     }
     | undefined
 ): string =>

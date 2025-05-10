@@ -1,11 +1,11 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue, deepStrictEqual, throws } from "@effect/vitest/utils"
 import Ajv from "ajv"
 import * as A from "effect/Arbitrary"
 import * as fc from "effect/FastCheck"
 import * as JSONSchema from "effect/JSONSchema"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import { assertFalse, assertTrue, deepStrictEqual, throws } from "effect/test/util"
 
 type Root = JSONSchema.JsonSchema7Root
 
@@ -2791,10 +2791,38 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       describe("fromKey", () => {
-        it("base", () => {
+        it("a <- b", () => {
           expectJSONSchemaProperty(
             Schema.Struct({
               a: Schema.NonEmptyString.pipe(Schema.propertySignature, Schema.fromKey("b"))
+            }),
+            {
+              "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "title": "nonEmptyString",
+                  "description": "a non empty string",
+                  "minLength": 1
+                }
+              },
+              "type": "object",
+              "required": [
+                "b"
+              ],
+              "properties": {
+                "b": {
+                  "$ref": "#/$defs/NonEmptyString"
+                }
+              },
+              "additionalProperties": false
+            }
+          )
+        })
+
+        it("a <- b & annotations", () => {
+          expectJSONSchemaProperty(
+            Schema.Struct({
+              a: Schema.NonEmptyString.pipe(Schema.propertySignature, Schema.fromKey("b")).annotations({})
             }),
             {
               "$defs": {
@@ -3147,6 +3175,39 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       "type": "string",
       "examples": ["a", "b"]
     })
+    expectJSONSchemaProperty(Schema.BigInt.annotations({ examples: [1n, 2n] }), {
+      "$defs": {
+        "BigInt": {
+          "type": "string",
+          "description": "a string to be decoded into a bigint"
+        }
+      },
+      "$ref": "#/$defs/BigInt"
+    })
+    expectJSONSchemaProperty(
+      Schema.Struct({
+        a: Schema.propertySignature(Schema.BigInt).annotations({ examples: [1n, 2n] })
+      }),
+      {
+        "$defs": {
+          "BigInt": {
+            "type": "string",
+            "description": "a string to be decoded into a bigint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a"
+        ],
+        "properties": {
+          "a": {
+            "$ref": "#/$defs/BigInt",
+            "examples": ["1", "2"]
+          }
+        },
+        "additionalProperties": false
+      }
+    )
   })
 
   it("default JSON Schema annotation support", () => {
@@ -3618,6 +3679,25 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           },
           "$ref": "#/$defs/3c9977ee-0e9b-4471-99af-c6c73340f9ed"
         })
+      })
+    })
+
+    it("Declaration", () => {
+      class MyType {}
+      const schema = Schema.declare<MyType>((x) => x instanceof MyType, {
+        jsonSchema: {
+          type: "my-type",
+          title: "default-title",
+          description: "default-description"
+        }
+      }).annotations({
+        title: "My Title",
+        description: "My Description"
+      })
+      expectJSONSchema(schema, {
+        "type": "my-type",
+        "title": "My Title",
+        "description": "My Description"
       })
     })
 
@@ -4625,6 +4705,266 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         expectJSONSchemaProperty(Schema.encodedBoundSchema(Schema.NumberFromString), expected)
         expectJSONSchemaProperty(Schema.encodedSchema(Schema.NumberFromString), expected)
       })
+    })
+  })
+
+  it("Exit", () => {
+    const schema = Schema.Exit({
+      failure: Schema.String,
+      success: Schema.Number,
+      defect: Schema.Defect
+    })
+    expectJSONSchemaProperty(schema, {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$defs": {
+        "CauseEncoded0": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "_tag"
+              ],
+              "properties": {
+                "_tag": {
+                  "type": "string",
+                  "enum": [
+                    "Empty"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "_tag",
+                "error"
+              ],
+              "properties": {
+                "_tag": {
+                  "type": "string",
+                  "enum": [
+                    "Fail"
+                  ]
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "_tag",
+                "defect"
+              ],
+              "properties": {
+                "_tag": {
+                  "type": "string",
+                  "enum": [
+                    "Die"
+                  ]
+                },
+                "defect": {
+                  "$ref": "#/$defs/Defect"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "_tag",
+                "fiberId"
+              ],
+              "properties": {
+                "_tag": {
+                  "type": "string",
+                  "enum": [
+                    "Interrupt"
+                  ]
+                },
+                "fiberId": {
+                  "$ref": "#/$defs/FiberIdEncoded"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "_tag",
+                "left",
+                "right"
+              ],
+              "properties": {
+                "_tag": {
+                  "type": "string",
+                  "enum": [
+                    "Sequential"
+                  ]
+                },
+                "left": {
+                  "$ref": "#/$defs/CauseEncoded0"
+                },
+                "right": {
+                  "$ref": "#/$defs/CauseEncoded0"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "_tag",
+                "left",
+                "right"
+              ],
+              "properties": {
+                "_tag": {
+                  "type": "string",
+                  "enum": [
+                    "Parallel"
+                  ]
+                },
+                "left": {
+                  "$ref": "#/$defs/CauseEncoded0"
+                },
+                "right": {
+                  "$ref": "#/$defs/CauseEncoded0"
+                }
+              },
+              "additionalProperties": false
+            }
+          ],
+          "title": "CauseEncoded<string>"
+        },
+        "Defect": {
+          "$id": "/schemas/unknown",
+          "title": "unknown"
+        },
+        "FiberIdEncoded": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FiberIdNoneEncoded"
+            },
+            {
+              "$ref": "#/$defs/FiberIdRuntimeEncoded"
+            },
+            {
+              "$ref": "#/$defs/FiberIdCompositeEncoded"
+            }
+          ]
+        },
+        "FiberIdNoneEncoded": {
+          "type": "object",
+          "required": [
+            "_tag"
+          ],
+          "properties": {
+            "_tag": {
+              "type": "string",
+              "enum": [
+                "None"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "FiberIdRuntimeEncoded": {
+          "type": "object",
+          "required": [
+            "_tag",
+            "id",
+            "startTimeMillis"
+          ],
+          "properties": {
+            "_tag": {
+              "type": "string",
+              "enum": [
+                "Runtime"
+              ]
+            },
+            "id": {
+              "$ref": "#/$defs/Int"
+            },
+            "startTimeMillis": {
+              "$ref": "#/$defs/Int"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Int": {
+          "type": "integer",
+          "description": "an integer",
+          "title": "int"
+        },
+        "FiberIdCompositeEncoded": {
+          "type": "object",
+          "required": [
+            "_tag",
+            "left",
+            "right"
+          ],
+          "properties": {
+            "_tag": {
+              "type": "string",
+              "enum": [
+                "Composite"
+              ]
+            },
+            "left": {
+              "$ref": "#/$defs/FiberIdEncoded"
+            },
+            "right": {
+              "$ref": "#/$defs/FiberIdEncoded"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "_tag",
+            "cause"
+          ],
+          "properties": {
+            "_tag": {
+              "type": "string",
+              "enum": [
+                "Failure"
+              ]
+            },
+            "cause": {
+              "$ref": "#/$defs/CauseEncoded0"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "_tag",
+            "value"
+          ],
+          "properties": {
+            "_tag": {
+              "type": "string",
+              "enum": [
+                "Success"
+              ]
+            },
+            "value": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "title": "ExitEncoded<number, string, Defect>"
     })
   })
 })

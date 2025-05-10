@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as Reactivity from "@effect/experimental/Reactivity"
-import { SqlClient } from "@effect/sql"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
@@ -125,7 +124,7 @@ export const make = (
         raw: boolean
       ) =>
         Effect.withFiberRuntime<ReadonlyArray<any>, SqlError>((fiber) => {
-          if (Context.get(fiber.currentContext, SqlClient.SafeIntegers)) {
+          if (Context.get(fiber.currentContext, Client.SafeIntegers)) {
             statement.safeIntegers(true)
           }
           try {

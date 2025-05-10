@@ -1,11 +1,11 @@
 import { describe, it } from "@effect/vitest"
+import { assertNone, assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertNone, assertSome, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Sink", () => {
   it.effect("flatMap - empty input", () =>

@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { assertFalse, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import { Effect, Schema as S, SchemaAST as AST } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
 
 describe("typeAST", () => {
   describe(`should return the same reference if the AST doesn't represent a transformation`, () => {

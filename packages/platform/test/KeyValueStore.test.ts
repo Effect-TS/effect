@@ -1,7 +1,7 @@
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import { afterEach, describe, it } from "@effect/vitest"
+import { assertNone, assertSome, assertTrue, strictEqual } from "@effect/vitest/utils"
 import { Effect, identity, Layer, pipe, Schema } from "effect"
-import { assertNone, assertSome, assertTrue, strictEqual } from "effect/test/util"
 
 export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>) => {
   const run = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.KeyValueStore>) =>

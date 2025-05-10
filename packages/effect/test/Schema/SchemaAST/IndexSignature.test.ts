@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { throws } from "@effect/vitest/utils"
 import * as AST from "effect/SchemaAST"
-import { throws } from "effect/test/util"
 
 describe("AST.IndexSignature", () => {
   it("new IndexSignature should throw on unsupported ASTs", () => {

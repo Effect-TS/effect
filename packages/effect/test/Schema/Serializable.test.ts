@@ -1,7 +1,7 @@
 import { describe, test } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import { Effect, Exit } from "effect"
 import * as S from "effect/Schema"
-import { deepStrictEqual } from "effect/test/util"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,

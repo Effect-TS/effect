@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Effect, Exit, Fiber, FiberId, FiberRef, FiberRefs, HashMap, Option, pipe, Queue, Scope } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("FiberRefs", () => {
   it.scoped("propagate FiberRef values across fiber boundaries", () =>

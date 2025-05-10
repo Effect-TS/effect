@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { assertLeft, assertRight, deepStrictEqual } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { constTrue, pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
-import { assertLeft, assertRight, deepStrictEqual } from "effect/test/util"
 
 describe("Stream", () => {
   it.effect("drop - simple example", () =>

@@ -1,6 +1,4 @@
 import { describe, it } from "@effect/vitest"
-import { JSONSchema, pipe, Schema as S, SchemaAST as AST, Struct } from "effect"
-import * as Util from "effect/test/Schema/TestUtils"
 import {
   assertFalse,
   assertInstanceOf,
@@ -9,7 +7,9 @@ import {
   deepStrictEqual,
   strictEqual,
   throws
-} from "effect/test/util"
+} from "@effect/vitest/utils"
+import { JSONSchema, pipe, Schema as S, SchemaAST as AST, Struct } from "effect"
+import * as Util from "../../TestUtils.js"
 
 describe("TaggedClass", () => {
   it("the constructor should add a `_tag` field", () => {
@@ -292,7 +292,7 @@ details: Duplicate key "_tag"`)
 
       Util.assertions.make.fail(
         ctor,
-        null,
+        null as any,
         `TypeID
 └─ ["a"]
    └─ is missing`

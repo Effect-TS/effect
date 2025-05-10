@@ -555,18 +555,21 @@ export const Error: new<A extends Record<string, any> = {}>(
     : { readonly [P in keyof A]: A[P] }
 ) => Cause.YieldableError & Readonly<A> = (function() {
   const plainArgsSymbol = Symbol.for("effect/Data/Error/plainArgs")
-  return class Base extends core.YieldableError {
-    constructor(args: any) {
-      super(args?.message, args?.cause ? { cause: args.cause } : undefined)
-      if (args) {
-        Object.assign(this, args)
-        Object.defineProperty(this, plainArgsSymbol, { value: args, enumerable: false })
+  const O = {
+    BaseEffectError: class extends core.YieldableError {
+      constructor(args: any) {
+        super(args?.message, args?.cause ? { cause: args.cause } : undefined)
+        if (args) {
+          Object.assign(this, args)
+          Object.defineProperty(this, plainArgsSymbol, { value: args, enumerable: false })
+        }
       }
-    }
-    toJSON() {
-      return { ...(this as any)[plainArgsSymbol], ...this }
-    }
-  } as any
+      toJSON() {
+        return { ...(this as any)[plainArgsSymbol], ...this }
+      }
+    } as any
+  }
+  return O.BaseEffectError
 })()
 
 /**
@@ -577,9 +580,11 @@ export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<
   args: Types.Equals<A, {}> extends true ? void
     : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }
 ) => Cause.YieldableError & { readonly _tag: Tag } & Readonly<A> => {
-  class Base extends Error<{}> {
-    readonly _tag = tag
+  const O = {
+    BaseEffectError: class extends Error<{}> {
+      readonly _tag = tag
+    }
   }
-  ;(Base.prototype as any).name = tag
-  return Base as any
+  ;(O.BaseEffectError.prototype as any).name = tag
+  return O.BaseEffectError as any
 }

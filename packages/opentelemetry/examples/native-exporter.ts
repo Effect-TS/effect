@@ -1,9 +1,9 @@
-import * as OtlpTracer from "@effect/opentelemetry/OtlpTracer"
+import * as Otlp from "@effect/opentelemetry/Otlp"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, Schedule } from "effect"
 
-const Tracing = OtlpTracer.layer({
-  url: "http://localhost:4318/v1/traces",
+const Observability = Otlp.layer({
+  baseUrl: "http://localhost:4318",
   resource: {
     serviceName: "my-service"
   }
@@ -13,7 +13,7 @@ const program = Effect.log("Hello").pipe(
   Effect.withSpan("c"),
   Effect.withSpan("b"),
   Effect.withSpan("a"),
-  Effect.repeatN(3),
+  Effect.schedule(Schedule.spaced(1000)),
   Effect.annotateSpans("working", true)
 )
 
@@ -23,7 +23,7 @@ const failingProgram = Effect.fail(new Error("Failing program")).pipe(
 
 program.pipe(
   Effect.andThen(failingProgram),
-  Effect.provide(Tracing),
+  Effect.provide(Observability),
   Effect.catchAllCause(Effect.logError),
   Effect.runFork
 )

@@ -1,5 +1,620 @@
 # effect
 
+## 3.14.22
+
+### Patch Changes
+
+- [#4847](https://github.com/Effect-TS/effect/pull/4847) [`24a9ebb`](https://github.com/Effect-TS/effect/commit/24a9ebbb5af598f0bfd6ecc45307e528043fe011) Thanks @gcanti! - Schema: TaggedError no longer crashes when the `message` field is explicitly defined.
+
+  If you define a `message` field in your schema, `TaggedError` will no longer add its own `message` getter. This avoids a stack overflow caused by infinite recursion.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  class Todo extends Schema.TaggedError<Todo>()("Todo", {
+    message: Schema.optional(Schema.String)
+  }) {}
+
+  // ❌ Throws "Maximum call stack size exceeded"
+  console.log(Todo.make({}))
+  ```
+
+  After
+
+  ```ts
+  // ✅ Works correctly
+  console.log(Todo.make({}))
+  ```
+
+## 3.14.21
+
+### Patch Changes
+
+- [#4837](https://github.com/Effect-TS/effect/pull/4837) [`2f3b7d4`](https://github.com/Effect-TS/effect/commit/2f3b7d4e1fa1ef8790b0ca4da22eb88872ee31df) Thanks @tim-smart! - fix Mailbox.fromStream
+
+## 3.14.20
+
+### Patch Changes
+
+- [#4832](https://github.com/Effect-TS/effect/pull/4832) [`17e2f30`](https://github.com/Effect-TS/effect/commit/17e2f3091408cf0fca9414d4af3bdf7b2765b378) Thanks @gcanti! - JSONSchema: respect annotations on declarations.
+
+  Previously, annotations added with `.annotations(...)` on `Schema.declare(...)` were not included in the generated JSON Schema output.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  class MyType {}
+
+  const schema = Schema.declare<MyType>((x) => x instanceof MyType, {
+    jsonSchema: {
+      type: "my-type"
+    }
+  }).annotations({
+    title: "My Title",
+    description: "My Description"
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "my-type"
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  class MyType {}
+
+  const schema = Schema.declare<MyType>((x) => x instanceof MyType, {
+    jsonSchema: {
+      type: "my-type"
+    }
+  }).annotations({
+    title: "My Title",
+    description: "My Description"
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "My Description",
+    "title": "My Title",
+    "type": "my-type"
+  }
+  */
+  ```
+
+## 3.14.19
+
+### Patch Changes
+
+- [#4822](https://github.com/Effect-TS/effect/pull/4822) [`056a910`](https://github.com/Effect-TS/effect/commit/056a910d0a0b8b00b0dc9df4a070466b2b5c2f6c) Thanks @KhraksMamtsov! - fix `Layer.discard` jsdoc
+
+- [#4816](https://github.com/Effect-TS/effect/pull/4816) [`3273d57`](https://github.com/Effect-TS/effect/commit/3273d572c2b3175a842677f19efeea4cd65ab016) Thanks @mikearnaldi! - Fix captureStackTrace for bun
+
+## 3.14.18
+
+### Patch Changes
+
+- [#4809](https://github.com/Effect-TS/effect/pull/4809) [`b1164d4`](https://github.com/Effect-TS/effect/commit/b1164d49a1dfdf299e9971367b6fc6be4df0ddff) Thanks @tim-smart! - fix refinement narrowing in Match
+
+## 3.14.17
+
+### Patch Changes
+
+- [#4806](https://github.com/Effect-TS/effect/pull/4806) [`0b54681`](https://github.com/Effect-TS/effect/commit/0b54681cd89245e211d8f49272be0f1bf2f81813) Thanks @thewilkybarkid! - Match the JS API for locale arguments
+
+- [#4805](https://github.com/Effect-TS/effect/pull/4805) [`41a59d5`](https://github.com/Effect-TS/effect/commit/41a59d5916a296b12b0d5ead9e859e05f40b4cce) Thanks @mikearnaldi! - Implement stack cleaning for Bun
+
+## 3.14.16
+
+### Patch Changes
+
+- [#4800](https://github.com/Effect-TS/effect/pull/4800) [`ee14444`](https://github.com/Effect-TS/effect/commit/ee144441021ec77039e43396eaf90714687bb495) Thanks @tim-smart! - improve Match refinement resolution
+
+## 3.14.15
+
+### Patch Changes
+
+- [#4798](https://github.com/Effect-TS/effect/pull/4798) [`239cc99`](https://github.com/Effect-TS/effect/commit/239cc995ce645946210a3c3d2cb52bd3547c0687) Thanks @gcanti! - Schema: respect custom constructors in `make` for `Schema.Class`, closes #4797
+
+  Previously, the `make` method did not support custom constructors defined using `Schema.Class` or `Schema.TaggedError`, resulting in type errors when passing custom constructor arguments.
+
+  This update ensures that `make` now correctly uses the class constructor, allowing custom parameters and initialization logic.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  class MyError extends Schema.TaggedError<MyError>()("MyError", {
+    message: Schema.String
+  }) {
+    constructor({ a, b }: { a: string; b: string }) {
+      super({ message: `${a}:${b}` })
+    }
+  }
+
+  // @ts-expect-error: Object literal may only specify known properties, and 'a' does not exist in type '{ readonly message: string; }'.ts(2353)
+  MyError.make({ a: "1", b: "2" })
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  class MyError extends Schema.TaggedError<MyError>()("MyError", {
+    message: Schema.String
+  }) {
+    constructor({ a, b }: { a: string; b: string }) {
+      super({ message: `${a}:${b}` })
+    }
+  }
+
+  console.log(MyError.make({ a: "1", b: "2" }).message)
+  // Output: "1:2"
+  ```
+
+- [#4687](https://github.com/Effect-TS/effect/pull/4687) [`8b6c947`](https://github.com/Effect-TS/effect/commit/8b6c947eaa8e45a67ecb3c37d45cd27f3e41d165) Thanks @KhraksMamtsov! - Modify the signatures of `Either.liftPredicate` and `Effect.predicate` to make them reusable.
+
+- [#4794](https://github.com/Effect-TS/effect/pull/4794) [`c50a63b`](https://github.com/Effect-TS/effect/commit/c50a63bbecb9f560b9cae349c447eed877d1b9b6) Thanks @IGassmann! - Fix summary metric’s quantile value calculation
+
+## 3.14.14
+
+### Patch Changes
+
+- [#4786](https://github.com/Effect-TS/effect/pull/4786) [`6ed8d15`](https://github.com/Effect-TS/effect/commit/6ed8d1589beb181d30abc79afebdaabc1d101538) Thanks @tim-smart! - drop use of performance.timeOrigin in clock
+
+## 3.14.13
+
+### Patch Changes
+
+- [#4777](https://github.com/Effect-TS/effect/pull/4777) [`ee77788`](https://github.com/Effect-TS/effect/commit/ee77788747e7ebbde6bfa88256cde49dbbad3608) Thanks @gcanti! - JSONSchema: apply `encodeOption` to each example and retain successful results.
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.propertySignature(Schema.BigInt).annotations({
+      examples: [1n, 2n]
+    })
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$defs": {
+      "BigInt": {
+        "type": "string",
+        "description": "a string to be decoded into a bigint"
+      }
+    },
+    "type": "object",
+    "required": [
+      "a"
+    ],
+    "properties": {
+      "a": {
+        "$ref": "#/$defs/BigInt",
+        "examples": [
+          "1",
+          "2"
+        ]
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
+- [#4701](https://github.com/Effect-TS/effect/pull/4701) [`5fce6ba`](https://github.com/Effect-TS/effect/commit/5fce6ba19c3cc63cc0104e737e581ad989dedbf0) Thanks @gcanti! - Fix `JSONSchema.make` for `Exit` schemas.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Exit({
+    failure: Schema.String,
+    success: Schema.Number,
+    defect: Schema.Defect
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  throws
+  Error: Missing annotation
+  at path: ["cause"]["left"]
+  details: Generating a JSON Schema for this schema requires an "identifier" annotation
+  schema (Suspend): CauseEncoded<string>
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Exit({
+    failure: Schema.String,
+    success: Schema.Number,
+    defect: Schema.Defect
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$defs": {
+      "CauseEncoded0": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "_tag"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Empty"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "_tag",
+              "error"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Fail"
+                ]
+              },
+              "error": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "_tag",
+              "defect"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Die"
+                ]
+              },
+              "defect": {
+                "$ref": "#/$defs/Defect"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "_tag",
+              "fiberId"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Interrupt"
+                ]
+              },
+              "fiberId": {
+                "$ref": "#/$defs/FiberIdEncoded"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "_tag",
+              "left",
+              "right"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Sequential"
+                ]
+              },
+              "left": {
+                "$ref": "#/$defs/CauseEncoded0"
+              },
+              "right": {
+                "$ref": "#/$defs/CauseEncoded0"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "_tag",
+              "left",
+              "right"
+            ],
+            "properties": {
+              "_tag": {
+                "type": "string",
+                "enum": [
+                  "Parallel"
+                ]
+              },
+              "left": {
+                "$ref": "#/$defs/CauseEncoded0"
+              },
+              "right": {
+                "$ref": "#/$defs/CauseEncoded0"
+              }
+            },
+            "additionalProperties": false
+          }
+        ],
+        "title": "CauseEncoded<string>"
+      },
+      "Defect": {
+        "$id": "/schemas/unknown",
+        "title": "unknown"
+      },
+      "FiberIdEncoded": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/FiberIdNoneEncoded"
+          },
+          {
+            "$ref": "#/$defs/FiberIdRuntimeEncoded"
+          },
+          {
+            "$ref": "#/$defs/FiberIdCompositeEncoded"
+          }
+        ]
+      },
+      "FiberIdNoneEncoded": {
+        "type": "object",
+        "required": [
+          "_tag"
+        ],
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": [
+              "None"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "FiberIdRuntimeEncoded": {
+        "type": "object",
+        "required": [
+          "_tag",
+          "id",
+          "startTimeMillis"
+        ],
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": [
+              "Runtime"
+            ]
+          },
+          "id": {
+            "$ref": "#/$defs/Int"
+          },
+          "startTimeMillis": {
+            "$ref": "#/$defs/Int"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Int": {
+        "type": "integer",
+        "description": "an integer",
+        "title": "int"
+      },
+      "FiberIdCompositeEncoded": {
+        "type": "object",
+        "required": [
+          "_tag",
+          "left",
+          "right"
+        ],
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": [
+              "Composite"
+            ]
+          },
+          "left": {
+            "$ref": "#/$defs/FiberIdEncoded"
+          },
+          "right": {
+            "$ref": "#/$defs/FiberIdEncoded"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "anyOf": [
+      {
+        "type": "object",
+        "required": [
+          "_tag",
+          "cause"
+        ],
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": [
+              "Failure"
+            ]
+          },
+          "cause": {
+            "$ref": "#/$defs/CauseEncoded0"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "_tag",
+          "value"
+        ],
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": [
+              "Success"
+            ]
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "title": "ExitEncoded<number, string, Defect>"
+  }
+  */
+  ```
+
+- [#4775](https://github.com/Effect-TS/effect/pull/4775) [`570e45f`](https://github.com/Effect-TS/effect/commit/570e45f8cb936e42ec48f67f21bb2b7252f36c0c) Thanks @gcanti! - JSONSchema: preserve original key name when using `fromKey` followed by `annotations`, closes #4774.
+
+  Before:
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.propertySignature(Schema.String)
+      .pipe(Schema.fromKey("b"))
+      .annotations({})
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+      "a"
+    ],
+    "properties": {
+      "a": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
+  After:
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.propertySignature(Schema.String)
+      .pipe(Schema.fromKey("b"))
+      .annotations({})
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+      "b"
+    ],
+    "properties": {
+      "b": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
+## 3.14.12
+
+### Patch Changes
+
+- [#4770](https://github.com/Effect-TS/effect/pull/4770) [`c2ad9ee`](https://github.com/Effect-TS/effect/commit/c2ad9ee9f3c4c743390edf35ed9e85a20be33811) Thanks @gcanti! - Fixes a bug where non existing properties were allowed in the `make` constructor of a `Schema.Class`, closes #4767.
+
+  **Example**
+
+  ```ts
+  import { Schema } from "effect"
+
+  class A extends Schema.Class<A>("A")({
+    a: Schema.String
+  }) {}
+
+  A.make({
+    a: "a",
+    // @ts-expect-error: Object literal may only specify known properties, and 'b' does not exist in type '{ readonly a: string; }'.ts(2353)
+    b: "b"
+  })
+  ```
+
+- [#4735](https://github.com/Effect-TS/effect/pull/4735) [`9c68654`](https://github.com/Effect-TS/effect/commit/9c686542b6eb3ea188cb70673ef2e41223633e89) Thanks @suddenlyGiovanni! - Improve `Number` module with comprehensive TsDocs and type-level tests
+
+## 3.14.11
+
+### Patch Changes
+
+- [#4756](https://github.com/Effect-TS/effect/pull/4756) [`e536127`](https://github.com/Effect-TS/effect/commit/e536127c1e6f2fb3a542c73ae919435a629a346b) Thanks @tim-smart! - allow Pool to acquire multiple items at once
+
+## 3.14.10
+
+### Patch Changes
+
+- [#4748](https://github.com/Effect-TS/effect/pull/4748) [`bc7efa3`](https://github.com/Effect-TS/effect/commit/bc7efa3b031bb25e1ed3c8f2d3fb5e8da166cadc) Thanks @tim-smart! - preserve refinement types in Match.when
+
+## 3.14.9
+
+### Patch Changes
+
+- [#4734](https://github.com/Effect-TS/effect/pull/4734) [`d78249f`](https://github.com/Effect-TS/effect/commit/d78249f0b67f63cf4baf806ff090cba33293daf0) Thanks @thewilkybarkid! - Allow Match.typeTags to specify a return type
+
 ## 3.14.8
 
 ### Patch Changes

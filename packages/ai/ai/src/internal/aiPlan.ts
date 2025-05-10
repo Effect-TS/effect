@@ -1,4 +1,3 @@
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { CommitPrototype } from "effect/Effectable"
 import * as Either from "effect/Either"
@@ -9,7 +8,6 @@ import * as Predicate from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import type * as AiModel from "../AiModel.js"
-import { AiModels } from "../AiModels.js"
 import type * as AiPlan from "../AiPlan.js"
 
 /** @internal */
@@ -28,7 +26,7 @@ export const PlanPrototype = {
 } as any
 
 const makePlan = <
-  Steps extends ReadonlyArray<AiPlan.AiPlan.Step<any, any, any>>
+  Steps extends ReadonlyArray<AiPlan.Step<any, any, any>>
 >(steps: Steps): AiPlan.AiPlan<any, any, any> => {
   const self = Object.create(PlanPrototype)
   self.steps = steps
@@ -38,14 +36,13 @@ const makePlan = <
 const buildPlan = <Error, Provides, Requires>(
   plan: AiPlan.AiPlan<Error, Provides, Requires>
 ): Effect.Effect<
-  AiPlan.AiPlan.Provider<Provides>,
+  AiPlan.Provider<Provides>,
   never,
-  Requires | AiModels
+  Requires
 > =>
-  Effect.map(Effect.context<AiModels | Requires>(), (context) => {
-    const models = Context.get(context, AiModels)
+  Effect.map(Effect.context<Requires>(), (context) => {
     return {
-      provide: Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
+      use: Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
         let result: Either.Either<A, E> | undefined = undefined
         for (const step of plan.steps) {
           if (result !== undefined && Either.isLeft(result) && Option.isSome(step.check)) {
@@ -55,7 +52,7 @@ const buildPlan = <Error, Provides, Requires>(
           }
           const retryOptions = getRetryOptions(step)
           result = yield* Effect.scopedWith((scope) =>
-            models.build(step.model, context).pipe(
+            step.model.buildContext.pipe(
               Scope.extend(scope),
               Effect.flatMap((context) =>
                 effect.pipe(
@@ -65,6 +62,7 @@ const buildPlan = <Error, Provides, Requires>(
                   Effect.provide(context)
                 )
               ),
+              Effect.provide(context),
               Effect.either
             )
           )
@@ -76,7 +74,7 @@ const buildPlan = <Error, Provides, Requires>(
   })
 
 const getRetryOptions = <Error, Provides, Requires>(
-  step: AiPlan.AiPlan.Step<Error, Provides, Requires>
+  step: AiPlan.Step<Error, Provides, Requires>
 ): Option.Option<Effect.Retry.Options<any>> => {
   if (Option.isNone(step.schedule) && Option.isNone(step.check)) {
     return Option.none()
@@ -88,16 +86,16 @@ const getRetryOptions = <Error, Provides, Requires>(
 }
 
 /** @internal */
-export const fromModel = <Provides, Requires, EW, Out, ES, RW = never, RS = never>(
-  model: AiModel.AiModel<Provides, Requires>,
-  options?: {
+export const make = <Provides, Requires, EW, Out, ES, RW = never, RS = never>(
+  options: {
+    readonly model: AiModel.AiModel<Provides, Requires>
     readonly attempts?: number | undefined
     readonly while?: ((error: EW) => boolean | Effect.Effect<boolean, never, RW>) | undefined
     readonly schedule?: Schedule.Schedule<Out, ES, RS> | undefined
   }
 ): AiPlan.AiPlan<EW & ES, Provides, RW | RS | Requires> =>
   makePlan([{
-    model,
+    model: options.model,
     check: Option.fromNullable(options?.while) as any,
     schedule: resolveSchedule(options ?? {})
   }])

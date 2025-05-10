@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { strictEqual } from "@effect/vitest/utils"
 import * as D from "effect/Duration"
 import * as Effect from "effect/Effect"
-import { strictEqual } from "effect/test/util"
 import * as TestClock from "effect/TestClock"
 
 describe("Effect", () => {

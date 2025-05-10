@@ -1,9 +1,9 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
 import * as fc from "effect/FastCheck"
 import { pipe } from "effect/Function"
 import * as STM from "effect/STM"
-import { assertTrue } from "effect/test/util"
 import * as TRandom from "effect/TRandom"
 
 const floatsArb: fc.Arbitrary<readonly [number, number]> = fc.tuple(

@@ -269,7 +269,7 @@ export const die: (defect: unknown) => Layer<unknown> = internal.die
 export const dieSync: (evaluate: LazyArg<unknown>) => Layer<unknown> = internal.dieSync
 
 /**
- * Replaces the layer's output with `void` and includes the layer only for its
+ * Replaces the layer's output with `never` and includes the layer only for its
  * side-effects.
  *
  * @since 2.0.0

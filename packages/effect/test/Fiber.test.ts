@@ -1,4 +1,5 @@
 import { describe, it } from "@effect/vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import {
   Array,
   Chunk,
@@ -15,8 +16,7 @@ import {
   Queue,
   Ref
 } from "effect"
-import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
-import { withLatch } from "effect/test/utils/latch"
+import { withLatch } from "./utils/latch.js"
 
 const initial = "initial"
 const update = "update"

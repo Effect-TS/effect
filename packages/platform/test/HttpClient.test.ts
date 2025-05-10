@@ -8,6 +8,7 @@ import {
   UrlParams
 } from "@effect/platform"
 import { describe, it } from "@effect/vitest"
+import { assertInclude, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import {
   Context,
   Effect,
@@ -23,7 +24,6 @@ import {
   Stream,
   Struct
 } from "effect"
-import { assertInclude, deepStrictEqual, strictEqual } from "effect/test/util"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,

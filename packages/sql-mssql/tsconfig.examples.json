@@ -2,10 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "include": ["examples"],
   "references": [
-    { "path": "tsconfig.src.json" },
-    { "path": "../effect" },
-    { "path": "../experimental" },
-    { "path": "../sql" }
+    { "path": "tsconfig.build.json" },
+    { "path": "../effect/tsconfig.build.json" },
+    { "path": "../experimental/tsconfig.build.json" },
+    { "path": "../sql/tsconfig.build.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/examples.tsbuildinfo",

@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
+import { deepStrictEqual } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
-import { deepStrictEqual } from "effect/test/util"
 
 describe("pick", () => {
   it("should work", () => {

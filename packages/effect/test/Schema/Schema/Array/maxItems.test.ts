@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
+import { throws } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
-import * as Util from "effect/test/Schema/TestUtils"
-import { throws } from "effect/test/util"
+import * as Util from "../../TestUtils.js"
 
 describe("maxItems", () => {
   it("should throw for invalid argument", () => {

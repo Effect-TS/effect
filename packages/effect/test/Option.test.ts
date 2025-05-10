@@ -1,6 +1,14 @@
 import { assertType, describe, it } from "@effect/vitest"
+import {
+  assertFalse,
+  assertNone,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  strictEqual,
+  throws
+} from "@effect/vitest/utils"
 import { Chunk, Either, Equal, Hash, Number as N, Option, pipe, String as S } from "effect"
-import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
 
 const gt2 = (n: number): boolean => n > 2
 

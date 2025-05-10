@@ -1,10 +1,10 @@
 import { describe, it } from "@effect/vitest"
+import { assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import { assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe("Sink", () => {
   it.effect("every", () =>
