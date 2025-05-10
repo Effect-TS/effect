@@ -742,10 +742,10 @@ const Proto = {
       )
     })
   },
-  setPayload(this: HttpApiEndpoint.AnyWithProps, payload: Schema.Schema.Any) {
+  setPayload(this: HttpApiEndpoint.AnyWithProps, schema: Schema.Schema.Any) {
     return makeProto({
       ...this,
-      payloadSchema: Option.some(payload)
+      payloadSchema: Option.some(schema)
     })
   },
   setPath(this: HttpApiEndpoint.AnyWithProps, schema: Schema.Schema.Any) {
