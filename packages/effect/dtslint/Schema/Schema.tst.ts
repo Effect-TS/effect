@@ -608,9 +608,9 @@ describe("Schema", () => {
         return picked
       }
 
-      expect(f).type.not.toBeCallableWith(S.Struct({ b: S.String }))
+      when(f).isCalledWith(expect(S.Struct).type.not.toBeCallableWith({ b: S.String }))
 
-      expect(f).type.not.toBeCallableWith(S.Struct({ a: S.Number }))
+      when(f).isCalledWith(expect(S.Struct).type.not.toBeCallableWith({ a: S.Number }))
     })
 
     it("omit", () => {
@@ -637,9 +637,9 @@ describe("Schema", () => {
         return omitted
       }
 
-      expect(f).type.not.toBeCallableWith(S.Struct({ b: S.String }))
+      when(f).isCalledWith(expect(S.Struct).type.not.toBeCallableWith({ b: S.String }))
 
-      expect(f).type.not.toBeCallableWith(S.Struct({ a: S.Number }))
+      when(f).isCalledWith(expect(S.Struct).type.not.toBeCallableWith({ a: S.Number }))
     })
   })
 
