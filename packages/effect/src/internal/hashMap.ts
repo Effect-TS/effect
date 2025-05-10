@@ -210,15 +210,15 @@ export const isEmpty = <K, V>(self: HM.HashMap<K, V>): boolean =>
 
 /** @internal */
 export const get = Dual.dual<
-  <K1>(key: K1) => <K, V>(self: HM.HashMap<K, V>) => Option.Option<V>,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1) => Option.Option<V>
+  <K1 extends K, K>(key: K1) => <V>(self: HM.HashMap<K, V>) => Option.Option<V>,
+  <K, V, K1 extends K>(self: HM.HashMap<K, V>, key: K1) => Option.Option<V>
 >(2, (self, key) => getHash(self, key, Hash.hash(key)))
 
 /** @internal */
 export const getHash = Dual.dual<
-  <K1>(key: K1, hash: number) => <K, V>(self: HM.HashMap<K, V>) => Option.Option<V>,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1, hash: number) => Option.Option<V>
->(3, <K, V, K1>(self: HM.HashMap<K, V>, key: K1, hash: number) => {
+  <K1 extends K, K>(key: K1, hash: number) => <V>(self: HM.HashMap<K, V>) => Option.Option<V>,
+  <K, V, K1 extends K>(self: HM.HashMap<K, V>, key: K1, hash: number) => Option.Option<V>
+>(3, <K, V, K1 extends K>(self: HM.HashMap<K, V>, key: K1, hash: number) => {
   let node = (self as HashMapImpl<K, V>)._root
   let shift = 0
 
@@ -265,8 +265,8 @@ export const getHash = Dual.dual<
 
 /** @internal */
 export const unsafeGet = Dual.dual<
-  <K1>(key: K1) => <K, V>(self: HM.HashMap<K, V>) => V,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1) => V
+  <K1 extends K, K>(key: K1) => <V>(self: HM.HashMap<K, V>) => V,
+  <K, V, K1 extends K>(self: HM.HashMap<K, V>, key: K1) => V
 >(2, (self, key) => {
   const element = getHash(self, key, Hash.hash(key))
   if (Option.isNone(element)) {
@@ -277,14 +277,14 @@ export const unsafeGet = Dual.dual<
 
 /** @internal */
 export const has = Dual.dual<
-  <K1>(key: K1) => <K, V>(self: HM.HashMap<K, V>) => boolean,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1) => boolean
+  <K1 extends K, K>(key: K1) => <V>(self: HM.HashMap<K, V>) => boolean,
+  <K, V, K1 extends K>(self: HM.HashMap<K, V>, key: K1) => boolean
 >(2, (self, key) => Option.isSome(getHash(self, key, Hash.hash(key))))
 
 /** @internal */
 export const hasHash = Dual.dual<
-  <K1>(key: K1, hash: number) => <K, V>(self: HM.HashMap<K, V>) => boolean,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1, hash: number) => boolean
+  <K1 extends K, K>(key: K1, hash: number) => <V>(self: HM.HashMap<K, V>) => boolean,
+  <K, V, K1 extends K>(self: HM.HashMap<K, V>, key: K1, hash: number) => boolean
 >(3, (self, key, hash) => Option.isSome(getHash(self, key, hash)))
 
 /** @internal */
