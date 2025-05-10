@@ -18,7 +18,7 @@ import {
 } from "@effect/platform"
 import { NodeHttpServer } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, DateTime, Effect, Layer, Redacted, Ref, Schedule, Schema, Stream, Struct } from "effect"
+import { Chunk, Context, DateTime, Effect, Layer, Redacted, Ref, Schedule, Schema, Stream, Struct } from "effect"
 import OpenApiFixture from "./fixtures/openapi.json" with { type: "json" }
 
 describe("HttpApi", () => {
@@ -78,13 +78,25 @@ describe("HttpApi", () => {
 
     it.live.only("echo stream", () =>
       Effect.gen(function*() {
+        class TestService extends Effect.Service<TestService>()("TestService", {
+          accessors: true,
+          sync: () => ({ data: ["a", "b", "c"] as const })
+        }) {}
+
         const client = yield* HttpApiClient.make(Api)
-        const stream = Stream.make("a", "b", "c").pipe(
+        const payloadStream: Stream.Stream<Uint8Array<ArrayBufferLike>, Error, TestService> = Stream.fromIterableEffect(
+          TestService.data
+        ).pipe(
           Stream.schedule(Schedule.spaced("500 millis")),
-          Stream.map((s) => new TextEncoder().encode(s))
+          Stream.encodeText
         )
-        const result = yield* client.echo({ payload: stream })
-        assert.deepStrictEqual(result, new TextEncoder().encode("abc"))
+
+        const responseStream = yield* Effect.provide(
+          client.echo({ payload: { stream: payloadStream } }),
+          TestService.Default
+        )
+        const result = yield* responseStream.pipe(Stream.decodeText()).pipe(Stream.runCollect)
+        assert.deepStrictEqual(Chunk.join(result, ""), "abc")
       }).pipe(Effect.provide(HttpLive)))
   })
 
@@ -376,14 +388,7 @@ class TopLevelApi extends HttpApiGroup.make("root", { topLevel: true })
   .add(
     HttpApiEndpoint.post("echo")`/echo`
       .setPayload(HttpApiSchema.Stream())
-      .addSuccess(
-        Schema.Uint8ArrayFromSelf.pipe(
-          HttpApiSchema.withEncoding({
-            kind: "Uint8Array",
-            contentType: "application/octet-stream"
-          })
-        )
-      )
+      .addSuccess(HttpApiSchema.Stream())
   )
 {}
 

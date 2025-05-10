@@ -110,6 +110,12 @@ export const getEmptyDecodeable = (ast: AST.AST): boolean =>
  */
 export const getMultipart = (ast: AST.AST): boolean => getAnnotation<boolean>(ast, AnnotationMultipart) ?? false
 
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const getStream = (ast: AST.AST): boolean => getAnnotation<boolean>(ast, AnnotationStream) ?? false
+
 const encodingJson: Encoding = {
   kind: "Json",
   contentType: "application/json"

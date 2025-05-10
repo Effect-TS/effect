@@ -525,8 +525,7 @@ export const handler = <
 
 const requestPayload = (
   request: HttpServerRequest.HttpServerRequest,
-  urlParams: ReadonlyRecord<string, string | Array<string>>,
-  stream: boolean
+  urlParams: ReadonlyRecord<string, string | Array<string>>
 ): Effect.Effect<
   unknown,
   never,
@@ -536,9 +535,6 @@ const requestPayload = (
 > => {
   if (!HttpMethod.hasBody(request.method)) {
     return Effect.succeed(urlParams)
-  }
-  if (stream) {
-    return Effect.succeed(request.stream)
   }
   const contentType = request.headers["content-type"]
     ? request.headers["content-type"].toLowerCase().trim()
@@ -632,10 +628,7 @@ const handlerToRoute = (
 ): HttpRouter.Route<any, any> => {
   const endpoint = endpoint_ as HttpApiEndpoint.HttpApiEndpoint.AnyWithProps
   const decodePath = Option.map(endpoint.pathSchema, Schema.decodeUnknown)
-  const decodePayload = Option.map(
-    endpoint.payloadSchema,
-    (x) => Schema.isSchema(x) ? Schema.decodeUnknown(x) : ((y) => Effect.succeed(y))
-  )
+  const decodePayload = Option.map(endpoint.payloadSchema, Schema.decodeUnknown)
   const decodeHeaders = Option.map(endpoint.headersSchema, Schema.decodeUnknown)
   const encodeSuccess = Schema.encode(makeSuccessSchema(endpoint.successSchema))
   return HttpRouter.makeRoute(
@@ -653,12 +646,13 @@ const handlerToRoute = (
         if (decodePath._tag === "Some") {
           request.path = yield* decodePath.value(routeContext.params)
         }
-        const isStream = endpoint.payloadSchema._tag === "Some" && "stream" in endpoint.payloadSchema.value
         if (decodePayload._tag === "Some") {
-          request.payload = yield* Effect.flatMap(
-            requestPayload(httpRequest, urlParams, isStream),
-            decodePayload.value
-          )
+          request.payload = HttpApiSchema.getStream(endpoint.payloadSchema.value.ast) ?
+            (httpRequest.stream) :
+            (yield* Effect.flatMap(
+              requestPayload(httpRequest, urlParams),
+              decodePayload.value
+            ))
         }
         if (decodeHeaders._tag === "Some") {
           request.headers = yield* decodeHeaders.value(httpRequest.headers)
@@ -772,6 +766,12 @@ const toResponseSchema = (getStatus: (ast: AST.AST) => number) => {
     }
     const encoding = HttpApiSchema.getEncoding(ast.to)
     switch (encoding.kind) {
+      case "Stream": {
+        return ParseResult.succeed(HttpServerResponse.stream(data as any, {
+          status,
+          contentType: encoding.contentType
+        }))
+      }
       case "Json": {
         return Effect.mapError(
           HttpServerResponse.json(data, {

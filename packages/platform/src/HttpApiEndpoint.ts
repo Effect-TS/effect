@@ -428,8 +428,13 @@ export declare namespace HttpApiEndpoint {
     & ([Headers] extends [never] ? {} : { readonly headers: Headers })
     & ([Payload] extends [never] ? {}
       : Payload extends infer P ? P extends Brand<HttpApiSchema.MultipartTypeId> ? { readonly payload: FormData }
-        : P extends Brand<HttpApiSchema.StreamTypeId> ?
-          { readonly payload: Stream.Stream<Uint8Array, StreamError, StreamContext> }
+        : P extends Brand<HttpApiSchema.StreamTypeId> ? {
+            readonly payload: {
+              readonly etag?: string | undefined
+              readonly contentLength?: number | undefined
+              readonly stream: Stream.Stream<Uint8Array, StreamError, StreamContext>
+            }
+          }
         : { readonly payload: P }
       : { readonly payload: Payload })
   ) extends infer Req ? keyof Req extends never ? (void | { readonly withResponse?: WithResponse }) :
