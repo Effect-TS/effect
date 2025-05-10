@@ -45,35 +45,35 @@ describe("Schema Context", () => {
   })
 
   it("declare errors", () => {
-    // @ts-expect-error
-    S.declare(
+    expect(S.declare).type.not.toBeCallableWith(
       [aContext, bContext],
       {
-        decode: (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
-        encode: (_a, _b) => () => ParseResult.succeed(1)
+        decode: (_a: S.Schema<string, string>, _b: S.Schema<number, number>) => () =>
+          Taga.pipe(Effect.flatMap(ParseResult.succeed)),
+        encode: (_a: S.Schema<string, string>, _b: S.Schema<number, number>) => () => ParseResult.succeed(1)
       }
     )
 
-    // @ts-expect-error
-    S.declare(
+    expect(S.declare).type.not.toBeCallableWith(
       [aContext, bContext],
       {
-        decode: (_a, _b) => () => ParseResult.succeed("a"),
-        encode: (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
+        decode: (_a: S.Schema<string, string>, _b: S.Schema<number, number>) => () => ParseResult.succeed("a"),
+        encode: (_a: S.Schema<string, string>, _b: S.Schema<number, number>) => () =>
+          Tagb.pipe(Effect.flatMap(ParseResult.succeed))
       }
     )
 
-    S.declare(
-      // @ts-expect-error
+    expect(S.declare).type.not.toBeCallableWith(
       [aContext, bContext],
       {
-        decode: (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
-        encode: (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
+        decode: (_a: S.Schema<string, string>, _b: S.Schema<number, number>) => () =>
+          Taga.pipe(Effect.flatMap(ParseResult.succeed)),
+        encode: (_a: S.Schema<string, string>, _b: S.Schema<number, number>) => () =>
+          Tagb.pipe(Effect.flatMap(ParseResult.succeed))
       }
     )
 
-    // @ts-expect-error
-    S.declare(
+    expect(S.declare).type.not.toBeCallableWith(
       [],
       {
         decode: () => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
@@ -81,21 +81,21 @@ describe("Schema Context", () => {
       }
     )
 
-    // @ts-expect-error
-    S.declare(
+    expect(S.declare).type.not.toBeCallableWith(
       [aContext, bContext],
       {
-        decode: (_a, _b) => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
-        encode: (_a, _b) => () => ParseResult.succeed(1)
+        decode: (_a: S.Schema<string, string>, _b: S.Schema<number, number>) => () =>
+          Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
+        encode: (_a: S.Schema<string, string>, _b: S.Schema<number, number>) => () => ParseResult.succeed(1)
       }
     )
 
-    // @ts-expect-error
-    S.declare(
+    expect(S.declare).type.not.toBeCallableWith(
       [aContext, bContext],
       {
-        decode: (_a, _b) => () => ParseResult.succeed("a"),
-        encode: (_a, _b) => () => Tag2.pipe(Effect.flatMap(ParseResult.succeed))
+        decode: (_a: S.Schema<string, string>, _b: S.Schema<number, number>) => () => ParseResult.succeed("a"),
+        encode: (_a: S.Schema<string, string>, _b: S.Schema<number, number>) => () =>
+          Tag2.pipe(Effect.flatMap(ParseResult.succeed))
       }
     )
   })
@@ -197,8 +197,7 @@ describe("Schema Context", () => {
   })
 
   it("brand error", () => {
-    // @ts-expect-error
-    aContext.pipe(S.brand("a"))
+    expect(aContext.pipe).type.not.toBeCallableWith(S.brand("a"))
   })
 
   it("partialWith", () => {
