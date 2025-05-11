@@ -6,6 +6,7 @@ import * as Context_ from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Exit as Exit_ } from "effect/Exit"
 import { globalValue } from "effect/GlobalValue"
+import type { ReadonlyMailbox } from "effect/Mailbox"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
@@ -41,7 +42,7 @@ export const isRpc = (u: unknown): u is Rpc<any, any, any> => Predicate.hasPrope
  * @category models
  */
 export interface Rpc<
-  out Tag extends string,
+  in out Tag extends string,
   out Payload extends AnyStructSchema = Schema.Struct<{}>,
   out Success extends Schema.Schema.Any = typeof Schema.Void,
   out Error extends Schema.Schema.All = typeof Schema.Never,
@@ -398,6 +399,15 @@ export type ToHandler<R extends Any> = R extends Rpc<
  * @since 1.0.0
  * @category models
  */
+export type ToHandlerFn<Current extends Any, R = any> = (
+  payload: Payload<Current>,
+  headers: Headers
+) => ResultFrom<Current, R> | Fork<ResultFrom<Current, R>>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export type IsStream<R extends Any, Tag extends string> = R extends
   Rpc<Tag, infer _Payload, RpcSchema.Stream<infer _A, infer _E>, infer _Error, infer _Middleware> ? true : never
 
@@ -433,6 +443,34 @@ export type ExcludeProvides<Env, R extends Any, Tag extends string> = Exclude<
  * @category models
  */
 export interface From<S extends AnyTaggedRequestSchema> extends Rpc<S["_tag"], S, S["success"], S["failure"]> {}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type ResultFrom<R extends Any, Context> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? [_Success] extends [RpcSchema.Stream<infer _SA, infer _SE>] ?
+      | Stream<
+        _SA["Type"],
+        _SE["Type"] | _Error["Type"],
+        Context
+      >
+      | Effect<
+        ReadonlyMailbox<_SA["Type"], _SE["Type"] | _Error["Type"]>,
+        _SE["Type"] | Schema.Schema.Type<_Error>,
+        Context
+      > :
+  Effect<
+    _Success["Type"],
+    _Error["Type"],
+    Context
+  > :
+  never
 
 const Proto = {
   [TypeId]: TypeId,
