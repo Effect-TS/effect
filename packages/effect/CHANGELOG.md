@@ -1,5 +1,76 @@
 # effect
 
+## 3.15.0
+
+### Minor Changes
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`c654595`](https://github.com/Effect-TS/effect/commit/c65459587b51da140b78098e81fdbfece65d53e2) Thanks @tim-smart! - Add Layer.setRandom, for over-riding the default Random service
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`d9f5dea`](https://github.com/Effect-TS/effect/commit/d9f5deae0f02f5de2b9fcb1cca8b142ba4bc2bba) Thanks @KhraksMamtsov! - `Brand.unbranded` getter has been added
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`49aa723`](https://github.com/Effect-TS/effect/commit/49aa7236a15e13f818c86edbca08c4af67c8dfaf) Thanks @titouancreach! - Add Either.transposeMapOption
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`74c14d0`](https://github.com/Effect-TS/effect/commit/74c14d01d0cb48cf517a1b6e29a373a96ed0ff5b) Thanks @vinassefranche! - Add Record.findFirst
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`e4f49b6`](https://github.com/Effect-TS/effect/commit/e4f49b66857e01b74ab6a9a0bc7132f44cd04cbb) Thanks @KhraksMamtsov! - Default `never` type has been added to `MutableHasMap.empty` & `MutableList.empty` ctors
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`6f02224`](https://github.com/Effect-TS/effect/commit/6f02224b3fc46a682ad2defb1a260841956c6780) Thanks @tim-smart! - add Stream.toAsyncIterable\* apis
+
+  ```ts
+  import { Stream } from "effect"
+
+  // Will print:
+  // 1
+  // 2
+  // 3
+  const stream = Stream.make(1, 2, 3)
+  for await (const result of Stream.toAsyncIterable(stream)) {
+    console.log(result)
+  }
+  ```
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`1dcfd41`](https://github.com/Effect-TS/effect/commit/1dcfd41ff96abd706901293a00c1893cb29dd8fd) Thanks @tim-smart! - improve Effect.filter\* types to exclude candidates in fallback functions
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`b21ab16`](https://github.com/Effect-TS/effect/commit/b21ab16b6f773e7ec4369db4e752c35e719f7870) Thanks @KhraksMamtsov! - Simplified the creation of pipeable classes.
+
+  ```ts
+  class MyClass extends Pipeable.Class() {
+    constructor(public a: number) {
+      super()
+    }
+    methodA() {
+      return this.a
+    }
+  }
+  console.log(new MyClass(2).pipe((x) => x.methodA())) // 2
+  ```
+
+  ```ts
+  class A {
+    constructor(public a: number) {}
+    methodA() {
+      return this.a
+    }
+  }
+  class B extends Pipeable.Class(A) {
+    constructor(private b: string) {
+      super(b.length)
+    }
+    methodB() {
+      return [this.b, this.methodA()]
+    }
+  }
+  console.log(new B("pipe").pipe((x) => x.methodB())) // ['pipe', 4]
+  ```
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`fcf1822`](https://github.com/Effect-TS/effect/commit/fcf1822f98fcda60351d64e9d2c2c13563d7e6db) Thanks @KhraksMamtsov! - property `message: string` has been added to `ConfigError.And` & `Or` members
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`0061dd1`](https://github.com/Effect-TS/effect/commit/0061dd140740165e91569a684cce27a77b23229e) Thanks @tim-smart! - allow catching multiple different tags in Effect.catchTag
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`8421e6e`](https://github.com/Effect-TS/effect/commit/8421e6e49332bca8f96f482dfd48680e238b3a89) Thanks @mlegenhausen! - Expose `Cause.isTimeoutException`
+
+- [#4641](https://github.com/Effect-TS/effect/pull/4641) [`fa10f56`](https://github.com/Effect-TS/effect/commit/fa10f56b96bd9af070ba99ebc3279aa93954261e) Thanks @thewilkybarkid! - Support multiple values in Function.apply
+
 ## 3.14.22
 
 ### Patch Changes
