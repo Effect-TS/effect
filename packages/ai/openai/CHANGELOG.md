@@ -1,5 +1,17 @@
 # @effect/ai-openai
 
+## 0.18.0
+
+### Minor Changes
+
+- [#4766](https://github.com/Effect-TS/effect/pull/4766) [`a4d42c5`](https://github.com/Effect-TS/effect/commit/a4d42c55669eff56963d06323d155a5bf3082a70) Thanks @IMax153! - Refactor `@effect/ai-openai` to align with changes to `@effect/ai`
+
+### Patch Changes
+
+- Updated dependencies [[`a4d42c5`](https://github.com/Effect-TS/effect/commit/a4d42c55669eff56963d06323d155a5bf3082a70)]:
+  - @effect/ai@0.15.0
+  - @effect/experimental@0.45.1
+
 ## 0.17.1
 
 ### Patch Changes
