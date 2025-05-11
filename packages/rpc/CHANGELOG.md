@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.58.0
+
+### Minor Changes
+
+- [#4858](https://github.com/Effect-TS/effect/pull/4858) [`cd6cd0e`](https://github.com/Effect-TS/effect/commit/cd6cd0eacd6b09d6dd48b30b32edeb4a3c3075f9) Thanks @tim-smart! - add apis for implementing and accessing single rpc handlers
+
 ## 0.57.1
 
 ### Patch Changes
