@@ -171,7 +171,7 @@ export const dual: {
   }
 }
 /**
- * Apply a function to a given value.
+ * Apply a function to given values.
  *
  * @example
  * ```ts
@@ -184,7 +184,7 @@ export const dual: {
  *
  * @since 2.0.0
  */
-export const apply = <A>(a: A) => <B>(self: (a: A) => B): B => self(a)
+export const apply = <A extends ReadonlyArray<unknown>>(...a: A) => <B>(self: (...a: A) => B): B => self(...a)
 
 /**
  * A lazy argument.
