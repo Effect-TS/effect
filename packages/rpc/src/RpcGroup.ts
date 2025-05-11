@@ -10,10 +10,9 @@ import { type Pipeable } from "effect/Pipeable"
 import type * as Record from "effect/Record"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
-import type * as Stream from "effect/Stream"
+import * as Stream from "effect/Stream"
 import * as Rpc from "./Rpc.js"
 import type * as RpcMiddleware from "./RpcMiddleware.js"
-import type * as RpcSchema from "./RpcSchema.js"
 
 /**
  * @since 1.0.0
@@ -95,6 +94,38 @@ export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
   >
 
   /**
+   * Implement a single handler from the group.
+   */
+  toLayerHandler<
+    const Tag extends R["_tag"],
+    Handler extends HandlerFrom<R, Tag>,
+    EX = never,
+    RX = never
+  >(
+    tag: Tag,
+    build:
+      | Handler
+      | Effect.Effect<Handler, EX, RX>
+  ): Layer.Layer<
+    Rpc.Handler<Tag>,
+    EX,
+    | Exclude<RX, Scope>
+    | HandlerContext<R, Tag, Handler>
+  >
+
+  /**
+   * Retrieve a handler for a specific procedure in the group.
+   */
+  accessHandler<const Tag extends R["_tag"]>(tag: Tag): Effect.Effect<
+    (
+      payload: Rpc.Payload<Extract<R, { readonly _tag: Tag }>>,
+      headers: Headers
+    ) => Rpc.ResultFrom<Extract<R, { readonly _tag: Tag }>, never>,
+    never,
+    Rpc.Handler<Tag>
+  >
+
+  /**
    * Annotate the group with a value.
    */
   annotate<I, S>(tag: Context.Tag<I, S>, value: S): RpcGroup<R>
@@ -128,67 +159,49 @@ export interface Any {
  * @category groups
  */
 export type HandlersFrom<Rpc extends Rpc.Any> = {
-  readonly [Current in Rpc as Current["_tag"]]: (
-    payload: Rpc.Payload<Current>,
-    headers: Headers
-  ) => ResultFrom<Current> | Rpc.Fork<ResultFrom<Current>>
+  readonly [Current in Rpc as Current["_tag"]]: Rpc.ToHandlerFn<Current>
 }
 
 /**
  * @since 1.0.0
  * @category groups
  */
-export type ResultFrom<Rpc extends Rpc.Any> = Rpc extends Rpc.Rpc<
-  infer _Tag,
-  infer _Payload,
-  infer _Success,
-  infer _Error,
-  infer _Middleware
-> ? [_Success] extends [RpcSchema.Stream<infer _SA, infer _SE>] ?
-      | Stream.Stream<
-        _SA["Type"],
-        _SE["Type"] | _Error["Type"],
-        any
-      >
-      | Effect.Effect<
-        ReadonlyMailbox<_SA["Type"], _SE["Type"] | _Error["Type"]>,
-        _SE["Type"] | Schema.Schema.Type<_Error>,
-        any
-      > :
-  Effect.Effect<
-    _Success["Type"],
-    _Error["Type"],
-    any
-  > :
-  never
+export type HandlerFrom<Rpc extends Rpc.Any, Tag extends Rpc["_tag"]> = Extract<Rpc, { readonly _tag: Tag }> extends
+  infer Current ? Current extends Rpc.Any ? Rpc.ToHandlerFn<Current> : never : never
 
 /**
  * @since 1.0.0
  * @category groups
  */
 export type HandlersContext<Rpcs extends Rpc.Any, Handlers> = keyof Handlers extends infer K ?
-  K extends keyof Handlers & string ? [Rpc.IsStream<Rpcs, K>] extends [true] ? Handlers[K] extends (...args: any) =>
-        | Stream.Stream<infer _A, infer _E, infer _R>
-        | Rpc.Fork<Stream.Stream<infer _A, infer _E, infer _R>>
-        | Effect.Effect<
-          ReadonlyMailbox<infer _A, infer _E>,
-          infer _EX,
-          infer _R
-        >
-        | Rpc.Fork<
-          Effect.Effect<
-            ReadonlyMailbox<infer _A, infer _E>,
-            infer _EX,
-            infer _R
-          >
-        > ? Exclude<Rpc.ExcludeProvides<_R, Rpcs, K>, Scope> :
-      never :
-    Handlers[K] extends (
-      ...args: any
-    ) => Effect.Effect<infer _A, infer _E, infer _R> | Rpc.Fork<Effect.Effect<infer _A, infer _E, infer _R>> ?
-      Rpc.ExcludeProvides<_R, Rpcs, K>
-    : never
-  : never
+  K extends keyof Handlers & string ? HandlerContext<Rpcs, K, Handlers[K]> : never :
+  never
+
+/**
+ * @since 1.0.0
+ * @category groups
+ */
+export type HandlerContext<Rpcs extends Rpc.Any, K extends Rpcs["_tag"], Handler> = [Rpc.IsStream<Rpcs, K>] extends
+  [true] ? Handler extends (...args: any) =>
+    | Stream.Stream<infer _A, infer _E, infer _R>
+    | Rpc.Fork<Stream.Stream<infer _A, infer _E, infer _R>>
+    | Effect.Effect<
+      ReadonlyMailbox<infer _A, infer _E>,
+      infer _EX,
+      infer _R
+    >
+    | Rpc.Fork<
+      Effect.Effect<
+        ReadonlyMailbox<infer _A, infer _E>,
+        infer _EX,
+        infer _R
+      >
+    > ? Exclude<Rpc.ExcludeProvides<_R, Rpcs, K>, Scope> :
+  never :
+  Handler extends (
+    ...args: any
+  ) => Effect.Effect<infer _A, infer _E, infer _R> | Rpc.Fork<Effect.Effect<infer _A, infer _E, infer _R>> ?
+    Rpc.ExcludeProvides<_R, Rpcs, K>
   : never
 
 /**
@@ -252,6 +265,32 @@ const RpcGroupProto = {
   },
   toLayer(this: RpcGroup<any>, build: Effect.Effect<Record<string, (request: any) => any>>) {
     return Layer.scopedContext(this.toHandlersContext(build))
+  },
+  toLayerHandler(this: RpcGroup<any>, tag: string, build: Effect.Effect<Record<string, (request: any) => any>>) {
+    return Layer.scopedContext(Effect.gen(this, function*() {
+      const context = yield* Effect.context<never>()
+      const handler = Effect.isEffect(build) ? yield* build : build
+      const contextMap = new Map<string, unknown>()
+      const rpc = this.requests.get(tag)!
+      contextMap.set(rpc.key, {
+        handler,
+        context
+      })
+      return Context.unsafeMake(contextMap)
+    }))
+  },
+  accessHandler(this: RpcGroup<any>, tag: string) {
+    return Effect.contextWith((parentContext: Context.Context<any>) => {
+      const rpc = this.requests.get(tag)!
+      const { context, handler } = parentContext.unsafeMap.get(rpc.key) as Rpc.Handler<any>
+      return (payload: Rpc.Payload<any>, headers: Headers) => {
+        const result = handler(payload, headers)
+        const effectOrStream = Rpc.isFork(result) ? result.value : result
+        return Effect.isEffect(effectOrStream)
+          ? Effect.provide(effectOrStream, context)
+          : Stream.provideContext(effectOrStream, context)
+      }
+    })
   },
   annotate(this: RpcGroup<any>, tag: Context.Tag<any, any>, value: any) {
     return makeProto({
