@@ -358,14 +358,14 @@ export const make: <Config>(
       if (Option.isNone(spanTransformer)) {
         return stream
       }
-      let lastResponse: AiResponse.AiResponse | undefined
+      let finalResponse = AiResponse.empty
       return stream.pipe(
         Stream.map((response) => {
-          lastResponse = response
+          finalResponse = AiResponse.merge(finalResponse, response)
           return response
         }),
         Stream.ensuring(Effect.sync(() => {
-          spanTransformer.value({ ...options, response: lastResponse! })
+          spanTransformer.value({ ...options, response: finalResponse })
         }))
       )
     })),
@@ -470,49 +470,49 @@ const getDescription = (ast: AST.AST): string => {
   return AST.DescriptionAnnotationId in annotations ? annotations[AST.DescriptionAnnotationId] as string : ""
 }
 
-const resolveParts = <Tools extends AiTool.Any>(options: {
+const resolveParts = Effect.fnUntraced(function*<Tools extends AiTool.Any>(options: {
   readonly response: AiResponse.AiResponse
   readonly toolkit: AiToolkit.ToHandler<Tools>
   readonly concurrency: Concurrency | undefined
   readonly method: string
-}) =>
-  Effect.gen(function*() {
-    const toolNames: Array<string> = []
-    const toolParts = options.response.parts.filter(
-      (part): part is AiResponse.ToolCallPart => {
-        if (part._tag === "ToolCallPart") {
-          toolNames.push(part.name)
-          return true
-        }
-        return false
+}) {
+  const toolNames: Array<string> = []
+  const toolParts = options.response.parts.filter(
+    (part): part is AiResponse.ToolCallPart => {
+      if (part._tag === "ToolCallPart") {
+        toolNames.push(part.name)
+        return true
       }
-    )
-    if (toolParts.length === 0) {
-      return new AiResponse.WithToolCallResults({
-        parts: options.response.parts,
-        results: constEmptyMap,
-        encodedResults: constEmptyMap
-      }, constDisableValidation)
+      return false
     }
-    yield* Effect.annotateCurrentSpan("toolCalls", toolNames)
-    const results = new Map<AiResponse.ToolCallId, AiTool.Success<Tools>>()
-    const encodedResults = new Map<AiResponse.ToolCallId, unknown>()
-    yield* Effect.forEach(toolParts, (part) => {
-      const id = part.id as AiResponse.ToolCallId
-      const name = part.name as AiTool.Name<Tools>
-      const params = part.params as AiTool.Parameters<Tools>
-      const toolCall = options.toolkit.handle(name, params)
-      return Effect.map(toolCall, ({ encodedResult, result }) => {
-        results.set(id, result)
-        encodedResults.set(id, encodedResult)
-      })
-    }, { concurrency: options.concurrency, discard: true })
+  )
+  if (toolParts.length === 0) {
     return new AiResponse.WithToolCallResults({
       parts: options.response.parts,
-      results,
-      encodedResults
+      results: constEmptyMap,
+      encodedResults: constEmptyMap
     }, constDisableValidation)
-  })
+  }
+  yield* Effect.annotateCurrentSpan("toolCalls", toolNames)
+  const results = new Map<AiResponse.ToolCallId, AiTool.Success<Tools>>()
+  const encodedResults = new Map<AiResponse.ToolCallId, unknown>()
+  const resolve = Effect.forEach(toolParts, (part) => {
+    const id = part.id as AiResponse.ToolCallId
+    const name = part.name as AiTool.Name<Tools>
+    const params = part.params as AiTool.Parameters<Tools>
+    const toolCall = options.toolkit.handle(name, params)
+    return Effect.map(toolCall, ({ encodedResult, result }) => {
+      results.set(id, result)
+      encodedResults.set(id, encodedResult)
+    })
+  }, { concurrency: options.concurrency, discard: true })
+  yield* resolve
+  return new AiResponse.WithToolCallResults({
+    parts: options.response.parts,
+    results,
+    encodedResults
+  }, constDisableValidation)
+})
 
 /**
  * Generate text using a large language model for the specified `prompt`.

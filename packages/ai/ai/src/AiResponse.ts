@@ -757,15 +757,56 @@ export const merge: {
   (other: AiResponse) => (self: AiResponse) => AiResponse,
   (self: AiResponse, other: AiResponse) => AiResponse
 >(2, (self, other) => {
-  if (other.parts.length === 0) {
-    return new AiResponse({
-      parts: self.parts
+  const newParts = mergeParts(self, other)
+  if (hasToolCallResults(self) && hasToolCallResults(other)) {
+    return new WithToolCallResults({
+      results: new Map([...self.results, ...other.results]) as any,
+      encodedResults: new Map([...self.encodedResults, ...other.encodedResults]),
+      parts: newParts
+    }, constDisableValidation)
+  } else if (hasToolCallResults(self)) {
+    return new WithToolCallResults({
+      results: self.results as any,
+      encodedResults: self.encodedResults,
+      parts: newParts
+    }, constDisableValidation)
+  } else if (hasToolCallResults(other)) {
+    return new WithToolCallResults({
+      results: other.results as any,
+      encodedResults: other.encodedResults,
+      parts: newParts
+    }, constDisableValidation)
+  } else if (isStructured(self) && isStructured(other)) {
+    return new WithStructuredOutput({
+      id: self.id,
+      name: self.name,
+      value: other.value,
+      parts: newParts
+    }, constDisableValidation)
+  } else if (isStructured(self)) {
+    return new WithStructuredOutput({
+      id: self.id,
+      name: self.name,
+      value: self.value,
+      parts: newParts
+    }, constDisableValidation)
+  } else if (isStructured(other)) {
+    return new WithStructuredOutput({
+      id: other.id,
+      name: other.name,
+      value: other.value,
+      parts: newParts
     }, constDisableValidation)
   }
+  return new AiResponse({ parts: newParts }, constDisableValidation)
+})
+
+const mergeParts = (self: AiResponse, other: AiResponse): ReadonlyArray<Part> => {
+  if (other.parts.length === 0) {
+    return self.parts
+  }
   if (self.parts.length === 0) {
-    return new AiResponse({
-      parts: other.parts
-    }, constDisableValidation)
+    return other.parts
   }
   const lastPart = self.parts[self.parts.length - 1]
   const newParts: Array<Part> = []
@@ -778,10 +819,8 @@ export const merge: {
   if (text.length > 0) {
     newParts.push(new TextPart({ text }, constDisableValidation))
   }
-  return newParts.length === 0 ? self : new AiResponse({
-    parts: [...self.parts.slice(0, self.parts.length - 1), ...newParts]
-  }, constDisableValidation)
-})
+  return newParts.length === 0 ? self.parts : [...self.parts.slice(0, self.parts.length - 1), ...newParts]
+}
 
 /**
  * Adds the specified tool calls to the provided `AiResponse`.
