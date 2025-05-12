@@ -1,7 +1,6 @@
-import type { Order } from "effect"
-import { Array, Effect, Either, Option, Predicate } from "effect"
+import { Array, Effect, Either, Option, Order, Predicate } from "effect"
 import { hole, identity, pipe } from "effect/Function"
-import { describe, expect, it } from "tstyche"
+import { describe, expect, it, when } from "tstyche"
 
 declare const nonEmptyReadonlyStrings: Array.NonEmptyReadonlyArray<string>
 declare const nonEmptyNumbers: Array.NonEmptyArray<number>
@@ -233,12 +232,9 @@ describe("Array", () => {
     expect(pipe(nonEmptyABs, Array.sort(orderA))).type.toBe<[AB, ...Array<AB>]>()
     expect(Array.sort(orderA)(nonEmptyABs)).type.toBe<[AB, ...Array<AB>]>()
 
-    // @ts-expect-error: wrong `Order` type
-    pipe([1], Array.sort(Order.string))
-    // @ts-expect-error: wrong `Order` type
-    Array.sort([1], Order.string)
-    // @ts-expect-error: wrong `Order` type
-    Array.sort(Order.string)([1])
+    when(pipe).isCalledWith([1], expect(Array.sort).type.not.toBeCallableWith(Order.string))
+    expect(Array.sort).type.not.toBeCallableWith([1], Order.string)
+    expect(Array.sort(Order.string)).type.not.toBeCallableWith([1])
   })
 
   it("sortWith", () => {
@@ -355,10 +351,11 @@ describe("Array", () => {
       })
     )).type.toBe<Array<string | number>>()
 
-    // @ts-expect-error: wrong `_item` type
-    Array.filter(numbersOrStrings, (_item: string) => true)
-    // @ts-expect-error: wrong `_item` type
-    pipe(numbersOrStrings, Array.filter((_item: string) => true))
+    expect(Array.filter).type.not.toBeCallableWith(numbersOrStrings, (_item: string) => true)
+    when(pipe).isCalledWith(
+      numbersOrStrings,
+      expect(Array.filter).type.not.toBeCallableWith((_item: string) => true)
+    )
 
     expect(Array.filter(numbers, predicateNumbersOrStrings)).type.toBe<Array<number>>()
     expect(pipe(numbers, Array.filter(predicateNumbersOrStrings))).type.toBe<Array<number>>()

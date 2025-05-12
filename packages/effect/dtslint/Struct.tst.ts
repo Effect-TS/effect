@@ -1,5 +1,5 @@
 import { hole, pipe, Struct } from "effect"
-import { describe, expect, it } from "tstyche"
+import { describe, expect, it, when } from "tstyche"
 
 const asym = Symbol.for("effect/dtslint/a")
 const bsym = Symbol.for("effect/dtslint/b")
@@ -59,40 +59,31 @@ describe("Struct", () => {
     })
 
     it("errors", () => {
-      Struct.evolve({ a: "a", b: 1 }, {
-        // @ts-expect-error: Type 'string' is not assignable to type 'number'
-        a: (n: number) => n
-      })
-      Struct.evolve(
+      expect(Struct.evolve).type.not.toBeCallableWith(
+        { a: "a", b: 1 },
+        { a: (n: number) => n }
+      )
+      expect(Struct.evolve).type.not.toBeCallableWith(
         hole<{ a: "a"; b: 1 }>(),
-        // @ts-expect-error: Type 'string' is not assignable to type '(a: 1 | "a") => unknown'
         hole<Record<string, string>>()
       )
-      Struct.evolve(
+      expect(Struct.evolve).type.not.toBeCallableWith(
         hole<{ a: "a"; b: 1 }>(),
-        // @ts-expect-error: Type 'number' is not assignable to type 'string'
         hole<Record<string, (s: string) => null>>()
       )
-      pipe(
+      when(pipe).isCalledWith(
         { a: "a", b: 1 },
-        Struct.evolve({
-          // @ts-expect-error: Type 'string' is not assignable to type 'number'
-          a: (n: number) => n
-        })
+        expect(Struct.evolve).type.not.toBeCallableWith({ a: (n: number) => n })
       )
-      pipe(
+
+      when(pipe).isCalledWith(
         hole<{ a: "a"; b: 1 }>(),
-        Struct.evolve(
-          // @ts-expect-error: Type 'string' is not assignable to type '(a: "a" | 1) => unknown'
-          hole<Record<string, string>>()
-        )
+        expect(Struct.evolve).type.not.toBeCallableWith(hole<Record<string, string>>())
       )
-      pipe(
+
+      when(pipe).isCalledWith(
         hole<{ a: "a"; b: 1 }>(),
-        Struct.evolve(
-          // @ts-expect-error: Type 'number' is not assignable to type 'string'
-          hole<Record<string, (s: string) => null>>()
-        )
+        expect(Struct.evolve).type.not.toBeCallableWith(hole<Record<string, (s: string) => null>>())
       )
     })
   })
@@ -152,43 +143,36 @@ describe("Struct", () => {
     it("struct + record", () => {
       expect(pipe(hole<Record<string, number> & { a: boolean }>(), Struct.get("a")))
         .type.toBe<boolean>()
-      pipe(
+      when(pipe).isCalledWith(
         hole<Record<string, number> & { a: boolean }>(),
-        // @ts-expect-error: Type 'Record<string, number> & { a: boolean; }' has no properties in common with type '{ b?: any; }'
-        Struct.get("b")
+        expect(Struct.get).type.not.toBeCallableWith("b")
       )
     })
   })
 
   describe("pick", () => {
     it("errors when picking a non-existent key", () => {
-      pipe(
+      when(pipe).isCalledWith(
         stringStruct,
-        // @ts-expect-error: Type '{ a: string; b: number; c: boolean; }' has no properties in common with type '{ d?: any; }'
-        Struct.pick("d")
+        expect(Struct.pick).type.not.toBeCallableWith("d")
       )
-      Struct.pick("d")(
-        // @ts-expect-error: Type '{ a: string; b: number; c: boolean; }' has no properties in common with type '{ d?: any; }'
+      expect(Struct.pick("d")).type.not.toBeCallableWith(
         stringStruct
       )
 
-      pipe(
+      when(pipe).isCalledWith(
         symbolStruct,
-        // @ts-expect-error: Type '{ [asym]: string; [bsym]: number; [csym]: boolean; }' has no properties in common with type '{ [dsym]?: any; }'
-        Struct.pick(dsym)
+        expect(Struct.pick).type.not.toBeCallableWith(dsym)
       )
-      Struct.pick(dsym)(
-        // @ts-expect-error: Type '{ [asym]: string; [bsym]: number; [csym]: boolean; }' has no properties in common with type '{ [dsym]?: any; }'
+      expect(Struct.pick(dsym)).type.not.toBeCallableWith(
         symbolStruct
       )
 
-      pipe(
+      when(pipe).isCalledWith(
         numberStruct,
-        // @ts-expect-error: Type '{ 1: string; 2: number; 3: boolean; }' has no properties in common with type '{ 4?: any; }'
-        Struct.pick(4)
+        expect(Struct.pick).type.not.toBeCallableWith(4)
       )
-      Struct.pick(4)(
-        // @ts-expect-error: Type '{ 1: string; 2: number; 3: boolean; }' has no properties in common with type '{ 4?: any; }'
+      expect(Struct.pick(4)).type.not.toBeCallableWith(
         numberStruct
       )
     })
@@ -262,12 +246,11 @@ describe("Struct", () => {
         .type.toBe<{ a: boolean }>()
 
       // TODO: this doesn't work but it should
-      // // @ts-expect-error
-      // Struct.pick(sr, "b")
-      pipe(
+      expect.fail(Struct.pick).type.not.toBeCallableWith(sr, "b")
+
+      when(pipe).isCalledWith(
         sr,
-        // @ts-expect-error: Type 'Record<string, number> & { a: boolean; }' has no properties in common with type '{ b?: any; }'
-        Struct.pick("b")
+        expect(Struct.pick).type.not.toBeCallableWith("b")
       )
     })
 
@@ -281,33 +264,27 @@ describe("Struct", () => {
 
   describe("omit", () => {
     it("errors when omitting a non-existent key", () => {
-      pipe(
+      when(pipe).isCalledWith(
         stringStruct,
-        // @ts-expect-error:  Type '{ a: string; b: number; c: boolean; }' has no properties in common with type '{ d?: any; }'
-        Struct.omit("d")
+        expect(Struct.omit).type.not.toBeCallableWith("d")
       )
-      Struct.omit("d")(
-        // @ts-expect-error: Type '{ a: string; b: number; c: boolean; }' has no properties in common with type '{ d?: any; }'
+      expect(Struct.omit("d")).type.not.toBeCallableWith(
         stringStruct
       )
 
-      pipe(
+      when(pipe).isCalledWith(
         symbolStruct,
-        // @ts-expect-error: Type '{ [asym]: string; [bsym]: number; [csym]: boolean; }' has no properties in common with type '{ [dsym]?: any; }'
-        Struct.omit(dsym)
+        expect(Struct.omit).type.not.toBeCallableWith(dsym)
       )
-      Struct.omit(dsym)(
-        // @ts-expect-error: Type '{ [asym]: string; [bsym]: number; [csym]: boolean; }' has no properties in common with type '{ [dsym]?: any; }'
+      expect(Struct.omit(dsym)).type.not.toBeCallableWith(
         symbolStruct
       )
 
-      pipe(
+      when(pipe).isCalledWith(
         numberStruct,
-        // @ts-expect-error: Type '{ 1: string; 2: number; 3: boolean; }' has no properties in common with type '{ 4?: any; }'
-        Struct.omit(4)
+        expect(Struct.omit).type.not.toBeCallableWith(4)
       )
-      Struct.omit(4)(
-        // @ts-expect-error: Type '{ 1: string; 2: number; 3: boolean; }' has no properties in common with type '{ 4?: any; }'
+      expect(Struct.omit(4)).type.not.toBeCallableWith(
         numberStruct
       )
     })

@@ -1,6 +1,6 @@
 import type { Brand } from "effect"
 import { Either, hole, Option, pipe, Predicate, Record } from "effect"
-import { describe, expect, it } from "tstyche"
+import { describe, expect, it, when } from "tstyche"
 
 declare const string$numbers: Record<string, number>
 declare const string$numbersOrStrings: Record<string, number | string>
@@ -141,69 +141,25 @@ describe("Record", () => {
   it("has", () => {
     expect(Record.has(string$numbers, "a")).type.toBe<boolean>()
     expect(pipe(string$numbers, Record.has("a"))).type.toBe<boolean>()
-    Record.has(
-      string$numbers,
-      // @ts-expect-error: Argument of type 'typeof symA' is not assignable to parameter of type 'string'
-      symA
-    )
+    expect(Record.has).type.not.toBeCallableWith(string$numbers, symA)
     expect(Record.has(template$numbers, "a")).type.toBe<boolean>()
-    Record.has(
-      template$numbers,
-      // @ts-expect-error: Argument of type '"b"' is not assignable to parameter of type '`a${string}`'
-      "b"
-    )
+    expect(Record.has).type.not.toBeCallableWith(template$numbers, "b")
     expect(Record.has(symbol$numbers, symA)).type.toBe<boolean>()
-    Record.has(
-      symbol$numbers,
-      // @ts-expect-error: Argument of type 'string' is not assignable to parameter of type 'symbol'
-      "a"
-    )
-    Record.has(
-      string$structAB,
-      // @ts-expect-error: Argument of type '"c"' is not assignable to parameter of type '"a" | "b"'
-      "c"
-    )
-    Record.has(
-      string$structAB,
-      // @ts-expect-error: Argument of type 'unique symbol' is not assignable to parameter of type '"a" | "b"'
-      symA
-    )
+    expect(Record.has).type.not.toBeCallableWith(symbol$numbers, "a")
+    expect(Record.has).type.not.toBeCallableWith(string$structAB, "c")
+    expect(Record.has).type.not.toBeCallableWith(string$structAB, symA)
   })
 
   it("get", () => {
     expect(Record.get(string$numbers, "a")).type.toBe<Option.Option<number>>()
     expect(pipe(string$numbers, Record.get("a"))).type.toBe<Option.Option<number>>()
-    pipe(
-      string$numbers,
-      Record.get(
-        // @ts-expect-error: Argument of type 'typeof symA' is not assignable to parameter of type 'string'
-        symA
-      )
-    )
+    when(pipe).isCalledWith(string$numbers, expect(Record.get).type.not.toBeCallableWith(symA))
     expect(pipe(template$numbers, Record.get("a"))).type.toBe<Option.Option<number>>()
-    pipe(
-      template$numbers,
-      Record.get(
-        // @ts-expect-error: Argument of type '"b"' is not assignable to parameter of type '`a${string}`'
-        "b"
-      )
-    )
+    when(pipe).isCalledWith(template$numbers, expect(Record.get).type.not.toBeCallableWith("b"))
     expect(pipe(symbol$numbers, Record.get(symA))).type.toBe<Option.Option<number>>()
-    pipe(
-      symbol$numbers,
-      Record.get(
-        // @ts-expect-error: Argument of type 'string' is not assignable to parameter of type 'symbol'
-        "a"
-      )
-    )
+    when(pipe).isCalledWith(symbol$numbers, expect(Record.get).type.not.toBeCallableWith("a"))
     expect(pipe(string$structAB, Record.get("a"))).type.toBe<Option.Option<number>>()
-    pipe(
-      string$structAB,
-      Record.get(
-        // @ts-expect-error: Argument of type '"c"' is not assignable to parameter of type '"a" | "b"'
-        "c"
-      )
-    )
+    when(pipe).isCalledWith(string$structAB, expect(Record.get).type.not.toBeCallableWith("c"))
   })
 
   it("modify, modifyOption, and replaceOption", () => {
@@ -213,14 +169,7 @@ describe("Record", () => {
     expect(pipe(template$numbers, Record.modify("a", () => true))).type.toBe<
       Record<`a${string}`, number | boolean>
     >()
-    pipe(
-      template$numbers,
-      Record.modify(
-        // @ts-expect-error: Argument of type '"b"' is not assignable to parameter of type '`a${string}`'
-        "b",
-        () => true
-      )
-    )
+    when(pipe).isCalledWith(template$numbers, expect(Record.modify).type.not.toBeCallableWith("b", () => true))
     expect(pipe(symbol$numbers, Record.modify(symA, () => 2))).type.toBe<Record<symbol, number>>()
     expect(pipe(symbol$numbers, Record.modify(symA, () => true))).type.toBe<Record<symbol, number | boolean>>()
     expect(pipe(string$structAB, Record.modify("a", () => 2))).type.toBe<Record<"a" | "b", number>>()
@@ -238,13 +187,9 @@ describe("Record", () => {
       .type.toBe<Option.Option<Record<`a${string}`, number>>>()
     expect(pipe(template$numbers, Record.modifyOption("a", () => true)))
       .type.toBe<Option.Option<Record<`a${string}`, number | boolean>>>()
-    pipe(
+    when(pipe).isCalledWith(
       template$numbers,
-      Record.modifyOption(
-        // @ts-expect-error: Argument of type '"b"' is not assignable to parameter of type '`a${string}`'
-        "b",
-        () => true
-      )
+      expect(Record.modifyOption).type.not.toBeCallableWith("b", () => true)
     )
     expect(pipe(symbol$numbers, Record.modifyOption(symA, () => 2)))
       .type.toBe<Option.Option<Record<symbol, number>>>()
@@ -265,14 +210,7 @@ describe("Record", () => {
       .type.toBe<Option.Option<Record<`a${string}`, number>>>()
     expect(pipe(template$numbers, Record.replaceOption("a", true)))
       .type.toBe<Option.Option<Record<`a${string}`, number | boolean>>>()
-    pipe(
-      template$numbers,
-      Record.replaceOption(
-        // @ts-expect-error: Argument of type '"b"' is not assignable to parameter of type '`a${string}`'
-        "b",
-        true
-      )
-    )
+    when(pipe).isCalledWith(template$numbers, expect(Record.replaceOption).type.not.toBeCallableWith("b", true))
     expect(pipe(symbol$numbers, Record.replaceOption(symA, 2)))
       .type.toBe<Option.Option<Record<symbol, number>>>()
     expect(pipe(symbol$numbers, Record.replaceOption(symA, true)))
@@ -286,13 +224,7 @@ describe("Record", () => {
   it("remove", () => {
     expect(pipe(string$numbers, Record.remove("a"))).type.toBe<Record<string, number>>()
     expect(pipe(template$numbers, Record.remove("a"))).type.toBe<Record<`a${string}`, number>>()
-    pipe(
-      template$numbers,
-      Record.remove(
-        // @ts-expect-error: Argument of type '"b"' is not assignable to parameter of type '`a${string}`'
-        "b"
-      )
-    )
+    when(pipe).isCalledWith(template$numbers, expect(Record.remove).type.not.toBeCallableWith("b"))
     expect(pipe(symbol$numbers, Record.remove(symA))).type.toBe<Record<symbol, number>>()
     expect(pipe(string$structAB, Record.remove("a"))).type.toBe<Record<"b", number>>()
   })
@@ -302,13 +234,7 @@ describe("Record", () => {
     expect(pipe(template$numbers, Record.pop("a"))).type.toBe<
       Option.Option<[number, Record<`a${string}`, number>]>
     >()
-    pipe(
-      template$numbers,
-      Record.pop(
-        // @ts-expect-error: Argument of type '"b"' is not assignable to parameter of type '`a${string}`'
-        "b"
-      )
-    )
+    when(pipe).isCalledWith(template$numbers, expect(Record.pop).type.not.toBeCallableWith("b"))
     expect(pipe(symbol$numbers, Record.pop(symA))).type.toBe<Option.Option<[number, Record<symbol, number>]>>()
     expect(pipe(string$structAB, Record.pop("a"))).type.toBe<Option.Option<[number, Record<"b", number>]>>()
   })
