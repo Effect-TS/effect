@@ -1,5 +1,14 @@
 # @effect/ai
 
+## 0.16.1
+
+### Patch Changes
+
+- [#4866](https://github.com/Effect-TS/effect/pull/4866) [`cb3c30f`](https://github.com/Effect-TS/effect/commit/cb3c30f540a83dafcd6d841375073b5e069fa417) Thanks @tim-smart! - preserve tool call results in AiResponse.merge
+
+- Updated dependencies []:
+  - @effect/experimental@0.46.0
+
 ## 0.16.0
 
 ### Patch Changes

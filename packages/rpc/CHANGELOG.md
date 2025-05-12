@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.59.1
+
+### Patch Changes
+
+- [#4860](https://github.com/Effect-TS/effect/pull/4860) [`6495440`](https://github.com/Effect-TS/effect/commit/64954405eb57313722023b87c0d92761980e2713) Thanks @tim-smart! - ensure socket close events are not errors in RpcServer
+
 ## 0.59.0
 
 ### Patch Changes
