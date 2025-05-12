@@ -1188,7 +1188,7 @@ const makeSocketProtocol = Effect.gen(function*() {
     }
     clients.set(id, { write })
 
-    yield* Effect.orDie(Effect.interruptible(socket.runRaw((data) => {
+    yield* socket.runRaw((data) => {
       try {
         const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
         if (decoded.length === 0) return Effect.void
@@ -1201,7 +1201,11 @@ const makeSocketProtocol = Effect.gen(function*() {
       } catch (cause) {
         return writeRaw(parser.encode(ResponseDefectEncoded(cause)))
       }
-    })))
+    }).pipe(
+      Effect.interruptible,
+      Effect.catchIf((error) => error.reason === "Close", () => Effect.void),
+      Effect.orDie
+    )
   }
 
   const protocol = yield* Protocol.make((writeRequest_) => {
