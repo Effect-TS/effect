@@ -601,6 +601,27 @@ describe("Metric", () => {
 
         strictEqual(Option.getOrNull(medianQuantileValue), 10)
       }))
+    it.effect("should return no values when no samples are present", () =>
+      Effect.gen(function*() {
+        const name = nextName()
+        const summary = Metric.summary({
+          name,
+          maxAge: Duration.minutes(1),
+          maxSize: 15,
+          error: 0.01,
+          quantiles: [0.5]
+        })
+
+        const result = yield* Metric.value(summary)
+
+        const medianQuantileValue = result.quantiles[0][1]
+        const minValue = result.min
+        const maxValue = result.max
+
+        strictEqual(Option.isNone(medianQuantileValue), true)
+        strictEqual(minValue, 0)
+        strictEqual(maxValue, 0)
+      }))
   })
   describe("Polling", () => {
     it.scopedLive("launch should be interruptible", () =>

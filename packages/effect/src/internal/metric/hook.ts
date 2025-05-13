@@ -221,8 +221,8 @@ export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook
   let head = 0
   let count = 0
   let sum = 0
-  let min = Number.MAX_VALUE
-  let max = Number.MIN_VALUE
+  let min = 0
+  let max = 0
 
   // Just before the snapshot we filter out all values older than maxAge
   const snapshot = (now: number): ReadonlyArray<readonly [number, Option.Option<number>]> => {
@@ -264,14 +264,12 @@ export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook
       const target = head % maxSize
       values[target] = [timestamp, value] as const
     }
+
+    min = count === 0 ? value : Math.min(min, value)
+    max = count === 0 ? value : Math.max(max, value)
+
     count = count + 1
     sum = sum + value
-    if (value < min) {
-      min = value
-    }
-    if (value > max) {
-      max = value
-    }
   }
 
   return make({
