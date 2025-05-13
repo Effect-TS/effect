@@ -1,6 +1,6 @@
 import type { Either, Types } from "effect"
-import { Effect, hole, Option, pipe, Predicate, Schedule } from "effect"
-import type { NonEmptyReadonlyArray } from "effect/Array"
+import { Array as Arr, Effect, hole, Option, pipe, Predicate, Schedule } from "effect"
+import type { NonEmptyArray, NonEmptyReadonlyArray } from "effect/Array"
 import type { Cause, UnknownException } from "effect/Cause"
 import { describe, expect, it, when } from "tstyche"
 
@@ -509,6 +509,15 @@ describe("Effect", () => {
         )
       )
     ).type.toBe<Effect.Effect<"a", "a">>()
+
+    expect(
+      Effect.succeed(numberArray).pipe(
+        Effect.filterOrElse(
+          Arr.isNonEmptyArray,
+          () => Effect.fail("a" as const)
+        )
+      )
+    ).type.toBe<Effect.Effect<NonEmptyArray<number>, "a">>()
   })
 
   it("tap", () => {
