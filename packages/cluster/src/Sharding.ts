@@ -96,6 +96,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
       readonly maxIdleTime?: DurationInput | undefined
       readonly concurrency?: number | "unbounded" | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
+      readonly fatalDefects?: boolean | undefined
     }
   ) => Effect.Effect<void, never, Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | Exclude<RX, Scope.Scope | CurrentAddress>>
 
