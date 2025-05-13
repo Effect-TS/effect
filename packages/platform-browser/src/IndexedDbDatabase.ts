@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { YieldableError } from "effect/Cause"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import { type Pipeable } from "effect/Pipeable"
@@ -38,13 +39,86 @@ export type ErrorTypeId = typeof ErrorTypeId
  * @since 1.0.0
  * @category errors
  */
-export const IndexedDbDatabaseError = internal.IndexedDbDatabaseError
+export type ErrorReason = {
+  readonly _tag: "TransactionError"
+  readonly cause: unknown
+} | {
+  readonly _tag: "MissingTable"
+  readonly cause: unknown
+} | {
+  readonly _tag: "OpenError"
+  readonly cause: unknown
+} | {
+  readonly _tag: "UpgradeError"
+  readonly cause: unknown
+} | {
+  readonly _tag: "Aborted"
+  readonly cause: unknown
+} | {
+  readonly _tag: "Blocked"
+  readonly cause: unknown
+} | {
+  readonly _tag: "MissingIndex"
+  readonly cause: unknown
+} | {
+  readonly _tag: "TransactionError"
+  readonly cause: unknown
+}
+
+/**
+ * @since 1.0.0
+ * @category errors
+ */
+export interface IndexedDbDatabaseError extends YieldableError {
+  readonly [ErrorTypeId]: IndexedDbDatabaseError
+  readonly _tag: "IndexedDbDatabaseError"
+  readonly reason: ErrorReason
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface IndexedDbMigration {
+  readonly database: globalThis.IDBDatabase
+  readonly IDBKeyRange: typeof globalThis.IDBKeyRange
+}
 
 /**
  * @since 1.0.0
  * @category models
  */
 export declare namespace IndexedDbDatabase {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type IndexFromTable<
+    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+    Table extends IndexedDbTable.IndexedDbTable.TableName<
+      IndexedDbVersion.IndexedDbVersion.Tables<Source>
+    >
+  > = internal.IsStringLiteral<
+    Extract<
+      keyof IndexedDbTable.IndexedDbTable.Indexes<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >,
+      string
+    >
+  > extends true ? Extract<
+      keyof IndexedDbTable.IndexedDbTable.Indexes<
+        IndexedDbTable.IndexedDbTable.WithName<
+          IndexedDbVersion.IndexedDbVersion.Tables<Source>,
+          Table
+        >
+      >,
+      string
+    > :
+    never
+
   /**
    * @since 1.0.0
    * @category models
@@ -58,13 +132,13 @@ export declare namespace IndexedDbDatabase {
       A extends IndexedDbTable.IndexedDbTable.TableName<
         IndexedDbVersion.IndexedDbVersion.Tables<Source>
       >
-    >(table: A) => Effect.Effect<globalThis.IDBObjectStore, internal.IndexedDbDatabaseError>
+    >(table: A) => Effect.Effect<globalThis.IDBObjectStore, IndexedDbDatabaseError>
 
     readonly deleteObjectStore: <
       A extends IndexedDbTable.IndexedDbTable.TableName<
         IndexedDbVersion.IndexedDbVersion.Tables<Source>
       >
-    >(table: A) => Effect.Effect<void, internal.IndexedDbDatabaseError>
+    >(table: A) => Effect.Effect<void, IndexedDbDatabaseError>
 
     readonly createIndex: <
       A extends IndexedDbTable.IndexedDbTable.TableName<
@@ -72,9 +146,9 @@ export declare namespace IndexedDbDatabase {
       >
     >(
       table: A,
-      indexName: internal.IndexFromTable<Source, A>,
+      indexName: IndexFromTable<Source, A>,
       options?: IDBIndexParameters
-    ) => Effect.Effect<globalThis.IDBIndex, internal.IndexedDbDatabaseError>
+    ) => Effect.Effect<globalThis.IDBIndex, IndexedDbDatabaseError>
 
     readonly deleteIndex: <
       A extends IndexedDbTable.IndexedDbTable.TableName<
@@ -82,8 +156,8 @@ export declare namespace IndexedDbDatabase {
       >
     >(
       table: A,
-      indexName: internal.IndexFromTable<Source, A>
-    ) => Effect.Effect<void, internal.IndexedDbDatabaseError>
+      indexName: IndexFromTable<Source, A>
+    ) => Effect.Effect<void, IndexedDbDatabaseError>
   }
 
   /**
@@ -115,12 +189,12 @@ export declare namespace IndexedDbDatabase {
     readonly getQueryBuilder: Effect.Effect<
       IndexedDbQueryBuilder.IndexedDbQueryBuilder<InitialVersion>,
       never,
-      internal.IndexedDbMigration
+      IndexedDbMigration
     >
 
     readonly layer: <DatabaseName extends string>(
       databaseName: DatabaseName
-    ) => Layer.Layer<internal.IndexedDbMigration, internal.IndexedDbDatabaseError, IndexedDb.IndexedDb>
+    ) => Layer.Layer<IndexedDbMigration, IndexedDbDatabaseError, IndexedDb.IndexedDb>
   }
 
   /**
@@ -147,12 +221,12 @@ export declare namespace IndexedDbDatabase {
     readonly getQueryBuilder: Effect.Effect<
       IndexedDbQueryBuilder.IndexedDbQueryBuilder<ToVersion>,
       never,
-      internal.IndexedDbMigration
+      IndexedDbMigration
     >
 
     readonly layer: <DatabaseName extends string>(
       databaseName: DatabaseName
-    ) => Layer.Layer<internal.IndexedDbMigration, internal.IndexedDbDatabaseError, IndexedDb.IndexedDb>
+    ) => Layer.Layer<IndexedDbMigration, IndexedDbDatabaseError, IndexedDb.IndexedDb>
   }
 
   /**
@@ -164,7 +238,7 @@ export declare namespace IndexedDbDatabase {
     readonly _tag: "Initial" | "Migration"
     readonly layer: <DatabaseName extends string>(
       databaseName: DatabaseName
-    ) => Layer.Layer<internal.IndexedDbMigration, internal.IndexedDbDatabaseError, IndexedDb.IndexedDb>
+    ) => Layer.Layer<IndexedDbMigration, IndexedDbDatabaseError, IndexedDb.IndexedDb>
   }
 
   /**
@@ -188,4 +262,10 @@ export declare namespace IndexedDbDatabase {
  * @since 1.0.0
  * @category constructors
  */
-export const make = internal.makeInitialProto
+export const make: <
+  InitialVersion extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
+  Error
+>(
+  initialVersion: InitialVersion,
+  init: (toQuery: IndexedDbDatabase.Transaction<InitialVersion>) => Effect.Effect<void, Error>
+) => IndexedDbDatabase.Initial<InitialVersion, Error> = internal.makeInitialProto

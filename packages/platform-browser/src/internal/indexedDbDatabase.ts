@@ -1,4 +1,3 @@
-import { TypeIdError } from "@effect/platform/Error"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -10,40 +9,13 @@ import * as Runtime from "effect/Runtime"
 import { SyncScheduler } from "effect/Scheduler"
 import * as IndexedDb from "../IndexedDb.js"
 import type * as IndexedDbDatabase from "../IndexedDbDatabase.js"
-import type * as IndexedDbTable from "../IndexedDbTable.js"
 import type * as IndexedDbVersion from "../IndexedDbVersion.js"
 import * as internalIndexedDbQueryBuilder from "./indexedDbQueryBuilder.js"
 
-type IsStringLiteral<T> = T extends string ? string extends T ? false
+/** @internal */
+export type IsStringLiteral<T> = T extends string ? string extends T ? false
   : true
   : false
-
-/** @internal */
-export type IndexFromTable<
-  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.IndexedDbTable.TableName<
-    IndexedDbVersion.IndexedDbVersion.Tables<Source>
-  >
-> = IsStringLiteral<
-  Extract<
-    keyof IndexedDbTable.IndexedDbTable.Indexes<
-      IndexedDbTable.IndexedDbTable.WithName<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >,
-    string
-  >
-> extends true ? Extract<
-    keyof IndexedDbTable.IndexedDbTable.Indexes<
-      IndexedDbTable.IndexedDbTable.WithName<
-        IndexedDbVersion.IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >,
-    string
-  > :
-  never
 
 /** @internal */
 export const TypeId: IndexedDbDatabase.TypeId = Symbol.for(
@@ -55,34 +27,24 @@ export const ErrorTypeId: IndexedDbDatabase.ErrorTypeId = Symbol.for(
   "@effect/platform-browser/IndexedDbDatabase/IndexedDbDatabaseError"
 ) as IndexedDbDatabase.ErrorTypeId
 
+const IndexedDbDatabaseErrorProto = Object.assign(Object.create(Cause.YieldableError.prototype), {
+  [ErrorTypeId]: ErrorTypeId
+})
+
 /** @internal */
-export class IndexedDbDatabaseError extends TypeIdError(
-  ErrorTypeId,
-  "IndexedDbDatabaseError"
-)<{
-  readonly reason:
-    | "OpenError"
-    | "TransactionError"
-    | "DecodeError"
-    | "Aborted"
-    | "Blocked"
-    | "UpgradeError"
-    | "MissingTable"
-    | "MissingIndex"
-  readonly cause: unknown
-}> {
-  get message() {
-    return this.reason
-  }
+export const IndexedDbDatabaseError = (
+  reason: IndexedDbDatabase.ErrorReason
+): IndexedDbDatabase.IndexedDbDatabaseError => {
+  const self = Object.create(IndexedDbDatabaseErrorProto)
+  self._tag = "IndexedDbDatabaseError"
+  self.reason = reason
+  return self
 }
 
 /** @internal */
-export class IndexedDbMigration extends Context.Tag(
+export const IndexedDbMigration = Context.GenericTag<IndexedDbDatabase.IndexedDbMigration>(
   "@effect/platform-browser/IndexedDbMigration"
-)<IndexedDbMigration, {
-  readonly database: globalThis.IDBDatabase
-  readonly IDBKeyRange: typeof globalThis.IDBKeyRange
-}>() {}
+)
 
 const Proto = {
   [TypeId]: TypeId,
@@ -118,8 +80,8 @@ export const makeTransactionProto = <
         Effect.catchTag(
           "NoSuchElementException",
           (cause) =>
-            new IndexedDbDatabaseError({
-              reason: "MissingTable",
+            IndexedDbDatabaseError({
+              _tag: "MissingTable",
               cause
             })
         )
@@ -128,8 +90,8 @@ export const makeTransactionProto = <
       return yield* Effect.try({
         try: () => database.createObjectStore(createTable.tableName, createTable.options),
         catch: (cause) =>
-          new IndexedDbDatabaseError({
-            reason: "TransactionError",
+          IndexedDbDatabaseError({
+            _tag: "TransactionError",
             cause
           })
       })
@@ -141,8 +103,8 @@ export const makeTransactionProto = <
         Effect.catchTag(
           "NoSuchElementException",
           (cause) =>
-            new IndexedDbDatabaseError({
-              reason: "MissingTable",
+            IndexedDbDatabaseError({
+              _tag: "MissingTable",
               cause
             })
         )
@@ -151,8 +113,8 @@ export const makeTransactionProto = <
       return yield* Effect.try({
         try: () => database.deleteObjectStore(createTable.tableName),
         catch: (cause) =>
-          new IndexedDbDatabaseError({
-            reason: "TransactionError",
+          IndexedDbDatabaseError({
+            _tag: "TransactionError",
             cause
           })
       })
@@ -167,8 +129,8 @@ export const makeTransactionProto = <
         sourceTable.options?.indexes[indexName] ?? undefined
       ).pipe(
         Effect.catchTag("NoSuchElementException", (error) =>
-          new IndexedDbDatabaseError({
-            reason: "MissingIndex",
+          IndexedDbDatabaseError({
+            _tag: "MissingIndex",
             cause: Cause.fail(error)
           }))
       )
@@ -176,8 +138,8 @@ export const makeTransactionProto = <
       return yield* Effect.try({
         try: () => store.createIndex(indexName, keyPath, options),
         catch: (cause) =>
-          new IndexedDbDatabaseError({
-            reason: "TransactionError",
+          IndexedDbDatabaseError({
+            _tag: "TransactionError",
             cause
           })
       })
@@ -189,8 +151,8 @@ export const makeTransactionProto = <
       return yield* Effect.try({
         try: () => store.deleteIndex(indexName),
         catch: (cause) =>
-          new IndexedDbDatabaseError({
-            reason: "TransactionError",
+          IndexedDbDatabaseError({
+            _tag: "TransactionError",
             cause
           })
       })
@@ -313,13 +275,13 @@ const layer = <DatabaseName extends string>(
 
       const version = migrations.length
       const database = yield* Effect.acquireRelease(
-        Effect.async<globalThis.IDBDatabase, IndexedDbDatabaseError>((resume) => {
+        Effect.async<globalThis.IDBDatabase, IndexedDbDatabase.IndexedDbDatabaseError>((resume) => {
           const request = indexedDB.open(databaseName, version)
 
           request.onblocked = (event) => {
             resume(
               Effect.fail(
-                new IndexedDbDatabaseError({ reason: "Blocked", cause: event })
+                IndexedDbDatabaseError({ _tag: "Blocked", cause: event })
               )
             )
           }
@@ -329,15 +291,15 @@ const layer = <DatabaseName extends string>(
 
             resume(
               Effect.fail(
-                new IndexedDbDatabaseError({
-                  reason: "OpenError",
+                IndexedDbDatabaseError({
+                  _tag: "OpenError",
                   cause: idbRequest.error
                 })
               )
             )
           }
 
-          let fiber: Fiber.RuntimeFiber<void, IndexedDbDatabaseError> | undefined
+          let fiber: Fiber.RuntimeFiber<void, IndexedDbDatabase.IndexedDbDatabaseError> | undefined
           request.onupgradeneeded = (event) => {
             const idbRequest = event.target as IDBRequest<IDBDatabase>
             const database = idbRequest.result
@@ -347,8 +309,8 @@ const layer = <DatabaseName extends string>(
             if (transaction === null) {
               return resume(
                 Effect.fail(
-                  new IndexedDbDatabaseError({
-                    reason: "TransactionError",
+                  IndexedDbDatabaseError({
+                    _tag: "TransactionError",
                     cause: null
                   })
                 )
@@ -358,8 +320,8 @@ const layer = <DatabaseName extends string>(
             transaction.onabort = (event) => {
               resume(
                 Effect.fail(
-                  new IndexedDbDatabaseError({
-                    reason: "Aborted",
+                  IndexedDbDatabaseError({
+                    _tag: "Aborted",
                     cause: event
                   })
                 )
@@ -369,8 +331,8 @@ const layer = <DatabaseName extends string>(
             transaction.onerror = (event) => {
               resume(
                 Effect.fail(
-                  new IndexedDbDatabaseError({
-                    reason: "TransactionError",
+                  IndexedDbDatabaseError({
+                    _tag: "TransactionError",
                     cause: event
                   })
                 )
@@ -407,8 +369,8 @@ const layer = <DatabaseName extends string>(
               return Effect.dieMessage("Invalid migration")
             }, { discard: true }).pipe(
               Effect.mapError((cause) =>
-                new IndexedDbDatabaseError({
-                  reason: "UpgradeError",
+                IndexedDbDatabaseError({
+                  _tag: "UpgradeError",
                   cause
                 })
               )
