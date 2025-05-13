@@ -520,15 +520,24 @@ export const filterMap = dual<
 
 /* @internal */
 export const filterOrDie: {
-  <A, B extends A = A>(
-    predicate: Predicate.Predicate<Types.NoInfer<A>> | Predicate.Refinement<Types.NoInfer<A>, B>,
+  <A, B extends A>(
+    refinement: Predicate.Refinement<Types.NoInfer<A>, B>,
     orDieWith: (a: Types.EqualsWith<A, B, A, Exclude<A, B>>) => unknown
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E, R>
+  <A>(
+    predicate: Predicate.Predicate<Types.NoInfer<A>>,
+    orDieWith: (a: Types.NoInfer<A>) => unknown
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <A, E, R, B extends A>(
     self: Effect.Effect<A, E, R>,
-    predicate: Predicate.Predicate<A> | Predicate.Refinement<A, B>,
+    refinement: Predicate.Refinement<A, B>,
     orDieWith: (a: Types.EqualsWith<A, B, A, Exclude<A, B>>) => unknown
   ): Effect.Effect<B, E, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    predicate: Predicate.Predicate<A>,
+    orDieWith: (a: A) => unknown
+  ): Effect.Effect<A, E, R>
 } = dual(
   3,
   <A, E, R>(
@@ -540,15 +549,24 @@ export const filterOrDie: {
 
 /* @internal */
 export const filterOrDieMessage: {
-  <A, B extends A = A>(
-    predicate: Predicate.Predicate<Types.NoInfer<A>> | Predicate.Refinement<Types.NoInfer<A>, B>,
+  <A, B extends A>(
+    refinement: Predicate.Refinement<Types.NoInfer<A>, B>,
     message: string
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E, R>
-  <A, E, R, B extends A = A>(
+  <A>(
+    predicate: Predicate.Predicate<Types.NoInfer<A>>,
+    message: string
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R, B extends A>(
     self: Effect.Effect<A, E, R>,
-    predicate: Predicate.Predicate<A> | Predicate.Refinement<A, B>,
+    refinement: Predicate.Refinement<A, B>,
     message: string
   ): Effect.Effect<B, E, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    predicate: Predicate.Predicate<A>,
+    message: string
+  ): Effect.Effect<A, E, R>
 } = dual(
   3,
   <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate.Predicate<A>, message: string): Effect.Effect<A, E, R> =>
@@ -557,15 +575,24 @@ export const filterOrDieMessage: {
 
 /* @internal */
 export const filterOrElse: {
-  <A, C, E2, R2, B extends A = A>(
-    predicate: Predicate.Predicate<Types.NoInfer<A>> | Predicate.Refinement<Types.NoInfer<A>, B>,
+  <A, C, E2, R2, B extends A>(
+    refinement: Predicate.Refinement<Types.NoInfer<A>, B>,
     orElse: (a: Types.EqualsWith<A, B, Types.NoInfer<A>, Exclude<Types.NoInfer<A>, B>>) => Effect.Effect<C, E2, R2>
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B | C, E2 | E, R2 | R>
-  <A, E, R, C, E2, R2, B extends A = A>(
+  <A, C, E2, R2>(
+    predicate: Predicate.Predicate<Types.NoInfer<A>>,
+    orElse: (a: Types.NoInfer<A>) => Effect.Effect<C, E2, R2>
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | C, E2 | E, R2 | R>
+  <A, E, R, C, E2, R2, B extends A>(
     self: Effect.Effect<A, E, R>,
-    predicate: Predicate.Predicate<A> | Predicate.Refinement<A, B>,
+    refinement: Predicate.Refinement<A, B>,
     orElse: (a: Types.EqualsWith<A, B, A, Exclude<A, B>>) => Effect.Effect<C, E2, R2>
   ): Effect.Effect<B | C, E | E2, R | R2>
+  <A, E, R, C, E2, R2>(
+    self: Effect.Effect<A, E, R>,
+    predicate: Predicate.Predicate<A>,
+    orElse: (a: A) => Effect.Effect<C, E2, R2>
+  ): Effect.Effect<A | C, E | E2, R | R2>
 } = dual(3, <A, E, R, B, E2, R2>(
   self: Effect.Effect<A, E, R>,
   predicate: Predicate.Predicate<A>,
@@ -599,22 +626,38 @@ export const liftPredicate = dual<
 
 /* @internal */
 export const filterOrFail: {
-  <A, E2, B extends A = A>(
-    predicate: Predicate.Predicate<Types.NoInfer<A>> | Predicate.Refinement<Types.NoInfer<A>, B>,
+  <A, E2, B extends A>(
+    refinement: Predicate.Refinement<Types.NoInfer<A>, B>,
     orFailWith: (a: Types.EqualsWith<A, B, Types.NoInfer<A>, Exclude<Types.NoInfer<A>, B>>) => E2
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E2 | E, R>
-  <A, E, R, E2, B extends A = A>(
+  <A, E2>(
+    predicate: Predicate.Predicate<Types.NoInfer<A>>,
+    orFailWith: (a: Types.NoInfer<A>) => E2
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E2 | E, R>
+  <A, E, R, E2, B extends A>(
     self: Effect.Effect<A, E, R>,
-    predicate: Predicate.Predicate<A> | Predicate.Refinement<A, B>,
+    refinement: Predicate.Refinement<A, B>,
     orFailWith: (a: Types.EqualsWith<A, B, A, Exclude<A, B>>) => E2
   ): Effect.Effect<B, E2 | E, R>
-  <A, B extends A = A>(
-    predicate: Predicate.Predicate<Types.NoInfer<A>> | Predicate.Refinement<Types.NoInfer<A>, B>
-  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, Cause.NoSuchElementException | E, R>
-  <A, E, R, B extends A = A>(
+  <A, E, R, E2>(
     self: Effect.Effect<A, E, R>,
-    predicate: Predicate.Predicate<A> | Predicate.Refinement<A, B>
+    predicate: Predicate.Predicate<A>,
+    orFailWith: (a: A) => E2
+  ): Effect.Effect<A, E2 | E, R>
+  <A, B extends A>(
+    refinement: Predicate.Refinement<Types.NoInfer<A>, B>
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, Cause.NoSuchElementException | E, R>
+  <A>(
+    predicate: Predicate.Predicate<Types.NoInfer<A>>
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, Cause.NoSuchElementException | E, R>
+  <A, E, R, B extends A>(
+    self: Effect.Effect<A, E, R>,
+    refinement: Predicate.Refinement<A, B>
   ): Effect.Effect<B, E | Cause.NoSuchElementException, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    predicate: Predicate.Predicate<A>
+  ): Effect.Effect<A, E | Cause.NoSuchElementException, R>
 } = dual((args) => core.isEffect(args[0]), <A, E, R, E2>(
   self: Effect.Effect<A, E, R>,
   predicate: Predicate.Predicate<A>,
