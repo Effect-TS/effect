@@ -13827,15 +13827,21 @@ export namespace fn {
    * @category Models
    */
   export type Gen = {
-    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
-      body: (...args: Args) => Generator<Eff, AEff, never>
-    ): (...args: Args) => Effect<
+    <Self, Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>
+    ): (this: Self, ...args: Args) => Effect<
       AEff,
       [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
       [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
     >
-    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A extends Effect<any, any, any>>(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+    <
+      Self,
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A extends Effect<any, any, any>
+    >(
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -13844,9 +13850,16 @@ export namespace fn {
         >,
         ...args: Args
       ) => A
-    ): (...args: Args) => A
-    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A, B extends Effect<any, any, any>>(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+    ): (this: Self, ...args: Args) => A
+    <
+      Self,
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B extends Effect<any, any, any>
+    >(
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -13856,8 +13869,9 @@ export namespace fn {
         ...args: Args
       ) => A,
       b: (_: A, ...args: Args) => B
-    ): (...args: Args) => B
+    ): (this: Self, ...args: Args) => B
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -13865,7 +13879,7 @@ export namespace fn {
       B,
       C extends Effect<any, any, any>
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -13876,8 +13890,9 @@ export namespace fn {
       ) => A,
       b: (_: A, ...args: Args) => B,
       c: (_: B, ...args: Args) => C
-    ): (...args: Args) => C
+    ): (this: Self, ...args: Args) => C
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -13886,7 +13901,7 @@ export namespace fn {
       C,
       D extends Effect<any, any, any>
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -13898,8 +13913,9 @@ export namespace fn {
       b: (_: A, ...args: Args) => B,
       c: (_: B, ...args: Args) => C,
       d: (_: C, ...args: Args) => D
-    ): (...args: Args) => D
+    ): (this: Self, ...args: Args) => D
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -13909,7 +13925,7 @@ export namespace fn {
       D,
       E extends Effect<any, any, any>
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -13922,8 +13938,9 @@ export namespace fn {
       c: (_: B, ...args: Args) => C,
       d: (_: C, ...args: Args) => D,
       e: (_: D, ...args: Args) => E
-    ): (...args: Args) => E
+    ): (this: Self, ...args: Args) => E
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -13934,7 +13951,7 @@ export namespace fn {
       E,
       F extends Effect<any, any, any>
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -13948,8 +13965,9 @@ export namespace fn {
       d: (_: C, ...args: Args) => D,
       e: (_: D, ...args: Args) => E,
       f: (_: E, ...args: Args) => F
-    ): (...args: Args) => F
+    ): (this: Self, ...args: Args) => F
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -13961,7 +13979,7 @@ export namespace fn {
       F,
       G extends Effect<any, any, any>
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -13976,8 +13994,9 @@ export namespace fn {
       e: (_: D, ...args: Args) => E,
       f: (_: E, ...args: Args) => F,
       g: (_: F, ...args: Args) => G
-    ): (...args: Args) => G
+    ): (this: Self, ...args: Args) => G
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -13990,7 +14009,7 @@ export namespace fn {
       G,
       H extends Effect<any, any, any>
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14006,8 +14025,9 @@ export namespace fn {
       f: (_: E, ...args: Args) => F,
       g: (_: F, ...args: Args) => G,
       h: (_: G, ...args: Args) => H
-    ): (...args: Args) => H
+    ): (this: Self, ...args: Args) => H
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14021,7 +14041,7 @@ export namespace fn {
       H,
       I extends Effect<any, any, any>
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14038,7 +14058,7 @@ export namespace fn {
       g: (_: F, ...args: Args) => G,
       h: (_: G, ...args: Args) => H,
       i: (_: H, ...args: Args) => I
-    ): (...args: Args) => I
+    ): (this: Self, ...args: Args) => I
   }
 
   /**
@@ -14046,50 +14066,50 @@ export namespace fn {
    * @category Models
    */
   export type NonGen = {
-    <Eff extends Effect<any, any, any>, Args extends Array<any>>(
-      body: (...args: Args) => Eff
-    ): (...args: Args) => Eff
-    <Eff extends Effect<any, any, any>, A, Args extends Array<any>>(
-      body: (...args: Args) => A,
+    <Self, Eff extends Effect<any, any, any>, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Eff
+    <Self, Eff extends Effect<any, any, any>, A, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: Args) => Eff
-    ): (...args: Args) => Eff
-    <Eff extends Effect<any, any, any>, A, B, Args extends Array<any>>(
-      body: (...args: Args) => A,
+    ): (this: Self, ...args: Args) => Eff
+    <Self, Eff extends Effect<any, any, any>, A, B, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: Args) => B,
       b: (_: B, ...args: Args) => Eff
-    ): (...args: Args) => Eff
-    <Eff extends Effect<any, any, any>, A, B, C, Args extends Array<any>>(
-      body: (...args: Args) => A,
+    ): (this: Self, ...args: Args) => Eff
+    <Self, Eff extends Effect<any, any, any>, A, B, C, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: Args) => B,
       b: (_: B, ...args: Args) => C,
       c: (_: C, ...args: Args) => Eff
-    ): (...args: Args) => Eff
-    <Eff extends Effect<any, any, any>, A, B, C, D, Args extends Array<any>>(
-      body: (...args: Args) => A,
+    ): (this: Self, ...args: Args) => Eff
+    <Self, Eff extends Effect<any, any, any>, A, B, C, D, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: Args) => B,
       b: (_: B, ...args: Args) => C,
       c: (_: C, ...args: Args) => D,
       d: (_: D, ...args: Args) => Eff
-    ): (...args: Args) => Eff
-    <Eff extends Effect<any, any, any>, A, B, C, D, E, Args extends Array<any>>(
-      body: (...args: Args) => A,
+    ): (this: Self, ...args: Args) => Eff
+    <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: Args) => B,
       b: (_: B, ...args: Args) => C,
       c: (_: C, ...args: Args) => D,
       d: (_: D, ...args: Args) => E,
       e: (_: E, ...args: Args) => Eff
-    ): (...args: Args) => Eff
-    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, Args extends Array<any>>(
-      body: (...args: Args) => A,
+    ): (this: Self, ...args: Args) => Eff
+    <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: Args) => B,
       b: (_: B, ...args: Args) => C,
       c: (_: C, ...args: Args) => D,
       d: (_: D, ...args: Args) => E,
       e: (_: E, ...args: Args) => F,
       f: (_: F, ...args: Args) => Eff
-    ): (...args: Args) => Eff
-    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, Args extends Array<any>>(
-      body: (...args: Args) => A,
+    ): (this: Self, ...args: Args) => Eff
+    <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: Args) => B,
       b: (_: B, ...args: Args) => C,
       c: (_: C, ...args: Args) => D,
@@ -14097,9 +14117,9 @@ export namespace fn {
       e: (_: E, ...args: Args) => F,
       f: (_: F, ...args: Args) => G,
       g: (_: G, ...args: Args) => Eff
-    ): (...args: Args) => Eff
-    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, Args extends Array<any>>(
-      body: (...args: Args) => A,
+    ): (this: Self, ...args: Args) => Eff
+    <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: Args) => B,
       b: (_: B, ...args: Args) => C,
       c: (_: C, ...args: Args) => D,
@@ -14108,9 +14128,9 @@ export namespace fn {
       f: (_: F, ...args: Args) => G,
       g: (_: G, ...args: Args) => H,
       h: (_: H, ...args: Args) => Eff
-    ): (...args: Args) => Eff
-    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, I, Args extends Array<any>>(
-      body: (...args: Args) => A,
+    ): (this: Self, ...args: Args) => Eff
+    <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, I, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: Args) => B,
       b: (_: B, ...args: Args) => C,
       c: (_: C, ...args: Args) => D,
@@ -14120,7 +14140,7 @@ export namespace fn {
       g: (_: G, ...args: Args) => H,
       h: (_: H, ...args: Args) => I,
       i: (_: H, ...args: Args) => Eff
-    ): (...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Eff
   }
 
   /**
@@ -14128,15 +14148,15 @@ export namespace fn {
    * @category Models
    */
   export type Untraced = {
-    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
-      body: (...args: Args) => Generator<Eff, AEff, never>
-    ): (...args: Args) => Effect<
+    <Self, Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>
+    ): (this: Self, ...args: Args) => Effect<
       AEff,
       [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
       [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
     >
-    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A>(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+    <Self, Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A>(
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14145,9 +14165,9 @@ export namespace fn {
         >,
         ...args: Args
       ) => A
-    ): (...args: Args) => A
-    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A, B>(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+    ): (this: Self, ...args: Args) => A
+    <Self, Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A, B>(
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14157,8 +14177,9 @@ export namespace fn {
         ...args: Args
       ) => A,
       b: (_: A, ...args: Args) => B
-    ): (...args: Args) => B
+    ): (this: Self, ...args: Args) => B
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14166,7 +14187,7 @@ export namespace fn {
       B,
       C
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14177,8 +14198,9 @@ export namespace fn {
       ) => A,
       b: (_: A, ...args: Args) => B,
       c: (_: B, ...args: Args) => C
-    ): (...args: Args) => C
+    ): (this: Self, ...args: Args) => C
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14187,7 +14209,7 @@ export namespace fn {
       C,
       D
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14199,8 +14221,9 @@ export namespace fn {
       b: (_: A, ...args: Args) => B,
       c: (_: B, ...args: Args) => C,
       d: (_: C, ...args: Args) => D
-    ): (...args: Args) => D
+    ): (this: Self, ...args: Args) => D
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14210,7 +14233,7 @@ export namespace fn {
       D,
       E
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14223,8 +14246,9 @@ export namespace fn {
       c: (_: B, ...args: Args) => C,
       d: (_: C, ...args: Args) => D,
       e: (_: D, ...args: Args) => E
-    ): (...args: Args) => E
+    ): (this: Self, ...args: Args) => E
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14235,7 +14259,7 @@ export namespace fn {
       E,
       F
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14249,8 +14273,9 @@ export namespace fn {
       d: (_: C, ...args: Args) => D,
       e: (_: D, ...args: Args) => E,
       f: (_: E, ...args: Args) => F
-    ): (...args: Args) => F
+    ): (this: Self, ...args: Args) => F
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14262,7 +14287,7 @@ export namespace fn {
       F,
       G
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14277,8 +14302,9 @@ export namespace fn {
       e: (_: D, ...args: Args) => E,
       f: (_: E, ...args: Args) => F,
       g: (_: F, ...args: Args) => G
-    ): (...args: Args) => G
+    ): (this: Self, ...args: Args) => G
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14291,7 +14317,7 @@ export namespace fn {
       G,
       H
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14307,8 +14333,9 @@ export namespace fn {
       f: (_: E, ...args: Args) => F,
       g: (_: F, ...args: Args) => G,
       h: (_: G, ...args: Args) => H
-    ): (...args: Args) => H
+    ): (this: Self, ...args: Args) => H
     <
+      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14322,7 +14349,7 @@ export namespace fn {
       H,
       I
     >(
-      body: (...args: Args) => Generator<Eff, AEff, never>,
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14339,7 +14366,7 @@ export namespace fn {
       g: (_: F, ...args: Args) => G,
       h: (_: G, ...args: Args) => H,
       i: (_: H, ...args: Args) => I
-    ): (...args: Args) => I
+    ): (this: Self, ...args: Args) => I
   }
 }
 
@@ -14515,22 +14542,27 @@ export const fn:
     const name = nameOrBody
     const options = pipeables[0]
     return (body: Function, ...pipeables: Array<any>) =>
-      defineLength(body.length, function(this: any, ...args: Array<any>) {
-        const limit = Error.stackTraceLimit
-        Error.stackTraceLimit = 2
-        const errorCall = new Error()
-        Error.stackTraceLimit = limit
-        return fnApply({
-          self: this,
-          body,
-          args,
-          pipeables,
-          spanName: name,
-          spanOptions: options,
-          errorDef,
-          errorCall
-        })
-      })
+      defineLength(
+        body.length,
+        ({
+          [name](this: any, ...args: Array<any>) {
+            const limit = Error.stackTraceLimit
+            Error.stackTraceLimit = 2
+            const errorCall = new Error()
+            Error.stackTraceLimit = limit
+            return fnApply({
+              self: this,
+              body,
+              args,
+              pipeables,
+              spanName: name,
+              spanOptions: options,
+              errorDef,
+              errorCall
+            })
+          }
+        })[name]
+      )
   }
 
 function defineLength<F extends Function>(length: number, fn: F) {
