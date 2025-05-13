@@ -1,5 +1,15 @@
 # effect
 
+## 3.15.1
+
+### Patch Changes
+
+- [#4870](https://github.com/Effect-TS/effect/pull/4870) [`787ce70`](https://github.com/Effect-TS/effect/commit/787ce7042e35b657963473c6efe47752868cd811) Thanks @tim-smart! - ensure generic refinements work with Effect.filterOr\*
+
+- [#4857](https://github.com/Effect-TS/effect/pull/4857) [`1269641`](https://github.com/Effect-TS/effect/commit/1269641a99ae43069f7648ff79ffe8729b54b348) Thanks @tim-smart! - preserve explicit `this` in Effect.fn apis
+
+- [#4857](https://github.com/Effect-TS/effect/pull/4857) [`1269641`](https://github.com/Effect-TS/effect/commit/1269641a99ae43069f7648ff79ffe8729b54b348) Thanks @tim-smart! - use span name as function name in Effect.fn
+
 ## 3.15.0
 
 ### Minor Changes
