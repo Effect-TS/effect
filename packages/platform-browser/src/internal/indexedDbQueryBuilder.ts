@@ -1,12 +1,12 @@
-import { TypeIdError } from "@effect/platform/Error"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as HashMap from "effect/HashMap"
 import * as Schema from "effect/Schema"
+import type * as IndexedDbDatabase from "../IndexedDbDatabase.js"
 import type * as IndexedDbQueryBuilder from "../IndexedDbQueryBuilder.js"
 import type * as IndexedDbTable from "../IndexedDbTable.js"
 import type * as IndexedDbVersion from "../IndexedDbVersion.js"
-import { type IndexFromTable } from "./indexedDbDatabase.js"
 
 type IsValidIndexedDbKeyType<T> = T extends number | string | Date | ArrayBuffer | ArrayBufferView ? true :
   T extends Array<infer U> ? IsValidIndexedDbKeyType<U>
@@ -50,20 +50,18 @@ export const ErrorTypeId: IndexedDbQueryBuilder.ErrorTypeId = Symbol.for(
   "@effect/platform-browser/IndexedDbQuery/IndexedDbQueryError"
 ) as IndexedDbQueryBuilder.ErrorTypeId
 
-/**
- * @since 1.0.0
- * @category errors
- */
-export class IndexedDbQueryError extends TypeIdError(
-  ErrorTypeId,
-  "IndexedDbQueryError"
-)<{
-  readonly reason: "TransactionError" | "DecodeError" | "UnknownError" | "NotFoundError"
-  readonly cause: unknown
-}> {
-  get message() {
-    return this.reason
-  }
+const IndexedDbQueryErrorProto = Object.assign(Object.create(Cause.YieldableError.prototype), {
+  [ErrorTypeId]: ErrorTypeId
+})
+
+/** @internal */
+export const IndexedDbQueryError = (
+  reason: IndexedDbQueryBuilder.ErrorReason
+): IndexedDbQueryBuilder.IndexedDbQueryError => {
+  const self = Object.create(IndexedDbQueryErrorProto)
+  self._tag = "IndexedDbQueryError"
+  self.reason = reason
+  return self
 }
 
 const BasicProto = { [TypeId]: TypeId }
@@ -71,7 +69,7 @@ const CommitProto = { ...Effectable.CommitPrototype, [TypeId]: TypeId }
 
 /** @internal */
 export const applyDelete = (query: IndexedDbQueryBuilder.IndexedDbQuery.Delete) =>
-  Effect.async<any, IndexedDbQueryError>((resume) => {
+  Effect.async<any, IndexedDbQueryBuilder.IndexedDbQueryError>((resume) => {
     const database = query.delete.from.database
     const IDBKeyRange = query.delete.from.IDBKeyRange
     const transaction = query.delete.from.transaction
@@ -105,7 +103,7 @@ export const applyDelete = (query: IndexedDbQueryBuilder.IndexedDbQuery.Delete) 
       cursorRequest.onerror = () => {
         resume(
           Effect.fail(
-            new IndexedDbQueryError({ reason: "TransactionError", cause: cursorRequest.error })
+            IndexedDbQueryError({ _tag: "TransactionError", cause: cursorRequest.error })
           )
         )
       }
@@ -118,7 +116,7 @@ export const applyDelete = (query: IndexedDbQueryBuilder.IndexedDbQuery.Delete) 
           deleteRequest.onerror = () => {
             resume(
               Effect.fail(
-                new IndexedDbQueryError({ reason: "TransactionError", cause: deleteRequest.error })
+                IndexedDbQueryError({ _tag: "TransactionError", cause: deleteRequest.error })
               )
             )
           }
@@ -137,8 +135,8 @@ export const applyDelete = (query: IndexedDbQueryBuilder.IndexedDbQuery.Delete) 
       request.onerror = (event) => {
         resume(
           Effect.fail(
-            new IndexedDbQueryError({
-              reason: "TransactionError",
+            IndexedDbQueryError({
+              _tag: "TransactionError",
               cause: event
             })
           )
@@ -214,7 +212,7 @@ const getReadSchema = (
 /** @internal */
 export const getSelect = (query: IndexedDbQueryBuilder.IndexedDbQuery.Select) =>
   Effect.gen(function*() {
-    const data = yield* Effect.async<any, IndexedDbQueryError>((resume) => {
+    const data = yield* Effect.async<any, IndexedDbQueryBuilder.IndexedDbQueryError>((resume) => {
       let request: globalThis.IDBRequest
       const { keyRange, store } = getReadonlyObjectStore(query)
 
@@ -226,7 +224,7 @@ export const getSelect = (query: IndexedDbQueryBuilder.IndexedDbQuery.Select) =>
         cursorRequest.onerror = () => {
           resume(
             Effect.fail(
-              new IndexedDbQueryError({ reason: "TransactionError", cause: cursorRequest.error })
+              IndexedDbQueryError({ _tag: "TransactionError", cause: cursorRequest.error })
             )
           )
         }
@@ -251,8 +249,8 @@ export const getSelect = (query: IndexedDbQueryBuilder.IndexedDbQuery.Select) =>
         request.onerror = (event) => {
           resume(
             Effect.fail(
-              new IndexedDbQueryError({
-                reason: "TransactionError",
+              IndexedDbQueryError({
+                _tag: "TransactionError",
                 cause: event
               })
             )
@@ -272,8 +270,8 @@ export const getSelect = (query: IndexedDbQueryBuilder.IndexedDbQuery.Select) =>
     return yield* Schema.decodeUnknown(tableSchema)(data).pipe(
       Effect.mapError(
         (error) =>
-          new IndexedDbQueryError({
-            reason: "DecodeError",
+          IndexedDbQueryError({
+            _tag: "DecodeError",
             cause: error
           })
       )
@@ -283,7 +281,7 @@ export const getSelect = (query: IndexedDbQueryBuilder.IndexedDbQuery.Select) =>
 /** @internal */
 export const getFirst = (query: IndexedDbQueryBuilder.IndexedDbQuery.First) =>
   Effect.gen(function*() {
-    const data = yield* Effect.async<any, IndexedDbQueryError>((resume) => {
+    const data = yield* Effect.async<any, IndexedDbQueryBuilder.IndexedDbQueryError>((resume) => {
       const { keyRange, store } = getReadonlyObjectStore(query.select)
 
       if (keyRange !== undefined) {
@@ -292,8 +290,8 @@ export const getFirst = (query: IndexedDbQueryBuilder.IndexedDbQuery.First) =>
         request.onerror = (event) => {
           resume(
             Effect.fail(
-              new IndexedDbQueryError({
-                reason: "TransactionError",
+              IndexedDbQueryError({
+                _tag: "TransactionError",
                 cause: event
               })
             )
@@ -309,8 +307,8 @@ export const getFirst = (query: IndexedDbQueryBuilder.IndexedDbQuery.First) =>
         request.onerror = (event) => {
           resume(
             Effect.fail(
-              new IndexedDbQueryError({
-                reason: "TransactionError",
+              IndexedDbQueryError({
+                _tag: "TransactionError",
                 cause: event
               })
             )
@@ -323,8 +321,8 @@ export const getFirst = (query: IndexedDbQueryBuilder.IndexedDbQuery.First) =>
           if (value === undefined) {
             resume(
               Effect.fail(
-                new IndexedDbQueryError({
-                  reason: "NotFoundError",
+                IndexedDbQueryError({
+                  _tag: "NotFoundError",
                   cause: request.error
                 })
               )
@@ -339,8 +337,8 @@ export const getFirst = (query: IndexedDbQueryBuilder.IndexedDbQuery.First) =>
     return yield* Schema.decodeUnknown(getReadSchema(query.select.from))(data).pipe(
       Effect.mapError(
         (error) =>
-          new IndexedDbQueryError({
-            reason: "DecodeError",
+          IndexedDbQueryError({
+            _tag: "DecodeError",
             cause: error
           })
       )
@@ -352,7 +350,7 @@ export const applyModify = (
   query: IndexedDbQueryBuilder.IndexedDbQuery.Modify,
   { key, ...value }: { key: IDBValidKey | undefined }
 ) =>
-  Effect.async<any, IndexedDbQueryError>((resume) => {
+  Effect.async<any, IndexedDbQueryBuilder.IndexedDbQueryError>((resume) => {
     const database = query.from.database
     const transaction = query.from.transaction
     const objectStore = (transaction ?? database.transaction([query.from.table], "readwrite")).objectStore(
@@ -372,8 +370,8 @@ export const applyModify = (
     request.onerror = (event) => {
       resume(
         Effect.fail(
-          new IndexedDbQueryError({
-            reason: "TransactionError",
+          IndexedDbQueryError({
+            _tag: "TransactionError",
             cause: event
           })
         )
@@ -387,7 +385,7 @@ export const applyModify = (
 
 /** @internal */
 export const applyModifyAll = (query: IndexedDbQueryBuilder.IndexedDbQuery.ModifyAll, values: Array<any>) =>
-  Effect.async<Array<globalThis.IDBValidKey>, IndexedDbQueryError>((resume) => {
+  Effect.async<Array<globalThis.IDBValidKey>, IndexedDbQueryBuilder.IndexedDbQueryError>((resume) => {
     const database = query.from.database
     const transaction = query.from.transaction
     const objectStore = (transaction ?? database.transaction([query.from.table], "readwrite")).objectStore(
@@ -403,8 +401,8 @@ export const applyModifyAll = (query: IndexedDbQueryBuilder.IndexedDbQuery.Modif
         request.onerror = () => {
           resume(
             Effect.fail(
-              new IndexedDbQueryError({
-                reason: "TransactionError",
+              IndexedDbQueryError({
+                _tag: "TransactionError",
                 cause: request.error
               })
             )
@@ -422,8 +420,8 @@ export const applyModifyAll = (query: IndexedDbQueryBuilder.IndexedDbQuery.Modif
         request.onerror = () => {
           resume(
             Effect.fail(
-              new IndexedDbQueryError({
-                reason: "TransactionError",
+              IndexedDbQueryError({
+                _tag: "TransactionError",
                 cause: request.error
               })
             )
@@ -441,7 +439,7 @@ export const applyModifyAll = (query: IndexedDbQueryBuilder.IndexedDbQuery.Modif
     objectStore.transaction.onerror = () => {
       resume(
         Effect.fail(
-          new IndexedDbQueryError({ reason: "TransactionError", cause: objectStore.transaction.error })
+          IndexedDbQueryError({ _tag: "TransactionError", cause: objectStore.transaction.error })
         )
       )
     }
@@ -452,12 +450,16 @@ export const applyModifyAll = (query: IndexedDbQueryBuilder.IndexedDbQuery.Modif
   })
 
 /** @internal */
-export const applyClear = (query: IndexedDbQueryBuilder.IndexedDbQuery.Clear) =>
-  Effect.async<void, IndexedDbQueryError>((resume) => {
-    const database = query.from.database
-    const transaction = query.from.transaction
-    const objectStore = (transaction ?? database.transaction([query.from.table], "readwrite")).objectStore(
-      query.from.table
+export const applyClear = (options: {
+  readonly database: globalThis.IDBDatabase
+  readonly transaction: globalThis.IDBTransaction | undefined
+  readonly table: string
+}) =>
+  Effect.async<void, IndexedDbQueryBuilder.IndexedDbQueryError>((resume) => {
+    const database = options.database
+    const transaction = options.transaction
+    const objectStore = (transaction ?? database.transaction([options.table], "readwrite")).objectStore(
+      options.table
     )
 
     const request = objectStore.clear()
@@ -465,8 +467,8 @@ export const applyClear = (query: IndexedDbQueryBuilder.IndexedDbQuery.Clear) =>
     request.onerror = (event) => {
       resume(
         Effect.fail(
-          new IndexedDbQueryError({
-            reason: "TransactionError",
+          IndexedDbQueryError({
+            _tag: "TransactionError",
             cause: event
           })
         )
@@ -479,12 +481,15 @@ export const applyClear = (query: IndexedDbQueryBuilder.IndexedDbQuery.Clear) =>
   })
 
 /** @internal */
-export const applyClearAll = (query: IndexedDbQueryBuilder.IndexedDbQuery.ClearAll) =>
-  Effect.async<void, IndexedDbQueryError>((resume) => {
-    const database = query.database
+export const applyClearAll = (options: {
+  readonly database: globalThis.IDBDatabase
+  readonly transaction: globalThis.IDBTransaction | undefined
+}) =>
+  Effect.async<void, IndexedDbQueryBuilder.IndexedDbQueryError>((resume) => {
+    const database = options.database
     const tables = database.objectStoreNames
 
-    const transaction = query.transaction ?? database.transaction(tables, "readwrite")
+    const transaction = options.transaction ?? database.transaction(tables, "readwrite")
 
     for (let t = 0; t < tables.length; t++) {
       const objectStore = transaction.objectStore(tables[t])
@@ -492,7 +497,7 @@ export const applyClearAll = (query: IndexedDbQueryBuilder.IndexedDbQuery.ClearA
 
       request.onerror = () => {
         resume(
-          Effect.fail(new IndexedDbQueryError({ reason: "TransactionError", cause: request.error }))
+          Effect.fail(IndexedDbQueryError({ _tag: "TransactionError", cause: request.error }))
         )
       }
     }
@@ -500,7 +505,7 @@ export const applyClearAll = (query: IndexedDbQueryBuilder.IndexedDbQuery.ClearA
     transaction.onerror = () => {
       resume(
         Effect.fail(
-          new IndexedDbQueryError({ reason: "TransactionError", cause: transaction.error })
+          IndexedDbQueryError({ _tag: "TransactionError", cause: transaction.error })
         )
       )
     }
@@ -512,7 +517,7 @@ export const applyClearAll = (query: IndexedDbQueryBuilder.IndexedDbQuery.ClearA
 
 /** @internal */
 export const getCount = (query: IndexedDbQueryBuilder.IndexedDbQuery.Count) =>
-  Effect.async<number, IndexedDbQueryError>((resume) => {
+  Effect.async<number, IndexedDbQueryBuilder.IndexedDbQueryError>((resume) => {
     const { keyRange, store } = getReadonlyObjectStore(query)
 
     const request = store.count(keyRange)
@@ -520,8 +525,8 @@ export const getCount = (query: IndexedDbQueryBuilder.IndexedDbQuery.Count) =>
     request.onerror = (event) => {
       resume(
         Effect.fail(
-          new IndexedDbQueryError({
-            reason: "TransactionError",
+          IndexedDbQueryError({
+            _tag: "TransactionError",
             cause: event
           })
         )
@@ -552,7 +557,7 @@ export const fromMakeProto = <
   IndexedDbQueryBuilder.IDBKeyRange = options.IDBKeyRange
   IndexedDbQueryBuilder.transaction = options.transaction
   IndexedDbQueryBuilder.select = <
-    Index extends IndexFromTable<Source, Table>
+    Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>
   >(index?: Index) =>
     selectMakeProto({
       from: IndexedDbQueryBuilder as any,
@@ -561,7 +566,7 @@ export const fromMakeProto = <
     })
 
   IndexedDbQueryBuilder.delete = <
-    Index extends IndexFromTable<Source, Table>
+    Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>
   >(index?: Index) =>
     deletePartialMakeProto({
       from: IndexedDbQueryBuilder as any,
@@ -570,7 +575,7 @@ export const fromMakeProto = <
     })
 
   IndexedDbQueryBuilder.count = <
-    Index extends IndexFromTable<Source, Table>
+    Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>
   >(index?: Index) =>
     countMakeProto({
       from: IndexedDbQueryBuilder as any,
@@ -590,7 +595,11 @@ export const fromMakeProto = <
   IndexedDbQueryBuilder.upsertAll = (values: Array<any>) =>
     modifyAllMakeProto({ from: IndexedDbQueryBuilder as any, values, operation: "put" })
 
-  IndexedDbQueryBuilder.clear = clearMakeProto({ from: IndexedDbQueryBuilder as any })
+  IndexedDbQueryBuilder.clear = applyClear({
+    database: options.database,
+    transaction: options.transaction,
+    table: options.table
+  })
 
   return IndexedDbQueryBuilder as any
 }
@@ -599,7 +608,7 @@ export const fromMakeProto = <
 export const deletePartialMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexFromTable<Source, Table>
+  Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>
 >(options: {
   readonly from: IndexedDbQueryBuilder.IndexedDbQuery.From<Source, Table>
   readonly index: Index | undefined
@@ -682,7 +691,7 @@ export const deletePartialMakeProto = <
 export const deleteMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexFromTable<Source, Table>
+  Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>
 >(options: {
   readonly delete: IndexedDbQueryBuilder.IndexedDbQuery.DeletePartial<Source, Table, Index>
   readonly limitValue?: number | undefined
@@ -795,7 +804,7 @@ export const deleteMakeProto = <
 export const countMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexFromTable<Source, Table>
+  Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>
 >(options: {
   readonly from: IndexedDbQueryBuilder.IndexedDbQuery.From<Source, Table>
   readonly index: Index | undefined
@@ -916,7 +925,7 @@ export const countMakeProto = <
 export const selectMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexFromTable<Source, Table>
+  Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>
 >(options: {
   readonly from: IndexedDbQueryBuilder.IndexedDbQuery.From<Source, Table>
   readonly index: Index | undefined
@@ -1041,7 +1050,7 @@ export const selectMakeProto = <
 export const firstMakeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
   Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-  Index extends IndexFromTable<Source, Table>
+  Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>
 >(options: {
   readonly select: IndexedDbQueryBuilder.IndexedDbQuery.Select<Source, Table, Index>
 }): IndexedDbQueryBuilder.IndexedDbQuery.First<Source, Table, Index> => {
@@ -1126,51 +1135,6 @@ export const modifyAllMakeProto = <
 }
 
 /** @internal */
-export const clearMakeProto = <
-  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>
->(options: {
-  readonly from: IndexedDbQueryBuilder.IndexedDbQuery.From<Source, Table>
-}): IndexedDbQueryBuilder.IndexedDbQuery.Clear<Source, Table> => {
-  function IndexedDbQueryBuilderImpl() {}
-
-  Object.setPrototypeOf(
-    IndexedDbQueryBuilderImpl,
-    Object.assign(Object.create(CommitProto), {
-      commit(this: IndexedDbQueryBuilder.IndexedDbQuery.Clear) {
-        return applyClear(this)
-      }
-    })
-  )
-  IndexedDbQueryBuilderImpl.from = options.from
-  return IndexedDbQueryBuilderImpl as any
-}
-
-/** @internal */
-export const clearAllMakeProto = <
-  Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
->(options: {
-  readonly tables: HashMap.HashMap<string, IndexedDbVersion.IndexedDbVersion.Tables<Source>>
-  readonly database: globalThis.IDBDatabase
-  readonly transaction: globalThis.IDBTransaction | undefined
-}): IndexedDbQueryBuilder.IndexedDbQuery.ClearAll<Source> => {
-  function IndexedDbQueryBuilderImpl() {}
-
-  Object.setPrototypeOf(
-    IndexedDbQueryBuilderImpl,
-    Object.assign(Object.create(CommitProto), {
-      commit(this: IndexedDbQueryBuilder.IndexedDbQuery.ClearAll) {
-        return applyClearAll(this)
-      }
-    })
-  )
-  IndexedDbQueryBuilderImpl.database = options.database
-  IndexedDbQueryBuilderImpl.transaction = options.transaction
-  IndexedDbQueryBuilderImpl.tables = options.tables
-  return IndexedDbQueryBuilderImpl as any
-}
-
-/** @internal */
 export const makeProto = <
   Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps
 >({
@@ -1194,8 +1158,8 @@ export const makeProto = <
     Effect.tryPromise({
       try: () => f(database),
       catch: (error) =>
-        new IndexedDbQueryError({
-          reason: "UnknownError",
+        IndexedDbQueryError({
+          _tag: "UnknownError",
           cause: error
         })
     })
@@ -1206,7 +1170,7 @@ export const makeProto = <
     >
   >(table: A) => fromMakeProto({ database, IDBKeyRange, tables, table, transaction })
 
-  IndexedDbQuery.clearAll = clearAllMakeProto({ database, tables, transaction })
+  IndexedDbQuery.clearAll = applyClearAll({ database, transaction })
 
   IndexedDbQuery.transaction = (
     transactionTables: Array<IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>>,
