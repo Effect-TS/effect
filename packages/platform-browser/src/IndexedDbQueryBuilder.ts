@@ -1,12 +1,13 @@
 /**
  * @since 1.0.0
  */
+import { type YieldableError } from "effect/Cause"
 import type * as Effect from "effect/Effect"
 import type * as HashMap from "effect/HashMap"
 import type * as Schema from "effect/Schema"
+import type * as IndexedDbDatabase from "./IndexedDbDatabase.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
-import { type IndexFromTable } from "./internal/indexedDbDatabase.js"
 import * as internal from "./internal/indexedDbQueryBuilder.js"
 
 /**
@@ -37,7 +38,29 @@ export type ErrorTypeId = typeof ErrorTypeId
  * @since 1.0.0
  * @category errors
  */
-export type IndexedDbQueryError = typeof internal.IndexedDbQueryError
+export type ErrorReason = {
+  readonly _tag: "NotFoundError"
+  readonly cause: unknown
+} | {
+  readonly _tag: "UnknownError"
+  readonly cause: unknown
+} | {
+  readonly _tag: "DecodeError"
+  readonly cause: unknown
+} | {
+  readonly _tag: "TransactionError"
+  readonly cause: unknown
+}
+
+/**
+ * @since 1.0.0
+ * @category errors
+ */
+export interface IndexedDbQueryError extends YieldableError {
+  readonly [ErrorTypeId]: IndexedDbQueryError
+  readonly _tag: "IndexedDbQueryError"
+  readonly reason: ErrorReason
+}
 
 /**
  * @since 1.0.0
@@ -61,7 +84,7 @@ export interface IndexedDbQueryBuilder<
     >
   >(table: A) => IndexedDbQuery.From<Source, A>
 
-  readonly clearAll: IndexedDbQuery.ClearAll<Source>
+  readonly clearAll: Effect.Effect<void, IndexedDbQueryError>
 
   readonly transaction: <
     Tables extends ReadonlyArray<
@@ -155,7 +178,7 @@ export declare namespace IndexedDbQuery {
   export type ExtractIndexType<
     Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps,
     Table extends IndexedDbTable.IndexedDbTable.TableName<IndexedDbVersion.IndexedDbVersion.Tables<Source>>,
-    Index extends IndexFromTable<Source, Table>
+    Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>
   > = internal.IsNever<Index> extends true ? Schema.Schema.Type<
       IndexedDbTable.IndexedDbTable.TableSchema<
         IndexedDbTable.IndexedDbTable.WithName<
@@ -257,18 +280,26 @@ export declare namespace IndexedDbQuery {
     readonly IDBKeyRange: typeof globalThis.IDBKeyRange
     readonly transaction?: globalThis.IDBTransaction
 
+    readonly clear: Effect.Effect<void, IndexedDbQueryError>
+
     readonly select: {
-      <Index extends IndexFromTable<Source, Table>>(index: Index): Select<Source, Table, Index>
+      <Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>>(
+        index: Index
+      ): Select<Source, Table, Index>
       (): Select<Source, Table, never>
     }
 
     readonly count: {
-      <Index extends IndexFromTable<Source, Table>>(index: Index): Count<Source, Table, Index>
+      <Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>>(
+        index: Index
+      ): Count<Source, Table, Index>
       (): Count<Source, Table, never>
     }
 
     readonly delete: {
-      <Index extends IndexFromTable<Source, Table>>(index: Index): Delete<Source, Table, Index>
+      <Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table>>(
+        index: Index
+      ): Delete<Source, Table, Index>
       (): Delete<Source, Table, never>
     }
 
@@ -276,22 +307,6 @@ export declare namespace IndexedDbQuery {
     readonly insertAll: (values: Array<ModifyWithKey<Source, Table>>) => ModifyAll<Source, Table>
     readonly upsert: (value: ModifyWithKey<Source, Table>) => Modify<Source, Table>
     readonly upsertAll: (values: Array<ModifyWithKey<Source, Table>>) => ModifyAll<Source, Table>
-    readonly clear: Clear<Source, Table>
-  }
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface ClearAll<
-    Source extends IndexedDbVersion.IndexedDbVersion.AnyWithProps = never
-  > {
-    [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
-
-    readonly [TypeId]: TypeId
-    readonly tables: HashMap.HashMap<string, IndexedDbVersion.IndexedDbVersion.Tables<Source>>
-    readonly database: globalThis.IDBDatabase
-    readonly transaction?: globalThis.IDBTransaction
   }
 
   /**
@@ -319,7 +334,7 @@ export declare namespace IndexedDbQuery {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
-    Index extends IndexFromTable<Source, Table> = never
+    Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table> = never
   > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<number>>
 
@@ -368,7 +383,7 @@ export declare namespace IndexedDbQuery {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
-    Index extends IndexFromTable<Source, Table> = never
+    Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table> = never
   > {
     readonly [TypeId]: TypeId
     readonly from: From<Source, Table>
@@ -414,7 +429,7 @@ export declare namespace IndexedDbQuery {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
-    Index extends IndexFromTable<Source, Table> = never
+    Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table> = never
   > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<void>>
 
@@ -468,7 +483,7 @@ export declare namespace IndexedDbQuery {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
-    Index extends IndexFromTable<Source, Table> = never
+    Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table> = never
   > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<Array<SourceTableSchemaType<Source, Table>>>>
 
@@ -524,7 +539,7 @@ export declare namespace IndexedDbQuery {
     Table extends IndexedDbTable.IndexedDbTable.TableName<
       IndexedDbVersion.IndexedDbVersion.Tables<Source>
     > = never,
-    Index extends IndexFromTable<Source, Table> = never
+    Index extends IndexedDbDatabase.IndexedDbDatabase.IndexFromTable<Source, Table> = never
   > {
     [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<SourceTableSchemaType<Source, Table>>>
 
