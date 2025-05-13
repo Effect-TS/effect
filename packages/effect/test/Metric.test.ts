@@ -617,10 +617,14 @@ describe("Metric", () => {
         const medianQuantileValue = result.quantiles[0][1]
         const minValue = result.min
         const maxValue = result.max
+        const countValue = result.count
+        const sumValue = result.sum
 
         strictEqual(Option.isNone(medianQuantileValue), true)
         strictEqual(minValue, 0)
         strictEqual(maxValue, 0)
+        strictEqual(countValue, 0)
+        strictEqual(sumValue, 0)
       }))
   })
   describe("Polling", () => {
