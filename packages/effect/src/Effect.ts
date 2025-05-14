@@ -14530,7 +14530,7 @@ export const fn:
           body: nameOrBody,
           args,
           pipeables,
-          spanName: "<anonymous>",
+          spanName: nameOrBody.name || "<anonymous>",
           spanOptions: {
             context: internalTracer.DisablePropagation.context(true)
           },
