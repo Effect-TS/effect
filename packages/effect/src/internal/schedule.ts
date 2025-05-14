@@ -1946,7 +1946,7 @@ const repeatOrElseEffectLoop = <A, E, R, R1, B, C, E2, R2>(
       const selfWithLastIterationInfo = provideLastIterationInfo(self)
       return core.matchEffect(selfWithLastIterationInfo, {
         onFailure: (error) => provideLastIterationInfo(orElse(error, Option.some(b))),
-        onSuccess: (value) => repeatOrElseEffectLoop(selfWithLastIterationInfo, driver, orElse, value)
+        onSuccess: (value) => repeatOrElseEffectLoop(self, driver, orElse, value)
       })
     }
   })
