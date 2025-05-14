@@ -2415,17 +2415,15 @@ describe("Schema", () => {
   })
 
   it("withDecodingDefault", () => {
-    S.Struct({
-      a: S.optional(S.String).pipe(
+    when(S.Struct).isCalledWith({
+      a: when(S.optional(S.String).pipe).isCalledWith(
         S.withConstructorDefault(() => undefined),
-        // @ts-expect-error
-        S.withDecodingDefault(() => "")
+        expect(S.withDecodingDefault).type.not.toBeCallableWith(() => "")
       )
     })
-    S.Struct({
-      a: S.optional(S.String).pipe(
-        // @ts-expect-error
-        S.withDecodingDefault(() => undefined)
+    when(S.Struct).isCalledWith({
+      a: when(S.optional(S.String).pipe).isCalledWith(
+        expect(S.withDecodingDefault).type.not.toBeCallableWith(() => undefined)
       )
     })
     expect(
@@ -2438,12 +2436,10 @@ describe("Schema", () => {
   })
 
   it("withDefaults", () => {
-    S.Struct({
-      a: S.optional(S.String).pipe(
-        S.withDefaults({
-          // @ts-expect-error
+    when(S.Struct).isCalledWith({
+      a: when(S.optional(S.String).pipe).isCalledWith(
+        expect(S.withDefaults).type.not.toBeCallableWith({
           decoding: () => undefined,
-          // @ts-expect-error
           constructor: () => undefined
         })
       )
