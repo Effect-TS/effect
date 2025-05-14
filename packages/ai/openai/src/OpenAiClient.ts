@@ -213,7 +213,7 @@ export const make = (options: {
                   // Make sure to emit any previous tool calls before starting a new one
                   if (Predicate.isNotUndefined(toolCallIndex) && toolCallIndex !== delta.index) {
                     finishToolCall(toolCalls[toolCallIndex], parts)
-                    toolCallIndex = delta.index
+                    toolCallIndex = undefined
                   }
 
                   if (Predicate.isUndefined(toolCallIndex)) {
