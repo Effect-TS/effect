@@ -2100,11 +2100,12 @@ const scheduleFrom_EffectLoop = <In, E, R, R2, Out>(
     ref.get(driver.iterationMeta)
   )
   return core.matchEffect(driver.next(initial), {
-    onFailure: () => core.orDie(provideLastIterationInfo(driver.last)),
-    onSuccess: () => {
-      const selfWithLastOptions = provideLastIterationInfo(self)
-      return core.flatMap(selfWithLastOptions, (a) => scheduleFrom_EffectLoop(self, a, driver))
-    }
+    onFailure: () => core.orDie(driver.last),
+    onSuccess: () =>
+      core.flatMap(
+        provideLastIterationInfo(self),
+        (a) => scheduleFrom_EffectLoop(self, a, driver)
+      )
   })
 }
 
