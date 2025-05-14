@@ -2103,7 +2103,7 @@ const scheduleFrom_EffectLoop = <In, E, R, R2, Out>(
     onFailure: () => core.orDie(provideLastIterationInfo(driver.last)),
     onSuccess: () => {
       const selfWithLastOptions = provideLastIterationInfo(self)
-      return core.flatMap(selfWithLastOptions, (a) => scheduleFrom_EffectLoop(selfWithLastOptions, a, driver))
+      return core.flatMap(selfWithLastOptions, (a) => scheduleFrom_EffectLoop(self, a, driver))
     }
   })
 }
