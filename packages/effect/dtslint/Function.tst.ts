@@ -1,5 +1,5 @@
 import { flow, Function, identity, Option, pipe } from "effect"
-import { describe, it } from "tstyche"
+import { describe, expect, it } from "tstyche"
 
 describe("Function", () => {
   describe("pipe", () => {
@@ -37,17 +37,14 @@ describe("Function", () => {
     const arg2 = (a: string, b: number) => `${a}${b}`
     const arg3 = (a: number) => a
 
-    const _a1: number = apply1(countArgs)
-    const _a2: string = apply1(arg1)
-    // @ts-expect-error: Target signature provides too few arguments. Expected 2 or more, but got 1.
-    apply1(arg2)
-    // @ts-expect-error: Type 'string' is not assignable to type 'number'.
-    apply1(arg3)
+    expect(apply1(countArgs)).type.toBe<number>()
+    expect(apply1(arg1)).type.toBe<string>()
+    expect(apply1).type.not.toBeCallableWith(arg2)
+    expect(apply1).type.not.toBeCallableWith(arg3)
 
-    const _b1: number = apply2(countArgs)
-    const _b2: string = apply2(arg1)
-    const _b3: string = apply2(arg2)
-    // @ts-expect-error: Type 'string' is not assignable to type 'number'.
-    apply1(arg3)
+    expect(apply2(countArgs)).type.toBe<number>()
+    expect(apply2(arg1)).type.toBe<string>()
+    expect(apply2(arg2)).type.toBe<string>()
+    expect(apply1).type.not.toBeCallableWith(arg3)
   })
 })
