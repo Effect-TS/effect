@@ -189,15 +189,13 @@ export const make = (options: {
                 if (finishReason === "tool-calls" && Predicate.isNotUndefined(toolCallIndex)) {
                   finishToolCall(toolCalls[toolCallIndex], parts)
                 }
-                if (finishReason === "stop") {
-                  parts.push(
-                    new AiResponse.FinishPart({
-                      usage,
-                      reason: finishReason,
-                      providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
-                    }, constDisableValidation)
-                  )
-                }
+                parts.push(
+                  new AiResponse.FinishPart({
+                    usage,
+                    reason: finishReason,
+                    providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
+                  }, constDisableValidation)
+                )
               }
 
               // Handle text deltas
