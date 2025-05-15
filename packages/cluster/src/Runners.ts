@@ -17,6 +17,7 @@ import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import {
   AlreadyProcessingMessage,
+  EntityNotAssignedToRunner,
   EntityNotManagedByRunner,
   MailboxFull,
   PersistenceError,
@@ -52,10 +53,16 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
       readonly message: Message.Outgoing<R>
       readonly send: <Rpc extends Rpc.Any>(
         message: Message.IncomingLocal<Rpc>
-      ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
+      ) => Effect.Effect<
+        void,
+        EntityNotManagedByRunner | EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage
+      >
       readonly simulateRemoteSerialization: boolean
     }
-  ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
+  ) => Effect.Effect<
+    void,
+    EntityNotManagedByRunner | EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage
+  >
 
   /**
    * Send a message to a Runner.
@@ -67,7 +74,12 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
     }
   ) => Effect.Effect<
     void,
-    EntityNotManagedByRunner | RunnerUnavailable | MailboxFull | AlreadyProcessingMessage | PersistenceError
+    | EntityNotManagedByRunner
+    | EntityNotAssignedToRunner
+    | RunnerUnavailable
+    | MailboxFull
+    | AlreadyProcessingMessage
+    | PersistenceError
   >
 
   /**
@@ -91,7 +103,9 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
   readonly notifyLocal: <R extends Rpc.Any>(
     options: {
       readonly message: Message.Outgoing<R>
-      readonly notify: (options: Message.IncomingLocal<any>) => Effect.Effect<void, EntityNotManagedByRunner>
+      readonly notify: (
+        options: Message.IncomingLocal<any>
+      ) => Effect.Effect<void, EntityNotManagedByRunner | EntityNotAssignedToRunner>
       readonly discard: boolean
     }
   ) => Effect.Effect<void>
@@ -301,12 +315,17 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         if (message._tag === "OutgoingEnvelope") {
           return options.notify(options_)
         } else if (!duplicate && options_.address._tag === "Some") {
-          return Effect.catchAllCause(
+          return Effect.catchAll(
             options.send({
               address: options_.address.value,
               message
             }),
-            () => Effect.orDie(replyFromStorage(message))
+            (error) => {
+              if (error._tag === "EntityNotManagedByRunner") {
+                return Effect.die(error)
+              }
+              return Effect.orDie(replyFromStorage(message))
+            }
           )
         }
         return discard ? options.notify(options_) : options.notify(options_).pipe(
@@ -359,10 +378,17 @@ export const layerNoop: Layer.Layer<
 
 const rpcErrors: Schema.Union<[
   typeof EntityNotManagedByRunner,
+  typeof EntityNotAssignedToRunner,
   typeof MailboxFull,
   typeof AlreadyProcessingMessage,
   typeof PersistenceError
-]> = Schema.Union(EntityNotManagedByRunner, MailboxFull, AlreadyProcessingMessage, PersistenceError)
+]> = Schema.Union(
+  EntityNotManagedByRunner,
+  EntityNotAssignedToRunner,
+  MailboxFull,
+  AlreadyProcessingMessage,
+  PersistenceError
+)
 
 /**
  * @since 1.0.0
@@ -375,7 +401,7 @@ export class Rpcs extends RpcGroup.make(
       envelope: Envelope.PartialEncoded
     },
     success: Schema.Void,
-    error: Schema.Union(EntityNotManagedByRunner, AlreadyProcessingMessage)
+    error: Schema.Union(EntityNotManagedByRunner, EntityNotAssignedToRunner, AlreadyProcessingMessage)
   }),
   Rpc.make("Effect", {
     payload: {

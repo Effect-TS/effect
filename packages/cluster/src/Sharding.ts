@@ -29,7 +29,12 @@ import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type { MailboxFull, PersistenceError } from "./ClusterError.js"
-import { AlreadyProcessingMessage, EntityNotManagedByRunner, RunnerUnavailable } from "./ClusterError.js"
+import {
+  AlreadyProcessingMessage,
+  EntityNotAssignedToRunner,
+  EntityNotManagedByRunner,
+  RunnerUnavailable
+} from "./ClusterError.js"
 import { Persisted } from "./ClusterSchema.js"
 import type { CurrentAddress, Entity, HandlersFrom } from "./Entity.js"
 import { EntityAddress } from "./EntityAddress.js"
@@ -112,7 +117,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
    */
   readonly send: (message: Message.Incoming<any>) => Effect.Effect<
     void,
-    EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage
+    EntityNotManagedByRunner | EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage
   >
 
   /**
@@ -120,7 +125,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
    */
   readonly notify: (message: Message.Incoming<any>) => Effect.Effect<
     void,
-    EntityNotManagedByRunner | AlreadyProcessingMessage
+    EntityNotManagedByRunner | EntityNotAssignedToRunner | AlreadyProcessingMessage
   >
 
   /**
@@ -563,11 +568,11 @@ const make = Effect.gen(function*() {
 
           const sendWithRetry: Effect.Effect<
             void,
-            EntityNotManagedByRunner
+            EntityNotManagedByRunner | EntityNotAssignedToRunner
           > = Effect.catchTags(
             Effect.suspend(() => {
               if (!acquiredShards.has(address.shardId)) {
-                return Effect.fail(new EntityNotManagedByRunner({ address }))
+                return Effect.fail(new EntityNotAssignedToRunner({ address }))
               }
 
               const message = messages[index]
@@ -636,12 +641,12 @@ const make = Effect.gen(function*() {
     message: Message.Outgoing<any> | Message.Incoming<any>
   ): Effect.Effect<
     void,
-    EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage
+    EntityNotAssignedToRunner | EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage
   > =>
     Effect.suspend(() => {
       const address = message.envelope.address
       if (!isEntityOnLocalShards(address)) {
-        return Effect.fail(new EntityNotManagedByRunner({ address }))
+        return Effect.fail(new EntityNotAssignedToRunner({ address }))
       }
       const state = entityManagers.get(address.entityType)
       if (!state) {
@@ -661,32 +666,37 @@ const make = Effect.gen(function*() {
     message: Message.Outgoing<any> | Message.Incoming<any>,
     discard: boolean
   ) =>
-    Effect.suspend((): Effect.Effect<void, EntityNotManagedByRunner | AlreadyProcessingMessage> => {
-      const address = message.envelope.address
-      if (!isEntityOnLocalShards(address)) {
-        return Effect.fail(new EntityNotManagedByRunner({ address }))
-      }
-
-      const notify = storageEnabled
-        ? openStorageReadLatch
-        : () => Effect.dieMessage("Sharding.notifyLocal: storage is disabled")
-
-      if (message._tag === "IncomingRequest" || message._tag === "IncomingEnvelope") {
-        if (message._tag === "IncomingRequest" && storageAlreadyProcessed(message)) {
-          return Effect.fail(new AlreadyProcessingMessage({ address, envelopeId: message.envelope.requestId }))
+    Effect.suspend(
+      (): Effect.Effect<void, EntityNotManagedByRunner | EntityNotAssignedToRunner | AlreadyProcessingMessage> => {
+        const address = message.envelope.address
+        if (!isEntityOnLocalShards(address)) {
+          return Effect.fail(new EntityNotAssignedToRunner({ address }))
         }
-        return notify()
+
+        const notify = storageEnabled
+          ? openStorageReadLatch
+          : () => Effect.dieMessage("Sharding.notifyLocal: storage is disabled")
+
+        if (message._tag === "IncomingRequest" || message._tag === "IncomingEnvelope") {
+          if (message._tag === "IncomingRequest" && storageAlreadyProcessed(message)) {
+            return Effect.fail(new AlreadyProcessingMessage({ address, envelopeId: message.envelope.requestId }))
+          }
+          return notify()
+        }
+
+        return runners.notifyLocal({ message, notify, discard })
       }
+    )
 
-      return runners.notifyLocal({ message, notify, discard })
-    })
-
-  const isTransientError = Predicate.or(RunnerUnavailable.is, EntityNotManagedByRunner.is)
+  const isTransientError = Predicate.or(RunnerUnavailable.is, EntityNotAssignedToRunner.is)
   function sendOutgoing(
     message: Message.Outgoing<any>,
     discard: boolean,
     retries?: number
-  ): Effect.Effect<void, MailboxFull | AlreadyProcessingMessage | PersistenceError> {
+  ): Effect.Effect<
+    void,
+    EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage | PersistenceError
+  > {
     return Effect.catchIf(
       Effect.suspend(() => {
         const address = message.envelope.address
@@ -701,7 +711,7 @@ const make = Effect.gen(function*() {
             ? notifyLocal(message, discard)
             : runners.notify({ address: maybeRunner, message, discard })
         } else if (Option.isNone(maybeRunner)) {
-          return Effect.fail(new EntityNotManagedByRunner({ address }))
+          return Effect.fail(new EntityNotAssignedToRunner({ address }))
         }
         return runnerIsLocal
           ? sendLocal(message)
@@ -858,13 +868,19 @@ const make = Effect.gen(function*() {
 
   const clients: ResourceMap<
     Entity<any>,
-    (entityId: string) => RpcClient.RpcClient<any, MailboxFull | AlreadyProcessingMessage>,
+    (entityId: string) => RpcClient.RpcClient<
+      any,
+      MailboxFull | AlreadyProcessingMessage | EntityNotManagedByRunner
+    >,
     never
   > = yield* ResourceMap.make(Effect.fnUntraced(function*(entity: Entity<any>) {
     const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
       supportsAck: true,
       generateRequestId: () => RequestId(snowflakeGen.unsafeNext()),
-      onFromClient(options): Effect.Effect<void, MailboxFull | AlreadyProcessingMessage | PersistenceError> {
+      onFromClient(options): Effect.Effect<
+        void,
+        MailboxFull | AlreadyProcessingMessage | EntityNotManagedByRunner | PersistenceError
+      > {
         const address = Context.unsafeGet(options.context, ClientAddressTag)
         switch (options.message._tag) {
           case "Request": {
@@ -985,7 +1001,7 @@ const make = Effect.gen(function*() {
   }))
 
   const makeClient = <Rpcs extends Rpc.Any>(entity: Entity<Rpcs>): Effect.Effect<
-    (entityId: string) => RpcClient.RpcClient<Rpcs, MailboxFull | AlreadyProcessingMessage>
+    (entityId: string) => RpcClient.RpcClient<Rpcs, MailboxFull | AlreadyProcessingMessage | EntityNotManagedByRunner>
   > => clients.get(entity)
 
   const clientRespondDiscard = (_reply: Reply.Reply<any>) => Effect.void

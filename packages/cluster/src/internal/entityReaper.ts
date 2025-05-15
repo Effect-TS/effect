@@ -1,5 +1,5 @@
 import * as Effect from "effect/Effect"
-import type { EntityNotManagedByRunner } from "../ClusterError.js"
+import type { EntityNotAssignedToRunner } from "../ClusterError.js"
 import type { EntityAddress } from "../EntityAddress.js"
 import type { EntityId } from "../EntityId.js"
 import type { EntityState } from "./entityManager.js"
@@ -12,14 +12,14 @@ export class EntityReaper extends Effect.Service<EntityReaper>()("@effect/cluste
     const registered: Array<{
       readonly maxIdleTime: number
       readonly servers: Map<EntityId, EntityState>
-      readonly entities: ResourceMap<EntityAddress, EntityState, EntityNotManagedByRunner>
+      readonly entities: ResourceMap<EntityAddress, EntityState, EntityNotAssignedToRunner>
     }> = []
     const latch = yield* Effect.makeLatch()
 
     const register = (options: {
       readonly maxIdleTime: number
       readonly servers: Map<EntityId, EntityState>
-      readonly entities: ResourceMap<EntityAddress, EntityState, EntityNotManagedByRunner>
+      readonly entities: ResourceMap<EntityAddress, EntityState, EntityNotAssignedToRunner>
     }) =>
       Effect.suspend(() => {
         currentResolution = Math.max(Math.min(currentResolution, options.maxIdleTime), 5000)
