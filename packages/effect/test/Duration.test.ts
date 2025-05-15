@@ -380,7 +380,7 @@ describe("Duration", () => {
 
   it(`inspect`, () => {
     if (typeof window === "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { inspect } = require("node:util")
       deepStrictEqual(inspect(Duration.millis(1000)), inspect({ _id: "Duration", _tag: "Millis", millis: 1000 }))
     }

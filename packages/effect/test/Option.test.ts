@@ -101,7 +101,7 @@ describe("Option", () => {
     if (typeof window !== "undefined") {
       return
     }
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { inspect } = require("node:util")
     deepStrictEqual(inspect(Option.none()), inspect({ _id: "Option", _tag: "None" }))
     deepStrictEqual(inspect(Option.some(1)), inspect({ _id: "Option", _tag: "Some", value: 1 }))

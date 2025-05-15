@@ -41,7 +41,7 @@ describe("Cause", () => {
 
       // In Node.js environments, ensure the 'inspect' method includes line information
       if (typeof window === "undefined") {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { inspect } = require("node:util")
         assertInclude(inspect(ex), "Cause.test.ts:39") // <= reference to the line above
       }

@@ -82,7 +82,7 @@ describe("Chunk", () => {
 
   it("inspect", () => {
     if (typeof window === "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { inspect } = require("node:util")
       assertEquals(inspect(Chunk.make(0, 1, 2)), inspect({ _id: "Chunk", values: [0, 1, 2] }))
     }
