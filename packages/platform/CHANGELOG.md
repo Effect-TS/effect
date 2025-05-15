@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.82.2
+
+### Patch Changes
+
+- [#4882](https://github.com/Effect-TS/effect/pull/4882) [`739a3d4`](https://github.com/Effect-TS/effect/commit/739a3d4a4565915fe2e690003f4f9085cb4422fc) Thanks @tim-smart! - remove content headers for FormData bodies
+
 ## 0.82.1
 
 ### Patch Changes

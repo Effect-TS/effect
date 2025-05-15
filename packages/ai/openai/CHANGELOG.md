@@ -1,5 +1,18 @@
 # @effect/ai-openai
 
+## 0.19.3
+
+### Patch Changes
+
+- [#4880](https://github.com/Effect-TS/effect/pull/4880) [`b86c1fc`](https://github.com/Effect-TS/effect/commit/b86c1fc63b70e6536c691a0fde718f5f276abc7c) Thanks @IMax153! - Ensure that multiple tool calls are handled properly
+
+- [#4878](https://github.com/Effect-TS/effect/pull/4878) [`8b32eb5`](https://github.com/Effect-TS/effect/commit/8b32eb5f1267b012a261170c4fb704806e80ddea) Thanks @IMax153! - Ensure that `AiResponse.finishReason` is set properly when streaming responses from OpenAi
+
+- Updated dependencies [[`739a3d4`](https://github.com/Effect-TS/effect/commit/739a3d4a4565915fe2e690003f4f9085cb4422fc)]:
+  - @effect/platform@0.82.2
+  - @effect/ai@0.16.3
+  - @effect/experimental@0.46.2
+
 ## 0.19.2
 
 ### Patch Changes

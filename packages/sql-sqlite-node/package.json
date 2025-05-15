@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-node",
-  "version": "0.36.1",
+  "version": "0.36.2",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
