@@ -485,6 +485,17 @@ describe.concurrent("Sharding", () => {
     }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
       Layer.provide(MessageStorage.layerNoop)
     ))))
+
+  it.scoped("EntityNotManagedByRunner", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const makeClient = yield* TestEntity.client
+      const client = makeClient("1")
+      const error = yield* client.GetUser({ id: 123 }).pipe(
+        Effect.flip
+      )
+      expect(error._tag).toEqual("EntityNotManagedByRunner")
+    }).pipe(Effect.provide(TestShardingWithoutEntities)))
 })
 
 const TestShardingConfig = ShardingConfig.layer({
@@ -512,6 +523,14 @@ const TestShardingWithoutStorage = TestShardingWithoutRunners.pipe(
 )
 
 const TestSharding = TestShardingWithoutStorage.pipe(
+  Layer.provideMerge(MessageStorage.layerMemory),
+  Layer.provide(TestShardingConfig)
+)
+
+const TestShardingWithoutEntities = Sharding.layer.pipe(
+  Layer.provide(ShardManager.layerClientLocal),
+  Layer.provide(ShardStorage.layerMemory),
+  Layer.provide(Runners.layerNoop),
   Layer.provideMerge(MessageStorage.layerMemory),
   Layer.provide(TestShardingConfig)
 )

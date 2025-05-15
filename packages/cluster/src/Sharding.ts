@@ -429,8 +429,18 @@ const make = Effect.gen(function*() {
               currentSentRequestIds.add(message.envelope.requestId)
             }
             const address = message.envelope.address
+            if (!acquiredShards.has(address.shardId)) {
+              return Effect.void
+            }
             const state = entityManagers.get(address.entityType)
-            if (!state || !acquiredShards.has(address.shardId)) {
+            if (!state) {
+              if (message._tag === "IncomingRequest") {
+                return Effect.orDie(message.respond(Reply.ReplyWithContext.fromDefect({
+                  id: snowflakeGen.unsafeNext(),
+                  requestId: message.envelope.requestId,
+                  defect: new EntityNotManagedByRunner({ address })
+                })))
+              }
               return Effect.void
             }
 
@@ -673,6 +683,8 @@ const make = Effect.gen(function*() {
         const address = message.envelope.address
         if (!isEntityOnLocalShards(address)) {
           return Effect.fail(new EntityNotAssignedToRunner({ address }))
+        } else if (!entityManagers.has(address.entityType)) {
+          return Effect.fail(new EntityNotManagedByRunner({ address }))
         }
 
         const notify = storageEnabled

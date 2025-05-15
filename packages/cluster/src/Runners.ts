@@ -91,7 +91,7 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
       readonly message: Message.Outgoing<R>
       readonly discard: boolean
     }
-  ) => Effect.Effect<void>
+  ) => Effect.Effect<void, EntityNotManagedByRunner>
 
   /**
    * Notify the current Runner that a message is available, then read replies from
@@ -108,7 +108,7 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
       ) => Effect.Effect<void, EntityNotManagedByRunner | EntityNotAssignedToRunner>
       readonly discard: boolean
     }
-  ) => Effect.Effect<void>
+  ) => Effect.Effect<void, EntityNotManagedByRunner>
 }>() {}
 
 /**
@@ -329,7 +329,6 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           )
         }
         return discard ? options.notify(options_) : options.notify(options_).pipe(
-          Effect.fork,
           Effect.andThen(Effect.orDie(replyFromStorage(message)))
         )
       })
@@ -340,11 +339,12 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           return Effect.orDie(options.notify(Message.incomingLocalFromOutgoing(message)))
         } else if (!duplicate) {
           return storage.registerReplyHandler(message).pipe(
-            Effect.andThen(Effect.orDie(options.notify(Message.incomingLocalFromOutgoing(message))))
+            Effect.andThen(options.notify(Message.incomingLocalFromOutgoing(message))),
+            Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void)
           )
         }
-        return Effect.orDie(options.notify(Message.incomingLocalFromOutgoing(message))).pipe(
-          Effect.fork,
+        return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
+          Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
           Effect.andThen(Effect.orDie(replyFromStorage(message)))
         )
       })
@@ -560,7 +560,12 @@ export const makeRpc: Effect.Effect<
       return RcMap.get(clients, address.value).pipe(
         Effect.flatMap((client) => client.Notify({ envelope })),
         Effect.scoped,
-        Effect.ignore
+        Effect.catchAll((error) => {
+          if (error._tag === "EntityNotManagedByRunner") {
+            return Effect.fail(error)
+          }
+          return Effect.void
+        })
       )
     }
   })
