@@ -48,7 +48,7 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.25.1",
+    "@opentelemetry/semantic-conventions": "^1.33.0",
     "uuid": "^11.0.3"
   },
   "devDependencies": {

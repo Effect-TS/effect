@@ -63,10 +63,10 @@
     }
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240806.0",
+    "@cloudflare/workers-types": "^4.20250515.0",
     "@effect/platform-node": "workspace:^",
-    "@types/ws": "^8.5.12",
-    "ioredis": "^5.4.1",
-    "lmdb": "^3.0.13"
+    "@types/ws": "^8.18.1",
+    "ioredis": "^5.6.1",
+    "lmdb": "^3.3.0"
   }
 }

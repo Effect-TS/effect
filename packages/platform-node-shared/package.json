@@ -65,7 +65,7 @@
     "@effect/rpc": "workspace:^",
     "@effect/sql": "workspace:^",
     "@types/tar": "^6.1.12",
-    "@types/ws": "^8.5.12",
+    "@types/ws": "^8.18.1",
     "effect": "workspace:^",
     "tar": "^6"
   }
