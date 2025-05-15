@@ -1107,7 +1107,7 @@ export const findLast: {
 )
 
 /**
- * Counts all the element of the given iterable that pass the given predicate
+ * Counts all the element of the given array that pass the given predicate
  *
  * **Example**
  *
@@ -1122,25 +1122,9 @@ export const findLast: {
  * @since 3.16.0
  */
 export const countBy: {
-  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => number
-  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): number
-} = dual(
-  2,
-  <A>(
-    self: Iterable<A>,
-    f: (a: A, i: number) => boolean
-  ): number => {
-    let count = 0
-    let i = 0
-    for (const a of self) {
-      if (f(a, i)) {
-        count++
-      }
-      i++
-    }
-    return count
-  }
-)
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Array<A>) => number
+  <A>(self: Array<A>, predicate: (a: A, i: number) => boolean): number
+} = moduleIterable.countBy
 
 /**
  * Insert an element at the specified index, creating a new `NonEmptyArray`,
