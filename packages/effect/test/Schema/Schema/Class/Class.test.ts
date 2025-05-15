@@ -276,6 +276,7 @@ describe("Class", () => {
     throws(
       () => {
         class A2 extends A.extend<A2>("A2")({ a: S.String }) {}
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         A2
       },
       new Error(`Duplicate property signature

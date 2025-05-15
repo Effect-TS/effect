@@ -156,7 +156,6 @@ export abstract class IncomingMessageImpl<E> extends Inspectable.Class
     if (this.cachedCookies) {
       return this.cachedCookies
     }
-    this.headers
     if (this._rawHeaders === undefined) {
       return Cookies.empty
     } else if (this._rawHeaders["set-cookie"] === undefined) {

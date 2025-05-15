@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Config, hole, pipe } from "effect"
 import { describe, expect, it } from "tstyche"
 

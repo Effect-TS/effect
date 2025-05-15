@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import * as Data from "effect/Data"
 import { describe, expect, it, pick } from "tstyche"
 

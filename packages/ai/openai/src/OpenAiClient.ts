@@ -353,5 +353,5 @@ const finishToolCall = (
     toolCall.isFinished = true
     // TODO:
     // eslint-disable-next-line no-empty
-  } catch (e) {}
+  } catch {}
 }

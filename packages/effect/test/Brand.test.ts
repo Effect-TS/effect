@@ -12,6 +12,7 @@ import {
 } from "@effect/vitest/utils"
 import { Brand, Option } from "effect"
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 declare const IntTypeId: unique symbol
 type Int = number & Brand.Brand<typeof IntTypeId>
 const Int = Brand.refined<Int>(

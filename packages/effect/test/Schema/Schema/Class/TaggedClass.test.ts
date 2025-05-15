@@ -50,6 +50,7 @@ describe("TaggedClass", () => {
     throws(
       () => {
         class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.Literal("X"), a: S.String }) {}
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         _TA
       },
       new Error(`Duplicate property signature

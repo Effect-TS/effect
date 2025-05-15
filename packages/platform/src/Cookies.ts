@@ -741,7 +741,7 @@ export function parseHeader(header: string): Record<string, string> {
 const tryDecodeURIComponent = (str: string): string => {
   try {
     return decodeURIComponent(str)
-  } catch (_) {
+  } catch {
     return str
   }
 }

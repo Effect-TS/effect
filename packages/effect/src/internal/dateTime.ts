@@ -377,7 +377,7 @@ export const zoneUnsafeMakeNamed = (zoneId: string): DateTime.TimeZone.Named => 
         timeZone: zoneId
       })
     )
-  } catch (_) {
+  } catch {
     throw new IllegalArgumentException(`Invalid time zone: ${zoneId}`)
   }
 }
@@ -1076,7 +1076,7 @@ export const format: {
       timeZone: self._tag === "Utc" ? "UTC" : intlTimeZone(self.zone),
       ...options
     }).format(self.epochMillis)
-  } catch (_) {
+  } catch {
     return new Intl.DateTimeFormat(options?.locale, {
       timeZone: "UTC",
       ...options

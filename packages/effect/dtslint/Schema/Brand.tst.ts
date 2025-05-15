@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { pipe, Schema } from "effect"
 import { describe, it } from "tstyche"
 

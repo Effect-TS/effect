@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { StandardSchemaV1 } from "@standard-schema/spec"
 import type {
   Arbitrary,
@@ -70,10 +71,6 @@ describe("Schema", () => {
     })
 
     it("Struct.Type", () => {
-      const _StructTypeTest1 = <S extends S.Schema.Any>(input: S.Struct.Type<{ s: S }>) => {
-        expect(input).type.toBe<S.Struct.Type<{ s: S }>>()
-        input
-      }
       expect(hole<Types.Simplify<S.Struct.Type<{}>>>()).type.toBe<{}>()
       expect(hole<Types.Simplify<S.Struct.Type<{ a: S.Schema<number, string> }>>>()).type.toBe<{ readonly a: number }>()
       expect(hole<
