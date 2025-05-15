@@ -4099,8 +4099,7 @@ describe("Schema", () => {
     })
 
     it("head", () => {
-      // @ts-expect-error: Type 'string' is not assignable to type 'readonly unknown[]'
-      S.String.pipe(S.head)
+      expect(S.String.pipe).type.not.toBeCallableWith(S.head)
 
       const schema = S.head(S.Array(S.NumberFromString))
 
@@ -4114,8 +4113,7 @@ describe("Schema", () => {
     })
 
     it("headNonEmpty", () => {
-      // @ts-expect-error: Type 'string' is not assignable to type 'readonly [unknown, ...unknown[]]'
-      S.String.pipe(S.headNonEmpty)
+      expect(S.String.pipe).type.not.toBeCallableWith(S.headNonEmpty)
 
       const schema = S.headNonEmpty(S.NonEmptyArray(S.Number))
       expect(S.asSchema(schema)).type.toBe<S.Schema<number, readonly [number, ...Array<number>]>>()
@@ -4128,8 +4126,7 @@ describe("Schema", () => {
     })
 
     it("headOrElse", () => {
-      // @ts-expect-error: Type 'string' is not assignable to type 'readonly unknown[]'
-      S.String.pipe(S.headOrElse())
+      expect(S.String.pipe).type.not.toBeCallableWith(S.headOrElse())
       expect(S.headOrElse).type.not.toBeCallableWith(S.Array(S.Number), () => "a")
       when(S.Array(S.Number).pipe).isCalledWith(expect(S.headOrElse).type.not.toBeCallableWith(() => "a"))
 
