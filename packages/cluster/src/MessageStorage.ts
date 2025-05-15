@@ -394,9 +394,6 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
     resetShards: (shardIds) => encoded.resetShards(Array.from(shardIds))
   })
 
-  const saveReplyWrapped = (reply: Reply.ReplyWithContext<any>) =>
-    Effect.catchTag(storage.saveReply(reply), "PersistenceError", Effect.die)
-
   const decodeMessages = (
     envelopes: Array<{
       readonly envelope: Envelope.Envelope.Encoded
@@ -438,7 +435,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
               ? new Message.IncomingRequest({
                 envelope: message.envelope,
                 lastSentReply: envelope.lastSentReply,
-                respond: saveReplyWrapped
+                respond: storage.saveReply
               })
               : new Message.IncomingEnvelope({
                 envelope: message.envelope

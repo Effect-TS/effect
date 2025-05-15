@@ -649,11 +649,15 @@ const make = Effect.gen(function*() {
 
   // --- Sending messages ---
 
-  const sendLocal = (
-    message: Message.Outgoing<any> | Message.Incoming<any>
+  const sendLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(
+    message: M
   ): Effect.Effect<
     void,
-    EntityNotAssignedToRunner | EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage
+    | EntityNotAssignedToRunner
+    | EntityNotManagedByRunner
+    | MailboxFull
+    | AlreadyProcessingMessage
+    | (M extends Message.Incoming<any> ? never : PersistenceError)
   > =>
     Effect.suspend(() => {
       const address = message.envelope.address
@@ -671,15 +675,21 @@ const make = Effect.gen(function*() {
           message,
           send: state.manager.sendLocal,
           simulateRemoteSerialization: config.simulateRemoteSerialization
-        })
+        }) as any
     })
 
-  const notifyLocal = (
-    message: Message.Outgoing<any> | Message.Incoming<any>,
+  const notifyLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(
+    message: M,
     discard: boolean
   ) =>
     Effect.suspend(
-      (): Effect.Effect<void, EntityNotManagedByRunner | EntityNotAssignedToRunner | AlreadyProcessingMessage> => {
+      (): Effect.Effect<
+        void,
+        | EntityNotManagedByRunner
+        | EntityNotAssignedToRunner
+        | AlreadyProcessingMessage
+        | (M extends Message.Incoming<any> ? never : PersistenceError)
+      > => {
         const address = message.envelope.address
         if (!isEntityOnLocalShards(address)) {
           return Effect.fail(new EntityNotAssignedToRunner({ address }))
@@ -698,7 +708,7 @@ const make = Effect.gen(function*() {
           return notify()
         }
 
-        return runners.notifyLocal({ message, notify, discard })
+        return runners.notifyLocal({ message, notify, discard }) as any
       }
     )
 

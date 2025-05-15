@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
+import type { PersistenceError } from "./ClusterError.js"
 import { MalformedMessage } from "./ClusterError.js"
 import * as Envelope from "./Envelope.js"
 import type * as Reply from "./Reply.js"
@@ -46,7 +47,7 @@ export const incomingLocalFromOutgoing = <R extends Rpc.Any>(self: Outgoing<R>):
 export class IncomingRequest<R extends Rpc.Any> extends Data.TaggedClass("IncomingRequest")<{
   readonly envelope: Envelope.Request.PartialEncoded
   readonly lastSentReply: Option.Option<Reply.ReplyEncoded<R>>
-  readonly respond: (reply: Reply.ReplyWithContext<R>) => Effect.Effect<void, MalformedMessage>
+  readonly respond: (reply: Reply.ReplyWithContext<R>) => Effect.Effect<void, MalformedMessage | PersistenceError>
 }> {}
 
 /**
@@ -56,7 +57,7 @@ export class IncomingRequest<R extends Rpc.Any> extends Data.TaggedClass("Incomi
 export class IncomingRequestLocal<R extends Rpc.Any> extends Data.TaggedClass("IncomingRequestLocal")<{
   readonly envelope: Envelope.Request<R>
   readonly lastSentReply: Option.Option<Reply.Reply<R>>
-  readonly respond: (reply: Reply.Reply<R>) => Effect.Effect<void, MalformedMessage>
+  readonly respond: (reply: Reply.Reply<R>) => Effect.Effect<void, MalformedMessage | PersistenceError>
 }> {}
 
 /**
