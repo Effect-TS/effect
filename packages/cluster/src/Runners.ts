@@ -20,7 +20,6 @@ import {
   EntityNotAssignedToRunner,
   EntityNotManagedByRunner,
   MailboxFull,
-  PersistenceError,
   RunnerUnavailable
 } from "./ClusterError.js"
 import { Persisted } from "./ClusterSchema.js"
@@ -79,7 +78,6 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
     | RunnerUnavailable
     | MailboxFull
     | AlreadyProcessingMessage
-    | PersistenceError
   >
 
   /**
@@ -322,7 +320,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
             }),
             (error) => {
               if (error._tag === "EntityNotManagedByRunner") {
-                return Effect.die(error)
+                return Effect.fail(error)
               }
               return Effect.orDie(replyFromStorage(message))
             }
@@ -380,14 +378,12 @@ const rpcErrors: Schema.Union<[
   typeof EntityNotManagedByRunner,
   typeof EntityNotAssignedToRunner,
   typeof MailboxFull,
-  typeof AlreadyProcessingMessage,
-  typeof PersistenceError
+  typeof AlreadyProcessingMessage
 ]> = Schema.Union(
   EntityNotManagedByRunner,
   EntityNotAssignedToRunner,
   MailboxFull,
-  AlreadyProcessingMessage,
-  PersistenceError
+  AlreadyProcessingMessage
 )
 
 /**
