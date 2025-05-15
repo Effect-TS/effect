@@ -1,5 +1,13 @@
 # @effect/sql-sqlite-wasm
 
+## 0.36.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/experimental@0.46.2
+  - @effect/sql@0.35.2
+
 ## 0.36.1
 
 ### Patch Changes
