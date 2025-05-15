@@ -70,7 +70,7 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
   readonly entityReplyPollInterval: DurationInput
   readonly refreshAssignmentsInterval: DurationInput
   /**
-   * The interval to retry a send if EntityNotManagedByRunner is returned.
+   * The interval to retry a send if EntityNotAssignedToRunner is returned.
    */
   readonly sendRetryInterval: DurationInput
   // readonly unhealthyRunnerReportInterval: Duration.Duration

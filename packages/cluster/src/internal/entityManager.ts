@@ -16,7 +16,7 @@ import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
-import { AlreadyProcessingMessage, EntityNotManagedByRunner, MailboxFull, MalformedMessage } from "../ClusterError.js"
+import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, MalformedMessage } from "../ClusterError.js"
 import * as ClusterMetrics from "../ClusterMetrics.js"
 import { Persisted } from "../ClusterSchema.js"
 import type { Entity, HandlersFrom } from "../Entity.js"
@@ -41,11 +41,11 @@ import { ResourceRef } from "./resourceRef.js"
 export interface EntityManager {
   readonly sendLocal: <R extends Rpc.Any>(
     message: Message.IncomingLocal<R>
-  ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
+  ) => Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage>
 
   readonly send: (
     message: Message.Incoming<any>
-  ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
+  ) => Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage>
 
   readonly isProcessingFor: (message: Message.Incoming<any>, options?: {
     readonly excludeReplies?: boolean
@@ -102,10 +102,10 @@ export const make = Effect.fnUntraced(function*<
   const entities: ResourceMap<
     EntityAddress,
     EntityState,
-    EntityNotManagedByRunner
+    EntityNotAssignedToRunner
   > = yield* ResourceMap.make(Effect.fnUntraced(function*(address) {
     if (yield* options.sharding.isShutdown) {
-      return yield* new EntityNotManagedByRunner({ address })
+      return yield* new EntityNotAssignedToRunner({ address })
     }
 
     const scope = yield* Effect.scope
@@ -317,11 +317,11 @@ export const make = Effect.fnUntraced(function*<
 
   function sendLocal<R extends Rpc.Any>(
     message: Message.IncomingLocal<R>
-  ): Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage> {
+  ): Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage> {
     return Effect.locally(
       Effect.flatMap(
         entities.get(message.envelope.address),
-        (server): Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage> => {
+        (server): Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage> => {
           switch (message._tag) {
             case "IncomingRequestLocal": {
               // If the request is already running, then we might have more than
@@ -371,7 +371,7 @@ export const make = Effect.fnUntraced(function*<
             case "IncomingEnvelope": {
               const entry = server.activeRequests.get(message.envelope.requestId)
               if (!entry) {
-                return Effect.fail(new EntityNotManagedByRunner({ address: message.envelope.address }))
+                return Effect.fail(new EntityNotAssignedToRunner({ address: message.envelope.address }))
               } else if (
                 message.envelope._tag === "AckChunk" &&
                 Option.isSome(entry.lastSentChunk) &&

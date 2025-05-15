@@ -15,11 +15,12 @@ import * as Option from "effect/Option"
 import * as RcMap from "effect/RcMap"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
+import type { PersistenceError } from "./ClusterError.js"
 import {
   AlreadyProcessingMessage,
+  EntityNotAssignedToRunner,
   EntityNotManagedByRunner,
   MailboxFull,
-  PersistenceError,
   RunnerUnavailable
 } from "./ClusterError.js"
 import { Persisted } from "./ClusterSchema.js"
@@ -52,10 +53,16 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
       readonly message: Message.Outgoing<R>
       readonly send: <Rpc extends Rpc.Any>(
         message: Message.IncomingLocal<Rpc>
-      ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
+      ) => Effect.Effect<
+        void,
+        EntityNotManagedByRunner | EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage
+      >
       readonly simulateRemoteSerialization: boolean
     }
-  ) => Effect.Effect<void, EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage>
+  ) => Effect.Effect<
+    void,
+    EntityNotManagedByRunner | EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage | PersistenceError
+  >
 
   /**
    * Send a message to a Runner.
@@ -67,7 +74,12 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
     }
   ) => Effect.Effect<
     void,
-    EntityNotManagedByRunner | RunnerUnavailable | MailboxFull | AlreadyProcessingMessage | PersistenceError
+    | EntityNotManagedByRunner
+    | EntityNotAssignedToRunner
+    | RunnerUnavailable
+    | MailboxFull
+    | AlreadyProcessingMessage
+    | PersistenceError
   >
 
   /**
@@ -79,7 +91,7 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
       readonly message: Message.Outgoing<R>
       readonly discard: boolean
     }
-  ) => Effect.Effect<void>
+  ) => Effect.Effect<void, EntityNotManagedByRunner | PersistenceError>
 
   /**
    * Notify the current Runner that a message is available, then read replies from
@@ -91,10 +103,12 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
   readonly notifyLocal: <R extends Rpc.Any>(
     options: {
       readonly message: Message.Outgoing<R>
-      readonly notify: (options: Message.IncomingLocal<any>) => Effect.Effect<void, EntityNotManagedByRunner>
+      readonly notify: (
+        options: Message.IncomingLocal<any>
+      ) => Effect.Effect<void, EntityNotManagedByRunner | EntityNotAssignedToRunner>
       readonly discard: boolean
     }
-  ) => Effect.Effect<void>
+  ) => Effect.Effect<void, EntityNotManagedByRunner | PersistenceError>
 }>() {}
 
 /**
@@ -115,7 +129,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
   function notifyWith<E>(
     message: Message.Outgoing<any>,
     afterPersist: (message: Message.Outgoing<any>, isDuplicate: boolean) => Effect.Effect<void, E>
-  ): Effect.Effect<void, E> {
+  ): Effect.Effect<void, E | PersistenceError> {
     const rpc = message.rpc as any as Rpc.AnyWithProps
     const persisted = Context.get(rpc.annotations, Persisted)
     if (!persisted) {
@@ -133,7 +147,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         })
       }
       return storage.saveEnvelope(message).pipe(
-        Effect.orDie,
+        Effect.catchTag("MalformedMessage", Effect.die),
         Effect.zipRight(
           entry ? Effect.zipRight(entry.latch.open, afterPersist(message, false)) : afterPersist(message, false)
         )
@@ -146,7 +160,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
     //
     // Otherwise, we notify the remote entity and then reply from storage.
     return Effect.flatMap(
-      Effect.orDie(storage.saveRequest(message)),
+      Effect.catchTag(storage.saveRequest(message), "MalformedMessage", Effect.die),
       MessageStorage.SaveResult.$match({
         Success: () => afterPersist(message, false),
         Duplicate: ({ lastReceivedReply, originalId }) => {
@@ -285,13 +299,13 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           if (message._tag === "OutgoingEnvelope") {
             return Effect.die(error)
           }
-          return Effect.orDie(message.respond(
+          return message.respond(
             new Reply.WithExit({
               id: snowflakeGen.unsafeNext(),
               requestId: message.envelope.requestId,
               exit: Exit.die(error)
             })
-          ))
+          )
         })
       )
     },
@@ -301,32 +315,41 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         if (message._tag === "OutgoingEnvelope") {
           return options.notify(options_)
         } else if (!duplicate && options_.address._tag === "Some") {
-          return Effect.catchAllCause(
+          return Effect.catchAll(
             options.send({
               address: options_.address.value,
               message
             }),
-            () => Effect.orDie(replyFromStorage(message))
+            (error) => {
+              if (error._tag === "EntityNotManagedByRunner") {
+                return Effect.fail(error)
+              }
+              return replyFromStorage(message)
+            }
           )
         }
         return discard ? options.notify(options_) : options.notify(options_).pipe(
-          Effect.fork,
-          Effect.andThen(Effect.orDie(replyFromStorage(message)))
+          Effect.andThen(replyFromStorage(message))
         )
       })
     },
     notifyLocal(options) {
       return notifyWith(options.message, (message, duplicate) => {
         if (options.discard || message._tag === "OutgoingEnvelope") {
-          return Effect.orDie(options.notify(Message.incomingLocalFromOutgoing(message)))
+          return Effect.catchTag(
+            options.notify(Message.incomingLocalFromOutgoing(message)),
+            "EntityNotAssignedToRunner",
+            () => Effect.void
+          )
         } else if (!duplicate) {
           return storage.registerReplyHandler(message).pipe(
-            Effect.andThen(Effect.orDie(options.notify(Message.incomingLocalFromOutgoing(message))))
+            Effect.andThen(options.notify(Message.incomingLocalFromOutgoing(message))),
+            Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void)
           )
         }
-        return Effect.orDie(options.notify(Message.incomingLocalFromOutgoing(message))).pipe(
-          Effect.fork,
-          Effect.andThen(Effect.orDie(replyFromStorage(message)))
+        return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
+          Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
+          Effect.andThen(replyFromStorage(message))
         )
       })
     }
@@ -359,10 +382,15 @@ export const layerNoop: Layer.Layer<
 
 const rpcErrors: Schema.Union<[
   typeof EntityNotManagedByRunner,
+  typeof EntityNotAssignedToRunner,
   typeof MailboxFull,
-  typeof AlreadyProcessingMessage,
-  typeof PersistenceError
-]> = Schema.Union(EntityNotManagedByRunner, MailboxFull, AlreadyProcessingMessage, PersistenceError)
+  typeof AlreadyProcessingMessage
+]> = Schema.Union(
+  EntityNotManagedByRunner,
+  EntityNotAssignedToRunner,
+  MailboxFull,
+  AlreadyProcessingMessage
+)
 
 /**
  * @since 1.0.0
@@ -375,7 +403,7 @@ export class Rpcs extends RpcGroup.make(
       envelope: Envelope.PartialEncoded
     },
     success: Schema.Void,
-    error: Schema.Union(EntityNotManagedByRunner, AlreadyProcessingMessage)
+    error: Schema.Union(EntityNotManagedByRunner, EntityNotAssignedToRunner, AlreadyProcessingMessage)
   }),
   Rpc.make("Effect", {
     payload: {
@@ -534,7 +562,12 @@ export const makeRpc: Effect.Effect<
       return RcMap.get(clients, address.value).pipe(
         Effect.flatMap((client) => client.Notify({ envelope })),
         Effect.scoped,
-        Effect.ignore
+        Effect.catchAll((error) => {
+          if (error._tag === "EntityNotManagedByRunner") {
+            return Effect.fail(error)
+          }
+          return Effect.void
+        })
       )
     }
   })
