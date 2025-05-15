@@ -2052,7 +2052,7 @@ const retryOrElse_EffectLoop = <A, E, R, R1, A1, A2, E2, R2>(
             core.orDie,
             core.flatMap((out) => provideLastIterationInfo(orElse(e, out)))
           ),
-        onSuccess: () => retryOrElse_EffectLoop(self, driver, orElse)
+        onSuccess: () => retryOrElse_EffectLoop(provideLastIterationInfo(self), driver, orElse)
       })
     }
   )
