@@ -88,7 +88,9 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   readonly makeClient: <Rpcs extends Rpc.Any>(
     entity: Entity<Rpcs>
   ) => Effect.Effect<
-    (entityId: string) => RpcClient.RpcClient<Rpcs, MailboxFull | AlreadyProcessingMessage | PersistenceError>
+    (
+      entityId: string
+    ) => RpcClient.RpcClient<Rpcs, MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner>
   >
 
   /**
