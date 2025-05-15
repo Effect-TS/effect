@@ -11,6 +11,7 @@ import type * as Logger from "../Logger.js"
 import type * as LogLevel from "../LogLevel.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
+import { isError } from "../Predicate.js"
 import * as Cause from "./cause.js"
 import * as defaultServices from "./defaultServices.js"
 import { consoleTag } from "./defaultServices/console.js"
@@ -272,7 +273,30 @@ export const structuredMessage = (u: unknown): unknown => {
 }
 
 /** @internal */
-export const jsonLogger = map(structuredLogger, Inspectable.stringifyCircular)
+export const jsonLogger = map(
+  structuredLogger,
+  (logObj) => {
+    let message: unknown
+    const serializeIfError = (obj: unknown): unknown =>
+      isError(obj) ?
+        ({
+          name: obj.name,
+          message: obj.message
+        }) :
+        obj
+
+    if (Array.isArray(logObj.message)) {
+      message = logObj.message.map(serializeIfError)
+    } else {
+      message = serializeIfError(logObj.message)
+    }
+
+    return Inspectable.stringifyCircular({
+      ...logObj,
+      message
+    })
+  }
+)
 
 /** @internal */
 export const isLogger = (u: unknown): u is Logger.Logger<unknown, unknown> => {
