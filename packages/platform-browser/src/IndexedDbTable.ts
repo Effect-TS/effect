@@ -91,6 +91,10 @@ export type AutoIncrement<Table extends Any> = Table extends IndexedDbTable<
 > ? _TableAutoIncrement :
   never
 
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export type TableSchema<Table extends Any> = Table extends IndexedDbTable<
   infer _TableName,
   infer _Schema,
