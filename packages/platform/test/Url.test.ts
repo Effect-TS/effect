@@ -2,7 +2,7 @@ import * as Url from "@effect/platform/Url"
 import * as UrlParams from "@effect/platform/UrlParams"
 import { describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
-import { Cause, Either } from "effect"
+import { Cause, Either, Redacted } from "effect"
 
 describe("Url", () => {
   const testURL = new URL("https://example.com/test")
@@ -53,6 +53,10 @@ describe("Url", () => {
 
   it("setPassword", () => {
     expectUrl(Url.setPassword(testURL, "newpassword"), "https://:newpassword@example.com/test")
+  })
+
+  it("setPassword - Redacted", () => {
+    expectUrl(Url.setPassword(testURL, Redacted.make("newpassword")), "https://:newpassword@example.com/test")
   })
 
   it("setPathname", () => {
