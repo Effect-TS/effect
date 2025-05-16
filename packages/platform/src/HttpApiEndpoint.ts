@@ -8,9 +8,11 @@ import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import type * as Stream from "effect/Stream"
 import type * as Types from "effect/Types"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
+import type { RequestError } from "./HttpClientError.js"
 import type { HttpMethod } from "./HttpMethod.js"
 import * as HttpRouter from "./HttpRouter.js"
 import type { HttpServerResponse } from "./HttpServerResponse.js"
@@ -402,7 +404,10 @@ export declare namespace HttpApiEndpoint {
   > ?
       & ([_Path] extends [never] ? {} : { readonly path: _Path })
       & ([_UrlParams] extends [never] ? {} : { readonly urlParams: _UrlParams })
-      & ([_Payload] extends [never] ? {} : { readonly payload: _Payload })
+      & ([_Payload] extends [never] ? {}
+        : [_Payload] extends [Brand<HttpApiSchema.StreamTypeId>]
+          ? { readonly payload: Stream.Stream<Uint8Array, RequestError, never> }
+        : { readonly payload: _Payload })
       & ([_Headers] extends [never] ? {} : { readonly headers: _Headers })
     : {}
 
@@ -410,13 +415,28 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type ClientRequest<Path, UrlParams, Payload, Headers, WithResponse extends boolean> = (
+  export type ClientRequest<
+    Path,
+    UrlParams,
+    Payload,
+    Headers,
+    WithResponse extends boolean,
+    StreamError,
+    StreamContext
+  > = (
     & ([Path] extends [void] ? {} : { readonly path: Path })
     & ([UrlParams] extends [never] ? {} : { readonly urlParams: UrlParams })
     & ([Headers] extends [never] ? {} : { readonly headers: Headers })
     & ([Payload] extends [never] ? {}
-      : Payload extends infer P ?
-        P extends Brand<HttpApiSchema.MultipartTypeId> ? { readonly payload: FormData } : { readonly payload: P }
+      : Payload extends infer P ? P extends Brand<HttpApiSchema.MultipartTypeId> ? { readonly payload: FormData }
+        : P extends Brand<HttpApiSchema.StreamTypeId> ? {
+            readonly payload: {
+              readonly etag?: string | undefined
+              readonly contentLength?: number | undefined
+              readonly stream: Stream.Stream<Uint8Array, StreamError, StreamContext>
+            }
+          }
+        : { readonly payload: P }
       : { readonly payload: Payload })
   ) extends infer Req ? keyof Req extends never ? (void | { readonly withResponse?: WithResponse }) :
     Req & { readonly withResponse?: WithResponse } :

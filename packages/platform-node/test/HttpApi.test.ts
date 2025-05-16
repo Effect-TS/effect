@@ -12,12 +12,15 @@ import {
   HttpClient,
   HttpClientRequest,
   HttpServerRequest,
+  HttpServerResponse,
   Multipart,
   OpenApi
 } from "@effect/platform"
 import { NodeHttpServer } from "@effect/platform-node"
+import type { HttpApiDecodeError } from "@effect/platform/HttpApiError"
+import type { HttpClientError } from "@effect/platform/HttpClientError"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, DateTime, Effect, Layer, Redacted, Ref, Schema, Struct } from "effect"
+import { Chunk, Context, DateTime, Effect, Layer, Redacted, Ref, Schedule, Schema, Stream, Struct } from "effect"
 import OpenApiFixture from "./fixtures/openapi.json" with { type: "json" }
 
 describe("HttpApi", () => {
@@ -73,6 +76,35 @@ describe("HttpApi", () => {
           contentType: "text/plain",
           length: 5
         })
+      }).pipe(Effect.provide(HttpLive)))
+
+    it.live("echo stream", () =>
+      Effect.gen(function*() {
+        class TestService extends Effect.Service<TestService>()("TestService", {
+          accessors: true,
+          sync: () => ({ data: ["a", "b", "c"] as const })
+        }) {}
+
+        const client = yield* HttpApiClient.make(Api)
+        const payloadStream: Stream.Stream<Uint8Array<ArrayBufferLike>, Error, TestService> = Stream.fromIterableEffect(
+          TestService.data
+        ).pipe(
+          Stream.schedule(Schedule.spaced("500 millis")),
+          Stream.encodeText
+        )
+
+        const requestEffect: Effect.Effect<
+          Stream.Stream<Uint8Array<ArrayBufferLike>, never, never>,
+          HttpApiDecodeError | GlobalError | HttpClientError | Error,
+          never
+        > = Effect.provide(
+          client.echo({ payload: { stream: payloadStream } }),
+          TestService.Default
+        )
+
+        const responseStream: Stream.Stream<Uint8Array<ArrayBufferLike>> = yield* requestEffect
+        const result = yield* responseStream.pipe(Stream.decodeText()).pipe(Stream.runCollect)
+        assert.deepStrictEqual(Chunk.join(result, ""), "abc")
       }).pipe(Effect.provide(HttpLive)))
   })
 
@@ -360,6 +392,12 @@ class TopLevelApi extends HttpApiGroup.make("root", { topLevel: true })
     HttpApiEndpoint.get("healthz")`/healthz`
       .addSuccess(HttpApiSchema.NoContent.annotations({ description: "Empty" }))
   )
+  // Add an echo endpoint that echos the request body as a stream
+  .add(
+    HttpApiEndpoint.post("echo")`/echo`
+      .setPayload(HttpApiSchema.Stream())
+      .addSuccess(HttpApiSchema.Stream())
+  )
 {}
 
 class AnotherApi extends HttpApi.make("another").add(GroupsApi) {}
@@ -484,7 +522,10 @@ const HttpGroupsLive = HttpApiBuilder.group(
 const TopLevelLive = HttpApiBuilder.group(
   Api,
   "root",
-  (handlers) => handlers.handle("healthz", (_) => Effect.void)
+  (handlers) =>
+    handlers
+      .handle("healthz", (_) => Effect.void)
+      .handleRaw("echo", ({ payload }) => HttpServerResponse.stream(payload))
 )
 
 const HttpApiLive = Layer.provide(HttpApiBuilder.api(Api), [
