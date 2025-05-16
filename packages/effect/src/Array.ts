@@ -1124,7 +1124,22 @@ export const findLast: {
 export const countBy: {
   <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Array<A>) => number
   <A>(self: Array<A>, predicate: (a: A, i: number) => boolean): number
-} = moduleIterable.countBy
+} = dual(
+  2,
+  <A>(
+    self: Array<A>,
+    f: (a: A, i: number) => boolean
+  ): number => {
+    let count = 0
+    for (let i = 0; i < self.length; i++) {
+      const a = self[i]
+      if (f(a, i)) {
+        count++
+      }
+    }
+    return count
+  }
+)
 
 /**
  * Insert an element at the specified index, creating a new `NonEmptyArray`,
