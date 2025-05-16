@@ -1122,17 +1122,18 @@ export const findLast: {
  * @since 3.16.0
  */
 export const countBy: {
-  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Array<A>) => number
-  <A>(self: Array<A>, predicate: (a: A, i: number) => boolean): number
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => number
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): number
 } = dual(
   2,
   <A>(
-    self: Array<A>,
+    self: Iterable<A>,
     f: (a: A, i: number) => boolean
   ): number => {
     let count = 0
-    for (let i = 0; i < self.length; i++) {
-      const a = self[i]
+    const as = fromIterable(self)
+    for (let i = 0; i < as.length; i++) {
+      const a = as[i]
       if (f(a, i)) {
         count++
       }
