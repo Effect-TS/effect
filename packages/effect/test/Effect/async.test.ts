@@ -28,7 +28,7 @@ describe("Effect", () => {
       strictEqual(result, 42)
     }))
   if (typeof window === "undefined") {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const os = require("node:os")
     it.effect("deep asyncEffect doesn't block", () =>
       Effect.gen(function*() {

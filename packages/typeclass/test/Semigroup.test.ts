@@ -1,17 +1,13 @@
 import * as NumberInstances from "@effect/typeclass/data/Number"
 import * as StringInstances from "@effect/typeclass/data/String"
 import * as Semigroup from "@effect/typeclass/Semigroup"
-import { describe, expect, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import { pipe } from "effect/Function"
 import * as Number from "effect/Number"
 import * as order from "effect/Order"
 import * as U from "./util.js"
 
 describe.concurrent("Semigroup", () => {
-  it("exports", () => {
-    expect(Semigroup.Invariant).exist
-  })
-
   it("reverse", () => {
     const S = Semigroup.reverse(StringInstances.Semigroup)
     U.deepStrictEqual(S.combine("a", "b"), "ba")

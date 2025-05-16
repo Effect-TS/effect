@@ -26,7 +26,7 @@ export const withLatchAwait = <A, E, R>(
         pipe(Ref.set(ref, false), Effect.zipRight(restore(Deferred.await(latch))))
       )
     )
-    yield* Deferred.await(latch), Effect.whenEffect(Ref.get(ref))
+    yield* Deferred.await(latch).pipe(Effect.whenEffect(Ref.get(ref)))
     return result
   })
 }

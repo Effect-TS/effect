@@ -339,11 +339,6 @@ export class ChannelExecutor<
                 this._currentChannel = this._currentChannel.channel() as core.Primitive
                 break
               }
-
-              default: {
-                // @ts-expect-error
-                this._currentChannel._tag
-              }
             }
           }
         } catch (error) {

@@ -49,7 +49,7 @@
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
-    "@testcontainers/mysql": "^10.18.0",
+    "@testcontainers/mysql": "^10.25.0",
     "effect": "workspace:^"
   },
   "peerDependencies": {
@@ -59,7 +59,7 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.25.1",
+    "@opentelemetry/semantic-conventions": "^1.33.0",
     "mysql2": "^3.11.0"
   }
 }

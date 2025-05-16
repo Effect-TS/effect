@@ -59,7 +59,7 @@ describe("SortedSet", () => {
     if (typeof window !== "undefined") {
       return
     }
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { inspect } = require("node:util")
     const set = makeNumericSortedSet(0, 1, 2)
     deepStrictEqual(inspect(set), inspect({ _id: "SortedSet", values: [0, 1, 2] }))

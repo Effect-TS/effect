@@ -69,8 +69,8 @@
     "@effect/rpc": "workspace:^",
     "@effect/sql": "workspace:^",
     "@types/mime": "^3.0.4",
-    "@types/ws": "^8.5.12",
+    "@types/ws": "^8.18.1",
     "effect": "workspace:^",
-    "vitest-websocket-mock": "^0.4.0"
+    "vitest-websocket-mock": "^0.5.0"
   }
 }

@@ -108,13 +108,13 @@ export const inspect = <E>(self: HttpIncomingMessage<E>, that: object): object =
   if (contentType.includes("application/json")) {
     try {
       body = Effect.runSync(self.json)
-    } catch (_) {
+    } catch {
       //
     }
   } else if (contentType.includes("text/") || contentType.includes("urlencoded")) {
     try {
       body = Effect.runSync(self.text)
-    } catch (_) {
+    } catch {
       //
     }
   }

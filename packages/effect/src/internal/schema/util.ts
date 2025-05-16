@@ -47,7 +47,7 @@ export const memoizeThunk = <A>(f: () => A): () => A => {
 export const formatDate = (date: Date): string => {
   try {
     return date.toISOString()
-  } catch (e) {
+  } catch {
     return String(date)
   }
 }
@@ -96,7 +96,7 @@ export const formatUnknown = (u: unknown, checkCircular: boolean = true): string
     }}`
     const name = u.constructor.name
     return u.constructor !== Object.prototype.constructor ? `${name}(${pojo})` : pojo
-  } catch (e) {
+  } catch {
     return "<circular structure>"
   }
 }

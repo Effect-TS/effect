@@ -46,10 +46,10 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.25.1"
+    "@opentelemetry/semantic-conventions": "^1.33.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240806.0",
+    "@cloudflare/workers-types": "^4.20250515.0",
     "@effect/experimental": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^"

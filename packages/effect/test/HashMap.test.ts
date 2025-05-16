@@ -73,7 +73,7 @@ describe("HashMap", () => {
 
   it("inspect", () => {
     if (typeof window === "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { inspect } = require("node:util")
       const map = HM.make([0, "a"])
       deepStrictEqual(inspect(map), inspect({ _id: "HashMap", values: [[0, "a"]] }))

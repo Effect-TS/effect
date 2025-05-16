@@ -229,7 +229,7 @@ describe("List", () => {
     if (typeof window !== "undefined") {
       return
     }
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { inspect } = require("node:util")
     deepStrictEqual(inspect(List.empty()), inspect({ _id: "List", _tag: "Nil" }))
     deepStrictEqual(inspect(List.make(0, 1, 2)), inspect({ _id: "List", _tag: "Cons", values: [0, 1, 2] }))

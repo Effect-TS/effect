@@ -25,7 +25,7 @@ describe("MutableList", () => {
     if (typeof window !== "undefined") {
       return
     }
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { inspect } = require("node:util")
     deepStrictEqual(inspect(MutableList.make(0, 1, 2)), inspect({ _id: "MutableList", values: [0, 1, 2] }))
   })

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { Option } from "effect"
 import { HashSet, Number, pipe } from "effect"
 import { describe, expect, it } from "tstyche"
