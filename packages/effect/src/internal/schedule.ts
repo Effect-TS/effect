@@ -1926,7 +1926,22 @@ export const repeatOrElse_Effect = dual<
   core.flatMap(driver(schedule), (driver) =>
     core.matchEffect(self, {
       onFailure: (error) => orElse(error, Option.none()),
-      onSuccess: (value) => repeatOrElseEffectLoop(self, driver, orElse, value)
+      onSuccess: (value) =>
+        repeatOrElseEffectLoop(
+          effect.provideServiceEffect(
+            self,
+            CurrentIterationMetadata,
+            ref.get(driver.iterationMeta)
+          ),
+          driver,
+          (error, option) =>
+            effect.provideServiceEffect(
+              orElse(error, option),
+              CurrentIterationMetadata,
+              ref.get(driver.iterationMeta)
+            ),
+          value
+        )
     })))
 
 /** @internal */
@@ -1935,22 +1950,15 @@ const repeatOrElseEffectLoop = <A, E, R, R1, B, C, E2, R2>(
   driver: Schedule.ScheduleDriver<B, A, R1>,
   orElse: (error: E, option: Option.Option<B>) => Effect.Effect<C, E2, R2>,
   value: A
-): Effect.Effect<B | C, E2, R | R1 | R2> => {
-  return core.matchEffect(driver.next(value), {
+): Effect.Effect<B | C, E2, R | R1 | R2> =>
+  core.matchEffect(driver.next(value), {
     onFailure: () => core.orDie(driver.last),
-    onSuccess: (b) => {
-      const provideLastIterationInfo = effect.provideServiceEffect(
-        CurrentIterationMetadata,
-        ref.get(driver.iterationMeta)
-      )
-      const selfWithLastIterationInfo = provideLastIterationInfo(self)
-      return core.matchEffect(selfWithLastIterationInfo, {
-        onFailure: (error) => provideLastIterationInfo(orElse(error, Option.some(b))),
+    onSuccess: (b) =>
+      core.matchEffect(self, {
+        onFailure: (error) => orElse(error, Option.some(b)),
         onSuccess: (value) => repeatOrElseEffectLoop(self, driver, orElse, value)
       })
-    }
   })
-}
 
 /** @internal */
 export const retry_Effect = dual<
@@ -2028,7 +2036,21 @@ export const retryOrElse_Effect = dual<
 >(3, (self, policy, orElse) =>
   core.flatMap(
     driver(policy),
-    (driver) => retryOrElse_EffectLoop(self, driver, orElse)
+    (driver) =>
+      retryOrElse_EffectLoop(
+        effect.provideServiceEffect(
+          self,
+          CurrentIterationMetadata,
+          ref.get(driver.iterationMeta)
+        ),
+        driver,
+        (e, out) =>
+          effect.provideServiceEffect(
+            orElse(e, out),
+            CurrentIterationMetadata,
+            ref.get(driver.iterationMeta)
+          )
+      )
   ))
 
 /** @internal */
@@ -2039,22 +2061,16 @@ const retryOrElse_EffectLoop = <A, E, R, R1, A1, A2, E2, R2>(
 ): Effect.Effect<A | A2, E2, R | R1 | R2> => {
   return core.catchAll(
     self,
-    (e) => {
-      const provideLastIterationInfo = effect.provideServiceEffect(
-        CurrentIterationMetadata,
-        ref.get(driver.iterationMeta)
-      )
-
-      return core.matchEffect(driver.next(e), {
+    (e) =>
+      core.matchEffect(driver.next(e), {
         onFailure: () =>
           pipe(
             driver.last,
             core.orDie,
-            core.flatMap((out) => provideLastIterationInfo(orElse(e, out)))
+            core.flatMap((out) => orElse(e, out))
           ),
-        onSuccess: () => retryOrElse_EffectLoop(provideLastIterationInfo(self), driver, orElse)
+        onSuccess: () => retryOrElse_EffectLoop(self, driver, orElse)
       })
-    }
   )
 }
 
@@ -2086,7 +2102,16 @@ export const scheduleFrom_Effect = dual<
 >(3, (self, initial, schedule) =>
   core.flatMap(
     driver(schedule),
-    (driver) => scheduleFrom_EffectLoop(self, initial, driver)
+    (driver) =>
+      scheduleFrom_EffectLoop(
+        effect.provideServiceEffect(
+          self,
+          CurrentIterationMetadata,
+          ref.get(driver.iterationMeta)
+        ),
+        initial,
+        driver
+      )
   ))
 
 /** @internal */
@@ -2094,20 +2119,15 @@ const scheduleFrom_EffectLoop = <In, E, R, R2, Out>(
   self: Effect.Effect<In, E, R>,
   initial: In,
   driver: Schedule.ScheduleDriver<Out, In, R2>
-): Effect.Effect<Out, E, R | R2> => {
-  const provideLastIterationInfo = effect.provideServiceEffect(
-    CurrentIterationMetadata,
-    ref.get(driver.iterationMeta)
-  )
-  return core.matchEffect(driver.next(initial), {
+): Effect.Effect<Out, E, R | R2> =>
+  core.matchEffect(driver.next(initial), {
     onFailure: () => core.orDie(driver.last),
     onSuccess: () =>
       core.flatMap(
-        provideLastIterationInfo(self),
+        self,
         (a) => scheduleFrom_EffectLoop(self, a, driver)
       )
   })
-}
 
 /** @internal */
 export const count: Schedule.Schedule<number> = unfold(0, (n) => n + 1)
