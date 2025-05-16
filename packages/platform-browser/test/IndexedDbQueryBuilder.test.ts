@@ -7,7 +7,7 @@ const databaseName = "db"
 
 const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB, IDBKeyRange }))
 
-const provideMigration = (database: IndexedDbDatabase.IndexedDbDatabase.Any) =>
+const provideMigration = (database: IndexedDbDatabase.Any) =>
   Effect.provide(
     database.layer(databaseName).pipe(Layer.provide(layerFakeIndexedDb))
   )
@@ -68,29 +68,28 @@ class Db extends IndexedDbVersion.make(Table1, Table2, Table3, Table4, Table5) {
 describe("IndexedDbQueryBuilder", () => {
   describe("select", () => {
     it.effect("select", () => {
-      class Migration extends IndexedDbDatabase.make(Db, (api) =>
-        Effect.gen(function*() {
+      class Migration extends IndexedDbDatabase.make(
+        Db,
+        Effect.fnUntraced(function*(api) {
           yield* api.createObjectStore("todo")
           yield* api.createIndex("todo", "titleIndex")
           yield* api.createIndex("todo", "countIndex")
           yield* api.from("todo").insert({ id: 1, title: "test", count: 1, completed: false })
-        }))
-      {}
+        })
+      ) {}
 
       return Effect.gen(function*() {
-        {
-          const api = yield* Migration.getQueryBuilder
-          const from = api.from("todo")
-          const select = from.select()
-          const data = yield* select
+        const api = yield* Migration.getQueryBuilder
+        const from = api.from("todo")
+        const select = from.select()
+        const data = yield* select
 
-          assert.equal(from.table, "todo")
-          assert.equal(select.index, undefined)
-          assert.deepStrictEqual(select.from, from)
-          assert.deepStrictEqual(select.from.IDBKeyRange, IDBKeyRange)
-          assert.equal(data.length, 1)
-          assert.deepStrictEqual(data, [{ id: 1, title: "test", count: 1, completed: false }])
-        }
+        assert.equal(from.table, "todo")
+        assert.equal(select.index, undefined)
+        assert.deepStrictEqual(select.from, from)
+        assert.deepStrictEqual(select.from.IDBKeyRange, IDBKeyRange)
+        assert.equal(data.length, 1)
+        assert.deepStrictEqual(data, [{ id: 1, title: "test", count: 1, completed: false }])
       }).pipe(provideMigration(Migration))
     })
 
@@ -105,19 +104,17 @@ describe("IndexedDbQueryBuilder", () => {
       {}
 
       return Effect.gen(function*() {
-        {
-          const api = yield* Migration.getQueryBuilder
-          const from = api.from("todo")
-          const select = from.select("titleIndex")
-          const data = yield* select
+        const api = yield* Migration.getQueryBuilder
+        const from = api.from("todo")
+        const select = from.select("titleIndex")
+        const data = yield* select
 
-          assert.equal(from.table, "todo")
-          assert.equal(select.index, "titleIndex")
-          assert.deepStrictEqual(select.from, from)
-          assert.deepStrictEqual(select.from.IDBKeyRange, IDBKeyRange)
-          assert.equal(data.length, 1)
-          assert.deepStrictEqual(data, [{ id: 2, title: "test2", count: 2, completed: false }])
-        }
+        assert.equal(from.table, "todo")
+        assert.equal(select.index, "titleIndex")
+        assert.deepStrictEqual(select.from, from)
+        assert.deepStrictEqual(select.from.IDBKeyRange, IDBKeyRange)
+        assert.equal(data.length, 1)
+        assert.deepStrictEqual(data, [{ id: 2, title: "test2", count: 2, completed: false }])
       }).pipe(provideMigration(Migration))
     })
 
@@ -202,16 +199,14 @@ describe("IndexedDbQueryBuilder", () => {
       {}
 
       return Effect.gen(function*() {
-        {
-          const api = yield* Migration.getQueryBuilder
-          const data = yield* api.from("todo").select().gte(2)
+        const api = yield* Migration.getQueryBuilder
+        const data = yield* api.from("todo").select().gte(2)
 
-          assert.equal(data.length, 2)
-          assert.deepStrictEqual(data, [
-            { id: 2, title: "test2", count: 2, completed: false },
-            { id: 3, title: "test3", count: 3, completed: false }
-          ])
-        }
+        assert.equal(data.length, 2)
+        assert.deepStrictEqual(data, [
+          { id: 2, title: "test2", count: 2, completed: false },
+          { id: 3, title: "test3", count: 3, completed: false }
+        ])
       }).pipe(provideMigration(Migration))
     })
 
@@ -230,15 +225,13 @@ describe("IndexedDbQueryBuilder", () => {
       {}
 
       return Effect.gen(function*() {
-        {
-          const api = yield* Migration.getQueryBuilder
-          const data = yield* api.from("todo").select("countIndex").gte(3)
+        const api = yield* Migration.getQueryBuilder
+        const data = yield* api.from("todo").select("countIndex").gte(3)
 
-          assert.equal(data.length, 1)
-          assert.deepStrictEqual(data, [
-            { id: 3, title: "test3", count: 3, completed: false }
-          ])
-        }
+        assert.equal(data.length, 1)
+        assert.deepStrictEqual(data, [
+          { id: 3, title: "test3", count: 3, completed: false }
+        ])
       }).pipe(provideMigration(Migration))
     })
 
