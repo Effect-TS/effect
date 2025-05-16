@@ -4,6 +4,7 @@
 import * as Cause from "effect/Cause"
 import * as Either from "effect/Either"
 import { dual } from "effect/Function"
+import * as Redacted from "effect/Redacted"
 import * as UrlParams from "./UrlParams.js"
 
 /**
@@ -158,9 +159,14 @@ export const setHref: {
  * @category Setters
  */
 export const setPassword: {
-  (password: string): (url: URL) => URL
-  (url: URL, password: string): URL
-} = immutableURLSetter("password")
+  (password: string | Redacted.Redacted): (url: URL) => URL
+  (url: URL, password: string | Redacted.Redacted): URL
+} = dual(2, (url: URL, password: string | Redacted.Redacted) =>
+  mutate(url, (url) => {
+    url.password = typeof password === "string"
+      ? password :
+      Redacted.value(password)
+  }))
 
 /**
  * Updates the path of the URL.
