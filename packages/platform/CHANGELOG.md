@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.82.3
+
+### Patch Changes
+
+- [#4889](https://github.com/Effect-TS/effect/pull/4889) [`a328f4b`](https://github.com/Effect-TS/effect/commit/a328f4b4fe717dd53e5b04a30f387433c32f7328) Thanks @tim-smart! - add HttpBody.formDataRecord
+
+- Updated dependencies [[`b8722b8`](https://github.com/Effect-TS/effect/commit/b8722b817e2306fe8c8245f3f9e32d85b824b961)]:
+  - effect@3.15.2
+
 ## 0.82.2
 
 ### Patch Changes
