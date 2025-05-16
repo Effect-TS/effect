@@ -3,7 +3,7 @@
  */
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type * as Schema from "effect/Schema"
-import { type KeyPath } from "./internal/indexedDbQueryBuilder.js"
+import type * as IndexedDbQueryBuilder from "./IndexedDbQueryBuilder.js"
 
 /**
  * @since 1.0.0
@@ -26,8 +26,8 @@ export type TypeId = typeof TypeId
 export interface IndexedDbTable<
   out TableName extends string,
   out TableSchema extends Schema.Schema.AnyNoContext = never,
-  out Indexes extends Record<string, KeyPath<TableSchema>> = never,
-  out TableKeyPath extends KeyPath<TableSchema> = never,
+  out Indexes extends Record<string, IndexedDbQueryBuilder.KeyPath<TableSchema>> = never,
+  out TableKeyPath extends IndexedDbQueryBuilder.KeyPath<TableSchema> = never,
   out TableAutoIncrement extends boolean = never
 > extends Pipeable {
   new(_: never): {}
@@ -37,97 +37,90 @@ export interface IndexedDbTable<
   readonly tableSchema: TableSchema
   readonly options?: { keyPath: TableKeyPath; indexes: Indexes; autoIncrement: TableAutoIncrement }
 }
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Any {
+  readonly [TypeId]: TypeId
+  readonly tableName: string
+}
 
 /**
  * @since 1.0.0
  * @category models
  */
-export declare namespace IndexedDbTable {
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface Any {
-    readonly [TypeId]: TypeId
-    readonly tableName: string
-  }
+export type AnyWithProps = IndexedDbTable<string, Schema.Schema.AnyNoContext, any, any, boolean>
 
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type AnyWithProps = IndexedDbTable<string, Schema.Schema.AnyNoContext, any, any, boolean>
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type TableName<Table extends Any> = Table extends IndexedDbTable<
+  infer _TableName,
+  infer _Schema,
+  infer _Indexes,
+  infer _TableKeyPath,
+  infer _TableAutoIncrement
+> ? _TableName
+  : never
 
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type TableName<Table extends Any> = Table extends IndexedDbTable<
-    infer _TableName,
-    infer _Schema,
-    infer _Indexes,
-    infer _TableKeyPath,
-    infer _TableAutoIncrement
-  > ? _TableName
-    : never
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type KeyPath<Table extends Any> = Table extends IndexedDbTable<
+  infer _TableName,
+  infer _Schema,
+  infer _Indexes,
+  infer _TableKeyPath,
+  infer _TableAutoIncrement
+> ? _TableKeyPath
+  : never
 
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type KeyPath<Table extends Any> = Table extends IndexedDbTable<
-    infer _TableName,
-    infer _Schema,
-    infer _Indexes,
-    infer _TableKeyPath,
-    infer _TableAutoIncrement
-  > ? _TableKeyPath
-    : never
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type AutoIncrement<Table extends Any> = Table extends IndexedDbTable<
+  infer _TableName,
+  infer _Schema,
+  infer _Indexes,
+  infer _TableKeyPath,
+  infer _TableAutoIncrement
+> ? _TableAutoIncrement :
+  never
 
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type AutoIncrement<Table extends Any> = Table extends IndexedDbTable<
-    infer _TableName,
-    infer _Schema,
-    infer _Indexes,
-    infer _TableKeyPath,
-    infer _TableAutoIncrement
-  > ? _TableAutoIncrement :
-    never
+export type TableSchema<Table extends Any> = Table extends IndexedDbTable<
+  infer _TableName,
+  infer _Schema,
+  infer _Indexes,
+  infer _TableKeyPath,
+  infer _TableAutoIncrement
+> ? _Schema
+  : never
 
-  export type TableSchema<Table extends Any> = Table extends IndexedDbTable<
-    infer _TableName,
-    infer _Schema,
-    infer _Indexes,
-    infer _TableKeyPath,
-    infer _TableAutoIncrement
-  > ? _Schema
-    : never
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Indexes<Table extends Any> = Table extends IndexedDbTable<
+  infer _TableName,
+  infer _Schema,
+  infer _Indexes,
+  infer _TableKeyPath,
+  infer _TableAutoIncrement
+> ? _Indexes
+  : never
 
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type Indexes<Table extends Any> = Table extends IndexedDbTable<
-    infer _TableName,
-    infer _Schema,
-    infer _Indexes,
-    infer _TableKeyPath,
-    infer _TableAutoIncrement
-  > ? _Indexes
-    : never
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type WithName<Table extends Any, TableName extends string> = Extract<
-    Table,
-    { readonly tableName: TableName }
-  >
-}
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type WithName<Table extends Any, TableName extends string> = Extract<
+  Table,
+  { readonly tableName: TableName }
+>
 
 const Proto = {
   [TypeId]: TypeId,
@@ -139,8 +132,8 @@ const Proto = {
 const makeProto = <
   TableName extends string,
   TableSchema extends Schema.Schema.AnyNoContext,
-  Indexes extends Record<string, KeyPath<TableSchema>>,
-  TableKeyPath extends KeyPath<TableSchema>,
+  Indexes extends Record<string, IndexedDbQueryBuilder.KeyPath<TableSchema>>,
+  TableKeyPath extends IndexedDbQueryBuilder.KeyPath<TableSchema>,
   TableAutoIncrement extends boolean
 >(options: {
   readonly tableName: TableName
@@ -171,8 +164,8 @@ const makeProto = <
 export const make = <
   TableName extends string,
   TableSchema extends Schema.Schema.AnyNoContext,
-  Indexes extends Record<string, KeyPath<TableSchema>>,
-  TableKeyPath extends KeyPath<TableSchema> = never,
+  Indexes extends Record<string, IndexedDbQueryBuilder.KeyPath<TableSchema>>,
+  TableKeyPath extends IndexedDbQueryBuilder.KeyPath<TableSchema> = never,
   TableAutoIncrement extends boolean = false
 >(
   tableName: TableName,
