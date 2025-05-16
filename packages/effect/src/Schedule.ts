@@ -14,6 +14,7 @@ import * as internal from "./internal/schedule.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
+import type * as Ref from "./Ref.js"
 import type * as ScheduleDecision from "./ScheduleDecision.js"
 import type * as Intervals from "./ScheduleIntervals.js"
 import type * as Types from "./Types.js"
@@ -140,6 +141,7 @@ export declare namespace Schedule {
  */
 export interface ScheduleDriver<out Out, in In = unknown, out R = never> extends Schedule.DriverVariance<Out, In, R> {
   readonly state: Effect.Effect<unknown>
+  readonly iterationMeta: Ref.Ref<IterationMetadata>
   readonly last: Effect.Effect<Out, Cause.NoSuchElementException>
   readonly reset: Effect.Effect<void>
   next(input: In): Effect.Effect<Out, Option.Option<never>, R>
@@ -2184,3 +2186,33 @@ export const zipWith: {
     f: (out: Out, out2: Out2) => Out3
   ): Schedule<Out3, In & In2, R | R2>
 } = internal.zipWith
+
+/**
+ * @since 3.15.0
+ * @category models
+ */
+export interface CurrentIterationMetadata {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 3.15.0
+ * @category models
+ */
+export interface IterationMetadata {
+  readonly input: unknown
+  readonly recurrence: number
+  readonly start: number
+  readonly now: number
+  readonly elapsed: Duration.Duration
+  readonly elapsedSincePrevious: Duration.Duration
+}
+
+/**
+ * @since 3.15.0
+ * @category models
+ */
+export const CurrentIterationMetadata: Context.Reference<
+  CurrentIterationMetadata,
+  IterationMetadata
+> = internal.CurrentIterationMetadata
