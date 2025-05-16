@@ -1,3 +1,4 @@
+import type * as Brand from "../Brand.js"
 import * as Chunk from "../Chunk.js"
 import type * as Config from "../Config.js"
 import * as ConfigError from "../ConfigError.js"
@@ -188,6 +189,33 @@ export const url = (name?: string): Config.Config<URL> => {
         try: () => new URL(text),
         catch: (_) => configError.InvalidData([], `Expected an URL value but received ${text}`)
       })
+  )
+  return name === undefined ? config : nested(config, name)
+}
+
+/** @internal */
+export const port = (name?: string): Config.Config<number> => {
+  const config = primitive(
+    "an TCP port property",
+    (text) => {
+      const result = Number(text)
+
+      if (
+        Number.isNaN(result) ||
+        result.toString() !== text.toString() ||
+        !Number.isInteger(result) ||
+        result < 1 ||
+        result > 65535
+      ) {
+        return Either.left(
+          configError.InvalidData(
+            [],
+            `Expected an TCP port value but received ${text}`
+          )
+        )
+      }
+      return Either.right(result)
+    }
   )
   return name === undefined ? config : nested(config, name)
 }
@@ -443,6 +471,33 @@ export const redacted = <A>(
   const config: Config.Config<A | string> = isConfig(nameOrConfig) ? nameOrConfig : string(nameOrConfig)
   return map(config, redacted_.make)
 }
+
+/** @internal */
+export const branded: {
+  <A, B extends Brand.Branded<A, any>>(
+    constructor: Brand.Brand.Constructor<B>
+  ): (config: Config.Config<A>) => Config.Config<B>
+  <B extends Brand.Branded<string, any>>(
+    name: string | undefined,
+    constructor: Brand.Brand.Constructor<B>
+  ): Config.Config<B>
+  <A, B extends Brand.Branded<A, any>>(
+    config: Config.Config<A>,
+    constructor: Brand.Brand.Constructor<B>
+  ): Config.Config<B>
+} = dual(2, <A, B extends Brand.Brand.Constructor<any>>(
+  nameOrConfig: Config.Config<NoInfer<A>> | string | undefined,
+  constructor: B
+) => {
+  const config: Config.Config<string | A> = isConfig(nameOrConfig) ? nameOrConfig : string(nameOrConfig)
+
+  return mapOrFail(config, (a) =>
+    constructor.either(a).pipe(
+      Either.mapLeft((brandErrors) =>
+        configError.InvalidData([], brandErrors.map((brandError) => brandError.message).join("\n"))
+      )
+    ))
+})
 
 /** @internal */
 export const hashSet = <A>(config: Config.Config<A>, name?: string): Config.Config<HashSet.HashSet<A>> => {
