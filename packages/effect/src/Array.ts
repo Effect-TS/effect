@@ -1297,6 +1297,36 @@ export const remove: {
 })
 
 /**
+ * Delete the element at the specified index, creating a new `Array`,
+ * or return `None` if the index is out of bounds.
+ *
+ * @example
+ * ```ts
+ * import { Array, Option } from "effect"
+ *
+ * const numbers = [1, 2, 3, 4]
+ * const result = Array.removeOption(numbers, 2)
+ * assert.deepStrictEqual(result, Option.some([1, 2, 4]))
+ *
+ * const outOfBoundsResult = Array.removeOption(numbers, 5)
+ * assert.deepStrictEqual(outOfBoundsResult, Option.none())
+ * ```
+ *
+ * @since 3.16.0
+ */
+export const removeOption: {
+  (i: number): <A>(self: Iterable<A>) => Option.Option<Array<A>>
+  <A>(self: Iterable<A>, i: number): Option.Option<Array<A>>
+} = dual(2, <A>(self: Iterable<A>, i: number): Option.Option<Array<A>> => {
+  const out = Array.from(self)
+  if (isOutOfBounds(i, out)) {
+    return Option.none()
+  }
+  out.splice(i, 1)
+  return Option.some(out)
+})
+
+/**
  * Reverse an `Iterable`, creating a new `Array`.
  *
  * **Example**

@@ -116,6 +116,11 @@ describe("Chunk", () => {
     assertEquals(pipe(Chunk.make(1, 2, 3), Chunk.remove(0)), Chunk.make(2, 3))
   })
 
+  it("removeOption", () => {
+    assertNone(pipe(Chunk.empty(), Chunk.removeOption(0)))
+    assertSome(pipe(Chunk.make(1, 2, 3), Chunk.removeOption(0)), Chunk.make(2, 3))
+  })
+
   it("chunksOf", () => {
     assertEquals(pipe(Chunk.empty(), Chunk.chunksOf(2)), Chunk.empty())
     assertEquals(

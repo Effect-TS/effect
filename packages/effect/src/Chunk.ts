@@ -1242,6 +1242,17 @@ export const remove: {
 )
 
 /**
+ * @since 3.16.0
+ */
+export const removeOption: {
+  (i: number): <A>(self: Chunk<A>) => Option<Chunk<A>>
+  <A>(self: Chunk<A>, i: number): Option<Chunk<A>>
+} = dual(
+  2,
+  <A>(self: Chunk<A>, i: number): Option<Chunk<A>> => O.map(RA.removeOption(toReadonlyArray(self), i), unsafeFromArray)
+)
+
+/**
  * @since 2.0.0
  */
 export const modifyOption: {
