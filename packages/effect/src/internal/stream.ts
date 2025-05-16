@@ -5382,8 +5382,13 @@ export const repeatWith = dual<
     return pipe(
       Schedule.driver(schedule),
       Effect.map((driver) => {
+        const provideLastIterationInfo = provideServiceEffect(
+          Schedule.CurrentIterationMetadata,
+          Ref.get(driver.iterationMeta)
+        )
+
         const scheduleOutput = pipe(driver.last, Effect.orDie, Effect.map(options.onSchedule))
-        const process = pipe(self, map(options.onElement), toChannel)
+        const process = pipe(self, provideLastIterationInfo, map(options.onElement), toChannel)
         const loop: Channel.Channel<Chunk.Chunk<C>, unknown, E, unknown, void, unknown, R | R2> = channel.unwrap(
           Effect.match(driver.next(void 0), {
             onFailure: () => core.void,
@@ -5419,15 +5424,21 @@ export const repeatEffectWithSchedule = <A, E, R, X, A0 extends A, R2>(
 ): Stream.Stream<A, E, R | R2> =>
   flatMap(
     fromEffect(Effect.zip(effect, Schedule.driver(schedule))),
-    ([a, driver]) =>
-      concat(
+    ([a, driver]) => {
+      const provideLastIterationInfo = Effect.provideServiceEffect(
+        Schedule.CurrentIterationMetadata,
+        Ref.get(driver.iterationMeta)
+      )
+      return concat(
         succeed(a),
         unfoldEffect(a, (s) =>
           Effect.matchEffect(driver.next(s as A0), {
             onFailure: Effect.succeed,
-            onSuccess: () => Effect.map(effect, (nextA) => Option.some([nextA, nextA] as const))
+            onSuccess: () =>
+              Effect.map(provideLastIterationInfo(effect), (nextA) => Option.some([nextA, nextA] as const))
           }))
       )
+    }
   )
 
 /** @internal */
@@ -5447,6 +5458,11 @@ export const retry = dual<
   ): Stream.Stream<A, E, R | R2> =>
     Schedule.driver(schedule).pipe(
       Effect.map((driver) => {
+        const provideLastIterationInfo = provideServiceEffect(
+          Schedule.CurrentIterationMetadata,
+          Ref.get(driver.iterationMeta)
+        )
+
         const loop: Channel.Channel<
           Chunk.Chunk<A>,
           unknown,
@@ -5455,7 +5471,7 @@ export const retry = dual<
           unknown,
           unknown,
           R | R2
-        > = toChannel(self).pipe(
+        > = toChannel(provideLastIterationInfo(self)).pipe(
           channel.mapOutEffect((out) => Effect.as(driver.reset, out)),
           channel.catchAll((error) =>
             driver.next(error as E0).pipe(

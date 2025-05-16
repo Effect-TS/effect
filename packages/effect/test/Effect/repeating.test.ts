@@ -1,9 +1,11 @@
 import { describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
+import * as TestClock from "effect/TestClock"
 
 describe("Effect", () => {
   it.effect("succeeds eventually", () =>
@@ -117,6 +119,48 @@ describe("Effect", () => {
       yield* pipe(Ref.update(ref, (n) => n + 1), Effect.repeat(Schedule.recurs(3)))
       const result = yield* (Ref.get(ref))
       strictEqual(result, 4)
+    }))
+
+  it.effect("repeat/schedule - IterationMetadata", () =>
+    Effect.gen(function*() {
+      const ref = yield* Ref.make<Array<undefined | Schedule.IterationMetadata>>([])
+      yield* Effect.gen(function*() {
+        const currentIterationMeta = yield* Schedule.CurrentIterationMetadata
+        yield* Ref.update(ref, (infos) => [...infos, currentIterationMeta])
+      }).pipe(
+        Effect.repeat(
+          Schedule.intersect(Schedule.fixed("1 second"), Schedule.recurs(2))
+        ),
+        Effect.fork
+      )
+      yield* TestClock.adjust(Duration.seconds(50))
+      const result = yield* (Ref.get(ref))
+      deepStrictEqual(result, [
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          recurrence: 0,
+          input: undefined,
+          now: 0,
+          start: 0
+        },
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          recurrence: 1,
+          input: undefined,
+          now: 0,
+          start: 0
+        },
+        {
+          elapsed: Duration.seconds(1),
+          elapsedSincePrevious: Duration.seconds(1),
+          recurrence: 2,
+          input: undefined,
+          now: 1000,
+          start: 0
+        }
+      ])
     }))
 
   it.effect("repeat/schedule + until", () =>
