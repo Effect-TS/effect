@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import type * as Brand from "./Brand.js"
 import type * as Chunk from "./Chunk.js"
 import type * as ConfigError from "./ConfigError.js"
 import type * as Duration from "./Duration.js"
@@ -129,7 +130,15 @@ export const array: <A>(config: Config<A>, name?: string) => Config<Array<A>> = 
 export const boolean: (name?: string) => Config<boolean> = internal.boolean
 
 /**
- * Constructs a config for a URL value.
+ * Constructs a config for a TCP port [1,65535].
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const port: (name?: string) => Config<number> = internal.port
+
+/**
+ * Constructs a config for a  value.
  *
  * @since 3.11.0
  * @category constructors
@@ -359,6 +368,26 @@ export const redacted: {
   (name?: string): Config<Redacted.Redacted>
   <A>(config: Config<A>): Config<Redacted.Redacted<A>>
 } = internal.redacted
+
+/**
+ * Constructs a config for a branded value.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const branded: {
+  <A, B extends Brand.Branded<A, any>>(
+    constructor: Brand.Brand.Constructor<B>
+  ): (config: Config<A>) => Config<B>
+  <B extends Brand.Branded<string, any>>(
+    name: string | undefined,
+    constructor: Brand.Brand.Constructor<B>
+  ): Config<B>
+  <A, B extends Brand.Branded<A, any>>(
+    config: Config<A>,
+    constructor: Brand.Brand.Constructor<B>
+  ): Config<B>
+} = internal.branded
 
 /**
  * Constructs a config for a sequence of values.
