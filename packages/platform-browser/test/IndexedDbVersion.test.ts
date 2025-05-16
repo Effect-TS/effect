@@ -1,6 +1,6 @@
 import { IndexedDbTable, IndexedDbVersion } from "@effect/platform-browser"
 import { assert, describe, it } from "@effect/vitest"
-import { HashMap, Schema } from "effect"
+import { Schema } from "effect"
 
 describe("IndexedDbVersion", () => {
   it("make", () => {
@@ -16,7 +16,7 @@ describe("IndexedDbVersion", () => {
 
     class Db extends IndexedDbVersion.make(Table) {}
 
-    assert.equal(HashMap.size(Db.tables), 1)
-    assert.equal(HashMap.unsafeGet(Db.tables, "todo"), Table)
+    assert.equal(Db.tables.size, 1)
+    assert.equal(Db.tables.get("todo"), Table)
   })
 })

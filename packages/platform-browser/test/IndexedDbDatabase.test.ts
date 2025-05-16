@@ -7,7 +7,7 @@ const databaseName = "db"
 
 const layerFakeIndexedDb = Layer.succeed(IndexedDb.IndexedDb, IndexedDb.make({ indexedDB, IDBKeyRange }))
 
-const provideMigration = (database: IndexedDbDatabase.IndexedDbDatabase.Any) =>
+const provideMigration = (database: IndexedDbDatabase.Any) =>
   Effect.provide(
     database.layer(databaseName).pipe(Layer.provide(layerFakeIndexedDb))
   )
@@ -28,9 +28,9 @@ describe.sequential("IndexedDbDatabase", () => {
       { keyPath: "id", indexes: { titleIndex: "title" } }
     )
 
-    const Db = IndexedDbVersion.make(Table)
+    const V1 = IndexedDbVersion.make(Table)
 
-    class Migration extends IndexedDbDatabase.make(Db, (api) =>
+    class Db extends IndexedDbDatabase.make(V1, (api) =>
       Effect.gen(function*() {
         yield* api.createObjectStore("todo")
         yield* api.createIndex("todo", "titleIndex")
@@ -39,7 +39,7 @@ describe.sequential("IndexedDbDatabase", () => {
     {}
 
     return Effect.gen(function*() {
-      const api = yield* Migration.getQueryBuilder
+      const api = yield* Db.getQueryBuilder
       const todo = yield* api.from("todo").select()
 
       const name = yield* api.use(async (database) => database.name)
@@ -56,7 +56,7 @@ describe.sequential("IndexedDbDatabase", () => {
       assert.deepStrictEqual(Array.from(objectStoreNames), ["todo"])
       assert.deepStrictEqual(Array.from(indexNames), ["titleIndex"])
       assert.deepStrictEqual(index.keyPath, "title")
-    }).pipe(provideMigration(Migration))
+    }).pipe(provideMigration(Db))
   })
 
   it.effect("transaction", () => {
@@ -95,10 +95,7 @@ describe.sequential("IndexedDbDatabase", () => {
       yield* api.transaction(
         ["todo"],
         "readwrite",
-        (api) =>
-          Effect.gen(function*() {
-            return yield* api.from("todo").insert({ id: 2, title: "test2", completed: false })
-          })
+        (api) => api.from("todo").insert({ id: 2, title: "test2", completed: false }).pipe(Effect.orDie)
       )
 
       const todo = yield* api.from("todo").select()
@@ -132,16 +129,18 @@ describe.sequential("IndexedDbDatabase", () => {
       { keyPath: "uuid" }
     )
 
-    const Db1 = IndexedDbVersion.make(Table1)
-    const Db2 = IndexedDbVersion.make(Table2)
+    const V1 = IndexedDbVersion.make(Table1)
+    const V2 = IndexedDbVersion.make(Table2)
     const uuid = "9535a059-a61f-42e1-a2e0-35ec87203c24"
 
-    class Migration extends IndexedDbDatabase.make(Db1, (api) =>
-      Effect.gen(function*() {
-        yield* api.createObjectStore("todo")
-        yield* api.createIndex("todo", "titleIndex")
-        yield* api.from("todo").insert({ id: 1, title: "test", completed: false })
-      })).add(Db2, (from, to) =>
+    class Db extends IndexedDbDatabase
+      .make(V1, (api) =>
+        Effect.gen(function*() {
+          yield* api.createObjectStore("todo")
+          yield* api.createIndex("todo", "titleIndex")
+          yield* api.from("todo").insert({ id: 1, title: "test", completed: false })
+        }))
+      .add(V2, (from, to) =>
         Effect.gen(function*() {
           const todo = yield* from.from("todo").select()
           yield* from.deleteIndex("todo", "titleIndex")
@@ -158,7 +157,7 @@ describe.sequential("IndexedDbDatabase", () => {
     {}
 
     return Effect.gen(function*() {
-      const api = yield* Migration.getQueryBuilder
+      const api = yield* Db.getQueryBuilder
       const todo = yield* api.from("todo").select()
       const name = yield* api.use(async (database) => database.name)
       const version = yield* api.use(async (database) => database.version)
@@ -170,7 +169,7 @@ describe.sequential("IndexedDbDatabase", () => {
       assert.deepStrictEqual(todo, [{ uuid, title: "test", completed: false }])
       assert.deepStrictEqual(Array.from(objectStoreNames), ["todo"])
       assert.deepStrictEqual(Array.from(indexNames), [])
-    }).pipe(provideMigration(Migration))
+    }).pipe(provideMigration(Db))
   })
 
   it.effect("delete object store migration", () => {
@@ -194,18 +193,20 @@ describe.sequential("IndexedDbDatabase", () => {
       { keyPath: "userId" }
     )
 
-    const Db1 = IndexedDbVersion.make(Table1)
-    const Db2 = IndexedDbVersion.make(Table2, Table1)
+    const V1 = IndexedDbVersion.make(Table1)
+    const V2 = IndexedDbVersion.make(Table2, Table1)
 
-    class Migration extends IndexedDbDatabase.make(Db1, (api) => api.createObjectStore("todo")).add(
-      Db2,
-      (from, to) =>
-        Effect.gen(function*() {
+    class Migration extends IndexedDbDatabase
+      .make(V1, (api) => api.createObjectStore("todo"))
+      .add(
+        V2,
+        Effect.fnUntraced(function*(from, to) {
           yield* from.deleteObjectStore("todo")
           yield* to.createObjectStore("user")
           yield* to.from("user").insert({ userId: 1, name: "John Doe", email: "john.doe@example.com" })
         })
-    ) {}
+      )
+    {}
 
     return Effect.gen(function*() {
       const api = yield* Migration.getQueryBuilder
