@@ -507,6 +507,12 @@ export const bodyFormData = dual<
 >(2, (self, body) => setBody(self, internalBody.formData(body)))
 
 /** @internal */
+export const bodyFormDataRecord = dual<
+  (entries: Body.FormDataInput) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
+  (self: ClientRequest.HttpClientRequest, entries: Body.FormDataInput) => ClientRequest.HttpClientRequest
+>(2, (self, entries) => setBody(self, internalBody.formDataRecord(entries)))
+
+/** @internal */
 export const bodyStream = dual<
   (
     body: Stream.Stream<Uint8Array, unknown>,
