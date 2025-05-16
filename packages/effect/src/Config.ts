@@ -132,7 +132,7 @@ export const boolean: (name?: string) => Config<boolean> = internal.boolean
 /**
  * Constructs a config for a TCP port [1,65535].
  *
- * @since 3.11.0
+ * @since 3.16.0
  * @category constructors
  */
 export const port: (name?: string) => Config<number> = internal.port
@@ -372,7 +372,7 @@ export const redacted: {
 /**
  * Constructs a config for a branded value.
  *
- * @since 2.0.0
+ * @since 3.16.0
  * @category constructors
  */
 export const branded: {
