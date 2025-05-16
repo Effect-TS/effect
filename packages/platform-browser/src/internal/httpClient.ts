@@ -91,7 +91,7 @@ const sendBody = (
     case "Raw":
       return Effect.sync(() => xhr.send(body.body as any))
     case "Uint8Array":
-      return Effect.sync(() => xhr.send(body.body))
+      return Effect.sync(() => xhr.send(body.body as Uint8Array<ArrayBuffer>))
     case "FormData":
       return Effect.sync(() => xhr.send(body.formData))
     case "Stream":
@@ -273,7 +273,7 @@ export abstract class IncomingMessageImpl<E> extends Inspectable.Class
     }).pipe(
       Effect.map((response) => {
         if (typeof response === "string") {
-          return encoder.encode(response).buffer
+          return encoder.encode(response).buffer as ArrayBuffer
         }
         return response
       }),
