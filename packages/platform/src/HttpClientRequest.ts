@@ -363,6 +363,15 @@ export const bodyFormData: {
  * @since 1.0.0
  * @category combinators
  */
+export const bodyFormDataRecord: {
+  (entries: Body.FormDataInput): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, entries: Body.FormDataInput): HttpClientRequest
+} = internal.bodyFormDataRecord
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const bodyStream: {
   (
     body: Stream.Stream<Uint8Array, unknown>,
