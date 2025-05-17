@@ -30,7 +30,7 @@ const constDisableValidation = { disableValidation: true } as const
  * @category Context
  */
 export class AnthropicClient extends Context.Tag(
-  "@effect/ai-openai/AnthropicClient"
+  "@effect/ai-anthropic/AnthropicClient"
 )<AnthropicClient, AnthropicClient.Service>() {}
 
 /**
