@@ -231,7 +231,7 @@ export interface TagClass<
    */
   readonly layer: (key: K) => Layer.Layer<
     I,
-    (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never),
+    E | (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never),
     | Exclude<R, (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _A : never)>
     | (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _R : never)
   >
@@ -239,14 +239,12 @@ export interface TagClass<
   /**
    * Retrieves a Layer for the resources associated with the key.
    */
-  readonly layerNoDeps: (key: K) => Layer.Layer<I, never, Self>
+  readonly layerNoDeps: (key: K) => Layer.Layer<I, E, R>
 
   /**
-   * Provides a Runtime for the resources associated with the key.
+   * Retrieves a Runtime for the resources associated with the key.
    */
-  readonly runtime: (
-    key: K
-  ) => Effect.Effect<Runtime.Runtime<I>, E, Scope.Scope | Self>
+  readonly runtime: (key: K) => Effect.Effect<Runtime.Runtime<I>, E, Scope.Scope | Self>
 
   /**
    * Invalidates the resource associated with the key.
@@ -353,7 +351,7 @@ export const Service = <Self>() =>
     TagClass_.DefaultWithoutDependencies
 
   const makeLayer = (key: string) => Layer.unwrapScoped(Effect.map(TagClass_, (layerMap) => layerMap.layer(key)))
-  TagClass_.layerNoDeps = makeLayer as any
+  TagClass_.layerNoDeps = (key: string) => Layer.provide(makeLayer(key), TagClass_.DefaultWithoutDependencies) as any
   TagClass_.layer = (key: string) => Layer.provide(makeLayer(key), TagClass_.Default)
   TagClass_.runtime = (key: string) => Effect.flatMap(TagClass_, (layerMap) => layerMap.runtime(key))
   TagClass_.invalidate = (key: string) => Effect.flatMap(TagClass_, (layerMap) => layerMap.invalidate(key))
