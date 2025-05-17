@@ -1,7 +1,7 @@
 {
   "name": "@effect/ai-anthropic",
   "type": "module",
-  "version": "0.6.2",
+  "version": "0.6.4",
   "license": "MIT",
   "description": "Effect modules for working with AI apis",
   "homepage": "https://effect.website",
@@ -56,7 +56,7 @@
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",
-    "@tim-smart/openapi-gen": "^0.3.11",
+    "@tim-smart/openapi-gen": "^0.3.18",
     "effect": "workspace:^"
   },
   "dependencies": {

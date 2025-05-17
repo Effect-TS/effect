@@ -58,7 +58,7 @@ describe("Effect", () => {
     }))
 
   if (typeof window === "undefined") {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { inspect } = require("node:util")
 
     it("inspect", () => {

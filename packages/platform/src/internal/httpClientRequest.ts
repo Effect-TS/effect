@@ -378,8 +378,8 @@ export const setBody = dual<
   (self: ClientRequest.HttpClientRequest, body: Body.HttpBody) => ClientRequest.HttpClientRequest
 >(2, (self, body) => {
   let headers = self.headers
-  if (body._tag === "Empty") {
-    headers = Headers.remove(Headers.remove(headers, "Content-Type"), "Content-length")
+  if (body._tag === "Empty" || body._tag === "FormData") {
+    headers = Headers.remove(headers, ["Content-type", "Content-length"])
   } else {
     const contentType = body.contentType
     if (contentType) {
@@ -505,6 +505,12 @@ export const bodyFormData = dual<
   (body: FormData) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
   (self: ClientRequest.HttpClientRequest, body: FormData) => ClientRequest.HttpClientRequest
 >(2, (self, body) => setBody(self, internalBody.formData(body)))
+
+/** @internal */
+export const bodyFormDataRecord = dual<
+  (entries: Body.FormDataInput) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
+  (self: ClientRequest.HttpClientRequest, entries: Body.FormDataInput) => ClientRequest.HttpClientRequest
+>(2, (self, entries) => setBody(self, internalBody.formDataRecord(entries)))
 
 /** @internal */
 export const bodyStream = dual<

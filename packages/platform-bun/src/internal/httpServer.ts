@@ -402,11 +402,14 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
           resume(Effect.map(Deferred.await(deferred), (ws) => {
             const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
               Effect.sync(() => {
-                typeof chunk === "string"
-                  ? ws.sendText(chunk)
-                  : Socket.isCloseEvent(chunk)
-                  ? ws.close(chunk.code, chunk.reason)
-                  : ws.sendBinary(chunk)
+                if (typeof chunk === "string") {
+                  ws.sendText(chunk)
+                } else if (Socket.isCloseEvent(chunk)) {
+                  ws.close(chunk.code, chunk.reason)
+                } else {
+                  ws.sendBinary(chunk)
+                }
+
                 return true
               })
             const writer = Effect.succeed(write)

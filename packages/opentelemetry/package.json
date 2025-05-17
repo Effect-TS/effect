@@ -1,6 +1,6 @@
 {
   "name": "@effect/opentelemetry",
-  "version": "0.48.1",
+  "version": "0.48.3",
   "type": "module",
   "license": "MIT",
   "description": "OpenTelemetry integration for Effect",
@@ -61,7 +61,7 @@
     "@opentelemetry/sdk-trace-base": "^2.0.0",
     "@opentelemetry/sdk-trace-node": "^2.0.0",
     "@opentelemetry/sdk-trace-web": "^2.0.0",
-    "@opentelemetry/semantic-conventions": "^1.30.0",
+    "@opentelemetry/semantic-conventions": "^1.33.0",
     "effect": "workspace:^"
   },
   "peerDependenciesMeta": {
@@ -101,6 +101,6 @@
     "@opentelemetry/sdk-trace-base": "^2.0.0",
     "@opentelemetry/sdk-trace-node": "^2.0.0",
     "@opentelemetry/sdk-trace-web": "^2.0.0",
-    "@opentelemetry/semantic-conventions": "^1.30.0"
+    "@opentelemetry/semantic-conventions": "^1.33.0"
   }
 }

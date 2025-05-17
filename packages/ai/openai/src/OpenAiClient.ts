@@ -189,15 +189,13 @@ export const make = (options: {
                 if (finishReason === "tool-calls" && Predicate.isNotUndefined(toolCallIndex)) {
                   finishToolCall(toolCalls[toolCallIndex], parts)
                 }
-                if (finishReason === "stop") {
-                  parts.push(
-                    new AiResponse.FinishPart({
-                      usage,
-                      reason: finishReason,
-                      providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
-                    }, constDisableValidation)
-                  )
-                }
+                parts.push(
+                  new AiResponse.FinishPart({
+                    usage,
+                    reason: finishReason,
+                    providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
+                  }, constDisableValidation)
+                )
               }
 
               // Handle text deltas
@@ -215,7 +213,7 @@ export const make = (options: {
                   // Make sure to emit any previous tool calls before starting a new one
                   if (Predicate.isNotUndefined(toolCallIndex) && toolCallIndex !== delta.index) {
                     finishToolCall(toolCalls[toolCallIndex], parts)
-                    toolCallIndex = delta.index
+                    toolCallIndex = undefined
                   }
 
                   if (Predicate.isUndefined(toolCallIndex)) {
@@ -355,5 +353,5 @@ const finishToolCall = (
     toolCall.isFinished = true
     // TODO:
     // eslint-disable-next-line no-empty
-  } catch (e) {}
+  } catch {}
 }

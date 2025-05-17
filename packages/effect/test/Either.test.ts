@@ -119,7 +119,7 @@ describe("Either", () => {
 
   it("inspect", () => {
     if (typeof window === "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { inspect } = require("node:util")
       deepStrictEqual(inspect(Either.right(1)), inspect({ _id: "Either", _tag: "Right", right: 1 }))
       deepStrictEqual(inspect(Either.left("e")), inspect({ _id: "Either", _tag: "Left", left: "e" }))

@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-kysely",
-  "version": "0.31.1",
+  "version": "0.31.3",
   "type": "module",
   "license": "MIT",
   "description": "Kysely integration for @effect/sql",
@@ -51,7 +51,7 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.24.1"
+    "@opentelemetry/semantic-conventions": "^1.33.0"
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
@@ -59,17 +59,17 @@
     "@effect/sql-mysql2": "workspace:^",
     "@effect/sql-pg": "workspace:^",
     "@effect/sql-sqlite-node": "workspace:^",
-    "@testcontainers/mssqlserver": "^10.18.0",
-    "@testcontainers/mysql": "^10.18.0",
-    "@testcontainers/postgresql": "^10.18.0",
-    "@types/better-sqlite3": "^7.6.12",
-    "better-sqlite3": "^11.8.1",
+    "@testcontainers/mssqlserver": "^10.25.0",
+    "@testcontainers/mysql": "^10.25.0",
+    "@testcontainers/postgresql": "^10.25.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^11.10.0",
     "effect": "workspace:^",
-    "kysely": "^0.27.4"
+    "kysely": "^0.28.2"
   },
   "peerDependencies": {
     "@effect/sql": "workspace:^",
     "effect": "workspace:^",
-    "kysely": "^0.27.3"
+    "kysely": "^0.28.2"
   }
 }

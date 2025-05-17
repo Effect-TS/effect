@@ -815,7 +815,7 @@ export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
 (...a) => {
   try {
     return some(f(...a))
-  } catch (e) {
+  } catch {
     return none()
   }
 }

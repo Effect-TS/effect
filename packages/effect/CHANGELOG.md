@@ -1,5 +1,12 @@
 # effect
 
+## 3.15.2
+
+### Patch Changes
+
+- [#4659](https://github.com/Effect-TS/effect/pull/4659) [`b8722b8`](https://github.com/Effect-TS/effect/commit/b8722b817e2306fe8c8245f3f9e32d85b824b961) Thanks @KhraksMamtsov! - - The `HashMap.has/get` family has become more type-safe.
+  - Fix the related type errors in TestAnnotationsMap.ts.
+
 ## 3.15.1
 
 ### Patch Changes

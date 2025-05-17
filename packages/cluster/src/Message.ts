@@ -84,7 +84,7 @@ export class OutgoingRequest<R extends Rpc.Any> extends Data.TaggedClass("Outgoi
   readonly context: Context<Rpc.Context<R>>
   readonly lastReceivedReply: Option.Option<Reply.Reply<R>>
   readonly rpc: R
-  readonly respond: (reply: Reply.Reply<R>) => Effect.Effect<void, PersistenceError>
+  readonly respond: (reply: Reply.Reply<R>) => Effect.Effect<void>
 }> {
   /**
    * @since 1.0.0

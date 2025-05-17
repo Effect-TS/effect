@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-wasm",
-  "version": "0.36.1",
+  "version": "0.36.3",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
@@ -57,6 +57,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.25.1"
+    "@opentelemetry/semantic-conventions": "^1.33.0"
   }
 }

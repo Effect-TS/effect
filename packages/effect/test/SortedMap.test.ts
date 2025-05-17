@@ -81,7 +81,7 @@ describe("SortedMap", () => {
     if (typeof window !== "undefined") {
       return
     }
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { inspect } = require("node:util")
 
     const map = makeNumericSortedMap([0, 10], [1, 20], [2, 30])

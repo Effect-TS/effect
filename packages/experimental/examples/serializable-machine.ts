@@ -40,7 +40,7 @@ const mailer = Machine.makeSerializable({
     const state = previous ?? List.empty()
 
     if (List.isCons(state)) {
-      yield* ctx.unsafeSend(new ProcessEmail()), Effect.replicateEffect(List.size(state))
+      yield* ctx.unsafeSend(new ProcessEmail()).pipe(Effect.replicateEffect(List.size(state)))
     }
 
     return Machine.serializable.make(state).pipe(
@@ -50,7 +50,7 @@ const mailer = Machine.makeSerializable({
             return [void 0, state]
           }
           const req = state.head
-          yield* Effect.log(`Sending email to ${req.email}`), Effect.delay(500)
+          yield* Effect.log(`Sending email to ${req.email}`).pipe(Effect.delay(500))
           return [void 0, state.tail]
         })),
       Machine.serializable.add(SendEmail, (ctx) =>

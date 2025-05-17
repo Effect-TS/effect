@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-clickhouse",
-  "version": "0.22.2",
+  "version": "0.23.0",
   "type": "module",
   "license": "MIT",
   "description": "A Clickhouse toolkit for Effect",
@@ -61,6 +61,6 @@
   },
   "dependencies": {
     "@clickhouse/client": "^1.6.0",
-    "@opentelemetry/semantic-conventions": "^1.25.1"
+    "@opentelemetry/semantic-conventions": "^1.33.0"
   }
 }

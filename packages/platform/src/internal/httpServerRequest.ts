@@ -366,7 +366,7 @@ export const toURL = (self: ServerRequest.HttpServerRequest): Option.Option<URL>
   const protocol = self.headers["x-forwarded-proto"] === "https" ? "https" : "http"
   try {
     return Option.some(new URL(self.url, `${protocol}://${host}`))
-  } catch (_) {
+  } catch {
     return Option.none()
   }
 }

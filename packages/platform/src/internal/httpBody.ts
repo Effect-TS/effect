@@ -192,6 +192,24 @@ class FormDataImpl extends BodyBase implements Body.FormData {
 /** @internal */
 export const formData = (body: FormData): Body.FormData => new FormDataImpl(body)
 
+/** @internal */
+export const formDataRecord = (
+  entries: Body.FormDataInput
+): Body.FormData => {
+  const formData = new FormData()
+  for (const [key, value] of Object.entries(entries)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item == null) continue
+        formData.append(key, typeof value === "object" ? item as any : String(item))
+      }
+    } else if (value != null) {
+      formData.append(key, typeof value === "object" ? value as any : String(value))
+    }
+  }
+  return new FormDataImpl(formData)
+}
+
 class StreamImpl extends BodyBase implements Body.Stream {
   readonly _tag = "Stream"
   constructor(

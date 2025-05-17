@@ -19,7 +19,12 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import type { Scope } from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import type { AlreadyProcessingMessage, MailboxFull, PersistenceError } from "./ClusterError.js"
+import type {
+  AlreadyProcessingMessage,
+  EntityNotManagedByRunner,
+  MailboxFull,
+  PersistenceError
+} from "./ClusterError.js"
 import type { EntityAddress } from "./EntityAddress.js"
 import { EntityType } from "./EntityType.js"
 import type * as Envelope from "./Envelope.js"
@@ -80,7 +85,12 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
    * Create a client for this entity.
    */
   readonly client: Effect.Effect<
-    (entityId: string) => RpcClient.RpcClient<Rpcs, MailboxFull | AlreadyProcessingMessage | PersistenceError>,
+    (
+      entityId: string
+    ) => RpcClient.RpcClient<
+      Rpcs,
+      MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner
+    >,
     never,
     Sharding
   >

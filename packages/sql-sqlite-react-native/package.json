@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-react-native",
-  "version": "0.38.1",
+  "version": "0.38.3",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
@@ -58,6 +58,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.25.1"
+    "@opentelemetry/semantic-conventions": "^1.33.0"
   }
 }
