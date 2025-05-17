@@ -67,6 +67,8 @@ export const toResponseOrElse = (u: unknown, orElse: HttpServerResponse): Effect
 export const toResponseOrElseDefect = (u: unknown, orElse: HttpServerResponse): Effect.Effect<HttpServerResponse> => {
   if (ServerResponse.isServerResponse(u)) {
     return Effect.succeed(u)
+  } else if (isRespondable(u)) {
+    return Effect.catchAllCause(u[symbol](), () => Effect.succeed(orElse))
   }
   return Effect.succeed(orElse)
 }
