@@ -10,7 +10,7 @@ import { dual } from "effect/Function"
  * @since 1.0.0
  * @category Context
  */
-export class AnthropicConfig extends Context.Tag("@effect/ai-openai/AnthropicConfig")<
+export class AnthropicConfig extends Context.Tag("@effect/ai-anthropic/AnthropicConfig")<
   AnthropicConfig,
   AnthropicConfig.Service
 >() {

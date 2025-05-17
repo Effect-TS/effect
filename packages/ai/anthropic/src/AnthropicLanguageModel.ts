@@ -141,7 +141,7 @@ const make = Effect.gen(function*() {
       if (Predicate.isUndefined(model)) {
         return yield* Effect.die(
           new AiError({
-            module: "OpenAiLanguageModel",
+            module: "AnthropicLanguageModel",
             method,
             description: "No `model` specified for request"
           })
