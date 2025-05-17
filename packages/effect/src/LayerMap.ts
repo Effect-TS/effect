@@ -5,10 +5,13 @@
 import * as Context from "./Context.js"
 import type * as Duration from "./Duration.js"
 import * as Effect from "./Effect.js"
+import * as FiberRefsPatch from "./FiberRefsPatch.js"
 import { identity } from "./Function.js"
+import * as core from "./internal/core.js"
 import * as Layer from "./Layer.js"
 import * as RcMap from "./RcMap.js"
-import * as Scope from "./Scope.js"
+import * as Runtime from "./Runtime.js"
+import type * as Scope from "./Scope.js"
 import type { Mutable } from "./Types.js"
 
 /**
@@ -28,24 +31,23 @@ export type TypeId = typeof TypeId
  * @category Models
  * @experimental
  */
-export interface LayerMap<in K, in out I, out S, out E = never> {
+export interface LayerMap<in K, in out I, out E = never> {
   readonly [TypeId]: TypeId
 
   /**
    * The internal RcMap that stores the resources.
    */
-  readonly rcMap: RcMap.RcMap<K, readonly [Context.Context<I>, S], E>
+  readonly rcMap: RcMap.RcMap<K, [FiberRefsPatch.FiberRefsPatch, Context.Context<I>], E>
 
   /**
-   * Retrieves an instance of the resource associated with the key.
+   * Retrieves a Layer for the resources associated with the key.
    */
-  get(key: K): Effect.Effect<S, E, Scope.Scope>
+  layer(key: K): Layer.Layer<I, E>
 
   /**
-   * Provides an instance of the resource associated with the key
-   * to the given effect.
+   * Retrieves a Runtime for the resources associated with the key.
    */
-  provide(key: K): <A, EX, R>(effect: Effect.Effect<A, EX, R>) => Effect.Effect<A, EX | E, Exclude<R, I>>
+  runtime(key: K): Effect.Effect<Runtime.Runtime<I>, E, Scope.Scope>
 
   /**
    * Invalidates the resource associated with the key.
@@ -62,56 +64,47 @@ export interface LayerMap<in K, in out I, out S, out E = never> {
  * dynamically access resources based on a key.
  *
  * ```ts
- * import { Completions } from "@effect/ai"
- * import { OpenAiClient, OpenAiCompletions } from "@effect/ai-openai"
- * import { FetchHttpClient } from "@effect/platform"
  * import { NodeRuntime } from "@effect/platform-node"
- * import { Config, Effect, Layer, LayerMap } from "effect"
+ * import { Context, Effect, Layer, LayerMap } from "effect"
  *
- * // create the openai client layer
- * const OpenAiLayer = OpenAiClient.layerConfig({
- *   apiKey: Config.redacted("OPENAI_API_KEY")
- * }).pipe(Layer.provide(FetchHttpClient.layer))
+ * class Greeter extends Context.Tag("Greeter")<Greeter, {
+ *   greet: Effect.Effect<string>
+ * }>() {}
  *
  * // create a service that wraps a LayerMap
- * class AiClients extends LayerMap.Service<AiClients>()("AiClients", {
- *   // this LayerMap will provide the ai Completions service
- *   provides: Completions.Completions,
- *
+ * class GreeterMap extends LayerMap.Service<GreeterMap>()("GreeterMap", {
  *   // define the lookup function for the layer map
  *   //
- *   // The returned Layer will be used to provide the Completions service for the
- *   // given model.
- *   lookup: (model: OpenAiCompletions.Model) => OpenAiCompletions.layer({ model }),
+ *   // The returned Layer will be used to provide the Greeter service for the
+ *   // given name.
+ *   lookup: (name: string) =>
+ *     Layer.succeed(Greeter, {
+ *       greet: Effect.succeed(`Hello, ${name}!`)
+ *     }),
  *
  *   // If a layer is not used for a certain amount of time, it can be removed
  *   idleTimeToLive: "5 seconds",
  *
  *   // Supply the dependencies for the layers in the LayerMap
- *   dependencies: [OpenAiLayer]
+ *   dependencies: []
  * }) {}
  *
  * // usage
  * Effect.gen(function*() {
- *   // access and use the generic Completions service
- *   const ai = yield* Completions.Completions
- *   const response = yield* ai.create("Hello, world!")
- *   console.log(response.text)
+ *   // access and use the Greeter service
+ *   const greeter = yield* Greeter
+ *   yield* Effect.log(yield* greeter.greet)
  * }).pipe(
- *   // use the AiClients service to provide a variant of the Completions service
- *   AiClients.provide("gpt-4o"),
- *   // provide the LayerMap service
- *   Effect.provide(AiClients.Default),
+ *   // use the GreeterMap service to provide a variant of the Greeter service
+ *   Effect.provide(GreeterMap.layer("John")),
  *   NodeRuntime.runMain
  * )
  * ```
  */
 export const make: <
-  Accessor extends Context.Tag<any, any> | Effect.Effect<any, any, any>,
   K,
-  L extends Layer.Layer<Exclude<Effect.Effect.Context<Accessor>, Scope.Scope>, any, any>
+  L extends Layer.Layer<any, any, any>
 >(
-  tagOrAccessor: Accessor,
   lookup: (key: K) => L,
   options?: {
     readonly idleTimeToLive?: Duration.DurationInput | undefined
@@ -119,15 +112,13 @@ export const make: <
 ) => Effect.Effect<
   LayerMap<
     K,
-    Exclude<Effect.Effect.Context<Accessor>, Scope.Scope>,
-    Effect.Effect.Success<Accessor>,
-    Effect.Effect.Error<Accessor> | (L extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never)
+    L extends Layer.Layer<infer _A, infer _E, infer _R> ? _A : never,
+    L extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never
   >,
   never,
   Scope.Scope | (L extends Layer.Layer<infer _A, infer _E, infer _R> ? _R : never)
-> = Effect.fnUntraced(function*<I, S, K, EL, RL, E = never>(
-  tagOrAccessor: Effect.Effect<S, E, I>,
-  lookup: (key: K) => Layer.Layer<Exclude<I, Scope.Scope>, EL, RL>,
+> = Effect.fnUntraced(function*<I, K, EL, RL>(
+  lookup: (key: K) => Layer.Layer<I, EL, RL>,
   options?: {
     readonly idleTimeToLive?: Duration.DurationInput | undefined
   } | undefined
@@ -141,28 +132,46 @@ export const make: <
     : yield* Layer.makeMemoMap
 
   const rcMap = yield* RcMap.make({
-    lookup: Effect.fnUntraced(function*(key: K) {
-      const scope = yield* Effect.scope
-      const context = yield* (Layer.buildWithMemoMap(lookup(key), memoMap, scope) as Effect.Effect<
-        Context.Context<Exclude<I, Scope.Scope>>
-      >)
-      const service = yield* (Effect.provide(tagOrAccessor, context) as Effect.Effect<S>)
-      return [context, service] as const
-    }),
+    lookup: (key: K) =>
+      Effect.scopeWith((scope) => Effect.diffFiberRefs(Layer.buildWithMemoMap(lookup(key), memoMap, scope))),
     idleTimeToLive: options?.idleTimeToLive
   })
 
-  return identity<LayerMap<K, Exclude<I, Scope.Scope>, S, any>>({
+  return identity<LayerMap<K, Exclude<I, Scope.Scope>, any>>({
     [TypeId]: TypeId,
     rcMap,
-    get: (key) => Effect.map(RcMap.get(rcMap, key), ([, service]) => service),
-    provide: (key) => (effect) =>
-      Effect.scopedWith((scope) =>
+    layer: (key) =>
+      Layer.scopedContext(
         Effect.flatMap(
-          Scope.extend(RcMap.get(rcMap, key), scope),
-          ([context]) => Effect.provide(effect, context)
+          RcMap.get(rcMap, key),
+          ([patch, context]) =>
+            core.withFiberRuntime((fiber) => {
+              const oldRefs = fiber.getFiberRefs()
+              const newRefs = FiberRefsPatch.patch(patch, fiber.id(), oldRefs)
+              const revert = FiberRefsPatch.diff(newRefs, oldRefs)
+              return Effect.acquireRelease(
+                Effect.sync(() => {
+                  fiber.setFiberRefs(newRefs)
+                  return context
+                }),
+                () =>
+                  Effect.sync(() => {
+                    fiber.setFiberRefs(FiberRefsPatch.patch(revert, fiber.id(), fiber.getFiberRefs()))
+                  })
+              )
+            })
         )
       ),
+    runtime: (key) =>
+      Effect.flatMap(RcMap.get(rcMap, key), ([patch, context]) =>
+        Effect.withFiberRuntime((fiber) => {
+          const fiberRefs = FiberRefsPatch.patch(patch, fiber.id(), fiber.getFiberRefs())
+          return Effect.succeed(Runtime.make({
+            context,
+            fiberRefs,
+            runtimeFlags: Runtime.defaultRuntime.runtimeFlags
+          }))
+        })),
     invalidate: (key) => RcMap.invalidate(rcMap, key)
   })
 })
@@ -173,10 +182,8 @@ export const make: <
  * @experimental
  */
 export const fromRecord = <
-  Accessor extends Context.Tag<any, any> | Effect.Effect<any, any, any>,
-  const Layers extends Record<string, Layer.Layer<Exclude<Effect.Effect.Context<Accessor>, Scope.Scope>, any, any>>
+  const Layers extends Record<string, Layer.Layer<any, any, any>>
 >(
-  tagOrAccessor: Accessor,
   layers: Layers,
   options?: {
     readonly idleTimeToLive?: Duration.DurationInput | undefined
@@ -184,14 +191,12 @@ export const fromRecord = <
 ): Effect.Effect<
   LayerMap<
     keyof Layers,
-    Exclude<Effect.Effect.Context<Accessor>, Scope.Scope>,
-    Effect.Effect.Success<Accessor>,
-    | Effect.Effect.Error<Accessor>
-    | (Layers[keyof Layers] extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never)
+    Layers[keyof Layers] extends Layer.Layer<infer _A, infer _E, infer _R> ? _A : never,
+    Layers[keyof Layers] extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never
   >,
   never,
   Scope.Scope | (Layers[keyof Layers] extends Layer.Layer<infer _A, infer _E, infer _R> ? _R : never)
-> => make(tagOrAccessor, (key: keyof Layers) => layers[key], options)
+> => make((key: keyof Layers) => layers[key], options)
 
 /**
  * @since 3.14.0
@@ -202,11 +207,10 @@ export interface TagClass<
   in out Id extends string,
   in out K,
   in out I,
-  in out S,
   in out E,
   in out R,
   in out Deps extends Layer.Layer<any, any, any>
-> extends Context.TagClass<Self, Id, LayerMap<K, I, S, E>> {
+> extends Context.TagClass<Self, Id, LayerMap<K, I, E>> {
   /**
    * A default layer for the `LayerMap` service.
    */
@@ -223,17 +227,26 @@ export interface TagClass<
   readonly DefaultWithoutDependencies: Layer.Layer<Self, never, R>
 
   /**
-   * Retrieves an instance of the resource associated with the key.
+   * Retrieves a Layer for the resources associated with the key.
    */
-  readonly get: (key: K) => Effect.Effect<S, E, Scope.Scope | Self>
+  readonly layer: (key: K) => Layer.Layer<
+    I,
+    (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never),
+    | Exclude<R, (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _A : never)>
+    | (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _R : never)
+  >
 
   /**
-   * Provides an instance of the resource associated with the key to the given
-   * effect.
+   * Retrieves a Layer for the resources associated with the key.
    */
-  readonly provide: (
+  readonly layerNoDeps: (key: K) => Layer.Layer<I, never, Self>
+
+  /**
+   * Provides a Runtime for the resources associated with the key.
+   */
+  readonly runtime: (
     key: K
-  ) => <A, EX, R>(effect: Effect.Effect<A, EX, R>) => Effect.Effect<A, EX | E, Exclude<R, I> | Self>
+  ) => Effect.Effect<Runtime.Runtime<I>, E, Scope.Scope | Self>
 
   /**
    * Invalidates the resource associated with the key.
@@ -250,46 +263,39 @@ export interface TagClass<
  * a key.
  *
  * ```ts
- * import { Completions } from "@effect/ai"
- * import { OpenAiClient, OpenAiCompletions } from "@effect/ai-openai"
- * import { FetchHttpClient } from "@effect/platform"
  * import { NodeRuntime } from "@effect/platform-node"
- * import { Config, Effect, Layer, LayerMap } from "effect"
+ * import { Context, Effect, Layer, LayerMap } from "effect"
  *
- * // create the openai client layer
- * const OpenAiLayer = OpenAiClient.layerConfig({
- *   apiKey: Config.redacted("OPENAI_API_KEY")
- * }).pipe(Layer.provide(FetchHttpClient.layer))
+ * class Greeter extends Context.Tag("Greeter")<Greeter, {
+ *   greet: Effect.Effect<string>
+ * }>() {}
  *
  * // create a service that wraps a LayerMap
- * class AiClients extends LayerMap.Service<AiClients>()("AiClients", {
- *   // this LayerMap will provide the ai Completions service
- *   provides: Completions.Completions,
- *
+ * class GreeterMap extends LayerMap.Service<GreeterMap>()("GreeterMap", {
  *   // define the lookup function for the layer map
  *   //
- *   // The returned Layer will be used to provide the Completions service for the
- *   // given model.
- *   lookup: (model: OpenAiCompletions.Model) => OpenAiCompletions.layer({ model }),
+ *   // The returned Layer will be used to provide the Greeter service for the
+ *   // given name.
+ *   lookup: (name: string) =>
+ *     Layer.succeed(Greeter, {
+ *       greet: Effect.succeed(`Hello, ${name}!`)
+ *     }),
  *
  *   // If a layer is not used for a certain amount of time, it can be removed
  *   idleTimeToLive: "5 seconds",
  *
  *   // Supply the dependencies for the layers in the LayerMap
- *   dependencies: [OpenAiLayer]
+ *   dependencies: []
  * }) {}
  *
  * // usage
  * Effect.gen(function*() {
- *   // access and use the generic Completions service
- *   const ai = yield* Completions.Completions
- *   const response = yield* ai.create("Hello, world!")
- *   console.log(response.text)
+ *   // access and use the Greeter service
+ *   const greeter = yield* Greeter
+ *   yield* Effect.log(yield* greeter.greet)
  * }).pipe(
- *   // use the AiClients service to provide a variant of the Completions service
- *   AiClients.provide("gpt-4o"),
- *   // provide the LayerMap service
- *   Effect.provide(AiClients.Default),
+ *   // use the GreeterMap service to provide a variant of the Greeter service
+ *   Effect.provide(GreeterMap.layer("John")),
  *   NodeRuntime.runMain
  * )
  * ```
@@ -297,17 +303,15 @@ export interface TagClass<
 export const Service = <Self>() =>
 <
   const Id extends string,
-  Accessor extends Context.Tag<any, any> | Effect.Effect<any, any, any>,
   Lookup extends {
-    readonly lookup: (key: any) => Layer.Layer<Exclude<Effect.Effect.Context<Accessor>, Scope.Scope>, any, any>
+    readonly lookup: (key: any) => Layer.Layer<any, any, any>
   } | {
-    readonly layers: Record<string, Layer.Layer<Exclude<Effect.Effect.Context<Accessor>, Scope.Scope>, any, any>>
+    readonly layers: Record<string, Layer.Layer<any, any, any>>
   },
   const Deps extends ReadonlyArray<Layer.Layer<any, any, any>> = []
 >(
   id: Id,
   options: Lookup & {
-    readonly provides: Accessor
     readonly dependencies?: Deps | undefined
     readonly idleTimeToLive?: Duration.DurationInput | undefined
   }
@@ -317,9 +321,8 @@ export const Service = <Self>() =>
   Lookup extends { readonly lookup: (key: infer K) => any } ? K
     : Lookup extends { readonly layers: infer Layers } ? keyof Layers
     : never,
-  Exclude<Effect.Effect.Context<Accessor>, Scope.Scope>,
-  Effect.Effect.Success<Accessor>,
-  Effect.Effect.Error<Accessor> | Service.Error<Lookup>,
+  Service.Success<Lookup>,
+  Service.Error<Lookup>,
   Service.Context<Lookup>,
   Deps[number]
 > => {
@@ -330,7 +333,7 @@ export const Service = <Self>() =>
   Err.stackTraceLimit = limit
 
   function TagClass() {}
-  const TagClass_ = TagClass as any as Mutable<TagClass<Self, Id, string, any, any, any, any, any>>
+  const TagClass_ = TagClass as any as Mutable<TagClass<Self, Id, string, any, any, any, any>>
   Object.setPrototypeOf(TagClass, Object.getPrototypeOf(Context.GenericTag<Self, any>(id)))
   TagClass.key = id
   Object.defineProperty(TagClass, "stack", {
@@ -338,20 +341,22 @@ export const Service = <Self>() =>
       return creationError.stack
     }
   })
-  TagClass_.get = (key: string) => Effect.flatMap(TagClass_, (layerMap) => layerMap.get(key))
-  TagClass_.provide = (key: string) => (effect) =>
-    Effect.flatMap(TagClass_, (layerMap) => layerMap.provide(key)(effect))
-  TagClass_.invalidate = (key: string) => Effect.flatMap(TagClass_, (layerMap) => layerMap.invalidate(key))
 
   TagClass_.DefaultWithoutDependencies = Layer.scoped(
     TagClass_,
     "lookup" in options
-      ? make(options.provides, options.lookup, options)
-      : fromRecord(options.provides, options.layers as any, options)
+      ? make(options.lookup, options)
+      : fromRecord(options.layers as any, options)
   )
   TagClass_.Default = options.dependencies && options.dependencies.length > 0 ?
     Layer.provide(TagClass_.DefaultWithoutDependencies, options.dependencies as any) :
     TagClass_.DefaultWithoutDependencies
+
+  const makeLayer = (key: string) => Layer.unwrapScoped(Effect.map(TagClass_, (layerMap) => layerMap.layer(key)))
+  TagClass_.layerNoDeps = makeLayer as any
+  TagClass_.layer = (key: string) => Layer.provide(makeLayer(key), TagClass_.Default)
+  TagClass_.runtime = (key: string) => Effect.flatMap(TagClass_, (layerMap) => layerMap.runtime(key))
+  TagClass_.invalidate = (key: string) => Effect.flatMap(TagClass_, (layerMap) => layerMap.invalidate(key))
 
   return TagClass as any
 }
@@ -379,6 +384,13 @@ export declare namespace Service {
   export type Layers<Options> = Options extends { readonly lookup: (key: infer _K) => infer Layers } ? Layers
     : Options extends { readonly layers: infer Layers } ? Layers[keyof Layers]
     : never
+
+  /**
+   * @since 3.14.0
+   * @category Service
+   * @experimental
+   */
+  export type Success<Options> = Layers<Options> extends Layer.Layer<infer _A, infer _E, infer _R> ? _A : never
 
   /**
    * @since 3.14.0
