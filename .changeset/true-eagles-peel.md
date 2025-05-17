@@ -42,7 +42,7 @@ Effect.gen(function* () {
   yield* Effect.log(yield* greeter.greet)
 }).pipe(
   // use the GreeterMap service to provide a variant of the Greeter service
-  Effect.provide(GreeterMap.layer("John")),
+  Effect.provide(GreeterMap.get("John")),
   NodeRuntime.runMain
 )
 ```
