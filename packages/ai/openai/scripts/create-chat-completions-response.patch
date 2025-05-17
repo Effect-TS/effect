@@ -1,24 +1,43 @@
 diff --git a/packages/ai/openai/src/Generated.ts b/packages/ai/openai/src/Generated.ts
-index 934326de9..157af3138 100644
+index 545645962..a45eb1d96 100644
 --- a/packages/ai/openai/src/Generated.ts
 +++ b/packages/ai/openai/src/Generated.ts
-@@ -555,10 +555,15 @@ export class CreateChatCompletionResponse extends S.Struct({
-     "finish_reason": S.Literal("stop", "length", "tool_calls", "content_filter", "function_call"),
-     "index": S.Int,
-     "message": ChatCompletionResponseMessage,
+@@ -1314,16 +1314,19 @@ export class CreateChatCompletionResponse extends S.Struct({
+     /**
+      * Log probability information for the choice.
+      */
 -    "logprobs": S.NullOr(S.Struct({
+-      /**
+-       * A list of message content tokens with log probability information.
+-       */
 -      "content": S.NullOr(S.Array(ChatCompletionTokenLogprob)),
+-      /**
+-       * A list of message refusal tokens with log probability information.
+-       */
 -      "refusal": S.NullOr(S.Array(ChatCompletionTokenLogprob))
 -    }))
-+    // TODO: change this once the following upstream issue has been closed
-+    //       https://github.com/openai/openai-openapi/issues/433
 +    "logprobs": S.optionalWith(
 +      S.Struct({
++        /**
++         * A list of message content tokens with log probability information.
++         */
 +        "content": S.NullOr(S.Array(ChatCompletionTokenLogprob)),
++        /**
++         * A list of message refusal tokens with log probability information.
++         */
 +        "refusal": S.NullOr(S.Array(ChatCompletionTokenLogprob))
 +      }),
 +      { nullable: true }
 +    )
    })),
-   "created": S.Int,
-   "model": S.String,
+   /**
+    * The Unix timestamp (in seconds) of when the chat completion was created.
+@@ -3062,7 +3065,7 @@ export class Eval extends S.Struct({
+       EvalPythonGrader,
+       EvalScoreModelGrader
+     )
+-  ).pipe(S.propertySignature, S.withConstructorDefault(() => "eval" as const)),
++  ),
+   /**
+    * The Unix timestamp (in seconds) for when the eval was created.
+    */
