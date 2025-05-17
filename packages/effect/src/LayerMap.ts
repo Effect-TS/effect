@@ -37,7 +37,10 @@ export interface LayerMap<in K, in out I, out E = never> {
   /**
    * The internal RcMap that stores the resources.
    */
-  readonly rcMap: RcMap.RcMap<K, [FiberRefsPatch.FiberRefsPatch, Context.Context<I>], E>
+  readonly rcMap: RcMap.RcMap<K, {
+    readonly layer: Layer.Layer<I, E>
+    readonly runtimeEffect: Effect.Effect<Runtime.Runtime<I>, E, Scope.Scope>
+  }, E>
 
   /**
    * Retrieves a Layer for the resources associated with the key.
@@ -133,19 +136,10 @@ export const make: <
 
   const rcMap = yield* RcMap.make({
     lookup: (key: K) =>
-      Effect.scopeWith((scope) => Effect.diffFiberRefs(Layer.buildWithMemoMap(lookup(key), memoMap, scope))),
-    idleTimeToLive: options?.idleTimeToLive
-  })
-
-  return identity<LayerMap<K, Exclude<I, Scope.Scope>, any>>({
-    [TypeId]: TypeId,
-    rcMap,
-    layer: (key) =>
-      Layer.scopedContext(
-        Effect.flatMap(
-          RcMap.get(rcMap, key),
-          ([patch, context]) =>
-            core.withFiberRuntime((fiber) => {
+      Effect.scopeWith((scope) => Effect.diffFiberRefs(Layer.buildWithMemoMap(lookup(key), memoMap, scope))).pipe(
+        Effect.map(([patch, context]) => ({
+          layer: Layer.scopedContext(
+            core.withFiberRuntime<Context.Context<I>, any, Scope.Scope>((fiber) => {
               const oldRefs = fiber.getFiberRefs()
               const newRefs = FiberRefsPatch.patch(patch, fiber.id(), oldRefs)
               const revert = FiberRefsPatch.diff(newRefs, oldRefs)
@@ -160,18 +154,31 @@ export const make: <
                   })
               )
             })
+          ),
+          runtimeEffect: Effect.withFiberRuntime<Runtime.Runtime<I>, any, Scope.Scope>((fiber) => {
+            const fiberRefs = FiberRefsPatch.patch(patch, fiber.id(), fiber.getFiberRefs())
+            return Effect.succeed(Runtime.make({
+              context,
+              fiberRefs,
+              runtimeFlags: Runtime.defaultRuntime.runtimeFlags
+            }))
+          })
+        } as const))
+      ),
+    idleTimeToLive: options?.idleTimeToLive
+  })
+
+  return identity<LayerMap<K, Exclude<I, Scope.Scope>, any>>({
+    [TypeId]: TypeId,
+    rcMap,
+    layer: (key) =>
+      Layer.unwrapScoped(
+        Effect.map(
+          RcMap.get(rcMap, key),
+          (_) => _.layer
         )
       ),
-    runtime: (key) =>
-      Effect.flatMap(RcMap.get(rcMap, key), ([patch, context]) =>
-        Effect.withFiberRuntime((fiber) => {
-          const fiberRefs = FiberRefsPatch.patch(patch, fiber.id(), fiber.getFiberRefs())
-          return Effect.succeed(Runtime.make({
-            context,
-            fiberRefs,
-            runtimeFlags: Runtime.defaultRuntime.runtimeFlags
-          }))
-        })),
+    runtime: (key) => Effect.flatMap(RcMap.get(rcMap, key), ({ runtimeEffect }) => runtimeEffect),
     invalidate: (key) => RcMap.invalidate(rcMap, key)
   })
 })
