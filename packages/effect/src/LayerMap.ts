@@ -11,7 +11,7 @@ import * as core from "./internal/core.js"
 import * as Layer from "./Layer.js"
 import * as RcMap from "./RcMap.js"
 import * as Runtime from "./Runtime.js"
-import type * as Scope from "./Scope.js"
+import * as Scope from "./Scope.js"
 import type { Mutable } from "./Types.js"
 
 /**
@@ -140,18 +140,17 @@ export const make: <
         Effect.map(([patch, context]) => ({
           layer: Layer.scopedContext(
             core.withFiberRuntime<Context.Context<I>, any, Scope.Scope>((fiber) => {
+              const scope = Context.unsafeGet(fiber.currentContext, Scope.Scope)
               const oldRefs = fiber.getFiberRefs()
               const newRefs = FiberRefsPatch.patch(patch, fiber.id(), oldRefs)
               const revert = FiberRefsPatch.diff(newRefs, oldRefs)
-              return Effect.acquireRelease(
-                Effect.sync(() => {
-                  fiber.setFiberRefs(newRefs)
-                  return context
+              fiber.setFiberRefs(newRefs)
+              return Effect.as(
+                Scope.addFinalizerExit(scope, () => {
+                  fiber.setFiberRefs(FiberRefsPatch.patch(revert, fiber.id(), fiber.getFiberRefs()))
+                  return Effect.void
                 }),
-                () =>
-                  Effect.sync(() => {
-                    fiber.setFiberRefs(FiberRefsPatch.patch(revert, fiber.id(), fiber.getFiberRefs()))
-                  })
+                context
               )
             })
           ),
@@ -171,13 +170,7 @@ export const make: <
   return identity<LayerMap<K, Exclude<I, Scope.Scope>, any>>({
     [TypeId]: TypeId,
     rcMap,
-    get: (key) =>
-      Layer.unwrapScoped(
-        Effect.map(
-          RcMap.get(rcMap, key),
-          (_) => _.layer
-        )
-      ),
+    get: (key) => Layer.unwrapScoped(Effect.map(RcMap.get(rcMap, key), ({ layer }) => layer)),
     runtime: (key) => Effect.flatMap(RcMap.get(rcMap, key), ({ runtimeEffect }) => runtimeEffect),
     invalidate: (key) => RcMap.invalidate(rcMap, key)
   })
