@@ -2412,17 +2412,15 @@ describe("Schema", () => {
   })
 
   it("withDecodingDefault", () => {
-    S.Struct({
-      a: S.optional(S.String).pipe(
+    when(S.Struct).isCalledWith({
+      a: when(S.optional(S.String).pipe).isCalledWith(
         S.withConstructorDefault(() => undefined),
-        // @ts-expect-error
-        S.withDecodingDefault(() => "")
+        expect(S.withDecodingDefault).type.not.toBeCallableWith(() => "")
       )
     })
-    S.Struct({
-      a: S.optional(S.String).pipe(
-        // @ts-expect-error
-        S.withDecodingDefault(() => undefined)
+    when(S.Struct).isCalledWith({
+      a: when(S.optional(S.String).pipe).isCalledWith(
+        expect(S.withDecodingDefault).type.not.toBeCallableWith(() => undefined)
       )
     })
     expect(
@@ -2435,12 +2433,10 @@ describe("Schema", () => {
   })
 
   it("withDefaults", () => {
-    S.Struct({
-      a: S.optional(S.String).pipe(
-        S.withDefaults({
-          // @ts-expect-error
+    when(S.Struct).isCalledWith({
+      a: when(S.optional(S.String).pipe).isCalledWith(
+        expect(S.withDefaults).type.not.toBeCallableWith({
           decoding: () => undefined,
-          // @ts-expect-error
           constructor: () => undefined
         })
       )
@@ -2753,9 +2749,8 @@ describe("Schema", () => {
         // should allow generic context
         const _f1 = <A extends string>(schema: S.Schema<A>) => schema.pipe(S.maxLength(5))
         const _f2 = <A extends string>(schema: S.Schema<A>) =>
-          schema.pipe(
-            // @ts-expect-error: Type 'string' is not assignable to type 'number'
-            S.greaterThan(5)
+          when(schema.pipe).isCalledWith(
+            expect(S.greaterThan).type.not.toBeCallableWith(5)
           )
         // should allow string subtypes
         pipe(
@@ -3540,12 +3535,8 @@ describe("Schema", () => {
       >(schema: S.Schema<A, I>) => S.DataFromSelf(schema)
       const _f3 = <A extends Readonly<Record<string, unknown>> | ReadonlyArray<unknown>, I extends number>(
         schema: S.Schema<A, I>
-      ) =>
-        // @ts-expect-error: Type 'number' is not assignable to type 'Readonly<Record<string, unknown>>'
-        S.DataFromSelf(schema)
-      const _f4 = <A extends string>(schema: S.Schema<A>) =>
-        // @ts-expect-error: Type 'string' is not assignable to type 'Readonly<Record<string, unknown>>'
-        S.DataFromSelf(schema)
+      ) => expect(S.DataFromSelf).type.not.toBeCallableWith(schema)
+      const _f4 = <A extends string>(schema: S.Schema<A>) => expect(S.DataFromSelf).type.not.toBeCallableWith(schema)
 
       // should allow mutable arguments
       S.DataFromSelf(S.mutable(S.Struct({ a: S.NumberFromString })))
@@ -4105,8 +4096,7 @@ describe("Schema", () => {
     })
 
     it("head", () => {
-      // @ts-expect-error: Type 'string' is not assignable to type 'readonly unknown[]'
-      S.String.pipe(S.head)
+      expect(S.String.pipe).type.not.toBeCallableWith(S.head)
 
       const schema = S.head(S.Array(S.NumberFromString))
 
@@ -4120,8 +4110,7 @@ describe("Schema", () => {
     })
 
     it("headNonEmpty", () => {
-      // @ts-expect-error: Type 'string' is not assignable to type 'readonly [unknown, ...unknown[]]'
-      S.String.pipe(S.headNonEmpty)
+      expect(S.String.pipe).type.not.toBeCallableWith(S.headNonEmpty)
 
       const schema = S.headNonEmpty(S.NonEmptyArray(S.Number))
       expect(S.asSchema(schema)).type.toBe<S.Schema<number, readonly [number, ...Array<number>]>>()
@@ -4134,8 +4123,7 @@ describe("Schema", () => {
     })
 
     it("headOrElse", () => {
-      // @ts-expect-error: Type 'string' is not assignable to type 'readonly unknown[]'
-      S.String.pipe(S.headOrElse())
+      expect(S.String.pipe).type.not.toBeCallableWith(S.headOrElse())
       expect(S.headOrElse).type.not.toBeCallableWith(S.Array(S.Number), () => "a")
       when(S.Array(S.Number).pipe).isCalledWith(expect(S.headOrElse).type.not.toBeCallableWith(() => "a"))
 
