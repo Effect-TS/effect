@@ -99,7 +99,7 @@ export interface LayerMap<in K, in out I, out E = never> {
  *   yield* Effect.log(yield* greeter.greet)
  * }).pipe(
  *   // use the GreeterMap service to provide a variant of the Greeter service
- *   Effect.provide(GreeterMap.get("John")),
+ *   Effect.provide(GreeterMap.get("John").pipe(Layer.provide(GreeterMap.Default))),
  *   NodeRuntime.runMain
  * )
  * ```
@@ -236,17 +236,7 @@ export interface TagClass<
   /**
    * Retrieves a Layer for the resources associated with the key.
    */
-  readonly get: (key: K) => Layer.Layer<
-    I,
-    E | (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never),
-    | Exclude<R, (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _A : never)>
-    | (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _R : never)
-  >
-
-  /**
-   * Retrieves a Layer for the resources associated with the key.
-   */
-  readonly getNoDeps: (key: K) => Layer.Layer<I, E, R>
+  readonly get: (key: K) => Layer.Layer<I, E, Self>
 
   /**
    * Retrieves a Runtime for the resources associated with the key.
@@ -300,7 +290,7 @@ export interface TagClass<
  *   yield* Effect.log(yield* greeter.greet)
  * }).pipe(
  *   // use the GreeterMap service to provide a variant of the Greeter service
- *   Effect.provide(GreeterMap.get("John")),
+ *   Effect.provide(GreeterMap.get("John").pipe(Layer.provide(GreeterMap.Default))),
  *   NodeRuntime.runMain
  * )
  * ```
@@ -357,9 +347,7 @@ export const Service = <Self>() =>
     Layer.provide(TagClass_.DefaultWithoutDependencies, options.dependencies as any) :
     TagClass_.DefaultWithoutDependencies
 
-  const makeLayer = (key: string) => Layer.unwrapScoped(Effect.map(TagClass_, (layerMap) => layerMap.get(key)))
-  TagClass_.getNoDeps = (key: string) => Layer.provide(makeLayer(key), TagClass_.DefaultWithoutDependencies) as any
-  TagClass_.get = (key: string) => Layer.provide(makeLayer(key), TagClass_.Default)
+  TagClass_.get = (key: string) => Layer.unwrapScoped(Effect.map(TagClass_, (layerMap) => layerMap.get(key)))
   TagClass_.runtime = (key: string) => Effect.flatMap(TagClass_, (layerMap) => layerMap.runtime(key))
   TagClass_.invalidate = (key: string) => Effect.flatMap(TagClass_, (layerMap) => layerMap.invalidate(key))
 
