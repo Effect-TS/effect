@@ -2,4 +2,4 @@
 "@effect/sql": patch
 ---
 
-Fix failing transform tests
+Fix sql transforms when executing multiple statements
