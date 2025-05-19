@@ -27,6 +27,23 @@ describe("Model", () => {
       Effect.catchTag("ContainerError", () => Effect.void)
     ), { timeout: 60_000 })
 
+  it.effect("insert returns result with transforms", () =>
+    Effect.gen(function*() {
+      const repo = yield* Model.makeRepository(User, {
+        tableName: "users",
+        idColumn: "id",
+        spanPrefix: "UserRepository"
+      })
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), age INT)`
+
+      const result = yield* repo.insert(User.insert.make({ name: "Alice", age: 30 }))
+      assert.deepStrictEqual(result, new User({ id: 1, name: "Alice", age: 30 }))
+    }).pipe(
+      Effect.provide(MysqlContainer.ClientWithTransformsLive),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), { timeout: 60_000 })
+
   it.effect("insertVoid", () =>
     Effect.gen(function*() {
       const repo = yield* Model.makeRepository(User, {
@@ -106,6 +123,24 @@ describe("Model", () => {
       assert.deepStrictEqual(result, new User({ id: 1, name: "Bob", age: 30 }))
     }).pipe(
       Effect.provide(MysqlContainer.ClientLive),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), { timeout: 60_000 })
+
+  it.effect("update returns result with transforms", () =>
+    Effect.gen(function*() {
+      const repo = yield* Model.makeRepository(User, {
+        tableName: "users",
+        idColumn: "id",
+        spanPrefix: "UserRepository"
+      })
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), age INT)`
+
+      let result = yield* repo.insert(User.insert.make({ name: "Alice", age: 30 }))
+      result = yield* repo.update(User.update.make({ ...result, name: "Bob" }))
+      assert.deepStrictEqual(result, new User({ id: 1, name: "Bob", age: 30 }))
+    }).pipe(
+      Effect.provide(MysqlContainer.ClientWithTransformsLive),
       Effect.catchTag("ContainerError", () => Effect.void)
     ), { timeout: 60_000 })
 })
