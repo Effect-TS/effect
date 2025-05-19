@@ -949,11 +949,17 @@ export const defaultTransforms = (
     const newRows: Array<A> = new Array(rows.length)
     for (let i = 0, len = rows.length; i < len; i++) {
       const row = rows[i]
-      const obj: any = {}
-      for (const key in row) {
-        obj[transformer(key)] = transformValue(row[key])
+      if (Array.isArray(row)) {
+        newRows[i] = transformArrayNested(row) as any
+      } else if (typeof row === "object" && row !== null) {
+        const obj: any = {}
+        for (const key in row) {
+          obj[transformer(key)] = transformValue(row[key])
+        }
+        newRows[i] = obj
+      } else {
+        newRows[i] = transformValue(row)
       }
-      newRows[i] = obj
     }
     return newRows
   }
