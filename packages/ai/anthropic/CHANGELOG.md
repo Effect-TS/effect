@@ -1,5 +1,16 @@
 # @effect/ai-anthropic
 
+## 0.6.5
+
+### Patch Changes
+
+- [#4899](https://github.com/Effect-TS/effect/pull/4899) [`0a8c0e7`](https://github.com/Effect-TS/effect/commit/0a8c0e762af96d5dbf323d495a06647f39797674) Thanks @alex-dixon! - fix: anthropic tag name
+
+- Updated dependencies [[`d45e8a8`](https://github.com/Effect-TS/effect/commit/d45e8a8ac8227192f504e39e6d04fdcf4fb1d225), [`d13b68e`](https://github.com/Effect-TS/effect/commit/d13b68e3a9456d0bfee9bca8273a7b44a9c69087)]:
+  - @effect/platform@0.82.4
+  - @effect/ai@0.16.5
+  - @effect/experimental@0.46.4
+
 ## 0.6.4
 
 ### Patch Changes
