@@ -1309,6 +1309,7 @@ export const remove: {
  *
  * @example
  * ```ts
+ * import * as assert from "node:assert"
  * import { Array, Option } from "effect"
  *
  * const numbers = [1, 2, 3, 4]
