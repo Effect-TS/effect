@@ -13332,15 +13332,36 @@ export const transposeOption = <A = never, E = never, R = never>(
  * @since 3.14.0
  * @category Optional Wrapping & Unwrapping
  */
-export const transposeMapOption = dual<
+export const transposeMapOption: {
+  <A, B, E = never, R = never>(
+    f: (self: A) => Effect<Option.Option<B>, E, R>
+  ): (self: Option.Option<A>) => Effect<Option.Option<B>, E, R>
+  <A, B, E = never, R = never>(
+    self: Option.Option<A>,
+    f: (self: A) => Effect<Option.Option<B>, E, R>
+  ): Effect<Option.Option<B>, E, R>
   <A, B, E = never, R = never>(
     f: (self: A) => Effect<B, E, R>
-  ) => (self: Option.Option<A>) => Effect<Option.Option<B>, E, R>,
+  ): (self: Option.Option<A>) => Effect<Option.Option<B>, E, R>
   <A, B, E = never, R = never>(
     self: Option.Option<A>,
     f: (self: A) => Effect<B, E, R>
+  ): Effect<Option.Option<B>, E, R>
+} = dual<
+  <A, B, E = never, R = never>(
+    f: (self: A) => Effect<B | Option.Option<B>, E, R>
+  ) => (self: Option.Option<A>) => Effect<Option.Option<B>, E, R>,
+  <A, B, E = never, R = never>(
+    self: Option.Option<A>,
+    f: (self: A) => Effect<B | Option.Option<B>, E, R>
   ) => Effect<Option.Option<B>, E, R>
->(2, (self, f) => option_.isNone(self) ? succeedNone : map(f(self.value), option_.some))
+>(
+  2,
+  (self, f) =>
+    option_.isNone(self) ?
+      succeedNone :
+      map(f(self.value), (value) => option_.isOption(value) ? value : option_.some(value))
+)
 
 /**
  * @since 2.0.0

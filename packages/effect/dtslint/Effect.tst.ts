@@ -1473,6 +1473,40 @@ describe("Effect", () => {
     )).type.toBe<
       Effect.Effect<Option.Option<string>, "err-1", "dep-1">
     >()
+
+    expect(Effect.transposeMapOption(Option.none(), (value) => {
+      expect(value).type.toBe<never>()
+      return Effect.succeedSome(primitiveNumber)
+    })).type.toBe<
+      Effect.Effect<Option.Option<number>>
+    >()
+    expect(pipe(
+      Option.none(),
+      Effect.transposeMapOption((value) => {
+        expect(value).type.toBe<never>()
+        return Effect.succeedSome(primitiveNumber)
+      })
+    )).type.toBe<
+      Effect.Effect<Option.Option<number>>
+    >()
+    expect(pipe(
+      Option.some(42),
+      Effect.transposeMapOption((value) => {
+        expect(value).type.toBe<number>()
+        return Effect.succeedSome(primitiveNumberOrString)
+      })
+    )).type.toBe<
+      Effect.Effect<Option.Option<number | string>>
+    >()
+    expect(pipe(
+      Option.some(42),
+      Effect.transposeMapOption((value) => {
+        expect(value).type.toBe<number>()
+        return Effect.succeedNone
+      })
+    )).type.toBe<
+      Effect.Effect<Option.Option<never>>
+    >()
   })
 
   it("fn", () => {
