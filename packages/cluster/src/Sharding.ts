@@ -36,7 +36,7 @@ import {
   RunnerUnavailable
 } from "./ClusterError.js"
 import { Persisted } from "./ClusterSchema.js"
-import type { CurrentAddress, Entity, HandlersFrom } from "./Entity.js"
+import type { CurrentAddress, CurrentRunnerAddress, Entity, HandlersFrom } from "./Entity.js"
 import { EntityAddress } from "./EntityAddress.js"
 import { EntityId } from "./EntityId.js"
 import type { EntityType } from "./EntityType.js"
@@ -104,7 +104,11 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
       readonly concurrency?: number | "unbounded" | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
     }
-  ) => Effect.Effect<void, never, Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | Exclude<RX, Scope.Scope | CurrentAddress>>
+  ) => Effect.Effect<
+    void,
+    never,
+    Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | Exclude<RX, Scope.Scope | CurrentAddress | CurrentRunnerAddress>
+  >
 
   /**
    * Registers a new singleton with the runner.
