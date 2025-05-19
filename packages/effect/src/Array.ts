@@ -1257,8 +1257,15 @@ export const modify: {
   ): ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
 } = dual(
   3,
-  <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Array<A | B> =>
-    Option.getOrElse(modifyOption(self, i, f), () => Array.from(self))
+  <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Array<A | B> => {
+    const out: Array<A | B> = Array.from(self)
+    if (isOutOfBounds(i, out)) {
+      return out
+    }
+    const b = f(out[i] as A)
+    out[i] = b
+    return out
+  }
 )
 
 /**
@@ -1291,11 +1298,11 @@ export const modifyOption: {
     f: (a: ReadonlyArray.Infer<S>) => B
   ): Option.Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
 } = dual(3, <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Option.Option<Array<A | B>> => {
-  const arr = Array.from(self)
+  const arr = fromIterable(self)
   if (isOutOfBounds(i, arr)) {
     return Option.none()
   }
-  const out: Array<A | B> = arr
+  const out: Array<A | B> = Array.isArray(self) ? self.slice() : arr
   const b = f(arr[i])
   out[i] = b
   return Option.some(out)
@@ -1330,6 +1337,38 @@ export const remove: {
   }
   out.splice(i, 1)
   return out
+})
+
+/**
+ * Delete the element at the specified index, creating a new `Array`,
+ * or return `None` if the index is out of bounds.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Array, Option } from "effect"
+ *
+ * const numbers = [1, 2, 3, 4]
+ * const result = Array.removeOption(numbers, 2)
+ * assert.deepStrictEqual(result, Option.some([1, 2, 4]))
+ *
+ * const outOfBoundsResult = Array.removeOption(numbers, 5)
+ * assert.deepStrictEqual(outOfBoundsResult, Option.none())
+ * ```
+ *
+ * @since 3.16.0
+ */
+export const removeOption: {
+  (i: number): <A>(self: Iterable<A>) => Option.Option<Array<A>>
+  <A>(self: Iterable<A>, i: number): Option.Option<Array<A>>
+} = dual(2, <A>(self: Iterable<A>, i: number): Option.Option<Array<A>> => {
+  const arr = fromIterable(self)
+  if (isOutOfBounds(i, arr)) {
+    return Option.none()
+  }
+  const out = Array.isArray(self) ? self.slice() : arr
+  out.splice(i, 1)
+  return Option.some(out)
 })
 
 /**
