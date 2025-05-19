@@ -1238,7 +1238,24 @@ export const remove: {
   <A>(self: Chunk<A>, i: number): Chunk<A>
 } = dual(
   2,
-  <A>(self: Chunk<A>, i: number): Chunk<A> => unsafeFromArray(RA.remove(toReadonlyArray(self), i))
+  <A>(self: Chunk<A>, i: number): Chunk<A> => {
+    if (i < 0 || i >= self.length) return self
+    return unsafeFromArray(RA.remove(toReadonlyArray(self), i))
+  }
+)
+
+/**
+ * @since 3.16.0
+ */
+export const removeOption: {
+  (i: number): <A>(self: Chunk<A>) => Option<Chunk<A>>
+  <A>(self: Chunk<A>, i: number): Option<Chunk<A>>
+} = dual(
+  2,
+  <A>(self: Chunk<A>, i: number): Option<Chunk<A>> => {
+    if (i < 0 || i >= self.length) return O.none()
+    return O.some(unsafeFromArray(RA.remove(toReadonlyArray(self), i)))
+  }
 )
 
 /**
@@ -1249,8 +1266,10 @@ export const modifyOption: {
   <A, B>(self: Chunk<A>, i: number, f: (a: A) => B): Option<Chunk<A | B>>
 } = dual(
   3,
-  <A, B>(self: Chunk<A>, i: number, f: (a: A) => B): Option<Chunk<A | B>> =>
-    O.map(RA.modifyOption(toReadonlyArray(self), i, f), unsafeFromArray)
+  <A, B>(self: Chunk<A>, i: number, f: (a: A) => B): Option<Chunk<A | B>> => {
+    if (i < 0 || i >= self.length) return O.none()
+    return O.some(unsafeFromArray(RA.modify(toReadonlyArray(self), i, f)))
+  }
 )
 
 /**
