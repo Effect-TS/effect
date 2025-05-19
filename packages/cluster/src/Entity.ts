@@ -35,7 +35,7 @@ import { ResourceMap } from "./internal/resourceMap.js"
 import type * as Reply from "./Reply.js"
 import { RunnerAddress } from "./RunnerAddress.js"
 import * as ShardId from "./ShardId.js"
-import { Sharding } from "./Sharding.js"
+import type { Sharding } from "./Sharding.js"
 import { ShardingConfig } from "./ShardingConfig.js"
 import * as Snowflake from "./Snowflake.js"
 
@@ -482,7 +482,7 @@ export const makeTestClient: <Rpcs extends Rpc.Any, LA, LE, LR>(
       Scope | CurrentAddress
     >
   }>()
-  const sharding = Sharding.of({
+  const sharding = shardingTag.of({
     ...({} as Sharding["Type"]),
     registerEntity: (entity, handlers, options) =>
       Effect.contextWith((context) => {
@@ -498,7 +498,7 @@ export const makeTestClient: <Rpcs extends Rpc.Any, LA, LE, LR>(
         })
       })
   })
-  yield* Layer.build(Layer.provide(layer, Layer.succeed(Sharding, sharding)))
+  yield* Layer.build(Layer.provide(layer, Layer.succeed(shardingTag, sharding)))
   const entityEntry = entityMap.get(entity.type)
   if (!entityEntry) {
     return yield* Effect.dieMessage(`Entity.makeTestClient: ${entity.type} was not registered by layer`)
