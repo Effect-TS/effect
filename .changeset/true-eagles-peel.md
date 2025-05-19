@@ -36,13 +36,17 @@ class GreeterMap extends LayerMap.Service<GreeterMap>()("GreeterMap", {
 }) {}
 
 // usage
-Effect.gen(function* () {
-  // access and use the Greeter service
-  const greeter = yield* Greeter
-  yield* Effect.log(yield* greeter.greet)
-}).pipe(
+const program: Effect.Effect<void, never, GreeterMap> = Effect.gen(
+  function* () {
+    // access and use the Greeter service
+    const greeter = yield* Greeter
+    yield* Effect.log(yield* greeter.greet)
+  }
+).pipe(
   // use the GreeterMap service to provide a variant of the Greeter service
-  Effect.provide(GreeterMap.get("John")),
-  NodeRuntime.runMain
+  Effect.provide(GreeterMap.get("John"))
 )
+
+// run the program
+program.pipe(Effect.provide(GreeterMap.Default), NodeRuntime.runMain)
 ```

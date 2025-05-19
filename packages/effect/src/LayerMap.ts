@@ -68,7 +68,7 @@ export interface LayerMap<in K, in out I, out E = never> {
  *
  * ```ts
  * import { NodeRuntime } from "@effect/platform-node"
- * import { Context, Effect, Layer, LayerMap } from "effect"
+ * import { Context, Effect, FiberRef, Layer, LayerMap } from "effect"
  *
  * class Greeter extends Context.Tag("Greeter")<Greeter, {
  *   greet: Effect.Effect<string>
@@ -83,7 +83,9 @@ export interface LayerMap<in K, in out I, out E = never> {
  *   lookup: (name: string) =>
  *     Layer.succeed(Greeter, {
  *       greet: Effect.succeed(`Hello, ${name}!`)
- *     }),
+ *     }).pipe(
+ *       Layer.merge(Layer.locallyScoped(FiberRef.currentConcurrency, 123))
+ *     ),
  *
  *   // If a layer is not used for a certain amount of time, it can be removed
  *   idleTimeToLive: "5 seconds",
@@ -93,13 +95,18 @@ export interface LayerMap<in K, in out I, out E = never> {
  * }) {}
  *
  * // usage
- * Effect.gen(function*() {
+ * const program: Effect.Effect<void, never, GreeterMap> = Effect.gen(function*() {
  *   // access and use the Greeter service
  *   const greeter = yield* Greeter
  *   yield* Effect.log(yield* greeter.greet)
  * }).pipe(
  *   // use the GreeterMap service to provide a variant of the Greeter service
- *   Effect.provide(GreeterMap.get("John").pipe(Layer.provide(GreeterMap.Default))),
+ *   Effect.provide(GreeterMap.get("John"))
+ * )
+ *
+ * // run the program
+ * program.pipe(
+ *   Effect.provide(GreeterMap.Default),
  *   NodeRuntime.runMain
  * )
  * ```
@@ -252,7 +259,7 @@ export interface TagClass<
  *
  * ```ts
  * import { NodeRuntime } from "@effect/platform-node"
- * import { Context, Effect, Layer, LayerMap } from "effect"
+ * import { Context, Effect, FiberRef, Layer, LayerMap } from "effect"
  *
  * class Greeter extends Context.Tag("Greeter")<Greeter, {
  *   greet: Effect.Effect<string>
@@ -267,7 +274,9 @@ export interface TagClass<
  *   lookup: (name: string) =>
  *     Layer.succeed(Greeter, {
  *       greet: Effect.succeed(`Hello, ${name}!`)
- *     }),
+ *     }).pipe(
+ *       Layer.merge(Layer.locallyScoped(FiberRef.currentConcurrency, 123))
+ *     ),
  *
  *   // If a layer is not used for a certain amount of time, it can be removed
  *   idleTimeToLive: "5 seconds",
@@ -277,13 +286,18 @@ export interface TagClass<
  * }) {}
  *
  * // usage
- * Effect.gen(function*() {
+ * const program: Effect.Effect<void, never, GreeterMap> = Effect.gen(function*() {
  *   // access and use the Greeter service
  *   const greeter = yield* Greeter
  *   yield* Effect.log(yield* greeter.greet)
  * }).pipe(
  *   // use the GreeterMap service to provide a variant of the Greeter service
- *   Effect.provide(GreeterMap.get("John").pipe(Layer.provide(GreeterMap.Default))),
+ *   Effect.provide(GreeterMap.get("John"))
+ * )
+ *
+ * // run the program
+ * program.pipe(
+ *   Effect.provide(GreeterMap.Default),
  *   NodeRuntime.runMain
  * )
  * ```
