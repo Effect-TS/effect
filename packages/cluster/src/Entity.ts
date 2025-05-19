@@ -2,8 +2,9 @@
  * @since 1.0.0
  */
 import type * as Rpc from "@effect/rpc/Rpc"
-import type * as RpcClient from "@effect/rpc/RpcClient"
+import * as RpcClient from "@effect/rpc/RpcClient"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
+import * as RpcServer from "@effect/rpc/RpcServer"
 import * as Arr from "effect/Array"
 import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
@@ -17,7 +18,7 @@ import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import type { Scope } from "effect/Scope"
+import { Scope } from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type {
   AlreadyProcessingMessage,
@@ -25,12 +26,18 @@ import type {
   MailboxFull,
   PersistenceError
 } from "./ClusterError.js"
-import type { EntityAddress } from "./EntityAddress.js"
+import { EntityAddress } from "./EntityAddress.js"
+import type { EntityId } from "./EntityId.js"
 import { EntityType } from "./EntityType.js"
-import type * as Envelope from "./Envelope.js"
+import * as Envelope from "./Envelope.js"
+import { hashString } from "./internal/hash.js"
+import { ResourceMap } from "./internal/resourceMap.js"
 import type * as Reply from "./Reply.js"
-import type { RunnerAddress } from "./RunnerAddress.js"
+import { RunnerAddress } from "./RunnerAddress.js"
+import * as ShardId from "./ShardId.js"
 import type { Sharding } from "./Sharding.js"
+import { ShardingConfig } from "./ShardingConfig.js"
+import * as Snowflake from "./Snowflake.js"
 
 /**
  * @since 1.0.0
@@ -149,7 +156,7 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
   ): Layer.Layer<
     never,
     never,
-    | Exclude<RX, Scope | CurrentAddress>
+    | Exclude<RX, Scope | CurrentAddress | CurrentRunnerAddress>
     | R
     | Rpc.Context<Rpcs>
     | Rpc.Middleware<Rpcs>
@@ -217,7 +224,7 @@ const Proto = {
   ): Layer.Layer<
     never,
     never,
-    | Exclude<RX, Scope | CurrentAddress>
+    | Exclude<RX, Scope | CurrentAddress | CurrentRunnerAddress>
     | RpcGroup.HandlersContext<Rpcs, Handlers>
     | Rpc.Context<Rpcs>
     | Rpc.Middleware<Rpcs>
@@ -446,3 +453,97 @@ export class Request<Rpc extends Rpc.Any> extends Data.Class<
 }
 
 const shardingTag = Context.GenericTag<Sharding, Sharding["Type"]>("@effect/cluster/Sharding")
+
+/**
+ * @since 1.0.0
+ * @category Testing
+ */
+export const makeTestClient: <Rpcs extends Rpc.Any, LA, LE, LR>(
+  entity: Entity<Rpcs>,
+  layer: Layer.Layer<LA, LE, LR>
+) => Effect.Effect<
+  (entityId: string) => Effect.Effect<RpcClient.RpcClient<Rpcs>>,
+  LE,
+  Scope | ShardingConfig | Exclude<LR, Sharding> | Rpc.MiddlewareClient<Rpcs>
+> = Effect.fnUntraced(function*<Rpcs extends Rpc.Any, LA, LE, LR>(
+  entity: Entity<Rpcs>,
+  layer: Layer.Layer<LA, LE, LR>
+) {
+  const config = yield* ShardingConfig
+  const makeShardId = (entityId: string) => ShardId.make((Math.abs(hashString(entityId) % config.numberOfShards)) + 1)
+  const snowflakeGen = yield* Snowflake.makeGenerator
+  const runnerAddress = new RunnerAddress({ host: "localhost", port: 3000 })
+  const entityMap = new Map<string, {
+    readonly context: Context.Context<Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | LR>
+    readonly concurrency: number | "unbounded"
+    readonly build: Effect.Effect<
+      Context.Context<Rpc.ToHandler<Rpcs>>,
+      never,
+      Scope | CurrentAddress
+    >
+  }>()
+  const sharding = shardingTag.of({
+    ...({} as Sharding["Type"]),
+    registerEntity: (entity, handlers, options) =>
+      Effect.contextWith((context) => {
+        entityMap.set(entity.type, {
+          context: context as any,
+          concurrency: options?.concurrency ?? 1,
+          build: entity.protocol.toHandlersContext(handlers).pipe(
+            Effect.provide(context.pipe(
+              Context.add(CurrentRunnerAddress, runnerAddress),
+              Context.omit(Scope)
+            ))
+          ) as any
+        })
+      })
+  })
+  yield* Layer.build(Layer.provide(layer, Layer.succeed(shardingTag, sharding)))
+  const entityEntry = entityMap.get(entity.type)
+  if (!entityEntry) {
+    return yield* Effect.dieMessage(`Entity.makeTestClient: ${entity.type} was not registered by layer`)
+  }
+
+  const map = yield* ResourceMap.make(Effect.fnUntraced(function*(entityId: string) {
+    const address = new EntityAddress({
+      entityType: entity.type,
+      entityId: entityId as EntityId,
+      shardId: makeShardId(entityId)
+    })
+    const handlers = yield* entityEntry.build.pipe(
+      Effect.provideService(CurrentAddress, address)
+    )
+
+    // eslint-disable-next-line prefer-const
+    let client!: Effect.Effect.Success<ReturnType<typeof RpcClient.makeNoSerialization<Rpcs, never>>>
+    const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
+      concurrency: entityEntry.concurrency,
+      onFromServer(response) {
+        return client.write(response)
+      }
+    }).pipe(Effect.provide(handlers))
+
+    client = yield* RpcClient.makeNoSerialization(entity.protocol, {
+      supportsAck: true,
+      generateRequestId: () => snowflakeGen.unsafeNext() as any,
+      onFromClient({ message }) {
+        if (message._tag === "Request") {
+          return server.write(0, {
+            ...message,
+            payload: new Request({
+              ...message,
+              [Envelope.TypeId]: Envelope.TypeId,
+              address,
+              requestId: Snowflake.Snowflake(message.id),
+              lastSentChunk: Option.none()
+            }) as any
+          })
+        }
+        return server.write(0, message)
+      }
+    })
+    return client.client
+  }))
+
+  return (entityId: string) => map.get(entityId)
+})
