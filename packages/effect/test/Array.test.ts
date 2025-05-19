@@ -1259,6 +1259,11 @@ describe("Array", () => {
     deepStrictEqual(Arr.sortWith(arr, (x) => x.b, Order.number), [{ a: "b", b: 1 }, { a: "a", b: 2 }])
   })
 
+  it("countBy", () => {
+    deepStrictEqual(Arr.countBy([1, 2, 3, 4, 5], (n) => n % 2 === 0), 2)
+    deepStrictEqual(pipe([1, 2, 3, 4, 5], Arr.countBy((n) => n % 2 === 0)), 2)
+  })
+
   it("Do notation", () => {
     const _do = Arr.Do
     deepStrictEqual(_do, Arr.of({}))

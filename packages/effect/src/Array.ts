@@ -1107,6 +1107,42 @@ export const findLast: {
 )
 
 /**
+ * Counts all the element of the given array that pass the given predicate
+ *
+ * **Example**
+ *
+ * ```ts
+ * import { Array } from "effect"
+ *
+ * const result = Array.countBy([1, 2, 3, 4, 5], n => n % 2 === 0)
+ * console.log(result) // 2
+ * ```
+ *
+ * @category folding
+ * @since 3.16.0
+ */
+export const countBy: {
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => number
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): number
+} = dual(
+  2,
+  <A>(
+    self: Iterable<A>,
+    f: (a: A, i: number) => boolean
+  ): number => {
+    let count = 0
+    const as = fromIterable(self)
+    for (let i = 0; i < as.length; i++) {
+      const a = as[i]
+      if (f(a, i)) {
+        count++
+      }
+    }
+    return count
+  }
+)
+
+/**
  * Insert an element at the specified index, creating a new `NonEmptyArray`,
  * or return `None` if the index is out of bounds.
  *

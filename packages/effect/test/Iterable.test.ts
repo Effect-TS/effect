@@ -451,4 +451,11 @@ describe("Iterable", () => {
     Iter.forEach(["a", "b", "c"], (a, i) => log.push(`${a}-${i}`))
     deepStrictEqual(log, ["a-0", "b-1", "c-2"])
   })
+
+  it("countBy", () => {
+    deepStrictEqual(Iter.countBy([1, 2, 3, 4, 5], (n) => n % 2 === 0), 2)
+    deepStrictEqual(pipe([1, 2, 3, 4, 5], Iter.countBy((n) => n % 2 === 0)), 2)
+
+    deepStrictEqual(Iter.countBy(new Map([["a", 1], ["b", 2], ["c", 3]]), ([key, n]) => n % 2 === 1 && key !== "c"), 1)
+  })
 })
