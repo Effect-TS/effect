@@ -9,7 +9,7 @@ class User extends Model.Class<User>("User")({
   age: Schema.Int
 }) {}
 
-describe.concurrent("Model", () => {
+describe("Model", () => {
   it.effect("insert returns result", () =>
     Effect.gen(function*() {
       const repo = yield* Model.makeRepository(User, {
