@@ -1221,8 +1221,15 @@ export const modify: {
   ): ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
 } = dual(
   3,
-  <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Array<A | B> =>
-    Option.getOrElse(modifyOption(self, i, f), () => Array.from(self))
+  <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Array<A | B> => {
+    const out: Array<A | B> = Array.from(self)
+    if (isOutOfBounds(i, out)) {
+      return out
+    }
+    const b = f(out[i] as A)
+    out[i] = b
+    return out
+  }
 )
 
 /**
@@ -1255,11 +1262,11 @@ export const modifyOption: {
     f: (a: ReadonlyArray.Infer<S>) => B
   ): Option.Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
 } = dual(3, <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Option.Option<Array<A | B>> => {
-  const arr = Array.from(self)
+  const arr = fromIterable(self)
   if (isOutOfBounds(i, arr)) {
     return Option.none()
   }
-  const out: Array<A | B> = arr
+  const out: Array<A | B> = Array.isArray(self) ? self.slice() : arr
   const b = f(arr[i])
   out[i] = b
   return Option.some(out)
@@ -1318,10 +1325,11 @@ export const removeOption: {
   (i: number): <A>(self: Iterable<A>) => Option.Option<Array<A>>
   <A>(self: Iterable<A>, i: number): Option.Option<Array<A>>
 } = dual(2, <A>(self: Iterable<A>, i: number): Option.Option<Array<A>> => {
-  const out = Array.from(self)
-  if (isOutOfBounds(i, out)) {
+  const arr = fromIterable(self)
+  if (isOutOfBounds(i, arr)) {
     return Option.none()
   }
+  const out = Array.isArray(self) ? self.slice() : arr
   out.splice(i, 1)
   return Option.some(out)
 })
