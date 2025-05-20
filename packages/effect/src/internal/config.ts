@@ -210,7 +210,7 @@ export const port = (name?: string): Config.Config<number> => {
         return Either.left(
           configError.InvalidData(
             [],
-            `Expected an TCP port value but received ${text}`
+            `Expected a network port value but received ${text}`
           )
         )
       }
