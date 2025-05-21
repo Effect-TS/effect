@@ -3239,6 +3239,28 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "$ref": "#/$defs/7a8b06e3-ebc1-4bdd-ab0d-3ec493d96d95"
       })
     })
+
+    it("should escape special characters in the $ref", () => {
+      const input = Schema.Struct({ a: Schema.String })
+      class A extends Schema.Class<A>("~package/name")(input) {}
+      expectJSONSchemaProperty(A, {
+        "$defs": {
+          "~package/name": {
+            "type": "object",
+            "required": [
+              "a"
+            ],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "$ref": "#/$defs/~0package~1name"
+      })
+    })
   })
 
   it("compose", () => {
