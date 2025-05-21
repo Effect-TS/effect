@@ -7,9 +7,8 @@ import { pipeArguments } from "../../Pipeable.js"
 import type * as Schedule from "../../Schedule.js"
 import type * as Scope from "../../Scope.js"
 import * as core from "../core.js"
-import * as circular from "../effect/circular.js"
 import * as metric from "../metric.js"
-import * as schedule from "../schedule.js"
+import * as schedule_ from "../schedule.js"
 
 /** @internal */
 const MetricPollingSymbolKey = "effect/MetricPolling"
@@ -84,7 +83,7 @@ export const launch = dual<
   pipe(
     pollAndUpdate(self),
     core.zipRight(metric.value(self.metric)),
-    circular.scheduleForked(schedule)
+    schedule_.scheduleForked(schedule)
   ))
 
 /** @internal */
@@ -114,7 +113,7 @@ export const retry = dual<
     return pipeArguments(this, arguments)
   },
   metric: self.metric,
-  poll: schedule.retry_Effect(self.poll, policy)
+  poll: schedule_.retry_Effect(self.poll, policy)
 }))
 
 /** @internal */
