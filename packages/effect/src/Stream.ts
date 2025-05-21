@@ -9,6 +9,7 @@ import type * as Deferred from "./Deferred.js"
 import type * as Duration from "./Duration.js"
 import type * as Effect from "./Effect.js"
 import type * as Either from "./Either.js"
+import type { ExecutionPlan } from "./ExecutionPlan.js"
 import type * as Exit from "./Exit.js"
 import type { LazyArg } from "./Function.js"
 import type * as GroupBy from "./GroupBy.js"
@@ -4063,11 +4064,27 @@ export const repeatWith: {
  * @category utils
  */
 export const retry: {
-  <E0 extends E, R2, E, X>(
-    schedule: Schedule.Schedule<X, E0, R2>
-  ): <A, R>(self: Stream<A, E, R>) => Stream<A, E, R2 | R>
-  <A, E, R, X, E0 extends E, R2>(self: Stream<A, E, R>, schedule: Schedule.Schedule<X, E0, R2>): Stream<A, E, R | R2>
+  <E, R2, X>(policy: Schedule.Schedule<X, NoInfer<E>, R2>): <A, R>(self: Stream<A, E, R>) => Stream<A, E, R2 | R>
+  <A, E, R, X, R2>(self: Stream<A, E, R>, policy: Schedule.Schedule<X, NoInfer<E>, R2>): Stream<A, E, R2 | R>
 } = internal.retry
+
+/**
+ * Apply an `ExecutionPlan` to the stream, which allows you to fallback to
+ * different resources in case of failure.
+ *
+ * @since 3.16.0
+ * @category Error handling
+ * @experimental
+ */
+export const withExecutionPlan: {
+  <E, R2, Provides = never, PolicyE = never>(
+    policy: ExecutionPlan<Provides, NoInfer<E>, PolicyE, R2>
+  ): <A, R>(self: Stream<A, E, R>) => Stream<A, E | PolicyE, R2 | Exclude<R, Provides>>
+  <A, E, R, R2, Provides = never, PolicyE = never>(
+    self: Stream<A, E, R>,
+    policy: ExecutionPlan<Provides, NoInfer<E>, PolicyE, R2>
+  ): Stream<A, E | PolicyE, R2 | Exclude<R, Provides>>
+} = internal.withExecutionPlan
 
 /**
  * Runs the sink on the stream to produce either the sink's result or an error.

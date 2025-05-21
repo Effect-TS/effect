@@ -8,6 +8,7 @@ import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
+import type * as Fiber from "../Fiber.js"
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
 import * as Option from "../Option.js"
@@ -19,10 +20,12 @@ import type * as Schedule from "../Schedule.js"
 import * as ScheduleDecision from "../ScheduleDecision.js"
 import * as Interval from "../ScheduleInterval.js"
 import * as Intervals from "../ScheduleIntervals.js"
+import type { Scope } from "../Scope.js"
 import type * as Types from "../Types.js"
 import * as internalCause from "./cause.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
+import { forkScoped } from "./effect/circular.js"
 import * as ref from "./ref.js"
 
 /** @internal */
@@ -1836,18 +1839,23 @@ class ScheduleDefect<E> {
 const isScheduleDefect = <E = unknown>(u: unknown): u is ScheduleDefect<E> => hasProperty(u, ScheduleDefectTypeId)
 const scheduleDefectWrap = <A, E, R>(self: Effect.Effect<A, E, R>) =>
   core.catchAll(self, (e) => core.die(new ScheduleDefect(e)))
-const scheduleDefectRefail = <A, E, R>(self: Effect.Effect<A, E, R>) =>
-  core.catchAllCause(self, (cause) =>
-    Option.match(
-      internalCause.find(
-        cause,
-        (_) => internalCause.isDieType(_) && isScheduleDefect<E>(_.defect) ? Option.some(_.defect) : Option.none()
-      ),
-      {
-        onNone: () => core.failCause(cause),
-        onSome: (error) => core.fail(error.error)
-      }
-    ))
+
+/** @internal */
+export const scheduleDefectRefailCause = <E>(cause: Cause.Cause<E>) =>
+  Option.match(
+    internalCause.find(
+      cause,
+      (_) => internalCause.isDieType(_) && isScheduleDefect<E>(_.defect) ? Option.some(_.defect) : Option.none()
+    ),
+    {
+      onNone: () => cause,
+      onSome: (error) => internalCause.fail(error.error)
+    }
+  )
+
+/** @internal */
+export const scheduleDefectRefail = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  core.catchAllCause(effect, (cause) => core.failCause(scheduleDefectRefailCause(cause)))
 
 /** @internal */
 export const repeat_Effect = dual<
@@ -1906,7 +1914,6 @@ export const repeat_combined = dual<{
     const withTimes = options.times ?
       intersect(withUntil, recurs(options.times)).pipe(map((intersectionPair) => intersectionPair[0])) :
       withUntil
-
     return scheduleDefectRefail(repeat_Effect(self, withTimes))
   }
 )
@@ -1987,40 +1994,46 @@ export const retry_combined: {
   ): Effect.Retry.Return<R, E, A, O>
   <A, E, R, B, R1>(
     self: Effect.Effect<A, E, R>,
-    policy: Schedule.Schedule<B, E, R1>
+    policy: Schedule.Schedule<B, Types.NoInfer<E>, R1>
   ): Effect.Effect<A, E, R1 | R>
 } = dual(
   2,
-  (self: Effect.Effect<any, any, any>, options: Effect.Retry.Options<any> | Schedule.Schedule<any, any, any>) => {
+  (
+    self: Effect.Effect<any, any, any>,
+    options: Effect.Retry.Options<any> | Schedule.Schedule<any, any, any>
+  ) => {
     if (isSchedule(options)) {
       return retry_Effect(self, options)
     }
-
-    const base = options.schedule ?? forever
-    const withWhile = options.while ?
-      whileInputEffect(base, (e) => {
-        const applied = options.while!(e)
-        if (typeof applied === "boolean") {
-          return core.succeed(applied)
-        }
-        return scheduleDefectWrap(applied)
-      }) :
-      base
-    const withUntil = options.until ?
-      untilInputEffect(withWhile, (e) => {
-        const applied = options.until!(e)
-        if (typeof applied === "boolean") {
-          return core.succeed(applied)
-        }
-        return scheduleDefectWrap(applied)
-      }) :
-      withWhile
-    const withTimes = options.times ?
-      intersect(withUntil, recurs(options.times)) :
-      withUntil
-    return scheduleDefectRefail(retry_Effect(self, withTimes))
+    return scheduleDefectRefail(retry_Effect(self, fromRetryOptions(options)))
   }
 )
+
+/** @internal */
+export const fromRetryOptions = (options: Effect.Retry.Options<any>): Schedule.Schedule<any, any, any> => {
+  const base = options.schedule ?? forever
+  const withWhile = options.while ?
+    whileInputEffect(base, (e) => {
+      const applied = options.while!(e)
+      if (typeof applied === "boolean") {
+        return core.succeed(applied)
+      }
+      return scheduleDefectWrap(applied)
+    }) :
+    base
+  const withUntil = options.until ?
+    untilInputEffect(withWhile, (e) => {
+      const applied = options.until!(e)
+      if (typeof applied === "boolean") {
+        return core.succeed(applied)
+      }
+      return scheduleDefectWrap(applied)
+    }) :
+    withWhile
+  return options.times ?
+    intersect(withUntil, recurs(options.times)) :
+    withUntil
+}
 
 /** @internal */
 export const retryOrElse_Effect = dual<
@@ -2167,3 +2180,16 @@ export const once: Schedule.Schedule<void> = asVoid(recurs(1))
 
 /** @internal */
 export const stop: Schedule.Schedule<void> = asVoid(recurs(0))
+
+/** @internal */
+export const scheduleForked = dual<
+  <Out, R2>(
+    schedule: Schedule.Schedule<Out, unknown, R2>
+  ) => <A, E, R>(
+    self: Effect.Effect<A, E, R>
+  ) => Effect.Effect<Fiber.RuntimeFiber<Out, E>, never, R | R2 | Scope>,
+  <A, E, R, Out, R2>(
+    self: Effect.Effect<A, E, R>,
+    schedule: Schedule.Schedule<Out, unknown, R2>
+  ) => Effect.Effect<Fiber.RuntimeFiber<Out, E>, never, R | R2 | Scope>
+>(2, (self, schedule) => forkScoped(schedule_Effect(self, schedule)))
