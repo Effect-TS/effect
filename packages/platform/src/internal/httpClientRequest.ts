@@ -1,4 +1,5 @@
 import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
@@ -371,6 +372,10 @@ export const removeHash = (self: ClientRequest.HttpClientRequest): ClientRequest
     self.headers,
     self.body
   )
+
+/** @internal */
+export const toUrl = (self: ClientRequest.HttpClientRequest): Option.Option<URL> =>
+  Either.getRight(UrlParams.makeUrl(self.url, self.urlParams, self.hash))
 
 /** @internal */
 export const setBody = dual<
