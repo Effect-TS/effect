@@ -130,7 +130,7 @@ export const array: <A>(config: Config<A>, name?: string) => Config<Array<A>> = 
 export const boolean: (name?: string) => Config<boolean> = internal.boolean
 
 /**
- * Constructs a config for a TCP port [1,65535].
+ * Constructs a config for a network port [1, 65535].
  *
  * @since 3.16.0
  * @category constructors
