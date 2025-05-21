@@ -555,7 +555,8 @@ const go = (
     const identifier = AST.getJSONIdentifier(ast)
     if (Option.isSome(identifier)) {
       const id = identifier.value
-      const out = { $ref: options.getRef(id) }
+      const escapedId = id.replace(/~/ig, "~0").replace(/\//ig, "~1")
+      const out = { $ref: options.getRef(escapedId) }
       if (!Record.has($defs, id)) {
         $defs[id] = out
         $defs[id] = go(ast, $defs, false, path, options)
