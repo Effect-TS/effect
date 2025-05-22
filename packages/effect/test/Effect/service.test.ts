@@ -196,4 +196,19 @@ describe("Effect.Service", () => {
       const accessorSuccess = yield* Service.bar().pipe(Effect.provide(Service.Default))
       strictEqual(accessorSuccess, "bar")
     }))
+  
+  it.effect("scoped with arguments", () =>
+    Effect.gen(function*() {
+      class Service extends Effect.Service<Service>()("Service", {
+        accessors: true,
+        scoped: (x: number) => Effect.gen(function*() {
+          return {
+            x
+          }
+        })
+      }) {}
+
+      const x = yield* Service.x.pipe(Effect.provide(Service.Default(42)))
+      strictEqual(x, 42)
+    }))
 })
