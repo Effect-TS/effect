@@ -58,7 +58,7 @@ describe("Config", () => {
   it("Config.Success helper type", () => {
     expect(hole<Config.Config.Success<typeof string>>()).type.toBe<string>()
     expect(hole<Config.Config.Success<typeof number>>()).type.toBe<number>()
-    const config = Config.all({ a: string, b: number })
-    expect(hole<Config.Config.Success<typeof config>>()).type.toBe<{ a: string; b: number }>()
+    const _config = Config.all({ a: string, b: number })
+    expect(hole<Config.Config.Success<typeof _config>>()).type.toBe<{ a: string; b: number }>()
   })
 })
