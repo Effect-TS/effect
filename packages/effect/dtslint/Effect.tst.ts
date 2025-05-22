@@ -1473,8 +1473,9 @@ describe("Effect", () => {
     )).type.toBe<
       Effect.Effect<Option.Option<string>, "err-1", "dep-1">
     >()
-
-    expect(Effect.transposeMapOption(Option.none(), (value) => {
+  })
+  it("transposeFlatMapOption", () => {
+    expect(Effect.transposeFlatMapOption(Option.none(), (value) => {
       expect(value).type.toBe<never>()
       return Effect.succeedSome(primitiveNumber)
     })).type.toBe<
@@ -1482,7 +1483,7 @@ describe("Effect", () => {
     >()
     expect(pipe(
       Option.none(),
-      Effect.transposeMapOption((value) => {
+      Effect.transposeFlatMapOption((value) => {
         expect(value).type.toBe<never>()
         return Effect.succeedSome(primitiveNumber)
       })
@@ -1491,7 +1492,7 @@ describe("Effect", () => {
     >()
     expect(pipe(
       Option.some(42),
-      Effect.transposeMapOption((value) => {
+      Effect.transposeFlatMapOption((value) => {
         expect(value).type.toBe<number>()
         return Effect.succeedSome(primitiveNumberOrString)
       })
@@ -1500,7 +1501,7 @@ describe("Effect", () => {
     >()
     expect(pipe(
       Option.some(42),
-      Effect.transposeMapOption((value) => {
+      Effect.transposeFlatMapOption((value) => {
         expect(value).type.toBe<number>()
         return Effect.succeedNone
       })
