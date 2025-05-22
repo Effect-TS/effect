@@ -13340,13 +13340,7 @@ export const transposeMapOption = dual<
     self: Option.Option<A>,
     f: (self: A) => Effect<B, E, R>
   ) => Effect<Option.Option<B>, E, R>
->(
-  2,
-  (self, f) =>
-    option_.isNone(self) ?
-      succeedNone :
-      map(f(self.value), option_.some)
-)
+>(2, (self, f) => option_.isNone(self) ? succeedNone : map(f(self.value), option_.some))
 
 /**
  * Applies an `Effect<Option>` on an `Option` and transposes the result.
