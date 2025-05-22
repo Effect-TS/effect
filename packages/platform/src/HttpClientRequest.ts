@@ -288,6 +288,12 @@ export const removeHash: (self: HttpClientRequest) => HttpClientRequest = intern
  * @since 1.0.0
  * @category combinators
  */
+export const toUrl: (self: HttpClientRequest) => Option.Option<URL> = internal.toUrl
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const setBody: {
   (body: Body.HttpBody): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, body: Body.HttpBody): HttpClientRequest
