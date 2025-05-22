@@ -196,7 +196,7 @@ export const url = (name?: string): Config.Config<URL> => {
 /** @internal */
 export const port = (name?: string): Config.Config<number> => {
   const config = primitive(
-    "an network port property",
+    "a network port property",
     (text) => {
       const result = Number(text)
 

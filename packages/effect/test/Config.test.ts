@@ -109,7 +109,7 @@ describe("Config", () => {
       assertConfigError(
         config,
         [["WEBSITE_PORT", "abra-kadabra"]],
-        ConfigError.InvalidData(["WEBSITE_PORT"], "Expected an network port value but received abra-kadabra")
+        ConfigError.InvalidData(["WEBSITE_PORT"], "Expected a network port value but received abra-kadabra")
       )
       assertConfigError(
         config,
