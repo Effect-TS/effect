@@ -177,8 +177,8 @@ const responseRegistry = globalValue(
   }
 )
 
-const requestControllers = globalValue(
-  "@effect/platform/HttpClient/requestControllers",
+const scopedRequests = globalValue(
+  "@effect/platform/HttpClient/scopedRequests",
   () => new WeakMap<ClientRequest.HttpClientRequest, AbortController>()
 )
 
@@ -194,8 +194,8 @@ export const make = (
   makeWith((effect) =>
     Effect.flatMap(effect, (request) =>
       Effect.withFiberRuntime((fiber) => {
-        const controller = new AbortController()
-        requestControllers.set(request, controller)
+        const scopedController = scopedRequests.get(request)
+        const controller = scopedController ?? new AbortController()
         const urlResult = UrlParams.makeUrl(request.url, request.urlParams, request.hash)
         if (urlResult._tag === "Left") {
           return Effect.fail(new Error.RequestError({ request, reason: "InvalidUrl", cause: urlResult.left }))
@@ -204,8 +204,10 @@ export const make = (
         const tracerDisabled = !fiber.getFiberRef(FiberRef.currentTracerEnabled) ||
           fiber.getFiberRef(currentTracerDisabledWhen)(request)
         if (tracerDisabled) {
+          const effect = f(request, url, controller.signal, fiber)
+          if (scopedController) return effect
           return Effect.uninterruptibleMask((restore) =>
-            Effect.matchCauseEffect(restore(f(request, url, controller.signal, fiber)), {
+            Effect.matchCauseEffect(restore(effect), {
               onSuccess(response) {
                 responseRegistry.register(response, controller)
                 return Effect.succeed(new InterruptibleResponse(response, controller))
@@ -254,12 +256,12 @@ export const make = (
                     for (const name in redactedHeaders) {
                       span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
                     }
-
+                    if (scopedController) return Effect.succeed(response)
                     responseRegistry.register(response, controller)
                     return Effect.succeed(new InterruptibleResponse(response, controller))
                   },
                   onFailure(cause) {
-                    if (Cause.isInterrupted(cause)) {
+                    if (!scopedController && Cause.isInterrupted(cause)) {
                       controller.abort()
                     }
                     return Effect.failCause(cause)
@@ -358,24 +360,11 @@ export const withScope = <E, R>(
   transform(
     self,
     (effect, request) => {
-      let response: ClientResponse.HttpClientResponse | undefined
-      return Effect.scopeWith((scope) =>
-        Scope.addFinalizer(
-          scope,
-          Effect.sync(() => {
-            const controller = requestControllers.get(request)
-            if (controller === undefined) return
-            controller.abort()
-            if (response) {
-              responseRegistry.unregister(response)
-            }
-          })
-        )
-      ).pipe(
-        Effect.zipRight(effect),
-        Effect.tap((res) => {
-          response = res
-        })
+      const controller = new AbortController()
+      scopedRequests.set(request, controller)
+      return Effect.zipRight(
+        Effect.scopeWith((scope) => Scope.addFinalizer(scope, Effect.sync(() => controller.abort()))),
+        effect
       )
     }
   )
