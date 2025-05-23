@@ -11,6 +11,7 @@ import type { Pipeable } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
 import type { Ref } from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
+import type { Scope } from "effect/Scope"
 import type { NoExcessProperties, NoInfer } from "effect/Types"
 import type { Cookies } from "./Cookies.js"
 import type * as Error from "./HttpClientError.js"
@@ -702,3 +703,13 @@ export const withSpanNameGenerator: {
   ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
   <E, R>(self: HttpClient.With<E, R>, f: (request: ClientRequest.HttpClientRequest) => string): HttpClient.With<E, R>
 } = internal.withSpanNameGenerator
+
+/**
+ * Ties the lifetime of the `HttpClientRequest` to a `Scope`.
+ *
+ * @since 1.0.0
+ * @category Scope
+ */
+export const withScope: <E, R>(
+  self: HttpClient.With<E, R>
+) => HttpClient.With<E, R | Scope> = internal.withScope

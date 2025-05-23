@@ -12,6 +12,7 @@ import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
+import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type { NoExcessProperties, NoInfer } from "effect/Types"
 import * as Cookies from "../Cookies.js"
@@ -176,6 +177,11 @@ const responseRegistry = globalValue(
   }
 )
 
+const scopedRequests = globalValue(
+  "@effect/platform/HttpClient/scopedRequests",
+  () => new WeakMap<ClientRequest.HttpClientRequest, AbortController>()
+)
+
 /** @internal */
 export const make = (
   f: (
@@ -188,7 +194,8 @@ export const make = (
   makeWith((effect) =>
     Effect.flatMap(effect, (request) =>
       Effect.withFiberRuntime((fiber) => {
-        const controller = new AbortController()
+        const scopedController = scopedRequests.get(request)
+        const controller = scopedController ?? new AbortController()
         const urlResult = UrlParams.makeUrl(request.url, request.urlParams, request.hash)
         if (urlResult._tag === "Left") {
           return Effect.fail(new Error.RequestError({ request, reason: "InvalidUrl", cause: urlResult.left }))
@@ -197,8 +204,10 @@ export const make = (
         const tracerDisabled = !fiber.getFiberRef(FiberRef.currentTracerEnabled) ||
           fiber.getFiberRef(currentTracerDisabledWhen)(request)
         if (tracerDisabled) {
+          const effect = f(request, url, controller.signal, fiber)
+          if (scopedController) return effect
           return Effect.uninterruptibleMask((restore) =>
-            Effect.matchCauseEffect(restore(f(request, url, controller.signal, fiber)), {
+            Effect.matchCauseEffect(restore(effect), {
               onSuccess(response) {
                 responseRegistry.register(response, controller)
                 return Effect.succeed(new InterruptibleResponse(response, controller))
@@ -247,12 +256,12 @@ export const make = (
                     for (const name in redactedHeaders) {
                       span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
                     }
-
+                    if (scopedController) return Effect.succeed(response)
                     responseRegistry.register(response, controller)
                     return Effect.succeed(new InterruptibleResponse(response, controller))
                   },
                   onFailure(cause) {
-                    if (Cause.isInterrupted(cause)) {
+                    if (!scopedController && Cause.isInterrupted(cause)) {
                       controller.abort()
                     }
                     return Effect.failCause(cause)
@@ -343,6 +352,22 @@ class InterruptibleResponse implements ClientResponse.HttpClientResponse {
     return this.original[Inspectable.NodeInspectSymbol]()
   }
 }
+
+/** @internal */
+export const withScope = <E, R>(
+  self: Client.HttpClient.With<E, R>
+): Client.HttpClient.With<E, R | Scope.Scope> =>
+  transform(
+    self,
+    (effect, request) => {
+      const controller = new AbortController()
+      scopedRequests.set(request, controller)
+      return Effect.zipRight(
+        Effect.scopeWith((scope) => Scope.addFinalizer(scope, Effect.sync(() => controller.abort()))),
+        effect
+      )
+    }
+  )
 
 export const {
   /** @internal */
