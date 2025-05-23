@@ -1,5 +1,13 @@
 # @effect/ai
 
+## 0.16.7
+
+### Patch Changes
+
+- Updated dependencies [[`618903b`](https://github.com/Effect-TS/effect/commit/618903ba9ae96e2bfe6ee31f61c4359b915f2a36)]:
+  - @effect/platform@0.82.6
+  - @effect/experimental@0.46.6
+
 ## 0.16.6
 
 ### Patch Changes
