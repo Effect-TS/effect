@@ -12,6 +12,7 @@ import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
+import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type { NoExcessProperties, NoInfer } from "effect/Types"
 import * as Cookies from "../Cookies.js"
@@ -176,6 +177,11 @@ const responseRegistry = globalValue(
   }
 )
 
+const requestControllers = globalValue(
+  "@effect/platform/HttpClient/requestControllers",
+  () => new WeakMap<ClientRequest.HttpClientRequest, AbortController>()
+)
+
 /** @internal */
 export const make = (
   f: (
@@ -189,6 +195,7 @@ export const make = (
     Effect.flatMap(effect, (request) =>
       Effect.withFiberRuntime((fiber) => {
         const controller = new AbortController()
+        requestControllers.set(request, controller)
         const urlResult = UrlParams.makeUrl(request.url, request.urlParams, request.hash)
         if (urlResult._tag === "Left") {
           return Effect.fail(new Error.RequestError({ request, reason: "InvalidUrl", cause: urlResult.left }))
@@ -343,6 +350,35 @@ class InterruptibleResponse implements ClientResponse.HttpClientResponse {
     return this.original[Inspectable.NodeInspectSymbol]()
   }
 }
+
+/** @internal */
+export const withScope = <E, R>(
+  self: Client.HttpClient.With<E, R>
+): Client.HttpClient.With<E, R | Scope.Scope> =>
+  transform(
+    self,
+    (effect, request) => {
+      let response: ClientResponse.HttpClientResponse | undefined
+      return Effect.scopeWith((scope) =>
+        Scope.addFinalizer(
+          scope,
+          Effect.sync(() => {
+            const controller = requestControllers.get(request)
+            if (controller === undefined) return
+            controller.abort()
+            if (response) {
+              responseRegistry.unregister(response)
+            }
+          })
+        )
+      ).pipe(
+        Effect.zipRight(effect),
+        Effect.tap((res) => {
+          response = res
+        })
+      )
+    }
+  )
 
 export const {
   /** @internal */
