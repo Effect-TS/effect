@@ -138,7 +138,7 @@ export const boolean: (name?: string) => Config<boolean> = internal.boolean
 export const port: (name?: string) => Config<number> = internal.port
 
 /**
- * Constructs a config for a  value.
+ * Constructs a config for an URL value.
  *
  * @since 3.11.0
  * @category constructors
