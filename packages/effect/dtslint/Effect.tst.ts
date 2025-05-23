@@ -1474,4 +1474,9 @@ describe("Effect", () => {
       Effect.Effect<Option.Option<string>, "err-1", "dep-1">
     >()
   })
+
+  it("fn", () => {
+    const fn = Effect.fn((a?: string) => Effect.succeed(a), Effect.asVoid)
+    expect(fn).type.toBe<(this: unknown, a?: string | undefined) => Effect.Effect<void, never, never>>()
+  })
 })
