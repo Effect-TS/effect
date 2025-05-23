@@ -13659,43 +13659,31 @@ export const Service: <Self = never>() => [Self] extends [never] ? MissingSelfGe
     const hasDeps = "dependencies" in maker && maker.dependencies.length > 0
     const layerName = hasDeps ? "DefaultWithoutDependencies" : "Default"
     let layerCache: Layer.Layer.Any | undefined
+    let isFunction = false
     if ("effect" in maker) {
-      const isFunction = typeof maker.effect === "function"
-
-      if (isFunction) {
-        Object.defineProperty(TagClass, layerName, {
-          get(this: any) {
-            return function (this: typeof TagClass) {
-              return layerCache ??= layer.fromEffect(TagClass, map(maker.effect.apply(null, arguments), (_) => new this(_)))
+      isFunction = typeof maker.effect === "function"
+      Object.defineProperty(TagClass, layerName, {
+        get(this: any) {
+          if (isFunction) {
+            return function(this: typeof TagClass) {
+              return layer.fromEffect(TagClass, map(maker.effect.apply(null, arguments), (_) => new this(_)))
             }.bind(this)
           }
-        })
-       
-      } else {
-        Object.defineProperty(TagClass, layerName, {
-          get(this: any) {
-            return layerCache ??= layer.fromEffect(TagClass, map(maker.effect, (_) => new this(_)))
-          }
-        })
-      }
+          return layerCache ??= layer.fromEffect(TagClass, map(maker.effect, (_) => new this(_)))
+        }
+      })
     } else if ("scoped" in maker) {
-      const isFunction = typeof maker.scoped === "function"
-
-      if (isFunction) {
-        Object.defineProperty(TagClass, layerName, {
-          get(this: any) {
-            return function (this: typeof TagClass) {
-              return layerCache ??= layer.scoped(TagClass, map(maker.scoped.apply(null, arguments), (_) => new this(_)))
+      isFunction = typeof maker.scoped === "function"
+      Object.defineProperty(TagClass, layerName, {
+        get(this: any) {
+          if (isFunction) {
+            return function(this: typeof TagClass) {
+              return layer.scoped(TagClass, map(maker.scoped.apply(null, arguments), (_) => new this(_)))
             }.bind(this)
           }
-        })
-      } else {
-        Object.defineProperty(TagClass, layerName, {
-          get(this: any) {
-            return layerCache ??= layer.scoped(TagClass, map(maker.scoped, (_) => new this(_)))
-          }
-        })
-      }
+          return layerCache ??= layer.scoped(TagClass, map(maker.scoped, (_) => new this(_)))
+        }
+      })
     } else if ("sync" in maker) {
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
@@ -13714,6 +13702,14 @@ export const Service: <Self = never>() => [Self] extends [never] ? MissingSelfGe
       let layerWithDepsCache: Layer.Layer.Any | undefined
       Object.defineProperty(TagClass, "Default", {
         get(this: any) {
+          if (isFunction) {
+            return function(this: typeof TagClass) {
+              return layer.provide(
+                this.DefaultWithoutDependencies.apply(null, arguments),
+                maker.dependencies
+              )
+            }
+          }
           return layerWithDepsCache ??= layer.provide(
             this.DefaultWithoutDependencies,
             maker.dependencies
@@ -13764,6 +13760,21 @@ export declare namespace Service {
     : Record<PropertyKey, any> & { readonly _tag?: Key }
 
   /**
+   * @since 3.16.0
+   */
+  export type LayerNoDeps<Self, Make> = Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+
+  /**
+   * @since 3.16.0
+   */
+  export type Layer<Self, Make> = Layer.Layer<
+    Self,
+    MakeError<Make> | MakeDepsE<Make>,
+    | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
+    | MakeDepsIn<Make>
+  >
+
+  /**
    * @since 3.9.0
    */
   export type Class<
@@ -13786,27 +13797,16 @@ export declare namespace Service {
     & { key: Key }
     & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
     & (MakeDeps<Make> extends never ? {
-        readonly Default: HasArguments<Make> extends true
-          ? (...args: MakeArguments<Make>) => Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
-          : Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+        readonly Default: HasArguments<Make> extends true ? (...args: MakeArguments<Make>) => LayerNoDeps<Self, Make>
+          : LayerNoDeps<Self, Make>
       } :
       {
         readonly DefaultWithoutDependencies: HasArguments<Make> extends true
-          ? (...args: MakeArguments<Make>) => Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
-          : Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
-        
-        readonly Default: HasArguments<Make> extends true ? (...args: MakeArguments<Make>) => Layer.Layer<
-            Self,
-            MakeError<Make> | MakeDepsE<Make>,
-            | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
-            | MakeDepsIn<Make>
-          > :
-          Layer.Layer<
-            Self,
-            MakeError<Make> | MakeDepsE<Make>,
-            | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
-            | MakeDepsIn<Make>
-          >
+          ? (...args: MakeArguments<Make>) => LayerNoDeps<Self, Make>
+          : LayerNoDeps<Self, Make>
+
+        readonly Default: HasArguments<Make> extends true ? (...args: MakeArguments<Make>) => Layer<Self, Make> :
+          Layer<Self, Make>
       })
 
   /**
@@ -13815,7 +13815,7 @@ export declare namespace Service {
   export type MakeService<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _A
     : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? _A
     : Make extends { readonly effect: (...args: infer _Args) => Effect<infer _A, infer _E, infer _R> } ? _A
-    : Make extends { readonly scoped: (...args: infer Args) => Effect<infer _A, infer _E, infer _R> } ? _A
+    : Make extends { readonly scoped: (...args: infer _Args) => Effect<infer _A, infer _E, infer _R> } ? _A
     : Make extends { readonly sync: LazyArg<infer A> } ? A
     : Make extends { readonly succeed: infer A } ? A
     : never
@@ -13879,10 +13879,12 @@ export declare namespace Service {
    * @since 3.16.0
    */
   export type HasArguments<Make> = Make extends {
-    readonly scoped: (...args: readonly any[]) => Effect<infer _A, infer _E, infer _R>
-  } ? true : Make extends {
-    readonly effect: (...args: readonly any[]) => Effect<infer _A, infer _E, infer _R>
-  } ? true : false
+    readonly scoped: (...args: ReadonlyArray<any>) => Effect<infer _A, infer _E, infer _R>
+  } ? true :
+    Make extends {
+      readonly effect: (...args: ReadonlyArray<any>) => Effect<infer _A, infer _E, infer _R>
+    } ? true :
+    false
 }
 
 /**
