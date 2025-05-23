@@ -1,5 +1,16 @@
 # @effect/ai-openai
 
+## 0.19.7
+
+### Patch Changes
+
+- [#4914](https://github.com/Effect-TS/effect/pull/4914) [`eef6052`](https://github.com/Effect-TS/effect/commit/eef605278e41b3b0a2218ac799f907f7a97db91c) Thanks @IMax153! - Fix an issue where passing a file input part when using OpenAI would always result in an error
+
+- Updated dependencies [[`618903b`](https://github.com/Effect-TS/effect/commit/618903ba9ae96e2bfe6ee31f61c4359b915f2a36)]:
+  - @effect/platform@0.82.6
+  - @effect/ai@0.16.7
+  - @effect/experimental@0.46.6
+
 ## 0.19.6
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @effect/sql-sqlite-do
 
+## 0.13.6
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/experimental@0.46.6
+  - @effect/sql@0.35.6
+
 ## 0.13.5
 
 ### Patch Changes

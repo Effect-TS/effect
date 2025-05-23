@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.82.6
+
+### Patch Changes
+
+- [#4855](https://github.com/Effect-TS/effect/pull/4855) [`618903b`](https://github.com/Effect-TS/effect/commit/618903ba9ae96e2bfe6ee31f61c4359b915f2a36) Thanks @gcanti! - Enhance OpenAPI documentation handling by adding safe serialization and HTML escaping functions. This prevents script injection and ensures valid JSON output in the Swagger UI
+
 ## 0.82.5
 
 ### Patch Changes
