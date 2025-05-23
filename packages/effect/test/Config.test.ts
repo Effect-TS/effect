@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { assertFailure, assertSuccess, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import {
+  Brand,
   Cause,
   Chunk,
   Config,
@@ -16,6 +17,12 @@ import {
   Redacted,
   Secret
 } from "effect"
+
+type Str = Brand.Branded<string, "Str">
+const Str = Brand.refined<Str>(
+  (n) => n.length > 2,
+  (n) => Brand.error(`Brand: Expected ${n} to be longer than 2`)
+)
 
 const assertConfigError = <A>(
   config: Config.Config<A>,
@@ -86,6 +93,69 @@ describe("Config", () => {
         config,
         [],
         ConfigError.MissingData(["WEBSITE_URL"], "Expected WEBSITE_URL to exist in the provided map")
+      )
+    })
+  })
+
+  describe("port", () => {
+    it("name != undefined", () => {
+      const config = Config.port("WEBSITE_PORT")
+
+      assertConfig(
+        config,
+        [["WEBSITE_PORT", "123"]],
+        123
+      )
+      assertConfigError(
+        config,
+        [["WEBSITE_PORT", "abra-kadabra"]],
+        ConfigError.InvalidData(["WEBSITE_PORT"], "Expected a network port value but received abra-kadabra")
+      )
+      assertConfigError(
+        config,
+        [],
+        ConfigError.MissingData(["WEBSITE_PORT"], "Expected WEBSITE_PORT to exist in the provided map")
+      )
+    })
+  })
+
+  describe("branded", () => {
+    it("name != undefined", () => {
+      const config = Config.branded(Config.string("STR"), Str)
+
+      assertConfig(
+        config,
+        [["STR", "123"]],
+        Str("123")
+      )
+      assertConfigError(
+        config,
+        [["STR", "1"]],
+        ConfigError.InvalidData(["STR"], "Brand: Expected 1 to be longer than 2")
+      )
+      assertConfigError(
+        config,
+        [],
+        ConfigError.MissingData(["STR"], "Expected STR to exist in the provided map")
+      )
+    })
+    it("name != undefined from name", () => {
+      const config = Config.branded("STR", Str)
+
+      assertConfig(
+        config,
+        [["STR", "123"]],
+        Str("123")
+      )
+      assertConfigError(
+        config,
+        [["STR", "1"]],
+        ConfigError.InvalidData(["STR"], "Brand: Expected 1 to be longer than 2")
+      )
+      assertConfigError(
+        config,
+        [],
+        ConfigError.MissingData(["STR"], "Expected STR to exist in the provided map")
       )
     })
   })
