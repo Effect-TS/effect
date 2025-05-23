@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.82.5
+
+### Patch Changes
+
+- [#4912](https://github.com/Effect-TS/effect/pull/4912) [`7764a07`](https://github.com/Effect-TS/effect/commit/7764a07d960c60df81f14e1dc949518f4bbe494a) Thanks @tim-smart! - add HttpClient.withScope, for tying the lifetime of the request to a Scope
+
+- [#4909](https://github.com/Effect-TS/effect/pull/4909) [`30a0d9c`](https://github.com/Effect-TS/effect/commit/30a0d9cb51c84290d51b1361d72ff5cee33c13c7) Thanks @tim-smart! - add HttpClientRequest.toUrl
+
+- Updated dependencies [[`4577f54`](https://github.com/Effect-TS/effect/commit/4577f548d67273e576cdde423bdd34a4b910766a)]:
+  - effect@3.15.3
+
 ## 0.82.4
 
 ### Patch Changes

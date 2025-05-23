@@ -1,5 +1,11 @@
 # effect
 
+## 3.15.3
+
+### Patch Changes
+
+- [#4907](https://github.com/Effect-TS/effect/pull/4907) [`4577f54`](https://github.com/Effect-TS/effect/commit/4577f548d67273e576cdde423bdd34a4b910766a) Thanks @mattiamanzati! - Escape JSON-pointers
+
 ## 3.15.2
 
 ### Patch Changes
