@@ -172,6 +172,9 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
         successes.forEach(({ ast }, status) => {
           decodeMap[status] = ast._tag === "None" ? responseAsVoid : schemaToResponse(ast.value)
         })
+        const encodePath = endpoint.pathSchema.pipe(
+          Option.map(Schema.encodeUnknown)
+        )
         const encodePayloadBody = endpoint.payloadSchema.pipe(
           Option.map((schema) => {
             if (HttpMethod.hasBody(endpoint.method)) {
@@ -194,9 +197,13 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
           readonly withResponse?: boolean
         }) =>
           Effect.gen(function*() {
-            let httpRequest = HttpClientRequest.make(endpoint.method)(
-              request && request.path ? makeUrl(request.path) : endpoint.path
-            )
+            let httpRequest = HttpClientRequest.make(endpoint.method)(endpoint.path)
+            if (request && request.path) {
+              const encodedPathParams = encodePath._tag === "Some"
+                ? yield* encodePath.value(request.path)
+                : request.path
+              httpRequest = HttpClientRequest.setUrl(httpRequest, makeUrl(encodedPathParams))
+            }
             if (request && request.payload instanceof FormData) {
               httpRequest = HttpClientRequest.bodyFormData(httpRequest, request.payload)
             } else if (encodePayloadBody._tag === "Some") {
