@@ -6,6 +6,7 @@ import type { Layer } from "effect/Layer"
 import { Api } from "./HttpApi.js"
 import { Router } from "./HttpApiBuilder.js"
 import * as HttpServerResponse from "./HttpServerResponse.js"
+import * as Html from "./internal/html.js"
 import * as internal from "./internal/httpApiScalar.js"
 import * as OpenApi from "./OpenApi.js"
 
@@ -154,16 +155,16 @@ export const layer = (options?: {
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>${spec.info.title}</title>
+    <title>${Html.escape(spec.info.title)}</title>
     ${
         !spec.info.description
           ? ""
-          : `<meta name="description" content="${spec.info.description}"/>`
+          : `<meta name="description" content="${Html.escape(spec.info.description)}"/>`
       }
     ${
         !spec.info.description
           ? ""
-          : `<meta name="og:description" content="${spec.info.description}"/>`
+          : `<meta name="og:description" content="${Html.escape(spec.info.description)}"/>`
       }
     <meta
       name="viewport"
@@ -171,10 +172,10 @@ export const layer = (options?: {
   </head>
   <body>
     <script id="api-reference" type="application/json">
-      ${JSON.stringify(spec)}
+      ${Html.escapeJson(spec)}
     </script>
     <script>
-      document.getElementById('api-reference').dataset.configuration = JSON.stringify(${JSON.stringify(scalarConfig)})
+      document.getElementById('api-reference').dataset.configuration = JSON.stringify(${Html.escapeJson(scalarConfig)})
     </script>
     ${
         src
