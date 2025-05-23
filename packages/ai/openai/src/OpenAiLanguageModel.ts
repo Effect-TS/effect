@@ -366,12 +366,15 @@ const makeMessages = Effect.fnUntraced(function*(
                   })
                   break
                 }
+                default: {
+                  return yield* new AiError({
+                    module: "OpenAiLanguageModel",
+                    method: "",
+                    description: `OpenAi does not support file inputs of type "${part.mediaType}"`
+                  })
+                }
               }
-              return yield* new AiError({
-                module: "OpenAiLanguageModel",
-                method: "",
-                description: `OpenAi does not support file inputs of type "${part.mediaType}"`
-              })
+              break
             }
             case "FileUrlPart": {
               return yield* new AiError({
