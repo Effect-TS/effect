@@ -195,6 +195,27 @@ export const hasHash: {
 } = HM.hasHash
 
 /**
+ * Checks if an element matching the given predicate exists in the given `HashMap`.
+ *
+ * @example
+ * ```ts
+ * import { HashMap } from "effect"
+ *
+ * const hm = HashMap.make([1, 'a'])
+ * HashMap.existsBy(hm, (value, key) => value === 'a' && key === 1); // -> true
+ * HashMap.existsBy(hm, (value) => value === 'b'); // -> false
+ *
+ * ```
+ *
+ * @since 3.16.0
+ * @category elements
+ */
+export const existsBy: {
+  <K, V>(predicate: (value: V, key: K) => boolean): (self: HashMap<K, V>) => boolean
+  <K, V>(self: HashMap<K, V>, predicate: (value: V, key: K) => boolean): boolean
+} = HM.existsBy
+
+/**
  * Sets the specified key to the specified value using the internal hashing
  * function.
  *
