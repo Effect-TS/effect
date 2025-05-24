@@ -13532,14 +13532,18 @@ export const Service: <Self = never>() => [Self] extends [never] ? MissingSelfGe
     const Key extends string,
     const Make extends
       | {
-        readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly scoped:
+          | Effect<Service.AllowedType<Key, Make>, any, any>
+          | ((...args: any) => Effect<Service.AllowedType<Key, Make>, any, any>)
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         /** @deprecated */
         readonly ಠ_ಠ: never
       }
       | {
-        readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly effect:
+          | Effect<Service.AllowedType<Key, Make>, any, any>
+          | ((...args: any) => Effect<Service.AllowedType<Key, Make>, any, any>)
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         /** @deprecated */
@@ -13566,7 +13570,9 @@ export const Service: <Self = never>() => [Self] extends [never] ? MissingSelfGe
   <
     const Key extends string,
     const Make extends NoExcessProperties<{
-      readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
+      readonly scoped:
+        | Effect<Service.AllowedType<Key, Make>, any, any>
+        | ((...args: any) => Effect<Service.AllowedType<Key, Make>, any, any>)
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
       readonly accessors?: boolean
     }, Make>
@@ -13577,7 +13583,9 @@ export const Service: <Self = never>() => [Self] extends [never] ? MissingSelfGe
   <
     const Key extends string,
     const Make extends NoExcessProperties<{
-      readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
+      readonly effect:
+        | Effect<Service.AllowedType<Key, Make>, any, any>
+        | ((...args: any) => Effect<Service.AllowedType<Key, Make>, any, any>)
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
       readonly accessors?: boolean
     }, Make>
@@ -13660,15 +13668,28 @@ export const Service: <Self = never>() => [Self] extends [never] ? MissingSelfGe
     const hasDeps = "dependencies" in maker && maker.dependencies.length > 0
     const layerName = hasDeps ? "DefaultWithoutDependencies" : "Default"
     let layerCache: Layer.Layer.Any | undefined
+    let isFunction = false
     if ("effect" in maker) {
+      isFunction = typeof maker.effect === "function"
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
+          if (isFunction) {
+            return function(this: typeof TagClass) {
+              return layer.fromEffect(TagClass, map(maker.effect.apply(null, arguments), (_) => new this(_)))
+            }.bind(this)
+          }
           return layerCache ??= layer.fromEffect(TagClass, map(maker.effect, (_) => new this(_)))
         }
       })
     } else if ("scoped" in maker) {
+      isFunction = typeof maker.scoped === "function"
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
+          if (isFunction) {
+            return function(this: typeof TagClass) {
+              return layer.scoped(TagClass, map(maker.scoped.apply(null, arguments), (_) => new this(_)))
+            }.bind(this)
+          }
           return layerCache ??= layer.scoped(TagClass, map(maker.scoped, (_) => new this(_)))
         }
       })
@@ -13690,6 +13711,14 @@ export const Service: <Self = never>() => [Self] extends [never] ? MissingSelfGe
       let layerWithDepsCache: Layer.Layer.Any | undefined
       Object.defineProperty(TagClass, "Default", {
         get(this: any) {
+          if (isFunction) {
+            return function(this: typeof TagClass) {
+              return layer.provide(
+                this.DefaultWithoutDependencies.apply(null, arguments),
+                maker.dependencies
+              )
+            }
+          }
           return layerWithDepsCache ??= layer.provide(
             this.DefaultWithoutDependencies,
             maker.dependencies
@@ -13762,16 +13791,27 @@ export declare namespace Service {
     & { key: Key }
     & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
     & (MakeDeps<Make> extends never ? {
-        readonly Default: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+        readonly Default: HasArguments<Make> extends true ?
+          (...args: MakeArguments<Make>) => Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+          : Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
       } :
       {
-        readonly DefaultWithoutDependencies: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
-        readonly Default: Layer.Layer<
-          Self,
-          MakeError<Make> | MakeDepsE<Make>,
-          | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
-          | MakeDepsIn<Make>
-        >
+        readonly DefaultWithoutDependencies: HasArguments<Make> extends true
+          ? (...args: MakeArguments<Make>) => Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+          : Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+
+        readonly Default: HasArguments<Make> extends true ? (...args: MakeArguments<Make>) => Layer.Layer<
+            Self,
+            MakeError<Make> | MakeDepsE<Make>,
+            | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
+            | MakeDepsIn<Make>
+          > :
+          Layer.Layer<
+            Self,
+            MakeError<Make> | MakeDepsE<Make>,
+            | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
+            | MakeDepsIn<Make>
+          >
       })
 
   /**
@@ -13779,6 +13819,8 @@ export declare namespace Service {
    */
   export type MakeService<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _A
     : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? _A
+    : Make extends { readonly effect: (...args: infer _Args) => Effect<infer _A, infer _E, infer _R> } ? _A
+    : Make extends { readonly scoped: (...args: infer _Args) => Effect<infer _A, infer _E, infer _R> } ? _A
     : Make extends { readonly sync: LazyArg<infer A> } ? A
     : Make extends { readonly succeed: infer A } ? A
     : never
@@ -13788,6 +13830,8 @@ export declare namespace Service {
    */
   export type MakeError<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _E
     : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? _E
+    : Make extends { readonly effect: (...args: infer _Args) => Effect<infer _A, infer _E, infer _R> } ? _E
+    : Make extends { readonly scoped: (...args: infer _Args) => Effect<infer _A, infer _E, infer _R> } ? _E
     : never
 
   /**
@@ -13795,6 +13839,9 @@ export declare namespace Service {
    */
   export type MakeContext<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _R
     : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? Exclude<_R, Scope.Scope>
+    : Make extends { readonly effect: (...args: infer _Args) => Effect<infer _A, infer _E, infer _R> } ? _R
+    : Make extends { readonly scoped: (...args: infer _Args) => Effect<infer _A, infer _E, infer _R> } ?
+      Exclude<_R, Scope.Scope>
     : never
 
   /**
@@ -13824,6 +13871,25 @@ export declare namespace Service {
    */
   export type MakeAccessors<Make> = Make extends { readonly accessors: true } ? true
     : false
+
+  /**
+   * @since 3.16.0
+   */
+  export type MakeArguments<Make> = Make extends
+    { readonly effect: (...args: infer Args) => Effect<infer _A, infer _E, infer _R> } ? Args
+    : Make extends { readonly scoped: (...args: infer Args) => Effect<infer _A, infer _E, infer _R> } ? Args
+    : never
+
+  /**
+   * @since 3.16.0
+   */
+  export type HasArguments<Make> = Make extends {
+    readonly scoped: (...args: ReadonlyArray<any>) => Effect<infer _A, infer _E, infer _R>
+  } ? true :
+    Make extends {
+      readonly effect: (...args: ReadonlyArray<any>) => Effect<infer _A, infer _E, infer _R>
+    } ? true :
+    false
 }
 
 /**
