@@ -27,7 +27,6 @@ import * as order from "./Order.js"
 import type { Ordering } from "./Ordering.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
-import type { NoExcessProperties } from "./Types.js"
 
 const DEFAULT_PRECISION = 100
 const FINITE_INT_REGEX = /^[+-]?\d+$/
@@ -1128,6 +1127,8 @@ export const isNegative = (n: BigDecimal): boolean => n.value < bigint0
  */
 export const isPositive = (n: BigDecimal): boolean => n.value > bigint0
 
+const isBigDecimalArgs = (args: IArguments) => isBigDecimal(args[0])
+
 /**
  * Calculate the ceiling of a `BigDecimal` at the given scale.
  *
@@ -1146,7 +1147,10 @@ export const isPositive = (n: BigDecimal): boolean => n.value > bigint0
  * @since 3.16.0
  * @category math
  */
-export const ceil = (self: BigDecimal, scale: number = 0): BigDecimal => {
+export const ceil: {
+  (scale: number): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, scale?: number): BigDecimal
+} = dual(isBigDecimalArgs, (self: BigDecimal, scale: number = 0): BigDecimal => {
   const truncated = truncate(self, scale)
 
   if (isPositive(self) && lessThan(truncated, self)) {
@@ -1154,7 +1158,7 @@ export const ceil = (self: BigDecimal, scale: number = 0): BigDecimal => {
   }
 
   return truncated
-}
+})
 
 /**
  * Calculate the floor of a `BigDecimal` at the given scale.
@@ -1174,7 +1178,10 @@ export const ceil = (self: BigDecimal, scale: number = 0): BigDecimal => {
  * @since 3.16.0
  * @category math
  */
-export const floor = (self: BigDecimal, scale: number = 0): BigDecimal => {
+export const floor: {
+  (scale: number): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, scale?: number): BigDecimal
+} = dual(isBigDecimalArgs, (self: BigDecimal, scale: number = 0): BigDecimal => {
   const truncated = truncate(self, scale)
 
   if (isNegative(self) && greaterThan(truncated, self)) {
@@ -1182,7 +1189,7 @@ export const floor = (self: BigDecimal, scale: number = 0): BigDecimal => {
   }
 
   return truncated
-}
+})
 
 /**
  * Truncate a `BigDecimal` at the given scale. This is the same operation as rounding away from zero.
@@ -1202,14 +1209,17 @@ export const floor = (self: BigDecimal, scale: number = 0): BigDecimal => {
  * @since 3.16.0
  * @category math
  */
-export const truncate = (self: BigDecimal, scale: number = 0): BigDecimal => {
+export const truncate: {
+  (scale: number): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, scale?: number): BigDecimal
+} = dual(isBigDecimalArgs, (self: BigDecimal, scale: number = 0): BigDecimal => {
   if (self.scale <= scale) {
     return self
   }
 
   // BigInt division truncates towards zero
   return make(self.value / (10n ** BigInt(self.scale - scale)), scale)
-}
+})
 
 /**
  * Internal function used by `round` for `half-even` and `half-odd` rounding modes.
@@ -1218,14 +1228,17 @@ export const truncate = (self: BigDecimal, scale: number = 0): BigDecimal => {
  *
  * @internal
  */
-export const digitAt = (n: BigDecimal, scale: number): bigint => {
+export const digitAt: {
+  (scale: number): (n: BigDecimal) => bigint
+  (n: BigDecimal, scale: number): bigint
+} = dual(2, (n: BigDecimal, scale: number): bigint => {
   if (n.scale < scale) {
     return 0n
   }
 
   const scaled = n.value / (10n ** BigInt(n.scale - scale))
   return scaled % 10n
-}
+})
 
 /**
  * Rounding modes for `BigDecimal`.
@@ -1274,12 +1287,10 @@ export type RoundingMode =
  * @since 3.16.0
  * @category math
  */
-export const round = <
-  O extends NoExcessProperties<{
-    readonly scale?: number
-    readonly mode?: RoundingMode
-  }, O>
->(self: BigDecimal, options?: O): BigDecimal => {
+export const round: {
+  (options: { scale?: number; mode?: RoundingMode }): (self: BigDecimal) => BigDecimal
+  (n: BigDecimal, options?: { scale?: number; mode?: RoundingMode }): BigDecimal
+} = dual(isBigDecimalArgs, (self: BigDecimal, options?: { scale?: number; mode?: RoundingMode }): BigDecimal => {
   const mode = options?.mode ?? "half-from-zero"
   const scale = options?.scale ?? 0
 
@@ -1324,7 +1335,7 @@ export const round = <
     case "half-odd":
       return equals(halfCeil, halfFloor) ? halfCeil : (digit % 2n === 0n) ? halfFloor : halfCeil
   }
-}
+})
 
 /**
  * Takes an `Iterable` of `BigDecimal`s and returns their sum as a single `BigDecimal`

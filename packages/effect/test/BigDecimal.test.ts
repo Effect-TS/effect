@@ -371,6 +371,30 @@ describe("BigDecimal", () => {
     assertEquals(BigDecimal.digitAt($("12.34"), 3), 0n)
   })
 
+  it("ceil is dual", () => {
+    assertEquals(BigDecimal.ceil($("145"), -1), $("150"))
+    assertEquals(BigDecimal.ceil(-1)($("145")), $("150"))
+    assertEquals(BigDecimal.ceil($("-14.5")), $("-14"))
+  })
+
+  it("floor is dual", () => {
+    assertEquals(BigDecimal.floor($("145"), -1), $("140"))
+    assertEquals(BigDecimal.floor(-1)($("145")), $("140"))
+    assertEquals(BigDecimal.floor($("-14.5")), $("-15"))
+  })
+
+  it("truncate is dual", () => {
+    assertEquals(BigDecimal.truncate($("145"), -1), $("140"))
+    assertEquals(BigDecimal.truncate(-1)($("145")), $("140"))
+    assertEquals(BigDecimal.truncate($("-14.5")), $("-14"))
+  })
+
+  it("round is dual", () => {
+    assertEquals(BigDecimal.round($("145"), { mode: "from-zero", scale: -1 }), $("150"))
+    assertEquals(BigDecimal.round({ mode: "from-zero", scale: -1 })($("145")), $("150"))
+    assertEquals(BigDecimal.round($("-14.5")), $("-15"))
+  })
+
   it("round", () => {
     // Each row contains a test of the form:
     // [value, ceil, floor, toZero, fromZero, halfEven, halfOdd, halfCeil, halfFloor, halfToZero, halfFromZero]
