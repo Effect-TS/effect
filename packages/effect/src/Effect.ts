@@ -13760,21 +13760,6 @@ export declare namespace Service {
     : Record<PropertyKey, any> & { readonly _tag?: Key }
 
   /**
-   * @since 3.16.0
-   */
-  export type LayerNoDeps<Self, Make> = Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
-
-  /**
-   * @since 3.16.0
-   */
-  export type Layer<Self, Make> = Layer.Layer<
-    Self,
-    MakeError<Make> | MakeDepsE<Make>,
-    | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
-    | MakeDepsIn<Make>
-  >
-
-  /**
    * @since 3.9.0
    */
   export type Class<
@@ -13797,16 +13782,27 @@ export declare namespace Service {
     & { key: Key }
     & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
     & (MakeDeps<Make> extends never ? {
-        readonly Default: HasArguments<Make> extends true ? (...args: MakeArguments<Make>) => LayerNoDeps<Self, Make>
-          : LayerNoDeps<Self, Make>
+        readonly Default: HasArguments<Make> extends true ?
+          (...args: MakeArguments<Make>) => Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+          : Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
       } :
       {
         readonly DefaultWithoutDependencies: HasArguments<Make> extends true
-          ? (...args: MakeArguments<Make>) => LayerNoDeps<Self, Make>
-          : LayerNoDeps<Self, Make>
+          ? (...args: MakeArguments<Make>) => Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+          : Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
 
-        readonly Default: HasArguments<Make> extends true ? (...args: MakeArguments<Make>) => Layer<Self, Make> :
-          Layer<Self, Make>
+        readonly Default: HasArguments<Make> extends true ? (...args: MakeArguments<Make>) => Layer.Layer<
+            Self,
+            MakeError<Make> | MakeDepsE<Make>,
+            | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
+            | MakeDepsIn<Make>
+          > :
+          Layer.Layer<
+            Self,
+            MakeError<Make> | MakeDepsE<Make>,
+            | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
+            | MakeDepsIn<Make>
+          >
       })
 
   /**
