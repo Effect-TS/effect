@@ -13848,7 +13848,7 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A
     ): (this: Self, ...args: Args) => A
     <
@@ -13866,9 +13866,9 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B
+      b: (_: A, ...args: NoInfer<Args>) => B
     ): (this: Self, ...args: Args) => B
     <
       Self,
@@ -13886,10 +13886,10 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C
     ): (this: Self, ...args: Args) => C
     <
       Self,
@@ -13908,11 +13908,11 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D
     ): (this: Self, ...args: Args) => D
     <
       Self,
@@ -13932,12 +13932,12 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D,
-      e: (_: D, ...args: Args) => E
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D,
+      e: (_: D, ...args: NoInfer<Args>) => E
     ): (this: Self, ...args: Args) => E
     <
       Self,
@@ -13958,13 +13958,13 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D,
-      e: (_: D, ...args: Args) => E,
-      f: (_: E, ...args: Args) => F
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D,
+      e: (_: D, ...args: NoInfer<Args>) => E,
+      f: (_: E, ...args: NoInfer<Args>) => F
     ): (this: Self, ...args: Args) => F
     <
       Self,
@@ -13986,14 +13986,14 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D,
-      e: (_: D, ...args: Args) => E,
-      f: (_: E, ...args: Args) => F,
-      g: (_: F, ...args: Args) => G
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D,
+      e: (_: D, ...args: NoInfer<Args>) => E,
+      f: (_: E, ...args: NoInfer<Args>) => F,
+      g: (_: F, ...args: NoInfer<Args>) => G
     ): (this: Self, ...args: Args) => G
     <
       Self,
@@ -14016,15 +14016,15 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D,
-      e: (_: D, ...args: Args) => E,
-      f: (_: E, ...args: Args) => F,
-      g: (_: F, ...args: Args) => G,
-      h: (_: G, ...args: Args) => H
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D,
+      e: (_: D, ...args: NoInfer<Args>) => E,
+      f: (_: E, ...args: NoInfer<Args>) => F,
+      g: (_: F, ...args: NoInfer<Args>) => G,
+      h: (_: G, ...args: NoInfer<Args>) => H
     ): (this: Self, ...args: Args) => H
     <
       Self,
@@ -14048,16 +14048,16 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D,
-      e: (_: D, ...args: Args) => E,
-      f: (_: E, ...args: Args) => F,
-      g: (_: F, ...args: Args) => G,
-      h: (_: G, ...args: Args) => H,
-      i: (_: H, ...args: Args) => I
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D,
+      e: (_: D, ...args: NoInfer<Args>) => E,
+      f: (_: E, ...args: NoInfer<Args>) => F,
+      g: (_: F, ...args: NoInfer<Args>) => G,
+      h: (_: G, ...args: NoInfer<Args>) => H,
+      i: (_: H, ...args: NoInfer<Args>) => I
     ): (this: Self, ...args: Args) => I
   }
 
@@ -14071,75 +14071,75 @@ export namespace fn {
     ): (this: Self, ...args: Args) => Eff
     <Self, Eff extends Effect<any, any, any>, A, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
-      a: (_: A, ...args: Args) => Eff
+      a: (_: A, ...args: NoInfer<Args>) => Eff
     ): (this: Self, ...args: Args) => Eff
     <Self, Eff extends Effect<any, any, any>, A, B, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
-      a: (_: A, ...args: Args) => B,
-      b: (_: B, ...args: Args) => Eff
+      a: (_: A, ...args: NoInfer<Args>) => B,
+      b: (_: B, ...args: NoInfer<Args>) => Eff
     ): (this: Self, ...args: Args) => Eff
     <Self, Eff extends Effect<any, any, any>, A, B, C, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
-      a: (_: A, ...args: Args) => B,
-      b: (_: B, ...args: Args) => C,
-      c: (_: C, ...args: Args) => Eff
+      a: (_: A, ...args: NoInfer<Args>) => B,
+      b: (_: B, ...args: NoInfer<Args>) => C,
+      c: (_: C, ...args: NoInfer<Args>) => Eff
     ): (this: Self, ...args: Args) => Eff
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
-      a: (_: A, ...args: Args) => B,
-      b: (_: B, ...args: Args) => C,
-      c: (_: C, ...args: Args) => D,
-      d: (_: D, ...args: Args) => Eff
+      a: (_: A, ...args: NoInfer<Args>) => B,
+      b: (_: B, ...args: NoInfer<Args>) => C,
+      c: (_: C, ...args: NoInfer<Args>) => D,
+      d: (_: D, ...args: NoInfer<Args>) => Eff
     ): (this: Self, ...args: Args) => Eff
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
-      a: (_: A, ...args: Args) => B,
-      b: (_: B, ...args: Args) => C,
-      c: (_: C, ...args: Args) => D,
-      d: (_: D, ...args: Args) => E,
-      e: (_: E, ...args: Args) => Eff
+      a: (_: A, ...args: NoInfer<Args>) => B,
+      b: (_: B, ...args: NoInfer<Args>) => C,
+      c: (_: C, ...args: NoInfer<Args>) => D,
+      d: (_: D, ...args: NoInfer<Args>) => E,
+      e: (_: E, ...args: NoInfer<Args>) => Eff
     ): (this: Self, ...args: Args) => Eff
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
-      a: (_: A, ...args: Args) => B,
-      b: (_: B, ...args: Args) => C,
-      c: (_: C, ...args: Args) => D,
-      d: (_: D, ...args: Args) => E,
-      e: (_: E, ...args: Args) => F,
-      f: (_: F, ...args: Args) => Eff
+      a: (_: A, ...args: NoInfer<Args>) => B,
+      b: (_: B, ...args: NoInfer<Args>) => C,
+      c: (_: C, ...args: NoInfer<Args>) => D,
+      d: (_: D, ...args: NoInfer<Args>) => E,
+      e: (_: E, ...args: NoInfer<Args>) => F,
+      f: (_: F, ...args: NoInfer<Args>) => Eff
     ): (this: Self, ...args: Args) => Eff
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
-      a: (_: A, ...args: Args) => B,
-      b: (_: B, ...args: Args) => C,
-      c: (_: C, ...args: Args) => D,
-      d: (_: D, ...args: Args) => E,
-      e: (_: E, ...args: Args) => F,
-      f: (_: F, ...args: Args) => G,
-      g: (_: G, ...args: Args) => Eff
+      a: (_: A, ...args: NoInfer<Args>) => B,
+      b: (_: B, ...args: NoInfer<Args>) => C,
+      c: (_: C, ...args: NoInfer<Args>) => D,
+      d: (_: D, ...args: NoInfer<Args>) => E,
+      e: (_: E, ...args: NoInfer<Args>) => F,
+      f: (_: F, ...args: NoInfer<Args>) => G,
+      g: (_: G, ...args: NoInfer<Args>) => Eff
     ): (this: Self, ...args: Args) => Eff
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
-      a: (_: A, ...args: Args) => B,
-      b: (_: B, ...args: Args) => C,
-      c: (_: C, ...args: Args) => D,
-      d: (_: D, ...args: Args) => E,
-      e: (_: E, ...args: Args) => F,
-      f: (_: F, ...args: Args) => G,
-      g: (_: G, ...args: Args) => H,
-      h: (_: H, ...args: Args) => Eff
+      a: (_: A, ...args: NoInfer<Args>) => B,
+      b: (_: B, ...args: NoInfer<Args>) => C,
+      c: (_: C, ...args: NoInfer<Args>) => D,
+      d: (_: D, ...args: NoInfer<Args>) => E,
+      e: (_: E, ...args: NoInfer<Args>) => F,
+      f: (_: F, ...args: NoInfer<Args>) => G,
+      g: (_: G, ...args: NoInfer<Args>) => H,
+      h: (_: H, ...args: NoInfer<Args>) => Eff
     ): (this: Self, ...args: Args) => Eff
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, I, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
-      a: (_: A, ...args: Args) => B,
-      b: (_: B, ...args: Args) => C,
-      c: (_: C, ...args: Args) => D,
-      d: (_: D, ...args: Args) => E,
-      e: (_: E, ...args: Args) => F,
-      f: (_: F, ...args: Args) => G,
-      g: (_: G, ...args: Args) => H,
-      h: (_: H, ...args: Args) => I,
-      i: (_: H, ...args: Args) => Eff
+      a: (_: A, ...args: NoInfer<Args>) => B,
+      b: (_: B, ...args: NoInfer<Args>) => C,
+      c: (_: C, ...args: NoInfer<Args>) => D,
+      d: (_: D, ...args: NoInfer<Args>) => E,
+      e: (_: E, ...args: NoInfer<Args>) => F,
+      f: (_: F, ...args: NoInfer<Args>) => G,
+      g: (_: G, ...args: NoInfer<Args>) => H,
+      h: (_: H, ...args: NoInfer<Args>) => I,
+      i: (_: H, ...args: NoInfer<Args>) => Eff
     ): (this: Self, ...args: Args) => Eff
   }
 
@@ -14163,7 +14163,7 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A
     ): (this: Self, ...args: Args) => A
     <Self, Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A, B>(
@@ -14174,9 +14174,9 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B
+      b: (_: A, ...args: NoInfer<Args>) => B
     ): (this: Self, ...args: Args) => B
     <
       Self,
@@ -14194,10 +14194,10 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C
     ): (this: Self, ...args: Args) => C
     <
       Self,
@@ -14216,11 +14216,11 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D
     ): (this: Self, ...args: Args) => D
     <
       Self,
@@ -14240,12 +14240,12 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D,
-      e: (_: D, ...args: Args) => E
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D,
+      e: (_: D, ...args: NoInfer<Args>) => E
     ): (this: Self, ...args: Args) => E
     <
       Self,
@@ -14266,13 +14266,13 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D,
-      e: (_: D, ...args: Args) => E,
-      f: (_: E, ...args: Args) => F
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D,
+      e: (_: D, ...args: NoInfer<Args>) => E,
+      f: (_: E, ...args: NoInfer<Args>) => F
     ): (this: Self, ...args: Args) => F
     <
       Self,
@@ -14294,14 +14294,14 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D,
-      e: (_: D, ...args: Args) => E,
-      f: (_: E, ...args: Args) => F,
-      g: (_: F, ...args: Args) => G
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D,
+      e: (_: D, ...args: NoInfer<Args>) => E,
+      f: (_: E, ...args: NoInfer<Args>) => F,
+      g: (_: F, ...args: NoInfer<Args>) => G
     ): (this: Self, ...args: Args) => G
     <
       Self,
@@ -14324,15 +14324,15 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D,
-      e: (_: D, ...args: Args) => E,
-      f: (_: E, ...args: Args) => F,
-      g: (_: F, ...args: Args) => G,
-      h: (_: G, ...args: Args) => H
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D,
+      e: (_: D, ...args: NoInfer<Args>) => E,
+      f: (_: E, ...args: NoInfer<Args>) => F,
+      g: (_: F, ...args: NoInfer<Args>) => G,
+      h: (_: G, ...args: NoInfer<Args>) => H
     ): (this: Self, ...args: Args) => H
     <
       Self,
@@ -14356,16 +14356,16 @@ export namespace fn {
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
           [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
         >,
-        ...args: Args
+        ...args: NoInfer<Args>
       ) => A,
-      b: (_: A, ...args: Args) => B,
-      c: (_: B, ...args: Args) => C,
-      d: (_: C, ...args: Args) => D,
-      e: (_: D, ...args: Args) => E,
-      f: (_: E, ...args: Args) => F,
-      g: (_: F, ...args: Args) => G,
-      h: (_: G, ...args: Args) => H,
-      i: (_: H, ...args: Args) => I
+      b: (_: A, ...args: NoInfer<Args>) => B,
+      c: (_: B, ...args: NoInfer<Args>) => C,
+      d: (_: C, ...args: NoInfer<Args>) => D,
+      e: (_: D, ...args: NoInfer<Args>) => E,
+      f: (_: E, ...args: NoInfer<Args>) => F,
+      g: (_: F, ...args: NoInfer<Args>) => G,
+      h: (_: G, ...args: NoInfer<Args>) => H,
+      i: (_: H, ...args: NoInfer<Args>) => I
     ): (this: Self, ...args: Args) => I
   }
 }
