@@ -1223,14 +1223,14 @@ export const truncate: {
  * @internal
  */
 export const digitAt: {
-  (scale: number): (n: BigDecimal) => bigint
-  (n: BigDecimal, scale: number): bigint
-} = dual(2, (n: BigDecimal, scale: number): bigint => {
-  if (n.scale < scale) {
+  (scale: number): (self: BigDecimal) => bigint
+  (self: BigDecimal, scale: number): bigint
+} = dual(2, (self: BigDecimal, scale: number): bigint => {
+  if (self.scale < scale) {
     return 0n
   }
 
-  const scaled = n.value / (10n ** BigInt(n.scale - scale))
+  const scaled = self.value / (10n ** BigInt(self.scale - scale))
   return scaled % 10n
 })
 
