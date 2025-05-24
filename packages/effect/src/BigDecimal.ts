@@ -1166,9 +1166,9 @@ export const ceil: {
  * import * as assert from "node:assert"
  * import { floor, unsafeFromString } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(BigDecimal.floor(unsafeFromString("145"), -1), unsafeFromString("140"))
- * assert.deepStrictEqual(BigDecimal.floor(-1)(unsafeFromString("145")), unsafeFromString("140"))
- * assert.deepStrictEqual(BigDecimal.floor(unsafeFromString("-14.5")), unsafeFromString("-15"))
+ * assert.deepStrictEqual(floor(unsafeFromString("145"), -1), unsafeFromString("140"))
+ * assert.deepStrictEqual(floor(-1)(unsafeFromString("145")), unsafeFromString("140"))
+ * assert.deepStrictEqual(floor(unsafeFromString("-14.5")), unsafeFromString("-15"))
  * ```
  *
  * @since 3.16.0
@@ -1195,9 +1195,9 @@ export const floor: {
  * import * as assert from "node:assert"
  * import { truncate, unsafeFromString } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(BigDecimal.truncate(unsafeFromString("145"), -1), unsafeFromString("140"))
- * assert.deepStrictEqual(BigDecimal.truncate(-1)(unsafeFromString("145")), unsafeFromString("140"))
- * assert.deepStrictEqual(BigDecimal.truncate(unsafeFromString("-14.5")), unsafeFromString("-14"))
+ * assert.deepStrictEqual(truncate(unsafeFromString("145"), -1), unsafeFromString("140"))
+ * assert.deepStrictEqual(truncate(-1)(unsafeFromString("145")), unsafeFromString("140"))
+ * assert.deepStrictEqual(truncate(unsafeFromString("-14.5")), unsafeFromString("-14"))
  * ```
  *
  * @since 3.16.0
@@ -1268,12 +1268,12 @@ export type RoundingMode =
  *
  * @example
  * ```ts
- * * import * as assert from "node:assert"
+ * import * as assert from "node:assert"
  * import { round, unsafeFromString } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(BigDecimal.round(unsafeFromString("145"), { mode: "from-zero", scale: -1 }), unsafeFromString("150"))
- * assert.deepStrictEqual(BigDecimal.round({ mode: "from-zero", scale: -1 })(unsafeFromString("145")), unsafeFromString("150"))
- * assert.deepStrictEqual(BigDecimal.round(unsafeFromString("-14.5")), $("-15"))
+ * assert.deepStrictEqual(round(unsafeFromString("145"), { mode: "from-zero", scale: -1 }), unsafeFromString("150"))
+ * assert.deepStrictEqual(round({ mode: "from-zero", scale: -1 })(unsafeFromString("145")), unsafeFromString("150"))
+ * assert.deepStrictEqual(round(unsafeFromString("-14.5")), unsafeFromString("-15"))
  * ```
  *
  * @since 3.16.0
