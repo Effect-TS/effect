@@ -5,7 +5,7 @@
 Add parameter support for Effect.Service
 
 This allows you to pass parameters to the `effect` & `scoped` Effect.Service
-constructors, which will also reflects in the `.Default` layer.
+constructors, which will also be reflected in the `.Default` layer.
 
 ```ts
 import type { Layer } from "effect"
