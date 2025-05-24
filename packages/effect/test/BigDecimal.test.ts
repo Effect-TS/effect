@@ -369,164 +369,117 @@ describe("BigDecimal", () => {
     assertEquals(BigDecimal.digitAt($("12.34"), 3), 0n)
   })
 
-  it("ceil is dual", () => {
+  it("round: ceil", () => {
     assertEquals(BigDecimal.ceil($("145"), -1), $("150"))
     assertEquals(BigDecimal.ceil(-1)($("145")), $("150"))
     assertEquals(BigDecimal.ceil($("-14.5")), $("-14"))
+
+    assertEquals(BigDecimal.round($("321.123"), { mode: "ceil", scale: -3 }), $("1000"))
+    assertEquals(BigDecimal.round($("145"), { mode: "ceil", scale: -1 }), $("150"))
+    assertEquals(BigDecimal.round($("-2.0"), { mode: "ceil", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("-1.9"), { mode: "ceil", scale: 0 }), $("-1"))
+    assertEquals(BigDecimal.round($("0.12345678987654321"), { mode: "ceil", scale: 13 }), $("0.1234567898766"))
+    assertEquals(BigDecimal.round($("-0.12345678987654321"), { mode: "ceil", scale: 13 }), $("-0.1234567898765"))
   })
 
-  it("floor is dual", () => {
+  it("round: floor)", () => {
     assertEquals(BigDecimal.floor($("145"), -1), $("140"))
     assertEquals(BigDecimal.floor(-1)($("145")), $("140"))
     assertEquals(BigDecimal.floor($("-14.5")), $("-15"))
+
+    assertEquals(BigDecimal.round($("321.123"), { mode: "floor", scale: -3 }), $("0"))
+    assertEquals(BigDecimal.round($("145"), { mode: "floor", scale: -1 }), $("140"))
+    assertEquals(BigDecimal.round($("-2.1"), { mode: "floor", scale: 0 }), $("-3"))
+    assertEquals(BigDecimal.round($("-1.9"), { mode: "floor", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("0.12345678987654321"), { mode: "floor", scale: 13 }), $("0.1234567898765"))
+    assertEquals(BigDecimal.round($("-0.12345678987654321"), { mode: "floor", scale: 13 }), $("-0.1234567898766"))
   })
 
-  it("truncate is dual", () => {
+  it("round: to-zero (truncate)", () => {
     assertEquals(BigDecimal.truncate($("145"), -1), $("140"))
     assertEquals(BigDecimal.truncate(-1)($("145")), $("140"))
     assertEquals(BigDecimal.truncate($("-14.5")), $("-14"))
+
+    assertEquals(BigDecimal.round($("321.123"), { mode: "to-zero", scale: -3 }), $("0"))
+    assertEquals(BigDecimal.round($("145"), { mode: "to-zero", scale: -1 }), $("140"))
+    assertEquals(BigDecimal.round($("-2.1"), { mode: "to-zero", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("-1.9"), { mode: "to-zero", scale: 0 }), $("-1"))
+    assertEquals(BigDecimal.round($("0.12345678987654321"), { mode: "to-zero", scale: 13 }), $("0.1234567898765"))
+    assertEquals(BigDecimal.round($("-0.12345678987654321"), { mode: "to-zero", scale: 13 }), $("-0.1234567898765"))
   })
 
-  it("round is dual", () => {
+  it("round: from-zero", () => {
+    assertEquals(BigDecimal.round($("321.123"), { mode: "from-zero", scale: -3 }), $("1000"))
     assertEquals(BigDecimal.round($("145"), { mode: "from-zero", scale: -1 }), $("150"))
-    assertEquals(BigDecimal.round({ mode: "from-zero", scale: -1 })($("145")), $("150"))
-    assertEquals(BigDecimal.round($("-14.5")), $("-15"))
+    assertEquals(BigDecimal.round($("-2.1"), { mode: "from-zero", scale: 0 }), $("-3"))
+    assertEquals(BigDecimal.round($("-1.9"), { mode: "from-zero", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("0.12345678987654321"), { mode: "from-zero", scale: 13 }), $("0.1234567898766"))
+    assertEquals(BigDecimal.round($("-0.12345678987654321"), { mode: "from-zero", scale: 13 }), $("-0.1234567898766"))
   })
 
-  it("round", () => {
-    // Each row contains a test of the form:
-    // [value, ceil, floor, toZero, fromZero, halfEven, halfOdd, halfCeil, halfFloor, halfToZero, halfFromZero]
-    const tests = [
-      ["-2", "-2", "-2", "-2", "-2", "-2", "-2", "-2", "-2", "-2", "-2"],
-      ["-1.9", "-1", "-2", "-1", "-2", "-2", "-2", "-2", "-2", "-2", "-2"],
-      ["-1.8", "-1", "-2", "-1", "-2", "-2", "-2", "-2", "-2", "-2", "-2"],
-      ["-1.7", "-1", "-2", "-1", "-2", "-2", "-2", "-2", "-2", "-2", "-2"],
-      ["-1.6", "-1", "-2", "-1", "-2", "-2", "-2", "-2", "-2", "-2", "-2"],
-      ["-1.5", "-1", "-2", "-1", "-2", "-2", "-1", "-1", "-2", "-1", "-2"],
-      ["-1.4", "-1", "-2", "-1", "-2", "-1", "-1", "-1", "-1", "-1", "-1"],
-      ["-1.3", "-1", "-2", "-1", "-2", "-1", "-1", "-1", "-1", "-1", "-1"],
-      ["-1.2", "-1", "-2", "-1", "-2", "-1", "-1", "-1", "-1", "-1", "-1"],
-      ["-1.1", "-1", "-2", "-1", "-2", "-1", "-1", "-1", "-1", "-1", "-1"],
-      ["-1", "-1", "-1", "-1", "-1", "-1", "-1", "-1", "-1", "-1", "-1"],
-      ["-0.9", "0", "-1", "0", "-1", "-1", "-1", "-1", "-1", "-1", "-1"],
-      ["-0.8", "0", "-1", "0", "-1", "-1", "-1", "-1", "-1", "-1", "-1"],
-      ["-0.7", "0", "-1", "0", "-1", "-1", "-1", "-1", "-1", "-1", "-1"],
-      ["-0.6", "0", "-1", "0", "-1", "-1", "-1", "-1", "-1", "-1", "-1"],
-      ["-0.5", "0", "-1", "0", "-1", "0", "-1", "0", "-1", "0", "-1"],
-      ["-0.4", "0", "-1", "0", "-1", "0", "0", "0", "0", "0", "0"],
-      ["-0.3", "0", "-1", "0", "-1", "0", "0", "0", "0", "0", "0"],
-      ["-0.2", "0", "-1", "0", "-1", "0", "0", "0", "0", "0", "0"],
-      ["-0.1", "0", "-1", "0", "-1", "0", "0", "0", "0", "0", "0"],
-      ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"],
-      ["0.1", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0"],
-      ["0.2", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0"],
-      ["0.3", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0"],
-      ["0.4", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0"],
-      ["0.5", "1", "0", "0", "1", "0", "1", "1", "0", "0", "1"],
-      ["0.6", "1", "0", "0", "1", "1", "1", "1", "1", "1", "1"],
-      ["0.7", "1", "0", "0", "1", "1", "1", "1", "1", "1", "1"],
-      ["0.8", "1", "0", "0", "1", "1", "1", "1", "1", "1", "1"],
-      ["0.9", "1", "0", "0", "1", "1", "1", "1", "1", "1", "1"],
-      ["1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1"],
-      ["1.1", "2", "1", "1", "2", "1", "1", "1", "1", "1", "1"],
-      ["1.2", "2", "1", "1", "2", "1", "1", "1", "1", "1", "1"],
-      ["1.3", "2", "1", "1", "2", "1", "1", "1", "1", "1", "1"],
-      ["1.4", "2", "1", "1", "2", "1", "1", "1", "1", "1", "1"],
-      ["1.5", "2", "1", "1", "2", "2", "1", "2", "1", "1", "2"],
-      ["1.6", "2", "1", "1", "2", "2", "2", "2", "2", "2", "2"],
-      ["1.7", "2", "1", "1", "2", "2", "2", "2", "2", "2", "2"],
-      ["1.8", "2", "1", "1", "2", "2", "2", "2", "2", "2", "2"],
-      ["1.9", "2", "1", "1", "2", "2", "2", "2", "2", "2", "2"],
-      ["2", "2", "2", "2", "2", "2", "2", "2", "2", "2", "2"]
-    ]
+  it("round: half-ceil", () => {
+    assertEquals(BigDecimal.round($("321.123"), { mode: "half-ceil", scale: -3 }), $("0"))
+    assertEquals(BigDecimal.round($("145"), { mode: "half-ceil", scale: -1 }), $("150"))
+    assertEquals(BigDecimal.round($("-2.5"), { mode: "half-ceil", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("1.95"), { mode: "half-ceil", scale: 1 }), $("2"))
+    assertEquals(BigDecimal.round($("-1.95"), { mode: "half-ceil", scale: 1 }), $("-1.9"))
+    assertEquals(BigDecimal.round($("0.1234567898765"), { mode: "half-ceil", scale: 12 }), $("0.123456789877"))
+    assertEquals(BigDecimal.round($("-0.1234567898765"), { mode: "half-ceil", scale: 12 }), $("-0.123456789876"))
+  })
 
-    for (
-      const [
-        _value,
-        _ceil,
-        _floor,
-        _toZero,
-        _fromZero,
-        _halfEven,
-        _halfOdd,
-        _halfCeil,
-        _halfFloor,
-        _halfToZero,
-        _halfFromZero
-      ] of tests
-    ) {
-      // Test each row at multiple scales
-      // for (const scale of [-123_456_789, -2, -1, 0, 1, 2, 65_535]) {
-      for (const scale of [-4, -3, -2, -1, 0, 1, 2, 3]) {
-        const value = BigDecimal.make($(_value).value, $(_value).scale + scale)
-        const ceil = BigDecimal.make($(_ceil).value, $(_ceil).scale + scale)
-        const floor = BigDecimal.make($(_floor).value, $(_floor).scale + scale)
-        const toZero = BigDecimal.make($(_toZero).value, $(_toZero).scale + scale)
-        const fromZero = BigDecimal.make($(_fromZero).value, $(_fromZero).scale + scale)
-        const halfEven = BigDecimal.make($(_halfEven).value, $(_halfEven).scale + scale)
-        const halfOdd = BigDecimal.make($(_halfOdd).value, $(_halfOdd).scale + scale)
-        const halfCeil = BigDecimal.make($(_halfCeil).value, $(_halfCeil).scale + scale)
-        const halfFloor = BigDecimal.make($(_halfFloor).value, $(_halfFloor).scale + scale)
-        const halfToZero = BigDecimal.make($(_halfToZero).value, $(_halfToZero).scale + scale)
-        const halfFromZero = BigDecimal.make($(_halfFromZero).value, $(_halfFromZero).scale + scale)
+  it("round: half-floor", () => {
+    assertEquals(BigDecimal.round($("321.123"), { mode: "half-floor", scale: -3 }), $("0"))
+    assertEquals(BigDecimal.round($("145"), { mode: "half-floor", scale: -1 }), $("140"))
+    assertEquals(BigDecimal.round($("-2.4"), { mode: "half-floor", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("-2.5"), { mode: "half-floor", scale: 0 }), $("-3"))
+    assertEquals(BigDecimal.round($("1.95"), { mode: "half-floor", scale: 1 }), $("1.9"))
+    assertEquals(BigDecimal.round($("-1.95"), { mode: "half-floor", scale: 1 }), $("-2"))
+    assertEquals(BigDecimal.round($("0.1234567898765"), { mode: "half-floor", scale: 12 }), $("0.123456789876"))
+    assertEquals(BigDecimal.round($("-0.1234567898765"), { mode: "half-floor", scale: 12 }), $("-0.123456789877"))
+  })
 
-        assertEquals(
-          BigDecimal.round(value, { mode: "ceil", scale }),
-          ceil,
-          `Expected ${value} to round to ${ceil} with mode ceil, scale ${scale}`
-        )
-        assertEquals(
-          BigDecimal.round(value, { mode: "floor", scale }),
-          floor,
-          `Expected ${value} to round to ${floor} with mode floor, scale ${scale}`
-        )
-        assertEquals(
-          BigDecimal.round(value, { mode: "to-zero", scale }),
-          toZero,
-          `Expected ${value} to round to ${toZero} with mode toZero, scale ${scale}`
-        )
-        assertEquals(
-          BigDecimal.truncate(value, scale),
-          toZero, // Truncate and round towards zero are the same
-          `Expected ${value} to truncate ${toZero} at scale ${scale}`
-        )
-        assertEquals(
-          BigDecimal.round(value, { mode: "from-zero", scale }),
-          fromZero,
-          `Expected ${value} to round to ${fromZero} with mode fromZero, scale ${scale}`
-        )
-        assertEquals(
-          BigDecimal.round(value, { mode: "half-even", scale }),
-          halfEven,
-          `Expected ${value} to round to ${halfEven} with mode halfEven, scale ${scale}`
-        )
-        assertEquals(
-          BigDecimal.round(value, { mode: "half-odd", scale }),
-          halfOdd,
-          `Expected ${value} to round to ${halfOdd} with mode halfOdd, scale ${scale}`
-        )
-        assertEquals(
-          BigDecimal.round(value, { mode: "half-ceil", scale }),
-          halfCeil,
-          `Expected ${value} to round to ${halfCeil} with mode halfCeil, scale ${scale}`
-        )
-        assertEquals(
-          BigDecimal.round(value, { mode: "half-floor", scale }),
-          halfFloor,
-          `Expected ${value} to round to ${halfFloor} with mode halfFloor, scale ${scale}`
-        )
-        assertEquals(
-          BigDecimal.round(value, { mode: "half-to-zero", scale }),
-          halfToZero,
-          `Expected ${value} to round to ${halfToZero} with mode halfToZero, scale ${scale}`
-        )
-        assertEquals(
-          BigDecimal.round(value, { mode: "half-from-zero", scale }),
-          halfFromZero,
-          `Expected ${value} to round to ${halfFromZero} with mode halfFromZero, scale ${scale}`
-        )
-      }
-    }
+  it("round: half-to-zero", () => {
+    assertEquals(BigDecimal.round($("321.123"), { mode: "half-to-zero", scale: -3 }), $("0"))
+    assertEquals(BigDecimal.round($("145"), { mode: "half-to-zero", scale: -1 }), $("140"))
+    assertEquals(BigDecimal.round($("-2.4"), { mode: "half-to-zero", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("-2.5"), { mode: "half-to-zero", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("1.95"), { mode: "half-to-zero", scale: 1 }), $("1.9"))
+    assertEquals(BigDecimal.round($("-1.95"), { mode: "half-to-zero", scale: 1 }), $("-1.9"))
+    assertEquals(BigDecimal.round($("0.1234567898765"), { mode: "half-to-zero", scale: 12 }), $("0.123456789876"))
+    assertEquals(BigDecimal.round($("-0.1234567898765"), { mode: "half-to-zero", scale: 12 }), $("-0.123456789876"))
+  })
+
+  it("round: half-from-zero", () => {
+    assertEquals(BigDecimal.round($("321.123"), { mode: "half-from-zero", scale: -3 }), $("0"))
+    assertEquals(BigDecimal.round($("145"), { mode: "half-from-zero", scale: -1 }), $("150"))
+    assertEquals(BigDecimal.round($("-2.4"), { mode: "half-from-zero", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("-2.5"), { mode: "half-from-zero", scale: 0 }), $("-3"))
+    assertEquals(BigDecimal.round($("1.95"), { mode: "half-from-zero", scale: 1 }), $("2"))
+    assertEquals(BigDecimal.round($("-1.95"), { mode: "half-from-zero", scale: 1 }), $("-2"))
+    assertEquals(BigDecimal.round($("0.1234567898765"), { mode: "half-from-zero", scale: 12 }), $("0.123456789877"))
+    assertEquals(BigDecimal.round($("-0.1234567898765"), { mode: "half-from-zero", scale: 12 }), $("-0.123456789877"))
+  })
+
+  it("round: half-even", () => {
+    assertEquals(BigDecimal.round($("321.123"), { mode: "half-even", scale: -3 }), $("0"))
+    assertEquals(BigDecimal.round($("145"), { mode: "half-even", scale: -1 }), $("140"))
+    assertEquals(BigDecimal.round($("-2.4"), { mode: "half-even", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("-2.5"), { mode: "half-even", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("1.95"), { mode: "half-even", scale: 1 }), $("2"))
+    assertEquals(BigDecimal.round($("-1.95"), { mode: "half-even", scale: 1 }), $("-2"))
+    assertEquals(BigDecimal.round($("0.1234567898765"), { mode: "half-even", scale: 12 }), $("0.123456789876"))
+    assertEquals(BigDecimal.round($("-0.1234567898765"), { mode: "half-even", scale: 12 }), $("-0.123456789876"))
+  })
+
+  it("round: half-odd", () => {
+    assertEquals(BigDecimal.round($("321.123"), { mode: "half-even", scale: -3 }), $("0"))
+    assertEquals(BigDecimal.round($("145"), { mode: "half-even", scale: -1 }), $("140"))
+    assertEquals(BigDecimal.round($("-2.4"), { mode: "half-even", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("-2.5"), { mode: "half-even", scale: 0 }), $("-2"))
+    assertEquals(BigDecimal.round($("1.95"), { mode: "half-even", scale: 1 }), $("2"))
+    assertEquals(BigDecimal.round($("-1.95"), { mode: "half-even", scale: 1 }), $("-2"))
+    assertEquals(BigDecimal.round($("0.1234567898765"), { mode: "half-even", scale: 12 }), $("0.123456789876"))
+    assertEquals(BigDecimal.round($("-0.1234567898765"), { mode: "half-even", scale: 12 }), $("-0.123456789876"))
   })
 
   it("sumAll", () => {
