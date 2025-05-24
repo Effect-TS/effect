@@ -361,6 +361,157 @@ describe("BigDecimal", () => {
     assertFalse(BigDecimal.isPositive($("0")))
     assertTrue(BigDecimal.isPositive($("1")))
   })
+
+  it("digitAt", () => {
+    assertEquals(BigDecimal.digitAt($("12.34"), -2), 0n)
+    assertEquals(BigDecimal.digitAt($("12.34"), -1), 1n)
+    assertEquals(BigDecimal.digitAt($("12.34"), 0), 2n)
+    assertEquals(BigDecimal.digitAt($("12.34"), 1), 3n)
+    assertEquals(BigDecimal.digitAt($("12.34"), 2), 4n)
+    assertEquals(BigDecimal.digitAt($("12.34"), 3), 0n)
+  })
+
+  it("round", () => {
+    // Each row contains a test of the form:
+    // [value, ceil, floor, toZero, fromZero, halfEven, halfOdd, halfCeil, halfFloor, halfToZero, halfFromZero]
+    const tests = [
+      ["-2", "-2", "-2", "-2", "-2", "-2", "-2", "-2", "-2", "-2", "-2"],
+      ["-1.9", "-1", "-2", "-1", "-2", "-2", "-2", "-2", "-2", "-2", "-2"],
+      ["-1.8", "-1", "-2", "-1", "-2", "-2", "-2", "-2", "-2", "-2", "-2"],
+      ["-1.7", "-1", "-2", "-1", "-2", "-2", "-2", "-2", "-2", "-2", "-2"],
+      ["-1.6", "-1", "-2", "-1", "-2", "-2", "-2", "-2", "-2", "-2", "-2"],
+      ["-1.5", "-1", "-2", "-1", "-2", "-2", "-1", "-1", "-2", "-1", "-2"],
+      ["-1.4", "-1", "-2", "-1", "-2", "-1", "-1", "-1", "-1", "-1", "-1"],
+      ["-1.3", "-1", "-2", "-1", "-2", "-1", "-1", "-1", "-1", "-1", "-1"],
+      ["-1.2", "-1", "-2", "-1", "-2", "-1", "-1", "-1", "-1", "-1", "-1"],
+      ["-1.1", "-1", "-2", "-1", "-2", "-1", "-1", "-1", "-1", "-1", "-1"],
+      ["-1", "-1", "-1", "-1", "-1", "-1", "-1", "-1", "-1", "-1", "-1"],
+      ["-0.9", "0", "-1", "0", "-1", "-1", "-1", "-1", "-1", "-1", "-1"],
+      ["-0.8", "0", "-1", "0", "-1", "-1", "-1", "-1", "-1", "-1", "-1"],
+      ["-0.7", "0", "-1", "0", "-1", "-1", "-1", "-1", "-1", "-1", "-1"],
+      ["-0.6", "0", "-1", "0", "-1", "-1", "-1", "-1", "-1", "-1", "-1"],
+      ["-0.5", "0", "-1", "0", "-1", "0", "-1", "0", "-1", "0", "-1"],
+      ["-0.4", "0", "-1", "0", "-1", "0", "0", "0", "0", "0", "0"],
+      ["-0.3", "0", "-1", "0", "-1", "0", "0", "0", "0", "0", "0"],
+      ["-0.2", "0", "-1", "0", "-1", "0", "0", "0", "0", "0", "0"],
+      ["-0.1", "0", "-1", "0", "-1", "0", "0", "0", "0", "0", "0"],
+      ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"],
+      ["0.1", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0"],
+      ["0.2", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0"],
+      ["0.3", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0"],
+      ["0.4", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0"],
+      ["0.5", "1", "0", "0", "1", "0", "1", "1", "0", "0", "1"],
+      ["0.6", "1", "0", "0", "1", "1", "1", "1", "1", "1", "1"],
+      ["0.7", "1", "0", "0", "1", "1", "1", "1", "1", "1", "1"],
+      ["0.8", "1", "0", "0", "1", "1", "1", "1", "1", "1", "1"],
+      ["0.9", "1", "0", "0", "1", "1", "1", "1", "1", "1", "1"],
+      ["1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1"],
+      ["1.1", "2", "1", "1", "2", "1", "1", "1", "1", "1", "1"],
+      ["1.2", "2", "1", "1", "2", "1", "1", "1", "1", "1", "1"],
+      ["1.3", "2", "1", "1", "2", "1", "1", "1", "1", "1", "1"],
+      ["1.4", "2", "1", "1", "2", "1", "1", "1", "1", "1", "1"],
+      ["1.5", "2", "1", "1", "2", "2", "1", "2", "1", "1", "2"],
+      ["1.6", "2", "1", "1", "2", "2", "2", "2", "2", "2", "2"],
+      ["1.7", "2", "1", "1", "2", "2", "2", "2", "2", "2", "2"],
+      ["1.8", "2", "1", "1", "2", "2", "2", "2", "2", "2", "2"],
+      ["1.9", "2", "1", "1", "2", "2", "2", "2", "2", "2", "2"],
+      ["2", "2", "2", "2", "2", "2", "2", "2", "2", "2", "2"]
+    ]
+
+    for (
+      const [
+        _value,
+        _ceil,
+        _floor,
+        _toZero,
+        _fromZero,
+        _halfEven,
+        _halfOdd,
+        _halfCeil,
+        _halfFloor,
+        _halfToZero,
+        _halfFromZero
+      ] of tests
+    ) {
+      // Test each row at multiple scales
+      // for (const scale of [-123_456_789, -2, -1, 0, 1, 2, 65_535]) {
+      for (const scale of [-4, -3, -2, -1, 0, 1, 2, 3]) {
+        const value = BigDecimal.make($(_value).value, $(_value).scale + scale)
+        const ceil = BigDecimal.make($(_ceil).value, $(_ceil).scale + scale)
+        const floor = BigDecimal.make($(_floor).value, $(_floor).scale + scale)
+        const toZero = BigDecimal.make($(_toZero).value, $(_toZero).scale + scale)
+        const fromZero = BigDecimal.make($(_fromZero).value, $(_fromZero).scale + scale)
+        const halfEven = BigDecimal.make($(_halfEven).value, $(_halfEven).scale + scale)
+        const halfOdd = BigDecimal.make($(_halfOdd).value, $(_halfOdd).scale + scale)
+        const halfCeil = BigDecimal.make($(_halfCeil).value, $(_halfCeil).scale + scale)
+        const halfFloor = BigDecimal.make($(_halfFloor).value, $(_halfFloor).scale + scale)
+        const halfToZero = BigDecimal.make($(_halfToZero).value, $(_halfToZero).scale + scale)
+        const halfFromZero = BigDecimal.make($(_halfFromZero).value, $(_halfFromZero).scale + scale)
+
+        assertEquals(
+          BigDecimal.round(value, { mode: "ceil", scale }),
+          ceil,
+          `Expected ${value} to round to ${ceil} with mode ceil, scale ${scale}`
+        )
+        assertEquals(
+          BigDecimal.round(value, { mode: "floor", scale }),
+          floor,
+          `Expected ${value} to round to ${floor} with mode floor, scale ${scale}`
+        )
+        assertEquals(
+          BigDecimal.round(value, { mode: "to-zero", scale }),
+          toZero,
+          `Expected ${value} to round to ${toZero} with mode toZero, scale ${scale}`
+        )
+        assertEquals(
+          BigDecimal.truncate(value, scale),
+          toZero, // Truncate and round towards zero are the same
+          `Expected ${value} to truncate ${toZero} at scale ${scale}`
+        )
+        assertEquals(
+          BigDecimal.round(value, { mode: "from-zero", scale }),
+          fromZero,
+          `Expected ${value} to round to ${fromZero} with mode fromZero, scale ${scale}`
+        )
+        assertEquals(
+          BigDecimal.round(value, { mode: "half-even", scale }),
+          halfEven,
+          `Expected ${value} to round to ${halfEven} with mode halfEven, scale ${scale}`
+        )
+        assertEquals(
+          BigDecimal.round(value, { mode: "half-odd", scale }),
+          halfOdd,
+          `Expected ${value} to round to ${halfOdd} with mode halfOdd, scale ${scale}`
+        )
+        assertEquals(
+          BigDecimal.round(value, { mode: "half-ceil", scale }),
+          halfCeil,
+          `Expected ${value} to round to ${halfCeil} with mode halfCeil, scale ${scale}`
+        )
+        assertEquals(
+          BigDecimal.round(value, { mode: "half-floor", scale }),
+          halfFloor,
+          `Expected ${value} to round to ${halfFloor} with mode halfFloor, scale ${scale}`
+        )
+        assertEquals(
+          BigDecimal.round(value, { mode: "half-to-zero", scale }),
+          halfToZero,
+          `Expected ${value} to round to ${halfToZero} with mode halfToZero, scale ${scale}`
+        )
+        assertEquals(
+          BigDecimal.round(value, { mode: "half-from-zero", scale }),
+          halfFromZero,
+          `Expected ${value} to round to ${halfFromZero} with mode halfFromZero, scale ${scale}`
+        )
+      }
+    }
+  })
+
+  it("sumAll", () => {
+    assertEquals(BigDecimal.sumAll([]), $("0"))
+    assertEquals(BigDecimal.sumAll([$("2.5"), $("0.5")]), $("3"))
+    assertEquals(BigDecimal.sumAll([$("2.5"), $("1500"), $("123.456")]), $("1625.956"))
+  })
 })
 
 // This test is skipped because it is slow. It remains here as an opt-in test for
