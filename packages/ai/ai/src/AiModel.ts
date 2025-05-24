@@ -24,7 +24,7 @@ export type TypeId = typeof TypeId
  * @category models
  */
 export interface AiModel<in out Provides, in out Requires>
-  extends Layer.Layer<Provides, never, Requires>, Effect.Effect<Provides & Layer.Layer<Provides>, never, Requires>
+  extends Layer.Layer<Provides, never, Requires>, Effect.Effect<Layer.Layer<Provides>, never, Requires>
 {
   readonly [TypeId]: TypeId
 }
