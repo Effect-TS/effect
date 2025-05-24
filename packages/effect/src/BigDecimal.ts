@@ -1138,7 +1138,6 @@ const isBigDecimalArgs = (args: IArguments) => isBigDecimal(args[0])
  * import { ceil, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(ceil(unsafeFromString("145"), -1), unsafeFromString("150"))
- * assert.deepStrictEqual(ceil(-1)(unsafeFromString("145")), unsafeFromString("150"))
  * assert.deepStrictEqual(ceil(unsafeFromString("-14.5")), unsafeFromString("-14"))
  * ```
  *
@@ -1167,7 +1166,6 @@ export const ceil: {
  * import { floor, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(floor(unsafeFromString("145"), -1), unsafeFromString("140"))
- * assert.deepStrictEqual(floor(-1)(unsafeFromString("145")), unsafeFromString("140"))
  * assert.deepStrictEqual(floor(unsafeFromString("-14.5")), unsafeFromString("-15"))
  * ```
  *
@@ -1196,7 +1194,6 @@ export const floor: {
  * import { truncate, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(truncate(unsafeFromString("145"), -1), unsafeFromString("140"))
- * assert.deepStrictEqual(truncate(-1)(unsafeFromString("145")), unsafeFromString("140"))
  * assert.deepStrictEqual(truncate(unsafeFromString("-14.5")), unsafeFromString("-14"))
  * ```
  *
@@ -1272,7 +1269,6 @@ export type RoundingMode =
  * import { round, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(round(unsafeFromString("145"), { mode: "from-zero", scale: -1 }), unsafeFromString("150"))
- * assert.deepStrictEqual(round({ mode: "from-zero", scale: -1 })(unsafeFromString("145")), unsafeFromString("150"))
  * assert.deepStrictEqual(round(unsafeFromString("-14.5")), unsafeFromString("-15"))
  * ```
  *
@@ -1337,13 +1333,7 @@ export const round: {
  * import * as assert from "node:assert"
  * import { unsafeFromString, sumAll } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(
- *  sumAll(
- *    [
- *      unsafeFromString("2"),
- *      unsafeFromString("3"),
- *      unsafeFromString("4")
- *    ]), unsafeFromString("9"))
+ * assert.deepStrictEqual(sumAll([unsafeFromString("2"), unsafeFromString("3"), unsafeFromString("4")]), unsafeFromString("9"))
  * ```
  *
  * @category math
