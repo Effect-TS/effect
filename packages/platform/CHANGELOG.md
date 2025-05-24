@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.82.7
+
+### Patch Changes
+
+- [#4921](https://github.com/Effect-TS/effect/pull/4921) [`c20b95a`](https://github.com/Effect-TS/effect/commit/c20b95a99ffe452b4774c844d397a905f713b6d6) Thanks @tim-smart! - update /platform dependencies
+
+- [#4916](https://github.com/Effect-TS/effect/pull/4916) [`94ada43`](https://github.com/Effect-TS/effect/commit/94ada430928d5685bdbef513e87562c20774a3a2) Thanks @mattiamanzati! - Fix missing encoding of path parameters in HttpApiClient
+
+- Updated dependencies [[`f570554`](https://github.com/Effect-TS/effect/commit/f57055459524587b041340577dad85476bb35f81), [`78047e8`](https://github.com/Effect-TS/effect/commit/78047e8dfc8005b66f87afe50bb95981fea51561)]:
+  - effect@3.15.4
+
 ## 0.82.6
 
 ### Patch Changes

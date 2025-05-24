@@ -1,5 +1,13 @@
 # effect
 
+## 3.15.4
+
+### Patch Changes
+
+- [#4869](https://github.com/Effect-TS/effect/pull/4869) [`f570554`](https://github.com/Effect-TS/effect/commit/f57055459524587b041340577dad85476bb35f81) Thanks @IGassmann! - Fix summary metric’s min/max values when no samples
+
+- [#4917](https://github.com/Effect-TS/effect/pull/4917) [`78047e8`](https://github.com/Effect-TS/effect/commit/78047e8dfc8005b66f87afe50bb95981fea51561) Thanks @KhraksMamtsov! - Fix Effect.fn inference in case of use with pipe functions
+
 ## 3.15.3
 
 ### Patch Changes
