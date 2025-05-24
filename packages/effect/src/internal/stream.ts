@@ -8,11 +8,13 @@ import * as Duration from "../Duration.js"
 import * as Effect from "../Effect.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
+import type { ExecutionPlan } from "../ExecutionPlan.js"
 import * as Exit from "../Exit.js"
 import * as Fiber from "../Fiber.js"
 import * as FiberRef from "../FiberRef.js"
 import type { LazyArg } from "../Function.js"
 import { constTrue, dual, identity, pipe } from "../Function.js"
+import * as internalExecutionPlan from "../internal/executionPlan.js"
 import * as Layer from "../Layer.js"
 import * as MergeDecision from "../MergeDecision.js"
 import * as Option from "../Option.js"
@@ -42,6 +44,7 @@ import * as MergeStrategy from "./channel/mergeStrategy.js"
 import * as core from "./core-stream.js"
 import * as doNotation from "./doNotation.js"
 import { RingBuffer } from "./ringBuffer.js"
+import * as InternalSchedule from "./schedule.js"
 import * as sink_ from "./sink.js"
 import * as DebounceState from "./stream/debounceState.js"
 import * as emit from "./stream/emit.js"
@@ -4849,6 +4852,16 @@ export const provideContext = dual<
 )
 
 /** @internal */
+export const provideSomeContext = dual<
+  <R2>(context: Context.Context<R2>) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, Exclude<R, R2>>,
+  <A, E, R, R2>(self: Stream.Stream<A, E, R>, context: Context.Context<R2>) => Stream.Stream<A, E, Exclude<R, R2>>
+>(
+  2,
+  <A, E, R, R2>(self: Stream.Stream<A, E, R>, context: Context.Context<R2>): Stream.Stream<A, E, Exclude<R, R2>> =>
+    mapInputContext(self as any, Context.merge(context))
+)
+
+/** @internal */
 export const provideLayer = dual<
   <RIn, E2, ROut>(
     layer: Layer.Layer<ROut, E2, RIn>
@@ -5443,20 +5456,20 @@ export const repeatEffectWithSchedule = <A, E, R, X, A0 extends A, R2>(
 
 /** @internal */
 export const retry = dual<
-  <E0 extends E, R2, E, X>(
-    schedule: Schedule.Schedule<X, E0, R2>
+  <E, R2, X>(
+    policy: Schedule.Schedule<X, Types.NoInfer<E>, R2>
   ) => <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R2 | R>,
-  <A, E, R, X, E0 extends E, R2>(
+  <A, E, R, X, R2>(
     self: Stream.Stream<A, E, R>,
-    schedule: Schedule.Schedule<X, E0, R2>
+    policy: Schedule.Schedule<X, Types.NoInfer<E>, R2>
   ) => Stream.Stream<A, E, R2 | R>
 >(
   2,
-  <A, E, R, X, E0 extends E, R2>(
+  <A, E, R, X, R2>(
     self: Stream.Stream<A, E, R>,
-    schedule: Schedule.Schedule<X, E0, R2>
-  ): Stream.Stream<A, E, R | R2> =>
-    Schedule.driver(schedule).pipe(
+    policy: Schedule.Schedule<X, Types.NoInfer<E>, R2>
+  ): Stream.Stream<A, E, R2 | R> =>
+    Schedule.driver(policy).pipe(
       Effect.map((driver) => {
         const provideLastIterationInfo = provideServiceEffect(
           Schedule.CurrentIterationMetadata,
@@ -5470,11 +5483,11 @@ export const retry = dual<
           unknown,
           unknown,
           unknown,
-          R | R2
+          R2 | R
         > = toChannel(provideLastIterationInfo(self)).pipe(
           channel.mapOutEffect((out) => Effect.as(driver.reset, out)),
           channel.catchAll((error) =>
-            driver.next(error as E0).pipe(
+            driver.next(error).pipe(
               Effect.match({
                 onFailure: () => core.fail(error),
                 onSuccess: () => loop
@@ -5489,6 +5502,65 @@ export const retry = dual<
       fromChannel
     )
 )
+
+/** @internal */
+export const withExecutionPlan: {
+  <E, R2, Provides = never, PolicyE = never>(
+    policy: ExecutionPlan<Provides, Types.NoInfer<E>, PolicyE, R2>
+  ): <A, R>(
+    self: Stream.Stream<A, E, R>
+  ) => Stream.Stream<A, E | PolicyE, R2 | Exclude<R, Provides>>
+  <A, E, R, R2, Provides = never, PolicyE = never>(
+    self: Stream.Stream<A, E, R>,
+    policy: ExecutionPlan<Provides, Types.NoInfer<E>, PolicyE, R2>
+  ): Stream.Stream<A, E | PolicyE, R2 | Exclude<R, Provides>>
+} = dual(2, <A, E, R, R2, Provides = never, PolicyE = never>(
+  self: Stream.Stream<A, E, R>,
+  policy: ExecutionPlan<Provides, Types.NoInfer<E>, PolicyE, R2>
+): Stream.Stream<A, E | PolicyE, R2 | Exclude<R, Provides>> =>
+  suspend(() => {
+    let i = 0
+    let lastError = Option.none<E | PolicyE>()
+    const loop: Stream.Stream<
+      A,
+      E | PolicyE,
+      R2 | Exclude<R, Provides>
+    > = suspend(() => {
+      const step = policy.steps[i++]
+      if (!step) {
+        return fail(Option.getOrThrow(lastError))
+      }
+
+      let nextStream: Stream.Stream<A, E | PolicyE, R2 | Exclude<R, Provides>> = Context.isContext(step.provide)
+        ? provideSomeContext(self, step.provide)
+        : provideSomeLayer(self, step.provide as Layer.Layer<Provides, E | PolicyE, R2>)
+
+      if (Option.isSome(lastError)) {
+        const error = lastError.value
+        let attempted = false
+        const wrapped = nextStream
+        // ensure the schedule is applied at least once
+        nextStream = suspend(() => {
+          if (attempted) return wrapped
+          attempted = true
+          return fail(error)
+        })
+        nextStream = scheduleDefectRefail(retry(nextStream, internalExecutionPlan.scheduleFromStep(step, false)!))
+      } else {
+        const schedule = internalExecutionPlan.scheduleFromStep(step, true)
+        nextStream = schedule ? scheduleDefectRefail(retry(nextStream, schedule)) : nextStream
+      }
+
+      return catchAll(nextStream, (error) => {
+        lastError = Option.some(error)
+        return loop
+      })
+    })
+    return loop
+  }))
+
+const scheduleDefectRefail = <A, E, R>(self: Stream.Stream<A, E, R>) =>
+  catchAllCause(self, (cause) => failCause(InternalSchedule.scheduleDefectRefailCause(cause)))
 
 /** @internal */
 export const run = dual<

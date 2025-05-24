@@ -264,6 +264,12 @@ export * as Equal from "./Equal.js"
 export * as Equivalence from "./Equivalence.js"
 
 /**
+ * @since 3.16.0
+ * @experimental
+ */
+export * as ExecutionPlan from "./ExecutionPlan.js"
+
+/**
  * @since 2.0.0
  */
 export * as ExecutionStrategy from "./ExecutionStrategy.js"
