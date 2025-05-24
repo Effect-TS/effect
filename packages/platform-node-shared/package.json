@@ -48,9 +48,9 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@parcel/watcher": "^2.4.1",
+    "@parcel/watcher": "^2.5.1",
     "multipasta": "^0.2.5",
-    "ws": "^8.18.0"
+    "ws": "^8.18.2"
   },
   "peerDependencies": {
     "@effect/cluster": "workspace:^",
