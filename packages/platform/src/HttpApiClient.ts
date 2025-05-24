@@ -172,6 +172,9 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
         successes.forEach(({ ast }, status) => {
           decodeMap[status] = ast._tag === "None" ? responseAsVoid : schemaToResponse(ast.value)
         })
+        const encodePath = endpoint.pathSchema.pipe(
+          Option.map(Schema.encodeUnknown)
+        )
         const encodePayloadBody = endpoint.payloadSchema.pipe(
           Option.map((schema) => {
             if (HttpMethod.hasBody(endpoint.method)) {
@@ -186,48 +189,49 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
         const encodeUrlParams = endpoint.urlParamsSchema.pipe(
           Option.map(Schema.encodeUnknown)
         )
-        const endpointFn = (request: {
+        const endpointFn = Effect.fnUntraced(function*(request: {
           readonly path: any
           readonly urlParams: any
           readonly payload: any
           readonly headers: any
           readonly withResponse?: boolean
-        }) =>
-          Effect.gen(function*() {
-            let httpRequest = HttpClientRequest.make(endpoint.method)(
-              request && request.path ? makeUrl(request.path) : endpoint.path
+        }) {
+          let httpRequest = HttpClientRequest.make(endpoint.method)(endpoint.path)
+          if (request && request.path) {
+            const encodedPathParams = encodePath._tag === "Some"
+              ? yield* encodePath.value(request.path)
+              : request.path
+            httpRequest = HttpClientRequest.setUrl(httpRequest, makeUrl(encodedPathParams))
+          }
+          if (request && request.payload instanceof FormData) {
+            httpRequest = HttpClientRequest.bodyFormData(httpRequest, request.payload)
+          } else if (encodePayloadBody._tag === "Some") {
+            if (HttpMethod.hasBody(endpoint.method)) {
+              const body = (yield* encodePayloadBody.value(request.payload)) as HttpBody.HttpBody
+              httpRequest = HttpClientRequest.setBody(httpRequest, body)
+            } else {
+              const urlParams = (yield* encodePayloadBody.value(request.payload)) as Record<string, string>
+              httpRequest = HttpClientRequest.setUrlParams(httpRequest, urlParams)
+            }
+          }
+          if (encodeHeaders._tag === "Some") {
+            httpRequest = HttpClientRequest.setHeaders(
+              httpRequest,
+              (yield* encodeHeaders.value(request.headers)) as any
             )
-            if (request && request.payload instanceof FormData) {
-              httpRequest = HttpClientRequest.bodyFormData(httpRequest, request.payload)
-            } else if (encodePayloadBody._tag === "Some") {
-              if (HttpMethod.hasBody(endpoint.method)) {
-                const body = (yield* encodePayloadBody.value(request.payload)) as HttpBody.HttpBody
-                httpRequest = HttpClientRequest.setBody(httpRequest, body)
-              } else {
-                const urlParams = (yield* encodePayloadBody.value(request.payload)) as Record<string, string>
-                httpRequest = HttpClientRequest.setUrlParams(httpRequest, urlParams)
-              }
-            }
-            if (encodeHeaders._tag === "Some") {
-              httpRequest = HttpClientRequest.setHeaders(
-                httpRequest,
-                (yield* encodeHeaders.value(request.headers)) as any
-              )
-            }
-            if (encodeUrlParams._tag === "Some") {
-              httpRequest = HttpClientRequest.appendUrlParams(
-                httpRequest,
-                (yield* encodeUrlParams.value(request.urlParams)) as any
-              )
-            }
-            const response = yield* httpClient.execute(httpRequest)
-            const value = yield* (options.transformResponse === undefined
-              ? decodeResponse(response)
-              : options.transformResponse(decodeResponse(response)))
-            return request?.withResponse === true ? [value, response] : value
-          }).pipe(
-            Effect.mapInputContext((input) => Context.merge(context, input))
-          )
+          }
+          if (encodeUrlParams._tag === "Some") {
+            httpRequest = HttpClientRequest.appendUrlParams(
+              httpRequest,
+              (yield* encodeUrlParams.value(request.urlParams)) as any
+            )
+          }
+          const response = yield* httpClient.execute(httpRequest)
+          const value = yield* (options.transformResponse === undefined
+            ? decodeResponse(response)
+            : options.transformResponse(decodeResponse(response)))
+          return request?.withResponse === true ? [value, response] : value
+        }, Effect.mapInputContext((input) => Context.merge(context, input)))
 
         options.onEndpoint({
           ...onEndpointOptions,
