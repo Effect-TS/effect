@@ -1143,7 +1143,7 @@ export const isPositive = (n: BigDecimal): boolean => n.value > bigint0
  * assert.deepStrictEqual(ceil(unsafeFromString("-1.2"), {mode: "from-zero"}), unsafeFromString("-1"))
  * ```
  *
- * @since __SINCE_WHEN_???__
+ * @since 3.16.0
  * @category math
  */
 export const ceil = (self: BigDecimal, scale: number = 0): BigDecimal => {
@@ -1171,7 +1171,7 @@ export const ceil = (self: BigDecimal, scale: number = 0): BigDecimal => {
  * assert.deepStrictEqual(floor(unsafeFromString("-1.2"), {mode: "from-zero"}), unsafeFromString("-2"))
  * ```
  *
- * @since __SINCE_WHEN_???__
+ * @since 3.16.0
  * @category math
  */
 export const floor = (self: BigDecimal, scale: number = 0): BigDecimal => {
@@ -1199,7 +1199,7 @@ export const floor = (self: BigDecimal, scale: number = 0): BigDecimal => {
  * assert.deepStrictEqual(truncate(unsafeFromString("-1.2"), {mode: "from-zero"}), unsafeFromString("-1"))
  * ```
  *
- * @since __SINCE_WHEN_???__
+ * @since 3.16.0
  * @category math
  */
 export const truncate = (self: BigDecimal, scale: number = 0): BigDecimal => {
@@ -1241,7 +1241,7 @@ export const digitAt = (n: BigDecimal, scale: number): bigint => {
  * `half-even`: round to the nearest neighbor; if equidistant round to the neighbor with an even digit
  * `half-odd`: round to the nearest neighbor; if equidistant round to the neighbor with an odd digit
  *
- * @since __SINCE_WHEN_???__
+ * @since 3.16.0
  * @category math
  */
 export type RoundingMode =
@@ -1271,7 +1271,7 @@ export type RoundingMode =
  * assert.deepStrictEqual(round(unsafeFromString("-1.2"), {mode: "from-zero"}), unsafeFromString("-2.0"))
  * ```
  *
- * @since __SINCE_WHEN_???__
+ * @since 3.16.0
  * @category math
  */
 export const round = <
@@ -1344,7 +1344,7 @@ export const round = <
  * ```
  *
  * @category math
- * @since __SINCE_WHEN_???__
+ * @since 3.16.0
  */
 export const sumAll = (collection: Iterable<BigDecimal>): BigDecimal => {
   let out = zero
