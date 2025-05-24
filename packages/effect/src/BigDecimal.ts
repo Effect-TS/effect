@@ -1134,14 +1134,12 @@ const isBigDecimalArgs = (args: IArguments) => isBigDecimal(args[0])
  *
  * @example
  * ```ts
- * * import * as assert from "node:assert"
+ * import * as assert from "node:assert"
  * import { ceil, unsafeFromString } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(ceil(unsafeFromString("1.2")), unsafeFromString("2"))
- * assert.deepStrictEqual(ceil(unsafeFromString("1.5")), unsafeFromString("2"))
- * assert.deepStrictEqual(ceil(unsafeFromString("1.7")), unsafeFromString("2"))
- * assert.deepStrictEqual(ceil(unsafeFromString("1.2"), {mode: "from-zero"}), unsafeFromString("2"))
- * assert.deepStrictEqual(ceil(unsafeFromString("-1.2"), {mode: "from-zero"}), unsafeFromString("-1"))
+ * assert.deepStrictEqual(ceil(unsafeFromString("145"), -1), unsafeFromString("150"))
+ * assert.deepStrictEqual(ceil(-1)(unsafeFromString("145")), unsafeFromString("150"))
+ * assert.deepStrictEqual(ceil(unsafeFromString("-14.5")), unsafeFromString("-14"))
  * ```
  *
  * @since 3.16.0
@@ -1165,14 +1163,12 @@ export const ceil: {
  *
  * @example
  * ```ts
- * * import * as assert from "node:assert"
+ * import * as assert from "node:assert"
  * import { floor, unsafeFromString } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(floor(unsafeFromString("1.2")), unsafeFromString("1"))
- * assert.deepStrictEqual(floor(unsafeFromString("1.5")), unsafeFromString("1"))
- * assert.deepStrictEqual(floor(unsafeFromString("1.7")), unsafeFromString("1"))
- * assert.deepStrictEqual(floor(unsafeFromString("1.2"), {mode: "from-zero"}), unsafeFromString("1"))
- * assert.deepStrictEqual(floor(unsafeFromString("-1.2"), {mode: "from-zero"}), unsafeFromString("-2"))
+ * assert.deepStrictEqual(BigDecimal.floor(unsafeFromString("145"), -1), unsafeFromString("140"))
+ * assert.deepStrictEqual(BigDecimal.floor(-1)(unsafeFromString("145")), unsafeFromString("140"))
+ * assert.deepStrictEqual(BigDecimal.floor(unsafeFromString("-14.5")), unsafeFromString("-15"))
  * ```
  *
  * @since 3.16.0
@@ -1196,14 +1192,12 @@ export const floor: {
  *
  * @example
  * ```ts
- * * import * as assert from "node:assert"
+ * import * as assert from "node:assert"
  * import { truncate, unsafeFromString } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(truncate(unsafeFromString("1.2")), unsafeFromString("1"))
- * assert.deepStrictEqual(truncate(unsafeFromString("1.5")), unsafeFromString("2"))
- * assert.deepStrictEqual(truncate(unsafeFromString("1.7")), unsafeFromString("2"))
- * assert.deepStrictEqual(truncate(unsafeFromString("1.2"), {mode: "from-zero"}), unsafeFromString("1"))
- * assert.deepStrictEqual(truncate(unsafeFromString("-1.2"), {mode: "from-zero"}), unsafeFromString("-1"))
+ * assert.deepStrictEqual(BigDecimal.truncate(unsafeFromString("145"), -1), unsafeFromString("140"))
+ * assert.deepStrictEqual(BigDecimal.truncate(-1)(unsafeFromString("145")), unsafeFromString("140"))
+ * assert.deepStrictEqual(BigDecimal.truncate(unsafeFromString("-14.5")), unsafeFromString("-14"))
  * ```
  *
  * @since 3.16.0
@@ -1277,11 +1271,9 @@ export type RoundingMode =
  * * import * as assert from "node:assert"
  * import { round, unsafeFromString } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(round(unsafeFromString("1.2")), unsafeFromString("1.0"))
- * assert.deepStrictEqual(round(unsafeFromString("1.5")), unsafeFromString("2.0"))
- * assert.deepStrictEqual(round(unsafeFromString("1.7")), unsafeFromString("2.0"))
- * assert.deepStrictEqual(round(unsafeFromString("1.2"), {mode: "from-zero"}), unsafeFromString("2.0"))
- * assert.deepStrictEqual(round(unsafeFromString("-1.2"), {mode: "from-zero"}), unsafeFromString("-2.0"))
+ * assert.deepStrictEqual(BigDecimal.round(unsafeFromString("145"), { mode: "from-zero", scale: -1 }), unsafeFromString("150"))
+ * assert.deepStrictEqual(BigDecimal.round({ mode: "from-zero", scale: -1 })(unsafeFromString("145")), unsafeFromString("150"))
+ * assert.deepStrictEqual(BigDecimal.round(unsafeFromString("-14.5")), $("-15"))
  * ```
  *
  * @since 3.16.0
