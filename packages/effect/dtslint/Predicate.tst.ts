@@ -257,6 +257,7 @@ describe("Predicate", () => {
   })
 
   // @tstyche if { target: ["<5.7"] } -- Before TypeScript 5.7, 'Uint8Array' was not generic
+  // Reference: https://devblogs.microsoft.com/typescript/announcing-typescript-5-7/#typedarrays-are-now-generic-over-arraybufferlike
   it("isUint8Array '<5.7'", () => {
     expect(unknowns.filter(Predicate.isUint8Array)).type.toBe<Array<Uint8Array>>()
   })
