@@ -73,7 +73,7 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<typeof Event
         return Effect.promise(() =>
           crypto.subtle.importKey(
             "raw",
-            Redacted.value(identity.privateKey),
+            Redacted.value(identity.privateKey) as Uint8Array<ArrayBuffer>,
             "AES-GCM",
             true,
             ["encrypt", "decrypt"]
@@ -93,7 +93,9 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<typeof Event
           const iv = crypto.getRandomValues(new Uint8Array(12))
           const encryptedEntries = yield* Effect.promise(() =>
             Promise.all(
-              data.map((entry) => crypto.subtle.encrypt({ name: "AES-GCM", iv, tagLength: 128 }, key, entry))
+              data.map((entry) =>
+                crypto.subtle.encrypt({ name: "AES-GCM", iv, tagLength: 128 }, key, entry as Uint8Array<ArrayBuffer>)
+              )
             )
           )
           return {
@@ -107,9 +109,9 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<typeof Event
           const decryptedData = (yield* Effect.promise(() =>
             Promise.all(entries.map((data) =>
               crypto.subtle.decrypt(
-                { name: "AES-GCM", iv: data.iv, tagLength: 128 },
+                { name: "AES-GCM", iv: data.iv as Uint8Array<ArrayBuffer>, tagLength: 128 },
                 key,
-                data.encryptedEntry
+                data.encryptedEntry as Uint8Array<ArrayBuffer>
               )
             ))
           )).map((buffer) => new Uint8Array(buffer))
@@ -117,12 +119,12 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<typeof Event
           return decoded.map((entry, i) => new RemoteEntry({ remoteSequence: entries[i].sequence, entry }))
         }),
       sha256: (data) =>
-        Effect.promise(() => crypto.subtle.digest("SHA-256", data)).pipe(
+        Effect.promise(() => crypto.subtle.digest("SHA-256", data as Uint8Array<ArrayBuffer>)).pipe(
           Effect.map((hash) => new Uint8Array(hash))
         ),
       sha256String: (data) =>
         Effect.map(
-          Effect.promise(() => crypto.subtle.digest("SHA-256", data)),
+          Effect.promise(() => crypto.subtle.digest("SHA-256", data as Uint8Array<ArrayBuffer>)),
           (hash) => {
             const hashArray = Array.from(new Uint8Array(hash))
             const hashHex = hashArray
