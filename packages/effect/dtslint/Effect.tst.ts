@@ -1,7 +1,7 @@
 import type { Either, Types } from "effect"
 import { Array as Arr, Effect, hole, Option, pipe, Predicate, Schedule } from "effect"
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "effect/Array"
-import type { Cause, UnknownException } from "effect/Cause"
+import type { Cause, NoSuchElementException, UnknownException } from "effect/Cause"
 import { describe, expect, it, when } from "tstyche"
 
 class TestError1 {
@@ -1478,5 +1478,13 @@ describe("Effect", () => {
   it("fn", () => {
     const fn = Effect.fn((a?: string) => Effect.succeed(a), Effect.asVoid)
     expect(fn).type.toBe<(this: unknown, a?: string | undefined) => Effect.Effect<void, never, never>>()
+  })
+
+  it("fn returns Effect subtype", () => {
+    const fn = Effect.fn((a?: string) => Effect.succeed(a), () => Option.some("test"))
+
+    expect(fn).type.toBe<
+      (this: unknown, a?: string | undefined) => Effect.Effect<string, NoSuchElementException, never>
+    >()
   })
 })

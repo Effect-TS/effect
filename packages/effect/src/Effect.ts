@@ -253,6 +253,11 @@ export declare namespace Effect {
    * @category Effect Type Extractors
    */
   export type Success<T extends Effect<any, any, any>> = [T] extends [Effect<infer _A, infer _E, infer _R>] ? _A : never
+  /**
+   * @since 3.15.5
+   * @category Effect Type Extractors
+   */
+  export type AsEffect<T extends Effect<any, any, any>> = {} & Effect<Success<T>, Error<T>, Context<T>>
 }
 
 /**
@@ -14068,29 +14073,29 @@ export namespace fn {
   export type NonGen = {
     <Self, Eff extends Effect<any, any, any>, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => Eff
-    ): (this: Self, ...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
     <Self, Eff extends Effect<any, any, any>, A, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
     <Self, Eff extends Effect<any, any, any>, A, B, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
       b: (_: B, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
     <Self, Eff extends Effect<any, any, any>, A, B, C, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
       b: (_: B, ...args: NoInfer<Args>) => C,
       c: (_: C, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
       b: (_: B, ...args: NoInfer<Args>) => C,
       c: (_: C, ...args: NoInfer<Args>) => D,
       d: (_: D, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
@@ -14098,7 +14103,7 @@ export namespace fn {
       c: (_: C, ...args: NoInfer<Args>) => D,
       d: (_: D, ...args: NoInfer<Args>) => E,
       e: (_: E, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
@@ -14107,7 +14112,7 @@ export namespace fn {
       d: (_: D, ...args: NoInfer<Args>) => E,
       e: (_: E, ...args: NoInfer<Args>) => F,
       f: (_: F, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
@@ -14117,7 +14122,7 @@ export namespace fn {
       e: (_: E, ...args: NoInfer<Args>) => F,
       f: (_: F, ...args: NoInfer<Args>) => G,
       g: (_: G, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
@@ -14128,7 +14133,7 @@ export namespace fn {
       f: (_: F, ...args: NoInfer<Args>) => G,
       g: (_: G, ...args: NoInfer<Args>) => H,
       h: (_: H, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
     <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, I, Args extends Array<any>>(
       body: (this: Self, ...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
@@ -14140,7 +14145,7 @@ export namespace fn {
       g: (_: G, ...args: NoInfer<Args>) => H,
       h: (_: H, ...args: NoInfer<Args>) => I,
       i: (_: H, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Eff
+    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
   }
 
   /**
