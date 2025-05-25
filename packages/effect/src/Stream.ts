@@ -4077,12 +4077,12 @@ export const retry: {
  * @experimental
  */
 export const withExecutionPlan: {
-  <E, R2, Provides = never, PolicyE = never>(
-    policy: ExecutionPlan<Provides, NoInfer<E>, PolicyE, R2>
+  <E, R2, Provides, PolicyE>(
+    policy: ExecutionPlan<{ provides: Provides; input: NoInfer<E>; error: PolicyE; requirements: R2 }>
   ): <A, R>(self: Stream<A, E, R>) => Stream<A, E | PolicyE, R2 | Exclude<R, Provides>>
-  <A, E, R, R2, Provides = never, PolicyE = never>(
+  <A, E, R, R2, Provides, PolicyE>(
     self: Stream<A, E, R>,
-    policy: ExecutionPlan<Provides, NoInfer<E>, PolicyE, R2>
+    policy: ExecutionPlan<{ provides: Provides; input: NoInfer<E>; error: PolicyE; requirements: R2 }>
   ): Stream<A, E | PolicyE, R2 | Exclude<R, Provides>>
 } = internal.withExecutionPlan
 

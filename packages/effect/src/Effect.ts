@@ -4409,12 +4409,12 @@ export const retry: {
  * @experimental
  */
 export const withExecutionPlan: {
-  <E, Provides, PlanE, PlanR>(
-    plan: ExecutionPlan<Provides, NoInfer<E>, PlanE, PlanR>
-  ): <A, R>(effect: Effect<A, E, R>) => Effect<A, E | PlanE, Exclude<R, Provides> | PlanR>
-  <A, E, R, Provides, PlanE, PlanR>(
+  <Input, Provides, PlanE, PlanR>(
+    plan: ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>
+  ): <A, E extends Input, R>(effect: Effect<A, E, R>) => Effect<A, E | PlanE, Exclude<R, Provides> | PlanR>
+  <A, E extends Input, R, Provides, Input, PlanE, PlanR>(
     effect: Effect<A, E, R>,
-    plan: ExecutionPlan<Provides, NoInfer<E>, PlanE, PlanR>
+    plan: ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>
   ): Effect<A, E | PlanE, Exclude<R, Provides> | PlanR>
 } = internalExecutionPlan.withExecutionPlan
 

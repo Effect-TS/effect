@@ -3,7 +3,6 @@
  * @experimental
  */
 import type { NonEmptyReadonlyArray } from "./Array.js"
-import * as Arr from "./Array.js"
 import type * as Context from "./Context.js"
 import * as Effect from "./Effect.js"
 import { dual } from "./Function.js"
@@ -12,7 +11,6 @@ import * as Layer from "./Layer.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import type * as Schedule from "./Schedule.js"
-import type * as Types from "./Types.js"
 
 /**
  * @since 3.16.0
@@ -33,8 +31,7 @@ export type TypeId = typeof TypeId
  * @category Guards
  * @experimental
  */
-export const isExecutionPlan: (u: unknown) => u is ExecutionPlan<unknown, unknown, unknown, unknown> =
-  internal.isExecutionPlan
+export const isExecutionPlan: (u: unknown) => u is ExecutionPlan<any> = internal.isExecutionPlan
 
 /**
  * A `ExecutionPlan` can be used with `Effect.withExecutionPlan` or `Stream.withExecutionPlan`, allowing you to provide different resources for each step of execution until the effect succeeds or the plan is exhausted.
@@ -47,25 +44,24 @@ export const isExecutionPlan: (u: unknown) => u is ExecutionPlan<unknown, unknow
  * declare const layerBad: Layer.Layer<AiLanguageModel.AiLanguageModel>
  * declare const layerGood: Layer.Layer<AiLanguageModel.AiLanguageModel>
  *
- * const ThePlan = ExecutionPlan.make(
- *   {
- *     // First try with the bad layer 2 times with a 3 second delay between attempts
- *     provide: layerBad,
- *     attempts: 2,
- *     schedule: Schedule.spaced(3000)
- *   },
+ * const ThePlan = ExecutionPlan.make({
+ *   // First try with the bad layer 2 times with a 3 second delay between attempts
+ *   provide: layerBad,
+ *   attempts: 2,
+ *   schedule: Schedule.spaced(3000)
+ * }).pipe(
  *   // Then try with the bad layer 3 times with a 1 second delay between attempts
- *   {
+ *   ExecutionPlan.orElse({
  *     provide: layerBad,
  *     attempts: 3,
  *     schedule: Schedule.spaced(1000)
- *   },
+ *   }),
  *   // Finally try with the good layer.
  *   //
  *   // If `attempts` is omitted, the plan will only attempt once, unless a schedule is provided.
- *   {
+ *   ExecutionPlan.orElse({
  *     provide: layerGood
- *   }
+ *   })
  * )
  *
  * declare const effect: Effect.Effect<
@@ -80,15 +76,40 @@ export const isExecutionPlan: (u: unknown) => u is ExecutionPlan<unknown, unknow
  * @category Models
  * @experimental
  */
-export interface ExecutionPlan<in out Provides, in In = unknown, out E = never, out R = never> extends Pipeable {
+export interface ExecutionPlan<
+  Config extends {
+    provides: any
+    input: any
+    error: any
+    requirements: any
+  }
+> extends Pipeable {
   readonly [TypeId]: TypeId
   readonly steps: NonEmptyReadonlyArray<{
-    readonly schedule?: Schedule.Schedule<unknown, In, R> | undefined
+    readonly provide:
+      | Context.Context<Config["provides"]>
+      | Layer.Layer<Config["provides"], Config["error"], Config["requirements"]>
     readonly attempts?: number | undefined
-    readonly while?: ((input: In) => Effect.Effect<boolean, E, R>) | undefined
-    readonly provide: Context.Context<Provides> | Layer.Layer<Provides, E, R>
+    readonly while?:
+      | ((input: Config["input"]) => Effect.Effect<boolean, Config["error"], Config["requirements"]>)
+      | undefined
+    readonly schedule?: Schedule.Schedule<any, Config["input"], Config["requirements"]> | undefined
   }>
-  readonly withRequirements: Effect.Effect<ExecutionPlan<Provides, In, E>, never, R>
+
+  /**
+   * Returns an equivalent `ExecutionPlan` with the requirements satisfied,
+   * using the current context.
+   */
+  readonly withRequirements: Effect.Effect<
+    ExecutionPlan<{
+      provides: Config["provides"]
+      input: Config["input"]
+      error: Config["error"]
+      requirements: never
+    }>,
+    never,
+    Config["requirements"]
+  >
 }
 
 /**
@@ -102,25 +123,24 @@ export interface ExecutionPlan<in out Provides, in In = unknown, out E = never, 
  * declare const layerBad: Layer.Layer<AiLanguageModel.AiLanguageModel>
  * declare const layerGood: Layer.Layer<AiLanguageModel.AiLanguageModel>
  *
- * const ThePlan = ExecutionPlan.make(
- *   {
- *     // First try with the bad layer 2 times with a 3 second delay between attempts
- *     provide: layerBad,
- *     attempts: 2,
- *     schedule: Schedule.spaced(3000)
- *   },
+ * const ThePlan = ExecutionPlan.make({
+ *   // First try with the bad layer 2 times with a 3 second delay between attempts
+ *   provide: layerBad,
+ *   attempts: 2,
+ *   schedule: Schedule.spaced(3000)
+ * }).pipe(
  *   // Then try with the bad layer 3 times with a 1 second delay between attempts
- *   {
+ *   ExecutionPlan.orElse({
  *     provide: layerBad,
  *     attempts: 3,
  *     schedule: Schedule.spaced(1000)
- *   },
+ *   }),
  *   // Finally try with the good layer.
  *   //
  *   // If `attempts` is omitted, the plan will only attempt once, unless a schedule is provided.
- *   {
+ *   ExecutionPlan.orElse({
  *     provide: layerGood
- *   }
+ *   })
  * )
  *
  * declare const effect: Effect.Effect<
@@ -136,66 +156,47 @@ export interface ExecutionPlan<in out Provides, in In = unknown, out E = never, 
  * @experimental
  */
 export const make = <
-  const Steps extends NonEmptyReadonlyArray<make.Step>
->(...steps: Steps & { [K in keyof Steps]: make.Step }): ExecutionPlan<
-  Steps[number]["provide"] extends Context.Context<infer Provides> | Layer.Layer<infer Provides, infer _E, infer _R>
-    ? Provides
-    : never,
-  Types.UnionToIntersection<
-    | (Steps[number]["while"] extends (input: infer In) => any ? In : never)
-    | (Steps[number]["schedule"] extends Schedule.Schedule<infer _Out, infer In, infer _R> ? In : never)
-  >,
-  | (Steps[number]["provide"] extends Layer.Layer<infer _P, infer _E, infer _R> ? _E
-    : never)
-  | (Steps[number]["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never),
-  | (Steps[number]["provide"] extends Layer.Layer<infer _P, infer _E, infer _R> ? _R
-    : never)
-  | (Steps[number]["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer _R> ? _R : never)
-  | (Steps[number]["schedule"] extends Schedule.Schedule<infer _Out, infer _In, infer _R> ? _R : never)
-> =>
-  makeProto(Arr.map(steps as Steps, (step) => {
-    if (step.attempts && step.attempts < 1) {
-      throw new Error("ExecutionPlan.make: step.attempts must be greater than 0")
-    }
-    return {
-      schedule: step.schedule,
-      attempts: step.attempts,
-      while: step.while
-        ? (input: any) =>
-          Effect.suspend(() => {
-            const result = step.while!(input)
-            return typeof result === "boolean" ? Effect.succeed(result) : result
-          })
-        : undefined,
-      provide: step.provide
-    }
-  }))
-
-/**
- * @since 3.16.0
- * @experimental
- */
-export declare namespace make {
-  /**
-   * @since 3.16.0
-   * @experimental
-   */
-  export type Step = {
-    readonly provide:
-      | Context.Context<any>
-      | Context.Context<never>
-      | Layer.Layer<any, any, any>
-      | Layer.Layer<never, any, any>
-    readonly attempts?: number
-    readonly while?: (input: any) => boolean | Effect.Effect<boolean, any, any>
-    readonly schedule?: Schedule.Schedule<any, any, any>
+  Provides,
+  SOut,
+  LE = never,
+  LR = never,
+  WhileIn = unknown,
+  WhileE = never,
+  WhileR = never,
+  SIn = unknown,
+  SR = never
+>(options: {
+  readonly provide: Context.Context<Provides> | Layer.Layer<Provides, LE, LR>
+  readonly attempts?: number
+  readonly while?: (input: WhileIn) => boolean | Effect.Effect<boolean, WhileE, WhileR>
+  readonly schedule?: Schedule.Schedule<SOut, SIn, SR>
+}): ExecutionPlan<{
+  provides: Provides
+  input: WhileIn & SIn
+  error: LE | WhileE
+  requirements: LR | WhileR | SR
+}> => {
+  if (options.attempts && options.attempts < 1) {
+    throw new Error("ExecutionPlan.make: attempts must be greater than 0")
   }
+  return makeProto([{
+    schedule: options.schedule,
+    attempts: options.attempts,
+    while: options.while
+      ? (input: any) =>
+        Effect.suspend(() => {
+          const result = options.while!(input)
+          return typeof result === "boolean" ? Effect.succeed(result) : result
+        })
+      : undefined,
+    provide: options.provide
+  }] as any)
 }
 
-const Proto: Omit<ExecutionPlan<any, any, any, any>, "steps"> = {
+const Proto: Omit<ExecutionPlan<any>, "steps"> = {
   [TypeId]: TypeId,
   get withRequirements() {
-    const self = this as any as ExecutionPlan<any, any, any, any>
+    const self = this as any as ExecutionPlan<any>
     return Effect.contextWith((context: Context.Context<any>) =>
       makeProto(self.steps.map((step) => ({
         ...step,
@@ -208,7 +209,14 @@ const Proto: Omit<ExecutionPlan<any, any, any, any>, "steps"> = {
   }
 }
 
-const makeProto = <Provides, In, PlanE, PlanR>(steps: ExecutionPlan<Provides, In, PlanE, PlanR>["steps"]) => {
+const makeProto = <Provides, In, PlanE, PlanR>(
+  steps: ExecutionPlan<{
+    provides: Provides
+    input: In
+    error: PlanE
+    requirements: PlanR
+  }>["steps"]
+) => {
   const self = Object.create(Proto)
   self.steps = steps
   return self
@@ -216,47 +224,138 @@ const makeProto = <Provides, In, PlanE, PlanR>(steps: ExecutionPlan<Provides, In
 
 /**
  * @since 3.16.0
- * @category Constructors
+ * @category Fallback
  * @experimental
  */
 export const orElse: {
   <
     Provides2,
-    In2 = unknown,
+    Out,
     Err2 = never,
-    Req2 = never
-  >(other: ExecutionPlan<Provides2, In2, Err2, Req2>): <
+    Req2 = never,
+    In2 = unknown,
+    SIn = unknown,
+    SR = never,
+    WhileE = never,
+    WhileR = never
+  >(
+    options:
+      | ExecutionPlan<{
+        provides: Provides2
+        input: In2
+        error: Err2
+        requirements: Req2
+      }>
+      | {
+        readonly provide: Context.Context<Provides2> | Layer.Layer<Provides2, Err2, Req2>
+        readonly attempts?: number | undefined
+        readonly while?:
+          | ((input: In2) => boolean | Effect.Effect<boolean, WhileE, WhileR>)
+          | undefined
+        readonly schedule?: Schedule.Schedule<Out, SIn, SR> | undefined
+      }
+  ): <
     Provides,
     In,
     PlanE,
     PlanR
   >(
-    self: ExecutionPlan<Provides, In, PlanE, PlanR>
-  ) => ExecutionPlan<Provides & Provides2, In & In2, PlanE | Err2, PlanR | Req2>
+    self: ExecutionPlan<{
+      provides: Provides
+      input: In
+      error: PlanE
+      requirements: PlanR
+    }>
+  ) => ExecutionPlan<{
+    provides: Provides & Provides2
+    input: In & In2 & SIn
+    error: PlanE | Err2 | WhileE
+    requirements: PlanR | Req2 | SR | WhileR
+  }>
   <
     Provides,
     In,
     PlanE,
     PlanR,
     Provides2,
-    In2 = unknown,
+    Out,
     Err2 = never,
-    Req2 = never
+    Req2 = never,
+    In2 = unknown,
+    SIn = unknown,
+    SR = never,
+    WhileE = never,
+    WhileR = never
   >(
-    self: ExecutionPlan<Provides, In, PlanE, PlanR>,
-    other: ExecutionPlan<Provides2, In2, Err2, Req2>
-  ): ExecutionPlan<Provides & Provides2, In & In2, PlanE | Err2, PlanR | Req2>
+    self: ExecutionPlan<{
+      provides: Provides
+      input: In
+      error: PlanE
+      requirements: PlanR
+    }>,
+    options:
+      | ExecutionPlan<{
+        provides: Provides2
+        input: In2
+        error: Err2
+        requirements: Req2
+      }>
+      | {
+        readonly provide: Context.Context<Provides2> | Layer.Layer<Provides2, Err2, Req2>
+        readonly attempts?: number | undefined
+        readonly while?:
+          | ((input: In2) => boolean | Effect.Effect<boolean, WhileE, WhileR>)
+          | undefined
+        readonly schedule?: Schedule.Schedule<Out, SIn, SR> | undefined
+      }
+  ): ExecutionPlan<{
+    provides: Provides & Provides2
+    input: In & In2 & SIn
+    error: PlanE | Err2 | WhileE
+    requirements: PlanR | Req2 | SR | WhileR
+  }>
 } = dual(2, <
   Provides,
   In,
   PlanE,
   PlanR,
   Provides2,
-  In2 = unknown,
+  Out,
   Err2 = never,
-  Req2 = never
+  Req2 = never,
+  In2 = unknown,
+  SIn = unknown,
+  SR = never,
+  WhileE = never,
+  WhileR = never
 >(
-  self: ExecutionPlan<Provides, In, PlanE, PlanR>,
-  other: ExecutionPlan<Provides2, In2, Err2, Req2>
-): ExecutionPlan<Provides & Provides2, In & In2, PlanE | Err2, PlanR | Req2> =>
-  makeProto(self.steps.concat(other.steps as any) as any))
+  self: ExecutionPlan<{
+    provides: Provides
+    input: In
+    error: PlanE
+    requirements: PlanR
+  }>,
+  options:
+    | ExecutionPlan<{
+      provides: Provides2
+      input: In2
+      error: Err2
+      requirements: Req2
+    }>
+    | {
+      readonly provide: Context.Context<Provides2> | Layer.Layer<Provides2, Err2, Req2>
+      readonly attempts?: number | undefined
+      readonly while?:
+        | ((input: In2) => boolean | Effect.Effect<boolean, WhileE, WhileR>)
+        | undefined
+      readonly schedule?: Schedule.Schedule<Out, SIn, SR> | undefined
+    }
+): ExecutionPlan<{
+  provides: Provides & Provides2
+  input: In & In2 & SIn
+  error: PlanE | Err2 | WhileE
+  requirements: PlanR | Req2 | SR | WhileR
+}> => {
+  const other: ExecutionPlan<any> = isExecutionPlan(options) ? options : make(options as any)
+  return makeProto(self.steps.concat(other.steps as any) as any)
+})

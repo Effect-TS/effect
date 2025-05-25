@@ -12,29 +12,43 @@ import * as InternalSchedule from "./schedule.js"
 export const TypeId: Api.TypeId = Symbol.for("effect/ExecutionPlan") as Api.TypeId
 
 /** @internal */
-export const isExecutionPlan = (u: unknown): u is Api.ExecutionPlan<unknown, unknown, unknown, unknown> =>
-  Predicate.hasProperty(u, TypeId)
+export const isExecutionPlan = (u: unknown): u is Api.ExecutionPlan<any> => Predicate.hasProperty(u, TypeId)
 
 /** @internal */
 export const withExecutionPlan: {
-  <E, Provides, PlanE, PlanR>(
-    plan: Api.ExecutionPlan<Provides, NoInfer<E>, PlanE, PlanR>
-  ): <A, R>(effect: Effect<A, E, R>) => Effect<
+  <Input, Provides, PlanE, PlanR>(
+    plan: Api.ExecutionPlan<{
+      provides: Provides
+      input: Input
+      error: PlanE
+      requirements: PlanR
+    }>
+  ): <A, E extends Input, R>(effect: Effect<A, E, R>) => Effect<
     A,
     E | PlanE,
     Exclude<R, Provides> | PlanR
   >
-  <A, E, R, Provides, PlanE, PlanR>(
+  <A, E extends Input, R, Provides, Input, PlanE, PlanR>(
     effect: Effect<A, E, R>,
-    plan: Api.ExecutionPlan<Provides, NoInfer<E>, PlanE, PlanR>
+    plan: Api.ExecutionPlan<{
+      provides: Provides
+      input: Input
+      error: PlanE
+      requirements: PlanR
+    }>
   ): Effect<
     A,
     E | PlanE,
     Exclude<R, Provides> | PlanR
   >
-} = dual(2, <A, E, R, Provides, PlanE, PlanR>(
+} = dual(2, <A, E extends Input, R, Provides, Input, PlanE, PlanR>(
   effect: Effect<A, E, R>,
-  plan: Api.ExecutionPlan<Provides, NoInfer<E>, PlanE, PlanR>
+  plan: Api.ExecutionPlan<{
+    provides: Provides
+    input: Input
+    error: PlanE
+    requirements: PlanR
+  }>
 ) =>
   core.suspend(() => {
     let i = 0
@@ -76,7 +90,12 @@ export const withExecutionPlan: {
 
 /** @internal */
 export const scheduleFromStep = <Provides, In, PlanE, PlanR>(
-  step: Api.ExecutionPlan<Provides, In, PlanE, PlanR>["steps"][number],
+  step: Api.ExecutionPlan<{
+    provides: Provides
+    input: In
+    error: PlanE
+    requirements: PlanR
+  }>["steps"][number],
   first: boolean
 ) => {
   if (!first) {

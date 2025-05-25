@@ -14,25 +14,24 @@ import { Effect, ExecutionPlan, Schedule } from "effect"
 declare const layerBad: Layer.Layer<AiLanguageModel.AiLanguageModel>
 declare const layerGood: Layer.Layer<AiLanguageModel.AiLanguageModel>
 
-const ThePlan = ExecutionPlan.make(
-  {
-    // First try with the bad layer 2 times with a 3 second delay between attempts
-    provide: layerBad,
-    attempts: 2,
-    schedule: Schedule.spaced(3000)
-  },
+const ThePlan = ExecutionPlan.make({
+  // First try with the bad layer 2 times with a 3 second delay between attempts
+  provide: layerBad,
+  attempts: 2,
+  schedule: Schedule.spaced(3000)
+}).pipe(
   // Then try with the bad layer 3 times with a 1 second delay between attempts
-  {
+  ExecutionPlan.orElse({
     provide: layerBad,
     attempts: 3,
     schedule: Schedule.spaced(1000)
-  },
+  }),
   // Finally try with the good layer.
   //
   // If `attempts` is omitted, the plan will only attempt once, unless a schedule is provided.
-  {
+  ExecutionPlan.orElse({
     provide: layerGood
-  }
+  })
 )
 
 declare const effect: Effect.Effect<
