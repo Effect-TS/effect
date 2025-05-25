@@ -452,6 +452,20 @@ describe("Array", () => {
       deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.remove(10)), [1, 2, 3])
     })
 
+    it("removeOption", () => {
+      assertSome(pipe([1, 2, 3], Arr.removeOption(0)), [2, 3])
+      // out of bound
+      assertNone(pipe([], Arr.removeOption(0)))
+      assertNone(pipe([1, 2, 3], Arr.removeOption(-1)))
+      assertNone(pipe([1, 2, 3], Arr.removeOption(10)))
+
+      assertSome(pipe(new Set([1, 2, 3]), Arr.removeOption(0)), [2, 3])
+      // out of bound
+      assertNone(pipe(new Set([]), Arr.removeOption(0)))
+      assertNone(pipe(new Set([1, 2, 3]), Arr.removeOption(-1)))
+      assertNone(pipe(new Set([1, 2, 3]), Arr.removeOption(10)))
+    })
+
     it("reverse", () => {
       deepStrictEqual(Arr.reverse([]), [])
       deepStrictEqual(Arr.reverse([1]), [1])
@@ -1257,6 +1271,11 @@ describe("Array", () => {
     }
     const arr: ReadonlyArray<X> = [{ a: "a", b: 2 }, { a: "b", b: 1 }]
     deepStrictEqual(Arr.sortWith(arr, (x) => x.b, Order.number), [{ a: "b", b: 1 }, { a: "a", b: 2 }])
+  })
+
+  it("countBy", () => {
+    deepStrictEqual(Arr.countBy([1, 2, 3, 4, 5], (n) => n % 2 === 0), 2)
+    deepStrictEqual(pipe([1, 2, 3, 4, 5], Arr.countBy((n) => n % 2 === 0)), 2)
   })
 
   it("Do notation", () => {

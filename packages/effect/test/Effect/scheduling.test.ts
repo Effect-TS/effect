@@ -23,4 +23,53 @@ describe("Effect", () => {
       const expected = [1, 2, 3, 4, 5].map(Duration.seconds)
       deepStrictEqual(value, expected)
     }))
+
+  it.effect("schedule - Schedule.LastIterationInfo", () =>
+    Effect.gen(function*() {
+      const ref = yield* Ref.make<Array<undefined | Schedule.IterationMetadata>>([])
+      const effect = Effect.gen(function*() {
+        const lastIterationInfo = yield* Schedule.CurrentIterationMetadata
+
+        yield* Ref.update(ref, (array) => [...array, lastIterationInfo])
+      })
+      const schedule = pipe(Schedule.fibonacci("1 second"), Schedule.intersect(Schedule.recurs(4)))
+      yield* pipe(effect, Effect.schedule(schedule), Effect.fork)
+      yield* TestClock.adjust(Duration.seconds(50))
+      const value = yield* Ref.get(ref)
+
+      deepStrictEqual(value, [
+        {
+          elapsed: Duration.zero,
+          elapsedSincePrevious: Duration.zero,
+          recurrence: 1,
+          input: undefined,
+          now: 0,
+          start: 0
+        },
+        {
+          elapsed: Duration.seconds(1),
+          elapsedSincePrevious: Duration.seconds(1),
+          recurrence: 2,
+          input: undefined,
+          now: 1000,
+          start: 0
+        },
+        {
+          elapsed: Duration.seconds(2),
+          elapsedSincePrevious: Duration.seconds(1),
+          recurrence: 3,
+          input: undefined,
+          now: 2000,
+          start: 0
+        },
+        {
+          elapsed: Duration.seconds(4),
+          elapsedSincePrevious: Duration.seconds(2),
+          recurrence: 4,
+          input: undefined,
+          now: 4000,
+          start: 0
+        }
+      ])
+    }))
 })
