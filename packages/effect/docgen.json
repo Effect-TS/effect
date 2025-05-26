@@ -13,6 +13,7 @@
     "paths": {
       "effect": ["../../../effect/src/index.js"],
       "effect/*": ["../../../effect/src/*.js"],
+      "@effect/ai": ["../../../ai/ai/src/index.js"],
       "@effect/platform": ["../../../platform/src/index.js"],
       "@effect/platform/*": ["../../../platform/src/*.js"],
       "@effect/printer": ["../../../printer/src/index.js"],
