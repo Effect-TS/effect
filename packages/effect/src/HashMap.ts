@@ -202,18 +202,18 @@ export const hasHash: {
  * import { HashMap } from "effect"
  *
  * const hm = HashMap.make([1, 'a'])
- * HashMap.existsBy(hm, (value, key) => value === 'a' && key === 1); // -> true
- * HashMap.existsBy(hm, (value) => value === 'b'); // -> false
+ * HashMap.hasBy(hm, (value, key) => value === 'a' && key === 1); // -> true
+ * HashMap.hasBy(hm, (value) => value === 'b'); // -> false
  *
  * ```
  *
  * @since 3.16.0
  * @category elements
  */
-export const existsBy: {
+export const hasBy: {
   <K, V>(predicate: (value: V, key: K) => boolean): (self: HashMap<K, V>) => boolean
   <K, V>(self: HashMap<K, V>, predicate: (value: V, key: K) => boolean): boolean
-} = HM.existsBy
+} = HM.hasBy
 
 /**
  * Sets the specified key to the specified value using the internal hashing

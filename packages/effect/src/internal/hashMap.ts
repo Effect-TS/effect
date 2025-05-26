@@ -288,7 +288,7 @@ export const hasHash = Dual.dual<
 >(3, (self, key, hash) => Option.isSome(getHash(self, key, hash)))
 
 /** @internal */
-export const existsBy = Dual.dual<
+export const hasBy = Dual.dual<
   <K, V>(predicate: (value: V, key: K) => boolean) => (self: HM.HashMap<K, V>) => boolean,
   <K, V>(self: HM.HashMap<K, V>, predicate: (value: V, key: K) => boolean) => boolean
 >(2, (self, predicate) => Option.isSome(findFirst(self, predicate)))
