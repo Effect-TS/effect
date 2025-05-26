@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import { TypeIdError } from "@effect/platform/Error"
 import type * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
@@ -10,6 +9,7 @@ import { dual, identity } from "effect/Function"
 import type { ParseError } from "effect/ParseResult"
 import type * as Schema from "effect/Schema"
 import * as ChannelSchema from "./ChannelSchema.js"
+import { TypeIdError } from "./Error.js"
 
 /**
  * @since 1.0.0
