@@ -255,9 +255,10 @@ export declare namespace Effect {
   export type Success<T extends Effect<any, any, any>> = [T] extends [Effect<infer _A, infer _E, infer _R>] ? _A : never
   /**
    * @since 3.15.5
-   * @category Effect Type Extractors
    */
-  export type AsEffect<T extends Effect<any, any, any>> = {} & Effect<Success<T>, Error<T>, Context<T>>
+  export type AsEffect<T extends Effect<any, any, any>> = [T] extends [Effect<infer _A, infer _E, infer _R>]
+    ? Effect<_A, _E, _R>
+    : never
 }
 
 /**
