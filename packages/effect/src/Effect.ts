@@ -12,6 +12,7 @@ import type * as Deferred from "./Deferred.js"
 import type * as Duration from "./Duration.js"
 import type * as Either from "./Either.js"
 import type { Equivalence } from "./Equivalence.js"
+import type { ExecutionPlan } from "./ExecutionPlan.js"
 import type { ExecutionStrategy } from "./ExecutionStrategy.js"
 import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
@@ -32,6 +33,7 @@ import * as effect from "./internal/core-effect.js"
 import * as core from "./internal/core.js"
 import * as defaultServices from "./internal/defaultServices.js"
 import * as circular from "./internal/effect/circular.js"
+import * as internalExecutionPlan from "./internal/executionPlan.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as layer from "./internal/layer.js"
 import * as option_ from "./internal/option.js"
@@ -4389,21 +4391,32 @@ export declare namespace Retry {
 export const retry: {
   <E, O extends NoExcessProperties<Retry.Options<E>, O>>(
     options: O
-  ): <A, R>(
-    self: Effect<A, E, R>
-  ) => Retry.Return<R, E, A, O>
-  <B, E, R1>(
-    policy: Schedule.Schedule<B, NoInfer<E>, R1>
-  ): <A, R>(self: Effect<A, E, R>) => Effect<A, E, R1 | R>
+  ): <A, R>(self: Effect<A, E, R>) => Retry.Return<R, E, A, O>
+  <B, E, R1>(policy: Schedule.Schedule<B, NoInfer<E>, R1>): <A, R>(self: Effect<A, E, R>) => Effect<A, E, R1 | R>
   <A, E, R, O extends NoExcessProperties<Retry.Options<E>, O>>(
     self: Effect<A, E, R>,
     options: O
   ): Retry.Return<R, E, A, O>
-  <A, E, R, B, R1>(
-    self: Effect<A, E, R>,
-    policy: Schedule.Schedule<B, E, R1>
-  ): Effect<A, E, R1 | R>
+  <A, E, R, B, R1>(self: Effect<A, E, R>, policy: Schedule.Schedule<B, NoInfer<E>, R1>): Effect<A, E, R1 | R>
 } = schedule_.retry_combined
+
+/**
+ * Apply an `ExecutionPlan` to the effect, which allows you to fallback to
+ * different resources in case of failure.
+ *
+ * @since 3.16.0
+ * @category Error handling
+ * @experimental
+ */
+export const withExecutionPlan: {
+  <Input, Provides, PlanE, PlanR>(
+    plan: ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>
+  ): <A, E extends Input, R>(effect: Effect<A, E, R>) => Effect<A, E | PlanE, Exclude<R, Provides> | PlanR>
+  <A, E extends Input, R, Provides, Input, PlanE, PlanR>(
+    effect: Effect<A, E, R>,
+    plan: ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>
+  ): Effect<A, E | PlanE, Exclude<R, Provides> | PlanR>
+} = internalExecutionPlan.withExecutionPlan
 
 /**
  * Retries a failing effect and runs a fallback effect if retries are exhausted.
@@ -10339,7 +10352,7 @@ export const scheduleForked: {
     self: Effect<A, E, R>,
     schedule: Schedule.Schedule<Out, unknown, R2>
   ): Effect<Fiber.RuntimeFiber<Out, E>, never, Scope.Scope | R | R2>
-} = circular.scheduleForked
+} = schedule_.scheduleForked
 
 /**
  * Runs an effect repeatedly according to a schedule, starting from a specified
