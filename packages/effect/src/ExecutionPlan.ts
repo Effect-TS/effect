@@ -167,155 +167,13 @@ export type TypesBase = {
  * @category Constructors
  * @experimental
  */
-export const make: {
-  <StepA extends make.Step>(step: StepA): ExecutionPlan<{
-    provides: make.StepProvides<StepA>
-    input: make.StepInput<StepA>
-    error: make.StepError<StepA>
-    requirements: make.StepRequirements<StepA>
-  }>
-  <StepA extends make.Step, StepB extends make.Step>(
-    stepA: StepA,
-    stepB: StepB
-  ): ExecutionPlan<{
-    provides: make.StepProvides<StepA | StepB>
-    input: make.StepInput<StepA> & make.StepInput<StepB>
-    error: make.StepError<StepA | StepB>
-    requirements: make.StepRequirements<StepA | StepB>
-  }>
-  <StepA extends make.Step, StepB extends make.Step, StepC extends make.Step>(
-    stepA: StepA,
-    stepB: StepB,
-    stepC: StepC
-  ): ExecutionPlan<{
-    provides: make.StepProvides<StepA | StepB | StepC>
-    input: make.StepInput<StepA> & make.StepInput<StepB> & make.StepInput<StepC>
-    error: make.StepError<StepA | StepB | StepC>
-    requirements: make.StepRequirements<StepA | StepB | StepC>
-  }>
-  <StepA extends make.Step, StepB extends make.Step, StepC extends make.Step, StepD extends make.Step>(
-    stepA: StepA,
-    stepB: StepB,
-    stepC: StepC,
-    stepD: StepD
-  ): ExecutionPlan<{
-    provides: make.StepProvides<StepA | StepB | StepC | StepD>
-    input: make.StepInput<StepA> & make.StepInput<StepB> & make.StepInput<StepC> & make.StepInput<StepD>
-    error: make.StepError<StepA | StepB | StepC | StepD>
-    requirements: make.StepRequirements<StepA | StepB | StepC | StepD>
-  }>
-  <
-    StepA extends make.Step,
-    StepB extends make.Step,
-    StepC extends make.Step,
-    StepD extends make.Step,
-    StepE extends make.Step
-  >(
-    stepA: StepA,
-    stepB: StepB,
-    stepC: StepC,
-    stepD: StepD,
-    stepE: StepE
-  ): ExecutionPlan<{
-    provides: make.StepProvides<StepA | StepB | StepC | StepD | StepE>
-    input:
-      & make.StepInput<StepA>
-      & make.StepInput<StepB>
-      & make.StepInput<StepC>
-      & make.StepInput<StepD>
-      & make.StepInput<StepE>
-    error: make.StepError<StepA | StepB | StepC | StepD | StepE>
-    requirements: make.StepRequirements<StepA | StepB | StepC | StepD | StepE>
-  }>
-  <
-    StepA extends make.Step,
-    StepB extends make.Step,
-    StepC extends make.Step,
-    StepD extends make.Step,
-    StepE extends make.Step,
-    StepF extends make.Step
-  >(
-    stepA: StepA,
-    stepB: StepB,
-    stepC: StepC,
-    stepD: StepD,
-    stepE: StepE,
-    stepF: StepF
-  ): ExecutionPlan<{
-    provides: make.StepProvides<StepA | StepB | StepC | StepD | StepE | StepF>
-    input:
-      & make.StepInput<StepA>
-      & make.StepInput<StepB>
-      & make.StepInput<StepC>
-      & make.StepInput<StepD>
-      & make.StepInput<StepE>
-      & make.StepInput<StepF>
-    error: make.StepError<StepA | StepB | StepC | StepD | StepE | StepF>
-    requirements: make.StepRequirements<StepA | StepB | StepC | StepD | StepE | StepF>
-  }>
-  <
-    StepA extends make.Step,
-    StepB extends make.Step,
-    StepC extends make.Step,
-    StepD extends make.Step,
-    StepE extends make.Step,
-    StepF extends make.Step,
-    StepG extends make.Step
-  >(
-    stepA: StepA,
-    stepB: StepB,
-    stepC: StepC,
-    stepD: StepD,
-    stepE: StepE,
-    stepF: StepF,
-    stepG: StepG
-  ): ExecutionPlan<{
-    provides: make.StepProvides<StepA | StepB | StepC | StepD | StepE | StepF | StepG>
-    input:
-      & make.StepInput<StepA>
-      & make.StepInput<StepB>
-      & make.StepInput<StepC>
-      & make.StepInput<StepD>
-      & make.StepInput<StepE>
-      & make.StepInput<StepF>
-      & make.StepInput<StepG>
-    error: make.StepError<StepA | StepB | StepC | StepD | StepE | StepF | StepG>
-    requirements: make.StepRequirements<StepA | StepB | StepC | StepD | StepE | StepF | StepG>
-  }>
-  <
-    StepA extends make.Step,
-    StepB extends make.Step,
-    StepC extends make.Step,
-    StepD extends make.Step,
-    StepE extends make.Step,
-    StepF extends make.Step,
-    StepG extends make.Step,
-    StepH extends make.Step
-  >(
-    stepA: StepA,
-    stepB: StepB,
-    stepC: StepC,
-    stepD: StepD,
-    stepE: StepE,
-    stepF: StepF,
-    stepG: StepG,
-    stepH: StepH
-  ): ExecutionPlan<{
-    provides: make.StepProvides<StepA | StepB | StepC | StepD | StepE | StepF | StepG | StepH>
-    input:
-      & make.StepInput<StepA>
-      & make.StepInput<StepB>
-      & make.StepInput<StepC>
-      & make.StepInput<StepD>
-      & make.StepInput<StepE>
-      & make.StepInput<StepF>
-      & make.StepInput<StepG>
-      & make.StepInput<StepH>
-    error: make.StepError<StepA | StepB | StepC | StepD | StepE | StepF | StepG | StepH>
-    requirements: make.StepRequirements<StepA | StepB | StepC | StepD | StepE | StepF | StepG | StepH>
-  }>
-} = function make(...steps: Array<make.Step>): ExecutionPlan<any> {
-  return makeProto(steps.map((options, i) => {
+export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(...steps: Steps): ExecutionPlan<{
+  provides: make.StepProvides<Steps[number]>
+  input: make.StepInput<Steps>
+  error: make.StepError<Steps[number]>
+  requirements: make.StepRequirements<Steps[number]>
+}> =>
+  makeProto(steps.map((options, i) => {
     if (options.attempts && options.attempts < 1) {
       throw new Error(`ExecutionPlan.make: step[${i}].attempts must be greater than 0`)
     }
@@ -332,7 +190,6 @@ export const make: {
       provide: options.provide
     }
   }) as any)
-}
 
 /**
  * @since 3.16.0
@@ -345,9 +202,9 @@ export declare namespace make {
    */
   export type Step = {
     readonly provide: Context.Context<any> | Context.Context<never> | Layer.Layer.Any
-    readonly attempts?: number
-    readonly while?: (input: any) => boolean | Effect.Effect<boolean, any, any>
-    readonly schedule?: Schedule.Schedule<any, any, any>
+    readonly attempts?: number | undefined
+    readonly while?: ((input: any) => boolean | Effect.Effect<boolean, any, any>) | undefined
+    readonly schedule?: Schedule.Schedule<any, any, any> | undefined
   }
 
   /**
@@ -361,9 +218,25 @@ export declare namespace make {
    * @since 3.16.0
    * @experimental
    */
-  export type StepInput<S extends Step> =
-    & (S["while"] extends (input: infer I) => infer _ ? I : unknown)
-    & (S["schedule"] extends Schedule.Schedule<infer _O, infer I, infer _R> ? I : unknown)
+  export type StepInput<Steps extends ReadonlyArray<any>, Out = unknown> = Steps extends
+    readonly [infer Step, ...infer Rest] ? StepInput<
+      Rest,
+      & Out
+      & (
+        & (Step extends { readonly while: (input: infer I) => infer _ } ? I : unknown)
+        & (Step extends { readonly schedule: Schedule.Schedule<infer _O, infer I, infer _R> } ? I : unknown)
+      )
+    > :
+    Out
+
+  /**
+   * @since 3.16.0
+   * @experimental
+   */
+  export type PlanInput<Plans extends ReadonlyArray<any>, Out = unknown> = Plans extends
+    readonly [infer Plan, ...infer Rest] ?
+    PlanInput<Rest, Out & (Plan extends ExecutionPlan<infer T> ? T["input"] : never)> :
+    Out
 
   /**
    * @since 3.16.0
@@ -417,111 +290,11 @@ const makeProto = <Provides, In, PlanE, PlanR>(
  * @category Combining
  * @experimental
  */
-export const merge: {
-  <A extends TypesBase, B extends TypesBase>(
-    planA: ExecutionPlan<A>,
-    planB: ExecutionPlan<B>
-  ): ExecutionPlan<{
-    provides: A["provides"] | B["provides"]
-    input: A["input"] & B["input"]
-    error: A["error"] | B["error"]
-    requirements: A["requirements"] | B["requirements"]
-  }>
-  <A extends TypesBase, B extends TypesBase, C extends TypesBase>(
-    planA: ExecutionPlan<A>,
-    planB: ExecutionPlan<B>,
-    planC: ExecutionPlan<C>
-  ): ExecutionPlan<{
-    provides: A["provides"] | B["provides"] | C["provides"]
-    input: A["input"] & B["input"] & C["input"]
-    error: A["error"] | B["error"] | C["error"]
-    requirements: A["requirements"] | B["requirements"] | C["requirements"]
-  }>
-  <A extends TypesBase, B extends TypesBase, C extends TypesBase, D extends TypesBase>(
-    planA: ExecutionPlan<A>,
-    planB: ExecutionPlan<B>,
-    planC: ExecutionPlan<C>,
-    planD: ExecutionPlan<D>
-  ): ExecutionPlan<{
-    provides: A["provides"] | B["provides"] | C["provides"] | D["provides"]
-    input: A["input"] & B["input"] & C["input"] & D["input"]
-    error: A["error"] | B["error"] | C["error"] | D["error"]
-    requirements: A["requirements"] | B["requirements"] | C["requirements"] | D["requirements"]
-  }>
-  <A extends TypesBase, B extends TypesBase, C extends TypesBase, D extends TypesBase, E extends TypesBase>(
-    planA: ExecutionPlan<A>,
-    planB: ExecutionPlan<B>,
-    planC: ExecutionPlan<C>,
-    planD: ExecutionPlan<D>,
-    planE: ExecutionPlan<E>
-  ): ExecutionPlan<{
-    provides: A["provides"] | B["provides"] | C["provides"] | D["provides"] | E["provides"]
-    input: A["input"] & B["input"] & C["input"] & D["input"] & E["input"]
-    error: A["error"] | B["error"] | C["error"] | D["error"] | E["error"]
-    requirements: A["requirements"] | B["requirements"] | C["requirements"] | D["requirements"] | E["requirements"]
-  }>
-  <
-    A extends TypesBase,
-    B extends TypesBase,
-    C extends TypesBase,
-    D extends TypesBase,
-    E extends TypesBase,
-    F extends TypesBase
-  >(
-    planA: ExecutionPlan<A>,
-    planB: ExecutionPlan<B>,
-    planC: ExecutionPlan<C>,
-    planD: ExecutionPlan<D>,
-    planE: ExecutionPlan<E>,
-    planF: ExecutionPlan<F>
-  ): ExecutionPlan<{
-    provides: A["provides"] | B["provides"] | C["provides"] | D["provides"] | E["provides"] | F["provides"]
-    input: A["input"] & B["input"] & C["input"] & D["input"] & E["input"] & F["input"]
-    error: A["error"] | B["error"] | C["error"] | D["error"] | E["error"] | F["error"]
-    requirements:
-      | A["requirements"]
-      | B["requirements"]
-      | C["requirements"]
-      | D["requirements"]
-      | E["requirements"]
-      | F["requirements"]
-  }>
-  <
-    A extends TypesBase,
-    B extends TypesBase,
-    C extends TypesBase,
-    D extends TypesBase,
-    E extends TypesBase,
-    F extends TypesBase,
-    G extends TypesBase
-  >(
-    planA: ExecutionPlan<A>,
-    planB: ExecutionPlan<B>,
-    planC: ExecutionPlan<C>,
-    planD: ExecutionPlan<D>,
-    planE: ExecutionPlan<E>,
-    planF: ExecutionPlan<F>,
-    planG: ExecutionPlan<G>
-  ): ExecutionPlan<{
-    provides:
-      | A["provides"]
-      | B["provides"]
-      | C["provides"]
-      | D["provides"]
-      | E["provides"]
-      | F["provides"]
-      | G["provides"]
-    input: A["input"] & B["input"] & C["input"] & D["input"] & E["input"] & F["input"] & G["input"]
-    error: A["error"] | B["error"] | C["error"] | D["error"] | E["error"] | F["error"] | G["error"]
-    requirements:
-      | A["requirements"]
-      | B["requirements"]
-      | C["requirements"]
-      | D["requirements"]
-      | E["requirements"]
-      | F["requirements"]
-      | G["requirements"]
-  }>
-} = function merge(...plans: Array<ExecutionPlan<any>>): ExecutionPlan<any> {
-  return makeProto(plans.flatMap((plan) => plan.steps) as any)
-}
+export const merge = <const Plans extends NonEmptyReadonlyArray<ExecutionPlan<any>>>(
+  ...plans: Plans
+): ExecutionPlan<{
+  provides: Plans[number] extends ExecutionPlan<infer T> ? T["provides"] : never
+  input: make.PlanInput<Plans>
+  error: Plans[number] extends ExecutionPlan<infer T> ? T["error"] : never
+  requirements: Plans[number] extends ExecutionPlan<infer T> ? T["requirements"] : never
+}> => makeProto(plans.flatMap((plan) => plan.steps) as any)
