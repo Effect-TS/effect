@@ -5505,35 +5505,45 @@ export const retry = dual<
 
 /** @internal */
 export const withExecutionPlan: {
-  <E, R2, Provides, PolicyE>(
+  <Input, R2, Provides, PolicyE>(
     policy: ExecutionPlan<{
       provides: Provides
-      input: Types.NoInfer<E>
+      input: Input
       error: PolicyE
       requirements: R2
-    }>
-  ): <A, R>(
+    }>,
+    options?: {
+      readonly preventFallbackOnPartialStream?: boolean | undefined
+    }
+  ): <A, E extends Input, R>(
     self: Stream.Stream<A, E, R>
   ) => Stream.Stream<A, E | PolicyE, R2 | Exclude<R, Provides>>
-  <A, E, R, R2, Provides, PolicyE>(
+  <A, E extends Input, R, R2, Input, Provides, PolicyE>(
     self: Stream.Stream<A, E, R>,
     policy: ExecutionPlan<{
       provides: Provides
-      input: Types.NoInfer<E>
+      input: Input
       error: PolicyE
       requirements: R2
-    }>
+    }>,
+    options?: {
+      readonly preventFallbackOnPartialStream?: boolean | undefined
+    }
   ): Stream.Stream<A, E | PolicyE, R2 | Exclude<R, Provides>>
-} = dual(2, <A, E, R, R2, Provides, PolicyE>(
+} = dual((args) => isStream(args[0]), <A, E extends Input, R, R2, Input, Provides, PolicyE>(
   self: Stream.Stream<A, E, R>,
   policy: ExecutionPlan<{
     provides: Provides
-    input: Types.NoInfer<E>
+    input: Input
     error: PolicyE
     requirements: R2
-  }>
+  }>,
+  options?: {
+    readonly preventFallbackOnPartialStream?: boolean | undefined
+  }
 ): Stream.Stream<A, E | PolicyE, R2 | Exclude<R, Provides>> =>
   suspend(() => {
+    const preventFallbackOnPartialStream = options?.preventFallbackOnPartialStream ?? false
     let i = 0
     let lastError = Option.none<E | PolicyE>()
     const loop: Stream.Stream<
@@ -5549,6 +5559,7 @@ export const withExecutionPlan: {
       let nextStream: Stream.Stream<A, E | PolicyE, R2 | Exclude<R, Provides>> = Context.isContext(step.provide)
         ? provideSomeContext(self, step.provide)
         : provideSomeLayer(self, step.provide as Layer.Layer<Provides, E | PolicyE, R2>)
+      let receivedElements = false
 
       if (Option.isSome(lastError)) {
         const error = lastError.value
@@ -5566,10 +5577,21 @@ export const withExecutionPlan: {
         nextStream = schedule ? scheduleDefectRefail(retry(nextStream, schedule)) : nextStream
       }
 
-      return catchAll(nextStream, (error) => {
-        lastError = Option.some(error)
-        return loop
-      })
+      return catchAll(
+        preventFallbackOnPartialStream ?
+          mapChunks(nextStream, (chunk) => {
+            receivedElements = true
+            return chunk
+          }) :
+          nextStream,
+        (error) => {
+          if (preventFallbackOnPartialStream && receivedElements) {
+            return fail(error)
+          }
+          lastError = Option.some(error)
+          return loop
+        }
+      )
     })
     return loop
   }))

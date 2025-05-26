@@ -4072,17 +4072,23 @@ export const retry: {
  * Apply an `ExecutionPlan` to the stream, which allows you to fallback to
  * different resources in case of failure.
  *
+ * If you have a stream that could fail with partial results, you can use
+ * the `preventFallbackOnPartialStream` option to prevent contamination of
+ * the final stream with partial results.
+ *
  * @since 3.16.0
  * @category Error handling
  * @experimental
  */
 export const withExecutionPlan: {
-  <E, R2, Provides, PolicyE>(
-    policy: ExecutionPlan<{ provides: Provides; input: NoInfer<E>; error: PolicyE; requirements: R2 }>
-  ): <A, R>(self: Stream<A, E, R>) => Stream<A, E | PolicyE, R2 | Exclude<R, Provides>>
-  <A, E, R, R2, Provides, PolicyE>(
+  <Input, R2, Provides, PolicyE>(
+    policy: ExecutionPlan<{ provides: Provides; input: Input; error: PolicyE; requirements: R2 }>,
+    options?: { readonly preventFallbackOnPartialStream?: boolean | undefined }
+  ): <A, E extends Input, R>(self: Stream<A, E, R>) => Stream<A, E | PolicyE, R2 | Exclude<R, Provides>>
+  <A, E extends Input, R, R2, Input, Provides, PolicyE>(
     self: Stream<A, E, R>,
-    policy: ExecutionPlan<{ provides: Provides; input: NoInfer<E>; error: PolicyE; requirements: R2 }>
+    policy: ExecutionPlan<{ provides: Provides; input: Input; error: PolicyE; requirements: R2 }>,
+    options?: { readonly preventFallbackOnPartialStream?: boolean | undefined }
   ): Stream<A, E | PolicyE, R2 | Exclude<R, Provides>>
 } = internal.withExecutionPlan
 
