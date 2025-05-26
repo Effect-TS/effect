@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as Error from "@effect/platform/Error"
 import { hasProperty } from "effect/Predicate"
+import * as Error from "./Error.js"
 import type * as ClientRequest from "./HttpClientRequest.js"
 import type * as ClientResponse from "./HttpClientResponse.js"
 import * as internal from "./internal/httpClientError.js"
