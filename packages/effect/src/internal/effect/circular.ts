@@ -18,7 +18,6 @@ import { pipeArguments } from "../../Pipeable.js"
 import * as Predicate from "../../Predicate.js"
 import * as Readable from "../../Readable.js"
 import type * as Ref from "../../Ref.js"
-import type * as Schedule from "../../Schedule.js"
 import { currentScheduler } from "../../Scheduler.js"
 import type * as Scope from "../../Scope.js"
 import type * as Supervisor from "../../Supervisor.js"
@@ -31,7 +30,6 @@ import * as internalFiber from "../fiber.js"
 import * as fiberRuntime from "../fiberRuntime.js"
 import { globalScope } from "../fiberScope.js"
 import * as internalRef from "../ref.js"
-import * as schedule_ from "../schedule.js"
 import * as supervisor from "../supervisor.js"
 
 /** @internal */
@@ -476,19 +474,6 @@ export const raceFirst = dual<
     fiberRuntime.race(core.exit(that)),
     (effect: Effect.Effect<Exit.Exit<A | A2, E | E2>, never, R | R2>) => core.flatten(effect)
   ))
-
-/** @internal */
-export const scheduleForked = dual<
-  <Out, R2>(
-    schedule: Schedule.Schedule<Out, unknown, R2>
-  ) => <A, E, R>(
-    self: Effect.Effect<A, E, R>
-  ) => Effect.Effect<Fiber.RuntimeFiber<Out, E>, never, R | R2 | Scope.Scope>,
-  <A, E, R, Out, R2>(
-    self: Effect.Effect<A, E, R>,
-    schedule: Schedule.Schedule<Out, unknown, R2>
-  ) => Effect.Effect<Fiber.RuntimeFiber<Out, E>, never, R | R2 | Scope.Scope>
->(2, (self, schedule) => pipe(self, schedule_.schedule_Effect(schedule), forkScoped))
 
 /** @internal */
 export const supervised = dual<
