@@ -1481,9 +1481,16 @@ describe("Effect", () => {
   })
 
   it("fn returns Effect subtype", () => {
-    const fn = Effect.fn((a?: string) => Effect.succeed(a), () => Option.some("test"))
+    const fnNonGen = Effect.fn((a?: string) => Effect.succeed(a), () => Option.some("test"))
+    const fnGen = Effect.fn(function*(a?: string) {
+      return Effect.succeed(a)
+    }, () => Option.some("test"))
 
-    expect(fn).type.toBe<
+    expect(fnNonGen).type.toBe<
+      (this: unknown, a?: string | undefined) => Effect.Effect<string, NoSuchElementException, never>
+    >()
+
+    expect(fnGen).type.toBe<
       (this: unknown, a?: string | undefined) => Effect.Effect<string, NoSuchElementException, never>
     >()
   })

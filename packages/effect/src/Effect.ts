@@ -13856,7 +13856,7 @@ export namespace fn {
         >,
         ...args: NoInfer<Args>
       ) => A
-    ): (this: Self, ...args: Args) => A
+    ): (this: Self, ...args: Args) => Effect.AsEffect<A>
     <
       Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
@@ -13875,7 +13875,7 @@ export namespace fn {
         ...args: NoInfer<Args>
       ) => A,
       b: (_: A, ...args: NoInfer<Args>) => B
-    ): (this: Self, ...args: Args) => B
+    ): (this: Self, ...args: Args) => Effect.AsEffect<B>
     <
       Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
@@ -13896,7 +13896,7 @@ export namespace fn {
       ) => A,
       b: (_: A, ...args: NoInfer<Args>) => B,
       c: (_: B, ...args: NoInfer<Args>) => C
-    ): (this: Self, ...args: Args) => C
+    ): (this: Self, ...args: Args) => Effect.AsEffect<C>
     <
       Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
@@ -13919,7 +13919,7 @@ export namespace fn {
       b: (_: A, ...args: NoInfer<Args>) => B,
       c: (_: B, ...args: NoInfer<Args>) => C,
       d: (_: C, ...args: NoInfer<Args>) => D
-    ): (this: Self, ...args: Args) => D
+    ): (this: Self, ...args: Args) => Effect.AsEffect<D>
     <
       Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
@@ -13944,7 +13944,7 @@ export namespace fn {
       c: (_: B, ...args: NoInfer<Args>) => C,
       d: (_: C, ...args: NoInfer<Args>) => D,
       e: (_: D, ...args: NoInfer<Args>) => E
-    ): (this: Self, ...args: Args) => E
+    ): (this: Self, ...args: Args) => Effect.AsEffect<E>
     <
       Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
@@ -13971,7 +13971,7 @@ export namespace fn {
       d: (_: C, ...args: NoInfer<Args>) => D,
       e: (_: D, ...args: NoInfer<Args>) => E,
       f: (_: E, ...args: NoInfer<Args>) => F
-    ): (this: Self, ...args: Args) => F
+    ): (this: Self, ...args: Args) => Effect.AsEffect<F>
     <
       Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
@@ -14000,7 +14000,7 @@ export namespace fn {
       e: (_: D, ...args: NoInfer<Args>) => E,
       f: (_: E, ...args: NoInfer<Args>) => F,
       g: (_: F, ...args: NoInfer<Args>) => G
-    ): (this: Self, ...args: Args) => G
+    ): (this: Self, ...args: Args) => Effect.AsEffect<G>
     <
       Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
@@ -14031,7 +14031,7 @@ export namespace fn {
       f: (_: E, ...args: NoInfer<Args>) => F,
       g: (_: F, ...args: NoInfer<Args>) => G,
       h: (_: G, ...args: NoInfer<Args>) => H
-    ): (this: Self, ...args: Args) => H
+    ): (this: Self, ...args: Args) => Effect.AsEffect<H>
     <
       Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
@@ -14064,7 +14064,7 @@ export namespace fn {
       g: (_: F, ...args: NoInfer<Args>) => G,
       h: (_: G, ...args: NoInfer<Args>) => H,
       i: (_: H, ...args: NoInfer<Args>) => I
-    ): (this: Self, ...args: Args) => I
+    ): (this: Self, ...args: Args) => Effect.AsEffect<I>
   }
 
   /**
