@@ -96,11 +96,14 @@ export const make = (
         Effect.async((resume) => {
           output.write(prompt, (err) => {
             if (err) {
-              resume(Effect.fail(Error.BadArgument({
-                module: "Terminal",
-                method: "display",
-                message: (err as Error).message ?? String(err)
-              })))
+              resume(Effect.fail(
+                new Error.BadArgument({
+                  module: "Terminal",
+                  method: "display",
+                  description: "Failed to write prompt to output",
+                  cause: err
+                })
+              ))
             }
             resume(Effect.void)
           })

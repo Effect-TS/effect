@@ -65,17 +65,19 @@ describe("Command", () => {
     })))
 
   it("should fail when trying to run a command that does not exist", () =>
-    runPromise(Effect.gen(function*(_) {
+    runPromise(Effect.gen(function*() {
       const command = Command.make("some-invalid-command", "test")
-      const result = yield* _(Effect.exit(Command.string(command)))
-      expect(result).toEqual(Exit.fail(SystemError({
-        reason: "NotFound",
-        module: "Command",
-        method: "spawn",
-        pathOrDescriptor: "some-invalid-command test",
-        syscall: "spawn some-invalid-command",
-        message: "spawn some-invalid-command ENOENT"
-      })))
+      const result = yield* Effect.exit(Command.string(command))
+      expect(result).toEqual(Exit.fail(
+        new SystemError({
+          reason: "NotFound",
+          module: "Command",
+          method: "spawn",
+          pathOrDescriptor: "some-invalid-command test",
+          syscall: "spawn some-invalid-command",
+          description: "spawn some-invalid-command ENOENT"
+        })
+      ))
     })))
 
   it("should pass environment variables", () =>
@@ -217,14 +219,16 @@ describe("Command", () => {
         Command.workingDirectory(path.join(...TEST_BASH_SCRIPTS_PATH))
       )
       const result = yield* _(Effect.exit(Command.string(command)))
-      expect(result).toEqual(Exit.fail(SystemError({
-        reason: "PermissionDenied",
-        module: "Command",
-        method: "spawn",
-        pathOrDescriptor: "./no-permissions.sh ",
-        syscall: "spawn ./no-permissions.sh",
-        message: "spawn ./no-permissions.sh EACCES"
-      })))
+      expect(result).toEqual(Exit.fail(
+        new SystemError({
+          reason: "PermissionDenied",
+          module: "Command",
+          method: "spawn",
+          pathOrDescriptor: "./no-permissions.sh ",
+          syscall: "spawn ./no-permissions.sh",
+          description: "spawn ./no-permissions.sh EACCES"
+        })
+      ))
     })))
 
   it("should throw non-existent working directory as a typed error", () =>
@@ -234,14 +238,16 @@ describe("Command", () => {
         Command.workingDirectory("/some/bad/path")
       )
       const result = yield* _(Effect.exit(Command.lines(command)))
-      expect(result).toEqual(Exit.fail(SystemError({
-        reason: "NotFound",
-        module: "FileSystem",
-        method: "access",
-        pathOrDescriptor: "/some/bad/path",
-        syscall: "access",
-        message: "ENOENT: no such file or directory, access '/some/bad/path'"
-      })))
+      expect(result).toEqual(Exit.fail(
+        new SystemError({
+          reason: "NotFound",
+          module: "FileSystem",
+          method: "access",
+          pathOrDescriptor: "/some/bad/path",
+          syscall: "access",
+          description: "ENOENT: no such file or directory, access '/some/bad/path'"
+        })
+      ))
     })))
 
   it("should be able to kill a running process", () =>

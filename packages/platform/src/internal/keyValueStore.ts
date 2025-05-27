@@ -247,8 +247,8 @@ export const layerSchema = <A, I, R>(
 }
 
 /** @internal */
-const storageError = (props: Omit<Parameters<typeof PlatformError.SystemError>[0], "reason" | "module">) =>
-  PlatformError.SystemError({
+const storageError = (props: Omit<ConstructorParameters<typeof PlatformError.SystemError>[0], "reason" | "module">) =>
+  new PlatformError.SystemError({
     reason: "PermissionDenied",
     module: "KeyValueStore",
     ...props
@@ -266,7 +266,7 @@ export const layerStorage = (evaluate: LazyArg<Storage>) =>
             storageError({
               pathOrDescriptor: key,
               method: "get",
-              message: `Unable to get item with key ${key}`
+              description: `Unable to get item with key ${key}`
             })
         }),
 
@@ -277,7 +277,7 @@ export const layerStorage = (evaluate: LazyArg<Storage>) =>
             storageError({
               pathOrDescriptor: key,
               method: "set",
-              message: `Unable to set item with key ${key}`
+              description: `Unable to set item with key ${key}`
             })
         }),
 
@@ -288,7 +288,7 @@ export const layerStorage = (evaluate: LazyArg<Storage>) =>
             storageError({
               pathOrDescriptor: key,
               method: "remove",
-              message: `Unable to remove item with key ${key}`
+              description: `Unable to remove item with key ${key}`
             })
         }),
 
@@ -298,7 +298,7 @@ export const layerStorage = (evaluate: LazyArg<Storage>) =>
           storageError({
             pathOrDescriptor: "clear",
             method: "clear",
-            message: `Unable to clear storage`
+            description: `Unable to clear storage`
           })
       }),
 
@@ -308,7 +308,7 @@ export const layerStorage = (evaluate: LazyArg<Storage>) =>
           storageError({
             pathOrDescriptor: "size",
             method: "size",
-            message: `Unable to get size`
+            description: `Unable to get size`
           })
       })
     })

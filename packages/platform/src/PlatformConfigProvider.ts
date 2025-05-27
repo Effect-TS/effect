@@ -48,7 +48,7 @@ export const fromFileTree = (options?: {
       const sourceError = (pathSegments: ReadonlyArray<string>, error: PlatformError) =>
         ConfigError.SourceUnavailable(
           [...pathSegments],
-          error.message,
+          error.description ?? error.message,
           Cause.fail(error)
         )
       const pathNotFoundError = (pathSegments: ReadonlyArray<string>) =>

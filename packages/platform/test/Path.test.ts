@@ -19,10 +19,10 @@ describe("Path", () => {
       const path = yield* (Path.Path)
       deepStrictEqual(
         yield* (Effect.flip(path.fromFileUrl(new URL("http://foo/bar")))),
-        BadArgument({
+        new BadArgument({
           module: "Path",
           method: "fromFileUrl",
-          message: "URL must be of scheme file"
+          description: "URL must be of scheme file"
         })
       )
     })))
