@@ -18,6 +18,8 @@ import type * as Reply from "./Reply.js"
 import type { ShardingConfig } from "./ShardingConfig.js"
 import * as Snowflake from "./Snowflake.js"
 
+const withTracerDisabled = Effect.withTracerEnabled(false)
+
 /**
  * @since 1.0.0
  * @category Constructors
@@ -696,7 +698,8 @@ export const make = Effect.fnUntraced(function*(options?: {
               sequence: Number(row.sequence!)
             }
         )),
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       ),
 
     unprocessedMessages: Effect.fnUntraced(
@@ -717,7 +720,8 @@ export const make = Effect.fnUntraced(function*(options?: {
         return messages
       },
       Effect.provideService(SqlClient.SafeIntegers, true),
-      PersistenceError.refail
+      PersistenceError.refail,
+      withTracerDisabled
     ),
 
     unprocessedMessagesById(ids, now) {
@@ -738,7 +742,8 @@ export const make = Effect.fnUntraced(function*(options?: {
       `.unprepared.pipe(
         Effect.map(Arr.map(messageFromRow)),
         Effect.provideService(SqlClient.SafeIntegers, true),
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       )
     },
 
@@ -752,7 +757,8 @@ export const make = Effect.fnUntraced(function*(options?: {
         AND entity_id = ${address.entityId}
       `.pipe(
         Effect.asVoid,
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       ),
 
     resetShards: (shardIds) =>
@@ -763,10 +769,11 @@ export const make = Effect.fnUntraced(function*(options?: {
         AND shard_id IN (${sql.literal(shardIds.join(","))})
       `.pipe(
         Effect.asVoid,
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       )
   })
-})
+}, withTracerDisabled)
 
 /**
  * @since 1.0.0
