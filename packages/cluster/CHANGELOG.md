@@ -1,5 +1,16 @@
 # @effect/cluster
 
+## 0.34.5
+
+### Patch Changes
+
+- [#4929](https://github.com/Effect-TS/effect/pull/4929) [`58c5fd3`](https://github.com/Effect-TS/effect/commit/58c5fd3dd30eceb6c8afea90406768b0e348f48f) Thanks @tim-smart! - disable tracing for internal sql queries
+
+- Updated dependencies [[`0617b9d`](https://github.com/Effect-TS/effect/commit/0617b9dc365f1963b36949ad7f9023ab6eb94524)]:
+  - @effect/platform@0.82.8
+  - @effect/rpc@0.59.9
+  - @effect/sql@0.35.8
+
 ## 0.34.4
 
 ### Patch Changes
