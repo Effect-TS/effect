@@ -4,16 +4,14 @@
 import * as AiEmbeddingModel from "@effect/ai/AiEmbeddingModel"
 import { AiError } from "@effect/ai/AiError"
 import * as AiModel from "@effect/ai/AiModel"
-import * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
-import * as Struct from "effect/Struct"
+import * as Layer from "effect/Layer"
 import type { Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
 import { OpenAiClient } from "./OpenAiClient.js"
-import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
 
 /**
  * @since 1.0.0
@@ -87,9 +85,6 @@ export declare namespace Config {
 // OpenAi Embedding Model
 // =============================================================================
 
-const batchedModelCacheKey = "@effect/ai-openai/OpenAiEmbeddingModel/Batched/AiModel"
-const dataLoaderModelCacheKey = "@effect/ai-openai/OpenAiEmbeddingModel/DataLoader/AiModel"
-
 /**
  * @since 1.0.0
  * @category Models
@@ -102,44 +97,28 @@ export const model = (
       | ({ readonly mode: "data-loader" } & Config.DataLoader)
     )
   >
-): AiModel.AiModel<AiEmbeddingModel.AiEmbeddingModel | Tokenizer.Tokenizer, OpenAiClient> =>
-  AiModel.make({
-    cacheKey: config.mode === "batched"
-      ? batchedModelCacheKey
-      : dataLoaderModelCacheKey,
-    cachedContext: Effect.map(
-      config.mode === "batched"
-        ? makeBatched({ model, config })
-        : makeDataLoader({ model, config }),
-      (model) => Context.make(AiEmbeddingModel.AiEmbeddingModel, model)
-    ),
-    updateRequestContext: Effect.fnUntraced(
-      function*(context: Context.Context<AiEmbeddingModel.AiEmbeddingModel>) {
-        const parentConfig = config.mode === "batched"
-          ? Struct.omit("mode", "maxBatchSize", "cache")(config)
-          : Struct.omit("mode", "maxBatchSize", "window")(config)
-        const perRequestConfig = yield* Config.getOrUndefined
-        return Context.mergeAll(
-          context,
-          Context.make(Config, { model, ...parentConfig, ...perRequestConfig }),
-          Context.make(Tokenizer.Tokenizer, OpenAiTokenizer.make({ model: perRequestConfig?.model ?? model }))
-        )
-      }
-    )
-  })
+): AiModel.AiModel<AiEmbeddingModel.AiEmbeddingModel, OpenAiClient> => {
+  return AiModel.make(
+    config.mode === "batched"
+      ? layerBatched({ model, config })
+      : layerDataLoader({ model, config })
+  )
+}
 
 const makeRequest = (
   client: OpenAiClient.Service,
+  model: string,
   input: ReadonlyArray<string>,
-  parentConfig: typeof Config.Service | undefined
+  config: typeof Config.Service | undefined
 ) =>
   Effect.context<never>().pipe(
     Effect.flatMap((context) => {
-      const localConfig = context.unsafeMap.get(Config.key)
+      const perRequestConfig = context.unsafeMap.get(Config.key)
       return client.client.createEmbedding({
         input,
-        ...parentConfig,
-        ...localConfig
+        model,
+        ...config,
+        ...perRequestConfig
       })
     }),
     Effect.map((response) =>
@@ -167,35 +146,61 @@ const makeRequest = (
     })
   )
 
+/**
+ * @since 1.0.0
+ * @category Constructors
+ */
 const makeBatched = Effect.fnUntraced(function*(options: {
   readonly model: (string & {}) | Model
-  readonly config: Config.Batched
+  readonly config?: Config.Batched
 }) {
   const client = yield* OpenAiClient
-  const { cache, maxBatchSize = 2048, ...parentConfig } = options.config
+  const { config = {}, model } = options
+  const { cache, maxBatchSize = 2048, ...rest } = config
   return yield* AiEmbeddingModel.make({
     cache,
     maxBatchSize,
-    embedMany(input) {
-      return makeRequest(client, input, { ...parentConfig, model: options.model })
-    }
+    embedMany: (input) => makeRequest(client, model, input, rest)
   })
 })
 
-const makeDataLoader = Effect.fnUntraced(function*(options: {
+/**
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const makeDataLoader = Effect.fnUntraced(function*(options: {
   readonly model: (string & {}) | Model
   readonly config: Config.DataLoader
 }) {
   const client = yield* OpenAiClient
-  const { maxBatchSize = 2048, window, ...parentConfig } = options.config
+  const { config, model } = options
+  const { maxBatchSize = 2048, window, ...rest } = config
   return yield* AiEmbeddingModel.makeDataLoader({
     window,
     maxBatchSize,
-    embedMany(input) {
-      return makeRequest(client, input, { ...parentConfig, model: options.model })
-    }
+    embedMany: (input) => makeRequest(client, model, input, rest)
   })
 })
+
+/**
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layerBatched = (options: {
+  readonly model: (string & {}) | Model
+  readonly config?: Config.Batched
+}): Layer.Layer<AiEmbeddingModel.AiEmbeddingModel, never, OpenAiClient> =>
+  Layer.effect(AiEmbeddingModel.AiEmbeddingModel, makeBatched(options))
+
+/**
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layerDataLoader = (options: {
+  readonly model: (string & {}) | Model
+  readonly config: Config.DataLoader
+}): Layer.Layer<AiEmbeddingModel.AiEmbeddingModel, never, OpenAiClient> =>
+  Layer.scoped(AiEmbeddingModel.AiEmbeddingModel, makeDataLoader(options))
 
 /**
  * @since 1.0.0

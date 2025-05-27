@@ -3,12 +3,9 @@
  */
 import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as GlobalValue from "effect/GlobalValue"
-import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
-import type * as Scope from "effect/Scope"
-import type * as AiPlan from "./AiPlan.js"
-import * as InternalAiPlan from "./internal/aiPlan.js"
+import { CommitPrototype } from "effect/Effectable"
+import { identity } from "effect/Function"
+import * as Layer from "effect/Layer"
 
 /**
  * @since 1.0.0
@@ -24,86 +21,33 @@ export type TypeId = typeof TypeId
 
 /**
  * @since 1.0.0
- * @category type ids
- */
-export const PlanTypeId: unique symbol = Symbol.for("@effect/ai/Plan")
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export type PlanTypeId = typeof TypeId
-
-/**
- * @since 1.0.0
  * @category models
  */
-export interface AiModel<in out Provides, in out Requires> extends AiPlan.AiPlan<unknown, Provides, Requires> {
+export interface AiModel<in out Provides, in out Requires>
+  extends Layer.Layer<Provides, never, Requires>, Effect.Effect<Layer.Layer<Provides>, never, Requires>
+{
   readonly [TypeId]: TypeId
-  readonly buildContext: ContextBuilder<Provides, Requires>
 }
-
-/**
- * @since 1.0.0
- * @category AiModel
- */
-export type ContextBuilder<Provides, Requires> = Effect.Effect<
-  Context.Context<Provides>,
-  never,
-  Requires | Scope.Scope
->
 
 const AiModelProto = {
-  ...InternalAiPlan.PlanPrototype,
-  [TypeId]: TypeId
+  ...CommitPrototype,
+  [TypeId]: TypeId,
+  [Layer.LayerTypeId]: {
+    _ROut: identity,
+    _E: identity,
+    _RIn: identity
+  },
+  commit(this: AiModel<any, any>) {
+    return Effect.contextWith((context: Context.Context<never>) => {
+      return Layer.provide(this, Layer.succeedContext(context))
+    })
+  }
 }
-
-const contextCache = GlobalValue.globalValue(
-  "@effect/ai/AiModel/CachedContexts",
-  () => new Map<string, any>()
-)
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Cached, PerRequest, CachedRequires, PerRequestRequires>(options: {
-  /**
-   * A unique key used to cache the `Context` built from the `cachedContext`
-   * effect.
-   */
-  readonly cacheKey: string
-  /**
-   * An effect used to build a `Context` that will be cached after creation
-   * and used for all provider requests.
-   */
-  readonly cachedContext: Effect.Effect<
-    Context.Context<Cached>,
-    never,
-    CachedRequires | Scope.Scope
-  >
-  /**
-   * A method that can be used to update the `Context` on a per-request basis
-   * for all provider requests.
-   */
-  readonly updateRequestContext: (context: Context.Context<Cached>) => Effect.Effect<
-    Context.Context<PerRequest>,
-    never,
-    PerRequestRequires
-  >
-}): AiModel<Cached | PerRequest, CachedRequires | PerRequestRequires> => {
-  const self = Object.create(AiModelProto)
-  self.buildContext = Effect.gen(function*() {
-    let context = contextCache.get(options.cacheKey)
-    if (Predicate.isUndefined(context)) {
-      context = yield* options.cachedContext
-    }
-    return yield* options.updateRequestContext(context)
-  })
-  self.steps = [{
-    model: self,
-    check: Option.none(),
-    schedule: Option.none()
-  }]
-  return self
-}
+export const make = <Provides, Requires>(
+  layer: Layer.Layer<Provides, never, Requires>
+): AiModel<Provides, Requires> => Object.assign(Object.create(AiModelProto), layer)
