@@ -49,11 +49,12 @@ export const make = (
     readFileString: (path, encoding) =>
       Effect.tryMap(impl.readFile(path), {
         try: (_) => new TextDecoder(encoding).decode(_),
-        catch: () =>
-          Error.BadArgument({
+        catch: (cause) =>
+          new Error.BadArgument({
             module: "FileSystem",
             method: "readFileString",
-            message: "invalid encoding"
+            description: "invalid encoding",
+            cause
           })
       }),
     stream: (path, options) =>
@@ -75,11 +76,12 @@ export const make = (
       Effect.flatMap(
         Effect.try({
           try: () => new TextEncoder().encode(data),
-          catch: () =>
-            Error.BadArgument({
+          catch: (cause) =>
+            new Error.BadArgument({
               module: "FileSystem",
               method: "writeFileString",
-              message: "could not encode string"
+              description: "could not encode string",
+              cause
             })
         }),
         (_) => impl.writeFile(path, _, options)
@@ -88,11 +90,11 @@ export const make = (
 }
 
 const notFound = (method: string, path: string) =>
-  Error.SystemError({
+  new Error.SystemError({
     module: "FileSystem",
     method,
     reason: "NotFound",
-    message: "No such file or directory",
+    description: "No such file or directory",
     pathOrDescriptor: path
   })
 

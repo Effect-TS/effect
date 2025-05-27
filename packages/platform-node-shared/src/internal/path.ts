@@ -9,10 +9,11 @@ const fromFileUrl = (url: URL): Effect.Effect<string, BadArgument> =>
   Effect.try({
     try: () => NodeUrl.fileURLToPath(url),
     catch: (error) =>
-      BadArgument({
+      new BadArgument({
         module: "Path",
         method: "fromFileUrl",
-        message: `${error}`
+        description: `Invalid file URL: ${url}`,
+        cause: error
       })
   })
 
@@ -20,10 +21,11 @@ const toFileUrl = (path: string): Effect.Effect<URL, BadArgument> =>
   Effect.try({
     try: () => NodeUrl.pathToFileURL(path),
     catch: (error) =>
-      BadArgument({
+      new BadArgument({
         module: "Path",
         method: "toFileUrl",
-        message: `${error}`
+        description: `Invalid path: ${path}`,
+        cause: error
       })
   })
 

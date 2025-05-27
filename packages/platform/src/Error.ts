@@ -4,32 +4,26 @@
 import type * as Cause from "effect/Cause"
 import * as Data from "effect/Data"
 import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
 import type { Simplify } from "effect/Types"
-import * as internal from "./internal/error.js"
 
 /**
  * @since 1.0.0
  * @category type id
  */
-export const PlatformErrorTypeId: unique symbol = internal.PlatformErrorTypeId
+export const TypeId: unique symbol = Symbol.for("@effect/platform/Error")
 
 /**
  * @since 1.0.0
  * @category type id
  */
-export type PlatformErrorTypeId = typeof PlatformErrorTypeId
+export type TypeId = typeof TypeId
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isPlatformError = (u: unknown): u is PlatformError => Predicate.hasProperty(u, PlatformErrorTypeId)
-
-/**
- * @since 1.0.0
- * @category error
- */
-export type PlatformError = BadArgument | SystemError
+export const isPlatformError = (u: unknown): u is PlatformError => Predicate.hasProperty(u, TypeId)
 
 /**
  * @since 1.0.0
@@ -56,70 +50,104 @@ export const TypeIdError = <const TypeId extends symbol, const Tag extends strin
 
 /**
  * @since 1.0.0
+ * @category Models
  */
-export declare namespace PlatformError {
+export const Module = Schema.Literal(
+  "Clipboard",
+  "Command",
+  "FileSystem",
+  "KeyValueStore",
+  "Path",
+  "Stream",
+  "Terminal"
+)
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export class BadArgument extends Schema.TaggedError<BadArgument>("@effect/platform/Error/BadArgument")("BadArgument", {
+  module: Module,
+  method: Schema.String,
+  description: Schema.optional(Schema.String),
+  cause: Schema.optional(Schema.Defect)
+}) {
   /**
    * @since 1.0.0
-   * @category models
    */
-  export interface Base {
-    readonly [PlatformErrorTypeId]: typeof PlatformErrorTypeId
-    readonly _tag: string
-    readonly module: "Clipboard" | "Command" | "FileSystem" | "KeyValueStore" | "Path" | "Stream" | "Terminal"
-    readonly method: string
-    readonly message: string
+  readonly [TypeId]: typeof TypeId = TypeId
+
+  /**
+   * @since 1.0.0
+   */
+  get message(): string {
+    return `${this.module}.${this.method}${this.description ? `: ${this.description}` : ""}`
   }
-
-  /**
-   * @since 1.0.0
-   */
-  export type ProvidedFields = PlatformErrorTypeId | "_tag"
 }
 
 /**
  * @since 1.0.0
- * @category error
+ * @category Model
  */
-export interface BadArgument extends PlatformError.Base {
-  readonly _tag: "BadArgument"
-}
+export const SystemErrorReason = Schema.Literal(
+  "AlreadyExists",
+  "BadResource",
+  "Busy",
+  "InvalidData",
+  "NotFound",
+  "PermissionDenied",
+  "TimedOut",
+  "UnexpectedEof",
+  "Unknown",
+  "WouldBlock",
+  "WriteZero"
+)
 
 /**
  * @since 1.0.0
- * @category error
+ * @category Model
  */
-export const BadArgument: (props: Omit<BadArgument, PlatformError.ProvidedFields>) => BadArgument = internal.badArgument
-
-/**
- * @since 1.0.0
- * @category model
- */
-export type SystemErrorReason =
-  | "AlreadyExists"
-  | "BadResource"
-  | "Busy"
-  | "InvalidData"
-  | "NotFound"
-  | "PermissionDenied"
-  | "TimedOut"
-  | "UnexpectedEof"
-  | "Unknown"
-  | "WouldBlock"
-  | "WriteZero"
+export type SystemErrorReason = typeof SystemErrorReason.Type
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface SystemError extends PlatformError.Base {
-  readonly _tag: "SystemError"
-  readonly reason: SystemErrorReason
-  readonly syscall?: string | undefined
-  readonly pathOrDescriptor: string | number
+export class SystemError extends Schema.TaggedError<SystemError>("@effect/platform/Error/SystemError")("SystemError", {
+  reason: SystemErrorReason,
+  module: Module,
+  method: Schema.String,
+  description: Schema.optional(Schema.String),
+  syscall: Schema.optional(Schema.String),
+  pathOrDescriptor: Schema.optional(Schema.Union(Schema.String, Schema.Number)),
+  cause: Schema.optional(Schema.Defect)
+}) {
+  /**
+   * @since 1.0.0
+   */
+  readonly [TypeId]: typeof TypeId = TypeId
+
+  /**
+   * @since 1.0.0
+   */
+  get message(): string {
+    return `${this.reason}: ${this.module}.${this.method}${
+      this.pathOrDescriptor !== undefined ? ` (${this.pathOrDescriptor})` : ""
+    }${this.description ? `: ${this.description}` : ""}`
+  }
 }
 
 /**
  * @since 1.0.0
- * @category error
+ * @category Models
  */
-export const SystemError: (props: Omit<SystemError, PlatformError.ProvidedFields>) => SystemError = internal.systemError
+export type PlatformError = BadArgument | SystemError
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export const PlatformError: Schema.Union<[
+  typeof BadArgument,
+  typeof SystemError
+]> = Schema.Union(BadArgument, SystemError)

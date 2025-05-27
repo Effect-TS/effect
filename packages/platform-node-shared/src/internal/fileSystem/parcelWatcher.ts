@@ -12,15 +12,17 @@ const watchParcel = (path: string) =>
     Effect.acquireRelease(
       Effect.tryPromise({
         try: () =>
-          ParcelWatcher.subscribe(path, (error, events) => {
-            if (error) {
-              emit.fail(Error.SystemError({
-                reason: "Unknown",
-                module: "FileSystem",
-                method: "watch",
-                pathOrDescriptor: path,
-                message: error.message
-              }))
+          ParcelWatcher.subscribe(path, (cause, events) => {
+            if (cause) {
+              emit.fail(
+                new Error.SystemError({
+                  reason: "Unknown",
+                  module: "FileSystem",
+                  method: "watch",
+                  pathOrDescriptor: path,
+                  cause
+                })
+              )
             } else {
               emit.chunk(Chunk.unsafeFromArray(events.map((event) => {
                 switch (event.type) {
@@ -37,13 +39,13 @@ const watchParcel = (path: string) =>
               })))
             }
           }),
-        catch: (error) =>
-          Error.SystemError({
+        catch: (cause) =>
+          new Error.SystemError({
             reason: "Unknown",
             module: "FileSystem",
             method: "watch",
             pathOrDescriptor: path,
-            message: (error as Error).message
+            cause
           })
       }),
       (sub) => Effect.promise(() => sub.unsubscribe())

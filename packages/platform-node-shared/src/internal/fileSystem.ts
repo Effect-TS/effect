@@ -13,11 +13,11 @@ import * as OS from "node:os"
 import * as Path from "node:path"
 import { handleErrnoException } from "./error.js"
 
-const handleBadArgument = (method: string) => (err: unknown) =>
-  Error.BadArgument({
+const handleBadArgument = (method: string) => (cause: unknown) =>
+  new Error.BadArgument({
     module: "FileSystem",
     method,
-    message: (err as Error).message ?? String(err)
+    cause
   })
 
 // == access
@@ -345,13 +345,15 @@ const makeFile = (() => {
         ),
         (bytesWritten) => {
           if (bytesWritten === 0) {
-            return Effect.fail(Error.SystemError({
-              module: "FileSystem",
-              method: "writeAll",
-              reason: "WriteZero",
-              pathOrDescriptor: this.fd,
-              message: "write returned 0 bytes written"
-            }))
+            return Effect.fail(
+              new Error.SystemError({
+                module: "FileSystem",
+                method: "writeAll",
+                reason: "WriteZero",
+                pathOrDescriptor: this.fd,
+                description: "write returned 0 bytes written"
+              })
+            )
           }
 
           if (!this.append) {
@@ -554,13 +556,15 @@ const watchNode = (path: string) =>
           }
         })
         watcher.on("error", (error) => {
-          emit.fail(Error.SystemError({
-            module: "FileSystem",
-            reason: "Unknown",
-            method: "watch",
-            pathOrDescriptor: path,
-            message: error.message
-          }))
+          emit.fail(
+            new Error.SystemError({
+              module: "FileSystem",
+              reason: "Unknown",
+              method: "watch",
+              pathOrDescriptor: path,
+              cause: error
+            })
+          )
         })
         watcher.on("close", () => {
           emit.end()

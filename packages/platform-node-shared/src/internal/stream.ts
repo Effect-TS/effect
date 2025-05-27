@@ -177,13 +177,12 @@ export const pipeThroughSimple = dual<
   (self, duplex) =>
     Stream.pipeThroughChannelOrFail(
       self,
-      fromDuplex(duplex, (error) =>
-        SystemError({
+      fromDuplex(duplex, (cause) =>
+        new SystemError({
           module: "Stream",
           method: "pipeThroughSimple",
-          pathOrDescriptor: "",
           reason: "Unknown",
-          message: String(error)
+          cause
         }))
     )
 )

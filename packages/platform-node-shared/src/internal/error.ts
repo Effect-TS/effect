@@ -40,12 +40,13 @@ export const handleErrnoException = (module: SystemError["module"], method: stri
       break
   }
 
-  return SystemError({
+  return new SystemError({
     reason,
     module,
     method,
     pathOrDescriptor: path as string | number,
     syscall: err.syscall,
-    message: err.message
+    description: err.message,
+    cause: err
   })
 }
