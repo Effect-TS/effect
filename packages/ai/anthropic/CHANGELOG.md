@@ -1,5 +1,115 @@
 # @effect/ai-anthropic
 
+## 0.8.0
+
+### Minor Changes
+
+- [#4891](https://github.com/Effect-TS/effect/pull/4891) [`0552674`](https://github.com/Effect-TS/effect/commit/055267461a3076b06dea896258f4bb2154211fcb) Thanks @IMax153! - Make `AiModel` a plain `Layer` and remove `AiPlan` in favor of `ExecutionPlan`
+
+  This release substantially simplifies and improves the ergonomics of using `AiModel` for various providers. With these changes, an `AiModel` now returns a plain `Layer` which can be used to provide services to a program that interacts with large language models.
+
+  **Before**
+
+  ```ts
+  import { AiLanguageModel } from "@effect/ai"
+  import { OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai"
+  import { NodeHttpClient } from "@effect/platform-node"
+  import { Config, Console, Effect, Layer } from "effect"
+
+  // Produces an `AiModel<AiLanguageModel, OpenAiClient>`
+  const Gpt4o = OpenAiLanguageModel.model("gpt-4o")
+
+  // Generate a dad joke
+  const getDadJoke = AiLanguageModel.generateText({
+    prompt: "Tell me a dad joke"
+  })
+
+  const program = Effect.gen(function* () {
+    // Build the `AiModel` into a `Provider`
+    const gpt4o = yield* Gpt4o
+    // Use the built `AiModel` to run the program
+    const response = yield* gpt4o.use(getDadJoke)
+    // Log the response
+    yield* Console.log(response.text)
+  })
+
+  const OpenAi = OpenAiClient.layerConfig({
+    apiKey: Config.redacted("OPENAI_API_KEY")
+  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
+
+  program.pipe(Effect.provide(OpenAi), Effect.runPromise)
+  ```
+
+  **After**
+
+  ```ts
+  import { AiLanguageModel } from "@effect/ai"
+  import { OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai"
+  import { NodeHttpClient } from "@effect/platform-node"
+  import { Config, Console, Effect, Layer } from "effect"
+
+  // Produces a `Layer<AiLanguageModel, never, OpenAiClient>`
+  const Gpt4o = OpenAiLanguageModel.model("gpt-4o")
+
+  const program = Effect.gen(function*() {
+    // Generate a dad joke
+    const response = yield* AiLanguageModel.generateText({
+      prompt: "Tell me a dad joke"
+    })
+    // Log the response
+    yield* Console.log(response.text)
+  ).pipe(Effect.provide(Gpt4o))
+
+  const OpenAi = OpenAiClient.layerConfig({
+    apiKey: Config.redacted("OPENAI_API_KEY")
+  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
+
+  program.pipe(
+    Effect.provide(OpenAi),
+    Effect.runPromise
+  )
+  ```
+
+  In addition, `AiModel` can be `yield*`'ed to produce a layer with no requirements.
+
+  This shifts the requirements of building the layer into the calling effect, which is particularly useful for creating AI-powered services.
+
+  ```ts
+  import { AiLanguageModel } from "@effect/ai"
+  import { OpenAiLanguageModel } from "@effect/ai-openai"
+  import { Effect } from "effect"
+
+  class DadJokes extends Effect.Service<DadJokes>()("DadJokes", {
+    effect: Effect.gen(function* () {
+      // Yielding the model will return a layer with no requirements
+      //
+      //      ┌─── Layer<AiLanguageModel>
+      //      ▼
+      const model = yield* OpenAiLanguageModel.model("gpt-4o")
+
+      const getDadJoke = AiLanguageModel.generateText({
+        prompt: "Generate a dad joke"
+      }).pipe(Effect.provide(model))
+
+      return { getDadJoke } as const
+    })
+  }) {}
+
+  // The requirements are lifted into the service constructor
+  //
+  //          ┌─── Layer<DadJokes, never, OpenAiClient>
+  //          ▼
+  DadJokes.Default
+  ```
+
+### Patch Changes
+
+- Updated dependencies [[`ee0bd5d`](https://github.com/Effect-TS/effect/commit/ee0bd5d24864752c54cb359f67a67dd903971ec4), [`5189800`](https://github.com/Effect-TS/effect/commit/51898004e11766b8cf6d95e960b636f6d5db79ec), [`58bfeaa`](https://github.com/Effect-TS/effect/commit/58bfeaa64ded8c88f772b184311c0c0dbac10960), [`194d748`](https://github.com/Effect-TS/effect/commit/194d7486943f56f3267ef415395ac220a4b3e634), [`0552674`](https://github.com/Effect-TS/effect/commit/055267461a3076b06dea896258f4bb2154211fcb), [`918c9ea`](https://github.com/Effect-TS/effect/commit/918c9ea1a57facb154f0fb26792021f337054dee), [`9198e6f`](https://github.com/Effect-TS/effect/commit/9198e6fcc1a3ff4fefb3363004de558d8de01f40), [`2a370bf`](https://github.com/Effect-TS/effect/commit/2a370bf625fdeede5659721468eb0d527e403279), [`58ccb91`](https://github.com/Effect-TS/effect/commit/58ccb91328c8df5d49808b673738bc09df355201), [`fd47834`](https://github.com/Effect-TS/effect/commit/fd478348203fa89462b0a1d067ce4de034353df4)]:
+  - effect@3.16.0
+  - @effect/ai@0.18.0
+  - @effect/experimental@0.48.0
+  - @effect/platform@0.84.0
+
 ## 0.7.0
 
 ### Patch Changes

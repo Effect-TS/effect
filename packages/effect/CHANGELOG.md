@@ -1,5 +1,254 @@
 # effect
 
+## 3.16.0
+
+### Minor Changes
+
+- [#4891](https://github.com/Effect-TS/effect/pull/4891) [`ee0bd5d`](https://github.com/Effect-TS/effect/commit/ee0bd5d24864752c54cb359f67a67dd903971ec4) Thanks @KhraksMamtsov! - `Schedule.CurrentIterationMetadata` has been added
+
+  ```ts
+  import { Effect, Schedule } from "effect"
+
+  Effect.gen(function* () {
+    const currentIterationMetadata = yield* Schedule.CurrentIterationMetadata
+    //     ^? Schedule.IterationMetadata
+
+    console.log(currentIterationMetadata)
+  }).pipe(Effect.repeat(Schedule.recurs(2)))
+  // {
+  //   elapsed: Duration.zero,
+  //   elapsedSincePrevious: Duration.zero,
+  //   input: undefined,
+  //   now: 0,
+  //   recurrence: 0,
+  //   start: 0
+  // }
+  // {
+  //   elapsed: Duration.zero,
+  //   elapsedSincePrevious: Duration.zero,
+  //   input: undefined,
+  //   now: 0,
+  //   recurrence: 1,
+  //   start: 0
+  // }
+  // {
+  //   elapsed: Duration.zero,
+  //   elapsedSincePrevious: Duration.zero,
+  //   input: undefined,
+  //   now: 0,
+  //   recurrence: 2,
+  //   start: 0
+  // }
+
+  Effect.gen(function* () {
+    const currentIterationMetadata = yield* Schedule.CurrentIterationMetadata
+
+    console.log(currentIterationMetadata)
+  }).pipe(
+    Effect.schedule(
+      Schedule.intersect(Schedule.fibonacci("1 second"), Schedule.recurs(3))
+    )
+  )
+  // {
+  //   elapsed: Duration.zero,
+  //   elapsedSincePrevious: Duration.zero,
+  //   recurrence: 1,
+  //   input: undefined,
+  //   now: 0,
+  //   start: 0
+  // },
+  // {
+  //   elapsed: Duration.seconds(1),
+  //   elapsedSincePrevious: Duration.seconds(1),
+  //   recurrence: 2,
+  //   input: undefined,
+  //   now: 1000,
+  //   start: 0
+  // },
+  // {
+  //   elapsed: Duration.seconds(2),
+  //   elapsedSincePrevious: Duration.seconds(1),
+  //   recurrence: 3,
+  //   input: undefined,
+  //   now: 2000,
+  //   start: 0
+  // }
+  ```
+
+- [#4891](https://github.com/Effect-TS/effect/pull/4891) [`5189800`](https://github.com/Effect-TS/effect/commit/51898004e11766b8cf6d95e960b636f6d5db79ec) Thanks @vinassefranche! - Add HashMap.hasBy helper
+
+  ```ts
+  import { HashMap } from "effect"
+
+  const hm = HashMap.make([1, "a"])
+  HashMap.hasBy(hm, (value, key) => value === "a" && key === 1) // -> true
+  HashMap.hasBy(hm, (value) => value === "b") // -> false
+  ```
+
+- [#4891](https://github.com/Effect-TS/effect/pull/4891) [`58bfeaa`](https://github.com/Effect-TS/effect/commit/58bfeaa64ded8c88f772b184311c0c0dbac10960) Thanks @jrudder! - Add round and sumAll to BigDecimal
+
+- [#4891](https://github.com/Effect-TS/effect/pull/4891) [`194d748`](https://github.com/Effect-TS/effect/commit/194d7486943f56f3267ef415395ac220a4b3e634) Thanks @tim-smart! - add ExecutionPlan module
+
+  A `ExecutionPlan` can be used with `Effect.withExecutionPlan` or `Stream.withExecutionPlan`, allowing you to provide different resources for each step of execution until the effect succeeds or the plan is exhausted.
+
+  ```ts
+  import { type AiLanguageModel } from "@effect/ai"
+  import type { Layer } from "effect"
+  import { Effect, ExecutionPlan, Schedule } from "effect"
+
+  declare const layerBad: Layer.Layer<AiLanguageModel.AiLanguageModel>
+  declare const layerGood: Layer.Layer<AiLanguageModel.AiLanguageModel>
+
+  const ThePlan = ExecutionPlan.make(
+    {
+      // First try with the bad layer 2 times with a 3 second delay between attempts
+      provide: layerBad,
+      attempts: 2,
+      schedule: Schedule.spaced(3000)
+    },
+    // Then try with the bad layer 3 times with a 1 second delay between attempts
+    {
+      provide: layerBad,
+      attempts: 3,
+      schedule: Schedule.spaced(1000)
+    },
+    // Finally try with the good layer.
+    //
+    // If `attempts` is omitted, the plan will only attempt once, unless a schedule is provided.
+    {
+      provide: layerGood
+    }
+  )
+
+  declare const effect: Effect.Effect<
+    void,
+    never,
+    AiLanguageModel.AiLanguageModel
+  >
+  const withPlan: Effect.Effect<void> = Effect.withExecutionPlan(
+    effect,
+    ThePlan
+  )
+  ```
+
+- [#4891](https://github.com/Effect-TS/effect/pull/4891) [`918c9ea`](https://github.com/Effect-TS/effect/commit/918c9ea1a57facb154f0fb26792021f337054dee) Thanks @thewilkybarkid! - Add Array.removeOption and Chunk.removeOption
+
+- [#4891](https://github.com/Effect-TS/effect/pull/4891) [`9198e6f`](https://github.com/Effect-TS/effect/commit/9198e6fcc1a3ff4fefb3363004de558d8de01f40) Thanks @TylorS! - Add parameter support for Effect.Service
+
+  This allows you to pass parameters to the `effect` & `scoped` Effect.Service
+  constructors, which will also be reflected in the `.Default` layer.
+
+  ```ts
+  import type { Layer } from "effect"
+  import { Effect } from "effect"
+
+  class NumberService extends Effect.Service<NumberService>()("NumberService", {
+    // You can now pass a function to the `effect` and `scoped` constructors
+    effect: Effect.fn(function* (input: number) {
+      return {
+        get: Effect.succeed(`The number is: ${input}`)
+      } as const
+    })
+  }) {}
+
+  // Pass the arguments to the `Default` layer
+  const CoolNumberServiceLayer: Layer.Layer<NumberService> =
+    NumberService.Default(6942)
+  ```
+
+- [#4891](https://github.com/Effect-TS/effect/pull/4891) [`2a370bf`](https://github.com/Effect-TS/effect/commit/2a370bf625fdeede5659721468eb0d527e403279) Thanks @vinassefranche! - Add `Iterable.countBy` and `Array.countBy`
+
+  ```ts
+  import { Array, Iterable } from "effect"
+
+  const resultArray = Array.countBy([1, 2, 3, 4, 5], (n) => n % 2 === 0)
+  console.log(resultArray) // 2
+
+  const resultIterable = resultIterable.countBy(
+    [1, 2, 3, 4, 5],
+    (n) => n % 2 === 0
+  )
+  console.log(resultIterable) // 2
+  ```
+
+- [#4891](https://github.com/Effect-TS/effect/pull/4891) [`58ccb91`](https://github.com/Effect-TS/effect/commit/58ccb91328c8df5d49808b673738bc09df355201) Thanks @KhraksMamtsov! - The `Config.port` and `Config.branded` functions have been added.
+
+  ```ts
+  import { Brand, Config } from "effect"
+
+  type DbPort = Brand.Branded<number, "DbPort">
+  const DbPort = Brand.nominal<DbPort>()
+
+  const dbPort: Config.Config<DbPort> = Config.branded(
+    Config.port("DB_PORT"),
+    DbPort
+  )
+  ```
+
+  ```ts
+  import { Brand, Config } from "effect"
+
+  type Port = Brand.Branded<number, "Port">
+  const Port = Brand.refined<Port>(
+    (num) =>
+      !Number.isNaN(num) && Number.isInteger(num) && num >= 1 && num <= 65535,
+    (n) => Brand.error(`Expected ${n} to be an TCP port`)
+  )
+
+  const dbPort: Config.Config<Port> = Config.number("DB_PORT").pipe(
+    Config.branded(Port)
+  )
+  ```
+
+- [#4891](https://github.com/Effect-TS/effect/pull/4891) [`fd47834`](https://github.com/Effect-TS/effect/commit/fd478348203fa89462b0a1d067ce4de034353df4) Thanks @tim-smart! - return a proxy Layer from LayerMap service
+
+  The new usage is:
+
+  ```ts
+  import { NodeRuntime } from "@effect/platform-node"
+  import { Context, Effect, FiberRef, Layer, LayerMap } from "effect"
+
+  class Greeter extends Context.Tag("Greeter")<
+    Greeter,
+    {
+      greet: Effect.Effect<string>
+    }
+  >() {}
+
+  // create a service that wraps a LayerMap
+  class GreeterMap extends LayerMap.Service<GreeterMap>()("GreeterMap", {
+    // define the lookup function for the layer map
+    //
+    // The returned Layer will be used to provide the Greeter service for the
+    // given name.
+    lookup: (name: string) =>
+      Layer.succeed(Greeter, {
+        greet: Effect.succeed(`Hello, ${name}!`)
+      }),
+
+    // If a layer is not used for a certain amount of time, it can be removed
+    idleTimeToLive: "5 seconds",
+
+    // Supply the dependencies for the layers in the LayerMap
+    dependencies: []
+  }) {}
+
+  // usage
+  const program: Effect.Effect<void, never, GreeterMap> = Effect.gen(
+    function* () {
+      // access and use the Greeter service
+      const greeter = yield* Greeter
+      yield* Effect.log(yield* greeter.greet)
+    }
+  ).pipe(
+    // use the GreeterMap service to provide a variant of the Greeter service
+    Effect.provide(GreeterMap.get("John"))
+  )
+
+  // run the program
+  program.pipe(Effect.provide(GreeterMap.Default), NodeRuntime.runMain)
+  ```
+
 ## 3.15.5
 
 ### Patch Changes
