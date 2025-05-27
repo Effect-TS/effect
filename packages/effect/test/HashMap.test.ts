@@ -94,6 +94,17 @@ describe("HashMap", () => {
     assertFalse(HM.hasHash(key(1), Hash.hash(key(0)))(map))
   })
 
+  it("hasBy", () => {
+    const map = HM.make([key(0), value("a")])
+
+    assertTrue(HM.hasBy(map, (v) => Equal.equals(v, value("a"))))
+    assertTrue(HM.hasBy(map, (_, k) => Equal.equals(k, key(0))))
+    assertTrue(pipe(map, HM.hasBy((v) => Equal.equals(v, value("a")))))
+    assertFalse(HM.hasBy(map, (v) => Equal.equals(v, value("b"))))
+    assertFalse(HM.hasBy(map, (_, k) => Equal.equals(k, key(1))))
+    assertFalse(pipe(map, HM.hasBy((v) => Equal.equals(v, value("b")))))
+  })
+
   it("get", () => {
     const map = HM.make([key(0), value("a")])
 
