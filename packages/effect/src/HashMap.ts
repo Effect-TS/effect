@@ -211,8 +211,8 @@ export const hasHash: {
  * @category elements
  */
 export const hasBy: {
-  <K, V>(predicate: (value: NoInfer<V>, key: K) => boolean): (self: HashMap<K, V>) => boolean
-  <K, V>(self: HashMap<K, V>, predicate: (value: NoInfer<V>, key: K) => boolean): boolean
+  <K, V>(predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean): (self: HashMap<K, V>) => boolean
+  <K, V>(self: HashMap<K, V>, predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean): boolean
 } = HM.hasBy
 
 /**

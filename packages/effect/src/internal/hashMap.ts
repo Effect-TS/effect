@@ -289,8 +289,8 @@ export const hasHash = Dual.dual<
 
 /** @internal */
 export const hasBy = Dual.dual<
-  <K, V>(predicate: (value: V, key: K) => boolean) => (self: HM.HashMap<K, V>) => boolean,
-  <K, V>(self: HM.HashMap<K, V>, predicate: (value: V, key: K) => boolean) => boolean
+  <K, V>(predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean) => (self: HM.HashMap<K, V>) => boolean,
+  <K, V>(self: HM.HashMap<K, V>, predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean) => boolean
 >(2, (self, predicate) => Option.isSome(findFirst(self, predicate)))
 
 /** @internal */
