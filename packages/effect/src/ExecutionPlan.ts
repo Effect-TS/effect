@@ -167,7 +167,9 @@ export type TypesBase = {
  * @category Constructors
  * @experimental
  */
-export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(...steps: Steps): ExecutionPlan<{
+export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(
+  ...steps: Steps & { [K in keyof Steps]: make.Step }
+): ExecutionPlan<{
   provides: make.StepProvides<Steps[number]>
   input: make.StepInput<Steps>
   error: make.StepError<Steps[number]>
