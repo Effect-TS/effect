@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.82.8
+
+### Patch Changes
+
+- [#4927](https://github.com/Effect-TS/effect/pull/4927) [`0617b9d`](https://github.com/Effect-TS/effect/commit/0617b9dc365f1963b36949ad7f9023ab6eb94524) Thanks @fubhy! - Fix package internal imports
+
 ## 0.82.7
 
 ### Patch Changes

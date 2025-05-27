@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql",
-  "version": "0.35.7",
+  "version": "0.35.8",
   "type": "module",
   "license": "MIT",
   "description": "A SQL toolkit for Effect",
