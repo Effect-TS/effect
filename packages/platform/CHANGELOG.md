@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.83.0
+
+### Minor Changes
+
+- [#4932](https://github.com/Effect-TS/effect/pull/4932) [`5522520`](https://github.com/Effect-TS/effect/commit/55225206ab9af0ad60b1c0654690a8a096d625cd) Thanks @tim-smart! - refactor PlatformError and make it a schema
+
+### Patch Changes
+
+- Updated dependencies [[`cc5bb2b`](https://github.com/Effect-TS/effect/commit/cc5bb2b918a9450a975f702dabcea891bda382cb)]:
+  - effect@3.15.5
+
 ## 0.82.8
 
 ### Patch Changes

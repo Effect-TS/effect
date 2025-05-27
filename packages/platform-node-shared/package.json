@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-node-shared",
   "type": "module",
-  "version": "0.35.5",
+  "version": "0.36.0",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
