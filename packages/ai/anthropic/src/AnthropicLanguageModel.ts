@@ -7,12 +7,13 @@ import * as AiLanguageModel from "@effect/ai/AiLanguageModel"
 import * as AiModel from "@effect/ai/AiModel"
 import * as AiResponse from "@effect/ai/AiResponse"
 import { addGenAIAnnotations } from "@effect/ai/AiTelemetry"
-import * as Tokenizer from "@effect/ai/Tokenizer"
+import type * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
@@ -108,64 +109,58 @@ export declare namespace ProviderMetadata {
 // Anthropic Language Model
 // =============================================================================
 
-const cacheKey = "@effect/ai-anthropic/AnthropicLanguageModel"
-
 /**
  * @since 1.0.0
- * @category Models
+ * @category AiModels
  */
 export const model = (
   model: (string & {}) | Model,
   config?: Omit<Config.Service, "model">
-): AiModel.AiModel<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, AnthropicClient> =>
-  AiModel.make({
-    cacheKey,
-    cachedContext: Effect.map(make, (model) => Context.make(AiLanguageModel.AiLanguageModel, model)),
-    updateRequestContext: Effect.fnUntraced(function*(context: Context.Context<AiLanguageModel.AiLanguageModel>) {
-      const perRequestConfig = yield* Config.getOrUndefined
-      return Context.mergeAll(
-        context,
-        Context.make(Config, { model, ...config, ...perRequestConfig }),
-        Context.make(Tokenizer.Tokenizer, AnthropicTokenizer.make)
-      )
-    })
-  })
+): AiModel.AiModel<AiLanguageModel.AiLanguageModel, AnthropicClient> => AiModel.make(layer({ model, config }))
 
-const make = Effect.gen(function*() {
+/**
+ * @since 1.0.0
+ * @category AiModels
+ */
+export const modelWithTokenizer = (
+  model: (string & {}) | Model,
+  config?: Omit<Config.Service, "model">
+): AiModel.AiModel<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, AnthropicClient> =>
+  AiModel.make(layerWithTokenizer({ model, config }))
+
+/**
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const make = Effect.fnUntraced(function*(options: {
+  readonly model: (string & {}) | Model
+  readonly config?: Omit<Config.Service, "model">
+}) {
   const client = yield* AnthropicClient
 
   const makeRequest = Effect.fnUntraced(
-    function*(method: string, { prompt, system, tools, ...options }: AiLanguageModel.AiLanguageModelOptions) {
-      const config = yield* Config
-      const model = config.model
-      if (Predicate.isUndefined(model)) {
-        return yield* Effect.die(
-          new AiError({
-            module: "AnthropicLanguageModel",
-            method,
-            description: "No `model` specified for request"
-          })
-        )
-      }
+    function*(method: string, { prompt, system, toolChoice, tools }: AiLanguageModel.AiLanguageModelOptions) {
+      const context = yield* Effect.context<never>()
       const useStructured = tools.length === 1 && tools[0].structured
-      let toolChoice: typeof Generated.ToolChoice.Encoded | undefined = undefined
+      let tool_choice: typeof Generated.ToolChoice.Encoded | undefined = undefined
       if (useStructured) {
-        toolChoice = { type: "tool", name: tools[0].name }
-      } else if (Predicate.isNotUndefined(toolChoice) && tools.length > 0) {
-        if (options.toolChoice === "required") {
-          toolChoice = { type: "any" }
-        } else if (typeof options.toolChoice === "string") {
-          toolChoice = { type: options.toolChoice }
+        tool_choice = { type: "tool", name: tools[0].name }
+      } else if (Predicate.isNotUndefined(tool_choice) && tools.length > 0) {
+        if (toolChoice === "required") {
+          tool_choice = { type: "any" }
+        } else if (typeof toolChoice === "string") {
+          tool_choice = { type: toolChoice }
         } else {
-          toolChoice = { type: "tool", name: options.toolChoice.tool }
+          tool_choice = { type: "tool", name: toolChoice.tool }
         }
       }
       const messages = yield* makeMessages(method, prompt)
       return {
-        model,
-        // TODO: re-evaluate a better way to do this
+        model: options.model,
         max_tokens: 4096,
-        ...config,
+        ...options.config,
+        ...context.unsafeMap.get(Config.key),
+        // TODO: re-evaluate a better way to do this
         system: Option.getOrUndefined(system),
         messages,
         tools: tools.length === 0 ? undefined : tools.map((tool) => ({
@@ -173,7 +168,7 @@ const make = Effect.gen(function*() {
           description: tool.description,
           input_schema: tool.parameters as any
         })),
-        tool_choice: toolChoice
+        tool_choice
       } satisfies typeof Generated.CreateMessageParams.Encoded
     }
   )
@@ -220,6 +215,26 @@ const make = Effect.gen(function*() {
     }
   })
 })
+
+/**
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layer = (options: {
+  readonly model: (string & {}) | Model
+  readonly config?: Omit<Config.Service, "model">
+}): Layer.Layer<AiLanguageModel.AiLanguageModel, never, AnthropicClient> =>
+  Layer.effect(AiLanguageModel.AiLanguageModel, make({ model: options.model, config: options.config }))
+
+/**
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layerWithTokenizer = (options: {
+  readonly model: (string & {}) | Model
+  readonly config?: Omit<Config.Service, "model">
+}): Layer.Layer<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, never, AnthropicClient> =>
+  Layer.merge(layer(options), AnthropicTokenizer.layer)
 
 /**
  * @since 1.0.0

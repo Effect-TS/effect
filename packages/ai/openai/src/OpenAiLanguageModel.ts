@@ -6,12 +6,13 @@ import type * as AiInput from "@effect/ai/AiInput"
 import * as AiLanguageModel from "@effect/ai/AiLanguageModel"
 import * as AiModel from "@effect/ai/AiModel"
 import * as AiResponse from "@effect/ai/AiResponse"
-import * as Tokenizer from "@effect/ai/Tokenizer"
+import type * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
@@ -134,58 +135,52 @@ export declare namespace ProviderMetadata {
 // OpenAi Language Model
 // =============================================================================
 
-const cacheKey = "@effect/ai-openai/OpenAiLanguageModel"
-
 /**
  * @since 1.0.0
- * @category AI Models
+ * @category AiModel
  */
 export const model = (
   model: (string & {}) | Model,
   config?: Omit<Config.Service, "model">
-): AiModel.AiModel<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, OpenAiClient> =>
-  AiModel.make({
-    cacheKey,
-    cachedContext: Effect.map(make, (model) => Context.make(AiLanguageModel.AiLanguageModel, model)),
-    updateRequestContext: Effect.fnUntraced(function*(context: Context.Context<AiLanguageModel.AiLanguageModel>) {
-      const perRequestConfig = yield* Config.getOrUndefined
-      return Context.mergeAll(
-        context,
-        Context.make(Config, { model, ...config, ...perRequestConfig }),
-        Context.make(Tokenizer.Tokenizer, OpenAiTokenizer.make({ model: perRequestConfig?.model ?? model }))
-      )
-    })
-  })
+): AiModel.AiModel<AiLanguageModel.AiLanguageModel, OpenAiClient> => AiModel.make(layer({ model, config }))
 
-const make = Effect.gen(function*() {
+/**
+ * @since 1.0.0
+ * @category AiModel
+ */
+export const modelWithTokenizer = (
+  model: (string & {}) | Model,
+  config?: Omit<Config.Service, "model">
+): AiModel.AiModel<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, OpenAiClient> =>
+  AiModel.make(layerWithTokenizer({ model, config }))
+
+/**
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const make = Effect.fnUntraced(function*(options: {
+  readonly model: (string & {}) | Model
+  readonly config?: Omit<Config.Service, "model">
+}) {
   const client = yield* OpenAiClient
 
   const makeRequest = Effect.fnUntraced(
-    function*(method: string, { prompt, system, tools, ...options }: AiLanguageModel.AiLanguageModelOptions) {
-      const config = yield* Config
-      const model = config.model
-      if (Predicate.isUndefined(model)) {
-        return yield* Effect.die(
-          new AiError({
-            module: "OpenAiLanguageModel",
-            method,
-            description: "No `model` specified for request"
-          })
-        )
-      }
+    function*(method: string, { prompt, system, toolChoice, tools }: AiLanguageModel.AiLanguageModelOptions) {
+      const context = yield* Effect.context<never>()
       const useStructured = tools.length === 1 && tools[0].structured
-      let toolChoice: typeof Generated.ChatCompletionToolChoiceOption.Encoded | undefined = undefined
-      if (Predicate.isNotUndefined(options.toolChoice) && !useStructured && tools.length > 0) {
-        if (options.toolChoice === "auto" || options.toolChoice === "required") {
-          toolChoice = options.toolChoice
-        } else if (typeof options.toolChoice === "object") {
-          toolChoice = { type: "function", function: { name: options.toolChoice.tool } }
+      let tool_choice: typeof Generated.ChatCompletionToolChoiceOption.Encoded | undefined = undefined
+      if (Predicate.isNotUndefined(toolChoice) && !useStructured && tools.length > 0) {
+        if (toolChoice === "auto" || toolChoice === "required") {
+          tool_choice = toolChoice
+        } else if (typeof toolChoice === "object") {
+          tool_choice = { type: "function", function: { name: toolChoice.tool } }
         }
       }
       const messages = yield* makeMessages(method, system, prompt)
       return {
-        ...config,
-        model,
+        model: options.model,
+        ...options.config,
+        ...context.unsafeMap.get(Config.key),
         messages,
         response_format: useStructured ?
           {
@@ -209,7 +204,7 @@ const make = Effect.gen(function*() {
             }
           })) :
           undefined,
-        tool_choice: toolChoice
+        tool_choice
       } satisfies typeof Generated.CreateChatCompletionRequest.Encoded
     }
   )
@@ -257,6 +252,26 @@ const make = Effect.gen(function*() {
     }
   })
 })
+
+/**
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layer = (options: {
+  readonly model: (string & {}) | Model
+  readonly config?: Omit<Config.Service, "model">
+}): Layer.Layer<AiLanguageModel.AiLanguageModel, never, OpenAiClient> =>
+  Layer.effect(AiLanguageModel.AiLanguageModel, make({ model: options.model, config: options.config }))
+
+/**
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layerWithTokenizer = (options: {
+  readonly model: (string & {}) | Model
+  readonly config?: Omit<Config.Service, "model">
+}): Layer.Layer<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, never, OpenAiClient> =>
+  Layer.merge(layer(options), OpenAiTokenizer.layer(options))
 
 /**
  * @since 1.0.0
