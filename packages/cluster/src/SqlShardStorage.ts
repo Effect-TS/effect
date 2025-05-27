@@ -9,6 +9,8 @@ import * as Layer from "effect/Layer"
 import { PersistenceError } from "./ClusterError.js"
 import * as ShardStorage from "./ShardStorage.js"
 
+const withTracerDisabled = Effect.withTracerEnabled(false)
+
 /**
  * @since 1.0.0
  * @category Constructors
@@ -199,7 +201,8 @@ export const make = Effect.fnUntraced(function*(options?: {
 
   return yield* ShardStorage.makeEncoded({
     getAssignments: sql`SELECT shard_id, address FROM ${shardsTableSql} ORDER BY shard_id`.values.pipe(
-      PersistenceError.refail
+      PersistenceError.refail,
+      withTracerDisabled
     ) as any,
 
     saveAssignments: (assignments) => {
@@ -211,13 +214,15 @@ export const make = Effect.fnUntraced(function*(options?: {
       return remove.pipe(
         Effect.andThen(sql`INSERT INTO ${shardsTableSql} (shard_id, address) VALUES ${sql.csv(values)}`.unprepared),
         sql.withTransaction,
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       )
     },
 
     getRunners: sql`SELECT address, runner FROM ${runnersTableSql}`.values.pipe(
       PersistenceError.refail,
-      Effect.map(Arr.map(([address, runner]) => [String(address), String(runner)] as const))
+      Effect.map(Arr.map(([address, runner]) => [String(address), String(runner)] as const)),
+      withTracerDisabled
     ),
 
     saveRunners: (runners) => {
@@ -230,7 +235,8 @@ export const make = Effect.fnUntraced(function*(options?: {
       return remove.pipe(
         Effect.andThen(insert),
         sql.withTransaction,
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       )
     },
 
@@ -246,7 +252,8 @@ export const make = Effect.fnUntraced(function*(options?: {
         return currentLocks.map((row) => row.shard_id)
       },
       sql.withTransaction,
-      PersistenceError.refail
+      PersistenceError.refail,
+      withTracerDisabled
     ),
 
     refresh: (address, shardIds) =>
@@ -258,19 +265,23 @@ export const make = Effect.fnUntraced(function*(options?: {
             .values
         ),
         Effect.map((rows) => rows.map((row) => Number(row[0]))),
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       ),
 
     release: (address, shardId) =>
-      sql`DELETE FROM ${locksTableSql} WHERE address = ${address} AND shard_id = ${shardId}`
-        .pipe(PersistenceError.refail),
+      sql`DELETE FROM ${locksTableSql} WHERE address = ${address} AND shard_id = ${shardId}`.pipe(
+        PersistenceError.refail,
+        withTracerDisabled
+      ),
 
     releaseAll: (address) =>
       sql`DELETE FROM ${locksTableSql} WHERE address = ${address}`.pipe(
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       )
   })
-})
+}, withTracerDisabled)
 
 /**
  * @since 1.0.0
