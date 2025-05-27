@@ -1,5 +1,11 @@
 # effect
 
+## 3.15.5
+
+### Patch Changes
+
+- [#4924](https://github.com/Effect-TS/effect/pull/4924) [`cc5bb2b`](https://github.com/Effect-TS/effect/commit/cc5bb2b918a9450a975f702dabcea891bda382cb) Thanks @KhraksMamtsov! - Fix type inference for Effect suptypes in NonGen case
+
 ## 3.15.4
 
 ### Patch Changes
