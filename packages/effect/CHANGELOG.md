@@ -1,5 +1,13 @@
 # effect
 
+## 3.16.1
+
+### Patch Changes
+
+- [#4936](https://github.com/Effect-TS/effect/pull/4936) [`71174d0`](https://github.com/Effect-TS/effect/commit/71174d09691314a9b6b66189e456fd21e3eb6543) Thanks @mattiamanzati! - Escape JSON Schema $id for empty struct
+
+- [#4937](https://github.com/Effect-TS/effect/pull/4937) [`d615e6e`](https://github.com/Effect-TS/effect/commit/d615e6e5b944f6fd5e627e31752c7ca7e4e1c17d) Thanks @tim-smart! - adjust ExecutionPlan `provides` & `requirements` types
+
 ## 3.16.0
 
 ### Minor Changes
