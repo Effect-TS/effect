@@ -69,7 +69,7 @@ export interface AnyObject extends Annotations {
  * @since 0.71.0
  */
 export interface Empty extends Annotations {
-  $id: "/schemas/{}"
+  $id: "/schemas/%7B%7D"
   anyOf: [
     { type: "object" },
     { type: "array" }

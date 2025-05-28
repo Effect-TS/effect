@@ -72,7 +72,7 @@ export interface JsonSchema7object extends JsonSchemaAnnotations {
  * @since 3.10.0
  */
 export interface JsonSchema7empty extends JsonSchemaAnnotations {
-  $id: "/schemas/{}"
+  $id: "/schemas/%7B%7D"
   anyOf: [
     { type: "object" },
     { type: "array" }
@@ -348,7 +348,7 @@ const constAnyObject: JsonSchema7 = {
 }
 
 const constEmpty: JsonSchema7 = {
-  "$id": "/schemas/{}",
+  "$id": "/schemas/%7B%7D",
   "anyOf": [
     { "type": "object" },
     { "type": "array" }
