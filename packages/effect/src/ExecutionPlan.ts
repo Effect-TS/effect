@@ -170,10 +170,16 @@ export type TypesBase = {
 export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(
   ...steps: Steps & { [K in keyof Steps]: make.Step }
 ): ExecutionPlan<{
-  provides: make.StepProvides<Steps[number]>
+  provides: make.StepProvides<Steps>
   input: make.StepInput<Steps>
-  error: make.StepError<Steps[number]>
-  requirements: make.StepRequirements<Steps[number]>
+  error:
+    | (Steps[number]["provide"] extends Context.Context<infer _P> | Layer.Layer<infer _P, infer E, infer _R> ? E
+      : never)
+    | (Steps[number]["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never)
+  requirements:
+    | (Steps[number]["provide"] extends Layer.Layer<infer _A, infer _E, infer R> ? R : never)
+    | (Steps[number]["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer R> ? R : never)
+    | (Steps[number]["schedule"] extends Schedule.Schedule<infer _O, infer _I, infer R> ? R : never)
 }> =>
   makeProto(steps.map((options, i) => {
     if (options.attempts && options.attempts < 1) {
@@ -210,11 +216,28 @@ export declare namespace make {
   }
 
   /**
-   * @since 3.16.0
+   * @since 3.16.1
    * @experimental
    */
-  export type StepProvides<S extends Step> = S["provide"] extends
-    Context.Context<infer P> | Layer.Layer<infer P, infer _E, infer _R> ? P : never
+  export type StepProvides<Steps extends ReadonlyArray<any>, Out = unknown> = Steps extends
+    readonly [infer Step, ...infer Rest] ? StepProvides<
+      Rest,
+      & Out
+      & (
+        (Step extends { readonly provide: Context.Context<infer P> | Layer.Layer<infer P, infer _E, infer _R> } ? P
+          : unknown)
+      )
+    > :
+    Out
+
+  /**
+   * @since 3.16.1
+   * @experimental
+   */
+  export type PlanProvides<Plans extends ReadonlyArray<any>, Out = unknown> = Plans extends
+    readonly [infer Plan, ...infer Rest] ?
+    PlanProvides<Rest, Out & (Plan extends ExecutionPlan<infer T> ? T["provides"] : unknown)> :
+    Out
 
   /**
    * @since 3.16.0
@@ -237,25 +260,8 @@ export declare namespace make {
    */
   export type PlanInput<Plans extends ReadonlyArray<any>, Out = unknown> = Plans extends
     readonly [infer Plan, ...infer Rest] ?
-    PlanInput<Rest, Out & (Plan extends ExecutionPlan<infer T> ? T["input"] : never)> :
+    PlanInput<Rest, Out & (Plan extends ExecutionPlan<infer T> ? T["input"] : unknown)> :
     Out
-
-  /**
-   * @since 3.16.0
-   * @experimental
-   */
-  export type StepError<S extends Step> =
-    | (S["provide"] extends Context.Context<infer _P> | Layer.Layer<infer _P, infer E, infer _R> ? E : never)
-    | (S["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never)
-
-  /**
-   * @since 3.16.0
-   * @experimental
-   */
-  export type StepRequirements<S extends Step> =
-    | (S["provide"] extends Layer.Layer<infer _A, infer _E, infer R> ? R : never)
-    | (S["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer R> ? R : never)
-    | (S["schedule"] extends Schedule.Schedule<infer _O, infer _I, infer R> ? R : never)
 }
 
 const Proto: Omit<ExecutionPlan<any>, "steps"> = {
@@ -295,7 +301,7 @@ const makeProto = <Provides, In, PlanE, PlanR>(
 export const merge = <const Plans extends NonEmptyReadonlyArray<ExecutionPlan<any>>>(
   ...plans: Plans
 ): ExecutionPlan<{
-  provides: Plans[number] extends ExecutionPlan<infer T> ? T["provides"] : never
+  provides: make.PlanProvides<Plans>
   input: make.PlanInput<Plans>
   error: Plans[number] extends ExecutionPlan<infer T> ? T["error"] : never
   requirements: Plans[number] extends ExecutionPlan<infer T> ? T["requirements"] : never
