@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.84.1
+
+### Patch Changes
+
+- [#4936](https://github.com/Effect-TS/effect/pull/4936) [`71174d0`](https://github.com/Effect-TS/effect/commit/71174d09691314a9b6b66189e456fd21e3eb6543) Thanks @mattiamanzati! - Escape JSON Schema $id for empty struct
+
+- Updated dependencies [[`71174d0`](https://github.com/Effect-TS/effect/commit/71174d09691314a9b6b66189e456fd21e3eb6543), [`d615e6e`](https://github.com/Effect-TS/effect/commit/d615e6e5b944f6fd5e627e31752c7ca7e4e1c17d)]:
+  - effect@3.16.1
+
 ## 0.84.0
 
 ### Patch Changes
