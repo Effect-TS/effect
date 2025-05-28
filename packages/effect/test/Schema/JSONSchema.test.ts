@@ -406,7 +406,7 @@ describe("fromAST", () => {
         it("NullOr(Struct({}))", () => {
           const schema = Schema.NullOr(Schema.Struct({}))
           expectJSONSchemaOpenApi31(schema, {
-            "$id": "/schemas/{}",
+            "$id": "/schemas/%7B%7D",
             "anyOf": [
               { "type": "object" },
               { "type": "array" }
@@ -834,7 +834,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   it("empty struct: Schema.Struct({})", () => {
     const schema = Schema.Struct({})
     const jsonSchema: Root = {
-      "$id": "/schemas/{}",
+      "$id": "/schemas/%7B%7D",
       "anyOf": [{
         "type": "object"
       }, {
