@@ -45,15 +45,16 @@
     "test": "vitest",
     "coverage": "vitest --coverage"
   },
-  "dependencies": {},
   "peerDependencies": {
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
+    "@effect/rpc": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
+    "@effect/rpc": "workspace:^",
     "effect": "workspace:^"
   }
 }

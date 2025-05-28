@@ -3,7 +3,8 @@
   "references": [
     { "path": "../../effect/tsconfig.build.json" },
     { "path": "../../experimental/tsconfig.build.json" },
-    { "path": "../../platform/tsconfig.build.json" }
+    { "path": "../../platform/tsconfig.build.json" },
+    { "path": "../../rpc/tsconfig.build.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/build.tsbuildinfo",
