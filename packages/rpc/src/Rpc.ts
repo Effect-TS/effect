@@ -48,6 +48,8 @@ export interface Rpc<
   out Error extends Schema.Schema.All = typeof Schema.Never,
   out Middleware extends RpcMiddleware.TagClassAny = never
 > extends Pipeable {
+  new(_: never): {}
+
   readonly [TypeId]: TypeId
   readonly _tag: Tag
   readonly key: string
@@ -482,37 +484,61 @@ const Proto = {
     successSchema: Schema.Schema.Any
   ) {
     return makeProto({
-      ...this,
-      successSchema
+      _tag: this._tag,
+      payloadSchema: this.payloadSchema,
+      successSchema,
+      errorSchema: this.errorSchema,
+      annotations: this.annotations,
+      middlewares: this.middlewares
     })
   },
   setError(this: AnyWithProps, errorSchema: Schema.Schema.All) {
     return makeProto({
-      ...this,
-      errorSchema
+      _tag: this._tag,
+      payloadSchema: this.payloadSchema,
+      successSchema: this.successSchema,
+      errorSchema,
+      annotations: this.annotations,
+      middlewares: this.middlewares
     })
   },
   setPayload(this: AnyWithProps, payloadSchema: Schema.Struct<any> | Schema.Struct.Fields) {
     return makeProto({
-      ...this,
-      payloadSchema: Schema.isSchema(payloadSchema) ? payloadSchema as any : Schema.Struct(payloadSchema as any)
+      _tag: this._tag,
+      payloadSchema: Schema.isSchema(payloadSchema) ? payloadSchema as any : Schema.Struct(payloadSchema as any),
+      successSchema: this.successSchema,
+      errorSchema: this.errorSchema,
+      annotations: this.annotations,
+      middlewares: this.middlewares
     })
   },
   middleware(this: AnyWithProps, middleware: RpcMiddleware.TagClassAny) {
     return makeProto({
-      ...this,
+      _tag: this._tag,
+      payloadSchema: this.payloadSchema,
+      successSchema: this.successSchema,
+      errorSchema: this.errorSchema,
+      annotations: this.annotations,
       middlewares: new Set([...this.middlewares, middleware])
     })
   },
   annotate(this: AnyWithProps, tag: Context_.Tag<any, any>, value: any) {
     return makeProto({
-      ...this,
+      _tag: this._tag,
+      payloadSchema: this.payloadSchema,
+      successSchema: this.successSchema,
+      errorSchema: this.errorSchema,
+      middlewares: this.middlewares,
       annotations: Context_.add(this.annotations, tag, value)
     })
   },
   annotateContext(this: AnyWithProps, context: Context_.Context<any>) {
     return makeProto({
-      ...this,
+      _tag: this._tag,
+      payloadSchema: this.payloadSchema,
+      successSchema: this.successSchema,
+      errorSchema: this.errorSchema,
+      middlewares: this.middlewares,
       annotations: Context_.merge(this.annotations, context)
     })
   }
@@ -532,9 +558,11 @@ const makeProto = <
   readonly annotations: Context_.Context<never>
   readonly middlewares: ReadonlySet<Middleware>
 }): Rpc<Tag, Payload, Success, Error, Middleware> => {
-  const self = Object.assign(Object.create(Proto), options)
-  self.key = `@effect/rpc/Rpc/${options._tag}`
-  return self
+  function Rpc() {}
+  Object.setPrototypeOf(Rpc, Proto)
+  Object.assign(Rpc, options)
+  Rpc.key = `@effect/rpc/Rpc/${options._tag}`
+  return Rpc as any
 }
 
 const constEmptyStruct = Schema.Struct({})
