@@ -35,11 +35,13 @@ class TimingMiddleware extends RpcMiddleware.Tag<TimingMiddleware>()("TimingMidd
   wrap: true
 }) {}
 
+class GetUser extends Rpc.make("GetUser", {
+  success: User,
+  payload: { id: Schema.String }
+}) {}
+
 export const UserRpcs = RpcGroup.make(
-  Rpc.make("GetUser", {
-    success: User,
-    payload: { id: Schema.String }
-  }),
+  GetUser,
   Rpc.make("GetUserOption", {
     success: Schema.Option(User),
     payload: { id: Schema.String }
