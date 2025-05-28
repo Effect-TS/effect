@@ -4,12 +4,14 @@
   "references": [
     { "path": "../../effect/tsconfig.src.json" },
     { "path": "../../experimental/tsconfig.src.json" },
-    { "path": "../../platform/tsconfig.src.json" }
+    { "path": "../../platform/tsconfig.src.json" },
+    { "path": "../../rpc/tsconfig.src.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
     "rootDir": "src",
     "outDir": "build/src",
-    "exactOptionalPropertyTypes": false
+    "exactOptionalPropertyTypes": false,
+    "types": ["node"]
   }
 }
