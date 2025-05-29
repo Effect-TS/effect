@@ -97,7 +97,7 @@ describe("HttpApi", () => {
   })
 
   describe("errors", () => {
-    it.scoped("empty errors have no body", () =>
+    it.effect("empty errors have no body", () =>
       Effect.gen(function*() {
         const response = yield* HttpClient.get("/groups/0")
         assert.strictEqual(response.status, 418)
