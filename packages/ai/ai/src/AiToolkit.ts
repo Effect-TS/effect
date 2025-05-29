@@ -91,8 +91,8 @@ export interface ToHandler<in out Tool extends AiTool.Any> {
  * @since 1.0.0
  * @category Utility Types
  */
-export type HandlersFrom<Tool extends AiTool.Any> = {
-  [Name in Tool as Tool["name"]]: (params: AiTool.Parameters<Tool>) => AiTool.HandlerEffect<Tool>
+export type HandlersFrom<Tools extends AiTool.Any> = {
+  [Tool in Tools as Tool["name"]]: (params: AiTool.Parameters<Tool>) => AiTool.HandlerEffect<Tool>
 }
 
 /**
