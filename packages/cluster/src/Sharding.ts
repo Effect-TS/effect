@@ -252,7 +252,7 @@ const make = Effect.gen(function*() {
       Effect.forkIn(shardingScope)
     )
 
-    // refresh the shard locks every 10s
+    // refresh the shard locks every 4s
     yield* Effect.suspend(() =>
       shardStorage.refresh(selfAddress, [
         ...acquiredShards,
@@ -275,14 +275,14 @@ const make = Effect.gen(function*() {
       }),
       Effect.retry({
         times: 5,
-        schedule: Schedule.spaced(250)
+        schedule: Schedule.spaced(50)
       }),
       Effect.catchAllCause((cause) =>
         Effect.logError("Could not refresh shard locks", cause).pipe(
           Effect.andThen(clearSelfShards)
         )
       ),
-      Effect.delay("10 seconds"),
+      Effect.delay("4 seconds"),
       Effect.forever,
       Effect.interruptible,
       Effect.forkIn(shardingScope)
