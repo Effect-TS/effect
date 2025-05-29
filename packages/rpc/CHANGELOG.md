@@ -1,5 +1,15 @@
 # @effect/rpc
 
+## 0.61.2
+
+### Patch Changes
+
+- [#4939](https://github.com/Effect-TS/effect/pull/4939) [`a77afb1`](https://github.com/Effect-TS/effect/commit/a77afb1f7191a57a68b09fcdee5e9f27a0682b0a) Thanks @tim-smart! - allow Rpc to be extended to create opaque types
+
+- Updated dependencies [[`0ddf148`](https://github.com/Effect-TS/effect/commit/0ddf148a247aa87af043d276b8453a714a400897)]:
+  - effect@3.16.2
+  - @effect/platform@0.84.2
+
 ## 0.61.1
 
 ### Patch Changes
