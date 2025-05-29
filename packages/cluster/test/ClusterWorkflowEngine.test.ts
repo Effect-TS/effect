@@ -9,7 +9,7 @@ import {
 } from "@effect/cluster"
 import { assert, describe, it } from "@effect/vitest"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
-import { Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
+import { DateTime, Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("should run a workflow", () =>
@@ -51,6 +51,13 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.equal(driver.requests.size, 10)
 
       assert.equal(yield* Fiber.join(fiber), void 0)
+
+      // test deduplication
+      yield* EmailWorkflow.execute({
+        id: "test-email-1",
+        to: "bob@example.com"
+      })
+      assert.equal(driver.requests.size, 10)
     }).pipe(
       Effect.provide(TestWorkflowLayer)
     ))
@@ -106,15 +113,19 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
     Activity.retry({ times: 5 })
   )
 
-  yield* Activity.make({
+  const result = yield* Activity.make({
     name: "Sleep",
+    success: Schema.DateTimeUtc,
     execute: Effect.gen(function*() {
       yield* DurableClock.sleep({
         name: "Some sleep",
         duration: "10 seconds"
       })
+      return yield* DateTime.now
     })
   })
+  // test serialization from Activity
+  assert(DateTime.isUtc(result))
 
   yield* DurableDeferred.token(EmailTrigger)
   yield* DurableDeferred.await(EmailTrigger)
