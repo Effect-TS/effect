@@ -3190,7 +3190,7 @@ function makeBrandClass<S extends Schema.Any, B extends string | symbol>(
  * @category branding
  * @since 3.10.0
  */
-export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
+export const brand = <S extends Schema.Any, B extends string | symbol>(
   brand: B,
   annotations?: Annotations.Schema<Schema.Type<S> & Brand<B>>
 ) =>

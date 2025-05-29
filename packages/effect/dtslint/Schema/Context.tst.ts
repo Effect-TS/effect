@@ -196,10 +196,6 @@ describe("Schema Context", () => {
       .type.toBe<S.SchemaClass<{ readonly a: string }, { readonly a: string }, "aContext" | "bContext">>()
   })
 
-  it("brand error", () => {
-    expect(aContext.pipe).type.not.toBeCallableWith(S.brand("a"))
-  })
-
   it("partialWith", () => {
     expect(S.partialWith(S.Struct({ a: aContext, b: bContext }), { exact: true }))
       .type.toBe<
