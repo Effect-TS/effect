@@ -87,7 +87,7 @@ export abstract class HttpIncomingMessageImpl<E> extends Inspectable.Class
         NodeStream.toUint8Array(() => this.source, {
           onFailure: this.onError,
           maxBytes: Option.getOrUndefined(maxBodySize)
-        })
+        }).pipe(Effect.map((_) => _.buffer as ArrayBuffer))
     )
   }
 }

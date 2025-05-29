@@ -578,11 +578,11 @@ describe("Match", () => {
     const match = pipe(
       M.type<Uint8Array | Uint16Array>(),
       M.when(M.instanceOf(Uint8Array), (_) => {
-        assertType<Uint8Array>()(_) satisfies true
+        assertType<Uint8Array<ArrayBuffer>>()(_) satisfies true
         return "uint8"
       }),
       M.when(M.instanceOf(Uint16Array), (_) => {
-        assertType<Uint16Array>()(_) satisfies true
+        assertType<Uint16Array<ArrayBuffer>>()(_) satisfies true
         return "uint16"
       }),
       M.orElse((_) => {
