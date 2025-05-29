@@ -143,6 +143,30 @@ describe("UrlParams", () => {
       }))
   })
 
+  describe("schemaParse", () => {
+    const schema = UrlParams.schemaParse(Schema.Struct({
+      a: Schema.NumberFromString,
+      b: Schema.BooleanFromString,
+      c: Schema.String
+    }))
+
+    it.effect("roundtrip", () =>
+      Effect.gen(function*() {
+        const encoded = yield* Schema.encode(schema)({
+          a: 10,
+          b: true,
+          c: "string"
+        })
+        strictEqual(encoded, "a=10&b=true&c=string")
+        const decoded = yield* Schema.decode(schema)(encoded)
+        deepStrictEqual(decoded, {
+          a: 10,
+          b: true,
+          c: "string"
+        })
+      }))
+  })
+
   it("nested records", () => {
     const urlParams = UrlParams.fromInput({
       "a": [10, "string"],

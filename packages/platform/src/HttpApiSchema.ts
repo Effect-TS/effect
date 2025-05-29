@@ -111,7 +111,8 @@ const encodingJson: Encoding = {
  * @since 1.0.0
  * @category annotations
  */
-export const getEncoding = (ast: AST.AST): Encoding => getAnnotation<Encoding>(ast, AnnotationEncoding) ?? encodingJson
+export const getEncoding = (ast: AST.AST, fallback = encodingJson): Encoding =>
+  getAnnotation<Encoding>(ast, AnnotationEncoding) ?? fallback
 
 /**
  * @since 1.0.0

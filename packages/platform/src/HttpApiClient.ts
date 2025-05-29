@@ -14,6 +14,7 @@ import type { Simplify } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
 import type { HttpApiEndpoint } from "./HttpApiEndpoint.js"
 import type { HttpApiGroup } from "./HttpApiGroup.js"
+import type * as HttpApiMiddleware from "./HttpApiMiddleware.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
 import * as HttpBody from "./HttpBody.js"
 import * as HttpClient from "./HttpClient.js"
@@ -21,7 +22,6 @@ import * as HttpClientError from "./HttpClientError.js"
 import * as HttpClientRequest from "./HttpClientRequest.js"
 import * as HttpClientResponse from "./HttpClientResponse.js"
 import * as HttpMethod from "./HttpMethod.js"
-import type { HttpApiMiddleware } from "./index.js"
 import * as UrlParams from "./UrlParams.js"
 
 /**
@@ -385,41 +385,86 @@ const compilePath = (path: string) => {
 const schemaToResponse = (
   ast: AST.AST
 ): (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any> => {
-  const schema = Schema.make(ast)
   const encoding = HttpApiSchema.getEncoding(ast)
-  const decode = Schema.decodeUnknown(schema)
+  const decode = Schema.decode(schemaFromArrayBuffer(ast, encoding))
+  return (response) => Effect.flatMap(response.arrayBuffer, decode)
+}
+
+const Uint8ArrayFromArrayBuffer = Schema.transform(
+  Schema.Unknown as Schema.Schema<ArrayBuffer>,
+  Schema.Uint8ArrayFromSelf,
+  {
+    decode(fromA) {
+      return new Uint8Array(fromA)
+    },
+    encode(toI) {
+      const arr = new Uint8Array(toI)
+      if (arr.byteLength === arr.buffer.byteLength) {
+        return arr.buffer
+      }
+      return arr.buffer.slice(arr.byteOffset, arr.byteLength)
+    }
+  }
+)
+
+const StringFromArrayBuffer = Schema.transform(
+  Schema.Unknown as Schema.Schema<ArrayBuffer>,
+  Schema.String,
+  {
+    decode(fromA) {
+      return new TextDecoder().decode(fromA)
+    },
+    encode(toI) {
+      const arr = new TextEncoder().encode(toI)
+      return arr.buffer.slice(arr.byteOffset, arr.byteLength)
+    }
+  }
+)
+
+const parseJsonOrVoid = Schema.transformOrFail(
+  Schema.String,
+  Schema.Unknown,
+  {
+    strict: true,
+    decode: (i, _, ast) => {
+      if (i === "") return ParseResult.succeed(void 0)
+      return ParseResult.try({
+        try: () => JSON.parse(i),
+        catch: () => new ParseResult.Type(ast, i, "Could not parse JSON")
+      })
+    },
+    encode: (a, _, ast) =>
+      ParseResult.try({
+        try: () => JSON.stringify(a),
+        catch: () => new ParseResult.Type(ast, a, "Could not encode as JSON")
+      })
+  }
+)
+
+const parseJsonArrayBuffer = Schema.compose(StringFromArrayBuffer, parseJsonOrVoid)
+
+const schemaFromArrayBuffer = (
+  ast: AST.AST,
+  encoding: HttpApiSchema.Encoding
+): Schema.Schema<any, ArrayBuffer> => {
+  if (ast._tag === "Union") {
+    return Schema.Union(...ast.types.map((ast) => schemaFromArrayBuffer(ast, HttpApiSchema.getEncoding(ast, encoding))))
+  }
   switch (encoding.kind) {
     case "Json": {
-      return (response) => Effect.flatMap(responseJson(response), decode)
+      return Schema.compose(parseJsonArrayBuffer, Schema.make(ast))
     }
     case "UrlParams": {
-      return HttpClientResponse.schemaBodyUrlParams(schema as any)
+      return Schema.compose(StringFromArrayBuffer, UrlParams.schemaParse(Schema.make(ast) as any)) as any
     }
     case "Uint8Array": {
-      return (response: HttpClientResponse.HttpClientResponse) =>
-        response.arrayBuffer.pipe(
-          Effect.map((buffer) => new Uint8Array(buffer)),
-          Effect.flatMap(decode)
-        )
+      return Uint8ArrayFromArrayBuffer
     }
     case "Text": {
-      return (response) => Effect.flatMap(response.text, decode)
+      return StringFromArrayBuffer
     }
   }
 }
-
-const responseJson = (response: HttpClientResponse.HttpClientResponse) =>
-  Effect.flatMap(response.text, (text) =>
-    text === "" ? Effect.void : Effect.try({
-      try: () => JSON.parse(text),
-      catch: (cause) =>
-        new HttpClientError.ResponseError({
-          reason: "Decode",
-          request: response.request,
-          response,
-          cause
-        })
-    }))
 
 const statusOrElse = (response: HttpClientResponse.HttpClientResponse) =>
   Effect.fail(
