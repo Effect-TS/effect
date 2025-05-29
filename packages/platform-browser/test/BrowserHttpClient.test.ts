@@ -78,4 +78,19 @@ describe("BrowserHttpClient", () => {
         }]
       }))
     ))
+
+  it.effect("arrayBuffer without withXHRArrayBuffer", () =>
+    Effect.gen(function*() {
+      const body = yield* HttpClient.get("http://localhost:8080/my/url").pipe(
+        Effect.flatMap((_) => _.arrayBuffer)
+      )
+      assert.strictEqual(new TextDecoder().decode(body), "{ \"message\": \"Success!\" }")
+    }).pipe(
+      Effect.provide(layer({
+        get: ["http://localhost:8080/my/url", {
+          headers: { "Content-Type": "application/json" },
+          body: "{ \"message\": \"Success!\" }"
+        }]
+      }))
+    ))
 })

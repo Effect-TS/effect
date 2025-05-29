@@ -397,12 +397,10 @@ const Uint8ArrayFromArrayBuffer = Schema.transform(
     decode(fromA) {
       return new Uint8Array(fromA)
     },
-    encode(toI) {
-      const arr = new Uint8Array(toI)
-      if (arr.byteLength === arr.buffer.byteLength) {
-        return arr.buffer
-      }
-      return arr.buffer.slice(arr.byteOffset, arr.byteLength)
+    encode(arr) {
+      return arr.byteLength === arr.buffer.byteLength ?
+        arr.buffer :
+        arr.buffer.slice(arr.byteOffset, arr.byteOffset + arr.byteLength)
     }
   }
 )
@@ -416,7 +414,9 @@ const StringFromArrayBuffer = Schema.transform(
     },
     encode(toI) {
       const arr = new TextEncoder().encode(toI)
-      return arr.buffer.slice(arr.byteOffset, arr.byteLength)
+      return arr.byteLength === arr.buffer.byteLength ?
+        arr.buffer :
+        arr.buffer.slice(arr.byteOffset, arr.byteOffset + arr.byteLength)
     }
   }
 )
@@ -433,11 +433,13 @@ const parseJsonOrVoid = Schema.transformOrFail(
         catch: () => new ParseResult.Type(ast, i, "Could not parse JSON")
       })
     },
-    encode: (a, _, ast) =>
-      ParseResult.try({
+    encode: (a, _, ast) => {
+      if (a === undefined) return ParseResult.succeed("")
+      return ParseResult.try({
         try: () => JSON.stringify(a),
         catch: () => new ParseResult.Type(ast, a, "Could not encode as JSON")
       })
+    }
   }
 )
 
