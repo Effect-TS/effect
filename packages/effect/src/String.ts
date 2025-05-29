@@ -776,3 +776,78 @@ const isLineBreak = (char: string): boolean => {
 const isLineBreak2 = (char0: string, char1: string): boolean => char0.charCodeAt(0) === CR && char1.charCodeAt(0) === LF
 
 const linesSeparated = (self: string, stripped: boolean): LinesIterator => new LinesIterator(self, stripped)
+
+/**
+ * Truncates a string to a specified length and by default adds the omission string "..." to the end of the string.
+ * @since 3.12.0
+ *
+ * @example
+ * import { truncate } from "effect/String";
+ * truncate("Hello World!", { length: 5 }); // "Hello..."
+ */
+export const truncate: {
+  (
+    str: string,
+    options: {
+      /**
+       * The length to truncate the string to.
+       */
+      readonly length: number
+
+      /**
+       * The separator to use to truncate the string. Use " " to truncate evenly on a word boundary.
+       */
+      readonly separator?: string
+
+      /**
+       * The omission string to add to the end of the truncated string. Defaults to "...".
+       */
+      readonly omission?: string
+    }
+  ): string
+
+  (
+    options: {
+      /**
+       * The length to truncate the string to.
+       */
+      readonly length: number
+
+      /**
+       * The separator to use to truncate the string. Use " " to truncate evenly on a word boundary.
+       */
+      readonly separator?: string
+
+      /**
+       * The omission string to add to the end of the truncated string. Defaults to "...".
+       */
+      readonly omission?: string
+    }
+  ): (str: string) => string
+} = dual(
+  2,
+  (
+    str: string,
+    options: {
+      readonly length: number
+      readonly separator?: string
+      readonly omission?: string
+    }
+  ) => {
+    if (str.length <= options.length) {
+      return str
+    }
+
+    let subString = str.slice(0, options.length)
+
+    if (typeof options.separator === "string") {
+      subString = subString.slice(
+        0,
+        subString.lastIndexOf(options.separator)
+      )
+    }
+
+    const omission = options.omission ?? "..."
+    return subString + omission
+  }
+)
