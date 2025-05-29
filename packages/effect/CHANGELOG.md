@@ -1,5 +1,11 @@
 # effect
 
+## 3.16.2
+
+### Patch Changes
+
+- [#4943](https://github.com/Effect-TS/effect/pull/4943) [`0ddf148`](https://github.com/Effect-TS/effect/commit/0ddf148a247aa87af043d276b8453a714a400897) Thanks @gcanti! - relax `Schema.brand` constraint, closes #4942
+
 ## 3.16.1
 
 ### Patch Changes
