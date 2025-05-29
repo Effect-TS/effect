@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.84.3
+
+### Patch Changes
+
+- [#4941](https://github.com/Effect-TS/effect/pull/4941) [`ab7684f`](https://github.com/Effect-TS/effect/commit/ab7684f1c2a0671bf091f255d220e3a4cc7f528e) Thanks @tim-smart! - decode HttpApiClient response from ArrayBuffer
+
 ## 0.84.2
 
 ### Patch Changes

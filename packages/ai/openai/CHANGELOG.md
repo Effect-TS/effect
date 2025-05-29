@@ -1,5 +1,14 @@
 # @effect/ai-openai
 
+## 0.21.3
+
+### Patch Changes
+
+- Updated dependencies [[`52c88c4`](https://github.com/Effect-TS/effect/commit/52c88c4b7d20ea819b9f2efaf112d03de0a4627b), [`ab7684f`](https://github.com/Effect-TS/effect/commit/ab7684f1c2a0671bf091f255d220e3a4cc7f528e)]:
+  - @effect/ai@0.18.3
+  - @effect/platform@0.84.3
+  - @effect/experimental@0.48.3
+
 ## 0.21.2
 
 ### Patch Changes
