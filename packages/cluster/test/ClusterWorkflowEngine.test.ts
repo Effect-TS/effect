@@ -62,7 +62,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       Effect.provide(TestWorkflowLayer)
     ))
 
-  it.effect.only("interrupt", () =>
+  it.effect("interrupt", () =>
     Effect.gen(function*() {
       const driver = yield* MessageStorage.MemoryDriver
       yield* TestClock.adjust(1)
