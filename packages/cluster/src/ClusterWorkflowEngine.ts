@@ -329,45 +329,32 @@ export const make = Effect.gen(function*() {
   })
 })
 
-const namespace = "@effect/cluster/ClusterWorkflowEngine" as const
-
-const makeWorkflowEntity = (workflow: Workflow.Any) => {
-  class RunPayload
-    extends Schema.Class<RunPayload>(`${namespace}/${workflow.name}/Run`)(workflow.payloadSchema as any)
-  {
-    [PrimaryKey.symbol]() {
-      return ""
-    }
-  }
-
-  class ActivityPayload extends Schema.Class<ActivityPayload>(`${namespace}/${workflow.name}/Activity`)({
+const ActivityRpc = Rpc.make("activity", {
+  payload: {
     name: Schema.String,
     attempt: Schema.Number
-  }) {
-    [PrimaryKey.symbol]() {
-      return activityPrimaryKey(this.name, this.attempt)
-    }
-  }
+  },
+  primaryKey: ({ attempt, name }) => activityPrimaryKey(name, attempt),
+  success: Workflow.Result({
+    success: Schema.Unknown,
+    error: Schema.Unknown
+  })
+})
 
-  return Entity.make(`Workflow/${workflow.name}`, [
+const makeWorkflowEntity = (workflow: Workflow.Any) =>
+  Entity.make(`Workflow/${workflow.name}`, [
     Rpc.make("run", {
-      payload: RunPayload,
+      payload: workflow.payloadSchema.fields,
+      primaryKey: () => "",
       success: Workflow.Result({
         success: workflow.successSchema,
         error: workflow.errorSchema
       })
     }),
-    Rpc.make("activity", {
-      payload: ActivityPayload,
-      success: Workflow.Result({
-        success: Schema.Unknown,
-        error: Schema.Unknown
-      })
-    })
+    ActivityRpc
   ])
     .annotateRpcs(ClusterSchema.Persisted, true)
     .annotateRpcs(ClusterSchema.Uninterruptible, true)
-}
 
 const activityPrimaryKey = (activity: string, attempt: number) => `${activity}/${attempt}`
 
@@ -377,18 +364,13 @@ const ExitUnknown = Schema.encodedSchema(Schema.Exit({
   defect: Schema.Defect
 }))
 
-class DeferredPayload extends Schema.Class<DeferredPayload>(`Workflow/DurableDeferred/Set`)({
-  name: Schema.String,
-  exit: ExitUnknown
-}) {
-  [PrimaryKey.symbol]() {
-    return this.name
-  }
-}
-
 const DeferredEntity = Entity.make("Workflow/-/DurableDeferred", [
   Rpc.make("set", {
-    payload: DeferredPayload,
+    payload: {
+      name: Schema.String,
+      exit: ExitUnknown
+    },
+    primaryKey: ({ name }) => name,
     success: ExitUnknown
   })
     .annotate(ClusterSchema.Persisted, true)

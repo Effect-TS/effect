@@ -43,8 +43,10 @@ export interface Workflow<
   readonly successSchema: Success
   readonly errorSchema: Error
   readonly execute: (
-    payload: [keyof Payload["fields"]] extends [never] ? void
-      : Schema.Simplify<Schema.Struct.Constructor<Payload["fields"]>>
+    payload: [keyof Payload["fields"]] extends [never] ? void : Payload["Type"],
+    options?: {
+      readonly discard?: boolean | undefined
+    }
   ) => Effect.Effect<
     Success["Type"],
     Error["Type"],
@@ -108,7 +110,7 @@ export interface Registration<Name extends string> {
 export interface Any {
   readonly [TypeId]: TypeId
   readonly name: string
-  readonly payloadSchema: Schema.Schema.Any
+  readonly payloadSchema: AnyStructSchema
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
 }
@@ -149,10 +151,14 @@ export const make = <
     payloadSchema: Schema.isSchema(options.payload) ? options.payload : Schema.Struct(options.payload as any),
     successSchema: options.success ?? Schema.Void as any,
     errorSchema: options.error ?? Schema.Never as any,
-    execute: Effect.fnUntraced(function*(fields: any) {
+    execute: Effect.fnUntraced(function*(fields: any, opts) {
       const payload = self.payloadSchema.make(fields)
       const engine = yield* EngineTag
       const executionId = yield* makeHashDigest(options.idempotencyKey(payload))
+      if (opts?.discard) {
+        yield* engine.execute(self as any, executionId, payload as any)
+        return
+      }
       const loop: Effect.Effect<any, any> = Effect.flatMap(
         engine.execute(self as any, executionId, payload as any),
         (result) => {
