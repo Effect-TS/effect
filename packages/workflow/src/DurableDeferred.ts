@@ -233,11 +233,11 @@ export const done: {
     const token = yield* TokenParsed.fromString(options.token)
     const exit = yield* Schema.encode(self.exitSchema)(options.exit)
     yield* engine.deferredDone({
+      workflowName: token.workflowName,
       executionId: token.executionId,
       deferred: self,
       exit: exit as any
     })
-    yield* engine.resume(token.workflowName, token.executionId)
   })
 )
 

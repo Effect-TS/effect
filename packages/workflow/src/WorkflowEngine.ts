@@ -46,14 +46,6 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
     ) => Effect.Effect<void>
 
     /**
-     * Tell a workflow to resume execution.
-     */
-    readonly resume: (
-      workflowName: string,
-      executionId: string
-    ) => Effect.Effect<void>
-
-    /**
      * Execute an activity from a workflow.
      */
     readonly activityExecute: (
@@ -71,10 +63,12 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
     ) => Effect.Effect<Option.Option<Schema.ExitEncoded<unknown, unknown, unknown>>, never, WorkflowInstance>
 
     /**
-     * Set the result of a DurableDeferred
+     * Set the result of a DurableDeferred, and then resume any waiting
+     * workflows.
      */
     readonly deferredDone: (
       options: {
+        readonly workflowName: string
         readonly executionId: string
         readonly deferred: DurableDeferred.Any
         readonly exit: Schema.ExitEncoded<unknown, unknown, unknown>

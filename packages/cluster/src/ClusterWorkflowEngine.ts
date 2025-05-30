@@ -124,6 +124,21 @@ export const make = Effect.gen(function*() {
     return yield* replyForRequestId(requestId.value)
   })
 
+  const resume = Effect.fnUntraced(function*(workflowName: string, executionId: string) {
+    const maybeReply = yield* requestReply({
+      entityType: `Workflow/${workflowName}`,
+      executionId,
+      tag: "run",
+      id: ""
+    })
+    const maybeSuspended = Option.filter(
+      maybeReply,
+      (reply) => reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
+    )
+    if (Option.isNone(maybeSuspended)) return
+    yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId))
+  }, Effect.orDie)
+
   return WorkflowEngine.of({
     register: (workflow, execute) =>
       Effect.suspend(() => {
@@ -250,21 +265,6 @@ export const make = Effect.gen(function*() {
       Effect.orDie
     ),
 
-    resume: Effect.fnUntraced(function*(workflowName: string, executionId: string) {
-      const maybeReply = yield* requestReply({
-        entityType: `Workflow/${workflowName}`,
-        executionId,
-        tag: "run",
-        id: ""
-      })
-      const maybeSuspended = Option.filter(
-        maybeReply,
-        (reply) => reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
-      )
-      if (Option.isNone(maybeSuspended)) return
-      yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId))
-    }, Effect.orDie),
-
     activityExecute: Effect.fnUntraced(function*({ activity, attempt }) {
       const instance = yield* WorkflowInstance
       const activityId = `${instance.executionId}/${activity.name}`
@@ -305,12 +305,15 @@ export const make = Effect.gen(function*() {
       return Option.map(reply, (reply) => reply.exit)
     }, Effect.orDie),
 
-    deferredDone({ deferred, executionId, exit }) {
+    deferredDone({ deferred, executionId, exit, workflowName }) {
       const client = deferredClient(executionId)
-      return Effect.orDie(client.set({
-        name: deferred.name,
-        exit
-      }))
+      return Effect.andThen(
+        Effect.orDie(client.set({
+          name: deferred.name,
+          exit
+        })),
+        resume(workflowName, executionId)
+      )
     },
 
     scheduleClock(options) {
@@ -405,15 +408,15 @@ const ClockEntityLayer = ClockEntity.toLayer(Effect.gen(function*() {
   const address = yield* Entity.CurrentAddress
   const executionId = address.entityId
   return {
-    run: Effect.fnUntraced(function*(request) {
+    run(request) {
       const deferred = DurableClock.make({ name: request.payload.name, duration: Duration.zero }).deferred
-      yield* engine.deferredDone({
-        executionId: address.entityId,
+      return engine.deferredDone({
+        workflowName: request.payload.workflowName,
+        executionId,
         deferred,
         exit: { _tag: "Success", value: void 0 }
       })
-      yield* engine.resume(request.payload.workflowName, executionId)
-    })
+    }
   }
 }))
 
