@@ -781,6 +781,28 @@ export const make = Effect.fnUntraced(function*(options?: {
         withTracerDisabled
       ),
 
+    clearAddress: (address) =>
+      sql`
+        DELETE FROM ${repliesTableSql}
+        WHERE request_id IN (
+          SELECT id FROM ${messagesTableSql}
+          WHERE entity_type = ${address.entityType}
+          AND entity_id = ${address.entityId}
+        )
+      `.pipe(
+        Effect.andThen(
+          sql`
+            DELETE FROM ${messagesTableSql}
+            WHERE entity_type = ${address.entityType}
+            AND entity_id = ${address.entityId}
+          `
+        ),
+        sql.withTransaction,
+        Effect.asVoid,
+        PersistenceError.refail,
+        withTracerDisabled
+      ),
+
     resetShards: (shardIds) =>
       sql`
         UPDATE ${messagesTableSql}

@@ -126,6 +126,13 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
   readonly resetAddress: (
     address: EntityAddress
   ) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Clear all messages and replies for the provided address.
+   */
+  readonly clearAddress: (
+    address: EntityAddress
+  ) => Effect.Effect<void, PersistenceError>
 }>() {}
 
 /**
@@ -291,6 +298,13 @@ export type Encoded = {
   ) => Effect.Effect<void, PersistenceError>
 
   /**
+   * Clear all messages and replies for the provided address.
+   */
+  readonly clearAddress: (
+    address: EntityAddress
+  ) => Effect.Effect<void, PersistenceError>
+
+  /**
    * Reset the mailbox state for the provided shards.
    */
   readonly resetShards: (
@@ -439,7 +453,8 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         decodeMessages
       )
     },
-    resetAddress: (address) => encoded.resetAddress(address),
+    resetAddress: encoded.resetAddress,
+    clearAddress: encoded.clearAddress,
     resetShards: (shardIds) => encoded.resetShards(Array.from(shardIds))
   })
 
@@ -562,6 +577,7 @@ export const noop: MessageStorage["Type"] = globalValue(
       unprocessedMessages: () => Effect.succeed([]),
       unprocessedMessagesById: () => Effect.succeed([]),
       resetAddress: () => Effect.void,
+      clearAddress: () => Effect.void,
       resetShards: () => Effect.void
     }))
 )
@@ -735,6 +751,20 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
           return unprocessedWith((envelope) => envelopeIds.has(envelope.requestId))
         }),
       resetAddress: () => Effect.void,
+      clearAddress: (address) =>
+        Effect.sync(() => {
+          for (let i = journal.length - 1; i >= 0; i--) {
+            const envelope = journal[i]
+            const sameAddress = address.entityType === envelope.address.entityType &&
+              address.entityId === envelope.address.entityId
+            if (!sameAddress || envelope._tag !== "Request") {
+              continue
+            }
+            unprocessed.delete(envelope)
+            requests.delete(envelope.requestId)
+            journal.splice(i, 1)
+          }
+        }),
       resetShards: () => Effect.void
     }
 

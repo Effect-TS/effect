@@ -61,6 +61,43 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     }).pipe(
       Effect.provide(TestWorkflowLayer)
     ))
+
+  it.effect.only("interrupt", () =>
+    Effect.gen(function*() {
+      const driver = yield* MessageStorage.MemoryDriver
+      yield* TestClock.adjust(1)
+
+      const fiber = yield* EmailWorkflow.execute({
+        id: "test-email-2",
+        to: "bob@example.com"
+      }).pipe(Effect.fork)
+
+      yield* TestClock.adjust(1)
+      yield* TestClock.adjust(1)
+
+      const envelope = driver.journal[0]
+      const executionId = envelope.address.entityId
+      yield* EmailWorkflow.interrupt(executionId)
+
+      // - 1 initial request
+      // - 5 attempts to send email
+      // - 1 sleep activity
+      assert.equal(driver.requests.size, 7)
+
+      const result = driver.requests.get(envelope.requestId)!
+      const reply = result.replies[0]!
+      assert(
+        reply._tag === "WithExit" &&
+          reply.exit._tag === "Failure" &&
+          reply.exit.cause._tag === "Interrupt"
+      )
+      yield* TestClock.adjust(5000)
+
+      const exit = yield* Fiber.await(fiber)
+      assert(Exit.isInterrupted(exit))
+    }).pipe(
+      Effect.provide(TestWorkflowLayer)
+    ))
 })
 
 const TestShardingConfig = ShardingConfig.layer({

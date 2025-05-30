@@ -50,6 +50,7 @@ export interface Workflow<
     Error["Type"],
     WorkflowEngine | Registration<Name> | Payload["Context"] | Success["Context"] | Error["Context"]
   >
+  readonly interrupt: (executionId: string) => Effect.Effect<void, never, WorkflowEngine | Registration<Name>>
   readonly toLayer: <R>(
     execute: (
       payload: Payload["Type"],
@@ -162,6 +163,10 @@ export const make = <
         }
       )
       return yield* loop
+    }),
+    interrupt: Effect.fnUntraced(function*(executionId: string) {
+      const engine = yield* EngineTag
+      yield* engine.interrupt(self as any, executionId)
     }),
     toLayer: (execute) =>
       Layer.effectContext(Effect.gen(function*() {

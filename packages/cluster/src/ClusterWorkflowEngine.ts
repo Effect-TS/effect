@@ -15,6 +15,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as RcMap from "effect/RcMap"
+import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as ClusterSchema from "./ClusterSchema.js"
 import * as DeliverAt from "./DeliverAt.js"
@@ -22,9 +23,12 @@ import * as Entity from "./Entity.js"
 import { EntityAddress } from "./EntityAddress.js"
 import { EntityId } from "./EntityId.js"
 import { EntityType } from "./EntityType.js"
+import * as Message from "./Message.js"
 import { MessageStorage } from "./MessageStorage.js"
+import * as Reply from "./Reply.js"
+import type { WithExitEncoded } from "./Reply.js"
 import * as Sharding from "./Sharding.js"
-import { Snowflake } from "./Snowflake.js"
+import * as Snowflake from "./Snowflake.js"
 
 /**
  * @since 1.0.0
@@ -33,6 +37,7 @@ import { Snowflake } from "./Snowflake.js"
 export const make = Effect.gen(function*() {
   const sharding = yield* Sharding.Sharding
   const storage = yield* MessageStorage
+  const snowflakeGen = yield* Snowflake.Generator
 
   const entities = new Map<
     string,
@@ -81,7 +86,7 @@ export const make = Effect.gen(function*() {
     yield* sharding.reset(requestId.value)
   }, Effect.orDie)
 
-  const requestReply = Effect.fnUntraced(function*(options: {
+  const requestIdFor = Effect.fnUntraced(function*(options: {
     readonly entityType: string
     readonly executionId: string
     readonly tag: string
@@ -93,15 +98,30 @@ export const make = Effect.gen(function*() {
       entityId,
       shardId: sharding.getShardId(entityId)
     })
-    const requestId = yield* storage.requestIdForPrimaryKey({ address, tag: options.tag, id: options.id })
+    return yield* storage.requestIdForPrimaryKey({ address, tag: options.tag, id: options.id })
+  })
+
+  const replyForRequestId = Effect.fnUntraced(function*(requestId: Snowflake.Snowflake) {
+    const replies = yield* storage.repliesForUnfiltered([requestId])
+    return Arr.last(replies).pipe(
+      Option.filter((reply) => reply._tag === "WithExit"),
+      Option.map((reply) =>
+        reply as WithExitEncoded<Rpc.Rpc<string, Schema.Struct<{}>, Schema.Schema<Workflow.Result<any, any>>>>
+      )
+    )
+  })
+
+  const requestReply = Effect.fnUntraced(function*(options: {
+    readonly entityType: string
+    readonly executionId: string
+    readonly tag: string
+    readonly id: string
+  }) {
+    const requestId = yield* requestIdFor(options)
     if (Option.isNone(requestId)) {
       return Option.none()
     }
-    const replies = yield* storage.repliesForUnfiltered([requestId.value])
-    return Arr.last(replies).pipe(
-      Option.filter((reply) => reply._tag === "WithExit"),
-      Option.map((reply) => reply)
-    )
+    return yield* replyForRequestId(requestId.value)
   })
 
   return WorkflowEngine.of({
@@ -167,6 +187,69 @@ export const make = Effect.gen(function*() {
       )
     }, Effect.scoped),
 
+    interrupt: Effect.fnUntraced(
+      function*(workflow, executionId) {
+        const requestId = yield* requestIdFor({
+          entityType: `Workflow/${workflow.name}`,
+          executionId,
+          tag: "run",
+          id: ""
+        })
+        if (Option.isNone(requestId)) {
+          return
+        }
+        const reply = yield* replyForRequestId(requestId.value)
+        const nonSuspendedReply = reply.pipe(
+          Option.filter((reply) => reply.exit._tag !== "Success" || reply.exit.value._tag !== "Suspended")
+        )
+        if (Option.isSome(nonSuspendedReply)) {
+          return
+        }
+
+        const entityId = EntityId.make(executionId)
+        const shardId = sharding.getShardId(entityId)
+        const workflowAddress = new EntityAddress({
+          entityType: EntityType.make(`Workflow/${workflow.name}`),
+          entityId,
+          shardId
+        })
+        const deferredAddress = new EntityAddress({
+          entityType: DeferredEntity.type,
+          entityId,
+          shardId
+        })
+        const clockAddress = new EntityAddress({
+          entityType: ClockEntity.type,
+          entityId,
+          shardId
+        })
+        if (Option.isNone(reply)) {
+          yield* sharding.sendOutgoing(
+            Message.OutgoingEnvelope.interrupt({
+              address: workflowAddress,
+              id: snowflakeGen.unsafeNext(),
+              requestId: requestId.value
+            }),
+            true
+          )
+        } else {
+          yield* sharding.reset(requestId.value)
+        }
+        yield* storage.saveReply(Reply.ReplyWithContext.interrupt({
+          id: snowflakeGen.unsafeNext(),
+          requestId: requestId.value
+        }))
+        yield* storage.clearAddress(deferredAddress)
+        yield* storage.clearAddress(clockAddress)
+      },
+      Effect.retry({
+        while: (e) => e._tag === "PersistenceError",
+        times: 3,
+        schedule: Schedule.exponential(250)
+      }),
+      Effect.orDie
+    ),
+
     resume: Effect.fnUntraced(function*(workflowName: string, executionId: string) {
       const maybeReply = yield* requestReply({
         entityType: `Workflow/${workflowName}`,
@@ -176,10 +259,10 @@ export const make = Effect.gen(function*() {
       })
       const maybeSuspended = Option.filter(
         maybeReply,
-        (reply) => reply.exit._tag === "Success" && (reply.exit.value as Workflow.Result<any, any>)._tag === "Suspended"
+        (reply) => reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
       )
       if (Option.isNone(maybeSuspended)) return
-      yield* sharding.reset(Snowflake(maybeSuspended.value.requestId))
+      yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId))
     }, Effect.orDie),
 
     activityExecute: Effect.fnUntraced(function*({ activity, attempt }) {
@@ -281,7 +364,9 @@ const makeWorkflowEntity = (workflow: Workflow.Any) => {
         error: Schema.Unknown
       })
     })
-  ]).annotateRpcs(ClusterSchema.Persisted, true)
+  ])
+    .annotateRpcs(ClusterSchema.Persisted, true)
+    .annotateRpcs(ClusterSchema.Uninterruptible, true)
 }
 
 const activityPrimaryKey = (activity: string, attempt: number) => `${activity}/${attempt}`
@@ -305,7 +390,9 @@ const DeferredEntity = Entity.make("Workflow/-/DurableDeferred", [
   Rpc.make("set", {
     payload: DeferredPayload,
     success: ExitUnknown
-  }).annotate(ClusterSchema.Persisted, true)
+  })
+    .annotate(ClusterSchema.Persisted, true)
+    .annotate(ClusterSchema.Uninterruptible, true)
 ])
 
 const DeferredEntityLayer = DeferredEntity.toLayer({
@@ -326,7 +413,9 @@ class ClockPayload extends Schema.Class<ClockPayload>(`Workflow/DurableClock/Run
 }
 
 const ClockEntity = Entity.make("Workflow/-/DurableClock", [
-  Rpc.make("run", { payload: ClockPayload }).annotate(ClusterSchema.Persisted, true)
+  Rpc.make("run", { payload: ClockPayload })
+    .annotate(ClusterSchema.Persisted, true)
+    .annotate(ClusterSchema.Uninterruptible, true)
 ])
 
 const ClockEntityLayer = ClockEntity.toLayer(Effect.gen(function*() {
@@ -356,5 +445,6 @@ export const layer: Layer.Layer<
   Sharding.Sharding | MessageStorage
 > = DeferredEntityLayer.pipe(
   Layer.merge(ClockEntityLayer),
-  Layer.provideMerge(Layer.scoped(WorkflowEngine, make))
+  Layer.provideMerge(Layer.scoped(WorkflowEngine, make)),
+  Layer.provide(Snowflake.layerGenerator)
 )

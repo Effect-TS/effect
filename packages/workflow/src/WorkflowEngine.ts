@@ -38,6 +38,14 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
     ) => Effect.Effect<Workflow.Result<unknown, unknown>>
 
     /**
+     * Interrupt a registered workflow.
+     */
+    readonly interrupt: (
+      workflow: Workflow.Any,
+      executionId: string
+    ) => Effect.Effect<void>
+
+    /**
      * Tell a workflow to resume execution.
      */
     readonly resume: (

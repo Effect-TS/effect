@@ -35,7 +35,7 @@ import {
   EntityNotManagedByRunner,
   RunnerUnavailable
 } from "./ClusterError.js"
-import { Persisted } from "./ClusterSchema.js"
+import { Persisted, Uninterruptible } from "./ClusterSchema.js"
 import type { CurrentAddress, CurrentRunnerAddress, Entity, HandlersFrom } from "./Entity.js"
 import { EntityAddress } from "./EntityAddress.js"
 import { EntityId } from "./EntityId.js"
@@ -124,6 +124,17 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   readonly send: (message: Message.Incoming<any>) => Effect.Effect<
     void,
     EntityNotManagedByRunner | EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage
+  >
+
+  /**
+   * Sends an outgoing message
+   */
+  readonly sendOutgoing: (
+    message: Message.Outgoing<any>,
+    discard: boolean
+  ) => Effect.Effect<
+    void,
+    EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage | PersistenceError
   >
 
   /**
@@ -987,6 +998,9 @@ const make = Effect.gen(function*() {
             const entry = clientRequests.get(requestId)!
             if (!entry) return Effect.void
             clientRequests.delete(requestId)
+            if (Context.get(entry.rpc.annotations, Uninterruptible)) {
+              return Effect.void
+            }
             // for durable messages, we ignore interrupts on shutdown or as a
             // result of a shard being resassigned
             const isTransientInterrupt = MutableRef.get(isShutdown) ||
@@ -1167,6 +1181,7 @@ const make = Effect.gen(function*() {
     registerSingleton,
     makeClient,
     send: sendLocal,
+    sendOutgoing: (message, discard) => sendOutgoing(message, discard),
     notify: (message) => notifyLocal(message, false),
     activeEntityCount,
     reset
