@@ -10,9 +10,11 @@ import type { ReadonlyMailbox } from "effect/Mailbox"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as PrimaryKey from "effect/PrimaryKey"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
 import type { Stream } from "effect/Stream"
+import type { NoInfer } from "effect/Types"
 import type * as RpcMiddleware from "./RpcMiddleware.js"
 import * as RpcSchema from "./RpcSchema.js"
 
@@ -582,6 +584,9 @@ export const make = <
   readonly success?: Success
   readonly error?: Error
   readonly stream?: Stream
+  readonly primaryKey?: [Payload] extends [Schema.Struct.Fields] ?
+    ((payload: Schema.Simplify<Schema.Struct.Type<NoInfer<Payload>>>) => string) :
+    never
 }): Rpc<
   Tag,
   Payload extends Schema.Struct.Fields ? Schema.Struct<Payload> : Payload,
@@ -590,13 +595,23 @@ export const make = <
 > => {
   const successSchema = options?.success ?? Schema.Void
   const errorSchema = options?.error ?? Schema.Never
-  return makeProto({
-    _tag: tag,
-    payloadSchema: Schema.isSchema(options?.payload)
+  let payloadSchema: any
+  if (options?.primaryKey) {
+    payloadSchema = class Payload extends Schema.Class<Payload>(`@effect/rpc/Rpc/${tag}`)(options.payload as any) {
+      [PrimaryKey.symbol](): string {
+        return options.primaryKey!(this as any)
+      }
+    }
+  } else {
+    payloadSchema = Schema.isSchema(options?.payload)
       ? options?.payload as any
       : options?.payload
       ? Schema.Struct(options?.payload as any)
-      : constEmptyStruct,
+      : constEmptyStruct
+  }
+  return makeProto({
+    _tag: tag,
+    payloadSchema,
     successSchema: options?.stream ?
       RpcSchema.Stream({
         success: successSchema,
