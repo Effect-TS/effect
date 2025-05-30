@@ -42,6 +42,10 @@ export interface Workflow<
   readonly payloadSchema: Payload
   readonly successSchema: Success
   readonly errorSchema: Error
+
+  /**
+   * Execute the workflow with the given payload.
+   */
   readonly execute: (
     payload: [keyof Payload["fields"]] extends [never] ? void : Payload["Type"],
     options?: {
@@ -52,7 +56,16 @@ export interface Workflow<
     Error["Type"],
     WorkflowEngine | Registration<Name> | Payload["Context"] | Success["Context"] | Error["Context"]
   >
+
+  /**
+   * Interrupt a workflow execution for the given execution ID.
+   */
   readonly interrupt: (executionId: string) => Effect.Effect<void, never, WorkflowEngine | Registration<Name>>
+
+  /**
+   * Create a layer that registers the workflow and provides an effect to
+   * execute it.
+   */
   readonly toLayer: <R>(
     execute: (
       payload: Payload["Type"],
@@ -67,6 +80,11 @@ export interface Workflow<
     | Success["Context"]
     | Error["Context"]
   >
+
+  /**
+   * Generate a unique execution ID based on the payload.
+   */
+  readonly executionId: (payload: Payload["Type"]) => Effect.Effect<string>
 }
 
 /**
@@ -145,6 +163,7 @@ export const make = <
   }
 ): Workflow<Name, Payload extends Schema.Struct.Fields ? Schema.Struct<Payload> : Payload, Success, Error> => {
   const suspendedRetryInterval = options.suspendedRetryInterval ?? Duration.millis(500)
+  const makeExecutionId = (payload: any) => makeHashDigest(options.idempotencyKey(payload))
   const self: Workflow<Name, any, Success, Error> = {
     [TypeId]: TypeId,
     name: options.name,
@@ -154,7 +173,7 @@ export const make = <
     execute: Effect.fnUntraced(function*(fields: any, opts) {
       const payload = self.payloadSchema.make(fields)
       const engine = yield* EngineTag
-      const executionId = yield* makeHashDigest(options.idempotencyKey(payload))
+      const executionId = yield* makeExecutionId(payload)
       if (opts?.discard) {
         yield* engine.execute(self as any, executionId, payload as any)
         return
@@ -183,7 +202,8 @@ export const make = <
             Effect.provide(context)
           ) as any)
         return EngineTag.context(engine)
-      })) as any
+      })) as any,
+    executionId: makeExecutionId
   }
 
   return self
