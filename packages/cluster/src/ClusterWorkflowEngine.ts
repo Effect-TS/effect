@@ -65,26 +65,33 @@ export const make = Effect.gen(function*() {
   const clockClient = yield* ClockEntity.client
   const deferredClient = yield* DeferredEntity.client
 
-  const resetActivityAttempt = Effect.fnUntraced(function*(options: {
-    readonly workflow: Workflow.Any
-    readonly executionId: string
-    readonly activity: Activity.Any
-    readonly attempt: number
-  }) {
-    const entityId = EntityId.make(options.executionId)
-    const address = new EntityAddress({
-      entityType: EntityType.make(`Workflow/${options.workflow.name}`),
-      entityId,
-      shardId: sharding.getShardId(entityId)
-    })
-    const requestId = yield* storage.requestIdForPrimaryKey({
-      address,
-      tag: "activity",
-      id: activityPrimaryKey(options.activity.name, options.attempt)
-    })
-    if (Option.isNone(requestId)) return
-    yield* sharding.reset(requestId.value)
-  }, Effect.orDie)
+  const resetActivityAttempt = Effect.fnUntraced(
+    function*(options: {
+      readonly workflow: Workflow.Any
+      readonly executionId: string
+      readonly activity: Activity.Any
+      readonly attempt: number
+    }) {
+      const entityId = EntityId.make(options.executionId)
+      const address = new EntityAddress({
+        entityType: EntityType.make(`Workflow/${options.workflow.name}`),
+        entityId,
+        shardId: sharding.getShardId(entityId)
+      })
+      const requestId = yield* storage.requestIdForPrimaryKey({
+        address,
+        tag: "activity",
+        id: activityPrimaryKey(options.activity.name, options.attempt)
+      })
+      if (Option.isNone(requestId)) return
+      yield* sharding.reset(requestId.value)
+    },
+    Effect.retry({
+      times: 3,
+      schedule: Schedule.exponential(250)
+    }),
+    Effect.orDie
+  )
 
   const requestIdFor = Effect.fnUntraced(function*(options: {
     readonly entityType: string
@@ -124,20 +131,28 @@ export const make = Effect.gen(function*() {
     return yield* replyForRequestId(requestId.value)
   })
 
-  const resume = Effect.fnUntraced(function*(workflowName: string, executionId: string) {
-    const maybeReply = yield* requestReply({
-      entityType: `Workflow/${workflowName}`,
-      executionId,
-      tag: "run",
-      id: ""
-    })
-    const maybeSuspended = Option.filter(
-      maybeReply,
-      (reply) => reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
-    )
-    if (Option.isNone(maybeSuspended)) return
-    yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId))
-  }, Effect.orDie)
+  const resume = Effect.fnUntraced(
+    function*(workflowName: string, executionId: string) {
+      const maybeReply = yield* requestReply({
+        entityType: `Workflow/${workflowName}`,
+        executionId,
+        tag: "run",
+        id: ""
+      })
+      const maybeSuspended = Option.filter(
+        maybeReply,
+        (reply) => reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
+      )
+      if (Option.isNone(maybeSuspended)) return
+      yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId))
+    },
+    Effect.retry({
+      while: (e) => e._tag === "PersistenceError",
+      times: 3,
+      schedule: Schedule.exponential(250)
+    }),
+    Effect.orDie
+  )
 
   return WorkflowEngine.of({
     register: (workflow, execute) =>
@@ -297,16 +312,24 @@ export const make = Effect.gen(function*() {
       }
     }, Effect.scoped),
 
-    deferredResult: Effect.fnUntraced(function*(deferred) {
-      const instance = yield* WorkflowInstance
-      const reply = yield* requestReply({
-        entityType: DeferredEntity.type,
-        executionId: instance.executionId,
-        tag: "set",
-        id: deferred.name
-      })
-      return Option.map(reply, (reply) => reply.exit)
-    }, Effect.orDie),
+    deferredResult: Effect.fnUntraced(
+      function*(deferred) {
+        const instance = yield* WorkflowInstance
+        const reply = yield* requestReply({
+          entityType: DeferredEntity.type,
+          executionId: instance.executionId,
+          tag: "set",
+          id: deferred.name
+        })
+        return Option.map(reply, (reply) => reply.exit)
+      },
+      Effect.retry({
+        while: (e) => e._tag === "PersistenceError",
+        times: 3,
+        schedule: Schedule.exponential(250)
+      }),
+      Effect.orDie
+    ),
 
     deferredDone({ deferred, executionId, exit, workflowName }) {
       const client = deferredClient(executionId)

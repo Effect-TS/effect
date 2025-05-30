@@ -99,7 +99,7 @@ const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.Al
     instance.suspended = true
     return yield* Effect.interrupt
   }
-  const exit = yield* Schema.decodeUnknown(self.exitSchema)(oexit.value)
+  const exit = yield* Effect.orDie(Schema.decodeUnknown(self.exitSchema)(oexit.value))
   return yield* exit
 })
 
@@ -238,7 +238,7 @@ export const done: {
       deferred: self,
       exit: exit as any
     })
-  })
+  }, Effect.orDie)
 )
 
 /**
