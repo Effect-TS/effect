@@ -54,14 +54,11 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(
         // You can access the current attempt number of the activity.
         const attempt = yield* Activity.CurrentAttempt
 
-        yield* Effect.annotateLogs(
-          Effect.log(
-            `Sending email for ${payload.id} with executionId ${executionId}`
-          ),
-          {
-            attempt
-          }
-        )
+        yield* Effect.annotateLogs(Effect.log(`Sending email`), {
+          id: payload.id,
+          executionId,
+          attempt
+        })
 
         if (attempt !== 5) {
           return yield* new SendEmailError({
@@ -87,7 +84,7 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(
     const EmailTrigger = DurableDeferred.make("EmailTrigger")
 
     // You can use the `DurableDeferred.token` api to acquire the token that can
-    // later be used with `DurableDeferred.done/succeed/fail`
+    // later be used with `DurableDeferred.done / succeed / fail`
     const token = yield* DurableDeferred.token(EmailTrigger)
 
     // You then use the token to send a result to the deferred.
