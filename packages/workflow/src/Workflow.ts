@@ -46,14 +46,14 @@ export interface Workflow<
   /**
    * Execute the workflow with the given payload.
    */
-  readonly execute: (
+  readonly execute: <const Discard extends boolean = false>(
     payload: [keyof Payload["fields"]] extends [never] ? void : Payload["Type"],
     options?: {
-      readonly discard?: boolean | undefined
+      readonly discard?: Discard
     }
   ) => Effect.Effect<
-    Success["Type"],
-    Error["Type"],
+    Discard extends true ? void : Success["Type"],
+    Discard extends true ? never : Error["Type"],
     WorkflowEngine | Registration<Name> | Payload["Context"] | Success["Context"] | Error["Context"]
   >
 
@@ -163,7 +163,7 @@ export const make = <
   }
 ): Workflow<Name, Payload extends Schema.Struct.Fields ? Schema.Struct<Payload> : Payload, Success, Error> => {
   const suspendedRetryInterval = options.suspendedRetryInterval ?? Duration.millis(500)
-  const makeExecutionId = (payload: any) => makeHashDigest(options.idempotencyKey(payload))
+  const makeExecutionId = (payload: any) => makeHashDigest(`${options.name}-${options.idempotencyKey(payload)}`)
   const self: Workflow<Name, any, Success, Error> = {
     [TypeId]: TypeId,
     name: options.name,
@@ -175,11 +175,20 @@ export const make = <
       const engine = yield* EngineTag
       const executionId = yield* makeExecutionId(payload)
       if (opts?.discard) {
-        yield* engine.execute(self as any, executionId, payload as any)
-        return
+        return yield* engine.execute({
+          workflow: self as any,
+          executionId,
+          payload: payload as any,
+          discard: true
+        })
       }
       const loop: Effect.Effect<any, any> = Effect.flatMap(
-        engine.execute(self as any, executionId, payload as any),
+        engine.execute({
+          workflow: self as any,
+          executionId,
+          payload: payload as any,
+          discard: false
+        }),
         (result) => {
           if (result._tag === "Complete") {
             return result.exit

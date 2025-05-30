@@ -31,11 +31,14 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
     /**
      * Execute a registered workflow.
      */
-    readonly execute: (
-      workflow: Workflow.Any,
-      executionId: string,
-      payload: object
-    ) => Effect.Effect<Workflow.Result<unknown, unknown>>
+    readonly execute: <const Discard extends boolean>(
+      options: {
+        readonly workflow: Workflow.Any
+        readonly executionId: string
+        readonly payload: object
+        readonly discard: Discard
+      }
+    ) => Effect.Effect<Discard extends true ? void : Workflow.Result<unknown, unknown>>
 
     /**
      * Interrupt a registered workflow.

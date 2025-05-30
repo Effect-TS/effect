@@ -195,10 +195,13 @@ export const make = Effect.gen(function*() {
         ) as Effect.Effect<void>
       }),
 
-    execute: Effect.fnUntraced(function*(workflow, executionId, payload) {
+    execute: Effect.fnUntraced(function*({ discard, executionId, payload, workflow }) {
       const client = (yield* RcMap.get(clients, workflow.name))(executionId)
+      if (discard) {
+        return (yield* Effect.orDie(client.run(payload, { discard }))) as any
+      }
       return yield* client.run(payload).pipe(
-        Effect.catchAll((cause) => Effect.succeed(new Workflow.Complete<any, any>({ exit: Exit.die(cause) })))
+        Effect.catchAll((err) => Effect.succeed(new Workflow.Complete<any, any>({ exit: Exit.die(err) })))
       )
     }, Effect.scoped),
 
