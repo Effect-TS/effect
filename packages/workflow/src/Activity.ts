@@ -4,6 +4,7 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
+import type * as Exit from "effect/Exit"
 import { dual } from "effect/Function"
 import * as Schema from "effect/Schema"
 import { makeHashDigest } from "./internal/crypto.js"
@@ -40,7 +41,17 @@ export interface Activity<
   readonly name: string
   readonly successSchema: Success
   readonly errorSchema: Error
+  readonly exitSchema: Schema.Schema<
+    Exit.Exit<Success["Type"], Error["Type"]>,
+    Exit.Exit<Success["Encoded"], Error["Encoded"]>,
+    Success["Context"] | Error["Context"]
+  >
   readonly execute: Effect.Effect<Success["Type"], Error["Type"], R | WorkflowEngine | WorkflowInstance>
+  readonly executeEncoded: Effect.Effect<
+    Success["Encoded"],
+    Error["Encoded"],
+    Success["Context"] | Error["Context"] | R | WorkflowEngine | WorkflowInstance
+  >
 }
 
 /**
@@ -53,6 +64,7 @@ export interface Any {
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
   readonly execute: Effect.Effect<any, any, any>
+  readonly executeEncoded: Effect.Effect<any, any, any>
 }
 
 /**
@@ -69,15 +81,26 @@ export const make = <
   readonly error?: Error
   readonly execute: Effect.Effect<Success["Type"], Error["Type"], R>
 }): Activity<Success, Error, Exclude<R, WorkflowInstance | WorkflowEngine>> => {
+  const successSchema = options.success ?? Schema.Void as any as Success
+  const errorSchema = options.error ?? Schema.Never as any as Error
   // eslint-disable-next-line prefer-const
   let execute!: Effect.Effect<Success["Type"], Error["Type"], any>
   const self: Activity<Success, Error, Exclude<R, WorkflowInstance | WorkflowEngine>> = {
     ...Effectable.CommitPrototype,
     [TypeId]: TypeId,
     name: options.name,
-    successSchema: options.success ?? Schema.Void as any,
-    errorSchema: options.error ?? Schema.Never as any,
+    successSchema,
+    errorSchema,
+    exitSchema: Schema.ExitFromSelf({
+      success: successSchema,
+      failure: errorSchema,
+      defect: Schema.Defect
+    }),
     execute: options.execute,
+    executeEncoded: Effect.matchEffect(options.execute, {
+      onFailure: (error) => Effect.flatMap(Effect.orDie(Schema.encode(self.errorSchema as any)(error)), Effect.fail),
+      onSuccess: (value) => Effect.orDie(Schema.encode(self.successSchema)(value))
+    }),
     commit() {
       return execute
     }
@@ -150,5 +173,8 @@ const makeExecute = Effect.fnUntraced(function*<
     instance.suspended = true
     return yield* Effect.interrupt
   }
-  return yield* result.exit
+  const exit = yield* Effect.orDie(
+    Schema.decode(activity.exitSchema)(result.exit)
+  )
+  return yield* exit
 })

@@ -7,6 +7,7 @@ import * as DurableClock from "@effect/workflow/DurableClock"
 import * as Workflow from "@effect/workflow/Workflow"
 import { WorkflowEngine, WorkflowInstance } from "@effect/workflow/WorkflowEngine"
 import * as Arr from "effect/Array"
+import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -50,7 +51,10 @@ export const make = Effect.gen(function*() {
       >
     >
   >()
-  const activities = new Map<string, Activity.Any>()
+  const activities = new Map<string, {
+    readonly activity: Activity.Any
+    readonly context: Context.Context<any>
+  }>()
   const activityLatches = new Map<string, Effect.Latch>()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
@@ -182,24 +186,26 @@ export const make = Effect.gen(function*() {
                 ) as any,
               activity: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 const activityId = `${executionId}/${request.payload.name}`
-                let activity = activities.get(activityId)
-                while (!activity) {
+                let entry = activities.get(activityId)
+                while (!entry) {
                   const latch = Effect.unsafeMakeLatch()
                   activityLatches.set(activityId, latch)
                   yield* latch.await
-                  activity = activities.get(activityId)
+                  entry = activities.get(activityId)
                 }
-                return yield* activity.execute.pipe(
-                  Effect.provideService(Activity.CurrentAttempt, request.payload.attempt),
+                const contextMap = new Map(entry.context.unsafeMap)
+                contextMap.set(Activity.CurrentAttempt.key, request.payload.attempt)
+                contextMap.set(
+                  WorkflowInstance.key,
+                  WorkflowInstance.of({
+                    workflow,
+                    executionId,
+                    suspended: false
+                  })
+                )
+                return yield* entry.activity.executeEncoded.pipe(
                   Workflow.intoResult,
-                  Effect.provideService(
-                    WorkflowInstance,
-                    WorkflowInstance.of({
-                      workflow,
-                      executionId,
-                      suspended: false
-                    })
-                  ),
+                  Effect.provide(Context.unsafeMake(contextMap)),
                   Effect.ensuring(Effect.sync(() => {
                     activities.delete(activityId)
                   }))
@@ -284,9 +290,10 @@ export const make = Effect.gen(function*() {
     ),
 
     activityExecute: Effect.fnUntraced(function*({ activity, attempt }) {
-      const instance = yield* WorkflowInstance
+      const context = yield* Effect.context<WorkflowInstance>()
+      const instance = Context.get(context, WorkflowInstance)
       const activityId = `${instance.executionId}/${activity.name}`
-      activities.set(activityId, activity)
+      activities.set(activityId, { activity, context })
       const latch = activityLatches.get(activityId)
       if (latch) {
         yield* latch.release

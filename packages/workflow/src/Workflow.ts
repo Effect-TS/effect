@@ -263,6 +263,12 @@ export type Result<A, E> = Complete<A, E> | Suspended
  * @since 1.0.0
  * @category Result
  */
+export type ResultEncoded<A, E> = CompleteEncoded<A, E> | typeof Suspended.Encoded
+
+/**
+ * @since 1.0.0
+ * @category Result
+ */
 export class Complete<A, E> extends Data.TaggedClass("Complete")<{
   readonly exit: Exit.Exit<A, E>
 }> {
@@ -300,9 +306,9 @@ export class Complete<A, E> extends Data.TaggedClass("Complete")<{
   static Schema<Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(options: {
     readonly success: Success
     readonly error: Error
-  }): Schema.transform<
-    Schema.Struct<{ _tag: Schema.tag<"Complete">; exit: Schema.Exit<Success, Error, typeof Schema.Defect> }>,
-    Schema.Schema<Complete<Success["Type"], Error["Type"]>, Complete<Success["Type"], Error["Type"]>>
+  }): Schema.Schema<
+    Complete<Success["Type"], Error["Type"]>,
+    CompleteEncoded<Success["Encoded"], Error["Encoded"]>
   > {
     return Schema.transform(
       this.SchemaEncoded(options),
@@ -315,8 +321,17 @@ export class Complete<A, E> extends Data.TaggedClass("Complete")<{
           return toI
         }
       }
-    )
+    ) as any
   }
+}
+
+/**
+ * @since 1.0.0
+ * @category Result
+ */
+export interface CompleteEncoded<A, E> {
+  readonly _tag: "Complete"
+  readonly exit: Schema.ExitEncoded<A, E, unknown>
 }
 
 /**
@@ -339,14 +354,10 @@ export const Result = <Success extends Schema.Schema.Any, Error extends Schema.S
     readonly success: Success
     readonly error: Error
   }
-): Schema.Union<
-  [
-    Schema.transform<
-      Schema.Struct<{ _tag: Schema.tag<"Complete">; exit: Schema.Exit<Success, Error, typeof Schema.Defect> }>,
-      Schema.Schema<Complete<Success["Type"], Error["Type"]>, Complete<Success["Type"], Error["Type"]>>
-    >,
-    typeof Suspended
-  ]
+): Schema.Schema<
+  Result<Success["Type"], Error["Type"]>,
+  ResultEncoded<Success["Encoded"], Error["Encoded"]>,
+  Success["Context"] | Error["Context"]
 > => Schema.Union(Complete.Schema(options), Suspended)
 
 /**
