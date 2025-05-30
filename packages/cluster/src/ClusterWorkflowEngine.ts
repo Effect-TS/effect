@@ -218,12 +218,7 @@ export const make = Effect.gen(function*() {
 
     execute: Effect.fnUntraced(function*({ discard, executionId, payload, workflow }) {
       const client = (yield* RcMap.get(clients, workflow.name))(executionId)
-      if (discard) {
-        return (yield* Effect.orDie(client.run(payload, { discard }))) as any
-      }
-      return yield* client.run(payload).pipe(
-        Effect.catchAll((err) => Effect.succeed(new Workflow.Complete<any, any>({ exit: Exit.die(err) })))
-      )
+      return yield* Effect.orDie(client.run(payload, { discard }))
     }, Effect.scoped),
 
     interrupt: Effect.fnUntraced(
@@ -302,7 +297,7 @@ export const make = Effect.gen(function*() {
       const client = (yield* RcMap.get(clients, instance.workflow.name))(instance.executionId)
       while (true) {
         const result = yield* client.activity({ name: activity.name, attempt }).pipe(
-          Effect.catchAll((cause) => Effect.succeed(new Workflow.Complete<any, any>({ exit: Exit.die(cause) })))
+          Effect.orDie
         )
         // If the activity has suspended and did not execute, we need to resume
         // it by resetting the attempt and re-executing.
