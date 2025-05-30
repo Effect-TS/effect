@@ -11,6 +11,7 @@ import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
+import type * as Workflow from "./Workflow.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
 /**
@@ -185,7 +186,7 @@ export class TokenParsed extends Schema.Class<TokenParsed>("@effect/workflow/Dur
 
 /**
  * @since 1.0.0
- * @category Combinators
+ * @category Token
  */
 export const token: <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
   self: DurableDeferred<Success, Error>
@@ -194,9 +195,37 @@ export const token: <Success extends Schema.Schema.Any, Error extends Schema.Sch
   Error extends Schema.Schema.All
 >(self: DurableDeferred<Success, Error>) {
   const instance = yield* InstanceTag
-  const id = `${instance.workflow.name}-${instance.executionId}-${self.name}`
-  return Token.make(Encoding.encodeBase64Url(id))
+  return tokenFromExecutionId(self, instance)
 })
+
+/**
+ * @since 1.0.0
+ * @category Token
+ */
+export const tokenFromExecutionId: {
+  (options: {
+    readonly workflow: Workflow.Any
+    readonly executionId: string
+  }): <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
+    self: DurableDeferred<Success, Error>
+  ) => Token
+  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
+    self: DurableDeferred<Success, Error>,
+    options: { readonly workflow: Workflow.Any; readonly executionId: string }
+  ): Token
+} = dual(
+  2,
+  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
+    self: DurableDeferred<Success, Error>,
+    options: {
+      readonly workflow: Workflow.Any
+      readonly executionId: string
+    }
+  ): Token => {
+    const id = `${options.workflow.name}-${options.executionId}-${self.name}`
+    return Token.make(Encoding.encodeBase64Url(id))
+  }
+)
 
 /**
  * @since 1.0.0

@@ -82,7 +82,7 @@ export interface Workflow<
   >
 
   /**
-   * Generate a unique execution ID based on the payload.
+   * For the given payload, compute the deterministic execution ID.
    */
   readonly executionId: (payload: Payload["Type"]) => Effect.Effect<string>
 }
@@ -176,17 +176,17 @@ export const make = <
       const executionId = yield* makeExecutionId(payload)
       if (opts?.discard) {
         return yield* engine.execute({
-          workflow: self as any,
+          workflow: self,
           executionId,
-          payload: payload as any,
+          payload,
           discard: true
         })
       }
       const loop: Effect.Effect<any, any> = Effect.flatMap(
         engine.execute({
-          workflow: self as any,
+          workflow: self,
           executionId,
-          payload: payload as any,
+          payload,
           discard: false
         }),
         (result) => {
@@ -200,14 +200,14 @@ export const make = <
     }),
     interrupt: Effect.fnUntraced(function*(executionId: string) {
       const engine = yield* EngineTag
-      yield* engine.interrupt(self as any, executionId)
+      yield* engine.interrupt(self, executionId)
     }),
     toLayer: (execute) =>
       Layer.effectContext(Effect.gen(function*() {
-        const context = yield* Effect.context<never>()
-        const engine = Context.unsafeGet(context, EngineTag)
-        yield* engine.register(self as any, (payload, executionId) =>
-          execute(payload as any, executionId).pipe(
+        const context = yield* Effect.context<WorkflowEngine>()
+        const engine = Context.get(context, EngineTag)
+        yield* engine.register(self, (payload, executionId) =>
+          execute(payload, executionId).pipe(
             Effect.provide(context)
           ) as any)
         return EngineTag.context(engine)
