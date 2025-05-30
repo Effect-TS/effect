@@ -657,8 +657,9 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
     }
 
     const encoded: Encoded = {
-      saveEnvelope: ({ envelope, primaryKey }) =>
+      saveEnvelope: ({ envelope: envelope_, primaryKey }) =>
         Effect.sync(() => {
+          const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Envelope.Encoded
           const existing = primaryKey
             ? requestsByPrimaryKey.get(primaryKey)
             : envelope._tag === "Request" && requests.get(envelope.requestId)
@@ -687,8 +688,9 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
           journal.push(envelope)
           return SaveResultEncoded.Success()
         }),
-      saveReply: (reply) =>
+      saveReply: (reply_) =>
         Effect.sync(() => {
+          const reply = JSON.parse(JSON.stringify(reply_)) as Reply.ReplyEncoded<any>
           const entry = requests.get(reply.requestId)
           if (!entry || replyIds.has(reply.id)) return
           if (reply._tag === "WithExit") {
