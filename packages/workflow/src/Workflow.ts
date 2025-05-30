@@ -43,7 +43,8 @@ export interface Workflow<
   readonly successSchema: Success
   readonly errorSchema: Error
   readonly execute: (
-    payload: [keyof Payload] extends [never] ? void : Schema.Simplify<Schema.Struct.Constructor<Payload["fields"]>>
+    payload: [keyof Payload["fields"]] extends [never] ? void
+      : Schema.Simplify<Schema.Struct.Constructor<Payload["fields"]>>
   ) => Effect.Effect<
     Success["Type"],
     Error["Type"],
