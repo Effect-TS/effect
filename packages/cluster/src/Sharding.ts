@@ -933,6 +933,7 @@ const make = Effect.gen(function*() {
     never
   > = yield* ResourceMap.make(Effect.fnUntraced(function*(entity: Entity<any>) {
     const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
+      spanPrefix: `${entity.type}.client`,
       supportsAck: true,
       generateRequestId: () => RequestId(snowflakeGen.unsafeNext()),
       onFromClient(options): Effect.Effect<

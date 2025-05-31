@@ -3,13 +3,13 @@
  */
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
-import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as PrimaryKey from "effect/PrimaryKey"
+import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
 import { makeHashDigest } from "./internal/crypto.js"
@@ -163,10 +163,10 @@ export const make = <
     ) => string
     readonly success?: Success
     readonly error?: Error
-    readonly suspendedRetryInterval?: Duration.DurationInput | undefined
+    readonly suspendedRetrySchedule?: Schedule.Schedule<any, unknown> | undefined
   }
 ): Workflow<Name, Payload extends Schema.Struct.Fields ? Schema.Struct<Payload> : Payload, Success, Error> => {
-  const suspendedRetryInterval = options.suspendedRetryInterval ?? Duration.millis(500)
+  const suspendedRetrySchedule = options.suspendedRetrySchedule ?? defaultRetrySchedule
   const makeExecutionId = (payload: any) => makeHashDigest(`${options.name}-${options.idempotencyKey(payload)}`)
   const self: Workflow<Name, any, Success, Error> = {
     [TypeId]: TypeId,
@@ -174,38 +174,51 @@ export const make = <
     payloadSchema: Schema.isSchema(options.payload) ? options.payload : Schema.Struct(options.payload as any),
     successSchema: options.success ?? Schema.Void as any,
     errorSchema: options.error ?? Schema.Never as any,
-    execute: Effect.fnUntraced(function*(fields: any, opts) {
-      const payload = self.payloadSchema.make(fields)
-      const engine = yield* EngineTag
-      const executionId = yield* makeExecutionId(payload)
-      if (opts?.discard) {
-        return yield* engine.execute({
-          workflow: self,
-          executionId,
-          payload,
-          discard: true
-        })
-      }
-      const loop: Effect.Effect<any, any> = Effect.flatMap(
-        engine.execute({
-          workflow: self,
-          executionId,
-          payload,
-          discard: false
-        }),
-        (result) => {
-          if (result._tag === "Complete") {
-            return result.exit
-          }
-          return Effect.zipRight(Effect.sleep(suspendedRetryInterval), loop)
+    execute: Effect.fnUntraced(
+      function*(fields: any, opts) {
+        const payload = self.payloadSchema.make(fields)
+        const engine = yield* EngineTag
+        const executionId = yield* makeExecutionId(payload)
+        yield* Effect.annotateCurrentSpan({ executionId })
+        if (opts?.discard) {
+          return yield* engine.execute({
+            workflow: self,
+            executionId,
+            payload,
+            discard: true
+          })
         }
-      )
-      return yield* loop
-    }),
-    interrupt: Effect.fnUntraced(function*(executionId: string) {
-      const engine = yield* EngineTag
-      yield* engine.interrupt(self, executionId)
-    }),
+        let sleep: Effect.Effect<any> | undefined
+        while (true) {
+          const result = yield* engine.execute({
+            workflow: self,
+            executionId,
+            payload,
+            discard: false
+          })
+          if (result._tag === "Complete") {
+            return yield* result.exit as Exit.Exit<Success["Type"], Error["Type"]>
+          }
+          // @effect-diagnostics effect/floatingEffect:off
+          sleep ??= (yield* Schedule.driver(suspendedRetrySchedule)).next(void 0).pipe(
+            Effect.catchAll(() => Effect.die("Workflow execution suspended"))
+          )
+          yield* sleep
+        }
+      },
+      Effect.withSpan(`${options.name}.execute`, { captureStackTrace: false })
+    ),
+    interrupt: Effect.fnUntraced(
+      function*(executionId: string) {
+        const engine = yield* EngineTag
+        yield* engine.interrupt(self, executionId)
+      },
+      (effect, executionId) =>
+        Effect.withSpan(effect, `${options.name}.interrupt`, {
+          captureStackTrace: false,
+          attributes: { executionId }
+        })
+    ),
     toLayer: (execute) =>
       Layer.effectContext(Effect.gen(function*() {
         const context = yield* Effect.context<WorkflowEngine>()
@@ -222,12 +235,16 @@ export const make = <
   return self
 }
 
+const defaultRetrySchedule = Schedule.exponential(200, 1.5).pipe(
+  Schedule.union(Schedule.spaced(30000))
+)
+
 /**
  * @since 1.0.0
  * @category Constructors
  */
 export const fromTaggedRequest = <S extends AnyTaggedRequestSchema>(schema: S, options?: {
-  readonly suspendedRetryInterval?: Duration.DurationInput | undefined
+  readonly suspendedRetrySchedule?: Schedule.Schedule<any, unknown> | undefined
 }): Workflow<S["_tag"], S, S["success"], S["failure"]> =>
   make({
     name: schema._tag,
@@ -235,7 +252,7 @@ export const fromTaggedRequest = <S extends AnyTaggedRequestSchema>(schema: S, o
     success: schema.success,
     error: schema.failure,
     idempotencyKey: PrimaryKey.value,
-    suspendedRetryInterval: options?.suspendedRetryInterval
+    suspendedRetrySchedule: options?.suspendedRetrySchedule
   })
 
 /**
