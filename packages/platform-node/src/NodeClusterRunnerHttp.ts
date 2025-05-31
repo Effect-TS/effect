@@ -45,7 +45,7 @@ export const layer = <
     Storage extends "sql" ? SqlClient : never
   > :
   Layer.Layer<
-    Sharding | Runners.Runners,
+    Sharding | Runners.Runners | MessageStorage.MessageStorage,
     ServeError | ConfigError | (Storage extends "sql" ? SqlError : never),
     Storage extends "sql" ? SqlClient : never
   > =>
@@ -61,10 +61,15 @@ export const layer = <
     : Layer.provide(HttpRunner.layerWebsocket, [layerHttpServer, NodeSocket.layerWebSocketConstructor])
 
   return layer.pipe(
+    Layer.provideMerge(
+      options?.storage === "sql" ?
+        SqlMessageStorage.layer
+        : MessageStorage.layerNoop
+    ),
     Layer.provide(
       options?.storage === "sql"
-        ? options.clientOnly ? [SqlMessageStorage.layer] : [SqlMessageStorage.layer, SqlShardStorage.layer]
-        : [MessageStorage.layerNoop, ShardStorage.layerNoop]
+        ? options.clientOnly ? Layer.empty : SqlShardStorage.layer
+        : ShardStorage.layerNoop
     ),
     Layer.provide(ShardingConfig.layerFromEnv(options?.shardingConfig)),
     Layer.provide(

@@ -8,6 +8,7 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import type * as Option from "effect/Option"
@@ -63,6 +64,23 @@ export class ReplyWithContext<R extends Rpc.Any> extends Data.TaggedClass("Reply
         requestId: options.requestId,
         id: options.id,
         exit: Exit.die(Schema.encodeSync(Schema.Defect)(options.defect))
+      }),
+      context: Context.empty() as any,
+      rpc: neverRpc
+    })
+  }
+  /**
+   * @since 1.0.0
+   */
+  static interrupt(options: {
+    readonly id: Snowflake
+    readonly requestId: Snowflake
+  }): ReplyWithContext<any> {
+    return new ReplyWithContext({
+      reply: new WithExit({
+        requestId: options.requestId,
+        id: options.id,
+        exit: Exit.interrupt(FiberId.none)
       }),
       context: Context.empty() as any,
       rpc: neverRpc

@@ -312,7 +312,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
     notify(options_) {
       const { discard, message } = options_
       return notifyWith(message, (message, duplicate) => {
-        if (message._tag === "OutgoingEnvelope") {
+        if (discard || message._tag === "OutgoingEnvelope") {
           return options.notify(options_)
         } else if (!duplicate && options_.address._tag === "Some") {
           return Effect.catchAll(
@@ -328,7 +328,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
             }
           )
         }
-        return discard ? options.notify(options_) : options.notify(options_).pipe(
+        return options.notify(options_).pipe(
           Effect.andThen(replyFromStorage(message))
         )
       })

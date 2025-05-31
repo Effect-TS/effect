@@ -9,16 +9,6 @@ export class User extends Schema.Class<User>("User")({
   name: Schema.String
 }) {}
 
-export class RequestWithKey extends Schema.TaggedRequest<RequestWithKey>()("RequestWithKey", {
-  success: Schema.Void,
-  failure: Schema.Never,
-  payload: { key: Schema.String }
-}) {
-  [PrimaryKey.symbol]() {
-    return this.key
-  }
-}
-
 export class StreamWithKey extends Schema.TaggedRequest<StreamWithKey>()("StreamWithKey", {
   success: RpcSchema.Stream({
     success: Schema.Number,
@@ -44,7 +34,10 @@ export const TestEntity = Entity.make("TestEntity", [
   Rpc.make("Never"),
   Rpc.make("NeverFork"),
   Rpc.make("NeverVolatile").annotate(ClusterSchema.Persisted, false),
-  Rpc.fromTaggedRequest(RequestWithKey),
+  Rpc.make("RequestWithKey", {
+    payload: { key: Schema.String },
+    primaryKey: ({ key }) => key
+  }),
   Rpc.fromTaggedRequest(StreamWithKey),
   Rpc.make("GetAllUsers", {
     success: User,

@@ -145,7 +145,7 @@ export const makeGenerator: Effect.Effect<Snowflake.Generator> = Effect.gen(func
   const clock = yield* Effect.clock
 
   let sequence = 0
-  let sequenceAt = clock.unsafeCurrentTimeMillis()
+  let sequenceAt = Math.floor(clock.unsafeCurrentTimeMillis())
 
   return identity<Snowflake.Generator>({
     setMachineId: (newMachineId) =>
@@ -153,7 +153,7 @@ export const makeGenerator: Effect.Effect<Snowflake.Generator> = Effect.gen(func
         machineId = newMachineId
       }),
     unsafeNext() {
-      let now = clock.unsafeCurrentTimeMillis()
+      let now = Math.floor(clock.unsafeCurrentTimeMillis())
 
       // account for clock drift, only allow time to move forward
       if (now < sequenceAt) {

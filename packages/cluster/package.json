@@ -36,6 +36,7 @@
     "@effect/platform": "workspace:^",
     "@effect/rpc": "workspace:^",
     "@effect/sql": "workspace:^",
+    "@effect/workflow": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
@@ -46,6 +47,7 @@
     "@effect/sql-mysql2": "workspace:^",
     "@effect/sql-pg": "workspace:^",
     "@effect/sql-sqlite-node": "workspace:^",
+    "@effect/workflow": "workspace:^",
     "@testcontainers/mysql": "^10.25.0",
     "@testcontainers/postgresql": "^10.25.0",
     "effect": "workspace:^"

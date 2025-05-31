@@ -275,6 +275,9 @@ importers:
       '@effect/sql-sqlite-node':
         specifier: workspace:^
         version: link:../sql-sqlite-node
+      '@effect/workflow':
+        specifier: workspace:^
+        version: link:../workflow
       '@testcontainers/mysql':
         specifier: ^10.25.0
         version: 10.25.0
@@ -962,6 +965,13 @@ importers:
         version: 3.0.6(@edge-runtime/vm@5.0.0)(@types/node@22.15.21)(@vitest/browser@3.0.6)(happy-dom@17.4.7)(msw@2.7.1(@types/node@22.15.21)(typescript@5.8.3))(terser@5.39.2)(tsx@4.19.4)(yaml@2.8.0)
     publishDirectory: dist
 
+  packages/workflow:
+    devDependencies:
+      effect:
+        specifier: workspace:^
+        version: link:../effect
+    publishDirectory: dist
+
   scratchpad:
     dependencies:
       '@effect/ai':
@@ -1057,6 +1067,9 @@ importers:
       '@effect/vitest':
         specifier: workspace:*
         version: link:../packages/vitest
+      '@effect/workflow':
+        specifier: workspace:*
+        version: link:../packages/workflow
       effect:
         specifier: workspace:*
         version: link:../packages/effect

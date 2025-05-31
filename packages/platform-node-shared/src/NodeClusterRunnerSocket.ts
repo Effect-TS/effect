@@ -53,7 +53,7 @@ export const layer = <const ClientOnly extends boolean = false, const Storage ex
     Storage extends "sql" ? SqlClient : never
   > :
   Layer.Layer<
-    Sharding | Runners.Runners,
+    Sharding | Runners.Runners | MessageStorage.MessageStorage,
     SocketServer.SocketServerError | ConfigError | (Storage extends "sql" ? SqlError : never),
     Storage extends "sql" ? SqlClient : never
   > =>
@@ -65,10 +65,15 @@ export const layer = <const ClientOnly extends boolean = false, const Storage ex
     : Layer.provide(SocketRunner.layer, [layerSocketServer, layerClientProtocol])
 
   return layer.pipe(
+    Layer.provideMerge(
+      options?.storage === "sql"
+        ? SqlMessageStorage.layer
+        : MessageStorage.layerNoop
+    ),
     Layer.provide(
       options?.storage === "sql"
-        ? options.clientOnly ? [SqlMessageStorage.layer] : [SqlMessageStorage.layer, SqlShardStorage.layer]
-        : [MessageStorage.layerNoop, ShardStorage.layerNoop]
+        ? options.clientOnly ? Layer.empty : SqlShardStorage.layer
+        : ShardStorage.layerNoop
     ),
     Layer.provide(ShardingConfig.layerFromEnv(options?.shardingConfig)),
     Layer.provide(

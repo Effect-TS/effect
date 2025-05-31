@@ -35,7 +35,7 @@ import {
   EntityNotManagedByRunner,
   RunnerUnavailable
 } from "./ClusterError.js"
-import { Persisted } from "./ClusterSchema.js"
+import { Persisted, Uninterruptible } from "./ClusterSchema.js"
 import type { CurrentAddress, CurrentRunnerAddress, Entity, HandlersFrom } from "./Entity.js"
 import { EntityAddress } from "./EntityAddress.js"
 import { EntityId } from "./EntityId.js"
@@ -127,12 +127,28 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   >
 
   /**
+   * Sends an outgoing message
+   */
+  readonly sendOutgoing: (
+    message: Message.Outgoing<any>,
+    discard: boolean
+  ) => Effect.Effect<
+    void,
+    EntityNotManagedByRunner | MailboxFull | AlreadyProcessingMessage | PersistenceError
+  >
+
+  /**
    * Notify sharding that a message has been persisted to storage.
    */
   readonly notify: (message: Message.Incoming<any>) => Effect.Effect<
     void,
     EntityNotManagedByRunner | EntityNotAssignedToRunner | AlreadyProcessingMessage
   >
+
+  /**
+   * Reset the state of a message
+   */
+  readonly reset: (requestId: Snowflake.Snowflake) => Effect.Effect<boolean>
 
   /**
    * Retrieves the active entity count for the current runner.
@@ -247,7 +263,7 @@ const make = Effect.gen(function*() {
       Effect.forkIn(shardingScope)
     )
 
-    // refresh the shard locks every 10s
+    // refresh the shard locks every 4s
     yield* Effect.suspend(() =>
       shardStorage.refresh(selfAddress, [
         ...acquiredShards,
@@ -270,14 +286,14 @@ const make = Effect.gen(function*() {
       }),
       Effect.retry({
         times: 5,
-        schedule: Schedule.spaced(250)
+        schedule: Schedule.spaced(50)
       }),
       Effect.catchAllCause((cause) =>
         Effect.logError("Could not refresh shard locks", cause).pipe(
           Effect.andThen(clearSelfShards)
         )
       ),
-      Effect.delay("10 seconds"),
+      Effect.delay("4 seconds"),
       Effect.forever,
       Effect.interruptible,
       Effect.forkIn(shardingScope)
@@ -384,6 +400,11 @@ const make = Effect.gen(function*() {
 
   let storageAlreadyProcessed = (_message: Message.IncomingRequest<any>) => true
 
+  // keep track of the last sent request ids to avoid duplicates
+  // we only keep the last 30 sets to avoid memory leaks
+  const sentRequestIds = new Set<Snowflake.Snowflake>()
+  const sentRequestIdSets = new Set<Set<Snowflake.Snowflake>>()
+
   if (storageEnabled && Option.isSome(config.runnerAddress)) {
     const selfAddress = config.runnerAddress.value
 
@@ -391,10 +412,8 @@ const make = Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
       yield* Effect.addFinalizer(() => Effect.logDebug("Shutting down"))
 
-      // keep track of the last sent request ids to avoid duplicates
-      // we only keep the last 30 sets to avoid memory leaks
-      const sentRequestIds = new Set<Snowflake.Snowflake>()
-      const sentRequestIdSets = new Set<Set<Snowflake.Snowflake>>()
+      sentRequestIds.clear()
+      sentRequestIdSets.clear()
 
       storageAlreadyProcessed = (message: Message.IncomingRequest<any>) => {
         if (!sentRequestIds.has(message.envelope.requestId)) {
@@ -755,6 +774,17 @@ const make = Effect.gen(function*() {
     )
   }
 
+  const reset: Sharding["Type"]["reset"] = Effect.fnUntraced(
+    function*(requestId) {
+      yield* storage.clearReplies(requestId)
+      sentRequestIds.delete(requestId)
+    },
+    Effect.matchCause({
+      onSuccess: () => true,
+      onFailure: () => false
+    })
+  )
+
   // --- Shard Manager sync ---
 
   const shardManagerTimeoutFiber = yield* FiberHandle.make().pipe(
@@ -903,6 +933,7 @@ const make = Effect.gen(function*() {
     never
   > = yield* ResourceMap.make(Effect.fnUntraced(function*(entity: Entity<any>) {
     const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
+      spanPrefix: `${entity.type}.client`,
       supportsAck: true,
       generateRequestId: () => RequestId(snowflakeGen.unsafeNext()),
       onFromClient(options): Effect.Effect<
@@ -968,6 +999,9 @@ const make = Effect.gen(function*() {
             const entry = clientRequests.get(requestId)!
             if (!entry) return Effect.void
             clientRequests.delete(requestId)
+            if (Context.get(entry.rpc.annotations, Uninterruptible)) {
+              return Effect.void
+            }
             // for durable messages, we ignore interrupts on shutdown or as a
             // result of a shard being resassigned
             const isTransientInterrupt = MutableRef.get(isShutdown) ||
@@ -1148,8 +1182,10 @@ const make = Effect.gen(function*() {
     registerSingleton,
     makeClient,
     send: sendLocal,
+    sendOutgoing: (message, discard) => sendOutgoing(message, discard),
     notify: (message) => notifyLocal(message, false),
-    activeEntityCount
+    activeEntityCount,
+    reset
   })
 
   return sharding

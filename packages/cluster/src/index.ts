@@ -16,6 +16,11 @@ export * as ClusterSchema from "./ClusterSchema.js"
 /**
  * @since 1.0.0
  */
+export * as ClusterWorkflowEngine from "./ClusterWorkflowEngine.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as DeliverAt from "./DeliverAt.js"
 
 /**

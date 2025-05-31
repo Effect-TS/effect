@@ -663,6 +663,28 @@ export const make = Effect.fnUntraced(function*(options?: {
         PersistenceError.refail
       ),
 
+    clearReplies: Effect.fnUntraced(
+      function*(requestId) {
+        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)}`
+        yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL WHERE request_id = ${
+          String(requestId)
+        }`
+      },
+      sql.withTransaction,
+      PersistenceError.refail
+    ),
+
+    requestIdForPrimaryKey: (primaryKey) =>
+      sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`.pipe(
+        Effect.map((rows) =>
+          Option.fromNullable(rows[0]?.id).pipe(
+            Option.map(Snowflake.Snowflake)
+          )
+        ),
+        Effect.provideService(SqlClient.SafeIntegers, true),
+        PersistenceError.refail
+      ),
+
     repliesFor: (requestIds) =>
       // replies where:
       // - the request is in the list
@@ -682,22 +704,20 @@ export const make = Effect.fnUntraced(function*(options?: {
         ORDER BY rowid ASC
       `.unprepared.pipe(
         Effect.provideService(SqlClient.SafeIntegers, true),
-        Effect.map(Arr.map((row): Reply.ReplyEncoded<any> =>
-          Number(row.kind) === replyKind.WithExit ?
-            ({
-              _tag: "WithExit",
-              id: String(row.id),
-              requestId: String(row.request_id),
-              exit: JSON.parse(row.payload)
-            }) :
-            {
-              _tag: "Chunk",
-              id: String(row.id),
-              requestId: String(row.request_id),
-              values: JSON.parse(row.payload),
-              sequence: Number(row.sequence!)
-            }
-        )),
+        Effect.map(Arr.map(replyFromRow)),
+        PersistenceError.refail,
+        withTracerDisabled
+      ),
+
+    repliesForUnfiltered: (requestIds) =>
+      sql<ReplyRow>`
+        SELECT id, kind, request_id, payload, sequence
+        FROM ${repliesTableSql}
+        WHERE request_id IN (${sql.literal(requestIds.join(","))})
+        ORDER BY rowid ASC
+      `.unprepared.pipe(
+        Effect.provideService(SqlClient.SafeIntegers, true),
+        Effect.map(Arr.map(replyFromRow)),
         PersistenceError.refail,
         withTracerDisabled
       ),
@@ -761,6 +781,28 @@ export const make = Effect.fnUntraced(function*(options?: {
         withTracerDisabled
       ),
 
+    clearAddress: (address) =>
+      sql`
+        DELETE FROM ${repliesTableSql}
+        WHERE request_id IN (
+          SELECT id FROM ${messagesTableSql}
+          WHERE entity_type = ${address.entityType}
+          AND entity_id = ${address.entityId}
+        )
+      `.pipe(
+        Effect.andThen(
+          sql`
+            DELETE FROM ${messagesTableSql}
+            WHERE entity_type = ${address.entityType}
+            AND entity_id = ${address.entityId}
+          `
+        ),
+        sql.withTransaction,
+        Effect.asVoid,
+        PersistenceError.refail,
+        withTracerDisabled
+      ),
+
     resetShards: (shardIds) =>
       sql`
         UPDATE ${messagesTableSql}
@@ -813,6 +855,22 @@ const replyKind = {
   "WithExit": 0,
   "Chunk": null
 } as const satisfies Record<Reply.Reply<any>["_tag"], number | null>
+
+const replyFromRow = (row: ReplyRow): Reply.ReplyEncoded<any> =>
+  Number(row.kind) === replyKind.WithExit ?
+    {
+      _tag: "WithExit",
+      id: String(row.id),
+      requestId: String(row.request_id),
+      exit: JSON.parse(row.payload)
+    } :
+    {
+      _tag: "Chunk",
+      id: String(row.id),
+      requestId: String(row.request_id),
+      values: JSON.parse(row.payload),
+      sequence: Number(row.sequence!)
+    }
 
 type MessageRow = {
   readonly id: string | bigint

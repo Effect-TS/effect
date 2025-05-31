@@ -143,10 +143,10 @@ export const make = Effect.fnUntraced(function*(options?: {
   const sqlNow = sql.literal(sqlNowString)
 
   const lockExpiresAt = sql.onDialectOrElse({
-    pg: () => sql`${sqlNow} - INTERVAL '15 seconds'`,
-    mysql: () => sql`DATE_SUB(${sqlNow}, INTERVAL 15 SECOND)`,
-    mssql: () => sql`DATEADD(SECOND, -15, ${sqlNow})`,
-    orElse: () => sql`datetime(${sqlNow}, '-15 seconds')`
+    pg: () => sql`${sqlNow} - INTERVAL '5 seconds'`,
+    mysql: () => sql`DATE_SUB(${sqlNow}, INTERVAL 5 SECOND)`,
+    mssql: () => sql`DATEADD(SECOND, -5, ${sqlNow})`,
+    orElse: () => sql`datetime(${sqlNow}, '-5 seconds')`
   })
 
   const acquireLock = sql.onDialectOrElse({
@@ -170,7 +170,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         MERGE ${locksTableSql} WITH (HOLDLOCK) AS target
         USING (SELECT * FROM (VALUES ${sql.csv(values)})) AS source (shard_id, address, acquired_at)
         ON target.shard_id = source.shard_id
-        WHEN MATCHED AND (target.address = source.address OR DATEDIFF(SECOND, target.acquired_at, ${sqlNow}) > 15) THEN
+        WHEN MATCHED AND (target.address = source.address OR DATEDIFF(SECOND, target.acquired_at, ${sqlNow}) > 5) THEN
           UPDATE SET address = source.address, acquired_at = source.acquired_at
         WHEN NOT MATCHED THEN
           INSERT (shard_id, address, acquired_at)
@@ -187,7 +187,7 @@ export const make = Effect.fnUntraced(function*(options?: {
           SELECT 1 FROM ${locksTableSql}
           WHERE shard_id = source.shard_id
           AND address != ${address}
-          AND (strftime('%s', ${sqlNow}) - strftime('%s', acquired_at)) <= 15
+          AND (strftime('%s', ${sqlNow}) - strftime('%s', acquired_at)) <= 5
         )
         ON CONFLICT(shard_id) DO UPDATE
         SET address = ${address}, acquired_at = ${sqlNow}

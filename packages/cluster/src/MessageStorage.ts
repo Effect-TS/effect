@@ -53,6 +53,11 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
   ) => Effect.Effect<void, PersistenceError | MalformedMessage>
 
   /**
+   * Clear the `Reply`s for the given request id.
+   */
+  readonly clearReplies: (requestId: Snowflake.Snowflake) => Effect.Effect<void, PersistenceError>
+
+  /**
    * Retrieves the replies for the specified requests.
    *
    * - Un-acknowledged chunk replies
@@ -61,6 +66,24 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
   readonly repliesFor: <R extends Rpc.Any>(
     requests: Iterable<Message.OutgoingRequest<R>>
   ) => Effect.Effect<Array<Reply.Reply<R>>, PersistenceError | MalformedMessage>
+
+  /**
+   * Retrieves the encoded replies for the specified request ids.
+   */
+  readonly repliesForUnfiltered: <R extends Rpc.Any>(
+    requestIds: Iterable<Snowflake.Snowflake>
+  ) => Effect.Effect<Array<Reply.ReplyEncoded<R>>, PersistenceError | MalformedMessage>
+
+  /**
+   * Retrieves the request id for the specified primary key.
+   */
+  readonly requestIdForPrimaryKey: (
+    options: {
+      readonly address: EntityAddress
+      readonly tag: string
+      readonly id: string
+    }
+  ) => Effect.Effect<Option.Option<Snowflake.Snowflake>, PersistenceError>
 
   /**
    * For locally sent messages, register a handler to process the replies.
@@ -101,6 +124,13 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
    * Reset the mailbox state for the provided address.
    */
   readonly resetAddress: (
+    address: EntityAddress
+  ) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Clear all messages and replies for the provided address.
+   */
+  readonly clearAddress: (
     address: EntityAddress
   ) => Effect.Effect<void, PersistenceError>
 }>() {}
@@ -195,12 +225,32 @@ export type Encoded = {
   ) => Effect.Effect<void, PersistenceError>
 
   /**
+   * Remove the replies for the specified request.
+   */
+  readonly clearReplies: (requestId: Snowflake.Snowflake) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Retrieves the request id for the specified primary key.
+   */
+  readonly requestIdForPrimaryKey: (
+    primaryKey: string
+  ) => Effect.Effect<Option.Option<Snowflake.Snowflake>, PersistenceError>
+
+  /**
    * Retrieves the replies for the specified requests.
    *
    * - Un-acknowledged chunk replies
    * - WithExit replies
    */
   readonly repliesFor: (requestIds: Array<string>) => Effect.Effect<
+    Array<Reply.ReplyEncoded<any>>,
+    PersistenceError
+  >
+
+  /**
+   * Retrieves the replies for the specified request ids.
+   */
+  readonly repliesForUnfiltered: (requestIds: Array<string>) => Effect.Effect<
     Array<Reply.ReplyEncoded<any>>,
     PersistenceError
   >
@@ -244,6 +294,13 @@ export type Encoded = {
    * Reset the mailbox state for the provided address.
    */
   readonly resetAddress: (
+    address: EntityAddress
+  ) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Clear all messages and replies for the provided address.
+   */
+  readonly clearAddress: (
     address: EntityAddress
   ) => Effect.Effect<void, PersistenceError>
 
@@ -362,6 +419,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         Effect.asVoid
       ),
     saveReply: (reply) => Effect.flatMap(Reply.serialize(reply), encoded.saveReply),
+    clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
       const map = new Map<string, Message.OutgoingRequest<any>>()
@@ -374,6 +432,11 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       const encodedReplies = yield* encoded.repliesFor(requestIds)
       return yield* decodeReplies(map, encodedReplies)
     }),
+    repliesForUnfiltered: (ids) => encoded.repliesForUnfiltered(Array.from(ids, String)),
+    requestIdForPrimaryKey(options) {
+      const primaryKey = Envelope.primaryKeyByAddress(options)
+      return encoded.requestIdForPrimaryKey(primaryKey)
+    },
     unprocessedMessages: (shardIds) => {
       const shards = Array.from(shardIds)
       if (shards.length === 0) return Effect.succeed([])
@@ -390,7 +453,8 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         decodeMessages
       )
     },
-    resetAddress: (address) => encoded.resetAddress(address),
+    resetAddress: encoded.resetAddress,
+    clearAddress: encoded.clearAddress,
     resetShards: (shardIds) => encoded.resetShards(Array.from(shardIds))
   })
 
@@ -506,10 +570,14 @@ export const noop: MessageStorage["Type"] = globalValue(
       saveRequest: () => Effect.succeed(SaveResult.Success()),
       saveEnvelope: () => Effect.void,
       saveReply: () => Effect.void,
+      clearReplies: () => Effect.void,
       repliesFor: () => Effect.succeed([]),
+      repliesForUnfiltered: () => Effect.succeed([]),
+      requestIdForPrimaryKey: () => Effect.succeedNone,
       unprocessedMessages: () => Effect.succeed([]),
       unprocessedMessagesById: () => Effect.succeed([]),
       resetAddress: () => Effect.void,
+      clearAddress: () => Effect.void,
       resetShards: () => Effect.void
     }))
 )
@@ -567,9 +635,31 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
 
     const replyLatch = yield* Effect.makeLatch()
 
+    function repliesFor(requestIds: Array<string>) {
+      const replies = Arr.empty<Reply.ReplyEncoded<any>>()
+      for (const requestId of requestIds) {
+        const request = requests.get(requestId)
+        if (!request) continue
+        else if (Option.isNone(request.lastReceivedChunk)) {
+          // eslint-disable-next-line no-restricted-syntax
+          replies.push(...request.replies)
+          continue
+        }
+        const sequence = request.lastReceivedChunk.value.sequence
+        for (const reply of request.replies) {
+          if (reply._tag === "Chunk" && reply.sequence <= sequence) {
+            continue
+          }
+          replies.push(reply)
+        }
+      }
+      return replies
+    }
+
     const encoded: Encoded = {
-      saveEnvelope: ({ envelope, primaryKey }) =>
+      saveEnvelope: ({ envelope: envelope_, primaryKey }) =>
         Effect.sync(() => {
+          const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Envelope.Encoded
           const existing = primaryKey
             ? requestsByPrimaryKey.get(primaryKey)
             : envelope._tag === "Request" && requests.get(envelope.requestId)
@@ -598,8 +688,9 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
           journal.push(envelope)
           return SaveResultEncoded.Success()
         }),
-      saveReply: (reply) =>
+      saveReply: (reply_) =>
         Effect.sync(() => {
+          const reply = JSON.parse(JSON.stringify(reply_)) as Reply.ReplyEncoded<any>
           const entry = requests.get(reply.requestId)
           if (!entry || replyIds.has(reply.id)) return
           if (reply._tag === "WithExit") {
@@ -609,27 +700,22 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
           replyIds.add(reply.id)
           replyLatch.unsafeOpen()
         }),
-      repliesFor: (requestIds) =>
+      clearReplies: (id) =>
         Effect.sync(() => {
-          const replies = Arr.empty<Reply.ReplyEncoded<any>>()
-          for (const requestId of requestIds) {
-            const request = requests.get(requestId)
-            if (!request) continue
-            else if (Option.isNone(request.lastReceivedChunk)) {
-              // eslint-disable-next-line no-restricted-syntax
-              replies.push(...request.replies)
-              continue
-            }
-            const sequence = request.lastReceivedChunk.value.sequence
-            for (const reply of request.replies) {
-              if (reply._tag === "Chunk" && reply.sequence <= sequence) {
-                continue
-              }
-              replies.push(reply)
-            }
-          }
-          return replies
+          const entry = requests.get(String(id))
+          if (!entry) return
+          entry.replies = []
+          entry.lastReceivedChunk = Option.none()
+          unprocessed.add(entry.envelope)
         }),
+      requestIdForPrimaryKey: (primaryKey) =>
+        Effect.sync(() => {
+          const entry = requestsByPrimaryKey.get(primaryKey)
+          return Option.fromNullable(entry?.envelope.requestId).pipe(Option.map(Snowflake.Snowflake))
+        }),
+      repliesFor: (requestIds) => Effect.sync(() => repliesFor(requestIds)),
+      repliesForUnfiltered: (requestIds) =>
+        Effect.sync(() => requestIds.flatMap((id) => requests.get(String(id))?.replies ?? [])),
       unprocessedMessages: (shardIds) =>
         Effect.sync(() => {
           if (unprocessed.size === 0) return []
@@ -667,6 +753,20 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
           return unprocessedWith((envelope) => envelopeIds.has(envelope.requestId))
         }),
       resetAddress: () => Effect.void,
+      clearAddress: (address) =>
+        Effect.sync(() => {
+          for (let i = journal.length - 1; i >= 0; i--) {
+            const envelope = journal[i]
+            const sameAddress = address.entityType === envelope.address.entityType &&
+              address.entityId === envelope.address.entityId
+            if (!sameAddress || envelope._tag !== "Request") {
+              continue
+            }
+            unprocessed.delete(envelope)
+            requests.delete(envelope.requestId)
+            journal.splice(i, 1)
+          }
+        }),
       resetShards: () => Effect.void
     }
 

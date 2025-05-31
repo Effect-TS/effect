@@ -18,7 +18,7 @@ import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, MalformedMessage } from "../ClusterError.js"
 import * as ClusterMetrics from "../ClusterMetrics.js"
-import { Persisted } from "../ClusterSchema.js"
+import { Persisted, Uninterruptible } from "../ClusterSchema.js"
 import type { Entity, HandlersFrom } from "../Entity.js"
 import { CurrentAddress, CurrentRunnerAddress, Request } from "../Entity.js"
 import type { EntityAddress } from "../EntityAddress.js"
@@ -150,11 +150,13 @@ export const make = Effect.fnUntraced(function*<
 
                 // For durable messages, ignore interrupts during shutdown.
                 // They will be retried when the entity is restarted.
+                // Also, if the request is uninterruptible, we ignore the
+                // interrupt.
                 if (
                   storageEnabled &&
-                  isShuttingDown &&
                   Context.get(request.rpc.annotations, Persisted) &&
-                  Exit.isInterrupted(response.exit)
+                  Exit.isInterrupted(response.exit) &&
+                  (isShuttingDown || Context.get(request.rpc.annotations, Uninterruptible))
                 ) {
                   return Effect.void
                 }
@@ -371,7 +373,7 @@ export const make = Effect.fnUntraced(function*<
             case "IncomingEnvelope": {
               const entry = server.activeRequests.get(message.envelope.requestId)
               if (!entry) {
-                return Effect.fail(new EntityNotAssignedToRunner({ address: message.envelope.address }))
+                return Effect.void
               } else if (
                 message.envelope._tag === "AckChunk" &&
                 Option.isSome(entry.lastSentChunk) &&
