@@ -47,7 +47,8 @@ export interface Workflow<
    * Execute the workflow with the given payload.
    */
   readonly execute: <const Discard extends boolean = false>(
-    payload: [keyof Payload["fields"]] extends [never] ? void : Payload["Type"],
+    payload: [keyof Payload["fields"]] extends [never] ? void
+      : Schema.Simplify<Schema.Struct.Constructor<Payload["fields"]>>,
     options?: {
       readonly discard?: Discard
     }
@@ -84,7 +85,9 @@ export interface Workflow<
   /**
    * For the given payload, compute the deterministic execution ID.
    */
-  readonly executionId: (payload: Payload["Type"]) => Effect.Effect<string>
+  readonly executionId: (
+    payload: Schema.Simplify<Schema.Struct.Constructor<Payload["fields"]>>
+  ) => Effect.Effect<string>
 }
 
 /**
@@ -155,7 +158,7 @@ export const make = <
     readonly name: Name
     readonly payload: Payload
     readonly idempotencyKey: (
-      payload: (Payload extends Schema.Struct.Fields ? Schema.Struct<Payload> : Payload)["Type"]
+      payload: Payload extends Schema.Struct.Fields ? Schema.Struct.Type<Payload> : Payload["Type"]
     ) => string
     readonly success?: Success
     readonly error?: Error
@@ -212,7 +215,7 @@ export const make = <
           ) as any)
         return EngineTag.context(engine)
       })) as any,
-    executionId: makeExecutionId
+    executionId: (payload) => makeExecutionId(self.payloadSchema.make(payload))
   }
 
   return self

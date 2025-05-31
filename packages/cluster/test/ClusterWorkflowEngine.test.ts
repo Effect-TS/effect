@@ -154,6 +154,7 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
     name: "Sleep",
     success: Schema.DateTimeUtc,
     execute: Effect.gen(function*() {
+      // suspended inside Activity
       yield* DurableClock.sleep({
         name: "Some sleep",
         duration: "10 seconds"
@@ -165,6 +166,7 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
   assert(DateTime.isUtc(result))
 
   yield* DurableDeferred.token(EmailTrigger)
+  // suspended outside Activity
   yield* DurableDeferred.await(EmailTrigger)
 }))
 
