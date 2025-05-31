@@ -13915,21 +13915,20 @@ export namespace fn {
    * @category Models
    */
   export type Gen = {
-    <Self, Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>
-    ): (this: Self, ...args: Args) => Effect<
+    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
+      body: (...args: Args) => Generator<Eff, AEff, never>
+    ): (...args: Args) => Effect<
       AEff,
       [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
       [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
     >
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
       A extends Effect<any, any, any>
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -13938,16 +13937,15 @@ export namespace fn {
         >,
         ...args: NoInfer<Args>
       ) => A
-    ): (this: Self, ...args: Args) => Effect.AsEffect<A>
+    ): (...args: Args) => Effect.AsEffect<A>
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
       A,
       B extends Effect<any, any, any>
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -13957,9 +13955,8 @@ export namespace fn {
         ...args: NoInfer<Args>
       ) => A,
       b: (_: A, ...args: NoInfer<Args>) => B
-    ): (this: Self, ...args: Args) => Effect.AsEffect<B>
+    ): (...args: Args) => Effect.AsEffect<B>
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -13967,7 +13964,7 @@ export namespace fn {
       B,
       C extends Effect<any, any, any>
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -13978,9 +13975,8 @@ export namespace fn {
       ) => A,
       b: (_: A, ...args: NoInfer<Args>) => B,
       c: (_: B, ...args: NoInfer<Args>) => C
-    ): (this: Self, ...args: Args) => Effect.AsEffect<C>
+    ): (...args: Args) => Effect.AsEffect<C>
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -13989,7 +13985,7 @@ export namespace fn {
       C,
       D extends Effect<any, any, any>
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14001,9 +13997,8 @@ export namespace fn {
       b: (_: A, ...args: NoInfer<Args>) => B,
       c: (_: B, ...args: NoInfer<Args>) => C,
       d: (_: C, ...args: NoInfer<Args>) => D
-    ): (this: Self, ...args: Args) => Effect.AsEffect<D>
+    ): (...args: Args) => Effect.AsEffect<D>
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14013,7 +14008,7 @@ export namespace fn {
       D,
       E extends Effect<any, any, any>
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14026,9 +14021,8 @@ export namespace fn {
       c: (_: B, ...args: NoInfer<Args>) => C,
       d: (_: C, ...args: NoInfer<Args>) => D,
       e: (_: D, ...args: NoInfer<Args>) => E
-    ): (this: Self, ...args: Args) => Effect.AsEffect<E>
+    ): (...args: Args) => Effect.AsEffect<E>
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14039,7 +14033,7 @@ export namespace fn {
       E,
       F extends Effect<any, any, any>
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14053,9 +14047,8 @@ export namespace fn {
       d: (_: C, ...args: NoInfer<Args>) => D,
       e: (_: D, ...args: NoInfer<Args>) => E,
       f: (_: E, ...args: NoInfer<Args>) => F
-    ): (this: Self, ...args: Args) => Effect.AsEffect<F>
+    ): (...args: Args) => Effect.AsEffect<F>
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14067,7 +14060,7 @@ export namespace fn {
       F,
       G extends Effect<any, any, any>
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14082,9 +14075,8 @@ export namespace fn {
       e: (_: D, ...args: NoInfer<Args>) => E,
       f: (_: E, ...args: NoInfer<Args>) => F,
       g: (_: F, ...args: NoInfer<Args>) => G
-    ): (this: Self, ...args: Args) => Effect.AsEffect<G>
+    ): (...args: Args) => Effect.AsEffect<G>
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14097,7 +14089,7 @@ export namespace fn {
       G,
       H extends Effect<any, any, any>
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14113,9 +14105,8 @@ export namespace fn {
       f: (_: E, ...args: NoInfer<Args>) => F,
       g: (_: F, ...args: NoInfer<Args>) => G,
       h: (_: G, ...args: NoInfer<Args>) => H
-    ): (this: Self, ...args: Args) => Effect.AsEffect<H>
+    ): (...args: Args) => Effect.AsEffect<H>
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14129,7 +14120,7 @@ export namespace fn {
       H,
       I extends Effect<any, any, any>
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14146,7 +14137,7 @@ export namespace fn {
       g: (_: F, ...args: NoInfer<Args>) => G,
       h: (_: G, ...args: NoInfer<Args>) => H,
       i: (_: H, ...args: NoInfer<Args>) => I
-    ): (this: Self, ...args: Args) => Effect.AsEffect<I>
+    ): (...args: Args) => Effect.AsEffect<I>
   }
 
   /**
@@ -14154,50 +14145,50 @@ export namespace fn {
    * @category Models
    */
   export type NonGen = {
-    <Self, Eff extends Effect<any, any, any>, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => Eff
-    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
-    <Self, Eff extends Effect<any, any, any>, A, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => A,
+    <Eff extends Effect<any, any, any>, Args extends Array<any>>(
+      body: (...args: Args) => Eff
+    ): (...args: Args) => Effect.AsEffect<Eff>
+    <Eff extends Effect<any, any, any>, A, Args extends Array<any>>(
+      body: (...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
-    <Self, Eff extends Effect<any, any, any>, A, B, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => A,
+    ): (...args: Args) => Effect.AsEffect<Eff>
+    <Eff extends Effect<any, any, any>, A, B, Args extends Array<any>>(
+      body: (...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
       b: (_: B, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
-    <Self, Eff extends Effect<any, any, any>, A, B, C, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => A,
+    ): (...args: Args) => Effect.AsEffect<Eff>
+    <Eff extends Effect<any, any, any>, A, B, C, Args extends Array<any>>(
+      body: (...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
       b: (_: B, ...args: NoInfer<Args>) => C,
       c: (_: C, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
-    <Self, Eff extends Effect<any, any, any>, A, B, C, D, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => A,
+    ): (...args: Args) => Effect.AsEffect<Eff>
+    <Eff extends Effect<any, any, any>, A, B, C, D, Args extends Array<any>>(
+      body: (...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
       b: (_: B, ...args: NoInfer<Args>) => C,
       c: (_: C, ...args: NoInfer<Args>) => D,
       d: (_: D, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
-    <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => A,
+    ): (...args: Args) => Effect.AsEffect<Eff>
+    <Eff extends Effect<any, any, any>, A, B, C, D, E, Args extends Array<any>>(
+      body: (...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
       b: (_: B, ...args: NoInfer<Args>) => C,
       c: (_: C, ...args: NoInfer<Args>) => D,
       d: (_: D, ...args: NoInfer<Args>) => E,
       e: (_: E, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
-    <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => A,
+    ): (...args: Args) => Effect.AsEffect<Eff>
+    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, Args extends Array<any>>(
+      body: (...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
       b: (_: B, ...args: NoInfer<Args>) => C,
       c: (_: C, ...args: NoInfer<Args>) => D,
       d: (_: D, ...args: NoInfer<Args>) => E,
       e: (_: E, ...args: NoInfer<Args>) => F,
       f: (_: F, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
-    <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => A,
+    ): (...args: Args) => Effect.AsEffect<Eff>
+    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, Args extends Array<any>>(
+      body: (...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
       b: (_: B, ...args: NoInfer<Args>) => C,
       c: (_: C, ...args: NoInfer<Args>) => D,
@@ -14205,9 +14196,9 @@ export namespace fn {
       e: (_: E, ...args: NoInfer<Args>) => F,
       f: (_: F, ...args: NoInfer<Args>) => G,
       g: (_: G, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
-    <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => A,
+    ): (...args: Args) => Effect.AsEffect<Eff>
+    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, Args extends Array<any>>(
+      body: (...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
       b: (_: B, ...args: NoInfer<Args>) => C,
       c: (_: C, ...args: NoInfer<Args>) => D,
@@ -14216,9 +14207,9 @@ export namespace fn {
       f: (_: F, ...args: NoInfer<Args>) => G,
       g: (_: G, ...args: NoInfer<Args>) => H,
       h: (_: H, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
-    <Self, Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, I, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => A,
+    ): (...args: Args) => Effect.AsEffect<Eff>
+    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, I, Args extends Array<any>>(
+      body: (...args: Args) => A,
       a: (_: A, ...args: NoInfer<Args>) => B,
       b: (_: B, ...args: NoInfer<Args>) => C,
       c: (_: C, ...args: NoInfer<Args>) => D,
@@ -14228,7 +14219,7 @@ export namespace fn {
       g: (_: G, ...args: NoInfer<Args>) => H,
       h: (_: H, ...args: NoInfer<Args>) => I,
       i: (_: H, ...args: NoInfer<Args>) => Eff
-    ): (this: Self, ...args: Args) => Effect.AsEffect<Eff>
+    ): (...args: Args) => Effect.AsEffect<Eff>
   }
 
   /**
@@ -14236,15 +14227,15 @@ export namespace fn {
    * @category Models
    */
   export type Untraced = {
-    <Self, Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>
-    ): (this: Self, ...args: Args) => Effect<
+    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
+      body: (...args: Args) => Generator<Eff, AEff, never>
+    ): (...args: Args) => Effect<
       AEff,
       [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
       [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
     >
-    <Self, Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A>(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A>(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14253,9 +14244,9 @@ export namespace fn {
         >,
         ...args: NoInfer<Args>
       ) => A
-    ): (this: Self, ...args: Args) => A
-    <Self, Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A, B>(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+    ): (...args: Args) => A
+    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A, B>(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14265,9 +14256,8 @@ export namespace fn {
         ...args: NoInfer<Args>
       ) => A,
       b: (_: A, ...args: NoInfer<Args>) => B
-    ): (this: Self, ...args: Args) => B
+    ): (...args: Args) => B
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14275,7 +14265,7 @@ export namespace fn {
       B,
       C
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14286,9 +14276,8 @@ export namespace fn {
       ) => A,
       b: (_: A, ...args: NoInfer<Args>) => B,
       c: (_: B, ...args: NoInfer<Args>) => C
-    ): (this: Self, ...args: Args) => C
+    ): (...args: Args) => C
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14297,7 +14286,7 @@ export namespace fn {
       C,
       D
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14309,9 +14298,8 @@ export namespace fn {
       b: (_: A, ...args: NoInfer<Args>) => B,
       c: (_: B, ...args: NoInfer<Args>) => C,
       d: (_: C, ...args: NoInfer<Args>) => D
-    ): (this: Self, ...args: Args) => D
+    ): (...args: Args) => D
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14321,7 +14309,7 @@ export namespace fn {
       D,
       E
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14334,9 +14322,8 @@ export namespace fn {
       c: (_: B, ...args: NoInfer<Args>) => C,
       d: (_: C, ...args: NoInfer<Args>) => D,
       e: (_: D, ...args: NoInfer<Args>) => E
-    ): (this: Self, ...args: Args) => E
+    ): (...args: Args) => E
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14347,7 +14334,7 @@ export namespace fn {
       E,
       F
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14361,9 +14348,8 @@ export namespace fn {
       d: (_: C, ...args: NoInfer<Args>) => D,
       e: (_: D, ...args: NoInfer<Args>) => E,
       f: (_: E, ...args: NoInfer<Args>) => F
-    ): (this: Self, ...args: Args) => F
+    ): (...args: Args) => F
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14375,7 +14361,7 @@ export namespace fn {
       F,
       G
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14390,9 +14376,8 @@ export namespace fn {
       e: (_: D, ...args: NoInfer<Args>) => E,
       f: (_: E, ...args: NoInfer<Args>) => F,
       g: (_: F, ...args: NoInfer<Args>) => G
-    ): (this: Self, ...args: Args) => G
+    ): (...args: Args) => G
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14405,7 +14390,7 @@ export namespace fn {
       G,
       H
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14421,9 +14406,8 @@ export namespace fn {
       f: (_: E, ...args: NoInfer<Args>) => F,
       g: (_: F, ...args: NoInfer<Args>) => G,
       h: (_: G, ...args: NoInfer<Args>) => H
-    ): (this: Self, ...args: Args) => H
+    ): (...args: Args) => H
     <
-      Self,
       Eff extends YieldWrap<Effect<any, any, any>>,
       AEff,
       Args extends Array<any>,
@@ -14437,7 +14421,7 @@ export namespace fn {
       H,
       I
     >(
-      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      body: (...args: Args) => Generator<Eff, AEff, never>,
       a: (
         _: Effect<
           AEff,
@@ -14454,7 +14438,7 @@ export namespace fn {
       g: (_: F, ...args: NoInfer<Args>) => G,
       h: (_: G, ...args: NoInfer<Args>) => H,
       i: (_: H, ...args: NoInfer<Args>) => I
-    ): (this: Self, ...args: Args) => I
+    ): (...args: Args) => I
   }
 }
 
