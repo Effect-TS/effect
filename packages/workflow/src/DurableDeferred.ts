@@ -273,7 +273,7 @@ export const tokenFromPayload: {
 export const done: {
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     options: {
-      readonly token: string
+      readonly token: Token
       readonly exit: Exit.Exit<Success["Type"], Error["Type"]>
     }
   ): (self: DurableDeferred<Success, Error>) => Effect.Effect<
@@ -284,7 +284,7 @@ export const done: {
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {
-      readonly token: string
+      readonly token: Token
       readonly exit: Exit.Exit<Success["Type"], Error["Type"]>
     }
   ): Effect.Effect<void, never, WorkflowEngine | Success["Context"] | Error["Context"]>
@@ -293,7 +293,7 @@ export const done: {
   Effect.fnUntraced(function*<Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {
-      readonly token: string
+      readonly token: Token
       readonly exit: Exit.Exit<Success["Type"], Error["Type"]>
     }
   ) {
@@ -316,14 +316,14 @@ export const done: {
 export const succeed: {
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     options: {
-      readonly token: string
+      readonly token: Token
       readonly value: Success["Type"]
     }
   ): (self: DurableDeferred<Success, Error>) => Effect.Effect<void, never, WorkflowEngine | Success["Context"]>
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {
-      readonly token: string
+      readonly token: Token
       readonly value: Success["Type"]
     }
   ): Effect.Effect<void, never, WorkflowEngine | Success["Context"]>
@@ -332,7 +332,7 @@ export const succeed: {
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {
-      readonly token: string
+      readonly token: Token
       readonly value: Success["Type"]
     }
   ): Effect.Effect<void, never, WorkflowEngine | Success["Context"]> =>
@@ -349,14 +349,14 @@ export const succeed: {
 export const fail: {
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     options: {
-      readonly token: string
+      readonly token: Token
       readonly error: Error["Type"]
     }
   ): (self: DurableDeferred<Success, Error>) => Effect.Effect<void, never, WorkflowEngine | Error["Context"]>
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {
-      readonly token: string
+      readonly token: Token
       readonly error: Error["Type"]
     }
   ): Effect.Effect<void, never, WorkflowEngine | Error["Context"]>
@@ -365,7 +365,7 @@ export const fail: {
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {
-      readonly token: string
+      readonly token: Token
       readonly error: Error["Type"]
     }
   ): Effect.Effect<void, never, WorkflowEngine | Error["Context"]> =>
@@ -382,14 +382,14 @@ export const fail: {
 export const failCause: {
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     options: {
-      readonly token: string
+      readonly token: Token
       readonly cause: Cause.Cause<Error["Type"]>
     }
   ): (self: DurableDeferred<Success, Error>) => Effect.Effect<void, never, WorkflowEngine | Error["Context"]>
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {
-      readonly token: string
+      readonly token: Token
       readonly cause: Cause.Cause<Error["Type"]>
     }
   ): Effect.Effect<void, never, WorkflowEngine | Error["Context"]>
@@ -398,7 +398,7 @@ export const failCause: {
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {
-      readonly token: string
+      readonly token: Token
       readonly cause: Cause.Cause<Error["Type"]>
     }
   ): Effect.Effect<void, never, WorkflowEngine | Error["Context"]> =>
