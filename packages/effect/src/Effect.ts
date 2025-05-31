@@ -3880,19 +3880,21 @@ export const catchSomeDefect: {
  * @category Error handling
  */
 export const catchTag: {
+  <E, const K extends RA.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>>(
+    ...tags: K
+  ): <A, R>(self: Effect<A, E, R> & "missing error handler") => never
   <E, const K extends RA.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>, A1, E1, R1>(
-    ...args: [
-      ...tags:
-        & K
-        & { [I in keyof K]: E extends { _tag: string } ? E["_tag"] : never },
-      f: (e: Extract<globalThis.NoInfer<E>, { _tag: K[number] }>) => Effect<A1, E1, R1>
-    ]
+    ...args: [...tags: K, f: (e: Extract<NoInfer<E>, { _tag: K[number] }>) => Effect<A1, E1, R1>]
   ): <A, R>(self: Effect<A, E, R>) => Effect<A | A1, Exclude<E, { _tag: K[number] }> | E1, R | R1>
+  <A, E, R, const K extends RA.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>>(
+    self: Effect<A, E, R> & "missing error handler",
+    ...tags: K
+  ): never
   <A, E, R, const K extends RA.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>, R1, E1, A1>(
     self: Effect<A, E, R>,
     ...args: [
       ...tags: K & { [I in keyof K]: E extends { _tag: string } ? E["_tag"] : never },
-      f: (e: Extract<globalThis.NoInfer<E>, { _tag: K[number] }>) => Effect<A1, E1, R1>
+      f: (e: Extract<NoInfer<E>, { _tag: K[number] }>) => Effect<A1, E1, R1>
     ]
   ): Effect<A | A1, Exclude<E, { _tag: K[number] }> | E1, R | R1>
 } = effect.catchTag
