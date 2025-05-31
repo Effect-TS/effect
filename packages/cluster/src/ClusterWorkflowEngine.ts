@@ -304,6 +304,7 @@ export const make = Effect.gen(function*() {
           })
           continue
         }
+        activities.delete(activityId)
         return result
       }
     }, Effect.scoped),
