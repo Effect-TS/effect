@@ -3892,10 +3892,7 @@ export const catchTag: {
   ): never
   <A, E, R, const K extends RA.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>, R1, E1, A1>(
     self: Effect<A, E, R>,
-    ...args: [
-      ...tags: K & { [I in keyof K]: E extends { _tag: string } ? E["_tag"] : never },
-      f: (e: Extract<NoInfer<E>, { _tag: K[number] }>) => Effect<A1, E1, R1>
-    ]
+    ...args: [...tags: K, f: (e: Extract<NoInfer<E>, { _tag: K[number] }>) => Effect<A1, E1, R1>]
   ): Effect<A | A1, Exclude<E, { _tag: K[number] }> | E1, R | R1>
 } = effect.catchTag
 
