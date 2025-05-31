@@ -100,8 +100,9 @@ const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.Al
     instance.suspended = true
     return yield* Effect.interrupt
   }
-  const exit = yield* Effect.orDie(Schema.decodeUnknown(self.exitSchema)(oexit.value))
-  return yield* exit
+  return yield* Effect.flatten(Effect.orDie(
+    Schema.decodeUnknown(self.exitSchema)(oexit.value)
+  ))
 })
 
 export {
@@ -157,7 +158,7 @@ export class TokenParsed extends Schema.Class<TokenParsed>("@effect/workflow/Dur
       decode: (from, _, ast) =>
         Encoding.decodeBase64UrlString(from).pipe(
           Either.mapLeft(() => new ParseResult.Type(ast, from)),
-          Either.map((s) => s.split("-")),
+          Either.map((s) => s.split(";")),
           Either.flatMap((parts) => {
             if (parts.length !== 3) {
               return ParseResult.fail(new ParseResult.Type(ast, from))
@@ -173,7 +174,7 @@ export class TokenParsed extends Schema.Class<TokenParsed>("@effect/workflow/Dur
         ),
       encode: (to) =>
         ParseResult.succeed(
-          Token.make(Encoding.encodeBase64Url(`${to.workflowName}-${to.executionId}-${to.deferredName}`))
+          Token.make(Encoding.encodeBase64Url(`${to.workflowName};${to.executionId};${to.deferredName}`))
         )
     }
   )
@@ -221,10 +222,10 @@ export const tokenFromExecutionId: {
       readonly workflow: Workflow.Any
       readonly executionId: string
     }
-  ): Token => {
-    const id = `${options.workflow.name}-${options.executionId}-${self.name}`
-    return Token.make(Encoding.encodeBase64Url(id))
-  }
+  ): Token =>
+    Token.make(Encoding.encodeBase64Url(
+      `${options.workflow.name};${options.executionId};${self.name}`
+    ))
 )
 
 /**
