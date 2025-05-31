@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type * as Brand from "effect/Brand"
+import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -334,5 +335,38 @@ export const fail: {
     done(self, {
       token: options.token,
       exit: Exit.fail(options.error)
+    })
+)
+
+/**
+ * @since 1.0.0
+ * @category Combinators
+ */
+export const failCause: {
+  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
+    options: {
+      readonly token: string
+      readonly cause: Cause.Cause<Error["Type"]>
+    }
+  ): (self: DurableDeferred<Success, Error>) => Effect.Effect<void, never, WorkflowEngine | Error["Context"]>
+  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
+    self: DurableDeferred<Success, Error>,
+    options: {
+      readonly token: string
+      readonly cause: Cause.Cause<Error["Type"]>
+    }
+  ): Effect.Effect<void, never, WorkflowEngine | Error["Context"]>
+} = dual(
+  2,
+  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
+    self: DurableDeferred<Success, Error>,
+    options: {
+      readonly token: string
+      readonly cause: Cause.Cause<Error["Type"]>
+    }
+  ): Effect.Effect<void, never, WorkflowEngine | Error["Context"]> =>
+    done(self, {
+      token: options.token,
+      exit: Exit.failCause(options.cause)
     })
 )
