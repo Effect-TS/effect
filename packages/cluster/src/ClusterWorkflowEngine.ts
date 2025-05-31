@@ -106,29 +106,6 @@ export const make = Effect.gen(function*() {
     return yield* replyForRequestId(requestId.value)
   })
 
-  const resume = Effect.fnUntraced(
-    function*(workflowName: string, executionId: string) {
-      const maybeReply = yield* requestReply({
-        entityType: `Workflow/${workflowName}`,
-        executionId,
-        tag: "run",
-        id: ""
-      })
-      const maybeSuspended = Option.filter(
-        maybeReply,
-        (reply) => reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
-      )
-      if (Option.isNone(maybeSuspended)) return
-      yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId))
-    },
-    Effect.retry({
-      while: (e) => e._tag === "PersistenceError",
-      times: 3,
-      schedule: Schedule.exponential(250)
-    }),
-    Effect.orDie
-  )
-
   const resetActivityAttempt = Effect.fnUntraced(
     function*(options: {
       readonly workflow: Workflow.Any
@@ -280,6 +257,29 @@ export const make = Effect.gen(function*() {
       Effect.orDie
     ),
 
+    resume: Effect.fnUntraced(
+      function*(workflowName: string, executionId: string) {
+        const maybeReply = yield* requestReply({
+          entityType: `Workflow/${workflowName}`,
+          executionId,
+          tag: "run",
+          id: ""
+        })
+        const maybeSuspended = Option.filter(
+          maybeReply,
+          (reply) => reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
+        )
+        if (Option.isNone(maybeSuspended)) return
+        yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId))
+      },
+      Effect.retry({
+        while: (e) => e._tag === "PersistenceError",
+        times: 3,
+        schedule: Schedule.exponential(250)
+      }),
+      Effect.orDie
+    ),
+
     activityExecute: Effect.fnUntraced(function*({ activity, attempt }) {
       const context = yield* Effect.context<WorkflowInstance>()
       const instance = Context.get(context, WorkflowInstance)
@@ -329,13 +329,11 @@ export const make = Effect.gen(function*() {
 
     deferredDone({ deferred, executionId, exit, workflowName }) {
       const client = deferredClient(executionId)
-      return Effect.andThen(
-        Effect.orDie(client.set({
-          name: deferred.name,
-          exit
-        })),
-        resume(workflowName, executionId)
-      )
+      return Effect.orDie(client.set({
+        workflowName,
+        name: deferred.name,
+        exit
+      }))
     },
 
     scheduleClock(options) {
@@ -392,19 +390,38 @@ const ExitUnknown = Schema.encodedSchema(Schema.Exit({
 const DeferredEntity = Entity.make("Workflow/-/DurableDeferred", [
   Rpc.make("set", {
     payload: {
+      workflowName: Schema.String,
       name: Schema.String,
       exit: ExitUnknown
     },
     primaryKey: ({ name }) => name,
     success: ExitUnknown
+  }),
+  Rpc.make("resume", {
+    payload: {
+      workflowName: Schema.String,
+      name: Schema.String
+    },
+    primaryKey: ({ name }) => name
   })
-    .annotate(ClusterSchema.Persisted, true)
-    .annotate(ClusterSchema.Uninterruptible, true)
 ])
+  .annotateRpcs(ClusterSchema.Persisted, true)
+  .annotateRpcs(ClusterSchema.Uninterruptible, true)
 
-const DeferredEntityLayer = DeferredEntity.toLayer({
-  set: (request) => Effect.succeed(request.payload.exit)
-})
+const DeferredEntityLayer = DeferredEntity.toLayer(Effect.gen(function*() {
+  const engine = yield* WorkflowEngine
+  const address = yield* Entity.CurrentAddress
+  const executionId = address.entityId
+  const client = (yield* DeferredEntity.client)(executionId)
+  return {
+    set: (request) =>
+      Effect.as(
+        Effect.orDie(client.resume(request.payload, { discard: true })),
+        request.payload.exit
+      ),
+    resume: (request) => engine.resume(request.payload.workflowName, executionId)
+  }
+}))
 
 class ClockPayload extends Schema.Class<ClockPayload>(`Workflow/DurableClock/Run`)({
   name: Schema.String,

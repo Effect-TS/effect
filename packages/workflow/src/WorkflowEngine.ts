@@ -49,6 +49,14 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
     ) => Effect.Effect<void>
 
     /**
+     * Resume a suspended workflow.
+     */
+    readonly resume: (
+      workflowName: string,
+      executionId: string
+    ) => Effect.Effect<void>
+
+    /**
      * Execute an activity from a workflow.
      */
     readonly activityExecute: (
