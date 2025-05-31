@@ -46,7 +46,6 @@ export interface Activity<
     Exit.Exit<Success["Encoded"], Error["Encoded"]>,
     Success["Context"] | Error["Context"]
   >
-  readonly execute: Effect.Effect<Success["Type"], Error["Type"], R | WorkflowEngine | WorkflowInstance>
   readonly executeEncoded: Effect.Effect<
     Success["Encoded"],
     Error["Encoded"],
@@ -63,7 +62,6 @@ export interface Any {
   readonly name: string
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
-  readonly execute: Effect.Effect<any, any, any>
   readonly executeEncoded: Effect.Effect<any, any, any>
 }
 
@@ -96,7 +94,6 @@ export const make = <
       failure: errorSchema,
       defect: Schema.Defect
     }),
-    execute: options.execute,
     executeEncoded: Effect.matchEffect(options.execute, {
       onFailure: (error) => Effect.flatMap(Effect.orDie(Schema.encode(self.errorSchema as any)(error)), Effect.fail),
       onSuccess: (value) => Effect.orDie(Schema.encode(self.successSchema)(value))
