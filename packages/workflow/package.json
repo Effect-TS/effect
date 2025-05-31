@@ -36,13 +36,6 @@
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "@effect/cluster": "workspace:^",
-    "@effect/platform": "workspace:^",
-    "@effect/rpc": "workspace:^",
-    "@effect/sql": "workspace:^",
-    "@effect/sql-sqlite-node": "workspace:^",
-    "@testcontainers/mysql": "^10.18.0",
-    "@testcontainers/postgresql": "^10.18.0",
     "effect": "workspace:^"
   }
 }
