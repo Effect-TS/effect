@@ -134,6 +134,7 @@ export interface Any {
   readonly payloadSchema: AnyStructSchema
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
+  readonly executionId: (payload: any) => Effect.Effect<string>
 }
 
 const EngineTag = Context.GenericTag<WorkflowEngine, WorkflowEngine["Type"]>(

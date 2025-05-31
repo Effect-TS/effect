@@ -5,12 +5,10 @@ import type * as Brand from "effect/Brand"
 import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
 import * as Exit from "effect/Exit"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
-import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import type * as Workflow from "./Workflow.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
@@ -136,7 +134,10 @@ export type Token = Brand.Branded<string, TokenTypeId>
  * @since 1.0.0
  * @category Token
  */
-export const Token = Schema.String.pipe(
+export const Token: Schema.brand<
+  typeof Schema.String,
+  typeof TokenTypeId
+> = Schema.String.pipe(
   Schema.brand(TokenTypeId)
 )
 
@@ -152,38 +153,38 @@ export class TokenParsed extends Schema.Class<TokenParsed>("@effect/workflow/Dur
   /**
    * @since 1.0.0
    */
-  static readonly FromString: Schema.Schema<TokenParsed, string> = Schema.transformOrFail(
-    Token,
+  get asToken(): Token {
+    return Encoding.encodeBase64Url(JSON.stringify([this.workflowName, this.executionId, this.deferredName])) as Token
+  }
+
+  /**
+   * @since 1.0.0
+   */
+  static readonly FromString: Schema.Schema<
     TokenParsed,
-    {
-      decode: (from, _, ast) =>
-        Encoding.decodeBase64UrlString(from).pipe(
-          Either.mapLeft(() => new ParseResult.Type(ast, from)),
-          Either.map((s) => s.split(";")),
-          Either.flatMap((parts) => {
-            if (parts.length !== 3) {
-              return ParseResult.fail(new ParseResult.Type(ast, from))
-            }
-            return ParseResult.succeed(
-              new TokenParsed({
-                workflowName: parts[0],
-                executionId: parts[1],
-                deferredName: parts[2]
-              }, { disableValidation: true })
-            )
-          })
-        ),
-      encode: (to) =>
-        ParseResult.succeed(
-          Token.make(Encoding.encodeBase64Url(`${to.workflowName};${to.executionId};${to.deferredName}`))
-        )
-    }
+    string
+  > = Schema.StringFromBase64Url.pipe(
+    Schema.compose(Schema.parseJson(Schema.Tuple(Schema.String, Schema.String, Schema.String))),
+    Schema.transform(TokenParsed, {
+      decode: ([workflowName, executionId, deferredName]) =>
+        new TokenParsed({
+          workflowName,
+          executionId,
+          deferredName
+        }),
+      encode: (parsed) => [parsed.workflowName, parsed.executionId, parsed.deferredName] as const
+    })
   )
 
   /**
    * @since 1.0.0
    */
-  static readonly fromString = Schema.decode(TokenParsed.FromString)
+  static readonly fromString = Schema.decodeSync(TokenParsed.FromString)
+
+  /**
+   * @since 1.0.0
+   */
+  static readonly encode = Schema.encodeSync(TokenParsed.FromString)
 }
 
 /**
@@ -224,9 +225,45 @@ export const tokenFromExecutionId: {
       readonly executionId: string
     }
   ): Token =>
-    Token.make(Encoding.encodeBase64Url(
-      `${options.workflow.name};${options.executionId};${self.name}`
-    ))
+    new TokenParsed({
+      workflowName: options.workflow.name,
+      executionId: options.executionId,
+      deferredName: self.name
+    }).asToken
+)
+
+/**
+ * @since 1.0.0
+ * @category Token
+ */
+export const tokenFromPayload: {
+  <W extends Workflow.Any>(options: {
+    readonly workflow: W
+    readonly payload: Schema.Simplify<Schema.Struct.Constructor<W["payloadSchema"]["fields"]>>
+  }): <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
+    self: DurableDeferred<Success, Error>
+  ) => Effect.Effect<Token>
+  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All, W extends Workflow.Any>(
+    self: DurableDeferred<Success, Error>,
+    options: {
+      readonly workflow: W
+      readonly payload: Schema.Simplify<Schema.Struct.Constructor<W["payloadSchema"]["fields"]>>
+    }
+  ): Effect.Effect<Token>
+} = dual(
+  2,
+  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All, W extends Workflow.Any>(
+    self: DurableDeferred<Success, Error>,
+    options: {
+      readonly workflow: W
+      readonly payload: Schema.Simplify<Schema.Struct.Constructor<W["payloadSchema"]["fields"]>>
+    }
+  ): Effect.Effect<Token> =>
+    Effect.map(options.workflow.executionId(options.payload), (executionId) =>
+      tokenFromExecutionId(self, {
+        workflow: options.workflow,
+        executionId
+      }))
 )
 
 /**
@@ -261,7 +298,7 @@ export const done: {
     }
   ) {
     const engine = yield* EngineTag
-    const token = yield* TokenParsed.fromString(options.token)
+    const token = TokenParsed.fromString(options.token)
     const exit = yield* Schema.encode(self.exitSchema)(options.exit)
     yield* engine.deferredDone({
       workflowName: token.workflowName,
