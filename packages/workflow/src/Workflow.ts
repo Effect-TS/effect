@@ -201,7 +201,7 @@ export const make = <
           }
           // @effect-diagnostics effect/floatingEffect:off
           sleep ??= (yield* Schedule.driver(suspendedRetrySchedule)).next(void 0).pipe(
-            Effect.catchAll(() => Effect.die("Workflow execution suspended"))
+            Effect.catchAll(() => Effect.dieMessage(`${options.name}.execute: suspendedRetrySchedule exhausted`))
           )
           yield* sleep
         }
