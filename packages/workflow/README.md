@@ -44,7 +44,7 @@ const EmailWorkflow = Workflow.make({
 // Once you have defined the workflow, you can create a layer for by providing
 // the implementation.
 const EmailWorkflowLayer = EmailWorkflow.toLayer(
-  Effect.fnUntraced(function* (payload, executionId) {
+  Effect.fn(function* (payload, executionId) {
     // An `Activity` represents an unit of work in the workflow.
     // They will only ever be executed once, unless you use `Activity.retry`.
     yield* Activity.make({
