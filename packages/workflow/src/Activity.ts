@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
@@ -120,6 +121,31 @@ export const retry: typeof Effect.retry = dual(
       )
     })
 )
+
+/**
+ * @since 1.0.0
+ * @category Error handling
+ */
+export const onError: {
+  <Error extends Schema.Schema.All, R2>(
+    onError: (cause: Cause.Cause<Error["Type"]>) => Effect.Effect<void, never, R2>
+  ): <Success extends Schema.Schema.Any, R>(
+    self: Activity<Success, Error, R>
+  ) => Activity<Success, Error, R | Exclude<R2, WorkflowEngine | WorkflowInstance>>
+  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All, R, R2>(
+    self: Activity<Success, Error, R>,
+    onError: (cause: Cause.Cause<Error["Type"]>) => Effect.Effect<void, never, R2>
+  ): Activity<Success, Error, R | Exclude<R2, WorkflowEngine | WorkflowInstance>>
+} = dual(2, <Success extends Schema.Schema.Any, Error extends Schema.Schema.All, R, R2>(
+  self: Activity<Success, Error, R>,
+  onError: (cause: Cause.Cause<Error["Type"]>) => Effect.Effect<void, never, R2>
+): Activity<Success, Error, R | Exclude<R2, WorkflowEngine | WorkflowInstance>> =>
+  make({
+    name: `${self.name}/onError`,
+    success: self.successSchema,
+    error: self.errorSchema,
+    execute: Effect.onError(self, onError)
+  }))
 
 /**
  * @since 1.0.0
