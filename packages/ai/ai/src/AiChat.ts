@@ -91,7 +91,7 @@ export declare namespace AiChat {
      *
      * Both input and output messages will be added to the chat history.
      */
-    readonly generateObject: <A, I, R>(
+    readonly generateObject: <A, I extends Record<string, unknown>, R>(
       options: Omit<AiLanguageModel.GenerateObjectOptions<A, I, R>, "system">
     ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R>
   }

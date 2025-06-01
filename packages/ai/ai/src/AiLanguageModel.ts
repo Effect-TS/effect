@@ -33,7 +33,9 @@ export class AiLanguageModel extends Context.Tag("@effect/ai/AiLanguageModel")<
  * @since 1.0.0
  * @category Models
  */
-export type StructuredSchema<A, I, R> = TaggedSchema<A, I, R> | IdentifiedSchema<A, I, R>
+export type StructuredSchema<A, I extends Record<string, unknown>, R> =
+  | TaggedSchema<A, I, R>
+  | IdentifiedSchema<A, I, R>
 
 /**
  * @since 1.0.0
@@ -111,7 +113,7 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
  * @since 1.0.0
  * @category Models
  */
-export interface GenerateObjectOptions<A, I, R> {
+export interface GenerateObjectOptions<A, I extends Record<string, unknown>, R> {
   /**
    * The prompt input to use to generate text.
    */
@@ -221,7 +223,7 @@ export declare namespace AiLanguageModel {
      * Generate a structured object for the specified prompt and schema using a
      * large language model.
      */
-    readonly generateObject: <A, I, R>(
+    readonly generateObject: <A, I extends Record<string, unknown>, R>(
       options: GenerateObjectOptions<A, I, R>
     ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R | Config>
   }
@@ -372,7 +374,7 @@ export const make: <Config>(
     Stream.unwrapScoped
   )
 
-  const generateObject = <A, I, R>(
+  const generateObject = <A, I extends Record<string, unknown>, R>(
     options: GenerateObjectOptions<A, I, R>
   ): Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R | Config> => {
     const toolCallId: string = options.toolCallId
@@ -450,6 +452,15 @@ const convertStructured = <A, I, R>(name: string, schema: Schema.Schema<A, I, R>
 })
 
 const makeJsonSchema = (ast: AST.AST): JsonSchema.JsonSchema7 => {
+  const props = AST.getPropertySignatures(ast)
+  if (props.length === 0) {
+    return {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: false
+    }
+  }
   const $defs = {}
   const schema = JsonSchema.fromAST(ast, {
     definitions: $defs,
@@ -542,7 +553,7 @@ export const generateText: <Tools extends AiTool.Any, Options>(
  * @since 1.0.0
  * @category Functions
  */
-export const generateObject: <A, I, R>(
+export const generateObject: <A, I extends Record<string, unknown>, R>(
   options: GenerateObjectOptions<A, I, R>
 ) => Effect.Effect<
   AiResponse.WithStructuredOutput<A>,
