@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.1.1
+
+### Patch Changes
+
+- [#4953](https://github.com/Effect-TS/effect/pull/4953) [`fd60c73`](https://github.com/Effect-TS/effect/commit/fd60c73ea6d51c9b83279da60e7b6d605698b1d8) Thanks @tim-smart! - add Activity.onError
+
 ## 0.1.0
 
 ### Minor Changes
