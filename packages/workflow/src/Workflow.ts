@@ -79,7 +79,7 @@ export interface Workflow<
     Registration<Name> | WorkflowEngine,
     never,
     | WorkflowEngine
-    | Exclude<R, WorkflowEngine | WorkflowInstance | Scope.Scope>
+    | Exclude<R, WorkflowEngine | WorkflowInstance | Execution<Name> | Scope.Scope>
     | Payload["Context"]
     | Success["Context"]
     | Error["Context"]
@@ -91,6 +91,26 @@ export interface Workflow<
   readonly executionId: (
     payload: Schema.Simplify<Schema.Struct.Constructor<Payload["fields"]>>
   ) => Effect.Effect<string>
+
+  /**
+   * Add compensation logic to an effect inside a Workflow. The compensation finalizer will be
+   * called if the entire workflow fails, allowing you to perform cleanup or
+   * other actions based on the success value and the cause of the workflow failure.
+   *
+   * NOTE: Compensation will not work for nested activities. Compensation
+   * finalizers are only registered for top-level effects in the workflow.
+   */
+  readonly withCompensation: {
+    <A, R2>(
+      compensation: (value: A, cause: Cause.Cause<Error["Type"]>) => Effect.Effect<void, never, R2>
+    ): <E, R>(
+      effect: Effect.Effect<A, E, R>
+    ) => Effect.Effect<A, E, R | R2 | WorkflowInstance | Execution<Name> | Scope.Scope>
+    <A, E, R, R2>(
+      effect: Effect.Effect<A, E, R>,
+      compensation: (value: A, cause: Cause.Cause<Error["Type"]>) => Effect.Effect<void, never, R2>
+    ): Effect.Effect<A, E, R | R2 | WorkflowInstance | Execution<Name> | Scope.Scope>
+  }
 }
 
 /**
@@ -123,6 +143,15 @@ export interface AnyTaggedRequestSchema extends AnyStructSchema {
  * @category Models
  */
 export interface Registration<Name extends string> {
+  readonly _: unique symbol
+  readonly name: Name
+}
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export interface Execution<Name extends string> {
   readonly _: unique symbol
   readonly name: Name
 }
@@ -232,7 +261,8 @@ export const make = <
           ) as any)
         return EngineTag.context(engine)
       })) as any,
-    executionId: (payload) => makeExecutionId(self.payloadSchema.make(payload))
+    executionId: (payload) => makeExecutionId(self.payloadSchema.make(payload)),
+    withCompensation
   }
 
   return self
@@ -403,18 +433,7 @@ export const intoResult = <A, E, R>(
     )
   )
 
-/**
- * Add compensation logic to an effect inside a Workflow. The compensation finalizer will be
- * called if the entire workflow fails, allowing you to perform cleanup or
- * other actions based on the success value and the cause of the workflow failure.
- *
- * NOTE: Compensation will not work for nested activities. Compensation
- * finalizers are only registered for top-level effects in the workflow.
- *
- * @since 1.0.0
- * @category Compensation
- */
-export const withCompensation: {
+const withCompensation: {
   <A, R2>(
     compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
   ): <E, R>(

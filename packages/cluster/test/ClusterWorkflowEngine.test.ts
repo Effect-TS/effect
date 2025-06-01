@@ -177,9 +177,9 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
       }
     })
   }).pipe(
-    Workflow.withCompensation(Effect.fnUntraced(function*(_, cause) {
+    EmailWorkflow.withCompensation(Effect.fnUntraced(function*(_, cause) {
       flags.set("compensation", true)
-      const error = Cause.failureOption(cause) as Option.Option<SendEmailError>
+      const error = Cause.failureOption(cause)
       assert.strictEqual(Option.getOrThrow(error).message, "Compensation triggered")
     })),
     Activity.retry({ times: 5 })
