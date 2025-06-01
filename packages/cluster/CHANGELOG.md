@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.37.2
+
+### Patch Changes
+
+- [#4958](https://github.com/Effect-TS/effect/pull/4958) [`6dfbae9`](https://github.com/Effect-TS/effect/commit/6dfbae946ea12ecee7234f5785335f3e7f8335b4) Thanks @tim-smart! - ensure Workflow.interrupt triggers compensation
+
+- Updated dependencies [[`b8aec45`](https://github.com/Effect-TS/effect/commit/b8aec45288834c499caeb3478a634ea5043fd611), [`b8aec45`](https://github.com/Effect-TS/effect/commit/b8aec45288834c499caeb3478a634ea5043fd611)]:
+  - @effect/workflow@0.1.2
+
 ## 0.37.1
 
 ### Patch Changes
