@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
@@ -46,6 +45,11 @@ export interface Activity<
     Exit.Exit<Success["Type"], Error["Type"]>,
     Exit.Exit<Success["Encoded"], Error["Encoded"]>,
     Success["Context"] | Error["Context"]
+  >
+  readonly execute: Effect.Effect<
+    Success["Type"],
+    Error["Type"],
+    Success["Context"] | Error["Context"] | R | WorkflowEngine | WorkflowInstance
   >
   readonly executeEncoded: Effect.Effect<
     Success["Encoded"],
@@ -95,6 +99,7 @@ export const make = <
       failure: errorSchema,
       defect: Schema.Defect
     }),
+    execute: options.execute,
     executeEncoded: Effect.matchEffect(options.execute, {
       onFailure: (error) => Effect.flatMap(Effect.orDie(Schema.encode(self.errorSchema as any)(error)), Effect.fail),
       onSuccess: (value) => Effect.orDie(Schema.encode(self.successSchema)(value))
@@ -121,31 +126,6 @@ export const retry: typeof Effect.retry = dual(
       )
     })
 )
-
-/**
- * @since 1.0.0
- * @category Error handling
- */
-export const onError: {
-  <Error extends Schema.Schema.All, R2>(
-    onError: (cause: Cause.Cause<Error["Type"]>) => Effect.Effect<void, never, R2>
-  ): <Success extends Schema.Schema.Any, R>(
-    self: Activity<Success, Error, R>
-  ) => Activity<Success, Error, R | Exclude<R2, WorkflowEngine | WorkflowInstance>>
-  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All, R, R2>(
-    self: Activity<Success, Error, R>,
-    onError: (cause: Cause.Cause<Error["Type"]>) => Effect.Effect<void, never, R2>
-  ): Activity<Success, Error, R | Exclude<R2, WorkflowEngine | WorkflowInstance>>
-} = dual(2, <Success extends Schema.Schema.Any, Error extends Schema.Schema.All, R, R2>(
-  self: Activity<Success, Error, R>,
-  onError: (cause: Cause.Cause<Error["Type"]>) => Effect.Effect<void, never, R2>
-): Activity<Success, Error, R | Exclude<R2, WorkflowEngine | WorkflowInstance>> =>
-  make({
-    name: `${self.name}/onError`,
-    success: self.successSchema,
-    error: self.errorSchema,
-    execute: Effect.onError(self, onError)
-  }))
 
 /**
  * @since 1.0.0
