@@ -335,6 +335,20 @@ export const entries = <K, V>(self: HM.HashMap<K, V>): IterableIterator<[K, V]> 
 export const size = <K, V>(self: HM.HashMap<K, V>): number => (self as HashMapImpl<K, V>)._size
 
 /** @internal */
+export const countBy = Dual.dual<
+  <K, V>(predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean) => (self: HM.HashMap<K, V>) => number,
+  <K, V>(self: HM.HashMap<K, V>, predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean) => number
+>(2, (self, f) => {
+  let count = 0
+  for (const [k, a] of self) {
+    if (f(a, k)) {
+      count++
+    }
+  }
+  return count
+})
+
+/** @internal */
 export const beginMutation = <K, V>(self: HM.HashMap<K, V>): HM.HashMap<K, V> =>
   makeImpl(
     true,
