@@ -1,5 +1,11 @@
 # @effect/ai
 
+## 0.18.5
+
+### Patch Changes
+
+- [#4959](https://github.com/Effect-TS/effect/pull/4959) [`4ddb28d`](https://github.com/Effect-TS/effect/commit/4ddb28d230d572735fe34539c1c59005d4932d8a) Thanks @tim-smart! - improve @effect/ai llm schema compatibility
+
 ## 0.18.4
 
 ### Patch Changes
