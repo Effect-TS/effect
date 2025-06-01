@@ -68,7 +68,7 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(
       })
     }).pipe(
       Activity.retry({ times: 5 }),
-      Workflow.withCompensation(
+      EmailWorkflow.withCompensation(
         Effect.fn(function* (value, cause) {
           // This is a compensation finalizer that will be executed if the workflow
           // fails.

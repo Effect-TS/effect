@@ -2,4 +2,4 @@
 "@effect/workflow": patch
 ---
 
-add Workflow.withCompensation
+add `withCompensation` api to Workflow instances
