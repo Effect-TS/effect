@@ -1,7 +1,9 @@
+import * as Rpc from "@effect/rpc/Rpc"
+import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as Schema from "effect/Schema"
 
 // =============================================================================
-// JsonRpc
+// Common
 // =============================================================================
 
 /**
@@ -14,39 +16,6 @@ export const RequestId: Schema.Union<[
 export type RequestId = typeof RequestId.Type
 
 /**
- * A request that expects a response.
- */
-export class JsonRpcRequestFields extends Schema.Class<JsonRpcRequestFields>(
-  "@effect/ai/McpSchema/JsonRpcRequestFields"
-)({
-  id: RequestId,
-  jsonrpc: Schema.tag("2.0")
-}) {}
-
-/**
- * A notification which does not expect a response.
- */
-export class JsonRpcNotificationFields extends Schema.Class<JsonRpcNotificationFields>(
-  "@effect/ai/McpSchema/JsonRpcNotificationFields"
-)({
-  jsonrpc: Schema.tag("2.0")
-}) {}
-
-/**
- * A successful (non-error) response to a request.
- */
-export class JsonRpcResponseFields extends Schema.Class<JsonRpcResponseFields>(
-  "@effect/ai/McpSchema/JsonRpcResponseFields"
-)({
-  id: RequestId,
-  jsonrpc: Schema.tag("2.0")
-}) {}
-
-// =============================================================================
-// Common
-// =============================================================================
-
-/**
  * A progress token, used to associate progress notifications with the original
  * request.
  */
@@ -55,16 +24,6 @@ export const ProgressToken: Schema.Union<[
   typeof Schema.Number
 ]> = Schema.Union(Schema.String, Schema.Number)
 export type ProgressToken = typeof ProgressToken.Type
-
-export class NotificationMeta extends Schema.Class<NotificationMeta>(
-  "@effect/ai/McpSchema/NotificationMeta"
-)({
-  /**
-   * This parameter name is reserved by MCP to allow clients and servers to
-   * attach additional metadata to their notifications.
-   */
-  _meta: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown }))
-}) {}
 
 export class RequestMeta extends Schema.Class<RequestMeta>(
   "@effect/ai/McpSchema/RequestMeta"
@@ -87,6 +46,16 @@ export class ResultMeta extends Schema.Class<ResultMeta>(
   /**
    * This result property is reserved by the protocol to allow clients and
    * servers to attach additional metadata to their responses.
+   */
+  _meta: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown }))
+}) {}
+
+export class NotificationMeta extends Schema.Class<NotificationMeta>(
+  "@effect/ai/McpSchema/NotificationMeta"
+)({
+  /**
+   * This parameter name is reserved by MCP to allow clients and servers to
+   * attach additional metadata to their notifications.
    */
   _meta: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown }))
 }) {}
@@ -246,15 +215,58 @@ export class ServerCapabilities extends Schema.Class<ServerCapabilities>(
 }) {}
 
 // =============================================================================
-// Empty
+// Errors
 // =============================================================================
 
-/**
- * A response that indicates success but carries no data.
- */
-export class EmptyResult extends Schema.Class<EmptyResult>(
-  "@effect/ai/McpSchema/EmptyResult"
-)(RequestMeta.fields) {}
+export class McpError extends Schema.Class<McpError>(
+  "@effect/ai/McpSchema/McpError"
+)({
+  /**
+   * The error type that occurred.
+   */
+  code: Schema.Number,
+  /**
+   * A short description of the error. The message SHOULD be limited to a
+   * concise single sentence.
+   */
+  message: Schema.String,
+  /**
+   * Additional information about the error. The value of this member is
+   * defined by the sender (e.g. detailed error information, nested errors etc.).
+   */
+  data: Schema.optional(Schema.Unknown)
+}) {}
+
+export const INVALID_REQUEST_ERROR_CODE = -32600 as const
+export const METHOD_NOT_FOUND_ERROR_CODE = -32601 as const
+export const INVALID_PARAMS_ERROR_CODE = -32602 as const
+export const INTERNAL_ERROR_CODE = -32603 as const
+export const PARSE_ERROR_CODE = -32700 as const
+
+export class ParseError extends Schema.TaggedError<ParseError>()("ParseError", {
+  ...McpError.fields,
+  code: Schema.tag(PARSE_ERROR_CODE)
+}) {}
+
+export class InvalidRequest extends Schema.TaggedError<InvalidRequest>()("InvalidRequest", {
+  ...McpError.fields,
+  code: Schema.tag(INVALID_REQUEST_ERROR_CODE)
+}) {}
+
+export class MethodNotFound extends Schema.TaggedError<MethodNotFound>()("MethodNotFound", {
+  ...McpError.fields,
+  code: Schema.tag(METHOD_NOT_FOUND_ERROR_CODE)
+}) {}
+
+export class InvalidParams extends Schema.TaggedError<InvalidParams>()("InvalidParams", {
+  ...McpError.fields,
+  code: Schema.tag(INVALID_PARAMS_ERROR_CODE)
+}) {}
+
+export class InternalError extends Schema.TaggedError<InternalError>()("InternalError", {
+  ...McpError.fields,
+  code: Schema.tag(INTERNAL_ERROR_CODE)
+}) {}
 
 // =============================================================================
 // Ping
@@ -265,12 +277,10 @@ export class EmptyResult extends Schema.Class<EmptyResult>(
  * party is still alive. The receiver must promptly respond, or else may be
  * disconnected.
  */
-export class PingRequest extends Schema.Class<PingRequest>(
-  "@effect/ai/McpSchema/PingRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("ping"),
-  params: RequestMeta
+export class Ping extends Rpc.make("ping", {
+  success: Schema.Struct({}),
+  error: McpError,
+  payload: RequestMeta
 }) {}
 
 // =============================================================================
@@ -278,15 +288,39 @@ export class PingRequest extends Schema.Class<PingRequest>(
 // =============================================================================
 
 /**
+ * After receiving an initialize request from the client, the server sends this
+ * response.
+ */
+export class InitializeResult extends Schema.Class<InitializeResult>(
+  "@effect/ai/McpSchema/InitializeResult"
+)({
+  ...ResultMeta.fields,
+  /**
+   * The version of the Model Context Protocol that the server wants to use.
+   * This may not match the version that the client requested. If the client
+   * cannot support this version, it MUST disconnect.
+   */
+  protocolVersion: Schema.String,
+  capabilities: ServerCapabilities,
+  serverInfo: Implementation,
+  /**
+   * Instructions describing how to use the server and its features.
+   *
+   * This can be used by clients to improve the LLM's understanding of available
+   * tools, resources, etc. It can be thought of like a "hint" to the model.
+   * For example, this information MAY be added to the system prompt.
+   */
+  instructions: Schema.optional(Schema.String)
+}) {}
+
+/**
  * This request is sent from the client to the server when it first connects,
  * asking it to begin initialization.
  */
-export class InitializeRequest extends Schema.Class<InitializeRequest>(
-  "@effect/ai/McpSchema/InitializeRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("initialize"),
-  params: Schema.Struct({
+export class Initialize extends Rpc.make("initialize", {
+  success: InitializeResult,
+  error: McpError,
+  payload: {
     ...RequestMeta.fields,
     /**
      * The latest version of the Model Context Protocol that the client
@@ -303,59 +337,23 @@ export class InitializeRequest extends Schema.Class<InitializeRequest>(
      * Describes the name and version of an MCP implementation.
      */
     clientInfo: Implementation
-  })
-}) {}
-
-/**
- * After receiving an initialize request from the client, the server sends this
- * response.
- */
-export class InitializeResult extends Schema.Class<InitializeResult>(
-  "@effect/ai/McpSchema/InitializeResult"
-)({
-  ...JsonRpcResponseFields.fields,
-  result: Schema.Struct({
-    ...ResultMeta.fields,
-    /**
-     * The version of the Model Context Protocol that the server wants to use.
-     * This may not match the version that the client requested. If the client
-     * cannot support this version, it MUST disconnect.
-     */
-    protocolVersion: Schema.String,
-    capabilities: ServerCapabilities,
-    serverInfo: Implementation,
-    /**
-     * Instructions describing how to use the server and its features.
-     *
-     * This can be used by clients to improve the LLM's understanding of available
-     * tools, resources, etc. It can be thought of like a "hint" to the model.
-     * For example, this information MAY be added to the system prompt.
-     */
-    instructions: Schema.optional(Schema.String)
-  })
+  }
 }) {}
 
 /**
  * This notification is sent from the client to the server after initialization
  * has finished.
  */
-export class InitializedNotification extends Schema.Class<InitializedNotification>(
-  "@effect/ai/McpSchema/InitializedNotification"
-)({
-  ...JsonRpcNotificationFields.fields,
-  method: Schema.tag("notifications/initialized")
+export class InitializedNotification extends Rpc.make("notifications/initialized", {
+  payload: NotificationMeta
 }) {}
 
 // =============================================================================
 // Cancellation
 // =============================================================================
 
-export class CancelledNotification extends Schema.Class<CancelledNotification>(
-  "@effect/ai/McpSchema/CancelledNotification"
-)({
-  ...JsonRpcNotificationFields.fields,
-  method: Schema.tag("notifications/cancelled"),
-  params: Schema.Struct({
+export class CancelledNotification extends Rpc.make("notifications/cancelled", {
+  payload: {
     ...NotificationMeta.fields,
     /**
      * The ID of the request to cancel.
@@ -369,7 +367,7 @@ export class CancelledNotification extends Schema.Class<CancelledNotification>(
      * be logged or presented to the user.
      */
     reason: Schema.optional(Schema.String)
-  })
+  }
 }) {}
 
 // =============================================================================
@@ -380,12 +378,9 @@ export class CancelledNotification extends Schema.Class<CancelledNotification>(
  * An out-of-band notification used to inform the receiver of a progress update
  * for a long-running request.
  */
-export class ProgressNotification extends Schema.Class<ProgressNotification>(
-  "@effect/ai/McpSchema/ProgressNotification"
-)({
-  ...JsonRpcNotificationFields.fields,
-  method: Schema.tag("notifications/progress"),
-  params: Schema.Struct({
+export class ProgressNotification extends Rpc.make("notifications/progress", {
+  payload: {
+    ...NotificationMeta.fields,
     /**
      * The progress token which was given in the initial request, used to
      * associate this notification with the request that is proceeding.
@@ -404,7 +399,7 @@ export class ProgressNotification extends Schema.Class<ProgressNotification>(
      * An optional message describing the current progress.
      */
     message: Schema.optional(Schema.String)
-  })
+  }
 }) {}
 
 // =============================================================================
@@ -525,38 +520,22 @@ export class BlobResourceContents extends ResourceContents.extend<BlobResourceCo
 }) {}
 
 /**
- * Sent from the client to request a list of resources the server has.
- */
-export class ListResourcesRequest extends Schema.Class<ListResourcesRequest>(
-  "@effect/ai/McpSchema/ListResourcesRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("resources/list"),
-  params: PaginatedRequestMeta
-}) {}
-
-/**
  * The server's response to a resources/list request from the client.
  */
 export class ListResourcesResult extends Schema.Class<ListResourcesResult>(
   "@effect/ai/McpSchema/ListResourcesResult"
 )({
-  ...JsonRpcResponseFields.fields,
-  result: Schema.Struct({
-    ...PaginatedResultMeta.fields,
-    resources: Schema.Array(Resource)
-  })
+  ...PaginatedResultMeta.fields,
+  resources: Schema.Array(Resource)
 }) {}
 
 /**
- * Sent from the client to request a list of resource templates the server has.
+ * Sent from the client to request a list of resources the server has.
  */
-export class ListResourceTemplatesRequest extends Schema.Class<ListResourceTemplatesRequest>(
-  "@effect/ai/McpSchema/ListResourceTemplatesRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("resources/templates/list"),
-  params: PaginatedRequestMeta
+export class ListResources extends Rpc.make("resources/list", {
+  success: ListResourcesResult,
+  error: McpError,
+  payload: PaginatedRequestMeta
 }) {}
 
 /**
@@ -565,29 +544,17 @@ export class ListResourceTemplatesRequest extends Schema.Class<ListResourceTempl
 export class ListResourceTemplatesResult extends Schema.Class<ListResourceTemplatesResult>(
   "@effect/ai/McpSchema/ListResourceTemplatesResult"
 )({
-  ...JsonRpcResponseFields.fields,
-  result: Schema.Struct({
-    ...PaginatedResultMeta.fields,
-    resourceTemplates: Schema.Array(ResourceTemplate)
-  })
+  ...PaginatedResultMeta.fields,
+  resourceTemplates: Schema.Array(ResourceTemplate)
 }) {}
 
 /**
- * Sent from the client to the server, to read a specific resource URI.
+ * Sent from the client to request a list of resource templates the server has.
  */
-export class ReadResourceRequest extends Schema.Class<ReadResourceRequest>(
-  "@effect/ai/McpSchema/ReadResourceRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("resources/read"),
-  params: Schema.Struct({
-    ...RequestMeta.fields,
-    /**
-     * The URI of the resource to read. The URI can use any protocol; it is up
-     * to the server how to interpret it.
-     */
-    uri: Schema.String
-  })
+export class ListResourceTemplates extends Rpc.make("resources/templates/list", {
+  success: ListResourceTemplatesResult,
+  error: McpError,
+  payload: PaginatedRequestMeta
 }) {}
 
 /**
@@ -596,14 +563,27 @@ export class ReadResourceRequest extends Schema.Class<ReadResourceRequest>(
 export class ReadResourceResult extends Schema.Class<ReadResourceResult>(
   "@effect/ai/McpSchema/ReadResourceResult"
 )({
-  ...JsonRpcResponseFields.fields,
-  result: Schema.Struct({
-    ...ResultMeta.fields,
-    contents: Schema.Array(Schema.Union(
-      TextResourceContents,
-      BlobResourceContents
-    ))
-  })
+  ...ResultMeta.fields,
+  contents: Schema.Array(Schema.Union(
+    TextResourceContents,
+    BlobResourceContents
+  ))
+}) {}
+
+/**
+ * Sent from the client to the server, to read a specific resource URI.
+ */
+export class ReadResource extends Rpc.make("resources/read", {
+  success: ReadResourceResult,
+  error: McpError,
+  payload: {
+    ...RequestMeta.fields,
+    /**
+     * The URI of the resource to read. The URI can use any protocol; it is up
+     * to the server how to interpret it.
+     */
+    uri: Schema.String
+  }
 }) {}
 
 /**
@@ -611,31 +591,24 @@ export class ReadResourceResult extends Schema.Class<ReadResourceResult>(
  * list of resources it can read from has changed. This may be issued by servers
  * without any previous subscription from the client.
  */
-export class ResourceListChangedNotification extends Schema.Class<ResourceListChangedNotification>(
-  "@effect/ai/McpSchema/ResourceListChangedNotification"
-)({
-  ...JsonRpcNotificationFields.fields,
-  method: Schema.tag("notifications/resources/list_changed"),
-  params: NotificationMeta
+export class ResourceListChangedNotification extends Rpc.make("notifications/resources/list_changed", {
+  payload: NotificationMeta
 }) {}
 
 /**
  * Sent from the client to request resources/updated notifications from the
  * server whenever a particular resource changes.
  */
-export class SubscribeRequest extends Schema.Class<SubscribeRequest>(
-  "@effect/ai/McpSchema/SubscribeRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("resources/subscribe"),
-  params: Schema.Struct({
+export class Subscribe extends Rpc.make("resources/subscribe", {
+  error: McpError,
+  payload: {
     ...RequestMeta.fields,
     /**
      * The URI of the resource to subscribe to. The URI can use any protocol;
      * it is up to the server how to interpret it.
      */
     uri: Schema.String
-  })
+  }
 }) {}
 
 /**
@@ -643,33 +616,26 @@ export class SubscribeRequest extends Schema.Class<SubscribeRequest>(
  * notifications from the server. This should follow a previous
  * resources/subscribe request.
  */
-export class UnsubscribeRequest extends Schema.Class<UnsubscribeRequest>(
-  "@effect/ai/McpSchema/UnsubscribeRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("resources/unsubscribe"),
-  params: Schema.Struct({
+export class Unsubscribe extends Rpc.make("resources/unsubscribe", {
+  error: McpError,
+  payload: {
     ...RequestMeta.fields,
     /**
      * The URI of the resource to subscribe to. The URI can use any protocol;
      * it is up to the server how to interpret it.
      */
     uri: Schema.String
-  })
+  }
 }) {}
 
-export class ResourceUpdatedNotification extends Schema.Class<ResourceUpdatedNotification>(
-  "@effect/ai/McpSchema/ResourceUpdatedNotification"
-)({
-  ...JsonRpcNotificationFields.fields,
-  method: Schema.tag("notifications/resources/updated"),
-  params: Schema.Struct({
+export class ResourceUpdatedNotification extends Rpc.make("notifications/resources/updated", {
+  payload: {
     ...NotificationMeta.fields,
     /**
      * The URI of the resource that has been updated. This might be a sub-resource of the one that the client actually subscribed to.
      */
     uri: Schema.String
-  })
+  }
 }) {}
 
 // =============================================================================
@@ -813,39 +779,46 @@ export class PromptMessage extends Schema.Class<PromptMessage>(
 }) {}
 
 /**
- * Sent from the client to request a list of prompts and prompt templates the
- * server has.
- */
-export class ListPromptsRequest extends Schema.Class<ListPromptsRequest>(
-  "@effect/ai/McpSchema/ListPromptsRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("prompts/list"),
-  params: PaginatedRequestMeta
-}) {}
-
-/**
  * The server's response to a prompts/list request from the client.
  */
 export class ListPromptsResult extends Schema.Class<ListPromptsResult>(
   "@effect/ai/McpSchema/ListPromptsResult"
 )({
-  ...JsonRpcResponseFields.fields,
-  result: Schema.Struct({
-    ...PaginatedResultMeta.fields,
-    prompts: Schema.Array(Prompt)
-  })
+  ...PaginatedResultMeta.fields,
+  prompts: Schema.Array(Prompt)
+}) {}
+
+/**
+ * Sent from the client to request a list of prompts and prompt templates the
+ * server has.
+ */
+export class ListPrompts extends Rpc.make("prompts/list", {
+  success: ListPromptsResult,
+  error: McpError,
+  payload: PaginatedRequestMeta
+}) {}
+
+/**
+ * The server's response to a prompts/get request from the client.
+ */
+export class GetPromptResult extends Schema.Class<GetPromptResult>(
+  "@effect/ai/McpSchema/GetPromptResult"
+)({
+  ...ResultMeta.fields,
+  messages: Schema.Array(PromptMessage),
+  /**
+   * An optional description for the prompt.
+   */
+  description: Schema.optional(Schema.String)
 }) {}
 
 /**
  * Used by the client to get a prompt provided by the server.
  */
-export class GetPromptRequest extends Schema.Class<GetPromptRequest>(
-  "@effect/ai/McpSchema/GetPromptRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("prompts/get"),
-  params: Schema.Struct({
+export class GetPrompt extends Rpc.make("prompts/get", {
+  success: GetPromptResult,
+  error: McpError,
+  payload: {
     ...RequestMeta.fields,
     /**
      * The name of the prompt or prompt template.
@@ -858,24 +831,7 @@ export class GetPromptRequest extends Schema.Class<GetPromptRequest>(
       key: Schema.String,
       value: Schema.String
     }))
-  })
-}) {}
-
-/**
- * The server's response to a prompts/get request from the client.
- */
-export class GetPromptResult extends Schema.Class<GetPromptResult>(
-  "@effect/ai/McpSchema/GetPromptResult"
-)({
-  ...JsonRpcResponseFields.fields,
-  result: Schema.Struct({
-    ...ResultMeta.fields,
-    messages: Schema.Array(PromptMessage),
-    /**
-     * An optional description for the prompt.
-     */
-    description: Schema.optional(Schema.String)
-  })
+  }
 }) {}
 
 /**
@@ -883,12 +839,8 @@ export class GetPromptResult extends Schema.Class<GetPromptResult>(
  * the list of prompts it offers has changed. This may be issued by servers
  * without any previous subscription from the client.
  */
-export class PromptListChangedNotification extends Schema.Class<PromptListChangedNotification>(
-  "@effect/ai/McpSchema/PromptListChangedNotification"
-)({
-  ...JsonRpcNotificationFields.fields,
-  method: Schema.tag("notifications/prompts/list_changed"),
-  params: NotificationMeta
+export class PromptListChangedNotification extends Rpc.make("notifications/prompts/list_changed", {
+  payload: NotificationMeta
 }) {}
 
 // =============================================================================
@@ -981,58 +933,22 @@ export class Tool extends Schema.Class<Tool>(
 }) {}
 
 /**
- * Sent from the client to request a list of tools the server has.
- */
-export class ListToolsRequest extends Schema.Class<ListToolsRequest>(
-  "@effect/ai/McpSchema/ListToolsRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("tools/list"),
-  params: PaginatedRequestMeta
-}) {}
-
-/**
  * The server's response to a tools/list request from the client.
  */
 export class ListToolsResult extends Schema.Class<ListToolsResult>(
   "@effect/ai/McpSchema/ListToolsResult"
 )({
-  ...JsonRpcResponseFields.fields,
-  result: Schema.Struct({
-    ...PaginatedResultMeta.fields,
-    tools: Schema.Array(Tool)
-  })
+  ...PaginatedResultMeta.fields,
+  tools: Schema.Array(Tool)
 }) {}
 
 /**
- * Used by the client to invoke a tool provided by the server.
+ * Sent from the client to request a list of tools the server has.
  */
-export class CallToolRequest extends Schema.Class<CallToolRequest>(
-  "@effect/ai/McpSchema/CallToolRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("tools/call"),
-  params: Schema.Struct({
-    ...RequestMeta.fields,
-    name: Schema.String,
-    arguments: Schema.Record({
-      key: Schema.String,
-      value: Schema.Unknown
-    })
-  })
-}) {}
-
-/**
- * An optional notification from the server to the client, informing it that
- * the list of tools it offers has changed. This may be issued by servers
- * without any previous subscription from the client.
- */
-export class ToolListChangedNotification extends Schema.Class<ToolListChangedNotification>(
-  "@effect/ai/McpSchema/ToolListChangedNotification"
-)({
-  ...JsonRpcNotificationFields.fields,
-  method: Schema.tag("notifications/tools/list_changed"),
-  params: NotificationMeta
+export class ListTools extends Rpc.make("tools/list", {
+  success: ListToolsResult,
+  error: McpError,
+  payload: PaginatedRequestMeta
 }) {}
 
 /**
@@ -1050,22 +966,44 @@ export class ToolListChangedNotification extends Schema.Class<ToolListChangedNot
 export class CallToolResult extends Schema.Class<CallToolResult>(
   "@effect/ai/McpSchema/CallToolResult"
 )({
-  ...JsonRpcResponseFields.fields,
-  result: Schema.Struct({
-    ...ResultMeta.fields,
-    content: Schema.Array(Schema.Union(
-      TextContent,
-      ImageContent,
-      AudioContent,
-      EmbeddedResource
-    )),
-    /**
-     * Whether the tool call ended in an error.
-     *
-     * If not set, this is assumed to be false (the call was successful).
-     */
-    isError: Schema.optional(Schema.Boolean)
-  })
+  ...ResultMeta.fields,
+  content: Schema.Array(Schema.Union(
+    TextContent,
+    ImageContent,
+    AudioContent,
+    EmbeddedResource
+  )),
+  /**
+   * Whether the tool call ended in an error.
+   *
+   * If not set, this is assumed to be false (the call was successful).
+   */
+  isError: Schema.optional(Schema.Boolean)
+}) {}
+
+/**
+ * Used by the client to invoke a tool provided by the server.
+ */
+export class CallTool extends Rpc.make("tools/call", {
+  success: CallToolResult,
+  error: McpError,
+  payload: {
+    ...RequestMeta.fields,
+    name: Schema.String,
+    arguments: Schema.Record({
+      key: Schema.String,
+      value: Schema.Unknown
+    })
+  }
+}) {}
+
+/**
+ * An optional notification from the server to the client, informing it that
+ * the list of tools it offers has changed. This may be issued by servers
+ * without any previous subscription from the client.
+ */
+export class ToolListChangedNotification extends Rpc.make("notifications/tools/list_changed", {
+  payload: NotificationMeta
 }) {}
 
 // =============================================================================
@@ -1102,12 +1040,8 @@ export type LoggingLevel = typeof LoggingLevel.Type
 /**
  * A request from the client to the server, to enable or adjust logging.
  */
-export class SetLevelRequest extends Schema.Class<SetLevelRequest>(
-  "@effect/ai/McpSchema/SetLevelRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("logging/setLevel"),
-  params: Schema.Struct({
+export class SetLevel extends Rpc.make("logging/setLevel", {
+  payload: {
     ...RequestMeta.fields,
     /**
      * The level of logging that the client wants to receive from the server.
@@ -1115,18 +1049,11 @@ export class SetLevelRequest extends Schema.Class<SetLevelRequest>(
      * severe) to the client as notifications/message.
      */
     level: LoggingLevel
-  })
+  }
 }) {}
 
-/**
- * Notification of a log message passed from server to client. If no logging/setLevel request has been sent from the client, the server MAY decide which messages to send automatically.
- */
-export class LoggingMessageNotification extends Schema.Class<LoggingMessageNotification>(
-  "@effect/ai/McpSchema/LoggingMessageNotification"
-)({
-  ...JsonRpcNotificationFields.fields,
-  method: Schema.tag("notifications/message"),
-  params: Schema.Struct({
+export class LoggingMessageNotification extends Rpc.make("notifications/message", {
+  payload: Schema.Struct({
     ...NotificationMeta.fields,
     /**
      * The severity of this log message.
@@ -1229,17 +1156,34 @@ export class ModelPreferences extends Schema.Class<ModelPreferences>(
 }) {}
 
 /**
+ * The client's response to a sampling/create_message request from the server.
+ * The client should inform the user before returning the sampled message, to
+ * allow them to inspect the response (human in the loop) and decide whether to
+ * allow the server to see it.
+ */
+export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
+  "@effect/ai/McpSchema/CreateMessageResult"
+)({
+  /**
+   * The name of the model that generated the message.
+   */
+  model: Schema.String,
+  /**
+   * The reason why sampling stopped, if known.
+   */
+  stopReason: Schema.optional(Schema.String)
+}) {}
+
+/**
  * A request from the server to sample an LLM via the client. The client has
  * full discretion over which model to select. The client should also inform the
  * user before beginning sampling, to allow them to inspect the request (human
  * in the loop) and decide whether to approve it.
  */
-export class CreateMessageRequest extends Schema.Class<CreateMessageRequest>(
-  "@effect/ai/McpSchema/CreateMessageRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("sampling/createMessage"),
-  params: Schema.Struct({
+export class CreateMessage extends Rpc.make("sampling/createMessage", {
+  success: CreateMessageResult,
+  error: McpError,
+  payload: {
     messages: Schema.Array(SamplingMessage),
     /**
      * The server's preferences for which model to select. The client MAY ignore
@@ -1268,29 +1212,7 @@ export class CreateMessageRequest extends Schema.Class<CreateMessageRequest>(
      * this metadata is provider-specific.
      */
     metadata: Schema.Unknown
-  })
-}) {}
-
-/**
- * The client's response to a sampling/create_message request from the server.
- * The client should inform the user before returning the sampled message, to
- * allow them to inspect the response (human in the loop) and decide whether to
- * allow the server to see it.
- */
-export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
-  "@effect/ai/McpSchema/CreateMessageResult"
-)({
-  ...JsonRpcResponseFields.fields,
-  result: Schema.Struct({
-    /**
-     * The name of the model that generated the message.
-     */
-    model: Schema.String,
-    /**
-     * The reason why sampling stopped, if known.
-     */
-    stopReason: Schema.optional(Schema.String)
-  })
+  }
 }) {}
 
 // =============================================================================
@@ -1324,14 +1246,36 @@ export class PromptReference extends Schema.Class<PromptReference>(
 }) {}
 
 /**
+ * The server's response to a completion/complete request
+ */
+export class CompleteResult extends Schema.Class<CompleteResult>(
+  "@effect/ai/McpSchema/CompleteResult"
+)({
+  completion: Schema.Struct({
+    /**
+     * An array of completion values. Must not exceed 100 items.
+     */
+    values: Schema.Array(Schema.String),
+    /**
+     * The total number of completion options available. This can exceed the
+     * number of values actually sent in the response.
+     */
+    total: Schema.optional(Schema.Number),
+    /**
+     * Indicates whether there are additional completion options beyond those
+     * provided in the current response, even if the exact total is unknown.
+     */
+    hasMore: Schema.optional(Schema.Boolean)
+  })
+}) {}
+
+/**
  * A request from the client to the server, to ask for completion options.
  */
-export class CompleteRequest extends Schema.Class<CompleteRequest>(
-  "@effect/ai/McpSchema/CompleteRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("completion/complete"),
-  params: Schema.Struct({
+export class Complete extends Rpc.make("completion/complete", {
+  success: CompleteResult,
+  error: McpError,
+  payload: {
     ref: Schema.Union(PromptReference, ResourceReference),
     /**
      * The argument's information
@@ -1346,34 +1290,7 @@ export class CompleteRequest extends Schema.Class<CompleteRequest>(
        */
       value: Schema.String
     })
-  })
-}) {}
-
-/**
- * The server's response to a completion/complete request
- */
-export class CompleteResult extends Schema.Class<CompleteResult>(
-  "@effect/ai/McpSchema/CompleteResult"
-)({
-  ...JsonRpcResponseFields.fields,
-  result: Schema.Struct({
-    completion: Schema.Struct({
-      /**
-       * An array of completion values. Must not exceed 100 items.
-       */
-      values: Schema.Array(Schema.String),
-      /**
-       * The total number of completion options available. This can exceed the
-       * number of values actually sent in the response.
-       */
-      total: Schema.optional(Schema.Number),
-      /**
-       * Indicates whether there are additional completion options beyond those
-       * provided in the current response, even if the exact total is unknown.
-       */
-      hasMore: Schema.optional(Schema.Boolean)
-    })
-  })
+  }
 }) {}
 
 // =============================================================================
@@ -1401,6 +1318,17 @@ export class Root extends Schema.Class<Root>(
 }) {}
 
 /**
+ * The client's response to a roots/list request from the server. This result
+ * contains an array of Root objects, each representing a root directory or file
+ * that the server can operate on.
+ */
+export class ListRootsResult extends Schema.Class<ListRootsResult>(
+  "@effect/ai/McpSchema/ListRootsResult"
+)({
+  roots: Schema.Array(Root)
+}) {}
+
+/**
  * Sent from the server to request a list of root URIs from the client. Roots
  * allow servers to ask for specific directories or files to operate on. A
  * common example for roots is providing a set of repositories or directories a
@@ -1411,12 +1339,10 @@ export class Root extends Schema.Class<Root>(
  * system structure or access specific locations that the client has permission
  * to read from.
  */
-export class ListRootsRequest extends Schema.Class<ListRootsRequest>(
-  "@effect/ai/McpSchema/ListResourcesRequest"
-)({
-  ...JsonRpcRequestFields.fields,
-  method: Schema.tag("roots/list"),
-  params: RequestMeta
+export class ListRoots extends Rpc.make("roots/list", {
+  success: ListRootsResult,
+  error: McpError,
+  payload: RequestMeta
 }) {}
 
 /**
@@ -1425,107 +1351,119 @@ export class ListRootsRequest extends Schema.Class<ListRootsRequest>(
  * removes, or modifies any root. The server should then request an updated list
  * of roots using the ListRootsRequest.
  */
-export class RootsListChangedNotification extends Schema.Class<RootsListChangedNotification>(
-  "@effect/ai/mcpschema/rootslistchangednotification"
-)({
-  ...JsonRpcNotificationFields.fields,
-  method: Schema.tag("notifications/roots/list_changed"),
-  params: NotificationMeta
-}) {}
-
-/**
- * The client's response to a roots/list request from the server. This result
- * contains an array of Root objects, each representing a root directory or file
- * that the server can operate on.
- */
-export class ListRootsResult extends Schema.Class<ListRootsResult>(
-  "@effect/ai/McpSchema/ListRootsResult"
-)({
-  ...JsonRpcResponseFields.fields,
-  result: Schema.Struct({
-    roots: Schema.Array(Root)
-  })
+export class RootsListChangedNotification extends Rpc.make("notifications/roots/list_changed", {
+  payload: NotificationMeta
 }) {}
 
 // =============================================================================
 // Protocol
 // =============================================================================
 
-export const ClientRequest: Schema.Union<[
-  typeof PingRequest,
-  typeof InitializeRequest,
-  typeof CompleteRequest,
-  typeof SetLevelRequest,
-  typeof GetPromptRequest,
-  typeof ListPromptsRequest,
-  typeof ListResourcesRequest,
-  typeof ListResourceTemplatesRequest,
-  typeof ReadResourceRequest,
-  typeof SubscribeRequest,
-  typeof UnsubscribeRequest,
-  typeof CallToolRequest,
-  typeof ListToolsRequest
-]> = Schema.Union(
-  PingRequest,
-  InitializeRequest,
-  CompleteRequest,
-  SetLevelRequest,
-  GetPromptRequest,
-  ListPromptsRequest,
-  ListResourcesRequest,
-  ListResourceTemplatesRequest,
-  ReadResourceRequest,
-  SubscribeRequest,
-  UnsubscribeRequest,
-  CallToolRequest,
-  ListToolsRequest
-)
-export type ClientRequest = typeof ClientRequest.Type
+export type RequestEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
+  Group
+> extends infer Rpc ? Rpc extends Rpc.Rpc<
+    infer _Tag,
+    infer _Payload,
+    infer _Success,
+    infer _Error,
+    infer _Middleware
+  > ? {
+      readonly _tag: "Request"
+      readonly id: string | number
+      readonly method: _Tag
+      readonly payload: _Payload["Encoded"]
+    }
+  : never
+  : never
 
-export const ClientNotification: Schema.Union<[
-  typeof InitializedNotification,
-  typeof CancelledNotification,
-  typeof ProgressNotification,
-  typeof RootsListChangedNotification
-]> = Schema.Union(
-  InitializedNotification,
+export type NotificationEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
+  Group
+> extends infer Rpc ? Rpc extends Rpc.Rpc<
+    infer _Tag,
+    infer _Payload,
+    infer _Success,
+    infer _Error,
+    infer _Middleware
+  > ? {
+      readonly _tag: "Notification"
+      readonly method: _Tag
+      readonly payload: _Payload["Encoded"]
+    }
+  : never
+  : never
+
+export type SuccessEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
+  Group
+> extends infer Rpc ? Rpc extends Rpc.Rpc<
+    infer _Tag,
+    infer _Payload,
+    infer _Success,
+    infer _Error,
+    infer _Middleware
+  > ? {
+      readonly _tag: "Success"
+      readonly id: string | number
+      readonly method: _Tag
+      readonly result: _Success["Encoded"]
+    }
+  : never
+  : never
+
+export type FailureEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
+  Group
+> extends infer Rpc ? Rpc extends Rpc.Rpc<
+    infer _Tag,
+    infer _Payload,
+    infer _Success,
+    infer _Error,
+    infer _Middleware
+  > ? {
+      readonly _tag: "Failure"
+      readonly id: string | number
+      readonly method: _Tag
+      readonly error: _Error["Encoded"]
+    }
+  : never
+  : never
+
+export class ClientRequestRpcs extends RpcGroup.make(
+  Ping,
+  Initialize,
+  Complete,
+  SetLevel,
+  GetPrompt,
+  ListPrompts,
+  ListResources,
+  ListResourceTemplates,
+  ReadResource,
+  Subscribe,
+  Unsubscribe,
+  CallTool,
+  ListTools
+) {}
+export type ClientRequestEncoded = RequestEncoded<typeof ClientRequestRpcs>
+
+export class ClientNotificationRpcs extends RpcGroup.make(
   CancelledNotification,
   ProgressNotification,
+  InitializedNotification,
   RootsListChangedNotification
-)
-export type ClientNotification = typeof ClientNotification.Type
+) {}
+export type ClientNotificationEncoded = NotificationEncoded<typeof ClientNotificationRpcs>
 
-export const ClientResult: Schema.Union<[
-  typeof EmptyResult,
-  typeof CreateMessageResult,
-  typeof ListRootsResult
-]> = Schema.Union(
-  EmptyResult,
-  CreateMessageResult,
-  ListRootsResult
-)
-export type ClientResult = typeof ClientResult.Type
+export class ClientRpcs extends ClientRequestRpcs.merge(ClientNotificationRpcs) {}
 
-export const ServerRequest: Schema.Union<[
-  typeof PingRequest,
-  typeof CreateMessageRequest,
-  typeof ListRootsRequest
-]> = Schema.Union(
-  PingRequest,
-  CreateMessageRequest,
-  ListRootsRequest
-)
-export type ServerRequest = typeof ServerRequest.Type
+export type ClientSuccessEncoded = SuccessEncoded<typeof ServerRequestRpcs>
+export type ClientFailureEncoded = FailureEncoded<typeof ServerRequestRpcs>
 
-export const ServerNotification: Schema.Union<[
-  typeof CancelledNotification,
-  typeof ProgressNotification,
-  typeof LoggingMessageNotification,
-  typeof ResourceUpdatedNotification,
-  typeof ResourceListChangedNotification,
-  typeof ToolListChangedNotification,
-  typeof PromptListChangedNotification
-]> = Schema.Union(
+export class ServerRequestRpcs extends RpcGroup.make(
+  Ping,
+  CreateMessage,
+  ListRoots
+) {}
+export type ServerRequestEncoded = RequestEncoded<typeof ServerRequestRpcs>
+
+export class ServerNotificationRpcs extends RpcGroup.make(
   CancelledNotification,
   ProgressNotification,
   LoggingMessageNotification,
@@ -1533,30 +1471,46 @@ export const ServerNotification: Schema.Union<[
   ResourceListChangedNotification,
   ToolListChangedNotification,
   PromptListChangedNotification
-)
-export type ServerNotification = typeof ServerNotification.Type
+) {}
+export type ServerNotificationEncoded = NotificationEncoded<typeof ServerNotificationRpcs>
 
-export const ServerResult: Schema.Union<[
-  typeof EmptyResult,
-  typeof InitializeResult,
-  typeof CompleteResult,
-  typeof GetPromptResult,
-  typeof ListPromptsResult,
-  typeof ListResourcesResult,
-  typeof ListResourceTemplatesResult,
-  typeof ReadResourceResult,
-  typeof CallToolResult,
-  typeof ListToolsResult
-]> = Schema.Union(
-  EmptyResult,
-  InitializeResult,
-  CompleteResult,
-  GetPromptResult,
-  ListPromptsResult,
-  ListResourcesResult,
-  ListResourceTemplatesResult,
-  ReadResourceResult,
-  CallToolResult,
-  ListToolsResult
-)
-export type ServerResult = typeof ServerResult.Type
+export type ServerSuccessEncoded = SuccessEncoded<typeof ClientRequestRpcs>
+export type ServerFailureEncoded = FailureEncoded<typeof ClientRequestRpcs>
+export type ServerResultEncoded = ServerSuccessEncoded | ServerFailureEncoded
+
+export type FromClientEncoded = ClientRequestEncoded | ClientNotificationEncoded
+export type FromServerEncoded = ServerResultEncoded | ServerNotificationEncoded
+
+// =============================================================================
+// JSON RPC
+// =============================================================================
+
+export interface JsonRpcRequest {
+  readonly jsonrpc: "2.0"
+  readonly id: string | number
+  readonly method: string
+  readonly params?: {
+    readonly [key: string]: unknown
+  }
+}
+
+export interface JsonRpcResponse {
+  readonly jsonrpc: "2.0"
+  readonly id: string | number
+  readonly result?: {
+    readonly [key: string]: unknown
+  }
+  readonly error?: {
+    readonly code: number
+    readonly message: string
+    readonly data?: unknown
+  }
+}
+
+export interface JsonRpcNotification {
+  readonly jsonrpc: "2.0"
+  readonly method: string
+  readonly params?: {
+    readonly [key: string]: unknown
+  }
+}
