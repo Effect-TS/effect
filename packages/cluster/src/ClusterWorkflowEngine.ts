@@ -145,6 +145,7 @@ export const make = Effect.gen(function*() {
             return {
               run: (request: Entity.Request<any>) =>
                 execute(request.payload, executionId).pipe(
+                  Effect.scoped,
                   Workflow.intoResult,
                   Effect.provideService(
                     WorkflowInstance,

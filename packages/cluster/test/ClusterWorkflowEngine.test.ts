@@ -7,9 +7,9 @@ import {
   ShardManager,
   ShardStorage
 } from "@effect/cluster"
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
-import { DateTime, Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
+import { Cause, DateTime, Effect, Exit, Fiber, Layer, Option, Schema, TestClock } from "effect"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("should run a workflow", () =>
@@ -32,7 +32,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       // - 1 durable clock run
       // - 1 durable clock deferred set
       // - 1 durable clock deferred resume
-      assert.equal(driver.requests.size, 10)
+      expect(driver.requests.size).toEqual(10)
       const executionId = driver.journal[0].address.entityId
 
       const token = yield* DurableDeferred.token(EmailTrigger).pipe(
@@ -50,16 +50,16 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       // - 1 DurableDeferred set
       // - 1 DurableDeferred resume
-      assert.equal(driver.requests.size, 12)
+      expect(driver.requests.size).toEqual(12)
 
-      assert.equal(yield* Fiber.join(fiber), void 0)
+      expect(yield* Fiber.join(fiber)).toBeUndefined()
 
       // test deduplication
       yield* EmailWorkflow.execute({
         id: "test-email-1",
         to: "bob@example.com"
       })
-      assert.equal(driver.requests.size, 12)
+      expect(driver.requests.size).toEqual(12)
     }).pipe(
       Effect.provide(TestWorkflowLayer)
     ))
@@ -84,7 +84,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       // - 1 initial request
       // - 5 attempts to send email
       // - 1 sleep activity
-      assert.equal(driver.requests.size, 7)
+      expect(driver.requests.size).toEqual(7)
 
       const result = driver.requests.get(envelope.requestId)!
       const reply = result.replies[0]!
@@ -97,6 +97,28 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       const exit = yield* Fiber.await(fiber)
       assert(Exit.isInterrupted(exit))
+    }).pipe(
+      Effect.provide(TestWorkflowLayer)
+    ))
+
+  it.effect("Workflow.withCompensation", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+
+      const fiber = yield* EmailWorkflow.execute({
+        id: "test-email-3",
+        to: "compensation"
+      }).pipe(Effect.fork)
+
+      yield* TestClock.adjust(1)
+
+      const flags = yield* Flags
+      assert.isTrue(flags.get("compensation"))
+
+      const error = yield* Fiber.join(fiber).pipe(
+        Effect.flip
+      )
+      expect(error).toBeInstanceOf(SendEmailError)
     }).pipe(
       Effect.provide(TestWorkflowLayer)
     ))
@@ -135,7 +157,13 @@ const EmailWorkflow = Workflow.make({
   }
 })
 
+class Flags extends Effect.Service<Flags>()("Flags", {
+  succeed: new Map<string, boolean>()
+}) {}
+
 const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
+  const flags = yield* Flags
+
   yield* Activity.make({
     name: "SendEmail",
     error: SendEmailError,
@@ -149,8 +177,17 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
       }
     })
   }).pipe(
+    Workflow.withCompensation(Effect.fnUntraced(function*(_, cause) {
+      flags.set("compensation", true)
+      const error = Cause.failureOption(cause) as Option.Option<SendEmailError>
+      assert.strictEqual(Option.getOrThrow(error).message, "Compensation triggered")
+    })),
     Activity.retry({ times: 5 })
   )
+
+  if (payload.to === "compensation") {
+    return yield* new SendEmailError({ message: `Compensation triggered` })
+  }
 
   const result = yield* Activity.make({
     name: "Sleep",
@@ -170,7 +207,9 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
   yield* DurableDeferred.token(EmailTrigger)
   // suspended outside Activity
   yield* DurableDeferred.await(EmailTrigger)
-}))
+})).pipe(
+  Layer.provideMerge(Flags.Default)
+)
 
 const EmailTrigger = DurableDeferred.make("EmailTrigger")
 

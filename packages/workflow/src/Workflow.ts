@@ -1,10 +1,12 @@
 /**
  * @since 1.0.0
  */
+import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
@@ -12,6 +14,7 @@ import * as PrimaryKey from "effect/PrimaryKey"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
+import type * as Scope from "effect/Scope"
 import { makeHashDigest } from "./internal/crypto.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
@@ -76,7 +79,7 @@ export interface Workflow<
     Registration<Name> | WorkflowEngine,
     never,
     | WorkflowEngine
-    | Exclude<R, WorkflowEngine | WorkflowInstance>
+    | Exclude<R, WorkflowEngine | WorkflowInstance | Scope.Scope>
     | Payload["Context"]
     | Success["Context"]
     | Error["Context"]
@@ -399,3 +402,41 @@ export const intoResult = <A, E, R>(
       })
     )
   )
+
+/**
+ * Add compensation logic to an effect inside a Workflow. The compensation finalizer will be
+ * called if the entire workflow fails, allowing you to perform cleanup or
+ * other actions based on the success value and the cause of the workflow failure.
+ *
+ * NOTE: Compensation will not work for nested activities. Compensation
+ * finalizers are only registered for top-level effects in the workflow.
+ *
+ * @since 1.0.0
+ * @category Compensation
+ */
+export const withCompensation: {
+  <A, R2>(
+    compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
+  ): <E, R>(
+    effect: Effect.Effect<A, E, R>
+  ) => Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope>
+  <A, E, R, R2>(
+    effect: Effect.Effect<A, E, R>,
+    compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
+  ): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope>
+} = dual(2, <A, E, R, R2>(
+  effect: Effect.Effect<A, E, R>,
+  compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
+): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope> =>
+  Effect.uninterruptibleMask((restore) =>
+    Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
+      const instance = Context.get(context, InstanceTag)
+      return Effect.tap(restore(effect), (value) =>
+        Effect.addFinalizer((exit) => {
+          if (Exit.isSuccess(exit) || instance.suspended) {
+            return Effect.void
+          }
+          return compensation(value, exit.cause)
+        }))
+    })
+  ))
