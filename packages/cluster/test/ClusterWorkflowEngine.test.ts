@@ -9,7 +9,7 @@ import {
 } from "@effect/cluster"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
-import { Cause, DateTime, Effect, Exit, Fiber, Layer, Option, Schema, TestClock } from "effect"
+import { DateTime, Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("should run a workflow", () =>
@@ -84,19 +84,31 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       // - 1 initial request
       // - 5 attempts to send email
       // - 1 sleep activity
-      expect(driver.requests.size).toEqual(7)
+      // - 1 durable clock run
+      // - 1 durable clock deferred set
+      // - 1 durable clock deferred resume
+      // - 1 interrupt signal set
+      // - 1 interrupt signal resume
+      expect(driver.requests.size).toEqual(12)
+      yield* TestClock.adjust(5000)
+
+      // clock cleared
+      expect(driver.requests.size).toEqual(11)
 
       const result = driver.requests.get(envelope.requestId)!
       const reply = result.replies[0]!
       assert(
         reply._tag === "WithExit" &&
-          reply.exit._tag === "Failure" &&
-          reply.exit.cause._tag === "Interrupt"
+          reply.exit._tag === "Success"
       )
-      yield* TestClock.adjust(5000)
+      const value = reply.exit.value as Workflow.ResultEncoded<any, any>
+      assert(value._tag === "Complete" && value.exit._tag === "Failure")
 
       const exit = yield* Fiber.await(fiber)
       assert(Exit.isInterrupted(exit))
+
+      const flags = yield* Flags
+      assert.isTrue(flags.get("compensation"))
     }).pipe(
       Effect.provide(TestWorkflowLayer)
     ))
@@ -177,10 +189,8 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
       }
     })
   }).pipe(
-    EmailWorkflow.withCompensation(Effect.fnUntraced(function*(_, cause) {
+    EmailWorkflow.withCompensation(Effect.fnUntraced(function*(_) {
       flags.set("compensation", true)
-      const error = Cause.failureOption(cause)
-      assert.strictEqual(Option.getOrThrow(error).message, "Compensation triggered")
     })),
     Activity.retry({ times: 5 })
   )

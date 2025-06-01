@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Rpc from "@effect/rpc/Rpc"
+import { DurableDeferred } from "@effect/workflow"
 import * as Activity from "@effect/workflow/Activity"
 import * as DurableClock from "@effect/workflow/DurableClock"
 import * as Workflow from "@effect/workflow/Workflow"
@@ -23,9 +24,7 @@ import * as Entity from "./Entity.js"
 import { EntityAddress } from "./EntityAddress.js"
 import { EntityId } from "./EntityId.js"
 import { EntityType } from "./EntityType.js"
-import * as Message from "./Message.js"
 import { MessageStorage } from "./MessageStorage.js"
-import * as Reply from "./Reply.js"
 import type { WithExitEncoded } from "./Reply.js"
 import * as Sharding from "./Sharding.js"
 import * as Snowflake from "./Snowflake.js"
@@ -37,7 +36,6 @@ import * as Snowflake from "./Snowflake.js"
 export const make = Effect.gen(function*() {
   const sharding = yield* Sharding.Sharding
   const storage = yield* MessageStorage
-  const snowflakeGen = yield* Snowflake.Generator
 
   const entities = new Map<
     string,
@@ -129,9 +127,24 @@ export const make = Effect.gen(function*() {
     Effect.orDie
   )
 
+  const clearClock = Effect.fnUntraced(function*(options: {
+    readonly executionId: string
+  }) {
+    const entityId = EntityId.make(options.executionId)
+    const shardId = sharding.getShardId(entityId)
+    const clockAddress = new EntityAddress({
+      entityType: ClockEntity.type,
+      entityId,
+      shardId
+    })
+    yield* storage.clearAddress(clockAddress)
+  })
+
   return WorkflowEngine.of({
-    register: (workflow, execute) =>
-      Effect.suspend(() => {
+    register(workflow, execute) {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
+      const engine = this
+      return Effect.suspend(() => {
         if (entities.has(workflow.name)) {
           return Effect.dieMessage(`Workflow ${workflow.name} already registered`)
         }
@@ -143,19 +156,36 @@ export const make = Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
             return {
-              run: (request: Entity.Request<any>) =>
-                execute(request.payload, executionId).pipe(
+              run: (request: Entity.Request<any>) => {
+                const instance = WorkflowInstance.of({
+                  workflow,
+                  executionId,
+                  suspended: false
+                })
+                return execute(request.payload, executionId).pipe(
+                  Effect.onExit(() => {
+                    if (!instance.suspended) {
+                      return Effect.void
+                    }
+                    return engine.deferredResult(InterruptSignal).pipe(
+                      Effect.flatMap((maybeResult) => {
+                        if (Option.isNone(maybeResult)) {
+                          return Effect.void
+                        }
+                        instance.suspended = false
+                        return Effect.zipRight(
+                          Effect.ignore(clearClock({ executionId })),
+                          Effect.interrupt
+                        )
+                      }),
+                      Effect.orDie
+                    )
+                  }),
                   Effect.scoped,
                   Workflow.intoResult,
-                  Effect.provideService(
-                    WorkflowInstance,
-                    WorkflowInstance.of({
-                      workflow,
-                      executionId,
-                      suspended: false
-                    })
-                  )
-                ) as any,
+                  Effect.provideService(WorkflowInstance, instance)
+                ) as any
+              },
               activity: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 const activityId = `${executionId}/${request.payload.name}`
                 let entry = activities.get(activityId)
@@ -186,7 +216,8 @@ export const make = Effect.gen(function*() {
             }
           })
         ) as Effect.Effect<void>
-      }),
+      })
+    },
 
     execute: ({ discard, executionId, payload, workflow }) =>
       RcMap.get(clients, workflow.name).pipe(
@@ -196,7 +227,7 @@ export const make = Effect.gen(function*() {
       ),
 
     interrupt: Effect.fnUntraced(
-      function*(workflow, executionId) {
+      function*(this: WorkflowEngine["Type"], workflow, executionId) {
         const requestId = yield* requestIdFor({
           entityType: `Workflow/${workflow.name}`,
           executionId,
@@ -214,41 +245,12 @@ export const make = Effect.gen(function*() {
           return
         }
 
-        const entityId = EntityId.make(executionId)
-        const shardId = sharding.getShardId(entityId)
-        const workflowAddress = new EntityAddress({
-          entityType: EntityType.make(`Workflow/${workflow.name}`),
-          entityId,
-          shardId
+        yield* this.deferredDone({
+          workflowName: workflow.name,
+          executionId,
+          deferred: InterruptSignal,
+          exit: { _tag: "Success", value: void 0 }
         })
-        const deferredAddress = new EntityAddress({
-          entityType: DeferredEntity.type,
-          entityId,
-          shardId
-        })
-        const clockAddress = new EntityAddress({
-          entityType: ClockEntity.type,
-          entityId,
-          shardId
-        })
-        if (Option.isNone(reply)) {
-          yield* sharding.sendOutgoing(
-            Message.OutgoingEnvelope.interrupt({
-              address: workflowAddress,
-              id: snowflakeGen.unsafeNext(),
-              requestId: requestId.value
-            }),
-            true
-          )
-        } else {
-          yield* sharding.reset(requestId.value)
-        }
-        yield* storage.saveReply(Reply.ReplyWithContext.interrupt({
-          id: snowflakeGen.unsafeNext(),
-          requestId: requestId.value
-        }))
-        yield* storage.clearAddress(deferredAddress)
-        yield* storage.clearAddress(clockAddress)
       },
       Effect.retry({
         while: (e) => e._tag === "PersistenceError",
@@ -461,6 +463,8 @@ const ClockEntityLayer = ClockEntity.toLayer(Effect.gen(function*() {
   }
 }))
 
+const InterruptSignal = DurableDeferred.make("Workflow/InterruptSignal")
+
 /**
  * @since 1.0.0
  * @category Layers
@@ -471,6 +475,5 @@ export const layer: Layer.Layer<
   Sharding.Sharding | MessageStorage
 > = DeferredEntityLayer.pipe(
   Layer.merge(ClockEntityLayer),
-  Layer.provideMerge(Layer.scoped(WorkflowEngine, make)),
-  Layer.provide(Snowflake.layerGenerator)
+  Layer.provideMerge(Layer.scoped(WorkflowEngine, make))
 )
