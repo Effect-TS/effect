@@ -1,5 +1,13 @@
 # effect
 
+## 3.16.3
+
+### Patch Changes
+
+- [#4952](https://github.com/Effect-TS/effect/pull/4952) [`87722fc`](https://github.com/Effect-TS/effect/commit/87722fce693a9b49284bbddbf82d30714c688261) Thanks @tim-smart! - improve Effect.catchTag auto-completion
+
+- [#4950](https://github.com/Effect-TS/effect/pull/4950) [`36217ee`](https://github.com/Effect-TS/effect/commit/36217eeb1337edd9ac3f9a635b80a6385d22ae8f) Thanks @tim-smart! - remove `this` type propagation from Effect.fn
+
 ## 3.16.2
 
 ### Patch Changes
