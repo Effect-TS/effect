@@ -75,9 +75,6 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(
           //
           // You can use the success `value` of the wrapped effect, as well as the
           // Cause of the workflow failure.
-          yield* Effect.log(
-            `Compensating for failed email send: ${value.message}`
-          )
           yield* Effect.log(`Compensating activity SendEmail`)
         })
       )
