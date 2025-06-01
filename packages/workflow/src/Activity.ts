@@ -5,7 +5,7 @@ import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
-import * as Exit from "effect/Exit"
+import type * as Exit from "effect/Exit"
 import { dual } from "effect/Function"
 import * as Schema from "effect/Schema"
 import { makeHashDigest } from "./internal/crypto.js"
@@ -144,13 +144,7 @@ export const onError: {
     name: `${self.name}/onError`,
     success: self.successSchema,
     error: self.errorSchema,
-    execute: Effect.gen(function*() {
-      const exit = yield* Effect.exit(self)
-      if (Exit.isFailure(exit)) {
-        yield* onError(exit.cause)
-      }
-      return yield* exit
-    })
+    execute: Effect.onError(self, onError)
   }))
 
 /**
