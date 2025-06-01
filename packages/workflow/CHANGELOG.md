@@ -1,5 +1,13 @@
 # @effect/workflow
 
+## 0.1.2
+
+### Patch Changes
+
+- [#4955](https://github.com/Effect-TS/effect/pull/4955) [`b8aec45`](https://github.com/Effect-TS/effect/commit/b8aec45288834c499caeb3478a634ea5043fd611) Thanks @tim-smart! - add `withCompensation` api to Workflow instances
+
+- [#4955](https://github.com/Effect-TS/effect/pull/4955) [`b8aec45`](https://github.com/Effect-TS/effect/commit/b8aec45288834c499caeb3478a634ea5043fd611) Thanks @tim-smart! - remove Activity.onError
+
 ## 0.1.1
 
 ### Patch Changes
