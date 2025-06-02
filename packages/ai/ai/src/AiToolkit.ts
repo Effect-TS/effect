@@ -70,7 +70,7 @@ export interface AiToolkit<in out Tools extends AiTool.Any>
  */
 export interface Any {
   readonly [TypeId]: TypeId
-  readonly tools: ReadonlyMap<string, AiTool.Any>
+  readonly tools: Record<string, AiTool.Any>
 }
 
 /**
@@ -253,7 +253,7 @@ export const merge = <const Toolkits extends ReadonlyArray<Any>>(
 ): AiToolkit<Tools<Toolkits[number]>> => {
   const tools = {} as Record<string, any>
   for (const toolkit of toolkits) {
-    for (const [name, tool] of toolkit.tools) {
+    for (const [name, tool] of Object.entries(toolkit.tools)) {
       tools[name] = tool
     }
   }
