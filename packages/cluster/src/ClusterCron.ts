@@ -24,7 +24,7 @@ export const make = <E, R>(options: {
   readonly name: string
   readonly cron: Cron.Cron
   readonly execute: Effect.Effect<void, E, R>
-  // Whether to run the next cron job based on the from the time of the previous run.
+  // Whether to run the next cron job based from the time of the previous run.
   //
   // Defaults to `false`, meaning the next run will be calculated from the
   // current time.
