@@ -1403,7 +1403,6 @@ export type SuccessEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
   > ? {
       readonly _tag: "Success"
       readonly id: string | number
-      readonly method: _Tag
       readonly result: _Success["Encoded"]
     }
   : never
@@ -1420,7 +1419,6 @@ export type FailureEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
   > ? {
       readonly _tag: "Failure"
       readonly id: string | number
-      readonly method: _Tag
       readonly error: _Error["Encoded"]
     }
   : never
