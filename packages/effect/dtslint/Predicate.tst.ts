@@ -251,14 +251,10 @@ describe("Predicate", () => {
     ).type.toBe<Predicate.Predicate<{ readonly odd: number; readonly odd1: number }>>()
   })
 
-  // @tstyche if { target: [">=5.7"] }
-  it("isUint8Array '>=5.7'", () => {
+  it("isUint8Array", () => {
+    // @tstyche if { target: [">=5.7"] }
     expect(unknowns.filter(Predicate.isUint8Array)).type.toBe<Array<Uint8Array<ArrayBufferLike>>>()
-  })
-
-  // @tstyche if { target: ["<5.7"] } -- Before TypeScript 5.7, 'Uint8Array' was not generic
-  // Reference: https://devblogs.microsoft.com/typescript/announcing-typescript-5-7/#typedarrays-are-now-generic-over-arraybufferlike
-  it("isUint8Array '<5.7'", () => {
+    // @tstyche if { target: ["<5.7"] } -- Before TypeScript 5.7, 'Uint8Array' was not generic
     expect(unknowns.filter(Predicate.isUint8Array)).type.toBe<Array<Uint8Array>>()
   })
 })
