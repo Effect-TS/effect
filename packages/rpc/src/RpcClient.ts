@@ -79,7 +79,7 @@ export type RpcClient<Rpcs extends Rpc.Any, E = never> = {
       >
     : Effect.Effect<
       Discard extends true ? void : _Success["Type"],
-      Discard extends true ? never : _Error["Type"] | E,
+      Discard extends true ? E : _Error["Type"] | E,
       _Payload["Context"] | _Success["Context"] | _Error["Context"]
     > :
     never
