@@ -252,9 +252,9 @@ describe("Predicate", () => {
   })
 
   it("isUint8Array", () => {
-    // @tstyche if { target: [">=5.7"] }
+    // @tstyche if { target: [">=5.7"] } -- Before TypeScript 5.7, 'Uint8Array' was not generic
     expect(unknowns.filter(Predicate.isUint8Array)).type.toBe<Array<Uint8Array<ArrayBufferLike>>>()
-    // @tstyche if { target: ["<5.7"] } -- Before TypeScript 5.7, 'Uint8Array' was not generic
+    // @tstyche if { target: ["<5.7"] }
     expect(unknowns.filter(Predicate.isUint8Array)).type.toBe<Array<Uint8Array>>()
   })
 })
