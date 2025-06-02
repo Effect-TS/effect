@@ -19,6 +19,8 @@ import type {
 } from "./McpSchema.js"
 
 /**
+ * Represents a transport which can send and receive messages.
+ *
  * @since 1.0.0
  * @category Transport
  */
@@ -111,7 +113,7 @@ export const makeTransportStdio = Effect.fnUntraced(function*(options?: {
         case "Notification": {
           encoded = parser.encode({
             jsonrpc: JSON_RPC_VERSION,
-            method: message._tag,
+            method: message.method,
             params: message.payload
           })
           break
