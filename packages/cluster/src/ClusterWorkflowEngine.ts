@@ -356,6 +356,17 @@ export const make = Effect.gen(function*() {
   })
 })
 
+const retryPolicy = Schedule.exponential(200, 1.5).pipe(
+  Schedule.union(Schedule.spaced("1 minute"))
+)
+
+const ensureSuccess = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  effect.pipe(
+    Effect.sandbox,
+    Effect.retry(retryPolicy),
+    Effect.orDie
+  )
+
 const ActivityRpc = Rpc.make("activity", {
   payload: {
     name: Schema.String,
@@ -420,7 +431,7 @@ const DeferredEntityLayer = DeferredEntity.toLayer(Effect.gen(function*() {
   return {
     set: (request) =>
       Effect.as(
-        Effect.orDie(client.resume(request.payload, { discard: true })),
+        ensureSuccess(client.resume(request.payload, { discard: true })),
         request.payload.exit
       ),
     resume: (request) => engine.resume(request.payload.workflowName, executionId)
@@ -453,12 +464,12 @@ const ClockEntityLayer = ClockEntity.toLayer(Effect.gen(function*() {
   return {
     run(request) {
       const deferred = DurableClock.make({ name: request.payload.name, duration: Duration.zero }).deferred
-      return engine.deferredDone({
+      return ensureSuccess(engine.deferredDone({
         workflowName: request.payload.workflowName,
         executionId,
         deferred,
         exit: { _tag: "Success", value: void 0 }
-      })
+      }))
     }
   }
 }))

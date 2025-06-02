@@ -4,8 +4,10 @@
 import * as Rpc from "@effect/rpc/Rpc"
 import * as Cron from "effect/Cron"
 import * as DateTime from "effect/DateTime"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
@@ -24,11 +26,25 @@ export const make = <E, R>(options: {
   readonly name: string
   readonly cron: Cron.Cron
   readonly execute: Effect.Effect<void, E, R>
-  // Whether to run the next cron job based from the time of the previous run.
-  //
-  // Defaults to `false`, meaning the next run will be calculated from the
-  // current time.
+
+  /**
+   * Whether to run the next cron job based from the time of the previous run.
+   *
+   * Defaults to `false`, meaning the next run will be calculated from the
+   * current time.
+   */
   readonly calculateNextRunFromPrevious?: boolean | undefined
+
+  /**
+   * If set, the cron job will skip execution if the scheduled time is older
+   * than this duration.
+   *
+   * This is useful to prevent running jobs that were scheduled too far in the
+   * past.
+   *
+   * Defaults to "1 day".
+   */
+  readonly skipIfOlderThan?: Duration.DurationInput | undefined
 }): Layer.Layer<never, never, Sharding | Exclude<R, Scope>> => {
   const CronEntity = Entity.make(`ClusterCron/${options.name}`, [
     Rpc.make("run", {
@@ -50,22 +66,40 @@ export const make = <E, R>(options: {
     })
   )
 
+  const skipIfOlderThan = Option.fromNullable(options.skipIfOlderThan).pipe(
+    Option.map(Duration.decode),
+    Option.getOrElse(() => Duration.days(1))
+  )
+
+  const effect = Effect.fnUntraced(function*(dateTime: DateTime.Utc) {
+    const now = yield* DateTime.now
+    if (DateTime.lessThan(dateTime, DateTime.subtractDuration(now, skipIfOlderThan))) {
+      return
+    }
+    return yield* options.execute
+  }, Effect.orDie)
+
   const EntityLayer = CronEntity.toLayer(Effect.gen(function*() {
     const makeClient = yield* CronEntity.client
     return {
-      run: Effect.fnUntraced(function*(request) {
-        const now = options.calculateNextRunFromPrevious ? request.payload.dateTime : yield* DateTime.now
-        const next = DateTime.unsafeFromDate(Cron.next(options.cron, now))
-        const client = makeClient(DateTime.formatIso(next))
-        yield* Effect.ensuring(
-          Effect.orDie(options.execute),
-          client.run({ dateTime: next }, { discard: true }).pipe(
+      run(request) {
+        return Effect.ensuring(
+          effect(request.payload.dateTime),
+          Effect.gen(function*() {
+            const now = yield* DateTime.now
+            const next = DateTime.unsafeFromDate(Cron.next(
+              options.cron,
+              options.calculateNextRunFromPrevious ? request.payload.dateTime : now
+            ))
+            const client = makeClient(DateTime.formatIso(next))
+            return yield* client.run({ dateTime: next }, { discard: true })
+          }).pipe(
             Effect.sandbox,
             Effect.retry(retryPolicy),
-            Effect.ignore
+            Effect.orDie
           )
         )
-      })
+      }
     }
   }))
 
