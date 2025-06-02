@@ -251,10 +251,10 @@ describe("Predicate", () => {
     ).type.toBe<Predicate.Predicate<{ readonly odd: number; readonly odd1: number }>>()
   })
 
-  // This test has been disabled because it is not possible to test it
-  // after upgrading to TypeScript 5.7.2. For versions less than 5.7.2,
-  // the inferred type is just `Uint8Array[]`.
-  it.skip("isUint8Array", () => {
+  it("isUint8Array", () => {
+    // @tstyche if { target: [">=5.7"] } -- Before TypeScript 5.7, 'Uint8Array' was not generic
     expect(unknowns.filter(Predicate.isUint8Array)).type.toBe<Array<Uint8Array<ArrayBufferLike>>>()
+    // @tstyche if { target: ["<5.7"] }
+    expect(unknowns.filter(Predicate.isUint8Array)).type.toBe<Array<Uint8Array>>()
   })
 })
