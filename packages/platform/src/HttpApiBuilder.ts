@@ -705,8 +705,8 @@ const makeSecurityMiddleware = (
     readonly effect: Record<string, (_: any) => Effect.Effect<any, any>>
   }
 ): Effect.Effect<any, any, any> => {
-  if (securityMiddlewareCache.has(entry.tag)) {
-    return securityMiddlewareCache.get(entry.tag)!
+  if (securityMiddlewareCache.has(entry)) {
+    return securityMiddlewareCache.get(entry)!
   }
 
   let effect: Effect.Effect<any, any, any> | undefined
@@ -719,7 +719,7 @@ const makeSecurityMiddleware = (
   if (effect === undefined) {
     effect = Effect.void
   }
-  securityMiddlewareCache.set(entry.tag, effect)
+  securityMiddlewareCache.set(entry, effect)
   return effect
 }
 
