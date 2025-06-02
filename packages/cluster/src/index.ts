@@ -1,6 +1,11 @@
 /**
  * @since 1.0.0
  */
+export * as ClusterCron from "./ClusterCron.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as ClusterError from "./ClusterError.js"
 
 /**
