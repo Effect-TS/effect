@@ -4,7 +4,7 @@
 
 add shard groups, to allow entities to target specific runners
 
-To migrate your sql tables, you can run the following SQL commands:
+If you need to migrate an existing cluster, you can run the following PostgreSQL queries:
 
 ```sql
 ALTER TABLE cluster_messages

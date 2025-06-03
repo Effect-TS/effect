@@ -39,7 +39,6 @@ export const layer = <const Storage extends "sql" | "noop" = "noop">(options?: {
   readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
   readonly storage?: Storage | undefined
   readonly config?: Partial<ShardManager.Config["Type"]> | undefined
-  readonly availableShardGroups?: ReadonlyArray<string> | undefined
 }): Layer.Layer<
   ShardManager.ShardManager,
   SocketServer.SocketServerError | ConfigError | (Storage extends "sql" ? SqlError : never),
