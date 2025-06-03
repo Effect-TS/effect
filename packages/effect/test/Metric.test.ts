@@ -398,31 +398,34 @@ describe("Metric", () => {
         strictEqual(result.min, 1)
         strictEqual(result.max, 3)
       }))
-    it.flakyTest(
-      Effect.gen(function*() {
-        const name = nextName()
-        const boundaries = MetricBoundaries.linear({ start: 0, width: 1, count: 10 })
-        const histogram = pipe(
-          Metric.histogram(name, boundaries),
-          Metric.taggedWithLabels(labels),
-          Metric.mapInput((duration: Duration.Duration) => Duration.toMillis(duration) / 1000)
-        )
-        // NOTE: trackDuration always uses the **real** Clock
-        const start = yield* Effect.sync(() => Date.now())
-        yield* pipe(Effect.sleep(Duration.millis(100)), Metric.trackDuration(histogram))
-        yield* pipe(Effect.sleep(Duration.millis(300)), Metric.trackDuration(histogram))
-        const end = yield* Effect.sync(() => Date.now())
-        const elapsed = end - start
-        const result = yield* Metric.value(histogram)
-        strictEqual(result.count, 2)
-        assertTrue(result.sum > 0.39)
-        assertTrue(result.sum <= elapsed)
-        assertTrue(result.min >= 0.1)
-        assertTrue(result.min < result.max)
-        assertTrue(result.max >= 0.3)
-        assertTrue(result.max < elapsed)
-      })
-    )
+
+    it.live("histogram with sleeps", () =>
+      it.flakyTest(
+        Effect.gen(function*() {
+          const name = nextName()
+          const boundaries = MetricBoundaries.linear({ start: 0, width: 1, count: 10 })
+          const histogram = pipe(
+            Metric.histogram(name, boundaries),
+            Metric.taggedWithLabels(labels),
+            Metric.mapInput((duration: Duration.Duration) => Duration.toMillis(duration) / 1000)
+          )
+          // NOTE: trackDuration always uses the **real** Clock
+          const start = yield* Effect.sync(() => Date.now())
+          yield* pipe(Effect.sleep(Duration.millis(100)), Metric.trackDuration(histogram))
+          yield* pipe(Effect.sleep(Duration.millis(300)), Metric.trackDuration(histogram))
+          const end = yield* Effect.sync(() => Date.now())
+          const elapsed = end - start
+          const result = yield* Metric.value(histogram)
+          strictEqual(result.count, 2)
+          assertTrue(result.sum > 0.39)
+          assertTrue(result.sum <= elapsed)
+          assertTrue(result.min >= 0.1)
+          assertTrue(result.min < result.max)
+          assertTrue(result.max >= 0.3)
+          assertTrue(result.max < elapsed)
+        })
+      ))
+
     it.effect("custom observe with mapInput", () =>
       Effect.gen(function*() {
         const name = nextName()
