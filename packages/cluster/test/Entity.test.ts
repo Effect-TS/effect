@@ -16,7 +16,7 @@ describe.concurrent("Entity", () => {
 })
 
 const TestShardingConfig = ShardingConfig.layer({
-  numberOfShards: 300,
+  shardsPerGroup: 300,
   entityMailboxCapacity: 10,
   entityTerminationTimeout: 0,
   entityMessagePollInterval: 5000,

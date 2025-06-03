@@ -37,6 +37,7 @@ export const make = Effect.gen(function*() {
   const sharding = yield* Sharding.Sharding
   const storage = yield* MessageStorage
 
+  const workflows = new Map<string, Workflow.Any>()
   const entities = new Map<
     string,
     Entity.Entity<
@@ -67,16 +68,20 @@ export const make = Effect.gen(function*() {
   const deferredClient = yield* DeferredEntity.client
 
   const requestIdFor = Effect.fnUntraced(function*(options: {
+    readonly workflow: Workflow.Any
     readonly entityType: string
     readonly executionId: string
     readonly tag: string
     readonly id: string
   }) {
+    const shardGroup = Context.get(options.workflow.annotations, ClusterSchema.ShardGroup)(
+      options.executionId as EntityId
+    )
     const entityId = EntityId.make(options.executionId)
     const address = new EntityAddress({
       entityType: EntityType.make(options.entityType),
       entityId,
-      shardId: sharding.getShardId(entityId)
+      shardId: sharding.getShardId(entityId, shardGroup)
     })
     return yield* storage.requestIdForPrimaryKey({ address, tag: options.tag, id: options.id })
   })
@@ -92,6 +97,7 @@ export const make = Effect.gen(function*() {
   })
 
   const requestReply = Effect.fnUntraced(function*(options: {
+    readonly workflow: Workflow.Any
     readonly entityType: string
     readonly executionId: string
     readonly tag: string
@@ -112,6 +118,7 @@ export const make = Effect.gen(function*() {
       readonly attempt: number
     }) {
       const requestId = yield* requestIdFor({
+        workflow: options.workflow,
         entityType: `Workflow/${options.workflow.name}`,
         executionId: options.executionId,
         tag: "activity",
@@ -128,10 +135,14 @@ export const make = Effect.gen(function*() {
   )
 
   const clearClock = Effect.fnUntraced(function*(options: {
+    readonly workflow: Workflow.Any
     readonly executionId: string
   }) {
+    const shardGroup = Context.get(options.workflow.annotations, ClusterSchema.ShardGroup)(
+      options.executionId as EntityId
+    )
     const entityId = EntityId.make(options.executionId)
-    const shardId = sharding.getShardId(entityId)
+    const shardId = sharding.getShardId(entityId, shardGroup)
     const clockAddress = new EntityAddress({
       entityType: ClockEntity.type,
       entityId,
@@ -149,6 +160,7 @@ export const make = Effect.gen(function*() {
           return Effect.dieMessage(`Workflow ${workflow.name} already registered`)
         }
         const entity = makeWorkflowEntity(workflow)
+        workflows.set(workflow.name, workflow)
         entities.set(workflow.name, entity as any)
         return sharding.registerEntity(
           entity,
@@ -174,7 +186,7 @@ export const make = Effect.gen(function*() {
                         }
                         instance.suspended = false
                         return Effect.zipRight(
-                          Effect.ignore(clearClock({ executionId })),
+                          Effect.ignore(clearClock({ workflow, executionId })),
                           Effect.interrupt
                         )
                       }),
@@ -229,6 +241,7 @@ export const make = Effect.gen(function*() {
     interrupt: Effect.fnUntraced(
       function*(this: WorkflowEngine["Type"], workflow, executionId) {
         const requestId = yield* requestIdFor({
+          workflow,
           entityType: `Workflow/${workflow.name}`,
           executionId,
           tag: "run",
@@ -262,7 +275,12 @@ export const make = Effect.gen(function*() {
 
     resume: Effect.fnUntraced(
       function*(workflowName: string, executionId: string) {
+        const workflow = workflows.get(workflowName)
+        if (!workflow) {
+          return yield* Effect.dieMessage(`WorkflowEngine.resume: ${workflowName} not registered`)
+        }
         const maybeReply = yield* requestReply({
+          workflow,
           entityType: `Workflow/${workflowName}`,
           executionId,
           tag: "run",
@@ -316,6 +334,7 @@ export const make = Effect.gen(function*() {
       WorkflowInstance.pipe(
         Effect.flatMap((instance) =>
           requestReply({
+            workflow: instance.workflow,
             entityType: DeferredEntity.type,
             executionId: instance.executionId,
             tag: "set",
@@ -391,6 +410,7 @@ const makeWorkflowEntity = (workflow: Workflow.Any) =>
     }),
     ActivityRpc
   ])
+    .annotateContext(workflow.annotations)
     .annotateRpcs(ClusterSchema.Persisted, true)
     .annotateRpcs(ClusterSchema.Uninterruptible, true)
 

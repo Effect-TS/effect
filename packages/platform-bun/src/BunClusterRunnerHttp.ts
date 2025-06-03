@@ -38,10 +38,13 @@ export const layerHttpServer: Layer.Layer<
   ShardingConfig.ShardingConfig
 > = Effect.gen(function*() {
   const config = yield* ShardingConfig.ShardingConfig
-  if (Option.isNone(config.runnerAddress)) {
+  const listenAddress = config.runnerListenAddress.pipe(
+    Option.orElse(() => config.runnerAddress)
+  )
+  if (Option.isNone(listenAddress)) {
     return yield* Effect.dieMessage("BunClusterHttpRunners.layerHttpServer: ShardingConfig.runnerAddress is None")
   }
-  return BunHttpServer.layer(config.runnerAddress.value)
+  return BunHttpServer.layer(listenAddress.value)
 }).pipe(Layer.unwrapEffect)
 
 /**

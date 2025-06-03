@@ -30,10 +30,13 @@ export const layerSocketServer: Layer.Layer<
   ShardingConfig.ShardingConfig
 > = Effect.gen(function*() {
   const config = yield* ShardingConfig.ShardingConfig
-  if (Option.isNone(config.runnerAddress)) {
-    return yield* Effect.dieMessage("layerSocketServer: ShardingConfig.runnerAddress is None")
+  const listenAddress = config.runnerListenAddress.pipe(
+    Option.orElse(() => config.runnerAddress)
+  )
+  if (Option.isNone(listenAddress)) {
+    return yield* Effect.dieMessage("layerSocketServer: ShardingConfig.runnerListenAddress is None")
   }
-  return NodeSocketServer.layer(config.runnerAddress.value)
+  return NodeSocketServer.layer(listenAddress.value)
 }).pipe(Layer.unwrapEffect)
 
 /**

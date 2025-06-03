@@ -38,13 +38,19 @@ export const layer = <const Storage extends "sql" | "noop" = "noop">(options?: {
   readonly serialization?: "msgpack" | "ndjson" | undefined
   readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
   readonly storage?: Storage | undefined
+  readonly config?: Partial<ShardManager.Config["Type"]> | undefined
+  readonly availableShardGroups?: ReadonlyArray<string> | undefined
 }): Layer.Layer<
   ShardManager.ShardManager,
   SocketServer.SocketServerError | ConfigError | (Storage extends "sql" ? SqlError : never),
   Storage extends "sql" ? SqlClient : never
 > =>
   SocketShardManager.layer.pipe(
-    Layer.provide([RunnerHealth.layerRpc, layerSocketServer, ShardManager.layerConfigFromEnv]),
+    Layer.provide([
+      RunnerHealth.layerRpc,
+      layerSocketServer,
+      ShardManager.layerConfigFromEnv(options?.config)
+    ]),
     Layer.provide(layerClientProtocol),
     Layer.provide(options?.storage === "sql" ? SqlShardStorage.layer : ShardStorage.layerNoop),
     Layer.provide([

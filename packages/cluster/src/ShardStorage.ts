@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -22,7 +23,10 @@ export class ShardStorage extends Context.Tag("@effect/cluster/ShardStorage")<Sh
   /**
    * Get the current assignments of shards to runners.
    */
-  readonly getAssignments: Effect.Effect<ReadonlyMap<ShardId, Option.Option<RunnerAddress>>, PersistenceError>
+  readonly getAssignments: Effect.Effect<
+    Array<[ShardId, Option.Option<RunnerAddress>]>,
+    PersistenceError
+  >
 
   /**
    * Save the current state of shards assignments to runners.
@@ -87,7 +91,7 @@ export interface Encoded {
   readonly getAssignments: Effect.Effect<
     Array<
       readonly [
-        shardId: number,
+        shardId: string,
         runnerAddress: string | null
       ]
     >,
@@ -98,7 +102,7 @@ export interface Encoded {
    * Save the current state of shards assignments to runners.
    */
   readonly saveAssignments: (
-    assignments: Array<readonly [shardId: number, RunnerAddress: string | null]>
+    assignments: Array<readonly [shardId: string, RunnerAddress: string | null]>
   ) => Effect.Effect<void, PersistenceError>
 
   /**
@@ -119,8 +123,8 @@ export interface Encoded {
    */
   readonly acquire: (
     address: string,
-    shardIds: ReadonlyArray<number>
-  ) => Effect.Effect<Array<number>, PersistenceError>
+    shardIds: ReadonlyArray<string>
+  ) => Effect.Effect<Array<string>, PersistenceError>
 
   /**
    * Refresh the lock on the given shards, returning the shards that were
@@ -128,15 +132,15 @@ export interface Encoded {
    */
   readonly refresh: (
     address: string,
-    shardIds: ReadonlyArray<number>
-  ) => Effect.Effect<Array<number>, PersistenceError>
+    shardIds: ReadonlyArray<string>
+  ) => Effect.Effect<Array<string>, PersistenceError>
 
   /**
-   * Release the lock on the given shards.
+   * Release the lock on the given shard.
    */
   readonly release: (
     address: string,
-    shardIds: number
+    shardId: string
   ) => Effect.Effect<void, PersistenceError>
 
   /**
@@ -149,29 +153,28 @@ export interface Encoded {
  * @since 1.0.0
  * @category layers
  */
-export const makeEncoded = Effect.fnUntraced(function*(encoded: Encoded) {
-  const activeShards = new Set<ShardId>()
-
-  return ShardStorage.of({
+export const makeEncoded = (encoded: Encoded) =>
+  ShardStorage.of({
     getAssignments: Effect.map(encoded.getAssignments, (assignments) => {
-      const map = new Map<ShardId, Option.Option<RunnerAddress>>()
+      const arr = Arr.empty<[ShardId, Option.Option<RunnerAddress>]>()
       for (const [shardId, runnerAddress] of assignments) {
-        map.set(
-          ShardId.make(shardId),
+        arr.push([
+          ShardId.fromString(shardId),
           runnerAddress === null ? Option.none() : Option.some(decodeRunnerAddress(runnerAddress))
-        )
+        ])
       }
-      return map
+      return arr
     }),
-    saveAssignments: (assignments) =>
-      encoded.saveAssignments(
-        Array.from(
-          assignments,
-          (
-            [shardId, runnerAddress]
-          ) => [shardId, Option.isNone(runnerAddress) ? null : encodeRunnerAddress(runnerAddress.value)]
-        )
-      ),
+    saveAssignments: (assignments) => {
+      const arr = Arr.empty<readonly [string, string | null]>()
+      for (const [shardId, runnerAddress] of assignments) {
+        arr.push([
+          shardId.toString(),
+          Option.isNone(runnerAddress) ? null : encodeRunnerAddress(runnerAddress.value)
+        ])
+      }
+      return encoded.saveAssignments(arr)
+    },
     getRunners: Effect.gen(function*() {
       const runners = yield* encoded.getRunners
       const results = new Array<[RunnerAddress, Runner]>(runners.length)
@@ -187,24 +190,25 @@ export const makeEncoded = Effect.fnUntraced(function*(encoded: Encoded) {
           Array.from(runners, ([address, runner]) => [encodeRunnerAddress(address), Runner.encodeSync(runner)])
         )
       ),
-    acquire: (address, shardIds) =>
-      encoded.acquire(encodeRunnerAddress(address), Array.from(shardIds)) as Effect.Effect<
-        Array<ShardId>,
-        PersistenceError
-      >,
-    refresh: (address, shardIds) => encoded.refresh(encodeRunnerAddress(address), Array.from(shardIds)) as any,
-    release: Effect.fnUntraced(function*(address, shardId) {
-      activeShards.delete(shardId)
-      yield* encoded.release(encodeRunnerAddress(address), shardId).pipe(
-        Effect.onError(() => Effect.sync(() => activeShards.add(shardId)))
+    acquire: (address, shardIds) => {
+      const arr = Array.from(shardIds, (id) => id.toString())
+      return encoded.acquire(encodeRunnerAddress(address), arr).pipe(
+        Effect.map((shards) => shards.map(ShardId.fromString))
       )
-    }),
-    releaseAll: Effect.fnUntraced(function*(address) {
-      activeShards.clear()
-      yield* encoded.releaseAll(encodeRunnerAddress(address))
-    })
+    },
+    refresh: (address, shardIds) => {
+      const arr = Array.from(shardIds, (id) => id.toString())
+      return encoded.refresh(encodeRunnerAddress(address), arr).pipe(
+        Effect.map((shards) => shards.map(ShardId.fromString))
+      )
+    },
+    release(address, shardId) {
+      return encoded.release(encodeRunnerAddress(address), shardId.toString())
+    },
+    releaseAll(address) {
+      return encoded.releaseAll(encodeRunnerAddress(address))
+    }
   })
-})
 
 /**
  * @since 1.0.0
@@ -215,7 +219,7 @@ export const layerNoop: Layer.Layer<ShardStorage> = Layer.sync(
   () => {
     let acquired: Array<ShardId> = []
     return ShardStorage.of({
-      getAssignments: Effect.succeed(new Map()),
+      getAssignments: Effect.sync(() => []),
       saveAssignments: () => Effect.void,
       getRunners: Effect.sync(() => []),
       saveRunners: () => Effect.void,
@@ -235,13 +239,13 @@ export const layerNoop: Layer.Layer<ShardStorage> = Layer.sync(
  * @category constructors
  */
 export const makeMemory = Effect.gen(function*() {
-  const assignments = new Map<ShardId, Option.Option<RunnerAddress>>()
+  const assignments = MutableHashMap.empty<ShardId, Option.Option<RunnerAddress>>()
   const runners = MutableHashMap.empty<RunnerAddress, Runner>()
 
   function saveAssignments(value: Iterable<readonly [ShardId, Option.Option<RunnerAddress>]>) {
     return Effect.sync(() => {
       for (const [shardId, runnerAddress] of value) {
-        assignments.set(shardId, runnerAddress)
+        MutableHashMap.set(assignments, shardId, runnerAddress)
       }
     })
   }
@@ -257,7 +261,7 @@ export const makeMemory = Effect.gen(function*() {
   let acquired: Array<ShardId> = []
 
   return ShardStorage.of({
-    getAssignments: Effect.sync(() => new Map(assignments)),
+    getAssignments: Effect.sync(() => Array.from(assignments)),
     saveAssignments,
     getRunners: Effect.sync(() => Array.from(runners)),
     saveRunners,

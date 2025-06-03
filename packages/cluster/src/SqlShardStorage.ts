@@ -66,21 +66,21 @@ export const make = Effect.fnUntraced(function*(options?: {
       sql`
         IF OBJECT_ID(N'${shardsTableSql}', N'U') IS NULL
         CREATE TABLE ${shardsTableSql} (
-          shard_id INT PRIMARY KEY,
+          shard_id VARCHAR(50) PRIMARY KEY,
           address VARCHAR(255)
         )
       `,
     mysql: () =>
       sql`
         CREATE TABLE IF NOT EXISTS ${shardsTableSql} (
-          shard_id INT PRIMARY KEY,
+          shard_id VARCHAR(50) PRIMARY KEY,
           address VARCHAR(255)
         )
       `,
     pg: () =>
       sql`
         CREATE TABLE IF NOT EXISTS ${shardsTableSql} (
-          shard_id INT PRIMARY KEY,
+          shard_id VARCHAR(50) PRIMARY KEY,
           address VARCHAR(255)
         )
       `,
@@ -88,7 +88,7 @@ export const make = Effect.fnUntraced(function*(options?: {
       // sqlite
       sql`
         CREATE TABLE IF NOT EXISTS ${shardsTableSql} (
-          shard_id INTEGER PRIMARY KEY,
+          shard_id TEXT PRIMARY KEY,
           address TEXT
         )
       `
@@ -102,7 +102,7 @@ export const make = Effect.fnUntraced(function*(options?: {
       sql`
         IF OBJECT_ID(N'${locksTableSql}', N'U') IS NULL
         CREATE TABLE ${locksTableSql} (
-          shard_id INT PRIMARY KEY,
+          shard_id VARCHAR(50) PRIMARY KEY,
           address VARCHAR(255) NOT NULL,
           acquired_at DATETIME NOT NULL
         )
@@ -110,7 +110,7 @@ export const make = Effect.fnUntraced(function*(options?: {
     mysql: () =>
       sql`
         CREATE TABLE IF NOT EXISTS ${locksTableSql} (
-          shard_id INT PRIMARY KEY,
+          shard_id VARCHAR(50) PRIMARY KEY,
           address VARCHAR(255) NOT NULL,
           acquired_at DATETIME NOT NULL
         )
@@ -118,7 +118,7 @@ export const make = Effect.fnUntraced(function*(options?: {
     pg: () =>
       sql`
         CREATE TABLE IF NOT EXISTS ${locksTableSql} (
-          shard_id INT PRIMARY KEY,
+          shard_id VARCHAR(50) PRIMARY KEY,
           address VARCHAR(255) NOT NULL,
           acquired_at TIMESTAMP NOT NULL
         )
@@ -127,7 +127,7 @@ export const make = Effect.fnUntraced(function*(options?: {
       // sqlite
       sql`
         CREATE TABLE IF NOT EXISTS ${locksTableSql} (
-          shard_id INTEGER PRIMARY KEY,
+          shard_id TEXT PRIMARY KEY,
           address TEXT NOT NULL,
           acquired_at DATETIME NOT NULL
         )
@@ -143,7 +143,7 @@ export const make = Effect.fnUntraced(function*(options?: {
   const sqlNow = sql.literal(sqlNowString)
 
   const lockExpiresAt = sql.onDialectOrElse({
-    pg: () => sql`${sqlNow} - INTERVAL '5 seconds'`,
+    pg: () => sql`${sqlNow} - INTERVAL '10 seconds'`,
     mysql: () => sql`DATE_SUB(${sqlNow}, INTERVAL 5 SECOND)`,
     mssql: () => sql`DATEADD(SECOND, -5, ${sqlNow})`,
     orElse: () => sql`datetime(${sqlNow}, '-5 seconds')`
@@ -199,7 +199,7 @@ export const make = Effect.fnUntraced(function*(options?: {
     orElse: () => sql.literal("FOR UPDATE")
   })
 
-  return yield* ShardStorage.makeEncoded({
+  return ShardStorage.makeEncoded({
     getAssignments: sql`SELECT shard_id, address FROM ${shardsTableSql} ORDER BY shard_id`.values.pipe(
       PersistenceError.refail,
       withTracerDisabled
@@ -244,12 +244,12 @@ export const make = Effect.fnUntraced(function*(options?: {
       function*(address, shardIds) {
         const values = shardIds.map((shardId) => sql`(${shardId}, ${address}, ${sqlNow})`)
         yield* acquireLock(address, values)
-        const currentLocks = yield* sql<{ shard_id: number }>`
+        const currentLocks = yield* sql<{ shard_id: string }>`
           SELECT shard_id FROM ${sql(locksTable)}
-          WHERE address = ${address} AND ${sql.in("shard_id", shardIds)}
+          WHERE address = ${address} AND acquired_at >= ${lockExpiresAt}
           ${forUpdate}
-        `
-        return currentLocks.map((row) => row.shard_id)
+        `.values
+        return currentLocks.map((row) => row[0] as string)
       },
       sql.withTransaction,
       PersistenceError.refail,
@@ -264,7 +264,7 @@ export const make = Effect.fnUntraced(function*(options?: {
           sql`SELECT shard_id FROM ${locksTableSql} WHERE address = ${address} AND acquired_at >= ${lockExpiresAt} ${forUpdate}`
             .values
         ),
-        Effect.map((rows) => rows.map((row) => Number(row[0]))),
+        Effect.map((rows) => rows.map((row) => row[0] as string)),
         PersistenceError.refail,
         withTracerDisabled
       ),

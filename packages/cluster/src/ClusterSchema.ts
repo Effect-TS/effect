@@ -3,6 +3,7 @@
  */
 import * as Context from "effect/Context"
 import { constFalse } from "effect/Function"
+import type { EntityId } from "./EntityId.js"
 
 /**
  * @since 1.0.0
@@ -21,3 +22,11 @@ export class Uninterruptible
     defaultValue: constFalse
   })
 {}
+
+/**
+ * @since 1.0.0
+ * @category Annotations
+ */
+export class ShardGroup extends Context.Reference<ShardGroup>()("@effect/cluster/ClusterSchema/ShardGroup", {
+  defaultValue: (): (entityId: EntityId) => string => (_) => "default"
+}) {}

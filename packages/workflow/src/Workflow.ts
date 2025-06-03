@@ -45,6 +45,27 @@ export interface Workflow<
   readonly payloadSchema: Payload
   readonly successSchema: Success
   readonly errorSchema: Error
+  readonly annotations: Context.Context<never>
+
+  /**
+   * Add an annotation to the workflow.
+   */
+  annotate<I, S>(tag: Context.Tag<I, S>, value: S): Workflow<
+    Name,
+    Payload,
+    Success,
+    Error
+  >
+
+  /**
+   * Add the annotations from a Context object to the workflow.
+   */
+  annotateContext<I>(context: Context.Context<I>): Workflow<
+    Name,
+    Payload,
+    Success,
+    Error
+  >
 
   /**
    * Execute the workflow with the given payload.
@@ -166,6 +187,7 @@ export interface Any {
   readonly payloadSchema: AnyStructSchema
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
+  readonly annotations: Context.Context<never>
   readonly executionId: (payload: any) => Effect.Effect<string>
 }
 
@@ -196,6 +218,7 @@ export const make = <
     readonly success?: Success
     readonly error?: Error
     readonly suspendedRetrySchedule?: Schedule.Schedule<any, unknown> | undefined
+    readonly annotations?: Context.Context<never>
   }
 ): Workflow<Name, Payload extends Schema.Struct.Fields ? Schema.Struct<Payload> : Payload, Success, Error> => {
   const suspendedRetrySchedule = options.suspendedRetrySchedule ?? defaultRetrySchedule
@@ -206,6 +229,19 @@ export const make = <
     payloadSchema: Schema.isSchema(options.payload) ? options.payload : Schema.Struct(options.payload as any),
     successSchema: options.success ?? Schema.Void as any,
     errorSchema: options.error ?? Schema.Never as any,
+    annotations: options.annotations ?? Context.empty(),
+    annotate(tag, value) {
+      return make({
+        ...options,
+        annotations: Context.add(self.annotations, tag, value)
+      })
+    },
+    annotateContext(context) {
+      return make({
+        ...options,
+        annotations: Context.merge(self.annotations, context)
+      })
+    },
     execute: Effect.fnUntraced(
       function*(fields: any, opts) {
         const payload = self.payloadSchema.make(fields)

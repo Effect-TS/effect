@@ -12,6 +12,7 @@ import * as PrimaryKey from "effect/PrimaryKey"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
+import * as ClusterSchema from "./ClusterSchema.js"
 import { Persisted, Uninterruptible } from "./ClusterSchema.js"
 import * as DeliverAt from "./DeliverAt.js"
 import * as Entity from "./Entity.js"
@@ -26,6 +27,11 @@ export const make = <E, R>(options: {
   readonly name: string
   readonly cron: Cron.Cron
   readonly execute: Effect.Effect<void, E, R>
+
+  /**
+   * Choose a shard group to run this cron job on.
+   */
+  readonly shardGroup?: string | undefined
 
   /**
    * Whether to run the next cron job based from the time of the previous run.
@@ -52,7 +58,7 @@ export const make = <E, R>(options: {
     })
       .annotate(Persisted, true)
       .annotate(Uninterruptible, true)
-  ])
+  ]).annotate(ClusterSchema.ShardGroup, () => options.shardGroup ?? "default")
 
   const InitialRun = Singleton.make(
     `ClusterCron/${options.name}`,
@@ -63,7 +69,8 @@ export const make = <E, R>(options: {
       yield* client.run({
         dateTime: DateTime.unsafeFromDate(next)
       }, { discard: true })
-    })
+    }),
+    { shardGroup: options.shardGroup }
   )
 
   const skipIfOlderThan = Option.fromNullable(options.skipIfOlderThan).pipe(

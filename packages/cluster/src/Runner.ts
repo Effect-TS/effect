@@ -1,6 +1,8 @@
 /**
  * @since 1.0.0
  */
+import * as Equal from "effect/Equal"
+import * as Hash from "effect/Hash"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as Pretty from "effect/Pretty"
 import * as Schema from "effect/Schema"
@@ -35,6 +37,7 @@ export type TypeId = typeof TypeId
  */
 export class Runner extends Schema.Class<Runner>(SymbolKey)({
   address: RunnerAddress,
+  groups: Schema.Array(Schema.String),
   version: Schema.Int
 }) {
   /**
@@ -63,6 +66,20 @@ export class Runner extends Schema.Class<Runner>(SymbolKey)({
   [NodeInspectSymbol](): string {
     return this.toString()
   }
+
+  /**
+   * @since 1.0.0
+   */
+  [Equal.symbol](that: Runner): boolean {
+    return this.address[Equal.symbol](that.address) && this.version === that.version
+  }
+
+  /**
+   * @since 1.0.0
+   */
+  [Hash.symbol](): number {
+    return Hash.cached(this, Hash.string(`${this.address.toString()}:${this.version}`))
+  }
 }
 
 /**
@@ -80,5 +97,6 @@ export class Runner extends Schema.Class<Runner>(SymbolKey)({
  */
 export const make = (props: {
   readonly address: RunnerAddress
+  readonly groups: ReadonlyArray<string>
   readonly version: number
 }): Runner => new Runner(props)

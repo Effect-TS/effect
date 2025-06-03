@@ -33,9 +33,9 @@ import type { Scope } from "effect/Scope"
 import { RunnerNotRegistered } from "./ClusterError.js"
 import * as ClusterMetrics from "./ClusterMetrics.js"
 import {
+  addAllNested,
   decideAssignmentsForUnassignedShards,
   decideAssignmentsForUnbalancedShards,
-  RunnerWithMetadata,
   State
 } from "./internal/shardManager.js"
 import * as MachineId from "./MachineId.js"
@@ -43,7 +43,7 @@ import { Runner } from "./Runner.js"
 import { RunnerAddress } from "./RunnerAddress.js"
 import { RunnerHealth } from "./RunnerHealth.js"
 import { RpcClientProtocol, Runners } from "./Runners.js"
-import { ShardId } from "./ShardId.js"
+import { make as makeShardId, ShardId } from "./ShardId.js"
 import { ShardingConfig } from "./ShardingConfig.js"
 import { ShardStorage } from "./ShardStorage.js"
 
@@ -56,7 +56,7 @@ export class ShardManager extends Context.Tag("@effect/cluster/ShardManager")<Sh
    * Get all shard assignments.
    */
   readonly getAssignments: Effect.Effect<
-    ReadonlyMap<ShardId, Option.Option<RunnerAddress>>
+    Iterable<readonly [ShardId, Option.Option<RunnerAddress>]>
   >
   /**
    * Get a stream of sharding events emit by the shard manager.
@@ -197,7 +197,7 @@ export const configFromEnv: Effect.Effect<Config["Type"], ConfigError> = configC
  * @since 1.0.0
  * @category Config
  */
-export const layerConfig = (config?: Partial<Config["Type"]>): Layer.Layer<Config> =>
+export const layerConfig = (config?: Partial<Config["Type"]> | undefined): Layer.Layer<Config> =>
   Layer.succeed(Config, {
     ...Config.defaults,
     ...config
@@ -207,7 +207,8 @@ export const layerConfig = (config?: Partial<Config["Type"]>): Layer.Layer<Confi
  * @since 1.0.0
  * @category Config
  */
-export const layerConfigFromEnv: Layer.Layer<Config, ConfigError> = Layer.effect(Config, configFromEnv)
+export const layerConfigFromEnv = (config?: Partial<Config["Type"]> | undefined): Layer.Layer<Config, ConfigError> =>
+  Layer.effect(Config, config ? Effect.map(configFromEnv, (env) => ({ ...env, ...config })) : configFromEnv)
 
 /**
  * Represents a client which can be used to communicate with the
@@ -221,7 +222,7 @@ export class ShardManagerClient
     /**
      * Register a new runner with the cluster.
      */
-    readonly register: (address: RunnerAddress) => Effect.Effect<MachineId.MachineId>
+    readonly register: (address: RunnerAddress, groups: ReadonlyArray<string>) => Effect.Effect<MachineId.MachineId>
     /**
      * Unregister a runner from the cluster.
      */
@@ -234,7 +235,7 @@ export class ShardManagerClient
      * Get all shard assignments.
      */
     readonly getAssignments: Effect.Effect<
-      ReadonlyMap<ShardId, Option.Option<RunnerAddress>>
+      Iterable<readonly [ShardId, Option.Option<RunnerAddress>]>
     >
     /**
      * Get a stream of sharding events emit by the shard manager.
@@ -287,7 +288,7 @@ export class Rpcs extends RpcGroup.make(
     payload: { address: RunnerAddress }
   }),
   Rpc.make("GetAssignments", {
-    success: Schema.ReadonlyMap({ key: ShardId, value: Schema.Option(RunnerAddress) })
+    success: Schema.Array(Schema.Tuple(ShardId, Schema.Option(RunnerAddress)))
   }),
   Rpc.make("ShardingEvents", {
     success: ShardingEventSchema,
@@ -327,18 +328,26 @@ export const ShardingEvent = Data.taggedEnum<ShardingEvent>()
  * @category Client
  */
 export const makeClientLocal = Effect.gen(function*() {
-  const runnerAddress = yield* ShardingConfig
+  const config = yield* ShardingConfig
   const clock = yield* Effect.clock
 
-  const shards = new Map<ShardId, Option.Option<RunnerAddress>>()
-  for (let n = 1; n <= runnerAddress.numberOfShards; n++) {
-    shards.set(ShardId.make(n), runnerAddress.runnerAddress)
-  }
+  const groups = new Set<string>()
+  const shards = MutableHashMap.empty<ShardId, Option.Option<RunnerAddress>>()
 
   let machineId = 0
 
   return ShardManagerClient.of({
-    register: () => Effect.sync(() => MachineId.make(++machineId)),
+    register: (_, groupsToAdd) =>
+      Effect.sync(() => {
+        for (const group of groupsToAdd) {
+          if (groups.has(group)) continue
+          groups.add(group)
+          for (let n = 1; n <= config.shardsPerGroup; n++) {
+            MutableHashMap.set(shards, makeShardId(group, n), config.runnerAddress)
+          }
+        }
+        return MachineId.make(++machineId)
+      }),
     unregister: () => Effect.void,
     notifyUnhealthyRunner: () => Effect.void,
     getAssignments: Effect.succeed(shards),
@@ -367,7 +376,8 @@ export const makeClientRpc: Effect.Effect<
   })
 
   return ShardManagerClient.of({
-    register: (address) => client.Register({ runner: Runner.make({ address, version: config.serverVersion }) }),
+    register: (address, groups) =>
+      client.Register({ runner: Runner.make({ address, version: config.serverVersion, groups }) }),
     unregister: (address) => client.Unregister({ address }),
     notifyUnhealthyRunner: (address) => client.NotifyUnhealthyRunner({ address }),
     getAssignments: client.GetAssignments(),
@@ -417,13 +427,13 @@ export const make = Effect.gen(function*() {
   const config = yield* Config
   const shardingConfig = yield* ShardingConfig
 
-  const state = yield* Effect.orDie(State.fromStorage(shardingConfig.numberOfShards))
+  const state = yield* Effect.orDie(State.fromStorage(shardingConfig.shardsPerGroup))
   const scope = yield* Effect.scope
   const events = yield* PubSub.unbounded<ShardingEvent>()
 
-  yield* Metric.incrementBy(ClusterMetrics.runners, MutableHashMap.size(state.runners))
+  yield* Metric.incrementBy(ClusterMetrics.runners, MutableHashMap.size(state.allRunners))
 
-  for (const address of state.shards.values()) {
+  for (const [, address] of state.assignments) {
     const metric = Option.isSome(address) ?
       Metric.tagged(ClusterMetrics.assignedShards, "address", address.toString()) :
       ClusterMetrics.unassignedShards
@@ -443,17 +453,17 @@ export const make = Effect.gen(function*() {
   const persistRunners = Effect.unsafeMakeSemaphore(1).withPermits(1)(withRetry(
     Effect.suspend(() =>
       storage.saveRunners(
-        Iterable.map(state.runners, ([address, runner]) => [address, runner.runner])
+        Iterable.map(state.allRunners, ([address, runner]) => [address, runner.runner])
       )
     )
   ))
 
   const persistAssignments = Effect.unsafeMakeSemaphore(1).withPermits(1)(withRetry(
-    Effect.suspend(() => storage.saveAssignments(state.shards))
+    Effect.suspend(() => storage.saveAssignments(state.assignments))
   ))
 
   const notifyUnhealthyRunner = Effect.fnUntraced(function*(address: RunnerAddress) {
-    if (!MutableHashMap.has(state.runners, address)) return
+    if (!MutableHashMap.has(state.allRunners, address)) return
 
     yield* Metric.increment(
       Metric.tagged(ClusterMetrics.runnerHealthChecked, "runner_address", address.toString())
@@ -470,28 +480,24 @@ export const make = Effect.gen(function*() {
     address: Option.Option<RunnerAddress>
   ): Effect.Effect<void, RunnerNotRegistered> {
     return Effect.suspend(() => {
-      if (Option.isSome(address) && !MutableHashMap.has(state.runners, address.value)) {
+      if (Option.isSome(address) && !MutableHashMap.has(state.allRunners, address.value)) {
         return Effect.fail(new RunnerNotRegistered({ address: address.value }))
       }
-      for (const shardId of shards) {
-        if (!state.shards.has(shardId)) continue
-        state.shards.set(shardId, address)
-      }
+      state.addAssignments(shards, address)
       return Effect.void
     })
   }
 
-  const getAssignments = Effect.sync(() => state.shards)
+  const getAssignments = Effect.sync(() => state.assignments)
 
   let machineId = 0
   const register = Effect.fnUntraced(function*(runner: Runner) {
     yield* Effect.logInfo(`Registering runner ${Runner.pretty(runner)}`)
-    const now = clock.unsafeCurrentTimeMillis()
-    MutableHashMap.set(state.runners, runner.address, RunnerWithMetadata({ runner, registeredAt: now }))
+    state.addRunner(runner, clock.unsafeCurrentTimeMillis())
 
     yield* Metric.increment(ClusterMetrics.runners)
     yield* PubSub.publish(events, ShardingEvent.RunnerRegistered({ address: runner.address }))
-    if (state.unassignedShards.length > 0) {
+    if (state.allUnassignedShards.length > 0) {
       yield* rebalance(false)
     }
     yield* Effect.forkIn(persistRunners, scope)
@@ -499,18 +505,17 @@ export const make = Effect.gen(function*() {
   })
 
   const unregister = Effect.fnUntraced(function*(address: RunnerAddress) {
-    if (!MutableHashMap.has(state.runners, address)) return
+    if (!MutableHashMap.has(state.allRunners, address)) return
 
     yield* Effect.logInfo("Unregistering runner at address:", address)
     const unassignments = Arr.empty<ShardId>()
-    for (const [shard, runner] of state.shards) {
+    for (const [shard, runner] of state.assignments) {
       if (Option.isSome(runner) && Equal.equals(runner.value, address)) {
         unassignments.push(shard)
-        state.shards.set(shard, Option.none())
       }
     }
-
-    MutableHashMap.remove(state.runners, address)
+    state.addAssignments(unassignments, Option.none())
+    state.removeRunner(address)
     yield* Metric.incrementBy(ClusterMetrics.runners, -1)
 
     if (unassignments.length > 0) {
@@ -570,10 +575,30 @@ export const make = Effect.gen(function*() {
 
     yield* Effect.sleep(config.rebalanceDebounce)
 
+    if (state.shards.size === 0) {
+      yield* Effect.logDebug("No shards to rebalance")
+      return
+    }
+
     // Determine which shards to assign and unassign
-    const [assignments, unassignments, changes] = immediate || (state.unassignedShards.length > 0)
-      ? decideAssignmentsForUnassignedShards(state)
-      : decideAssignmentsForUnbalancedShards(state, config.rebalanceRate)
+    const assignments = MutableHashMap.empty<RunnerAddress, MutableHashSet.MutableHashSet<ShardId>>()
+    const unassignments = MutableHashMap.empty<RunnerAddress, MutableHashSet.MutableHashSet<ShardId>>()
+    const changes = MutableHashSet.empty<RunnerAddress>()
+    for (const group of state.shards.keys()) {
+      const [groupAssignments, groupUnassignments, groupChanges] =
+        immediate || (state.unassignedShards(group).length > 0)
+          ? decideAssignmentsForUnassignedShards(state, group)
+          : decideAssignmentsForUnbalancedShards(state, group, config.rebalanceRate)
+      for (const [address, shards] of groupAssignments) {
+        addAllNested(assignments, address, Array.from(shards, (id) => makeShardId(group, id)))
+      }
+      for (const [address, shards] of groupUnassignments) {
+        addAllNested(unassignments, address, Array.from(shards, (id) => makeShardId(group, id)))
+      }
+      for (const address of groupChanges) {
+        MutableHashSet.add(changes, address)
+      }
+    }
 
     yield* Effect.logDebug(`Rebalancing shards (immediate = ${immediate})`)
 
@@ -615,7 +640,7 @@ export const make = Effect.gen(function*() {
               return Effect.void
             },
             onSuccess: () => {
-              const shardCount = shards.size
+              const shardCount = MutableHashSet.size(shards)
               return Metric.incrementBy(
                 Metric.tagged(ClusterMetrics.assignedShards, "runner_address", address.toString()),
                 -shardCount
@@ -635,9 +660,9 @@ export const make = Effect.gen(function*() {
     // Remove failed shard unassignments from the assignments
     MutableHashMap.forEach(assignments, (shards, address) => {
       for (const shard of failedUnassignments) {
-        shards.delete(shard)
+        MutableHashSet.remove(shards, shard)
       }
-      if (shards.size === 0) {
+      if (MutableHashSet.size(shards) === 0) {
         MutableHashMap.remove(assignments, address)
       }
     })
@@ -653,7 +678,7 @@ export const make = Effect.gen(function*() {
               return Effect.void
             },
             onSuccess: () => {
-              const shardCount = shards.size
+              const shardCount = MutableHashSet.size(shards)
               return Metric.incrementBy(
                 Metric.tagged(ClusterMetrics.assignedShards, "runner_address", address.toString()),
                 -shardCount
@@ -691,7 +716,7 @@ export const make = Effect.gen(function*() {
   })
 
   const checkRunnerHealth: Effect.Effect<void> = Effect.suspend(() =>
-    Effect.forEach(MutableHashMap.keys(state.runners), notifyUnhealthyRunner, {
+    Effect.forEach(MutableHashMap.keys(state.allRunners), notifyUnhealthyRunner, {
       concurrency: 10,
       discard: true
     })
@@ -710,7 +735,7 @@ export const make = Effect.gen(function*() {
 
   // Rebalance immediately if there are unassigned shards
   yield* Effect.forkIn(
-    rebalance(state.unassignedShards.length > 0),
+    rebalance(state.allUnassignedShards.length > 0),
     scope
   )
 
@@ -768,7 +793,11 @@ export const layerServerHandlers = Rpcs.toLayer(Effect.gen(function*() {
     Register: ({ runner }) => shardManager.register(runner),
     Unregister: ({ address }) => shardManager.unregister(address),
     NotifyUnhealthyRunner: ({ address }) => shardManager.notifyUnhealthyRunner(address),
-    GetAssignments: () => shardManager.getAssignments,
+    GetAssignments: () =>
+      Effect.map(
+        shardManager.getAssignments,
+        (assignments) => Array.from(assignments)
+      ),
     ShardingEvents: Effect.fnUntraced(function*() {
       const queue = yield* shardManager.shardingEvents
       const mailbox = yield* Mailbox.make<ShardingEvent>()

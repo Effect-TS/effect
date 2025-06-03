@@ -36,12 +36,12 @@ export class SingletonAddress extends Schema.Class<SingletonAddress>("@effect/cl
    * @since 1.0.0
    */
   [Hash.symbol]() {
-    return Hash.cached(this)(Hash.string(`${this.shardId}:${this.name}`))
+    return Hash.cached(this)(Hash.string(`${this.name}:${this.shardId.toString()}`))
   }
   /**
    * @since 1.0.0
    */
   [Equal.symbol](that: SingletonAddress): boolean {
-    return this.shardId === that.shardId && this.name === that.name
+    return this.name === that.name && this.shardId[Equal.symbol](that.shardId)
   }
 }
