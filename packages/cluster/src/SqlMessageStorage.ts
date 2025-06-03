@@ -659,7 +659,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         const row = replyToRow(reply)
         const update = reply._tag === "Chunk" ?
           sql`UPDATE ${messagesTableSql} SET last_reply_id = ${reply.id} WHERE id = ${reply.requestId}` :
-          sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue}, last_reply_id = NULL WHERE request_id = ${reply.requestId}`
+          sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue}, last_reply_id = ${reply.id} WHERE request_id = ${reply.requestId}`
         return update.unprepared.pipe(
           Effect.andThen(sql`INSERT INTO ${repliesTableSql} ${sql.insert(row)}`),
           sql.withTransaction

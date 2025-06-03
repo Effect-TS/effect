@@ -668,7 +668,9 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
           if (existing) {
             return SaveResultEncoded.Duplicate({
               originalId: Snowflake.Snowflake(existing.envelope.requestId),
-              lastReceivedReply: existing.lastReceivedChunk
+              lastReceivedReply: existing.replies.length === 1 && existing.replies[0]._tag === "WithExit"
+                ? Option.some(existing.replies[0])
+                : existing.lastReceivedChunk
             })
           }
           if (envelope._tag === "Request") {
