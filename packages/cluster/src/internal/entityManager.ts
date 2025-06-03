@@ -7,6 +7,7 @@ import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
@@ -400,7 +401,7 @@ export const make = Effect.fnUntraced(function*<
     Effect.suspend(function loop(): Effect.Effect<void> {
       const toInterrupt = new Set<EntityState>()
       for (const state of activeServers.values()) {
-        if (shardId === state.address.shardId) {
+        if (shardId[Equal.symbol](state.address.shardId)) {
           toInterrupt.add(state)
         }
       }

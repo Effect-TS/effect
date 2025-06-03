@@ -46,6 +46,7 @@ export const layer = <const Storage extends "sql" | "noop" = "noop">(options: {
   readonly serialization?: "msgpack" | "ndjson" | undefined
   readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
   readonly storage?: Storage | undefined
+  readonly config?: Partial<ShardManager.Config["Type"]> | undefined
 }): Layer.Layer<
   ShardManager.ShardManager,
   ServeError | ConfigError | (Storage extends "sql" ? SqlError : never),
@@ -64,7 +65,7 @@ export const layer = <const Storage extends "sql" | "noop" = "noop">(options: {
     Layer.provide(options?.storage === "sql" ? SqlShardStorage.layer : ShardStorage.layerNoop),
     Layer.provide([
       ShardingConfig.layerFromEnv(options.shardingConfig),
-      ShardManager.layerConfigFromEnv,
+      ShardManager.layerConfigFromEnv(options?.config),
       options?.serialization === "ndjson" ? RpcSerialization.layerNdjson : RpcSerialization.layerMsgPack
     ])
   )

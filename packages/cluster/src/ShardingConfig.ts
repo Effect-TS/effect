@@ -20,22 +20,35 @@ import { RunnerAddress } from "./RunnerAddress.js"
  */
 export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig")<ShardingConfig, {
   /**
-   * The address for the current runner.
+   * The address for the current runner that other runners can use to
+   * communicate with it.
    *
    * If `None`, the runner is not part of the cluster and will be in a client-only
    * mode.
    */
   readonly runnerAddress: Option.Option<RunnerAddress>
   /**
+   * The listen address for the current runner.
+   *
+   * Defaults to the `runnerAddress`.
+   */
+  readonly runnerListenAddress: Option.Option<RunnerAddress>
+  /**
    * The version of the current runner.
    */
   readonly serverVersion: number
   /**
-   * The number of shards to allocate to a runner.
+   * The shard groups that are assigned to this runner.
+   *
+   * Defaults to `["default"]`.
+   */
+  readonly shardGroups: ReadonlyArray<string>
+  /**
+   * The number of shards to allocate per shard group.
    *
    * **Note**: this value should be consistent across all runners.
    */
-  readonly numberOfShards: number
+  readonly shardsPerGroup: number
   /**
    * The address of the shard manager.
    */
@@ -89,10 +102,12 @@ const defaultRunnerAddress = RunnerAddress.make({ host: "localhost", port: 34431
  */
 export const defaults: ShardingConfig["Type"] = {
   runnerAddress: Option.some(defaultRunnerAddress),
+  runnerListenAddress: Option.none(),
   serverVersion: 1,
-  numberOfShards: 300,
+  shardsPerGroup: 300,
   shardManagerAddress: RunnerAddress.make({ host: "localhost", port: 8080 }),
   shardManagerUnavailableTimeout: Duration.minutes(10),
+  shardGroups: ["default"],
   entityMailboxCapacity: 4096,
   entityMaxIdleTime: Duration.minutes(1),
   entityTerminationTimeout: Duration.seconds(15),
@@ -131,13 +146,27 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
       Config.withDescription("The port used for inter-runner communication.")
     )
   }).pipe(Config.map((options) => RunnerAddress.make(options)), Config.option),
+  runnerListenAddress: Config.all({
+    host: Config.string("listenHost").pipe(
+      Config.withDefault(defaultRunnerAddress.host),
+      Config.withDescription("The host to listen on.")
+    ),
+    port: Config.integer("listenPort").pipe(
+      Config.withDefault(defaultRunnerAddress.port),
+      Config.withDescription("The port to listen on.")
+    )
+  }).pipe(Config.map((options) => RunnerAddress.make(options)), Config.option),
   serverVersion: Config.integer("serverVersion").pipe(
     Config.withDefault(defaults.serverVersion),
     Config.withDescription("The version of the current runner.")
   ),
-  numberOfShards: Config.integer("numberOfShards").pipe(
-    Config.withDefault(defaults.numberOfShards),
-    Config.withDescription("The number of shards to allocate to a runner.")
+  shardGroups: Config.array(Config.string("shardGroups")).pipe(
+    Config.withDefault(["default"]),
+    Config.withDescription("The shard groups that are assigned to this runner.")
+  ),
+  shardsPerGroup: Config.integer("shardsPerGroup").pipe(
+    Config.withDefault(defaults.shardsPerGroup),
+    Config.withDescription("The number of shards to allocate per shard group.")
   ),
   shardManagerAddress: Config.all({
     host: Config.string("shardManagerHost").pipe(

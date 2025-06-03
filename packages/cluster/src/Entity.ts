@@ -26,6 +26,7 @@ import type {
   MailboxFull,
   PersistenceError
 } from "./ClusterError.js"
+import { ShardGroup } from "./ClusterSchema.js"
 import { EntityAddress } from "./EntityAddress.js"
 import type { EntityId } from "./EntityId.js"
 import { EntityType } from "./EntityType.js"
@@ -67,6 +68,16 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
    * that the entity is capable of processing.
    */
   readonly protocol: RpcGroup.RpcGroup<Rpcs>
+
+  /**
+   * Get the shard group for the given EntityId.
+   */
+  getShardGroup(entityId: EntityId): string
+
+  /**
+   * Get the ShardId for the given EntityId.
+   */
+  getShardId(entityId: EntityId): Effect.Effect<ShardId.ShardId, never, Sharding>
 
   /**
    * Annotate the entity with a value.
@@ -205,6 +216,9 @@ const Proto = {
   annotateRpcsContext<S>(this: Entity<any>, context: Context.Context<S>) {
     return fromRpcGroup(this.type, this.protocol.annotateRpcsContext(context))
   },
+  getShardId(this: Entity<any>, entityId: EntityId) {
+    return Effect.map(shardingTag, (sharding) => sharding.getShardId(entityId, this.getShardGroup(entityId)))
+  },
   get client() {
     return shardingTag.pipe(
       Effect.flatMap((sharding) => sharding.makeClient(this as any))
@@ -341,6 +355,7 @@ export const fromRpcGroup = <Rpcs extends Rpc.Any>(
   const self = Object.create(Proto)
   self.type = EntityType.make(type)
   self.protocol = protocol
+  self.getShardGroup = Context.get(protocol.annotations, ShardGroup)
   return self
 }
 
@@ -470,7 +485,11 @@ export const makeTestClient: <Rpcs extends Rpc.Any, LA, LE, LR>(
   layer: Layer.Layer<LA, LE, LR>
 ) {
   const config = yield* ShardingConfig
-  const makeShardId = (entityId: string) => ShardId.make((Math.abs(hashString(entityId) % config.numberOfShards)) + 1)
+  const makeShardId = (entityId: string) =>
+    ShardId.make(
+      entity.getShardGroup(entityId as EntityId),
+      (Math.abs(hashString(entityId) % config.shardsPerGroup)) + 1
+    )
   const snowflakeGen = yield* Snowflake.makeGenerator
   const runnerAddress = new RunnerAddress({ host: "localhost", port: 3000 })
   const entityMap = new Map<string, {

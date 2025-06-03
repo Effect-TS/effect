@@ -22,7 +22,7 @@ import type { EntityAddress } from "./EntityAddress.js"
 import * as Envelope from "./Envelope.js"
 import * as Message from "./Message.js"
 import * as Reply from "./Reply.js"
-import type { ShardId } from "./ShardId.js"
+import { ShardId } from "./ShardId.js"
 import type { ShardingConfig } from "./ShardingConfig.js"
 import * as Snowflake from "./Snowflake.js"
 
@@ -266,7 +266,7 @@ export type Encoded = {
    * - All Interrupt's for unprocessed requests
    */
   readonly unprocessedMessages: (
-    shardIds: ReadonlyArray<number>,
+    shardIds: ReadonlyArray<string>,
     now: number
   ) => Effect.Effect<
     Array<{
@@ -308,7 +308,7 @@ export type Encoded = {
    * Reset the mailbox state for the provided shards.
    */
   readonly resetShards: (
-    shardIds: ReadonlyArray<number>
+    shardIds: ReadonlyArray<string>
   ) => Effect.Effect<void, PersistenceError>
 }
 
@@ -441,7 +441,9 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       const shards = Array.from(shardIds)
       if (shards.length === 0) return Effect.succeed([])
       return Effect.flatMap(
-        Effect.suspend(() => encoded.unprocessedMessages(shards, clock.unsafeCurrentTimeMillis())),
+        Effect.suspend(() =>
+          encoded.unprocessedMessages(shards.map((id) => id.toString()), clock.unsafeCurrentTimeMillis())
+        ),
         decodeMessages
       )
     },
@@ -455,7 +457,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
     },
     resetAddress: encoded.resetAddress,
     clearAddress: encoded.clearAddress,
-    resetShards: (shardIds) => encoded.resetShards(Array.from(shardIds))
+    resetShards: (shardIds) => encoded.resetShards(Array.from(shardIds, (id) => id.toString()))
   })
 
   const decodeMessages = (
@@ -726,7 +728,8 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
           let index = journal.indexOf(Iterable.unsafeHead(unprocessed))
           for (; index < journal.length; index++) {
             const envelope = journal[index]
-            if (!shardIds.includes(envelope.address.shardId)) {
+            const shardId = ShardId.make(envelope.address.shardId)
+            if (!shardIds.includes(shardId.toString())) {
               continue
             }
             if (envelope._tag === "Request") {

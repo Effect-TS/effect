@@ -21,6 +21,7 @@ import * as HashMap from "effect/HashMap"
 import * as Iterable from "effect/Iterable"
 import * as Layer from "effect/Layer"
 import * as MutableHashMap from "effect/MutableHashMap"
+import * as MutableHashSet from "effect/MutableHashSet"
 import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -74,7 +75,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
    * Returns the `ShardId` of the shard to which the entity at the specified
    * `address` is assigned.
    */
-  readonly getShardId: (entityId: EntityId) => ShardId
+  readonly getShardId: (entityId: EntityId, group: string) => ShardId
 
   /**
    * Returns `true` if sharding is shutting down, `false` otherwise.
@@ -115,7 +116,10 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
    */
   readonly registerSingleton: <E, R>(
     name: string,
-    run: Effect.Effect<void, E, R>
+    run: Effect.Effect<void, E, R>,
+    options?: {
+      readonly shardGroup?: string | undefined
+    }
   ) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>
 
   /**
@@ -182,10 +186,10 @@ const make = Effect.gen(function*() {
   const entityManagers = new Map<EntityType, EntityManagerState>()
 
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
-  const selfShards = new Set<ShardId>()
+  const selfShards = MutableHashSet.empty<ShardId>()
 
   // the active shards are the ones that we have acquired the lock for
-  const acquiredShards = new Set<ShardId>()
+  const acquiredShards = MutableHashSet.empty<ShardId>()
   const activeShardsLatch = yield* Effect.makeLatch(false)
 
   const events = yield* PubSub.unbounded<ShardingRegistrationEvent>()
@@ -194,12 +198,13 @@ const make = Effect.gen(function*() {
   const isLocalRunner = (address: RunnerAddress) =>
     Option.isSome(config.runnerAddress) && Equal.equals(address, config.runnerAddress.value)
 
-  function getShardId(entityId: EntityId): ShardId {
-    return ShardId.make((Math.abs(hashString(entityId) % config.numberOfShards)) + 1)
+  function getShardId(entityId: EntityId, group: string): ShardId {
+    const id = Math.abs(hashString(entityId) % config.shardsPerGroup) + 1
+    return ShardId.make({ group, id }, { disableValidation: true })
   }
 
   function isEntityOnLocalShards(address: EntityAddress): boolean {
-    return acquiredShards.has(address.shardId)
+    return MutableHashSet.has(acquiredShards, address.shardId)
   }
 
   // --- Shard acquisition ---
@@ -211,30 +216,30 @@ const make = Effect.gen(function*() {
       return Effect.ignore(shardStorage.releaseAll(selfAddress))
     })
 
-    const releasingShards = new Set<ShardId>()
+    const releasingShards = MutableHashSet.empty<ShardId>()
     yield* Effect.gen(function*() {
       while (true) {
         yield* activeShardsLatch.await
 
         // if a shard is no longer assigned to this runner, we release it
         for (const shardId of acquiredShards) {
-          if (selfShards.has(shardId)) continue
-          acquiredShards.delete(shardId)
-          releasingShards.add(shardId)
+          if (MutableHashSet.has(selfShards, shardId)) continue
+          MutableHashSet.remove(acquiredShards, shardId)
+          MutableHashSet.add(releasingShards, shardId)
         }
         // if a shard has been assigned to this runner, we acquire it
-        const unacquiredShards = new Set<ShardId>()
+        const unacquiredShards = MutableHashSet.empty<ShardId>()
         for (const shardId of selfShards) {
-          if (acquiredShards.has(shardId) || releasingShards.has(shardId)) continue
-          unacquiredShards.add(shardId)
+          if (MutableHashSet.has(acquiredShards, shardId) || MutableHashSet.has(releasingShards, shardId)) continue
+          MutableHashSet.add(unacquiredShards, shardId)
         }
 
-        if (releasingShards.size > 0) {
+        if (MutableHashSet.size(releasingShards) > 0) {
           yield* Effect.forkIn(syncSingletons, shardingScope)
           yield* releaseShards
         }
 
-        if (unacquiredShards.size === 0) {
+        if (MutableHashSet.size(unacquiredShards) === 0) {
           yield* activeShardsLatch.close
           continue
         }
@@ -242,7 +247,7 @@ const make = Effect.gen(function*() {
         const acquired = yield* shardStorage.acquire(selfAddress, unacquiredShards)
         yield* Effect.ignore(storage.resetShards(acquired))
         for (const shardId of acquired) {
-          acquiredShards.add(shardId)
+          MutableHashSet.add(acquiredShards, shardId)
         }
         if (acquired.length > 0) {
           yield* storageReadLatch.open
@@ -272,12 +277,12 @@ const make = Effect.gen(function*() {
     ).pipe(
       Effect.flatMap((acquired) => {
         for (const shardId of acquiredShards) {
-          if (!acquired.includes(shardId)) {
-            acquiredShards.delete(shardId)
-            releasingShards.add(shardId)
+          if (!acquired.some((_) => _[Equal.symbol](shardId))) {
+            MutableHashSet.remove(acquiredShards, shardId)
+            MutableHashSet.add(releasingShards, shardId)
           }
         }
-        return releasingShards.size > 0 ?
+        return MutableHashSet.size(releasingShards) > 0 ?
           Effect.andThen(
             Effect.forkIn(syncSingletons, shardingScope),
             releaseShards
@@ -315,7 +320,7 @@ const make = Effect.gen(function*() {
                 runner: selfAddress
               }),
               Effect.andThen(() => {
-                releasingShards.delete(shardId)
+                MutableHashSet.remove(releasingShards, shardId)
               })
             ),
           { concurrency: "unbounded", discard: true }
@@ -325,7 +330,7 @@ const make = Effect.gen(function*() {
   }
 
   const clearSelfShards = Effect.suspend(() => {
-    selfShards.clear()
+    MutableHashSet.clear(selfShards)
     return activeShardsLatch.open
   })
 
@@ -336,9 +341,10 @@ const make = Effect.gen(function*() {
   const withSingletonLock = Effect.unsafeMakeSemaphore(1).withPermits(1)
 
   const registerSingleton: Sharding["Type"]["registerSingleton"] = Effect.fnUntraced(
-    function*(name, run) {
+    function*(name, run, options) {
+      const shardGroup = options?.shardGroup ?? "default"
       const address = new SingletonAddress({
-        shardId: getShardId(EntityId.make(name)),
+        shardId: getShardId(EntityId.make(name), shardGroup),
         name
       })
 
@@ -365,7 +371,7 @@ const make = Effect.gen(function*() {
       yield* PubSub.publish(events, SingletonRegistered({ address }))
 
       // start if we are on the right shard
-      if (acquiredShards.has(address.shardId)) {
+      if (MutableHashSet.has(acquiredShards, address.shardId)) {
         yield* Effect.logDebug("Starting singleton", address)
         yield* FiberMap.run(singletonFibers, address, wrappedRun)
       }
@@ -377,7 +383,7 @@ const make = Effect.gen(function*() {
     for (const [shardId, map] of singletons) {
       for (const [address, run] of map) {
         const running = FiberMap.unsafeHas(singletonFibers, address)
-        const shouldBeRunning = acquiredShards.has(shardId)
+        const shouldBeRunning = MutableHashSet.has(acquiredShards, shardId)
         if (running && !shouldBeRunning) {
           yield* Effect.logDebug("Stopping singleton", address)
           internalInterruptors.add(yield* Effect.fiberId)
@@ -452,7 +458,7 @@ const make = Effect.gen(function*() {
               currentSentRequestIds.add(message.envelope.requestId)
             }
             const address = message.envelope.address
-            if (!acquiredShards.has(address.shardId)) {
+            if (!MutableHashSet.has(acquiredShards, address.shardId)) {
               return Effect.void
             }
             const state = entityManagers.get(address.entityType)
@@ -580,7 +586,7 @@ const make = Effect.gen(function*() {
 
         while (!done) {
           // if the shard is no longer assigned to this runner, we stop
-          if (!acquiredShards.has(address.shardId)) {
+          if (!MutableHashSet.has(acquiredShards, address.shardId)) {
             return
           }
 
@@ -606,7 +612,7 @@ const make = Effect.gen(function*() {
             EntityNotManagedByRunner | EntityNotAssignedToRunner
           > = Effect.catchTags(
             Effect.suspend(() => {
-              if (!acquiredShards.has(address.shardId)) {
+              if (!MutableHashSet.has(acquiredShards, address.shardId)) {
                 return Effect.fail(new EntityNotAssignedToRunner({ address }))
               }
 
@@ -805,7 +811,7 @@ const make = Effect.gen(function*() {
   yield* Effect.gen(function*() {
     yield* Effect.logDebug("Registering with shard manager")
     if (Option.isSome(config.runnerAddress)) {
-      const machineId = yield* shardManager.register(config.runnerAddress.value)
+      const machineId = yield* shardManager.register(config.runnerAddress.value, config.shardGroups)
       yield* snowflakeGen.setMachineId(machineId)
     }
 
@@ -832,8 +838,8 @@ const make = Effect.gen(function*() {
               }
               if (!MutableRef.get(isShutdown) && isLocalRunner(event.address)) {
                 for (const shardId of event.shards) {
-                  if (selfShards.has(shardId)) continue
-                  selfShards.add(shardId)
+                  if (MutableHashSet.has(selfShards, shardId)) continue
+                  MutableHashSet.add(selfShards, shardId)
                 }
                 yield* activeShardsLatch.open
               }
@@ -845,7 +851,7 @@ const make = Effect.gen(function*() {
               }
               if (isLocalRunner(event.address)) {
                 for (const shard of event.shards) {
-                  selfShards.delete(shard)
+                  MutableHashSet.remove(selfShards, shard)
                 }
                 yield* activeShardsLatch.open
               }
@@ -896,20 +902,20 @@ const make = Effect.gen(function*() {
     for (const [shardId, runner] of assignments) {
       if (Option.isNone(runner)) {
         MutableHashMap.remove(shardAssignments, shardId)
-        selfShards.delete(shardId)
+        MutableHashSet.remove(selfShards, shardId)
         continue
       }
 
       MutableHashMap.set(shardAssignments, shardId, runner.value)
 
       if (!isLocalRunner(runner.value)) {
-        selfShards.delete(shardId)
+        MutableHashSet.remove(selfShards, shardId)
         continue
       }
-      if (MutableRef.get(isShutdown) || selfShards.has(shardId)) {
+      if (MutableRef.get(isShutdown) || MutableHashSet.has(selfShards, shardId)) {
         continue
       }
-      selfShards.add(shardId)
+      MutableHashSet.add(selfShards, shardId)
     }
 
     yield* activeShardsLatch.open
@@ -1054,7 +1060,7 @@ const make = Effect.gen(function*() {
       return {
         ...wrappedClient,
         [currentClientAddress]: ClientAddressTag.context(EntityAddress.make({
-          shardId: getShardId(id),
+          shardId: getShardId(id, entity.getShardGroup(entityId as EntityId)),
           entityId: id,
           entityType: entity.type
         }))

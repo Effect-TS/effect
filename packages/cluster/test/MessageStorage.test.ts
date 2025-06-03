@@ -105,7 +105,7 @@ export const makeRequest = Effect.fnUntraced(function*(options?: {
     envelope: Envelope.makeRequest<any>({
       requestId: snowflake.unsafeNext(),
       address: EntityAddress.EntityAddress.make({
-        shardId: ShardId.ShardId.make(1),
+        shardId: ShardId.make("default", 1),
         entityType: EntityType.EntityType.make("test"),
         entityId: EntityId.EntityId.make("1")
       }),

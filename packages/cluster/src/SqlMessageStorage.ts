@@ -15,6 +15,7 @@ import type * as Envelope from "./Envelope.js"
 import * as MessageStorage from "./MessageStorage.js"
 import { SaveResultEncoded } from "./MessageStorage.js"
 import type * as Reply from "./Reply.js"
+import { ShardId } from "./ShardId.js"
 import type { ShardingConfig } from "./ShardingConfig.js"
 import * as Snowflake from "./Snowflake.js"
 
@@ -48,15 +49,15 @@ export const make = Effect.fnUntraced(function*(options?: {
           id BIGINT PRIMARY KEY,
           rowid BIGINT IDENTITY(1,1),
           message_id VARCHAR(255),
-          shard_id INT NOT NULL,
-          entity_type VARCHAR(255) NOT NULL,
+          shard_id VARCHAR(50) NOT NULL,
+          entity_type VARCHAR(50) NOT NULL,
           entity_id VARCHAR(255) NOT NULL,
           kind INT NOT NULL,
-          tag VARCHAR(255),
+          tag VARCHAR(50),
           payload TEXT,
           headers TEXT,
-          trace_id VARCHAR(255),
-          span_id VARCHAR(255),
+          trace_id VARCHAR(32),
+          span_id VARCHAR(16),
           sampled BIT,
           processed BIT NOT NULL DEFAULT 0,
           request_id BIGINT NOT NULL,
@@ -74,15 +75,15 @@ export const make = Effect.fnUntraced(function*(options?: {
           id BIGINT NOT NULL,
           rowid BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
           message_id VARCHAR(255),
-          shard_id INT NOT NULL,
-          entity_type VARCHAR(255) NOT NULL,
+          shard_id VARCHAR(50) NOT NULL,
+          entity_type VARCHAR(50) NOT NULL,
           entity_id VARCHAR(255) NOT NULL,
           kind INT NOT NULL,
-          tag VARCHAR(255),
+          tag VARCHAR(50),
           payload TEXT,
           headers TEXT,
-          trace_id VARCHAR(255),
-          span_id VARCHAR(255),
+          trace_id VARCHAR(32),
+          span_id VARCHAR(16),
           sampled BOOLEAN,
           processed BOOLEAN NOT NULL DEFAULT FALSE,
           request_id BIGINT NOT NULL,
@@ -101,15 +102,15 @@ export const make = Effect.fnUntraced(function*(options?: {
           id BIGINT PRIMARY KEY,
           rowid BIGSERIAL,
           message_id VARCHAR(255),
-          shard_id INT NOT NULL,
-          entity_type VARCHAR(255) NOT NULL,
+          shard_id VARCHAR(50) NOT NULL,
+          entity_type VARCHAR(50) NOT NULL,
           entity_id VARCHAR(255) NOT NULL,
           kind INT NOT NULL,
-          tag VARCHAR(255),
+          tag VARCHAR(50),
           payload TEXT,
           headers TEXT,
-          trace_id VARCHAR(255),
-          span_id VARCHAR(255),
+          trace_id VARCHAR(32),
+          span_id VARCHAR(16),
           sampled BOOLEAN,
           processed BOOLEAN NOT NULL DEFAULT FALSE,
           request_id BIGINT NOT NULL,
@@ -127,7 +128,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
           id INTEGER PRIMARY KEY,
           message_id TEXT,
-          shard_id INTEGER NOT NULL,
+          shard_id TEXT NOT NULL,
           entity_type TEXT NOT NULL,
           entity_id TEXT NOT NULL,
           kind INTEGER NOT NULL,
@@ -315,7 +316,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         return {
           id: envelope.requestId,
           message_id,
-          shard_id: envelope.address.shardId,
+          shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
           entity_id: envelope.address.entityId,
           kind: messageKind.Request,
@@ -333,7 +334,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         return {
           id: envelope.id,
           message_id,
-          shard_id: envelope.address.shardId,
+          shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
           entity_id: envelope.address.entityId,
           kind: messageKind.AckChunk,
@@ -351,7 +352,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         return {
           id: envelope.id,
           message_id,
-          shard_id: envelope.address.shardId,
+          shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
           entity_id: envelope.address.entityId,
           kind: messageKind.Interrupt,
@@ -393,7 +394,7 @@ export const make = Effect.fnUntraced(function*(options?: {
             _tag: "Request",
             requestId: String(row.id),
             address: {
-              shardId: Number(row.shard_id),
+              shardId: ShardId.fromStringEncoded(row.shard_id),
               entityType: row.entity_type,
               entityId: row.entity_id
             },
@@ -422,7 +423,7 @@ export const make = Effect.fnUntraced(function*(options?: {
             requestId: String(row.request_id!),
             replyId: String(row.reply_id!),
             address: {
-              shardId: Number(row.shard_id),
+              shardId: ShardId.fromStringEncoded(row.shard_id),
               entityType: row.entity_type,
               entityId: row.entity_id
             }
@@ -436,7 +437,7 @@ export const make = Effect.fnUntraced(function*(options?: {
             id: String(row.id),
             requestId: String(row.request_id!),
             address: {
-              shardId: Number(row.shard_id),
+              shardId: ShardId.fromStringEncoded(row.shard_id),
               entityType: row.entity_type,
               entityId: row.entity_id
             }
@@ -549,15 +550,20 @@ export const make = Effect.fnUntraced(function*(options?: {
   })
   const sqlNow = sql.literal(sqlNowString)
 
+  const wrapString = sql.onDialectOrElse({
+    mssql: () => (s: string) => `N'${s}'`,
+    orElse: () => (s: string) => `'${s}'`
+  })
+
   const getUnprocessedMessages = sql.onDialectOrElse({
-    pg: () => (shardIds: ReadonlyArray<number>, now: number) =>
+    pg: () => (shardIds: ReadonlyArray<string>, now: number) =>
       sql<MessageJoinRow>`
         UPDATE ${messagesTableSql} m
         SET last_read = ${sqlNow}
         FROM (
           SELECT m.*
           FROM ${messagesTableSql} m
-          WHERE m.shard_id IN (${sql.literal(shardIds.map(String).join(","))})
+          WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
           AND NOT EXISTS (
             SELECT 1 FROM ${repliesTableSql}
             WHERE request_id = m.request_id
@@ -573,12 +579,12 @@ export const make = Effect.fnUntraced(function*(options?: {
         WHERE m.id = ids.id
         RETURNING ids.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
       `,
-    orElse: () => (shardIds: ReadonlyArray<number>, now: number) =>
+    orElse: () => (shardIds: ReadonlyArray<string>, now: number) =>
       sql<MessageJoinRow>`
         SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         FROM ${messagesTableSql} m
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-        WHERE m.shard_id IN (${sql.literal(shardIds.map(String).join(","))})
+        WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
         AND NOT EXISTS (
           SELECT 1 FROM ${repliesTableSql}
           WHERE request_id = m.request_id
@@ -772,7 +778,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         UPDATE ${messagesTableSql}
         SET last_read = NULL
         WHERE processed = ${sqlFalse}
-        AND shard_id = ${address.shardId}
+        AND shard_id = ${address.shardId.toString()}
         AND entity_type = ${address.entityType}
         AND entity_id = ${address.entityId}
       `.pipe(
@@ -808,7 +814,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         UPDATE ${messagesTableSql}
         SET last_read = NULL
         WHERE processed = ${sqlFalse}
-        AND shard_id IN (${sql.literal(shardIds.join(","))})
+        AND shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
       `.pipe(
         Effect.asVoid,
         PersistenceError.refail,
@@ -875,7 +881,7 @@ const replyFromRow = (row: ReplyRow): Reply.ReplyEncoded<any> =>
 type MessageRow = {
   readonly id: string | bigint
   readonly message_id: string | null
-  readonly shard_id: number | bigint
+  readonly shard_id: string
   readonly entity_type: string
   readonly entity_id: string
   readonly kind: 0 | 1 | 2 | 0n | 1n | 2n
