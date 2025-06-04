@@ -76,7 +76,7 @@ export interface Machine<
   R
 > extends Pipeable {
   readonly [TypeId]: TypeId
-  readonly initialize: Machine.Initialize<Input, State, Public, Private, InitErr, R, R>
+  readonly initialize: Machine.Initialize<Input, State, Public, Private, R, InitErr, R>
   readonly retryPolicy: Schedule.Schedule<unknown, InitErr | MachineDefect, R> | undefined
 }
 
