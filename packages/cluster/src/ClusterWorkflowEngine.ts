@@ -38,11 +38,11 @@ export const make = Effect.gen(function*() {
   const storage = yield* MessageStorage
 
   const workflows = new Map<string, Workflow.Any>()
-  const runningWorkflows = new Set<string>()
   const entities = new Map<
     string,
     Entity.Entity<
       | Rpc.Rpc<"run", Schema.Struct<{}>, Schema.Schema<Workflow.Result<any, any>>>
+      | Rpc.Rpc<"resume">
       | Rpc.Rpc<
         "activity",
         Schema.Struct<{ name: typeof Schema.String; attempt: typeof Schema.Number }>,
@@ -152,6 +152,22 @@ export const make = Effect.gen(function*() {
     yield* storage.clearAddress(clockAddress)
   })
 
+  const resume = Effect.fnUntraced(function*(workflow: Workflow.Any, executionId: string) {
+    const maybeReply = yield* requestReply({
+      workflow,
+      entityType: `Workflow/${workflow.name}`,
+      executionId,
+      tag: "run",
+      id: ""
+    })
+    const maybeSuspended = Option.filter(
+      maybeReply,
+      (reply) => reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
+    )
+    if (Option.isNone(maybeSuspended)) return
+    yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId))
+  })
+
   return WorkflowEngine.of({
     register(workflow, execute) {
       // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -170,7 +186,6 @@ export const make = Effect.gen(function*() {
             const executionId = address.entityId
             return {
               run: (request: Entity.Request<any>) => {
-                runningWorkflows.add(executionId)
                 const instance = WorkflowInstance.of({
                   workflow,
                   executionId,
@@ -178,7 +193,6 @@ export const make = Effect.gen(function*() {
                 })
                 return execute(request.payload, executionId).pipe(
                   Effect.onExit(() => {
-                    runningWorkflows.delete(executionId)
                     if (!instance.suspended) {
                       return Effect.void
                     }
@@ -201,6 +215,7 @@ export const make = Effect.gen(function*() {
                   Effect.provideService(WorkflowInstance, instance)
                 ) as any
               },
+              resume: () => ensureSuccess(resume(workflow, executionId)),
               activity: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 const activityId = `${executionId}/${request.payload.name}`
                 let entry = activities.get(activityId)
@@ -243,17 +258,13 @@ export const make = Effect.gen(function*() {
 
     interrupt: Effect.fnUntraced(
       function*(this: WorkflowEngine["Type"], workflow, executionId) {
-        const requestId = yield* requestIdFor({
+        const reply = yield* requestReply({
           workflow,
           entityType: `Workflow/${workflow.name}`,
           executionId,
           tag: "run",
           id: ""
         })
-        if (Option.isNone(requestId)) {
-          return
-        }
-        const reply = yield* replyForRequestId(requestId.value)
         const nonSuspendedReply = reply.pipe(
           Option.filter((reply) => reply.exit._tag !== "Success" || reply.exit.value._tag !== "Suspended")
         )
@@ -276,36 +287,10 @@ export const make = Effect.gen(function*() {
       Effect.orDie
     ),
 
-    resume: Effect.fnUntraced(
-      function*(workflowName: string, executionId: string) {
-        if (runningWorkflows.has(executionId)) {
-          return
-        }
-        const workflow = workflows.get(workflowName)
-        if (!workflow) {
-          return yield* Effect.dieMessage(`WorkflowEngine.resume: ${workflowName} not registered`)
-        }
-        const maybeReply = yield* requestReply({
-          workflow,
-          entityType: `Workflow/${workflowName}`,
-          executionId,
-          tag: "run",
-          id: ""
-        })
-        const maybeSuspended = Option.filter(
-          maybeReply,
-          (reply) => reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
-        )
-        if (Option.isNone(maybeSuspended)) return
-        yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId))
-      },
-      Effect.retry({
-        while: (e) => e._tag === "PersistenceError",
-        times: 3,
-        schedule: Schedule.exponential(250)
-      }),
-      Effect.orDie
-    ),
+    resume: Effect.fnUntraced(function*(workflowName: string, executionId: string) {
+      const client = yield* RcMap.get(clients, workflowName)
+      yield* ensureSuccess(client(executionId).resume(void 0, { discard: true }))
+    }, Effect.scoped),
 
     activityExecute: Effect.fnUntraced(function*({ activity, attempt }) {
       const context = yield* Effect.context<WorkflowInstance>()
@@ -414,6 +399,9 @@ const makeWorkflowEntity = (workflow: Workflow.Any) =>
         error: workflow.errorSchema
       })
     })
+      .annotate(ClusterSchema.Persisted, true)
+      .annotate(ClusterSchema.Uninterruptible, true),
+    Rpc.make("resume")
       .annotate(ClusterSchema.Persisted, true)
       .annotate(ClusterSchema.Uninterruptible, true),
     ActivityRpc

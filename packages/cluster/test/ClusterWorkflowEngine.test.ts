@@ -32,7 +32,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       // - 1 durable clock run
       // - 1 durable clock deferred set
       // - 1 durable clock deferred resume
-      expect(driver.requests.size).toEqual(10)
+      // - 1 workflow resume
+      expect(driver.requests.size).toEqual(11)
       const executionId = driver.journal[0].address.entityId
 
       const token = yield* DurableDeferred.token(EmailTrigger).pipe(
@@ -50,7 +51,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       // - 1 DurableDeferred set
       // - 1 DurableDeferred resume
-      expect(driver.requests.size).toEqual(12)
+      // - 1 workflow resume
+      expect(driver.requests.size).toEqual(14)
 
       expect(yield* Fiber.join(fiber)).toBeUndefined()
 
@@ -59,7 +61,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         id: "test-email-1",
         to: "bob@example.com"
       })
-      expect(driver.requests.size).toEqual(12)
+      expect(driver.requests.size).toEqual(14)
     }).pipe(
       Effect.provide(TestWorkflowLayer)
     ))
@@ -87,13 +89,14 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       // - 1 durable clock run
       // - 1 durable clock deferred set
       // - 1 durable clock deferred resume
+      // - 1 workflow resume
       // - 1 interrupt signal set
       // - 1 interrupt signal resume
-      expect(driver.requests.size).toEqual(12)
+      expect(driver.requests.size).toEqual(13)
       yield* TestClock.adjust(5000)
-
-      // clock cleared
-      expect(driver.requests.size).toEqual(11)
+      // - clock cleared
+      // - 1 workflow resume
+      expect(driver.requests.size).toEqual(13)
 
       const result = driver.requests.get(envelope.requestId)!
       const reply = result.replies[0]!
