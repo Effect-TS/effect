@@ -38,6 +38,7 @@ export const make = Effect.gen(function*() {
   const storage = yield* MessageStorage
 
   const workflows = new Map<string, Workflow.Any>()
+  const runningWorkflows = new Set<string>()
   const entities = new Map<
     string,
     Entity.Entity<
@@ -169,6 +170,7 @@ export const make = Effect.gen(function*() {
             const executionId = address.entityId
             return {
               run: (request: Entity.Request<any>) => {
+                runningWorkflows.add(executionId)
                 const instance = WorkflowInstance.of({
                   workflow,
                   executionId,
@@ -176,6 +178,7 @@ export const make = Effect.gen(function*() {
                 })
                 return execute(request.payload, executionId).pipe(
                   Effect.onExit(() => {
+                    runningWorkflows.delete(executionId)
                     if (!instance.suspended) {
                       return Effect.void
                     }
@@ -275,6 +278,9 @@ export const make = Effect.gen(function*() {
 
     resume: Effect.fnUntraced(
       function*(workflowName: string, executionId: string) {
+        if (runningWorkflows.has(executionId)) {
+          return
+        }
         const workflow = workflows.get(workflowName)
         if (!workflow) {
           return yield* Effect.dieMessage(`WorkflowEngine.resume: ${workflowName} not registered`)
