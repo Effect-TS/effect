@@ -2241,6 +2241,7 @@ export const YieldableError: new(message?: string, options?: ErrorOptions) => Ca
       return this
     }
   }
+  // @effect-diagnostics-next-line floatingEffect:off
   Object.assign(YieldableError.prototype, StructuralCommitPrototype)
   return YieldableError as any
 })()

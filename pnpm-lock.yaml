@@ -59,8 +59,8 @@ importers:
         specifier: ^0.3.2
         version: 0.3.2
       '@effect/language-service':
-        specifier: ^0.16.0
-        version: 0.16.0
+        specifier: ^0.18.0
+        version: 0.18.0
       '@effect/vitest':
         specifier: workspace:^
         version: link:packages/vitest
@@ -1997,8 +1997,8 @@ packages:
   '@effect/eslint-plugin@0.3.2':
     resolution: {integrity: sha512-c4Vs9t3r54A4Zpl+wo8+PGzZz3JWYsip41H+UrebRLjQ2Hk/ap63IeCgN/HWcYtxtyhRopjp7gW9nOQ2Snbl+g==}
 
-  '@effect/language-service@0.16.0':
-    resolution: {integrity: sha512-PRFDcRQwvKXj2gn7v1kvmzxenmE3xUy3xCO0OKB49885/n1g5sIglRttN1LYOZB4DcSMqLbnWJnEVgJJrWXZTw==}
+  '@effect/language-service@0.18.0':
+    resolution: {integrity: sha512-Wk7x6W7pI5C9ix/7xE2Ad9ruWrk26uJuc8IgVzxH98AoiHO1G0f8Cblj6N1WaLB0PTyQoQPmrNsIII2Th6ywuw==}
 
   '@effect/markdown-toc@0.1.0':
     resolution: {integrity: sha512-IRfvvwqQLabVTIw9hhIj4scOGIYPfa13QuEFv+dBWE6p47R+RR0J8jQvfDINFf0Vn80XXVjNRtZxkZpkKXLx2A==}
@@ -8940,7 +8940,7 @@ snapshots:
       '@dprint/typescript': 0.91.4
       prettier-linter-helpers: 1.0.0
 
-  '@effect/language-service@0.16.0': {}
+  '@effect/language-service@0.18.0': {}
 
   '@effect/markdown-toc@0.1.0':
     dependencies:

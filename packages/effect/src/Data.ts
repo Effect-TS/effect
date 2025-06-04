@@ -561,6 +561,7 @@ export const Error: new<A extends Record<string, any> = {}>(
         super(args?.message, args?.cause ? { cause: args.cause } : undefined)
         if (args) {
           Object.assign(this, args)
+          // @effect-diagnostics-next-line floatingEffect:off
           Object.defineProperty(this, plainArgsSymbol, { value: args, enumerable: false })
         }
       }

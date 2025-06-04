@@ -61,6 +61,7 @@ describe("Stream", () => {
   it.effect("finalizer - finalizer is not run if stream is not pulled", () =>
     Effect.gen(function*() {
       const ref = yield* (Ref.make(false))
+      // @effect-diagnostics-next-line floatingEffect:off
       yield* pipe(
         Stream.finalizer(Ref.set(ref, true)),
         Stream.toPull,

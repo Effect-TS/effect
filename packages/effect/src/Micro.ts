@@ -4327,6 +4327,7 @@ export interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
 
 const YieldableError: new(message?: string) => YieldableError = (function() {
   class YieldableError extends globalThis.Error {}
+  // @effect-diagnostics-next-line floatingEffect:off
   Object.assign(YieldableError.prototype, MicroProto, StructuralPrototype, {
     [identifier]: "Failure",
     [evaluate]() {

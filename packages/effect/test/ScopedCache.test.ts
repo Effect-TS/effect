@@ -192,6 +192,7 @@ describe("ScopedCache", () => {
         const cache = yield* scopedCache
         yield* (observablesResource.assertNotAcquired())
         // Not actually retreiving from the cache
+        // @effect-diagnostics-next-line floatingEffect:off
         cache.get(void 0)
         yield* (observablesResource.assertNotAcquired())
         const contains = yield* (cache.contains(void 0))
