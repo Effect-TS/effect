@@ -365,6 +365,13 @@ describe("Either", () => {
     assertLeft(Either.all({ a: Either.right(1), b: Either.left("e") }), "e")
   })
 
+  it("forEach", () => {
+    assertRight(Either.forEach([1, 2], (n) => Either.right(n * 2)), [2, 4])
+    assertRight(pipe([1, 2], Either.forEach((n) => Either.right(n * 2))), [2, 4])
+    assertLeft(Either.forEach([1, 2], (n) => n === 1 ? Either.left("e") : Either.right(1)), "e")
+    assertLeft(pipe([1, 2], Either.forEach((n) => n === 1 ? Either.left("e") : Either.right(1))), "e")
+  })
+
   it("orElse", () => {
     assertRight(pipe(Either.right(1), Either.orElse(() => Either.right(2))), 1)
     assertRight(pipe(Either.right(1), Either.orElse(() => Either.left("b"))), 1)
