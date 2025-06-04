@@ -1,5 +1,15 @@
 # @effect/workflow
 
+## 0.1.3
+
+### Patch Changes
+
+- [#4977](https://github.com/Effect-TS/effect/pull/4977) [`d244b63`](https://github.com/Effect-TS/effect/commit/d244b6345ea1d2ac88812562b0c170683913d502) Thanks @tim-smart! - add WorkflowProxy & WorkflowProxyServer, for deriving rpc & HttpApi servers from workflows
+
+- Updated dependencies [[`ceea77a`](https://github.com/Effect-TS/effect/commit/ceea77a13055f145520f763e3fce5b8ff15d728f)]:
+  - @effect/platform@0.84.6
+  - @effect/rpc@0.61.6
+
 ## 0.1.2
 
 ### Patch Changes
