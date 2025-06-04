@@ -151,7 +151,7 @@ export const toHttpApiGroup = <const Name extends string, Rpcs extends Rpc.Any>(
   let group = HttpApiGroup.make(name)
   for (const parentRpc_ of entity.protocol.requests.values()) {
     const parentRpc = parentRpc_ as any as Rpc.AnyWithProps
-    const endpoint = HttpApiEndpoint.post(parentRpc._tag, "/:entityId")
+    const endpoint = HttpApiEndpoint.post(parentRpc._tag, `/${tagToPath(parentRpc._tag)}/:entityId`)
       .setPath(entityIdPath)
       .setPayload(parentRpc.payloadSchema)
       .addSuccess(parentRpc.successSchema)
@@ -162,6 +162,12 @@ export const toHttpApiGroup = <const Name extends string, Rpcs extends Rpc.Any>(
   }
   return group as any as HttpApiGroup.HttpApiGroup<Name, ConvertHttpApi<Rpcs>>
 }
+
+const tagToPath = (tag: string): string =>
+  tag
+    .replace(/[^a-zA-Z0-9]+/g, "-") // Replace non-alphanumeric characters with hyphen
+    .replace(/([a-z])([A-Z])/g, "$1-$2") // Insert hyphen before uppercase letters
+    .toLowerCase()
 
 /**
  * @since 1.0.0
