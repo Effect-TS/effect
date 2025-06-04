@@ -62,10 +62,11 @@ export const layerRpcHandlers = <
     const handlers = new Map<string, Rpc.Handler<string>>()
     for (const parentRpc_ of entity.protocol.requests.values()) {
       const parentRpc = parentRpc_ as any as Rpc.AnyWithProps
-      const key = `@effect/rpc/Rpc/${prefix}${parentRpc._tag}`
+      const tag = `${prefix}${parentRpc._tag}` as const
+      const key = `@effect/rpc/Rpc/${tag}`
       handlers.set(key, {
         context,
-        tag: `${prefix}${parentRpc._tag}` as const,
+        tag,
         handler: ({ entityId, payload }: any) => (client(entityId) as any)[parentRpc._tag](payload) as any
       } as any)
     }

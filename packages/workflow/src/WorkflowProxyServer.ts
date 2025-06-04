@@ -73,9 +73,10 @@ export const layerRpcHandlers = <
     const handlers = new Map<string, Rpc.Handler<string>>()
     for (const workflow_ of workflows) {
       const workflow = workflow_ as Workflow.Workflow<string, any, any, any>
-      const tag = `${prefix}${workflow.name}` as const
-      const key = `@effect/rpc/Rpc/${tag}` as const
-      const keyDiscard = `${key}Discard` as const
+      const tag = `${prefix}${workflow.name}`
+      const tagDiscard = `${tag}Discard`
+      const key = `@effect/rpc/Rpc/${tag}`
+      const keyDiscard = `${key}Discard`
       handlers.set(key, {
         context,
         tag,
@@ -83,7 +84,7 @@ export const layerRpcHandlers = <
       } as any)
       handlers.set(keyDiscard, {
         context,
-        tag: `${tag}Discard` as const,
+        tag: tagDiscard,
         handler: (payload: any) => workflow.execute(payload, { discard: true } as any) as any
       } as any)
     }

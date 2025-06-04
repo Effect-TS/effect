@@ -6,7 +6,6 @@ import * as HttpApiGroup from "@effect/platform/HttpApiGroup"
 import * as Rpc from "@effect/rpc/Rpc"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
 import type { NonEmptyReadonlyArray } from "effect/Array"
-import type * as Schema from "effect/Schema"
 import type * as Workflow from "./Workflow.js"
 
 /**
@@ -77,17 +76,8 @@ export type ConvertRpcs<Workflows extends Workflow.Any, Prefix extends string> =
   infer _Success,
   infer _Error
 > ?
-    | Rpc.Rpc<
-      `${Prefix}${_Name}`,
-      _Payload,
-      _Success,
-      _Error
-    >
-    | Rpc.Rpc<
-      `${Prefix}${_Name}Discard`,
-      _Payload,
-      typeof Schema.Void
-    >
+    | Rpc.Rpc<`${Prefix}${_Name}`, _Payload, _Success, _Error>
+    | Rpc.Rpc<`${Prefix}${_Name}Discard`, _Payload>
   : never
 
 /**
