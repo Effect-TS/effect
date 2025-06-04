@@ -592,6 +592,9 @@ export const toWeb = (response: ServerResponse.HttpServerResponse, options?: {
     }
     case "Uint8Array":
     case "Raw": {
+      if (body.body instanceof Response) {
+        return body.body
+      }
       return new Response(body.body as any, {
         status: response.status,
         statusText: response.statusText,
