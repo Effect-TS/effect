@@ -10,6 +10,35 @@ import type * as Schema from "effect/Schema"
 import type * as Workflow from "./Workflow.js"
 
 /**
+ * Derives an `RpcGroup` from a list of workflows.
+ *
+ * ```ts
+ * import { RpcServer } from "@effect/rpc"
+ * import { Workflow, WorkflowProxy, WorkflowProxyServer } from "@effect/workflow"
+ * import { Layer, Schema } from "effect"
+ *
+ * const EmailWorkflow = Workflow.make({
+ *   name: "EmailWorkflow",
+ *   payload: {
+ *     id: Schema.String,
+ *     to: Schema.String
+ *   },
+ *   idempotencyKey: ({ id }) => id
+ * })
+ *
+ * const myWorkflows = [EmailWorkflow] as const
+ *
+ * // Use WorkflowProxy.toRpcGroup to create a `RpcGroup` from the
+ * // workflows
+ * class MyRpcs extends WorkflowProxy.toRpcGroup(myWorkflows) {}
+ *
+ * // Use WorkflowProxyServer.layerRpcHandlers to create a layer that implements
+ * // the rpc handlers
+ * const ApiLayer = RpcServer.layer(MyRpcs).pipe(
+ *   Layer.provide(WorkflowProxyServer.layerRpcHandlers(myWorkflows))
+ * )
+ * ```
+ *
  * @since 1.0.0
  * @category Constructors
  */
@@ -62,6 +91,37 @@ export type ConvertRpcs<Workflows extends Workflow.Any, Prefix extends string> =
   : never
 
 /**
+ * Derives an `HttpApiGroup` from a list of workflows.
+ *
+ * ```ts
+ * import { HttpApi, HttpApiBuilder } from "@effect/platform"
+ * import { Workflow, WorkflowProxy, WorkflowProxyServer } from "@effect/workflow"
+ * import { Layer, Schema } from "effect"
+ *
+ * const EmailWorkflow = Workflow.make({
+ *   name: "EmailWorkflow",
+ *   payload: {
+ *     id: Schema.String,
+ *     to: Schema.String
+ *   },
+ *   idempotencyKey: ({ id }) => id
+ * })
+ *
+ * const myWorkflows = [EmailWorkflow] as const
+ *
+ * // Use WorkflowProxy.toHttpApiGroup to create a `HttpApiGroup` from the
+ * // workflows
+ * class MyApi extends HttpApi.make("api")
+ *   .add(WorkflowProxy.toHttpApiGroup("workflows", myWorkflows))
+ * {}
+ *
+ * // Use WorkflowProxyServer.layerHttpApi to create a layer that implements the
+ * // workflows HttpApiGroup
+ * const ApiLayer = HttpApiBuilder.api(MyApi).pipe(
+ *   Layer.provide(WorkflowProxyServer.layerHttpApi(MyApi, "workflows", myWorkflows))
+ * )
+ * ```
+ *
  * @since 1.0.0
  * @category Constructors
  */
