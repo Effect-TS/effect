@@ -148,7 +148,6 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
   }).pipe(Config.map((options) => RunnerAddress.make(options)), Config.option),
   runnerListenAddress: Config.all({
     host: Config.string("listenHost").pipe(
-      Config.withDefault(defaultRunnerAddress.host),
       Config.withDescription("The host to listen on.")
     ),
     port: Config.integer("listenPort").pipe(
