@@ -33,9 +33,13 @@
     "./internal/*": null
   },
   "peerDependencies": {
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "@effect/platform": "workspace:^",
+    "@effect/rpc": "workspace:^"
   },
   "devDependencies": {
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "@effect/platform": "workspace:^",
+    "@effect/rpc": "workspace:^"
   }
 }

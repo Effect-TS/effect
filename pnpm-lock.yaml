@@ -967,6 +967,12 @@ importers:
 
   packages/workflow:
     devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform
+      '@effect/rpc':
+        specifier: workspace:^
+        version: link:../rpc
       effect:
         specifier: workspace:^
         version: link:../effect

@@ -46,6 +46,16 @@ export * as EntityId from "./EntityId.js"
 /**
  * @since 1.0.0
  */
+export * as EntityProxy from "./EntityProxy.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as EntityProxyServer from "./EntityProxyServer.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as EntityType from "./EntityType.js"
 
 /**
