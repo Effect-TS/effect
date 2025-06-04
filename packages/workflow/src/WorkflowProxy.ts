@@ -32,8 +32,7 @@ export const toRpcGroup = <
         success: workflow.successSchema
       }).annotateContext(workflow.annotations),
       Rpc.make(`${prefix}${workflow.name}Discard`, {
-        payload: workflow.payloadSchema,
-        error: workflow.errorSchema
+        payload: workflow.payloadSchema
       }).annotateContext(workflow.annotations)
     )
   }
@@ -81,7 +80,6 @@ export const toHttpApiGroup = <const Name extends string, const Workflows extend
     ).add(
       HttpApiEndpoint.post(workflow.name + "Discard", `/${workflow.name}/discard`)
         .setPayload(workflow.payloadSchema)
-        .addError(workflow.errorSchema as any)
         .annotateContext(workflow.annotations)
     ) as any
   }
@@ -117,7 +115,7 @@ export type ConvertHttpApi<Workflows extends Workflow.Any> = Workflows extends W
       _Payload["Type"],
       never,
       void,
-      _Error["Type"],
+      never,
       _Payload["Context"]
     > :
   never
