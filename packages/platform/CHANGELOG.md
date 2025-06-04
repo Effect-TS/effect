@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.84.6
+
+### Patch Changes
+
+- [#4975](https://github.com/Effect-TS/effect/pull/4975) [`ceea77a`](https://github.com/Effect-TS/effect/commit/ceea77a13055f145520f763e3fce5b8ff15d728f) Thanks @tim-smart! - allow wrapping a web Response with HttpServerResponse.raw on some platforms
+
 ## 0.84.5
 
 ### Patch Changes

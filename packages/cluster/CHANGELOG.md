@@ -1,5 +1,17 @@
 # @effect/cluster
 
+## 0.38.2
+
+### Patch Changes
+
+- [#4977](https://github.com/Effect-TS/effect/pull/4977) [`d244b63`](https://github.com/Effect-TS/effect/commit/d244b6345ea1d2ac88812562b0c170683913d502) Thanks @tim-smart! - add EntityProxy & EntityProxyServer, for deriving Rpc & HttpApi servers from cluster entities
+
+- Updated dependencies [[`d244b63`](https://github.com/Effect-TS/effect/commit/d244b6345ea1d2ac88812562b0c170683913d502), [`ceea77a`](https://github.com/Effect-TS/effect/commit/ceea77a13055f145520f763e3fce5b8ff15d728f)]:
+  - @effect/workflow@0.1.3
+  - @effect/platform@0.84.6
+  - @effect/rpc@0.61.6
+  - @effect/sql@0.37.6
+
 ## 0.38.1
 
 ### Patch Changes
