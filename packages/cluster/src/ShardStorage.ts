@@ -177,10 +177,14 @@ export const makeEncoded = (encoded: Encoded) =>
     },
     getRunners: Effect.gen(function*() {
       const runners = yield* encoded.getRunners
-      const results = new Array<[RunnerAddress, Runner]>(runners.length)
+      const results: Array<[RunnerAddress, Runner]> = []
       for (let i = 0; i < runners.length; i++) {
         const [address, runner] = runners[i]
-        results[i] = [decodeRunnerAddress(address), Runner.decodeSync(runner)]
+        try {
+          results.push([decodeRunnerAddress(address), Runner.decodeSync(runner)])
+        } catch {
+          //
+        }
       }
       return results
     }),
