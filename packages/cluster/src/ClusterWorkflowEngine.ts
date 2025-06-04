@@ -42,7 +42,7 @@ export const make = Effect.gen(function*() {
     string,
     Entity.Entity<
       | Rpc.Rpc<"run", Schema.Struct<{}>, Schema.Schema<Workflow.Result<any, any>>>
-      | Rpc.Rpc<"resume">
+      | Rpc.Rpc<"deferred", Schema.Struct<{ name: typeof Schema.String; exit: typeof ExitUnknown }>, typeof ExitUnknown>
       | Rpc.Rpc<
         "activity",
         Schema.Struct<{ name: typeof Schema.String; attempt: typeof Schema.Number }>,
@@ -66,7 +66,6 @@ export const make = Effect.gen(function*() {
     idleTimeToLive: "5 minutes"
   })
   const clockClient = yield* ClockEntity.client
-  const deferredClient = yield* DeferredEntity.client
 
   const requestIdFor = Effect.fnUntraced(function*(options: {
     readonly workflow: Workflow.Any
@@ -215,7 +214,7 @@ export const make = Effect.gen(function*() {
                   Effect.provideService(WorkflowInstance, instance)
                 ) as any
               },
-              resume: () => ensureSuccess(resume(workflow, executionId)),
+
               activity: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 const activityId = `${executionId}/${request.payload.name}`
                 let entry = activities.get(activityId)
@@ -242,7 +241,12 @@ export const make = Effect.gen(function*() {
                     activities.delete(activityId)
                   }))
                 )
-              }, Rpc.fork)
+              }, Rpc.fork),
+
+              deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
+                yield* ensureSuccess(resume(workflow, executionId))
+                return request.payload.exit
+              })
             }
           })
         ) as Effect.Effect<void>
@@ -287,11 +291,6 @@ export const make = Effect.gen(function*() {
       Effect.orDie
     ),
 
-    resume: Effect.fnUntraced(function*(workflowName: string, executionId: string) {
-      const client = yield* RcMap.get(clients, workflowName)
-      yield* ensureSuccess(client(executionId).resume(void 0, { discard: true }))
-    }, Effect.scoped),
-
     activityExecute: Effect.fnUntraced(function*({ activity, attempt }) {
       const context = yield* Effect.context<WorkflowInstance>()
       const instance = Context.get(context, WorkflowInstance)
@@ -326,9 +325,9 @@ export const make = Effect.gen(function*() {
         Effect.flatMap((instance) =>
           requestReply({
             workflow: instance.workflow,
-            entityType: DeferredEntity.type,
+            entityType: `Workflow/${instance.workflow.name}`,
             executionId: instance.executionId,
-            tag: "set",
+            tag: "deferred",
             id: deferred.name
           })
         ),
@@ -341,14 +340,15 @@ export const make = Effect.gen(function*() {
         Effect.orDie
       ),
 
-    deferredDone({ deferred, executionId, exit, workflowName }) {
-      const client = deferredClient(executionId)
-      return Effect.orDie(client.set({
-        workflowName,
-        name: deferred.name,
-        exit
-      }))
-    },
+    deferredDone: Effect.fnUntraced(function*({ deferred, executionId, exit, workflowName }) {
+      const client = yield* RcMap.get(clients, workflowName)
+      return yield* Effect.orDie(
+        client(executionId).deferred({
+          name: deferred.name,
+          exit
+        })
+      )
+    }, Effect.scoped),
 
     scheduleClock(options) {
       const client = clockClient(options.executionId)
@@ -401,9 +401,18 @@ const makeWorkflowEntity = (workflow: Workflow.Any) =>
     })
       .annotate(ClusterSchema.Persisted, true)
       .annotate(ClusterSchema.Uninterruptible, true),
-    Rpc.make("resume")
+
+    Rpc.make("deferred", {
+      payload: {
+        name: Schema.String,
+        exit: ExitUnknown
+      },
+      primaryKey: ({ name }) => name,
+      success: ExitUnknown
+    })
       .annotate(ClusterSchema.Persisted, true)
       .annotate(ClusterSchema.Uninterruptible, true),
+
     ActivityRpc
   ]).annotateContext(workflow.annotations)
 
@@ -413,42 +422,6 @@ const ExitUnknown = Schema.encodedSchema(Schema.Exit({
   success: Schema.Unknown,
   failure: Schema.Unknown,
   defect: Schema.Defect
-}))
-
-const DeferredEntity = Entity.make("Workflow/-/DurableDeferred", [
-  Rpc.make("set", {
-    payload: {
-      workflowName: Schema.String,
-      name: Schema.String,
-      exit: ExitUnknown
-    },
-    primaryKey: ({ name }) => name,
-    success: ExitUnknown
-  }),
-  Rpc.make("resume", {
-    payload: {
-      workflowName: Schema.String,
-      name: Schema.String
-    },
-    primaryKey: ({ name }) => name
-  })
-])
-  .annotateRpcs(ClusterSchema.Persisted, true)
-  .annotateRpcs(ClusterSchema.Uninterruptible, true)
-
-const DeferredEntityLayer = DeferredEntity.toLayer(Effect.gen(function*() {
-  const engine = yield* WorkflowEngine
-  const address = yield* Entity.CurrentAddress
-  const executionId = address.entityId
-  const client = (yield* DeferredEntity.client)(executionId)
-  return {
-    set: (request) =>
-      Effect.as(
-        ensureSuccess(client.resume(request.payload, { discard: true })),
-        request.payload.exit
-      ),
-    resume: (request) => engine.resume(request.payload.workflowName, executionId)
-  }
 }))
 
 class ClockPayload extends Schema.Class<ClockPayload>(`Workflow/DurableClock/Run`)({
@@ -497,7 +470,6 @@ export const layer: Layer.Layer<
   WorkflowEngine,
   never,
   Sharding.Sharding | MessageStorage
-> = DeferredEntityLayer.pipe(
-  Layer.merge(ClockEntityLayer),
+> = ClockEntityLayer.pipe(
   Layer.provideMerge(Layer.scoped(WorkflowEngine, make))
 )
