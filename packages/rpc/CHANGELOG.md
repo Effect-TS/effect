@@ -1,5 +1,14 @@
 # @effect/rpc
 
+## 0.61.5
+
+### Patch Changes
+
+- [#4967](https://github.com/Effect-TS/effect/pull/4967) [`71e1e6c`](https://github.com/Effect-TS/effect/commit/71e1e6c535c11a3ec498540a3af3c1a313a5319b) Thanks @tim-smart! - fix RpcClient error types when using discard
+
+- Updated dependencies [[`ec52c6a`](https://github.com/Effect-TS/effect/commit/ec52c6a2211e76972462b15b9d5a9d6d56761b7a)]:
+  - @effect/platform@0.84.5
+
 ## 0.61.4
 
 ### Patch Changes

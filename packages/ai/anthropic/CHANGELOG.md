@@ -1,5 +1,14 @@
 # @effect/ai-anthropic
 
+## 0.8.6
+
+### Patch Changes
+
+- Updated dependencies [[`85f54ed`](https://github.com/Effect-TS/effect/commit/85f54ed1ecf2f191de8c907247066e3631b5d7e1), [`ec52c6a`](https://github.com/Effect-TS/effect/commit/ec52c6a2211e76972462b15b9d5a9d6d56761b7a)]:
+  - @effect/ai@0.18.6
+  - @effect/platform@0.84.5
+  - @effect/experimental@0.48.5
+
 ## 0.8.5
 
 ### Patch Changes

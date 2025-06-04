@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.84.5
+
+### Patch Changes
+
+- [#4964](https://github.com/Effect-TS/effect/pull/4964) [`ec52c6a`](https://github.com/Effect-TS/effect/commit/ec52c6a2211e76972462b15b9d5a9d6d56761b7a) Thanks @tim-smart! - ensure HttpApi security middleware cache is not shared
+
 ## 0.84.4
 
 ### Patch Changes

@@ -1,5 +1,70 @@
 # @effect/cluster
 
+## 0.38.0
+
+### Minor Changes
+
+- [#4969](https://github.com/Effect-TS/effect/pull/4969) [`3086405`](https://github.com/Effect-TS/effect/commit/308640563041004d790f08d2ba75cc3a85fdf752) Thanks @tim-smart! - add shard groups, to allow entities to target specific runners
+
+  If you need to migrate an existing cluster, you can run the following PostgreSQL queries:
+
+  ```sql
+  ALTER TABLE cluster_messages
+    ALTER COLUMN shard_id TYPE VARCHAR(50) USING format('default:%s', shard_id);
+
+  ALTER TABLE cluster_shards
+    ALTER COLUMN shard_id TYPE VARCHAR(50) USING format('default:%s', shard_id);
+
+  ALTER TABLE cluster_locks
+    ALTER COLUMN shard_id TYPE VARCHAR(50) USING format('default:%s', shard_id);
+  ```
+
+  To use shard groups, you can add a `ShardGroup` annotation when creating an
+  entity. You can then assign shard groups to specific runners in your layer
+  setup:
+
+  ```typescript
+  import { ClusterSchema, Entity } from "@effect/cluster"
+  import {
+    NodeClusterRunnerSocket,
+    NodeClusterShardManagerSocket
+  } from "@effect/platform-node"
+  import { Rpc } from "@effect/rpc"
+  import { Schema } from "effect"
+
+  const Counter = Entity.make("Counter", [
+    Rpc.make("Increment", {
+      payload: { id: Schema.String, amount: Schema.Number },
+      primaryKey: ({ id }) => id,
+      success: Schema.Number
+    })
+  ])
+    .annotate(ClusterSchema.ShardGroup, (_entityId) => "someGroupName")
+    .annotateRpcs(ClusterSchema.Persisted, true)
+
+  // Assign the shard group to a specific runner in your layer setup.
+  //
+  // Make sure to include the "default" shard group, if you want to run entities
+  // without a specific group.
+  //
+  NodeClusterRunnerSocket.layer({
+    shardingConfig: {
+      shardGroups: ["default", "someGroupName"]
+    }
+  })
+  ```
+
+### Patch Changes
+
+- [#4972](https://github.com/Effect-TS/effect/pull/4972) [`d0067ca`](https://github.com/Effect-TS/effect/commit/d0067caef053b2855d93dcef59ea585d0fad9d8c) Thanks @tim-smart! - optimize for requests with a WithExit reply
+
+- [#4966](https://github.com/Effect-TS/effect/pull/4966) [`8c79abe`](https://github.com/Effect-TS/effect/commit/8c79abeb47d070d8880b652d31626497d3005a4e) Thanks @tim-smart! - add ClusterCron module
+
+- Updated dependencies [[`ec52c6a`](https://github.com/Effect-TS/effect/commit/ec52c6a2211e76972462b15b9d5a9d6d56761b7a), [`71e1e6c`](https://github.com/Effect-TS/effect/commit/71e1e6c535c11a3ec498540a3af3c1a313a5319b)]:
+  - @effect/platform@0.84.5
+  - @effect/rpc@0.61.5
+  - @effect/sql@0.37.5
+
 ## 0.37.2
 
 ### Patch Changes
