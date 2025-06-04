@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.38.1
+
+### Patch Changes
+
+- [#4973](https://github.com/Effect-TS/effect/pull/4973) [`612c739`](https://github.com/Effect-TS/effect/commit/612c73979abc44825feae573c8902b6484923aaa) Thanks @tim-smart! - ignore runners that cannot be parsed
+
 ## 0.38.0
 
 ### Minor Changes
