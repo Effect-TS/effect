@@ -402,7 +402,7 @@ const ActivityRpc = Rpc.make("activity", {
     success: Schema.Unknown,
     error: Schema.Unknown
   })
-})
+}).annotate(ClusterSchema.Persisted, true)
 
 const makeWorkflowEntity = (workflow: Workflow.Any) =>
   Entity.make(`Workflow/${workflow.name}`, [
@@ -413,12 +413,11 @@ const makeWorkflowEntity = (workflow: Workflow.Any) =>
         success: workflow.successSchema,
         error: workflow.errorSchema
       })
-    }),
+    })
+      .annotate(ClusterSchema.Persisted, true)
+      .annotate(ClusterSchema.Uninterruptible, true),
     ActivityRpc
-  ])
-    .annotateContext(workflow.annotations)
-    .annotateRpcs(ClusterSchema.Persisted, true)
-    .annotateRpcs(ClusterSchema.Uninterruptible, true)
+  ]).annotateContext(workflow.annotations)
 
 const activityPrimaryKey = (activity: string, attempt: number) => `${activity}/${attempt}`
 
