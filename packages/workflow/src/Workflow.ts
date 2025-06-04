@@ -191,6 +191,30 @@ export interface Any {
   readonly executionId: (payload: any) => Effect.Effect<string>
 }
 
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export type Registrations<Workflows extends Any> = Workflows extends Workflow<
+  infer _Name,
+  infer _Payload,
+  infer _Success,
+  infer _Error
+> ? Registration<_Name> :
+  never
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export type Requirements<Workflows extends Any> = Workflows extends Workflow<
+  infer _Name,
+  infer _Payload,
+  infer _Success,
+  infer _Error
+> ? _Payload["Context"] | _Success["Context"] | _Error["Context"] :
+  never
+
 const EngineTag = Context.GenericTag<WorkflowEngine, WorkflowEngine["Type"]>(
   "@effect/workflow/WorkflowEngine" satisfies typeof WorkflowEngine.key
 )

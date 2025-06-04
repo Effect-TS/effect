@@ -26,7 +26,7 @@ export const layerHttpApi = <
   api: HttpApi.HttpApi<ApiId, Groups, ApiE, ApiR>,
   name: Name,
   entity: Entity.Entity<Rpcs>
-): Layer.Layer<ApiGroup<ApiId, Name>, never, Sharding> =>
+): Layer.Layer<ApiGroup<ApiId, Name>, never, Sharding | Rpc.Context<Rpcs>> =>
   HttpApiBuilder.group(
     api,
     name,
@@ -54,7 +54,7 @@ export const layerRpcHandlers = <
   const Prefix extends string = ""
 >(entity: Entity.Entity<Rpcs>, options?: {
   readonly prefix?: Prefix
-}): Layer.Layer<RpcHandlers<Rpcs, Prefix>, never, Sharding> =>
+}): Layer.Layer<RpcHandlers<Rpcs, Prefix>, never, Sharding | Rpc.Context<Rpcs>> =>
   Layer.effectContext(Effect.gen(function*() {
     const context = yield* Effect.context<never>()
     const prefix = options?.prefix ?? ""

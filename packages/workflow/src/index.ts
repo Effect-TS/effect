@@ -22,3 +22,13 @@ export * as Workflow from "./Workflow.js"
  * @since 1.0.0
  */
 export * as WorkflowEngine from "./WorkflowEngine.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as WorkflowProxy from "./WorkflowProxy.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as WorkflowProxyServer from "./WorkflowProxyServer.js"
