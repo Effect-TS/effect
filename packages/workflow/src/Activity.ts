@@ -7,6 +7,7 @@ import * as Effectable from "effect/Effectable"
 import type * as Exit from "effect/Exit"
 import { dual } from "effect/Function"
 import * as Schema from "effect/Schema"
+import type { Scope } from "effect/Scope"
 import { makeHashDigest } from "./internal/crypto.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
@@ -49,12 +50,12 @@ export interface Activity<
   readonly execute: Effect.Effect<
     Success["Type"],
     Error["Type"],
-    Success["Context"] | Error["Context"] | R | WorkflowEngine | WorkflowInstance
+    Success["Context"] | Error["Context"] | R | Scope | WorkflowEngine | WorkflowInstance
   >
   readonly executeEncoded: Effect.Effect<
     Success["Encoded"],
     Error["Encoded"],
-    Success["Context"] | Error["Context"] | R | WorkflowEngine | WorkflowInstance
+    Success["Context"] | Error["Context"] | R | Scope | WorkflowEngine | WorkflowInstance
   >
 }
 

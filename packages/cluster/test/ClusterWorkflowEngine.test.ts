@@ -39,6 +39,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(flags.get("finalizer")).toBeTruthy()
       // but not compensation
       expect(flags.get("compensation")).toBeFalsy()
+      // ensuring should not run
+      expect(flags.get("ensuring")).toBeFalsy()
 
       const token = yield* DurableDeferred.token(EmailTrigger).pipe(
         Effect.provideService(WorkflowEngine.WorkflowInstance, {
@@ -58,6 +60,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(driver.requests.size).toEqual(10)
 
       expect(yield* Fiber.join(fiber)).toBeUndefined()
+
+      // ensuring finalizer should run after resume
+      expect(flags.get("ensuring")).toBeTruthy()
 
       // test deduplication
       yield* EmailWorkflow.execute({
@@ -224,7 +229,12 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
 
   yield* DurableDeferred.token(EmailTrigger)
   // suspended outside Activity
-  yield* DurableDeferred.await(EmailTrigger)
+  yield* Effect.ensuring(
+    DurableDeferred.await(EmailTrigger),
+    Effect.sync(() => {
+      flags.set("ensuring", true)
+    })
+  )
 })).pipe(
   Layer.provideMerge(Flags.Default)
 )
