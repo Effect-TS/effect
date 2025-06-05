@@ -554,6 +554,88 @@ export const equals: {
   (self: Cron, that: Cron): boolean
 } = dual(2, (self: Cron, that: Cron): boolean => Equivalence(self, that))
 
+/**
+ * Options for serializing a Cron instance.
+ *
+ * @since 3.16.4
+ * @category models
+ */
+export interface SerializeOptions {
+  /**
+   * Whether to include seconds in the output.
+   * When false, produces 5-field cron expressions (standard cron format).
+   * When true, produces 6-field cron expressions (with seconds).
+   *
+   * @default true
+   */
+  readonly includeSeconds?: boolean
+}
+
+/**
+ * Serializes a `Cron` instance back to a cron expression string.
+ *
+ * **Note on Opinionated Formatting:**
+ *
+ * The serialized string may differ from the original parsed expression while
+ * remaining semantically equivalent. The serializer makes the following
+ * opinionated choices for compact representation:
+ *
+ * - **Ranges**: Consecutive values are converted to ranges (e.g., "1,2,3" → "1-3")
+ * - **Steps**: Regular intervals are converted to step patterns (e.g., "0,15,30,45" → "*\/15")
+ * - **Wildcards**: Full ranges are converted to wildcards (e.g., "0-23" for hours → "*")
+ * - **Seconds**: By default outputs 6-field expressions (use `includeSeconds: false` for 5-field)
+ * - **Aliases**: Month and weekday names are converted to numbers (e.g., "JAN" → "1", "SUN" → "0")
+ *
+ * While the output format may differ from the input, parsing the serialized
+ * result will always produce a `Cron` instance that is equivalent to the original.
+ *
+ * @example
+ * ```ts
+ * import { Cron } from "effect"
+ *
+ * const cron = Cron.make({
+ *   seconds: [0],
+ *   minutes: [0],
+ *   hours: [4],
+ *   days: [8, 9, 10, 11, 12, 13, 14],
+ *   months: [],
+ *   weekdays: []
+ * })
+ *
+ * // With seconds (default)
+ * console.log(Cron.serialize(cron))
+ * // Output: "0 0 4 8-14 * *"
+ *
+ * // Without seconds
+ * console.log(Cron.serialize(cron, { includeSeconds: false }))
+ * // Output: "0 4 8-14 * *"
+ *
+ * // Examples of format normalization:
+ * console.log(Cron.serialize(Cron.unsafeParse("0 0 1,2,3 * *")))
+ * // Output: "0 0 0 1-3 * *"
+ * 
+ * console.log(Cron.serialize(Cron.unsafeParse("0,15,30,45 * * * *")))
+ * // Output: "0 *\/15 * * * *"
+ *
+ * @since 3.16.4
+ * @category serialization / deserialization
+ */
+export const serialize = (cron: Cron, options?: SerializeOptions): string => {
+  const includeSeconds = options?.includeSeconds ?? true
+  const minutes = serializeSegment(cron.minutes, minuteOptions)
+  const hours = serializeSegment(cron.hours, hourOptions)
+  const days = serializeSegment(cron.days, dayOptions)
+  const months = serializeSegment(cron.months, monthOptions)
+  const weekdays = serializeSegment(cron.weekdays, weekdayOptions)
+
+  if (includeSeconds) {
+    const seconds = serializeSegment(cron.seconds, secondOptions)
+    return `${seconds} ${minutes} ${hours} ${days} ${months} ${weekdays}`
+  }
+
+  return `${minutes} ${hours} ${days} ${months} ${weekdays}`
+}
+
 interface SegmentOptions {
   min: number
   max: number
@@ -684,18 +766,18 @@ const parseSegment = (
 }
 
 const splitStep = (input: string): [string, number | undefined] => {
-  const seperator = input.indexOf("/")
-  if (seperator !== -1) {
-    return [input.slice(0, seperator), Number(input.slice(seperator + 1))]
+  const separator = input.indexOf("/")
+  if (separator !== -1) {
+    return [input.slice(0, separator), Number(input.slice(separator + 1))]
   }
 
   return [input, undefined]
 }
 
 const splitRange = (input: string, aliases?: Record<string, number>): [number, number | undefined] => {
-  const seperator = input.indexOf("-")
-  if (seperator !== -1) {
-    return [aliasOrValue(input.slice(0, seperator), aliases), aliasOrValue(input.slice(seperator + 1), aliases)]
+  const separator = input.indexOf("-")
+  if (separator !== -1) {
+    return [aliasOrValue(input.slice(0, separator), aliases), aliasOrValue(input.slice(separator + 1), aliases)]
   }
 
   return [aliasOrValue(input, aliases), undefined]
@@ -703,4 +785,84 @@ const splitRange = (input: string, aliases?: Record<string, number>): [number, n
 
 function aliasOrValue(field: string, aliases?: Record<string, number>): number {
   return aliases?.[field.toLocaleLowerCase()] ?? Number(field)
+}
+
+/**
+ * Serializes a segment of cron values into a compact string representation.
+ *
+ * Prioritizes compact notation in the following order:
+ * 1. Wildcard (*) for empty sets or full ranges
+ * 2. Step patterns (*\/n or start-end\/step) for regular intervals
+ * 3. Ranges (start-end) for consecutive values
+ * 4. Comma-separated individual values
+ *
+ * @internal
+ */
+const serializeSegment = (values: ReadonlySet<number>, options: SegmentOptions): string => {
+  // Handle wildcard case
+  if (values.size === 0) {
+    return "*"
+  }
+
+  // Check if it represents all possible values
+  const capacity = options.max - options.min + 1
+  if (values.size === capacity) {
+    return "*"
+  }
+
+  const sorted = Arr.sort(Arr.fromIterable(values), N.Order)
+
+  // Check for step pattern from the beginning
+  // Only consider it a step pattern if we have at least 3 values or it covers a full range
+  if (sorted.length >= 3) {
+    const step = sorted[1] - sorted[0]
+    if (step > 1) {
+      let isStepPattern = true
+      for (let i = 2; i < sorted.length; i++) {
+        if (sorted[i] - sorted[i - 1] !== step) {
+          isStepPattern = false
+          break
+        }
+      }
+
+      if (isStepPattern) {
+        const start = sorted[0]
+        const end = sorted[sorted.length - 1]
+        // Check if this is a complete step pattern (covers the expected range)
+        const expectedCount = Math.floor((end - start) / step) + 1
+        if (sorted.length === expectedCount) {
+          if (start === options.min && (end + step > options.max || end === options.max)) {
+            return `*/${step}`
+          } else {
+            return `${start}-${end}/${step}`
+          }
+        }
+      }
+    }
+  }
+
+  // Not a step pattern, build ranges
+  const ranges: Array<string> = []
+  let i = 0
+
+  while (i < sorted.length) {
+    const start = sorted[i]
+    let end = start
+
+    // Find consecutive values
+    while (i + 1 < sorted.length && sorted[i + 1] === end + 1) {
+      end = sorted[++i]
+    }
+
+    // Format the range
+    if (start === end) {
+      ranges.push(`${start}`)
+    } else {
+      ranges.push(`${start}-${end}`)
+    }
+
+    i++
+  }
+
+  return ranges.join(",")
 }
