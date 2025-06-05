@@ -308,7 +308,7 @@ export interface CauseReducer<in C, in E, in out Z> {
  * @since 2.0.0
  * @category Models
  */
-export interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
+export interface YieldableError extends Pipeable, Inspectable, Error {
   readonly [Effect.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Stream.StreamTypeId]: Stream.Stream.VarianceStruct<never, this, never>
   readonly [Sink.SinkTypeId]: Sink.Sink.VarianceStruct<never, unknown, never, this, never>
