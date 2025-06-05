@@ -2599,17 +2599,6 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Effect<never, E> = core.fa
 export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Effect<never, E> = core.failCauseSync
 
 /**
- * Creates an `Effect` that halts execution, until hitting an `onSuspend`
- * continuation.
- *
- * If no `onSuspend` continuation is found, the effect will exit with an interruption.
- *
- * @since 3.17.0
- * @category Creating Effects
- */
-export const failSuspend: Effect<never> = core.failSuspend
-
-/**
  * Creates an effect that terminates a fiber with a specified error.
  *
  * **Details**
@@ -5933,15 +5922,6 @@ export const onExit: {
     cleanup: (exit: Exit.Exit<A, E>) => Effect<X, never, R2>
   ): Effect<A, E, R | R2>
 } = core.onExit
-
-/**
- * @since 2.0.0
- * @category Scoping, Resources & Finalization
- */
-export const onSuspend: {
-  <B, E2, R2>(resume: Effect<B, E2, R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A | B, E | E2, R2 | R>
-  <A, E, R, B, E2, R2>(self: Effect<A, E, R>, resume: Effect<B, E2, R2>): Effect<A | B, E | E2, R2 | R>
-} = core.onSuspend
 
 /**
  * Ensures that finalizers are run concurrently when the scope of an effect is

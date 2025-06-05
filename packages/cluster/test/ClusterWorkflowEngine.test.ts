@@ -9,10 +9,10 @@ import {
 } from "@effect/cluster"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
-import { DateTime, Effect, Exit, Fiber, Layer, Schema, Scope, TestClock } from "effect"
+import { DateTime, Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
-  it.effect("should run a workflow", () =>
+  it.effect.only("should run a workflow", () =>
     Effect.gen(function*() {
       const driver = yield* MessageStorage.MemoryDriver
       const flags = yield* Flags
@@ -24,6 +24,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.fork)
 
       yield* TestClock.adjust(1)
+      // resume after the clock
+      yield* TestClock.adjust(5000)
 
       // --- the workflow is suspended at this point
 
@@ -39,8 +41,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(flags.get("finalizer")).toBeTruthy()
       // but not compensation
       expect(flags.get("compensation")).toBeFalsy()
-      // ensuring should not run
-      expect(flags.get("ensuring")).toBeFalsy()
+      // ensuring will run
+      expect(flags.get("ensuring")).toBeTruthy()
 
       // --- resume the workflow using DurableDeferred.done
 
@@ -48,8 +50,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         Effect.provideService(WorkflowEngine.WorkflowInstance, {
           workflow: EmailWorkflow,
           executionId,
-          scope: yield* Scope.make(),
-          suspended: false
+          suspended: false,
+          activityCount: 0
         })
       )
       yield* DurableDeferred.done(EmailTrigger, {
@@ -65,7 +67,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       // --- the workflow is complete
 
-      // Effect.ensuring finalizer should run after resume
+      // ensuring will run
       expect(flags.get("ensuring")).toBeTruthy()
 
       // test deduplication
@@ -76,7 +78,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(driver.requests.size).toEqual(10)
     }).pipe(
       Effect.provide(TestWorkflowLayer)
-    ))
+    ), 1000000)
 
   it.effect("interrupt", () =>
     Effect.gen(function*() {

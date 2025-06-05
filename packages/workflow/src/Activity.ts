@@ -9,6 +9,7 @@ import { dual } from "effect/Function"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import { makeHashDigest } from "./internal/crypto.js"
+import * as Workflow from "./Workflow.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
 /**
@@ -84,7 +85,7 @@ export const make = <
   readonly success?: Success
   readonly error?: Error
   readonly execute: Effect.Effect<Success["Type"], Error["Type"], R>
-}): Activity<Success, Error, Exclude<R, WorkflowInstance | WorkflowEngine>> => {
+}): Activity<Success, Error, Exclude<R, WorkflowInstance | WorkflowEngine | Scope>> => {
   const successSchema = options.success ?? Schema.Void as any as Success
   const errorSchema = options.error ?? Schema.Never as any as Error
   // eslint-disable-next-line prefer-const
@@ -175,10 +176,10 @@ const makeExecute = Effect.fnUntraced(function*<
   })
   if (result._tag === "Suspended") {
     instance.suspended = true
-    return yield* Effect.failSuspend
+    return yield* Effect.interrupt
   }
   const exit = yield* Effect.orDie(
     Schema.decode(activity.exitSchema)(result.exit)
   )
   return yield* exit
-})
+}, Workflow.runActivity)

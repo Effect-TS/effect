@@ -18,7 +18,6 @@ import * as PrimaryKey from "effect/PrimaryKey"
 import * as RcMap from "effect/RcMap"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
-import * as Scope from "effect/Scope"
 import * as ClusterSchema from "./ClusterSchema.js"
 import * as DeliverAt from "./DeliverAt.js"
 import * as Entity from "./Entity.js"
@@ -190,18 +189,18 @@ export const make = Effect.gen(function*() {
                 const instance = WorkflowInstance.of({
                   workflow,
                   executionId,
-                  scope: Effect.runSync(Scope.make()),
-                  suspended: false
+                  suspended: false,
+                  activityCount: 0
                 })
                 return execute(request.payload, executionId).pipe(
-                  Effect.onSuspend(Effect.suspend(() => {
+                  Effect.ensuring(Effect.suspend(() => {
                     if (!instance.suspended) {
-                      return Effect.failSuspend
+                      return Effect.void
                     }
                     return engine.deferredResult(InterruptSignal).pipe(
                       Effect.flatMap((maybeResult) => {
                         if (Option.isNone(maybeResult)) {
-                          return Effect.failSuspend
+                          return Effect.void
                         }
                         instance.suspended = false
                         return Effect.zipRight(
@@ -233,7 +232,7 @@ export const make = Effect.gen(function*() {
                   WorkflowInstance.of({
                     workflow,
                     executionId,
-                    scope: Effect.runSync(Scope.make()),
+                    activityCount: 0,
                     suspended: false
                   })
                 )
@@ -349,7 +348,7 @@ export const make = Effect.gen(function*() {
         client(executionId).deferred({
           name: deferred.name,
           exit
-        })
+        }, { discard: true })
       )
     }, Effect.scoped),
 

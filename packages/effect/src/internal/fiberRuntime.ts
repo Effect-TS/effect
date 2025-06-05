@@ -1077,7 +1077,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
   getNextSuccessCont() {
     let frame = this.popStack()
     while (frame) {
-      if (frame._op !== OpCodes.OP_ON_FAILURE && frame._op !== OpCodes.OP_ON_SUSPEND) {
+      if (frame._op !== OpCodes.OP_ON_FAILURE) {
         return frame
       }
       frame = this.popStack()
@@ -1087,20 +1087,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
   getNextFailCont() {
     let frame = this.popStack()
     while (frame) {
-      if (
-        frame._op !== OpCodes.OP_ON_SUCCESS && frame._op !== OpCodes.OP_WHILE && frame._op !== OpCodes.OP_ITERATOR &&
-        frame._op !== OpCodes.OP_ON_SUSPEND
-      ) {
-        return frame
-      }
-      frame = this.popStack()
-    }
-  }
-
-  getNextSuspendCont() {
-    let frame = this.popStack()
-    while (frame) {
-      if (frame._op === OpCodes.OP_ON_SUSPEND) {
+      if (frame._op !== OpCodes.OP_ON_SUCCESS && frame._op !== OpCodes.OP_WHILE && frame._op !== OpCodes.OP_ITERATOR) {
         return frame
       }
       frame = this.popStack()
@@ -1224,19 +1211,6 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
       yieldedOpChannel.currentOp = core.exitFailCause(cause) as any
       return YieldedOp
     }
-  }
-
-  [OpCodes.OP_SUSPEND](_op: core.Primitive & { _op: OpCodes.OP_SUSPEND }) {
-    const cont = this.getNextSuspendCont()
-    if (cont !== undefined) {
-      return cont.effect_instruction_i1
-    }
-    return core.exitInterrupt(this._fiberId)
-  }
-
-  [OpCodes.OP_ON_SUSPEND](op: core.Primitive & { _op: OpCodes.OP_ON_SUSPEND }) {
-    this.pushStack(op)
-    return op.effect_instruction_i0
   }
 
   [OpCodes.OP_WITH_RUNTIME](op: core.Primitive & { _op: OpCodes.OP_WITH_RUNTIME }) {

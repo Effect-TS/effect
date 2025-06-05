@@ -10,7 +10,7 @@ import * as Exit from "effect/Exit"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
-import type * as Workflow from "./Workflow.js"
+import * as Workflow from "./Workflow.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
 /**
@@ -97,12 +97,12 @@ const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.Al
   const oexit = yield* engine.deferredResult(self)
   if (Option.isNone(oexit)) {
     instance.suspended = true
-    return yield* Effect.failSuspend
+    return yield* Effect.interrupt
   }
   return yield* Effect.flatten(Effect.orDie(
     Schema.decodeUnknown(self.exitSchema)(oexit.value)
   ))
-})
+}, Workflow.runActivity)
 
 export {
   /**

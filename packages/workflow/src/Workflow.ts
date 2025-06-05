@@ -6,7 +6,6 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as FiberId from "effect/FiberId"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
@@ -15,7 +14,7 @@ import * as PrimaryKey from "effect/PrimaryKey"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
-import * as Scope from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import { makeHashDigest } from "./internal/crypto.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
@@ -483,27 +482,42 @@ export const intoResult = <A, E, R>(
 ): Effect.Effect<Result<A, E>, never, Exclude<R, Scope.Scope> | WorkflowInstance> =>
   Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
     const instance = Context.get(context, InstanceTag)
-    const scope = Effect.runSync(Scope.make())
-    return Effect.uninterruptibleMask((restore) => {
-      return effect.pipe(
-        Scope.extend(scope),
-        restore,
-        Effect.exit,
-        Effect.tap((exit) =>
-          Effect.zipRight(
-            Scope.close(instance.scope as Scope.CloseableScope, exit),
-            Scope.close(scope, exit)
-          )
-        ),
-        Effect.map((exit) => new Complete({ exit })),
-        Effect.onSuspend(Effect.suspend(() =>
-          Effect.as(
-            Scope.close(scope, Exit.interrupt(FiberId.none)),
-            instance.suspended ? new Suspended() : new Complete({ exit: Exit.interrupt(FiberId.none) })
-          )
-        ))
+    return Effect.uninterruptibleMask((restore) =>
+      restore(effect).pipe(
+        Effect.scoped,
+        Effect.matchCause({
+          onSuccess: (value) => new Complete({ exit: Exit.succeed(value) }),
+          onFailure: (cause) => {
+            return instance.suspended ? new Suspended() : new Complete({ exit: Exit.failCause(cause) })
+          }
+        })
       )
-    })
+    )
+  })
+
+/**
+ * @since 1.0.0
+ * @category Result
+ */
+export const runActivity = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R | WorkflowInstance> =>
+  Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
+    const instance = Context.get(context, InstanceTag)
+    if (instance.suspended) {
+      return instance.activityCount === 0 ? Effect.interrupt : Effect.interruptible(Effect.never)
+    }
+    instance.activityCount++
+    return Effect.ensuring(
+      effect,
+      Effect.flatMap(Effect.yieldNow(), () => {
+        instance.activityCount--
+        if (!instance.suspended || instance.activityCount === 0) {
+          return Effect.void
+        }
+        // only the last activity in a suspended workflow should send the
+        // interrupt signal
+        return Effect.interruptible(Effect.never)
+      })
+    )
   })
 
 /**
@@ -522,23 +536,24 @@ export const withCompensation: {
     compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
   ): <E, R>(
     effect: Effect.Effect<A, E, R>
-  ) => Effect.Effect<A, E, R | R2 | WorkflowInstance>
+  ) => Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope>
   <A, E, R, R2>(
     effect: Effect.Effect<A, E, R>,
     compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
-  ): Effect.Effect<A, E, R | R2 | WorkflowInstance>
+  ): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope>
 } = dual(2, <A, E, R, R2>(
   effect: Effect.Effect<A, E, R>,
   compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
-): Effect.Effect<A, E, R | R2 | WorkflowInstance> =>
+): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
     Effect.tap(
       restore(effect),
       (value) =>
         Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) =>
-          Scope.extend(
-            Effect.addFinalizer((exit) => Exit.isSuccess(exit) ? Effect.void : compensation(value, exit.cause)),
-            Context.get(context, InstanceTag).scope
+          Effect.addFinalizer((exit) =>
+            Exit.isSuccess(exit) || Context.get(context, InstanceTag).suspended
+              ? Effect.void
+              : compensation(value, exit.cause)
           )
         )
     )

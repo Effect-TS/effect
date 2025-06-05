@@ -101,8 +101,6 @@ export type Primitive =
   | OpTag
   | Blocked
   | RunBlocked
-  | Suspend
-  | OnSuspend
   | Either.Either<any, any>
   | Option.Option<any>
 
@@ -112,7 +110,6 @@ export type Continuation =
   | OnStep
   | OnSuccessAndFailure
   | OnFailure
-  | OnSuspend
   | While
   | FromIterator
   | RevertFlags
@@ -353,17 +350,6 @@ export interface UpdateRuntimeFlags extends
   Op<OpCodes.OP_UPDATE_RUNTIME_FLAGS, {
     readonly effect_instruction_i0: RuntimeFlagsPatch.RuntimeFlagsPatch
     readonly effect_instruction_i1?: (oldRuntimeFlags: RuntimeFlags.RuntimeFlags) => Primitive
-  }>
-{}
-
-/** @internal */
-export interface Suspend extends Op<OpCodes.OP_SUSPEND> {}
-
-/** @internal */
-export interface OnSuspend extends
-  Op<OpCodes.OP_ON_SUSPEND, {
-    readonly effect_instruction_i0: Primitive
-    effect_instruction_i1: Primitive
   }>
 {}
 
@@ -747,9 +733,6 @@ export const failCause = <E>(cause: Cause.Cause<E>): Effect.Effect<never, E> => 
 export const failCauseSync = <E>(
   evaluate: LazyArg<Cause.Cause<E>>
 ): Effect.Effect<never, E> => flatMap(sync(evaluate), failCause)
-
-/* @internal */
-export const failSuspend: Effect.Effect<never> = new EffectPrimitiveFailure(OpCodes.OP_SUSPEND) as any
 
 /* @internal */
 export const fiberId: Effect.Effect<FiberId.FiberId> = withFiberRuntime((state) => succeed(state.id()))
@@ -1146,22 +1129,6 @@ export const onExit: {
       }
     })
   ))
-
-/* @internal */
-export const onSuspend: {
-  <B, E2, R2>(
-    resume: Effect.Effect<B, E2, R2>
-  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | B, E | E2, R2 | R>
-  <A, E, R, B, E2, R2>(
-    self: Effect.Effect<A, E, R>,
-    resume: Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A | B, E | E2, R2 | R>
-} = dual(2, (self, resume) => {
-  const effect = new EffectPrimitive(OpCodes.OP_ON_SUSPEND) as any
-  effect.effect_instruction_i0 = self
-  effect.effect_instruction_i1 = resume
-  return effect
-})
 
 /* @internal */
 export const onInterrupt: {
