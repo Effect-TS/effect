@@ -155,6 +155,11 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   readonly reset: (requestId: Snowflake.Snowflake) => Effect.Effect<boolean>
 
   /**
+   * Trigger a storage read, which will read all unprocessed messages.
+   */
+  readonly pollStorage: Effect.Effect<void>
+
+  /**
    * Retrieves the active entity count for the current runner.
    */
   readonly activeEntityCount: Effect.Effect<number>
@@ -1191,6 +1196,7 @@ const make = Effect.gen(function*() {
     sendOutgoing: (message, discard) => sendOutgoing(message, discard),
     notify: (message) => notifyLocal(message, false),
     activeEntityCount,
+    pollStorage: storageReadLatch.open,
     reset
   })
 
