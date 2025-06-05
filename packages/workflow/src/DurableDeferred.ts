@@ -97,7 +97,7 @@ const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.Al
   const oexit = yield* engine.deferredResult(self)
   if (Option.isNone(oexit)) {
     instance.suspended = true
-    return yield* Effect.interrupt
+    return yield* Effect.failSuspend
   }
   return yield* Effect.flatten(Effect.orDie(
     Schema.decodeUnknown(self.exitSchema)(oexit.value)

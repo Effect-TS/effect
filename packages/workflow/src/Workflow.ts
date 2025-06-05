@@ -6,6 +6,7 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as FiberId from "effect/FiberId"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
@@ -481,13 +482,14 @@ export const intoResult = <A, E, R>(
   effect: Effect.Effect<A, E, R>
 ): Effect.Effect<Result<A, E>, never, R | WorkflowInstance> =>
   Effect.uninterruptibleMask((restore) =>
-    Effect.withFiberRuntime((fiber) =>
+    Effect.onSuspend(
       Effect.matchCause(restore(effect), {
         onSuccess: (value) => new Complete({ exit: Exit.succeed(value) }),
-        onFailure(cause) {
-          const instance = Context.unsafeGet(fiber.currentContext, InstanceTag)
-          return instance.suspended ? new Suspended() : new Complete({ exit: Exit.failCause(cause) })
-        }
+        onFailure: (cause) => new Complete({ exit: Exit.failCause(cause) })
+      }),
+      Effect.contextWith((context: Context.Context<WorkflowInstance>) => {
+        const instance = Context.get(context, InstanceTag)
+        return instance.suspended ? new Suspended() : new Complete({ exit: Exit.interrupt(FiberId.none) })
       })
     )
   )

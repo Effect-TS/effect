@@ -174,7 +174,7 @@ const makeExecute = Effect.fnUntraced(function*<
   })
   if (result._tag === "Suspended") {
     instance.suspended = true
-    return yield* Effect.interrupt
+    return yield* Effect.failSuspend
   }
   const exit = yield* Effect.orDie(
     Schema.decode(activity.exitSchema)(result.exit)

@@ -87,3 +87,15 @@ export type OP_REVERT_FLAGS = typeof OP_REVERT_FLAGS
 
 /** @internal */
 export const OP_REVERT_FLAGS = "RevertFlags" as const
+
+/** @internal */
+export type OP_SUSPEND = typeof OP_SUSPEND
+
+/** @internal */
+export const OP_SUSPEND = "Suspend" as const
+
+/** @internal */
+export type OP_ON_SUSPEND = typeof OP_ON_SUSPEND
+
+/** @internal */
+export const OP_ON_SUSPEND = "OnSuspend" as const

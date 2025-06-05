@@ -192,14 +192,14 @@ export const make = Effect.gen(function*() {
                   suspended: false
                 })
                 return execute(request.payload, executionId).pipe(
-                  Effect.onExit(() => {
+                  Effect.onSuspend(Effect.suspend(() => {
                     if (!instance.suspended) {
-                      return Effect.void
+                      return Effect.failSuspend
                     }
                     return engine.deferredResult(InterruptSignal).pipe(
                       Effect.flatMap((maybeResult) => {
                         if (Option.isNone(maybeResult)) {
-                          return Effect.void
+                          return Effect.failSuspend
                         }
                         instance.suspended = false
                         return Effect.zipRight(
@@ -209,7 +209,7 @@ export const make = Effect.gen(function*() {
                       }),
                       Effect.orDie
                     )
-                  }),
+                  })),
                   Effect.scoped,
                   Workflow.intoResult,
                   Effect.provideService(WorkflowInstance, instance)
