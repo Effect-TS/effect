@@ -520,14 +520,8 @@ export const withCompensation: {
   compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
 ): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
-    Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
-      const instance = Context.get(context, InstanceTag)
-      return Effect.tap(restore(effect), (value) =>
-        Effect.addFinalizer((exit) => {
-          if (Exit.isSuccess(exit) || instance.suspended) {
-            return Effect.void
-          }
-          return compensation(value, exit.cause)
-        }))
-    })
+    Effect.tap(
+      restore(effect),
+      (value) => Effect.addFinalizer((exit) => Exit.isSuccess(exit) ? Effect.void : compensation(value, exit.cause))
+    )
   ))
