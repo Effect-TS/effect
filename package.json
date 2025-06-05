@@ -42,7 +42,7 @@
     "@effect/build-utils": "^0.8.3",
     "@effect/docgen": "https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738",
     "@effect/eslint-plugin": "^0.3.2",
-    "@effect/language-service": "^0.16.0",
+    "@effect/language-service": "^0.18.0",
     "@effect/vitest": "workspace:^",
     "@vitest/browser": "^3.0.6",
     "@vitest/coverage-v8": "^3.0.6",

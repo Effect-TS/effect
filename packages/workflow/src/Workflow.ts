@@ -291,7 +291,6 @@ export const make = <
           if (result._tag === "Complete") {
             return yield* result.exit as Exit.Exit<Success["Type"], Error["Type"]>
           }
-          // @effect-diagnostics effect/floatingEffect:off
           sleep ??= (yield* Schedule.driver(suspendedRetrySchedule)).next(void 0).pipe(
             Effect.catchAll(() => Effect.dieMessage(`${options.name}.execute: suspendedRetrySchedule exhausted`))
           )

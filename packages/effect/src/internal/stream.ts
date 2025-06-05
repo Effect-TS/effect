@@ -4984,6 +4984,7 @@ export const provideSomeLayer = dual<
     layer: Layer.Layer<ROut, E2, RIn>
   ): Stream.Stream<A, E2 | E, RIn | Exclude<R, ROut>> =>
     // @ts-expect-error
+    // @effect-diagnostics-next-line missingEffectContext:off
     pipe(
       self,
       provideLayer(pipe(Layer.context(), Layer.merge(layer)))
