@@ -3,7 +3,7 @@
  */
 import { dual, isFunction as isFunction_ } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
-import type { TupleOf, TupleOfAtLeast } from "./Types.js"
+import type { Equals, TupleOf, TupleOfAtLeast } from "./Types.js"
 
 /**
  * @category models
@@ -465,8 +465,15 @@ export const isObject = (input: unknown): input is object => isRecordOrArray(inp
  * @since 2.0.0
  */
 export const hasProperty: {
-  <P extends PropertyKey>(property: P): (self: unknown) => self is { [K in P]: unknown }
-  <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown }
+  <P extends PropertyKey>(
+    property: P
+  ): <A>(
+    self: A
+  ) => self is A & (Equals<A, unknown> extends false ? Extract<A, { [K in P]: unknown }> : { [K in P]: unknown })
+  <P extends PropertyKey, A>(
+    self: A,
+    property: P
+  ): self is A & (Equals<A, unknown> extends false ? Extract<A, { [K in P]: unknown }> : { [K in P]: unknown })
 } = dual(
   2,
   <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown } =>
