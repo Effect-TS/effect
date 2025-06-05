@@ -131,9 +131,12 @@ describe("Data", () => {
     class Err extends Data.Error<{ message: string; a: number; optional?: string }> {}
     const err = new Err({ message: "Oh no!", a: 1 })
 
-    // fields should be readonly
+    // assignable to Error
+    expect<Err>().type.toBeAssignableTo<Error>()
+
+    // non-Error fields should be readonly
     expect(pick(err, "message", "a", "optional")).type.toBe<
-      { readonly message: string; readonly a: number; readonly optional?: string }
+      { message: string; readonly a: number; readonly optional?: string }
     >()
 
     class Void extends Data.Error {}
@@ -146,10 +149,13 @@ describe("Data", () => {
     // Test optional props are allowed
     new Err({ a: 1 })
 
+    // assignable to Error
+    expect<Err>().type.toBeAssignableTo<Error>()
+
     const err = new Err({ message: "Oh no!", a: 1 })
 
-    // fields should be readonly
-    expect(pick(err, "message", "a")).type.toBe<{ readonly message: string; readonly a: number }>()
+    // non-Error fields should be readonly
+    expect(pick(err, "message", "a")).type.toBe<{ message: string; readonly a: number }>()
 
     class Void extends Data.TaggedError("Foo") {}
     // void constructor
