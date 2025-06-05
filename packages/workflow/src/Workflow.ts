@@ -479,18 +479,47 @@ export const Result = <Success extends Schema.Schema.Any, Error extends Schema.S
  */
 export const intoResult = <A, E, R>(
   effect: Effect.Effect<A, E, R>
-): Effect.Effect<Result<A, E>, never, R | WorkflowInstance> =>
-  Effect.uninterruptibleMask((restore) =>
-    Effect.withFiberRuntime((fiber) =>
-      Effect.matchCause(restore(effect), {
-        onSuccess: (value) => new Complete({ exit: Exit.succeed(value) }),
-        onFailure(cause) {
-          const instance = Context.unsafeGet(fiber.currentContext, InstanceTag)
-          return instance.suspended ? new Suspended() : new Complete({ exit: Exit.failCause(cause) })
-        }
-      })
+): Effect.Effect<Result<A, E>, never, Exclude<R, Scope.Scope> | WorkflowInstance> =>
+  Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
+    const instance = Context.get(context, InstanceTag)
+    return Effect.uninterruptibleMask((restore) =>
+      restore(effect).pipe(
+        Effect.scoped,
+        Effect.matchCause({
+          onSuccess: (value) => new Complete({ exit: Exit.succeed(value) }),
+          onFailure: (cause) => instance.suspended ? new Suspended() : new Complete({ exit: Exit.failCause(cause) })
+        })
+      )
     )
-  )
+  })
+
+/**
+ * @since 1.0.0
+ * @category Result
+ */
+export const wrapActivityResult = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  isSuspend: (value: A) => boolean
+): Effect.Effect<A, E, R | WorkflowInstance> =>
+  Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
+    const instance = Context.get(context, InstanceTag)
+    const state = instance.activityState
+    if (instance.suspended) {
+      return state.count > 0 ?
+        state.latch.await.pipe(
+          Effect.andThen(Effect.yieldNow()),
+          Effect.andThen(Effect.interrupt)
+        ) :
+        Effect.interrupt
+    }
+    if (state.count === 0) state.latch.unsafeClose()
+    state.count++
+    return Effect.onExit(effect, (exit) => {
+      state.count--
+      const isSuspended = Exit.isSuccess(exit) && isSuspend(exit.value)
+      return state.count === 0 ? state.latch.open : isSuspended ? state.latch.await : Effect.void
+    })
+  })
 
 /**
  * Add compensation logic to an effect inside a Workflow. The compensation finalizer will be
@@ -518,14 +547,15 @@ export const withCompensation: {
   compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
 ): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
-    Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
-      const instance = Context.get(context, InstanceTag)
-      return Effect.tap(restore(effect), (value) =>
-        Effect.addFinalizer((exit) => {
-          if (Exit.isSuccess(exit) || instance.suspended) {
-            return Effect.void
-          }
-          return compensation(value, exit.cause)
-        }))
-    })
+    Effect.tap(
+      restore(effect),
+      (value) =>
+        Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) =>
+          Effect.addFinalizer((exit) =>
+            Exit.isSuccess(exit) || Context.get(context, InstanceTag).suspended
+              ? Effect.void
+              : compensation(value, exit.cause)
+          )
+        )
+    )
   ))

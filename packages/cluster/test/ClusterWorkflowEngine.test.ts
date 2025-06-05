@@ -8,14 +8,16 @@ import {
   ShardStorage
 } from "@effect/cluster"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
+import { Activity, DurableClock, DurableDeferred, Workflow } from "@effect/workflow"
+import { WorkflowInstance } from "@effect/workflow/WorkflowEngine"
 import { DateTime, Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("should run a workflow", () =>
     Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
       const driver = yield* MessageStorage.MemoryDriver
-      yield* TestClock.adjust(1)
+      const flags = yield* Flags
 
       const fiber = yield* EmailWorkflow.execute({
         id: "test-email-1",
@@ -23,8 +25,12 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.fork)
 
       yield* TestClock.adjust(1)
-      // let workflow resume after DurableClock
+      // resume after the clock
+      yield* TestClock.adjust("10 seconds")
+      yield* sharding.pollStorage
       yield* TestClock.adjust(5000)
+
+      // --- the workflow is suspended at this point
 
       // - 1 initial request
       // - 5 attempts to send email
@@ -34,23 +40,35 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(driver.requests.size).toEqual(9)
       const executionId = driver.journal[0].address.entityId
 
+      // normal finalizer should run even after suspension
+      expect(flags.get("finalizer")).toBeTruthy()
+      // but not compensation
+      expect(flags.get("compensation")).toBeFalsy()
+      // ensuring will run
+      expect(flags.get("ensuring")).toBeTruthy()
+
+      // --- resume the workflow using DurableDeferred.done
+
       const token = yield* DurableDeferred.token(EmailTrigger).pipe(
-        Effect.provideService(WorkflowEngine.WorkflowInstance, {
-          workflow: EmailWorkflow,
-          executionId,
-          suspended: false
-        })
+        Effect.provideService(WorkflowInstance, WorkflowInstance.initial(EmailWorkflow, executionId))
       )
       yield* DurableDeferred.done(EmailTrigger, {
         token,
         exit: Exit.void
       })
-      yield* TestClock.adjust(5000)
+      yield* sharding.pollStorage
 
       // - 1 DurableDeferred set
       expect(driver.requests.size).toEqual(10)
 
+      // allow suspend polling to complete
+      yield* TestClock.adjust(10000)
       expect(yield* Fiber.join(fiber)).toBeUndefined()
+
+      // --- the workflow is complete
+
+      // ensuring will run
+      expect(flags.get("ensuring")).toBeTruthy()
 
       // test deduplication
       yield* EmailWorkflow.execute({
@@ -58,12 +76,11 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         to: "bob@example.com"
       })
       expect(driver.requests.size).toEqual(10)
-    }).pipe(
-      Effect.provide(TestWorkflowLayer)
-    ))
+    }).pipe(Effect.provide(TestWorkflowLayer)))
 
   it.effect("interrupt", () =>
     Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
       const driver = yield* MessageStorage.MemoryDriver
       yield* TestClock.adjust(1)
 
@@ -73,6 +90,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.fork)
 
       yield* TestClock.adjust(1)
+      yield* TestClock.adjust("10 seconds")
+      yield* sharding.pollStorage
       yield* TestClock.adjust(1)
 
       const envelope = driver.journal[0]
@@ -129,6 +148,43 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     }).pipe(
       Effect.provide(TestWorkflowLayer)
     ))
+
+  it.effect("Activity.raceAll", () =>
+    Effect.gen(function*() {
+      const flags = yield* Flags
+      yield* TestClock.adjust(1)
+
+      const fiber = yield* RaceWorkflow.execute({
+        id: "race-1"
+      }).pipe(Effect.fork)
+
+      yield* TestClock.adjust(1)
+      yield* TestClock.adjust(1000)
+
+      const result = yield* Fiber.join(fiber)
+      expect(result).toEqual("Activity3")
+      expect(flags.get("interrupt1")).toBeTruthy()
+      expect(flags.get("interrupt2")).toBeTruthy()
+      expect(flags.get("interrupt3")).toBeFalsy()
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("Activity.raceAll durable", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      yield* TestClock.adjust(1)
+
+      const fiber = yield* DurableRaceWorkflow.execute({
+        id: "race-2"
+      }).pipe(Effect.fork)
+
+      yield* TestClock.adjust(1)
+      yield* TestClock.adjust(1000)
+      yield* sharding.pollStorage
+      yield* TestClock.adjust(5000)
+
+      const result = yield* Fiber.join(fiber)
+      expect(result).toEqual("Activity3")
+    }).pipe(Effect.provide(TestWorkflowLayer)))
 })
 
 const TestShardingConfig = ShardingConfig.layer({
@@ -140,7 +196,7 @@ const TestShardingConfig = ShardingConfig.layer({
 })
 
 const TestWorkflowEngine = ClusterWorkflowEngine.layer.pipe(
-  Layer.provide(Sharding.layer),
+  Layer.provideMerge(Sharding.layer),
   Layer.provide(ShardManager.layerClientLocal),
   Layer.provide(ShardStorage.layerMemory),
   Layer.provide(Runners.layerNoop),
@@ -165,11 +221,17 @@ const EmailWorkflow = Workflow.make({
 })
 
 class Flags extends Effect.Service<Flags>()("Flags", {
-  succeed: new Map<string, boolean>()
+  sync: () => new Map<string, boolean>()
 }) {}
 
 const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
   const flags = yield* Flags
+
+  yield* Effect.addFinalizer(() =>
+    Effect.sync(() => {
+      flags.set("finalizer", true)
+    })
+  )
 
   yield* Activity.make({
     name: "SendEmail",
@@ -211,13 +273,124 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
 
   yield* DurableDeferred.token(EmailTrigger)
   // suspended outside Activity
-  yield* DurableDeferred.await(EmailTrigger)
+  yield* Effect.ensuring(
+    DurableDeferred.await(EmailTrigger),
+    Effect.sync(() => {
+      flags.set("ensuring", true)
+    })
+  )
 })).pipe(
   Layer.provideMerge(Flags.Default)
 )
 
 const EmailTrigger = DurableDeferred.make("EmailTrigger")
 
+const RaceWorkflow = Workflow.make({
+  name: "RaceWorkflow",
+  payload: {
+    id: Schema.String
+  },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const RaceWorkflowLayer = RaceWorkflow.toLayer(Effect.fnUntraced(function*() {
+  const flags = yield* Flags
+
+  yield* Effect.addFinalizer(() =>
+    Effect.sync(() => {
+      flags.set("finalizer", true)
+    })
+  )
+
+  return yield* Activity.raceAll("race", [
+    Activity.make({
+      name: "Activity1",
+      success: Schema.String,
+      error: Schema.Never,
+      execute: Effect.onInterrupt(Effect.delay(Effect.succeed("Activity1"), 1000), () =>
+        Effect.sync(() => {
+          flags.set("interrupt1", true)
+        }))
+    }),
+    Activity.make({
+      name: "Activity2",
+      success: Schema.String,
+      error: Schema.Never,
+      execute: Effect.onInterrupt(Effect.delay(Effect.succeed("Activity2"), 500), () =>
+        Effect.sync(() => {
+          flags.set("interrupt2", true)
+        }))
+    }),
+    Activity.make({
+      name: "Activity3",
+      success: Schema.String,
+      error: Schema.Never,
+      execute: Effect.onInterrupt(Effect.delay(Effect.succeed("Activity3"), 100), () =>
+        Effect.sync(() => {
+          flags.set("interrupt3", true)
+        }))
+    })
+  ])
+})).pipe(Layer.provideMerge(Flags.Default))
+
+const DurableRaceWorkflow = Workflow.make({
+  name: "DurableRaceWorkflow",
+  payload: {
+    id: Schema.String
+  },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const DurableRaceWorkflowLayer = DurableRaceWorkflow.toLayer(Effect.fnUntraced(function*() {
+  const flags = yield* Flags
+
+  yield* Effect.addFinalizer(() =>
+    Effect.sync(() => {
+      flags.set("finalizer", true)
+    })
+  )
+
+  return yield* Activity.raceAll("race", [
+    Activity.make({
+      name: "Activity1",
+      success: Schema.String,
+      error: Schema.Never,
+      execute: DurableClock.sleep({
+        name: "Activity1",
+        duration: 50000
+      }).pipe(
+        Effect.as("Activity1")
+      )
+    }),
+    Activity.make({
+      name: "Activity2",
+      success: Schema.String,
+      error: Schema.Never,
+      execute: DurableClock.sleep({
+        name: "Activity2",
+        duration: 10000
+      }).pipe(
+        Effect.as("Activity2")
+      )
+    }),
+    Activity.make({
+      name: "Activity3",
+      success: Schema.String,
+      error: Schema.Never,
+      execute: DurableClock.sleep({
+        name: "Activity3",
+        duration: 1000
+      }).pipe(
+        Effect.as("Activity3")
+      )
+    })
+  ])
+})).pipe(Layer.provideMerge(Flags.Default))
+
 const TestWorkflowLayer = EmailWorkflowLayer.pipe(
+  Layer.merge(RaceWorkflowLayer),
+  Layer.merge(DurableRaceWorkflowLayer),
   Layer.provideMerge(TestWorkflowEngine)
 )

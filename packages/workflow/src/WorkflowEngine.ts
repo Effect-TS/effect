@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
 import type * as Option from "effect/Option"
 import type * as Schema from "effect/Schema"
 import type * as Activity from "./Activity.js"
@@ -110,5 +110,22 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
      * Whether the workflow has requested to be suspended.
      */
     suspended: boolean
+
+    readonly activityState: {
+      count: number
+      readonly latch: Effect.Latch
+    }
   }
->() {}
+>() {
+  static initial(workflow: Workflow.Any, executionId: string): WorkflowInstance["Type"] {
+    return WorkflowInstance.of({
+      executionId,
+      workflow,
+      suspended: false,
+      activityState: {
+        count: 0,
+        latch: Effect.unsafeMakeLatch()
+      }
+    })
+  }
+}
