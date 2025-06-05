@@ -24,8 +24,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.fork)
 
       yield* TestClock.adjust(1)
-      // let workflow resume after DurableClock
-      yield* TestClock.adjust(5000)
+
+      // --- the workflow is suspended at this point
 
       // - 1 initial request
       // - 5 attempts to send email
@@ -41,6 +41,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(flags.get("compensation")).toBeFalsy()
       // ensuring should not run
       expect(flags.get("ensuring")).toBeFalsy()
+
+      // --- resume the workflow using DurableDeferred.done
 
       const token = yield* DurableDeferred.token(EmailTrigger).pipe(
         Effect.provideService(WorkflowEngine.WorkflowInstance, {
@@ -61,7 +63,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       expect(yield* Fiber.join(fiber)).toBeUndefined()
 
-      // ensuring finalizer should run after resume
+      // --- the workflow is complete
+
+      // Effect.ensuring finalizer should run after resume
       expect(flags.get("ensuring")).toBeTruthy()
 
       // test deduplication
