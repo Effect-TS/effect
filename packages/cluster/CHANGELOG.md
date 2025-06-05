@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.38.4
+
+### Patch Changes
+
+- [#4984](https://github.com/Effect-TS/effect/pull/4984) [`7e59d0e`](https://github.com/Effect-TS/effect/commit/7e59d0e2e004d86b8d0778e99c6fcd173fcb682a) Thanks @tim-smart! - expose Sharding.pollStorage api
+
 ## 0.38.3
 
 ### Patch Changes
