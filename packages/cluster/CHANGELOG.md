@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.38.3
+
+### Patch Changes
+
+- [#4983](https://github.com/Effect-TS/effect/pull/4983) [`59575c5`](https://github.com/Effect-TS/effect/commit/59575c5bf17a32c8b76c42e3794222b20e766581) Thanks @tim-smart! - do not resume already running workflows
+
+- Updated dependencies []:
+  - @effect/sql@0.37.7
+
 ## 0.38.2
 
 ### Patch Changes

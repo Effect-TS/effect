@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.48.7
+
+### Patch Changes
+
+- [#4978](https://github.com/Effect-TS/effect/pull/4978) [`a2d57c9`](https://github.com/Effect-TS/effect/commit/a2d57c9ac596445009ca12859b78e00e5d89b936) Thanks @mattiamanzati! - Fix Machine initialize R argument
+
 ## 0.48.6
 
 ### Patch Changes
