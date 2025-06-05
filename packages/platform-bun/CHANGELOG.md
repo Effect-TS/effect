@@ -1,5 +1,14 @@
 # @effect/platform-bun
 
+## 0.69.3
+
+### Patch Changes
+
+- Updated dependencies [[`59575c5`](https://github.com/Effect-TS/effect/commit/59575c5bf17a32c8b76c42e3794222b20e766581)]:
+  - @effect/cluster@0.38.3
+  - @effect/platform-node-shared@0.39.3
+  - @effect/sql@0.37.7
+
 ## 0.69.2
 
 ### Patch Changes
