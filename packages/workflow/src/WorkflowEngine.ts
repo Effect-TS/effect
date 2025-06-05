@@ -5,6 +5,7 @@ import * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Option from "effect/Option"
 import type * as Schema from "effect/Schema"
+import type { Scope } from "effect/Scope"
 import type * as Activity from "./Activity.js"
 import type { DurableClock } from "./DurableClock.js"
 import type * as DurableDeferred from "./DurableDeferred.js"
@@ -105,6 +106,11 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
      * The workflow definition.
      */
     readonly workflow: Workflow.Any
+
+    /**
+     * A Scope that is only closed when the workflow completes.
+     */
+    readonly scope: Scope
 
     /**
      * Whether the workflow has requested to be suspended.

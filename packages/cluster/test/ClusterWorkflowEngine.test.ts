@@ -9,12 +9,13 @@ import {
 } from "@effect/cluster"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
-import { DateTime, Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
+import { DateTime, Effect, Exit, Fiber, Layer, Schema, Scope, TestClock } from "effect"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("should run a workflow", () =>
     Effect.gen(function*() {
       const driver = yield* MessageStorage.MemoryDriver
+      const flags = yield* Flags
       yield* TestClock.adjust(1)
 
       const fiber = yield* EmailWorkflow.execute({
@@ -34,10 +35,16 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(driver.requests.size).toEqual(9)
       const executionId = driver.journal[0].address.entityId
 
+      // normal finalizer should run even after suspension
+      expect(flags.get("finalizer")).toBeTruthy()
+      // but not compensation
+      expect(flags.get("compensation")).toBeFalsy()
+
       const token = yield* DurableDeferred.token(EmailTrigger).pipe(
         Effect.provideService(WorkflowEngine.WorkflowInstance, {
           workflow: EmailWorkflow,
           executionId,
+          scope: yield* Scope.make(),
           suspended: false
         })
       )
@@ -165,11 +172,17 @@ const EmailWorkflow = Workflow.make({
 })
 
 class Flags extends Effect.Service<Flags>()("Flags", {
-  succeed: new Map<string, boolean>()
+  sync: () => new Map<string, boolean>()
 }) {}
 
 const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
   const flags = yield* Flags
+
+  yield* Effect.addFinalizer(() =>
+    Effect.sync(() => {
+      flags.set("finalizer", true)
+    })
+  )
 
   yield* Activity.make({
     name: "SendEmail",

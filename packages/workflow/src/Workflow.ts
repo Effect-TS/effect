@@ -15,7 +15,7 @@ import * as PrimaryKey from "effect/PrimaryKey"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import { makeHashDigest } from "./internal/crypto.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
@@ -480,19 +480,31 @@ export const Result = <Success extends Schema.Schema.Any, Error extends Schema.S
  */
 export const intoResult = <A, E, R>(
   effect: Effect.Effect<A, E, R>
-): Effect.Effect<Result<A, E>, never, R | WorkflowInstance> =>
-  Effect.uninterruptibleMask((restore) =>
-    Effect.onSuspend(
-      Effect.matchCause(restore(effect), {
-        onSuccess: (value) => new Complete({ exit: Exit.succeed(value) }),
-        onFailure: (cause) => new Complete({ exit: Exit.failCause(cause) })
-      }),
-      Effect.contextWith((context: Context.Context<WorkflowInstance>) => {
-        const instance = Context.get(context, InstanceTag)
-        return instance.suspended ? new Suspended() : new Complete({ exit: Exit.interrupt(FiberId.none) })
-      })
-    )
-  )
+): Effect.Effect<Result<A, E>, never, Exclude<R, Scope.Scope> | WorkflowInstance> =>
+  Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
+    const instance = Context.get(context, InstanceTag)
+    const scope = Effect.runSync(Scope.make())
+    return Effect.uninterruptibleMask((restore) => {
+      return effect.pipe(
+        Scope.extend(scope),
+        restore,
+        Effect.exit,
+        Effect.tap((exit) =>
+          Effect.zipRight(
+            Scope.close(instance.scope as Scope.CloseableScope, exit),
+            Scope.close(scope, exit)
+          )
+        ),
+        Effect.map((exit) => new Complete({ exit })),
+        Effect.onSuspend(Effect.suspend(() =>
+          Effect.as(
+            Scope.close(scope, Exit.interrupt(FiberId.none)),
+            instance.suspended ? new Suspended() : new Complete({ exit: Exit.interrupt(FiberId.none) })
+          )
+        ))
+      )
+    })
+  })
 
 /**
  * Add compensation logic to an effect inside a Workflow. The compensation finalizer will be
@@ -510,18 +522,24 @@ export const withCompensation: {
     compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
   ): <E, R>(
     effect: Effect.Effect<A, E, R>
-  ) => Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope>
+  ) => Effect.Effect<A, E, R | R2 | WorkflowInstance>
   <A, E, R, R2>(
     effect: Effect.Effect<A, E, R>,
     compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
-  ): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope>
+  ): Effect.Effect<A, E, R | R2 | WorkflowInstance>
 } = dual(2, <A, E, R, R2>(
   effect: Effect.Effect<A, E, R>,
   compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
-): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope> =>
+): Effect.Effect<A, E, R | R2 | WorkflowInstance> =>
   Effect.uninterruptibleMask((restore) =>
     Effect.tap(
       restore(effect),
-      (value) => Effect.addFinalizer((exit) => Exit.isSuccess(exit) ? Effect.void : compensation(value, exit.cause))
+      (value) =>
+        Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) =>
+          Scope.extend(
+            Effect.addFinalizer((exit) => Exit.isSuccess(exit) ? Effect.void : compensation(value, exit.cause)),
+            Context.get(context, InstanceTag).scope
+          )
+        )
     )
   ))

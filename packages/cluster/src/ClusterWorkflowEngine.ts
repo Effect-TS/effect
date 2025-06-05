@@ -18,6 +18,7 @@ import * as PrimaryKey from "effect/PrimaryKey"
 import * as RcMap from "effect/RcMap"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
+import * as Scope from "effect/Scope"
 import * as ClusterSchema from "./ClusterSchema.js"
 import * as DeliverAt from "./DeliverAt.js"
 import * as Entity from "./Entity.js"
@@ -189,6 +190,7 @@ export const make = Effect.gen(function*() {
                 const instance = WorkflowInstance.of({
                   workflow,
                   executionId,
+                  scope: Effect.runSync(Scope.make()),
                   suspended: false
                 })
                 return execute(request.payload, executionId).pipe(
@@ -210,7 +212,6 @@ export const make = Effect.gen(function*() {
                       Effect.orDie
                     )
                   })),
-                  Effect.scoped,
                   Workflow.intoResult,
                   Effect.provideService(WorkflowInstance, instance)
                 ) as any
@@ -232,6 +233,7 @@ export const make = Effect.gen(function*() {
                   WorkflowInstance.of({
                     workflow,
                     executionId,
+                    scope: Effect.runSync(Scope.make()),
                     suspended: false
                   })
                 )
