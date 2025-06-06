@@ -8,7 +8,8 @@ import {
   ShardStorage
 } from "@effect/cluster"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
+import { Activity, DurableClock, DurableDeferred, Workflow } from "@effect/workflow"
+import { WorkflowInstance } from "@effect/workflow/WorkflowEngine"
 import { DateTime, Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
@@ -49,11 +50,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       // --- resume the workflow using DurableDeferred.done
 
       const token = yield* DurableDeferred.token(EmailTrigger).pipe(
-        Effect.provideService(WorkflowEngine.WorkflowInstance, {
-          workflow: EmailWorkflow,
-          executionId,
-          suspended: false
-        })
+        Effect.provideService(WorkflowInstance, WorkflowInstance.initial(EmailWorkflow, executionId))
       )
       yield* DurableDeferred.done(EmailTrigger, {
         token,
