@@ -186,13 +186,9 @@ export const make = Effect.gen(function*() {
             const executionId = address.entityId
             return {
               run: (request: Entity.Request<any>) => {
-                const instance = WorkflowInstance.of({
-                  workflow,
-                  executionId,
-                  suspended: false
-                })
+                const instance = WorkflowInstance.initial(workflow, executionId)
                 return execute(request.payload, executionId).pipe(
-                  Effect.onExit(() => {
+                  Effect.ensuring(Effect.suspend(() => {
                     if (!instance.suspended) {
                       return Effect.void
                     }
@@ -209,8 +205,7 @@ export const make = Effect.gen(function*() {
                       }),
                       Effect.orDie
                     )
-                  }),
-                  Effect.scoped,
+                  })),
                   Workflow.intoResult,
                   Effect.provideService(WorkflowInstance, instance)
                 ) as any
@@ -229,11 +224,7 @@ export const make = Effect.gen(function*() {
                 contextMap.set(Activity.CurrentAttempt.key, request.payload.attempt)
                 contextMap.set(
                   WorkflowInstance.key,
-                  WorkflowInstance.of({
-                    workflow,
-                    executionId,
-                    suspended: false
-                  })
+                  WorkflowInstance.initial(workflow, executionId)
                 )
                 return yield* entry.activity.executeEncoded.pipe(
                   Workflow.intoResult,
@@ -347,7 +338,7 @@ export const make = Effect.gen(function*() {
         client(executionId).deferred({
           name: deferred.name,
           exit
-        })
+        }, { discard: true })
       )
     }, Effect.scoped),
 
