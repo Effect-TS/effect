@@ -239,19 +239,20 @@ export interface Param<Name extends string, S extends Schema.Schema.Any>
  * @category path params
  */
 export const param: {
-  <Name extends string>(name: Name): <S extends AnyString>(schema: S) => Param<Name, S>
-  <Name extends string, S extends AnyString>(name: Name, schema: S): Param<Name, S>
+  <Name extends string>(
+    name: Name
+  ): <S extends Schema.Schema.Any>(
+    schema: S & ([S["Encoded"]] extends [string] ? unknown : "Schema must be encodable to a string")
+  ) => Param<Name, S>
+  <Name extends string, S extends Schema.Schema.Any>(
+    name: Name,
+    schema: S & ([S["Encoded"]] extends [string] ? unknown : "Schema must be encodable to a string")
+  ): Param<Name, S>
 } = dual(
   2,
-  <Name extends string, S extends AnyString>(name: Name, schema: S): Param<Name, S> =>
+  <Name extends string, S extends Schema.Schema.Any>(name: Name, schema: S): Param<Name, S> =>
     schema.annotations({ [AnnotationParam]: name }) as any
 )
-
-/**
- * @since 1.0.0
- * @category path params
- */
-export type AnyString = Schema.Schema<any, string, never> | Schema.Schema<any, string, any>
 
 /**
  * @since 1.0.0
