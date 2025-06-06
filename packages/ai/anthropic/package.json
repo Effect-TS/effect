@@ -1,7 +1,7 @@
 {
   "name": "@effect/ai-anthropic",
   "type": "module",
-  "version": "0.8.9",
+  "version": "0.8.10",
   "license": "MIT",
   "description": "Effect modules for working with AI apis",
   "homepage": "https://effect.website",

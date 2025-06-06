@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.84.8
+
+### Patch Changes
+
+- [#4996](https://github.com/Effect-TS/effect/pull/4996) [`8b9db77`](https://github.com/Effect-TS/effect/commit/8b9db7742846af0f58fd8e8b7acb7f4f5ff487ec) Thanks @tim-smart! - allow literals in HttpApiSchema.param
+
 ## 0.84.7
 
 ### Patch Changes
