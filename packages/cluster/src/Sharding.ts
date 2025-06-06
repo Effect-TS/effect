@@ -1112,12 +1112,12 @@ const make = Effect.gen(function*() {
   const reaper = yield* EntityReaper
   const registerEntity: Sharding["Type"]["registerEntity"] = Effect.fnUntraced(
     function*(entity, build, options) {
-      if (entityManagers.has(entity.type)) return
+      if (Option.isNone(config.runnerAddress) || entityManagers.has(entity.type)) return
       const scope = yield* Scope.make()
       const manager = yield* EntityManager.make(entity, build, {
         ...options,
         storage,
-        runnerAddress: Option.getOrThrow(config.runnerAddress),
+        runnerAddress: config.runnerAddress.value,
         sharding
       }).pipe(
         Effect.provide(context.pipe(
