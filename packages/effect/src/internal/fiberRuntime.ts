@@ -1693,7 +1693,7 @@ export const addFinalizer = <X, R>(
   core.withFiberRuntime(
     (runtime) => {
       const acquireRefs = runtime.getFiberRefs()
-      const acquireFlags = runtime.currentRuntimeFlags
+      const acquireFlags = runtimeFlags_.disable(runtime.currentRuntimeFlags, runtimeFlags_.Interruption)
       return core.flatMap(scope, (scope) =>
         core.scopeAddFinalizerExit(scope, (exit) =>
           core.withFiberRuntime((runtimeFinalizer) => {
