@@ -9,7 +9,7 @@ describe("HttpApiEndpoint", () => {
         HttpApiSchema.param("id", Schema.NumberFromString)
       }`
     ).type.toRaiseError(
-      `Argument of type 'Param<"id", typeof NumberFromString>' is not assignable to parameter of type '"Duplicate param :id"'.`
+      `Argument of type 'Param<"id", typeof NumberFromString>' is not assignable to parameter of type '"Duplicate param: id"'.`
     )
   })
 })
