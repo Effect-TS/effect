@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.38.7
+
+### Patch Changes
+
+- [#4999](https://github.com/Effect-TS/effect/pull/4999) [`22166f8`](https://github.com/Effect-TS/effect/commit/22166f80c677cad6b4719e0e0253a9d06f964626) Thanks @tim-smart! - make registerEntity a no-op on clientOnly cluster
+
 ## 0.38.6
 
 ### Patch Changes
