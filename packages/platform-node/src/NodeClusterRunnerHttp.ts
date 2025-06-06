@@ -40,7 +40,7 @@ export const layer = <
   readonly storage?: Storage | undefined
   readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
 }): ClientOnly extends true ? Layer.Layer<
-    Sharding | Runners.Runners,
+    Sharding | Runners.Runners | MessageStorage.MessageStorage,
     ConfigError | (Storage extends "sql" ? SqlError : never),
     Storage extends "sql" ? SqlClient : never
   > :
