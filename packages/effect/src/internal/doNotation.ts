@@ -2,8 +2,6 @@ import { dual } from "../Function.js"
 import type { Kind, TypeLambda } from "../HKT.js"
 import type { NoInfer } from "../Types.js"
 
-export type ForbiddenKeys<A> = keyof A | "__proto__"
-
 type Map<F extends TypeLambda> = {
   <A, B>(f: (a: A) => B): <R, O, E>(self: Kind<F, R, O, E, A>) => Kind<F, R, O, E, B>
   <R, O, E, A, B>(self: Kind<F, R, O, E, A>, f: (a: A) => B): Kind<F, R, O, E, B>
@@ -18,6 +16,9 @@ type FlatMap<F extends TypeLambda> = {
     f: (a: A) => Kind<F, R2, O2, E2, B>
   ): Kind<F, R1 & R2, O1 | O2, E1 | E2, B>
 }
+
+/** @internal */
+export type ForbiddenKeys<A> = keyof A | "__proto__"
 
 /** @internal */
 export const let_ = <F extends TypeLambda>(
