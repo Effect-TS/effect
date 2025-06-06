@@ -585,15 +585,16 @@ export declare namespace HttpApiEndpoint {
    * @category models
    */
   export type ValidateParams<
-    Schemas extends ReadonlyArray<HttpApiSchema.AnyString>,
-    Prev extends HttpApiSchema.AnyString = never
+    Schemas extends ReadonlyArray<Schema.Schema.Any>,
+    Prev extends Schema.Schema.Any = never
   > = Schemas extends [
-    infer Head extends HttpApiSchema.AnyString,
-    ...infer Tail extends ReadonlyArray<HttpApiSchema.AnyString>
+    infer Head extends Schema.Schema.Any,
+    ...infer Tail extends ReadonlyArray<Schema.Schema.Any>
   ] ? [
       Head extends HttpApiSchema.Param<infer _Name, infer _S>
-        ? HttpApiSchema.Param<_Name, any> extends Prev ? `Duplicate param :${_Name}`
-        : Head :
+        ? HttpApiSchema.Param<_Name, any> extends Prev ? `Duplicate param: ${_Name}`
+        : Head["Encoded"] extends string ? Head
+        : `Must be encodeable to string: ${_Name}` :
         Head,
       ...ValidateParams<Tail, Prev | Head>
     ]
@@ -661,19 +662,18 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type PathEntries<Schemas extends ReadonlyArray<HttpApiSchema.AnyString>> =
-    Extract<keyof Schemas, string> extends infer K ?
-      K extends keyof Schemas ? Schemas[K] extends HttpApiSchema.Param<infer _Name, infer _S> ? [_Name, _S] :
-        Schemas[K] extends HttpApiSchema.AnyString ? [K, Schemas[K]]
-        : never
+  export type PathEntries<Schemas extends ReadonlyArray<Schema.Schema.Any>> = Extract<keyof Schemas, string> extends
+    infer K ? K extends keyof Schemas ? Schemas[K] extends HttpApiSchema.Param<infer _Name, infer _S> ? [_Name, _S] :
+      Schemas[K] extends Schema.Schema.Any ? [K, Schemas[K]]
       : never
-      : never
+    : never
+    : never
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type ExtractPath<Schemas extends ReadonlyArray<HttpApiSchema.AnyString>> = {
+  export type ExtractPath<Schemas extends ReadonlyArray<Schema.Schema.Any>> = {
     readonly [Entry in PathEntries<Schemas> as Entry[0]]: Entry[1]["Type"]
   }
 
@@ -682,7 +682,7 @@ export declare namespace HttpApiEndpoint {
    * @category models
    */
   export type Constructor<Name extends string, Method extends HttpMethod> = <
-    const Schemas extends ReadonlyArray<HttpApiSchema.AnyString>
+    const Schemas extends ReadonlyArray<Schema.Schema.Any>
   >(
     segments: TemplateStringsArray,
     ...schemas: ValidateParams<Schemas>
@@ -829,7 +829,7 @@ export const make = <Method extends HttpMethod>(method: Method): {
         middlewares: new Set()
       })
     }
-    return (segments: TemplateStringsArray, ...schemas: ReadonlyArray<HttpApiSchema.AnyString>) => {
+    return (segments: TemplateStringsArray, ...schemas: ReadonlyArray<Schema.Schema.Any>) => {
       let path = segments[0] as PathSegment
       let pathSchema = Option.none<Schema.Schema.Any>()
       if (schemas.length > 0) {
