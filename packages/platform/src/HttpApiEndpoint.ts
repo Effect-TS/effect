@@ -593,7 +593,7 @@ export declare namespace HttpApiEndpoint {
   ] ? [
       Head extends HttpApiSchema.Param<infer _Name, infer _S>
         ? HttpApiSchema.Param<_Name, any> extends Prev ? `Duplicate param: ${_Name}`
-        : Head["Encoded"] extends string ? Head
+        : [Head["Encoded"]] extends [string] ? Head
         : `Must be encodeable to string: ${_Name}` :
         Head,
       ...ValidateParams<Tail, Prev | Head>
