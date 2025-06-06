@@ -7884,12 +7884,12 @@ export const Do: Effect<{}> = effect.Do
  */
 export const bind: {
   <N extends string, A extends object, B, E2, R2>(
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, effect.ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => Effect<B, E2, R2>
   ): <E1, R1>(self: Effect<A, E1, R1>) => Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E1, R2 | R1>
   <A extends object, N extends string, E1, R1, B, E2, R2>(
     self: Effect<A, E1, R1>,
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, effect.ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => Effect<B, E2, R2>
   ): Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E1 | E2, R1 | R2>
 } = effect.bind
@@ -8003,18 +8003,18 @@ export const bindAll: {
  * @since 2.0.0
  */
 export const bindTo: {
-  <N extends string>(name: N): <A, E, R>(self: Effect<A, E, R>) => Effect<{ [K in N]: A }, E, R>
-  <A, E, R, N extends string>(self: Effect<A, E, R>, name: N): Effect<{ [K in N]: A }, E, R>
+  <N extends string>(name: Exclude<N, effect.ForbiddenKeys<{}>>): <A, E, R>(self: Effect<A, E, R>) => Effect<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Effect<A, E, R>, name: Exclude<N, effect.ForbiddenKeys<{}>>): Effect<{ [K in N]: A }, E, R>
 } = effect.bindTo
 
 const let_: {
   <N extends string, A extends object, B>(
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, effect.ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => B
   ): <E, R>(self: Effect<A, E, R>) => Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
   <A extends object, N extends string, E, R, B>(
     self: Effect<A, E, R>,
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, effect.ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => B
   ): Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = effect.let_
