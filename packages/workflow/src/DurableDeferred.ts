@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import type * as Brand from "effect/Brand"
 import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
@@ -94,7 +95,7 @@ const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.Al
 >(self: DurableDeferred<Success, Error>) {
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
-  const oexit = yield* engine.deferredResult(self)
+  const oexit = yield* Workflow.wrapActivityResult(engine.deferredResult(self), Option.isNone)
   if (Option.isNone(oexit)) {
     instance.suspended = true
     return yield* Effect.interrupt
@@ -102,7 +103,7 @@ const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.Al
   return yield* Effect.flatten(Effect.orDie(
     Schema.decodeUnknown(self.exitSchema)(oexit.value)
   ))
-}, Workflow.runActivity)
+})
 
 export {
   /**
@@ -110,6 +111,100 @@ export {
    * @category Combinators
    */
   await_ as await
+}
+
+/**
+ * @since 1.0.0
+ * @category Combinators
+ */
+export const into: {
+  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
+    self: DurableDeferred<Success, Error>
+  ): <R>(effect: Effect.Effect<Success["Type"], Error["Type"], R>) => Effect.Effect<
+    Success["Type"],
+    Error["Type"],
+    R | WorkflowEngine | WorkflowInstance | Success["Context"] | Error["Context"]
+  >
+  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All, R>(
+    effect: Effect.Effect<Success["Type"], Error["Type"], R>,
+    self: DurableDeferred<Success, Error>
+  ): Effect.Effect<
+    Success["Type"],
+    Error["Type"],
+    R | WorkflowEngine | WorkflowInstance | Success["Context"] | Error["Context"]
+  >
+} = dual(2, <Success extends Schema.Schema.Any, Error extends Schema.Schema.All, R>(
+  effect: Effect.Effect<Success["Type"], Error["Type"], R>,
+  self: DurableDeferred<Success, Error>
+): Effect.Effect<
+  Success["Type"],
+  Error["Type"],
+  R | WorkflowEngine | WorkflowInstance | Success["Context"] | Error["Context"]
+> =>
+  Effect.contextWithEffect((context: Context.Context<WorkflowEngine | WorkflowInstance>) => {
+    const engine = Context.get(context, EngineTag)
+    const instance = Context.get(context, InstanceTag)
+    return Effect.onExit(
+      effect,
+      Effect.fnUntraced(function*(exit) {
+        if (instance.suspended) return
+        const encodedExit = yield* Effect.orDie(Schema.encode(self.exitSchema)(exit))
+        yield* engine.deferredDone({
+          workflowName: instance.workflow.name,
+          executionId: instance.executionId,
+          deferred: self,
+          exit: encodedExit as any
+        })
+      })
+    )
+  }))
+
+/**
+ * @since 1.0.0
+ * @category Racing
+ */
+export const raceAll = <
+  const Effects extends NonEmptyReadonlyArray<Effect.Effect<any, any, any>>,
+  SI,
+  SR,
+  EI,
+  ER
+>(options: {
+  name: string
+  success: Schema.Schema<
+    Effects[number] extends Effect.Effect<infer S, infer _E, infer _R> ? S : never,
+    SI,
+    SR
+  >
+  error: Schema.Schema<
+    Effects[number] extends Effect.Effect<infer _S, infer E, infer _R> ? E : never,
+    EI,
+    ER
+  >
+  effects: Effects
+}): Effect.Effect<
+  (Effects[number] extends Effect.Effect<infer _A, infer _E, infer _R> ? _A : never),
+  (Effects[number] extends Effect.Effect<infer _A, infer _E, infer _R> ? _E : never),
+  | (Effects[number] extends Effect.Effect<infer _A, infer _R, infer R> ? R : never)
+  | SR
+  | ER
+  | WorkflowEngine
+  | WorkflowInstance
+> => {
+  const deferred = make<any, any>(`raceAll/${options.name}`, {
+    success: options.success,
+    error: options.error
+  })
+  return Effect.gen(function*() {
+    const engine = yield* EngineTag
+    const oexit = yield* Workflow.wrapActivityResult(engine.deferredResult(deferred), Option.isNone)
+    if (Option.isSome(oexit)) {
+      return yield* (Effect.flatten(Effect.orDie(
+        Schema.decodeUnknown(deferred.exitSchema)(oexit.value)
+      )) as Effect.Effect<any, any, any>)
+    }
+    return yield* into(Effect.raceAll(options.effects), deferred)
+  })
 }
 
 /**

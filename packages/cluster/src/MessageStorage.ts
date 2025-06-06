@@ -9,7 +9,6 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
 import { globalValue } from "effect/GlobalValue"
-import * as Iterable from "effect/Iterable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { ParseError } from "effect/ParseResult"
@@ -592,6 +591,7 @@ export type MemoryEntry = {
   readonly envelope: Envelope.Request.Encoded
   lastReceivedChunk: Option.Option<Reply.ChunkEncoded<any>>
   replies: Array<Reply.ReplyEncoded<any>>
+  deliverAt: number | null
 }
 
 /**
@@ -601,9 +601,10 @@ export type MemoryEntry = {
 export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluster/MessageStorage/MemoryDriver", {
   dependencies: [Snowflake.layerGenerator],
   effect: Effect.gen(function*() {
+    const clock = yield* Effect.clock
     const requests = new Map<string, MemoryEntry>()
     const requestsByPrimaryKey = new Map<string, MemoryEntry>()
-    const unprocessed = new Set<Envelope.Request.Encoded>()
+    const unprocessed = new Set<Envelope.Envelope.Encoded>()
     const replyIds = new Set<string>()
 
     const journal: Array<Envelope.Envelope.Encoded> = []
@@ -615,12 +616,16 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
         readonly envelope: Envelope.Envelope.Encoded
         readonly lastSentReply: Option.Option<Reply.ReplyEncoded<any>>
       }> = []
+      const now = clock.unsafeCurrentTimeMillis()
       for (const envelope of unprocessed) {
         if (!predicate(envelope)) {
           continue
         }
         if (envelope._tag === "Request") {
           const entry = requests.get(envelope.requestId)
+          if (entry?.deliverAt && entry.deliverAt > now) {
+            continue
+          }
           messages.push({
             envelope,
             lastSentReply: Option.fromNullable(entry?.replies[entry.replies.length - 1])
@@ -659,7 +664,7 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
     }
 
     const encoded: Encoded = {
-      saveEnvelope: ({ envelope: envelope_, primaryKey }) =>
+      saveEnvelope: ({ deliverAt, envelope: envelope_, primaryKey }) =>
         Effect.sync(() => {
           const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Envelope.Encoded
           const existing = primaryKey
@@ -674,12 +679,11 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
             })
           }
           if (envelope._tag === "Request") {
-            const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: Option.none() }
+            const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: Option.none(), deliverAt }
             requests.set(envelope.requestId, entry)
             if (primaryKey) {
               requestsByPrimaryKey.set(primaryKey, entry)
             }
-            unprocessed.add(envelope)
           } else if (envelope._tag === "AckChunk") {
             const entry = requests.get(envelope.requestId)
             if (entry) {
@@ -689,6 +693,7 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
               ).pipe(Option.orElse(() => entry.lastReceivedChunk))
             }
           }
+          unprocessed.add(envelope)
           journal.push(envelope)
           return SaveResultEncoded.Success()
         }),
@@ -723,19 +728,22 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
       unprocessedMessages: (shardIds) =>
         Effect.sync(() => {
           if (unprocessed.size === 0) return []
+          const now = clock.unsafeCurrentTimeMillis()
           const messages = Arr.empty<{
             envelope: Envelope.Envelope.Encoded
             lastSentReply: Option.Option<Reply.ReplyEncoded<any>>
           }>()
-          let index = journal.indexOf(Iterable.unsafeHead(unprocessed))
-          for (; index < journal.length; index++) {
+          for (let index = 0; index < journal.length; index++) {
             const envelope = journal[index]
             const shardId = ShardId.make(envelope.address.shardId)
-            if (!shardIds.includes(shardId.toString())) {
+            if (!unprocessed.has(envelope as any) || !shardIds.includes(shardId.toString())) {
               continue
             }
             if (envelope._tag === "Request") {
               const entry = requests.get(envelope.requestId)!
+              if (entry.deliverAt && entry.deliverAt > now) {
+                continue
+              }
               messages.push({
                 envelope,
                 lastSentReply: Arr.last(entry.replies)
@@ -745,6 +753,7 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
                 envelope,
                 lastSentReply: Option.none()
               })
+              unprocessed.delete(envelope)
             }
           }
           return messages

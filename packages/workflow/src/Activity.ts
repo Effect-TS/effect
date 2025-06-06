@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
@@ -8,6 +9,7 @@ import type * as Exit from "effect/Exit"
 import { dual } from "effect/Function"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
+import * as DurableDeferred from "./DurableDeferred.js"
 import { makeHashDigest } from "./internal/crypto.js"
 import * as Workflow from "./Workflow.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
@@ -29,9 +31,9 @@ export type TypeId = typeof TypeId
  * @category Models
  */
 export interface Activity<
-  Success extends Schema.Schema.Any,
-  Error extends Schema.Schema.All,
-  R
+  Success extends Schema.Schema.Any = typeof Schema.Void,
+  Error extends Schema.Schema.All = typeof Schema.Never,
+  R = never
 > extends
   Effect.Effect<
     Success["Type"],
@@ -82,8 +84,8 @@ export const make = <
   Error extends Schema.Schema.All = typeof Schema.Never
 >(options: {
   readonly name: string
-  readonly success?: Success
-  readonly error?: Error
+  readonly success?: Success | undefined
+  readonly error?: Error | undefined
   readonly execute: Effect.Effect<Success["Type"], Error["Type"], R>
 }): Activity<Success, Error, Exclude<R, WorkflowInstance | WorkflowEngine | Scope>> => {
   const successSchema = options.success ?? Schema.Void as any as Success
@@ -134,7 +136,7 @@ export const retry: typeof Effect.retry = dual(
  * @category Attempts
  */
 export class CurrentAttempt extends Context.Reference<CurrentAttempt>()("@effect/workflow/Activity/CurrentAttempt", {
-  defaultValue: () => 0
+  defaultValue: () => 1
 }) {}
 
 /**
@@ -150,6 +152,33 @@ export const executionIdWithAttempt: Effect.Effect<
   const attempt = yield* CurrentAttempt
   return yield* makeHashDigest(`${instance.executionId}-${attempt}`)
 })
+
+/**
+ * @since 1.0.0
+ * @category Racing
+ */
+export const raceAll = <const Activities extends NonEmptyReadonlyArray<Any>>(
+  name: string,
+  activities: Activities
+): Effect.Effect<
+  (Activities[number] extends Activity<infer _A, infer _E, infer _R> ? _A["Type"] : never),
+  (Activities[number] extends Activity<infer _A, infer _E, infer _R> ? _E["Type"] : never),
+  | (Activities[number] extends Activity<infer Success, infer Error, infer R>
+    ? Success["Context"] | Error["Context"] | R
+    : never)
+  | WorkflowEngine
+  | WorkflowInstance
+> =>
+  DurableDeferred.raceAll({
+    name: `Activity/${name}`,
+    success: Schema.Union(
+      ...activities.map((activity) => activity.successSchema)
+    ),
+    error: Schema.Union(
+      ...activities.map((activity) => activity.errorSchema)
+    ),
+    effects: activities as any
+  }) as any
 
 // -----------------------------------------------------------------------------
 // internal
@@ -170,10 +199,13 @@ const makeExecute = Effect.fnUntraced(function*<
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
   const attempt = yield* CurrentAttempt
-  const result = yield* engine.activityExecute({
-    activity,
-    attempt
-  })
+  const result = yield* Workflow.wrapActivityResult(
+    engine.activityExecute({
+      activity,
+      attempt
+    }),
+    (_) => _._tag === "Suspended"
+  )
   if (result._tag === "Suspended") {
     instance.suspended = true
     return yield* Effect.interrupt
@@ -182,4 +214,4 @@ const makeExecute = Effect.fnUntraced(function*<
     Schema.decode(activity.exitSchema)(result.exit)
   )
   return yield* exit
-}, Workflow.runActivity)
+})

@@ -186,12 +186,7 @@ export const make = Effect.gen(function*() {
             const executionId = address.entityId
             return {
               run: (request: Entity.Request<any>) => {
-                const instance = WorkflowInstance.of({
-                  workflow,
-                  executionId,
-                  suspended: false,
-                  activityCount: 0
-                })
+                const instance = WorkflowInstance.initial(workflow, executionId)
                 return execute(request.payload, executionId).pipe(
                   Effect.ensuring(Effect.suspend(() => {
                     if (!instance.suspended) {
@@ -229,12 +224,7 @@ export const make = Effect.gen(function*() {
                 contextMap.set(Activity.CurrentAttempt.key, request.payload.attempt)
                 contextMap.set(
                   WorkflowInstance.key,
-                  WorkflowInstance.of({
-                    workflow,
-                    executionId,
-                    activityCount: 0,
-                    suspended: false
-                  })
+                  WorkflowInstance.initial(workflow, executionId)
                 )
                 return yield* entry.activity.executeEncoded.pipe(
                   Workflow.intoResult,

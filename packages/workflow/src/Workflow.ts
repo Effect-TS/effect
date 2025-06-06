@@ -487,9 +487,7 @@ export const intoResult = <A, E, R>(
         Effect.scoped,
         Effect.matchCause({
           onSuccess: (value) => new Complete({ exit: Exit.succeed(value) }),
-          onFailure: (cause) => {
-            return instance.suspended ? new Suspended() : new Complete({ exit: Exit.failCause(cause) })
-          }
+          onFailure: (cause) => instance.suspended ? new Suspended() : new Complete({ exit: Exit.failCause(cause) })
         })
       )
     )
@@ -499,25 +497,28 @@ export const intoResult = <A, E, R>(
  * @since 1.0.0
  * @category Result
  */
-export const runActivity = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R | WorkflowInstance> =>
+export const wrapActivityResult = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  isSuspend: (value: A) => boolean
+): Effect.Effect<A, E, R | WorkflowInstance> =>
   Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
     const instance = Context.get(context, InstanceTag)
+    const state = instance.activityState
     if (instance.suspended) {
-      return instance.activityCount === 0 ? Effect.interrupt : Effect.interruptible(Effect.never)
+      return state.count > 0 ?
+        state.latch.await.pipe(
+          Effect.andThen(Effect.yieldNow()),
+          Effect.andThen(Effect.interrupt)
+        ) :
+        Effect.interrupt
     }
-    instance.activityCount++
-    return Effect.ensuring(
-      effect,
-      Effect.flatMap(Effect.yieldNow(), () => {
-        instance.activityCount--
-        if (!instance.suspended || instance.activityCount === 0) {
-          return Effect.void
-        }
-        // only the last activity in a suspended workflow should send the
-        // interrupt signal
-        return Effect.interruptible(Effect.never)
-      })
-    )
+    if (state.count === 0) state.latch.unsafeClose()
+    state.count++
+    return Effect.onExit(effect, (exit) => {
+      state.count--
+      const isSuspended = Exit.isSuccess(exit) && isSuspend(exit.value)
+      return state.count === 0 ? state.latch.open : isSuspended ? state.latch.await : Effect.void
+    })
   })
 
 /**
