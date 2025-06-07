@@ -8,6 +8,7 @@ import type { ParseError } from "effect/ParseResult"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import type { NoExcessProperties } from "effect/Types"
 import type { AiError } from "./AiError.js"
 import * as AiInput from "./AiInput.js"
 import * as AiLanguageModel from "./AiLanguageModel.js"
@@ -56,7 +57,10 @@ export declare namespace AiChat {
      *
      * Both input and output messages will be added to the chat history.
      */
-    readonly generateText: <Tools extends AiTool.Any, Options>(
+    readonly generateText: <
+      Tools extends AiTool.Any,
+      Options extends NoExcessProperties<AiLanguageModel.GenerateTextOptions<any>, Options>
+    >(
       options: Options & Omit<AiLanguageModel.GenerateTextOptions<Tools>, "system">
     ) => Effect.Effect<
       AiLanguageModel.ExtractSuccess<Options>,
@@ -73,7 +77,10 @@ export declare namespace AiChat {
      *
      * Both input and output messages will be added to the chat history.
      */
-    readonly streamText: <Tools extends AiTool.Any, Options>(
+    readonly streamText: <
+      Tools extends AiTool.Any,
+      Options extends NoExcessProperties<AiLanguageModel.GenerateTextOptions<any>, Options>
+    >(
       options: Options & Omit<AiLanguageModel.GenerateTextOptions<Tools>, "system">
     ) => Stream.Stream<
       AiLanguageModel.ExtractSuccess<Options>,
