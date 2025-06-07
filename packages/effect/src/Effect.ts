@@ -13359,6 +13359,62 @@ export const transposeMapOption = dual<
 >(2, (self, f) => option_.isNone(self) ? succeedNone : map(f(self.value), option_.some))
 
 /**
+ * Returns a function that turns an `Option` and a failure `E` into
+ * an `Effect<A>` that fails in `E`.
+ *
+ * **Details**
+ *
+ * This function allows you to "unwrap" an `Option` by turning the `None` case
+ * in a checked exception.
+ *
+ * @example
+ * ```ts
+ * import { Option } from "effect"
+ *
+ * //      ┌─── Effect<number, Error, never>
+ * //      ▼
+ * const program = Option.some(1).pipe(Option.failWith(() => new Error()))
+ * ```
+ */
+export const failWith: {
+  <E>(f: () => E): <A, E, R>(self: Option.Option<A>) => Effect<A, E, R>
+  <A, E, R>(self: Option.Option<A>, f: () => E): Effect<A, E, R>
+} = dual(
+  2,
+  <A, E>(self: Option.Option<A>, f: () => E) => option_.isNone(self) ? fail(f()) : succeed(self.value)
+)
+
+/**
+ * Returns a function that turns an `Effect<Option<A>>` into
+ * an `Effect<A>` that fails in `E`.
+ *
+ * **Details**
+ *
+ * This function allows you to "unwrap" an `Option` by turning the `None` case
+ * in a checked exception.
+ *
+ * @example
+ * ```ts
+ * import { Option } from "effect"
+ *
+ * //      ┌─── Effect<number, Error, never>
+ * //      ▼
+ * const program = Effect.succeed(Option.some(1))().pipe(Option.failWith(() => new Error()))
+ * ```
+ */
+export const failWithM: {
+  <E2>(f: () => E2): <A, E1, R>(self: Effect<Option.Option<A>>) => Effect<A, E1 | E2, R>
+  <E2, A, E1, R>(self: Effect<Option.Option<A>, E1>, f: () => E2): Effect<A, E1 | E2, R>
+} = dual(
+  2,
+  <A, E>(self: Effect<Option.Option<A>>, f: () => E) =>
+    flatMap(
+      self,
+      (o: Option.Option<A>) => option_.isNone(o) ? fail(f()) : succeed(o.value)
+    )
+)
+
+/**
  * @since 2.0.0
  * @category Models
  */
