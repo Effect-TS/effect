@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src"],
+  "references": [
+    { "path": "../effect/tsconfig.src.json" },
+    { "path": "../sql/tsconfig.src.json" }
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
+    "rootDir": "src",
+    "outDir": "build/src",
+    "types": ["node"]
+  }
+}
