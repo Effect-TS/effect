@@ -398,37 +398,40 @@ export const diffFiberRefsAndRuntimeFlags = <A, E, R>(
 export const Do: Effect.Effect<{}> = core.succeed({})
 
 /* @internal */
+export type ForbiddenKeys<A> = doNotation.ForbiddenKeys<A>
+
+/* @internal */
 export const bind: {
   <N extends string, A extends object, B, E2, R2>(
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, doNotation.ForbiddenKeys<A>>,
     f: (a: Types.NoInfer<A>) => Effect.Effect<B, E2, R2>
   ): <E1, R1>(
     self: Effect.Effect<A, E1, R1>
   ) => Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E1, R2 | R1>
   <A extends object, N extends string, E1, R1, B, E2, R2>(
     self: Effect.Effect<A, E1, R1>,
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, doNotation.ForbiddenKeys<A>>,
     f: (a: Types.NoInfer<A>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E1 | E2, R1 | R2>
 } = doNotation.bind<Effect.EffectTypeLambda>(core.map, core.flatMap)
 
 /* @internal */
 export const bindTo: {
-  <N extends string>(name: N): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<{ [K in N]: A }, E, R>
-  <A, E, R, N extends string>(self: Effect.Effect<A, E, R>, name: N): Effect.Effect<{ [K in N]: A }, E, R>
+  <N extends string>(name: Exclude<N, ForbiddenKeys<{}>>): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Effect.Effect<A, E, R>, name: Exclude<N, ForbiddenKeys<{}>>): Effect.Effect<{ [K in N]: A }, E, R>
 } = doNotation.bindTo<Effect.EffectTypeLambda>(core.map)
 
 /* @internal */
 export const let_: {
   <N extends string, A extends object, B>(
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, doNotation.ForbiddenKeys<A>>,
     f: (a: Types.NoInfer<A>) => B
   ): <E, R>(
     self: Effect.Effect<A, E, R>
   ) => Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
   <A extends object, N extends string, E, R, B>(
     self: Effect.Effect<A, E, R>,
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, doNotation.ForbiddenKeys<A>>,
     f: (a: Types.NoInfer<A>) => B
   ): Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = doNotation.let_<Effect.EffectTypeLambda>(core.map)
