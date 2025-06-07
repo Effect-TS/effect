@@ -1247,25 +1247,26 @@ export const singleton = <K extends string | symbol, A>(key: K, value: A): Recor
 export const findFirst: {
   <K extends string | symbol, V, V2 extends V>(
     refinement: (value: NoInfer<V>, key: NoInfer<K>) => value is V2
-  ): (self: Record<K, V>) => Option.Option<[K, V2]>
+  ): (self: ReadonlyRecord<K, V>) => Option.Option<[K, V2]>
   <K extends string | symbol, V>(
     predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean
-  ): (self: Record<K, V>) => Option.Option<[K, V]>
+  ): (self: ReadonlyRecord<K, V>) => Option.Option<[K, V]>
   <K extends string | symbol, V, V2 extends V>(
-    self: Record<K, V>,
+    self: ReadonlyRecord<K, V>,
     refinement: (value: NoInfer<V>, key: NoInfer<K>) => value is V2
   ): Option.Option<[K, V2]>
   <K extends string | symbol, V>(
-    self: Record<K, V>,
+    self: ReadonlyRecord<K, V>,
     predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean
   ): Option.Option<[K, V]>
 } = dual(
   2,
-  <K extends string | symbol, V>(self: Record<K, V>, f: (value: V, key: K) => boolean) => {
-    for (const a of Object.entries<V>(self)) {
-      const o = f(a[1], a[0] as K)
-      if (o) {
-        return Option.some(a)
+  <K extends string | symbol, V>(self: ReadonlyRecord<K, V>, f: (value: V, key: K) => boolean) => {
+    const k = keys(self)
+    for (let i = 0; i < k.length; i++) {
+      const key = k[i]
+      if (f(self[key], key)) {
+        return Option.some([key, self[key]])
       }
     }
     return Option.none()
