@@ -88,6 +88,7 @@ export const make = Effect.fnUntraced(function*<
     readonly maxIdleTime?: DurationInput | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly mailboxCapacity?: number | "unbounded" | undefined
+    readonly fatalDefects?: boolean | undefined
   }
 ) {
   const config = yield* ShardingConfig
@@ -141,6 +142,7 @@ export const make = Effect.fnUntraced(function*<
         const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
           spanPrefix: `${entity.type}(${address.entityId})`,
           concurrency: options.concurrency ?? 1,
+          fatalDefects: options.fatalDefects ?? false,
           onFromServer(response): Effect.Effect<void> {
             switch (response._tag) {
               case "Exit": {
