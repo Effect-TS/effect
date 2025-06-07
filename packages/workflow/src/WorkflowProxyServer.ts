@@ -30,7 +30,7 @@ export const layerHttpApi = <
 ): Layer.Layer<
   ApiGroup<ApiId, Name>,
   never,
-  WorkflowEngine | Workflow.Registrations<Workflows[number]> | Workflow.Requirements<Workflows[number]>
+  WorkflowEngine | Workflow.Requirements<Workflows[number]>
 > =>
   HttpApiBuilder.group(
     api,
@@ -65,7 +65,7 @@ export const layerRpcHandlers = <
 }): Layer.Layer<
   RpcHandlers<Workflows[number], Prefix>,
   never,
-  WorkflowEngine | Workflow.Registrations<Workflows[number]> | Workflow.Requirements<Workflows[number]>
+  WorkflowEngine | Workflow.Requirements<Workflows[number]>
 > =>
   Layer.effectContext(Effect.gen(function*() {
     const context = yield* Effect.context<never>()
