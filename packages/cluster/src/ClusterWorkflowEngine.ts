@@ -50,6 +50,16 @@ export const make = Effect.gen(function*() {
       >
     >
   >()
+  const ensureEntity = (workflow: Workflow.Any) => {
+    let entity = entities.get(workflow.name)
+    if (!entity) {
+      entity = makeWorkflowEntity(workflow) as any
+      workflows.set(workflow.name, workflow)
+      entities.set(workflow.name, entity as any)
+    }
+    return entity!
+  }
+
   const activities = new Map<string, {
     readonly activity: Activity.Any
     readonly context: Context.Context<any>
@@ -176,11 +186,8 @@ export const make = Effect.gen(function*() {
         if (entities.has(workflow.name)) {
           return Effect.dieMessage(`Workflow ${workflow.name} already registered`)
         }
-        const entity = makeWorkflowEntity(workflow)
-        workflows.set(workflow.name, workflow)
-        entities.set(workflow.name, entity as any)
         return sharding.registerEntity(
-          entity,
+          ensureEntity(workflow),
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
@@ -245,12 +252,14 @@ export const make = Effect.gen(function*() {
       })
     },
 
-    execute: ({ discard, executionId, payload, workflow }) =>
-      RcMap.get(clients, workflow.name).pipe(
+    execute: ({ discard, executionId, payload, workflow }) => {
+      ensureEntity(workflow)
+      return RcMap.get(clients, workflow.name).pipe(
         Effect.flatMap((make) => make(executionId).run(payload, { discard })),
         Effect.orDie,
         Effect.scoped
-      ),
+      )
+    },
 
     interrupt: Effect.fnUntraced(
       function*(this: WorkflowEngine["Type"], workflow, executionId) {

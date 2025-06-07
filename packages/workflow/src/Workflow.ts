@@ -79,13 +79,13 @@ export interface Workflow<
   ) => Effect.Effect<
     Discard extends true ? void : Success["Type"],
     Discard extends true ? never : Error["Type"],
-    WorkflowEngine | Registration<Name> | Payload["Context"] | Success["Context"] | Error["Context"]
+    WorkflowEngine | Payload["Context"] | Success["Context"] | Error["Context"]
   >
 
   /**
    * Interrupt a workflow execution for the given execution ID.
    */
-  readonly interrupt: (executionId: string) => Effect.Effect<void, never, WorkflowEngine | Registration<Name>>
+  readonly interrupt: (executionId: string) => Effect.Effect<void, never, WorkflowEngine>
 
   /**
    * Create a layer that registers the workflow and provides an effect to
@@ -97,7 +97,7 @@ export interface Workflow<
       executionId: string
     ) => Effect.Effect<Success["Type"], Error["Type"], R>
   ) => Layer.Layer<
-    Registration<Name> | WorkflowEngine,
+    WorkflowEngine,
     never,
     | WorkflowEngine
     | Exclude<R, WorkflowEngine | WorkflowInstance | Execution<Name> | Scope.Scope>
@@ -163,15 +163,6 @@ export interface AnyTaggedRequestSchema extends AnyStructSchema {
  * @since 1.0.0
  * @category Models
  */
-export interface Registration<Name extends string> {
-  readonly _: unique symbol
-  readonly name: Name
-}
-
-/**
- * @since 1.0.0
- * @category Models
- */
 export interface Execution<Name extends string> {
   readonly _: unique symbol
   readonly name: Name
@@ -190,18 +181,6 @@ export interface Any {
   readonly annotations: Context.Context<never>
   readonly executionId: (payload: any) => Effect.Effect<string>
 }
-
-/**
- * @since 1.0.0
- * @category Models
- */
-export type Registrations<Workflows extends Any> = Workflows extends Workflow<
-  infer _Name,
-  infer _Payload,
-  infer _Success,
-  infer _Error
-> ? Registration<_Name> :
-  never
 
 /**
  * @since 1.0.0
