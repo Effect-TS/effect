@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.1.6
+
+### Patch Changes
+
+- [#5009](https://github.com/Effect-TS/effect/pull/5009) [`2a9a0ef`](https://github.com/Effect-TS/effect/commit/2a9a0ef1181a4419e239edb2abfd95f359a4b7f7) Thanks @tim-smart! - remove Workflow.Registration type
+
 ## 0.1.5
 
 ### Patch Changes
