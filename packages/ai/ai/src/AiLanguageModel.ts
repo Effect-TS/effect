@@ -197,7 +197,10 @@ export declare namespace AiLanguageModel {
      * If a `toolkit` is specified, the large language model will additionally
      * be able to perform tool calls to augment its response.
      */
-    readonly generateText: <Tools extends AiTool.Any, Options>(
+    readonly generateText: <
+      Tools extends AiTool.Any,
+      Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
+    >(
       options: Options & GenerateTextOptions<Tools>
     ) => Effect.Effect<
       ExtractSuccess<Options>,
@@ -211,7 +214,10 @@ export declare namespace AiLanguageModel {
      * If a `toolkit` is specified, the large language model will additionally
      * be able to perform tool calls to augment its response.
      */
-    readonly streamText: <Tools extends AiTool.Any, Options>(
+    readonly streamText: <
+      Tools extends AiTool.Any,
+      Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
+    >(
       options: Options & GenerateTextOptions<Tools>
     ) => Stream.Stream<
       ExtractSuccess<Options>,
@@ -534,7 +540,10 @@ const resolveParts = Effect.fnUntraced(function*<Tools extends AiTool.Any>(optio
  * @since 1.0.0
  * @category Functions
  */
-export const generateText: <Tools extends AiTool.Any, Options>(
+export const generateText: <
+  Tools extends AiTool.Any,
+  Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
+>(
   options: Options & GenerateTextOptions<Tools>
 ) => Effect.Effect<
   ExtractSuccess<Options>,
@@ -571,7 +580,10 @@ export const generateObject: <A, I extends Record<string, unknown>, R>(
  * @since 1.0.0
  * @category Functions
  */
-export const streamText = <Tools extends AiTool.Any, Options>(
+export const streamText = <
+  Tools extends AiTool.Any,
+  Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
+>(
   options: Options & GenerateTextOptions<Tools>
 ): Stream.Stream<
   ExtractSuccess<Options>,
