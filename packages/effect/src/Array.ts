@@ -18,7 +18,7 @@ import * as Order from "./Order.js"
 import * as Predicate from "./Predicate.js"
 import * as Record from "./Record.js"
 import * as Tuple from "./Tuple.js"
-import type { NoInfer } from "./Types.js"
+import type { ForbiddenKeys, NoInfer } from "./Types.js"
 
 /**
  * @category type lambdas
@@ -3402,14 +3402,14 @@ export const Do: ReadonlyArray<{}> = of({})
  */
 export const bind: {
   <A extends object, N extends string, B>(
-    tag: Exclude<N, internalDoNotation.ForbiddenKeys<A>>,
+    tag: Exclude<N, ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => ReadonlyArray<B>
   ): (
     self: ReadonlyArray<A>
   ) => Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <A extends object, N extends string, B>(
     self: ReadonlyArray<A>,
-    tag: Exclude<N, internalDoNotation.ForbiddenKeys<A>>,
+    tag: Exclude<N, ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => ReadonlyArray<B>
   ): Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 } = internalDoNotation.bind<ReadonlyArrayTypeLambda>(map, flatMap) as any
@@ -3463,22 +3463,22 @@ export const bind: {
  */
 export const bindTo: {
   <N extends string>(
-    tag: Exclude<N, internalDoNotation.ForbiddenKeys<{}>>
+    tag: Exclude<N, ForbiddenKeys<{}>>
   ): <A>(self: ReadonlyArray<A>) => Array<{ [K in N]: A }>
   <A, N extends string>(
     self: ReadonlyArray<A>,
-    tag: Exclude<N, internalDoNotation.ForbiddenKeys<{}>>
+    tag: Exclude<N, ForbiddenKeys<{}>>
   ): Array<{ [K in N]: A }>
 } = internalDoNotation.bindTo<ReadonlyArrayTypeLambda>(map) as any
 
 const let_: {
   <N extends string, B, A extends object>(
-    tag: Exclude<N, internalDoNotation.ForbiddenKeys<A>>,
+    tag: Exclude<N, ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => B
   ): (self: ReadonlyArray<A>) => Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <N extends string, A extends object, B>(
     self: ReadonlyArray<A>,
-    tag: Exclude<N, internalDoNotation.ForbiddenKeys<A>>,
+    tag: Exclude<N, ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => B
   ): Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 } = internalDoNotation.let_<ReadonlyArrayTypeLambda>(map) as any
