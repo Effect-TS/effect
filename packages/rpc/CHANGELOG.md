@@ -1,5 +1,13 @@
 # @effect/rpc
 
+## 0.61.9
+
+### Patch Changes
+
+- [#5014](https://github.com/Effect-TS/effect/pull/5014) [`7bf6cb9`](https://github.com/Effect-TS/effect/commit/7bf6cb943810e403f472a901ed29ccbbf76a46b2) Thanks @tim-smart! - fix rpc middleware error schemas
+
+- [#5014](https://github.com/Effect-TS/effect/pull/5014) [`7bf6cb9`](https://github.com/Effect-TS/effect/commit/7bf6cb943810e403f472a901ed29ccbbf76a46b2) Thanks @tim-smart! - add ping timeouts to RpcClient
+
 ## 0.61.8
 
 ### Patch Changes
