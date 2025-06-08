@@ -141,7 +141,15 @@ export const make = Effect.gen(function*() {
       times: 3,
       schedule: Schedule.exponential(250)
     }),
-    Effect.orDie
+    Effect.orDie,
+    (effect, { activity, attempt, executionId }) =>
+      Effect.withSpan(effect, "WorkflowEngine.resetActivityAttempt", {
+        attributes: {
+          name: activity.name,
+          executionId,
+          attempt
+        }
+      })
   )
 
   const clearClock = Effect.fnUntraced(function*(options: {
@@ -289,40 +297,59 @@ export const make = Effect.gen(function*() {
         times: 3,
         schedule: Schedule.exponential(250)
       }),
-      Effect.orDie
+      Effect.orDie,
+      (effect, workflow, executionId) =>
+        Effect.withSpan(effect, "WorkflowEngine.interrupt", {
+          attributes: {
+            name: workflow.name,
+            executionId
+          }
+        })
     ),
 
-    activityExecute: Effect.fnUntraced(function*({ activity, attempt }) {
-      const context = yield* Effect.context<WorkflowInstance>()
-      const instance = Context.get(context, WorkflowInstance)
-      const activityId = `${instance.executionId}/${activity.name}`
-      activities.set(activityId, { activity, context })
-      const latch = activityLatches.get(activityId)
-      if (latch) {
-        yield* latch.release
-        activityLatches.delete(activityId)
-      }
-      const client = (yield* RcMap.get(clients, instance.workflow.name))(instance.executionId)
-      while (true) {
-        const result = yield* Effect.orDie(client.activity({ name: activity.name, attempt }))
-        // If the activity has suspended and did not execute, we need to resume
-        // it by resetting the attempt and re-executing.
-        if (result._tag === "Suspended" && activities.has(activityId)) {
-          yield* resetActivityAttempt({
-            workflow: instance.workflow,
-            executionId: instance.executionId,
-            activity,
-            attempt
-          })
-          continue
+    activityExecute: Effect.fnUntraced(
+      function*({ activity, attempt }) {
+        const context = yield* Effect.context<WorkflowInstance>()
+        const instance = Context.get(context, WorkflowInstance)
+        yield* Effect.annotateCurrentSpan("executionId", instance.executionId)
+        const activityId = `${instance.executionId}/${activity.name}`
+        activities.set(activityId, { activity, context })
+        const latch = activityLatches.get(activityId)
+        if (latch) {
+          yield* latch.release
+          activityLatches.delete(activityId)
         }
-        activities.delete(activityId)
-        return result
-      }
-    }, Effect.scoped),
+        const client = (yield* RcMap.get(clients, instance.workflow.name))(instance.executionId)
+        while (true) {
+          const result = yield* Effect.orDie(client.activity({ name: activity.name, attempt }))
+          // If the activity has suspended and did not execute, we need to resume
+          // it by resetting the attempt and re-executing.
+          if (result._tag === "Suspended" && activities.has(activityId)) {
+            yield* resetActivityAttempt({
+              workflow: instance.workflow,
+              executionId: instance.executionId,
+              activity,
+              attempt
+            })
+            continue
+          }
+          activities.delete(activityId)
+          return result
+        }
+      },
+      Effect.scoped,
+      (effect, { activity, attempt }) =>
+        Effect.withSpan(effect, "WorkflowEngine.activityExecute", {
+          attributes: {
+            name: activity.name,
+            attempt
+          }
+        })
+    ),
 
     deferredResult: (deferred) =>
       WorkflowInstance.pipe(
+        Effect.tap((instance) => Effect.annotateCurrentSpan("executionId", instance.executionId)),
         Effect.flatMap((instance) =>
           requestReply({
             workflow: instance.workflow,
@@ -338,18 +365,33 @@ export const make = Effect.gen(function*() {
           times: 3,
           schedule: Schedule.exponential(250)
         }),
-        Effect.orDie
+        Effect.orDie,
+        Effect.withSpan("WorkflowEngine.deferredResult", {
+          attributes: {
+            name: deferred.name
+          }
+        })
       ),
 
-    deferredDone: Effect.fnUntraced(function*({ deferred, executionId, exit, workflowName }) {
-      const client = yield* RcMap.get(clients, workflowName)
-      return yield* Effect.orDie(
-        client(executionId).deferred({
-          name: deferred.name,
-          exit
-        }, { discard: true })
-      )
-    }, Effect.scoped),
+    deferredDone: Effect.fnUntraced(
+      function*({ deferred, executionId, exit, workflowName }) {
+        const client = yield* RcMap.get(clients, workflowName)
+        return yield* Effect.orDie(
+          client(executionId).deferred({
+            name: deferred.name,
+            exit
+          }, { discard: true })
+        )
+      },
+      Effect.scoped,
+      (effect, { deferred, executionId }) =>
+        Effect.withSpan(effect, "WorkflowEngine.deferredDone", {
+          attributes: {
+            name: deferred.name,
+            executionId
+          }
+        })
+    ),
 
     scheduleClock(options) {
       const client = clockClient(options.executionId)
