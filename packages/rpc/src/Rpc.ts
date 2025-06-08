@@ -678,15 +678,17 @@ export const exitSchema = <R extends Any>(
     return exitSchemaCache.get(self) as any
   }
   const rpc = self as any as AnyWithProps
+  const failures = new Set<Schema.Schema.All>([rpc.errorSchema])
   const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema.ast)
+  if (Option.isSome(streamSchemas)) {
+    failures.add(streamSchemas.value.failure)
+  }
+  for (const middleware of rpc.middlewares) {
+    failures.add(middleware.failure)
+  }
   const schema = Schema.Exit({
     success: Option.isSome(streamSchemas) ? Schema.Void : rpc.successSchema,
-    failure: Option.isSome(streamSchemas) ?
-      Schema.Union(
-        streamSchemas.value.failure,
-        rpc.errorSchema
-      ) :
-      rpc.errorSchema,
+    failure: Schema.Union(...failures),
     defect: Schema.Defect
   })
   exitSchemaCache.set(self, schema)

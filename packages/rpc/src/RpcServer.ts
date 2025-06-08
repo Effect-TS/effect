@@ -533,13 +533,6 @@ export const make: <Rpcs extends Rpc.Any>(
     if (!schemas) {
       const entry = context.unsafeMap.get(rpc.key) as Rpc.Handler<Rpcs["_tag"]>
       const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema.ast)
-      const failures = new Set([rpc.errorSchema])
-      if (Option.isSome(streamSchemas)) {
-        failures.add(streamSchemas.value.failure)
-      }
-      for (const middleware of rpc.middlewares) {
-        failures.add(middleware.failure)
-      }
       schemas = {
         decode: Schema.decodeUnknown(rpc.payloadSchema as any),
         encodeChunk: Schema.encodeUnknown(
@@ -572,8 +565,8 @@ export const make: <Rpcs extends Rpc.Any>(
         client.schemas.delete(requestId)
         const defect = Cause.squash(Cause.map(cause, TreeFormatter.formatErrorSync))
         return Effect.zipRight(
-          server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] }),
-          sendRequestDefect(client, requestId, defect)
+          sendRequestDefect(client, requestId, defect),
+          server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
         )
       })
     )

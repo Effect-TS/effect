@@ -791,8 +791,11 @@ export const makeProtocolSocket = (options?: {
 
     let parser = serialization.unsafeMake()
 
+    const pinger = yield* makePinger(write(parser.encode(constPing)))
+
     yield* Effect.suspend(() => {
       parser = serialization.unsafeMake()
+      pinger.reset()
       return socket.runRaw((message) => {
         try {
           const responses = parser.decode(message) as Array<FromServerEncoded>
@@ -800,13 +803,29 @@ export const makeProtocolSocket = (options?: {
           let i = 0
           return Effect.whileLoop({
             while: () => i < responses.length,
-            body: () => writeResponse(responses[i++]),
+            body: () => {
+              const response = responses[i++]
+              if (response._tag === "Pong") {
+                pinger.onPong()
+              }
+              return writeResponse(response)
+            },
             step: constVoid
           })
         } catch (defect) {
           return writeResponse({ _tag: "Defect", defect })
         }
-      })
+      }).pipe(
+        Effect.raceFirst(Effect.zipRight(
+          pinger.timeout,
+          Effect.fail(
+            new Socket.SocketGenericError({
+              reason: "OpenTimeout",
+              cause: new Error("ping timeout")
+            })
+          )
+        ))
+      )
     }).pipe(
       Effect.zipRight(Effect.fail(
         new Socket.SocketCloseError({
@@ -833,14 +852,6 @@ export const makeProtocolSocket = (options?: {
       Effect.forkScoped
     )
 
-    yield* Effect.suspend(() => write(parser.encode(constPing))).pipe(
-      Effect.delay("30 seconds"),
-      Effect.ignore,
-      Effect.forever,
-      Effect.interruptible,
-      Effect.forkScoped
-    )
-
     return {
       send(request) {
         return Effect.orDie(write(parser.encode(request)))
@@ -849,6 +860,30 @@ export const makeProtocolSocket = (options?: {
       supportsTransferables: false
     }
   }))
+
+const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect<A, E, R>) {
+  let recievedPong = true
+  const latch = Effect.unsafeMakeLatch()
+  const reset = () => {
+    recievedPong = true
+    latch.unsafeClose()
+  }
+  const onPong = () => {
+    recievedPong = true
+  }
+  yield* Effect.suspend(() => {
+    if (!recievedPong) return latch.open
+    recievedPong = false
+    return writePing
+  }).pipe(
+    Effect.delay("10 seconds"),
+    Effect.ignore,
+    Effect.forever,
+    Effect.interruptible,
+    Effect.forkScoped
+  )
+  return { timeout: latch.await, reset, onPong } as const
+})
 
 /**
  * @since 1.0.0
