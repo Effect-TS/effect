@@ -1,5 +1,11 @@
 # effect
 
+## 3.16.5
+
+### Patch Changes
+
+- [#5008](https://github.com/Effect-TS/effect/pull/5008) [`bf418ef`](https://github.com/Effect-TS/effect/commit/bf418ef14a0f2ec965535793d5cea8fa8ba177ac) Thanks @jdharrisnz! - Record.findFirst: Accept ReadonlyRecord type input and optimise the loop
+
 ## 3.16.4
 
 ### Patch Changes

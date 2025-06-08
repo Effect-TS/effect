@@ -1,5 +1,18 @@
 # @effect/cluster
 
+## 0.38.10
+
+### Patch Changes
+
+- [#5016](https://github.com/Effect-TS/effect/pull/5016) [`6e2e886`](https://github.com/Effect-TS/effect/commit/6e2e886f060c4ac057926b68d2e441c279480c30) Thanks @tim-smart! - fix ShardManager metrics
+
+- Updated dependencies [[`bf418ef`](https://github.com/Effect-TS/effect/commit/bf418ef14a0f2ec965535793d5cea8fa8ba177ac)]:
+  - effect@3.16.5
+  - @effect/platform@0.84.9
+  - @effect/rpc@0.61.10
+  - @effect/sql@0.37.10
+  - @effect/workflow@0.1.8
+
 ## 0.38.9
 
 ### Patch Changes
