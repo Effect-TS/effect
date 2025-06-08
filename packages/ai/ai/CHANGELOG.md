@@ -1,5 +1,14 @@
 # @effect/ai
 
+## 0.18.11
+
+### Patch Changes
+
+- [#5011](https://github.com/Effect-TS/effect/pull/5011) [`2dc5f93`](https://github.com/Effect-TS/effect/commit/2dc5f932f89d260e2f6139c9b89e0548d11d94c2) Thanks @IMax153! - disallow excess options in `AiLanguageModel.generateText` / `AiLanguageModel.streamText`
+
+- Updated dependencies []:
+  - @effect/experimental@0.48.9
+
 ## 0.18.10
 
 ### Patch Changes
