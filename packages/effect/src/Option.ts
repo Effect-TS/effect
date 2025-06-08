@@ -15,7 +15,7 @@ import type { Order } from "./Order.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type { Covariant, NoInfer, NotFunction } from "./Types.js"
+import type { Covariant, ForbiddenKeys, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
@@ -1975,18 +1975,18 @@ export const exists: {
  * @since 2.0.0
  */
 export const bindTo: {
-  <N extends string>(name: N): <A>(self: Option<A>) => Option<{ [K in N]: A }>
-  <A, N extends string>(self: Option<A>, name: N): Option<{ [K in N]: A }>
+  <N extends string>(name: Exclude<N, ForbiddenKeys<{}>>): <A>(self: Option<A>) => Option<{ [K in N]: A }>
+  <A, N extends string>(self: Option<A>, name: Exclude<N, ForbiddenKeys<{}>>): Option<{ [K in N]: A }>
 } = doNotation.bindTo<OptionTypeLambda>(map)
 
 const let_: {
   <N extends string, A extends object, B>(
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => B
   ): (self: Option<A>) => Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <A extends object, N extends string, B>(
     self: Option<A>,
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => B
   ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 } = doNotation.let_<OptionTypeLambda>(map)
@@ -2063,12 +2063,12 @@ export {
  */
 export const bind: {
   <N extends string, A extends object, B>(
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => Option<B>
   ): (self: Option<A>) => Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <A extends object, N extends string, B>(
     self: Option<A>,
-    name: Exclude<N, keyof A>,
+    name: Exclude<N, ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => Option<B>
   ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 } = doNotation.bind<OptionTypeLambda>(map, flatMap)

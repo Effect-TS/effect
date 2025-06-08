@@ -398,9 +398,6 @@ export const diffFiberRefsAndRuntimeFlags = <A, E, R>(
 export const Do: Effect.Effect<{}> = core.succeed({})
 
 /* @internal */
-export type ForbiddenKeys<A> = doNotation.ForbiddenKeys<A>
-
-/* @internal */
 export const bind: {
   <N extends string, A extends object, B, E2, R2>(
     name: Exclude<N, doNotation.ForbiddenKeys<A>>,
@@ -417,8 +414,13 @@ export const bind: {
 
 /* @internal */
 export const bindTo: {
-  <N extends string>(name: Exclude<N, ForbiddenKeys<{}>>): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<{ [K in N]: A }, E, R>
-  <A, E, R, N extends string>(self: Effect.Effect<A, E, R>, name: Exclude<N, ForbiddenKeys<{}>>): Effect.Effect<{ [K in N]: A }, E, R>
+  <N extends string>(
+    name: Exclude<N, doNotation.ForbiddenKeys<{}>>
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(
+    self: Effect.Effect<A, E, R>,
+    name: Exclude<N, doNotation.ForbiddenKeys<{}>>
+  ): Effect.Effect<{ [K in N]: A }, E, R>
 } = doNotation.bindTo<Effect.EffectTypeLambda>(core.map)
 
 /* @internal */

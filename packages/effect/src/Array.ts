@@ -3402,14 +3402,14 @@ export const Do: ReadonlyArray<{}> = of({})
  */
 export const bind: {
   <A extends object, N extends string, B>(
-    tag: Exclude<N, keyof A>,
+    tag: Exclude<N, internalDoNotation.ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => ReadonlyArray<B>
   ): (
     self: ReadonlyArray<A>
   ) => Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <A extends object, N extends string, B>(
     self: ReadonlyArray<A>,
-    tag: Exclude<N, keyof A>,
+    tag: Exclude<N, internalDoNotation.ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => ReadonlyArray<B>
   ): Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 } = internalDoNotation.bind<ReadonlyArrayTypeLambda>(map, flatMap) as any
@@ -3462,18 +3462,23 @@ export const bind: {
  * @since 3.2.0
  */
 export const bindTo: {
-  <N extends string>(tag: N): <A>(self: ReadonlyArray<A>) => Array<{ [K in N]: A }>
-  <A, N extends string>(self: ReadonlyArray<A>, tag: N): Array<{ [K in N]: A }>
+  <N extends string>(
+    tag: Exclude<N, internalDoNotation.ForbiddenKeys<{}>>
+  ): <A>(self: ReadonlyArray<A>) => Array<{ [K in N]: A }>
+  <A, N extends string>(
+    self: ReadonlyArray<A>,
+    tag: Exclude<N, internalDoNotation.ForbiddenKeys<{}>>
+  ): Array<{ [K in N]: A }>
 } = internalDoNotation.bindTo<ReadonlyArrayTypeLambda>(map) as any
 
 const let_: {
   <N extends string, B, A extends object>(
-    tag: Exclude<N, keyof A>,
+    tag: Exclude<N, internalDoNotation.ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => B
   ): (self: ReadonlyArray<A>) => Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <N extends string, A extends object, B>(
     self: ReadonlyArray<A>,
-    tag: Exclude<N, keyof A>,
+    tag: Exclude<N, internalDoNotation.ForbiddenKeys<A>>,
     f: (a: NoInfer<A>) => B
   ): Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 } = internalDoNotation.let_<ReadonlyArrayTypeLambda>(map) as any

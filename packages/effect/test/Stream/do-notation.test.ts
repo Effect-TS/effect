@@ -22,6 +22,16 @@ describe("do notation", () => {
   it("bindTo", () => {
     expectRight(pipe(Stream.succeed(1), Stream.bindTo("a")), { a: 1 })
     expectLeft(pipe(Stream.fail("left"), Stream.bindTo("a")), "left")
+    expectRight(
+      pipe(
+        Stream.succeed(1),
+        // @ts-expect-error
+        Stream.bindTo("__proto__"),
+        Stream.let("x", () => 2)
+      ),
+      // @ts-expect-error
+      { x: 2 }
+    )
   })
 
   it("bind", () => {
@@ -37,6 +47,21 @@ describe("do notation", () => {
       pipe(Stream.fail("left"), Stream.bindTo("a"), Stream.bind("b", () => Stream.succeed(2))),
       "left"
     )
+    expectRight(
+      pipe(
+        Stream.succeed(1),
+        Stream.bindTo("a"),
+        (x) =>
+          pipe(
+            x,
+            // @ts-expect-error
+            Stream.bind("__proto__", ({ a }) => Stream.succeed(a + 1))
+          ) as Stream.Stream<{ a: number; __proto__: number }, unknown, never>,
+        Stream.let("x", () => 2)
+      ),
+      // @ts-expect-error
+      { a: 1, x: 2 }
+    )
   })
 
   it("let", () => {
@@ -44,6 +69,17 @@ describe("do notation", () => {
     expectLeft(
       pipe(Stream.fail("left"), Stream.bindTo("a"), Stream.let("b", () => 2)),
       "left"
+    )
+    expectRight(
+      pipe(
+        Stream.succeed(1),
+        Stream.bindTo("a"),
+        // @ts-expect-error
+        Stream.let("__proto__", ({ a }) => a + 1),
+        Stream.let("x", ({ a }) => a + 2)
+      ),
+      // @ts-expect-error
+      { a: 1, x: 3 }
     )
   })
 })

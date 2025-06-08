@@ -349,3 +349,8 @@ export type NoExcessProperties<T, U> = T & { readonly [K in Exclude<keyof U, key
  * @since 3.15.0
  */
 export type Ctor<T = {}> = new(...args: Array<any>) => T
+
+/**
+ * @since 3.17.4
+ */
+export type ForbiddenKeys<A> = keyof A | "__proto__"

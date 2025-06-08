@@ -22,8 +22,16 @@ describe("do notation", () => {
   it("bindTo", () => {
     expectRight(pipe(Effect.succeed(1), Effect.bindTo("a")), { a: 1 })
     expectLeft(pipe(Effect.fail("left"), Effect.bindTo("a")), "left")
-    // @ts-expect-error
-    expectRight(pipe(Effect.succeed(1), Effect.bindTo("__proto__")), { __proto__: 1 })
+    expectRight(
+      pipe(
+        Effect.succeed(1),
+        // @ts-expect-error
+        Effect.bindTo("__proto__"),
+        Effect.bind("x", () => Effect.succeed(2))
+      ),
+      // @ts-expect-error
+      { x: 2 }
+    )
   })
 
   it("bind", () => {
@@ -39,11 +47,16 @@ describe("do notation", () => {
       pipe(Effect.fail("left"), Effect.bindTo("a"), Effect.bind("b", () => Effect.succeed(2))),
       "left"
     )
-    // @ts-expect-error
-    expectRight(pipe(Effect.succeed(1), Effect.bind("__proto__"), Effect.bind("b", ({ a }) => Effect.succeed(a + 1))), {
-      a: 1,
-      b: 2
-    })
+    expectRight(
+      pipe(
+        Effect.Do,
+        // @ts-expect-error
+        Effect.bind("__proto__", () => Effect.succeed(1)),
+        Effect.bind("b", ({ __proto__ }) => Effect.succeed(2))
+      ),
+      // @ts-expect-error
+      { b: 2 }
+    )
   })
 
   it("let", () => {
@@ -52,8 +65,17 @@ describe("do notation", () => {
       pipe(Effect.fail("left"), Effect.bindTo("a"), Effect.let("b", () => 2)),
       "left"
     )
-    // @ts-expect-error
-    expectRight(pipe(Effect.succeed(1), Effect.bindTo("a"), Effect.let("__proto__", ({ a }) => a + 1)), { a: 1, __proto__: 2 })
+    expectRight(
+      pipe(
+        Effect.succeed(1),
+        Effect.bindTo("a"),
+        // @ts-expect-error
+        Effect.let("__proto__", ({ a }) => a + 1),
+        Effect.bind("x", () => Effect.succeed(3))
+      ),
+      // @ts-expect-error
+      { a: 1, x: 3 }
+    )
   })
 
   describe("bindAll", () => {
