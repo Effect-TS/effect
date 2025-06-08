@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.1.9
+
+### Patch Changes
+
+- [#5018](https://github.com/Effect-TS/effect/pull/5018) [`d350176`](https://github.com/Effect-TS/effect/commit/d3501768d42d7ff3ebc2d414c95cc1fcce15894a) Thanks @tim-smart! - prevent shadowing of Workflow context
+
 ## 0.1.8
 
 ### Patch Changes

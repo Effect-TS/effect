@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.38.11
+
+### Patch Changes
+
+- [#5017](https://github.com/Effect-TS/effect/pull/5017) [`cc283b9`](https://github.com/Effect-TS/effect/commit/cc283b968235da3caf6c3e3a09b525fe09618fee) Thanks @tim-smart! - add more spans to ClusterWorkflowEngine
+
+- Updated dependencies [[`d350176`](https://github.com/Effect-TS/effect/commit/d3501768d42d7ff3ebc2d414c95cc1fcce15894a)]:
+  - @effect/workflow@0.1.9
+
 ## 0.38.10
 
 ### Patch Changes
