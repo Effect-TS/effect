@@ -162,6 +162,25 @@ export class State {
     )
   }
 
+  get shardStats(): {
+    readonly perRunner: Map<string, number>
+    readonly unassigned: number
+  } {
+    const perRunner = new Map<string, number>()
+    let unassigned = 0
+    for (const [, address] of this.assignments) {
+      if (Option.isNone(address)) {
+        unassigned++
+        continue
+      }
+      const runner = address.value.toString()
+      const count = perRunner.get(runner) ?? 0
+      perRunner.set(runner, count + 1)
+    }
+
+    return { perRunner, unassigned }
+  }
+
   shardsPerRunner(group: string): MutableHashMap.MutableHashMap<RunnerAddress, Set<number>> {
     const groupRunners = this.runners.get(group)
     const shards = MutableHashMap.empty<RunnerAddress, Set<number>>()

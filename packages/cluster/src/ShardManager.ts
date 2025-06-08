@@ -22,6 +22,7 @@ import * as Iterable from "effect/Iterable"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Metric from "effect/Metric"
+import * as MetricLabel from "effect/MetricLabel"
 import * as MutableHashMap from "effect/MutableHashMap"
 import * as MutableHashSet from "effect/MutableHashSet"
 import * as Option from "effect/Option"
@@ -431,14 +432,21 @@ export const make = Effect.gen(function*() {
   const scope = yield* Effect.scope
   const events = yield* PubSub.unbounded<ShardingEvent>()
 
-  yield* Metric.incrementBy(ClusterMetrics.runners, MutableHashMap.size(state.allRunners))
-
-  for (const [, address] of state.assignments) {
-    const metric = Option.isSome(address) ?
-      Metric.tagged(ClusterMetrics.assignedShards, "address", address.toString()) :
-      ClusterMetrics.unassignedShards
-    yield* Metric.increment(metric)
+  function updateRunnerMetrics() {
+    ClusterMetrics.runners.unsafeUpdate(MutableHashMap.size(state.allRunners), [])
   }
+
+  function updateShardMetrics() {
+    const stats = state.shardStats
+    for (const [address, shardCount] of stats.perRunner) {
+      ClusterMetrics.assignedShards.unsafeUpdate(
+        shardCount,
+        [MetricLabel.make("address", address)]
+      )
+    }
+    ClusterMetrics.unassignedShards.unsafeUpdate(stats.unassigned, [])
+  }
+  updateShardMetrics()
 
   function withRetry<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<void, never, R> {
     return effect.pipe(
@@ -493,10 +501,11 @@ export const make = Effect.gen(function*() {
   let machineId = 0
   const register = Effect.fnUntraced(function*(runner: Runner) {
     yield* Effect.logInfo(`Registering runner ${Runner.pretty(runner)}`)
-    state.addRunner(runner, clock.unsafeCurrentTimeMillis())
 
-    yield* Metric.increment(ClusterMetrics.runners)
+    state.addRunner(runner, clock.unsafeCurrentTimeMillis())
+    updateRunnerMetrics()
     yield* PubSub.publish(events, ShardingEvent.RunnerRegistered({ address: runner.address }))
+
     if (state.allUnassignedShards.length > 0) {
       yield* rebalance(false)
     }
@@ -516,13 +525,9 @@ export const make = Effect.gen(function*() {
     }
     state.addAssignments(unassignments, Option.none())
     state.removeRunner(address)
-    yield* Metric.incrementBy(ClusterMetrics.runners, -1)
+    updateRunnerMetrics()
 
     if (unassignments.length > 0) {
-      yield* Metric.incrementBy(
-        Metric.tagged(ClusterMetrics.unassignedShards, "runner_address", address.toString()),
-        unassignments.length
-      )
       yield* PubSub.publish(events, ShardingEvent.RunnerUnregistered({ address }))
     }
 
@@ -639,18 +644,8 @@ export const make = Effect.gen(function*() {
               MutableHashMap.remove(assignments, address)
               return Effect.void
             },
-            onSuccess: () => {
-              const shardCount = MutableHashSet.size(shards)
-              return Metric.incrementBy(
-                Metric.tagged(ClusterMetrics.assignedShards, "runner_address", address.toString()),
-                -shardCount
-              ).pipe(
-                Effect.zipRight(Metric.incrementBy(ClusterMetrics.unassignedShards, shardCount)),
-                Effect.zipRight(
-                  PubSub.publish(events, ShardingEvent.ShardsUnassigned({ address, shards: Array.from(shards) }))
-                )
-              )
-            }
+            onSuccess: () =>
+              PubSub.publish(events, ShardingEvent.ShardsUnassigned({ address, shards: Array.from(shards) }))
           })
         )
       )
@@ -677,23 +672,15 @@ export const make = Effect.gen(function*() {
               MutableHashSet.add(failedRunners, address)
               return Effect.void
             },
-            onSuccess: () => {
-              const shardCount = MutableHashSet.size(shards)
-              return Metric.incrementBy(
-                Metric.tagged(ClusterMetrics.assignedShards, "runner_address", address.toString()),
-                -shardCount
-              ).pipe(
-                Effect.zipRight(Metric.incrementBy(ClusterMetrics.unassignedShards, -shardCount)),
-                Effect.zipRight(
-                  PubSub.publish(events, ShardingEvent.ShardsAssigned({ address, shards: Array.from(shards) }))
-                )
-              )
-            }
+            onSuccess: () =>
+              PubSub.publish(events, ShardingEvent.ShardsAssigned({ address, shards: Array.from(shards) }))
           })
         )
       )
     }
     yield* FiberSet.awaitEmpty(rebalanceFibers)
+
+    updateShardMetrics()
 
     const wereFailures = MutableHashSet.size(failedRunners) > 0
     if (wereFailures) {
