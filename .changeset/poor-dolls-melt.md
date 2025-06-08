@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Prevent binding **proto** to lexical scope in do notation
+Prevent binding `__proto__` to lexical scope in do notation
