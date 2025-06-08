@@ -910,7 +910,7 @@ export const bind: {
  */
 export const bindTo: {
   <N extends string>(name: Exclude<N, ForbiddenKeys<{}>>): <R, L>(self: Either<R, L>) => Either<{ [K in N]: R }, L>
-  <R, L, N extends string>(self: Either<R, L>, name: Exclude<N, ForbiddenKeys<R>>): Either<{ [K in N]: R }, L>
+  <R, L, N extends string>(self: Either<R, L>, name: Exclude<N, ForbiddenKeys<{}>>): Either<{ [K in N]: R }, L>
 } = doNotation.bindTo<EitherTypeLambda>(map)
 
 const let_: {
