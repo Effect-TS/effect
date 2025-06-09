@@ -88,6 +88,8 @@ export const make = Effect.fnUntraced(function*<
     readonly maxIdleTime?: DurationInput | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly mailboxCapacity?: number | "unbounded" | undefined
+    readonly disableFatalDefects?: boolean | undefined
+    readonly defectRetryPolicy?: Schedule.Schedule<any, unknown, never> | undefined
   }
 ) {
   const config = yield* ShardingConfig
@@ -97,6 +99,9 @@ export const make = Effect.fnUntraced(function*<
   const mailboxCapacity = options.mailboxCapacity ?? config.entityMailboxCapacity
   const clock = yield* Effect.clock
   const context = yield* Effect.context<Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | RX>()
+  const retryDriver = yield* Schedule.driver(
+    options.defectRetryPolicy ? Schedule.andThen(options.defectRetryPolicy, defaultRetryPolicy) : defaultRetryPolicy
+  )
 
   const activeServers = new Map<EntityId, EntityState>()
 
@@ -141,6 +146,7 @@ export const make = Effect.fnUntraced(function*<
         const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
           spanPrefix: `${entity.type}(${address.entityId})`,
           concurrency: options.concurrency ?? 1,
+          disableFatalDefects: options.disableFatalDefects,
           onFromServer(response): Effect.Effect<void> {
             switch (response._tag) {
               case "Exit": {
@@ -210,19 +216,7 @@ export const make = Effect.fnUntraced(function*<
                 ))
               }
               case "Defect": {
-                const effect = writeRef.unsafeRebuild()
-                defectRequestIds = Array.from(activeRequests.keys())
-                return Effect.logError("Defect in entity, restarting", Cause.die(response.defect)).pipe(
-                  Effect.andThen(effect.pipe(
-                    Effect.tapErrorCause(Effect.logError),
-                    Effect.retry(Schedule.spaced(500))
-                  )),
-                  Effect.annotateLogs({
-                    module: "EntityManager",
-                    address,
-                    runner: options.runnerAddress
-                  })
-                )
+                return Effect.forkIn(onDefect(Cause.die(response.defect)), managerScope)
               }
               case "ClientEnd": {
                 return endLatch.open
@@ -258,6 +252,21 @@ export const make = Effect.fnUntraced(function*<
         return server.write
       })
     )
+
+    function onDefect(cause: Cause.Cause<never>): Effect.Effect<void> {
+      const effect = writeRef.unsafeRebuild()
+      defectRequestIds = Array.from(activeRequests.keys())
+      return Effect.logError("Defect in entity, restarting", cause).pipe(
+        Effect.andThen(Effect.ignore(retryDriver.next(void 0))),
+        Effect.andThen(effect),
+        Effect.annotateLogs({
+          module: "EntityManager",
+          address,
+          runner: options.runnerAddress
+        }),
+        Effect.catchAllCause(onDefect)
+      )
+    }
 
     const state: EntityState = {
       address,
@@ -481,6 +490,10 @@ export const make = Effect.fnUntraced(function*<
     activeEntityCount: Effect.sync(() => activeServers.size)
   })
 })
+
+const defaultRetryPolicy = Schedule.exponential(500, 1.5).pipe(
+  Schedule.union(Schedule.spaced("10 seconds"))
+)
 
 const makeMessageSchema = <Rpcs extends Rpc.Any>(entity: Entity<Rpcs>): Schema.Schema<
   {

@@ -75,6 +75,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly disableClientAcks?: boolean | undefined
     readonly concurrency?: number | "unbounded" | undefined
+    readonly disableFatalDefects?: boolean | undefined
   }
 ) => Effect.Effect<
   RpcServer<Rpcs>,
@@ -89,6 +90,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly disableClientAcks?: boolean | undefined
     readonly concurrency?: number | "unbounded" | undefined
+    readonly disableFatalDefects?: boolean | undefined
   }
 ) {
   const enableTracing = options.disableTracing !== true
@@ -96,6 +98,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   const supportsAck = options.disableClientAcks !== true
   const spanPrefix = options.spanPrefix ?? "RpcServer"
   const concurrency = options.concurrency ?? "unbounded"
+  const disableFatalDefects = options.disableFatalDefects ?? false
   const context = yield* Effect.context<Rpc.ToHandler<Rpcs> | Scope.Scope>()
   const scope = Context.get(context, Scope.Scope)
   const fiberSet = yield* FiberSet.make()
@@ -261,6 +264,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         },
         onFailure: (cause) => {
           responded = true
+          if (!disableFatalDefects && Cause.isDie(cause)) {
+            return sendDefect(client, Cause.squash(cause))
+          }
           return options.onFromServer({
             _tag: "Exit",
             clientId: client.id,

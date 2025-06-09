@@ -9,7 +9,21 @@ import {
   Snowflake
 } from "@effect/cluster"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Array, Cause, Chunk, Effect, Exit, Fiber, FiberId, Layer, Mailbox, Option, Stream, TestClock } from "effect"
+import {
+  Array,
+  Cause,
+  Chunk,
+  Effect,
+  Exit,
+  Fiber,
+  FiberId,
+  Layer,
+  Mailbox,
+  MutableRef,
+  Option,
+  Stream,
+  TestClock
+} from "effect"
 import { TestEntity, TestEntityNoState, TestEntityState, User } from "./TestEntity.js"
 
 describe.concurrent("Sharding", () => {
@@ -496,6 +510,18 @@ describe.concurrent("Sharding", () => {
       )
       expect(error._tag).toEqual("EntityNotManagedByRunner")
     }).pipe(Effect.provide(TestShardingWithoutEntities)))
+
+  it.scoped("restart on defect", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      const client = makeClient("1")
+      MutableRef.set(state.defectTrigger, true)
+      const result = yield* client.GetUser({ id: 123 })
+      expect(result).toEqual(new User({ id: 123, name: "User 123" }))
+      expect(state.layerBuilds.current).toEqual(2)
+    }).pipe(Effect.provide(TestSharding)))
 })
 
 const TestShardingConfig = ShardingConfig.layer({

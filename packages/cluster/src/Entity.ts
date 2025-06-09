@@ -18,6 +18,7 @@ import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
+import type * as Schedule from "effect/Schedule"
 import { Scope } from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type {
@@ -127,6 +128,8 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
       readonly maxIdleTime?: DurationInput | undefined
       readonly concurrency?: number | "unbounded" | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
+      readonly disableFatalDefects?: boolean | undefined
+      readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
     }
   ): Layer.Layer<
     never,
@@ -163,6 +166,8 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
     options?: {
       readonly maxIdleTime?: DurationInput | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
+      readonly disableFatalDefects?: boolean | undefined
+      readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
     }
   ): Layer.Layer<
     never,
@@ -234,6 +239,9 @@ const Proto = {
     options?: {
       readonly maxIdleTime?: DurationInput | undefined
       readonly concurrency?: number | "unbounded" | undefined
+      readonly mailboxCapacity?: number | "unbounded" | undefined
+      readonly disableFatalDefects?: boolean | undefined
+      readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
     }
   ): Layer.Layer<
     never,
@@ -276,6 +284,9 @@ const Proto = {
       >,
     options?: {
       readonly maxIdleTime?: DurationInput | undefined
+      readonly mailboxCapacity?: number | "unbounded" | undefined
+      readonly disableFatalDefects?: boolean | undefined
+      readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
     }
   ) {
     const buildHandlers = Effect.gen(this, function*() {
