@@ -2,7 +2,7 @@ import type { Envelope } from "@effect/cluster"
 import { ClusterSchema, Entity } from "@effect/cluster"
 import type { RpcGroup } from "@effect/rpc"
 import { Rpc, RpcSchema } from "@effect/rpc"
-import { Effect, Layer, Mailbox, Option, PrimaryKey, Schema, Stream } from "effect"
+import { Effect, Layer, Mailbox, MutableRef, Option, PrimaryKey, Schema, Stream } from "effect"
 
 export class User extends Schema.Class<User>("User")({
   id: Schema.Number,
@@ -58,18 +58,24 @@ export class TestEntityState extends Effect.Service<TestEntityState>()("TestEnti
       RpcGroup.Rpcs<typeof TestEntity.protocol> extends infer R ? R extends Rpc.Any ? Envelope.Request<R> : never
         : never
     >()
+    const defectTrigger = MutableRef.make(false)
+    const layerBuilds = MutableRef.make(0)
 
     return {
       messages,
       streamMessages,
       envelopes,
-      interrupts
+      interrupts,
+      defectTrigger,
+      layerBuilds
     } as const
   })
 }) {}
 
 export const TestEntityNoState = TestEntity.toLayer(Effect.gen(function*() {
   const state = yield* TestEntityState
+
+  MutableRef.update(state.layerBuilds, (count) => count + 1)
 
   const never = (envelope: any) =>
     Effect.suspend(() => {
@@ -83,6 +89,10 @@ export const TestEntityNoState = TestEntity.toLayer(Effect.gen(function*() {
     GetUser: (envelope) =>
       Effect.sync(() => {
         state.envelopes.unsafeOffer(envelope)
+        if (state.defectTrigger.current) {
+          MutableRef.set(state.defectTrigger, false)
+          throw new Error("User not found")
+        }
         return new User({ id: envelope.payload.id, name: `User ${envelope.payload.id}` })
       }),
     GetUserVolatile: (envelope) =>

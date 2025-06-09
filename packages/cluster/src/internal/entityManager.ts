@@ -88,7 +88,8 @@ export const make = Effect.fnUntraced(function*<
     readonly maxIdleTime?: DurationInput | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly mailboxCapacity?: number | "unbounded" | undefined
-    readonly fatalDefects?: boolean | undefined
+    readonly disableFatalDefects?: boolean | undefined
+    readonly retryPolicy?: Schedule.Schedule<any, unknown, never> | undefined
   }
 ) {
   const config = yield* ShardingConfig
@@ -98,6 +99,9 @@ export const make = Effect.fnUntraced(function*<
   const mailboxCapacity = options.mailboxCapacity ?? config.entityMailboxCapacity
   const clock = yield* Effect.clock
   const context = yield* Effect.context<Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | RX>()
+  const retryDriver = yield* Schedule.driver(
+    options.retryPolicy ? Schedule.andThen(options.retryPolicy, Schedule.forever) : Schedule.forever
+  )
 
   const activeServers = new Map<EntityId, EntityState>()
 
@@ -142,7 +146,7 @@ export const make = Effect.fnUntraced(function*<
         const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
           spanPrefix: `${entity.type}(${address.entityId})`,
           concurrency: options.concurrency ?? 1,
-          fatalDefects: options.fatalDefects ?? false,
+          disableFatalDefects: options.disableFatalDefects,
           onFromServer(response): Effect.Effect<void> {
             switch (response._tag) {
               case "Exit": {
@@ -215,15 +219,19 @@ export const make = Effect.fnUntraced(function*<
                 const effect = writeRef.unsafeRebuild()
                 defectRequestIds = Array.from(activeRequests.keys())
                 return Effect.logError("Defect in entity, restarting", Cause.die(response.defect)).pipe(
+                  Effect.andThen(Effect.ignore(retryDriver.next(void 0))),
                   Effect.andThen(effect.pipe(
-                    Effect.tapErrorCause(Effect.logError),
+                    Effect.tapErrorCause((cause) => {
+                      return Effect.logError(cause)
+                    }),
                     Effect.retry(Schedule.spaced(500))
                   )),
                   Effect.annotateLogs({
                     module: "EntityManager",
                     address,
                     runner: options.runnerAddress
-                  })
+                  }),
+                  Effect.forkIn(managerScope)
                 )
               }
               case "ClientEnd": {
