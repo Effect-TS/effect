@@ -216,18 +216,7 @@ export const make = Effect.fnUntraced(function*<
                 ))
               }
               case "Defect": {
-                const effect = writeRef.unsafeRebuild()
-                defectRequestIds = Array.from(activeRequests.keys())
-                return Effect.logError("Defect in entity, restarting", Cause.die(response.defect)).pipe(
-                  Effect.andThen(Effect.ignore(retryDriver.next(void 0))),
-                  Effect.andThen(Effect.tapErrorCause(effect, Effect.logError)),
-                  Effect.annotateLogs({
-                    module: "EntityManager",
-                    address,
-                    runner: options.runnerAddress
-                  }),
-                  Effect.forkIn(managerScope)
-                )
+                return Effect.forkIn(onDefect(Cause.die(response.defect)), managerScope)
               }
               case "ClientEnd": {
                 return endLatch.open
@@ -263,6 +252,21 @@ export const make = Effect.fnUntraced(function*<
         return server.write
       })
     )
+
+    function onDefect(cause: Cause.Cause<never>): Effect.Effect<void> {
+      const effect = writeRef.unsafeRebuild()
+      defectRequestIds = Array.from(activeRequests.keys())
+      return Effect.logError("Defect in entity, restarting", cause).pipe(
+        Effect.andThen(Effect.ignore(retryDriver.next(void 0))),
+        Effect.andThen(effect),
+        Effect.annotateLogs({
+          module: "EntityManager",
+          address,
+          runner: options.runnerAddress
+        }),
+        Effect.catchAllCause(onDefect)
+      )
+    }
 
     const state: EntityState = {
       address,
