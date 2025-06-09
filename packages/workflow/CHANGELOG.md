@@ -1,5 +1,14 @@
 # @effect/workflow
 
+## 0.1.10
+
+### Patch Changes
+
+- [#4750](https://github.com/Effect-TS/effect/pull/4750) [`dca92fd`](https://github.com/Effect-TS/effect/commit/dca92fd8cf41f07561f55d863def5a9f62275f53) Thanks @tim-smart! - add Workflow.CaptureDefects annotation, to configure defect behaviour
+
+- Updated dependencies [[`dca92fd`](https://github.com/Effect-TS/effect/commit/dca92fd8cf41f07561f55d863def5a9f62275f53)]:
+  - @effect/rpc@0.61.11
+
 ## 0.1.9
 
 ### Patch Changes
