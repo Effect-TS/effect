@@ -1,0 +1,68 @@
+{
+  "name": "@effect/ai-amazon-bedrock",
+  "type": "module",
+  "version": "0.0.0",
+  "license": "MIT",
+  "description": "Effect modules for working with Amazon Bedrock AI apis",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/ai/amazon-bedrock"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "directory": "dist",
+    "linkDirectory": false
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  },
+  "scripts": {
+    "codegen": "build-utils prepare-v3",
+    "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v3",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
+  },
+  "peerDependencies": {
+    "@effect/ai": "workspace:^",
+    "@effect/experimental": "workspace:^",
+    "@effect/platform": "workspace:^",
+    "effect": "workspace:^"
+  },
+  "devDependencies": {
+    "@effect/ai": "workspace:^",
+    "@effect/experimental": "workspace:^",
+    "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "@tim-smart/openapi-gen": "^0.3.18",
+    "effect": "workspace:^"
+  },
+  "dependencies": {
+    "@smithy/eventstream-codec": "^4.0.4",
+    "@smithy/util-utf8": "^4.0.0",
+    "aws4fetch": "^1.0.20",
+    "gpt-tokenizer": "^2.9.0"
+  }
+}
