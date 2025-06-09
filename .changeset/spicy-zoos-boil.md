@@ -3,4 +3,4 @@
 "@effect/rpc": patch
 ---
 
-add fatalDefects option to cluster entities
+add disableFatalDefects option to cluster entities

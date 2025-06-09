@@ -511,7 +511,7 @@ describe.concurrent("Sharding", () => {
       expect(error._tag).toEqual("EntityNotManagedByRunner")
     }).pipe(Effect.provide(TestShardingWithoutEntities)))
 
-  it.scoped.only("restart on defect", () =>
+  it.scoped("restart on defect", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust(1)
       const state = yield* TestEntityState

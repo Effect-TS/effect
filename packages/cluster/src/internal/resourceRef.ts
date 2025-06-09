@@ -68,9 +68,7 @@ export class ResourceRef<A, E = never> {
       internalInterruptors.add(fiberId)
       return Scope.close(prevScope, Exit.void)
     }).pipe(
-      Effect.andThen(() => {
-        return this.acquire(scope)
-      }),
+      Effect.andThen(this.acquire(scope)),
       Effect.flatMap((value) => {
         MutableRef.set(this.state, { _tag: "Acquired", scope, value })
         return this.latch.open
