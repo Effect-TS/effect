@@ -89,7 +89,7 @@ export const make = Effect.fnUntraced(function*<
     readonly concurrency?: number | "unbounded" | undefined
     readonly mailboxCapacity?: number | "unbounded" | undefined
     readonly disableFatalDefects?: boolean | undefined
-    readonly retryPolicy?: Schedule.Schedule<any, unknown, never> | undefined
+    readonly defectRetryPolicy?: Schedule.Schedule<any, unknown, never> | undefined
   }
 ) {
   const config = yield* ShardingConfig
@@ -100,7 +100,7 @@ export const make = Effect.fnUntraced(function*<
   const clock = yield* Effect.clock
   const context = yield* Effect.context<Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | RX>()
   const retryDriver = yield* Schedule.driver(
-    options.retryPolicy ? Schedule.andThen(options.retryPolicy, Schedule.forever) : Schedule.forever
+    options.defectRetryPolicy ? Schedule.andThen(options.defectRetryPolicy, defaultRetryPolicy) : defaultRetryPolicy
   )
 
   const activeServers = new Map<EntityId, EntityState>()
@@ -220,12 +220,7 @@ export const make = Effect.fnUntraced(function*<
                 defectRequestIds = Array.from(activeRequests.keys())
                 return Effect.logError("Defect in entity, restarting", Cause.die(response.defect)).pipe(
                   Effect.andThen(Effect.ignore(retryDriver.next(void 0))),
-                  Effect.andThen(effect.pipe(
-                    Effect.tapErrorCause((cause) => {
-                      return Effect.logError(cause)
-                    }),
-                    Effect.retry(Schedule.spaced(500))
-                  )),
+                  Effect.andThen(Effect.tapErrorCause(effect, Effect.logError)),
                   Effect.annotateLogs({
                     module: "EntityManager",
                     address,
@@ -491,6 +486,10 @@ export const make = Effect.fnUntraced(function*<
     activeEntityCount: Effect.sync(() => activeServers.size)
   })
 })
+
+const defaultRetryPolicy = Schedule.exponential(500, 1.5).pipe(
+  Schedule.union(Schedule.spaced("10 seconds"))
+)
 
 const makeMessageSchema = <Rpcs extends Rpc.Any>(entity: Entity<Rpcs>): Schema.Schema<
   {

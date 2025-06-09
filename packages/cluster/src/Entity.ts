@@ -129,7 +129,7 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
       readonly concurrency?: number | "unbounded" | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
-      readonly retryPolicy?: Schedule.Schedule<any, unknown> | undefined
+      readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
     }
   ): Layer.Layer<
     never,
@@ -167,7 +167,7 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
       readonly maxIdleTime?: DurationInput | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
-      readonly retryPolicy?: Schedule.Schedule<any, unknown> | undefined
+      readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
     }
   ): Layer.Layer<
     never,
@@ -241,7 +241,7 @@ const Proto = {
       readonly concurrency?: number | "unbounded" | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
-      readonly retryPolicy?: Schedule.Schedule<any, unknown> | undefined
+      readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
     }
   ): Layer.Layer<
     never,
@@ -286,7 +286,7 @@ const Proto = {
       readonly maxIdleTime?: DurationInput | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
-      readonly retryPolicy?: Schedule.Schedule<any, unknown> | undefined
+      readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
     }
   ) {
     const buildHandlers = Effect.gen(this, function*() {

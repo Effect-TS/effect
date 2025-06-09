@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import type * as Cause from "effect/Cause"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import { dual } from "effect/Function"
+import { constTrue, dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
@@ -461,12 +461,18 @@ export const intoResult = <A, E, R>(
 ): Effect.Effect<Result<A, E>, never, Exclude<R, Scope.Scope> | WorkflowInstance> =>
   Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
     const instance = Context.get(context, InstanceTag)
+    const captureDefects = Context.get(instance.workflow.annotations, CaptureDefects)
     return Effect.uninterruptibleMask((restore) =>
       restore(effect).pipe(
         Effect.scoped,
-        Effect.matchCause({
-          onSuccess: (value) => new Complete({ exit: Exit.succeed(value) }),
-          onFailure: (cause) => instance.suspended ? new Suspended() : new Complete({ exit: Exit.failCause(cause) })
+        Effect.matchCauseEffect({
+          onSuccess: (value) => Effect.succeed(new Complete({ exit: Exit.succeed(value) })),
+          onFailure: (cause): Effect.Effect<Result<A, E>> =>
+            instance.suspended
+              ? Effect.succeed(new Suspended())
+              : !captureDefects && Cause.isDie(cause)
+              ? Effect.failCause(cause as Cause.Cause<never>)
+              : Effect.succeed(new Complete({ exit: Exit.failCause(cause) }))
         })
       )
     )
@@ -538,3 +544,16 @@ export const withCompensation: {
         )
     )
   ))
+
+/**
+ * If you set this annotation to `true` for a workflow, it will capture defects
+ * and include them in the result of the workflow or it's activities.
+ *
+ * By default, this is set to `true`, meaning that defects will be captured.
+ *
+ * @since 1.0.0
+ * @category Annotations
+ */
+export class CaptureDefects extends Context.Reference<CaptureDefects>()("@effect/workflow/Workflow/CaptureDefects", {
+  defaultValue: constTrue
+}) {}

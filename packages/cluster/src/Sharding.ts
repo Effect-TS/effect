@@ -105,7 +105,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
       readonly concurrency?: number | "unbounded" | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
-      readonly retryPolicy?: Schedule.Schedule<any, unknown> | undefined
+      readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
     }
   ) => Effect.Effect<
     void,
