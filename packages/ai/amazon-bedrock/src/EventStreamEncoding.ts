@@ -52,7 +52,8 @@ export const makeChannel = <A, I, IE, Done>(schema: Schema.Schema<A, I>, options
           return Effect.forEach(
             chunks,
             Effect.fnUntraced(function*(chunk) {
-              // Append new chunk to buffer. const newBuffer = new Uint8Array(buffer.length + chunk.length)
+              // Append new chunk to buffer
+              const newBuffer = new Uint8Array(buffer.length + chunk.length)
               newBuffer.set(buffer)
               newBuffer.set(chunk, buffer.length)
               buffer = newBuffer
