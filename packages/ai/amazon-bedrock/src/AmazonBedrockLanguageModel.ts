@@ -123,6 +123,10 @@ export const model = (
   config?: Omit<Config.Service, "model">
 ): AiModel.AiModel<AiLanguageModel.AiLanguageModel, AmazonBedrockClient> => AiModel.make(layer({ model, config }))
 
+/**
+ * @since 1.0.0
+ * @category Constructors
+ */
 export const make = Effect.fnUntraced(function*(options: {
   readonly model: (string & {}) | Model
   readonly config?: Omit<Config.Service, "model">
