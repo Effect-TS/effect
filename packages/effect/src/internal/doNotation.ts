@@ -74,5 +74,7 @@ export const bind = <F extends TypeLambda>(map: Map<F>, flatMap: FlatMap<F>): {
     name: Exclude<N, keyof A>,
     f: (a: NoInfer<A>) => Kind<F, R2, O2, E2, B>
   ): Kind<F, R1 & R2, O1 | O2, E1 | E2, { [K in keyof A | N]: K extends keyof A ? A[K] : B }> =>
-    flatMap(self, (a) =>
-      map(f(a), (b) => ({ ...a, [name]: b }) as { [K in keyof A | N]: K extends keyof A ? A[K] : B })))
+    flatMap(
+      self,
+      (a) => map(f(a), (b) => ({ ...a, [name]: b }) as { [K in keyof A | N]: K extends keyof A ? A[K] : B })
+    ))
