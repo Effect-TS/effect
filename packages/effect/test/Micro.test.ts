@@ -894,8 +894,7 @@ describe.concurrent("Micro", () => {
             ["__proto__"]: 1
           })
         })
-      )
-    )
+      ))
   })
 
   describe("stack safety", () => {
