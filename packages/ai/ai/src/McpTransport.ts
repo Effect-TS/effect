@@ -47,7 +47,7 @@ export const makeTransportStdio = Effect.fnUntraced(function*(options?: {
 }) {
   const stdin = options?.stdin?.() ?? process.stdin
   const stdout = options?.stdout?.() ?? process.stdout
-  const serialization = yield* RpcSerialization.ndjson
+  const serialization = RpcSerialization.ndjson()
   const parser = serialization.unsafeMake()
   const mailbox = yield* Mailbox.make<FromClientEncoded>()
 
@@ -99,7 +99,7 @@ export const makeTransportStdio = Effect.fnUntraced(function*(options?: {
             jsonrpc: JSON_RPC_VERSION,
             id: message.id,
             result: message.result
-          })
+          })!
           break
         }
         case "Failure": {
@@ -107,7 +107,7 @@ export const makeTransportStdio = Effect.fnUntraced(function*(options?: {
             jsonrpc: JSON_RPC_VERSION,
             id: message.id,
             error: message.error
-          })
+          })!
           break
         }
         case "Notification": {
@@ -115,7 +115,7 @@ export const makeTransportStdio = Effect.fnUntraced(function*(options?: {
             jsonrpc: JSON_RPC_VERSION,
             method: message.method,
             params: message.payload
-          })
+          })!
           break
         }
       }

@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Headers from "@effect/platform/Headers"
+import { RpcMessage } from "@effect/rpc"
 import type * as Rpc from "@effect/rpc/Rpc"
 import type * as RpcGroup from "@effect/rpc/RpcGroup"
 import { RequestId } from "@effect/rpc/RpcMessage"
@@ -48,6 +49,45 @@ export const SUPPORTED_PROTOCOL_VERSIONS = [
   "2024-11-05",
   "2024-10-07"
 ]
+
+/**
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const makeRpc = Effect.gen(function*() {
+  const protocol = yield* RpcServer.Protocol
+  const handlers = yield* Layer.build(ClientRpcHandlers)
+
+  const patchedProtocol = RpcServer.Protocol.of({
+    ...protocol,
+    run(f) {
+      return protocol.run((clientId, request) => {
+        if (request._tag === "Request" && request.id === "") {
+          if (request.tag === "notifications/cancelled") {
+            return f(clientId, {
+              _tag: "Interrupt",
+              requestId: String((request.payload as any).requestId)
+            })
+          }
+          // TODO: notification handlers
+        }
+        return f(clientId, request)
+      })
+    }
+  })
+
+  yield* RpcServer.make(ClientRpcs, {
+    spanPrefix: "McpServer",
+    disableFatalDefects: true
+  }).pipe(
+    Effect.provideService(RpcServer.Protocol, patchedProtocol),
+    Effect.provide(handlers),
+    Effect.forkScoped,
+    Effect.interruptible
+  )
+
+  return {} as const
+})
 
 /**
  * @since 1.0.0
@@ -284,10 +324,10 @@ const ClientRpcHandlers = ClientRpcs.toLayer(
       "tools/list": () => Effect.dieMessage("Not implemented"),
 
       // Notifications
-      "notifications/cancelled": () => Effect.dieMessage("Not implemented"),
-      "notifications/initialized": () => Effect.dieMessage("Not implemented"),
-      "notifications/progress": () => Effect.dieMessage("Not implemented"),
-      "notifications/roots/list_changed": () => Effect.dieMessage("Not implemented")
+      "notifications/cancelled": (_) => Effect.void,
+      "notifications/initialized": (_) => Effect.void,
+      "notifications/progress": (_) => Effect.void,
+      "notifications/roots/list_changed": (_) => Effect.void
     }
   })
 )
@@ -295,27 +335,22 @@ const ClientRpcHandlers = ClientRpcs.toLayer(
 export const layer = (
   serverInfo: Context.Tag.Service<McpServerImplementation>,
   options?: Context.Tag.Service<McpServerOptions>
-) =>
-  Layer.effect(McpServer, make).pipe(
-    Layer.provide(ClientRpcHandlers),
-    Layer.provideMerge(Layer.succeed(McpServerImplementation, serverInfo)),
-    Layer.provideMerge(Layer.succeed(McpServerOptions, options ?? {}))
-  )
+) => Layer.mergeAll(Layer.succeed(McpServerImplementation, serverInfo), Layer.succeed(McpServerOptions, options ?? {}))
 
 // Usage
+//
+// const MainLayer = layer({
+//   name: "Demo Server",
+//   version: "1.0.0"
+// }, {
+//   capabilities: {
+//     logging: {},
+//     prompts: {}
+//   }
+// }).pipe(
+//   Layer.provide(McpTransport.layerTransportStdio())
+// )
 
-const MainLayer = layer({
-  name: "Demo Server",
-  version: "1.0.0"
-}, {
-  capabilities: {
-    logging: {},
-    prompts: {}
-  }
-}).pipe(
-  Layer.provide(McpTransport.layerTransportStdio())
-)
-
-Layer.launch(MainLayer).pipe(
-  Effect.runPromise
-)
+// Layer.launch(MainLayer).pipe(
+//   Effect.runPromise
+// )

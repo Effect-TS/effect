@@ -51,10 +51,17 @@ export * as AiToolkit from "./AiToolkit.js"
 /**
  * A uniquely identifying ID for a request in JSON-RPC.
  */
-export * as McpSchema from "./McpSchema2.js"
+export * as McpSchema from "./McpSchema.js"
 
-
+/**
+ * @since 1.0.0
+ */
 export * as McpServer from "./McpServer.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as McpTransport from "./McpTransport.js"
 
 /**
  * @since 1.0.0

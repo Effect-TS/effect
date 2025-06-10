@@ -1439,6 +1439,7 @@ export class ClientRequestRpcs extends RpcGroup.make(
   CallTool,
   ListTools
 ) {}
+
 export type ClientRequestEncoded = RequestEncoded<typeof ClientRequestRpcs>
 
 export class ClientNotificationRpcs extends RpcGroup.make(
