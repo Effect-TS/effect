@@ -383,12 +383,10 @@ describe("Either", () => {
       assertRight(
         pipe(
           Either.right(1),
-          // @ts-expect-error
           Either.bindTo("__proto__"),
           Either.bind("a", () => Either.right(1))
         ),
-        // @ts-expect-error
-        { a: 1 }
+        { a: 1, ["__proto__"]: 1 }
       )
     })
 
@@ -409,12 +407,10 @@ describe("Either", () => {
         pipe(
           Either.right(1),
           Either.bindTo("a"),
-          // @ts-expect-error
           Either.bind("__proto__", ({ a }) => Either.right(a + 1)),
           Either.bind("b", ({ a }) => Either.right(a + 1))
         ),
-        // @ts-expect-error
-        { a: 1, b: 2 }
+        { a: 1, b: 2, ["__proto__"]: 2 }
       )
     })
 
@@ -428,12 +424,10 @@ describe("Either", () => {
         pipe(
           Either.right(1),
           Either.bindTo("a"),
-          // @ts-expect-error
           Either.let("__proto__", ({ a }) => a + 1),
           Either.let("b", ({ a }) => a + 1)
         ),
-        // @ts-expect-error
-        { a: 1, b: 2 }
+        { a: 1, b: 2, ["__proto__"]: 2 }
       )
     })
   })

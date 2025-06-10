@@ -33,7 +33,7 @@ import type * as Take from "./Take.js"
 import type { TPubSub } from "./TPubSub.js"
 import type { TDequeue } from "./TQueue.js"
 import type * as Tracer from "./Tracer.js"
-import type { Covariant, ForbiddenKeys, NoInfer, TupleOf } from "./Types.js"
+import type { Covariant, NoInfer, TupleOf } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**
@@ -6267,7 +6267,7 @@ export const Do: Stream<{}> = internal.Do
  */
 export const bind: {
   <N extends string, A, B, E2, R2>(
-    tag: Exclude<N, ForbiddenKeys<A>>,
+    tag: Exclude<N, keyof A>,
     f: (_: NoInfer<A>) => Stream<B, E2, R2>,
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
@@ -6275,7 +6275,7 @@ export const bind: {
   ): <E, R>(self: Stream<A, E, R>) => Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E, R2 | R>
   <A, E, R, N extends string, B, E2, R2>(
     self: Stream<A, E, R>,
-    tag: Exclude<N, ForbiddenKeys<A>>,
+    tag: Exclude<N, keyof A>,
     f: (_: NoInfer<A>) => Stream<B, E2, R2>,
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
@@ -6296,13 +6296,13 @@ export const bind: {
  */
 export const bindEffect: {
   <N extends string, A, B, E2, R2>(
-    tag: Exclude<N, ForbiddenKeys<A>>,
+    tag: Exclude<N, keyof A>,
     f: (_: NoInfer<A>) => Effect.Effect<B, E2, R2>,
     options?: { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
   ): <E, R>(self: Stream<A, E, R>) => Stream<{ [K in keyof A | N]: K extends keyof A ? A[K] : B }, E | E2, R | R2>
   <A, E, R, N extends string, B, E2, R2>(
     self: Stream<A, E, R>,
-    tag: Exclude<N, ForbiddenKeys<A>>,
+    tag: Exclude<N, keyof A>,
     f: (_: NoInfer<A>) => Effect.Effect<B, E2, R2>,
     options?: { readonly concurrency?: number | "unbounded" | undefined; readonly unordered?: boolean | undefined }
   ): Stream<{ [K in keyof A | N]: K extends keyof A ? A[K] : B }, E | E2, R | R2>
@@ -6341,20 +6341,18 @@ export const bindEffect: {
  * @since 2.0.0
  */
 export const bindTo: {
-  <N extends string>(
-    name: Exclude<N, ForbiddenKeys<{}>>
-  ): <A, E, R>(self: Stream<A, E, R>) => Stream<{ [K in N]: A }, E, R>
-  <A, E, R, N extends string>(self: Stream<A, E, R>, name: Exclude<N, ForbiddenKeys<{}>>): Stream<{ [K in N]: A }, E, R>
+  <N extends string>(name: N): <A, E, R>(self: Stream<A, E, R>) => Stream<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Stream<A, E, R>, name: N): Stream<{ [K in N]: A }, E, R>
 } = internal.bindTo
 
 const let_: {
   <N extends string, A extends object, B>(
-    name: Exclude<N, ForbiddenKeys<A>>,
+    name: Exclude<N, keyof A>,
     f: (a: NoInfer<A>) => B
   ): <E, R>(self: Stream<A, E, R>) => Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
   <A extends object, E, R, N extends string, B>(
     self: Stream<A, E, R>,
-    name: Exclude<N, ForbiddenKeys<A>>,
+    name: Exclude<N, keyof A>,
     f: (a: NoInfer<A>) => B
   ): Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = internal.let_

@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 ---
 
-Prevent binding `__proto__` to lexical scope in do notation
+Ensure binding `__proto__` to lexical scope in do notation is preserved by `bind` and `let`

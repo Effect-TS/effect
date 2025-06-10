@@ -862,42 +862,40 @@ describe.concurrent("Micro", () => {
     it.effect("does not bindTo __proto__", () =>
       pipe(
         Micro.succeed(1),
-        // @ts-expect-error
         Micro.bindTo("__proto__"),
         Micro.bind("x", () => Micro.succeed(2)),
         Micro.tap((_) => {
-          // @ts-expect-error
           deepStrictEqual(_, {
-            x: 2
+            x: 2,
+            ["__proto__"]: 1
           })
         })
       ))
     it.effect("does not let __proto__", () =>
       pipe(
         Micro.Do,
-        // @ts-expect-error
         Micro.let("__proto__", () => 1),
         Micro.bind("x", () => Micro.succeed(2)),
         Micro.tap((_) => {
-          // @ts-expect-error
           deepStrictEqual(_, {
-            x: 2
+            x: 2,
+            ["__proto__"]: 1
           })
         })
       ))
     it.effect("does not bind __proto__", () =>
       pipe(
         Micro.Do,
-        // @ts-expect-error
         Micro.bind("__proto__", () => Micro.succeed(1)),
         Micro.bind("x", () => Micro.succeed(2)),
         Micro.tap((_) => {
-          // @ts-expect-error
           deepStrictEqual(_, {
-            x: 2
+            x: 2,
+            ["__proto__"]: 1
           })
         })
-      ))
+      )
+    )
   })
 
   describe("stack safety", () => {

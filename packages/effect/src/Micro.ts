@@ -28,15 +28,7 @@ import type { Predicate, Refinement } from "./Predicate.js"
 import { hasProperty, isIterable, isTagged } from "./Predicate.js"
 import type { Sink } from "./Sink.js"
 import type { Stream } from "./Stream.js"
-import type {
-  Concurrency,
-  Covariant,
-  Equals,
-  ForbiddenKeys,
-  NoExcessProperties,
-  NotFunction,
-  Simplify
-} from "./Types.js"
+import type { Concurrency, Covariant, Equals, NoExcessProperties, NotFunction, Simplify } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import { SingleShotGen, YieldWrap, yieldWrapGet } from "./Utils.js"
 
@@ -4051,10 +4043,8 @@ export const Do: Micro<{}> = succeed({})
  * @category do notation
  */
 export const bindTo: {
-  <N extends string>(
-    name: Exclude<N, ForbiddenKeys<{}>>
-  ): <A, E, R>(self: Micro<A, E, R>) => Micro<{ [K in N]: A }, E, R>
-  <A, E, R, N extends string>(self: Micro<A, E, R>, name: Exclude<N, ForbiddenKeys<{}>>): Micro<{ [K in N]: A }, E, R>
+  <N extends string>(name: N): <A, E, R>(self: Micro<A, E, R>) => Micro<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Micro<A, E, R>, name: N): Micro<{ [K in N]: A }, E, R>
 } = doNotation.bindTo<MicroTypeLambda>(map)
 
 /**
@@ -4066,24 +4056,24 @@ export const bindTo: {
  */
 export const bind: {
   <N extends string, A extends Record<string, any>, B, E2, R2>(
-    name: Exclude<N, ForbiddenKeys<{}>>,
+    name: N,
     f: (a: NoInfer<A>) => Micro<B, E2, R2>
   ): <E, R>(self: Micro<A, E, R>) => Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2>
   <A extends Record<string, any>, E, R, B, E2, R2, N extends string>(
     self: Micro<A, E, R>,
-    name: Exclude<N, ForbiddenKeys<{}>>,
+    name: N,
     f: (a: NoInfer<A>) => Micro<B, E2, R2>
   ): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2>
 } = doNotation.bind<MicroTypeLambda>(map, flatMap)
 
 const let_: {
   <N extends string, A extends Record<string, any>, B>(
-    name: Exclude<N, ForbiddenKeys<{}>>,
+    name: N,
     f: (a: NoInfer<A>) => B
   ): <E, R>(self: Micro<A, E, R>) => Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E, R>
   <A extends Record<string, any>, E, R, B, N extends string>(
     self: Micro<A, E, R>,
-    name: Exclude<N, ForbiddenKeys<{}>>,
+    name: N,
     f: (a: NoInfer<A>) => B
   ): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E, R>
 } = doNotation.let_<MicroTypeLambda>(map)

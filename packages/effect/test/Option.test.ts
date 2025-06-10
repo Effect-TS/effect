@@ -522,12 +522,10 @@ describe("Option", () => {
       assertSome(
         pipe(
           Option.some(1),
-          // @ts-expect-error
           Option.bindTo("__proto__"),
           Option.bind("x", () => Option.some(2))
         ),
-        // @ts-expect-error
-        { x: 2 }
+        { x: 2, ["__proto__"]: 1 }
       )
     })
 
@@ -546,12 +544,10 @@ describe("Option", () => {
         pipe(
           Option.some(1),
           Option.bindTo("a"),
-          // @ts-expect-error
           Option.bind("__proto__", ({ a }) => Option.some(a + 1)),
           Option.bind("b", ({ a }) => Option.some(a + 1))
         ),
-        // @ts-expect-error
-        { a: 1, b: 2 }
+        { a: 1, b: 2, ["__proto__"]: 2 }
       )
     })
 
@@ -564,12 +560,10 @@ describe("Option", () => {
         pipe(
           Option.some(1),
           Option.bindTo("a"),
-          // @ts-expect-error
           Option.let("__proto__", ({ a }) => a + 1),
           Option.let("b", ({ a }) => a + 1)
         ),
-        // @ts-expect-error
-        { a: 1, b: 2 }
+        { a: 1, b: 2, ["__proto__"]: 2 }
       )
     })
   })

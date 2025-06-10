@@ -14,7 +14,7 @@ import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
-import type { Covariant, ForbiddenKeys, NoInfer, NotFunction } from "./Types.js"
+import type { Covariant, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
@@ -867,12 +867,12 @@ export const Do: Either<{}> = right({})
  */
 export const bind: {
   <N extends string, A extends object, B, L2>(
-    name: Exclude<N, ForbiddenKeys<A>>,
+    name: Exclude<N, keyof A>,
     f: (a: NoInfer<A>) => Either<B, L2>
   ): <L1>(self: Either<A, L1>) => Either<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, L1 | L2>
   <A extends object, L1, N extends string, B, L2>(
     self: Either<A, L1>,
-    name: Exclude<N, ForbiddenKeys<A>>,
+    name: Exclude<N, keyof A>,
     f: (a: NoInfer<A>) => Either<B, L2>
   ): Either<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, L1 | L2>
 } = doNotation.bind<EitherTypeLambda>(map, flatMap)
@@ -909,18 +909,18 @@ export const bind: {
  * @since 2.0.0
  */
 export const bindTo: {
-  <N extends string>(name: Exclude<N, ForbiddenKeys<{}>>): <R, L>(self: Either<R, L>) => Either<{ [K in N]: R }, L>
-  <R, L, N extends string>(self: Either<R, L>, name: Exclude<N, ForbiddenKeys<{}>>): Either<{ [K in N]: R }, L>
+  <N extends string>(name: N): <R, L>(self: Either<R, L>) => Either<{ [K in N]: R }, L>
+  <R, L, N extends string>(self: Either<R, L>, name: N): Either<{ [K in N]: R }, L>
 } = doNotation.bindTo<EitherTypeLambda>(map)
 
 const let_: {
   <N extends string, R extends object, B>(
-    name: Exclude<N, ForbiddenKeys<R>>,
+    name: Exclude<N, keyof R>,
     f: (r: NoInfer<R>) => B
   ): <L>(self: Either<R, L>) => Either<{ [K in N | keyof R]: K extends keyof R ? R[K] : B }, L>
   <R extends object, L, N extends string, B>(
     self: Either<R, L>,
-    name: Exclude<N, ForbiddenKeys<R>>,
+    name: Exclude<N, keyof R>,
     f: (r: NoInfer<R>) => B
   ): Either<{ [K in N | keyof R]: K extends keyof R ? R[K] : B }, L>
 } = doNotation.let_<EitherTypeLambda>(map)

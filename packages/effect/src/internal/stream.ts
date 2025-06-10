@@ -8694,7 +8694,7 @@ export const Do: Stream.Stream<{}> = succeed({})
 /** @internal */
 export const bind = dual<
   <N extends string, A, B, E2, R2>(
-    tag: Exclude<N, doNotation.ForbiddenKeys<A>>,
+    tag: Exclude<N, keyof A>,
     f: (_: Types.NoInfer<A>) => Stream.Stream<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
@@ -8707,7 +8707,7 @@ export const bind = dual<
   >,
   <A, E, R, N extends string, B, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    tag: Exclude<N, doNotation.ForbiddenKeys<A>>,
+    tag: Exclude<N, keyof A>,
     f: (_: Types.NoInfer<A>) => Stream.Stream<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
@@ -8720,7 +8720,7 @@ export const bind = dual<
   >
 >((args) => typeof args[0] !== "string", <A, E, R, N extends string, B, E2, R2>(
   self: Stream.Stream<A, E, R>,
-  tag: Exclude<N, doNotation.ForbiddenKeys<A>>,
+  tag: Exclude<N, keyof A>,
   f: (_: A) => Stream.Stream<B, E2, R2>,
   options?: {
     readonly concurrency?: number | "unbounded" | undefined
@@ -8735,26 +8735,21 @@ export const bind = dual<
 
 /* @internal */
 export const bindTo: {
-  <N extends string>(
-    name: Exclude<N, doNotation.ForbiddenKeys<{}>>
-  ): <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<{ [K in N]: A }, E, R>
-  <A, E, R, N extends string>(
-    self: Stream.Stream<A, E, R>,
-    name: Exclude<N, doNotation.ForbiddenKeys<{}>>
-  ): Stream.Stream<{ [K in N]: A }, E, R>
+  <N extends string>(name: N): <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Stream.Stream<A, E, R>, name: N): Stream.Stream<{ [K in N]: A }, E, R>
 } = doNotation.bindTo<Stream.StreamTypeLambda>(map)
 
 /* @internal */
 export const let_: {
   <N extends string, A extends object, B>(
-    name: Exclude<N, doNotation.ForbiddenKeys<A>>,
+    name: Exclude<N, keyof A>,
     f: (a: Types.NoInfer<A>) => B
   ): <E, R>(
     self: Stream.Stream<A, E, R>
   ) => Stream.Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
   <A extends object, E, R, N extends string, B>(
     self: Stream.Stream<A, E, R>,
-    name: Exclude<N, doNotation.ForbiddenKeys<A>>,
+    name: Exclude<N, keyof A>,
     f: (a: Types.NoInfer<A>) => B
   ): Stream.Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = doNotation.let_<Stream.StreamTypeLambda>(map)

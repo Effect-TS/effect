@@ -25,12 +25,10 @@ describe("do notation", () => {
     expectRight(
       pipe(
         Stream.succeed(1),
-        // @ts-expect-error
         Stream.bindTo("__proto__"),
         Stream.let("x", () => 2)
       ),
-      // @ts-expect-error
-      { x: 2 }
+      { x: 2, ["__proto__"]: 1 }
     )
   })
 
@@ -54,13 +52,11 @@ describe("do notation", () => {
         (x) =>
           pipe(
             x,
-            // @ts-expect-error
             Stream.bind("__proto__", ({ a }) => Stream.succeed(a + 1))
           ) as Stream.Stream<{ a: number; __proto__: number }, unknown, never>,
-        Stream.let("x", () => 2)
+        Stream.bind("x", () => Stream.succeed(2))
       ),
-      // @ts-expect-error
-      { a: 1, x: 2 }
+      { a: 1, x: 2, ["__proto__"]: 2 }
     )
   })
 
@@ -74,12 +70,10 @@ describe("do notation", () => {
       pipe(
         Stream.succeed(1),
         Stream.bindTo("a"),
-        // @ts-expect-error
         Stream.let("__proto__", ({ a }) => a + 1),
         Stream.let("x", ({ a }) => a + 2)
       ),
-      // @ts-expect-error
-      { a: 1, x: 3 }
+      { a: 1, x: 3, ["__proto__"]: 2 }
     )
   })
 })
