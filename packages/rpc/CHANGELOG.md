@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.61.12
+
+### Patch Changes
+
+- [#5023](https://github.com/Effect-TS/effect/pull/5023) [`e0d3d42`](https://github.com/Effect-TS/effect/commit/e0d3d424d8f4e6a8ada017160406991f02b3c068) Thanks @tim-smart! - add spanAttributes option to RpcServer constructors
+
 ## 0.61.11
 
 ### Patch Changes
