@@ -870,11 +870,14 @@ export const makeProtocolWithHttpApp: Effect.Effect<
     clients.set(id, {
       write: (response) => {
         try {
-          return isJson ? mailbox.offer(response) : offer(parser.encode(response))
+          if (isJson) return mailbox.offer(response)
+          const encoded = parser.encode(response)
+          if (encoded === undefined) return Effect.void
+          return offer(encoded)
         } catch (cause) {
           return isJson
             ? mailbox.offer(ResponseDefectEncoded(cause))
-            : offer(parser.encode(ResponseDefectEncoded(cause)))
+            : offer(parser.encode(ResponseDefectEncoded(cause))!)
         }
       },
       end: mailbox.end
@@ -891,7 +894,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         yield* writeRequest(id, message)
       }
     } catch (cause) {
-      yield* offer(parser.encode(ResponseDefectEncoded(cause)))
+      yield* offer(parser.encode(ResponseDefectEncoded(cause))!)
     }
 
     yield* writeRequest(id, constEof)
@@ -938,7 +941,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
     writeRequest = writeRequest_
     return Effect.succeed({
       disconnects,
-      send: (clientId, response) => {
+      send(clientId, response) {
         const client = clients.get(clientId)
         if (!client) return Effect.void
         return client.write(response)
@@ -1189,10 +1192,14 @@ const makeSocketProtocol = Effect.gen(function*() {
     const writeRaw = yield* socket.writer
     const write = (response: FromServerEncoded) => {
       try {
-        return Effect.orDie(writeRaw(parser.encode(response)))
+        const encoded = parser.encode(response)
+        if (encoded === undefined) {
+          return Effect.void
+        }
+        return Effect.orDie(writeRaw(encoded))
       } catch (cause) {
         return Effect.orDie(
-          writeRaw(parser.encode(ResponseDefectEncoded(cause)))
+          writeRaw(parser.encode(ResponseDefectEncoded(cause))!)
         )
       }
     }
@@ -1209,7 +1216,7 @@ const makeSocketProtocol = Effect.gen(function*() {
           step: constVoid
         })
       } catch (cause) {
-        return writeRaw(parser.encode(ResponseDefectEncoded(cause)))
+        return writeRaw(parser.encode(ResponseDefectEncoded(cause))!)
       }
     }).pipe(
       Effect.interruptible,

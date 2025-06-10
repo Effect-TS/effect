@@ -712,7 +712,7 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
 
       const parser = serialization.unsafeMake()
 
-      const encoded = parser.encode(request)
+      const encoded = parser.encode(request)!
       const body = typeof encoded === "string" ?
         HttpBody.text(encoded, serialization.contentType) :
         HttpBody.uint8Array(encoded, serialization.contentType)
@@ -798,7 +798,7 @@ export const makeProtocolSocket = (options?: {
 
     let parser = serialization.unsafeMake()
 
-    const pinger = yield* makePinger(write(parser.encode(constPing)))
+    const pinger = yield* makePinger(write(parser.encode(constPing)!))
 
     yield* Effect.suspend(() => {
       parser = serialization.unsafeMake()
@@ -861,7 +861,9 @@ export const makeProtocolSocket = (options?: {
 
     return {
       send(request) {
-        return Effect.orDie(write(parser.encode(request)))
+        const encoded = parser.encode(request)
+        if (encoded === undefined) return Effect.void
+        return Effect.orDie(write(encoded))
       },
       supportsAck: true,
       supportsTransferables: false
