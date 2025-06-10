@@ -266,7 +266,9 @@ export class InvalidParams extends Schema.TaggedError<InvalidParams>()("InvalidP
 export class InternalError extends Schema.TaggedError<InternalError>()("InternalError", {
   ...McpError.fields,
   code: Schema.tag(INTERNAL_ERROR_CODE)
-}) {}
+}) {
+  static readonly notImplemented = new InternalError({ message: "Not implemented" })
+}
 
 // =============================================================================
 // Ping
@@ -1049,7 +1051,8 @@ export class SetLevel extends Rpc.make("logging/setLevel", {
      * severe) to the client as notifications/message.
      */
     level: LoggingLevel
-  }
+  },
+  error: McpError
 }) {}
 
 export class LoggingMessageNotification extends Rpc.make("notifications/message", {

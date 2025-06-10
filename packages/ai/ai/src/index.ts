@@ -61,9 +61,4 @@ export * as McpServer from "./McpServer.js"
 /**
  * @since 1.0.0
  */
-export * as McpTransport from "./McpTransport.js"
-
-/**
- * @since 1.0.0
- */
 export * as Tokenizer from "./Tokenizer.js"
