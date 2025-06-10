@@ -109,6 +109,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
     ) => Effect.Effect<void, E>
     readonly supportsAck?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
   }
@@ -131,6 +132,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
     ) => Effect.Effect<void, E>
     readonly supportsAck?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
   }
@@ -180,18 +182,18 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
   const onRequest = (rpc: Rpc.AnyWithProps) => {
     const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
     const middleware = getRpcClientMiddleware(rpc)
-    return (payload: any, options?: {
+    return (payload: any, opts?: {
       readonly asMailbox?: boolean | undefined
       readonly streamBufferSize?: number | undefined
       readonly headers?: Headers.Input | undefined
       readonly context?: Context.Context<never> | undefined
       readonly discard?: boolean | undefined
     }) => {
-      const headers = options?.headers ? Headers.fromInput(options.headers) : Headers.empty
+      const headers = opts?.headers ? Headers.fromInput(opts.headers) : Headers.empty
       if (!isStream) {
         const effect = Effect.useSpan(
           `${spanPrefix}.${rpc._tag}`,
-          { captureStackTrace: false },
+          { captureStackTrace: false, attributes: options.spanAttributes },
           (span) =>
             onEffectRequest(
               rpc,
@@ -199,8 +201,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
               span,
               "make" in rpc.payloadSchema ? rpc.payloadSchema.make(payload ?? {}) : {},
               headers,
-              options?.context ?? Context.empty(),
-              options?.discard ?? false
+              opts?.context ?? Context.empty(),
+              opts?.discard ?? false
             )
         )
         return disableTracing ? Effect.withTracerEnabled(effect, false) : effect
@@ -211,11 +213,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
           middleware,
           payload ? rpc.payloadSchema.make(payload) : {},
           headers,
-          options?.streamBufferSize ?? 16,
-          options?.context ?? Context.empty()
+          opts?.streamBufferSize ?? 16,
+          opts?.context ?? Context.empty()
         )
       )
-      if (options?.asMailbox) return mailbox
+      if (opts?.asMailbox) return mailbox
       return Stream.unwrapScoped(Effect.map(mailbox, Mailbox.toStream))
     }
   }
@@ -314,7 +316,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
       return yield* Effect.interrupt
     }
 
-    const span = yield* Effect.makeSpanScoped(`${spanPrefix}.${rpc._tag}`, { captureStackTrace: false }).pipe(
+    const span = yield* Effect.makeSpanScoped(`${spanPrefix}.${rpc._tag}`, {
+      captureStackTrace: false,
+      attributes: options.spanAttributes
+    }).pipe(
       disableTracing ? Effect.withTracerEnabled(false) : identity
     )
     const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
@@ -484,6 +489,7 @@ export const make: <Rpcs extends Rpc.Any>(
   group: RpcGroup.RpcGroup<Rpcs>,
   options?: {
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
   } | undefined
@@ -495,6 +501,7 @@ export const make: <Rpcs extends Rpc.Any>(
   group: RpcGroup.RpcGroup<Rpcs>,
   options?: {
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
   } | undefined

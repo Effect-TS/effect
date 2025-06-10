@@ -130,6 +130,7 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
       readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
+      readonly spanAttributes?: Record<string, string> | undefined
     }
   ): Layer.Layer<
     never,
@@ -168,6 +169,7 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
       readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
+      readonly spanAttributes?: Record<string, string> | undefined
     }
   ): Layer.Layer<
     never,
@@ -242,6 +244,7 @@ const Proto = {
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
       readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
+      readonly spanAttributes?: Record<string, string> | undefined
     }
   ): Layer.Layer<
     never,
@@ -287,6 +290,7 @@ const Proto = {
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
       readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
+      readonly spanAttributes?: Record<string, string> | undefined
     }
   ) {
     const buildHandlers = Effect.gen(this, function*() {

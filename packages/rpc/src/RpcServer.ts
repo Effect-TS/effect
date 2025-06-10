@@ -73,6 +73,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     readonly disableTracing?: boolean | undefined
     readonly disableSpanPropagation?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableClientAcks?: boolean | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly disableFatalDefects?: boolean | undefined
@@ -88,6 +89,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     readonly disableTracing?: boolean | undefined
     readonly disableSpanPropagation?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableClientAcks?: boolean | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly disableFatalDefects?: boolean | undefined
@@ -280,6 +282,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       const parentSpan = requestFiber.currentContext.unsafeMap.get(Tracer.ParentSpan.key) as Tracer.AnySpan | undefined
       effect = Effect.withSpan(effect, `${spanPrefix}.${request.tag}`, {
         captureStackTrace: false,
+        attributes: options.spanAttributes,
         parent: enableSpanPropagation ?
           {
             _tag: "ExternalSpan",
@@ -454,6 +457,7 @@ export const make: <Rpcs extends Rpc.Any>(
     | {
       readonly disableTracing?: boolean | undefined
       readonly spanPrefix?: string | undefined
+      readonly spanAttributes?: Record<string, unknown> | undefined
       readonly concurrency?: number | "unbounded" | undefined
     }
     | undefined
@@ -466,6 +470,7 @@ export const make: <Rpcs extends Rpc.Any>(
   options?: {
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
     readonly concurrency?: number | "unbounded" | undefined
   }
 ) {
@@ -699,6 +704,7 @@ export const layer = <Rpcs extends Rpc.Any>(
   options?: {
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
     readonly concurrency?: number | "unbounded" | undefined
   }
 ): Layer.Layer<
@@ -1046,6 +1052,7 @@ export const toHttpApp: <Rpcs extends Rpc.Any>(
   options?: {
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
   } | undefined
 ) => Effect.Effect<
   HttpApp.Default<never, Scope.Scope>,
@@ -1059,6 +1066,7 @@ export const toHttpApp: <Rpcs extends Rpc.Any>(
   options?: {
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
   }
 ) {
   const { httpApp, protocol } = yield* makeProtocolWithHttpApp
@@ -1079,6 +1087,7 @@ export const toHttpAppWebsocket: <Rpcs extends Rpc.Any>(
   options?: {
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
   } | undefined
 ) => Effect.Effect<
   HttpApp.Default<never, Scope.Scope>,
@@ -1092,6 +1101,7 @@ export const toHttpAppWebsocket: <Rpcs extends Rpc.Any>(
   options?: {
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
   }
 ) {
   const { httpApp, protocol } = yield* makeProtocolWithHttpAppWebsocket
@@ -1121,6 +1131,7 @@ export const toWebHandler = <Rpcs extends Rpc.Any, LE>(
     >
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
     readonly middleware?: (
       httpApp: HttpApp.Default
     ) => HttpApp.Default<

@@ -90,6 +90,7 @@ export const make = Effect.fnUntraced(function*<
     readonly mailboxCapacity?: number | "unbounded" | undefined
     readonly disableFatalDefects?: boolean | undefined
     readonly defectRetryPolicy?: Schedule.Schedule<any, unknown, never> | undefined
+    readonly spanAttributes?: Record<string, string> | undefined
   }
 ) {
   const config = yield* ShardingConfig
@@ -145,6 +146,11 @@ export const make = Effect.fnUntraced(function*<
 
         const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
           spanPrefix: `${entity.type}(${address.entityId})`,
+          spanAttributes: {
+            ...options.spanAttributes,
+            "entity.type": entity.type,
+            "entity.id": address.entityId
+          },
           concurrency: options.concurrency ?? 1,
           disableFatalDefects: options.disableFatalDefects,
           onFromServer(response): Effect.Effect<void> {
