@@ -1,5 +1,13 @@
 # @effect/rpc
 
+## 0.61.13
+
+### Patch Changes
+
+- [#4623](https://github.com/Effect-TS/effect/pull/4623) [`ee3a197`](https://github.com/Effect-TS/effect/commit/ee3a1973f54d7611ae99979edfed3020e94e1126) Thanks @tim-smart! - add RpcSerialization.jsonRpc & RpcSerialization.ndJsonRpc
+
+- [#4623](https://github.com/Effect-TS/effect/pull/4623) [`ee3a197`](https://github.com/Effect-TS/effect/commit/ee3a1973f54d7611ae99979edfed3020e94e1126) Thanks @tim-smart! - support primitives in rpc payloads
+
 ## 0.61.12
 
 ### Patch Changes
