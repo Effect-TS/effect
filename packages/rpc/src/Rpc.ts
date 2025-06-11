@@ -565,8 +565,6 @@ const makeProto = <
   return Rpc as any
 }
 
-const constEmptyStruct = Schema.Struct({})
-
 /**
  * @since 1.0.0
  * @category constructors
@@ -605,7 +603,7 @@ export const make = <
       ? options?.payload as any
       : options?.payload
       ? Schema.Struct(options?.payload as any)
-      : constEmptyStruct
+      : Schema.Void
   }
   return makeProto({
     _tag: tag,
