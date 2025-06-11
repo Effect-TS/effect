@@ -35,6 +35,13 @@ describe("RpcServer", () => {
       Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack])
     )
   )
+  e2eSuite(
+    "e2e http jsonrpc",
+    HttpNdjsonClient.pipe(
+      Layer.provideMerge(HttpNdjsonServer),
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdJsonRpc()])
+    )
+  )
 
   // websocket
   const HttpWsServer = HttpRouter.Default.serve().pipe(
@@ -72,6 +79,13 @@ describe("RpcServer", () => {
       Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack])
     )
   )
+  e2eSuite(
+    "e2e ws jsonrpc",
+    HttpWsClient.pipe(
+      Layer.provideMerge(HttpWsServer),
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerJsonRpc()])
+    )
+  )
 
   // tcp
   const TcpServer = RpcLive.pipe(
@@ -100,6 +114,13 @@ describe("RpcServer", () => {
     TcpClient.pipe(
       Layer.provideMerge(TcpServer),
       Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack])
+    )
+  )
+  e2eSuite(
+    "e2e tcp jsonrpc",
+    TcpClient.pipe(
+      Layer.provideMerge(TcpServer),
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdJsonRpc()])
     )
   )
 
