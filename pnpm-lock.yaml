@@ -156,6 +156,10 @@ importers:
         version: 3.0.6(@edge-runtime/vm@5.0.0)(@types/node@22.15.18)(@vitest/browser@3.0.6)(happy-dom@17.4.7)(msw@2.7.1(@types/node@22.15.18)(typescript@5.8.3))(terser@5.39.2)(tsx@4.19.4)(yaml@2.8.0)
 
   packages/ai/ai:
+    dependencies:
+      find-my-way-ts:
+        specifier: ^0.1.5
+        version: 0.1.5
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
@@ -5610,6 +5614,7 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.7:

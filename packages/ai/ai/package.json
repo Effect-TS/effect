@@ -56,5 +56,8 @@
     "@effect/platform": "workspace:^",
     "@effect/rpc": "workspace:^",
     "effect": "workspace:^"
+  },
+  "dependencies": {
+    "find-my-way-ts": "^0.1.5"
   }
 }
