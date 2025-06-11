@@ -182,7 +182,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
   const onRequest = (rpc: Rpc.AnyWithProps) => {
     const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
     const middleware = getRpcClientMiddleware(rpc)
-    return (payload: any, opts?: {
+    return (payload_: any, opts?: {
       readonly asMailbox?: boolean | undefined
       readonly streamBufferSize?: number | undefined
       readonly headers?: Headers.Input | undefined
@@ -190,6 +190,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
       readonly discard?: boolean | undefined
     }) => {
       const headers = opts?.headers ? Headers.fromInput(opts.headers) : Headers.empty
+      const payload = payload_ ?? undefined
       if (!isStream) {
         const effect = Effect.useSpan(
           `${spanPrefix}.${rpc._tag}`,
@@ -199,7 +200,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
               rpc,
               middleware,
               span,
-              "make" in rpc.payloadSchema ? rpc.payloadSchema.make(payload ?? {}) : {},
+              "make" in rpc.payloadSchema ? (rpc.payloadSchema.make as any)(payload) : payload,
               headers,
               opts?.context ?? Context.empty(),
               opts?.discard ?? false
@@ -211,7 +212,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
         onStreamRequest(
           rpc,
           middleware,
-          payload ? rpc.payloadSchema.make(payload) : {},
+          "make" in rpc.payloadSchema ? (rpc.payloadSchema.make as any)(payload) : payload,
           headers,
           opts?.streamBufferSize ?? 16,
           opts?.context ?? Context.empty()

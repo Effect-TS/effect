@@ -45,7 +45,7 @@ export const isRpc = (u: unknown): u is Rpc<any, any, any> => Predicate.hasPrope
  */
 export interface Rpc<
   in out Tag extends string,
-  out Payload extends AnyStructSchema = Schema.Struct<{}>,
+  out Payload extends AnySchema = typeof Schema.Void,
   out Success extends Schema.Schema.Any = typeof Schema.Void,
   out Error extends Schema.Schema.All = typeof Schema.Never,
   out Middleware extends RpcMiddleware.TagClassAny = never
@@ -154,7 +154,7 @@ export interface AnyWithProps {
   readonly [TypeId]: TypeId
   readonly _tag: string
   readonly key: string
-  readonly payloadSchema: AnyStructSchema
+  readonly payloadSchema: Schema.Schema.Any
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
   readonly annotations: Context_.Context<never>
@@ -287,10 +287,8 @@ export type PayloadConstructor<R> = R extends Rpc<
   infer _Success,
   infer _Error,
   infer _Middleware
-> ?
-  Schema.Struct.Constructor<_Payload["fields"]> extends infer T ?
-    [keyof T] extends [never] ? void | {} : Schema.Simplify<T>
-  : never
+> ? _Payload extends { readonly make: (params: infer P, ...rest: infer _Rest) => infer _ } ? P
+  : _Payload["Type"]
   : never
 
 /**
@@ -548,7 +546,7 @@ const Proto = {
 
 const makeProto = <
   const Tag extends string,
-  Payload extends AnyStructSchema,
+  Payload extends Schema.Schema.Any,
   Success extends Schema.Schema.Any,
   Error extends Schema.Schema.All,
   Middleware extends RpcMiddleware.TagClassAny
@@ -575,7 +573,7 @@ const constEmptyStruct = Schema.Struct({})
  */
 export const make = <
   const Tag extends string,
-  Payload extends AnyStructSchema | Schema.Struct.Fields = Schema.Struct<{}>,
+  Payload extends Schema.Schema.Any | Schema.Struct.Fields = typeof Schema.Void,
   Success extends Schema.Schema.Any = typeof Schema.Void,
   Error extends Schema.Schema.All = typeof Schema.Never,
   const Stream extends boolean = false
@@ -628,14 +626,12 @@ export const make = <
  * @since 1.0.0
  * @category constructors
  */
-export interface AnyStructSchema extends Pipeable {
+export interface AnySchema extends Pipeable {
   readonly [Schema.TypeId]: any
-  readonly make: any
   readonly Type: any
   readonly Encoded: any
   readonly Context: any
   readonly ast: AST.AST
-  readonly fields: Schema.Struct.Fields
   readonly annotations: any
 }
 
@@ -643,7 +639,7 @@ export interface AnyStructSchema extends Pipeable {
  * @since 1.0.0
  * @category constructors
  */
-export interface AnyTaggedRequestSchema extends AnyStructSchema {
+export interface AnyTaggedRequestSchema extends AnySchema {
   readonly _tag: string
   readonly success: Schema.Schema.Any
   readonly failure: Schema.Schema.All
