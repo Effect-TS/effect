@@ -285,7 +285,7 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
               : 0,
             message: response.exit.cause._tag === "Fail" && hasProperty(response.exit.cause.error, "message")
               ? response.exit.cause.error.message
-              : "An error occurred",
+              : JSON.stringify(response.exit.cause),
             data: response.exit.cause
           } :
           undefined

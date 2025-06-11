@@ -1,10 +1,12 @@
 /**
  * @since 1.0.0
  */
+import type { PlatformError } from "@effect/platform/Error"
+import { SystemError } from "@effect/platform/Error"
 import type { Channel } from "effect/Channel"
 import type { Chunk } from "effect/Chunk"
 import type { LazyArg } from "effect/Function"
-import type { Sink } from "effect/Sink"
+import type * as Sink from "effect/Sink"
 import type { Writable } from "stream"
 import * as internal from "./internal/sink.js"
 import type { FromWritableOptions } from "./NodeStream.js"
@@ -17,7 +19,7 @@ export const fromWritable: <E, A = string | Uint8Array>(
   evaluate: LazyArg<Writable | NodeJS.WritableStream>,
   onError: (error: unknown) => E,
   options?: FromWritableOptions
-) => Sink<void, A, never, E> = internal.fromWritable
+) => Sink.Sink<void, A, never, E> = internal.fromWritable
 
 /**
  * @category constructor
@@ -28,3 +30,18 @@ export const fromWritableChannel: <IE, OE, A>(
   onError: (error: unknown) => OE,
   options?: FromWritableOptions
 ) => Channel<Chunk<never>, Chunk<A>, IE | OE, IE, void, unknown> = internal.fromWritableChannel
+
+/**
+ * @category constructor
+ * @since 1.0.0
+ */
+export const stdout: Sink.Sink<void, string | Uint8Array, never, PlatformError> = fromWritable(
+  () => process.stdout,
+  (cause) =>
+    new SystemError({
+      module: "Stream",
+      method: "stdout",
+      reason: "Unknown",
+      cause
+    })
+)

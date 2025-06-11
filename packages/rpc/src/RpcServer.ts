@@ -1179,7 +1179,7 @@ export const toWebHandler = <Rpcs extends Rpc.Any, LE>(
  */
 export const makeProtocolStdio = Effect.fnUntraced(function*<EIn, EOut, RIn, ROut>(options: {
   readonly stdin: Stream.Stream<Uint8Array, EIn, RIn>
-  readonly stdout: Sink.Sink<void, Uint8Array | string, never, EOut, ROut>
+  readonly stdout: Sink.Sink<void, Uint8Array | string, unknown, EOut, ROut>
 }) {
   const serialization = yield* RpcSerialization.RpcSerialization
 
@@ -1238,8 +1238,8 @@ export const makeProtocolStdio = Effect.fnUntraced(function*<EIn, EOut, RIn, ROu
  */
 export const layerProtocolStdio = <EIn, EOut, RIn, ROut>(options: {
   readonly stdin: Stream.Stream<Uint8Array, EIn, RIn>
-  readonly stdout: Sink.Sink<void, Uint8Array | string, never, EOut, ROut>
-}): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | Exclude<RIn | ROut, Scope.Scope>> =>
+  readonly stdout: Sink.Sink<void, Uint8Array | string, unknown, EOut, ROut>
+}): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | RIn | ROut> =>
   Layer.scoped(Protocol, makeProtocolStdio(options))
 
 // internal

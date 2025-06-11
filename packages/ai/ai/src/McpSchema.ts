@@ -920,14 +920,7 @@ export class Tool extends Schema.Class<Tool>(
   /**
    * A JSON Schema object defining the expected parameters for the tool.
    */
-  inputSchema: Schema.Struct({
-    type: Schema.tag("object"),
-    properties: Schema.optional(Schema.Record({
-      key: Schema.String,
-      value: Schema.Unknown
-    })),
-    required: Schema.optional(Schema.Array(Schema.String))
-  }),
+  inputSchema: Schema.Unknown,
   /**
    * Optional additional tool information.
    */
