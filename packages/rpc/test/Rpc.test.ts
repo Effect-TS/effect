@@ -17,7 +17,7 @@ describe("Rpc", () => {
       const handler = yield* TestGroup.accessHandler("two").pipe(
         Effect.provide(TwoHandler)
       )
-      const result = yield* handler({}, Headers.empty)
+      const result = yield* handler(void 0, Headers.empty)
       assert.strictEqual(result, "two")
     }))
 })

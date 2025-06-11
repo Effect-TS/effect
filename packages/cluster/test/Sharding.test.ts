@@ -479,7 +479,7 @@ describe.concurrent("Sharding", () => {
       const driver = yield* MessageStorage.MemoryDriver
       const makeClient = yield* TestEntity.client
       const client = makeClient("1")
-      const result = yield* client.Never({}, { discard: true })
+      const result = yield* client.Never(void 0, { discard: true })
       expect(result).toEqual(void 0)
       yield* TestClock.adjust(1)
       expect(driver.journal.length).toEqual(1)

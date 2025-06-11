@@ -200,7 +200,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
               rpc,
               middleware,
               span,
-              "make" in rpc.payloadSchema ? (rpc.payloadSchema.make as any)(payload) : payload,
+              rpc.payloadSchema.make ? rpc.payloadSchema.make(payload) : payload,
               headers,
               opts?.context ?? Context.empty(),
               opts?.discard ?? false
@@ -212,7 +212,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
         onStreamRequest(
           rpc,
           middleware,
-          "make" in rpc.payloadSchema ? (rpc.payloadSchema.make as any)(payload) : payload,
+          rpc.payloadSchema.make ? rpc.payloadSchema.make(payload) : payload,
           headers,
           opts?.streamBufferSize ?? 16,
           opts?.context ?? Context.empty()

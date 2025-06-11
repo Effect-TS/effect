@@ -154,7 +154,7 @@ export interface AnyWithProps {
   readonly [TypeId]: TypeId
   readonly _tag: string
   readonly key: string
-  readonly payloadSchema: Schema.Schema.Any
+  readonly payloadSchema: AnySchema
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
   readonly annotations: Context_.Context<never>
@@ -631,6 +631,7 @@ export interface AnySchema extends Pipeable {
   readonly Type: any
   readonly Encoded: any
   readonly Context: any
+  readonly make?: (params: any, ...rest: ReadonlyArray<any>) => any
   readonly ast: AST.AST
   readonly annotations: any
 }

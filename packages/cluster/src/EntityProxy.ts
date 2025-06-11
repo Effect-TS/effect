@@ -63,7 +63,7 @@ export const toRpcGroup = <Rpcs extends Rpc.Any, const Prefix extends string = "
     payloadSchema.make = (input: any, options?: Schema.MakeOptions) => {
       return oldMake({
         entityId: input.entityId,
-        payload: parentRpc.payloadSchema.make(input.payload, options)
+        payload: parentRpc.payloadSchema.make ? parentRpc.payloadSchema.make(input.payload, options) : input.payload
       }, options)
     }
     const rpc = Rpc.make(`${prefix}${parentRpc._tag}`, {

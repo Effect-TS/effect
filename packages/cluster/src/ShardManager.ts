@@ -382,7 +382,7 @@ export const makeClientRpc: Effect.Effect<
     unregister: (address) => client.Unregister({ address }),
     notifyUnhealthyRunner: (address) => client.NotifyUnhealthyRunner({ address }),
     getAssignments: client.GetAssignments(),
-    shardingEvents: client.ShardingEvents({}, { asMailbox: true }),
+    shardingEvents: client.ShardingEvents(void 0, { asMailbox: true }),
     getTime: client.GetTime()
   })
 })
