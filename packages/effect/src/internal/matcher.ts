@@ -56,7 +56,9 @@ const ValueMatcherProto: Omit<
   [TypeId]: {
     _input: identity,
     _filters: identity,
+    _remaining: identity,
     _result: identity,
+    _provided: identity,
     _return: identity
   },
   _tag: "ValueMatcher",
