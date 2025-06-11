@@ -848,7 +848,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
   RpcSerialization.RpcSerialization
 > = Effect.gen(function*() {
   const serialization = yield* RpcSerialization.RpcSerialization
-  const isJson = serialization.contentType === "application/json"
+  const includesFraming = serialization.includesFraming
 
   const disconnects = yield* Mailbox.make<number>()
   let writeRequest!: (clientId: number, message: FromClientEncoded) => Effect.Effect<void>
@@ -874,12 +874,12 @@ export const makeProtocolWithHttpApp: Effect.Effect<
     clients.set(id, {
       write: (response) => {
         try {
-          if (isJson) return mailbox.offer(response)
+          if (!includesFraming) return mailbox.offer(response)
           const encoded = parser.encode(response)
           if (encoded === undefined) return Effect.void
           return offer(encoded)
         } catch (cause) {
-          return isJson
+          return !includesFraming
             ? mailbox.offer(ResponseDefectEncoded(cause))
             : offer(parser.encode(ResponseDefectEncoded(cause))!)
         }
@@ -903,7 +903,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 
     yield* writeRequest(id, constEof)
 
-    if (isJson) {
+    if (!includesFraming) {
       let done = false
       yield* Effect.addFinalizer(() => {
         clients.delete(id)
