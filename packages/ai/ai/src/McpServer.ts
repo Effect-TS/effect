@@ -5,6 +5,7 @@ import * as Headers from "@effect/platform/Headers"
 import type * as Rpc from "@effect/rpc/Rpc"
 import * as RpcSerialization from "@effect/rpc/RpcSerialization"
 import * as RpcServer from "@effect/rpc/RpcServer"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as JsonSchema from "effect/JSONSchema"
@@ -14,11 +15,14 @@ import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
+import type * as Types from "effect/Types"
 import * as FindMyWay from "find-my-way-ts"
 import * as AiTool from "./AiTool.js"
 import type * as AiToolkit from "./AiToolkit.js"
-import type { Implementation, Resource, ResourceTemplate, ServerCapabilities } from "./McpSchema.js"
+import type { Implementation, Resource, ServerCapabilities } from "./McpSchema.js"
 import {
+  Annotations,
+  BlobResourceContents,
   CallToolResult,
   ClientRpcs,
   InternalError,
@@ -27,22 +31,12 @@ import {
   ListResourceTemplatesResult,
   ListToolsResult,
   ReadResourceResult,
+  ResourceTemplate,
   TextContent,
+  TextResourceContents,
   Tool,
   ToolAnnotations
 } from "./McpSchema.js"
-
-export class McpServer extends Context.Tag("@effect/ai/McpServer")<
-  McpServer,
-  {}
->() {}
-
-export class McpServerOptions extends Context.Tag("@effect/ai/McpServer/Options")<
-  McpServerOptions,
-  {
-    readonly capabilities?: ServerCapabilities
-  }
->() {}
 
 /**
  * @since 1.0.0
@@ -55,35 +49,81 @@ export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
       readonly tool: AiTool.AnyWithProtocol
       readonly handle: (payload: any) => Effect.Effect<CallToolResult>
     }>
-    readonly resources: Array<{
-      readonly resource: Resource
-      readonly handle: Effect.Effect<ReadResourceResult>
-    }>
-    readonly resourceTemplates: Array<{
-      readonly template: ResourceTemplate
-      readonly routerPath: string
-      readonly handle: (params: Array<string>) => Effect.Effect<ReadResourceResult>
-    }>
+    readonly resources: Array<Resource>
+    readonly addResource: (resource: Resource, handle: Effect.Effect<ReadResourceResult, InternalError>) => void
+    readonly resourceTemplates: Array<ResourceTemplate>
+    readonly addResourceTemplate: (
+      template: ResourceTemplate,
+      routerPath: string,
+      handle: (uri: string, params: Array<string>) => Effect.Effect<ReadResourceResult, InvalidParams | InternalError>
+    ) => void
+    readonly findResource: (uri: string) => Effect.Effect<ReadResourceResult, InvalidParams | InternalError>
   }
 >() {
   /**
    * @since 1.0.0
    */
-  static readonly layer = Layer.sync(Registry, () =>
-    Registry.of({
+  static readonly layer = Layer.sync(Registry, () => {
+    const matcher = makeUriMatcher<
+      {
+        readonly _tag: "ResourceTemplate"
+        readonly handle: (
+          uri: string,
+          params: Array<string>
+        ) => Effect.Effect<ReadResourceResult, InternalError | InvalidParams>
+      } | {
+        readonly _tag: "Resource"
+        readonly effect: Effect.Effect<ReadResourceResult, InternalError>
+      }
+    >()
+    const resources: Array<Resource> = []
+    const resourceTemplates: Array<ResourceTemplate> = []
+
+    return Registry.of({
       tools: new Map(),
-      resourceTemplates: [],
-      resources: []
-    }))
+      get resources() {
+        return resources
+      },
+      get resourceTemplates() {
+        return resourceTemplates
+      },
+      addResource(resource, effect) {
+        resources.push(resource)
+        matcher.add(resource.uri, { _tag: "Resource", effect })
+      },
+      addResourceTemplate(template, routerPath, handle) {
+        resourceTemplates.push(template)
+        matcher.add(routerPath, { _tag: "ResourceTemplate", handle })
+      },
+      findResource: (uri) =>
+        Effect.suspend(() => {
+          const match = matcher.find(uri)
+          if (!match) {
+            return Effect.succeed(
+              new ReadResourceResult({
+                contents: []
+              })
+            )
+          } else if (match.handler._tag === "Resource") {
+            return match.handler.effect
+          }
+          return match.handler.handle(uri, match.params as any)
+        })
+    })
+  })
 }
 
+/**
+ * @since 1.0.0
+ * @category Server info
+ */
 export class McpServerImplementation extends Context.Tag("@effect/ai/McpServer/Implementation")<
   McpServerImplementation,
   Implementation
 >() {}
 
-export const LATEST_PROTOCOL_VERSION = "2025-03-26"
-export const SUPPORTED_PROTOCOL_VERSIONS = [
+const LATEST_PROTOCOL_VERSION = "2025-03-26"
+const SUPPORTED_PROTOCOL_VERSIONS = [
   LATEST_PROTOCOL_VERSION,
   "2024-11-05",
   "2024-10-07"
@@ -95,8 +135,7 @@ export const SUPPORTED_PROTOCOL_VERSIONS = [
  */
 export const make = Effect.gen(function*() {
   const protocol = yield* RpcServer.Protocol
-  const scope = yield* Effect.scope
-  const handlers = yield* Layer.buildWithMemoMap(ClientRpcHandlers, yield* Layer.CurrentMemoMap, scope)
+  const handlers = yield* Layer.build(ClientRpcHandlers)
 
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
@@ -127,158 +166,35 @@ export const make = Effect.gen(function*() {
   )
 }).pipe(Effect.scoped)
 
-const ClientRpcHandlers = ClientRpcs.toLayer(
-  Effect.gen(function*() {
-    const serverInfo = yield* McpServerImplementation
-    const { capabilities = {} } = yield* McpServerOptions
-    const registry = yield* Registry
-
-    // TODO: move into registry to support dynamic registration
-    const resourceRouter = makeUriMatcher<
-      {
-        readonly _tag: "Resource"
-        readonly effect: Effect.Effect<ReadResourceResult>
-      } | {
-        readonly _tag: "ResourceTemplate"
-        readonly handle: (params: Array<string>) => Effect.Effect<ReadResourceResult>
-      }
-    >()
-
-    for (const { handle, routerPath } of registry.resourceTemplates) {
-      resourceRouter.add(routerPath, {
-        _tag: "ResourceTemplate",
-        handle
-      })
-    }
-    for (const { handle, resource } of registry.resources) {
-      resourceRouter.add(resource.uri, {
-        _tag: "Resource",
-        effect: handle
-      })
-    }
-
-    return {
-      // Requests
-      ping: () => Effect.succeed({}),
-      initialize(params) {
-        const requestedVersion = params.protocolVersion
-        return Effect.succeed({
-          capabilities,
-          serverInfo,
-          protocolVersion: SUPPORTED_PROTOCOL_VERSIONS.includes(requestedVersion)
-            ? requestedVersion
-            : LATEST_PROTOCOL_VERSION
-        })
-      },
-      "completion/complete": () => InternalError.notImplemented,
-      "logging/setLevel": () => InternalError.notImplemented,
-      "prompts/get": () => InternalError.notImplemented,
-      "prompts/list": () => InternalError.notImplemented,
-      "resources/list": () =>
-        Effect.sync(() =>
-          new ListResourcesResult({
-            resources: registry.resources.map(({ resource }) => resource)
-          })
-        ),
-      "resources/read": ({ uri }) =>
-        Effect.suspend(() => {
-          const found = resourceRouter.find(uri)
-          if (!found) {
-            return Effect.succeed(
-              new ReadResourceResult({
-                contents: []
-              })
-            )
-          } else if (found.handler._tag === "Resource") {
-            return found.handler.effect
-          }
-          return found.handler.handle(found.params as any)
-        }),
-      "resources/subscribe": () => InternalError.notImplemented,
-      "resources/unsubscribe": () => InternalError.notImplemented,
-      "resources/templates/list": () =>
-        Effect.sync(() =>
-          new ListResourceTemplatesResult({
-            resourceTemplates: registry.resourceTemplates.map(({ template }) => template)
-          })
-        ),
-      "tools/call": ({ arguments: params, name }) =>
-        Effect.suspend(() => {
-          const tool = registry.tools.get(name)
-          if (!tool) {
-            return Effect.fail(new InvalidParams({ message: `Tool '${name}' not found` }))
-          }
-          return tool.handle(params)
-        }),
-      "tools/list": () =>
-        Effect.sync(() => {
-          const tools = Array.from(registry.tools.values(), ({ tool }) =>
-            new Tool({
-              name: tool.name,
-              description: tool.description,
-              inputSchema: makeJsonSchema(tool.parametersSchema.ast),
-              annotations: new ToolAnnotations({
-                ...(Context.getOption(tool.annotations, AiTool.Title).pipe(
-                  Option.map((title) => ({ title })),
-                  Option.getOrUndefined
-                )),
-                readOnlyHint: Context.get(tool.annotations, AiTool.Readonly),
-                destructiveHint: Context.get(tool.annotations, AiTool.Destructive),
-                idempotentHint: Context.get(tool.annotations, AiTool.Idempotent),
-                openWorldHint: Context.get(tool.annotations, AiTool.OpenWorld)
-              })
-            }))
-          return new ListToolsResult({ tools })
-        }),
-
-      // Notifications
-      "notifications/cancelled": (_) => Effect.void,
-      "notifications/initialized": (_) => Effect.void,
-      "notifications/progress": (_) => Effect.void,
-      "notifications/roots/list_changed": (_) => Effect.void
-    }
-  })
-).pipe(Layer.provide(Registry.layer))
-
-const makeJsonSchema = (ast: AST.AST): JsonSchema.JsonSchema7 => {
-  const props = AST.getPropertySignatures(ast)
-  if (props.length === 0) {
-    return {
-      type: "object",
-      properties: {},
-      required: [],
-      additionalProperties: false
-    }
-  }
-  const $defs = {}
-  const schema = JsonSchema.fromAST(ast, {
-    definitions: $defs,
-    topLevelReferenceStrategy: "skip"
-  })
-  if (Object.keys($defs).length === 0) return schema
-  ;(schema as any).$defs = $defs
-  return schema
-}
-
-export const layer = (
-  serverInfo: Context.Tag.Service<McpServerImplementation>,
-  options?: Context.Tag.Service<McpServerOptions>
-): Layer.Layer<never, never, RpcServer.Protocol> =>
+/**
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layer = (options: {
+  readonly name: string
+  readonly version: string
+}): Layer.Layer<never, never, RpcServer.Protocol> =>
   Layer.scopedDiscard(Effect.forkScoped(make)).pipe(
-    Layer.provide([
-      Layer.succeed(McpServerImplementation, serverInfo),
-      Layer.succeed(McpServerOptions, options ?? {})
-    ])
+    Layer.provide(Registry.layer),
+    Layer.provide(Layer.succeed(McpServerImplementation, {
+      name: options.name,
+      version: options.version
+    }))
   )
 
-export const layerStdio = <EIn, RIn, EOut, ROut>(
-  serverInfo: Context.Tag.Service<McpServerImplementation>,
-  options: Context.Tag.Service<McpServerOptions> & {
-    readonly stdin: Stream<Uint8Array, EIn, RIn>
-    readonly stdout: Sink<unknown, Uint8Array | string, unknown, EOut, ROut>
-  }
-): Layer.Layer<never, never, RIn | ROut> =>
-  layer(serverInfo, options).pipe(
+/**
+ * Run the McpServer, using stdio for input and output.
+ *
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layerStdio = <EIn, RIn, EOut, ROut>(options: {
+  readonly name: string
+  readonly version: string
+  readonly stdin: Stream<Uint8Array, EIn, RIn>
+  readonly stdout: Sink<unknown, Uint8Array | string, unknown, EOut, ROut>
+}): Layer.Layer<never, never, RIn | ROut> =>
+  layer(options).pipe(
     Layer.provide(RpcServer.layerProtocolStdio({
       stdin: options.stdin,
       stdout: options.stdout
@@ -292,44 +208,214 @@ export const layerStdio = <EIn, RIn, EOut, ROut>(
  * @since 1.0.0
  * @category Tools
  */
+export const registerToolkit: <Tools extends AiTool.Any>(toolkit: AiToolkit.AiToolkit<Tools>) => Effect.Effect<
+  void,
+  never,
+  Registry | AiTool.ToHandler<Tools>
+> = Effect.fnUntraced(function*<Tools extends AiTool.Any>(
+  toolkit: AiToolkit.AiToolkit<Tools>
+) {
+  const registry = yield* Registry
+  const built = yield* toolkit
+  const context = yield* Effect.context<AiTool.Context<Tools>>()
+  for (const tool of built.tools) {
+    registry.tools.set(tool.name, {
+      tool: tool as any,
+      handle(payload) {
+        return built.handle(tool.name as any, payload).pipe(
+          Effect.provide(context),
+          Effect.match({
+            onFailure: (error) =>
+              new CallToolResult({
+                isError: true,
+                content: [
+                  new TextContent({
+                    text: JSON.stringify(error)
+                  })
+                ]
+              }),
+            onSuccess: (result) =>
+              new CallToolResult({
+                isError: false,
+                content: [
+                  new TextContent({
+                    text: JSON.stringify(result.encodedResult)
+                  })
+                ]
+              })
+          })
+        ) as any
+      }
+    })
+  }
+})
+
+/**
+ * Register an AiToolkit with the McpServer.
+ *
+ * @since 1.0.0
+ * @category Tools
+ */
 export const toolkit = <Tools extends AiTool.Any>(
   toolkit: AiToolkit.AiToolkit<Tools>
-) =>
-  Layer.effectDiscard(Effect.gen(function*() {
-    const registry = yield* Registry
-    const built = yield* toolkit
-    const context = yield* Effect.context<AiTool.Context<Tools>>()
-    for (const tool of built.tools) {
-      registry.tools.set(tool.name, {
-        tool: tool as any,
-        handle(payload) {
-          return built.handle(tool.name as any, payload).pipe(
-            Effect.provide(context),
-            Effect.match({
-              onFailure: (error) =>
-                new CallToolResult({
-                  isError: true,
-                  content: [
-                    new TextContent({
-                      text: JSON.stringify(error)
-                    })
-                  ]
-                }),
-              onSuccess: (result) =>
-                new CallToolResult({
-                  isError: false,
-                  content: [
-                    new TextContent({
-                      text: JSON.stringify(result.encodedResult)
-                    })
-                  ]
-                })
-            })
-          ) as any
-        }
-      })
+): Layer.Layer<never, never, AiTool.ToHandler<Tools>> =>
+  Layer.effectDiscard(registerToolkit(toolkit)).pipe(
+    Layer.provide(Registry.layer)
+  )
+
+/**
+ * Register a resource with the McpServer.
+ *
+ * @since 1.0.0
+ * @category Resources
+ */
+export const registerResource: {
+  <E, R>(options: {
+    readonly resource: Resource
+    readonly content: Effect.Effect<
+      ReadResourceResult | string | Uint8Array,
+      E,
+      R
+    >
+  }): Effect.Effect<void, never, R | Registry>
+  <const Schemas extends ReadonlyArray<Schema.Schema.Any>>(
+    segments: TemplateStringsArray,
+    ...schemas:
+      & Schemas
+      & {
+        readonly [K in keyof Schemas]: Schema.Schema.Encoded<Schemas[K]> extends string ? unknown
+          : "Schema must be encodable to a string"
+      }
+  ): <E, R>(options: {
+    readonly name: string
+    readonly description?: string | undefined
+    readonly mimeType?: string | undefined
+    readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
+    readonly priority?: number | undefined
+    readonly content: (uri: string, ...params: { readonly [K in keyof Schemas]: Schemas[K]["Type"] }) => Effect.Effect<
+      ReadResourceResult | string | Uint8Array,
+      E,
+      R
+    >
+  }) => Effect.Effect<void, never, R | Registry>
+} = function() {
+  if (arguments.length === 1) {
+    const options = arguments[0] as {
+      readonly resource: Resource
+      readonly content: Effect.Effect<ReadResourceResult | string | Uint8Array>
     }
-  })).pipe(Layer.provide(Registry.layer))
+    return Effect.gen(function*() {
+      const context = yield* Effect.context<any>()
+      const registry = yield* Registry
+      registry.addResource(
+        options.resource,
+        options.content.pipe(
+          Effect.provide(context),
+          Effect.map((content) => resolveResourceContent(options.resource.uri, content)),
+          Effect.catchAllCause((cause) => {
+            const prettyError = Cause.prettyErrors(cause)[0]
+            return new InternalError({ message: prettyError.message })
+          })
+        )
+      )
+    })
+  }
+  const {
+    routerPath,
+    schema,
+    uriPath
+  } = compileUriTemplate(...(arguments as any as [any, any]))
+  return Effect.fnUntraced(function*<E, R>(options: {
+    readonly name: string
+    readonly description?: string | undefined
+    readonly mimeType?: string | undefined
+    readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
+    readonly priority?: number | undefined
+    readonly content: (uri: string, ...params: Array<any>) => Effect.Effect<
+      ReadResourceResult | string | Uint8Array,
+      E,
+      R
+    >
+  }) {
+    const context = yield* Effect.context<any>()
+    const registry = yield* Registry
+    const decode = Schema.decodeUnknown(schema)
+    registry.addResourceTemplate(
+      new ResourceTemplate({
+        ...options,
+        uriTemplate: uriPath,
+        annotations: new Annotations(options)
+      }),
+      routerPath,
+      (uri, params) =>
+        decode(params).pipe(
+          Effect.mapError((error) => new InvalidParams({ message: error.message })),
+          Effect.flatMap((params) =>
+            options.content(uri, ...params).pipe(
+              Effect.map((content) => resolveResourceContent(uri, content)),
+              Effect.catchAllCause((cause) => {
+                const prettyError = Cause.prettyErrors(cause)[0]
+                return new InternalError({ message: prettyError.message })
+              })
+            )
+          ),
+          Effect.provide(context)
+        )
+    )
+  })
+} as any
+
+/**
+ * Register a resource with the McpServer.
+ *
+ * @since 1.0.0
+ * @category Resources
+ */
+export const resource: {
+  <E, R>(options: {
+    readonly resource: Resource
+    readonly content: Effect.Effect<
+      ReadResourceResult | string | Uint8Array,
+      E,
+      R
+    >
+  }): Layer.Layer<never, never, R>
+  <const Schemas extends ReadonlyArray<Schema.Schema.Any>>(
+    segments: TemplateStringsArray,
+    ...schemas:
+      & Schemas
+      & {
+        readonly [K in keyof Schemas]: Schema.Schema.Encoded<Schemas[K]> extends string ? unknown
+          : "Schema must be encodable to a string"
+      }
+  ): <E, R>(options: {
+    readonly name: string
+    readonly description?: string | undefined
+    readonly mimeType?: string | undefined
+    readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
+    readonly priority?: number | undefined
+    readonly content: (uri: string, ...params: { readonly [K in keyof Schemas]: Schemas[K]["Type"] }) => Effect.Effect<
+      ReadResourceResult | string | Uint8Array,
+      E,
+      R
+    >
+  }) => Layer.Layer<never, never, R>
+} = function() {
+  if (arguments.length === 1) {
+    return Layer.effectDiscard(registerResource(arguments[0])).pipe(
+      Layer.provide(Registry.layer)
+    )
+  }
+  const register = registerResource(...(arguments as any as [any, any]))
+  return (options: any) =>
+    Layer.effectDiscard(register(options)).pipe(
+      Layer.provide(Registry.layer)
+    )
+} as any
+
+// -----------------------------------------------------------------------------
+// Internal
+// -----------------------------------------------------------------------------
 
 const makeUriMatcher = <A>() => {
   const protocols = new Map<string, FindMyWay.Router<A>>()
@@ -381,4 +467,128 @@ const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: Readonly
     uriPath,
     schema: pathSchema
   } as const
+}
+
+const ClientRpcHandlers = ClientRpcs.toLayer(
+  Effect.gen(function*() {
+    const serverInfo = yield* McpServerImplementation
+    const registry = yield* Registry
+
+    return {
+      // Requests
+      ping: () => Effect.succeed({}),
+      initialize(params) {
+        const requestedVersion = params.protocolVersion
+        const capabilities: Types.DeepMutable<ServerCapabilities> = {}
+
+        if (registry.tools.size > 0) {
+          // TODO: support listChanged notifications
+          capabilities.tools = { listChanged: false }
+        }
+
+        if (registry.resources.length > 0 || registry.resourceTemplates.length > 0) {
+          // TODO: support listChanged notifications
+          capabilities.resources = {
+            listChanged: false,
+            subscribe: false
+          }
+        }
+
+        return Effect.succeed({
+          capabilities,
+          serverInfo,
+          protocolVersion: SUPPORTED_PROTOCOL_VERSIONS.includes(requestedVersion)
+            ? requestedVersion
+            : LATEST_PROTOCOL_VERSION
+        })
+      },
+      "completion/complete": () => InternalError.notImplemented,
+      "logging/setLevel": () => InternalError.notImplemented,
+      "prompts/get": () => InternalError.notImplemented,
+      "prompts/list": () => InternalError.notImplemented,
+      "resources/list": () => Effect.sync(() => new ListResourcesResult({ resources: registry.resources })),
+      "resources/read": ({ uri }) => registry.findResource(uri),
+      "resources/subscribe": () => InternalError.notImplemented,
+      "resources/unsubscribe": () => InternalError.notImplemented,
+      "resources/templates/list": () =>
+        Effect.sync(() => new ListResourceTemplatesResult({ resourceTemplates: registry.resourceTemplates })),
+      "tools/call": ({ arguments: params, name }) =>
+        Effect.suspend(() => {
+          const tool = registry.tools.get(name)
+          if (!tool) {
+            return Effect.fail(new InvalidParams({ message: `Tool '${name}' not found` }))
+          }
+          return tool.handle(params)
+        }),
+      "tools/list": () =>
+        Effect.sync(() => {
+          const tools = Array.from(registry.tools.values(), ({ tool }) =>
+            new Tool({
+              name: tool.name,
+              description: tool.description,
+              inputSchema: makeJsonSchema(tool.parametersSchema.ast),
+              annotations: new ToolAnnotations({
+                ...(Context.getOption(tool.annotations, AiTool.Title).pipe(
+                  Option.map((title) => ({ title })),
+                  Option.getOrUndefined
+                )),
+                readOnlyHint: Context.get(tool.annotations, AiTool.Readonly),
+                destructiveHint: Context.get(tool.annotations, AiTool.Destructive),
+                idempotentHint: Context.get(tool.annotations, AiTool.Idempotent),
+                openWorldHint: Context.get(tool.annotations, AiTool.OpenWorld)
+              })
+            }))
+          return new ListToolsResult({ tools })
+        }),
+
+      // Notifications
+      "notifications/cancelled": (_) => Effect.void,
+      "notifications/initialized": (_) => Effect.void,
+      "notifications/progress": (_) => Effect.void,
+      "notifications/roots/list_changed": (_) => Effect.void
+    }
+  })
+)
+
+const makeJsonSchema = (ast: AST.AST): JsonSchema.JsonSchema7 => {
+  const props = AST.getPropertySignatures(ast)
+  if (props.length === 0) {
+    return {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: false
+    }
+  }
+  const $defs = {}
+  const schema = JsonSchema.fromAST(ast, {
+    definitions: $defs,
+    topLevelReferenceStrategy: "skip"
+  })
+  if (Object.keys($defs).length === 0) return schema
+  ;(schema as any).$defs = $defs
+  return schema
+}
+
+const resolveResourceContent = (uri: string, content: ReadResourceResult | string | Uint8Array) => {
+  if (typeof content === "string") {
+    return new ReadResourceResult({
+      contents: [
+        new TextResourceContents({
+          uri,
+          text: content
+        })
+      ]
+    })
+  } else if (content instanceof Uint8Array) {
+    return new ReadResourceResult({
+      contents: [
+        new BlobResourceContents({
+          uri,
+          blob: content
+        })
+      ]
+    })
+  }
+  return content
 }
