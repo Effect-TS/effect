@@ -859,6 +859,42 @@ describe.concurrent("Micro", () => {
           })
         })
       ))
+    it.effect("does not bindTo __proto__", () =>
+      pipe(
+        Micro.succeed(1),
+        Micro.bindTo("__proto__"),
+        Micro.bind("x", () => Micro.succeed(2)),
+        Micro.tap((_) => {
+          deepStrictEqual(_, {
+            x: 2,
+            ["__proto__"]: 1
+          })
+        })
+      ))
+    it.effect("does not let __proto__", () =>
+      pipe(
+        Micro.Do,
+        Micro.let("__proto__", () => 1),
+        Micro.bind("x", () => Micro.succeed(2)),
+        Micro.tap((_) => {
+          deepStrictEqual(_, {
+            x: 2,
+            ["__proto__"]: 1
+          })
+        })
+      ))
+    it.effect("does not bind __proto__", () =>
+      pipe(
+        Micro.Do,
+        Micro.bind("__proto__", () => Micro.succeed(1)),
+        Micro.bind("x", () => Micro.succeed(2)),
+        Micro.tap((_) => {
+          deepStrictEqual(_, {
+            x: 2,
+            ["__proto__"]: 1
+          })
+        })
+      ))
   })
 
   describe("stack safety", () => {

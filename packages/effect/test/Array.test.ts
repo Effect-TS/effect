@@ -1298,5 +1298,14 @@ describe("Array", () => {
 
     const doABCD = Arr.bind(doABC, "d", () => Arr.empty())
     deepStrictEqual(doABCD, [])
+
+    const doAB__proto__C = pipe(
+      Arr.let(doAB, "__proto__", (x) => [x.a, x.b, x.a + x.b]),
+      Arr.let("c", (x) => [x.a, x.b, x.a + x.b])
+    )
+    deepStrictEqual(doAB__proto__C, [
+      { a: "a", b: "b", c: ["a", "b", "ab"], ["__proto__"]: ["a", "b", "ab"] },
+      { a: "a", b: "ab", c: ["a", "ab", "aab"], ["__proto__"]: ["a", "ab", "aab"] }
+    ])
   })
 })

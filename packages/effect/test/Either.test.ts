@@ -380,6 +380,14 @@ describe("Either", () => {
     it("bindTo", () => {
       assertRight(pipe(Either.right(1), Either.bindTo("a")), { a: 1 })
       assertLeft(pipe(Either.left("left"), Either.bindTo("a")), "left")
+      assertRight(
+        pipe(
+          Either.right(1),
+          Either.bindTo("__proto__"),
+          Either.bind("a", () => Either.right(1))
+        ),
+        { a: 1, ["__proto__"]: 1 }
+      )
     })
 
     it("bind", () => {
@@ -395,6 +403,15 @@ describe("Either", () => {
         pipe(Either.left("left"), Either.bindTo("a"), Either.bind("b", () => Either.right(2))),
         "left"
       )
+      assertRight(
+        pipe(
+          Either.right(1),
+          Either.bindTo("a"),
+          Either.bind("__proto__", ({ a }) => Either.right(a + 1)),
+          Either.bind("b", ({ a }) => Either.right(a + 1))
+        ),
+        { a: 1, b: 2, ["__proto__"]: 2 }
+      )
     })
 
     it("let", () => {
@@ -402,6 +419,15 @@ describe("Either", () => {
       assertLeft(
         pipe(Either.left("left"), Either.bindTo("a"), Either.let("b", () => 2)),
         "left"
+      )
+      assertRight(
+        pipe(
+          Either.right(1),
+          Either.bindTo("a"),
+          Either.let("__proto__", ({ a }) => a + 1),
+          Either.let("b", ({ a }) => a + 1)
+        ),
+        { a: 1, b: 2, ["__proto__"]: 2 }
       )
     })
   })

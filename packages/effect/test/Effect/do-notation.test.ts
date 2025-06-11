@@ -22,6 +22,14 @@ describe("do notation", () => {
   it("bindTo", () => {
     expectRight(pipe(Effect.succeed(1), Effect.bindTo("a")), { a: 1 })
     expectLeft(pipe(Effect.fail("left"), Effect.bindTo("a")), "left")
+    expectRight(
+      pipe(
+        Effect.succeed(1),
+        Effect.bindTo("__proto__"),
+        Effect.bind("x", () => Effect.succeed(2))
+      ),
+      { x: 2, ["__proto__"]: 1 }
+    )
   })
 
   it("bind", () => {
@@ -37,6 +45,14 @@ describe("do notation", () => {
       pipe(Effect.fail("left"), Effect.bindTo("a"), Effect.bind("b", () => Effect.succeed(2))),
       "left"
     )
+    expectRight(
+      pipe(
+        Effect.Do,
+        Effect.bind("__proto__", () => Effect.succeed(1)),
+        Effect.bind("b", ({ __proto__ }) => Effect.succeed(2))
+      ),
+      { b: 2, ["__proto__"]: 1 }
+    )
   })
 
   it("let", () => {
@@ -44,6 +60,15 @@ describe("do notation", () => {
     expectLeft(
       pipe(Effect.fail("left"), Effect.bindTo("a"), Effect.let("b", () => 2)),
       "left"
+    )
+    expectRight(
+      pipe(
+        Effect.succeed(1),
+        Effect.bindTo("a"),
+        Effect.let("__proto__", ({ a }) => a + 1),
+        Effect.bind("x", () => Effect.succeed(3))
+      ),
+      { a: 1, x: 3, ["__proto__"]: 2 }
     )
   })
 
