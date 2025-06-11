@@ -9,10 +9,11 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as JsonSchema from "effect/JSONSchema"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as AST from "effect/SchemaAST"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
-import type * as AiTool from "./AiTool.js"
+import * as AiTool from "./AiTool.js"
 import type * as AiToolkit from "./AiToolkit.js"
 import type { Implementation, ServerCapabilities } from "./McpSchema.js"
 import {
@@ -22,7 +23,8 @@ import {
   InvalidParams,
   ListToolsResult,
   TextContent,
-  Tool
+  Tool,
+  ToolAnnotations
 } from "./McpSchema.js"
 
 export class McpServer extends Context.Tag("@effect/ai/McpServer")<
@@ -150,7 +152,17 @@ const ClientRpcHandlers = ClientRpcs.toLayer(
             new Tool({
               name: tool.name,
               description: tool.description,
-              inputSchema: makeJsonSchema(tool.parametersSchema.ast)
+              inputSchema: makeJsonSchema(tool.parametersSchema.ast),
+              annotations: new ToolAnnotations({
+                ...(Context.getOption(tool.annotations, AiTool.Title).pipe(
+                  Option.map((title) => ({ title })),
+                  Option.getOrUndefined
+                )),
+                readOnlyHint: Context.get(tool.annotations, AiTool.Readonly),
+                destructiveHint: Context.get(tool.annotations, AiTool.Destructive),
+                idempotentHint: Context.get(tool.annotations, AiTool.Idempotent),
+                openWorldHint: Context.get(tool.annotations, AiTool.OpenWorld)
+              })
             }))
           return new ListToolsResult({ tools })
         }),
