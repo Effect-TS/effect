@@ -30,8 +30,10 @@ import * as Option from "effect/Option"
 import { type ParseError, TreeFormatter } from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Runtime from "effect/Runtime"
+import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
+import type * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
 import { withRun } from "./internal/utils.js"
@@ -459,6 +461,7 @@ export const make: <Rpcs extends Rpc.Any>(
       readonly spanPrefix?: string | undefined
       readonly spanAttributes?: Record<string, unknown> | undefined
       readonly concurrency?: number | "unbounded" | undefined
+      readonly disableFatalDefects?: boolean | undefined
     }
     | undefined
 ) => Effect.Effect<
@@ -472,6 +475,7 @@ export const make: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly concurrency?: number | "unbounded" | undefined
+    readonly disableFatalDefects?: boolean | undefined
   }
 ) {
   const { disconnects, end, run, send, supportsAck, supportsSpanPropagation, supportsTransferables } = yield* Protocol
@@ -1166,6 +1170,77 @@ export const toWebHandler = <Rpcs extends Rpc.Any, LE>(
   }
   return { handler, dispose: runtime.dispose } as const
 }
+
+/**
+ * Create a protocol that uses the provided `Stream` and `Sink` for communication.
+ *
+ * @since 1.0.0
+ * @category protocol
+ */
+export const makeProtocolStdio = Effect.fnUntraced(function*<EIn, EOut, RIn, ROut>(options: {
+  readonly stdin: Stream.Stream<Uint8Array, EIn, RIn>
+  readonly stdout: Sink.Sink<void, Uint8Array | string, never, EOut, ROut>
+}) {
+  const serialization = yield* RpcSerialization.RpcSerialization
+
+  return yield* Protocol.make(Effect.fnUntraced(function*(writeRequest) {
+    const mailbox = yield* Mailbox.make<Uint8Array | string>()
+    const parser = serialization.unsafeMake()
+
+    yield* options.stdin.pipe(
+      Stream.runForEach((data) => {
+        const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
+        if (decoded.length === 0) return Effect.void
+        let i = 0
+        return Effect.whileLoop({
+          while: () => i < decoded.length,
+          body: () => writeRequest(0, decoded[i++]),
+          step: constVoid
+        })
+      }),
+      Effect.retry(Schedule.spaced(500)),
+      Effect.forkScoped,
+      Effect.interruptible
+    )
+
+    yield* Mailbox.toStream(mailbox).pipe(
+      Stream.run(options.stdout),
+      Effect.retry(Schedule.spaced(500)),
+      Effect.forkScoped,
+      Effect.interruptible
+    )
+
+    return {
+      disconnects: yield* Mailbox.make<number>(),
+      send(_clientId, response) {
+        const responseEncoded = parser.encode(response)
+        if (responseEncoded === undefined) {
+          return Effect.void
+        }
+        return mailbox.offer(responseEncoded)
+      },
+      end(_clientId) {
+        return mailbox.end
+      },
+      initialMessage: Effect.succeedNone,
+      supportsAck: true,
+      supportsTransferables: false,
+      supportsSpanPropagation: true
+    }
+  }))
+})
+
+/**
+ * Create a protocol that uses the provided `Stream` and `Sink` for communication.
+ *
+ * @since 1.0.0
+ * @category protocol
+ */
+export const layerProtocolStdio = <EIn, EOut, RIn, ROut>(options: {
+  readonly stdin: Stream.Stream<Uint8Array, EIn, RIn>
+  readonly stdout: Sink.Sink<void, Uint8Array | string, never, EOut, ROut>
+}): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | Exclude<RIn | ROut, Scope.Scope>> =>
+  Layer.scoped(Protocol, makeProtocolStdio(options))
 
 // internal
 

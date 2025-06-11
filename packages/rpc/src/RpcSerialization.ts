@@ -3,7 +3,6 @@
  */
 import { Msgpackr } from "@effect/platform/MsgPack"
 import * as Context from "effect/Context"
-import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
 import { hasProperty } from "effect/Predicate"
 import type * as RpcMessage from "./RpcMessage.js"
@@ -30,47 +29,45 @@ export interface Parser {
  * @since 1.0.0
  * @category serialization
  */
-export const json: LazyArg<RpcSerialization["Type"]> = () => {
-  const decoder = new TextDecoder()
-  return RpcSerialization.of({
-    contentType: "application/json",
-    unsafeMake: () => ({
+export const json: RpcSerialization["Type"] = RpcSerialization.of({
+  contentType: "application/json",
+  unsafeMake: () => {
+    const decoder = new TextDecoder()
+    return {
       decode: (bytes) => [JSON.parse(typeof bytes === "string" ? bytes : decoder.decode(bytes))],
       encode: (response) => JSON.stringify(response)
-    })
-  })
-}
+    }
+  }
+})
 
 /**
  * @since 1.0.0
  * @category serialization
  */
-export const ndjson: LazyArg<RpcSerialization["Type"]> = () => {
-  const decoder = new TextDecoder()
-  return RpcSerialization.of({
-    contentType: "application/ndjson",
-    unsafeMake: () => {
-      let buffer = ""
-      return ({
-        decode: (bytes) => {
-          buffer += typeof bytes === "string" ? bytes : decoder.decode(bytes)
-          let position = 0
-          let nlIndex = buffer.indexOf("\n", position)
-          const items: Array<unknown> = []
-          while (nlIndex !== -1) {
-            const item = JSON.parse(buffer.slice(position, nlIndex))
-            items.push(item)
-            position = nlIndex + 1
-            nlIndex = buffer.indexOf("\n", position)
-          }
-          buffer = buffer.slice(position)
-          return items
-        },
-        encode: (response) => JSON.stringify(response) + "\n"
-      })
-    }
-  })
-}
+export const ndjson: RpcSerialization["Type"] = RpcSerialization.of({
+  contentType: "application/ndjson",
+  unsafeMake: () => {
+    const decoder = new TextDecoder()
+    let buffer = ""
+    return ({
+      decode: (bytes) => {
+        buffer += typeof bytes === "string" ? bytes : decoder.decode(bytes)
+        let position = 0
+        let nlIndex = buffer.indexOf("\n", position)
+        const items: Array<unknown> = []
+        while (nlIndex !== -1) {
+          const item = JSON.parse(buffer.slice(position, nlIndex))
+          items.push(item)
+          position = nlIndex + 1
+          nlIndex = buffer.indexOf("\n", position)
+        }
+        buffer = buffer.slice(position)
+        return items
+      },
+      encode: (response) => JSON.stringify(response) + "\n"
+    })
+  }
+})
 
 /**
  * @since 1.0.0
@@ -106,7 +103,7 @@ export const jsonRpc: RpcSerialization["Type"] = RpcSerialization.of({
 export const ndJsonRpc: RpcSerialization["Type"] = RpcSerialization.of({
   contentType: "application/json-rpc",
   unsafeMake: () => {
-    const parser = ndjson().unsafeMake()
+    const parser = ndjson.unsafeMake()
     const batches = new Map<string, {
       readonly size: number
       readonly responses: Map<string, RpcMessage.FromServerEncoded>
@@ -250,7 +247,7 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
   } else if (response._tag === "Exit") {
     jsonRpcMessage = {
       jsonrpc: "2.0",
-      id: Number(response.requestId),
+      id: response.requestId ? Number(response.requestId) : undefined,
       result: response.exit._tag === "Success" ? response.exit.value : undefined,
       error: response.exit._tag === "Failure" ?
         {
@@ -258,7 +255,9 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
           code: response.exit.cause._tag === "Fail" && hasProperty(response.exit.cause.error, "code")
             ? Number(response.exit.cause.error.code)
             : 0,
-          message: "An error occurred",
+          message: response.exit.cause._tag === "Fail" && hasProperty(response.exit.cause.error, "message")
+            ? response.exit.cause.error.message
+            : "An error occurred",
           data: response.exit.cause
         } :
         undefined
@@ -335,7 +334,7 @@ export const msgPack: RpcSerialization["Type"] = RpcSerialization.of({
  * @since 1.0.0
  * @category serialization
  */
-export const layerJson: Layer.Layer<RpcSerialization> = Layer.sync(RpcSerialization, json)
+export const layerJson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization, json)
 
 /**
  * A rpc serialization layer that uses NDJSON for serialization.
@@ -346,7 +345,7 @@ export const layerJson: Layer.Layer<RpcSerialization> = Layer.sync(RpcSerializat
  * @since 1.0.0
  * @category serialization
  */
-export const layerNdjson: Layer.Layer<RpcSerialization> = Layer.sync(RpcSerialization, ndjson)
+export const layerNdjson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization, ndjson)
 
 /**
  * A rpc serialization layer that uses JSON-RPC for serialization.
