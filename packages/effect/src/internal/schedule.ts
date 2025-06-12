@@ -53,6 +53,7 @@ const defaultIterationMetadata: Schedule.IterationMetadata = {
   start: 0,
   now: 0,
   input: undefined,
+  output: undefined,
   elapsed: Duration.zero,
   elapsedSincePrevious: Duration.zero,
   recurrence: 0
@@ -103,13 +104,15 @@ class ScheduleImpl<S, Out, In, R> implements Schedule.Schedule<Out, In, R> {
 const updateInfo = (
   iterationMetaRef: Ref.Ref<Schedule.IterationMetadata>,
   now: number,
-  input: unknown
+  input: unknown,
+  output: unknown
 ) =>
   ref.update(iterationMetaRef, (prev) =>
     (prev.recurrence === 0) ?
       {
         now,
         input,
+        output,
         recurrence: prev.recurrence + 1,
         elapsed: Duration.zero,
         elapsedSincePrevious: Duration.zero,
@@ -118,6 +121,7 @@ const updateInfo = (
       {
         now,
         input,
+        output,
         recurrence: prev.recurrence + 1,
         elapsed: Duration.millis(now - prev.start),
         elapsedSincePrevious: Duration.millis(now - prev.now),
@@ -177,14 +181,14 @@ class ScheduleDriverImpl<Out, In, R> implements Schedule.ScheduleDriver<Out, In,
                 const millis = Intervals.start(decision.intervals) - now
                 if (millis <= 0) {
                   return setState.pipe(
-                    core.zipRight(updateInfo(this.iterationMeta, now, input)),
+                    core.zipRight(updateInfo(this.iterationMeta, now, input, out)),
                     core.as(out)
                   )
                 }
                 const duration = Duration.millis(millis)
                 return pipe(
                   setState,
-                  core.zipRight(updateInfo(this.iterationMeta, now, input)),
+                  core.zipRight(updateInfo(this.iterationMeta, now, input, out)),
                   core.zipRight(effect.sleep(duration)),
                   core.as(out)
                 )
