@@ -109,14 +109,16 @@ export interface TypeMatcher<in Input, out Filters, out Remaining, out Result, o
  * @category Model
  * @since 1.0.0
  */
-export interface ValueMatcher<in Input, Filters, out Remaining, out Result, Provided, out Return = any>
+export interface ValueMatcher<in Input, out Filters, out Remaining, out Result, out Provided, out Return = any>
   extends Pipeable
 {
   readonly _tag: "ValueMatcher"
   readonly [MatcherTypeId]: {
     readonly _input: T.Contravariant<Input>
     readonly _filters: T.Covariant<Filters>
+    readonly _remaining: T.Covariant<Remaining>
     readonly _result: T.Covariant<Result>
+    readonly _provided: T.Covariant<Result>
     readonly _return: T.Covariant<Return>
   }
   readonly provided: Provided
