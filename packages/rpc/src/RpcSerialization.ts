@@ -249,7 +249,7 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
         jsonrpc: "2.0",
         method: response.tag,
         params: response.payload,
-        id: response.id ? Number(response.id) : null,
+        id: response.id && Number(response.id),
         headers: response.headers,
         traceId: response.traceId,
         spanId: response.spanId,

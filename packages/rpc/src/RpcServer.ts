@@ -734,6 +734,7 @@ export class Protocol extends Context.Tag("@effect/rpc/RpcServer/Protocol")<Prot
     transferables?: ReadonlyArray<globalThis.Transferable>
   ) => Effect.Effect<void>
   readonly end: (clientId: number) => Effect.Effect<void>
+  readonly clientIds: Effect.Effect<Iterable<number>>
   readonly initialMessage: Effect.Effect<Option.Option<unknown>>
   readonly supportsAck: boolean
   readonly supportsTransferables: boolean
@@ -955,6 +956,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         if (!client) return Effect.void
         return client.end
       },
+      clientIds: Effect.sync(() => clients.keys()),
       initialMessage: Effect.succeedNone,
       supportsAck: false,
       supportsTransferables: false,
@@ -994,6 +996,8 @@ export const makeProtocolWorkerRunner: Effect.Effect<
   const closeLatch = yield* WorkerRunner.CloseLatch
   const backing = yield* runner.start<FromClientEncoded | InitialMessage.Encoded, FromServerEncoded>(closeLatch)
   const initialMessage = yield* Deferred.make<unknown>()
+  const clientIds = new Set<number>()
+  const disconnects = yield* Mailbox.make<number>()
 
   yield* Deferred.await(closeLatch).pipe(
     Effect.onExit(() => {
@@ -1004,18 +1008,28 @@ export const makeProtocolWorkerRunner: Effect.Effect<
   )
 
   yield* backing.run((clientId, message) => {
+    clientIds.add(clientId)
     if (message._tag === "InitialMessage") {
       return Deferred.succeed(initialMessage, message.value)
     }
     return writeRequest(clientId, message)
   })
 
+  yield* disconnects.take.pipe(
+    Effect.tap((clientId) => {
+      clientIds.delete(clientId)
+      return disconnects.offer(clientId)
+    }),
+    Effect.forkScoped
+  )
+
   return {
-    disconnects: backing.disconnects ?? (yield* Mailbox.make<number>()),
+    disconnects,
     send: backing.send,
     end(_clientId) {
       return Effect.void
     },
+    clientIds: Effect.sync(() => clientIds.values()),
     initialMessage: Effect.asSome(Deferred.await(initialMessage)),
     supportsAck: true,
     supportsTransferables: true,
@@ -1222,6 +1236,7 @@ export const makeProtocolStdio = Effect.fnUntraced(function*<EIn, EOut, RIn, ROu
       end(_clientId) {
         return mailbox.end
       },
+      clientIds: Effect.succeed([0]),
       initialMessage: Effect.succeedNone,
       supportsAck: true,
       supportsTransferables: false,
@@ -1312,6 +1327,7 @@ const makeSocketProtocol = Effect.gen(function*() {
       end(_clientId) {
         return Effect.void
       },
+      clientIds: Effect.sync(() => clients.keys()),
       initialMessage: Effect.succeedNone,
       supportsAck: true,
       supportsTransferables: false,

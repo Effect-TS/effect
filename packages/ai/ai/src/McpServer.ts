@@ -2,16 +2,21 @@
  * @since 1.0.0
  */
 import * as Headers from "@effect/platform/Headers"
+import type { RpcMessage } from "@effect/rpc"
 import type * as Rpc from "@effect/rpc/Rpc"
+import * as RpcClient from "@effect/rpc/RpcClient"
+import type * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as RpcSerialization from "@effect/rpc/RpcSerialization"
 import * as RpcServer from "@effect/rpc/RpcServer"
 import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as JsonSchema from "effect/JSONSchema"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
@@ -21,7 +26,7 @@ import type * as Types from "effect/Types"
 import * as FindMyWay from "find-my-way-ts"
 import * as AiTool from "./AiTool.js"
 import type * as AiToolkit from "./AiToolkit.js"
-import type { Complete, GetPrompt, Param, ServerCapabilities } from "./McpSchema.js"
+import type { CallTool, Complete, GetPrompt, Param, ServerCapabilities } from "./McpSchema.js"
 import {
   Annotations,
   BlobResourceContents,
@@ -42,6 +47,7 @@ import {
   ReadResourceResult,
   Resource,
   ResourceTemplate,
+  ServerNotificationRpcs,
   TextContent,
   TextResourceContents,
   Tool,
@@ -55,13 +61,22 @@ import {
 export class McpServer extends Context.Tag("@effect/ai/McpServer")<
   McpServer,
   {
-    readonly tools: Map<string, {
-      readonly tool: AiTool.AnyWithProtocol
+    readonly notifications: RpcClient.RpcClient<RpcGroup.Rpcs<typeof ServerNotificationRpcs>>
+    readonly notificationsMailbox: Mailbox.ReadonlyMailbox<RpcMessage.Request<any>>
+    readonly tools: ReadonlyArray<Tool>
+    readonly addTool: (options: {
+      readonly tool: Tool
       readonly handle: (payload: any) => Effect.Effect<CallToolResult>
-    }>
-    readonly resources: Array<Resource>
-    readonly addResource: (resource: Resource, handle: Effect.Effect<ReadResourceResult, InternalError>) => void
-    readonly resourceTemplates: Array<ResourceTemplate>
+    }) => Effect.Effect<void>
+    readonly callTool: (
+      requests: typeof CallTool.payloadSchema.Type
+    ) => Effect.Effect<CallToolResult, InternalError | InvalidParams>
+    readonly resources: ReadonlyArray<Resource>
+    readonly addResource: (
+      resource: Resource,
+      handle: Effect.Effect<ReadResourceResult, InternalError>
+    ) => Effect.Effect<void>
+    readonly resourceTemplates: ReadonlyArray<ResourceTemplate>
     readonly addResourceTemplate: (
       options: {
         readonly template: ResourceTemplate
@@ -72,14 +87,14 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
           params: Array<string>
         ) => Effect.Effect<ReadResourceResult, InvalidParams | InternalError>
       }
-    ) => void
+    ) => Effect.Effect<void>
     readonly findResource: (uri: string) => Effect.Effect<ReadResourceResult, InvalidParams | InternalError>
     readonly addPrompt: (options: {
       readonly prompt: Prompt
       readonly completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>>
       readonly handle: (params: Record<string, string>) => Effect.Effect<GetPromptResult, InternalError | InvalidParams>
-    }) => void
-    readonly prompts: Array<Prompt>
+    }) => Effect.Effect<void>
+    readonly prompts: ReadonlyArray<Prompt>
     readonly getPromptResult: (
       request: typeof GetPrompt.payloadSchema.Type
     ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams>
@@ -89,7 +104,7 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
   /**
    * @since 1.0.0
    */
-  static make() {
+  static readonly make = Effect.gen(function*() {
     const matcher = makeUriMatcher<
       {
         readonly _tag: "ResourceTemplate"
@@ -102,6 +117,8 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
         readonly effect: Effect.Effect<ReadResourceResult, InternalError>
       }
     >()
+    const tools = Arr.empty<Tool>()
+    const toolMap = new Map<string, (payload: any) => Effect.Effect<CallToolResult, InternalError>>()
     const resources: Array<Resource> = []
     const resourceTemplates: Array<ResourceTemplate> = []
     const prompts: Array<Prompt> = []
@@ -110,26 +127,77 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
       (params: Record<string, string>) => Effect.Effect<GetPromptResult, InternalError | InvalidParams>
     >()
     const completionsMap = new Map<string, (input: string) => Effect.Effect<CompleteResult, InternalError>>()
+    const notificationsMailbox = yield* Mailbox.make<RpcMessage.Request<any>>()
+    const listChangedHandles = new Map<string, any>()
+    const notifications = yield* RpcClient.makeNoSerialization(ServerNotificationRpcs, {
+      onFromClient(options): Effect.Effect<void> {
+        const message = options.message
+        if (message._tag !== "Request") {
+          return Effect.void
+        }
+        if (message.tag.includes("list_changed")) {
+          if (!listChangedHandles.has(message.tag)) {
+            listChangedHandles.set(
+              message.tag,
+              setTimeout(() => {
+                notificationsMailbox.unsafeOffer(message)
+                listChangedHandles.delete(message.tag)
+              }, 0)
+            )
+          }
+        } else {
+          notificationsMailbox.unsafeOffer(message)
+        }
+        return notifications.write({
+          clientId: 0,
+          requestId: message.id,
+          _tag: "Exit",
+          exit: Exit.void as any
+        })
+      }
+    })
 
     return McpServer.of({
-      tools: new Map(),
+      notifications: notifications.client,
+      notificationsMailbox,
+      get tools() {
+        return tools
+      },
+      addTool: (options) =>
+        Effect.suspend(() => {
+          tools.push(options.tool)
+          toolMap.set(options.tool.name, options.handle)
+          return notifications.client["notifications/tools/list_changed"]({})
+        }),
+      callTool: (request) =>
+        Effect.suspend((): Effect.Effect<CallToolResult, InternalError | InvalidParams> => {
+          const handle = toolMap.get(request.name)
+          if (!handle) {
+            return Effect.fail(new InvalidParams({ message: `Tool '${request.name}' not found` }))
+          }
+          return handle(request.arguments)
+        }),
       get resources() {
         return resources
       },
       get resourceTemplates() {
         return resourceTemplates
       },
-      addResource(resource, effect) {
-        resources.push(resource)
-        matcher.add(resource.uri, { _tag: "Resource", effect })
-      },
-      addResourceTemplate({ completions, handle, routerPath, template }) {
-        resourceTemplates.push(template)
-        matcher.add(routerPath, { _tag: "ResourceTemplate", handle })
-        for (const [param, handle] of Object.entries(completions)) {
-          completionsMap.set(`ref/resource/${template.uriTemplate}/${param}`, handle)
-        }
-      },
+      addResource: (resource, effect) =>
+        Effect.suspend(() => {
+          resources.push(resource)
+          matcher.add(resource.uri, { _tag: "Resource", effect })
+          return notifications.client["notifications/resources/list_changed"]({})
+        }),
+      addResourceTemplate: ({ completions, handle, routerPath, template }) =>
+        Effect.suspend(() => {
+          resourceTemplates.push(template)
+          matcher.add(routerPath, { _tag: "ResourceTemplate", handle })
+          for (const [param, handle] of Object.entries(completions)) {
+            completionsMap.set(`ref/resource/${template.uriTemplate}/${param}`, handle)
+          }
+          return notifications.client["notifications/resources/list_changed"]({})
+        }),
       findResource: (uri) =>
         Effect.suspend(() => {
           const match = matcher.find(uri)
@@ -151,13 +219,15 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
       get prompts() {
         return prompts
       },
-      addPrompt(options) {
-        prompts.push(options.prompt)
-        promptMap.set(options.prompt.name, options.handle)
-        for (const [param, handle] of Object.entries(options.completions)) {
-          completionsMap.set(`ref/prompt/${options.prompt.name}/${param}`, handle)
-        }
-      },
+      addPrompt: (options) =>
+        Effect.suspend(() => {
+          prompts.push(options.prompt)
+          promptMap.set(options.prompt.name, options.handle)
+          for (const [param, handle] of Object.entries(options.completions)) {
+            completionsMap.set(`ref/prompt/${options.prompt.name}/${param}`, handle)
+          }
+          return notifications.client["notifications/prompts/list_changed"]({})
+        }),
       getPromptResult: Effect.fnUntraced(function*({ arguments: params, name }) {
         const handler = promptMap.get(name)
         if (!handler) {
@@ -174,11 +244,12 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
         return handler ? yield* handler(complete.argument.value) : CompleteResult.empty
       })
     })
-  }
+  })
+
   /**
    * @since 1.0.0
    */
-  static readonly layer: Layer.Layer<McpServer> = Layer.sync(McpServer, McpServer.make)
+  static readonly layer: Layer.Layer<McpServer> = Layer.scoped(McpServer, McpServer.make)
 }
 
 const LATEST_PROTOCOL_VERSION = "2025-03-26"
@@ -198,6 +269,7 @@ export const run = Effect.fnUntraced(function*(options: {
 }) {
   const protocol = yield* RpcServer.Protocol
   const handlers = yield* Layer.build(layerHandlers(options))
+  const server = yield* McpServer
 
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
@@ -218,6 +290,27 @@ export const run = Effect.fnUntraced(function*(options: {
         return f(clientId, request)
       })
   })
+
+  const encodeNotification = Schema.encode(
+    Schema.Union(...Array.from(ServerNotificationRpcs.requests.values(), (rpc) => rpc.payloadSchema))
+  )
+  yield* server.notificationsMailbox.take.pipe(
+    Effect.flatMap(Effect.fnUntraced(function*(request) {
+      const encoded = yield* encodeNotification(request.payload)
+      const message: RpcMessage.RequestEncoded = {
+        _tag: "Request",
+        tag: request.tag,
+        payload: encoded
+      } as any
+      const clientIds = yield* patchedProtocol.clientIds
+      for (const clientId of clientIds) {
+        yield* patchedProtocol.send(clientId, message as any)
+      }
+    })),
+    Effect.catchAllCause(() => Effect.void),
+    Effect.forever,
+    Effect.forkScoped
+  )
 
   return yield* RpcServer.make(ClientRpcs, {
     spanPrefix: "McpServer",
@@ -280,8 +373,23 @@ export const registerToolkit: <Tools extends AiTool.Any>(toolkit: AiToolkit.AiTo
   const built = yield* toolkit
   const context = yield* Effect.context<AiTool.Context<Tools>>()
   for (const tool of built.tools) {
-    registry.tools.set(tool.name, {
-      tool: tool as any,
+    const mcpTool = new Tool({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: makeJsonSchema(tool.parametersSchema.ast),
+      annotations: new ToolAnnotations({
+        ...(Context.getOption(tool.annotations, AiTool.Title).pipe(
+          Option.map((title) => ({ title })),
+          Option.getOrUndefined
+        )),
+        readOnlyHint: Context.get(tool.annotations, AiTool.Readonly),
+        destructiveHint: Context.get(tool.annotations, AiTool.Destructive),
+        idempotentHint: Context.get(tool.annotations, AiTool.Idempotent),
+        openWorldHint: Context.get(tool.annotations, AiTool.OpenWorld)
+      })
+    })
+    yield* registry.addTool({
+      tool: mcpTool,
       handle(payload) {
         return built.handle(tool.name as any, payload).pipe(
           Effect.provide(context),
@@ -391,7 +499,7 @@ export const registerResource: {
     return Effect.gen(function*() {
       const context = yield* Effect.context<any>()
       const registry = yield* McpServer
-      registry.addResource(
+      yield* registry.addResource(
         new Resource({
           ...options,
           annotations: new Annotations(options)
@@ -457,7 +565,7 @@ export const registerResource: {
         )
       completions[param] = handler
     }
-    registry.addResourceTemplate({
+    yield* registry.addResourceTemplate({
       template,
       routerPath,
       completions,
@@ -619,7 +727,7 @@ export const registerPrompt = <
         )
       completions[param] = handler as any
     }
-    registry.addPrompt({
+    yield* registry.addPrompt({
       prompt,
       completions,
       handle: (params) =>
@@ -735,22 +843,21 @@ const layerHandlers = (serverInfo: {
             completions: {}
           }
 
-          if (registry.tools.size > 0) {
-            // TODO: support listChanged notifications
-            capabilities.tools = { listChanged: false }
+          if (registry.tools.length > 0) {
+            capabilities.tools = { listChanged: true }
           }
 
           if (registry.resources.length > 0 || registry.resourceTemplates.length > 0) {
             // TODO: support listChanged notifications
             capabilities.resources = {
-              listChanged: false,
+              listChanged: true,
               subscribe: false
             }
           }
 
           if (registry.prompts.length > 0) {
             capabilities.prompts = {
-              listChanged: false
+              listChanged: true
             }
           }
 
@@ -772,34 +879,8 @@ const layerHandlers = (serverInfo: {
         "resources/unsubscribe": () => InternalError.notImplemented,
         "resources/templates/list": () =>
           Effect.sync(() => new ListResourceTemplatesResult({ resourceTemplates: registry.resourceTemplates })),
-        "tools/call": ({ arguments: params, name }) =>
-          Effect.suspend(() => {
-            const tool = registry.tools.get(name)
-            if (!tool) {
-              return Effect.fail(new InvalidParams({ message: `Tool '${name}' not found` }))
-            }
-            return tool.handle(params)
-          }),
-        "tools/list": () =>
-          Effect.sync(() => {
-            const tools = Array.from(registry.tools.values(), ({ tool }) =>
-              new Tool({
-                name: tool.name,
-                description: tool.description,
-                inputSchema: makeJsonSchema(tool.parametersSchema.ast),
-                annotations: new ToolAnnotations({
-                  ...(Context.getOption(tool.annotations, AiTool.Title).pipe(
-                    Option.map((title) => ({ title })),
-                    Option.getOrUndefined
-                  )),
-                  readOnlyHint: Context.get(tool.annotations, AiTool.Readonly),
-                  destructiveHint: Context.get(tool.annotations, AiTool.Destructive),
-                  idempotentHint: Context.get(tool.annotations, AiTool.Idempotent),
-                  openWorldHint: Context.get(tool.annotations, AiTool.OpenWorld)
-                })
-              }))
-            return new ListToolsResult({ tools })
-          }),
+        "tools/call": registry.callTool,
+        "tools/list": () => Effect.sync(() => new ListToolsResult({ tools: registry.tools })),
 
         // Notifications
         "notifications/cancelled": (_) => Effect.void,
