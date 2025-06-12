@@ -54,7 +54,7 @@ const ServerLayer = Layer.mergeAll(ReadmeTemplate, TestPrompt).pipe(
     })
   ),
   // add a stderr logger
-  Layer.provide(Logger.prettyStderr)
+  Layer.provide(Logger.add(Logger.prettyLogger({ stderr: true })))
 )
 
 Layer.launch(ServerLayer).pipe(NodeRuntime.runMain)
