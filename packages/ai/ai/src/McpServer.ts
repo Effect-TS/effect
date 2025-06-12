@@ -5,6 +5,7 @@ import * as Headers from "@effect/platform/Headers"
 import type * as Rpc from "@effect/rpc/Rpc"
 import * as RpcSerialization from "@effect/rpc/RpcSerialization"
 import * as RpcServer from "@effect/rpc/RpcServer"
+import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -19,19 +20,24 @@ import type * as Types from "effect/Types"
 import * as FindMyWay from "find-my-way-ts"
 import * as AiTool from "./AiTool.js"
 import type * as AiToolkit from "./AiToolkit.js"
-import type { Complete, Implementation, Param, Resource, ServerCapabilities } from "./McpSchema.js"
+import type { Complete, GetPrompt, Implementation, Param, Resource, ServerCapabilities } from "./McpSchema.js"
 import {
   Annotations,
   BlobResourceContents,
   CallToolResult,
   ClientRpcs,
   CompleteResult,
+  GetPromptResult,
   InternalError,
   InvalidParams,
+  ListPromptsResult,
   ListResourcesResult,
   ListResourceTemplatesResult,
   ListToolsResult,
   ParamAnnotation,
+  Prompt,
+  PromptArgument,
+  PromptMessage,
   ReadResourceResult,
   ResourceTemplate,
   TextContent,
@@ -66,6 +72,15 @@ export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
       }
     ) => void
     readonly findResource: (uri: string) => Effect.Effect<ReadResourceResult, InvalidParams | InternalError>
+    readonly addPrompt: (options: {
+      readonly prompt: Prompt
+      readonly completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>>
+      readonly handle: (params: Record<string, string>) => Effect.Effect<GetPromptResult, InternalError | InvalidParams>
+    }) => void
+    readonly prompts: Array<Prompt>
+    readonly getPromptResult: (
+      request: typeof GetPrompt.payloadSchema.Type
+    ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams>
     readonly completion: (complete: typeof Complete.payloadSchema.Type) => Effect.Effect<CompleteResult, InternalError>
   }
 >() {
@@ -87,6 +102,11 @@ export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
     >()
     const resources: Array<Resource> = []
     const resourceTemplates: Array<ResourceTemplate> = []
+    const prompts: Array<Prompt> = []
+    const promptMap = new Map<
+      string,
+      (params: Record<string, string>) => Effect.Effect<GetPromptResult, InternalError | InvalidParams>
+    >()
     const completionsMap = new Map<string, (input: string) => Effect.Effect<CompleteResult, InternalError>>()
 
     return Registry.of({
@@ -126,6 +146,23 @@ export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
           }
           return match.handler.handle(uri, params)
         }),
+      get prompts() {
+        return prompts
+      },
+      addPrompt(options) {
+        prompts.push(options.prompt)
+        promptMap.set(options.prompt.name, options.handle)
+        for (const [param, handle] of Object.entries(options.completions)) {
+          completionsMap.set(`ref/prompt/${options.prompt.name}/${param}`, handle)
+        }
+      },
+      getPromptResult: Effect.fnUntraced(function*({ arguments: params, name }) {
+        const handler = promptMap.get(name)
+        if (!handler) {
+          return yield* new InvalidParams({ message: `Prompt '${name}' not found` })
+        }
+        return yield* handler(params ?? {})
+      }),
       completion: Effect.fnUntraced(function*(complete) {
         const ref = complete.ref
         const key = ref.type === "ref/resource"
@@ -330,7 +367,7 @@ export const registerResource: {
     readonly mimeType?: string | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
-    readonly paramCompletion?: Completions | undefined
+    readonly completion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
     readonly content: (uri: string, ...params: { readonly [K in keyof Schemas]: Schemas[K]["Type"] }) => Effect.Effect<
       ReadResourceResult | string | Uint8Array,
       E,
@@ -379,7 +416,7 @@ export const registerResource: {
     readonly mimeType?: string | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
-    readonly paramCompletion?: Record<string, (input: string) => Effect.Effect<any>> | undefined
+    readonly completion?: Record<string, (input: string) => Effect.Effect<any>> | undefined
     readonly content: (uri: string, ...params: Array<any>) => Effect.Effect<
       ReadResourceResult | string | Uint8Array,
       E,
@@ -395,7 +432,7 @@ export const registerResource: {
       annotations: new Annotations(options)
     })
     const completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>> = {}
-    for (const [param, handle] of Object.entries(options.paramCompletion ?? {})) {
+    for (const [param, handle] of Object.entries(options.completion ?? {})) {
       const encodeArray = Schema.encodeUnknown(Schema.Array(params[param]))
       const handler = (input: string) =>
         handle(input).pipe(
@@ -481,7 +518,7 @@ export const resource: {
     readonly mimeType?: string | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
-    readonly paramCompletion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
+    readonly completion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
     readonly content: (uri: string, ...params: { readonly [K in keyof Schemas]: Schemas[K]["Type"] }) => Effect.Effect<
       ReadResourceResult | string | Uint8Array,
       E,
@@ -507,6 +544,132 @@ export const resource: {
       Layer.provide(Registry.layer)
     )
 } as any
+
+/**
+ * Register a prompt with the McpServer.
+ *
+ * @since 1.0.0
+ * @category Resources
+ */
+export const registerPrompt = <
+  E,
+  R,
+  Params = {},
+  ParamsI extends Record<string, string> = {},
+  ParamsR = never,
+  const Completions extends {
+    readonly [K in keyof Params]?: (input: string) => Effect.Effect<Array<Params[K]>, any, any>
+  } = {}
+>(
+  options: {
+    readonly name: string
+    readonly description?: string | undefined
+    readonly parameters?: Schema.Schema<Params, ParamsI, ParamsR> | undefined
+    readonly completion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
+    readonly content: (params: Params) => Effect.Effect<Array<PromptMessage> | string, E, R>
+  }
+): Effect.Effect<void, never, ParamsR | R | Registry> => {
+  const args = Arr.empty<PromptArgument>()
+  const props: Record<string, Schema.Schema.Any> = {}
+  const propSignatures = options.parameters ? AST.getPropertySignatures(options.parameters.ast) : []
+  for (const prop of propSignatures) {
+    args.push(
+      new PromptArgument({
+        name: prop.name as string,
+        description: Option.getOrUndefined(AST.getDescriptionAnnotation(prop)),
+        required: !prop.isOptional
+      })
+    )
+    props[prop.name as string] = Schema.make(prop.type)
+  }
+  const prompt = new Prompt({
+    name: options.name,
+    description: options.description,
+    arguments: args
+  })
+  const decode = options.parameters ? Schema.decodeUnknown(options.parameters) : () => Effect.succeed({} as Params)
+  const completion: Record<string, (input: string) => Effect.Effect<any>> = options.completion ?? {}
+  return Effect.gen(function*() {
+    const registry = yield* Registry
+    const context = yield* Effect.context<R | ParamsR>()
+    const completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>> = {}
+    for (const [param, handle] of Object.entries(completion)) {
+      const encodeArray = Schema.encodeUnknown(Schema.Array(props[param]))
+      const handler = (input: string) =>
+        handle(input).pipe(
+          Effect.flatMap(encodeArray),
+          Effect.map((values) =>
+            new CompleteResult({
+              completion: {
+                values: values as Array<string>,
+                total: values.length,
+                hasMore: false
+              }
+            })
+          ),
+          Effect.catchAllCause((cause) => {
+            const prettyError = Cause.prettyErrors(cause)[0]
+            return new InternalError({ message: prettyError.message })
+          }),
+          Effect.provide(context)
+        )
+      completions[param] = handler as any
+    }
+    registry.addPrompt({
+      prompt,
+      completions,
+      handle: (params) =>
+        decode(params).pipe(
+          Effect.mapError((error) => new InvalidParams({ message: error.message })),
+          Effect.flatMap((params) => options.content(params)),
+          Effect.map((messages) => {
+            messages = typeof messages === "string" ?
+              [
+                new PromptMessage({
+                  role: "user",
+                  content: new TextContent({ text: messages })
+                })
+              ] :
+              messages
+            return new GetPromptResult({ messages, description: prompt.description })
+          }),
+          Effect.catchAllCause((cause) => {
+            const prettyError = Cause.prettyErrors(cause)[0]
+            return new InternalError({ message: prettyError.message })
+          }),
+          Effect.provide(context)
+        )
+    })
+  })
+}
+
+/**
+ * Register a prompt with the McpServer.
+ *
+ * @since 1.0.0
+ * @category Resources
+ */
+export const prompt = <
+  E,
+  R,
+  Params = {},
+  ParamsI extends Record<string, string> = {},
+  ParamsR = never,
+  const Completions extends {
+    readonly [K in keyof Params]?: (input: string) => Effect.Effect<Array<Params[K]>, any, any>
+  } = {}
+>(
+  options: {
+    readonly name: string
+    readonly description?: string | undefined
+    readonly parameters?: Schema.Schema<Params, ParamsI, ParamsR> | undefined
+    readonly completion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
+    readonly content: (params: Params) => Effect.Effect<Array<PromptMessage> | string, E, R>
+  }
+): Layer.Layer<never, never, ParamsR | R> =>
+  Layer.effectDiscard(registerPrompt(options)).pipe(
+    Layer.provide(Registry.layer)
+  )
 
 // -----------------------------------------------------------------------------
 // Internal
@@ -594,6 +757,12 @@ const ClientRpcHandlers = ClientRpcs.toLayer(
           }
         }
 
+        if (registry.prompts.length > 0) {
+          capabilities.prompts = {
+            listChanged: false
+          }
+        }
+
         return Effect.succeed({
           capabilities,
           serverInfo,
@@ -604,8 +773,8 @@ const ClientRpcHandlers = ClientRpcs.toLayer(
       },
       "completion/complete": registry.completion,
       "logging/setLevel": () => InternalError.notImplemented,
-      "prompts/get": () => InternalError.notImplemented,
-      "prompts/list": () => InternalError.notImplemented,
+      "prompts/get": registry.getPromptResult,
+      "prompts/list": () => Effect.sync(() => new ListPromptsResult({ prompts: registry.prompts })),
       "resources/list": () => Effect.sync(() => new ListResourcesResult({ resources: registry.resources })),
       "resources/read": ({ uri }) => registry.findResource(uri),
       "resources/subscribe": () => InternalError.notImplemented,
