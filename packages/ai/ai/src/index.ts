@@ -49,7 +49,7 @@ export * as AiTool from "./AiTool.js"
 export * as AiToolkit from "./AiToolkit.js"
 
 /**
- * A uniquely identifying ID for a request in JSON-RPC.
+ * @since 1.0.0
  */
 export * as McpSchema from "./McpSchema.js"
 
