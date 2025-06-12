@@ -51,4 +51,14 @@ export * as AiToolkit from "./AiToolkit.js"
 /**
  * @since 1.0.0
  */
+export * as McpSchema from "./McpSchema.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as McpServer from "./McpServer.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Tokenizer from "./Tokenizer.js"

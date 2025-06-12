@@ -1,8 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type * as Context_ from "effect/Context"
+import * as Context_ from "effect/Context"
 import type * as Effect from "effect/Effect"
+import { constFalse, constTrue } from "effect/Function"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
@@ -75,6 +76,8 @@ export interface AiTool<
    */
   readonly failureSchema: Failure
 
+  readonly annotations: Context_.Context<never>
+
   /**
    * Adds a requirement on a particular service for the tool call to be able to
    * be executed.
@@ -88,7 +91,8 @@ export interface AiTool<
     Name,
     Parameters,
     SuccessSchema,
-    Failure
+    Failure,
+    Requirements
   >
 
   /**
@@ -98,7 +102,8 @@ export interface AiTool<
     Name,
     Parameters,
     Success,
-    FailureSchema
+    FailureSchema,
+    Requirements
   >
 
   /**
@@ -111,7 +116,31 @@ export interface AiTool<
     ParametersSchema extends Schema.Struct<infer _> ? ParametersSchema
       : ParametersSchema extends Schema.Struct.Fields ? Schema.Struct<ParametersSchema>
       : never,
-    Success
+    Success,
+    Failure,
+    Requirements
+  >
+
+  /**
+   * Add an annotation to the tool.
+   */
+  annotate<I, S>(tag: Context_.Tag<I, S>, value: S): AiTool<
+    Name,
+    Parameters,
+    Success,
+    Failure,
+    Requirements
+  >
+
+  /**
+   * Add many annotations to the tool.
+   */
+  annotateContext<I>(context: Context_.Context<I>): AiTool<
+    Name,
+    Parameters,
+    Success,
+    Failure,
+    Requirements
   >
 }
 
@@ -133,6 +162,7 @@ export interface Any extends Pipeable {
   readonly description?: string | undefined
   readonly key: string
   readonly parametersSchema: AnyStructSchema
+  readonly annotations: Context_.Context<never>
 }
 
 /**
@@ -410,6 +440,18 @@ const Proto = {
         ? parametersSchema as any
         : Schema.Struct(parametersSchema as any)
     })
+  },
+  annotate<I, S>(this: AnyWithProtocol, tag: Context_.Tag<I, S>, value: S) {
+    return makeProto({
+      ...this,
+      annotations: Context_.add(this.annotations, tag, value)
+    })
+  },
+  annotateContext<I>(this: AnyWithProtocol, context: Context_.Context<I>) {
+    return makeProto({
+      ...this,
+      annotations: Context_.merge(this.annotations, context)
+    })
   }
 }
 
@@ -424,6 +466,7 @@ const makeProto = <
   readonly parametersSchema: Parameters
   readonly successSchema: Success
   readonly failureSchema: Failure
+  readonly annotations: Context_.Context<never>
 }): AiTool<Name, Parameters, Success> => {
   const self = Object.assign(Object.create(Proto), options)
   self.key = `@effect/ai/AiTool/${options.name}`
@@ -474,7 +517,8 @@ export const make = <
       ? Schema.Struct(options?.parameters as any)
       : constEmptyStruct,
     successSchema,
-    failureSchema
+    failureSchema,
+    annotations: Context_.empty()
   }) as any
 }
 
@@ -492,5 +536,44 @@ export const fromTaggedRequest = <S extends AnyTaggedRequestSchema>(
     description: Option.getOrUndefined(AST.getDescriptionAnnotation((schema.ast as any).to)),
     parametersSchema: schema as any,
     successSchema: schema.success as any,
-    failureSchema: schema.failure as any
+    failureSchema: schema.failure as any,
+    annotations: Context_.empty()
   })
+
+/**
+ * @since 1.0.0
+ * @category Annotations
+ */
+export class Title extends Context_.Tag("@effect/ai/AiTool/Title")<Title, string>() {}
+
+/**
+ * @since 1.0.0
+ * @category Annotations
+ */
+export class Readonly extends Context_.Reference<Readonly>()("@effect/ai/AiTool/Readonly", {
+  defaultValue: constFalse
+}) {}
+
+/**
+ * @since 1.0.0
+ * @category Annotations
+ */
+export class Destructive extends Context_.Reference<Destructive>()("@effect/ai/AiTool/Destructive", {
+  defaultValue: constTrue
+}) {}
+
+/**
+ * @since 1.0.0
+ * @category Annotations
+ */
+export class Idempotent extends Context_.Reference<Idempotent>()("@effect/ai/AiTool/Idempotent", {
+  defaultValue: constFalse
+}) {}
+
+/**
+ * @since 1.0.0
+ * @category Annotations
+ */
+export class OpenWorld extends Context_.Reference<OpenWorld>()("@effect/ai/AiTool/OpenWorld", {
+  defaultValue: constTrue
+}) {}

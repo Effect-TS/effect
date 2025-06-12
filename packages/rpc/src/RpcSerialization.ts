@@ -67,7 +67,17 @@ export const ndjson: RpcSerialization["Type"] = RpcSerialization.of({
         buffer = buffer.slice(position)
         return items
       },
-      encode: (response) => JSON.stringify(response) + "\n"
+      encode: (response) => {
+        if (Array.isArray(response)) {
+          if (response.length === 0) return undefined
+          let data = ""
+          for (let i = 0; i < response.length; i++) {
+            data += JSON.stringify(response[i]) + "\n"
+          }
+          return data
+        }
+        return JSON.stringify(response) + "\n"
+      }
     })
   }
 })
@@ -96,6 +106,10 @@ export const jsonRpc = (options?: {
           return decodeJsonRpcRaw(decoded, batches)
         },
         encode: (response) => {
+          if (Array.isArray(response)) {
+            if (response.length === 0) return undefined
+            return JSON.stringify(response.map(encodeJsonRpcMessage))
+          }
           const encoded = encodeJsonRpcRaw(response as any, batches)
           return encoded && JSON.stringify(encoded)
         }
@@ -132,6 +146,9 @@ export const ndJsonRpc = (options?: {
           return messages
         },
         encode: (response) => {
+          if (Array.isArray(response)) {
+            return parser.encode(response.map(encodeJsonRpcMessage))
+          }
           const encoded = encodeJsonRpcRaw(response as any, batches)
           return encoded && parser.encode(encoded)
         }
@@ -249,7 +266,7 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
         jsonrpc: "2.0",
         method: response.tag,
         params: response.payload,
-        id: response.id ? Number(response.id) : null,
+        id: response.id && Number(response.id),
         headers: response.headers,
         traceId: response.traceId,
         spanId: response.spanId,
@@ -285,7 +302,7 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
               : 0,
             message: response.exit.cause._tag === "Fail" && hasProperty(response.exit.cause.error, "message")
               ? response.exit.cause.error.message
-              : "An error occurred",
+              : JSON.stringify(response.exit.cause),
             data: response.exit.cause
           } :
           undefined
