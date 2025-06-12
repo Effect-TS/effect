@@ -12,4 +12,15 @@ describe("Context", () => {
     class C extends Context.Reference<C>()("C", { defaultValue: () => 0 }) {}
     expect(C.key).type.toBe<"C">()
   })
+  it("Tag with static fields", () => {
+    class Foo extends Context.Tag("Foo")<Foo, { readonly bar: string }>() {
+      static readonly StaticField = "StaticField"
+    }
+
+    // @ts-expect-error
+    Context.empty().pipe(Context.add(Foo, 123))
+
+    const ctx = Context.empty().pipe(Context.add(Foo, { bar: "2" }))
+    expect(ctx).type.toBe<Context.Context<Foo>>()
+  })
 })
