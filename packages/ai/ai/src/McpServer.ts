@@ -11,6 +11,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as JsonSchema from "effect/JSONSchema"
 import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
@@ -20,7 +21,7 @@ import type * as Types from "effect/Types"
 import * as FindMyWay from "find-my-way-ts"
 import * as AiTool from "./AiTool.js"
 import type * as AiToolkit from "./AiToolkit.js"
-import type { Complete, GetPrompt, Implementation, Param, Resource, ServerCapabilities } from "./McpSchema.js"
+import type { Complete, GetPrompt, Param, ServerCapabilities } from "./McpSchema.js"
 import {
   Annotations,
   BlobResourceContents,
@@ -39,6 +40,7 @@ import {
   PromptArgument,
   PromptMessage,
   ReadResourceResult,
+  Resource,
   ResourceTemplate,
   TextContent,
   TextResourceContents,
@@ -48,10 +50,10 @@ import {
 
 /**
  * @since 1.0.0
- * @category Registry
+ * @category McpServer
  */
-export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
-  Registry,
+export class McpServer extends Context.Tag("@effect/ai/McpServer")<
+  McpServer,
   {
     readonly tools: Map<string, {
       readonly tool: AiTool.AnyWithProtocol
@@ -87,7 +89,7 @@ export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
   /**
    * @since 1.0.0
    */
-  static readonly layer = Layer.sync(Registry, () => {
+  static make() {
     const matcher = makeUriMatcher<
       {
         readonly _tag: "ResourceTemplate"
@@ -109,7 +111,7 @@ export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
     >()
     const completionsMap = new Map<string, (input: string) => Effect.Effect<CompleteResult, InternalError>>()
 
-    return Registry.of({
+    return McpServer.of({
       tools: new Map(),
       get resources() {
         return resources
@@ -172,17 +174,12 @@ export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
         return handler ? yield* handler(complete.argument.value) : CompleteResult.empty
       })
     })
-  })
+  }
+  /**
+   * @since 1.0.0
+   */
+  static readonly layer: Layer.Layer<McpServer> = Layer.sync(McpServer, McpServer.make)
 }
-
-/**
- * @since 1.0.0
- * @category Server info
- */
-export class McpServerImplementation extends Context.Tag("@effect/ai/McpServer/Implementation")<
-  McpServerImplementation,
-  Implementation
->() {}
 
 const LATEST_PROTOCOL_VERSION = "2025-03-26"
 const SUPPORTED_PROTOCOL_VERSIONS = [
@@ -195,9 +192,12 @@ const SUPPORTED_PROTOCOL_VERSIONS = [
  * @since 1.0.0
  * @category Constructors
  */
-export const make = Effect.gen(function*() {
+export const run = Effect.fnUntraced(function*(options: {
+  readonly name: string
+  readonly version: string
+}) {
   const protocol = yield* RpcServer.Protocol
-  const handlers = yield* Layer.build(ClientRpcHandlers)
+  const handlers = yield* Layer.build(layerHandlers(options))
 
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
@@ -226,7 +226,7 @@ export const make = Effect.gen(function*() {
     Effect.provideService(RpcServer.Protocol, patchedProtocol),
     Effect.provide(handlers)
   )
-}).pipe(Effect.scoped)
+}, Effect.scoped)
 
 /**
  * @since 1.0.0
@@ -235,13 +235,9 @@ export const make = Effect.gen(function*() {
 export const layer = (options: {
   readonly name: string
   readonly version: string
-}): Layer.Layer<never, never, RpcServer.Protocol> =>
-  Layer.scopedDiscard(Effect.forkScoped(make)).pipe(
-    Layer.provide(Registry.layer),
-    Layer.provide(Layer.succeed(McpServerImplementation, {
-      name: options.name,
-      version: options.version
-    }))
+}): Layer.Layer<McpServer, never, RpcServer.Protocol> =>
+  Layer.scopedDiscard(Effect.forkScoped(run(options))).pipe(
+    Layer.provideMerge(McpServer.layer)
   )
 
 /**
@@ -255,13 +251,16 @@ export const layerStdio = <EIn, RIn, EOut, ROut>(options: {
   readonly version: string
   readonly stdin: Stream<Uint8Array, EIn, RIn>
   readonly stdout: Sink<unknown, Uint8Array | string, unknown, EOut, ROut>
-}): Layer.Layer<never, never, RIn | ROut> =>
+}): Layer.Layer<McpServer, never, RIn | ROut> =>
   layer(options).pipe(
     Layer.provide(RpcServer.layerProtocolStdio({
       stdin: options.stdin,
       stdout: options.stdout
     })),
-    Layer.provide(RpcSerialization.layerNdJsonRpc())
+    Layer.provide(RpcSerialization.layerNdJsonRpc()),
+    // remove stdout loggers
+    Layer.provideMerge(Logger.remove(Logger.defaultLogger)),
+    Layer.provideMerge(Logger.remove(Logger.prettyLoggerDefault))
   )
 
 /**
@@ -273,11 +272,11 @@ export const layerStdio = <EIn, RIn, EOut, ROut>(options: {
 export const registerToolkit: <Tools extends AiTool.Any>(toolkit: AiToolkit.AiToolkit<Tools>) => Effect.Effect<
   void,
   never,
-  Registry | AiTool.ToHandler<Tools>
+  McpServer | AiTool.ToHandler<Tools>
 > = Effect.fnUntraced(function*<Tools extends AiTool.Any>(
   toolkit: AiToolkit.AiToolkit<Tools>
 ) {
-  const registry = yield* Registry
+  const registry = yield* McpServer
   const built = yield* toolkit
   const context = yield* Effect.context<AiTool.Context<Tools>>()
   for (const tool of built.tools) {
@@ -320,10 +319,7 @@ export const registerToolkit: <Tools extends AiTool.Any>(toolkit: AiToolkit.AiTo
  */
 export const toolkit = <Tools extends AiTool.Any>(
   toolkit: AiToolkit.AiToolkit<Tools>
-): Layer.Layer<never, never, AiTool.ToHandler<Tools>> =>
-  Layer.effectDiscard(registerToolkit(toolkit)).pipe(
-    Layer.provide(Registry.layer)
-  )
+): Layer.Layer<never, never, AiTool.ToHandler<Tools> | McpServer> => Layer.effectDiscard(registerToolkit(toolkit))
 
 /**
  * Register a resource with the McpServer.
@@ -333,13 +329,18 @@ export const toolkit = <Tools extends AiTool.Any>(
  */
 export const registerResource: {
   <E, R>(options: {
-    readonly resource: Resource
+    readonly uri: string
+    readonly name: string
+    readonly description?: string | undefined
+    readonly mimeType?: string | undefined
+    readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
+    readonly priority?: number | undefined
     readonly content: Effect.Effect<
       ReadResourceResult | string | Uint8Array,
       E,
       R
     >
-  }): Effect.Effect<void, never, R | Registry>
+  }): Effect.Effect<void, never, R | McpServer>
   <const Schemas extends ReadonlyArray<Schema.Schema.Any>>(
     segments: TemplateStringsArray,
     ...schemas:
@@ -380,22 +381,24 @@ export const registerResource: {
     | (Completions[keyof Completions] extends (input: string) => infer Ret ?
       Ret extends Effect.Effect<infer _A, infer _E, infer _R> ? _R : never
       : never)
-    | Registry
+    | McpServer
   >
 } = function() {
   if (arguments.length === 1) {
-    const options = arguments[0] as {
-      readonly resource: Resource
+    const options = arguments[0] as Resource & Annotations & {
       readonly content: Effect.Effect<ReadResourceResult | string | Uint8Array>
     }
     return Effect.gen(function*() {
       const context = yield* Effect.context<any>()
-      const registry = yield* Registry
+      const registry = yield* McpServer
       registry.addResource(
-        options.resource,
+        new Resource({
+          ...options,
+          annotations: new Annotations(options)
+        }),
         options.content.pipe(
           Effect.provide(context),
-          Effect.map((content) => resolveResourceContent(options.resource.uri, content)),
+          Effect.map((content) => resolveResourceContent(options.uri, content)),
           Effect.catchAllCause((cause) => {
             const prettyError = Cause.prettyErrors(cause)[0]
             return new InternalError({ message: prettyError.message })
@@ -424,7 +427,7 @@ export const registerResource: {
     >
   }) {
     const context = yield* Effect.context<any>()
-    const registry = yield* Registry
+    const registry = yield* McpServer
     const decode = Schema.decodeUnknown(schema)
     const template = new ResourceTemplate({
       ...options,
@@ -484,13 +487,18 @@ export const registerResource: {
  */
 export const resource: {
   <E, R>(options: {
-    readonly resource: Resource
+    readonly uri: string
+    readonly name: string
+    readonly description?: string | undefined
+    readonly mimeType?: string | undefined
+    readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
+    readonly priority?: number | undefined
     readonly content: Effect.Effect<
       ReadResourceResult | string | Uint8Array,
       E,
       R
     >
-  }): Layer.Layer<never, never, R>
+  }): Layer.Layer<never, never, R | McpServer>
   <const Schemas extends ReadonlyArray<Schema.Schema.Any>>(
     segments: TemplateStringsArray,
     ...schemas:
@@ -527,6 +535,7 @@ export const resource: {
   }) => Layer.Layer<
     never,
     never,
+    | McpServer
     | R
     | (Completions[keyof Completions] extends (input: string) => infer Ret ?
       Ret extends Effect.Effect<infer _A, infer _E, infer _R> ? _R : never
@@ -534,15 +543,10 @@ export const resource: {
   >
 } = function() {
   if (arguments.length === 1) {
-    return Layer.effectDiscard(registerResource(arguments[0])).pipe(
-      Layer.provide(Registry.layer)
-    )
+    return Layer.effectDiscard(registerResource(arguments[0]))
   }
   const register = registerResource(...(arguments as any as [any, any]))
-  return (options: any) =>
-    Layer.effectDiscard(register(options)).pipe(
-      Layer.provide(Registry.layer)
-    )
+  return (options: any) => Layer.effectDiscard(register(options))
 } as any
 
 /**
@@ -568,7 +572,7 @@ export const registerPrompt = <
     readonly completion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
     readonly content: (params: Params) => Effect.Effect<Array<PromptMessage> | string, E, R>
   }
-): Effect.Effect<void, never, ParamsR | R | Registry> => {
+): Effect.Effect<void, never, ParamsR | R | McpServer> => {
   const args = Arr.empty<PromptArgument>()
   const props: Record<string, Schema.Schema.Any> = {}
   const propSignatures = options.parameters ? AST.getPropertySignatures(options.parameters.ast) : []
@@ -590,7 +594,7 @@ export const registerPrompt = <
   const decode = options.parameters ? Schema.decodeUnknown(options.parameters) : () => Effect.succeed({} as Params)
   const completion: Record<string, (input: string) => Effect.Effect<any>> = options.completion ?? {}
   return Effect.gen(function*() {
-    const registry = yield* Registry
+    const registry = yield* McpServer
     const context = yield* Effect.context<R | ParamsR>()
     const completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>> = {}
     for (const [param, handle] of Object.entries(completion)) {
@@ -666,10 +670,7 @@ export const prompt = <
     readonly completion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
     readonly content: (params: Params) => Effect.Effect<Array<PromptMessage> | string, E, R>
   }
-): Layer.Layer<never, never, ParamsR | R> =>
-  Layer.effectDiscard(registerPrompt(options)).pipe(
-    Layer.provide(Registry.layer)
-  )
+): Layer.Layer<never, never, ParamsR | R | McpServer> => Layer.effectDiscard(registerPrompt(options))
 
 // -----------------------------------------------------------------------------
 // Internal
@@ -717,94 +718,97 @@ const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: Readonly
   } as const
 }
 
-const ClientRpcHandlers = ClientRpcs.toLayer(
-  Effect.gen(function*() {
-    const serverInfo = yield* McpServerImplementation
-    const registry = yield* Registry
+const layerHandlers = (serverInfo: {
+  readonly name: string
+  readonly version: string
+}) =>
+  ClientRpcs.toLayer(
+    Effect.gen(function*() {
+      const registry = yield* McpServer
 
-    return {
-      // Requests
-      ping: () => Effect.succeed({}),
-      initialize(params) {
-        const requestedVersion = params.protocolVersion
-        const capabilities: Types.DeepMutable<ServerCapabilities> = {
-          completions: {}
-        }
-
-        if (registry.tools.size > 0) {
-          // TODO: support listChanged notifications
-          capabilities.tools = { listChanged: false }
-        }
-
-        if (registry.resources.length > 0 || registry.resourceTemplates.length > 0) {
-          // TODO: support listChanged notifications
-          capabilities.resources = {
-            listChanged: false,
-            subscribe: false
+      return {
+        // Requests
+        ping: () => Effect.succeed({}),
+        initialize(params) {
+          const requestedVersion = params.protocolVersion
+          const capabilities: Types.DeepMutable<ServerCapabilities> = {
+            completions: {}
           }
-        }
 
-        if (registry.prompts.length > 0) {
-          capabilities.prompts = {
-            listChanged: false
+          if (registry.tools.size > 0) {
+            // TODO: support listChanged notifications
+            capabilities.tools = { listChanged: false }
           }
-        }
 
-        return Effect.succeed({
-          capabilities,
-          serverInfo,
-          protocolVersion: SUPPORTED_PROTOCOL_VERSIONS.includes(requestedVersion)
-            ? requestedVersion
-            : LATEST_PROTOCOL_VERSION
-        })
-      },
-      "completion/complete": registry.completion,
-      "logging/setLevel": () => InternalError.notImplemented,
-      "prompts/get": registry.getPromptResult,
-      "prompts/list": () => Effect.sync(() => new ListPromptsResult({ prompts: registry.prompts })),
-      "resources/list": () => Effect.sync(() => new ListResourcesResult({ resources: registry.resources })),
-      "resources/read": ({ uri }) => registry.findResource(uri),
-      "resources/subscribe": () => InternalError.notImplemented,
-      "resources/unsubscribe": () => InternalError.notImplemented,
-      "resources/templates/list": () =>
-        Effect.sync(() => new ListResourceTemplatesResult({ resourceTemplates: registry.resourceTemplates })),
-      "tools/call": ({ arguments: params, name }) =>
-        Effect.suspend(() => {
-          const tool = registry.tools.get(name)
-          if (!tool) {
-            return Effect.fail(new InvalidParams({ message: `Tool '${name}' not found` }))
+          if (registry.resources.length > 0 || registry.resourceTemplates.length > 0) {
+            // TODO: support listChanged notifications
+            capabilities.resources = {
+              listChanged: false,
+              subscribe: false
+            }
           }
-          return tool.handle(params)
-        }),
-      "tools/list": () =>
-        Effect.sync(() => {
-          const tools = Array.from(registry.tools.values(), ({ tool }) =>
-            new Tool({
-              name: tool.name,
-              description: tool.description,
-              inputSchema: makeJsonSchema(tool.parametersSchema.ast),
-              annotations: new ToolAnnotations({
-                ...(Context.getOption(tool.annotations, AiTool.Title).pipe(
-                  Option.map((title) => ({ title })),
-                  Option.getOrUndefined
-                )),
-                readOnlyHint: Context.get(tool.annotations, AiTool.Readonly),
-                destructiveHint: Context.get(tool.annotations, AiTool.Destructive),
-                idempotentHint: Context.get(tool.annotations, AiTool.Idempotent),
-                openWorldHint: Context.get(tool.annotations, AiTool.OpenWorld)
-              })
-            }))
-          return new ListToolsResult({ tools })
-        }),
 
-      // Notifications
-      "notifications/cancelled": (_) => Effect.void,
-      "notifications/initialized": (_) => Effect.void,
-      "notifications/progress": (_) => Effect.void,
-      "notifications/roots/list_changed": (_) => Effect.void
-    }
-  })
-)
+          if (registry.prompts.length > 0) {
+            capabilities.prompts = {
+              listChanged: false
+            }
+          }
+
+          return Effect.succeed({
+            capabilities,
+            serverInfo,
+            protocolVersion: SUPPORTED_PROTOCOL_VERSIONS.includes(requestedVersion)
+              ? requestedVersion
+              : LATEST_PROTOCOL_VERSION
+          })
+        },
+        "completion/complete": registry.completion,
+        "logging/setLevel": () => InternalError.notImplemented,
+        "prompts/get": registry.getPromptResult,
+        "prompts/list": () => Effect.sync(() => new ListPromptsResult({ prompts: registry.prompts })),
+        "resources/list": () => Effect.sync(() => new ListResourcesResult({ resources: registry.resources })),
+        "resources/read": ({ uri }) => registry.findResource(uri),
+        "resources/subscribe": () => InternalError.notImplemented,
+        "resources/unsubscribe": () => InternalError.notImplemented,
+        "resources/templates/list": () =>
+          Effect.sync(() => new ListResourceTemplatesResult({ resourceTemplates: registry.resourceTemplates })),
+        "tools/call": ({ arguments: params, name }) =>
+          Effect.suspend(() => {
+            const tool = registry.tools.get(name)
+            if (!tool) {
+              return Effect.fail(new InvalidParams({ message: `Tool '${name}' not found` }))
+            }
+            return tool.handle(params)
+          }),
+        "tools/list": () =>
+          Effect.sync(() => {
+            const tools = Array.from(registry.tools.values(), ({ tool }) =>
+              new Tool({
+                name: tool.name,
+                description: tool.description,
+                inputSchema: makeJsonSchema(tool.parametersSchema.ast),
+                annotations: new ToolAnnotations({
+                  ...(Context.getOption(tool.annotations, AiTool.Title).pipe(
+                    Option.map((title) => ({ title })),
+                    Option.getOrUndefined
+                  )),
+                  readOnlyHint: Context.get(tool.annotations, AiTool.Readonly),
+                  destructiveHint: Context.get(tool.annotations, AiTool.Destructive),
+                  idempotentHint: Context.get(tool.annotations, AiTool.Idempotent),
+                  openWorldHint: Context.get(tool.annotations, AiTool.OpenWorld)
+                })
+              }))
+            return new ListToolsResult({ tools })
+          }),
+
+        // Notifications
+        "notifications/cancelled": (_) => Effect.void,
+        "notifications/initialized": (_) => Effect.void,
+        "notifications/progress": (_) => Effect.void,
+        "notifications/roots/list_changed": (_) => Effect.void
+      }
+    })
+  )
 
 const makeJsonSchema = (ast: AST.AST): JsonSchema.JsonSchema7 => {
   const props = AST.getPropertySignatures(ast)
