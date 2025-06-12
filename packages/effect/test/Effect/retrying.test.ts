@@ -99,7 +99,7 @@ describe("Effect", () => {
       const result = yield* (Ref.get(ref))
       strictEqual(result, 4)
     }))
-  it.effect("retry/schedule - LastIterationInfo", () =>
+  it.effect("retry/schedule - CurrentIterationMetadata", () =>
     Effect.gen(function*() {
       const ref = yield* Ref.make<Array<undefined | Schedule.IterationMetadata>>([])
       yield* pipe(
@@ -116,6 +116,7 @@ describe("Effect", () => {
           elapsedSincePrevious: Duration.zero,
           recurrence: 0,
           input: undefined,
+          output: undefined,
           now: 0,
           start: 0
         },
@@ -124,6 +125,7 @@ describe("Effect", () => {
           elapsedSincePrevious: Duration.zero,
           recurrence: 1,
           input: undefined,
+          output: 0,
           now: 0,
           start: 0
         },
@@ -132,6 +134,7 @@ describe("Effect", () => {
           elapsedSincePrevious: Duration.zero,
           recurrence: 2,
           input: undefined,
+          output: 1,
           now: 0,
           start: 0
         },
@@ -140,6 +143,7 @@ describe("Effect", () => {
           elapsedSincePrevious: Duration.zero,
           recurrence: 3,
           input: undefined,
+          output: 2,
           now: 0,
           start: 0
         }
