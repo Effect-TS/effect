@@ -262,7 +262,7 @@ export const empty: () => Context<never> = internal.empty
  * @since 2.0.0
  * @category constructors
  */
-export const make: <I, S>(tag: Tag<I, S>, service: S) => Context<I> = internal.make
+export const make: <I, S>(tag: Tag<I, S>, service: Types.NoInfer<S>) => Context<I> = internal.make
 
 /**
  * Adds a service to a given `Context`.
@@ -289,8 +289,8 @@ export const make: <I, S>(tag: Tag<I, S>, service: S) => Context<I> = internal.m
  * @since 2.0.0
  */
 export const add: {
-  <I, S>(tag: Tag<I, S>, service: S): <Services>(self: Context<Services>) => Context<Services | I>
-  <Services, I, S>(self: Context<Services>, tag: Tag<I, S>, service: S): Context<Services | I>
+  <I, S>(tag: Tag<I, S>, service: Types.NoInfer<S>): <Services>(self: Context<Services>) => Context<Services | I>
+  <Services, I, S>(self: Context<Services>, tag: Tag<I, S>, service: Types.NoInfer<S>): Context<Services | I>
 } = internal.add
 
 /**
