@@ -551,6 +551,25 @@ export const toolkit = <Tools extends AiTool.Any>(
 ): Layer.Layer<never, never, AiTool.ToHandler<Tools> | McpServer> => Layer.effectDiscard(registerToolkit(toolkit))
 
 /**
+ * @since 1.0.0
+ */
+export type ValidateCompletions<Completions, Keys extends string> =
+  & Completions
+  & {
+    readonly [K in keyof Completions]: K extends Keys ? (input: string) => any : never
+  }
+
+/**
+ * @since 1.0.0
+ */
+export type ResourceCompletions<Schemas extends ReadonlyArray<Schema.Schema.Any>> = {
+  readonly [
+    K in Extract<keyof Schemas, `${number}`> as Schemas[K] extends Param<infer Id, infer _S> ? Id
+      : `param${K}`
+  ]: (input: string) => Effect.Effect<Array<Schema.Schema.Type<Schemas[K]>>, any, any>
+}
+
+/**
  * Register a resource with the McpServer.
  *
  * @since 1.0.0
@@ -581,23 +600,14 @@ export const registerResource: {
   ): <
     E,
     R,
-    const Completions extends {
-      readonly [
-        K in Extract<keyof Schemas, `${number}`> as Schemas[K] extends Param<infer Id, infer _S> ? Id
-          : `param${K}`
-      ]?: (input: string) => Effect.Effect<
-        Array<Schema.Schema.Type<Schemas[K]>>,
-        any,
-        any
-      >
-    } = {}
+    const Completions extends Partial<ResourceCompletions<Schemas>> = {}
   >(options: {
     readonly name: string
     readonly description?: string | undefined
     readonly mimeType?: string | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
-    readonly completion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
+    readonly completion?: ValidateCompletions<Completions, keyof ResourceCompletions<Schemas>> | undefined
     readonly content: (uri: string, ...params: { readonly [K in keyof Schemas]: Schemas[K]["Type"] }) => Effect.Effect<
       ReadResourceResult | string | Uint8Array,
       E,
@@ -739,23 +749,14 @@ export const resource: {
   ): <
     E,
     R,
-    const Completions extends {
-      readonly [
-        K in Extract<keyof Schemas, `${number}`> as Schemas[K] extends Param<infer Id, infer _S> ? Id
-          : `param${K}`
-      ]?: (input: string) => Effect.Effect<
-        Array<Schema.Schema.Type<Schemas[K]>>,
-        any,
-        any
-      >
-    } = {}
+    const Completions extends Partial<ResourceCompletions<Schemas>> = {}
   >(options: {
     readonly name: string
     readonly description?: string | undefined
     readonly mimeType?: string | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
-    readonly completion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
+    readonly completion?: ValidateCompletions<Completions, keyof ResourceCompletions<Schemas>> | undefined
     readonly content: (uri: string, ...params: { readonly [K in keyof Schemas]: Schemas[K]["Type"] }) => Effect.Effect<
       ReadResourceResult | string | Uint8Array,
       E,
@@ -798,7 +799,7 @@ export const registerPrompt = <
     readonly name: string
     readonly description?: string | undefined
     readonly parameters?: Schema.Schema<Params, ParamsI, ParamsR> | undefined
-    readonly completion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
+    readonly completion?: ValidateCompletions<Completions, Extract<keyof Params, string>> | undefined
     readonly content: (params: Params) => Effect.Effect<Array<PromptMessage> | string, E, R>
   }
 ): Effect.Effect<void, never, ParamsR | R | McpServer> => {
@@ -896,7 +897,7 @@ export const prompt = <
     readonly name: string
     readonly description?: string | undefined
     readonly parameters?: Schema.Schema<Params, ParamsI, ParamsR> | undefined
-    readonly completion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
+    readonly completion?: ValidateCompletions<Completions, Extract<keyof Params, string>> | undefined
     readonly content: (params: Params) => Effect.Effect<Array<PromptMessage> | string, E, R>
   }
 ): Layer.Layer<never, never, ParamsR | R | McpServer> => Layer.effectDiscard(registerPrompt(options))
