@@ -676,34 +676,21 @@ export const prompt = <
 // -----------------------------------------------------------------------------
 
 const makeUriMatcher = <A>() => {
-  const protocols = new Map<string, FindMyWay.Router<A>>()
+  const router = FindMyWay.make<A>({
+    ignoreTrailingSlash: true,
+    ignoreDuplicateSlashes: true,
+    caseSensitive: true
+  })
   const add = (uri: string, value: A) => {
-    const url = new URL(uri)
-    let router = protocols.get(url.protocol)
-    if (!router) {
-      router = FindMyWay.make({
-        ignoreTrailingSlash: true,
-        ignoreDuplicateSlashes: true,
-        caseSensitive: true
-      })
-      protocols.set(url.protocol, router)
-    }
-    router.on("GET", `${url.host}${url.pathname}` as any, value)
+    router.on("GET", uri as any, value)
   }
-  const find = (uri: string) => {
-    const url = new URL(uri)
-    const router = protocols.get(url.protocol)
-    if (!router) {
-      return undefined
-    }
-    return router.find("GET", `${url.host}${url.pathname}`)
-  }
+  const find = (uri: string) => router.find("GET", uri)
 
   return { add, find } as const
 }
 
 const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: ReadonlyArray<Schema.Schema.Any>) => {
-  let routerPath = segments[0]
+  let routerPath = segments[0].replace(":", "::")
   let uriPath = segments[0]
   const params: Record<string, Schema.Schema.Any> = {}
   let pathSchema = Schema.Tuple() as Schema.Schema.Any
@@ -713,7 +700,7 @@ const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: Readonly
       const schema = schemas[i]
       const key = String(i)
       arr.push(schema)
-      routerPath += `:${key}${segments[i + 1]}`
+      routerPath += `:${key}${segments[i + 1].replace(":", "::")}`
       const paramName = AST.getAnnotation(ParamAnnotation)(schema.ast).pipe(
         Option.getOrElse(() => `param${key}`)
       )

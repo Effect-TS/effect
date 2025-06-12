@@ -50,7 +50,7 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
   }
 
   get headers(): Headers.Headers {
-    return Headers.fromInput(this.source.headers)
+    return Headers.fromInput(this.source.headers as any)
   }
 
   cachedCookies?: Cookies.Cookies
