@@ -924,7 +924,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         if (done) break
       }
       done = true
-      return HttpServerResponse.unsafeJson(responses)
+      return HttpServerResponse.text(parser.encode(responses) as string, { contentType: serialization.contentType })
     }
 
     return HttpServerResponse.stream(

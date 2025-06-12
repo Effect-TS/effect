@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Headers from "@effect/platform/Headers"
+import type * as HttpRouter from "@effect/platform/HttpRouter"
 import type { RpcMessage } from "@effect/rpc"
 import type * as Rpc from "@effect/rpc/Rpc"
 import * as RpcClient from "@effect/rpc/RpcClient"
@@ -354,6 +355,17 @@ export const layerStdio = <EIn, RIn, EOut, ROut>(options: {
     // remove stdout loggers
     Layer.provideMerge(Logger.remove(Logger.defaultLogger)),
     Layer.provideMerge(Logger.remove(Logger.prettyLoggerDefault))
+  )
+
+export const layerHttp = <I = HttpRouter.Default>(options: {
+  readonly name: string
+  readonly version: string
+  readonly path: HttpRouter.PathInput
+  readonly routerTag?: HttpRouter.HttpRouter.TagClass<I, string, any, any>
+}): Layer.Layer<McpServer> =>
+  layer(options).pipe(
+    Layer.provide(RpcServer.layerProtocolHttp(options)),
+    Layer.provide(RpcSerialization.layerJsonRpc())
   )
 
 /**

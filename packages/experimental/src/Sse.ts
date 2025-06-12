@@ -261,8 +261,26 @@ export interface Parser {
  * @since 1.0.0
  * @category models
  */
+export interface Encoder {
+  write(event: AnyEvent): string
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export interface Event {
   readonly _tag: "Event"
+  readonly event: string
+  readonly id: string | undefined
+  readonly data: string
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface EventEncoded {
   readonly event: string
   readonly id: string | undefined
   readonly data: string
@@ -305,3 +323,30 @@ export class Retry extends Data.TaggedClass("Retry")<{
  * @category models
  */
 export type AnyEvent = Event | Retry
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const encoder: Encoder = {
+  write(event: AnyEvent): string {
+    switch (event._tag) {
+      case "Event": {
+        let data = ""
+        if (event.id !== undefined) {
+          data += `id: ${event.id}\n`
+        }
+        if (event.event !== "message") {
+          data += `event: ${event.event}\n`
+        }
+        if (event.data !== "") {
+          data += `data: ${event.data.replace(/\n/g, "\ndata: ")}\n`
+        }
+        return data + "\n"
+      }
+      case "Retry": {
+        return `retry: ${Duration.toMillis(event.duration)}\n\n`
+      }
+    }
+  }
+}
