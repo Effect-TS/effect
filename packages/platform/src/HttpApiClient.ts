@@ -361,7 +361,7 @@ export const endpoint = <
 
 // ----------------------------------------------------------------------------
 
-const paramsRegex = /:(\w+)/g
+const paramsRegex = /:(\w+)\??/g
 
 const compilePath = (path: string) => {
   const segments = path.split(paramsRegex)

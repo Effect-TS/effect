@@ -342,7 +342,7 @@ class UsersApi extends HttpApiGroup.make("users")
       .annotateContext(OpenApi.annotations({ identifier: "listUsers" }))
   )
   .add(
-    HttpApiEndpoint.post("upload")`/upload`
+    HttpApiEndpoint.post("upload")`/upload/${Schema.optional(Schema.String)}`
       .setPayload(HttpApiSchema.Multipart(Schema.Struct({
         file: Multipart.SingleFileSchema
       })))

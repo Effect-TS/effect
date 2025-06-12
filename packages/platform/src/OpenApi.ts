@@ -420,7 +420,7 @@ export const fromApi = <Id extends string, Groups extends HttpApiGroup.Any, E, R
       processResponseMap(successes, () => "Success")
       processResponseMap(errors, () => "Error")
 
-      const path = endpoint.path.replace(/:(\w+)/g, "{$1}")
+      const path = endpoint.path.replace(/:(\w+)\??/g, "{$1}")
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       if (!spec.paths[path]) {
         spec.paths[path] = {}
