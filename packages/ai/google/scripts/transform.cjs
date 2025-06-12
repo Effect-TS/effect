@@ -222,7 +222,11 @@ try {
 
   if (insertionIndex !== -1) {
     // Insert the comment at the found index
-    transformedLines.splice(insertionIndex, 0, "// eslint-disable-next-line @typescript-eslint/no-unused-vars") // trim() to remove the trailing \n for splice
+    transformedLines.splice(
+      insertionIndex,
+      0,
+      "// @ts-expect-error\n// eslint-disable-next-line @typescript-eslint/no-unused-vars"
+    ) // trim() to remove the trailing \n for splice
     newFileContent = transformedLines.join("\n")
     console.log(`Inserted ESLint ignore comment above "${targetLineText.trim()}"`)
   } else {
