@@ -1263,7 +1263,18 @@ export class CompleteResult extends Schema.Class<CompleteResult>(
      */
     hasMore: Schema.optional(Schema.Boolean)
   })
-}) {}
+}) {
+  /**
+   * @since 1.0.0
+   */
+  static readonly empty = new CompleteResult({
+    completion: {
+      values: [],
+      total: 0,
+      hasMore: false
+    }
+  })
+}
 
 /**
  * A request from the client to the server, to ask for completion options.
@@ -1509,3 +1520,30 @@ export interface JsonRpcNotification {
     readonly [key: string]: unknown
   }
 }
+
+/**
+ * @since 1.0.0
+ * @category Parameters
+ */
+export const ParamAnnotation: unique symbol = Symbol.for("@effect/ai/McpSchema/ParamNameId")
+
+/**
+ * @since 1.0.0
+ * @category Parameters
+ */
+export interface Param<Id extends string, S extends Schema.Schema.Any>
+  extends Schema.Schema<S["Type"], S["Encoded"], S["Context"]>
+{
+  readonly [ParamAnnotation]: Id
+}
+
+/**
+ * Helper to create a param for a resource URI template.
+ *
+ * @since 1.0.0
+ * @category Parameters
+ */
+export const param = <const Id extends string, S extends Schema.Schema.Any>(id: Id, schema: S): Param<Id, S> =>
+  schema.annotations({
+    [ParamAnnotation]: id
+  }) as any

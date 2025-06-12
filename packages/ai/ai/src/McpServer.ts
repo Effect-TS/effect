@@ -19,17 +19,19 @@ import type * as Types from "effect/Types"
 import * as FindMyWay from "find-my-way-ts"
 import * as AiTool from "./AiTool.js"
 import type * as AiToolkit from "./AiToolkit.js"
-import type { Implementation, Resource, ServerCapabilities } from "./McpSchema.js"
+import type { Complete, Implementation, Param, Resource, ServerCapabilities } from "./McpSchema.js"
 import {
   Annotations,
   BlobResourceContents,
   CallToolResult,
   ClientRpcs,
+  CompleteResult,
   InternalError,
   InvalidParams,
   ListResourcesResult,
   ListResourceTemplatesResult,
   ListToolsResult,
+  ParamAnnotation,
   ReadResourceResult,
   ResourceTemplate,
   TextContent,
@@ -53,11 +55,18 @@ export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
     readonly addResource: (resource: Resource, handle: Effect.Effect<ReadResourceResult, InternalError>) => void
     readonly resourceTemplates: Array<ResourceTemplate>
     readonly addResourceTemplate: (
-      template: ResourceTemplate,
-      routerPath: string,
-      handle: (uri: string, params: Array<string>) => Effect.Effect<ReadResourceResult, InvalidParams | InternalError>
+      options: {
+        readonly template: ResourceTemplate
+        readonly routerPath: string
+        readonly completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>>
+        readonly handle: (
+          uri: string,
+          params: Array<string>
+        ) => Effect.Effect<ReadResourceResult, InvalidParams | InternalError>
+      }
     ) => void
     readonly findResource: (uri: string) => Effect.Effect<ReadResourceResult, InvalidParams | InternalError>
+    readonly completion: (complete: typeof Complete.payloadSchema.Type) => Effect.Effect<CompleteResult, InternalError>
   }
 >() {
   /**
@@ -78,6 +87,7 @@ export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
     >()
     const resources: Array<Resource> = []
     const resourceTemplates: Array<ResourceTemplate> = []
+    const completionsMap = new Map<string, (input: string) => Effect.Effect<CompleteResult, InternalError>>()
 
     return Registry.of({
       tools: new Map(),
@@ -91,9 +101,12 @@ export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
         resources.push(resource)
         matcher.add(resource.uri, { _tag: "Resource", effect })
       },
-      addResourceTemplate(template, routerPath, handle) {
+      addResourceTemplate({ completions, handle, routerPath, template }) {
         resourceTemplates.push(template)
         matcher.add(routerPath, { _tag: "ResourceTemplate", handle })
+        for (const [param, handle] of Object.entries(completions)) {
+          completionsMap.set(`ref/resource/${template.uriTemplate}/${param}`, handle)
+        }
       },
       findResource: (uri) =>
         Effect.suspend(() => {
@@ -107,8 +120,20 @@ export class Registry extends Context.Tag("@effect/ai/McpServer/Registry")<
           } else if (match.handler._tag === "Resource") {
             return match.handler.effect
           }
-          return match.handler.handle(uri, match.params as any)
-        })
+          const params: Array<string> = []
+          for (const key of Object.keys(match.params)) {
+            params[Number(key)] = match.params[key]!
+          }
+          return match.handler.handle(uri, params)
+        }),
+      completion: Effect.fnUntraced(function*(complete) {
+        const ref = complete.ref
+        const key = ref.type === "ref/resource"
+          ? `ref/resource/${ref.uri}/${complete.argument.name}`
+          : `ref/prompt/${ref.name}/${complete.argument.name}`
+        const handler = completionsMap.get(key)
+        return handler ? yield* handler(complete.argument.value) : CompleteResult.empty
+      })
     })
   })
 }
@@ -286,18 +311,40 @@ export const registerResource: {
         readonly [K in keyof Schemas]: Schema.Schema.Encoded<Schemas[K]> extends string ? unknown
           : "Schema must be encodable to a string"
       }
-  ): <E, R>(options: {
+  ): <
+    E,
+    R,
+    const Completions extends {
+      readonly [
+        K in Extract<keyof Schemas, `${number}`> as Schemas[K] extends Param<infer Id, infer _S> ? Id
+          : `param${K}`
+      ]?: (input: string) => Effect.Effect<
+        Array<Schema.Schema.Type<Schemas[K]>>,
+        any,
+        any
+      >
+    } = {}
+  >(options: {
     readonly name: string
     readonly description?: string | undefined
     readonly mimeType?: string | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
+    readonly paramCompletion?: Completions | undefined
     readonly content: (uri: string, ...params: { readonly [K in keyof Schemas]: Schemas[K]["Type"] }) => Effect.Effect<
       ReadResourceResult | string | Uint8Array,
       E,
       R
     >
-  }) => Effect.Effect<void, never, R | Registry>
+  }) => Effect.Effect<
+    void,
+    never,
+    | R
+    | (Completions[keyof Completions] extends (input: string) => infer Ret ?
+      Ret extends Effect.Effect<infer _A, infer _E, infer _R> ? _R : never
+      : never)
+    | Registry
+  >
 } = function() {
   if (arguments.length === 1) {
     const options = arguments[0] as {
@@ -321,6 +368,7 @@ export const registerResource: {
     })
   }
   const {
+    params,
     routerPath,
     schema,
     uriPath
@@ -331,6 +379,7 @@ export const registerResource: {
     readonly mimeType?: string | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
+    readonly paramCompletion?: Record<string, (input: string) => Effect.Effect<any>> | undefined
     readonly content: (uri: string, ...params: Array<any>) => Effect.Effect<
       ReadResourceResult | string | Uint8Array,
       E,
@@ -340,14 +389,39 @@ export const registerResource: {
     const context = yield* Effect.context<any>()
     const registry = yield* Registry
     const decode = Schema.decodeUnknown(schema)
-    registry.addResourceTemplate(
-      new ResourceTemplate({
-        ...options,
-        uriTemplate: uriPath,
-        annotations: new Annotations(options)
-      }),
+    const template = new ResourceTemplate({
+      ...options,
+      uriTemplate: uriPath,
+      annotations: new Annotations(options)
+    })
+    const completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>> = {}
+    for (const [param, handle] of Object.entries(options.paramCompletion ?? {})) {
+      const encodeArray = Schema.encodeUnknown(Schema.Array(params[param]))
+      const handler = (input: string) =>
+        handle(input).pipe(
+          Effect.flatMap(encodeArray),
+          Effect.map((values) =>
+            new CompleteResult({
+              completion: {
+                values: values as Array<string>,
+                total: values.length,
+                hasMore: false
+              }
+            })
+          ),
+          Effect.catchAllCause((cause) => {
+            const prettyError = Cause.prettyErrors(cause)[0]
+            return new InternalError({ message: prettyError.message })
+          }),
+          Effect.provide(context)
+        )
+      completions[param] = handler
+    }
+    registry.addResourceTemplate({
+      template,
       routerPath,
-      (uri, params) =>
+      completions,
+      handle: (uri, params) =>
         decode(params).pipe(
           Effect.mapError((error) => new InvalidParams({ message: error.message })),
           Effect.flatMap((params) =>
@@ -361,7 +435,7 @@ export const registerResource: {
           ),
           Effect.provide(context)
         )
-    )
+    })
   })
 } as any
 
@@ -388,18 +462,39 @@ export const resource: {
         readonly [K in keyof Schemas]: Schema.Schema.Encoded<Schemas[K]> extends string ? unknown
           : "Schema must be encodable to a string"
       }
-  ): <E, R>(options: {
+  ): <
+    E,
+    R,
+    const Completions extends {
+      readonly [
+        K in Extract<keyof Schemas, `${number}`> as Schemas[K] extends Param<infer Id, infer _S> ? Id
+          : `param${K}`
+      ]?: (input: string) => Effect.Effect<
+        Array<Schema.Schema.Type<Schemas[K]>>,
+        any,
+        any
+      >
+    } = {}
+  >(options: {
     readonly name: string
     readonly description?: string | undefined
     readonly mimeType?: string | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
+    readonly paramCompletion?: (Completions & Record<keyof Completions, (input: string) => any>) | undefined
     readonly content: (uri: string, ...params: { readonly [K in keyof Schemas]: Schemas[K]["Type"] }) => Effect.Effect<
       ReadResourceResult | string | Uint8Array,
       E,
       R
     >
-  }) => Layer.Layer<never, never, R>
+  }) => Layer.Layer<
+    never,
+    never,
+    | R
+    | (Completions[keyof Completions] extends (input: string) => infer Ret ?
+      Ret extends Effect.Effect<infer _A, infer _E, infer _R> ? _R : never
+      : never)
+  >
 } = function() {
   if (arguments.length === 1) {
     return Layer.effectDiscard(registerResource(arguments[0])).pipe(
@@ -447,6 +542,7 @@ const makeUriMatcher = <A>() => {
 const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: ReadonlyArray<Schema.Schema.Any>) => {
   let routerPath = segments[0]
   let uriPath = segments[0]
+  const params: Record<string, Schema.Schema.Any> = {}
   let pathSchema = Schema.Tuple() as Schema.Schema.Any
   if (schemas.length > 0) {
     const arr: Array<Schema.Schema.Any> = []
@@ -455,9 +551,10 @@ const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: Readonly
       const key = String(i)
       arr.push(schema)
       routerPath += `:${key}${segments[i + 1]}`
-      const paramName = AST.getIdentifierAnnotation(schema.ast).pipe(
+      const paramName = AST.getAnnotation(ParamAnnotation)(schema.ast).pipe(
         Option.getOrElse(() => `param${key}`)
       )
+      params[paramName as string] = schema
       uriPath += `{${paramName}}`
     }
     pathSchema = Schema.Tuple(...arr)
@@ -465,7 +562,8 @@ const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: Readonly
   return {
     routerPath,
     uriPath,
-    schema: pathSchema
+    schema: pathSchema,
+    params
   } as const
 }
 
@@ -479,7 +577,9 @@ const ClientRpcHandlers = ClientRpcs.toLayer(
       ping: () => Effect.succeed({}),
       initialize(params) {
         const requestedVersion = params.protocolVersion
-        const capabilities: Types.DeepMutable<ServerCapabilities> = {}
+        const capabilities: Types.DeepMutable<ServerCapabilities> = {
+          completions: {}
+        }
 
         if (registry.tools.size > 0) {
           // TODO: support listChanged notifications
@@ -502,7 +602,7 @@ const ClientRpcHandlers = ClientRpcs.toLayer(
             : LATEST_PROTOCOL_VERSION
         })
       },
-      "completion/complete": () => InternalError.notImplemented,
+      "completion/complete": registry.completion,
       "logging/setLevel": () => InternalError.notImplemented,
       "prompts/get": () => InternalError.notImplemented,
       "prompts/list": () => InternalError.notImplemented,
