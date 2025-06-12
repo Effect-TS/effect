@@ -954,7 +954,7 @@ const layerHandlers = (serverInfo: {
 }) =>
   ClientRpcs.toLayer(
     Effect.gen(function*() {
-      const registry = yield* McpServer
+      const server = yield* McpServer
 
       return {
         // Requests
@@ -964,24 +964,18 @@ const layerHandlers = (serverInfo: {
           const capabilities: Types.DeepMutable<ServerCapabilities> = {
             completions: {}
           }
-
-          if (registry.tools.length > 0) {
+          if (server.tools.length > 0) {
             capabilities.tools = { listChanged: true }
           }
-
-          if (registry.resources.length > 0 || registry.resourceTemplates.length > 0) {
+          if (server.resources.length > 0 || server.resourceTemplates.length > 0) {
             capabilities.resources = {
               listChanged: true,
               subscribe: false
             }
           }
-
-          if (registry.prompts.length > 0) {
-            capabilities.prompts = {
-              listChanged: true
-            }
+          if (server.prompts.length > 0) {
+            capabilities.prompts = { listChanged: true }
           }
-
           return Effect.succeed({
             capabilities,
             serverInfo,
@@ -990,18 +984,18 @@ const layerHandlers = (serverInfo: {
               : LATEST_PROTOCOL_VERSION
           })
         },
-        "completion/complete": registry.completion,
+        "completion/complete": server.completion,
         "logging/setLevel": () => InternalError.notImplemented,
-        "prompts/get": registry.getPromptResult,
-        "prompts/list": () => Effect.sync(() => new ListPromptsResult({ prompts: registry.prompts })),
-        "resources/list": () => Effect.sync(() => new ListResourcesResult({ resources: registry.resources })),
-        "resources/read": ({ uri }) => registry.findResource(uri),
+        "prompts/get": server.getPromptResult,
+        "prompts/list": () => Effect.sync(() => new ListPromptsResult({ prompts: server.prompts })),
+        "resources/list": () => Effect.sync(() => new ListResourcesResult({ resources: server.resources })),
+        "resources/read": ({ uri }) => server.findResource(uri),
         "resources/subscribe": () => InternalError.notImplemented,
         "resources/unsubscribe": () => InternalError.notImplemented,
         "resources/templates/list": () =>
-          Effect.sync(() => new ListResourceTemplatesResult({ resourceTemplates: registry.resourceTemplates })),
-        "tools/call": registry.callTool,
-        "tools/list": () => Effect.sync(() => new ListToolsResult({ tools: registry.tools })),
+          Effect.sync(() => new ListResourceTemplatesResult({ resourceTemplates: server.resourceTemplates })),
+        "tools/call": server.callTool,
+        "tools/list": () => Effect.sync(() => new ListToolsResult({ tools: server.tools })),
 
         // Notifications
         "notifications/cancelled": (_) => Effect.void,
