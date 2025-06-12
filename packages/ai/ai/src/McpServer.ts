@@ -848,7 +848,6 @@ const layerHandlers = (serverInfo: {
           }
 
           if (registry.resources.length > 0 || registry.resourceTemplates.length > 0) {
-            // TODO: support listChanged notifications
             capabilities.resources = {
               listChanged: true,
               subscribe: false
