@@ -1,5 +1,12 @@
 # @effect/ai-anthropic
 
+## 0.8.16
+
+### Patch Changes
+
+- Updated dependencies [[`daed158`](https://github.com/Effect-TS/effect/commit/daed158f2cf00175633284f075cf611c52aa2a1c)]:
+  - @effect/ai@0.18.16
+
 ## 0.8.15
 
 ### Patch Changes
