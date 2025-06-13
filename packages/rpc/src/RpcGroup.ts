@@ -4,6 +4,7 @@
 import type { Headers } from "@effect/platform/Headers"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { ReadonlyMailbox } from "effect/Mailbox"
 import { type Pipeable } from "effect/Pipeable"
@@ -92,6 +93,8 @@ export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
     | Exclude<RX, Scope>
     | HandlersContext<R, Handlers>
   >
+
+  of<Handlers extends HandlersFrom<R>>(handlers: Handlers): Handlers
 
   /**
    * Implement a single handler from the group.
@@ -266,6 +269,7 @@ const RpcGroupProto = {
   toLayer(this: RpcGroup<any>, build: Effect.Effect<Record<string, (request: any) => any>>) {
     return Layer.scopedContext(this.toHandlersContext(build))
   },
+  of: identity,
   toLayerHandler(this: RpcGroup<any>, tag: string, build: Effect.Effect<Record<string, (request: any) => any>>) {
     return Layer.scopedContext(Effect.gen(this, function*() {
       const context = yield* Effect.context<never>()

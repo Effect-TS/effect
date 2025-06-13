@@ -4,6 +4,7 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { CommitPrototype } from "effect/Effectable"
+import { identity } from "effect/Function"
 import type { Inspectable } from "effect/Inspectable"
 import { BaseProto as InspectableProto } from "effect/Inspectable"
 import * as Layer from "effect/Layer"
@@ -62,6 +63,8 @@ export interface AiToolkit<in out Tools extends AiTool.Any>
   toLayer<Handlers extends HandlersFrom<Tools>, EX = never, RX = never>(
     build: Handlers | Effect.Effect<Handlers, EX, RX>
   ): Layer.Layer<AiTool.ToHandler<Tools>, EX, Exclude<RX, Scope.Scope>>
+
+  of<Handlers extends HandlersFrom<Tools>>(handlers: Handlers): Handlers
 }
 
 /**
@@ -122,6 +125,7 @@ const Proto = {
   toLayer(this: AiToolkit<any>, build: Effect.Effect<Record<string, (params: any) => any>>) {
     return Layer.scopedContext(this.toContext(build))
   },
+  of: identity,
   commit(this: AiToolkit<AiTool.AnyWithProtocol>) {
     return Effect.gen(this, function*() {
       const context = yield* Effect.context<never>()
