@@ -1,5 +1,11 @@
 # effect
 
+## 3.16.7
+
+### Patch Changes
+
+- [#5033](https://github.com/Effect-TS/effect/pull/5033) [`1bb0d8a`](https://github.com/Effect-TS/effect/commit/1bb0d8ab96782e99434356266b38251554ea0294) Thanks @tim-smart! - ensure DateTime.make interprets strings without zone as UTC
+
 ## 3.16.6
 
 ### Patch Changes
