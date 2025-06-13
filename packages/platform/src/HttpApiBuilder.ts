@@ -646,11 +646,13 @@ const handlerToRoute = (
         if (decodePath._tag === "Some") {
           request.path = yield* decodePath.value(routeContext.params)
         }
-        if (decodePayload._tag === "Some") {
-          request.payload = yield* Effect.flatMap(
-            requestPayload(httpRequest, urlParams),
-            decodePayload.value
-          )
+        if (decodePayload._tag === "Some" && endpoint.payloadSchema._tag === "Some") {
+          request.payload = HttpApiSchema.getStream(endpoint.payloadSchema.value.ast) ?
+            (httpRequest.stream) :
+            (yield* Effect.flatMap(
+              requestPayload(httpRequest, urlParams),
+              decodePayload.value
+            ))
         }
         if (decodeHeaders._tag === "Some") {
           request.headers = yield* decodeHeaders.value(httpRequest.headers)
@@ -764,6 +766,12 @@ const toResponseSchema = (getStatus: (ast: AST.AST) => number) => {
     }
     const encoding = HttpApiSchema.getEncoding(ast.to)
     switch (encoding.kind) {
+      case "Stream": {
+        return ParseResult.succeed(HttpServerResponse.stream(data as any, {
+          status,
+          contentType: encoding.contentType
+        }))
+      }
       case "Json": {
         return Effect.mapError(
           HttpServerResponse.json(data, {

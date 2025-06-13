@@ -6,6 +6,56 @@
     "summary": "test api summary"
   },
   "paths": {
+    "/echo": {
+      "post": {
+        "operationId": "echo",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "$ref": "#/components/schemas/Uint8ArrayFromSelf"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Uint8ArrayFromSelf"
+                }
+              }
+            },
+            "description": "Uint8ArrayFromSelf"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            },
+            "description": "The request did not match the expected schema"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalError"
+                }
+              }
+            },
+            "description": "GlobalError"
+          }
+        },
+        "security": [],
+        "tags": ["root"]
+      }
+    },
     "/groups/{id}": {
       "get": {
         "tags": ["groups"],
@@ -614,6 +664,10 @@
           }
         },
         "additionalProperties": false
+      },
+      "Uint8ArrayFromSelf": {
+        "format": "binary",
+        "type": "string"
       },
       "User": {
         "type": "object",

@@ -41,6 +41,11 @@ export * as NodeHttpClient from "./NodeHttpClient.js"
 /**
  * @since 1.0.0
  */
+export * as NodeHttpClientRequest from "./NodeHttpClientRequest.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as NodeHttpPlatform from "./NodeHttpPlatform.js"
 
 /**

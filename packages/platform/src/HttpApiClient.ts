@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { Brand } from "effect/Brand"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
@@ -10,6 +11,7 @@ import * as ParseResult from "effect/ParseResult"
 import type * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
+import type * as Stream from "effect/Stream"
 import type { Simplify } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
 import type { HttpApiEndpoint } from "./HttpApiEndpoint.js"
@@ -78,11 +80,19 @@ export declare namespace Client {
       infer _R,
       infer _RE
     >
-  ] ? <WithResponse extends boolean = false>(
-      request: Simplify<HttpApiEndpoint.ClientRequest<_Path, _UrlParams, _Payload, _Headers, WithResponse>>
+  ] ? <WithResponse extends boolean = false, StreamError = never, StreamContext = never>(
+      request: Simplify<
+        HttpApiEndpoint.ClientRequest<_Path, _UrlParams, _Payload, _Headers, WithResponse, StreamError, StreamContext>
+      >
     ) => Effect.Effect<
-      WithResponse extends true ? [_Success, HttpClientResponse.HttpClientResponse] : _Success,
-      _Error | GroupError | ApiError | HttpClientError.HttpClientError | ParseResult.ParseError
+      WithResponse extends true ? [
+          _Success extends Brand<HttpApiSchema.StreamTypeId> ? Stream.Stream<Uint8Array, never, never> : _Success,
+          HttpClientResponse.HttpClientResponse
+        ]
+        : _Success extends Brand<HttpApiSchema.StreamTypeId> ? Stream.Stream<Uint8Array, never, never>
+        : _Success,
+      _Error | StreamError | GroupError | ApiError | HttpClientError.HttpClientError | ParseResult.ParseError,
+      StreamContext
     > :
     never
 
@@ -178,6 +188,20 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
         const encodePayloadBody = endpoint.payloadSchema.pipe(
           Option.map((schema) => {
             if (HttpMethod.hasBody(endpoint.method)) {
+              if (HttpApiSchema.getStream(schema.ast)) {
+                const encoding = HttpApiSchema.getEncoding(schema.ast)
+                return (
+                  payload: {
+                    stream: Stream.Stream<Uint8Array>
+                    contentLength?: number | undefined
+                    etag?: string | undefined
+                  }
+                ) => {
+                  return Effect.succeed(
+                    HttpBody.stream(payload.stream, encoding.contentType, payload.contentLength, payload.etag)
+                  )
+                }
+              }
               return Schema.encodeUnknown(payloadSchemaBody(schema as any))
             }
             return Schema.encodeUnknown(schema)
@@ -453,6 +477,9 @@ const schemaFromArrayBuffer = (
     return Schema.Union(...ast.types.map((ast) => schemaFromArrayBuffer(ast, HttpApiSchema.getEncoding(ast, encoding))))
   }
   switch (encoding.kind) {
+    case "Stream": {
+      return (response: HttpClientResponse.HttpClientResponse) => Effect.sync(() => response.stream)
+    }
     case "Json": {
       return Schema.compose(parseJsonArrayBuffer, Schema.make(ast))
     }
@@ -515,6 +542,9 @@ const bodyFromPayload = (ast: AST.AST) => {
       },
       encode(toI, _, ast) {
         switch (encoding.kind) {
+          case "Stream": {
+            return ParseResult.fail(new ParseResult.Forbidden(ast, toI, "can not encode streams"))
+          }
           case "Json": {
             return HttpBody.json(toI).pipe(
               ParseResult.mapError((error) => new ParseResult.Type(ast, toI, `Could not encode as JSON: ${error}`))
