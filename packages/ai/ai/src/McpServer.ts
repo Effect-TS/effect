@@ -548,7 +548,10 @@ export const registerToolkit: <Tools extends AiTool.Any>(toolkit: AiToolkit.AiTo
  */
 export const toolkit = <Tools extends AiTool.Any>(
   toolkit: AiToolkit.AiToolkit<Tools>
-): Layer.Layer<never, never, AiTool.ToHandler<Tools> | McpServer> => Layer.effectDiscard(registerToolkit(toolkit))
+): Layer.Layer<never, never, AiTool.ToHandler<Tools>> =>
+  Layer.effectDiscard(registerToolkit(toolkit)).pipe(
+    Layer.provide(McpServer.layer)
+  )
 
 /**
  * @since 1.0.0
@@ -765,7 +768,6 @@ export const resource: {
   }) => Layer.Layer<
     never,
     never,
-    | McpServer
     | R
     | (Completions[keyof Completions] extends (input: string) => infer Ret ?
       Ret extends Effect.Effect<infer _A, infer _E, infer _R> ? _R : never
@@ -773,10 +775,15 @@ export const resource: {
   >
 } = function() {
   if (arguments.length === 1) {
-    return Layer.effectDiscard(registerResource(arguments[0]))
+    return Layer.effectDiscard(registerResource(arguments[0])).pipe(
+      Layer.provide(McpServer.layer)
+    )
   }
   const register = registerResource(...(arguments as any as [any, any]))
-  return (options: any) => Layer.effectDiscard(register(options))
+  return (options: any) =>
+    Layer.effectDiscard(register(options)).pipe(
+      Layer.provide(McpServer.layer)
+    )
 } as any
 
 /**
@@ -900,7 +907,10 @@ export const prompt = <
     readonly completion?: ValidateCompletions<Completions, Extract<keyof Params, string>> | undefined
     readonly content: (params: Params) => Effect.Effect<Array<PromptMessage> | string, E, R>
   }
-): Layer.Layer<never, never, ParamsR | R | McpServer> => Layer.effectDiscard(registerPrompt(options))
+): Layer.Layer<never, never, ParamsR | R> =>
+  Layer.effectDiscard(registerPrompt(options)).pipe(
+    Layer.provide(McpServer.layer)
+  )
 
 // -----------------------------------------------------------------------------
 // Internal
