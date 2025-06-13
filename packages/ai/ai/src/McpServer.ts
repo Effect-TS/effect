@@ -740,7 +740,7 @@ export const resource: {
       E,
       R
     >
-  }): Layer.Layer<never, never, R | McpServer>
+  }): Layer.Layer<never, never, R>
   <const Schemas extends ReadonlyArray<Schema.Schema.Any>>(
     segments: TemplateStringsArray,
     ...schemas:
