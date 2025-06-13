@@ -585,15 +585,15 @@ export declare namespace HttpApiEndpoint {
    * @category models
    */
   export type ValidateParams<
-    Schemas extends ReadonlyArray<Schema.Schema.Any>,
-    Prev extends Schema.Schema.Any = never
+    Schemas extends ReadonlyArray<Schema.Schema.Any | Schema.PropertySignature.Any>,
+    Prev extends (Schema.Schema.Any | Schema.PropertySignature.Any) = never
   > = Schemas extends [
-    infer Head extends Schema.Schema.Any,
-    ...infer Tail extends ReadonlyArray<Schema.Schema.Any>
+    infer Head extends (Schema.Schema.Any | Schema.PropertySignature.Any),
+    ...infer Tail extends ReadonlyArray<Schema.Schema.Any | Schema.PropertySignature.Any>
   ] ? [
       Head extends HttpApiSchema.Param<infer _Name, infer _S>
         ? HttpApiSchema.Param<_Name, any> extends Prev ? `Duplicate param: ${_Name}`
-        : [Head["Encoded"]] extends [string] ? Head
+        : [Schema.Schema.Encoded<Head> & {}] extends [string] ? Head
         : `Must be encodeable to string: ${_Name}` :
         Head,
       ...ValidateParams<Tail, Prev | Head>
@@ -662,27 +662,44 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type PathEntries<Schemas extends ReadonlyArray<Schema.Schema.Any>> = Extract<keyof Schemas, string> extends
-    infer K ? K extends keyof Schemas ? Schemas[K] extends HttpApiSchema.Param<infer _Name, infer _S> ? [_Name, _S] :
-      Schemas[K] extends Schema.Schema.Any ? [K, Schemas[K]]
+  export type PathEntries<Schemas extends ReadonlyArray<Schema.Schema.Any | Schema.PropertySignature.Any>> =
+    Extract<keyof Schemas, string> extends infer K ?
+      K extends keyof Schemas ? Schemas[K] extends HttpApiSchema.Param<infer _Name, infer _S> ? [_Name, _S] :
+        Schemas[K] extends (Schema.Schema.Any | Schema.PropertySignature.Any) ? [K, Schemas[K]]
+        : never
       : never
-    : never
-    : never
+      : never
+
+  type OptionalTypePropertySignature =
+    | Schema.PropertySignature<"?:", any, PropertyKey, Schema.PropertySignature.Token, any, boolean, unknown>
+    | Schema.PropertySignature<"?:", any, PropertyKey, Schema.PropertySignature.Token, never, boolean, unknown>
+    | Schema.PropertySignature<"?:", never, PropertyKey, Schema.PropertySignature.Token, any, boolean, unknown>
+    | Schema.PropertySignature<"?:", never, PropertyKey, Schema.PropertySignature.Token, never, boolean, unknown>
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type ExtractPath<Schemas extends ReadonlyArray<Schema.Schema.Any>> = {
-    readonly [Entry in PathEntries<Schemas> as Entry[0]]: Entry[1]["Type"]
-  }
+  export type ExtractPath<Schemas extends ReadonlyArray<Schema.Schema.Any | Schema.PropertySignature.Any>> =
+    Schema.Simplify<
+      & {
+        readonly [
+          Entry in Extract<PathEntries<Schemas>, [any, OptionalTypePropertySignature]> as Entry[0]
+        ]?: Schema.Schema.Type<Entry[1]>
+      }
+      & {
+        readonly [
+          Entry in Exclude<PathEntries<Schemas>, [any, OptionalTypePropertySignature]> as Entry[0]
+        ]: Schema.Schema.Type<Entry[1]>
+      }
+    >
 
   /**
    * @since 1.0.0
    * @category models
    */
   export type Constructor<Name extends string, Method extends HttpMethod> = <
-    const Schemas extends ReadonlyArray<Schema.Schema.Any>
+    const Schemas extends ReadonlyArray<Schema.Schema.Any | Schema.PropertySignature.Any>
   >(
     segments: TemplateStringsArray,
     ...schemas: ValidateParams<Schemas>
@@ -695,7 +712,7 @@ export declare namespace HttpApiEndpoint {
     never,
     void,
     never,
-    Schemas[number]["Context"]
+    Schema.Schema.Context<Schemas[number]>
   >
 }
 
@@ -829,16 +846,21 @@ export const make = <Method extends HttpMethod>(method: Method): {
         middlewares: new Set()
       })
     }
-    return (segments: TemplateStringsArray, ...schemas: ReadonlyArray<Schema.Schema.Any>) => {
-      let path = segments[0] as PathSegment
+    return (
+      segments: TemplateStringsArray,
+      ...schemas: ReadonlyArray<Schema.Schema.Any | Schema.PropertySignature.Any>
+    ) => {
+      let path = segments[0].replace(":", "::") as PathSegment
       let pathSchema = Option.none<Schema.Schema.Any>()
       if (schemas.length > 0) {
-        const obj: Record<string, Schema.Schema.Any> = {}
+        const obj: Record<string, Schema.Schema.Any | Schema.PropertySignature.Any> = {}
         for (let i = 0; i < schemas.length; i++) {
           const schema = schemas[i]
           const key = HttpApiSchema.getParam(schema.ast) ?? String(i)
+          const optional = schema.ast._tag === "PropertySignatureTransformation" && schema.ast.from.isOptional ||
+            schema.ast._tag === "PropertySignatureDeclaration" && schema.ast.isOptional
           obj[key] = schema
-          path += `:${key}${segments[i + 1]}`
+          path += `:${key}${optional ? "?" : ""}${segments[i + 1].replace(":", "::")}`
         }
         pathSchema = Option.some(Schema.Struct(obj))
       }

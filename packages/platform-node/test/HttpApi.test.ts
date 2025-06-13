@@ -68,7 +68,7 @@ describe("HttpApi", () => {
         const client = yield* HttpApiClient.make(Api)
         const data = new FormData()
         data.append("file", new Blob(["hello"], { type: "text/plain" }), "hello.txt")
-        const result = yield* client.users.upload({ payload: data })
+        const result = yield* client.users.upload({ payload: data, path: {} })
         assert.deepStrictEqual(result, {
           contentType: "text/plain",
           length: 5
@@ -140,7 +140,7 @@ describe("HttpApi", () => {
     it.effect("HttpApiDecodeError", () =>
       Effect.gen(function*() {
         const client = yield* HttpApiClient.make(Api)
-        const error = yield* client.users.upload({ payload: new FormData() }).pipe(
+        const error = yield* client.users.upload({ path: {}, payload: new FormData() }).pipe(
           Effect.flip
         )
         assert(error._tag === "HttpApiDecodeError")
@@ -342,7 +342,7 @@ class UsersApi extends HttpApiGroup.make("users")
       .annotateContext(OpenApi.annotations({ identifier: "listUsers" }))
   )
   .add(
-    HttpApiEndpoint.post("upload")`/upload`
+    HttpApiEndpoint.post("upload")`/upload/${Schema.optional(Schema.String)}`
       .setPayload(HttpApiSchema.Multipart(Schema.Struct({
         file: Multipart.SingleFileSchema
       })))
