@@ -9,6 +9,7 @@ import type * as O from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as STM from "../STM.js"
+import type { NoInfer } from "../Types.js"
 import { EffectPrototype, effectVariance } from "./effectable.js"
 import * as option from "./option.js"
 
@@ -202,24 +203,22 @@ const _empty = makeContext(new Map())
 export const empty = (): C.Context<never> => _empty
 
 /** @internal */
-export const make = <T extends C.Tag<any, any>>(
-  tag: T,
-  service: C.Tag.Service<T>
-): C.Context<C.Tag.Identifier<T>> => makeContext(new Map([[tag.key, service]]))
+export const make = <I, S>(tag: C.Tag<I, S>, service: NoInfer<S>): C.Context<I> =>
+  makeContext(new Map([[tag.key, service]]))
 
 /** @internal */
 export const add = dual<
-  <T extends C.Tag<any, any>>(
-    tag: T,
-    service: C.Tag.Service<T>
+  <I, S>(
+    tag: C.Tag<I, S>,
+    service: NoInfer<S>
   ) => <Services>(
     self: C.Context<Services>
-  ) => C.Context<Services | C.Tag.Identifier<T>>,
-  <Services, T extends C.Tag<any, any>>(
+  ) => C.Context<Services | I>,
+  <Services, I, S>(
     self: C.Context<Services>,
-    tag: T,
-    service: C.Tag.Service<T>
-  ) => C.Context<Services | C.Tag.Identifier<T>>
+    tag: C.Tag<I, S>,
+    service: NoInfer<S>
+  ) => C.Context<Services | I>
 >(3, (self, tag, service) => {
   const map = new Map(self.unsafeMap)
   map.set(tag.key, service)

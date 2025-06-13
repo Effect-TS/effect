@@ -113,7 +113,9 @@ describe("Context", () => {
       readonly FooBar: unique symbol
     }
     const Service = Context.GenericTag<FooBar, Foo | Bar>("FooBar")
-    const context = Context.make(Service, { _tag: "Foo" })
+    const context = Context.make(Service, { _tag: "Foo" }).pipe(
+      Context.add(Service, { _tag: "Foo" })
+    )
     deepStrictEqual(Context.get(context, Service), { _tag: "Foo" })
   })
 
