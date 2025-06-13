@@ -1,5 +1,13 @@
 # @effect/sql-kysely
 
+## 0.33.12
+
+### Patch Changes
+
+- Updated dependencies [[`1bb0d8a`](https://github.com/Effect-TS/effect/commit/1bb0d8ab96782e99434356266b38251554ea0294)]:
+  - effect@3.16.7
+  - @effect/sql@0.37.12
+
 ## 0.33.11
 
 ### Patch Changes

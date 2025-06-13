@@ -1,5 +1,19 @@
 # @effect/ai
 
+## 0.18.14
+
+### Patch Changes
+
+- [#5036](https://github.com/Effect-TS/effect/pull/5036) [`cbac1ac`](https://github.com/Effect-TS/effect/commit/cbac1ac61a4e15ad15828563b39eef412bcee66e) Thanks @tim-smart! - add .of helpers to RpcGroup, Entity and AiToolkit
+
+- [#5037](https://github.com/Effect-TS/effect/pull/5037) [`dd4d380`](https://github.com/Effect-TS/effect/commit/dd4d3802f714d59171b1e9226a7babf9723ea952) Thanks @tim-smart! - eliminate McpServer requirement from resource layers
+
+- Updated dependencies [[`1bb0d8a`](https://github.com/Effect-TS/effect/commit/1bb0d8ab96782e99434356266b38251554ea0294), [`cbac1ac`](https://github.com/Effect-TS/effect/commit/cbac1ac61a4e15ad15828563b39eef412bcee66e)]:
+  - effect@3.16.7
+  - @effect/rpc@0.61.15
+  - @effect/experimental@0.48.12
+  - @effect/platform@0.84.11
+
 ## 0.18.13
 
 ### Patch Changes

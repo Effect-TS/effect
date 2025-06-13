@@ -1,5 +1,18 @@
 # @effect/cluster
 
+## 0.38.16
+
+### Patch Changes
+
+- [#5036](https://github.com/Effect-TS/effect/pull/5036) [`cbac1ac`](https://github.com/Effect-TS/effect/commit/cbac1ac61a4e15ad15828563b39eef412bcee66e) Thanks @tim-smart! - add .of helpers to RpcGroup, Entity and AiToolkit
+
+- Updated dependencies [[`1bb0d8a`](https://github.com/Effect-TS/effect/commit/1bb0d8ab96782e99434356266b38251554ea0294), [`cbac1ac`](https://github.com/Effect-TS/effect/commit/cbac1ac61a4e15ad15828563b39eef412bcee66e)]:
+  - effect@3.16.7
+  - @effect/rpc@0.61.15
+  - @effect/platform@0.84.11
+  - @effect/sql@0.37.12
+  - @effect/workflow@0.1.14
+
 ## 0.38.15
 
 ### Patch Changes
