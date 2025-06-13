@@ -1,0 +1,62 @@
+{
+  "name": "@effect/sql-pglite",
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "A PGlite driver for Effect Sql",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/sql-pglite"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "tags": [
+    "typescript",
+    "sql",
+    "database"
+  ],
+  "keywords": [
+    "typescript",
+    "sql",
+    "database"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist",
+    "provenance": true
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "codegen": "build-utils prepare-v2",
+    "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
+  },
+  "devDependencies": {
+    "@effect/experimental": "workspace:^",
+    "@effect/platform": "workspace:^",
+    "@effect/sql": "workspace:^",
+    "effect": "workspace:^"
+  },
+  "peerDependencies": {
+    "@effect/experimental": "workspace:^",
+    "@effect/platform": "workspace:^",
+    "@effect/sql": "workspace:^",
+    "effect": "workspace:^"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.2",
+    "@electric-sql/pglite-tools": "^0.2.7",
+    "@opentelemetry/semantic-conventions": "^1.33.0"
+  }
+}
