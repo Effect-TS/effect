@@ -400,7 +400,7 @@ export class InternalError extends Schema.TaggedError<InternalError>()("Internal
 export class Ping extends Rpc.make("ping", {
   success: Schema.Struct({}),
   error: McpError,
-  payload: RequestMeta
+  payload: Schema.UndefinedOr(RequestMeta)
 }) {}
 
 // =============================================================================
@@ -474,7 +474,7 @@ export class Initialize extends Rpc.make("initialize", {
  * @category Initialization
  */
 export class InitializedNotification extends Rpc.make("notifications/initialized", {
-  payload: NotificationMeta
+  payload: Schema.UndefinedOr(NotificationMeta)
 }) {}
 
 // =============================================================================
@@ -698,7 +698,7 @@ export class ListResourcesResult extends Schema.Class<ListResourcesResult>(
 export class ListResources extends Rpc.make("resources/list", {
   success: ListResourcesResult,
   error: McpError,
-  payload: PaginatedRequestMeta
+  payload: Schema.UndefinedOr(PaginatedRequestMeta)
 }) {}
 
 /**
@@ -723,7 +723,7 @@ export class ListResourceTemplatesResult extends Schema.Class<ListResourceTempla
 export class ListResourceTemplates extends Rpc.make("resources/templates/list", {
   success: ListResourceTemplatesResult,
   error: McpError,
-  payload: PaginatedRequestMeta
+  payload: Schema.UndefinedOr(PaginatedRequestMeta)
 }) {}
 
 /**
@@ -770,7 +770,7 @@ export class ReadResource extends Rpc.make("resources/read", {
  * @category Resources
  */
 export class ResourceListChangedNotification extends Rpc.make("notifications/resources/list_changed", {
-  payload: NotificationMeta
+  payload: Schema.UndefinedOr(NotificationMeta)
 }) {}
 
 /**
@@ -1010,7 +1010,7 @@ export class ListPromptsResult extends Schema.Class<ListPromptsResult>(
 export class ListPrompts extends Rpc.make("prompts/list", {
   success: ListPromptsResult,
   error: McpError,
-  payload: PaginatedRequestMeta
+  payload: Schema.UndefinedOr(PaginatedRequestMeta)
 }) {}
 
 /**
@@ -1064,7 +1064,7 @@ export class GetPrompt extends Rpc.make("prompts/get", {
  * @category Prompts
  */
 export class PromptListChangedNotification extends Rpc.make("notifications/prompts/list_changed", {
-  payload: NotificationMeta
+  payload: Schema.UndefinedOr(NotificationMeta)
 }) {}
 
 // =============================================================================
@@ -1177,7 +1177,7 @@ export class ListToolsResult extends Schema.Class<ListToolsResult>(
 export class ListTools extends Rpc.make("tools/list", {
   success: ListToolsResult,
   error: McpError,
-  payload: PaginatedRequestMeta
+  payload: Schema.UndefinedOr(PaginatedRequestMeta)
 }) {}
 
 /**
@@ -1241,7 +1241,7 @@ export class CallTool extends Rpc.make("tools/call", {
  * @category Tools
  */
 export class ToolListChangedNotification extends Rpc.make("notifications/tools/list_changed", {
-  payload: NotificationMeta
+  payload: Schema.UndefinedOr(NotificationMeta)
 }) {}
 
 // =============================================================================
@@ -1648,7 +1648,7 @@ export class ListRootsResult extends Schema.Class<ListRootsResult>(
 export class ListRoots extends Rpc.make("roots/list", {
   success: ListRootsResult,
   error: McpError,
-  payload: RequestMeta
+  payload: Schema.UndefinedOr(RequestMeta)
 }) {}
 
 /**
@@ -1661,7 +1661,7 @@ export class ListRoots extends Rpc.make("roots/list", {
  * @category Roots
  */
 export class RootsListChangedNotification extends Rpc.make("notifications/roots/list_changed", {
-  payload: NotificationMeta
+  payload: Schema.UndefinedOr(NotificationMeta)
 }) {}
 
 // =============================================================================
