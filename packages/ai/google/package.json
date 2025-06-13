@@ -1,14 +1,14 @@
 {
-  "name": "@effect/ai-anthropic",
+  "name": "@effect/ai-google",
   "type": "module",
-  "version": "0.8.16",
+  "version": "0.0.0",
   "license": "MIT",
   "description": "Effect modules for working with AI apis",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/effect.git",
-    "directory": "packages/ai/anthropic"
+    "directory": "packages/ai/google"
   },
   "bugs": {
     "url": "https://github.com/Effect-TS/effect/issues"
@@ -58,8 +58,5 @@
     "@effect/platform-node": "workspace:^",
     "@tim-smart/openapi-gen": "^0.4.10",
     "effect": "workspace:^"
-  },
-  "dependencies": {
-    "@anthropic-ai/tokenizer": "^0.0.4"
   }
 }
