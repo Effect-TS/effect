@@ -1,5 +1,11 @@
 # @effect/ai
 
+## 0.18.16
+
+### Patch Changes
+
+- [#5040](https://github.com/Effect-TS/effect/pull/5040) [`daed158`](https://github.com/Effect-TS/effect/commit/daed158f2cf00175633284f075cf611c52aa2a1c) Thanks @tim-smart! - allow undefined mcp payloads
+
 ## 0.18.15
 
 ### Patch Changes
