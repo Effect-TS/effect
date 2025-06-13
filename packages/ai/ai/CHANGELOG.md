@@ -1,5 +1,11 @@
 # @effect/ai
 
+## 0.18.15
+
+### Patch Changes
+
+- [#5038](https://github.com/Effect-TS/effect/pull/5038) [`c315989`](https://github.com/Effect-TS/effect/commit/c315989cade6c2a5c9cb157ad85f56b492675add) Thanks @tim-smart! - remove McpServer requirement from McpServer.resource
+
 ## 0.18.14
 
 ### Patch Changes
