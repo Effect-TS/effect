@@ -96,7 +96,7 @@ const TimingLive = Layer.succeed(
 const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
   let interrupts = 0
   let emits = 0
-  return {
+  return UserRpcs.of({
     GetUser: (_) =>
       CurrentUser.pipe(
         Rpc.fork
@@ -135,7 +135,7 @@ const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
         success: Metric.value(rpcSuccesses).pipe(Effect.map((_) => _.count)),
         count: Metric.value(rpcCount).pipe(Effect.map((_) => _.count))
       })
-  }
+  })
 }))
 
 export const RpcLive = RpcServer.layer(UserRpcs).pipe(

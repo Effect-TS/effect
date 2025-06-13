@@ -13,6 +13,7 @@ import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
+import { identity } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
@@ -142,6 +143,8 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
     | Sharding
   >
 
+  of<Handlers extends HandlersFrom<Rpcs>>(handlers: Handlers): Handlers
+
   /**
    * Create a Layer from an Entity.
    *
@@ -266,6 +269,7 @@ const Proto = {
       Layer.effectDiscard
     )
   },
+  of: identity,
   toLayerMailbox<
     Rpcs extends Rpc.Any,
     R,
