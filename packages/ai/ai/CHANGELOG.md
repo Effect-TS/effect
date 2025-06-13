@@ -1,5 +1,75 @@
 # @effect/ai
 
+## 0.18.13
+
+### Patch Changes
+
+- [#4961](https://github.com/Effect-TS/effect/pull/4961) [`aa3a819`](https://github.com/Effect-TS/effect/commit/aa3a819707c15dd39b6d9ae4b4293bd87b74e175) Thanks @IMax153! - add McpServer module
+
+  The McpServer module provides a way to implement a MCP server using Effect.
+
+  Here's an example of how to use the McpServer module to create a simple MCP
+  server with a resource template and a test prompt:
+
+  ```ts
+  import { McpSchema, McpServer } from "@effect/ai"
+  import { NodeRuntime, NodeSink, NodeStream } from "@effect/platform-node"
+  import { Effect, Layer, Logger, Schema } from "effect"
+
+  const idParam = McpSchema.param("id", Schema.NumberFromString)
+
+  // Define a resource template for a README file
+  const ReadmeTemplate = McpServer.resource`file://readme/${idParam}`({
+    name: "README Template",
+    // You can add auto-completion for the ID parameter
+    completion: {
+      id: (_) => Effect.succeed([1, 2, 3, 4, 5])
+    },
+    content: Effect.fn(function* (_uri, id) {
+      return `# MCP Server Demo - ID: ${id}`
+    })
+  })
+
+  // Define a test prompt with parameters
+  const TestPrompt = McpServer.prompt({
+    name: "Test Prompt",
+    description: "A test prompt to demonstrate MCP server capabilities",
+    parameters: Schema.Struct({
+      flightNumber: Schema.String
+    }),
+    completion: {
+      flightNumber: () => Effect.succeed(["FL123", "FL456", "FL789"])
+    },
+    content: ({ flightNumber }) =>
+      Effect.succeed(
+        `Get the booking details for flight number: ${flightNumber}`
+      )
+  })
+
+  // Merge all the resources and prompts into a single server layer
+  const ServerLayer = Layer.mergeAll(ReadmeTemplate, TestPrompt).pipe(
+    // Provide the MCP server implementation
+    Layer.provide(
+      McpServer.layerStdio({
+        name: "Demo Server",
+        version: "1.0.0",
+        stdin: NodeStream.stdin,
+        stdout: NodeSink.stdout
+      })
+    ),
+    // add a stderr logger
+    Layer.provide(Logger.add(Logger.prettyLogger({ stderr: true })))
+  )
+
+  Layer.launch(ServerLayer).pipe(NodeRuntime.runMain)
+  ```
+
+- Updated dependencies [[`a5f7595`](https://github.com/Effect-TS/effect/commit/a5f75956ef9a15a83c416517ef493f0ee2f5ee8a), [`a02470c`](https://github.com/Effect-TS/effect/commit/a02470c75579e91525a25adb3f21b3650d042fdd), [`bf369b2`](https://github.com/Effect-TS/effect/commit/bf369b2902a0e0b195d957c18b9efd180942cf8b), [`f891d45`](https://github.com/Effect-TS/effect/commit/f891d45adffdafd3f94a2eca23faa354e3a409a8)]:
+  - effect@3.16.6
+  - @effect/platform@0.84.10
+  - @effect/experimental@0.48.11
+  - @effect/rpc@0.61.14
+
 ## 0.18.12
 
 ### Patch Changes

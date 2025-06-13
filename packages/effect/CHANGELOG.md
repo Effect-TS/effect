@@ -1,5 +1,15 @@
 # effect
 
+## 3.16.6
+
+### Patch Changes
+
+- [#5026](https://github.com/Effect-TS/effect/pull/5026) [`a5f7595`](https://github.com/Effect-TS/effect/commit/a5f75956ef9a15a83c416517ef493f0ee2f5ee8a) Thanks @KhraksMamtsov! - Add missing type variances
+
+- [#5031](https://github.com/Effect-TS/effect/pull/5031) [`a02470c`](https://github.com/Effect-TS/effect/commit/a02470c75579e91525a25adb3f21b3650d042fdd) Thanks @KhraksMamtsov! - Fix Context.add & Context.make signatures
+
+- [#5003](https://github.com/Effect-TS/effect/pull/5003) [`f891d45`](https://github.com/Effect-TS/effect/commit/f891d45adffdafd3f94a2eca23faa354e3a409a8) Thanks @beezee! - Ensure binding `__proto__` to lexical scope in do notation is preserved by `bind` and `let`
+
 ## 3.16.5
 
 ### Patch Changes
