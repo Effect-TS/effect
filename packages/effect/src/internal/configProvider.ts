@@ -108,8 +108,7 @@ export const fromEnv = (
   const makePathString = (path: ReadonlyArray<string>): string => pipe(path, Arr.join(pathDelim))
   const unmakePathString = (pathString: string): ReadonlyArray<string> => pathString.split(pathDelim)
 
-  const getEnv = () =>
-    typeof process !== "undefined" && "env" in process && typeof process.env === "object" ? process.env : {}
+  const getEnv = () => import.meta.env;
 
   const load = <A>(
     path: ReadonlyArray<string>,
