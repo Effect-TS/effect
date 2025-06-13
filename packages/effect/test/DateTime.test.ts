@@ -446,4 +446,11 @@ describe("DateTime", () => {
         deepStrictEqual(now, new Date("2023-12-31T11:00:00.000Z"))
       }))
   })
+
+  describe("unsafeMake", () => {
+    it("treats strings without zone info as UTC", () => {
+      const dt = DateTime.unsafeMake("2024-01-01 01:00:00")
+      strictEqual(dt.toJSON(), "2024-01-01T01:00:00.000Z")
+    })
+  })
 })
