@@ -252,7 +252,7 @@ export const make = (options: {
                     const params = JSON.parse(tool.params)
                     parts.push(
                       new AiResponse.ToolCallPart({
-                        id: AiInput.ToolCallId.make(tool.id),
+                        id: AiInput.ToolCallId.make(tool.id, constDisableValidation),
                         name: tool.name,
                         params
                       }, constDisableValidation)
@@ -289,9 +289,7 @@ export const make = (options: {
               : Option.some(
                 Effect.succeed(
                   AiResponse.AiResponse.make(
-                    {
-                      parts
-                    },
+                    { parts },
                     constDisableValidation
                   )
                 )
