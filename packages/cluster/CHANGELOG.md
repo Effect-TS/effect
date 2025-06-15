@@ -1,5 +1,17 @@
 # @effect/cluster
 
+## 0.39.0
+
+### Patch Changes
+
+- [#5044](https://github.com/Effect-TS/effect/pull/5044) [`b7cc5c7`](https://github.com/Effect-TS/effect/commit/b7cc5c7b6b012f1c90458ce8d83ae287ea58a3d1) Thanks @tim-smart! - simplify and increase rebalance rate for ShardManager
+
+- Updated dependencies [[`93687dd`](https://github.com/Effect-TS/effect/commit/93687ddbb25ce3b324cd2b83d2ccff225e97307e), [`93687dd`](https://github.com/Effect-TS/effect/commit/93687ddbb25ce3b324cd2b83d2ccff225e97307e), [`93687dd`](https://github.com/Effect-TS/effect/commit/93687ddbb25ce3b324cd2b83d2ccff225e97307e)]:
+  - @effect/platform@0.85.0
+  - @effect/rpc@0.62.0
+  - @effect/sql@0.38.0
+  - @effect/workflow@0.2.0
+
 ## 0.38.16
 
 ### Patch Changes

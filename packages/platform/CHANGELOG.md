@@ -1,5 +1,17 @@
 # @effect/platform
 
+## 0.85.0
+
+### Minor Changes
+
+- [#5042](https://github.com/Effect-TS/effect/pull/5042) [`93687dd`](https://github.com/Effect-TS/effect/commit/93687ddbb25ce3b324cd2b83d2ccff225e97307e) Thanks @tim-smart! - HttpApiBuilder .handleRaw no longer parses the request body
+
+### Patch Changes
+
+- [#5042](https://github.com/Effect-TS/effect/pull/5042) [`93687dd`](https://github.com/Effect-TS/effect/commit/93687ddbb25ce3b324cd2b83d2ccff225e97307e) Thanks @tim-smart! - allow return HttpServerResponse from HttpApiBuilder .handle
+
+- [#5042](https://github.com/Effect-TS/effect/pull/5042) [`93687dd`](https://github.com/Effect-TS/effect/commit/93687ddbb25ce3b324cd2b83d2ccff225e97307e) Thanks @tim-smart! - add HttpApiSchema.MultipartStream
+
 ## 0.84.11
 
 ### Patch Changes
