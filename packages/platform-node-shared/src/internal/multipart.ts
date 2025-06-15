@@ -86,6 +86,7 @@ class FileImpl extends PartBase implements Multipart.File {
   readonly name: string
   readonly contentType: string
   readonly content: Stream.Stream<Uint8Array, Multipart.MultipartError>
+  readonly contentEffect: Effect.Effect<Uint8Array, Multipart.MultipartError>
 
   constructor(readonly file: MP.FileStream) {
     super()
@@ -96,6 +97,9 @@ class FileImpl extends PartBase implements Multipart.File {
       () => file,
       (cause) => new Multipart.MultipartError({ reason: "InternalError", cause })
     )
+    this.contentEffect = NodeStream.toUint8Array(() => file, {
+      onFailure: (cause) => new Multipart.MultipartError({ reason: "InternalError", cause })
+    })
   }
 
   toJSON(): unknown {

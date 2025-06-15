@@ -8,12 +8,15 @@ import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import type * as Stream from "effect/Stream"
 import type * as Types from "effect/Types"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
 import type { HttpMethod } from "./HttpMethod.js"
 import * as HttpRouter from "./HttpRouter.js"
+import type { HttpServerRequest } from "./HttpServerRequest.js"
 import type { HttpServerResponse } from "./HttpServerResponse.js"
+import type * as Multipart from "./Multipart.js"
 
 /**
  * @since 1.0.0
@@ -402,8 +405,34 @@ export declare namespace HttpApiEndpoint {
   > ?
       & ([_Path] extends [never] ? {} : { readonly path: _Path })
       & ([_UrlParams] extends [never] ? {} : { readonly urlParams: _UrlParams })
-      & ([_Payload] extends [never] ? {} : { readonly payload: _Payload })
+      & ([_Payload] extends [never] ? {}
+        : _Payload extends Brand<HttpApiSchema.MultipartStreamTypeId> ?
+          { readonly payload: Stream.Stream<Multipart.Part, Multipart.MultipartError> }
+        : { readonly payload: _Payload })
       & ([_Headers] extends [never] ? {} : { readonly headers: _Headers })
+      & { readonly request: HttpServerRequest }
+    : {}
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type RequestRaw<Endpoint extends Any> = Endpoint extends HttpApiEndpoint<
+    infer _Name,
+    infer _Method,
+    infer _Path,
+    infer _UrlParams,
+    infer _Payload,
+    infer _Headers,
+    infer _Success,
+    infer _Error,
+    infer _R,
+    infer _RE
+  > ?
+      & ([_Path] extends [never] ? {} : { readonly path: _Path })
+      & ([_UrlParams] extends [never] ? {} : { readonly urlParams: _UrlParams })
+      & ([_Headers] extends [never] ? {} : { readonly headers: _Headers })
+      & { readonly request: HttpServerRequest }
     : {}
 
   /**
@@ -416,7 +445,9 @@ export declare namespace HttpApiEndpoint {
     & ([Headers] extends [never] ? {} : { readonly headers: Headers })
     & ([Payload] extends [never] ? {}
       : Payload extends infer P ?
-        P extends Brand<HttpApiSchema.MultipartTypeId> ? { readonly payload: FormData } : { readonly payload: P }
+        P extends Brand<HttpApiSchema.MultipartTypeId> | Brand<HttpApiSchema.MultipartStreamTypeId>
+          ? { readonly payload: FormData }
+        : { readonly payload: P }
       : { readonly payload: Payload })
   ) extends infer Req ? keyof Req extends never ? (void | { readonly withResponse?: WithResponse }) :
     Req & { readonly withResponse?: WithResponse } :
@@ -464,15 +495,15 @@ export declare namespace HttpApiEndpoint {
    */
   export type Handler<Endpoint extends Any, E, R> = (
     request: Types.Simplify<Request<Endpoint>>
-  ) => Effect<Success<Endpoint>, Error<Endpoint> | E, R>
+  ) => Effect<Success<Endpoint> | HttpServerResponse, Error<Endpoint> | E, R>
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type HandlerResponse<Endpoint extends Any, E, R> = (
-    request: Types.Simplify<Request<Endpoint>>
-  ) => Effect<HttpServerResponse, Error<Endpoint> | E, R>
+  export type HandlerRaw<Endpoint extends Any, E, R> = (
+    request: Types.Simplify<RequestRaw<Endpoint>>
+  ) => Effect<Success<Endpoint> | HttpServerResponse, Error<Endpoint> | E, R>
 
   /**
    * @since 1.0.0
@@ -500,7 +531,7 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type HandlerResponseWithName<Endpoints extends Any, Name extends string, E, R> = HandlerResponse<
+  export type HandlerRawWithName<Endpoints extends Any, Name extends string, E, R> = HandlerRaw<
     WithName<Endpoints, Name>,
     E,
     R

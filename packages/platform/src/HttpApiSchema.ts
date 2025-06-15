@@ -24,6 +24,14 @@ export const AnnotationMultipart: unique symbol = Symbol.for(
  * @since 1.0.0
  * @category annotations
  */
+export const AnnotationMultipartStream: unique symbol = Symbol.for(
+  "@effect/platform/HttpApiSchema/AnnotationMultipartStream"
+)
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
 export const AnnotationStatus: unique symbol = Symbol.for("@effect/platform/HttpApiSchema/AnnotationStatus")
 
 /**
@@ -69,6 +77,9 @@ export const extractAnnotations = (ast: AST.Annotations): AST.Annotations => {
   if (AnnotationMultipart in ast) {
     result[AnnotationMultipart] = ast[AnnotationMultipart]
   }
+  if (AnnotationMultipartStream in ast) {
+    result[AnnotationMultipartStream] = ast[AnnotationMultipartStream]
+  }
   return result
 }
 
@@ -101,6 +112,13 @@ export const getEmptyDecodeable = (ast: AST.AST): boolean =>
  * @category annotations
  */
 export const getMultipart = (ast: AST.AST): boolean => getAnnotation<boolean>(ast, AnnotationMultipart) ?? false
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const getMultipartStream = (ast: AST.AST): boolean =>
+  getAnnotation<boolean>(ast, AnnotationMultipartStream) ?? false
 
 const encodingJson: Encoding = {
   kind: "Json",
@@ -393,6 +411,39 @@ export interface Multipart<S extends Schema.Schema.Any>
 export const Multipart = <S extends Schema.Schema.Any>(self: S): Multipart<S> =>
   self.annotations({
     [AnnotationMultipart]: true
+  }) as any
+
+/**
+ * @since 1.0.0
+ * @category multipart
+ */
+export const MultipartStreamTypeId: unique symbol = Symbol.for("@effect/platform/HttpApiSchema/MultipartStream")
+
+/**
+ * @since 1.0.0
+ * @category multipart
+ */
+export type MultipartStreamTypeId = typeof MultipartStreamTypeId
+
+/**
+ * @since 1.0.0
+ * @category multipart
+ */
+export interface MultipartStream<S extends Schema.Schema.Any> extends
+  Schema.Schema<
+    Schema.Schema.Type<S> & Brand<MultipartStreamTypeId>,
+    Schema.Schema.Encoded<S>,
+    Schema.Schema.Context<S>
+  >
+{}
+
+/**
+ * @since 1.0.0
+ * @category multipart
+ */
+export const MultipartStream = <S extends Schema.Schema.Any>(self: S): MultipartStream<S> =>
+  self.annotations({
+    [AnnotationMultipartStream]: true
   }) as any
 
 const defaultContentType = (encoding: Encoding["kind"]) => {
