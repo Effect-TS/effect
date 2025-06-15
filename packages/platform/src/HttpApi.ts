@@ -409,7 +409,9 @@ const extractPayloads = (topAst: AST.AST): ReadonlyMap<string, {
       ...ast.annotations
     })
     const encoding = HttpApiSchema.getEncoding(ast)
-    const contentType = HttpApiSchema.getMultipart(ast) ? "multipart/form-data" : encoding.contentType
+    const contentType = HttpApiSchema.getMultipart(ast) || HttpApiSchema.getMultipartStream(ast)
+      ? "multipart/form-data"
+      : encoding.contentType
     const current = members.get(contentType)
     if (current === undefined) {
       members.set(contentType, {

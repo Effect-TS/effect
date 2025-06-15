@@ -1,3 +1,4 @@
+import type { Cause } from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -355,6 +356,7 @@ class FileImpl extends PartBase implements Multipart.File {
   readonly name: string
   readonly contentType: string
   readonly content: Stream.Stream<Uint8Array, Multipart.MultipartError>
+  readonly contentEffect: Effect.Effect<Uint8Array, Multipart.MultipartError>
 
   constructor(
     info: MP.PartInfo,
@@ -365,6 +367,11 @@ class FileImpl extends PartBase implements Multipart.File {
     this.name = info.filename ?? info.name
     this.contentType = info.contentType
     this.content = Stream.fromChannel(channel)
+    this.contentEffect = channel.pipe(
+      Channel.pipeTo(collectUint8Array),
+      Channel.run,
+      Effect.mapError((cause) => new MultipartError({ reason: "InternalError", cause }))
+    )
   }
 
   toJSON(): unknown {
@@ -387,6 +394,30 @@ const defaultWriteFile = (path: string, file: Multipart.File) =>
         (cause) => new MultipartError({ reason: "InternalError", cause })
       )
   )
+
+const collectUint8Array = Channel.suspend(() => {
+  let accumulator = new Uint8Array(0)
+  const loop: Channel.Channel<
+    never,
+    Chunk.Chunk<Uint8Array>,
+    unknown,
+    unknown,
+    Uint8Array
+  > = Channel.readWithCause({
+    onInput(chunk: Chunk.Chunk<Uint8Array>) {
+      for (const element of chunk) {
+        const newAccumulator = new Uint8Array(accumulator.length + element.length)
+        newAccumulator.set(accumulator, 0)
+        newAccumulator.set(element, accumulator.length)
+        accumulator = newAccumulator
+      }
+      return loop
+    },
+    onFailure: (cause: Cause<unknown>) => Channel.failCause(cause),
+    onDone: () => Channel.succeed(accumulator)
+  })
+  return loop
+})
 
 /** @internal */
 export const toPersisted = (

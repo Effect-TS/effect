@@ -83,6 +83,7 @@ export interface File extends Part.Proto {
   readonly name: string
   readonly contentType: string
   readonly content: Stream.Stream<Uint8Array, MultipartError>
+  readonly contentEffect: Effect.Effect<Uint8Array, MultipartError>
 }
 
 /**

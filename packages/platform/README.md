@@ -1135,13 +1135,10 @@ const api = HttpApi.make("myApi").add(
 )
 
 const groupLive = HttpApiBuilder.group(api, "group", (handlers) =>
-  handlers.handle("get", () =>
+  handlers.handle("get", ({ request }) =>
     Effect.gen(function* () {
-      // Access the incoming request
-      const req = yield* HttpServerRequest.HttpServerRequest
-
       // Log the HTTP method for demonstration purposes
-      console.log(req.method)
+      console.log(request.method)
 
       // Return a response
       return "Hello, World!"
@@ -1225,7 +1222,7 @@ echo "abc" | curl -X POST 'http://localhost:3000/stream' --data-binary @- -H "Co
 
 ### Streaming Responses
 
-To handle streaming responses in your API, you can use `handleRaw`. The `HttpServerResponse.stream` function is designed to return a continuous stream of data as the response.
+To handle streaming responses in your API, you can return a raw `HttpServerResponse`. The `HttpServerResponse.stream` function is designed to return a continuous stream of data as the response.
 
 **Example** (Implementing a Streaming Endpoint)
 
@@ -1265,7 +1262,7 @@ const stream = Stream.make("a", "b", "c").pipe(
 )
 
 const groupLive = HttpApiBuilder.group(api, "group", (handlers) =>
-  handlers.handleRaw("getStream", () => HttpServerResponse.stream(stream))
+  handlers.handle("getStream", () => HttpServerResponse.stream(stream))
 )
 
 const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(groupLive))

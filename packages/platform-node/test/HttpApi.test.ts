@@ -12,12 +12,13 @@ import {
   HttpClient,
   HttpClientRequest,
   HttpServerRequest,
+  HttpServerResponse,
   Multipart,
   OpenApi
 } from "@effect/platform"
 import { NodeHttpServer } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, DateTime, Effect, Layer, Redacted, Ref, Schema, Struct } from "effect"
+import { Chunk, Context, DateTime, Effect, Layer, Redacted, Ref, Schema, Stream, Struct } from "effect"
 import OpenApiFixture from "./fixtures/openapi.json" with { type: "json" }
 
 describe("HttpApi", () => {
@@ -69,6 +70,18 @@ describe("HttpApi", () => {
         const data = new FormData()
         data.append("file", new Blob(["hello"], { type: "text/plain" }), "hello.txt")
         const result = yield* client.users.upload({ payload: data, path: {} })
+        assert.deepStrictEqual(result, {
+          contentType: "text/plain",
+          length: 5
+        })
+      }).pipe(Effect.provide(HttpLive)))
+
+    it.live("multipart stream", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpApiClient.make(Api)
+        const data = new FormData()
+        data.append("file", new Blob(["hello"], { type: "text/plain" }), "hello.txt")
+        const result = yield* client.users.uploadStream({ payload: data })
         assert.deepStrictEqual(result, {
           contentType: "text/plain",
           length: 5
@@ -237,6 +250,32 @@ describe("HttpApi", () => {
       assert.deepStrictEqual(group, new Group({ id: 1, name: "Some group" }))
     }).pipe(Effect.provide(HttpLive)))
 
+  it.effect(".handle can return HttpServerResponse", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(Api)
+      const response = yield* client.groups.handle({
+        path: { id: 1 },
+        payload: { name: "Some group" }
+      })
+      assert.deepStrictEqual(response, {
+        id: 1,
+        name: "Some group"
+      })
+    }).pipe(Effect.provide(HttpLive)))
+
+  it.effect(".handleRaw can manually process body", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(Api)
+      const response = yield* client.groups.handleRaw({
+        path: { id: 1 },
+        payload: { name: "Some group" }
+      })
+      assert.deepStrictEqual(response, {
+        id: 1,
+        name: "Some group"
+      })
+    }).pipe(Effect.provide(HttpLive)))
+
   it("OpenAPI spec", () => {
     const spec = OpenApi.fromApi(Api)
     assert.deepStrictEqual(spec, OpenApiFixture as any)
@@ -300,6 +339,26 @@ class GroupsApi extends HttpApiGroup.make("groups")
       ))
       .addSuccess(Group)
   )
+  .add(
+    HttpApiEndpoint.post("handle")`/handle/${HttpApiSchema.param("id", Schema.NumberFromString)}`
+      .setPayload(Schema.Struct({
+        name: Schema.String
+      }))
+      .addSuccess(Schema.Struct({
+        id: Schema.Number,
+        name: Schema.String
+      }))
+  )
+  .add(
+    HttpApiEndpoint.post("handleRaw")`/handleraw/${HttpApiSchema.param("id", Schema.NumberFromString)}`
+      .setPayload(Schema.Struct({
+        name: Schema.String
+      }))
+      .addSuccess(Schema.Struct({
+        id: Schema.Number,
+        name: Schema.String
+      }))
+  )
   .addError(GroupError.pipe(
     HttpApiSchema.asEmpty({ status: 418, decode: () => new GroupError() })
   ))
@@ -344,6 +403,16 @@ class UsersApi extends HttpApiGroup.make("users")
   .add(
     HttpApiEndpoint.post("upload")`/upload/${Schema.optional(Schema.String)}`
       .setPayload(HttpApiSchema.Multipart(Schema.Struct({
+        file: Multipart.SingleFileSchema
+      })))
+      .addSuccess(Schema.Struct({
+        contentType: Schema.String,
+        length: Schema.Int
+      }))
+  )
+  .add(
+    HttpApiEndpoint.post("uploadStream")`/uploadstream`
+      .setPayload(HttpApiSchema.MultipartStream(Schema.Struct({
         file: Multipart.SingleFileSchema
       })))
       .addSuccess(Schema.Struct({
@@ -456,6 +525,24 @@ const HttpUsersLive = HttpApiBuilder.group(
               length: Number(stat.size)
             }
           }))
+        .handle("uploadStream", (_) =>
+          Effect.gen(function*() {
+            const { content, file } = yield* _.payload.pipe(
+              Stream.filter((part) => part._tag === "File"),
+              Stream.mapEffect((file) =>
+                file.contentEffect.pipe(
+                  Effect.map((content) => ({ file, content }))
+                )
+              ),
+              Stream.runCollect,
+              Effect.flatMap(Chunk.head),
+              Effect.orDie
+            )
+            return {
+              contentType: file.contentType,
+              length: content.length
+            }
+          }))
     })
 ).pipe(Layer.provide([
   DateTime.layerCurrentZoneOffset(0),
@@ -479,6 +566,25 @@ const HttpGroupsLive = HttpApiBuilder.group(
             name: "foo" in payload ? payload.foo : payload.name
           })
         ))
+      .handle(
+        "handle",
+        Effect.fn(function*({ path, payload }) {
+          return HttpServerResponse.unsafeJson({
+            id: path.id,
+            name: payload.name
+          })
+        })
+      )
+      .handleRaw(
+        "handleRaw",
+        Effect.fn(function*({ path, request }) {
+          const body = (yield* Effect.orDie(request.json)) as { name: string }
+          return HttpServerResponse.unsafeJson({
+            id: path.id,
+            name: body.name
+          })
+        })
+      )
 )
 
 const TopLevelLive = HttpApiBuilder.group(
