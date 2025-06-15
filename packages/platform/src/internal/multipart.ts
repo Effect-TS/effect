@@ -395,7 +395,8 @@ const defaultWriteFile = (path: string, file: Multipart.File) =>
       )
   )
 
-const collectUint8Array = Channel.suspend(() => {
+/** @internal */
+export const collectUint8Array = Channel.suspend(() => {
   let accumulator = new Uint8Array(0)
   const loop: Channel.Channel<
     never,

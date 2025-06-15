@@ -1,4 +1,5 @@
 import * as Multipart from "@effect/platform/Multipart"
+import * as Channel from "effect/Channel"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
@@ -94,6 +95,7 @@ class FileImpl extends PartBase implements Multipart.File {
   readonly name: string
   readonly contentType: string
   readonly content: Stream.Stream<Uint8Array, Multipart.MultipartError>
+  readonly contentEffect: Effect.Effect<Uint8Array, Multipart.MultipartError>
 
   constructor(readonly file: MP.File) {
     super()
@@ -103,6 +105,11 @@ class FileImpl extends PartBase implements Multipart.File {
     this.content = Stream.fromReadableStream(
       () => file.readable,
       (cause) => new Multipart.MultipartError({ reason: "InternalError", cause })
+    )
+    this.contentEffect = Stream.toChannel(this.content).pipe(
+      Channel.pipeTo(Multipart.collectUint8Array),
+      Channel.run,
+      Effect.mapError((cause) => new Multipart.MultipartError({ reason: "InternalError", cause }))
     )
   }
 

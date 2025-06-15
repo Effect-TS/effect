@@ -279,3 +279,14 @@ export const toPersisted: (
   stream: Stream.Stream<Part, MultipartError>,
   writeFile?: (path: string, file: File) => Effect.Effect<void, MultipartError, FileSystem.FileSystem>
 ) => Effect.Effect<Persisted, MultipartError, FileSystem.FileSystem | Path.Path | Scope.Scope> = internal.toPersisted
+
+/**
+ * @since 1.0.0
+ */
+export const collectUint8Array: Channel.Channel<
+  never,
+  Chunk.Chunk<Uint8Array>,
+  unknown,
+  unknown,
+  Uint8Array
+> = internal.collectUint8Array
