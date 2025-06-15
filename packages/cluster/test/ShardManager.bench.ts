@@ -10,7 +10,7 @@ import {
 } from "@effect/cluster"
 import { bench, describe, expect } from "@effect/vitest"
 import { Array, Data, Effect, Layer, Logger, MutableHashMap, Option, TestClock, TestContext } from "effect"
-import { decideAssignmentsForUnassignedShards, RunnerWithMetadata, State } from "../src/internal/shardManager.js"
+import { decideAssignmentsForShards, RunnerWithMetadata, State } from "../src/internal/shardManager.js"
 
 describe("ShardManager", () => {
   const shards300 = Array.makeBy(
@@ -45,12 +45,12 @@ describe("ShardManager", () => {
     new Map(shards1000)
   )
 
-  bench("decideAssignmentsForUnassignedShards - 30 runners 300 shards", () => {
-    decideAssignmentsForUnassignedShards(state30, "default")
+  bench("decideAssignmentsForShards - 30 runners 300 shards", () => {
+    decideAssignmentsForShards(state30, "default")
   })
 
-  bench("decideAssignmentsForUnassignedShards - 100 runners 1000 shards", () => {
-    decideAssignmentsForUnassignedShards(state100, "default")
+  bench("decideAssignmentsForShards - 100 runners 1000 shards", () => {
+    decideAssignmentsForShards(state100, "default")
   })
 
   const ShardManagerLive = ShardManager.layer.pipe(

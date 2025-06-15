@@ -244,34 +244,26 @@ export interface RunnerWithMetadata {
 /** @internal */
 export const RunnerWithMetadata = (runner: RunnerWithMetadata): RunnerWithMetadata => runner
 
-/** @internal */
-export function decideAssignmentsForUnassignedShards(state: State, group: string): readonly [
-  assignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<number>>,
-  unassignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<number>>,
-  changes: MutableHashSet.MutableHashSet<RunnerAddress>
-] {
-  return pickNewRunners(state.unassignedShards(group), state, group, true, 1)
-}
-
 const allocationOrder: Order.Order<[number, number, number]> = Order.combine(
   Order.mapInput(Order.number, ([, shards]) => shards),
   Order.mapInput(Order.number, ([, , registeredAt]) => registeredAt)
 )
 
 /** @internal */
-export function decideAssignmentsForUnbalancedShards(state: State, group: string, rate: number): readonly [
+export function decideAssignmentsForShards(state: State, group: string): readonly [
   assignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<number>>,
   unassignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<number>>,
   changes: MutableHashSet.MutableHashSet<RunnerAddress>
 ] {
   const shardsPerRunner = state.shardsPerRunner(group)
   const maxVersion = state.maxVersion
-  const extraShardsToAllocate = Arr.empty<[number, shardsInverse: number, registeredAt: number]>()
+  const shardsToRebalance = state.unassignedShards(group)
 
   const runnerGroup = state.runners.get(group)!
   const shardsGroup = state.shards.get(group)!
 
   if (state.allRunnersHaveVersion(maxVersion)) {
+    const extraShardsToAllocate = Arr.empty<[number, shardsInverse: number, registeredAt: number]>()
     const averageShardsPerRunner = state.averageShardsPerRunner(group)
     MutableHashMap.forEach(shardsPerRunner, (shards) => {
       // Count how many extra shards there are compared to the average
@@ -296,19 +288,19 @@ export function decideAssignmentsForUnbalancedShards(state: State, group: string
         ])
       }
     })
+    extraShardsToAllocate.sort(allocationOrder)
+    for (let i = 0; i < extraShardsToAllocate.length; i++) {
+      shardsToRebalance.push(extraShardsToAllocate[i][0])
+    }
   }
 
-  const sortedShardsToRebalance = extraShardsToAllocate.sort(allocationOrder).map(([shard]) => shard)
-
-  return pickNewRunners(sortedShardsToRebalance, state, group, false, rate, shardsPerRunner, maxVersion)
+  return pickNewRunners(shardsToRebalance, state, group, shardsPerRunner, maxVersion)
 }
 
 function pickNewRunners(
   shardsToRebalance: ReadonlyArray<number>,
   state: State,
   group: string,
-  immediate: boolean,
-  rate: number,
   shardsPerRunner = state.shardsPerRunner(group),
   maybeMaxVersion = state.maxVersion
 ): readonly [
@@ -342,13 +334,6 @@ function pickNewRunners(
 
       // Do not assign to a runner that has unassignments in the same rebalance
       if (MutableHashMap.has(unassignments, address)) continue
-
-      // Do not assign too many shards to each runner unless rebalancing must
-      // occur immediately
-      if (!immediate) {
-        const assignmentCount = Option.getOrUndefined(MutableHashMap.get(addressAssignments, address))?.size ?? 0
-        if (assignmentCount >= shardsGroup.size * rate) continue
-      }
 
       if (candidate === undefined || shards.size < candidateShards!.size) {
         candidate = address

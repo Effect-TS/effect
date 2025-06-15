@@ -33,12 +33,7 @@ import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import { RunnerNotRegistered } from "./ClusterError.js"
 import * as ClusterMetrics from "./ClusterMetrics.js"
-import {
-  addAllNested,
-  decideAssignmentsForUnassignedShards,
-  decideAssignmentsForUnbalancedShards,
-  State
-} from "./internal/shardManager.js"
+import { addAllNested, decideAssignmentsForShards, State } from "./internal/shardManager.js"
 import * as MachineId from "./MachineId.js"
 import { Runner } from "./Runner.js"
 import { RunnerAddress } from "./RunnerAddress.js"
@@ -74,7 +69,7 @@ export class ShardManager extends Context.Tag("@effect/cluster/ShardManager")<Sh
   /**
    * Rebalance shards assigned to runners within the cluster.
    */
-  readonly rebalance: (immediate: boolean) => Effect.Effect<void>
+  readonly rebalance: Effect.Effect<void>
   /**
    * Notify the cluster of an unhealthy runner.
    */
@@ -130,7 +125,7 @@ export class Config extends Context.Tag("@effect/cluster/ShardManager/Config")<C
    * @since 1.0.0
    */
   static readonly defaults: Config["Type"] = {
-    rebalanceDebounce: Duration.millis(500),
+    rebalanceDebounce: Duration.seconds(3),
     rebalanceInterval: Duration.seconds(20),
     rebalanceRetryInterval: Duration.seconds(10),
     rebalanceRate: 2 / 100,
@@ -505,11 +500,8 @@ export const make = Effect.gen(function*() {
     state.addRunner(runner, clock.unsafeCurrentTimeMillis())
     updateRunnerMetrics()
     yield* PubSub.publish(events, ShardingEvent.RunnerRegistered({ address: runner.address }))
-
-    if (state.allUnassignedShards.length > 0) {
-      yield* rebalance(false)
-    }
     yield* Effect.forkIn(persistRunners, scope)
+    yield* Effect.forkIn(rebalance, scope)
     return MachineId.make(++machineId)
   })
 
@@ -532,52 +524,40 @@ export const make = Effect.gen(function*() {
     }
 
     yield* Effect.forkIn(persistRunners, scope)
-    yield* Effect.forkIn(rebalance(true), scope)
+    yield* Effect.forkIn(rebalance, scope)
   })
 
   let rebalancing = false
-  let nextRebalanceImmediate = false
   let rebalanceDeferred: Deferred.Deferred<void> | undefined
   const rebalanceFibers = yield* FiberSet.make()
 
-  const rebalance = (immmediate: boolean): Effect.Effect<void> =>
-    Effect.withFiberRuntime<void>((fiber) => {
-      if (!rebalancing) {
-        rebalancing = true
-        return rebalanceLoop(immmediate)
-      }
-      if (immmediate) {
-        nextRebalanceImmediate = true
-      }
-      if (!rebalanceDeferred) {
-        rebalanceDeferred = Deferred.unsafeMake(fiber.id())
-      }
-      return Deferred.await(rebalanceDeferred)
-    })
+  const rebalance = Effect.withFiberRuntime<void>((fiber) => {
+    if (!rebalancing) {
+      rebalancing = true
+      return rebalanceLoop
+    }
+    if (!rebalanceDeferred) {
+      rebalanceDeferred = Deferred.unsafeMake(fiber.id())
+    }
+    return Deferred.await(rebalanceDeferred)
+  })
 
-  const rebalanceLoop = (immediate?: boolean): Effect.Effect<void> =>
-    Effect.suspend(() => {
-      const deferred = rebalanceDeferred
-      rebalanceDeferred = undefined
-      if (!immediate) {
-        immediate = nextRebalanceImmediate
-        nextRebalanceImmediate = false
-      }
-      return runRebalance(immediate).pipe(
-        deferred ? Effect.intoDeferred(deferred) : identity,
-        Effect.onExit(() => {
-          if (!rebalanceDeferred) {
-            rebalancing = false
-            return Effect.void
-          }
-          return Effect.forkIn(rebalanceLoop(), scope)
-        })
-      )
-    })
+  const rebalanceLoop: Effect.Effect<void> = Effect.suspend(() => {
+    const deferred = rebalanceDeferred
+    rebalanceDeferred = undefined
+    return runRebalance.pipe(
+      deferred ? Effect.intoDeferred(deferred) : identity,
+      Effect.onExit(() => {
+        if (!rebalanceDeferred) {
+          rebalancing = false
+          return Effect.void
+        }
+        return Effect.forkIn(rebalanceLoop, scope)
+      })
+    )
+  })
 
-  const runRebalance = Effect.fn("ShardManager.rebalance")(function*(immediate: boolean) {
-    yield* Effect.annotateCurrentSpan("immmediate", immediate)
-
+  const runRebalance = Effect.gen(function*() {
     yield* Effect.sleep(config.rebalanceDebounce)
 
     if (state.shards.size === 0) {
@@ -590,10 +570,7 @@ export const make = Effect.gen(function*() {
     const unassignments = MutableHashMap.empty<RunnerAddress, MutableHashSet.MutableHashSet<ShardId>>()
     const changes = MutableHashSet.empty<RunnerAddress>()
     for (const group of state.shards.keys()) {
-      const [groupAssignments, groupUnassignments, groupChanges] =
-        immediate || (state.unassignedShards(group).length > 0)
-          ? decideAssignmentsForUnassignedShards(state, group)
-          : decideAssignmentsForUnbalancedShards(state, group, config.rebalanceRate)
+      const [groupAssignments, groupUnassignments, groupChanges] = decideAssignmentsForShards(state, group)
       for (const [address, shards] of groupAssignments) {
         addAllNested(assignments, address, Array.from(shards, (id) => makeShardId(group, id)))
       }
@@ -605,7 +582,7 @@ export const make = Effect.gen(function*() {
       }
     }
 
-    yield* Effect.logDebug(`Rebalancing shards (immediate = ${immediate})`)
+    yield* Effect.logDebug(`Rebalancing shards`)
 
     if (MutableHashSet.size(changes) === 0) return
 
@@ -691,16 +668,16 @@ export const make = Effect.gen(function*() {
       yield* Effect.logWarning("Failed to rebalance runners: ", failedRunners)
     }
 
-    if (wereFailures && immediate) {
+    if (wereFailures) {
       // Try rebalancing again later if there were any failures
       yield* Clock.sleep(config.rebalanceRetryInterval).pipe(
-        Effect.zipRight(rebalance(immediate)),
+        Effect.zipRight(rebalance),
         Effect.forkIn(scope)
       )
     }
 
     yield* persistAssignments
-  })
+  }).pipe(Effect.withSpan("ShardManager.rebalance", { captureStackTrace: false }))
 
   const checkRunnerHealth: Effect.Effect<void> = Effect.suspend(() =>
     Effect.forEach(MutableHashMap.keys(state.allRunners), notifyUnhealthyRunner, {
@@ -720,14 +697,8 @@ export const make = Effect.gen(function*() {
 
   yield* Effect.forkIn(persistRunners, scope)
 
-  // Rebalance immediately if there are unassigned shards
-  yield* Effect.forkIn(
-    rebalance(state.allUnassignedShards.length > 0),
-    scope
-  )
-
   // Start a regular cluster rebalance at the configured interval
-  yield* rebalance(false).pipe(
+  yield* rebalance.pipe(
     Effect.andThen(Effect.sleep(config.rebalanceInterval)),
     Effect.forever,
     Effect.forkIn(scope)

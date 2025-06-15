@@ -1,22 +1,17 @@
+import type { ShardId } from "@effect/cluster"
 import {
   MessageStorage,
   Runner,
   RunnerAddress,
   RunnerHealth,
   Runners,
-  ShardId,
   ShardingConfig,
   ShardManager,
   ShardStorage
 } from "@effect/cluster"
 import { describe, expect, it } from "@effect/vitest"
 import { Array, Data, Effect, Fiber, Iterable, Layer, MutableHashMap, Option, pipe, TestClock } from "effect"
-import {
-  decideAssignmentsForUnassignedShards,
-  decideAssignmentsForUnbalancedShards,
-  RunnerWithMetadata,
-  State
-} from "../src/internal/shardManager.js"
+import { decideAssignmentsForShards, RunnerWithMetadata, State } from "../src/internal/shardManager.js"
 
 const runner1 = RunnerWithMetadata({
   runner: Runner.make({ address: RunnerAddress.make("1", 1), groups: ["default"], version: 1 }),
@@ -44,7 +39,7 @@ describe("ShardManager", () => {
           [2, Option.some(runner1.runner.address)]
         ])
       )
-      const [assignments, unassignments] = decideAssignmentsForUnbalancedShards(state, "default", 1)
+      const [assignments, unassignments] = decideAssignmentsForShards(state, "default")
       expect(MutableHashMap.has(assignments, runner2.runner.address)).toBe(true)
       expect(MutableHashMap.size(assignments)).toBe(1)
       expect(MutableHashMap.has(unassignments, runner1.runner.address)).toBe(true)
@@ -66,7 +61,7 @@ describe("ShardManager", () => {
           [2, Option.some(runner1.runner.address)]
         ])
       )
-      const [assignments, unassignments] = decideAssignmentsForUnbalancedShards(state, "default", 1)
+      const [assignments, unassignments] = decideAssignmentsForShards(state, "default")
       expect(MutableHashMap.size(assignments) === 0).toBe(true)
       expect(MutableHashMap.size(unassignments) === 0).toBe(true)
     })
@@ -82,7 +77,7 @@ describe("ShardManager", () => {
           [2, Option.some(runner2.runner.address)]
         ])
       )
-      const [assignments, unassignments] = decideAssignmentsForUnbalancedShards(state, "default", 1)
+      const [assignments, unassignments] = decideAssignmentsForShards(state, "default")
       expect(MutableHashMap.isEmpty(assignments)).toBe(true)
       expect(MutableHashMap.isEmpty(unassignments)).toBe(true)
     })
@@ -99,7 +94,7 @@ describe("ShardManager", () => {
           [3, Option.some(runner2.runner.address)]
         ])
       )
-      const [assignments, unassignments] = decideAssignmentsForUnbalancedShards(state, "default", 1)
+      const [assignments, unassignments] = decideAssignmentsForShards(state, "default")
       expect(MutableHashMap.isEmpty(assignments)).toBe(true)
       expect(MutableHashMap.isEmpty(unassignments)).toBe(true)
     })
@@ -117,7 +112,7 @@ describe("ShardManager", () => {
           [4, Option.some(runner2.runner.address)]
         ])
       )
-      const [assignments, unassignments] = decideAssignmentsForUnbalancedShards(state, "default", 1)
+      const [assignments, unassignments] = decideAssignmentsForShards(state, "default")
       expect(MutableHashMap.has(assignments, runner2.runner.address)).toBe(true)
       expect(MutableHashMap.size(assignments)).toBe(1)
       expect(MutableHashMap.has(unassignments, runner1.runner.address)).toBe(true)
@@ -137,7 +132,7 @@ describe("ShardManager", () => {
           [3, Option.some(runner2.runner.address)]
         ])
       )
-      const [assignments, unassignments] = decideAssignmentsForUnbalancedShards(state, "default", 1)
+      const [assignments, unassignments] = decideAssignmentsForShards(state, "default")
       expect(MutableHashMap.has(assignments, runner3.runner.address)).toBe(true)
       expect(MutableHashMap.size(assignments)).toBe(1)
       expect(MutableHashMap.has(unassignments, runner1.runner.address)).toBe(true)
@@ -151,36 +146,9 @@ describe("ShardManager", () => {
           [1, Option.some(runner1.runner.address)]
         ])
       )
-      const [assignments, unassignments] = decideAssignmentsForUnbalancedShards(state, "default", 1)
+      const [assignments, unassignments] = decideAssignmentsForShards(state, "default")
       expect(MutableHashMap.isEmpty(assignments)).toBe(true)
       expect(MutableHashMap.isEmpty(unassignments)).toBe(true)
-    })
-
-    it("should balance well when many nodes are starting sequentially", () => {
-      const shards = Array.makeBy(
-        300,
-        (i) => [i + 1, Option.none<RunnerAddress.RunnerAddress>()] as const
-      )
-      const state = makeDefaultState(MutableHashMap.empty(), new Map(shards))
-      for (let i = 1; i <= 30; i++) {
-        const address = RunnerAddress.make(`${i}`, i)
-        state.addRunner(Runner.make({ address, groups: ["default"], version: 1 }), Date.now())
-        const [assignments, unassignments] = state.unassignedShards("default").length > 0
-          ? decideAssignmentsForUnassignedShards(state, "default")
-          : decideAssignmentsForUnbalancedShards(state, "default", 1)
-        for (const [, shards] of unassignments) {
-          state.addAssignments(globalThis.Array.from(shards, (id) => ShardId.make("default", id)), Option.none())
-        }
-        for (const [address, shards] of assignments) {
-          state.addAssignments(globalThis.Array.from(shards, (id) => ShardId.make("default", id)), Option.some(address))
-        }
-      }
-      const shardsPerRunner = state.shardsPerRunner("default").pipe(
-        Array.fromIterable,
-        Array.map(([, shards]) => shards.size)
-      )
-      expect(shardsPerRunner).toHaveLength(30)
-      expect(Array.every(shardsPerRunner, (n) => n === 10)).toBe(true)
     })
   })
 
@@ -236,14 +204,8 @@ describe("ShardManager", () => {
         )
         const shardsPerRunner2 = getShardsPerRunner(assignments2, "default")
         expect(shardsPerRunner2.every((shards) =>
-          shards.length === 6
+          shards.length === 12
         )).toBe(true)
-
-        // Check that all runners have 12 shards assigned
-        yield* TestClock.adjust("1 minute")
-        const assignments3 = yield* manager.getAssignments
-        const shardsPerRunner3 = getShardsPerRunner(assignments3, "default")
-        expect(shardsPerRunner3.every((shards) => shards.length === 12)).toBe(true)
       }).pipe(Effect.provide(TestLive)), 10_000)
 
     it.effect("should succcessfully scale down", () =>
@@ -252,9 +214,6 @@ describe("ShardManager", () => {
 
         // Setup 25 runners
         yield* simulate(Array.range(1, 25).map(registerRunner))
-        yield* TestClock.adjust("20 seconds")
-        yield* TestClock.adjust("20 seconds")
-        yield* TestClock.adjust("20 seconds")
 
         // Check that all runners are assigned and have 12 shards each
         const assignments = yield* manager.getAssignments
