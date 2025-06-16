@@ -7228,10 +7228,14 @@ export const toReadableStreamRuntime = dual<
             currentResolve = undefined
           }))))
         fiber.addObserver((exit) => {
-          if (exit._tag === "Failure") {
-            controller.error(Cause.squash(exit.cause))
-          } else {
-            controller.close()
+          try {
+            if (exit._tag === "Failure") {
+              controller.error(Cause.squash(exit.cause))
+            } else {
+              controller.close()
+            }
+          } catch {
+            // ignore
           }
         })
       },
