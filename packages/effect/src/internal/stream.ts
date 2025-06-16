@@ -5401,25 +5401,21 @@ export const repeatWith = dual<
           Ref.get(driver.iterationMeta)
         )
 
-        const scheduleOutput = pipe(driver.last, Effect.orDie, Effect.map(options.onSchedule))
         const process = pipe(self, provideLastIterationInfo, map(options.onElement), toChannel)
         const loop: Channel.Channel<Chunk.Chunk<C>, unknown, E, unknown, void, unknown, R | R2> = channel.unwrap(
-          Effect.match(driver.next(void 0), {
-            onFailure: () => core.void,
-            onSuccess: () =>
-              pipe(
-                process,
-                channel.zipRight(
-                  pipe(
-                    scheduleOutput,
-                    Effect.map((c) => pipe(core.write(Chunk.of(c)), core.flatMap(() => loop))),
-                    channel.unwrap
-                  )
+          Effect.match(
+            driver.next(void 0),
+            {
+              onFailure: () => core.void,
+              onSuccess: (output) =>
+                core.flatMap(
+                  process,
+                  () => channel.zipRight(core.write(Chunk.of(options.onSchedule(output))), loop)
                 )
-              )
-          })
+            }
+          )
         )
-        return new StreamImpl(pipe(process, channel.zipRight(loop)))
+        return new StreamImpl(channel.zipRight(process, loop))
       }),
       unwrap
     )
@@ -7218,15 +7214,17 @@ export const toReadableStreamRuntime = dual<
 
     return new ReadableStream<A>({
       start(controller) {
-        fiber = runFork(runForEachChunk(self, (chunk) =>
-          latch.whenOpen(Effect.sync(() => {
+        fiber = runFork(runForEachChunk(self, (chunk) => {
+          if (chunk.length === 0) return Effect.void
+          return latch.whenOpen(Effect.sync(() => {
             latch.unsafeClose()
             for (const item of chunk) {
               controller.enqueue(item)
             }
             currentResolve!()
             currentResolve = undefined
-          }))))
+          }))
+        }))
         fiber.addObserver((exit) => {
           try {
             if (exit._tag === "Failure") {
