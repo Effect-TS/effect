@@ -1,5 +1,13 @@
 # @effect/ai
 
+## 0.19.2
+
+### Patch Changes
+
+- Updated dependencies [[`ddfd1e4`](https://github.com/Effect-TS/effect/commit/ddfd1e43db60e3b779d18a221344423c5f3c7416)]:
+  - @effect/rpc@0.62.2
+  - @effect/experimental@0.49.1
+
 ## 0.19.1
 
 ### Patch Changes
