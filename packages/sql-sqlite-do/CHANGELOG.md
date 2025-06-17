@@ -1,5 +1,14 @@
 # @effect/sql-sqlite-do
 
+## 0.16.1
+
+### Patch Changes
+
+- Updated dependencies [[`8cb98d5`](https://github.com/Effect-TS/effect/commit/8cb98d53e68330228287ce2a2e0d8a4c86bcab3b), [`db2dd3c`](https://github.com/Effect-TS/effect/commit/db2dd3c3a8a77d791eae19e66153527e1cde4e6e)]:
+  - effect@3.16.8
+  - @effect/experimental@0.49.1
+  - @effect/sql@0.38.1
+
 ## 0.16.0
 
 ### Patch Changes
