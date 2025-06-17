@@ -1,5 +1,11 @@
 # @effect/ai-anthropic
 
+## 0.9.3
+
+### Patch Changes
+
+- [#5051](https://github.com/Effect-TS/effect/pull/5051) [`0945c0d`](https://github.com/Effect-TS/effect/commit/0945c0d0a20df456c0b0ec53f5e7487480aa62e1) Thanks @IMax153! - Fix the generated Anthropic OpenAPI schemas
+
 ## 0.9.2
 
 ### Patch Changes
