@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.62.2
+
+### Patch Changes
+
+- [#5049](https://github.com/Effect-TS/effect/pull/5049) [`ddfd1e4`](https://github.com/Effect-TS/effect/commit/ddfd1e43db60e3b779d18a221344423c5f3c7416) Thanks @tim-smart! - fix RpcClient payload for tagged requests
+
 ## 0.62.1
 
 ### Patch Changes
