@@ -287,7 +287,9 @@ export type PayloadConstructor<R> = R extends Rpc<
   infer _Success,
   infer _Error,
   infer _Middleware
-> ? _Payload extends { readonly make: (params: infer P, ...rest: infer _Rest) => infer _ } ? P
+> ?
+  _Payload extends { readonly fields: Schema.Struct.Fields } ?
+    Schema.Simplify<Schema.Struct.Constructor<_Payload["fields"]>>
   : _Payload["Type"]
   : never
 
