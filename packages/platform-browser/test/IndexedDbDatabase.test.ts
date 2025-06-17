@@ -18,15 +18,16 @@ afterEach(() => {
 
 describe.sequential("IndexedDbDatabase", () => {
   it.effect("insert and read todos", () => {
-    const Table = IndexedDbTable.make(
-      "todo",
-      Schema.Struct({
+    const Table = IndexedDbTable.make({
+      name: "todo",
+      schema: Schema.Struct({
         id: Schema.Number,
         title: Schema.String,
         completed: Schema.Boolean
       }),
-      { keyPath: "id", indexes: { titleIndex: "title" } }
-    )
+      keyPath: "id",
+      indexes: { titleIndex: "title" }
+    })
 
     const V1 = IndexedDbVersion.make(Table)
 
@@ -60,24 +61,25 @@ describe.sequential("IndexedDbDatabase", () => {
   })
 
   it.effect("transaction", () => {
-    const Table = IndexedDbTable.make(
-      "todo",
-      Schema.Struct({
+    const Table = IndexedDbTable.make({
+      name: "todo",
+      schema: Schema.Struct({
         id: Schema.Number,
         title: Schema.String,
         completed: Schema.Boolean
       }),
-      { keyPath: "id", indexes: { titleIndex: "title" } }
-    )
+      keyPath: "id",
+      indexes: { titleIndex: "title" }
+    })
 
-    const Table2 = IndexedDbTable.make(
-      "user",
-      Schema.Struct({
+    const Table2 = IndexedDbTable.make({
+      name: "user",
+      schema: Schema.Struct({
         id: Schema.Number,
         name: Schema.String
       }),
-      { keyPath: "id" }
-    )
+      keyPath: "id"
+    })
 
     const Db = IndexedDbVersion.make(Table, Table2)
 
@@ -109,25 +111,26 @@ describe.sequential("IndexedDbDatabase", () => {
   })
 
   it.effect("migration sequence", () => {
-    const Table1 = IndexedDbTable.make(
-      "todo",
-      Schema.Struct({
+    const Table1 = IndexedDbTable.make({
+      name: "todo",
+      schema: Schema.Struct({
         id: Schema.Number,
         title: Schema.String,
         completed: Schema.Boolean
       }),
-      { keyPath: "id", indexes: { titleIndex: "title" } }
-    )
+      keyPath: "id",
+      indexes: { titleIndex: "title" }
+    })
 
-    const Table2 = IndexedDbTable.make(
-      "todo",
-      Schema.Struct({
+    const Table2 = IndexedDbTable.make({
+      name: "todo",
+      schema: Schema.Struct({
         uuid: Schema.UUID,
         title: Schema.String,
         completed: Schema.Boolean
       }),
-      { keyPath: "uuid" }
-    )
+      keyPath: "uuid"
+    })
 
     const V1 = IndexedDbVersion.make(Table1)
     const V2 = IndexedDbVersion.make(Table2)
@@ -173,25 +176,25 @@ describe.sequential("IndexedDbDatabase", () => {
   })
 
   it.effect("delete object store migration", () => {
-    const Table1 = IndexedDbTable.make(
-      "todo",
-      Schema.Struct({
+    const Table1 = IndexedDbTable.make({
+      name: "todo",
+      schema: Schema.Struct({
         id: Schema.Number,
         title: Schema.String,
         completed: Schema.Boolean
       }),
-      { keyPath: "id" }
-    )
+      keyPath: "id"
+    })
 
-    const Table2 = IndexedDbTable.make(
-      "user",
-      Schema.Struct({
+    const Table2 = IndexedDbTable.make({
+      name: "user",
+      schema: Schema.Struct({
         userId: Schema.Number,
         name: Schema.String,
         email: Schema.String
       }),
-      { keyPath: "userId" }
-    )
+      keyPath: "userId"
+    })
 
     const V1 = IndexedDbVersion.make(Table1)
     const V2 = IndexedDbVersion.make(Table2, Table1)

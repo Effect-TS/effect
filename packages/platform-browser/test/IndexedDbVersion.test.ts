@@ -4,15 +4,15 @@ import { Schema } from "effect"
 
 describe("IndexedDbVersion", () => {
   it("make", () => {
-    class Table extends IndexedDbTable.make(
-      "todo",
-      Schema.Struct({
+    class Table extends IndexedDbTable.make({
+      name: "todo",
+      schema: Schema.Struct({
         id: Schema.Number,
         title: Schema.String,
         completed: Schema.Boolean
       }),
-      { keyPath: "id" }
-    ) {}
+      keyPath: "id"
+    }) {}
 
     class Db extends IndexedDbVersion.make(Table) {}
 

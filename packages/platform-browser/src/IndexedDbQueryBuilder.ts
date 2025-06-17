@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
@@ -46,25 +47,25 @@ export const make = <
     A extends IndexedDbTable.TableName<
       IndexedDbVersion.Tables<Source>
     >
-  >(table: A) => fromMakeProto({ database, IDBKeyRange, tables, table, transaction })
+  >(table: A) => fromMakeProto({ database, IDBKeyRange, table: tables.get(table)!, transaction })
 
   self.clearAll = applyClearAll({ database, transaction })
 
-  self.transaction = Effect.fnUntraced(function*(
+  self.transaction = Effect.fnUntraced(function*<E, R>(
     transactionTables: Array<IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>>,
     mode: globalThis.IDBTransactionMode,
     callback: (api: {
       readonly from: <
-        A extends IndexedDbTable.TableName<
+        Name extends IndexedDbTable.TableName<
           IndexedDbVersion.Tables<Source>
         >
-      >(table: A) => IndexedDbQuery.From<Source, A>
-    }) => Effect.Effect<void>,
+      >(table: Name) => IndexedDbQuery.From<IndexedDbVersion.TableWithName<Source, Name>>
+    }) => Effect.Effect<void, E, R>,
     options?: globalThis.IDBTransactionOptions
   ) {
     const transaction = database.transaction(transactionTables, mode, options)
     return yield* callback({
-      from: (table) => fromMakeProto({ database, IDBKeyRange, tables, table, transaction })
+      from: (table) => fromMakeProto({ database, IDBKeyRange, table: tables.get(table) as any, transaction })
     })
   })
 
@@ -112,57 +113,61 @@ export class IndexedDbQueryError extends Data.TaggedError("IndexedDbQueryError")
  * @category models
  */
 export interface IndexedDbQueryBuilder<
-  Source extends IndexedDbVersion.AnyWithProps = never
+  Source extends IndexedDbVersion.AnyWithProps
 > {
   readonly tables: ReadonlyMap<string, IndexedDbVersion.Tables<Source>>
   readonly database: globalThis.IDBDatabase
 
-  readonly use: <A>(
+  readonly use: <A = unknown>(
     f: (database: globalThis.IDBDatabase) => Promise<A>
   ) => Effect.Effect<A, IndexedDbQueryError>
 
   readonly from: <
-    A extends IndexedDbTable.TableName<
-      IndexedDbVersion.Tables<Source>
-    >
-  >(table: A) => IndexedDbQuery.From<Source, A>
+    const Name extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>
+  >(table: Name) => IndexedDbQuery.From<IndexedDbVersion.TableWithName<Source, Name>>
 
   readonly clearAll: Effect.Effect<void, IndexedDbQueryError>
 
   readonly transaction: <
-    Tables extends ReadonlyArray<
+    Tables extends NonEmptyReadonlyArray<
       IndexedDbTable.TableName<
         IndexedDbVersion.Tables<Source>
       >
     >,
-    Mode extends "readonly" | "readwrite" = "readonly"
+    Mode extends "readonly" | "readwrite",
+    E,
+    R
   >(
-    tables: Tables & {
-      0: IndexedDbTable.TableName<
-        IndexedDbVersion.Tables<Source>
-      >
-    },
+    tables: Tables,
     mode: Mode,
     callback: (api: {
-      readonly from: <A extends Tables[number]>(
-        table: A
-      ) => Mode extends "readwrite" ? IndexedDbQuery.From<Source, A> :
+      readonly from: <Name extends Tables[number]>(
+        table: Name
+      ) => Mode extends "readwrite" ? IndexedDbQuery.From<IndexedDbVersion.TableWithName<Source, Name>> :
         Omit<
-          IndexedDbQuery.From<Source, A>,
+          IndexedDbQuery.From<IndexedDbVersion.TableWithName<Source, Name>>,
           "insert" | "insertAll" | "upsert" | "upsertAll" | "clear" | "delete"
         >
-    }) => Effect.Effect<void>,
+    }) => Effect.Effect<void, E, R>,
     options?: globalThis.IDBTransactionOptions
-  ) => Effect.Effect<void>
+  ) => Effect.Effect<void, never, R>
 }
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type KeyPath<TableSchema extends Schema.Schema.AnyNoContext> =
+export type KeyPath<TableSchema extends IndexedDbTable.AnySchemaStruct> =
   | IndexedDbValidKeys<TableSchema>
   | Array<IndexedDbValidKeys<TableSchema>>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type KeyPathNumber<TableSchema extends IndexedDbTable.AnySchemaStruct> =
+  | IndexedDbValidNumberKeys<TableSchema>
+  | Array<IndexedDbValidNumberKeys<TableSchema>>
 
 /**
  * @since 1.0.0
@@ -174,157 +179,36 @@ export declare namespace IndexedDbQuery {
    * @category models
    */
   export type SourceTableSchemaType<
-    Source extends IndexedDbVersion.AnyWithProps,
-    Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>
-  > = IsKeyPathMissing<Source, Table> extends false ? IndexedDbTable.AutoIncrement<
-      IndexedDbTable.WithName<
-        IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    > extends true ?
-        & /** keyPath when omitted becomes a `number` */ Omit<
-          Schema.Schema.Type<
-            IndexedDbVersion.SchemaWithName<Source, Table>
-          >,
-          IndexedDbTable.KeyPath<
-            IndexedDbTable.WithName<
-              IndexedDbVersion.Tables<Source>,
-              Table
-            >
-          >
-        >
-        & {
-          [
-            K in IndexedDbTable.KeyPath<
-              IndexedDbTable.WithName<
-                IndexedDbVersion.Tables<Source>,
-                Table
-              >
-            >
-          ]:
-            | Pick<
-              Schema.Schema.Type<
-                IndexedDbVersion.SchemaWithName<Source, Table>
-              >,
-              IndexedDbTable.KeyPath<
-                IndexedDbTable.WithName<
-                  IndexedDbVersion.Tables<Source>,
-                  Table
-                >
-              >
-            >[K]
-            | number
-        } :
-    Schema.Schema.Type<
-      IndexedDbVersion.SchemaWithName<Source, Table>
-    > :
-    Schema.Schema.Type<
-      IndexedDbVersion.SchemaWithName<Source, Table>
-    >
+    Table extends IndexedDbTable.AnyWithProps
+  > = IndexedDbTable.TableSchema<Table>["Type"]
 
   /**
    * @since 1.0.0
    * @category models
    */
   export type ExtractIndexType<
-    Source extends IndexedDbVersion.AnyWithProps,
-    Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>,
-    Index extends IndexedDbDatabase.IndexFromTable<Source, Table>
+    Table extends IndexedDbTable.AnyWithProps,
+    Index extends IndexedDbDatabase.IndexFromTable<Table>
   > = [Index] extends [never] ? Schema.Schema.Type<
-      IndexedDbTable.TableSchema<
-        IndexedDbTable.WithName<
-          IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >
+      IndexedDbTable.TableSchema<Table>
     >[
-      IndexedDbTable.KeyPath<
-        IndexedDbTable.WithName<
-          IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >
+      IndexedDbTable.KeyPath<Table>
     ]
-    : Schema.Schema.Type<
-      IndexedDbTable.TableSchema<
-        IndexedDbTable.WithName<
-          IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >
-    >[
-      IndexedDbTable.Indexes<
-        IndexedDbTable.WithName<
-          IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >[Index]
+    : Schema.Schema.Type<IndexedDbTable.TableSchema<Table>>[
+      IndexedDbTable.Indexes<Table>[Index]
     ]
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type ModifyWithKey<
-    Source extends IndexedDbVersion.AnyWithProps,
-    Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>
-  > = IsKeyPathMissing<Source, Table> extends true ? IndexedDbTable.AutoIncrement<
-      IndexedDbTable.WithName<
-        IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    > extends false ? /** keyPath: null, autoIncrement: false */
-        & SourceTableSchemaType<Source, Table>
-        & { readonly key: globalThis.IDBValidKey } :
-    /** keyPath: null, autoIncrement: true */
-    SourceTableSchemaType<Source, Table> & { readonly key?: globalThis.IDBValidKey } :
-    IndexedDbTable.AutoIncrement<
-      IndexedDbTable.WithName<
-        IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    > extends false ? /** keyPath: string, autoIncrement: false */ SourceTableSchemaType<Source, Table> :
-    & /** keyPath: string, autoIncrement: true */ Omit<
-      SourceTableSchemaType<Source, Table>,
-      IndexedDbTable.KeyPath<
-        IndexedDbTable.WithName<
-          IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >
-    >
-    & {
-      [
-        K in IndexedDbTable.KeyPath<
-          IndexedDbTable.WithName<
-            IndexedDbVersion.Tables<Source>,
-            Table
-          >
-        >
-      ]?: Pick<
-        Schema.Schema.Type<
-          IndexedDbVersion.SchemaWithName<Source, Table>
-        >,
-        IndexedDbTable.KeyPath<
-          IndexedDbTable.WithName<
-            IndexedDbVersion.Tables<Source>,
-            Table
-          >
-        >
-      >[K]
-    }
+  export type ModifyWithKey<Table extends IndexedDbTable.AnyWithProps> = SourceTableSchemaType<Table>
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export interface From<
-    Source extends IndexedDbVersion.AnyWithProps = never,
-    Table extends IndexedDbTable.TableName<
-      IndexedDbVersion.Tables<Source>
-    > = never
-  > {
-    readonly tables: ReadonlyMap<string, IndexedDbVersion.Tables<Source>>
+  export interface From<Table extends IndexedDbTable.AnyWithProps> {
     readonly table: Table
     readonly database: globalThis.IDBDatabase
     readonly IDBKeyRange: typeof globalThis.IDBKeyRange
@@ -333,43 +217,38 @@ export declare namespace IndexedDbQuery {
     readonly clear: Effect.Effect<void, IndexedDbQueryError>
 
     readonly select: {
-      <Index extends IndexedDbDatabase.IndexFromTable<Source, Table>>(
+      <Index extends IndexedDbDatabase.IndexFromTable<Table>>(
         index: Index
-      ): Select<Source, Table, Index>
-      (): Select<Source, Table, never>
+      ): Select<Table, Index>
+      (): Select<Table, never>
     }
 
     readonly count: {
-      <Index extends IndexedDbDatabase.IndexFromTable<Source, Table>>(
+      <Index extends IndexedDbDatabase.IndexFromTable<Table>>(
         index: Index
-      ): Count<Source, Table, Index>
-      (): Count<Source, Table, never>
+      ): Count<Table, Index>
+      (): Count<Table, never>
     }
 
     readonly delete: {
-      <Index extends IndexedDbDatabase.IndexFromTable<Source, Table>>(
+      <Index extends IndexedDbDatabase.IndexFromTable<Table>>(
         index: Index
-      ): Delete<Source, Table, Index>
-      (): Delete<Source, Table, never>
+      ): Delete<Table, Index>
+      (): Delete<Table, never>
     }
 
-    readonly insert: (value: ModifyWithKey<Source, Table>) => Modify<Source, Table>
-    readonly insertAll: (values: Array<ModifyWithKey<Source, Table>>) => ModifyAll<Source, Table>
-    readonly upsert: (value: ModifyWithKey<Source, Table>) => Modify<Source, Table>
-    readonly upsertAll: (values: Array<ModifyWithKey<Source, Table>>) => ModifyAll<Source, Table>
+    readonly insert: (value: ModifyWithKey<Table>) => Modify<Table>
+    readonly insertAll: (values: Array<ModifyWithKey<Table>>) => ModifyAll<Table>
+    readonly upsert: (value: ModifyWithKey<Table>) => Modify<Table>
+    readonly upsertAll: (values: Array<ModifyWithKey<Table>>) => ModifyAll<Table>
   }
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export interface Clear<
-    Source extends IndexedDbVersion.AnyWithProps = never,
-    Table extends IndexedDbTable.TableName<
-      IndexedDbVersion.Tables<Source>
-    > = never
-  > extends Effect.Effect<void, IndexedDbQueryError> {
-    readonly from: From<Source, Table>
+  export interface Clear<Table extends IndexedDbTable.AnyWithProps> extends Effect.Effect<void, IndexedDbQueryError> {
+    readonly from: From<Table>
   }
 
   /**
@@ -377,45 +256,42 @@ export declare namespace IndexedDbQuery {
    * @category models
    */
   export interface Count<
-    Source extends IndexedDbVersion.AnyWithProps = never,
-    Table extends IndexedDbTable.TableName<
-      IndexedDbVersion.Tables<Source>
-    > = never,
-    Index extends IndexedDbDatabase.IndexFromTable<Source, Table> = never
+    Table extends IndexedDbTable.AnyWithProps,
+    Index extends IndexedDbDatabase.IndexFromTable<Table>
   > extends Effect.Effect<number, IndexedDbQueryError> {
-    readonly from: From<Source, Table>
+    readonly from: From<Table>
     readonly index?: Index
-    readonly only?: ExtractIndexType<Source, Table, Index>
-    readonly lowerBound?: ExtractIndexType<Source, Table, Index>
-    readonly upperBound?: ExtractIndexType<Source, Table, Index>
+    readonly only?: ExtractIndexType<Table, Index>
+    readonly lowerBound?: ExtractIndexType<Table, Index>
+    readonly upperBound?: ExtractIndexType<Table, Index>
     readonly excludeLowerBound?: boolean
     readonly excludeUpperBound?: boolean
 
     readonly equals: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Count<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gte: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Count<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lte: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Count<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gt: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Count<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lt: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Count<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly between: (
-      lowerBound: ExtractIndexType<Source, Table, Index>,
-      upperBound: ExtractIndexType<Source, Table, Index>,
+      lowerBound: ExtractIndexType<Table, Index>,
+      upperBound: ExtractIndexType<Table, Index>,
       options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-    ) => Omit<Count<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+    ) => Omit<Count<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
   }
 
   /**
@@ -423,44 +299,41 @@ export declare namespace IndexedDbQuery {
    * @category models
    */
   export interface DeletePartial<
-    Source extends IndexedDbVersion.AnyWithProps = never,
-    Table extends IndexedDbTable.TableName<
-      IndexedDbVersion.Tables<Source>
-    > = never,
-    Index extends IndexedDbDatabase.IndexFromTable<Source, Table> = never
+    Table extends IndexedDbTable.AnyWithProps,
+    Index extends IndexedDbDatabase.IndexFromTable<Table>
   > {
-    readonly from: From<Source, Table>
+    readonly from: From<Table>
     readonly index?: Index
 
     readonly equals: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gte: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lte: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gt: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lt: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly between: (
-      lowerBound: ExtractIndexType<Source, Table, Index>,
-      upperBound: ExtractIndexType<Source, Table, Index>,
+      lowerBound: ExtractIndexType<Table, Index>,
+      upperBound: ExtractIndexType<Table, Index>,
       options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly limit: (
       limit: number
-    ) => Omit<Delete<Source, Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+    ) => Omit<Delete<Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between">
   }
 
   /**
@@ -468,50 +341,47 @@ export declare namespace IndexedDbQuery {
    * @category models
    */
   export interface Delete<
-    Source extends IndexedDbVersion.AnyWithProps = never,
-    Table extends IndexedDbTable.TableName<
-      IndexedDbVersion.Tables<Source>
-    > = never,
-    Index extends IndexedDbDatabase.IndexFromTable<Source, Table> = never
+    Table extends IndexedDbTable.AnyWithProps,
+    Index extends IndexedDbDatabase.IndexFromTable<Table>
   > extends Effect.Effect<void, IndexedDbQueryError> {
-    readonly delete: DeletePartial<Source, Table, Index>
+    readonly delete: DeletePartial<Table, Index>
     readonly index?: Index
     readonly limitValue?: number
-    readonly only?: ExtractIndexType<Source, Table, Index>
-    readonly lowerBound?: ExtractIndexType<Source, Table, Index>
-    readonly upperBound?: ExtractIndexType<Source, Table, Index>
+    readonly only?: ExtractIndexType<Table, Index>
+    readonly lowerBound?: ExtractIndexType<Table, Index>
+    readonly upperBound?: ExtractIndexType<Table, Index>
     readonly excludeLowerBound?: boolean
     readonly excludeUpperBound?: boolean
 
     readonly equals: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gte: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lte: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gt: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lt: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly between: (
-      lowerBound: ExtractIndexType<Source, Table, Index>,
-      upperBound: ExtractIndexType<Source, Table, Index>,
+      lowerBound: ExtractIndexType<Table, Index>,
+      upperBound: ExtractIndexType<Table, Index>,
       options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-    ) => Omit<Delete<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+    ) => Omit<Delete<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly limit: (
       limit: number
-    ) => Omit<Delete<Source, Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+    ) => Omit<Delete<Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between">
   }
 
   /**
@@ -519,52 +389,49 @@ export declare namespace IndexedDbQuery {
    * @category models
    */
   export interface Select<
-    Source extends IndexedDbVersion.AnyWithProps = never,
-    Table extends IndexedDbTable.TableName<
-      IndexedDbVersion.Tables<Source>
-    > = never,
-    Index extends IndexedDbDatabase.IndexFromTable<Source, Table> = never
-  > extends Effect.Effect<Array<SourceTableSchemaType<Source, Table>>, IndexedDbQueryError> {
-    readonly from: From<Source, Table>
+    Table extends IndexedDbTable.AnyWithProps,
+    Index extends IndexedDbDatabase.IndexFromTable<Table>
+  > extends Effect.Effect<Array<SourceTableSchemaType<Table>>, IndexedDbQueryError, IndexedDbTable.Context<Table>> {
+    readonly from: From<Table>
     readonly index?: Index
     readonly limitValue?: number
-    readonly only?: ExtractIndexType<Source, Table, Index>
-    readonly lowerBound?: ExtractIndexType<Source, Table, Index>
-    readonly upperBound?: ExtractIndexType<Source, Table, Index>
+    readonly only?: ExtractIndexType<Table, Index>
+    readonly lowerBound?: ExtractIndexType<Table, Index>
+    readonly upperBound?: ExtractIndexType<Table, Index>
     readonly excludeLowerBound?: boolean
     readonly excludeUpperBound?: boolean
 
     readonly equals: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Select<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gte: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Select<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lte: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Select<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly gt: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Select<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly lt: (
-      value: ExtractIndexType<Source, Table, Index>
-    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+      value: ExtractIndexType<Table, Index>
+    ) => Omit<Select<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly between: (
-      lowerBound: ExtractIndexType<Source, Table, Index>,
-      upperBound: ExtractIndexType<Source, Table, Index>,
+      lowerBound: ExtractIndexType<Table, Index>,
+      upperBound: ExtractIndexType<Table, Index>,
       options?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-    ) => Omit<Select<Source, Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
+    ) => Omit<Select<Table, Index>, "equals" | "gte" | "lte" | "gt" | "lt" | "between">
 
     readonly limit: (
       limit: number
-    ) => Omit<Select<Source, Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between" | "first">
+    ) => Omit<Select<Table, Index>, "limit" | "equals" | "gte" | "lte" | "gt" | "lt" | "between" | "first">
 
-    readonly first: () => First<Source, Table, Index>
+    readonly first: () => First<Table, Index>
   }
 
   /**
@@ -572,13 +439,10 @@ export declare namespace IndexedDbQuery {
    * @category models
    */
   export interface First<
-    Source extends IndexedDbVersion.AnyWithProps = never,
-    Table extends IndexedDbTable.TableName<
-      IndexedDbVersion.Tables<Source>
-    > = never,
-    Index extends IndexedDbDatabase.IndexFromTable<Source, Table> = never
-  > extends Effect.Effect<SourceTableSchemaType<Source, Table>, IndexedDbQueryError> {
-    readonly select: Select<Source, Table, Index>
+    Table extends IndexedDbTable.AnyWithProps,
+    Index extends IndexedDbDatabase.IndexFromTable<Table>
+  > extends Effect.Effect<SourceTableSchemaType<Table>, IndexedDbQueryError, IndexedDbTable.Context<Table>> {
+    readonly select: Select<Table, Index>
   }
 
   /**
@@ -586,14 +450,11 @@ export declare namespace IndexedDbQuery {
    * @category models
    */
   export interface Modify<
-    Source extends IndexedDbVersion.AnyWithProps = never,
-    Table extends IndexedDbTable.TableName<
-      IndexedDbVersion.Tables<Source>
-    > = never
-  > extends Effect.Effect<globalThis.IDBValidKey, IndexedDbQueryError> {
+    Table extends IndexedDbTable.AnyWithProps
+  > extends Effect.Effect<globalThis.IDBValidKey, IndexedDbQueryError, IndexedDbTable.Context<Table>> {
     readonly operation: "add" | "put"
-    readonly from: From<Source, Table>
-    readonly value: ModifyWithKey<Source, Table>
+    readonly from: From<Table>
+    readonly value: ModifyWithKey<Table>
   }
 
   /**
@@ -601,14 +462,11 @@ export declare namespace IndexedDbQuery {
    * @category models
    */
   export interface ModifyAll<
-    Source extends IndexedDbVersion.AnyWithProps = never,
-    Table extends IndexedDbTable.TableName<
-      IndexedDbVersion.Tables<Source>
-    > = never
-  > extends Effect.Effect<Array<globalThis.IDBValidKey>, IndexedDbQueryError> {
+    Table extends IndexedDbTable.AnyWithProps
+  > extends Effect.Effect<Array<globalThis.IDBValidKey>, IndexedDbQueryError, IndexedDbTable.Context<Table>> {
     readonly operation: "add" | "put"
-    readonly from: From<Source, Table>
-    readonly values: Array<ModifyWithKey<Source, Table>>
+    readonly from: From<Table>
+    readonly values: Array<ModifyWithKey<Table>>
   }
 }
 
@@ -616,37 +474,26 @@ export declare namespace IndexedDbQuery {
 // internal
 // -----------------------------------------------------------------------------
 
-type IsValidIndexedDbKeyType<T> = T extends number | string | Date | ArrayBuffer | ArrayBufferView ? true :
-  T extends Array<infer U> ? IsValidIndexedDbKeyType<U>
-  : false
+type IndexedDbValidKeys<TableSchema extends IndexedDbTable.AnySchemaStruct> = keyof TableSchema["Encoded"] extends
+  infer K ? K extends keyof TableSchema["Encoded"] ? TableSchema["Encoded"][K] extends Readonly<IDBValidKey> ? K : never
+  : never
+  : never
 
-type IndexedDbValidKeys<TableSchema extends Schema.Schema.AnyNoContext> = {
-  [K in keyof Schema.Schema.Encoded<TableSchema>]: K extends string
-    ? IsValidIndexedDbKeyType<Schema.Schema.Encoded<TableSchema>[K]> extends true ? K
-    : never
-    : never
-}[keyof Schema.Schema.Encoded<TableSchema>]
+type IndexedDbValidNumberKeys<TableSchema extends IndexedDbTable.AnySchemaStruct> = keyof TableSchema["Encoded"] extends
+  infer K ?
+  K extends keyof TableSchema["Encoded"] ? [TableSchema["Encoded"][K]] extends [number | undefined] ? K : never
+  : never
+  : never
 
-type IsKeyPathMissing<
-  Source extends IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>
-> = [
-  IndexedDbTable.KeyPath<
-    IndexedDbTable.WithName<
-      IndexedDbVersion.Tables<Source>,
-      Table
-    >
-  >
-] extends [never] ? true : false
-
-const applyDelete = (query: IndexedDbQuery.Delete) =>
+const applyDelete = (query: IndexedDbQuery.Delete<any, never>) =>
   Effect.async<any, IndexedDbQueryError>((resume) => {
     const database = query.delete.from.database
     const IDBKeyRange = query.delete.from.IDBKeyRange
     const transaction = query.delete.from.transaction
-    const objectStore = (transaction ?? database.transaction([query.delete.from.table], "readwrite")).objectStore(
-      query.delete.from.table
-    )
+    const objectStore = (transaction ?? database.transaction([query.delete.from.table.tableName], "readwrite"))
+      .objectStore(
+        query.delete.from.table.tableName
+      )
 
     let keyRange: globalThis.IDBKeyRange | undefined = undefined
 
@@ -723,13 +570,13 @@ const applyDelete = (query: IndexedDbQuery.Delete) =>
   })
 
 const getReadonlyObjectStore = (
-  query: IndexedDbQuery.Select | IndexedDbQuery.Count
+  query: IndexedDbQuery.Select<any, never> | IndexedDbQuery.Count<any, never>
 ) => {
   const database = query.from.database
   const IDBKeyRange = query.from.IDBKeyRange
   const transaction = query.from.transaction
-  const objectStore = (transaction ?? database.transaction([query.from.table], "readonly")).objectStore(
-    query.from.table
+  const objectStore = (transaction ?? database.transaction([query.from.table.tableName], "readonly")).objectStore(
+    query.from.table.tableName
   )
 
   let keyRange: globalThis.IDBKeyRange | undefined = undefined
@@ -760,27 +607,10 @@ const getReadonlyObjectStore = (
 }
 
 const getReadSchema = (
-  from: IndexedDbQuery.From
-) => {
-  const table = from.tables.get(from.table as any)! as IndexedDbTable.AnyWithProps
-  const keyPath = table.options?.keyPath
-  const autoIncrement = table.options?.autoIncrement
+  from: IndexedDbQuery.From<any>
+) => (from.table as IndexedDbTable.AnyWithProps).tableSchema
 
-  return keyPath !== undefined && autoIncrement ?
-    table.tableSchema.pipe(
-      Schema.omit(keyPath),
-      Schema.extend(Schema.Struct({
-        [keyPath]: Schema.Union(
-          Schema.Number,
-          // @ts-expect-error
-          table.tableSchema.fields[keyPath]
-        )
-      }))
-    ) :
-    table.tableSchema
-}
-
-const getSelect = Effect.fnUntraced(function*(query: IndexedDbQuery.Select) {
+const getSelect = Effect.fnUntraced(function*(query: IndexedDbQuery.Select<any, never>) {
   const data = yield* Effect.async<any, IndexedDbQueryError>((resume) => {
     let request: globalThis.IDBRequest
     const { keyRange, store } = getReadonlyObjectStore(query)
@@ -832,9 +662,7 @@ const getSelect = Effect.fnUntraced(function*(query: IndexedDbQuery.Select) {
     }
   })
 
-  const tableSchema = Schema.Array(
-    getReadSchema(query.from)
-  )
+  const tableSchema = Schema.Array(getReadSchema(query.from))
 
   return yield* Schema.decodeUnknown(tableSchema)(data).pipe(
     Effect.mapError(
@@ -847,7 +675,7 @@ const getSelect = Effect.fnUntraced(function*(query: IndexedDbQuery.Select) {
   )
 })
 
-const getFirst = Effect.fnUntraced(function*(query: IndexedDbQuery.First) {
+const getFirst = Effect.fnUntraced(function*(query: IndexedDbQuery.First<any, never>) {
   const data = yield* Effect.async<any, IndexedDbQueryError>((resume) => {
     const { keyRange, store } = getReadonlyObjectStore(query.select)
 
@@ -913,22 +741,22 @@ const getFirst = Effect.fnUntraced(function*(query: IndexedDbQuery.First) {
 })
 
 const applyModify = (
-  query: IndexedDbQuery.Modify,
-  { key, ...value }: { key: IDBValidKey | undefined }
+  query: IndexedDbQuery.Modify<any>,
+  value: any
 ) =>
   Effect.async<any, IndexedDbQueryError>((resume) => {
     const database = query.from.database
     const transaction = query.from.transaction
-    const objectStore = (transaction ?? database.transaction([query.from.table], "readwrite")).objectStore(
-      query.from.table
+    const objectStore = (transaction ?? database.transaction([query.from.table.tableName], "readwrite")).objectStore(
+      query.from.table.tableName
     )
 
     let request: globalThis.IDBRequest<IDBValidKey>
 
     if (query.operation === "add") {
-      request = objectStore.add(value, key)
+      request = objectStore.add(value)
     } else if (query.operation === "put") {
-      request = objectStore.put(value, key)
+      request = objectStore.put(value)
     } else {
       return resume(Effect.dieMessage("Invalid modify operation"))
     }
@@ -949,12 +777,12 @@ const applyModify = (
     }
   })
 
-const applyModifyAll = (query: IndexedDbQuery.ModifyAll, values: Array<any>) =>
+const applyModifyAll = (query: IndexedDbQuery.ModifyAll<any>, values: Array<any>) =>
   Effect.async<Array<globalThis.IDBValidKey>, IndexedDbQueryError>((resume) => {
     const database = query.from.database
     const transaction = query.from.transaction
-    const objectStore = (transaction ?? database.transaction([query.from.table], "readwrite")).objectStore(
-      query.from.table
+    const objectStore = (transaction ?? database.transaction([query.from.table.tableName], "readwrite")).objectStore(
+      query.from.table.tableName
     )
 
     const results: Array<globalThis.IDBValidKey> = []
@@ -1089,7 +917,7 @@ const applyClearAll = (options: {
     }
   })
 
-const getCount = (query: IndexedDbQuery.Count) =>
+const getCount = (query: IndexedDbQuery.Count<any, never>) =>
   Effect.async<number, IndexedDbQueryError>((resume) => {
     const { keyRange, store } = getReadonlyObjectStore(query)
 
@@ -1112,23 +940,20 @@ const getCount = (query: IndexedDbQuery.Count) =>
   })
 
 const fromMakeProto = <
-  Source extends IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>
+  const Table extends IndexedDbTable.AnyWithProps
 >(options: {
-  readonly tables: ReadonlyMap<string, IndexedDbVersion.Tables<Source>>
   readonly table: Table
   readonly database: globalThis.IDBDatabase
   readonly IDBKeyRange: typeof globalThis.IDBKeyRange
   readonly transaction: globalThis.IDBTransaction | undefined
-}): IndexedDbQuery.From<Source, Table> => {
+}): IndexedDbQuery.From<Table> => {
   const self = Object.create(Effectable.CommitPrototype)
-  self.tables = options.tables
   self.table = options.table
   self.database = options.database
   self.IDBKeyRange = options.IDBKeyRange
   self.transaction = options.transaction
   self.select = <
-    Index extends IndexedDbDatabase.IndexFromTable<Source, Table>
+    Index extends IndexedDbDatabase.IndexFromTable<Table>
   >(index?: Index) =>
     selectMakeProto({
       from: self,
@@ -1137,7 +962,7 @@ const fromMakeProto = <
     })
 
   self.delete = <
-    Index extends IndexedDbDatabase.IndexFromTable<Source, Table>
+    Index extends IndexedDbDatabase.IndexFromTable<Table>
   >(index?: Index) =>
     deletePartialMakeProto({
       from: self,
@@ -1146,7 +971,7 @@ const fromMakeProto = <
     })
 
   self.count = <
-    Index extends IndexedDbDatabase.IndexFromTable<Source, Table>
+    Index extends IndexedDbDatabase.IndexFromTable<Table>
   >(index?: Index) =>
     countMakeProto({
       from: self,
@@ -1165,33 +990,32 @@ const fromMakeProto = <
   self.clear = applyClear({
     database: options.database,
     transaction: options.transaction,
-    table: options.table
+    table: options.table.tableName
   })
 
   return self
 }
 
 const deletePartialMakeProto = <
-  Source extends IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbDatabase.IndexFromTable<Source, Table>
+  Table extends IndexedDbTable.AnyWithProps,
+  Index extends IndexedDbDatabase.IndexFromTable<Table>
 >(options: {
-  readonly from: IndexedDbQuery.From<Source, Table>
+  readonly from: IndexedDbQuery.From<Table>
   readonly index: Index | undefined
-}): IndexedDbQuery.DeletePartial<Source, Table, Index> => {
+}): IndexedDbQuery.DeletePartial<Table, Index> => {
   const self: any = {}
 
   const limit = (
     limit: number
-  ): IndexedDbQuery.Delete<Source, Table, Index> => deleteMakeProto({ delete: self as any, limitValue: limit })
+  ): IndexedDbQuery.Delete<Table, Index> => deleteMakeProto({ delete: self as any, limitValue: limit })
 
   const equals = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Delete<Source, Table, Index> => deleteMakeProto({ delete: self as any, only: value })
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Delete<Table, Index> => deleteMakeProto({ delete: self as any, only: value })
 
   const gte = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({
       delete: self as any,
       lowerBound: value,
@@ -1199,8 +1023,8 @@ const deletePartialMakeProto = <
     })
 
   const lte = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({
       delete: self as any,
       upperBound: value,
@@ -1208,8 +1032,8 @@ const deletePartialMakeProto = <
     })
 
   const gt = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({
       delete: self as any,
       lowerBound: value,
@@ -1217,8 +1041,8 @@ const deletePartialMakeProto = <
     })
 
   const lt = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({
       delete: self as any,
       upperBound: value,
@@ -1226,10 +1050,10 @@ const deletePartialMakeProto = <
     })
 
   const between = (
-    lowerBound: IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
-    upperBound: IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
+    lowerBound: IndexedDbQuery.ExtractIndexType<Table, Index>,
+    upperBound: IndexedDbQuery.ExtractIndexType<Table, Index>,
     queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({
       delete: self as any,
       lowerBound,
@@ -1251,23 +1075,22 @@ const deletePartialMakeProto = <
 }
 
 const deleteMakeProto = <
-  Source extends IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbDatabase.IndexFromTable<Source, Table>
+  Table extends IndexedDbTable.AnyWithProps,
+  Index extends IndexedDbDatabase.IndexFromTable<Table>
 >(options: {
-  readonly delete: IndexedDbQuery.DeletePartial<Source, Table, Index>
+  readonly delete: IndexedDbQuery.DeletePartial<Table, Index>
   readonly limitValue?: number | undefined
-  readonly only?: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  readonly lowerBound?: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  readonly upperBound?: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  readonly only?: IndexedDbQuery.ExtractIndexType<Table, Index>
+  readonly lowerBound?: IndexedDbQuery.ExtractIndexType<Table, Index>
+  readonly upperBound?: IndexedDbQuery.ExtractIndexType<Table, Index>
   readonly excludeLowerBound?: boolean
   readonly excludeUpperBound?: boolean
-}): IndexedDbQuery.Delete<Source, Table, Index> => {
+}): IndexedDbQuery.Delete<Table, Index> => {
   const self = Object.create(Effectable.CommitPrototype)
 
   const limit = (
     limit: number
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       only: options.only,
@@ -1279,13 +1102,13 @@ const deleteMakeProto = <
     })
 
   const equals = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({ delete: options.delete, only: value, limitValue: options.limitValue })
 
   const gte = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       lowerBound: value,
@@ -1294,8 +1117,8 @@ const deleteMakeProto = <
     })
 
   const lte = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       upperBound: value,
@@ -1304,8 +1127,8 @@ const deleteMakeProto = <
     })
 
   const gt = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       lowerBound: value,
@@ -1314,8 +1137,8 @@ const deleteMakeProto = <
     })
 
   const lt = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       upperBound: value,
@@ -1324,10 +1147,10 @@ const deleteMakeProto = <
     })
 
   const between = (
-    lowerBound: IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
-    upperBound: IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
+    lowerBound: IndexedDbQuery.ExtractIndexType<Table, Index>,
+    upperBound: IndexedDbQuery.ExtractIndexType<Table, Index>,
     queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-  ): IndexedDbQuery.Delete<Source, Table, Index> =>
+  ): IndexedDbQuery.Delete<Table, Index> =>
     deleteMakeProto({
       delete: options.delete,
       lowerBound,
@@ -1337,7 +1160,7 @@ const deleteMakeProto = <
       limitValue: options.limitValue
     })
 
-  self.commit = function(this: IndexedDbQuery.Delete) {
+  self.commit = function(this: IndexedDbQuery.Delete<any, never>) {
     return applyDelete(this)
   }
   self.delete = options.delete
@@ -1358,24 +1181,23 @@ const deleteMakeProto = <
 }
 
 const countMakeProto = <
-  Source extends IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbDatabase.IndexFromTable<Source, Table>
+  Table extends IndexedDbTable.AnyWithProps,
+  Index extends IndexedDbDatabase.IndexFromTable<Table>
 >(options: {
-  readonly from: IndexedDbQuery.From<Source, Table>
+  readonly from: IndexedDbQuery.From<Table>
   readonly index: Index | undefined
   readonly limitValue?: number | undefined
-  readonly only?: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  readonly lowerBound?: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  readonly upperBound?: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  readonly only?: IndexedDbQuery.ExtractIndexType<Table, Index>
+  readonly lowerBound?: IndexedDbQuery.ExtractIndexType<Table, Index>
+  readonly upperBound?: IndexedDbQuery.ExtractIndexType<Table, Index>
   readonly excludeLowerBound?: boolean
   readonly excludeUpperBound?: boolean
-}): IndexedDbQuery.Count<Source, Table, Index> => {
+}): IndexedDbQuery.Count<Table, Index> => {
   const self = Object.create(Effectable.CommitPrototype)
 
   const limit = (
     limit: number
-  ): IndexedDbQuery.Count<Source, Table, Index> =>
+  ): IndexedDbQuery.Count<Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -1388,13 +1210,13 @@ const countMakeProto = <
     })
 
   const equals = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Count<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Count<Table, Index> =>
     countMakeProto({ from: options.from, index: options.index, only: value, limitValue: options.limitValue })
 
   const gte = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Count<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Count<Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -1404,8 +1226,8 @@ const countMakeProto = <
     })
 
   const lte = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Count<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Count<Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -1415,8 +1237,8 @@ const countMakeProto = <
     })
 
   const gt = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Count<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Count<Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -1426,8 +1248,8 @@ const countMakeProto = <
     })
 
   const lt = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Count<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Count<Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -1437,10 +1259,10 @@ const countMakeProto = <
     })
 
   const between = (
-    lowerBound: IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
-    upperBound: IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
+    lowerBound: IndexedDbQuery.ExtractIndexType<Table, Index>,
+    upperBound: IndexedDbQuery.ExtractIndexType<Table, Index>,
     queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-  ): IndexedDbQuery.Count<Source, Table, Index> =>
+  ): IndexedDbQuery.Count<Table, Index> =>
     countMakeProto({
       from: options.from,
       index: options.index,
@@ -1451,7 +1273,7 @@ const countMakeProto = <
       limitValue: options.limitValue
     })
 
-  self.commit = function(this: IndexedDbQuery.Count) {
+  self.commit = function(this: IndexedDbQuery.Count<any, never>) {
     return getCount(this)
   }
   self.from = options.from
@@ -1473,24 +1295,23 @@ const countMakeProto = <
 }
 
 const selectMakeProto = <
-  Source extends IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbDatabase.IndexFromTable<Source, Table>
+  Table extends IndexedDbTable.AnyWithProps,
+  Index extends IndexedDbDatabase.IndexFromTable<Table>
 >(options: {
-  readonly from: IndexedDbQuery.From<Source, Table>
+  readonly from: IndexedDbQuery.From<Table>
   readonly index: Index | undefined
   readonly limitValue?: number | undefined
-  readonly only?: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  readonly lowerBound?: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  readonly upperBound?: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
+  readonly only?: IndexedDbQuery.ExtractIndexType<Table, Index>
+  readonly lowerBound?: IndexedDbQuery.ExtractIndexType<Table, Index>
+  readonly upperBound?: IndexedDbQuery.ExtractIndexType<Table, Index>
   readonly excludeLowerBound?: boolean
   readonly excludeUpperBound?: boolean
-}): IndexedDbQuery.Select<Source, Table, Index> => {
+}): IndexedDbQuery.Select<Table, Index> => {
   const self = Object.create(Effectable.CommitPrototype)
 
   const limit = (
     limit: number
-  ): IndexedDbQuery.Select<Source, Table, Index> =>
+  ): IndexedDbQuery.Select<Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -1503,13 +1324,13 @@ const selectMakeProto = <
     })
 
   const equals = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Select<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Select<Table, Index> =>
     selectMakeProto({ from: options.from, index: options.index, only: value, limitValue: options.limitValue })
 
   const gte = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Select<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Select<Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -1519,8 +1340,8 @@ const selectMakeProto = <
     })
 
   const lte = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Select<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Select<Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -1530,8 +1351,8 @@ const selectMakeProto = <
     })
 
   const gt = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Select<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Select<Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -1541,8 +1362,8 @@ const selectMakeProto = <
     })
 
   const lt = (
-    value: IndexedDbQuery.ExtractIndexType<Source, Table, Index>
-  ): IndexedDbQuery.Select<Source, Table, Index> =>
+    value: IndexedDbQuery.ExtractIndexType<Table, Index>
+  ): IndexedDbQuery.Select<Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -1552,10 +1373,10 @@ const selectMakeProto = <
     })
 
   const between = (
-    lowerBound: IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
-    upperBound: IndexedDbQuery.ExtractIndexType<Source, Table, Index>,
+    lowerBound: IndexedDbQuery.ExtractIndexType<Table, Index>,
+    upperBound: IndexedDbQuery.ExtractIndexType<Table, Index>,
     queryOptions?: { excludeLowerBound?: boolean; excludeUpperBound?: boolean }
-  ): IndexedDbQuery.Select<Source, Table, Index> =>
+  ): IndexedDbQuery.Select<Table, Index> =>
     selectMakeProto({
       from: options.from,
       index: options.index,
@@ -1566,9 +1387,9 @@ const selectMakeProto = <
       limitValue: options.limitValue
     })
 
-  const first = (): IndexedDbQuery.First<Source, Table, Index> => firstMakeProto({ select: self as any })
+  const first = (): IndexedDbQuery.First<Table, Index> => firstMakeProto({ select: self as any })
 
-  self.commit = function(this: IndexedDbQuery.Select) {
+  self.commit = function(this: IndexedDbQuery.Select<any, never>) {
     return getSelect(this)
   }
   self.from = options.from
@@ -1591,14 +1412,13 @@ const selectMakeProto = <
 }
 
 const firstMakeProto = <
-  Source extends IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>,
-  Index extends IndexedDbDatabase.IndexFromTable<Source, Table>
+  Table extends IndexedDbTable.AnyWithProps,
+  Index extends IndexedDbDatabase.IndexFromTable<Table>
 >(options: {
-  readonly select: IndexedDbQuery.Select<Source, Table, Index>
-}): IndexedDbQuery.First<Source, Table, Index> => {
+  readonly select: IndexedDbQuery.Select<Table, Index>
+}): IndexedDbQuery.First<Table, Index> => {
   const self = Object.create(Effectable.CommitPrototype)
-  self.commit = function(this: IndexedDbQuery.First) {
+  self.commit = function(this: IndexedDbQuery.First<any, never>) {
     return getFirst(this)
   }
   self.select = options.select
@@ -1606,23 +1426,15 @@ const firstMakeProto = <
 }
 
 const modifyMakeProto = <
-  Source extends IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>
+  Table extends IndexedDbTable.AnyWithProps
 >(options: {
-  readonly from: IndexedDbQuery.From<Source, Table>
-  readonly value: Schema.Schema.Type<
-    IndexedDbTable.TableSchema<
-      IndexedDbTable.WithName<
-        IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >
-  >
+  readonly from: IndexedDbQuery.From<Table>
+  readonly value: IndexedDbTable.TableSchema<Table>["Type"]
   readonly operation: "add" | "put"
-}): IndexedDbQuery.Modify<Source, Table> => {
+}): IndexedDbQuery.Modify<Table> => {
   const self = Object.create(Effectable.CommitPrototype)
-  self.commit = function(this: IndexedDbQuery.Modify) {
-    return applyModify(this, { key: undefined, ...options.value })
+  self.commit = function(this: IndexedDbQuery.Modify<any>) {
+    return applyModify(this, options.value)
   }
   self.from = options.from
   self.value = options.value
@@ -1631,24 +1443,14 @@ const modifyMakeProto = <
 }
 
 const modifyAllMakeProto = <
-  Source extends IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.TableName<IndexedDbVersion.Tables<Source>>
+  Table extends IndexedDbTable.AnyWithProps
 >(options: {
-  readonly from: IndexedDbQuery.From<Source, Table>
-  readonly values: Array<
-    Schema.Schema.Type<
-      IndexedDbTable.TableSchema<
-        IndexedDbTable.WithName<
-          IndexedDbVersion.Tables<Source>,
-          Table
-        >
-      >
-    >
-  >
+  readonly from: IndexedDbQuery.From<Table>
+  readonly values: Array<IndexedDbTable.TableSchema<Table>["Type"]>
   readonly operation: "add" | "put"
-}): IndexedDbQuery.Modify<Source, Table> => {
+}): IndexedDbQuery.Modify<Table> => {
   const self = Object.create(Effectable.CommitPrototype)
-  self.commit = function(this: IndexedDbQuery.ModifyAll) {
+  self.commit = function(this: IndexedDbQuery.ModifyAll<any>) {
     return applyModifyAll(this, options.values)
   }
   self.from = options.from

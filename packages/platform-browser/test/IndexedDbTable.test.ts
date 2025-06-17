@@ -4,38 +4,38 @@ import { Schema } from "effect"
 
 describe("IndexedDbTable", () => {
   it("make", () => {
-    class Table extends IndexedDbTable.make(
-      "todo",
-      Schema.Struct({
+    class Table extends IndexedDbTable.make({
+      name: "todo",
+      schema: Schema.Struct({
         id: Schema.Number,
         title: Schema.String,
         completed: Schema.Boolean
       }),
-      { keyPath: "id" }
-    ) {}
+      keyPath: "id"
+    }) {}
 
     assert.equal(Table.tableName, "todo")
     assert.deepStrictEqual(Table.tableSchema.fields.id, Schema.Number)
     assert.deepStrictEqual(Table.tableSchema.fields.title, Schema.String)
     assert.deepStrictEqual(Table.tableSchema.fields.completed, Schema.Boolean)
-    assert.equal(Table.options?.keyPath, "id")
+    assert.equal(Table.keyPath, "id")
   })
 
   it("multiple keyPath", () => {
-    const Table = IndexedDbTable.make(
-      "todo",
-      Schema.Struct({
+    const Table = IndexedDbTable.make({
+      name: "todo",
+      schema: Schema.Struct({
         id: Schema.Number,
         title: Schema.String,
         completed: Schema.Boolean
       }),
-      { keyPath: ["id", "title"] }
-    )
+      keyPath: ["id", "title"]
+    })
 
     assert.equal(Table.tableName, "todo")
     assert.deepStrictEqual(Table.tableSchema.fields.id, Schema.Number)
     assert.deepStrictEqual(Table.tableSchema.fields.title, Schema.String)
     assert.deepStrictEqual(Table.tableSchema.fields.completed, Schema.Boolean)
-    assert.deepStrictEqual(Table.options?.keyPath, ["id", "title"])
+    assert.deepStrictEqual(Table.keyPath, ["id", "title"])
   })
 })

@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
@@ -23,11 +24,8 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category interface
  */
-export interface IndexedDbVersion<
-  out Tables extends IndexedDbTable.AnyWithProps = never
-> extends Pipeable {
+export interface IndexedDbVersion<out Tables extends IndexedDbTable.AnyWithProps> extends Pipeable {
   new(_: never): {}
-
   readonly [TypeId]: TypeId
   readonly tables: ReadonlyMap<string, Tables>
 }
@@ -54,6 +52,15 @@ export type Tables<Db extends Any> = Db extends IndexedDbVersion<
   infer _Tables
 > ? _Tables
   : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type TableWithName<Db extends Any, TableName extends string> = IndexedDbTable.WithName<
+  Tables<Db>,
+  TableName
+>
 
 /**
  * @since 1.0.0
@@ -87,10 +94,8 @@ const makeProto = <Tables extends IndexedDbTable.AnyWithProps>(options: {
  * @category constructors
  */
 export const make = <
-  Tables extends ReadonlyArray<IndexedDbTable.AnyWithProps>
->(
-  ...tables: Tables & { 0: IndexedDbTable.AnyWithProps }
-): IndexedDbVersion<Tables[number]> =>
+  const Tables extends NonEmptyReadonlyArray<IndexedDbTable.AnyWithProps>
+>(...tables: Tables): IndexedDbVersion<Tables[number]> =>
   makeProto({
     tables: new Map(
       tables.map((table) => [table.tableName, table])

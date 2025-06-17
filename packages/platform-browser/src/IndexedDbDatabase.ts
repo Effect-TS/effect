@@ -4,6 +4,7 @@
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import { CommitPrototype } from "effect/Effectable"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
@@ -70,15 +71,23 @@ export class IndexedDbDatabase extends Context.Tag("@effect/platform-browser/Ind
  * @category models
  */
 export interface IndexedDbSchema<
-  in out FromVersion extends IndexedDbVersion.AnyWithProps = never,
-  in out ToVersion extends IndexedDbVersion.AnyWithProps = never,
+  in out FromVersion extends IndexedDbVersion.AnyWithProps,
+  in out ToVersion extends IndexedDbVersion.AnyWithProps,
   out Error = never
-> extends Pipeable {
+> extends
+  Pipeable,
+  Effect.Effect<
+    IndexedDbQueryBuilder.IndexedDbQueryBuilder<ToVersion>,
+    never,
+    IndexedDbDatabase
+  >
+{
   new(_: never): {}
 
   readonly previous: [FromVersion] extends [never] ? undefined : IndexedDbSchema<never, FromVersion, Error>
   readonly fromVersion: FromVersion
   readonly version: ToVersion
+
   readonly migrate: [FromVersion] extends [never] ? ((
       query: Transaction<ToVersion>
     ) => Effect.Effect<void, Error>) :
@@ -86,6 +95,7 @@ export interface IndexedDbSchema<
       fromQuery: Transaction<FromVersion>,
       toQuery: Transaction<ToVersion>
     ) => Effect.Effect<void, Error>)
+
   readonly add: <
     Version extends IndexedDbVersion.AnyWithProps,
     MigrationError
@@ -103,9 +113,7 @@ export interface IndexedDbSchema<
     IndexedDbDatabase
   >
 
-  readonly layer: <DatabaseName extends string>(
-    databaseName: DatabaseName
-  ) => Layer.Layer<IndexedDbDatabase, IndexedDbDatabaseError, IndexedDb.IndexedDb>
+  readonly layer: (databaseName: string) => Layer.Layer<IndexedDbDatabase, IndexedDbDatabaseError, IndexedDb.IndexedDb>
 }
 
 /**
@@ -130,22 +138,22 @@ export interface Transaction<
   >(table: A) => Effect.Effect<void, IndexedDbDatabaseError>
 
   readonly createIndex: <
-    A extends IndexedDbTable.TableName<
+    Name extends IndexedDbTable.TableName<
       IndexedDbVersion.Tables<Source>
     >
   >(
-    table: A,
-    indexName: IndexFromTable<Source, A>,
+    table: Name,
+    indexName: IndexFromTableName<Source, Name>,
     options?: IDBIndexParameters
   ) => Effect.Effect<globalThis.IDBIndex, IndexedDbDatabaseError>
 
   readonly deleteIndex: <
-    A extends IndexedDbTable.TableName<
+    Name extends IndexedDbTable.TableName<
       IndexedDbVersion.Tables<Source>
     >
   >(
-    table: A,
-    indexName: IndexFromTable<Source, A>
+    table: Name,
+    indexName: IndexFromTableName<Source, Name>
   ) => Effect.Effect<void, IndexedDbDatabaseError>
 }
 
@@ -154,27 +162,14 @@ export interface Transaction<
  * @category models
  */
 export type IndexFromTable<
-  Source extends IndexedDbVersion.AnyWithProps,
-  Table extends IndexedDbTable.TableName<
-    IndexedDbVersion.Tables<Source>
-  >
+  Table extends IndexedDbTable.AnyWithProps
 > = IsStringLiteral<
   Extract<
-    keyof IndexedDbTable.Indexes<
-      IndexedDbTable.WithName<
-        IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >,
+    keyof IndexedDbTable.Indexes<Table>,
     string
   >
 > extends true ? Extract<
-    keyof IndexedDbTable.Indexes<
-      IndexedDbTable.WithName<
-        IndexedDbVersion.Tables<Source>,
-        Table
-      >
-    >,
+    keyof IndexedDbTable.Indexes<Table>,
     string
   > :
   never
@@ -183,11 +178,18 @@ export type IndexFromTable<
  * @since 1.0.0
  * @category models
  */
+export type IndexFromTableName<
+  Version extends IndexedDbVersion.AnyWithProps,
+  Table extends string
+> = IndexFromTable<IndexedDbTable.WithName<IndexedDbVersion.Tables<Version>, Table>>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export interface Any {
   readonly previous?: Any | undefined
-  readonly layer: <DatabaseName extends string>(
-    databaseName: DatabaseName
-  ) => Layer.Layer<IndexedDbDatabase, IndexedDbDatabaseError, IndexedDb.IndexedDb>
+  readonly layer: (databaseName: string) => Layer.Layer<IndexedDbDatabase, IndexedDbDatabaseError, IndexedDb.IndexedDb>
 }
 
 /**
@@ -214,6 +216,7 @@ export const make = <
   ) => Effect.Effect<void, Error>
 ): IndexedDbSchema<never, InitialVersion, Error> => {
   function IndexedDbDatabaseImpl() {}
+  Object.assign(IndexedDbDatabaseImpl, CommitPrototype)
   IndexedDbDatabaseImpl.pipe = function() {
     return pipeArguments(this, arguments)
   }
@@ -246,6 +249,9 @@ export const make = <
       transaction: undefined
     })
   })
+  IndexedDbDatabaseImpl.commit = function() {
+    return this.getQueryBuilder
+  }
 
   IndexedDbDatabaseImpl.layer = <DatabaseName extends string>(
     databaseName: DatabaseName
@@ -270,6 +276,7 @@ const makeProto = <
   ) => Effect.Effect<void, Error>
 }): IndexedDbSchema<FromVersion, ToVersion, Error> => {
   function IndexedDbDatabaseImpl() {}
+  Object.assign(IndexedDbDatabaseImpl, CommitPrototype)
   IndexedDbDatabaseImpl.pipe = options.previous.pipe
   IndexedDbDatabaseImpl.previous = options.previous
   IndexedDbDatabaseImpl.fromVersion = options.fromVersion
@@ -286,6 +293,9 @@ const makeProto = <
       transaction: undefined
     })
   })
+  IndexedDbDatabaseImpl.commit = function() {
+    return this.getQueryBuilder
+  }
 
   IndexedDbDatabaseImpl.layer = <DatabaseName extends string>(
     databaseName: DatabaseName
@@ -467,7 +477,7 @@ const makeTransactionProto = <
     )
 
     return yield* Effect.try({
-      try: () => database.createObjectStore(createTable.tableName, createTable.options),
+      try: () => database.createObjectStore(createTable.tableName, createTable),
       catch: (cause) =>
         new IndexedDbDatabaseError({
           reason: "TransactionError",
@@ -501,9 +511,7 @@ const makeTransactionProto = <
       const store = transaction.objectStore(table)
       const sourceTable = tables.get(table)!
 
-      const keyPath = yield* Effect.fromNullable(
-        sourceTable.options?.indexes[indexName] ?? undefined
-      ).pipe(
+      const keyPath = yield* Effect.fromNullable(sourceTable.indexes[indexName]).pipe(
         Effect.mapError((cause) =>
           new IndexedDbDatabaseError({
             reason: "MissingIndex",
