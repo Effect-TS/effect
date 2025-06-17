@@ -591,17 +591,17 @@ describe("IndexedDbQueryBuilder", () => {
         const api = yield* Db.getQueryBuilder
         const addedKey = yield* api.from("price").insertAll([
           { amount: 10 },
-          { amount: 20, id: "uuid" },
+          { amount: 20, id: 10 },
           { amount: 30 }
         ])
         const data = yield* api.from("price").select()
 
-        assert.deepStrictEqual(addedKey, [1, "uuid", 2])
+        assert.deepStrictEqual(addedKey, [1, 10, 11])
         assert.equal(data.length, 3)
         assert.deepStrictEqual(data, [
           { id: 1, amount: 10 },
-          { id: 2, amount: 30 },
-          { id: "uuid", amount: 20 }
+          { id: 10, amount: 20 },
+          { id: 11, amount: 30 }
         ])
       }).pipe(provideDb(Db))
     })
