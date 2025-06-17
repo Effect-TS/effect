@@ -29,7 +29,7 @@ export interface IndexedDbTable<
   out Name extends string,
   out TableSchema extends AnySchemaStruct,
   out Indexes extends Record<string, IndexedDbQueryBuilder.KeyPath<TableSchema>>,
-  out KeyPath extends IDBValidKey,
+  out KeyPath extends Readonly<IDBValidKey>,
   out AutoIncrement extends boolean
 > extends Pipeable {
   new(_: never): {}
@@ -169,7 +169,7 @@ const makeProto = <
   const Name extends string,
   TableSchema extends AnySchemaStruct,
   const Indexes extends Record<string, IndexedDbQueryBuilder.KeyPath<TableSchema>>,
-  const KeyPath extends IndexedDbQueryBuilder.KeyPath<TableSchema>,
+  const KeyPath extends Readonly<IDBValidKey>,
   const AutoIncrement extends boolean
 >(options: {
   readonly tableName: Name
@@ -205,7 +205,7 @@ export const make = <
   readonly keyPath: KeyPath
   readonly indexes?: Indexes | undefined
   readonly autoIncrement?: AutoIncrement | undefined
-}): IndexedDbTable<Name, TableSchema, Indexes, Extract<KeyPath, IDBValidKey>, AutoIncrement> =>
+}): IndexedDbTable<Name, TableSchema, Indexes, Extract<KeyPath, Readonly<IDBValidKey>>, AutoIncrement> =>
   makeProto({
     tableName: options.name,
     tableSchema: options.schema,
