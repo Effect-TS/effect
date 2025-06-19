@@ -137,10 +137,8 @@ export const getEncoding = (ast: AST.AST, fallback = encodingJson): Encoding =>
  * @category annotations
  */
 export const getParam = (ast: AST.AST | Schema.PropertySignature.AST): string | undefined => {
-  if (ast._tag === "PropertySignatureTransformation") {
-    ast = ast.to.type
-  }
-  return (ast.annotations[AnnotationParam] as any)?.name as string | undefined
+  const annotations = ast._tag === "PropertySignatureTransformation" ? ast.to.annotations : ast.annotations
+  return (annotations[AnnotationParam] as any)?.name as string | undefined
 }
 
 /**
