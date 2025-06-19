@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.85.2
+
+### Patch Changes
+
+- [#5053](https://github.com/Effect-TS/effect/pull/5053) [`914a191`](https://github.com/Effect-TS/effect/commit/914a191e7cb6341a3d0e965bccd27c336cf22e44) Thanks @tim-smart! - fix retrieval of HttpApiSchema.param annotations
+
 ## 0.85.1
 
 ### Patch Changes
