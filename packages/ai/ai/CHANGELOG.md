@@ -1,5 +1,15 @@
 # @effect/ai
 
+## 0.19.4
+
+### Patch Changes
+
+- [#5056](https://github.com/Effect-TS/effect/pull/5056) [`a8d99b2`](https://github.com/Effect-TS/effect/commit/a8d99b2ec2f55d9aa6e7d00a5138e80380716877) Thanks @tim-smart! - add support for mcp 2025-06-18
+
+- Updated dependencies [[`a8d99b2`](https://github.com/Effect-TS/effect/commit/a8d99b2ec2f55d9aa6e7d00a5138e80380716877)]:
+  - @effect/rpc@0.62.4
+  - @effect/experimental@0.49.2
+
 ## 0.19.3
 
 ### Patch Changes
