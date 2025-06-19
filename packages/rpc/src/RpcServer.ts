@@ -250,6 +250,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       Effect.interruptible(applyMiddleware(
         rpc,
         context,
+        client.id,
         request.payload,
         request.headers,
         isStream
@@ -411,6 +412,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
 const applyMiddleware = <A, E, R>(
   rpc: Rpc.AnyWithProps,
   context: Context.Context<never>,
+  clientId: number,
   payload: A,
   headers: Headers.Headers,
   handler: Effect.Effect<A, E, R>
@@ -422,7 +424,8 @@ const applyMiddleware = <A, E, R>(
   const options = {
     rpc,
     payload,
-    headers
+    headers,
+    clientId
   }
 
   for (const tag of rpc.middlewares) {
