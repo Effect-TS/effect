@@ -29,6 +29,7 @@ export type TypeId = typeof TypeId
  */
 export interface RpcMiddleware<Provides, E> {
   (options: {
+    readonly clientId: number
     readonly rpc: Rpc.AnyWithProps
     readonly payload: unknown
     readonly headers: Headers
@@ -41,6 +42,7 @@ export interface RpcMiddleware<Provides, E> {
  */
 export interface RpcMiddlewareWrap<Provides, E> {
   (options: {
+    readonly clientId: number
     readonly rpc: Rpc.AnyWithProps
     readonly payload: unknown
     readonly headers: Headers
