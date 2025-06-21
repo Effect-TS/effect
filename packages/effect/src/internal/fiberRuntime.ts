@@ -1374,7 +1374,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
               if (level._tag === "Some") {
                 const effectVersion = (cur as core.Primitive)[core.EffectTypeId]._V
                 this.log(
-                  `Executing an Effect versioned ${effectVersion} with a Runtime of version ${version.getCurrentVersion()}, you may want to dedupe the effect dependencies, you can use the laguage service plugin to detect this at compile time: https://github.com/Effect-TS/language-service`,
+                  `Executing an Effect versioned ${effectVersion} with a Runtime of version ${version.getCurrentVersion()}, you may want to dedupe the effect dependencies, you can use the language service plugin to detect this at compile time: https://github.com/Effect-TS/language-service`,
                   internalCause.empty,
                   level
                 )
