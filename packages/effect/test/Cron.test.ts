@@ -57,33 +57,33 @@ describe("Cron", () => {
   })
 
   it("match", () => {
-    assertTrue(match("5 0 * 8 *", "2024-08-01 00:05:00"))
-    assertFalse(match("5 0 * 8 *", "2024-09-01 00:05:00"))
-    assertFalse(match("5 0 * 8 *", "2024-08-01 01:05:00"))
+    assertTrue(match("5 0 * 8 *", new Date("2024-08-01 00:05:00")))
+    assertFalse(match("5 0 * 8 *", new Date("2024-09-01 00:05:00")))
+    assertFalse(match("5 0 * 8 *", new Date("2024-08-01 01:05:00")))
 
-    assertTrue(match("15 14 1 * *", "2024-02-01 14:15:00"))
-    assertFalse(match("15 14 1 * *", "2024-02-01 15:15:00"))
-    assertFalse(match("15 14 1 * *", "2024-02-02 14:15:00"))
+    assertTrue(match("15 14 1 * *", new Date("2024-02-01 14:15:00")))
+    assertFalse(match("15 14 1 * *", new Date("2024-02-01 15:15:00")))
+    assertFalse(match("15 14 1 * *", new Date("2024-02-02 14:15:00")))
 
-    assertTrue(match("23 0-20/2 * * 0", "2024-01-07 00:23:00"))
-    assertFalse(match("23 0-20/2 * * 0", "2024-01-07 03:23:00"))
-    assertFalse(match("23 0-20/2 * * 0", "2024-01-08 00:23:00"))
+    assertTrue(match("23 0-20/2 * * 0", new Date("2024-01-07 00:23:00")))
+    assertFalse(match("23 0-20/2 * * 0", new Date("2024-01-07 03:23:00")))
+    assertFalse(match("23 0-20/2 * * 0", new Date("2024-01-08 00:23:00")))
 
-    assertTrue(match("5 4 * * SUN", "2024-01-07 04:05:00"))
-    assertFalse(match("5 4 * * SUN", "2024-01-08 04:05:00"))
-    assertFalse(match("5 4 * * SUN", "2025-01-07 04:05:00"))
+    assertTrue(match("5 4 * * SUN", new Date("2024-01-07 04:05:00")))
+    assertFalse(match("5 4 * * SUN", new Date("2024-01-08 04:05:00")))
+    assertFalse(match("5 4 * * SUN", new Date("2025-01-07 04:05:00")))
 
-    assertTrue(match("5 4 * DEC SUN", "2024-12-01 04:05:00"))
-    assertFalse(match("5 4 * DEC SUN", "2024-12-01 04:06:00"))
-    assertFalse(match("5 4 * DEC SUN", "2024-12-02 04:05:00"))
+    assertTrue(match("5 4 * DEC SUN", new Date("2024-12-01 04:05:00")))
+    assertFalse(match("5 4 * DEC SUN", new Date("2024-12-01 04:06:00")))
+    assertFalse(match("5 4 * DEC SUN", new Date("2024-12-02 04:05:00")))
 
-    assertTrue(match("5 4 * * SUN", "2024-01-07 04:05:00"))
-    assertFalse(match("5 4 * * SUN", "2024-01-08 04:05:00"))
-    assertFalse(match("5 4 * * SUN", "2025-01-07 04:05:00"))
+    assertTrue(match("5 4 * * SUN", new Date("2024-01-07 04:05:00")))
+    assertFalse(match("5 4 * * SUN", new Date("2024-01-08 04:05:00")))
+    assertFalse(match("5 4 * * SUN", new Date("2025-01-07 04:05:00")))
 
-    assertTrue(match("42 5 0 * 8 *", "2024-08-01 00:05:42"))
-    assertFalse(match("42 5 0 * 8 *", "2024-09-01 00:05:42"))
-    assertFalse(match("42 5 0 * 8 *", "2024-08-01 01:05:42"))
+    assertTrue(match("42 5 0 * 8 *", new Date("2024-08-01 00:05:42")))
+    assertFalse(match("42 5 0 * 8 *", new Date("2024-09-01 00:05:42")))
+    assertFalse(match("42 5 0 * 8 *", new Date("2024-08-01 01:05:42")))
 
     const london = DateTime.zoneUnsafeMakeNamed("Europe/London")
     const londonTime = DateTime.unsafeMakeZoned("2024-06-01 14:15:00Z", {
@@ -146,11 +146,11 @@ describe("Cron", () => {
   })
 
   it("handles leap years", () => {
-    assertTrue(match("0 0 29 2 *", "2024-02-29 00:00:00"))
-    assertFalse(match("0 0 29 2 *", "2025-02-29 00:00:00"))
-    assertFalse(match("0 0 29 2 *", "2026-02-29 00:00:00"))
-    assertFalse(match("0 0 29 2 *", "2027-02-29 00:00:00"))
-    assertTrue(match("0 0 29 2 *", "2028-02-29 00:00:00"))
+    assertTrue(match("0 0 29 2 *", new Date("2024-02-29 00:00:00")))
+    assertFalse(match("0 0 29 2 *", new Date("2025-02-29 00:00:00")))
+    assertFalse(match("0 0 29 2 *", new Date("2026-02-29 00:00:00")))
+    assertFalse(match("0 0 29 2 *", new Date("2027-02-29 00:00:00")))
+    assertTrue(match("0 0 29 2 *", new Date("2028-02-29 00:00:00")))
 
     deepStrictEqual(next("0 0 29 2 *", new Date("2024-01-01 00:00:00")), new Date("2024-02-29 00:00:00"))
     deepStrictEqual(next("0 0 29 2 *", new Date("2025-01-01 00:00:00")), new Date("2028-02-29 00:00:00"))
