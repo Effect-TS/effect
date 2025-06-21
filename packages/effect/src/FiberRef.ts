@@ -342,6 +342,13 @@ export const unhandledErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>> 
  * @since 2.0.0
  * @category fiberRefs
  */
+export const versionMismatchErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>> =
+  core.currentVersionMismatchErrorLogLevel
+
+/**
+ * @since 2.0.0
+ * @category fiberRefs
+ */
 export const currentLogAnnotations: FiberRef<HashMap.HashMap<string, unknown>> = core.currentLogAnnotations
 
 /**
