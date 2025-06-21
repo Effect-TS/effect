@@ -17,6 +17,7 @@ import * as core from "./core.js"
 import * as effectable from "./effectable.js"
 import * as fiberScope from "./fiberScope.js"
 import * as runtimeFlags from "./runtimeFlags.js"
+import * as version from "./version.js"
 
 /** @internal */
 const FiberSymbolKey = "effect/Fiber"
@@ -368,7 +369,7 @@ export {
 }
 
 /** @internal */
-export const currentFiberURI = "effect/FiberCurrent"
+export const currentFiberURI = `effect/FiberCurrent/${version.getCurrentVersion()}`
 
 /** @internal */
 export const getCurrentFiber = (): Option.Option<Fiber.RuntimeFiber<any, any>> =>
