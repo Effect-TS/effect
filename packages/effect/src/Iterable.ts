@@ -414,6 +414,41 @@ export const findFirst: {
 )
 
 /**
+ * Returns a tuple of the first element that satisfies the specified
+ * predicate and its index, or `None` if no such element exists.
+ *
+ * @category elements
+ * @since 2.0.0
+ */
+export const findFirstWithIndex: {
+  <A, B>(f: (a: NoInfer<A>, i: number) => Option<B>): (self: Iterable<A>) => Option<[B, number]>
+  <A, B extends A>(refinement: (a: NoInfer<A>, i: number) => a is B): (self: Iterable<A>) => Option<[B, number]>
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Option<[A, number]>
+  <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<[B, number]>
+  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<[B, number]>
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<[A, number]>
+} = dual(
+  2,
+  <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)): Option<[A, number]> => {
+    let i = 0
+    for (const a of self) {
+      const o = f(a, i)
+      if (isBoolean(o)) {
+        if (o) {
+          return O.some([a, i])
+        }
+      } else {
+        if (O.isSome(o)) {
+          return O.some([o.value, i])
+        }
+      }
+      i++
+    }
+    return O.none()
+  }
+)
+
+/**
  * Find the last element for which a predicate holds.
  *
  * @category elements
