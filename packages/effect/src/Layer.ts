@@ -1063,6 +1063,17 @@ export const setUnhandledErrorLogLevel: (level: Option.Option<LogLevel>) => Laye
 
 /**
  * @since 2.0.0
+ * @category logging
+ */
+export const setVersionMismatchErrorLogLevel: (level: Option.Option<LogLevel>) => Layer<never> = (
+  level: Option.Option<LogLevel>
+): Layer<never> =>
+  scopedDiscard(
+    fiberRuntime.fiberRefLocallyScoped(core.currentVersionMismatchErrorLogLevel, level)
+  )
+
+/**
+ * @since 2.0.0
  * @category tracing
  */
 export const withSpan: {

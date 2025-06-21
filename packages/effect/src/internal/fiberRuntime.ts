@@ -1370,11 +1370,16 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         cur = this.currentTracer.context(
           () => {
             if (_version !== (cur as core.Primitive)[core.EffectTypeId]._V) {
-              return core.dieMessage(
-                `Cannot execute an Effect versioned ${
-                  (cur as core.Primitive)[core.EffectTypeId]._V
-                } with a Runtime of version ${version.getCurrentVersion()}`
-              )
+              const level = this.getFiberRef(core.currentVersionMismatchErrorLogLevel)
+              if (level._tag === "Some") {
+                this.log(
+                  `Cannot execute an Effect versioned ${
+                    (cur as core.Primitive)[core.EffectTypeId]._V
+                  } with a Runtime of version ${version.getCurrentVersion()}`,
+                  internalCause.empty,
+                  level
+                )
+              }
             }
             // @ts-expect-error
             return this[(cur as core.Primitive)._op](cur as core.Primitive)
