@@ -27,6 +27,7 @@
     { "path": "packages/sql-mysql2/tsconfig.build.json" },
     { "path": "packages/sql-mssql/tsconfig.build.json" },
     { "path": "packages/sql-pg/tsconfig.build.json" },
+    { "path": "packages/sql-pglite/tsconfig.build.json" },
     { "path": "packages/sql-sqlite-bun/tsconfig.build.json" },
     { "path": "packages/sql-sqlite-do/tsconfig.build.json" },
     { "path": "packages/sql-sqlite-node/tsconfig.build.json" },
