@@ -1372,10 +1372,9 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
             if (_version !== (cur as core.Primitive)[core.EffectTypeId]._V) {
               const level = this.getFiberRef(core.currentVersionMismatchErrorLogLevel)
               if (level._tag === "Some") {
+                const effectVersion = (cur as core.Primitive)[core.EffectTypeId]._V
                 this.log(
-                  `Cannot execute an Effect versioned ${
-                    (cur as core.Primitive)[core.EffectTypeId]._V
-                  } with a Runtime of version ${version.getCurrentVersion()}`,
+                  `Executing an Effect versioned ${effectVersion} with a Runtime of version ${version.getCurrentVersion()}, you may want to dedupe the effect dependencies, you can use the laguage service plugin to detect this at compile time: https://github.com/Effect-TS/language-service`,
                   internalCause.empty,
                   level
                 )
