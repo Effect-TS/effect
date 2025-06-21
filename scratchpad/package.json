@@ -6,6 +6,7 @@
   "dependencies": {
     "@effect/ai": "workspace:*",
     "@effect/ai-anthropic": "workspace:*",
+    "@effect/ai-google": "workspace:*",
     "@effect/ai-openai": "workspace:*",
     "@effect/cli": "workspace:*",
     "@effect/cluster": "workspace:*",
