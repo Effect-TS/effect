@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.39.5
+
+### Patch Changes
+
+- [#5070](https://github.com/Effect-TS/effect/pull/5070) [`ff90206`](https://github.com/Effect-TS/effect/commit/ff90206fc56f5c1eb1675603652462a83a27421d) Thanks @tim-smart! - use FIFO queue for shard assignment, to reduce churn
+
 ## 0.39.4
 
 ### Patch Changes
