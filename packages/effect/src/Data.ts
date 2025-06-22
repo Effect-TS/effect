@@ -203,7 +203,7 @@ export const tagged = <A extends { readonly _tag: string }>(
  */
 export const Class: new<A extends Record<string, any> = {}>(
   ...args: Types.Equals<A, {}> extends true ? []
-    : [{ readonly [P in keyof A]: A[P] }]
+    : [args: { readonly [P in keyof A]: A[P] }]
 ) => Readonly<A> = internal.Structural as any
 
 /**
@@ -235,7 +235,7 @@ export const TaggedClass = <Tag extends string>(
   tag: Tag
 ): new<A extends Record<string, any> = {}>(
   ...args: Types.Equals<A, {}> extends true ? []
-    : [{ readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }]
+    : [args: { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }]
 ) => Readonly<A> & { readonly _tag: Tag } => {
   class Base extends Class<any> {
     readonly _tag = tag
@@ -249,7 +249,7 @@ export const TaggedClass = <Tag extends string>(
  */
 export const Structural: new<A>(
   ...args: Types.Equals<A, {}> extends true ? []
-    : [{ readonly [P in keyof A]: A[P] }]
+    : [args: { readonly [P in keyof A]: A[P] }]
 ) => {} = internal.Structural as any
 
 /**
@@ -552,7 +552,7 @@ function taggedMatch<
  */
 export const Error: new<A extends Record<string, any> = {}>(
   ...args: Types.Equals<A, {}> extends true ? []
-    : [{ readonly [P in keyof A]: A[P] }]
+    : [args: { readonly [P in keyof A]: A[P] }]
 ) => Cause.YieldableError & Readonly<A> = (function() {
   const plainArgsSymbol = Symbol.for("effect/Data/Error/plainArgs")
   const O = {
