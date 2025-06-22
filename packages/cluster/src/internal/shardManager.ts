@@ -5,7 +5,6 @@ import { constFalse } from "effect/Function"
 import * as MutableHashMap from "effect/MutableHashMap"
 import * as MutableHashSet from "effect/MutableHashSet"
 import * as Option from "effect/Option"
-import * as Order from "effect/Order"
 import type { Runner } from "../Runner.js"
 import type { RunnerAddress } from "../RunnerAddress.js"
 import { RunnerHealth } from "../RunnerHealth.js"
@@ -60,9 +59,6 @@ export class State {
     const now = yield* Clock.currentTimeMillis
     const allRunners = MutableHashMap.empty<RunnerAddress, RunnerWithMetadata>()
     const runnerState = new Map<string, MutableHashMap.MutableHashMap<RunnerAddress, RunnerWithMetadata>>()
-    // for (const group of groups) {
-    //   runnerState.set(group, MutableHashMap.empty<RunnerAddress, RunnerWithMetadata>())
-    // }
     for (const [address, runner] of aliveRunners) {
       const withMetadata = RunnerWithMetadata({ runner, registeredAt: now })
       MutableHashMap.set(allRunners, address, withMetadata)
@@ -96,23 +92,48 @@ export class State {
     readonly shardsPerGroup: number
   ) {
     this.assignments = MutableHashMap.empty<ShardId, Option.Option<RunnerAddress>>()
+    this.perRunner = new Map<string, MutableHashMap.MutableHashMap<RunnerAddress, Set<number>>>()
+
+    for (const [address, meta] of this.allRunners) {
+      for (const group of meta.runner.groups) {
+        let runnerMap = this.perRunner.get(group)
+        if (!runnerMap) {
+          runnerMap = MutableHashMap.empty<RunnerAddress, Set<number>>()
+          this.perRunner.set(group, runnerMap)
+        }
+        MutableHashMap.set(runnerMap, address, new Set())
+      }
+    }
+
     for (const [group, groupMap] of this.shards) {
-      for (const [id, address] of groupMap) {
+      const perRunnerMap = this.perRunner.get(group)!
+      for (const [id, address_] of groupMap) {
+        const address = Option.filter(address_, (addr) => MutableHashMap.has(this.allRunners, addr))
         MutableHashMap.set(this.assignments, new ShardId({ group, id }), address)
+        if (Option.isSome(address)) {
+          Option.getOrUndefined(MutableHashMap.get(perRunnerMap, address.value))?.add(id)
+        }
       }
     }
   }
 
   readonly assignments: MutableHashMap.MutableHashMap<ShardId, Option.Option<RunnerAddress>>
+  readonly perRunner: Map<string, MutableHashMap.MutableHashMap<RunnerAddress, Set<number>>>
 
   addGroup(group: string): void {
     this.runners.set(group, MutableHashMap.empty<RunnerAddress, RunnerWithMetadata>())
     const shardMap = new Map<number, Option.Option<RunnerAddress>>()
+    this.shards.set(group, shardMap)
     for (let n = 1; n <= this.shardsPerGroup; n++) {
       shardMap.set(n, Option.none())
       MutableHashMap.set(this.assignments, new ShardId({ group, id: n }), Option.none())
     }
-    this.shards.set(group, shardMap)
+
+    const perRunnerMap = MutableHashMap.empty<RunnerAddress, Set<number>>()
+    this.perRunner.set(group, perRunnerMap)
+    for (const [address] of this.allRunners) {
+      MutableHashMap.set(perRunnerMap, address, new Set())
+    }
   }
 
   addAssignments(
@@ -120,8 +141,17 @@ export class State {
     address: Option.Option<RunnerAddress>
   ) {
     for (const shardId of shards) {
+      const currentAddress = Option.flatten(MutableHashMap.get(this.assignments, shardId))
       MutableHashMap.set(this.assignments, shardId, address)
       this.shards.get(shardId.group)?.set(shardId.id, address)
+
+      const perRunner = this.perRunner.get(shardId.group)!
+      if (Option.isSome(currentAddress)) {
+        Option.getOrUndefined(MutableHashMap.get(perRunner, currentAddress.value))?.delete(shardId.id)
+      }
+      if (Option.isSome(address)) {
+        Option.getOrUndefined(MutableHashMap.get(perRunner, address.value))?.add(shardId.id)
+      }
     }
   }
 
@@ -134,13 +164,19 @@ export class State {
       }
       const groupMap = this.runners.get(group)!
       MutableHashMap.set(groupMap, runner.address, withMetadata)
+      const perRunner = this.perRunner.get(group)!
+      MutableHashMap.set(perRunner, runner.address, new Set())
     }
   }
 
   removeRunner(address: RunnerAddress): void {
     MutableHashMap.remove(this.allRunners, address)
-    for (const groupMap of this.runners.values()) {
+    for (const group of this.runners.keys()) {
+      const groupMap = this.runners.get(group)!
       MutableHashMap.remove(groupMap, address)
+
+      const perRunner = this.perRunner.get(group)!
+      MutableHashMap.remove(perRunner, address)
     }
   }
 
@@ -182,19 +218,12 @@ export class State {
   }
 
   shardsPerRunner(group: string): MutableHashMap.MutableHashMap<RunnerAddress, Set<number>> {
-    const groupRunners = this.runners.get(group)
     const shards = MutableHashMap.empty<RunnerAddress, Set<number>>()
+    const perRunner = this.perRunner.get(group)
+    if (!perRunner || MutableHashMap.isEmpty(perRunner)) return shards
 
-    if (!groupRunners || MutableHashMap.isEmpty(groupRunners)) return shards
-    MutableHashMap.forEach(groupRunners, (_, address) => {
-      MutableHashMap.set(shards, address, new Set())
-    })
-
-    const assignments = this.shards.get(group)!
-    for (const [id, address] of assignments) {
-      if (Option.isNone(address)) continue
-      const shardIds = Option.getOrUndefined(MutableHashMap.get(shards, address.value))!
-      shardIds.add(id)
+    for (const [address, shardSet] of perRunner) {
+      MutableHashMap.set(shards, address, new Set(shardSet))
     }
 
     return shards
@@ -244,11 +273,6 @@ export interface RunnerWithMetadata {
 /** @internal */
 export const RunnerWithMetadata = (runner: RunnerWithMetadata): RunnerWithMetadata => runner
 
-const allocationOrder: Order.Order<[number, number, number]> = Order.combine(
-  Order.mapInput(Order.number, ([, shards]) => shards),
-  Order.mapInput(Order.number, ([, , registeredAt]) => registeredAt)
-)
-
 /** @internal */
 export function decideAssignmentsForShards(state: State, group: string): readonly [
   assignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<number>>,
@@ -259,39 +283,17 @@ export function decideAssignmentsForShards(state: State, group: string): readonl
   const maxVersion = state.maxVersion
   const shardsToRebalance = state.unassignedShards(group)
 
-  const runnerGroup = state.runners.get(group)!
-  const shardsGroup = state.shards.get(group)!
-
   if (state.allRunnersHaveVersion(maxVersion)) {
-    const extraShardsToAllocate = Arr.empty<[number, shardsInverse: number, registeredAt: number]>()
     const averageShardsPerRunner = state.averageShardsPerRunner(group)
     MutableHashMap.forEach(shardsPerRunner, (shards) => {
-      // Count how many extra shards there are compared to the average
       const extraShards = Math.max(0, shards.size - averageShardsPerRunner)
-      for (const shard of takeRandom(shards, extraShards)) {
-        const maybeAddress = shardsGroup.get(shard) ?? Option.none()
-        if (Option.isNone(maybeAddress)) {
-          extraShardsToAllocate.push([shard, Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER])
-          continue
-        }
-        const address = maybeAddress.value
-        extraShardsToAllocate.push([
-          shard,
-          Option.match(MutableHashMap.get(shardsPerRunner, address), {
-            onNone: () => Number.MIN_SAFE_INTEGER,
-            onSome: (shards) => -shards.size
-          }),
-          Option.match(MutableHashMap.get(runnerGroup, address), {
-            onNone: () => Number.MIN_SAFE_INTEGER,
-            onSome: (meta) => meta.registeredAt
-          })
-        ])
+      const iter = shards.values()
+      for (let i = 0; i < extraShards; i++) {
+        const shard = iter.next()
+        if (shard.done) break
+        shardsToRebalance.push(shard.value)
       }
     })
-    extraShardsToAllocate.sort(allocationOrder)
-    for (let i = 0; i < extraShardsToAllocate.length; i++) {
-      shardsToRebalance.push(extraShardsToAllocate[i][0])
-    }
   }
 
   return pickNewRunners(shardsToRebalance, state, group, shardsPerRunner, maxVersion)
@@ -301,7 +303,7 @@ function pickNewRunners(
   shardsToRebalance: ReadonlyArray<number>,
   state: State,
   group: string,
-  shardsPerRunner = state.shardsPerRunner(group),
+  shardsPerRunner: MutableHashMap.MutableHashMap<RunnerAddress, Set<number>>,
   maybeMaxVersion = state.maxVersion
 ): readonly [
   assignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<number>>,
@@ -391,24 +393,6 @@ function pickNewRunners(
   }
 
   return [addressAssignments, unassignments, changes]
-}
-
-function takeRandom<A>(self: Iterable<A>, n: number): ReadonlyArray<A> {
-  const array = Array.from(self)
-  let currentIndex = array.length
-  while (currentIndex != 0) {
-    const randomIndex = Math.floor(Math.random() * currentIndex)
-    currentIndex = currentIndex - 1
-    swap(array, currentIndex, randomIndex)
-  }
-  return n < array.length ? array.slice(0, n) : array
-}
-
-function swap<A>(array: Array<A>, i: number, j: number): ReadonlyArray<A> {
-  const tmp = array[i]
-  array[i] = array[j]
-  array[j] = tmp
-  return array
 }
 
 /** @internal */
