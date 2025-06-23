@@ -250,6 +250,7 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
 export const make = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiError, ApiR>(
   api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
   options?: {
+    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
@@ -263,7 +264,7 @@ export const make = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiE
   Effect.flatMap(HttpClient.HttpClient, (httpClient) =>
     makeWith(api, {
       ...options,
-      httpClient
+      httpClient: options?.transformClient ? options.transformClient(httpClient) : httpClient
     }))
 
 /**

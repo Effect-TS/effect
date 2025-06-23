@@ -39,9 +39,11 @@ export class Authentication extends HttpApiMiddleware.Tag<Authentication>()("Aut
   }
 }) {}
 
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+
 class UsersApi extends HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get("findById")`/${HttpApiSchema.param("id", Schema.NumberFromString)}`
+    HttpApiEndpoint.get("findById")`/${idParam}`
       .addSuccess(User)
       .setHeaders(Schema.Struct({
         page: Schema.NumberFromString.pipe(
