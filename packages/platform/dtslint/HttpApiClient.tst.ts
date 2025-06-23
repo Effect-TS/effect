@@ -1,5 +1,5 @@
-import type { HttpApiError, HttpClient, HttpClientError } from "@effect/platform"
-import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware } from "@effect/platform"
+import type { HttpApiError, HttpClientError } from "@effect/platform"
+import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpClient } from "@effect/platform"
 import type { Schema } from "effect"
 import { Effect } from "effect"
 import type { ParseError } from "effect/ParseResult"
@@ -81,7 +81,11 @@ const TestApi = HttpApi.make("test")
 describe("HttpApiClient", () => {
   it("endpoint", () => {
     Effect.gen(function*() {
-      const clientEndpointEffect = HttpApiClient.endpoint(TestApi, "Group1", "EndpointA")
+      const clientEndpointEffect = HttpApiClient.endpoint(TestApi, {
+        httpClient: yield* HttpClient.HttpClient,
+        group: "Group1",
+        endpoint: "EndpointA"
+      })
       expect<Effect.Effect.Error<typeof clientEndpointEffect>>().type.toBe<never>()
       expect<Effect.Effect.Context<typeof clientEndpointEffect>>().type.toBe<
         | "ApiErrorR"
@@ -91,7 +95,6 @@ describe("HttpApiClient", () => {
         | "EndpointASecurityErrorR"
         | "Group1SecurityErrorR"
         | "ApiSecurityErrorR"
-        | HttpClient.HttpClient
       >()
 
       const clientEndpoint = yield* clientEndpointEffect
@@ -115,7 +118,10 @@ describe("HttpApiClient", () => {
 
   it("group", () => {
     Effect.gen(function*() {
-      const clientGroupEffect = HttpApiClient.group(TestApi, "Group1")
+      const clientGroupEffect = HttpApiClient.group(TestApi, {
+        httpClient: yield* HttpClient.HttpClient,
+        group: "Group1"
+      })
 
       expect<Effect.Effect.Error<typeof clientGroupEffect>>().type.toBe<never>()
 
@@ -130,7 +136,6 @@ describe("HttpApiClient", () => {
         | "EndpointBSecurityErrorR"
         | "Group1SecurityErrorR"
         | "ApiSecurityErrorR"
-        | HttpClient.HttpClient
       >()
 
       const clientGroup = yield* clientGroupEffect
