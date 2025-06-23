@@ -543,9 +543,12 @@ const watchNode = (path: string) =>
           if (!path) return
           switch (event) {
             case "rename": {
-              emit.fromEffect(Effect.match(stat(path), {
-                onSuccess: (_) => FileSystem.WatchEventCreate({ path }),
-                onFailure: (_) => FileSystem.WatchEventRemove({ path })
+              emit.fromEffect(Effect.matchEffect(stat(path), {
+                onSuccess: (_) => Effect.succeed(FileSystem.WatchEventCreate({ path })),
+                onFailure: (err) =>
+                  err._tag === "SystemError" && err.reason === "NotFound"
+                    ? Effect.succeed(FileSystem.WatchEventRemove({ path }))
+                    : Effect.fail(err)
               }))
               return
             }
