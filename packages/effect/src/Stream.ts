@@ -3630,6 +3630,18 @@ export const provideContext: {
 } = internal.provideContext
 
 /**
+ * Provides the stream with some of its required context, which eliminates its
+ * dependency on `R`.
+ *
+ * @since 3.16.9
+ * @category context
+ */
+export const provideSomeContext: {
+  <R2>(context: Context.Context<R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, Exclude<R, R2>>
+  <A, E, R, R2>(self: Stream<A, E, R>, context: Context.Context<R2>): Stream<A, E, Exclude<R, R2>>
+} = internal.provideSomeContext
+
+/**
  * Provides a `Layer` to the stream, which translates it to another level.
  *
  * @since 2.0.0

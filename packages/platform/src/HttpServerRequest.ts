@@ -27,7 +27,12 @@ export {
    * @since 1.0.0
    * @category fiber refs
    */
-  maxBodySize
+  MaxBodySize,
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
+  withMaxBodySize
 } from "./HttpIncomingMessage.js"
 
 /**

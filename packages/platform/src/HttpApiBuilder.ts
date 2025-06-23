@@ -37,6 +37,7 @@ import * as HttpRouter from "./HttpRouter.js"
 import * as HttpServer from "./HttpServer.js"
 import * as HttpServerRequest from "./HttpServerRequest.js"
 import * as HttpServerResponse from "./HttpServerResponse.js"
+import * as Multipart from "./Multipart.js"
 import * as OpenApi from "./OpenApi.js"
 import type { Path } from "./Path.js"
 import * as UrlParams from "./UrlParams.js"
@@ -525,7 +526,8 @@ export const handler = <
 
 const requestPayload = (
   request: HttpServerRequest.HttpServerRequest,
-  urlParams: ReadonlyRecord<string, string | Array<string>>
+  urlParams: ReadonlyRecord<string, string | Array<string>>,
+  multipartLimits: Option.Option<Multipart.withLimits.Options>
 ): Effect.Effect<
   unknown,
   never,
@@ -542,7 +544,10 @@ const requestPayload = (
   if (contentType.includes("application/json")) {
     return Effect.orDie(request.json)
   } else if (contentType.includes("multipart/form-data")) {
-    return Effect.orDie(request.multipart)
+    return Effect.orDie(Option.match(multipartLimits, {
+      onNone: () => request.multipart,
+      onSome: (limits) => Multipart.withLimits(request.multipart, limits)
+    }))
   } else if (contentType.includes("x-www-form-urlencoded")) {
     return Effect.map(Effect.orDie(request.urlParamsBody), UrlParams.toRecord)
   } else if (contentType.startsWith("text/")) {
@@ -628,8 +633,11 @@ const handlerToRoute = (
 ): HttpRouter.Route<any, any> => {
   const endpoint = endpoint_ as HttpApiEndpoint.HttpApiEndpoint.AnyWithProps
   const isMultipartStream = endpoint.payloadSchema.pipe(
-    Option.map(({ ast }) => HttpApiSchema.getMultipartStream(ast)),
+    Option.map(({ ast }) => HttpApiSchema.getMultipartStream(ast) !== undefined),
     Option.getOrElse(constFalse)
+  )
+  const multipartLimits = endpoint.payloadSchema.pipe(
+    Option.flatMapNullable(({ ast }) => HttpApiSchema.getMultipart(ast) || HttpApiSchema.getMultipartStream(ast))
   )
   const decodePath = Option.map(endpoint.pathSchema, Schema.decodeUnknown)
   const decodePayload = isFullRequest || isMultipartStream
@@ -654,11 +662,14 @@ const handlerToRoute = (
         }
         if (decodePayload._tag === "Some") {
           request.payload = yield* Effect.flatMap(
-            requestPayload(httpRequest, urlParams),
+            requestPayload(httpRequest, urlParams, multipartLimits),
             decodePayload.value
           )
         } else if (isMultipartStream) {
-          request.payload = httpRequest.multipartStream
+          request.payload = Option.match(multipartLimits, {
+            onNone: () => httpRequest.multipartStream,
+            onSome: (limits) => Multipart.withLimitsStream(httpRequest.multipartStream, limits)
+          })
         }
         if (decodeHeaders._tag === "Some") {
           request.headers = yield* decodeHeaders.value(httpRequest.headers)
