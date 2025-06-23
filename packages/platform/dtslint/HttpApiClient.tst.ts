@@ -83,8 +83,8 @@ describe("HttpApiClient", () => {
     Effect.gen(function*() {
       const clientEndpointEffect = HttpApiClient.endpoint(TestApi, {
         httpClient: yield* HttpClient.HttpClient,
-        group: "Group2",
-        endpoint: "EndpointC"
+        group: "Group1",
+        endpoint: "EndpointA"
       })
       expect<Effect.Effect.Error<typeof clientEndpointEffect>>().type.toBe<never>()
       expect<Effect.Effect.Context<typeof clientEndpointEffect>>().type.toBe<
@@ -177,6 +177,7 @@ describe("HttpApiClient", () => {
         | "Group2ErrorR"
         | "EndpointCErrorR"
         | "EndpointCSuccessR"
+        | HttpClient.HttpClient
       >()
 
       const clientApi = yield* clientApiEffect
