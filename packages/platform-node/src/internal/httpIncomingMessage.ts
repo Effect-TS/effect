@@ -2,7 +2,6 @@ import * as Headers from "@effect/platform/Headers"
 import * as IncomingMessage from "@effect/platform/HttpIncomingMessage"
 import * as UrlParams from "@effect/platform/UrlParams"
 import * as Effect from "effect/Effect"
-import * as FiberRef from "effect/FiberRef"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
@@ -39,7 +38,7 @@ export abstract class HttpIncomingMessageImpl<E> extends Inspectable.Class
     }
     this.textEffect = Effect.runSync(Effect.cached(
       Effect.flatMap(
-        FiberRef.get(IncomingMessage.maxBodySize),
+        IncomingMessage.MaxBodySize,
         (maxBodySize) =>
           NodeStream.toString(() => this.source, {
             onFailure: this.onError,
@@ -82,7 +81,7 @@ export abstract class HttpIncomingMessageImpl<E> extends Inspectable.Class
 
   get arrayBuffer(): Effect.Effect<ArrayBuffer, E> {
     return Effect.flatMap(
-      FiberRef.get(IncomingMessage.maxBodySize),
+      IncomingMessage.MaxBodySize,
       (maxBodySize) =>
         NodeStream.toUint8Array(() => this.source, {
           onFailure: this.onError,

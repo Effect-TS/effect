@@ -1,10 +1,9 @@
 /**
  * @since 1.0.0
  */
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as FiberRef from "effect/FiberRef"
 import { dual } from "effect/Function"
-import * as Global from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
@@ -85,10 +84,9 @@ export const schemaHeaders = <A, I extends Readonly<Record<string, string | unde
  * @since 1.0.0
  * @category fiber refs
  */
-export const maxBodySize: FiberRef.FiberRef<Option.Option<FileSystem.Size>> = Global.globalValue(
-  "@effect/platform/HttpIncomingMessage/maxBodySize",
-  () => FiberRef.unsafeMake(Option.none<FileSystem.Size>())
-)
+export class MaxBodySize extends Context.Reference<MaxBodySize>()("@effect/platform/HttpIncomingMessage/MaxBodySize", {
+  defaultValue: Option.none<FileSystem.Size>
+}) {}
 
 /**
  * @since 1.0.0
@@ -97,7 +95,7 @@ export const maxBodySize: FiberRef.FiberRef<Option.Option<FileSystem.Size>> = Gl
 export const withMaxBodySize = dual<
   (size: Option.Option<FileSystem.SizeInput>) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <A, E, R>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>) => Effect.Effect<A, E, R>
->(2, (effect, size) => Effect.locally(effect, maxBodySize, Option.map(size, FileSystem.Size)))
+>(2, (effect, size) => Effect.provideService(effect, MaxBodySize, Option.map(size, FileSystem.Size)))
 
 /**
  * @since 1.0.0

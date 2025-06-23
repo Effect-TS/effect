@@ -112,8 +112,8 @@ export const make = (
         })
     })
   }).pipe(
-    Effect.locally(
-      IncomingMessage.maxBodySize,
+    Effect.provideService(
+      IncomingMessage.MaxBodySize,
       Option.some(FileSystem.Size(1024 * 1024 * 10))
     )
   )

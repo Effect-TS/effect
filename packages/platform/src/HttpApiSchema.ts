@@ -7,10 +7,13 @@ import * as Effectable from "effect/Effectable"
 import type { LazyArg } from "effect/Function"
 import { constant, constVoid, dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
+import type * as Option from "effect/Option"
 import { hasProperty } from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Struct from "effect/Struct"
+import type * as FileSystem from "./FileSystem.js"
+import type * as Multipart_ from "./Multipart.js"
 
 /**
  * @since 1.0.0
@@ -111,14 +114,15 @@ export const getEmptyDecodeable = (ast: AST.AST): boolean =>
  * @since 1.0.0
  * @category annotations
  */
-export const getMultipart = (ast: AST.AST): boolean => getAnnotation<boolean>(ast, AnnotationMultipart) ?? false
+export const getMultipart = (ast: AST.AST): Multipart_.withLimits.Options | undefined =>
+  getAnnotation<Multipart_.withLimits.Options>(ast, AnnotationMultipart)
 
 /**
  * @since 1.0.0
  * @category annotations
  */
-export const getMultipartStream = (ast: AST.AST): boolean =>
-  getAnnotation<boolean>(ast, AnnotationMultipartStream) ?? false
+export const getMultipartStream = (ast: AST.AST): Multipart_.withLimits.Options | undefined =>
+  getAnnotation<Multipart_.withLimits.Options>(ast, AnnotationMultipartStream)
 
 const encodingJson: Encoding = {
   kind: "Json",
@@ -406,9 +410,15 @@ export interface Multipart<S extends Schema.Schema.Any>
  * @since 1.0.0
  * @category multipart
  */
-export const Multipart = <S extends Schema.Schema.Any>(self: S): Multipart<S> =>
+export const Multipart = <S extends Schema.Schema.Any>(self: S, options?: {
+  readonly maxParts?: Option.Option<number> | undefined
+  readonly maxFieldSize?: FileSystem.SizeInput | undefined
+  readonly maxFileSize?: Option.Option<FileSystem.SizeInput> | undefined
+  readonly maxTotalSize?: Option.Option<FileSystem.SizeInput> | undefined
+  readonly fieldMimeTypes?: ReadonlyArray<string> | undefined
+}): Multipart<S> =>
   self.annotations({
-    [AnnotationMultipart]: true
+    [AnnotationMultipart]: options ?? {}
   }) as any
 
 /**
@@ -439,9 +449,15 @@ export interface MultipartStream<S extends Schema.Schema.Any> extends
  * @since 1.0.0
  * @category multipart
  */
-export const MultipartStream = <S extends Schema.Schema.Any>(self: S): MultipartStream<S> =>
+export const MultipartStream = <S extends Schema.Schema.Any>(self: S, options?: {
+  readonly maxParts?: Option.Option<number> | undefined
+  readonly maxFieldSize?: FileSystem.SizeInput | undefined
+  readonly maxFileSize?: Option.Option<FileSystem.SizeInput> | undefined
+  readonly maxTotalSize?: Option.Option<FileSystem.SizeInput> | undefined
+  readonly fieldMimeTypes?: ReadonlyArray<string> | undefined
+}): MultipartStream<S> =>
   self.annotations({
-    [AnnotationMultipartStream]: true
+    [AnnotationMultipartStream]: options ?? {}
   }) as any
 
 const defaultContentType = (encoding: Encoding["kind"]) => {
