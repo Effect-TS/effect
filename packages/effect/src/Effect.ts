@@ -8476,7 +8476,7 @@ export const filterOrFail: {
   <A, E2, B extends A>(
     refinement: Refinement<NoInfer<A>, B>,
     orFailWith: (a: EqualsWith<A, B, NoInfer<A>, Exclude<NoInfer<A>, B>>) => E2
-  ): <E, R>(self: Effect<A, E, R>) => Effect<B, E2 | E, R>
+  ): <E, R>(self: Effect<A, E, R>) => Effect<NoInfer<B>, E2 | E, R>
   <A, E2>(
     predicate: Predicate<NoInfer<A>>,
     orFailWith: (a: NoInfer<A>) => E2
@@ -8485,20 +8485,16 @@ export const filterOrFail: {
     self: Effect<A, E, R>,
     refinement: Refinement<A, B>,
     orFailWith: (a: EqualsWith<A, B, A, Exclude<A, B>>) => E2
-  ): Effect<B, E2 | E, R>
+  ): Effect<NoInfer<B>, E2 | E, R>
   <A, E, R, E2>(self: Effect<A, E, R>, predicate: Predicate<A>, orFailWith: (a: A) => E2): Effect<A, E2 | E, R>
   <A, B extends A>(
     refinement: Refinement<NoInfer<A>, B>
-  ): <E, R>(self: Effect<A, E, R>) => Effect<B, Cause.NoSuchElementException | E, R>
-  <A>(predicate: Predicate<NoInfer<A>>): <E, R>(self: Effect<A, E, R>) => Effect<
-    A,
-    Cause.NoSuchElementException | E,
-    R
-  >
+  ): <E, R>(self: Effect<A, E, R>) => Effect<NoInfer<B>, Cause.NoSuchElementException | E, R>
+  <A>(predicate: Predicate<NoInfer<A>>): <E, R>(self: Effect<A, E, R>) => Effect<A, Cause.NoSuchElementException | E, R>
   <A, E, R, B extends A>(
     self: Effect<A, E, R>,
     refinement: Refinement<A, B>
-  ): Effect<B, E | Cause.NoSuchElementException, R>
+  ): Effect<NoInfer<B>, E | Cause.NoSuchElementException, R>
   <A, E, R>(self: Effect<A, E, R>, predicate: Predicate<A>): Effect<A, E | Cause.NoSuchElementException, R>
 } = effect.filterOrFail
 
