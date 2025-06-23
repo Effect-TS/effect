@@ -28,16 +28,17 @@ import * as UrlParams from "./UrlParams.js"
  * @since 1.0.0
  * @category models
  */
-export type Client<Groups extends HttpApiGroup.Any, ApiError> = Simplify<
+export type Client<Groups extends HttpApiGroup.Any, E, R> = Simplify<
   & {
     readonly [Group in Extract<Groups, { readonly topLevel: false }> as HttpApiGroup.Name<Group>]: Client.Group<
       Group,
       Group["identifier"],
-      ApiError
+      E,
+      R
     >
   }
   & {
-    readonly [Method in Client.TopLevelMethods<Groups, ApiError> as Method[0]]: Method[1]
+    readonly [Method in Client.TopLevelMethods<Groups, E, R> as Method[0]]: Method[1]
   }
 >
 
@@ -50,13 +51,14 @@ export declare namespace Client {
    * @since 1.0.0
    * @category models
    */
-  export type Group<Groups extends HttpApiGroup.Any, GroupName extends Groups["identifier"], ApiError> =
+  export type Group<Groups extends HttpApiGroup.Any, GroupName extends Groups["identifier"], E, R> =
     [HttpApiGroup.WithName<Groups, GroupName>] extends
       [HttpApiGroup<infer _GroupName, infer _Endpoints, infer _GroupError, infer _GroupErrorR>] ? {
         readonly [Endpoint in _Endpoints as HttpApiEndpoint.Name<Endpoint>]: Method<
           Endpoint,
-          ApiError,
-          _GroupError
+          E,
+          _GroupError,
+          R
         >
       } :
       never
@@ -65,7 +67,7 @@ export declare namespace Client {
    * @since 1.0.0
    * @category models
    */
-  export type Method<Endpoint, ApiError, GroupError> = [Endpoint] extends [
+  export type Method<Endpoint, E, GroupError, R> = [Endpoint] extends [
     HttpApiEndpoint<
       infer _Name,
       infer _Method,
@@ -82,7 +84,8 @@ export declare namespace Client {
       request: Simplify<HttpApiEndpoint.ClientRequest<_Path, _UrlParams, _Payload, _Headers, WithResponse>>
     ) => Effect.Effect<
       WithResponse extends true ? [_Success, HttpClientResponse.HttpClientResponse] : _Success,
-      _Error | GroupError | ApiError | HttpClientError.HttpClientError | ParseResult.ParseError
+      _Error | GroupError | E | HttpClientError.HttpClientError | ParseResult.ParseError,
+      R
     > :
     never
 
@@ -90,10 +93,10 @@ export declare namespace Client {
    * @since 1.0.0
    * @category models
    */
-  export type TopLevelMethods<Groups extends HttpApiGroup.Any, ApiError> =
+  export type TopLevelMethods<Groups extends HttpApiGroup.Any, E, R> =
     Extract<Groups, { readonly topLevel: true }> extends
       HttpApiGroup<infer _Id, infer _Endpoints, infer _Error, infer _ErrorR, infer _TopLevel> ?
-      _Endpoints extends infer Endpoint ? [HttpApiEndpoint.Name<Endpoint>, Method<Endpoint, ApiError, _Error>]
+      _Endpoints extends infer Endpoint ? [HttpApiEndpoint.Name<Endpoint>, Method<Endpoint, E, _Error, R>]
       : never :
       never
 }
@@ -101,9 +104,10 @@ export declare namespace Client {
 /**
  * @internal
  */
-const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiError, ApiR>(
+const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiError, ApiR, E, R>(
   api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
   options: {
+    readonly httpClient: HttpClient.HttpClient.With<E, R>
     readonly predicate?: Predicate.Predicate<{
       readonly endpoint: HttpApiEndpoint.AnyWithProps
       readonly group: HttpApiGroup.AnyWithProps
@@ -127,7 +131,6 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
       }>
       readonly endpointFn: Function
     }) => void
-    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
@@ -136,17 +139,16 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
 ): Effect.Effect<
   void,
   never,
-  HttpApiMiddleware.HttpApiMiddleware.Without<ApiR | HttpApiGroup.ClientContext<Groups>> | HttpClient.HttpClient
+  HttpApiMiddleware.HttpApiMiddleware.Without<ApiR | HttpApiGroup.ClientContext<Groups>>
 > =>
   Effect.gen(function*() {
     const context = yield* Effect.context<any>()
-    const httpClient = (yield* HttpClient.HttpClient).pipe(
+    const httpClient = options.httpClient.pipe(
       options?.baseUrl === undefined
         ? identity
         : HttpClient.mapRequest(
           HttpClientRequest.prependUrl(options.baseUrl.toString())
-        ),
-      options?.transformClient === undefined ? identity : options.transformClient
+        )
     )
     HttpApi.reflect(api as any, {
       predicate: options?.predicate,
@@ -248,16 +250,39 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
 export const make = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiError, ApiR>(
   api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
   options?: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
     readonly baseUrl?: URL | string | undefined
   }
 ): Effect.Effect<
-  Simplify<Client<Groups, ApiError>>,
+  Simplify<Client<Groups, ApiError, never>>,
   never,
   HttpApiMiddleware.HttpApiMiddleware.Without<ApiR | HttpApiGroup.ClientContext<Groups>> | HttpClient.HttpClient
+> =>
+  Effect.flatMap(HttpClient.HttpClient, (httpClient) =>
+    makeWith(api, {
+      ...options,
+      httpClient
+    }))
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeWith = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiError, ApiR, E, R>(
+  api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
+  options: {
+    readonly httpClient: HttpClient.HttpClient.With<E, R>
+    readonly transformResponse?:
+      | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
+      | undefined
+    readonly baseUrl?: URL | string | undefined
+  }
+): Effect.Effect<
+  Simplify<Client<Groups, ApiError | E, R>>,
+  never,
+  HttpApiMiddleware.HttpApiMiddleware.Without<ApiR | HttpApiGroup.ClientContext<Groups>>
 > => {
   const client: Record<string, Record<string, any>> = {}
   return makeClient(api, {
@@ -281,31 +306,33 @@ export const group = <
   Groups extends HttpApiGroup.Any,
   ApiError,
   ApiR,
-  const GroupName extends Groups["identifier"]
+  const GroupName extends HttpApiGroup.Name<Groups>,
+  E,
+  R
 >(
   api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
-  groupId: GroupName,
-  options?: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  options: {
+    readonly group: GroupName
+    readonly httpClient: HttpClient.HttpClient.With<E, R>
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
       | undefined
     readonly baseUrl?: URL | string | undefined
   }
 ): Effect.Effect<
-  Client.Group<Groups, GroupName, ApiError>,
+  Client.Group<Groups, GroupName, ApiError | E, R>,
   never,
   HttpApiMiddleware.HttpApiMiddleware.Without<
     | ApiR
     | HttpApiGroup.ClientContext<
       HttpApiGroup.WithName<Groups, GroupName>
     >
-  > | HttpClient.HttpClient
+  >
 > => {
   const client: Record<string, any> = {}
   return makeClient(api, {
     ...options,
-    predicate: ({ group }) => group.identifier === groupId,
+    predicate: ({ group }) => group.identifier === options.group,
     onEndpoint({ endpoint, endpointFn }) {
       client[endpoint.name] = endpointFn
     }
@@ -322,12 +349,15 @@ export const endpoint = <
   ApiError,
   ApiR,
   const GroupName extends HttpApiGroup.Name<Groups>,
-  const EndpointName extends HttpApiEndpoint.Name<HttpApiGroup.EndpointsWithName<Groups, GroupName>>
+  const EndpointName extends HttpApiEndpoint.Name<HttpApiGroup.EndpointsWithName<Groups, GroupName>>,
+  E,
+  R
 >(
   api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
-  groupName: GroupName,
-  endpointName: EndpointName,
-  options?: {
+  options: {
+    readonly group: GroupName
+    readonly endpoint: EndpointName
+    readonly httpClient: HttpClient.HttpClient.With<E, R>
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
     readonly transformResponse?:
       | ((effect: Effect.Effect<unknown, unknown>) => Effect.Effect<unknown, unknown>)
@@ -338,21 +368,21 @@ export const endpoint = <
   Client.Method<
     HttpApiEndpoint.WithName<HttpApiGroup.Endpoints<HttpApiGroup.WithName<Groups, GroupName>>, EndpointName>,
     HttpApiGroup.Error<HttpApiGroup.WithName<Groups, GroupName>>,
-    ApiError
+    ApiError | E,
+    R
   >,
   never,
-  | HttpApiMiddleware.HttpApiMiddleware.Without<
+  HttpApiMiddleware.HttpApiMiddleware.Without<
     | ApiR
     | HttpApiGroup.Context<HttpApiGroup.WithName<Groups, GroupName>>
     | HttpApiEndpoint.ContextWithName<HttpApiGroup.EndpointsWithName<Groups, GroupName>, EndpointName>
     | HttpApiEndpoint.ErrorContextWithName<HttpApiGroup.EndpointsWithName<Groups, GroupName>, EndpointName>
   >
-  | HttpClient.HttpClient
 > => {
   let client: any = undefined
   return makeClient(api, {
     ...options,
-    predicate: ({ endpoint, group }) => group.identifier === groupName && endpoint.name === endpointName,
+    predicate: ({ endpoint, group }) => group.identifier === options.group && endpoint.name === options.endpoint,
     onEndpoint({ endpointFn }) {
       client = endpointFn
     }
