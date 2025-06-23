@@ -95,7 +95,6 @@ describe("HttpApiClient", () => {
         | "EndpointASecurityErrorR"
         | "Group1SecurityErrorR"
         | "ApiSecurityErrorR"
-        | HttpClient.HttpClient
       >()
 
       const clientEndpoint = yield* clientEndpointEffect
@@ -137,7 +136,6 @@ describe("HttpApiClient", () => {
         | "EndpointBSecurityErrorR"
         | "Group1SecurityErrorR"
         | "ApiSecurityErrorR"
-        | HttpClient.HttpClient
       >()
 
       const clientGroup = yield* clientGroupEffect
@@ -179,7 +177,6 @@ describe("HttpApiClient", () => {
         | "Group2ErrorR"
         | "EndpointCErrorR"
         | "EndpointCSuccessR"
-        | HttpClient.HttpClient
       >()
 
       const clientApi = yield* clientApiEffect
