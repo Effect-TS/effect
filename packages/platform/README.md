@@ -1135,8 +1135,9 @@ const api = HttpApi.make("myApi").add(
 )
 
 const groupLive = HttpApiBuilder.group(api, "group", (handlers) =>
-  handlers.handle("get", ({ request }) =>
+  handlers.handle("get", () =>
     Effect.gen(function* () {
+      const request = yield* HttpServerRequest.HttpServerRequest
       // Log the HTTP method for demonstration purposes
       console.log(request.method)
 
