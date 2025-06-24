@@ -54,7 +54,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       )
       yield* DurableDeferred.done(EmailTrigger, {
         token,
-        exit: Exit.void
+        exit: Exit.succeed("done")
       })
       yield* sharding.pollStorage
 
@@ -283,7 +283,9 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
   Layer.provideMerge(Flags.Default)
 )
 
-const EmailTrigger = DurableDeferred.make("EmailTrigger")
+const EmailTrigger = DurableDeferred.make("EmailTrigger", {
+  success: Schema.String
+})
 
 const RaceWorkflow = Workflow.make({
   name: "RaceWorkflow",
