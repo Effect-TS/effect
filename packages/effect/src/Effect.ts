@@ -14234,7 +14234,7 @@ export namespace fn {
    */
   export type Untraced = {
     <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
-      body: (...args: NoInfer<Args>) => Generator<Eff, AEff, never>
+      body: (...args: Args) => Generator<Eff, AEff, never>
     ): (...args: Args) => Effect<
       AEff,
       [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
