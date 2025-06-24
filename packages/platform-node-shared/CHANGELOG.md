@@ -1,5 +1,17 @@
 # @effect/platform-node-shared
 
+## 0.42.0
+
+### Patch Changes
+
+- [#5084](https://github.com/Effect-TS/effect/pull/5084) [`f90813f`](https://github.com/Effect-TS/effect/commit/f90813f7573329fbb8af11fc460d811d8788955a) Thanks @tim-smart! - correctly propagate fs.watch errors when the stat fails
+
+- Updated dependencies [[`b5bac9a`](https://github.com/Effect-TS/effect/commit/b5bac9ac2913fcd11b02322624f03b544eef53ba), [`867919c`](https://github.com/Effect-TS/effect/commit/867919c8be9a2f770699c0db852a3f566017ffd6)]:
+  - @effect/rpc@0.64.0
+  - @effect/platform@0.87.0
+  - @effect/cluster@0.41.0
+  - @effect/sql@0.40.0
+
 ## 0.41.0
 
 ### Patch Changes
