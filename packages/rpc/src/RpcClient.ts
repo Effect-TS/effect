@@ -86,6 +86,10 @@ export declare namespace RpcClient {
     { readonly _tag: `${Prefix}.${string}` }
   >
 
+  /**
+   * @since 1.0.0
+   * @category client
+   */
   export type From<Rpcs extends Rpc.Any, E, Prefix extends string = ""> = {
     readonly [
       Current in Rpcs as Current["_tag"] extends `${Prefix}.${infer Method}` ? Method
