@@ -1121,8 +1121,7 @@ import {
   HttpApiEndpoint,
   HttpApiGroup,
   HttpMiddleware,
-  HttpServer,
-  HttpServerRequest
+  HttpServer
 } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Effect, Layer, Schema } from "effect"
