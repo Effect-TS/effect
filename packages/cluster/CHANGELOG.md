@@ -1,5 +1,13 @@
 # @effect/cluster
 
+## 0.41.1
+
+### Patch Changes
+
+- [#5091](https://github.com/Effect-TS/effect/pull/5091) [`d5fd2c1`](https://github.com/Effect-TS/effect/commit/d5fd2c1526f06228853ed8317d9688c4af5f285a) Thanks @tim-smart! - fix unwrapping of DurableDeferred results
+
+- [#5089](https://github.com/Effect-TS/effect/pull/5089) [`9d189d7`](https://github.com/Effect-TS/effect/commit/9d189d744aa3307e055094c66f580453d95ff99d) Thanks @tim-smart! - propagate fiber refs to workflow activities
+
 ## 0.41.0
 
 ### Minor Changes

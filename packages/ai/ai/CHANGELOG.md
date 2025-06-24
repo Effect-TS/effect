@@ -1,5 +1,14 @@
 # @effect/ai
 
+## 0.21.1
+
+### Patch Changes
+
+- [#5088](https://github.com/Effect-TS/effect/pull/5088) [`f667373`](https://github.com/Effect-TS/effect/commit/f667373da3471f1e907366780f8c3ea7f52cc5c8) Thanks @tim-smart! - expose system option in AiChat constructors
+
+- Updated dependencies []:
+  - @effect/experimental@0.51.0
+
 ## 0.21.0
 
 ### Patch Changes
