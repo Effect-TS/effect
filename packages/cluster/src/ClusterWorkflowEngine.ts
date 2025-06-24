@@ -360,7 +360,11 @@ export const make = Effect.gen(function*() {
             id: deferred.name
           })
         ),
-        Effect.map(Option.map((reply) => reply.exit)),
+        Effect.map(Option.map((reply) =>
+          reply.exit._tag === "Success"
+            ? reply.exit.value as any as Schema.ExitEncoded<unknown, unknown, unknown>
+            : reply.exit
+        )),
         Effect.retry({
           while: (e) => e._tag === "PersistenceError",
           times: 3,
