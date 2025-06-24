@@ -1097,6 +1097,39 @@ describe.concurrent("Micro", () => {
       }))
   })
 
+  describe("error handling 2", () => {
+    class ErrorA extends Micro.TaggedError("A") {}
+    class ErrorB extends Micro.TaggedError("B") {}
+
+    it.effect("catchTag", () =>
+      Micro.gen(function*() {
+        const error: ErrorA | ErrorB = new ErrorA()
+        const effect = Micro.failSync(() => error)
+
+        yield* pipe(
+          effect,
+          Effect.catchTag(
+            ["A"],
+            Effect.fnUntraced(function*(err) {
+              //                        ^?
+              return yield* Micro.succeed(err)
+            })
+          )
+        )
+
+        // const effect = Micro.failSync(() => error).pipe(
+        //   Micro.catchTag("A", (_) => Micro.succeed(1)),
+        //   Micro.catchTag("B", (_) => Micro.succeed(2)),
+        //   Micro.orElseSucceed(() => 3)
+        // )
+        // strictEqual(yield* effect, 1)
+        // error = new ErrorB()
+        // strictEqual(yield* effect, 2)
+        // error = new ErrorC()
+        // strictEqual(yield* effect, 3)
+      }))
+  })
+
   describe("zip", () => {
     it.effect("concurrent: false", () => {
       const executionOrder: Array<string> = []

@@ -3884,7 +3884,8 @@ export const catchTag: {
     ...tags: K
   ): <A, R>(self: Effect<A, E, R> & "missing error handler") => never
   <E, const K extends RA.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>, A1, E1, R1>(
-    ...args: [...tags: K, f: (e: Extract<NoInfer<E>, { _tag: K[number] }>) => Effect<A1, E1, R1>]
+    tags: K,
+    f: (e: Extract<NoInfer<E>, { _tag: K[number] }>) => Effect<A1, E1, R1>
   ): <A, R>(self: Effect<A, E, R>) => Effect<A | A1, Exclude<E, { _tag: K[number] }> | E1, R | R1>
   <A, E, R, const K extends RA.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>>(
     self: Effect<A, E, R> & "missing error handler",
@@ -3892,7 +3893,8 @@ export const catchTag: {
   ): never
   <A, E, R, const K extends RA.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>, R1, E1, A1>(
     self: Effect<A, E, R>,
-    ...args: [...tags: K, f: (e: Extract<NoInfer<E>, { _tag: K[number] }>) => Effect<A1, E1, R1>]
+    tags: K,
+    f: (e: Extract<NoInfer<E>, { _tag: K[number] }>) => Effect<A1, E1, R1>
   ): Effect<A | A1, Exclude<E, { _tag: K[number] }> | E1, R | R1>
 } = effect.catchTag
 
@@ -14232,7 +14234,7 @@ export namespace fn {
    */
   export type Untraced = {
     <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
-      body: (...args: Args) => Generator<Eff, AEff, never>
+      body: (...args: NoInfer<Args>) => Generator<Eff, AEff, never>
     ): (...args: Args) => Effect<
       AEff,
       [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
