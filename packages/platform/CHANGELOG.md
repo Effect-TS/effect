@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.87.0
+
+### Minor Changes
+
+- [#5087](https://github.com/Effect-TS/effect/pull/5087) [`b5bac9a`](https://github.com/Effect-TS/effect/commit/b5bac9ac2913fcd11b02322624f03b544eef53ba) Thanks @tim-smart! - add HttpApiClient.makeWith, for supporting passing in HttpClient with errors and requirements
+
 ## 0.86.0
 
 ### Minor Changes
