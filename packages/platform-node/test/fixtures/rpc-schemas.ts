@@ -55,6 +55,7 @@ export const UserRpcs = RpcGroup.make(
   }),
   Rpc.make("ProduceDefect"),
   Rpc.make("Never"),
+  Rpc.make("nested.test"),
   Rpc.make("TimedMethod", {
     payload: {
       shouldFail: Schema.Boolean
@@ -128,6 +129,7 @@ const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
     GetEmits: () => Effect.sync(() => emits),
     ProduceDefect: () => Effect.die("boom"),
     Never: () => Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => interrupts++))),
+    "nested.test": () => Effect.void,
     TimedMethod: (_) => _.shouldFail ? Effect.die("boom") : Effect.succeed(1),
     GetTimingMiddlewareMetrics: () =>
       Effect.all({

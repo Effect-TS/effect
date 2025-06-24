@@ -41,6 +41,7 @@ export const make = Effect.gen(function*() {
   const entities = new Map<
     string,
     Entity.Entity<
+      string,
       | Rpc.Rpc<"run", Schema.Struct<{}>, Schema.Schema<Workflow.Result<any, any>>>
       | Rpc.Rpc<"deferred", Schema.Struct<{ name: typeof Schema.String; exit: typeof ExitUnknown }>, typeof ExitUnknown>
       | Rpc.Rpc<

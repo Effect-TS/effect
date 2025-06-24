@@ -21,11 +21,12 @@ export const layerHttpApi = <
   ApiE,
   ApiR,
   Name extends HttpApiGroup.Name<Groups>,
+  Type extends string,
   Rpcs extends Rpc.Any
 >(
   api: HttpApi.HttpApi<ApiId, Groups, ApiE, ApiR>,
   name: Name,
-  entity: Entity.Entity<Rpcs>
+  entity: Entity.Entity<Type, Rpcs>
 ): Layer.Layer<ApiGroup<ApiId, Name>, never, Sharding | Rpc.Context<Rpcs>> =>
   HttpApiBuilder.group(
     api,
@@ -50,19 +51,16 @@ export const layerHttpApi = <
  * @category Layers
  */
 export const layerRpcHandlers = <
-  Rpcs extends Rpc.Any,
-  const Prefix extends string = ""
->(entity: Entity.Entity<Rpcs>, options?: {
-  readonly prefix?: Prefix
-}): Layer.Layer<RpcHandlers<Rpcs, Prefix>, never, Sharding | Rpc.Context<Rpcs>> =>
+  const Type extends string,
+  Rpcs extends Rpc.Any
+>(entity: Entity.Entity<Type, Rpcs>): Layer.Layer<RpcHandlers<Rpcs, Type>, never, Sharding | Rpc.Context<Rpcs>> =>
   Layer.effectContext(Effect.gen(function*() {
     const context = yield* Effect.context<never>()
-    const prefix = options?.prefix ?? ""
     const client = yield* entity.client
     const handlers = new Map<string, Rpc.Handler<string>>()
     for (const parentRpc_ of entity.protocol.requests.values()) {
       const parentRpc = parentRpc_ as any as Rpc.AnyWithProps
-      const tag = `${prefix}${parentRpc._tag}` as const
+      const tag = `${entity.type}.${parentRpc._tag}` as const
       const key = `@effect/rpc/Rpc/${tag}`
       handlers.set(key, {
         context,
@@ -82,5 +80,5 @@ export type RpcHandlers<Rpcs extends Rpc.Any, Prefix extends string> = Rpcs exte
   infer _Success,
   infer _Error,
   infer _Middleware
-> ? Rpc.Handler<`${Prefix}${_Tag}`>
+> ? Rpc.Handler<`${Prefix}.${_Tag}`>
   : never

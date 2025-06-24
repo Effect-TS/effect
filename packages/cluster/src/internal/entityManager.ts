@@ -75,11 +75,12 @@ export type EntityState = {
 
 /** @internal */
 export const make = Effect.fnUntraced(function*<
+  Type extends string,
   Rpcs extends Rpc.Any,
   Handlers extends HandlersFrom<Rpcs>,
   RX
 >(
-  entity: Entity<Rpcs>,
+  entity: Entity<Type, Rpcs>,
   buildHandlers: Effect.Effect<Handlers, never, RX>,
   options: {
     readonly sharding: Sharding["Type"]
@@ -501,7 +502,7 @@ const defaultRetryPolicy = Schedule.exponential(500, 1.5).pipe(
   Schedule.union(Schedule.spaced("10 seconds"))
 )
 
-const makeMessageSchema = <Rpcs extends Rpc.Any>(entity: Entity<Rpcs>): Schema.Schema<
+const makeMessageSchema = <Type extends string, Rpcs extends Rpc.Any>(entity: Entity<Type, Rpcs>): Schema.Schema<
   {
     readonly _tag: "IncomingRequest"
     readonly envelope: Envelope.Request.Any

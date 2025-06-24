@@ -23,7 +23,7 @@ export type ShardingRegistrationEvent =
  */
 export interface EntityRegistered {
   readonly _tag: "EntityRegistered"
-  readonly entity: Entity<any>
+  readonly entity: Entity<any, any>
 }
 
 /**

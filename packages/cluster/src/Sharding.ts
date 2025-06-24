@@ -40,7 +40,6 @@ import { Persisted, Uninterruptible } from "./ClusterSchema.js"
 import type { CurrentAddress, CurrentRunnerAddress, Entity, HandlersFrom } from "./Entity.js"
 import { EntityAddress } from "./EntityAddress.js"
 import { EntityId } from "./EntityId.js"
-import type { EntityType } from "./EntityType.js"
 import * as Envelope from "./Envelope.js"
 import * as EntityManager from "./internal/entityManager.js"
 import { EntityReaper } from "./internal/entityReaper.js"
@@ -86,8 +85,8 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
    * Constructs a `RpcClient` which can be used to send messages to the
    * specified `Entity`.
    */
-  readonly makeClient: <Rpcs extends Rpc.Any>(
-    entity: Entity<Rpcs>
+  readonly makeClient: <Type extends string, Rpcs extends Rpc.Any>(
+    entity: Entity<Type, Rpcs>
   ) => Effect.Effect<
     (
       entityId: string
@@ -97,8 +96,8 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   /**
    * Registers a new entity with the runner.
    */
-  readonly registerEntity: <Rpcs extends Rpc.Any, Handlers extends HandlersFrom<Rpcs>, RX>(
-    entity: Entity<Rpcs>,
+  readonly registerEntity: <Type extends string, Rpcs extends Rpc.Any, Handlers extends HandlersFrom<Rpcs>, RX>(
+    entity: Entity<Type, Rpcs>,
     handlers: Effect.Effect<Handlers, never, RX>,
     options?: {
       readonly maxIdleTime?: DurationInput | undefined
@@ -173,7 +172,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
 // -----------------------------------------------------------------------------
 
 interface EntityManagerState {
-  readonly entity: Entity<any>
+  readonly entity: Entity<any, any>
   readonly scope: Scope.CloseableScope
   readonly manager: EntityManager.EntityManager
 }
@@ -191,7 +190,7 @@ const make = Effect.gen(function*() {
   const storageEnabled = storage !== MessageStorage.noop
   const shardStorage = yield* ShardStorage
 
-  const entityManagers = new Map<EntityType, EntityManagerState>()
+  const entityManagers = new Map<string, EntityManagerState>()
 
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = MutableHashSet.empty<ShardId>()
@@ -939,13 +938,13 @@ const make = Effect.gen(function*() {
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
   const clients: ResourceMap<
-    Entity<any>,
+    Entity<any, any>,
     (entityId: string) => RpcClient.RpcClient<
       any,
       MailboxFull | AlreadyProcessingMessage | EntityNotManagedByRunner
     >,
     never
-  > = yield* ResourceMap.make(Effect.fnUntraced(function*(entity: Entity<any>) {
+  > = yield* ResourceMap.make(Effect.fnUntraced(function*(entity: Entity<string, any>) {
     const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
       spanPrefix: `${entity.type}.client`,
       supportsAck: true,
@@ -1041,19 +1040,28 @@ const make = Effect.gen(function*() {
       }
     })
 
-    const wrappedClient: any = {}
-    for (const method of Object.keys(client.client)) {
-      wrappedClient[method] = function(this: any, payload: any, options?: {
-        readonly context?: Context.Context<never>
-      }) {
-        return (client as any).client[method](payload, {
-          ...options,
-          context: options?.context
-            ? Context.merge(options.context, this[currentClientAddress])
-            : this[currentClientAddress]
-        })
+    function patchClient(client: any): any {
+      const wrappedClient: any = {}
+      for (const method of Object.keys(client.client)) {
+        if (typeof client.client[method] === "object") {
+          wrappedClient[method] = patchClient(client.client[method])
+          continue
+        }
+        wrappedClient[method] = function(this: any, payload: any, options?: {
+          readonly context?: Context.Context<never>
+        }) {
+          return (client as any).client[method](payload, {
+            ...options,
+            context: options?.context
+              ? Context.merge(options.context, this[currentClientAddress])
+              : this[currentClientAddress]
+          })
+        }
       }
+      return wrappedClient
     }
+
+    const wrappedClient = patchClient(client)
 
     yield* Scope.addFinalizer(
       yield* Effect.scope,
@@ -1076,9 +1084,9 @@ const make = Effect.gen(function*() {
     }
   }))
 
-  const makeClient = <Rpcs extends Rpc.Any>(entity: Entity<Rpcs>): Effect.Effect<
+  const makeClient = <Type extends string, Rpcs extends Rpc.Any>(entity: Entity<Type, Rpcs>): Effect.Effect<
     (entityId: string) => RpcClient.RpcClient<Rpcs, MailboxFull | AlreadyProcessingMessage | EntityNotManagedByRunner>
-  > => clients.get(entity)
+  > => clients.get(entity) as any
 
   const clientRespondDiscard = (_reply: Reply.Reply<any>) => Effect.void
 

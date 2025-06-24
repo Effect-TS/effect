@@ -58,6 +58,11 @@ export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
   middleware<M extends RpcMiddleware.TagClassAny>(middleware: M): RpcGroup<Rpc.AddMiddleware<R, M>>
 
   /**
+   * Add a prefix to the procedures in this group, returning a new group
+   */
+  prefix<const Prefix extends string>(prefix: Prefix): RpcGroup<Rpc.Prefixed<R, Prefix>>
+
+  /**
    * Implement the handlers for the procedures in this group, returning a
    * context object.
    */
@@ -94,7 +99,7 @@ export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
     | HandlersContext<R, Handlers>
   >
 
-  of<Handlers extends HandlersFrom<R>>(handlers: Handlers): Handlers
+  of<const Handlers extends HandlersFrom<R>>(handlers: Handlers): Handlers
 
   /**
    * Implement a single handler from the group.
@@ -264,6 +269,17 @@ const RpcGroupProto = {
         })
       }
       return Context.unsafeMake(contextMap)
+    })
+  },
+  prefix<const Prefix extends string>(this: RpcGroup<any>, prefix: Prefix) {
+    const requests = new Map<string, any>()
+    for (const [rpc] of this.requests.values()) {
+      const newRpc = rpc.prefix(prefix)
+      requests.set(newRpc._tag, newRpc)
+    }
+    return makeProto({
+      requests,
+      annotations: this.annotations
     })
   },
   toLayer(this: RpcGroup<any>, build: Effect.Effect<Record<string, (request: any) => any>>) {

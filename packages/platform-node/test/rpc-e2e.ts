@@ -18,6 +18,12 @@ export const e2eSuite = <E>(
         assert.deepStrictEqual(user, new User({ id: "1", name: "Logged in user" }))
       }).pipe(Effect.provide(layer)))
 
+    it.effect("nested method", () =>
+      Effect.gen(function*() {
+        const client = yield* UsersClient
+        yield* client.nested.test()
+      }).pipe(Effect.provide(layer)))
+
     it.effect("should not flatten Option", () =>
       Effect.gen(function*() {
         const client = yield* UsersClient

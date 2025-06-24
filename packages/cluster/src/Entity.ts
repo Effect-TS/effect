@@ -6,6 +6,7 @@ import * as RpcClient from "@effect/rpc/RpcClient"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as RpcServer from "@effect/rpc/RpcServer"
 import * as Arr from "effect/Array"
+import type { Brand } from "effect/Brand"
 import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
@@ -58,12 +59,15 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
+export interface Entity<
+  in out Type extends string,
+  in out Rpcs extends Rpc.Any
+> extends Equal.Equal {
   readonly [TypeId]: TypeId
   /**
    * The name of the entity type.
    */
-  readonly type: EntityType
+  readonly type: Type & Brand<"EntityType">
 
   /**
    * A RpcGroup definition for messages which represents the messaging protocol
@@ -84,22 +88,22 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
   /**
    * Annotate the entity with a value.
    */
-  annotate<I, S>(tag: Context.Tag<I, S>, value: S): Entity<Rpcs>
+  annotate<I, S>(tag: Context.Tag<I, S>, value: S): Entity<Type, Rpcs>
 
   /**
    * Annotate the Rpc's above this point with a value.
    */
-  annotateRpcs<I, S>(tag: Context.Tag<I, S>, value: S): Entity<Rpcs>
+  annotateRpcs<I, S>(tag: Context.Tag<I, S>, value: S): Entity<Type, Rpcs>
 
   /**
    * Annotate the entity with a context object.
    */
-  annotateContext<S>(context: Context.Context<S>): Entity<Rpcs>
+  annotateContext<S>(context: Context.Context<S>): Entity<Type, Rpcs>
 
   /**
    * Annotate the Rpc's above this point with a context object.
    */
-  annotateRpcsContext<S>(context: Context.Context<S>): Entity<Rpcs>
+  annotateRpcsContext<S>(context: Context.Context<S>): Entity<Type, Rpcs>
 
   /**
    * Create a client for this entity.
@@ -188,7 +192,7 @@ export interface Entity<in out Rpcs extends Rpc.Any> extends Equal.Equal {
  * @since 1.0.0
  * @category models
  */
-export type Any = Entity<Rpc.Any>
+export type Any = Entity<string, Rpc.Any>
 
 /**
  * @since 1.0.0
@@ -208,25 +212,25 @@ export const isEntity = (u: unknown): u is Any => Predicate.hasProperty(u, TypeI
 
 const Proto = {
   [TypeId]: TypeId,
-  [Hash.symbol](this: Entity<any>): number {
+  [Hash.symbol](this: Entity<string, any>): number {
     return Hash.structure({ type: this.type })
   },
-  [Equal.symbol](this: Entity<any>, that: Equal.Equal): boolean {
+  [Equal.symbol](this: Entity<string, any>, that: Equal.Equal): boolean {
     return isEntity(that) && this.type === that.type
   },
-  annotate<I, S>(this: Entity<any>, tag: Context.Tag<I, S>, value: S) {
+  annotate<I, S>(this: Entity<string, any>, tag: Context.Tag<I, S>, value: S) {
     return fromRpcGroup(this.type, this.protocol.annotate(tag, value))
   },
-  annotateRpcs<I, S>(this: Entity<any>, tag: Context.Tag<I, S>, value: S) {
+  annotateRpcs<I, S>(this: Entity<string, any>, tag: Context.Tag<I, S>, value: S) {
     return fromRpcGroup(this.type, this.protocol.annotateRpcs(tag, value))
   },
-  annotateContext<S>(this: Entity<any>, context: Context.Context<S>) {
+  annotateContext<S>(this: Entity<string, any>, context: Context.Context<S>) {
     return fromRpcGroup(this.type, this.protocol.annotateContext(context))
   },
-  annotateRpcsContext<S>(this: Entity<any>, context: Context.Context<S>) {
+  annotateRpcsContext<S>(this: Entity<string, any>, context: Context.Context<S>) {
     return fromRpcGroup(this.type, this.protocol.annotateRpcsContext(context))
   },
-  getShardId(this: Entity<any>, entityId: EntityId) {
+  getShardId(this: Entity<string, any>, entityId: EntityId) {
     return Effect.map(shardingTag, (sharding) => sharding.getShardId(entityId, this.getShardGroup(entityId)))
   },
   get client() {
@@ -239,7 +243,7 @@ const Proto = {
     Handlers extends HandlersFrom<Rpcs>,
     RX = never
   >(
-    this: Entity<Rpcs>,
+    this: Entity<string, Rpcs>,
     build: Handlers | Effect.Effect<Handlers, never, RX>,
     options?: {
       readonly maxIdleTime?: DurationInput | undefined
@@ -275,7 +279,7 @@ const Proto = {
     R,
     RX = never
   >(
-    this: Entity<Rpcs>,
+    this: Entity<string, Rpcs>,
     build:
       | ((
         mailbox: Mailbox.ReadonlyMailbox<Envelope.Request<Rpcs>>,
@@ -360,17 +364,17 @@ const Proto = {
  * @since 1.0.0
  * @category constructors
  */
-export const fromRpcGroup = <Rpcs extends Rpc.Any>(
+export const fromRpcGroup = <const Type extends string, Rpcs extends Rpc.Any>(
   /**
    * The entity type name.
    */
-  type: string,
+  type: Type,
   /**
    * The schema definition for messages that the entity is capable of
    * processing.
    */
   protocol: RpcGroup.RpcGroup<Rpcs>
-): Entity<Rpcs> => {
+): Entity<Type, Rpcs> => {
   const self = Object.create(Proto)
   self.type = EntityType.make(type)
   self.protocol = protocol
@@ -385,17 +389,17 @@ export const fromRpcGroup = <Rpcs extends Rpc.Any>(
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Rpcs extends ReadonlyArray<Rpc.Any>>(
+export const make = <const Type extends string, Rpcs extends ReadonlyArray<Rpc.Any>>(
   /**
    * The entity type name.
    */
-  type: string,
+  type: Type,
   /**
    * The schema definition for messages that the entity is capable of
    * processing.
    */
   protocol: Rpcs
-): Entity<Rpcs[number]> => fromRpcGroup(type, RpcGroup.make(...protocol))
+): Entity<Type, Rpcs[number]> => fromRpcGroup(type, RpcGroup.make(...protocol))
 
 /**
  * A Context.Tag to access the current entity address.
@@ -492,15 +496,15 @@ const shardingTag = Context.GenericTag<Sharding, Sharding["Type"]>("@effect/clus
  * @since 1.0.0
  * @category Testing
  */
-export const makeTestClient: <Rpcs extends Rpc.Any, LA, LE, LR>(
-  entity: Entity<Rpcs>,
+export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE, LR>(
+  entity: Entity<Type, Rpcs>,
   layer: Layer.Layer<LA, LE, LR>
 ) => Effect.Effect<
   (entityId: string) => Effect.Effect<RpcClient.RpcClient<Rpcs>>,
   LE,
   Scope | ShardingConfig | Exclude<LR, Sharding> | Rpc.MiddlewareClient<Rpcs>
-> = Effect.fnUntraced(function*<Rpcs extends Rpc.Any, LA, LE, LR>(
-  entity: Entity<Rpcs>,
+> = Effect.fnUntraced(function*<Type extends string, Rpcs extends Rpc.Any, LA, LE, LR>(
+  entity: Entity<Type, Rpcs>,
   layer: Layer.Layer<LA, LE, LR>
 ) {
   const config = yield* ShardingConfig
