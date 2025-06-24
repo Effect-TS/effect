@@ -234,8 +234,10 @@ const decodeUnknown = Schema.decodeUnknown(AiInput.AiInput)
  * @since 1.0.0
  * @category Constructors
  */
-export const fromExport = (data: unknown): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel.AiLanguageModel> =>
-  Effect.flatMap(decodeUnknown(data), (prompt) => fromPrompt({ prompt }))
+export const fromExport = (data: unknown, options?: {
+  readonly system?: string | undefined
+}): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel.AiLanguageModel> =>
+  Effect.flatMap(decodeUnknown(data), (prompt) => fromPrompt({ ...options, prompt }))
 
 const decodeJson = Schema.decode(AiInput.FromJson)
 
@@ -243,5 +245,7 @@ const decodeJson = Schema.decode(AiInput.FromJson)
  * @since 1.0.0
  * @category Constructors
  */
-export const fromJson = (data: string): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel.AiLanguageModel> =>
-  Effect.flatMap(decodeJson(data), (prompt) => fromPrompt({ prompt }))
+export const fromJson = (data: string, options?: {
+  readonly system?: string | undefined
+}): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel.AiLanguageModel> =>
+  Effect.flatMap(decodeJson(data), (prompt) => fromPrompt({ ...options, prompt }))
