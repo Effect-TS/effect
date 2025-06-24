@@ -16,6 +16,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as RcMap from "effect/RcMap"
+import * as Runtime from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as ClusterSchema from "./ClusterSchema.js"
@@ -63,7 +64,7 @@ export const make = Effect.gen(function*() {
 
   const activities = new Map<string, {
     readonly activity: Activity.Any
-    readonly context: Context.Context<any>
+    readonly runtime: Runtime.Runtime<any>
   }>()
   const activityLatches = new Map<string, Effect.Latch>()
   const clients = yield* RcMap.make({
@@ -236,15 +237,20 @@ export const make = Effect.gen(function*() {
                   yield* latch.await
                   entry = activities.get(activityId)
                 }
-                const contextMap = new Map(entry.context.unsafeMap)
+                const contextMap = new Map(entry.runtime.context.unsafeMap)
                 contextMap.set(Activity.CurrentAttempt.key, request.payload.attempt)
                 contextMap.set(
                   WorkflowInstance.key,
                   WorkflowInstance.initial(workflow, executionId)
                 )
+                const runtime = Runtime.make({
+                  context: Context.unsafeMake(contextMap),
+                  fiberRefs: entry.runtime.fiberRefs,
+                  runtimeFlags: Runtime.defaultRuntimeFlags
+                })
                 return yield* entry.activity.executeEncoded.pipe(
                   Workflow.intoResult,
-                  Effect.provide(Context.unsafeMake(contextMap)),
+                  Effect.provide(runtime),
                   Effect.ensuring(Effect.sync(() => {
                     activities.delete(activityId)
                   }))
@@ -310,11 +316,12 @@ export const make = Effect.gen(function*() {
 
     activityExecute: Effect.fnUntraced(
       function*({ activity, attempt }) {
-        const context = yield* Effect.context<WorkflowInstance>()
+        const runtime = yield* Effect.runtime<WorkflowInstance>()
+        const context = runtime.context
         const instance = Context.get(context, WorkflowInstance)
         yield* Effect.annotateCurrentSpan("executionId", instance.executionId)
         const activityId = `${instance.executionId}/${activity.name}`
-        activities.set(activityId, { activity, context })
+        activities.set(activityId, { activity, runtime })
         const latch = activityLatches.get(activityId)
         if (latch) {
           yield* latch.release
