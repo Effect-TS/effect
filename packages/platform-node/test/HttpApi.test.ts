@@ -31,12 +31,15 @@ describe("HttpApi", () => {
           createdAt: DateTime.unsafeMake(0)
         })
         const client = yield* HttpApiClient.make(Api)
-        const clientUsersGroup = yield* HttpApiClient.group(Api, "users")
-        const clientUsersEndpointCreate = yield* HttpApiClient.endpoint(
-          Api,
-          "users",
-          "create"
-        )
+        const clientUsersGroup = yield* HttpApiClient.group(Api, {
+          httpClient: yield* HttpClient.HttpClient,
+          group: "users"
+        })
+        const clientUsersEndpointCreate = yield* HttpApiClient.endpoint(Api, {
+          httpClient: yield* HttpClient.HttpClient,
+          group: "users",
+          endpoint: "create"
+        })
 
         const apiClientUser = yield* client.users.create({
           urlParams: { id: 123 },
@@ -170,14 +173,40 @@ describe("HttpApi", () => {
       assert.deepStrictEqual(user.createdAt, DateTime.unsafeMake(0))
     }).pipe(Effect.provide(HttpLive)))
 
+  it.effect("custom client context", () =>
+    Effect.gen(function*() {
+      let tapped = false
+      const client = yield* HttpApiClient.makeWith(Api, {
+        httpClient: (yield* HttpClient.HttpClient).pipe(
+          HttpClient.tapRequest(Effect.fnUntraced(function*(_request) {
+            tapped = true
+            yield* CurrentUser
+          }))
+        )
+      })
+      const users = yield* client.users.list({ headers: { page: 1 }, urlParams: {} }).pipe(
+        Effect.provideService(
+          CurrentUser,
+          new User({
+            id: 1,
+            name: "foo",
+            createdAt: DateTime.unsafeMake(0)
+          })
+        )
+      )
+      const user = users[0]
+      assert.strictEqual(user.name, "page 1")
+      assert.isTrue(tapped)
+    }).pipe(Effect.provide(HttpLive)))
+
   describe("security", () => {
     it.effect("security middleware sets current user", () =>
       Effect.gen(function*() {
         const ref = yield* Ref.make(Cookies.empty.pipe(
           Cookies.unsafeSet("token", "foo")
         ))
-        const client = yield* HttpApiClient.make(Api, {
-          transformClient: HttpClient.withCookiesRef(ref)
+        const client = yield* HttpApiClient.makeWith(Api, {
+          httpClient: HttpClient.withCookiesRef(yield* HttpClient.HttpClient, ref)
         })
         const user = yield* client.users.findById({ path: { id: -1 } })
         assert.strictEqual(user.name, "foo")
