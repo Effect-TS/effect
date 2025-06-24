@@ -45,13 +45,9 @@ const clientErrors = [
  * @since 1.0.0
  * @category Constructors
  */
-export const toRpcGroup = <Rpcs extends Rpc.Any, const Prefix extends string = "">(
-  entity: Entity.Entity<Rpcs>,
-  options?: {
-    readonly prefix?: Prefix | undefined
-  }
-): RpcGroup.RpcGroup<ConvertRpcs<Rpcs, Prefix>> => {
-  const prefix = options?.prefix ?? ""
+export const toRpcGroup = <Type extends string, Rpcs extends Rpc.Any>(
+  entity: Entity.Entity<Type, Rpcs>
+): RpcGroup.RpcGroup<ConvertRpcs<Rpcs, Type>> => {
   const rpcs: Array<Rpc.Any> = []
   for (const parentRpc_ of entity.protocol.requests.values()) {
     const parentRpc = parentRpc_ as any as Rpc.AnyWithProps
@@ -66,14 +62,14 @@ export const toRpcGroup = <Rpcs extends Rpc.Any, const Prefix extends string = "
         payload: parentRpc.payloadSchema.make ? parentRpc.payloadSchema.make(input.payload, options) : input.payload
       }, options)
     }
-    const rpc = Rpc.make(`${prefix}${parentRpc._tag}`, {
+    const rpc = Rpc.make(`${entity.type}.${parentRpc._tag}`, {
       payload: payloadSchema,
       error: Schema.Union(parentRpc.errorSchema, ...clientErrors),
       success: parentRpc.successSchema
     }).annotateContext(parentRpc.annotations)
     rpcs.push(rpc)
   }
-  return RpcGroup.make(...rpcs) as any as RpcGroup.RpcGroup<ConvertRpcs<Rpcs, Prefix>>
+  return RpcGroup.make(...rpcs) as any as RpcGroup.RpcGroup<ConvertRpcs<Rpcs, Type>>
 }
 
 /**
@@ -86,7 +82,7 @@ export type ConvertRpcs<Rpcs extends Rpc.Any, Prefix extends string> = Rpcs exte
   infer _Error,
   infer _Middleware
 > ? Rpc.Rpc<
-    `${Prefix}${_Tag}`,
+    `${Prefix}.${_Tag}`,
     Schema.Struct<{
       entityId: typeof Schema.String
       payload: _Payload
@@ -144,9 +140,9 @@ const entityIdPath = Schema.Struct({
  * @since 1.0.0
  * @category Constructors
  */
-export const toHttpApiGroup = <const Name extends string, Rpcs extends Rpc.Any>(
+export const toHttpApiGroup = <const Name extends string, Type extends string, Rpcs extends Rpc.Any>(
   name: Name,
-  entity: Entity.Entity<Rpcs>
+  entity: Entity.Entity<Type, Rpcs>
 ): HttpApiGroup.HttpApiGroup<Name, ConvertHttpApi<Rpcs>> => {
   let group = HttpApiGroup.make(name)
   for (const parentRpc_ of entity.protocol.requests.values()) {

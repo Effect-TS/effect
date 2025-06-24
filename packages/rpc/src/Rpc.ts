@@ -108,6 +108,17 @@ export interface Rpc<
   >
 
   /**
+   * Set the schema for the error response of the rpc.
+   */
+  prefix<const Prefix extends string>(prefix: Prefix): Rpc<
+    `${Prefix}${Tag}`,
+    Payload,
+    Success,
+    Error,
+    Middleware
+  >
+
+  /**
    * Add an annotation on the rpc.
    */
   annotate<I, S>(
@@ -476,6 +487,25 @@ export type ResultFrom<R extends Any, Context> = R extends Rpc<
   > :
   never
 
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Prefixed<Rpcs extends Any, Prefix extends string> = Rpcs extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? Rpc<
+    `${Prefix}${_Tag}`,
+    _Payload,
+    _Success,
+    _Error,
+    _Middleware
+  >
+  : never
+
 const Proto = {
   [TypeId]: TypeId,
   pipe() {
@@ -522,6 +552,16 @@ const Proto = {
       errorSchema: this.errorSchema,
       annotations: this.annotations,
       middlewares: new Set([...this.middlewares, middleware])
+    })
+  },
+  prefix(this: AnyWithProps, prefix: string) {
+    return makeProto({
+      _tag: `${prefix}${this._tag}`,
+      payloadSchema: this.payloadSchema,
+      successSchema: this.successSchema,
+      errorSchema: this.errorSchema,
+      annotations: this.annotations,
+      middlewares: this.middlewares
     })
   },
   annotate(this: AnyWithProps, tag: Context_.Tag<any, any>, value: any) {
