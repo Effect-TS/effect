@@ -90,7 +90,10 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   ) => Effect.Effect<
     (
       entityId: string
-    ) => RpcClient.RpcClient<Rpcs, MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner>
+    ) => RpcClient.RpcClient.From<
+      Rpcs,
+      MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner
+    >
   >
 
   /**
@@ -949,6 +952,7 @@ const make = Effect.gen(function*() {
       spanPrefix: `${entity.type}.client`,
       supportsAck: true,
       generateRequestId: () => RequestId(snowflakeGen.unsafeNext()),
+      flatten: true,
       onFromClient(options): Effect.Effect<
         void,
         MailboxFull | AlreadyProcessingMessage | EntityNotManagedByRunner | PersistenceError
@@ -1040,29 +1044,6 @@ const make = Effect.gen(function*() {
       }
     })
 
-    function patchClient(client: any): any {
-      const wrappedClient: any = {}
-      for (const method of Object.keys(client.client)) {
-        if (typeof client.client[method] === "object") {
-          wrappedClient[method] = patchClient(client.client[method])
-          continue
-        }
-        wrappedClient[method] = function(this: any, payload: any, options?: {
-          readonly context?: Context.Context<never>
-        }) {
-          return (client as any).client[method](payload, {
-            ...options,
-            context: options?.context
-              ? Context.merge(options.context, this[currentClientAddress])
-              : this[currentClientAddress]
-          })
-        }
-      }
-      return wrappedClient
-    }
-
-    const wrappedClient = patchClient(client)
-
     yield* Scope.addFinalizer(
       yield* Effect.scope,
       Effect.withFiberRuntime((fiber) => {
@@ -1073,19 +1054,41 @@ const make = Effect.gen(function*() {
 
     return (entityId: string) => {
       const id = EntityId.make(entityId)
-      return {
-        ...wrappedClient,
-        [currentClientAddress]: ClientAddressTag.context(EntityAddress.make({
-          shardId: getShardId(id, entity.getShardGroup(entityId as EntityId)),
-          entityId: id,
-          entityType: entity.type
-        }))
+      const address = ClientAddressTag.context(EntityAddress.make({
+        shardId: getShardId(id, entity.getShardGroup(entityId as EntityId)),
+        entityId: id,
+        entityType: entity.type
+      }))
+      const clientFn = function(tag: string, payload: any, options?: {
+        readonly context?: Context.Context<never>
+      }) {
+        const context = options?.context ? Context.merge(options.context, address) : address
+        return client.client(tag, payload, {
+          ...options,
+          context
+        })
       }
+      const proxyClient: any = {}
+      return new Proxy(proxyClient, {
+        has(_, p) {
+          return entity.protocol.requests.has(p as string)
+        },
+        get(target, p) {
+          if (p in target) {
+            return target[p]
+          } else if (!entity.protocol.requests.has(p as string)) {
+            return undefined
+          }
+          return target[p] = (payload: any, options?: {}) => clientFn(p as string, payload, options)
+        }
+      })
     }
   }))
 
   const makeClient = <Type extends string, Rpcs extends Rpc.Any>(entity: Entity<Type, Rpcs>): Effect.Effect<
-    (entityId: string) => RpcClient.RpcClient<Rpcs, MailboxFull | AlreadyProcessingMessage | EntityNotManagedByRunner>
+    (
+      entityId: string
+    ) => RpcClient.RpcClient.From<Rpcs, MailboxFull | AlreadyProcessingMessage | EntityNotManagedByRunner>
   > => clients.get(entity) as any
 
   const clientRespondDiscard = (_reply: Reply.Reply<any>) => Effect.void
@@ -1229,4 +1232,3 @@ export const layer: Layer.Layer<
 // Utilities
 
 const ClientAddressTag = Context.GenericTag<EntityAddress>("@effect/cluster/Sharding/ClientAddress")
-const currentClientAddress = Symbol.for(ClientAddressTag.key)
