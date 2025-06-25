@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.64.1
+
+### Patch Changes
+
+- [#5098](https://github.com/Effect-TS/effect/pull/5098) [`112a93a`](https://github.com/Effect-TS/effect/commit/112a93a9bab73e95e79f7b3502d1a7b1acd668fc) Thanks @tim-smart! - add flatten options to RpcClient constructors
+
 ## 0.64.0
 
 ### Patch Changes

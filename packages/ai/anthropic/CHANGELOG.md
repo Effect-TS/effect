@@ -1,5 +1,13 @@
 # @effect/ai-anthropic
 
+## 0.11.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/ai@0.21.2
+  - @effect/experimental@0.51.0
+
 ## 0.11.1
 
 ### Patch Changes
