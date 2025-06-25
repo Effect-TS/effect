@@ -111,7 +111,7 @@ export interface Entity<
   readonly client: Effect.Effect<
     (
       entityId: string
-    ) => RpcClient.RpcClient<
+    ) => RpcClient.RpcClient.From<
       Rpcs,
       MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner
     >,

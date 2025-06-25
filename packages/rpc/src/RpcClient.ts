@@ -90,7 +90,7 @@ export declare namespace RpcClient {
    * @since 1.0.0
    * @category client
    */
-  export type From<Rpcs extends Rpc.Any, E, Prefix extends string = ""> = {
+  export type From<Rpcs extends Rpc.Any, E = never, Prefix extends string = ""> = {
     readonly [
       Current in Rpcs as Current["_tag"] extends `${Prefix}.${infer Method}` ? Method
         : Current["_tag"]
@@ -133,6 +133,51 @@ export declare namespace RpcClient {
       > :
       never
   }
+
+  /**
+   * @since 1.0.0
+   * @category client
+   */
+  export type Flat<Rpcs extends Rpc.Any, E = never> = <
+    const Tag extends Rpcs["_tag"],
+    const AsMailbox extends boolean = false,
+    const Discard = false
+  >(
+    tag: Tag,
+    payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>,
+    options?: Rpc.Success<Rpc.ExtractTag<Rpcs, Tag>> extends Stream.Stream<infer _A, infer _E, infer _R> ? {
+        readonly asMailbox?: AsMailbox | undefined
+        readonly streamBufferSize?: number | undefined
+        readonly headers?: Headers.Input | undefined
+        readonly context?: Context.Context<never> | undefined
+      } :
+      {
+        readonly headers?: Headers.Input | undefined
+        readonly context?: Context.Context<never> | undefined
+        readonly discard?: Discard | undefined
+      }
+  ) => Rpc.ExtractTag<Rpcs, Tag> extends Rpc.Rpc<
+    infer _Tag,
+    infer _Payload,
+    infer _Success,
+    infer _Error,
+    infer _Middleware
+  > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? AsMailbox extends true ? Effect.Effect<
+          Mailbox.ReadonlyMailbox<_A["Type"], _E["Type"] | _Error["Type"] | E>,
+          never,
+          Scope.Scope | _Payload["Context"] | _Success["Context"] | _Error["Context"]
+        >
+      : Stream.Stream<
+        _A["Type"],
+        _E["Type"] | _Error["Type"] | E,
+        _Payload["Context"] | _Success["Context"] | _Error["Context"]
+      >
+    : Effect.Effect<
+      Discard extends true ? void : _Success["Type"],
+      Discard extends true ? E : _Error["Type"] | E,
+      _Payload["Context"] | _Success["Context"] | _Error["Context"]
+    > :
+    never
 }
 
 /**
@@ -147,7 +192,7 @@ let requestIdCounter = BigInt(0)
  * @since 1.0.0
  * @category client
  */
-export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
+export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extends boolean = false>(
   group: RpcGroup.RpcGroup<Rpcs>,
   options: {
     readonly onFromClient: (
@@ -162,15 +207,16 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
+    readonly flatten?: Flatten | undefined
   }
 ) => Effect.Effect<
   {
-    readonly client: RpcClient<Rpcs, E>
+    readonly client: Flatten extends true ? RpcClient.Flat<Rpcs, E> : RpcClient<Rpcs, E>
     readonly write: (message: FromServer<Rpcs>) => Effect.Effect<void>
   },
   never,
   Scope.Scope | Rpc.MiddlewareClient<Rpcs>
-> = Effect.fnUntraced(function*<Rpcs extends Rpc.Any, E>(
+> = Effect.fnUntraced(function*<Rpcs extends Rpc.Any, E, const Flatten extends boolean = false>(
   group: RpcGroup.RpcGroup<Rpcs>,
   options: {
     readonly onFromClient: (
@@ -185,6 +231,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
+    readonly flatten?: Flatten | undefined
   }
 ) {
   const spanPrefix = options?.spanPrefix ?? "RpcClient"
@@ -232,7 +279,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
   const onRequest = (rpc: Rpc.AnyWithProps) => {
     const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
     const middleware = getRpcClientMiddleware(rpc)
-    return (payload_: any, opts?: {
+    return (payload: any, opts?: {
       readonly asMailbox?: boolean | undefined
       readonly streamBufferSize?: number | undefined
       readonly headers?: Headers.Input | undefined
@@ -240,7 +287,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
       readonly discard?: boolean | undefined
     }) => {
       const headers = opts?.headers ? Headers.fromInput(opts.headers) : Headers.empty
-      const payload = payload_ ?? undefined
+      const context = opts?.context ?? Context.empty()
       if (!isStream) {
         const effect = Effect.useSpan(
           `${spanPrefix}.${rpc._tag}`,
@@ -252,7 +299,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
               span,
               rpc.payloadSchema.make ? rpc.payloadSchema.make(payload) : payload,
               headers,
-              opts?.context ?? Context.empty(),
+              context,
               opts?.discard ?? false
             )
         )
@@ -265,7 +312,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
           rpc.payloadSchema.make ? rpc.payloadSchema.make(payload) : payload,
           headers,
           opts?.streamBufferSize ?? 16,
-          opts?.context ?? Context.empty()
+          context
         )
       )
       if (opts?.asMailbox) return mailbox
@@ -521,47 +568,59 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E>(
     }
   }
 
-  const client = {} as Mutable<RpcClient<Rpcs>>
-  for (const rpc of group.requests.values()) {
-    const dot = rpc._tag.indexOf(".")
-    const prefix = dot === -1 ? undefined : rpc._tag.slice(0, dot)
-    if (prefix !== undefined && !(prefix in client)) {
-      ;(client as any)[prefix] = {} as Mutable<RpcClient.Prefixed<Rpcs, typeof prefix>>
+  let client: any
+  if (options.flatten) {
+    const fns = new Map<string, any>()
+    client = function client(tag: string, payload: any, options?: {}) {
+      let fn = fns.get(tag)
+      if (!fn) {
+        fn = onRequest(group.requests.get(tag)! as any)
+        fns.set(tag, fn)
+      }
+      return fn(payload, options)
     }
-    const target = prefix !== undefined ? (client as any)[prefix] : client
-    const tag = prefix !== undefined ? rpc._tag.slice(dot + 1) : rpc._tag
-    target[tag] = onRequest(rpc as any)
+  } else {
+    client = {}
+    for (const rpc of group.requests.values()) {
+      const dot = rpc._tag.indexOf(".")
+      const prefix = dot === -1 ? undefined : rpc._tag.slice(0, dot)
+      if (prefix !== undefined && !(prefix in client)) {
+        ;(client as any)[prefix] = {} as Mutable<RpcClient.Prefixed<Rpcs, typeof prefix>>
+      }
+      const target = prefix !== undefined ? (client as any)[prefix] : client
+      const tag = prefix !== undefined ? rpc._tag.slice(dot + 1) : rpc._tag
+      target[tag] = onRequest(rpc as any)
+    }
   }
 
-  return {
-    client: client as RpcClient<Rpcs>,
-    write
-  } as const
+  return { client, write } as const
 })
 
 /**
  * @since 1.0.0
  * @category client
  */
-export const make: <Rpcs extends Rpc.Any>(
+export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>(
   group: RpcGroup.RpcGroup<Rpcs>,
   options?: {
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
+    readonly flatten?: Flatten | undefined
   } | undefined
 ) => Effect.Effect<
-  RpcClient<Rpcs>,
+  Flatten extends true ? RpcClient.Flat<Rpcs> : RpcClient<Rpcs>,
   never,
   Protocol | Rpc.MiddlewareClient<Rpcs> | Scope.Scope
-> = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
+> = Effect.fnUntraced(function*<Rpcs extends Rpc.Any, const Flatten extends boolean = false>(
   group: RpcGroup.RpcGroup<Rpcs>,
   options?: {
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
+    readonly flatten?: Flatten | undefined
   } | undefined
 ) {
   const { run, send, supportsAck, supportsTransferables } = yield* Protocol
