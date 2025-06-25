@@ -339,7 +339,7 @@ export const currentMaxOpsBeforeYield: FiberRef<number> = core.currentMaxOpsBefo
 export const unhandledErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>> = core.currentUnhandledErrorLogLevel
 
 /**
- * @since 2.0.0
+ * @since 3.17.0
  * @category fiberRefs
  */
 export const versionMismatchErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>> =

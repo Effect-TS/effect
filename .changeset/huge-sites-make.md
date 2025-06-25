@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Remove global state index by version, make version mismatch a waning message
+Remove global state index by version, make version mismatch a warning message

@@ -1062,7 +1062,7 @@ export const setUnhandledErrorLogLevel: (level: Option.Option<LogLevel>) => Laye
   )
 
 /**
- * @since 2.0.0
+ * @since 3.17.0
  * @category logging
  */
 export const setVersionMismatchErrorLogLevel: (level: Option.Option<LogLevel>) => Layer<never> = (
