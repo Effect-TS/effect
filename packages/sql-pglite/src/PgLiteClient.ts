@@ -9,7 +9,7 @@ import type { Custom, Fragment, Primitive } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
 import type { Extensions, InitializedExtensions, PGliteOptions } from "@electric-sql/pglite"
 import { PGlite } from "@electric-sql/pglite"
-import * as Otel from "@opentelemetry/semantic-conventions"
+import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -192,10 +192,10 @@ export const make = <TExtensions extends Extensions = Extensions>(
         compiler,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_POSTGRESQL],
-          [Otel.SEMATTRS_DB_NAME, options.database ?? options.username ?? "postgres"],
-          ["server.address", "localhost"],
-          ["server.port", 0]
+          [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_POSTGRESQL],
+          [OtelSemConv.ATTR_DB_NAMESPACE, opts.database ?? options.username ?? "postgres"],
+          [OtelSemConv.ATTR_SERVER_ADDRESS, opts.host ?? "localhost"],
+          [OtelSemConv.ATTR_SERVER_PORT, opts.port ?? 5432]
         ],
         transformRows
       }),
