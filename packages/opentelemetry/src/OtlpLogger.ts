@@ -34,6 +34,7 @@ export const make: (
     readonly exportInterval?: Duration.DurationInput | undefined
     readonly maxBatchSize?: number | undefined
     readonly shutdownTimeout?: Duration.DurationInput | undefined
+    readonly excludeLogSpans?: boolean | undefined
   }
 ) => Effect.Effect<
   Logger.Logger<unknown, void>,
@@ -63,8 +64,11 @@ export const make: (
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
 
+  const opts = {
+    excludeLogSpans: options.excludeLogSpans ?? false
+  }
   return Logger.make((options) => {
-    exporter.push(makeLogRecord(options))
+    exporter.push(makeLogRecord(options, opts))
   })
 })
 
@@ -84,12 +88,15 @@ export const layer = (options: {
   readonly exportInterval?: Duration.DurationInput | undefined
   readonly maxBatchSize?: number | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
+  readonly excludeLogSpans?: boolean | undefined
 }): Layer.Layer<never, never, HttpClient.HttpClient> =>
   options.replaceLogger ? Logger.replaceScoped(options.replaceLogger, make(options)) : Logger.addScoped(make(options))
 
 // internal
 
-const makeLogRecord = (options: Logger.Logger.Options<unknown>): ILogRecord => {
+const makeLogRecord = (options: Logger.Logger.Options<unknown>, opts: {
+  readonly excludeLogSpans: boolean
+}): ILogRecord => {
   const now = options.date.getTime()
   const nanosString = `${now}000000`
 
@@ -98,11 +105,13 @@ const makeLogRecord = (options: Logger.Logger.Options<unknown>): ILogRecord => {
     key: "fiberId",
     value: { stringValue: FiberId.threadName(options.fiberId) }
   })
-  for (const span of options.spans) {
-    attributes.push({
-      key: `logSpan.${span.label}`,
-      value: { stringValue: `${now - span.startTime}ms` }
-    })
+  if (!opts.excludeLogSpans) {
+    for (const span of options.spans) {
+      attributes.push({
+        key: `logSpan.${span.label}`,
+        value: { stringValue: `${now - span.startTime}ms` }
+      })
+    }
   }
   if (!Cause.isEmpty(options.cause)) {
     attributes.push({
