@@ -1,5 +1,15 @@
 # @effect/opentelemetry
 
+## 0.53.1
+
+### Patch Changes
+
+- [#5107](https://github.com/Effect-TS/effect/pull/5107) [`c1a9c9d`](https://github.com/Effect-TS/effect/commit/c1a9c9d0c32ea25e890bf0e3aea23fa8d05b4d4f) Thanks @tim-smart! - add option to exclude log spans from OtlpLogger
+
+- Updated dependencies [[`faad30e`](https://github.com/Effect-TS/effect/commit/faad30ec8742916be59f9db642d0fc98225b636c)]:
+  - effect@3.16.10
+  - @effect/platform@0.87.1
+
 ## 0.53.0
 
 ### Patch Changes

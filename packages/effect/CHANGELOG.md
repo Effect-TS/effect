@@ -1,5 +1,11 @@
 # effect
 
+## 3.16.10
+
+### Patch Changes
+
+- [#5100](https://github.com/Effect-TS/effect/pull/5100) [`faad30e`](https://github.com/Effect-TS/effect/commit/faad30ec8742916be59f9db642d0fc98225b636c) Thanks @tim-smart! - relax Predicate.compose constraint on second refinement
+
 ## 3.16.9
 
 ### Patch Changes

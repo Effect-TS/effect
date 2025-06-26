@@ -1,5 +1,16 @@
 # @effect/cluster
 
+## 0.41.3
+
+### Patch Changes
+
+- Updated dependencies [[`faad30e`](https://github.com/Effect-TS/effect/commit/faad30ec8742916be59f9db642d0fc98225b636c)]:
+  - effect@3.16.10
+  - @effect/platform@0.87.1
+  - @effect/rpc@0.64.2
+  - @effect/sql@0.40.1
+  - @effect/workflow@0.4.2
+
 ## 0.41.2
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @effect/printer-ansi
 
+## 0.44.10
+
+### Patch Changes
+
+- Updated dependencies [[`faad30e`](https://github.com/Effect-TS/effect/commit/faad30ec8742916be59f9db642d0fc98225b636c)]:
+  - effect@3.16.10
+  - @effect/printer@0.44.10
+  - @effect/typeclass@0.35.10
+
 ## 0.44.9
 
 ### Patch Changes
