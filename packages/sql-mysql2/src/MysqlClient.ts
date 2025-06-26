@@ -7,7 +7,7 @@ import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import { asyncPauseResume } from "@effect/sql/SqlStream"
 import * as Statement from "@effect/sql/Statement"
-import * as Otel from "@opentelemetry/semantic-conventions"
+import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -242,13 +242,13 @@ export const make = (
 
     const spanAttributes: Array<[string, unknown]> = [
       ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-      [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_MYSQL],
-      ["server.address", options.host ?? "localhost"],
-      ["server.port", options.port ?? 3306]
+      [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_MYSQL],
+      [OtelSemConv.ATTR_SERVER_ADDRESS, options.host ?? "localhost"],
+      [OtelSemConv.ATTR_SERVER_PORT, options.port ?? 3306]
     ]
 
     if (options.database) {
-      spanAttributes.push([Otel.SEMATTRS_DB_NAME, options.database])
+      spanAttributes.push([OtelSemConv.ATTR_DB_NAMESPACE, options.database])
     }
 
     return Object.assign(

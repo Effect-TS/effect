@@ -2168,6 +2168,7 @@ export const endSpan = <A, E>(span: Tracer.Span, exit: Exit<A, E>, clock: Clock.
       return
     }
     if (core.exitIsFailure(exit) && internalCause.spanToTrace.has(span)) {
+      // https://opentelemetry.io/docs/specs/semconv/registry/attributes/code/#code-stacktrace
       span.attribute("code.stacktrace", internalCause.spanToTrace.get(span)!())
     }
     span.end(timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0, exit)
