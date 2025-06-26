@@ -1,3 +1,4 @@
+import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Arr from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
@@ -2155,7 +2156,7 @@ export const endSpan = <A, E>(span: Tracer.Span, exit: Exit<A, E>, clock: Clock.
       return
     }
     if (core.exitIsFailure(exit) && internalCause.spanToTrace.has(span)) {
-      span.attribute("code.stacktrace", internalCause.spanToTrace.get(span)!())
+      span.attribute(OtelSemConv.ATTR_CODE_STACKTRACE, internalCause.spanToTrace.get(span)!())
     }
     span.end(timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0, exit)
   })

@@ -1,4 +1,5 @@
 import * as OtelApi from "@opentelemetry/api"
+import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -236,8 +237,8 @@ export const layerTracer = Layer.effect(
     ([resource, provider]) =>
       Effect.sync(() =>
         provider.getTracer(
-          resource.attributes["service.name"] as string,
-          resource.attributes["service.version"] as string
+          resource.attributes[OtelSemConv.ATTR_SERVICE_NAME] as string,
+          resource.attributes[OtelSemConv.ATTR_SERVICE_VERSION] as string
         )
       )
   )

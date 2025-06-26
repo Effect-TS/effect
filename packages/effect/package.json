@@ -55,6 +55,7 @@
     "zod": "^3.24.4"
   },
   "dependencies": {
+    "@opentelemetry/semantic-conventions": "^1.33.0",
     "@standard-schema/spec": "^1.0.0",
     "fast-check": "^3.23.1"
   }

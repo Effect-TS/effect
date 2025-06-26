@@ -355,6 +355,9 @@ importers:
 
   packages/effect:
     dependencies:
+      '@opentelemetry/semantic-conventions':
+        specifier: ^1.33.0
+        version: 1.33.0
       '@standard-schema/spec':
         specifier: ^1.0.0
         version: 1.0.0
@@ -457,6 +460,9 @@ importers:
 
   packages/platform:
     dependencies:
+      '@opentelemetry/semantic-conventions':
+        specifier: ^1.33.0
+        version: 1.33.0
       find-my-way-ts:
         specifier: ^0.1.6
         version: 0.1.6
@@ -5814,6 +5820,7 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.7:
