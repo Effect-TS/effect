@@ -472,7 +472,9 @@ export class ResponseWebSearchResultLocationCitation extends S.Struct({
 export class ResponseTextBlockType extends S.Literal("text") {}
 
 export class ResponseTextBlock extends S.Struct({
-  "citations": S.NullOr(
+  // TODO: change this once the following upstream issue has been closed
+  //       https://github.com/anthropics/anthropic-sdk-typescript/issues/605
+  "citations": S.optionalWith(
     S.Union(
       S.Array(
         S.Union(
@@ -483,7 +485,8 @@ export class ResponseTextBlock extends S.Struct({
         )
       ),
       S.Null
-    )
+    ),
+    { nullable: true }
   ),
   "text": S.String.pipe(S.minLength(0), S.maxLength(5000000)),
   "type": ResponseTextBlockType
@@ -1505,7 +1508,9 @@ export class BetaResponseWebSearchResultLocationCitation extends S.Struct({
 export class BetaResponseTextBlockType extends S.Literal("text") {}
 
 export class BetaResponseTextBlock extends S.Struct({
-  "citations": S.NullOr(
+  // TODO: change this once the following upstream issue has been closed
+  //       https://github.com/anthropics/anthropic-sdk-typescript/issues/605
+  "citations": S.optionalWith(
     S.Union(
       S.Array(
         S.Union(
@@ -1516,7 +1521,8 @@ export class BetaResponseTextBlock extends S.Struct({
         )
       ),
       S.Null
-    )
+    ),
+    { nullable: true }
   ),
   "text": S.String.pipe(S.minLength(0), S.maxLength(5000000)),
   "type": BetaResponseTextBlockType

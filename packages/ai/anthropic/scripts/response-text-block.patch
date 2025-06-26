@@ -1,0 +1,74 @@
+diff --git a/packages/ai/anthropic/src/Generated.ts b/packages/ai/anthropic/src/Generated.ts
+index 1234567..abcdefg 100644
+--- a/packages/ai/anthropic/src/Generated.ts
++++ b/packages/ai/anthropic/src/Generated.ts
+@@ -472,15 +472,20 @@ export class ResponseTextBlockType extends S.Literal("text") {}
+ 
+ export class ResponseTextBlock extends S.Struct({
+-  "citations": S.NullOr(
+-    S.Union(
+-      S.Array(
+-        S.Union(
+-          ResponseCharLocationCitation,
+-          ResponsePageLocationCitation,
+-          ResponseContentBlockLocationCitation,
+-          ResponseWebSearchResultLocationCitation
+-        )
+-      ),
+-      S.Null
+-    )
+-  ),
++  // TODO: change this once the following upstream issue has been closed
++  //       https://github.com/anthropics/anthropic-sdk-typescript/issues/605
++  "citations": S.optionalWith(
++    S.Union(
++      S.Array(
++        S.Union(
++          ResponseCharLocationCitation,
++          ResponsePageLocationCitation,
++          ResponseContentBlockLocationCitation,
++          ResponseWebSearchResultLocationCitation
++        )
++      ),
++      S.Null
++    ),
++    { nullable: true }
++  ),
+   "text": S.String.pipe(S.minLength(0), S.maxLength(5000000)),
+   "type": ResponseTextBlockType
+ }) {}
+@@ -1508,15 +1513,20 @@ export class BetaResponseTextBlockType extends S.Literal("text") {}
+ 
+ export class BetaResponseTextBlock extends S.Struct({
+-  "citations": S.NullOr(
+-    S.Union(
+-      S.Array(
+-        S.Union(
+-          BetaResponseCharLocationCitation,
+-          BetaResponsePageLocationCitation,
+-          BetaResponseContentBlockLocationCitation,
+-          BetaResponseWebSearchResultLocationCitation
+-        )
+-      ),
+-      S.Null
+-    )
+-  ),
++  // TODO: change this once the following upstream issue has been closed
++  //       https://github.com/anthropics/anthropic-sdk-typescript/issues/605
++  "citations": S.optionalWith(
++    S.Union(
++      S.Array(
++        S.Union(
++          BetaResponseCharLocationCitation,
++          BetaResponsePageLocationCitation,
++          BetaResponseContentBlockLocationCitation,
++          BetaResponseWebSearchResultLocationCitation
++        )
++      ),
++      S.Null
++    ),
++    { nullable: true }
++  ),
+   "text": S.String.pipe(S.minLength(0), S.maxLength(5000000)),
+   "type": BetaResponseTextBlockType
+ }) {}
