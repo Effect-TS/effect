@@ -1,5 +1,5 @@
 import { Context, Effect } from "effect"
-import { describe, expect, it } from "tstyche"
+import { describe, expect, it, when } from "tstyche"
 
 describe("Context", () => {
   it("`key` field", () => {
@@ -17,8 +17,7 @@ describe("Context", () => {
       static readonly StaticField = "StaticField"
     }
 
-    // @ts-expect-error
-    Context.empty().pipe(Context.add(Foo, 123))
+    when(Context.empty().pipe).isCalledWith(expect(Context.add).type.not.toBeCallableWith(Foo, 123))
 
     const ctx = Context.empty().pipe(Context.add(Foo, { bar: "2" }))
     expect(ctx).type.toBe<Context.Context<Foo>>()

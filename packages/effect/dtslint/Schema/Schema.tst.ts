@@ -49,7 +49,7 @@ declare const cContext: S.Schema<boolean, boolean, "c">
 describe("Schema", () => {
   describe("SchemaClass", () => {
     it("the constructor should not be callable", () => {
-      // @ts-expect-error
+      // @ts-expect-error! TODO use '.toHaveConstructSignatures()' when it will be implemented
       new S.String()
     })
   })
