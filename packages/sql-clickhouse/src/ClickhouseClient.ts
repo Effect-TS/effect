@@ -9,7 +9,7 @@ import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import type { Primitive } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
-import * as Otel from "@opentelemetry/semantic-conventions"
+import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -237,8 +237,8 @@ export const make = (
         compiler,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [Otel.SEMATTRS_DB_SYSTEM, "clickhouse"],
-          [Otel.SEMATTRS_DB_NAME, options.database ?? "default"]
+          [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_CLICKHOUSE],
+          [OtelSemConv.ATTR_DB_NAMESPACE, options.database ?? "default"]
         ],
         beginTransaction: "BEGIN TRANSACTION",
         transformRows
