@@ -3,7 +3,7 @@ import { describe, expect, it } from "tstyche"
 
 describe("Schema.TaggedClass", () => {
   it("Annotations as tuple", () => {
-    // @ts-expect-error
+    // @ts-expect-error!
     class _A extends Schema.TaggedClass<_A>()("A", { id: Schema.Number }, [
       undefined,
       undefined,

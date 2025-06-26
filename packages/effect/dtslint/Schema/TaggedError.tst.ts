@@ -28,7 +28,7 @@ describe("Schema.TaggedError", () => {
   })
 
   it("Annotations as tuple", () => {
-    // @ts-expect-error
+    // @ts-expect-error!
     class _A extends Schema.TaggedError<_A>()("A", { id: Schema.Number }, [
       undefined,
       undefined,

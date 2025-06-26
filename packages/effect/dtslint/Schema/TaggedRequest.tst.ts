@@ -25,7 +25,7 @@ describe("Schema.TaggedRequest", () => {
   })
 
   it("Annotations as tuple", () => {
-    // @ts-expect-error
+    // @ts-expect-error!
     class _A extends Schema.TaggedRequest<_A>()("A", {
       failure: Schema.String,
       success: Schema.Number,

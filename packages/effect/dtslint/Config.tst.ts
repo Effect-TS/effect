@@ -1,5 +1,5 @@
 import { Brand, Config, hole, pipe } from "effect"
-import { describe, expect, it } from "tstyche"
+import { describe, expect, it, when } from "tstyche"
 
 declare const string: Config.Config<string>
 declare const number: Config.Config<number>
@@ -42,12 +42,9 @@ describe("Config", () => {
   })
 
   it("branded", () => {
-    // @ts-expect-error
-    Config.branded("NAME", Int)
-    // @ts-expect-error
-    Config.branded(number, Str)
-    // @ts-expect-error
-    number.pipe(Config.branded(Str))
+    expect(Config.branded).type.not.toBeCallableWith("NAME", Int)
+    expect(Config.branded).type.not.toBeCallableWith(number, Str)
+    when(number.pipe).isCalledWith(expect(Config.branded).type.not.toBeCallableWith(Str))
 
     expect(Config.branded(number, Int)).type.toBe<Config.Config<Int>>()
     expect(Config.branded("NAME", Str)).type.toBe<Config.Config<Str>>()

@@ -140,8 +140,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1
       tstyche:
-        specifier: ^4.0.0
-        version: 4.0.0(typescript@5.8.3)
+        specifier: ^4.1.0
+        version: 4.1.0(typescript@5.8.3)
       tsx:
         specifier: ^4.19.4
         version: 4.19.4
@@ -5614,7 +5614,6 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.7:
@@ -7254,8 +7253,8 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
-  tstyche@4.0.0:
-    resolution: {integrity: sha512-ek8LfTl/raR7VB1bjmSxUjNByGHtJlaCNWeudTASRF4ykLQqTPKcK0HhsOv5LiM1+OEBJ7bmeD+DlrjQPTozVw==}
+  tstyche@4.1.0:
+    resolution: {integrity: sha512-1t/y779vIplrDmKdiGZE5XglVy9PEXrMLbn42mTDg/tG7b0MeW5HyGmzfQ6nctffHli7GlENQKwL/xUb3aYFSg==}
     engines: {node: '>=20.9'}
     hasBin: true
     peerDependencies:
@@ -14864,7 +14863,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  tstyche@4.0.0(typescript@5.8.3):
+  tstyche@4.1.0(typescript@5.8.3):
     optionalDependencies:
       typescript: 5.8.3
 
