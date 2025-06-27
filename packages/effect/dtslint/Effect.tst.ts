@@ -1494,4 +1494,12 @@ describe("Effect", () => {
       (this: unknown, a?: string | undefined) => Effect.Effect<string, NoSuchElementException, never>
     >()
   })
+
+  it("ensureError", () => {
+    const withoutError = Effect.succeed("no error")
+    expect(withoutError.pipe(Effect.ensureError<never>())).type.toBe<Effect.Effect<string, never, never>>()
+
+    const withError = Effect.fail(new TestError1())
+    expect(withError.pipe(Effect.ensureError<TestError1>())).type.toBe<Effect.Effect<never, TestError1, never>>()
+  })
 })

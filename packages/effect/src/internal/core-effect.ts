@@ -79,6 +79,10 @@ export const asSomeError = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effec
   core.mapError(self, Option.some)
 
 /* @internal */
+export const ensureError = <E>() => <A, R>(self: Effect.Effect<A, unknown, R>): Effect.Effect<A, E, R> =>
+  self as Effect.Effect<A, E, R>
+
+/* @internal */
 export const try_: {
   <A, E>(options: {
     readonly try: LazyArg<A>

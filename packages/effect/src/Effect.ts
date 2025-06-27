@@ -5072,6 +5072,21 @@ export const asSome: <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>
 export const asSomeError: <A, E, R>(self: Effect<A, E, R>) => Effect<A, Option.Option<E>, R> = effect.asSomeError
 
 /**
+ * A no-op type assertion that enforces the error channel of an Effect conforms to
+ * the specified error type `E`.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Ensure that the program does not expose any unhandled errors.
+ * const program = Effect.succeed(42).pipe(Effect.ensureError<never>())
+ *
+ * @since 3.16.10
+ * @category Error handling
+ */
+export const ensureError: <E>() => <A, R>(self: Effect<A, E, R>) => Effect<A, E, R> = effect.ensureError
+
+/**
  * This function maps the success value of an `Effect` value to `void`. If the
  * original `Effect` value succeeds, the returned `Effect` value will also
  * succeed. If the original `Effect` value fails, the returned `Effect` value
