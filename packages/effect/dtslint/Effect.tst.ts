@@ -1497,6 +1497,12 @@ describe("Effect", () => {
     >()
   })
 
+  it("ensureSuccessType", () => {
+    expect(Effect.succeed(123).pipe(Effect.ensureSuccessType<number>())).type.toBe<
+      Effect.Effect<number, never, never>
+    >()
+  })
+
   it("ensureErrorType", () => {
     const withoutError = Effect.succeed("no error")
     expect(withoutError.pipe(Effect.ensureErrorType<never>())).type.toBe<Effect.Effect<string, never, never>>()
