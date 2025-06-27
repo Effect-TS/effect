@@ -24,8 +24,8 @@ import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type { Mutable } from "effect/Types"
 import * as Generated from "./Generated.js"
-import { GoogleGenerativeAiConfig } from "./GoogleGenerativeAiConfig.js"
-import type { ProviderMetadata } from "./GoogleGenerativeAiLanguageModel.js"
+import { GoogleAiConfig } from "./GoogleAiConfig.js"
+import type { ProviderMetadata } from "./GoogleAiLanguageModel.js"
 import * as InternalUtilities from "./internal/utilities.js"
 
 const constDisableValidation = { disableValidation: true }
@@ -34,14 +34,14 @@ const constDisableValidation = { disableValidation: true }
  * @since 1.0.0
  * @category Context
  */
-export class GoogleGenerativeAiClient extends Context.Tag(
-  "@effect/ai-google/GoogleGenerativeAiClient"
-)<GoogleGenerativeAiClient, GoogleGenerativeAiClient.Service>() {}
+export class GoogleAiClient extends Context.Tag(
+  "@effect/ai-google/GoogleAiClient"
+)<GoogleAiClient, GoogleAiClient.Service>() {}
 
 /**
  * @since 1.0.0
  */
-export declare namespace GoogleGenerativeAiClient {
+export declare namespace GoogleAiClient {
   /**
    * @since 1.0.0
    * @category Models
@@ -79,7 +79,7 @@ export const make = (options: {
    * will be used to communicate with the Google Generative AI API.
    */
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-}): Effect.Effect<GoogleGenerativeAiClient.Service, never, HttpClient.HttpClient | Scope.Scope> =>
+}): Effect.Effect<GoogleAiClient.Service, never, HttpClient.HttpClient | Scope.Scope> =>
   Effect.gen(function*() {
     const apiKeyHeader = "x-goog-api-key"
 
@@ -98,7 +98,7 @@ export const make = (options: {
     const httpClientOk = HttpClient.filterStatusOk(httpClient)
     const client = Generated.make(httpClient, {
       transformClient: (client) =>
-        GoogleGenerativeAiConfig.getOrUndefined.pipe(
+        GoogleAiConfig.getOrUndefined.pipe(
           Effect.map((config) => config?.transformClient ? config.transformClient(client) : client)
         )
     })
@@ -111,7 +111,7 @@ export const make = (options: {
         HttpClientRequest.bodyUnsafeJson(request)
       )
       return Stream.unwrap(
-        GoogleGenerativeAiConfig.getOrUndefined.pipe(
+        GoogleAiConfig.getOrUndefined.pipe(
           Effect.map((config) => {
             const client = Predicate.isNotUndefined(config?.transformClient)
               ? config.transformClient(httpClientOk)
@@ -219,10 +219,6 @@ export const make = (options: {
                     })
                   )
                 }
-
-                // TODO: Image Content
-                // if ("inlineData" in part && Predicate.isNotUndefined(part.inlineData)) {
-                // }
               }
             }
 
@@ -256,7 +252,7 @@ export const make = (options: {
         )
       })
 
-    return GoogleGenerativeAiClient.of({ client, stream, streamRequest })
+    return GoogleAiClient.of({ client, stream, streamRequest })
   })
 
 /**
@@ -282,10 +278,10 @@ export const layer = (options: {
    */
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
 }): Layer.Layer<
-  GoogleGenerativeAiClient,
+  GoogleAiClient,
   never,
   HttpClient.HttpClient
-> => Layer.scoped(GoogleGenerativeAiClient, make(options))
+> => Layer.scoped(GoogleAiClient, make(options))
 
 /**
  * @since 1.0.0
@@ -312,11 +308,11 @@ export const layerConfig = (
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
   }>
 ): Layer.Layer<
-  GoogleGenerativeAiClient,
+  GoogleAiClient,
   ConfigError,
   HttpClient.HttpClient
 > =>
   Config.unwrap(options).pipe(
     Effect.flatMap(make),
-    Layer.scoped(GoogleGenerativeAiClient)
+    Layer.scoped(GoogleAiClient)
   )

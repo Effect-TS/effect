@@ -6,9 +6,15 @@ export * as Generated from "./Generated.js"
 /**
  * @since 1.0.0
  */
-export * as GoogleGenerativeAiClient from "./GoogleGenerativeAiClient.js"
+export * as GoogleAiClient from "./GoogleAiClient.js"
 
 /**
  * @since 1.0.0
  */
-export * as GoogleGenerativeAiConfig from "./GoogleGenerativeAiConfig.js"
+export * as GoogleAiConfig from "./GoogleAiConfig.js"
+
+/**
+ * @since 1.0.0
+ * @category Context
+ */
+export * as GoogleAiLanguageModel from "./GoogleAiLanguageModel.js"
