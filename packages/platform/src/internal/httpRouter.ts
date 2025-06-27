@@ -245,16 +245,20 @@ const toHttpApp = <E, R>(
     if (mountsLen > 0) {
       for (let i = 0; i < mountsLen; i++) {
         const [path, routeContext, options] = mounts[i]
-        if (request.url.startsWith(path)) {
-          context.unsafeMap.set(RouteContext.key, routeContext)
-          if (options?.includePrefix !== true) {
-            context.unsafeMap.set(ServerRequest.HttpServerRequest.key, sliceRequestUrl(request, path))
+        const pathname = request.url.split("?")[0];
+        if (pathname.startsWith(path)) {
+          const rest = pathname.slice(path.length);
+          if (rest === "" || rest.startsWith("/")) {
+            context.unsafeMap.set(RouteContext.key, routeContext)
+            if (options?.includePrefix !== true) {
+              context.unsafeMap.set(ServerRequest.HttpServerRequest.key, sliceRequestUrl(request, path))
+            }
+            return Effect.locally(
+              Effect.flatMap(routeContext.route.handler, Respondable.toResponse) as App.Default<E, R>,
+              FiberRef.currentContext,
+              context
+            )
           }
-          return Effect.locally(
-            Effect.flatMap(routeContext.route.handler, Respondable.toResponse) as App.Default<E, R>,
-            FiberRef.currentContext,
-            context
-          )
         }
       }
     }
