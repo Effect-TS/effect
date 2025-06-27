@@ -30,7 +30,7 @@ import type {
   ImageFormat,
   Message,
   PerformanceConfiguration,
-  ToolChoice
+  ToolConfiguration
 } from "./AmazonBedrockSchema.js"
 import * as InternalUtilities from "./internal/utilities.js"
 
@@ -133,23 +133,41 @@ export const make = Effect.fnUntraced(function*(options: {
 }) {
   const client = yield* AmazonBedrockClient
 
-  const makeRequest = Effect.fnUntraced(
-    function*(method: string, { prompt, system, toolChoice, tools }: AiLanguageModel.AiLanguageModelOptions) {
-      const context = yield* Effect.context<never>()
-      const useStructured = tools.length === 1 && tools[0].structured
-      let tool_choice: typeof ToolChoice.Encoded = { auto: {} }
-      if (useStructured) {
-        tool_choice = { tool: { name: tools[0].name } }
-      } else if (tools.length > 0) {
-        if (toolChoice === "required") {
-          tool_choice = { any: {} }
-        } else if (typeof toolChoice === "object") {
-          tool_choice = { tool: { name: toolChoice.tool } }
-        }
+  const makeToolConfig = (options: {
+    readonly toolChoice: AiLanguageModel.AiLanguageModelOptions["toolChoice"]
+    readonly tools: AiLanguageModel.AiLanguageModelOptions["tools"]
+  }): typeof ToolConfiguration.Encoded | undefined => {
+    if (options.tools.length === 0) return undefined
+    const isStructured = options.tools.length === 1 && options.tools[0].structured
+    const tools = options.tools.map((tool) => ({
+      toolSpec: {
+        name: tool.name,
+        description: tool.description,
+        inputSchema: { json: tool.parameters }
       }
+    }))
+    const toolConfig: Mutable<typeof ToolConfiguration.Encoded> = { tools } as any
+    if (isStructured) {
+      toolConfig.toolChoice = { tool: { name: options.tools[0].name } }
+      return toolConfig
+    }
+    if (options.toolChoice === "auto") {
+      toolConfig.toolChoice = { auto: {} }
+    } else if (options.toolChoice === "none") {
+      toolConfig.toolChoice = undefined
+    } else if (options.toolChoice === "required") {
+      toolConfig.toolChoice = { any: {} }
+    } else {
+      toolConfig.toolChoice = { tool: { name: options.toolChoice.tool } }
+    }
+    return toolConfig
+  }
 
+  const makeRequest = Effect.fnUntraced(
+    function*(method: string, { prompt, system, ...rest }: AiLanguageModel.AiLanguageModelOptions) {
+      const context = yield* Effect.context<never>()
       const messages = yield* makeMessages(method, prompt)
-
+      const toolConfig = makeToolConfig(rest)
       return identity<typeof ConverseRequest.Encoded>({
         modelId: options.model,
         ...options.config,
@@ -157,16 +175,7 @@ export const make = Effect.fnUntraced(function*(options: {
         // TODO: re-evaluate a better way to do this
         system: Option.getOrUndefined(system),
         messages,
-        toolConfig: tools.length === 0 ? undefined : {
-          toolChoice: tool_choice,
-          tools: tools.map((tool) => ({
-            toolSpec: {
-              name: tool.name,
-              description: tool.description,
-              inputSchema: { json: tool.parameters }
-            }
-          }))
-        }
+        toolConfig
       })
     }
   )
@@ -228,16 +237,6 @@ export const layer = (options: {
   readonly config?: Omit<Config.Service, "model">
 }): Layer.Layer<AiLanguageModel.AiLanguageModel, never, AmazonBedrockClient> =>
   Layer.effect(AiLanguageModel.AiLanguageModel, make({ model: options.model, config: options.config }))
-
-// /**
-//  * @since 1.0.0
-//  * @category Layers
-//  */
-// export const layerWithTokenizer = (options: {
-//   readonly model: (string & {}) | Model
-//   readonly config?: Omit<Config.Service, "model">
-// }): Layer.Layer<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, never, AnthropicClient> =>
-//   Layer.merge(layer(options), AnthropicTokenizer.layer)
 
 /**
  * @since 1.0.0

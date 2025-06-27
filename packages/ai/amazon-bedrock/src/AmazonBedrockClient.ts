@@ -10,6 +10,7 @@ import * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import { AwsV4Signer } from "aws4fetch"
+import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -23,6 +24,7 @@ import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import * as Stream from "effect/Stream"
 import type { Mutable } from "effect/Types"
+import { AmazonBedrockConfig } from "./AmazonBedrockConfig.js"
 import type { ProviderMetadata } from "./AmazonBedrockLanguageModel.js"
 import type { ConverseRequest } from "./AmazonBedrockSchema.js"
 import { ConverseResponse, ConverseStreamResponse } from "./AmazonBedrockSchema.js"
@@ -79,9 +81,9 @@ export declare namespace AmazonBedrockClient {
  */
 export const make = (options: {
   readonly apiUrl?: string | undefined
-  readonly accessKeyId: Redacted.Redacted
-  readonly secretAccessKey: Redacted.Redacted
-  readonly sessionToken?: Redacted.Redacted | undefined
+  readonly accessKeyId: string
+  readonly secretAccessKey: Redacted.Redacted<string>
+  readonly sessionToken?: Redacted.Redacted<string> | undefined
   readonly region?: string | undefined
   readonly transformClient?: (
     client: HttpClient.HttpClient
@@ -89,6 +91,10 @@ export const make = (options: {
 }) =>
   Effect.gen(function*() {
     const region = options.region ?? "us-east-1"
+
+    const redactedHeaders = ["X-Amz-Security-Token"]
+
+    yield* Effect.locallyScopedWith(Headers.currentRedactedNames, Arr.appendAll(redactedHeaders))
 
     const httpClient = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((request) =>
@@ -106,7 +112,7 @@ export const make = (options: {
           headers: Object.entries(originalHeaders),
           body: prepareBody(request.body),
           region,
-          accessKeyId: Redacted.value(options.accessKeyId),
+          accessKeyId: options.accessKeyId,
           secretAccessKey: Redacted.value(options.secretAccessKey),
           ...(options.sessionToken ? { sessionToken: Redacted.value(options.sessionToken) } : {})
         })
@@ -117,14 +123,11 @@ export const make = (options: {
       options.transformClient ? options.transformClient : identity
     )
 
-    const httpClientOk = httpClient
-
-    const client = makeClient(httpClientOk, {
-      transformClient: (client) => Effect.succeed(client)
-      // TODO
-      // AnthropicConfig.getOrUndefined.pipe(
-      //   Effect.map((config) => config?.transformClient ? config.transformClient(client) : client)
-      // )
+    const client = makeClient(httpClient, {
+      transformClient: (client) =>
+        AmazonBedrockConfig.getOrUndefined.pipe(
+          Effect.map((config) => config?.transformClient ? config.transformClient(client) : client)
+        )
     })
 
     const streamRequest = (request: typeof ConverseRequest.Encoded) =>
@@ -212,7 +215,9 @@ export const make = (options: {
                     )
                   } else {
                     throw new Error(
-                      "[BUG]: AmazonBedrockClient.stream - no reasoning text found for signature: ${delta.reasoningContent.signature} - please report an issue at https://github.com/Effect-TS/effect/issues"
+                      "[BUG]: AmazonBedrockClient.stream - no reasoning text " +
+                        `found for signature: ${delta.reasoningContent.signature} ` +
+                        "- please report an issue at https://github.com/Effect-TS/effect/issues"
                     )
                   }
                 }
@@ -281,14 +286,14 @@ export const make = (options: {
  */
 export const layer = (options: {
   readonly apiUrl?: string | undefined
-  readonly accessKeyId: Redacted.Redacted
-  readonly secretAccessKey: Redacted.Redacted
-  readonly sessionToken?: Redacted.Redacted | undefined
+  readonly accessKeyId: string
+  readonly secretAccessKey: Redacted.Redacted<string>
+  readonly sessionToken?: Redacted.Redacted<string> | undefined
   readonly region?: string | undefined
   readonly transformClient?: (
     client: HttpClient.HttpClient
   ) => HttpClient.HttpClient
-}): Layer.Layer<AmazonBedrockClient, never, HttpClient.HttpClient> => Layer.effect(AmazonBedrockClient, make(options))
+}): Layer.Layer<AmazonBedrockClient, never, HttpClient.HttpClient> => Layer.scoped(AmazonBedrockClient, make(options))
 
 /**
  * @since 1.0.0
@@ -297,9 +302,9 @@ export const layer = (options: {
 export const layerConfig = (
   options: Config.Config.Wrap<{
     readonly apiUrl?: string | undefined
-    readonly accessKeyId: Redacted.Redacted
-    readonly secretAccessKey: Redacted.Redacted
-    readonly sessionToken?: Redacted.Redacted | undefined
+    readonly accessKeyId: string
+    readonly secretAccessKey: Redacted.Redacted<string>
+    readonly sessionToken?: Redacted.Redacted<string> | undefined
     readonly region?: string | undefined
     readonly transformClient?: (
       client: HttpClient.HttpClient
@@ -308,7 +313,7 @@ export const layerConfig = (
 ): Layer.Layer<AmazonBedrockClient, ConfigError, HttpClient.HttpClient> =>
   Config.unwrap(options).pipe(
     Effect.flatMap(make),
-    Layer.effect(AmazonBedrockClient)
+    Layer.scoped(AmazonBedrockClient)
   )
 
 const makeClient = (

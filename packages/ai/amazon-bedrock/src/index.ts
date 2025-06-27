@@ -6,6 +6,11 @@ export * as AmazonBedrockClient from "./AmazonBedrockClient.js"
 /**
  * @since 1.0.0
  */
+export * as AmazonBedrockConfig from "./AmazonBedrockConfig.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as AmazonBedrockLanguageModel from "./AmazonBedrockLanguageModel.js"
 
 /**
