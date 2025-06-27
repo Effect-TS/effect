@@ -1505,7 +1505,7 @@ describe("Effect", () => {
     expect(withError.pipe(Effect.ensureErrorType<TestError1>())).type.toBe<Effect.Effect<never, TestError1, never>>()
   })
 
-  it("ensureRequirements", () => {
+  it("ensureRequirementsType", () => {
     const withoutRequirements = Effect.never
     expect(withoutRequirements.pipe(Effect.ensureRequirementsType<never>())).type.toBe<
       Effect.Effect<never, never, never>
