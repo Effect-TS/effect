@@ -14732,12 +14732,30 @@ export const fnUntraced: fn.Untraced = core.fnUntraced
 export const ensureSuccess = <A>() => <A2 extends A, E, R>(effect: Effect<A2, E, R>): Effect<A2, E, R> => effect
 
 /**
+ * A no-op type constraint that enforces the error channel of an Effect conforms to
+ * the specified error type `E`.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Ensure that the program does not expose any unhandled errors.
+ * const program = Effect.succeed(42).pipe(Effect.ensureError<never>())
+ *
  * @since 3.17.0
  * @category Type constraints
  */
 export const ensureError = <E>() => <A, E2 extends E, R>(effect: Effect<A, E2, R>): Effect<A, E2, R> => effect
 
 /**
+ * A no-op type constraint that enforces the requirements channel of an Effect conforms to
+ * the specified requirements type `R`.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Ensure that the program does not have any requirements.
+ * const program = Effect.succeed(42).pipe(Effect.ensureRequirements<never>())
+ *
  * @since 3.17.0
  * @category Type constraints
  */
