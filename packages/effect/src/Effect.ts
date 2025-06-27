@@ -14727,7 +14727,7 @@ export const fnUntraced: fn.Untraced = core.fnUntraced
 
 /**
  * A no-op type constraint that enforces the success channel of an Effect conforms to
- * the specified error type `A`.
+ * the specified success type `A`.
  *
  * @example
  * import { Effect } from "effect"
