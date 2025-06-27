@@ -1497,20 +1497,22 @@ describe("Effect", () => {
     >()
   })
 
-  it("ensureError", () => {
+  it("ensureErrorType", () => {
     const withoutError = Effect.succeed("no error")
-    expect(withoutError.pipe(Effect.ensureError<never>())).type.toBe<Effect.Effect<string, never, never>>()
+    expect(withoutError.pipe(Effect.ensureErrorType<never>())).type.toBe<Effect.Effect<string, never, never>>()
 
     const withError = Effect.fail(new TestError1())
-    expect(withError.pipe(Effect.ensureError<TestError1>())).type.toBe<Effect.Effect<never, TestError1, never>>()
+    expect(withError.pipe(Effect.ensureErrorType<TestError1>())).type.toBe<Effect.Effect<never, TestError1, never>>()
   })
 
   it("ensureRequirements", () => {
     const withoutRequirements = Effect.never
-    expect(withoutRequirements.pipe(Effect.ensureRequirements<never>())).type.toBe<Effect.Effect<never, never, never>>()
+    expect(withoutRequirements.pipe(Effect.ensureRequirementsType<never>())).type.toBe<
+      Effect.Effect<never, never, never>
+    >()
 
     const withRequirement = Effect.flatMap(TestService, () => Effect.never)
-    expect(withRequirement.pipe(Effect.ensureRequirements<TestService>())).type.toBe<
+    expect(withRequirement.pipe(Effect.ensureRequirementsType<TestService>())).type.toBe<
       Effect.Effect<never, never, TestService>
     >()
   })

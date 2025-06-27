@@ -14726,10 +14726,19 @@ export const fnUntraced: fn.Untraced = core.fnUntraced
 // -----------------------------------------------------------------------------
 
 /**
+ * A no-op type constraint that enforces the success channel of an Effect conforms to
+ * the specified error type `A`.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Ensure that the program does not expose any unhandled errors.
+ * const program = Effect.succeed(42).pipe(Effect.ensureSuccessType<number>())
+ *
  * @since 3.17.0
  * @category Type constraints
  */
-export const ensureSuccess = <A>() => <A2 extends A, E, R>(effect: Effect<A2, E, R>): Effect<A2, E, R> => effect
+export const ensureSuccessType = <A>() => <A2 extends A, E, R>(effect: Effect<A2, E, R>): Effect<A2, E, R> => effect
 
 /**
  * A no-op type constraint that enforces the error channel of an Effect conforms to
@@ -14739,12 +14748,12 @@ export const ensureSuccess = <A>() => <A2 extends A, E, R>(effect: Effect<A2, E,
  * import { Effect } from "effect"
  *
  * // Ensure that the program does not expose any unhandled errors.
- * const program = Effect.succeed(42).pipe(Effect.ensureError<never>())
+ * const program = Effect.succeed(42).pipe(Effect.ensureErrorType<never>())
  *
  * @since 3.17.0
  * @category Type constraints
  */
-export const ensureError = <E>() => <A, E2 extends E, R>(effect: Effect<A, E2, R>): Effect<A, E2, R> => effect
+export const ensureErrorType = <E>() => <A, E2 extends E, R>(effect: Effect<A, E2, R>): Effect<A, E2, R> => effect
 
 /**
  * A no-op type constraint that enforces the requirements channel of an Effect conforms to
@@ -14754,9 +14763,10 @@ export const ensureError = <E>() => <A, E2 extends E, R>(effect: Effect<A, E2, R
  * import { Effect } from "effect"
  *
  * // Ensure that the program does not have any requirements.
- * const program = Effect.succeed(42).pipe(Effect.ensureRequirements<never>())
+ * const program = Effect.succeed(42).pipe(Effect.ensureRequirementsType<never>())
  *
  * @since 3.17.0
  * @category Type constraints
  */
-export const ensureRequirements = <R>() => <A, E, R2 extends R>(effect: Effect<A, E, R2>): Effect<A, E, R2> => effect
+export const ensureRequirementsType = <R>() => <A, E, R2 extends R>(effect: Effect<A, E, R2>): Effect<A, E, R2> =>
+  effect

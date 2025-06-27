@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-add Effect.ensureSuccess/ensureError/ensureRequirements, for constraining Effect types
+add Effect.ensure{Success,Error,Requirements}Type, for constraining Effect types
