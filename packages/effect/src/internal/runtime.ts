@@ -506,22 +506,22 @@ export const deleteFiberRef: {
 )
 
 /** @internal */
-export const unsafeRunEffect = unsafeRunCallback(defaultRuntime)
+export const unsafeRunEffect = /* #__NO_SIDE_EFFECTS__ */ unsafeRunCallback(defaultRuntime)
 
 /** @internal */
-export const unsafeForkEffect = unsafeFork(defaultRuntime)
+export const unsafeForkEffect = /* #__NO_SIDE_EFFECTS__ */ unsafeFork(defaultRuntime)
 
 /** @internal */
-export const unsafeRunPromiseEffect = unsafeRunPromise(defaultRuntime)
+export const unsafeRunPromiseEffect = /* #__NO_SIDE_EFFECTS__ */ unsafeRunPromise(defaultRuntime)
 
 /** @internal */
-export const unsafeRunPromiseExitEffect = unsafeRunPromiseExit(defaultRuntime)
+export const unsafeRunPromiseExitEffect = /* #__NO_SIDE_EFFECTS__ */ unsafeRunPromiseExit(defaultRuntime)
 
 /** @internal */
-export const unsafeRunSyncEffect = unsafeRunSync(defaultRuntime)
+export const unsafeRunSyncEffect = /* #__NO_SIDE_EFFECTS__ */ unsafeRunSync(defaultRuntime)
 
 /** @internal */
-export const unsafeRunSyncExitEffect = unsafeRunSyncExit(defaultRuntime)
+export const unsafeRunSyncExitEffect = /* #__NO_SIDE_EFFECTS__ */ unsafeRunSyncExit(defaultRuntime)
 
 // circular with Effect
 

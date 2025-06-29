@@ -101,8 +101,8 @@ importers:
         specifier: ^0.14.2
         version: 0.14.2
       babel-plugin-annotate-no-side-effects:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.2.0
+        version: 0.2.0(@babel/helper-plugin-utils@7.27.1)
       babel-plugin-annotate-pure-calls:
         specifier: ^0.5.0
         version: 0.5.0(@babel/core@7.27.1)
@@ -3724,8 +3724,10 @@ packages:
     peerDependencies:
       '@babel/core': ^7.8.0
 
-  babel-plugin-annotate-no-side-effects@0.1.0:
-    resolution: {integrity: sha512-lJFZB+qQMF5sWq+tGxfS1EhR0iRkcE6yddej/OXAAM27R6z1gqQkW3mtP/Qm4Ou8OAUgTckwitIedGJqYO7SSA==}
+  babel-plugin-annotate-no-side-effects@0.2.0:
+    resolution: {integrity: sha512-OTqVupfvczaKeexXa0RR+15but6Gc+w6WMGgdE1selfT74/+XXe6JbBaHtX9yO/INhOqPsiNY29BcYC3INevZg==}
+    peerDependencies:
+      '@babel/helper-plugin-utils': ^7.27.1
 
   babel-plugin-annotate-pure-calls@0.5.0:
     resolution: {integrity: sha512-bWlaZl2qsJKHv9BJgF1g6bQ04wK/7Topq9g59I795W9jpx9lNs9N5LK5NjlEBCDhHncrO0vcoAMuHJR3oWnTeQ==}
@@ -10763,7 +10765,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  babel-plugin-annotate-no-side-effects@0.1.0: {}
+  babel-plugin-annotate-no-side-effects@0.2.0(@babel/helper-plugin-utils@7.27.1):
+    dependencies:
+      '@babel/helper-plugin-utils': 7.27.1
 
   babel-plugin-annotate-pure-calls@0.5.0(@babel/core@7.27.1):
     dependencies:
