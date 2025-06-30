@@ -1,5 +1,11 @@
 # @effect/ai-anthropic
 
+## 0.11.4
+
+### Patch Changes
+
+- [#5020](https://github.com/Effect-TS/effect/pull/5020) [`530aa65`](https://github.com/Effect-TS/effect/commit/530aa6561b68ea591cef44e30e8629082e42fda2) Thanks @IMax153! - add Amazon Bedrock AI provider package
+
 ## 0.11.3
 
 ### Patch Changes
