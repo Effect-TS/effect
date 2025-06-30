@@ -4,6 +4,7 @@
   "references": [
     { "path": "packages/effect" },
     { "path": "packages/ai/ai" },
+    { "path": "packages/ai/amazon-bedrock" },
     { "path": "packages/ai/anthropic" },
     { "path": "packages/ai/openai" },
     { "path": "packages/cli" },
