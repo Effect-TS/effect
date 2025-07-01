@@ -478,7 +478,7 @@ export interface Middleware<
     >
     : "Need to .provide(middleware) that satisfy the missing request dependencies"
 
-  readonly provide: <
+  readonly combine: <
     Config2 extends {
       provides: any
       handles: any
@@ -606,7 +606,7 @@ class MiddlewareImpl<
 
   layer: any
 
-  provide<
+  combine<
     Config2 extends {
       provides: any
       handles: any

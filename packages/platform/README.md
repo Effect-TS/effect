@@ -4940,7 +4940,7 @@ const HelloRoute = Layer.effectDiscard(
 
 ## Interdependent middleware
 
-If middleware depends on another middleware, you can use the `.provide` api to
+If middleware depends on another middleware, you can use the `.combine` api to
 combine them.
 
 ```ts
@@ -4983,8 +4983,8 @@ const LogMiddleware = HttpLayerRouter.middleware(
   })
 )
 
-// We can then use the .provide method to combine the middlewares
-const LogAndSessionMiddleware = LogMiddleware.provide(SessionMiddleware)
+// We can then use the .combine method to combine the middlewares
+const LogAndSessionMiddleware = LogMiddleware.combine(SessionMiddleware)
 
 const HelloRoute = Layer.effectDiscard(
   Effect.gen(function* () {
