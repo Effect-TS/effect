@@ -11,7 +11,7 @@ import { compose, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Record from "effect/Record"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import * as FindMyWay from "find-my-way-ts"
 import type * as HttpMethod from "./HttpMethod.js"
@@ -90,30 +90,6 @@ export const HttpRouter: Context.Tag<HttpRouter, HttpRouter> = Context.GenericTa
 export const make = (options?: Partial<FindMyWay.RouterConfig>) => {
   const router = FindMyWay.make<Route<any, never>>(options)
 
-  const middlewareCache = new WeakMap<Context.Context<never>, any>()
-  const getMiddleware = (context: Context.Context<never>): Array<
-    (
-      effect: Effect.Effect<HttpServerResponse.HttpServerResponse>
-    ) => Effect.Effect<HttpServerResponse.HttpServerResponse>
-  > => {
-    const arr = middlewareCache.get(context)
-    if (arr) return arr
-    const middleware = Arr.empty<
-      (
-        effect: Effect.Effect<HttpServerResponse.HttpServerResponse>
-      ) => Effect.Effect<HttpServerResponse.HttpServerResponse>
-    >()
-    for (const key of context.unsafeMap.keys()) {
-      if (key.startsWith("@effect/platform/HttpLayerRouter/Middleware-")) {
-        middleware.push(context.unsafeMap.get(key))
-      }
-    }
-    // ensure that the first middleware added is the first one executed
-    middleware.reverse()
-    middlewareCache.set(context, middleware)
-    return middleware
-  }
-
   const addAll = <const Routes extends ReadonlyArray<Route<any, any>>>(
     ...routes: Routes
   ): Effect.Effect<
@@ -124,8 +100,12 @@ export const make = (options?: Partial<FindMyWay.RouterConfig>) => {
   > =>
     Effect.contextWith((context: Context.Context<never>) => {
       const middleware = getMiddleware(context)
-      const applyMiddleware = (effect: Effect.Effect<HttpServerResponse.HttpServerResponse>) =>
-        Arr.reduce(middleware, effect, (acc, fn) => fn(acc))
+      const applyMiddleware = (effect: Effect.Effect<HttpServerResponse.HttpServerResponse>) => {
+        for (let i = middleware.length - 1; i >= 0; i--) {
+          effect = middleware[i](effect)
+        }
+        return effect
+      }
       for (let i = 0; i < routes.length; i++) {
         const route = middleware.length === 0 ? routes[i] : makeRoute({
           ...routes[i],
@@ -227,7 +207,7 @@ export const toHttpEffect = <A, E, R>(
     Scope.Scope | HttpServerRequest.HttpServerRequest | Type.Only<"Requires", R>
   >,
   E,
-  Exclude<Type.Without<string, R>, HttpRouter> | Scope.Scope
+  Exclude<Type.Without<R>, HttpRouter> | Scope.Scope
 > =>
   Effect.gen(function*() {
     const routerLayer = options ? layerOptions(options) : layer
@@ -384,7 +364,7 @@ export declare namespace Type {
    * @since 1.0.0
    * @category Request types
    */
-  export type Without<Kind extends string, A> = A extends Type<Kind, infer _> ? never : A
+  export type Without<A> = A extends Type<infer _Kind, infer _> ? never : A
 }
 
 /**
@@ -400,7 +380,59 @@ export type Provided =
   | HttpServerRequest.ParsedSearchParams
   | RouteContext
 
-let middlewareId = 0
+/**
+ * @since 1.0.0
+ * @category Middleware
+ */
+export const MiddlewareTypeId: unique symbol = Symbol.for("@effect/platform/HttpLayerRouter/Middleware")
+
+/**
+ * @since 1.0.0
+ * @category Middleware
+ */
+export type MiddlewareTypeId = typeof MiddlewareTypeId
+
+/**
+ * @since 1.0.0
+ * @category Middleware
+ */
+export interface Middleware<
+  Config extends {
+    provides: any
+    handles: any
+    error: any
+    requires: any
+    layerError: any
+    layerRequires: any
+  }
+> {
+  readonly [MiddlewareTypeId]: Config
+
+  readonly layer: [Config["requires"]] extends [never] ? Layer.Layer<
+      Type.From<"Requires", Config["provides"]>,
+      Config["layerError"],
+      Config["layerRequires"] | Type.From<"Requires", Config["requires"]>
+    >
+    : "Need to .provide(middleware) that satisfy the missing request dependencies"
+
+  readonly provide: <
+    Config2 extends {
+      provides: any
+      handles: any
+      error: any
+      requires: any
+      layerError: any
+      layerRequires: any
+    }
+  >(other: Middleware<Config2>) => Middleware<{
+    provides: Config2["provides"] | Config["provides"]
+    handles: Config2["handles"] | Config["handles"]
+    error: Config2["error"] | Exclude<Config["error"], Config2["handles"]>
+    requires: Exclude<Config["requires"], Config2["provides"]> | Config2["requires"]
+    layerError: Config["layerError"] | Config2["layerError"]
+    layerRequires: Config["layerRequires"] | Config2["layerRequires"]
+  }>
+}
 
 /**
  * Create a middleware layer that can be used to modify requests and responses.
@@ -419,42 +451,111 @@ export const middleware:
     Config extends { provides: infer R } ? R : never,
     Config extends { handles: infer E } ? E : never
   >) = function() {
-    const contextKey = `@effect/platform/HttpLayerRouter/Middleware-${++middlewareId}` as const
     const make = (middleware: any) =>
-      Effect.isEffect(middleware) ?
-        Layer.scopedContext(Effect.map(middleware, (fn) => Context.unsafeMake<never>(new Map([[contextKey, fn]])))) :
-        Layer.succeedContext(Context.unsafeMake<never>(new Map([[contextKey, middleware]])))
+      new MiddlewareImpl(
+        Effect.isEffect(middleware) ?
+          Layer.scopedContext(Effect.map(middleware, (fn) => Context.unsafeMake(new Map([[fnContextKey, fn]])))) :
+          Layer.succeedContext(Context.unsafeMake(new Map([[fnContextKey, middleware]]))) as any,
+        Layer.empty as any
+      )
     if (arguments.length === 0) {
       return make as any
     }
     return make(arguments[0])
   }
 
+let middlewareId = 0
+const fnContextKey = "@effect/platform/HttpLayerRouter/MiddlewareFn"
+
+class MiddlewareImpl<
+  Config extends {
+    provides: any
+    handles: any
+    error: any
+    requires: any
+    layerError: any
+    layerRequires: any
+  }
+> implements Middleware<Config> {
+  readonly [MiddlewareTypeId]: Config = {} as any
+
+  constructor(
+    readonly layerFn: Layer.Layer<never>,
+    readonly dependencies: Layer.Layer<any, any, any>
+  ) {
+    const contextKey = `@effect/platform/HttpLayerRouter/Middleware-${++middlewareId}` as const
+    this.layer = Layer.scopedContext(Effect.gen(this, function*() {
+      const context = yield* Effect.context<Scope.Scope>()
+      const memoMap = yield* Layer.CurrentMemoMap
+      const scope = Context.get(context, Scope.Scope)
+      const depsContext = yield* Layer.buildWithMemoMap(this.dependencies, memoMap, scope)
+      const deps = getMiddleware(depsContext)
+      let fn = context.unsafeMap.get(fnContextKey)
+      if (deps.length > 0) {
+        const prevFn = fn
+        fn = (effect: Effect.Effect<HttpServerResponse.HttpServerResponse>) => {
+          effect = prevFn(effect)
+          for (let i = deps.length - 1; i >= 0; i--) {
+            effect = deps[i](effect)
+          }
+          return effect
+        }
+      }
+      return Context.unsafeMake<never>(new Map([[contextKey, fn]]))
+    })).pipe(Layer.provide(this.layerFn))
+  }
+
+  layer: any
+
+  provide<
+    Config2 extends {
+      provides: any
+      handles: any
+      error: any
+      requires: any
+      layerError: any
+      layerRequires: any
+    }
+  >(other: Middleware<Config2>): Middleware<any> {
+    return new MiddlewareImpl(
+      this.layerFn,
+      Layer.provideMerge(this.dependencies, other.layer as any)
+    ) as any
+  }
+}
+
+const middlewareCache = new WeakMap<Context.Context<never>, any>()
+const getMiddleware = (context: Context.Context<never>): Array<
+  (
+    effect: Effect.Effect<HttpServerResponse.HttpServerResponse>
+  ) => Effect.Effect<HttpServerResponse.HttpServerResponse>
+> => {
+  const arr = middlewareCache.get(context)
+  if (arr) return arr
+  const middleware = Arr.empty<
+    (
+      effect: Effect.Effect<HttpServerResponse.HttpServerResponse>
+    ) => Effect.Effect<HttpServerResponse.HttpServerResponse>
+  >()
+  for (const key of context.unsafeMap.keys()) {
+    if (key.startsWith("@effect/platform/HttpLayerRouter/Middleware-")) {
+      middleware.push(context.unsafeMap.get(key))
+    }
+  }
+  middlewareCache.set(context, middleware)
+  return middleware
+}
+
 /**
  * @since 1.0.0
  * @category Middleware
  */
 export declare namespace middleware {
+  /**
+   * @since 1.0.0
+   * @category Middleware
+   */
   export type Make<Provides, Handles> = {
-    <E, R>(
-      middleware: (
-        effect: Effect.Effect<
-          HttpServerResponse.HttpServerResponse,
-          Handles,
-          Provides
-        >
-      ) => Effect.Effect<
-        HttpServerResponse.HttpServerResponse,
-        E,
-        R
-      >
-    ): Layer.Layer<
-      | Type.From<"Requires", Provides>
-      | Type.From<"Error", Handles>,
-      never,
-      | Type.From<"Requires", Exclude<R, Provided>>
-      | Type.From<"Error", E>
-    >
     <E, R, EX, RX>(
       middleware: Effect.Effect<
         (
@@ -471,13 +572,43 @@ export declare namespace middleware {
         EX,
         RX
       >
-    ): Layer.Layer<
-      | Type.From<"Requires", Provides>
-      | Type.From<"Error", Handles>,
-      EX,
-      Exclude<RX, Scope.Scope> | Type.From<"Requires", Exclude<R, Provided>> | Type.From<"Error", E>
-    >
+    ): Middleware<{
+      provides: Provides
+      handles: Handles
+      error: E
+      requires: Exclude<R, Provided>
+      layerError: EX
+      layerRequires: Exclude<RX, Scope.Scope>
+    }>
+    <E, R>(
+      middleware: (
+        effect: Effect.Effect<
+          HttpServerResponse.HttpServerResponse,
+          Handles,
+          Provides
+        >
+      ) => Effect.Effect<
+        HttpServerResponse.HttpServerResponse,
+        E,
+        R
+      >
+    ): Middleware<{
+      provides: Provides
+      handles: Handles
+      error: E
+      requires: Exclude<R, Provided>
+      layerError: never
+      layerRequires: never
+    }>
   }
+
+  /**
+   * @since 1.0.0
+   * @category Middleware
+   */
+  export type Fn = (
+    effect: Effect.Effect<HttpServerResponse.HttpServerResponse>
+  ) => Effect.Effect<HttpServerResponse.HttpServerResponse>
 }
 
 /**
@@ -498,7 +629,7 @@ export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R>>(
       >
     ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR>
   }
-): Layer.Layer<never, E, Exclude<Type.Without<any, R> | Exclude<HR, Provided>, HttpRouter>> => {
+): Layer.Layer<never, E, Exclude<Type.Without<R> | Exclude<HR, Provided>, HttpRouter>> => {
   let middleware: any = options?.middleware
   if (options?.disableLogger !== true) {
     middleware = middleware ? compose(HttpMiddleware.logger, middleware) : HttpMiddleware.logger
