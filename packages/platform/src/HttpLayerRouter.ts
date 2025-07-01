@@ -433,6 +433,53 @@ export interface Middleware<
 /**
  * Create a middleware layer that can be used to modify requests and responses.
  *
+ * ```ts
+ * import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+ * import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
+ * import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+ * import * as Context from "effect/Context"
+ * import * as Effect from "effect/Effect"
+ * import * as Layer from "effect/Layer"
+ *
+ * // Here we are defining a CORS middleware
+ * const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors()).layer
+ *
+ * class CurrentSession extends Context.Tag("CurrentSession")<CurrentSession, {
+ *   readonly token: string
+ * }>() {}
+ *
+ * // You can create middleware that provides a service to the HTTP requests.
+ * const SessionMiddleware = HttpLayerRouter.middleware<{
+ *   provides: CurrentSession
+ * }>()(
+ *   Effect.gen(function*() {
+ *     yield* Effect.log("SessionMiddleware initialized")
+ *
+ *     return (httpEffect) =>
+ *       Effect.provideService(httpEffect, CurrentSession, {
+ *         token: "dummy-token"
+ *       })
+ *   })
+ * ).layer
+ *
+ * Effect.gen(function*() {
+ *   const router = yield* HttpLayerRouter.HttpRouter
+ *   yield* router.add(
+ *     "GET",
+ *     "/hello",
+ *     Effect.gen(function*() {
+ *       // Requests can now access the current session
+ *       const session = yield* CurrentSession
+ *       return HttpServerResponse.text(`Hello, World! Your token is ${session.token}`)
+ *     })
+ *   )
+ * }).pipe(
+ *   Layer.effectDiscard,
+ *   // Provide the SessionMiddleware & CorsMiddleware to some routes
+ *   Layer.provide([SessionMiddleware, CorsMiddleware])
+ * )
+ * ```
+ *
  * @since 1.0.0
  * @category Middleware
  */
@@ -608,6 +655,60 @@ export declare namespace middleware {
 }
 
 /**
+ * ```ts
+ * import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
+ * import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+ * import * as HttpApi from "@effect/platform/HttpApi"
+ * import * as HttpApiBuilder from "@effect/platform/HttpApiBuilder"
+ * import * as HttpApiEndpoint from "@effect/platform/HttpApiEndpoint"
+ * import * as HttpApiGroup from "@effect/platform/HttpApiGroup"
+ * import * as HttpApiScalar from "@effect/platform/HttpApiScalar"
+ * import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+ * import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
+ * import * as Effect from "effect/Effect"
+ * import * as Layer from "effect/Layer"
+ * import { createServer } from "http"
+ *
+ * // First, we define our HttpApi
+ * class MyApi extends HttpApi.make("api").add(
+ *   HttpApiGroup.make("users").add(
+ *     HttpApiEndpoint.get("me", "/me")
+ *   ).prefix("/users")
+ * ) {}
+ *
+ * // Implement the handlers for the API
+ * const UsersApiLayer = HttpApiBuilder.group(MyApi, "users", (handers) => handers.handle("me", () => Effect.void))
+ *
+ * // Use `HttpLayerRouter.addHttpApi` to register the API with the router
+ * const HttpApiRoutes = HttpLayerRouter.addHttpApi(MyApi, {
+ *   openapiPath: "/docs/openapi.json"
+ * }).pipe(
+ *   // Provide the api handlers layer
+ *   Layer.provide(UsersApiLayer)
+ * )
+ *
+ * // Create a /docs route for the API documentation
+ * const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
+ *   api: MyApi
+ * })
+ *
+ * const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors())
+ *
+ * // Finally, we merge all routes and serve them using the Node HTTP server
+ * const AllRoutes = Layer.mergeAll(
+ *   HttpApiRoutes,
+ *   DocsRoute
+ * ).pipe(
+ *   Layer.provide(CorsMiddleware.layer)
+ * )
+ *
+ * HttpLayerRouter.serve(AllRoutes).pipe(
+ *   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
+ *   Layer.launch,
+ *   NodeRuntime.runMain
+ * )
+ * ```
+ *
  * @since 1.0.0
  * @category HttpApi
  */
@@ -649,6 +750,8 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
 }
 
 /**
+ * Serves the provided application layer as an HTTP server.
+ *
  * @since 1.0.0
  * @category Server
  */
@@ -658,6 +761,17 @@ export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R>>(
     readonly routerConfig?: Partial<FindMyWay.RouterConfig> | undefined
     readonly disableLogger?: boolean | undefined
     readonly disableListenLog?: boolean
+    /**
+     * Middleware to apply to the HTTP server.
+     *
+     * NOTE: This middleware is applied to the entire HTTP server chain,
+     * including the sending of the response. This means that modifications
+     * to the response **WILL NOT** be reflected in the final response sent to the
+     * client.
+     *
+     * Use HttpLayerRouter.middleware to create middleware that can modify the
+     * response.
+     */
     readonly middleware?: (
       effect: Effect.Effect<
         HttpServerResponse.HttpServerResponse,
