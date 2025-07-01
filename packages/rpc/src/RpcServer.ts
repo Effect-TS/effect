@@ -724,6 +724,39 @@ export const layer = <Rpcs extends Rpc.Any>(
 > => Layer.scopedDiscard(Effect.forkScoped(Effect.interruptible(make(group, options))))
 
 /**
+ * Create a RPC server that registers a HTTP route with a `HttpLayerRouter`.
+ *
+ * It defaults to using websockets for communication, but can be configured to
+ * use HTTP.
+ *
+ * @since 1.0.0
+ * @category protocol
+ */
+export const layerHttpRouter = <Rpcs extends Rpc.Any>(options: {
+  readonly group: RpcGroup.RpcGroup<Rpcs>
+  readonly path: HttpRouter.PathInput
+  readonly protocol?: "http" | "websocket" | undefined
+  readonly disableTracing?: boolean | undefined
+  readonly spanPrefix?: string | undefined
+  readonly spanAttributes?: Record<string, unknown> | undefined
+  readonly concurrency?: number | "unbounded" | undefined
+}): Layer.Layer<
+  never,
+  never,
+  | RpcSerialization.RpcSerialization
+  | HttpLayerRouter.HttpRouter
+  | Rpc.ToHandler<Rpcs>
+  | Rpc.Middleware<Rpcs>
+> =>
+  layer(options.group, options).pipe(
+    Layer.provide(
+      options.protocol === "http"
+        ? layerProtocolHttpRouter(options)
+        : layerProtocolWebsocketRouter(options)
+    )
+  )
+
+/**
  * @since 1.0.0
  * @category protocol
  */
