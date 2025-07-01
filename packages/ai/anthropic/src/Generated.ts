@@ -14,26 +14,26 @@ export class MessagesPostParams extends S.Struct({
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class Model extends S.Union(
-  S.Literal("claude-3-7-sonnet-latest"),
-  S.Literal("claude-3-7-sonnet-20250219"),
-  S.Literal("claude-3-5-haiku-latest"),
-  S.Literal("claude-3-5-haiku-20241022"),
-  S.Literal("claude-sonnet-4-20250514"),
-  S.Literal("claude-sonnet-4-0"),
-  S.Literal("claude-4-sonnet-20250514"),
-  S.Literal("claude-3-5-sonnet-latest"),
-  S.Literal("claude-3-5-sonnet-20241022"),
-  S.Literal("claude-3-5-sonnet-20240620"),
-  S.Literal("claude-opus-4-0"),
-  S.Literal("claude-opus-4-20250514"),
-  S.Literal("claude-4-opus-20250514"),
-  S.Literal("claude-3-opus-latest"),
-  S.Literal("claude-3-opus-20240229"),
-  S.Literal("claude-3-sonnet-20240229"),
-  S.Literal("claude-3-haiku-20240307"),
-  S.Literal("claude-2.1"),
-  S.Literal("claude-2.0")
+export class Model extends S.Literal(
+  "claude-3-7-sonnet-latest",
+  "claude-3-7-sonnet-20250219",
+  "claude-3-5-haiku-latest",
+  "claude-3-5-haiku-20241022",
+  "claude-sonnet-4-20250514",
+  "claude-sonnet-4-0",
+  "claude-4-sonnet-20250514",
+  "claude-3-5-sonnet-latest",
+  "claude-3-5-sonnet-20241022",
+  "claude-3-5-sonnet-20240620",
+  "claude-opus-4-0",
+  "claude-opus-4-20250514",
+  "claude-4-opus-20250514",
+  "claude-3-opus-latest",
+  "claude-3-opus-20240229",
+  "claude-3-sonnet-20240229",
+  "claude-3-haiku-20240307",
+  "claude-2.1",
+  "claude-2.0"
 ) {}
 
 export class CacheControlEphemeralType extends S.Literal("ephemeral") {}
@@ -472,19 +472,16 @@ export class ResponseWebSearchResultLocationCitation extends S.Struct({
 export class ResponseTextBlockType extends S.Literal("text") {}
 
 export class ResponseTextBlock extends S.Struct({
-  "citations": S.NullOr(
-    S.Union(
-      S.Array(
-        S.Union(
-          ResponseCharLocationCitation,
-          ResponsePageLocationCitation,
-          ResponseContentBlockLocationCitation,
-          ResponseWebSearchResultLocationCitation
-        )
-      ),
-      S.Null
+  "citations": S.optional(S.NullOr(
+    S.Array(
+      S.Union(
+        ResponseCharLocationCitation,
+        ResponsePageLocationCitation,
+        ResponseContentBlockLocationCitation,
+        ResponseWebSearchResultLocationCitation
+      )
     )
-  ),
+  )),
   "text": S.String.pipe(S.minLength(0), S.maxLength(5000000)),
   "type": ResponseTextBlockType
 }) {}
@@ -573,7 +570,7 @@ export class Usage extends S.Struct({
   "cache_read_input_tokens": S.NullOr(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null)),
   "input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
   "output_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "server_tool_use": S.NullOr(S.Union(ServerToolUsage, S.Null)),
+  "server_tool_use": S.optional(S.NullOr(ServerToolUsage)),
   "service_tier": S.NullOr(S.Union(UsageServiceTierEnum, S.Null))
 }) {}
 
@@ -1505,19 +1502,16 @@ export class BetaResponseWebSearchResultLocationCitation extends S.Struct({
 export class BetaResponseTextBlockType extends S.Literal("text") {}
 
 export class BetaResponseTextBlock extends S.Struct({
-  "citations": S.NullOr(
-    S.Union(
-      S.Array(
-        S.Union(
-          BetaResponseCharLocationCitation,
-          BetaResponsePageLocationCitation,
-          BetaResponseContentBlockLocationCitation,
-          BetaResponseWebSearchResultLocationCitation
-        )
-      ),
-      S.Null
+  "citations": S.optional(S.NullOr(
+    S.Array(
+      S.Union(
+        BetaResponseCharLocationCitation,
+        BetaResponsePageLocationCitation,
+        BetaResponseContentBlockLocationCitation,
+        BetaResponseWebSearchResultLocationCitation
+      )
     )
-  ),
+  )),
   "text": S.String.pipe(S.minLength(0), S.maxLength(5000000)),
   "type": BetaResponseTextBlockType
 }) {}
@@ -1674,7 +1668,7 @@ export class BetaUsage extends S.Struct({
   "cache_read_input_tokens": S.NullOr(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null)),
   "input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
   "output_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "server_tool_use": S.NullOr(S.Union(BetaServerToolUsage, S.Null)),
+  "server_tool_use": S.optional(S.NullOr(BetaServerToolUsage)),
   "service_tier": S.NullOr(S.Union(BetaUsageServiceTierEnum, S.Null))
 }) {}
 
