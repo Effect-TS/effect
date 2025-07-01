@@ -438,6 +438,7 @@ describe("DateTime", () => {
         strictEqual(dt.toJSON(), "2023-12-31T12:00:00.000Z")
       }))
   })
+
   describe("nowAsDate", () => {
     it.effect("should return the current Date", () =>
       Effect.gen(function*() {
@@ -449,8 +450,11 @@ describe("DateTime", () => {
 
   describe("unsafeMake", () => {
     it("treats strings without zone info as UTC", () => {
-      const dt = DateTime.unsafeMake("2024-01-01 01:00:00")
+      let dt = DateTime.unsafeMake("2024-01-01 01:00:00")
       strictEqual(dt.toJSON(), "2024-01-01T01:00:00.000Z")
+
+      dt = DateTime.unsafeMake("2020-02-01T11:17:00+1100")
+      strictEqual(dt.toJSON(), "2020-02-01T00:17:00.000Z")
     })
   })
 })
