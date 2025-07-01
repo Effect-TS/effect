@@ -195,7 +195,7 @@ describe("HttpServer", () => {
       const rootSlash = yield* client.get("/child/").pipe(Effect.flatMap((_) => _.text))
       expect(rootSlash).toEqual("/")
       const invalid = yield* client.get("/child1/", {
-        urlParams: UrlParams.fromInput({ foo: 'bar' })
+        urlParams: { foo: "bar" }
       }).pipe(Effect.map((_) => _.status))
       expect(invalid).toEqual(404)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
