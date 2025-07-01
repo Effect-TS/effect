@@ -8,4 +8,4 @@ The experimental HttpLayerRouter module provides a simplified way to create HTTP
 
 You can read more in the /platform README:
 
-https://github.com/Effect-TS/effect/blob/httplayerrouter/packages/platform/README.md#httplayerrouter
+https://github.com/Effect-TS/effect/blob/main/packages/platform/README.md#httplayerrouter
