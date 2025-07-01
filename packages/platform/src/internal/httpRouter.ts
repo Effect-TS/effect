@@ -243,9 +243,12 @@ const toHttpApp = <E, R>(
     const context = Context.unsafeMake(new Map(fiber.getFiberRef(FiberRef.currentContext).unsafeMap))
     const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
     if (mountsLen > 0) {
+      const searchIndex = request.url.indexOf("?")
+      const pathname = searchIndex === -1 ? request.url : request.url.slice(0, searchIndex)
+
       for (let i = 0; i < mountsLen; i++) {
         const [path, routeContext, options] = mounts[i]
-        if (request.url.startsWith(path)) {
+        if (pathname === path || pathname.startsWith(path + "/")) {
           context.unsafeMap.set(RouteContext.key, routeContext)
           if (options?.includePrefix !== true) {
             context.unsafeMap.set(ServerRequest.HttpServerRequest.key, sliceRequestUrl(request, path))

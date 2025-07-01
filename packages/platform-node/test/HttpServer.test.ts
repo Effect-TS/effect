@@ -190,6 +190,14 @@ describe("HttpServer", () => {
       expect(todo).toEqual("/1")
       const root = yield* client.get("/child").pipe(Effect.flatMap((_) => _.text))
       expect(root).toEqual("/")
+      const rootSearch = yield* client.get("/child?foo=bar").pipe(Effect.flatMap((_) => _.text))
+      expect(rootSearch).toEqual("?foo=bar")
+      const rootSlash = yield* client.get("/child/").pipe(Effect.flatMap((_) => _.text))
+      expect(rootSlash).toEqual("/")
+      const invalid = yield* client.get("/child1/", {
+        urlParams: { foo: "bar" }
+      }).pipe(Effect.map((_) => _.status))
+      expect(invalid).toEqual(404)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
   it.scoped("mountApp/includePrefix", () =>
