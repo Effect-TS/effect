@@ -33,7 +33,7 @@ export * as FindMyWay from "find-my-way-ts"
  * @since 1.0.0
  * @category HttpRouter
  */
-export const TypeId: unique symbol = Symbol.for("@effect/platform/HttpRouter/HttpRouter")
+export const TypeId: unique symbol = Symbol.for("@effect/platform/HttpLayerRouter/HttpRouter")
 
 /**
  * @since 1.0.0
@@ -132,13 +132,7 @@ export const make = Effect.gen(function*() {
       })
     },
     addAll,
-    add: (method, path, handler, options) =>
-      addAll(makeRoute({
-        ...options,
-        method,
-        path,
-        handler: Effect.isEffect(handler) ? handler : Effect.flatMap(HttpServerRequest.HttpServerRequest, handler)
-      })),
+    add: (method, path, handler, options) => addAll(route(method, path, handler, options)),
     asHttpEffect() {
       return Effect.withFiberRuntime((fiber) => {
         const contextMap = new Map(fiber.currentContext.unsafeMap)
@@ -192,6 +186,61 @@ function sliceRequestUrl(request: HttpServerRequest.HttpServerRequest, prefix: s
 export class RouterConfig extends Context.Reference<RouterConfig>()("@effect/platform/HttpLayerRouter/RouterConfig", {
   defaultValue: constant<Partial<FindMyWay.RouterConfig>>({})
 }) {}
+
+export {
+  /**
+   * @since 1.0.0
+   * @category Route context
+   */
+  params,
+  /**
+   * @since 1.0.0
+   * @category Route context
+   */
+  RouteContext,
+  /**
+   * @since 1.0.0
+   * @category Route context
+   */
+  schemaJson,
+  /**
+   * @since 1.0.0
+   * @category Route context
+   */
+  schemaNoBody,
+  /**
+   * @since 1.0.0
+   * @category Route context
+   */
+  schemaParams,
+  /**
+   * @since 1.0.0
+   * @category Route context
+   */
+  schemaPathParams
+} from "./HttpRouter.js"
+
+/**
+ * A helper function that is the equivalent of:
+ *
+ * ```ts
+ * import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+ * import * as Effect from "effect/Effect"
+ * import * as Layer from "effect/Layer"
+ *
+ * const MyRoute = Layer.scopedDiscard(Effect.gen(function*() {
+ *   const router = yield* HttpLayerRouter.HttpRouter
+ *
+ *   // then use `router.add` to add a route
+ * }))
+ * ```
+ *
+ * @since 1.0.0
+ * @category HttpRouter
+ */
+export const use = <A, E, R>(
+  f: (router: HttpRouter) => Effect.Effect<A, E, R>
+): Layer.Layer<never, E, HttpRouter | Exclude<R, Scope.Scope>> => Layer.scopedDiscard(Effect.flatMap(HttpRouter, f))
 
 /**
  * @since 1.0.0
@@ -269,22 +318,41 @@ export declare namespace Route {
   export type Context<T extends Route<any, any>> = T extends Route<infer _E, infer R> ? R : never
 }
 
-/**
- * @since 1.0.0
- * @category Route
- */
-export const makeRoute = <E, R>(options: {
+const makeRoute = <E, R>(options: {
   readonly method: HttpMethod.HttpMethod | "*"
   readonly path: PathInput
   readonly handler: Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
   readonly uninterruptible?: boolean | undefined
   readonly prefix?: Option.Option<string> | undefined
-}): Route<E, R> => ({
-  ...options,
-  uninterruptible: options.uninterruptible ?? false,
-  prefix: options.prefix ?? Option.none(),
-  [RouteTypeId]: RouteTypeId
-})
+}): Route<E, Exclude<R, Provided>> =>
+  ({
+    ...options,
+    uninterruptible: options.uninterruptible ?? false,
+    prefix: options.prefix ?? Option.none(),
+    [RouteTypeId]: RouteTypeId
+  }) as Route<E, Exclude<R, Provided>>
+
+/**
+ * @since 1.0.0
+ * @category Route
+ */
+export const route = <E, R>(
+  method: "*" | "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS",
+  path: PathInput,
+  handler:
+    | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
+    | ((request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
+  options?: {
+    readonly uninterruptible?: boolean | undefined
+  }
+): Route<E, Exclude<R, Provided>> =>
+  makeRoute({
+    ...options,
+    method,
+    path,
+    handler: Effect.isEffect(handler) ? handler : Effect.flatMap(HttpServerRequest.HttpServerRequest, handler),
+    uninterruptible: options?.uninterruptible ?? false
+  })
 
 /**
  * @since 1.0.0
@@ -781,7 +849,7 @@ export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R>>(
 ): Layer.Layer<never, E, HttpServer.HttpServer | Exclude<Type.Without<R> | Exclude<HR, Provided>, HttpRouter>> => {
   let middleware: any = options?.middleware
   if (options?.disableLogger !== true) {
-    middleware = middleware ? compose(HttpMiddleware.logger, middleware) : HttpMiddleware.logger
+    middleware = middleware ? compose(middleware, HttpMiddleware.logger) : HttpMiddleware.logger
   }
   const RouterLayer = options?.routerConfig
     ? Layer.provide(layer, Layer.succeed(RouterConfig, options.routerConfig))

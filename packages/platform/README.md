@@ -4857,9 +4857,22 @@ const HelloRoute = Layer.effectDiscard(
   })
 )
 
-// To start the server, we use `HttpLayerRouter.serve` with the `HelloRoute`
-// layer
-HttpLayerRouter.serve(HelloRoute).pipe(
+// You can also use the `HttpLayerRouter.use` function to register a route
+const GoodbyeRoute = HttpLayerRouter.use(
+  Effect.fn(function* (router) {
+    // The `router` parameter is the `HttpRouter` service
+    yield* router.add(
+      "GET",
+      "/goodbye",
+      HttpServerResponse.text("Goodbye, World!")
+    )
+  })
+)
+
+const AllRoutes = Layer.mergeAll(HelloRoute, GoodbyeRoute)
+
+// To start the server, we use `HttpLayerRouter.serve` with the routes layer
+HttpLayerRouter.serve(AllRoutes).pipe(
   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
   Layer.launch,
   NodeRuntime.runMain
