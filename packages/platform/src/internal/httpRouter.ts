@@ -243,22 +243,21 @@ const toHttpApp = <E, R>(
     const context = Context.unsafeMake(new Map(fiber.getFiberRef(FiberRef.currentContext).unsafeMap))
     const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
     if (mountsLen > 0) {
+      const searchIndex = request.url.indexOf("?")
+      const pathname = searchIndex === -1 ? request.url : request.url.slice(0, searchIndex)
+
       for (let i = 0; i < mountsLen; i++) {
         const [path, routeContext, options] = mounts[i]
-        const pathname = request.url.split("?")[0];
-        if (pathname.startsWith(path)) {
-          const rest = pathname.slice(path.length);
-          if (rest === "" || rest.startsWith("/")) {
-            context.unsafeMap.set(RouteContext.key, routeContext)
-            if (options?.includePrefix !== true) {
-              context.unsafeMap.set(ServerRequest.HttpServerRequest.key, sliceRequestUrl(request, path))
-            }
-            return Effect.locally(
-              Effect.flatMap(routeContext.route.handler, Respondable.toResponse) as App.Default<E, R>,
-              FiberRef.currentContext,
-              context
-            )
+        if (pathname === path || pathname.startsWith(path + "/")) {
+          context.unsafeMap.set(RouteContext.key, routeContext)
+          if (options?.includePrefix !== true) {
+            context.unsafeMap.set(ServerRequest.HttpServerRequest.key, sliceRequestUrl(request, path))
           }
+          return Effect.locally(
+            Effect.flatMap(routeContext.route.handler, Respondable.toResponse) as App.Default<E, R>,
+            FiberRef.currentContext,
+            context
+          )
         }
       }
     }
