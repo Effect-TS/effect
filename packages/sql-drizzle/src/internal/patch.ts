@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as Runtime from "effect/Runtime"
 
-let cli: any = undefined
+let currentRuntime: any = undefined
 
 const PatchProto = {
   ...Effectable.CommitPrototype,
@@ -20,9 +20,10 @@ const PatchProto = {
       Effect.flatMap((context) =>
         Effect.tryPromise({
           try: () => {
-            cli = context
+            const pre = currentRuntime
+            currentRuntime = context
             const out = this.execute()
-            cli = undefined
+            currentRuntime = pre
             return out
           },
           catch: (cause) => new SqlError({ cause, message: "Failed to execute QueryPromise" })
@@ -43,9 +44,9 @@ export const patch = (prototype: any) => {
 /** @internal */
 export const makeRemoteCallback = Effect.gen(function*() {
   const client = yield* Client.SqlClient
-  const runtime = yield* Effect.runtime<never>()
+  const constructionRuntime = yield* Effect.runtime<never>()
   return (sql: string, params: Array<any>, method: "all" | "execute" | "get" | "values" | "run") => {
-    const runPromise = Runtime.runPromise(cli ? cli : runtime)
+    const runPromise = Runtime.runPromise(currentRuntime ? currentRuntime : constructionRuntime)
     const statement = client.unsafe(sql, params)
     if (method === "execute") {
       return runPromise(Effect.map(statement.raw, (header) => ({ rows: [header] })))
