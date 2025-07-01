@@ -10692,6 +10692,9 @@ const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equival
       const elements = ast.elements.map((element, i) => go(element.type, path.concat(i)))
       const rest = ast.rest.map((annotatedAST) => go(annotatedAST.type, path))
       return Equivalence.make((a, b) => {
+        if (!Array.isArray(a) || !Array.isArray(b)) {
+          return false
+        }
         const len = a.length
         if (len !== b.length) {
           return false
@@ -10735,6 +10738,9 @@ const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equival
       const propertySignatures = ast.propertySignatures.map((ps) => go(ps.type, path.concat(ps.name)))
       const indexSignatures = ast.indexSignatures.map((is) => go(is.type, path))
       return Equivalence.make((a, b) => {
+        if (!Predicate.isRecord(a) || !Predicate.isRecord(b)) {
+          return false
+        }
         const aStringKeys = Object.keys(a)
         const aSymbolKeys = Object.getOwnPropertySymbols(a)
         // ---------------------------------------------
