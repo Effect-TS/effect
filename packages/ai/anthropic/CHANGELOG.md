@@ -1,5 +1,18 @@
 # @effect/ai-anthropic
 
+## 0.11.5
+
+### Patch Changes
+
+- [#5121](https://github.com/Effect-TS/effect/pull/5121) [`8e3c565`](https://github.com/Effect-TS/effect/commit/8e3c565aad2b888badb0b62f109d9b4ec4049305) Thanks @IMax153! - Fix several issues in the generated OpenAPI models for the Anthropic AI provider
+  package.
+
+  The OpenAPI specification that Anthropic maintains for its API is apparently
+  [incorrect](https://github.com/anthropics/anthropic-sdk-typescript/issues/605).
+  Some properties which are marked as nullable but required are sometimes not
+  returned by the API. This fixes the schemas associated with some of those
+  properties, though others may exist / be found that require manual adjustment.
+
 ## 0.11.4
 
 ### Patch Changes
