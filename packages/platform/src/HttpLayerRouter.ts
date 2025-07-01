@@ -105,7 +105,7 @@ export const make = (options?: Partial<FindMyWay.RouterConfig>) => {
     Effect.contextWith((context: Context.Context<never>) => {
       const middleware = getMiddleware(context)
       const applyMiddleware = (effect: Effect.Effect<HttpServerResponse.HttpServerResponse>) => {
-        for (let i = middleware.length - 1; i >= 0; i--) {
+        for (let i = 0; i < middleware.length; i++) {
           effect = middleware[i](effect)
         }
         return effect
@@ -532,19 +532,8 @@ class MiddlewareImpl<
       const memoMap = yield* Layer.CurrentMemoMap
       const scope = Context.get(context, Scope.Scope)
       const depsContext = yield* Layer.buildWithMemoMap(this.dependencies, memoMap, scope)
-      const deps = getMiddleware(depsContext)
-      let fn = context.unsafeMap.get(fnContextKey)
-      if (deps.length > 0) {
-        const prevFn = fn
-        fn = (effect: Effect.Effect<HttpServerResponse.HttpServerResponse>) => {
-          effect = prevFn(effect)
-          for (let i = deps.length - 1; i >= 0; i--) {
-            effect = deps[i](effect)
-          }
-          return effect
-        }
-      }
-      return Context.unsafeMake<never>(new Map([[contextKey, fn]]))
+      const stack = [context.unsafeMap.get(fnContextKey) as Array<middleware.Fn>].concat(getMiddleware(depsContext))
+      return Context.unsafeMake<never>(new Map([[contextKey, stack]]))
     })).pipe(Layer.provide(this.layerFn))
   }
 
@@ -568,25 +557,35 @@ class MiddlewareImpl<
 }
 
 const middlewareCache = new WeakMap<Context.Context<never>, any>()
-const getMiddleware = (context: Context.Context<never>): Array<
-  (
-    effect: Effect.Effect<HttpServerResponse.HttpServerResponse>
-  ) => Effect.Effect<HttpServerResponse.HttpServerResponse>
-> => {
-  const arr = middlewareCache.get(context)
+const getMiddleware = (context: Context.Context<never>): Array<middleware.Fn> => {
+  let arr = middlewareCache.get(context)
   if (arr) return arr
-  const middleware = Arr.empty<
-    (
-      effect: Effect.Effect<HttpServerResponse.HttpServerResponse>
-    ) => Effect.Effect<HttpServerResponse.HttpServerResponse>
-  >()
+  const topLevel = Arr.empty<Array<middleware.Fn>>()
+  let maxLength = 0
   for (const key of context.unsafeMap.keys()) {
     if (key.startsWith("@effect/platform/HttpLayerRouter/Middleware-")) {
-      middleware.push(context.unsafeMap.get(key))
+      const value = context.unsafeMap.get(key)
+      topLevel.push(value)
+      if (value.length > maxLength) {
+        maxLength = value.length
+      }
     }
   }
-  middlewareCache.set(context, middleware)
-  return middleware
+  if (topLevel.length === 0) {
+    arr = []
+  } else {
+    const middleware = new Set<middleware.Fn>()
+    for (let i = maxLength - 1; i >= 0; i--) {
+      for (const arr of topLevel) {
+        if (i < arr.length) {
+          middleware.add(arr[i])
+        }
+      }
+    }
+    arr = Array.from(middleware).reverse()
+  }
+  middlewareCache.set(context, arr)
+  return arr
 }
 
 /**
