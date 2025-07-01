@@ -3,6 +3,7 @@
  */
 import * as Headers from "@effect/platform/Headers"
 import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
@@ -823,6 +824,27 @@ export const makeProtocolWebsocket: <I = HttpRouter.Default>(
 })
 
 /**
+ * @since 1.0.0
+ * @category protocol
+ */
+export const makeProtocolWebsocketRouter: (
+  options: {
+    readonly path: HttpRouter.PathInput
+  }
+) => Effect.Effect<
+  Protocol["Type"],
+  never,
+  RpcSerialization.RpcSerialization | HttpLayerRouter.HttpRouter
+> = Effect.fnUntraced(function*(options: {
+  readonly path: HttpRouter.PathInput
+}) {
+  const router = yield* HttpLayerRouter.HttpRouter
+  const { httpApp, protocol } = yield* makeProtocolWithHttpAppWebsocket
+  yield* router.add("GET", options.path, httpApp)
+  return protocol
+})
+
+/**
  * A rpc protocol that uses websockets for communication.
  *
  * @since 1.0.0
@@ -838,6 +860,19 @@ export const layerProtocolWebsocket = <I = HttpRouter.Default>(options: {
     Layer.provide(routerTag.Live)
   )
 }
+
+/**
+ * A rpc protocol that uses websockets for communication.
+ *
+ * Uses a `HttpLayerRouter` to provide the websocket endpoint.
+ *
+ * @since 1.0.0
+ * @category protocol
+ */
+export const layerProtocolWebsocketRouter = (options: {
+  readonly path: HttpLayerRouter.PathInput
+}): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | HttpLayerRouter.HttpRouter> =>
+  Layer.effect(Protocol, makeProtocolWebsocketRouter(options))
 
 /**
  * @since 1.0.0
@@ -989,6 +1024,19 @@ export const makeProtocolHttp = Effect.fnUntraced(function*<I = HttpRouter.Defau
  * @since 1.0.0
  * @category protocol
  */
+export const makeProtocolHttpRouter = Effect.fnUntraced(function*(options: {
+  readonly path: HttpRouter.PathInput
+}) {
+  const router = yield* HttpLayerRouter.HttpRouter
+  const { httpApp, protocol } = yield* makeProtocolWithHttpApp
+  yield* router.add("POST", options.path, httpApp)
+  return protocol
+})
+
+/**
+ * @since 1.0.0
+ * @category protocol
+ */
 export const makeProtocolWorkerRunner: Effect.Effect<
   Protocol["Type"],
   WorkerError,
@@ -1066,6 +1114,19 @@ export const layerProtocolHttp = <I = HttpRouter.Default>(options: {
     Layer.provide(routerTag.Live)
   )
 }
+
+/**
+ * A rpc protocol that uses streaming http for communication.
+ *
+ * Uses a `HttpLayerRouter` to provide the http endpoint.
+ *
+ * @since 1.0.0
+ * @category protocol
+ */
+export const layerProtocolHttpRouter = (options: {
+  readonly path: HttpRouter.PathInput
+}): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | HttpLayerRouter.HttpRouter> =>
+  Layer.effect(Protocol, makeProtocolHttpRouter(options))
 
 /**
  * @since 1.0.0

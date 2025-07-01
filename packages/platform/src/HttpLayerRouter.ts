@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import type * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -10,14 +10,18 @@ import * as FiberRef from "effect/FiberRef"
 import { compose, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import type * as Record from "effect/Record"
 import * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import * as FindMyWay from "find-my-way-ts"
+import * as HttpApi from "./HttpApi.js"
+import * as HttpApiBuilder from "./HttpApiBuilder.js"
+import type * as HttpApiGroup from "./HttpApiGroup.js"
 import type * as HttpMethod from "./HttpMethod.js"
 import * as HttpMiddleware from "./HttpMiddleware.js"
+import { RouteContext, RouteContextTypeId } from "./HttpRouter.js"
 import * as HttpServer from "./HttpServer.js"
 import * as HttpServerError from "./HttpServerError.js"
+import * as OpenApi from "./OpenApi.js"
 
 /**
  * @since 1.0.0
@@ -152,6 +156,7 @@ export const make = (options?: Partial<FindMyWay.RouterConfig>) => {
         }
         contextMap.set(HttpServerRequest.ParsedSearchParams.key, result.searchParams)
         contextMap.set(RouteContext.key, {
+          [RouteContextTypeId]: RouteContextTypeId,
           route,
           params: result.params
         })
@@ -320,15 +325,6 @@ export const prefixRoute: {
       onSome: (existingPrefix) => Option.some(prefixPath(existingPrefix, prefix) as string)
     })
   }))
-
-/**
- * @since 1.0.0
- * @category HttpContext
- */
-export class RouteContext extends Context.Tag("@effect/platform/HttpLayerRouter/RouteContext")<RouteContext, {
-  readonly params: Record.ReadonlyRecord<string, string>
-  readonly route: Route<unknown>
-}>() {}
 
 /**
  * Represents a request-level dependency, that needs to be provided by
@@ -613,6 +609,47 @@ export declare namespace middleware {
 
 /**
  * @since 1.0.0
+ * @category HttpApi
+ */
+export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
+  api: HttpApi.HttpApi<Id, Groups, E, R>,
+  options?: {
+    readonly openapiPath?: `/${string}` | undefined
+  }
+): Layer.Layer<
+  HttpApi.Api,
+  never,
+  HttpRouter | HttpApiGroup.HttpApiGroup.ToService<Id, Groups> | R | HttpApiGroup.HttpApiGroup.ErrorContext<Groups>
+> => {
+  const ApiMiddleware = middleware(HttpApiBuilder.buildMiddleware(api)).layer
+
+  return HttpApiBuilder.Router.unwrap(Effect.fnUntraced(function*(router_) {
+    const contextMap = new Map<string, unknown>()
+    const router = yield* HttpRouter
+    const routes = Arr.empty<Route<any, any>>()
+    const context = yield* Effect.context<never>()
+
+    contextMap.set(HttpApi.Api.key, { api, context })
+
+    for (const route of router_.routes) {
+      routes.push(makeRoute(route as any))
+    }
+
+    yield* (router.addAll(...routes) as Effect.Effect<void>)
+
+    if (options?.openapiPath) {
+      const spec = OpenApi.fromApi(api)
+      yield* router.add("GET", options.openapiPath, Effect.succeed(HttpServerResponse.unsafeJson(spec)))
+    }
+
+    return Context.unsafeMake<any>(contextMap)
+  }, Layer.effectContext)).pipe(
+    Layer.provide(ApiMiddleware)
+  )
+}
+
+/**
+ * @since 1.0.0
  * @category Server
  */
 export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R>>(
@@ -629,7 +666,7 @@ export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R>>(
       >
     ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR>
   }
-): Layer.Layer<never, E, Exclude<Type.Without<R> | Exclude<HR, Provided>, HttpRouter>> => {
+): Layer.Layer<never, E, HttpServer.HttpServer | Exclude<Type.Without<R> | Exclude<HR, Provided>, HttpRouter>> => {
   let middleware: any = options?.middleware
   if (options?.disableLogger !== true) {
     middleware = middleware ? compose(HttpMiddleware.logger, middleware) : HttpMiddleware.logger

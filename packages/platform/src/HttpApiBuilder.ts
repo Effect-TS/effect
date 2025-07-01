@@ -124,6 +124,36 @@ export const httpApp: Effect.Effect<
 })
 
 /**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const buildMiddleware: <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
+  api: HttpApi.HttpApi<Id, Groups, E, R>
+) => Effect.Effect<
+  (
+    effect: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown>
+  ) => Effect.Effect<HttpServerResponse.HttpServerResponse, unknown, never>
+> = Effect.fnUntraced(
+  function*<Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
+    api: HttpApi.HttpApi<Id, Groups, E, R>
+  ) {
+    const context = yield* Effect.context<never>()
+    const middlewareMap = makeMiddlewareMap(api.middlewares, context)
+    const errorSchema = makeErrorSchema(api as any)
+    const encodeError = Schema.encodeUnknown(errorSchema)
+    return (effect: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown>) =>
+      Effect.catchAllCause(
+        applyMiddleware(middlewareMap, effect),
+        (cause) =>
+          Effect.matchEffect(Effect.provide(encodeError(Cause.squash(cause)), context), {
+            onFailure: () => Effect.failCause(cause),
+            onSuccess: Effect.succeed
+          })
+      )
+  }
+)
+
+/**
  * Construct an http web handler from an `HttpApi` instance.
  *
  * **Example**
