@@ -4828,3 +4828,217 @@ Output:
 }
 */
 ```
+
+# HttpLayerRouter
+
+The experimental `HttpLayerRouter` module provides a simplified way to create HTTP servers.
+It aims to simplify the process of defining routes and registering other HTTP
+services like `HttpApi` or `RpcServer`'s.
+
+## Registering routes
+
+```ts
+import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import { createServer } from "http"
+
+// Here is how you can register a simple GET route
+const HelloRoute = Layer.effectDiscard(
+  Effect.gen(function* () {
+    // First, we need to access the `HttpRouter` service
+    const router = yield* HttpLayerRouter.HttpRouter
+
+    // Then, we can add a new route to the router
+    yield* router.add("GET", "/hello", HttpServerResponse.text("Hello, World!"))
+  })
+)
+
+// To start the server, we use `HttpLayerRouter.serve` with the `HelloRoute`
+// layer
+HttpLayerRouter.serve(HelloRoute).pipe(
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
+  Layer.launch,
+  NodeRuntime.runMain
+)
+```
+
+## Applying middleware
+
+```ts
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+
+// Here is a service that we want to provide to every HTTP request
+class CurrentSession extends Context.Tag("CurrentSession")<
+  CurrentSession,
+  {
+    readonly token: string
+  }
+>() {}
+
+// Using the `HttpLayerRouter.middleware` function, we can create a middleware
+// that provides the `CurrentSession` service to every HTTP request.
+const SessionMiddleware = HttpLayerRouter.middleware<{
+  provides: CurrentSession
+}>()(
+  Effect.gen(function* () {
+    yield* Effect.log("SessionMiddleware initialized")
+
+    return (httpEffect) =>
+      Effect.provideService(httpEffect, CurrentSession, {
+        token: "dummy-token"
+      })
+  })
+)
+
+// And here is a CORS middleware that modifies the HTTP response
+const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors())
+
+const HelloRoute = Layer.effectDiscard(
+  Effect.gen(function* () {
+    const router = yield* HttpLayerRouter.HttpRouter
+    yield* router.add(
+      "GET",
+      "/hello",
+      Effect.gen(function* () {
+        // We can now access the `CurrentSession` service in our route handler
+        const session = yield* CurrentSession
+        return HttpServerResponse.text(
+          `Hello, World! Your session token is: ${session.token}`
+        )
+      })
+    )
+  })
+).pipe(
+  // We can provide the `SessionMiddleware.layer` to the `HelloRoute` layer
+  Layer.provide(SessionMiddleware.layer),
+  // And we can also provide the `CorsMiddleware` layer to handle CORS
+  Layer.provide(CorsMiddleware.layer)
+)
+```
+
+## Inter-dependenant middleware
+
+If middleware depends on another middleware, you can use the `.provide` api to
+combine them.
+
+```ts
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+
+class CurrentSession extends Context.Tag("CurrentSession")<
+  CurrentSession,
+  {
+    readonly token: string
+  }
+>() {}
+
+const SessionMiddleware = HttpLayerRouter.middleware<{
+  provides: CurrentSession
+}>()(
+  Effect.gen(function* () {
+    yield* Effect.log("SessionMiddleware initialized")
+
+    return (httpEffect) =>
+      Effect.provideService(httpEffect, CurrentSession, {
+        token: "dummy-token"
+      })
+  })
+)
+
+// Here is a middleware that uses the `CurrentSession` service
+const LogMiddleware = HttpLayerRouter.middleware(
+  Effect.gen(function* () {
+    yield* Effect.log("LogMiddleware initialized")
+
+    return Effect.fn(function* (httpEffect) {
+      const session = yield* CurrentSession
+      yield* Effect.log(`Current session token: ${session.token}`)
+      return yield* httpEffect
+    })
+  })
+)
+
+// We can then use the .provide method to combine the middlewares
+const LogAndSessionMiddleware = LogMiddleware.provide(SessionMiddleware)
+
+const HelloRoute = Layer.effectDiscard(
+  Effect.gen(function* () {
+    const router = yield* HttpLayerRouter.HttpRouter
+    yield* router.add(
+      "GET",
+      "/hello",
+      Effect.gen(function* () {
+        const session = yield* CurrentSession
+        return HttpServerResponse.text(
+          `Hello, World! Your session token is: ${session.token}`
+        )
+      })
+    )
+  })
+).pipe(Layer.provide(LogAndSessionMiddleware.layer))
+```
+
+## Registering a HttpApi
+
+```ts
+import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+import * as HttpApi from "@effect/platform/HttpApi"
+import * as HttpApiBuilder from "@effect/platform/HttpApiBuilder"
+import * as HttpApiEndpoint from "@effect/platform/HttpApiEndpoint"
+import * as HttpApiGroup from "@effect/platform/HttpApiGroup"
+import * as HttpApiScalar from "@effect/platform/HttpApiScalar"
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import { createServer } from "http"
+
+// Defing your HttpApi structure
+class MyApi extends HttpApi.make("api").add(
+  HttpApiGroup.make("users")
+    .add(HttpApiEndpoint.get("me", "/me"))
+    .prefix("/users")
+) {}
+
+// Implement the HttpApiGroup's
+const UsersApiLayer = HttpApiBuilder.group(MyApi, "users", (handers) =>
+  handers.handle("me", () => Effect.void)
+)
+
+// You can then use `HttpLayerRouter.addHttpApi` to create a layer for the API
+const HttpApiRoutes = HttpLayerRouter.addHttpApi(MyApi, {
+  // add an openapi path for the openapi.json file
+  openapiPath: "/docs/openapi.json"
+}).pipe(Layer.provide(UsersApiLayer))
+
+// Also add a route for the api documentation
+const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
+  api: MyApi
+})
+
+const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors())
+
+const AllRoutes = Layer.mergeAll(HttpApiRoutes, DocsRoute).pipe(
+  Layer.provide(CorsMiddleware.layer)
+)
+
+// Serve the routes using NodeHttpServer
+HttpLayerRouter.serve(AllRoutes).pipe(
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
+  Layer.launch,
+  NodeRuntime.runMain
+)
+```
