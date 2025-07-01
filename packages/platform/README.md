@@ -5041,7 +5041,8 @@ const HttpApiRoutes = HttpLayerRouter.addHttpApi(MyApi, {
 
 // Create a /docs route for the API documentation
 const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
-  api: MyApi
+  api: MyApi,
+  path: "/docs"
 })
 
 // Finally, we merge all routes and serve them using the Node HTTP server

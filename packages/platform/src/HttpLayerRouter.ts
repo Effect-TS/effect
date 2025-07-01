@@ -64,7 +64,7 @@ export interface HttpRouter {
   >
 
   readonly addAll: <const Routes extends ReadonlyArray<Route<any, any>>>(
-    ...routes: Routes
+    routes: Routes
   ) => Effect.Effect<
     void,
     never,
@@ -95,7 +95,7 @@ export const make = Effect.gen(function*() {
   const router = FindMyWay.make<Route<any, never>>(yield* RouterConfig)
 
   const addAll = <const Routes extends ReadonlyArray<Route<any, any>>>(
-    ...routes: Routes
+    routes: Routes
   ): Effect.Effect<
     void,
     never,
@@ -126,13 +126,13 @@ export const make = Effect.gen(function*() {
         [TypeId]: TypeId,
         asHttpEffect: this.asHttpEffect,
         prefixed: (newPrefix: string) => this.prefixed(prefixPath(prefix, newPrefix)),
-        addAll: (...routes) => this.addAll(...routes.map(prefixRoute(prefix))) as any,
+        addAll: (routes) => this.addAll(routes.map(prefixRoute(prefix))) as any,
         add: (method, path, handler, options) =>
           this.add(method, prefixPath(prefix, path) as PathInput, handler, options)
       })
     },
     addAll,
-    add: (method, path, handler, options) => addAll(route(method, path, handler, options)),
+    add: (method, path, handler, options) => addAll([route(method, path, handler, options)]),
     asHttpEffect() {
       return Effect.withFiberRuntime((fiber) => {
         const contextMap = new Map(fiber.currentContext.unsafeMap)
@@ -776,7 +776,8 @@ export const cors = (
  *
  * // Create a /docs route for the API documentation
  * const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
- *   api: MyApi
+ *   api: MyApi,
+ *   path: "/docs"
  * })
  *
  * const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors())
@@ -824,7 +825,7 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
       routes.push(makeRoute(route as any))
     }
 
-    yield* (router.addAll(...routes) as Effect.Effect<void>)
+    yield* (router.addAll(routes) as Effect.Effect<void>)
 
     if (options?.openapiPath) {
       const spec = OpenApi.fromApi(api)

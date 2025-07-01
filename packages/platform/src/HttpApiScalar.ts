@@ -207,7 +207,7 @@ export const layer = (options?: {
 export const layerHttpLayerRouter: (
   options: {
     readonly api: HttpApi.HttpApi.Any
-    readonly path?: `/${string}` | undefined
+    readonly path: `/${string}`
     readonly source?: ScalarScriptSource
     readonly scalar?: ScalarConfig
   }
@@ -217,11 +217,11 @@ export const layerHttpLayerRouter: (
   HttpLayerRouter.HttpRouter
 > = Effect.fnUntraced(function*(options: {
   readonly api: HttpApi.HttpApi.Any
-  readonly path?: `/${string}` | undefined
+  readonly path: `/${string}`
   readonly source?: ScalarScriptSource
   readonly scalar?: ScalarConfig
 }) {
   const router = yield* HttpLayerRouter.HttpRouter
   const handler = makeHandler(options)
-  yield* router.add("GET", options?.path ?? "/docs", handler)
+  yield* router.add("GET", options.path, handler)
 }, Layer.effectDiscard)
