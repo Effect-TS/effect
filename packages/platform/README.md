@@ -4914,6 +4914,7 @@ const SessionMiddleware = HttpLayerRouter.middleware<{
 
 // And here is a CORS middleware that modifies the HTTP response
 const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors())
+// You can also use `HttpLayerRouter.cors()` to create a CORS middleware
 
 const HelloRoute = Layer.effectDiscard(
   Effect.gen(function* () {
@@ -5043,6 +5044,7 @@ const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
 })
 
 const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors())
+// You can also use `HttpLayerRouter.cors()` to create a CORS middleware
 
 const AllRoutes = Layer.mergeAll(HttpApiRoutes, DocsRoute).pipe(
   Layer.provide(CorsMiddleware.layer)

@@ -510,6 +510,7 @@ export interface Middleware<
  *
  * // Here we are defining a CORS middleware
  * const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors()).layer
+ * // You can also use HttpLayerRouter.cors() to create a CORS middleware
  *
  * class CurrentSession extends Context.Tag("CurrentSession")<CurrentSession, {
  *   readonly token: string
@@ -667,7 +668,7 @@ export declare namespace middleware {
    * @since 1.0.0
    * @category Middleware
    */
-  export type Make<Provides, Handles> = {
+  export type Make<Provides = never, Handles = never> = {
     <E, R, EX, RX>(
       middleware: Effect.Effect<
         (
@@ -724,6 +725,23 @@ export declare namespace middleware {
 }
 
 /**
+ * A middleware that applies CORS headers to the HTTP response.
+ *
+ * @since 1.0.0
+ * @category Middleware
+ */
+export const cors = (
+  options?: {
+    readonly allowedOrigins?: ReadonlyArray<string> | undefined
+    readonly allowedMethods?: ReadonlyArray<string> | undefined
+    readonly allowedHeaders?: ReadonlyArray<string> | undefined
+    readonly exposedHeaders?: ReadonlyArray<string> | undefined
+    readonly maxAge?: number | undefined
+    readonly credentials?: boolean | undefined
+  } | undefined
+): Layer.Layer<never> => middleware(HttpMiddleware.cors(options)).layer
+
+/**
  * ```ts
  * import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
  * import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
@@ -762,6 +780,7 @@ export declare namespace middleware {
  * })
  *
  * const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors())
+ * // You can also use HttpLayerRouter.cors() to create a CORS middleware
  *
  * // Finally, we merge all routes and serve them using the Node HTTP server
  * const AllRoutes = Layer.mergeAll(
