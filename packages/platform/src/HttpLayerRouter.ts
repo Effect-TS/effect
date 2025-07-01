@@ -599,7 +599,10 @@ class MiddlewareImpl<
       const memoMap = yield* Layer.CurrentMemoMap
       const scope = Context.get(context, Scope.Scope)
       const depsContext = yield* Layer.buildWithMemoMap(this.dependencies, memoMap, scope)
-      const stack = [context.unsafeMap.get(fnContextKey) as Array<middleware.Fn>].concat(getMiddleware(depsContext))
+      const stack = [
+        context.unsafeMap.get(fnContextKey),
+        ...getMiddleware(depsContext)
+      ]
       return Context.unsafeMake<never>(new Map([[contextKey, stack]]))
     })).pipe(Layer.provide(this.layerFn))
   }
