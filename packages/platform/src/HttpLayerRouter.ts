@@ -7,7 +7,7 @@ import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
-import { compose, dual, identity } from "effect/Function"
+import { compose, constant, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
@@ -91,8 +91,8 @@ export const HttpRouter: Context.Tag<HttpRouter, HttpRouter> = Context.GenericTa
  * @since 1.0.0
  * @category HttpRouter
  */
-export const make = (options?: Partial<FindMyWay.RouterConfig>) => {
-  const router = FindMyWay.make<Route<any, never>>(options)
+export const make = Effect.gen(function*() {
+  const router = FindMyWay.make<Route<any, never>>(yield* RouterConfig)
 
   const addAll = <const Routes extends ReadonlyArray<Route<any, any>>>(
     ...routes: Routes
@@ -178,7 +178,7 @@ export const make = (options?: Partial<FindMyWay.RouterConfig>) => {
       })
     }
   })
-}
+})
 
 function sliceRequestUrl(request: HttpServerRequest.HttpServerRequest, prefix: string) {
   const prefexLen = prefix.length
@@ -187,24 +187,24 @@ function sliceRequestUrl(request: HttpServerRequest.HttpServerRequest, prefix: s
 
 /**
  * @since 1.0.0
- * @category HttpRouter
+ * @category Configuration
  */
-export const layer: Layer.Layer<HttpRouter> = Layer.sync(HttpRouter, () => make())
+export class RouterConfig extends Context.Reference<RouterConfig>()("@effect/platform/HttpLayerRouter/RouterConfig", {
+  defaultValue: constant<Partial<FindMyWay.RouterConfig>>({})
+}) {}
 
 /**
  * @since 1.0.0
  * @category HttpRouter
  */
-export const layerOptions = (options?: Partial<FindMyWay.RouterConfig>): Layer.Layer<HttpRouter> =>
-  Layer.sync(HttpRouter, () => make(options))
+export const layer: Layer.Layer<HttpRouter> = Layer.effect(HttpRouter, make)
 
 /**
  * @since 1.0.0
  * @category HttpRouter
  */
 export const toHttpEffect = <A, E, R>(
-  appLayer: Layer.Layer<A, E, R>,
-  options?: Partial<FindMyWay.RouterConfig>
+  appLayer: Layer.Layer<A, E, R>
 ): Effect.Effect<
   Effect.Effect<
     HttpServerResponse.HttpServerResponse,
@@ -215,11 +215,10 @@ export const toHttpEffect = <A, E, R>(
   Exclude<Type.Without<R>, HttpRouter> | Scope.Scope
 > =>
   Effect.gen(function*() {
-    const routerLayer = options ? layerOptions(options) : layer
     const scope = yield* Effect.scope
     const memoMap = yield* Layer.CurrentMemoMap
     const context = yield* Layer.buildWithMemoMap(
-      Layer.provideMerge(appLayer, routerLayer),
+      Layer.provideMerge(appLayer, layer),
       memoMap,
       scope
     )
@@ -784,7 +783,9 @@ export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R>>(
   if (options?.disableLogger !== true) {
     middleware = middleware ? compose(HttpMiddleware.logger, middleware) : HttpMiddleware.logger
   }
-  const RouterLayer = options?.routerConfig ? layerOptions(options.routerConfig) : layer
+  const RouterLayer = options?.routerConfig
+    ? Layer.provide(layer, Layer.succeed(RouterConfig, options.routerConfig))
+    : layer
   return Effect.gen(function*() {
     const router = yield* HttpRouter
     const handler = router.asHttpEffect()
