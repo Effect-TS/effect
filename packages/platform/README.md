@@ -4938,7 +4938,7 @@ const HelloRoute = Layer.effectDiscard(
 )
 ```
 
-## Inter-dependenant middleware
+## Interdependent middleware
 
 If middleware depends on another middleware, you can use the `.provide` api to
 combine them.
