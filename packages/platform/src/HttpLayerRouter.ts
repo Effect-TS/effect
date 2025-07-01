@@ -562,18 +562,18 @@ export const middleware:
     Config extends { provides: infer R } ? R : never,
     Config extends { handles: infer E } ? E : never
   >) = function() {
-    const make = (middleware: any) =>
-      new MiddlewareImpl(
-        Effect.isEffect(middleware) ?
-          Layer.scopedContext(Effect.map(middleware, (fn) => Context.unsafeMake(new Map([[fnContextKey, fn]])))) :
-          Layer.succeedContext(Context.unsafeMake(new Map([[fnContextKey, middleware]]))) as any,
-        Layer.empty as any
-      )
     if (arguments.length === 0) {
-      return make as any
+      return makeMiddleware as any
     }
-    return make(arguments[0])
+    return makeMiddleware(arguments[0])
   }
+
+const makeMiddleware = (middleware: any) =>
+  new MiddlewareImpl(
+    Effect.isEffect(middleware) ?
+      Layer.scopedContext(Effect.map(middleware, (fn) => Context.unsafeMake(new Map([[fnContextKey, fn]])))) :
+      Layer.succeedContext(Context.unsafeMake(new Map([[fnContextKey, middleware]]))) as any
+  )
 
 let middlewareId = 0
 const fnContextKey = "@effect/platform/HttpLayerRouter/MiddlewareFn"
@@ -592,18 +592,19 @@ class MiddlewareImpl<
 
   constructor(
     readonly layerFn: Layer.Layer<never>,
-    readonly dependencies: Layer.Layer<any, any, any>
+    readonly dependencies?: Layer.Layer<any, any, any>
   ) {
     const contextKey = `@effect/platform/HttpLayerRouter/Middleware-${++middlewareId}` as const
     this.layer = Layer.scopedContext(Effect.gen(this, function*() {
       const context = yield* Effect.context<Scope.Scope>()
       const memoMap = yield* Layer.CurrentMemoMap
       const scope = Context.get(context, Scope.Scope)
-      const depsContext = yield* Layer.buildWithMemoMap(this.dependencies, memoMap, scope)
-      const stack = [
-        context.unsafeMap.get(fnContextKey),
-        ...getMiddleware(depsContext)
-      ]
+      const stack = [context.unsafeMap.get(fnContextKey)]
+      if (this.dependencies) {
+        const depsContext = yield* Layer.buildWithMemoMap(this.dependencies, memoMap, scope)
+        // eslint-disable-next-line no-restricted-syntax
+        stack.push(...getMiddleware(depsContext))
+      }
       return Context.unsafeMake<never>(new Map([[contextKey, stack]]))
     })).pipe(Layer.provide(this.layerFn))
   }
@@ -622,7 +623,7 @@ class MiddlewareImpl<
   >(other: Middleware<Config2>): Middleware<any> {
     return new MiddlewareImpl(
       this.layerFn,
-      Layer.provideMerge(this.dependencies, other.layer as any)
+      this.dependencies ? Layer.provideMerge(this.dependencies, other.layer as any) : other.layer as any
     ) as any
   }
 }
@@ -633,9 +634,8 @@ const getMiddleware = (context: Context.Context<never>): Array<middleware.Fn> =>
   if (arr) return arr
   const topLevel = Arr.empty<Array<middleware.Fn>>()
   let maxLength = 0
-  for (const key of context.unsafeMap.keys()) {
+  for (const [key, value] of context.unsafeMap) {
     if (key.startsWith("@effect/platform/HttpLayerRouter/Middleware-")) {
-      const value = context.unsafeMap.get(key)
       topLevel.push(value)
       if (value.length > maxLength) {
         maxLength = value.length
@@ -653,7 +653,7 @@ const getMiddleware = (context: Context.Context<never>): Array<middleware.Fn> =>
         }
       }
     }
-    arr = Array.from(middleware).reverse()
+    arr = Arr.fromIterable(middleware).reverse()
   }
   middlewareCache.set(context, arr)
   return arr
