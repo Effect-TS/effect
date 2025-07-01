@@ -115,7 +115,11 @@ export const make = Effect.gen(function*() {
           ...routes[i],
           handler: applyMiddleware(routes[i].handler as Effect.Effect<HttpServerResponse.HttpServerResponse>)
         })
-        router.on(route.method, route.path, route as any)
+        if (route.method === "*") {
+          router.all(route.path, route as any)
+        } else {
+          router.on(route.method, route.path, route as any)
+        }
       }
     })
 
