@@ -1,5 +1,13 @@
 # effect
 
+## 3.16.11
+
+### Patch Changes
+
+- [#5127](https://github.com/Effect-TS/effect/pull/5127) [`99590a6`](https://github.com/Effect-TS/effect/commit/99590a6ca9128eb1ede265b6670b655311995614) Thanks @tim-smart! - fix DateTime zone check to includes zones without ":"
+
+- [#5123](https://github.com/Effect-TS/effect/pull/5123) [`6c3e24c`](https://github.com/Effect-TS/effect/commit/6c3e24c2308f7d4a29b8f4270ab81bca22ac6bb4) Thanks @gcanti! - Schema.equivalence: handle non-array and non-record inputs
+
 ## 3.16.10
 
 ### Patch Changes
