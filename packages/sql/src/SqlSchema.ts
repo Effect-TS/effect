@@ -32,7 +32,7 @@ export const findAll = <IR, II, IA, AR, AI, A, R, E>(
 const void_ = <IR, II, IA, R, E>(
   options: {
     readonly Request: Schema.Schema<IA, II, IR>
-    readonly execute: (request: II) => Effect.Effect<ReadonlyArray<unknown>, E, R>
+    readonly execute: (request: II) => Effect.Effect<unknown, E, R>
   }
 ) => {
   const encode = Schema.encode(options.Request)
