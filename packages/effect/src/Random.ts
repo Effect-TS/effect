@@ -169,3 +169,40 @@ export const Random: Context.Tag<Random, Random> = internal.randomTag
  * @category constructors
  */
 export const make: <A>(seed: A) => Random = internal.make
+
+/**
+ * Constructs the `Random` service from an array of literal values.
+ * The service will cycle through the provided values in order when generating random values.
+ * This constructor is useful for creating deterministic sequences for testing or when specific values need to be returned.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Random } from "effect"
+ *
+ * const random = Random.fixed([0.2, 0.5, 0.8])
+ *
+ * Effect.gen(function* () {
+ *   console.log(yield* random.next) // 0.2
+ *   console.log(yield* random.next) // 0.5
+ *   console.log(yield* random.next) // 0.8
+ *   console.log(yield* random.next) // 0.2 (cycles back)
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * import { Effect, Random } from "effect"
+ *
+ * const random = Random.fixed([true, false, true])
+ *
+ * Effect.gen(function* () {
+ *   console.log(yield* random.nextBoolean) // true
+ *   console.log(yield* random.nextBoolean) // false
+ *   console.log(yield* random.nextBoolean) // true
+ * })
+ * ```
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const fixed: <const T extends Array.NonEmptyArray<any>>(values: T) => Random = internal.fixed

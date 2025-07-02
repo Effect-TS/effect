@@ -48,4 +48,92 @@ describe("Random", () => {
 
       assertTrue([1, 2, 3].includes(yield* Random.choice(Chunk.fromIterable([1, 2, 3]))))
     }))
+
+  describe("fixed", () => {
+    it.effect("cycles through numeric values", () =>
+      Effect.gen(function*() {
+        const random = Random.fixed([0.2, 0.5, 0.8])
+        strictEqual(yield* random.next, 0.2)
+        strictEqual(yield* random.next, 0.5)
+        strictEqual(yield* random.next, 0.8)
+        strictEqual(yield* random.next, 0.2)
+        strictEqual(yield* random.next, 0.5)
+      }))
+
+    it.effect("cycles through boolean values", () =>
+      Effect.gen(function*() {
+        const random = Random.fixed([true, false, true])
+        strictEqual(yield* random.nextBoolean, true)
+        strictEqual(yield* random.nextBoolean, false)
+        strictEqual(yield* random.nextBoolean, true)
+        strictEqual(yield* random.nextBoolean, true)
+      }))
+
+    it.effect("cycles through integer values", () =>
+      Effect.gen(function*() {
+        const random = Random.fixed([10, 20, 30])
+        strictEqual(yield* random.nextInt, 10)
+        strictEqual(yield* random.nextInt, 20)
+        strictEqual(yield* random.nextInt, 30)
+        strictEqual(yield* random.nextInt, 10)
+      }))
+
+    it.effect("handles mixed value types", () =>
+      Effect.gen(function*() {
+        const random = Random.fixed([0.5, true, "hello", 4.2])
+        strictEqual(yield* random.next, 0.5)
+        strictEqual(yield* random.nextBoolean, true)
+        const next = yield* random.next
+        assertTrue(next >= 0 && next <= 1)
+        strictEqual(yield* random.nextInt, 4)
+      }))
+
+    it.effect("nextRange works correctly", () =>
+      Effect.gen(function*() {
+        const random = Random.fixed([0.2, 0.5, 0.8])
+        const value1 = yield* random.nextRange(10, 20)
+        const value2 = yield* random.nextRange(10, 20)
+        const value3 = yield* random.nextRange(10, 20)
+        strictEqual(value1, 12)
+        strictEqual(value2, 15)
+        strictEqual(value3, 18)
+      }))
+
+    it.effect("nextIntBetween works correctly", () =>
+      Effect.gen(function*() {
+        const random = Random.fixed([15, 25, 35])
+        strictEqual(yield* random.nextIntBetween(10, 20), 15)
+        strictEqual(yield* random.nextIntBetween(20, 30), 25)
+        strictEqual(yield* random.nextIntBetween(30, 40), 35)
+        strictEqual(yield* random.nextIntBetween(10, 20), 15)
+      }))
+
+    it.effect("clamps numeric values to valid range", () =>
+      Effect.gen(function*() {
+        const random = Random.fixed([-1, 2, 0.5])
+        strictEqual(yield* random.next, 0)
+        strictEqual(yield* random.next, 1)
+        strictEqual(yield* random.next, 0.5)
+      }))
+
+    it.effect("handles non-numeric values by hashing", () =>
+      Effect.gen(function*() {
+        const random = Random.fixed(["a", "b", "c"])
+        const value1 = yield* random.next
+        const value2 = yield* random.next
+        const value3 = yield* random.next
+        assertTrue(value1 >= 0 && value1 <= 1)
+        assertTrue(value2 >= 0 && value2 <= 1)
+        assertTrue(value3 >= 0 && value3 <= 1)
+        assertTrue(value1 !== value2)
+        assertTrue(value2 !== value3)
+      }))
+
+    it.effect("shuffle works with array values", () =>
+      Effect.gen(function*() {
+        const random = Random.fixed([1, 2, 3, 4, 5])
+        const shuffled = yield* random.shuffle([1, 2, 3, 4, 5])
+        deepStrictEqual(Array.fromIterable(shuffled).sort(), [1, 2, 3, 4, 5])
+      }))
+  })
 })
