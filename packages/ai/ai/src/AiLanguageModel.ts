@@ -511,16 +511,22 @@ const resolveParts = Effect.fnUntraced(function*<Tools extends AiTool.Any>(optio
     }, constDisableValidation)
   }
   yield* Effect.annotateCurrentSpan("toolCalls", toolNames)
-  const results = new Map<AiResponse.ToolCallId, AiTool.Success<Tools>>()
-  const encodedResults = new Map<AiResponse.ToolCallId, unknown>()
+  const results = new Map<AiResponse.ToolCallId, {
+    readonly name: string
+    readonly result: AiTool.Success<Tools>
+  }>()
+  const encodedResults = new Map<AiResponse.ToolCallId, {
+    readonly name: string
+    readonly result: unknown
+  }>()
   const resolve = Effect.forEach(toolParts, (part) => {
     const id = part.id as AiResponse.ToolCallId
     const name = part.name as AiTool.Name<Tools>
     const params = part.params as AiTool.Parameters<Tools>
     const toolCall = options.toolkit.handle(name, params)
     return Effect.map(toolCall, ({ encodedResult, result }) => {
-      results.set(id, result)
-      encodedResults.set(id, encodedResult)
+      results.set(id, { name, result })
+      encodedResults.set(id, { name, result: encodedResult })
     })
   }, { concurrency: options.concurrency, discard: true })
   yield* resolve

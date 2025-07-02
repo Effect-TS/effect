@@ -180,24 +180,36 @@ export class WithToolCallResults<Tools extends AiTool.Any> extends AiResponse {
    * The tool call results, represented as a mapping between the tool call
    * identifier and the result of the tool call handler.
    */
-  readonly results: ReadonlyMap<ToolCallId, AiTool.Success<Tools>>
+  readonly results: ReadonlyMap<ToolCallId, {
+    readonly name: string
+    readonly result: AiTool.Success<Tools>
+  }>
   /**
    * The encoded tool call results, suitable for incorporation into subsequent
    * requests to the large language model.
    */
-  readonly encodedResults: ReadonlyMap<ToolCallId, unknown>
+  readonly encodedResults: ReadonlyMap<ToolCallId, {
+    readonly name: string
+    readonly result: unknown
+  }>
 
   constructor(props: {
     /**
      * The tool call results, represented as a mapping between the tool call
      * identifier and the result of the tool call handler.
      */
-    readonly results: ReadonlyMap<ToolCallId, AiTool.Success<Tools>>
+    readonly results: ReadonlyMap<ToolCallId, {
+      readonly name: string
+      readonly result: AiTool.Success<Tools>
+    }>
     /**
      * The encoded tool call results, suitable for incorporation into subsequent
      * requests to the large language model.
      */
-    readonly encodedResults: ReadonlyMap<ToolCallId, unknown>
+    readonly encodedResults: ReadonlyMap<ToolCallId, {
+      readonly name: string
+      readonly result: unknown
+    }>
     /**
      * The parts of the response.
      */
@@ -206,6 +218,15 @@ export class WithToolCallResults<Tools extends AiTool.Any> extends AiResponse {
     super({ parts: props.parts }, options)
     this.results = props.results
     this.encodedResults = props.encodedResults
+  }
+
+  getToolCallResult(toolName: AiTool.Name<Tools>): Option.Option<AiTool.Success<Tools>> {
+    for (const { name, result } of this.results.values()) {
+      if (name === toolName) {
+        return Option.some(result)
+      }
+    }
+    return Option.none()
   }
 }
 
