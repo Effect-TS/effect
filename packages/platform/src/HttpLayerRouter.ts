@@ -59,17 +59,16 @@ export interface HttpRouter {
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ) => Effect.Effect<
     void,
-    never,
-    Type.From<"Requires", Exclude<R, Provided>> | Type.From<"Error", E>
+    Type.From<"Error", E>,
+    Type.From<"Requires", Exclude<R, Provided>>
   >
 
   readonly addAll: <const Routes extends ReadonlyArray<Route<any, any>>>(
     routes: Routes
   ) => Effect.Effect<
     void,
-    never,
-    | Type.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
-    | Type.From<"Error", Route.Error<Routes[number]>>
+    Type.From<"Error", Route.Error<Routes[number]>>,
+    Type.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
   >
 
   readonly asHttpEffect: () => Effect.Effect<
@@ -98,9 +97,8 @@ export const make = Effect.gen(function*() {
     routes: Routes
   ): Effect.Effect<
     void,
-    never,
-    | Type.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
-    | Type.From<"Error", Route.Error<Routes[number]>>
+    Type.From<"Error", Route.Error<Routes[number]>>,
+    Type.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
   > =>
     Effect.contextWith((context: Context.Context<never>) => {
       const middleware = getMiddleware(context)
@@ -271,10 +269,10 @@ export const toHttpEffect = <A, E, R>(
 ): Effect.Effect<
   Effect.Effect<
     HttpServerResponse.HttpServerResponse,
-    Type.Only<"Error", R> | HttpServerError.RouteNotFound,
+    Type.Only<"Error", E> | HttpServerError.RouteNotFound,
     Scope.Scope | HttpServerRequest.HttpServerRequest | Type.Only<"Requires", R>
   >,
-  E,
+  Type.Without<E>,
   Exclude<Type.Without<R>, HttpRouter> | Scope.Scope
 > =>
   Effect.gen(function*() {
@@ -490,7 +488,7 @@ export interface Middleware<
       Config["layerError"],
       Config["layerRequires"] | Type.From<"Requires", Config["requires"]>
     >
-    : "Need to .provide(middleware) that satisfy the missing request dependencies"
+    : "Need to .combine(middleware) that satisfy the missing request dependencies"
 
   readonly combine: <
     Config2 extends {
@@ -878,12 +876,16 @@ export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R>>(
     readonly middleware?: (
       effect: Effect.Effect<
         HttpServerResponse.HttpServerResponse,
-        Type.Only<"Error", R> | HttpServerError.RouteNotFound,
+        Type.Only<"Error", E> | HttpServerError.RouteNotFound,
         Scope.Scope | HttpServerRequest.HttpServerRequest | Type.Only<"Requires", R>
       >
     ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR>
   }
-): Layer.Layer<never, E, HttpServer.HttpServer | Exclude<Type.Without<R> | Exclude<HR, Provided>, HttpRouter>> => {
+): Layer.Layer<
+  never,
+  Type.Without<E>,
+  HttpServer.HttpServer | Exclude<Type.Without<R> | Exclude<HR, Provided>, HttpRouter>
+> => {
   let middleware: any = options?.middleware
   if (options?.disableLogger !== true) {
     middleware = middleware ? compose(middleware, HttpMiddleware.logger) : HttpMiddleware.logger
