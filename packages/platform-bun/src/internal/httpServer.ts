@@ -135,6 +135,7 @@ const makeResponse = (
   if (request.method === "HEAD") {
     return new Response(undefined, fields)
   }
+  response = App.unsafeEjectStreamScope(response)
   const body = response.body
   switch (body._tag) {
     case "Empty": {
