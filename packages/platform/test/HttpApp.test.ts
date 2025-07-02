@@ -49,7 +49,8 @@ describe("Http/App", () => {
           Stream.encodeText,
           Stream.ensuring(Effect.sync(() => {
             streamFinalized = Date.now()
-          }))
+          })),
+          Stream.tap(() => Effect.sleep(50))
         )
         return HttpServerResponse.stream(stream)
       }))
