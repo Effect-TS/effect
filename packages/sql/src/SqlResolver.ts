@@ -428,7 +428,7 @@ const void_ = <T extends string, I, II, RI, E, R = never>(
       readonly Request: Schema.Schema<I, II, RI>
       readonly execute: (
         requests: Array<Types.NoInfer<II>>
-      ) => Effect.Effect<ReadonlyArray<unknown>, E, R>
+      ) => Effect.Effect<unknown, E, R>
       readonly withContext: true
     }
 ): Effect.Effect<SqlResolver<T, I, void, E, RI>, never, R> => {
