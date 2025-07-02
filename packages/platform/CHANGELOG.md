@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.87.3
+
+### Patch Changes
+
+- [#5128](https://github.com/Effect-TS/effect/pull/5128) [`1b6e396`](https://github.com/Effect-TS/effect/commit/1b6e396d699f3cbbc56b68f99055cf746529bb9e) Thanks @tim-smart! - attach http request scope to stream lifetime for stream responses
+
 ## 0.87.2
 
 ### Patch Changes
