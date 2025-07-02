@@ -497,6 +497,13 @@ export const make = Effect.gen(function*() {
   const register = Effect.fnUntraced(function*(runner: Runner) {
     yield* Effect.logInfo(`Registering runner ${Runner.pretty(runner)}`)
 
+    const current = MutableHashMap.get(state.allRunners, runner.address).pipe(
+      Option.filter((r) => r.runner.version === runner.version)
+    )
+    if (Option.isSome(current)) {
+      return MachineId.make(++machineId)
+    }
+
     state.addRunner(runner, clock.unsafeCurrentTimeMillis())
     updateRunnerMetrics()
     yield* PubSub.publish(events, ShardingEvent.RunnerRegistered({ address: runner.address }))
