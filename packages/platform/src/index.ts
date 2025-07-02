@@ -140,6 +140,11 @@ export * as HttpIncomingMessage from "./HttpIncomingMessage.js"
 
 /**
  * @since 1.0.0
+ */
+export * as HttpLayerRouter from "./HttpLayerRouter.js"
+
+/**
+ * @since 1.0.0
  * @category models
  */
 export * as HttpMethod from "./HttpMethod.js"

@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Headers from "@effect/platform/Headers"
+import type * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import type * as HttpRouter from "@effect/platform/HttpRouter"
 import type { RpcMessage } from "@effect/rpc"
 import type * as Rpc from "@effect/rpc/Rpc"
@@ -571,6 +572,24 @@ export const layerHttp = <I = HttpRouter.Default>(options: {
 }): Layer.Layer<McpServer | McpServerClient> =>
   layer(options).pipe(
     Layer.provide(RpcServer.layerProtocolHttp(options)),
+    Layer.provide(RpcSerialization.layerJsonRpc())
+  )
+
+/**
+ * Run the McpServer, using HTTP for input and output.
+ *
+ * Uses a `HttpLayerRouter` to register the McpServer routes.
+ *
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layerHttpRouter = (options: {
+  readonly name: string
+  readonly version: string
+  readonly path: HttpRouter.PathInput
+}): Layer.Layer<McpServer | McpServerClient, never, HttpLayerRouter.HttpRouter> =>
+  layer(options).pipe(
+    Layer.provide(RpcServer.layerProtocolHttpRouter(options)),
     Layer.provide(RpcSerialization.layerJsonRpc())
   )
 

@@ -4828,3 +4828,274 @@ Output:
 }
 */
 ```
+
+# HttpLayerRouter
+
+The experimental `HttpLayerRouter` module provides a simplified way to create HTTP servers.
+It aims to simplify the process of defining routes and registering other HTTP
+services like `HttpApi` or `RpcServer`'s.
+
+## Registering routes
+
+```ts
+import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import { createServer } from "http"
+
+// Here is how you can register a simple GET route
+const HelloRoute = Layer.effectDiscard(
+  Effect.gen(function* () {
+    // First, we need to access the `HttpRouter` service
+    const router = yield* HttpLayerRouter.HttpRouter
+
+    // Then, we can add a new route to the router
+    yield* router.add("GET", "/hello", HttpServerResponse.text("Hello, World!"))
+  })
+)
+
+// You can also use the `HttpLayerRouter.use` function to register a route
+const GoodbyeRoute = HttpLayerRouter.use(
+  Effect.fn(function* (router) {
+    // The `router` parameter is the `HttpRouter` service
+    yield* router.add(
+      "GET",
+      "/goodbye",
+      HttpServerResponse.text("Goodbye, World!")
+    )
+  })
+)
+
+const AllRoutes = Layer.mergeAll(HelloRoute, GoodbyeRoute)
+
+// To start the server, we use `HttpLayerRouter.serve` with the routes layer
+HttpLayerRouter.serve(AllRoutes).pipe(
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
+  Layer.launch,
+  NodeRuntime.runMain
+)
+```
+
+## Applying middleware
+
+```ts
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+
+// Here is a service that we want to provide to every HTTP request
+class CurrentSession extends Context.Tag("CurrentSession")<
+  CurrentSession,
+  {
+    readonly token: string
+  }
+>() {}
+
+// Using the `HttpLayerRouter.middleware` function, we can create a middleware
+// that provides the `CurrentSession` service to every HTTP request.
+const SessionMiddleware = HttpLayerRouter.middleware<{
+  provides: CurrentSession
+}>()(
+  Effect.gen(function* () {
+    yield* Effect.log("SessionMiddleware initialized")
+
+    return (httpEffect) =>
+      Effect.provideService(httpEffect, CurrentSession, {
+        token: "dummy-token"
+      })
+  })
+)
+
+// And here is a CORS middleware that modifies the HTTP response
+const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors())
+// You can also use `HttpLayerRouter.cors()` to create a CORS middleware
+
+const HelloRoute = Layer.effectDiscard(
+  Effect.gen(function* () {
+    const router = yield* HttpLayerRouter.HttpRouter
+    yield* router.add(
+      "GET",
+      "/hello",
+      Effect.gen(function* () {
+        // We can now access the `CurrentSession` service in our route handler
+        const session = yield* CurrentSession
+        return HttpServerResponse.text(
+          `Hello, World! Your session token is: ${session.token}`
+        )
+      })
+    )
+  })
+).pipe(
+  // We can provide the `SessionMiddleware.layer` to the `HelloRoute` layer
+  Layer.provide(SessionMiddleware.layer),
+  // And we can also provide the `CorsMiddleware` layer to handle CORS
+  Layer.provide(CorsMiddleware.layer)
+)
+```
+
+## Interdependent middleware
+
+If middleware depends on another middleware, you can use the `.combine` api to
+combine them.
+
+```ts
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+
+class CurrentSession extends Context.Tag("CurrentSession")<
+  CurrentSession,
+  {
+    readonly token: string
+  }
+>() {}
+
+const SessionMiddleware = HttpLayerRouter.middleware<{
+  provides: CurrentSession
+}>()(
+  Effect.gen(function* () {
+    yield* Effect.log("SessionMiddleware initialized")
+
+    return (httpEffect) =>
+      Effect.provideService(httpEffect, CurrentSession, {
+        token: "dummy-token"
+      })
+  })
+)
+
+// Here is a middleware that uses the `CurrentSession` service
+const LogMiddleware = HttpLayerRouter.middleware(
+  Effect.gen(function* () {
+    yield* Effect.log("LogMiddleware initialized")
+
+    return Effect.fn(function* (httpEffect) {
+      const session = yield* CurrentSession
+      yield* Effect.log(`Current session token: ${session.token}`)
+      return yield* httpEffect
+    })
+  })
+)
+
+// We can then use the .combine method to combine the middlewares
+const LogAndSessionMiddleware = LogMiddleware.combine(SessionMiddleware)
+
+const HelloRoute = Layer.effectDiscard(
+  Effect.gen(function* () {
+    const router = yield* HttpLayerRouter.HttpRouter
+    yield* router.add(
+      "GET",
+      "/hello",
+      Effect.gen(function* () {
+        const session = yield* CurrentSession
+        return HttpServerResponse.text(
+          `Hello, World! Your session token is: ${session.token}`
+        )
+      })
+    )
+  })
+).pipe(Layer.provide(LogAndSessionMiddleware.layer))
+```
+
+## Registering a HttpApi
+
+```ts
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiScalar,
+  HttpLayerRouter
+} from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer } from "effect"
+import { createServer } from "http"
+
+// First, we define our HttpApi
+class MyApi extends HttpApi.make("api").add(
+  HttpApiGroup.make("users")
+    .add(HttpApiEndpoint.get("me", "/me"))
+    .prefix("/users")
+) {}
+
+// Implement the handlers for the API
+const UsersApiLayer = HttpApiBuilder.group(MyApi, "users", (handers) =>
+  handers.handle("me", () => Effect.void)
+)
+
+// Use `HttpLayerRouter.addHttpApi` to register the API with the router
+const HttpApiRoutes = HttpLayerRouter.addHttpApi(MyApi, {
+  openapiPath: "/docs/openapi.json"
+}).pipe(
+  // Provide the api handlers layer
+  Layer.provide(UsersApiLayer)
+)
+
+// Create a /docs route for the API documentation
+const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
+  api: MyApi,
+  path: "/docs"
+})
+
+// Finally, we merge all routes and serve them using the Node HTTP server
+const AllRoutes = Layer.mergeAll(HttpApiRoutes, DocsRoute).pipe(
+  Layer.provide(HttpLayerRouter.cors())
+)
+
+HttpLayerRouter.serve(AllRoutes).pipe(
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
+  Layer.launch,
+  NodeRuntime.runMain
+)
+```
+
+## Registering a RpcServer
+
+```ts
+import { HttpLayerRouter } from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "@effect/rpc"
+import { Effect, Layer, Schema } from "effect"
+import { createServer } from "http"
+
+export class User extends Schema.Class<User>("User")({
+  id: Schema.String,
+  name: Schema.String
+}) {}
+
+// Define a group of RPCs
+export class UserRpcs extends RpcGroup.make(
+  Rpc.make("UserById", {
+    success: User,
+    error: Schema.String, // Indicates that errors, if any, will be returned as strings
+    payload: {
+      id: Schema.String
+    }
+  })
+) {}
+
+const UserHandlers = UserRpcs.toLayer({
+  UserById: ({ id }) => Effect.succeed(new User({ id, name: "John Doe" }))
+})
+
+// Use `HttpLayerRouter` to register the rpc server
+const RpcRoute = RpcServer.layerHttpRouter({
+  group: UserRpcs,
+  path: "/rpc"
+}).pipe(Layer.provide(UserHandlers), Layer.provide(RpcSerialization.layerJson))
+
+// Start the HTTP server with the RPC route
+HttpLayerRouter.serve(RpcRoute).pipe(
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
+  Layer.launch,
+  NodeRuntime.runMain
+)
+```
